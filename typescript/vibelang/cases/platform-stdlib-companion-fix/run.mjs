@@ -19,6 +19,7 @@ try {
  assert.equal(fixed.error, undefined)
  assert.equal(readFileSync(join(dir, "mainPlatform.ts"), "utf8"), sentinel, "never overwrite an existing sibling")
  const companions = readdirSync(dir).filter(name => name.endsWith(".ts") && !name.endsWith(".d.vibe.ts") && name !== "mainPlatform.ts")
+ // rule-evidence: docs/design/vips/0033-platform-stdlib.md#af700d45440d7ea1 | Its quick fix and the codemod move the body into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`).
  assert.equal(companions.length, 1, "approved fix creates a fresh TypeScript companion: " + fixed.stdout + fixed.stderr)
  assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr)
  const original = globalThis.fetch

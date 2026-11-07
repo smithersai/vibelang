@@ -119,7 +119,7 @@ test("property: the query decides whether the plugin compiles the id", async (t)
       await writeFile(file, source)
       plugin.watchChange(file)
       const id = file + input.query
-      const result = await plugin.transform.call(hookContext, source, id)
+      const result = await plugin.load.call(hookContext, id)
       if (input.owned) {
         assert.ok(result && typeof result.code === "string", `${input.query}: the module itself compiles`)
         assert.match(result.code, /value/, `${input.query}: compiled JavaScript`)

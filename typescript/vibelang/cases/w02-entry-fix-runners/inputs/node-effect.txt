@@ -1,0 +1,6 @@
+import "vibelang/platform/node"
+
+// An eligible Effect main: the runner receives main().
+export effect function main() {
+  try Console.log("node effect main ran")
+}

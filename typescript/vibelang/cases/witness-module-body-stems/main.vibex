@@ -1,0 +1,23 @@
+// rule-evidence: docs/design/src/001-functions.md#module-declarations | Body outputs use the source file's full basename, including `.vibe` or `.vibex`, followed by `.` and the encoded module name.
+// rule-evidence: docs/design/src/001-functions.md#module-declarations | Encoding keeps `a`–`z`, `0`–`9` and `_`; every other Unicode code point becomes `-`, its code point in lowercase hexadecimal without leading zeros, and `-`, without case folding or Unicode normalization.
+// rule-evidence: docs/design/src/001-functions.md#module-declarations | Thus `module Über` in `main.vibex` has stem `main.vibex.-dc-ber`.
+// Escaped and literal spellings of one name are one module; a decomposed
+// spelling is another, since names are not normalized.
+module Über { export const n = "Über" }
+module a_9z { export const n = "a_9z" }
+module Z { export const n = "Z" }
+module $x { export const n = "$x" }
+module 𝒳 { export const n = "astral" }
+module \u0101 { export const n = "macron" }
+module U\u0308ber { export const n = "decomposed" }
+module \u0061\u{62} { export const n = "escaped" }
+import { n as a } from \u00dcber
+import { n as b } from a_9z
+import { n as c } from Z
+import { n as d } from $x
+import { n as e } from \u{1d4b3}
+import { n as f } from ā
+import { n as g } from Üb\u0065r
+import { n as h } from ab
+import { other as i } from "./other.js"
+export const result = [a, b, c, d, e, f, g, h, i]

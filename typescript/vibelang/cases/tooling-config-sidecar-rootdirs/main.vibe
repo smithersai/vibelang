@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#config-files | For example, `"sidecarDir": ".vibe/declarations"` with `"rootDir": "."` uses `"rootDirs": [".", ".vibe/declarations"]` for stock TypeScript resolution.
+export const witness = 1

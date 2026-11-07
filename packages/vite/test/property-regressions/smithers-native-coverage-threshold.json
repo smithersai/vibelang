@@ -1,0 +1,8 @@
+{
+  "property": "vite-native-coverage-threshold",
+  "input": {
+    "operator": ">",
+    "newline": "\n"
+  },
+  "rule": "A migrated source with an uncovered branch fails the same coverage threshold as its TypeScript twin."
+}

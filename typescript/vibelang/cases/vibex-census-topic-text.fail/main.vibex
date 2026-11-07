@@ -1,4 +1,6 @@
 // expect: EK2301
+// rule-evidence: docs/design/vips/0039-vibex.md#83d92ad7314b9035
+// "`%` there is not the topic: probe `q13` reports the missing-topic error, `EK2301` in Appendix B (the probed compiler printed its interim `EK1006`) | all four |"
 // VIP-39 existing diagnostic code families: docs/design/vips/0039-vibex.md#600ee6e6f420abfe
 // VIP-39 in text is never the pipe topic: docs/design/vips/0039-vibex.md#8ddc1f2ba0748463
 // VIP-39 there is not the topic probe q13 reports EK2301: docs/design/vips/0039-vibex.md#97e71d60294e2df9

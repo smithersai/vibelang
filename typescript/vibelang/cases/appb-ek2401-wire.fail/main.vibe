@@ -1,0 +1,11 @@
+// expect: EK2401
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK2401` | the retired resolved `wire` intrinsic; compose Layers explicitly or use the preserving `wire compositions` codemod before rejection | 24 | [Migration](007-tooling.md#legacy-fork-try-statement-and-wire-migration) |
+import { wire } from "vibelang-runtime"
+service A { static readonly key = "appb/A"; a(): number!! }
+service B { static readonly key = "appb/B"; b(): number!! }
+const ALive = Layer.succeed(A, { a: () => Effect.succeed(1) })
+const BLive = Layer.succeed(B, { b: () => Effect.succeed(2) })
+export const Live = wire(ALive, BLive)
+export effect function main() {
+  provide Live { return [try (try A).a(), try (try B).b()] }
+}

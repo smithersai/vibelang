@@ -1,0 +1,1 @@
+This call returns an Effect subtype, which only try runs, so this statement discards its result without running it.

@@ -1,3 +1,5 @@
+// rule-evidence: docs/design/vips/0027-declaration-output.md#1f31a646ee3fe04a
+// VIP-27: retired declarationImportStyle paths warn EK3011, nonfatal, for every value.
 // docs/design/vips/0027-declaration-output.md#882221edf904402d
 // VIP-27: both retired declarationImportStyle option paths warn for every value.
 export const witness = 1;

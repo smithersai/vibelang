@@ -83,3 +83,17 @@ test("any parameter name forwards the member an arm named, and no other body doe
     assert.equal(lostWrappers({ ts, original, emitted: emitted(`(${parameter}) => Effect.fail(${parameter})`) }).flags.length, 1)
   }), { numRuns: 100, seed: 40713 })
 })
+
+// alchemy-lost-wrapper-module-pairing: a VIP-40 body is the original's
+// declarations, emitted beside the module, which only re-exports them. Moving
+// the emit into a body companion changes no flag and no pairing.
+test("an emit moved into a module body's companion checks as the same emit in the module", () => {
+  fc.assert(fc.property(cases, fc.boolean(), (c, lost) => {
+    const original = source(c, false), emitted = source(c, lost)
+    const direct = lostWrappers({ ts, original: original.text, emitted: emitted.text })
+    const viaBody = lostWrappers({ ts, original: original.text, emitted: `export * from "./m.vibe.platform.js";\n`, companions: [{ path: "m.vibe.platform.js", text: emitted.text }] })
+    assert.deepEqual(viaBody.flags, direct.flags)
+    assert.deepEqual(viaBody.unpaired, direct.unpaired)
+    assert.equal(viaBody.paired, direct.paired)
+  }), { numRuns: 200 })
+})

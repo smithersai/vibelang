@@ -1,0 +1,3 @@
+{
+  "source": "import * as Effect from \"effect/Effect\";\nerror NotFound { path: string }\nerror Failed { message: string }\nconst probe = effect (p: string): void!NotFound | Failed!never => {\n  if (p === \"\") throw new NotFound({ path: p })\n  throw new Failed({ message: p })\n}\nexport const exists = effect (p: string) =>\n  (probe(p) |> Effect.as(%, true)) catch (e) => match (e) {\n    when { _tag: \"NotFound\" }: false;\n    default: throw e;\n  }\n"
+}

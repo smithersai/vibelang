@@ -1,0 +1,4 @@
+scriptA.ts(3,7): error TS2451
+scriptA.ts(4,10): error TS2393
+scriptB.ts(3,7): error TS2451
+scriptB.ts(4,10): error TS2393

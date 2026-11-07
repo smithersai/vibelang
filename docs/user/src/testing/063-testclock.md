@@ -4,7 +4,7 @@
 
 ## Configure the test runner
 
-The [starter](../getting-started/004-installation.md) includes Vitest 5.1.0, `@effect/vitest` 4.1.1, and the local `vibelang-vite` plugin. `bun run test` compiles and runs `src/**/*.test.vibe` directly, with no prior `dist/` build. Keep configuration in TypeScript:
+The [starter](../getting-started/004-installation.md) includes Vitest 5.1.0, `@effect/vitest` 4.1.1, and the local `vibelang-vite` plugin. `bun run test` compiles and runs `src/**/*.test.vibe` directly, with no prior `dist/` build. The starter's `tsconfig.test.json` includes tests that the build excludes. Select it in the plugin and keep configuration in TypeScript:
 
 ```ts
 // TypeScript (.ts)
@@ -13,7 +13,7 @@ import { defineConfig } from "vitest/config"
 import vibelang from "vibelang-vite"
 
 export default defineConfig({
-  plugins: [vibelang()],
+  plugins: [vibelang({ project: "tsconfig.test.json" })],
   test: { include: ["src/**/*.test.vibe"] }
 })
 ```

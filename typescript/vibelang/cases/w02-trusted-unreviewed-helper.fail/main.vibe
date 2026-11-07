@@ -1,0 +1,9 @@
+// expect: EK0402
+// rule-evidence: docs/design/src/007-tooling.md#empty-legacy-trust-wrappers | A reviewed `.ts` helper with `@throws {never}` is another replacement.
+// Without @throws {never} the helper is an unannotated foreign function whose
+// thrown type is unknown, so a non-throwing VibeLang function type rejects it.
+import { parseOrZero } from "./helper.ts"
+function applyAll(f: (s: string) => number, xs: string[]): number[] {
+  return xs.map(f)
+}
+export const parsedAll = applyAll(parseOrZero, ["1", "x", "2"])

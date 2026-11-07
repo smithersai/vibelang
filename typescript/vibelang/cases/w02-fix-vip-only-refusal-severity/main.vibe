@@ -1,0 +1,4 @@
+// rule-evidence: docs/design/src/007-tooling.md#fix-scopes | When `--fix-vip-only` refused any call, it sets `"vibe": { "severities": { "EK4802": "error" } }` in the project's config with a comment that says why, so all `EK4802` inferred Effect argument sites in the project fail to compile; the owner removes the setting once a run refuses none.
+// run.mjs runs --fix-vip-only on a project with a call it must refuse and an
+// inferred Effect argument in another module, then on one with no refusal.
+export const witness = 1

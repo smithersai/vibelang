@@ -6,7 +6,7 @@ Compile `.vibe` modules with the native VibeLang compiler in Vite and Vitest.
 The compiler owns type and language diagnostics. The plugin serves its JavaScript
 and source maps, reports errors in the terminal and Vite overlay, and invalidates
 source modules and their importers after edits.
-Unicode file names and diagnostic text are preserved, including in large compiler output.
+Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning. A single module can import both a source such as `./créé.vibe` and a literal JavaScript file named `./cr%C3%A9%C3%A9.js`; those imports load their distinct files.
 
 The plugin selects `vibelang-source` package exports for application and SSR
 bundles, preserving the existing resolution conditions. Under Vitest, which
@@ -18,6 +18,12 @@ when its default export points at emitted JavaScript under `.vibelang/js`.
 
 Delegated package imports retain Vite and Rollup resolver options, including SSR mode and CommonJS metadata. This keeps optional native dependencies optional when a CommonJS package is bundled for Node.
 
+
+Creating a missing source file clears the development error overlay and updates its importers. Deleting an imported source reports the compiler error, and restoring it recovers without restarting the server.
+
+Existing `import.meta.hot.accept` dependency handlers keep updates inside the page and preserve its state when a VibeLang dependency changes. Ordinary TypeScript dependency updates continue through Vite's normal hot-reload handling.
+
+An included source outside the compilation root reports that boundary directly. Set the root to a directory containing the source, or give an external source package its own `package.json` and `tsconfig.json`; changing an already-correct `include` is unnecessary.
 
 ## Install
 
@@ -165,15 +171,19 @@ v0 runs one `vibelang` subprocess for the whole project on the first module requ
 and after each source change; requests share that compilation. Each plugin
 instance owns an output directory under `node_modules/.vibelang/vite-*`, removed
 when Vite closes. It forces JavaScript and source-map emission, embeds source
-content, checks and emits only the `.vibe` files under the root (`--loader-root`), and
-disables declarations and incremental output.
+content, checks and emits only the project's own `.vibe` files (`--loader-root`): those
+under Vite's root, or under the project's package when its `tsconfig.json` sits
+above that root. It disables declarations and incremental output.
 Source paths in compiler maps resolve to the original files before Vite composes
 the maps for its transformations. Each hook returns an independent map, so
 Vite's path rewriting leaves the compiler's cached source paths and embedded
 source text intact for later requests, including inline module outputs.
 
-The Vite root must contain the project's source files; the plugin overrides
-`rootDir` to that root so emitted paths are predictable. Normal application
+Vite's root may be a directory inside your package, as `root: "web"` with
+`vibelang({ project: "../tsconfig.json" })`: that project still compiles every
+`.vibe` module its `include` lists, inside Vite's root or not. The plugin
+overrides `rootDir` to the filesystem root, so each emitted path mirrors its
+source path. Normal application
 `dist/` output stays separate. Each source change invalidates all loaded `.vibe`
 modules and their transitive importers, a conservative rule
 that covers exported contract and control changes without duplicating compiler
@@ -236,3 +246,7 @@ as `.tsx`. The adapter compiles them before JavaScript parsing and hands
 framework plugins a virtual `.jsx` module ID. Their ordinary JSX filters
 apply; source maps and diagnostics retain the original `.vibex` source.
 Development updates and dependency scanning include these modules.
+
+Relative imports keep source files and JavaScript siblings distinct: importing `./value.vibe` and `./value.js` in one module loads each file separately, including when their names use only ASCII characters.
+
+Development imports and hot updates preserve literal percent sequences in filenames. A source such as `percent%20.vibe` and a JavaScript dependency such as `percent%2520.js` retain their own contents and original source-map locations, including under a configured Vite `base`.

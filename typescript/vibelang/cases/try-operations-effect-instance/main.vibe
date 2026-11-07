@@ -1,0 +1,30 @@
+import { Effect as Eff, Fiber as Fib, type Exit as Ex } from "effect"
+effect function check(mode: number) {
+  const anchor = try Eff.forkChild(effect {
+    const Effect = { all: 0, exit: 0, raceAll: 0, raceAllFirst: 0 }
+    void Effect
+    const owner = try Eff.fiberId
+    const jobs = [1,2,3].map<Eff.Effect<boolean>>(item => effect {
+      const current = try Eff.fiberId
+      const child = try Eff.forkChild(Eff.succeed(item))
+      const okay = owner < current && current < child.id
+      try Fib.join(child)
+      return okay
+    })
+    switch (mode) {
+      case 0: return [try.race jobs]
+      case 1: return [try.any jobs]
+      case 2: { const values: Array<Ex.Exit<boolean>> = try.allSettled jobs; return values.map(x => x._tag === "Success" && x.value) }
+      case 3: { const values: Array<Ex.Exit<boolean>> = try.allSettled [...jobs]; return values.map(x => x._tag === "Success" && x.value) }
+      case 4: { const values: Array<Ex.Exit<boolean>> = try.allSettled [jobs[0],jobs[1],jobs[2]]; return values.map(x => x._tag === "Success" && x.value) }
+      case 5: return [try.race [jobs[0],jobs[1],jobs[2]]]
+      default: return [try.any [jobs[0],jobs[1],jobs[2]]]
+    }
+  })
+  return try Fib.join(anchor)
+}
+export effect function main() {
+  const seen:boolean[]=[]
+  for (const mode of [0,1,2,3,4,5,6]) seen.push(...(try check(mode)))
+  return seen
+}

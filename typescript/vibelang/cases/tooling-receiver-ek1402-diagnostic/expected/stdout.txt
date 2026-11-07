@@ -1,0 +1,1 @@
+EK1402 rejects each legacy data receiver method

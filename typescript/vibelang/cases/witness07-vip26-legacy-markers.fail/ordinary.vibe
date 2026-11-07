@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-legacy-entry-markers | A refused marker remains an error; no implicit startup is retained and no ordinary `main` binding is rejected.
+// Without a marker, main is ordinary source: no entry diagnostic here.
+export effect function main() { return 3 }

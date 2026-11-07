@@ -1,0 +1,1 @@
+empty legacy trust wrappers: bridge preserves results, defects, captures and declarations

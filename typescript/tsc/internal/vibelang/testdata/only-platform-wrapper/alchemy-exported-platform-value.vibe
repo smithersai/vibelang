@@ -1,0 +1,8 @@
+// alchemy authentic pass, exported platform value: a module-level
+// Effect.sync over a host read (the drive witness, and modules such as
+// Website/StaticSite and Runtime/ManagedHttpShutdown). The originals read
+// process.platform and process.execPath; this test project has no Node
+// types, so a DOM read stands in. Under --only the listed module's fresh
+// companion takes the wrapper, as plain --fix does.
+import * as Effect from "effect/Effect";
+export const Value = Effect.sync(() => document.title);

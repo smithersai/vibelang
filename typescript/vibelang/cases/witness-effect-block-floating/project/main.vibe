@@ -1,0 +1,12 @@
+// Compiled by run.mjs, which expects EK3801 at lines 5 and 9.
+// rule-evidence: docs/design/src/007-tooling.md#vibelang-warnings | An `effect { … }` expression statement builds and discards an unrun Effect; imported `floatingEffect` reports it as `EK3801`, as in TypeScript.
+// twin.ts is the same module in Effect TypeScript and reports the same code.
+export effect function main(n: number) {
+  effect { return 1 }
+  return n
+}
+
+effect {
+  try Console.log("never")
+  try Console.log("runs")
+}

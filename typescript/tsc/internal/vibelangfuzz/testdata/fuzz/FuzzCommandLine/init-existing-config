@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.ts --\nexport const value = 1\n-- tsconfig.json --\n{\"compilerOptions\":{\"strict\":true,\"types\":[]},\"files\":[\"main.ts\"]}\n")
+[]byte("key:init-existing-config")

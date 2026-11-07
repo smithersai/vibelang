@@ -28,9 +28,15 @@ func TestMigrationFormatterFixedPointQuoted(t *testing.T) {
 // convergence limit. The in-process editor formatter has a different backend.
 func FuzzMigrationFormatterFixedPoint(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"original", "without-pipe", "without-blocks", "wrapped-pipe", "block-arrow", "comment", "crlf", "effect-functions"}
+	keys := []string{"original", "without-pipe", "without-blocks", "wrapped-pipe", "block-arrow", "comment", "crlf", "effect-functions", "t3code-original", "t3code-comment", "t3code-crlf", "t3code-renamed", "t3code-no-lambda-pipe", "t3code-block-functions"}
 	for _, key := range keys {
-		f.Add(key, uint8(0))
+		modes := []uint8{0}
+		if strings.HasPrefix(key, "t3code-") {
+			modes = []uint8{0, 1, 2, 4, 5, 6}
+		}
+		for _, mode := range modes {
+			f.Add(key, mode)
+		}
 	}
 	f.Add("original", uint8(1))
 	f.Add("original", uint8(4))
@@ -44,7 +50,11 @@ func FuzzMigrationFormatterFixedPoint(f *testing.F) {
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
-		raw, err := os.ReadFile(filepath.Join(repoTestdata(), "corpus", "alchemy-formatter-native-layout.vibe"))
+		corpus := "alchemy-formatter-native-layout.vibe"
+		if strings.HasPrefix(key, "t3code-") {
+			corpus = "t3code-effect-lambda-pipeline.vibe"
+		}
+		raw, err := os.ReadFile(filepath.Join(repoTestdata(), "corpus", corpus))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,8 +77,21 @@ func FuzzMigrationFormatterFixedPoint(f *testing.F) {
 			source = "// provider layout\n" + strings.ReplaceAll(source, "const sync", "/* cold program */ const sync")
 		case "crlf":
 			source = strings.ReplaceAll(source, "\n", "\r\n")
-		case "effect-functions":
+		case "effect-functions", "t3code-block-functions":
 			source = strings.ReplaceAll(source, "= effect {", "= effect () => {")
+		case "t3code-comment":
+			source = "// adapter layout\n" + source
+		case "t3code-crlf":
+			source = strings.ReplaceAll(source, "\n", "\r\n")
+		case "t3code-renamed":
+			source = strings.NewReplacer("makeOpenCodeAdapterV2", "makeAdapter", "ProviderAdapter.", "Adapter.").Replace(source)
+		case "t3code-no-lambda-pipe":
+			start := strings.Index(source, "    } |> ((effect, input) =>")
+			end := strings.Index(source, "))(%, input),")
+			if start < 0 || end < start {
+				t.Fatal("adapter corpus no longer contains its lambda pipe")
+			}
+			source = source[:start] + "    }," + source[end+len("))(%, input),"):]
 		}
 		if _, failure := vibelangestree.Parse("Application.vibe", source); failure != nil {
 			t.Fatalf("invalid generated syntax for %s: %v\n%s", key, failure, source)
@@ -78,6 +101,7 @@ func FuzzMigrationFormatterFixedPoint(f *testing.F) {
 		if mode&4 != 0 {
 			quote = "alwaysSingle"
 		}
+		t.Logf("formatter case key=%s width=%d quote=%s", key, width, quote)
 		input, err := json.Marshal(map[string]any{"source": source, "style": map[string]any{"quoteStyle": quote, "lineWidth": width}})
 		if err != nil {
 			t.Fatal(err)

@@ -1,0 +1,1 @@
+trusted(f, []) migrates to the identity-mapped bridge

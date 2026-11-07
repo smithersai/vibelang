@@ -1,0 +1,13 @@
+node {"shared":true,"txt":["challenge-value","other"]} resolver 0 authority 1
+worker AA {"txt":["fresh-value"],"seen":[{"address":{"hostname":"192.0.2.53","port":53},"rd":false}]}
+worker no AA {"txt":["error:NotAuthoritative"],"seen":[{"address":{"hostname":"192.0.2.53","port":53},"rd":false}]}
+worker host ["error:Unsupported"]
+base64 ["aGVsbG8=","68656c6c6f",true,true]
+base64 ["aGVsbG8","68656c6c6f",false,true]
+base64 ["aGVs bG8=","68656c6c6f",false,false]
+base64 ["aGVs\nbG8","68656c6c6f",false,true]
+base64 ["-_-_","fbffbf",false,true]
+base64 ["+/+/","fbffbf",true,false]
+base64 ["aGVsbG8=trailing","68656c6c6f",false,false]
+base64 ["aGVsbG8x9","68656c6c6f31",false,false]
+base64 ["%%%","",false,false]

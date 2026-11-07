@@ -1,0 +1,5 @@
+// rule-evidence: docs/design/src/007-tooling.md#selecting-ordinary-fix-files | `--only <files>` limits ordinary `--fix` to the listed modules ([VIP-34, amended](../vips/0034-compiler-and-tooling.md#decision)).
+// rule-evidence: docs/design/src/007-tooling.md#selecting-ordinary-fix-files | `<files>` is a comma-separated list of paths relative to the current directory, or `@list.txt`, a file of such paths, one per line; the flag can repeat.
+// run.mjs runs --fix --only over a project in which every module offers a fix,
+// and checks that only the listed modules change, for each list form.
+export const witness = 1

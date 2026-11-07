@@ -4,6 +4,8 @@
 // VIP-40: a call inside a try block with a catch clause is allowed — spec-rule: docs/design/vips/0040-module-declarations.md#399d0ae1dd4b6325
 // VIP-40: @throws {never} lets VibeLang call a body function directly — spec-rule: docs/design/vips/0040-module-declarations.md#0bd35a8e6c6759c9
 // VIP-40: async VibeLang functions may call a throwing body function — spec-rule: docs/design/vips/0040-module-declarations.md#55cf8b484d3d71c1
+// rule-evidence: docs/design/vips/0040-module-declarations.md#6b98f3d520344993
+// VIP-40, thrown types: A call of `readText`, whose throwing is unknown, stays an ordinary call.
 module parse {
   // Throws, but nothing is inferred from the body: an ordinary call.
   export function readText(raw: string): string {

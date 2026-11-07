@@ -1,0 +1,1 @@
+declaration specifiers follow the native twin; sidecars keep source references

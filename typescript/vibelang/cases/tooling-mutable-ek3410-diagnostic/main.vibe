@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#ordinary-mutable-marker-migration | `EK3410` rejects a retired `mutable` marker on an ordinary interface or object-type property or index signature, or a plain `error` payload.
+export const witness = 1

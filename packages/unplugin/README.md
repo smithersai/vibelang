@@ -6,10 +6,18 @@ Compile `.vibe` modules with the native VibeLang compiler in webpack, Rspack,
 Rollup, Rolldown, esbuild, and Bun. The compiler owns type and language
 diagnostics. The plugin serves its JavaScript and source maps, reports its
 diagnostics as build errors with file, line, and column, and recompiles in
-watch mode. For Vite and Vitest, use [vibelang-vite](../vite/README.md).
-Unicode file names and diagnostic text are preserved, including in large compiler output.
+watch mode. Source and type-only edits remain active after error recovery. For Vite and Vitest, use [vibelang-vite](../vite/README.md).
+Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning. A single module can import both a source such as `./créé.vibe` and a literal JavaScript file named `./cr%C3%A9%C3%A9.js`; those imports load their distinct files.
+In esbuild bundles, Node source-map stacks retain original source filenames,
+including Unicode, spaces and literal `%` sequences.
+
 The shared load hook also compiles explicit `.vibex` JSX sources, including
 module IDs with query strings, using the project's `jsx` compiler option.
+The native esbuild adapter also loads these sources and their rewritten
+`.js` or `.jsx` dependencies. With `jsx: "preserve"`, it lowers JSX using
+the project's effective JSX settings, including inherited factory settings,
+and combines source maps back to the original `.vibex` source. A competing
+TypeScript source keeps the compiler's resolution priority.
 
 The `// @vibe` check reads real source files. Virtual module identifiers from another bundler plugin stay with that plugin, even when their names end in `.ts` or `.vibe`.
 
@@ -195,12 +203,21 @@ export default class Api extends Cloudflare.Worker<Api>()("Api", {
 The bundlers that await plugins are Rolldown, Rollup, and Vite;
 `deferred` refuses the others.
 
-### An entry module's main
+### Explicit application startup
 
-A module that exports a parameterless `main` runs it when the host starts the
-module (D135). A bundle runs the `main` of its entry module and no other, as
-an ES module or as CommonJS, with this plugin or from the compiler's output:
-the runtime asks the file the host started which `main` it exports.
+A function named `main` is ordinary source. Exporting or importing it does not
+start the application. Write a runner at the application entry, as in Effect
+TypeScript:
+
+```vibe
+export effect function main() {
+  try Console.log("Hello")
+}
+Effect.runSync(main())
+```
+
+A bundle executes its written top-level runner. A library that only exports
+`main` remains inert, including when the host starts that library directly.
 
 Rolldown input arrays and named entry maps exclude generated `.d.vibe.ts`
 sidecars, including those selected by `tsdown` entry globs. This includes
@@ -269,7 +286,7 @@ declarations and incremental output. A source saved
 during a compile starts another compile before any module is served.
 
 Each `.vibe` module declares every project source and the tsconfig as watch
-files, so an edit to any of them rebuilds the `.vibe` modules. Errors in a loaded source and project-wide errors are reported once for that module,
+files, so an edit to any of them rebuilds the `.vibe` modules. Missing relative imports are watched too: creating the missing source, including a directory index or a source imported by its rewritten `.js` name, rebuilds without another edit to the importer. Set `VIBELANG_UNPLUGIN_DEBUG=1` to trace the missing source candidates registered for watching. Errors in a loaded source and project-wide errors are reported once for that module,
 as a build error whose message lists each diagnostic
 as `file:line:column - error TS2322: text`.
 
@@ -329,3 +346,5 @@ only diagnostics for the source being loaded and project-wide errors, including
 configuration diagnostics.
 An unrelated file's type errors do not prevent loading a clean module. Run
 `vibelang -p tsconfig.json` to check every project file.
+
+Relative imports keep source files and JavaScript siblings distinct: importing `./value.vibe` and `./value.js` in one module loads each file separately, including when their names use only ASCII characters.

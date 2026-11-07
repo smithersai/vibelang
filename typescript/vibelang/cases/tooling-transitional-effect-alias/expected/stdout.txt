@@ -1,0 +1,1 @@
+EK4856 repairs the resolved legacy alias only, and refuses under a shadowed namespace

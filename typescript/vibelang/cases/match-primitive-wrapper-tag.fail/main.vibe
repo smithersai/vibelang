@@ -1,0 +1,16 @@
+// expect: EK4701
+export {}
+declare global {
+ interface String { readonly _tag: "Only" }
+ interface Number { readonly _tag: "Only" }
+ interface Boolean { readonly _tag: "Only" }
+ interface BigInt { readonly _tag: "Only" }
+ interface Symbol { readonly _tag: "Only" }
+}
+declare const A: unique symbol
+declare const B: unique symbol
+export function strings(s:"a"|"b"|{_tag:"Only"}){return match(s){when {_tag:"Only"}:1;}}
+export function numbers(s:1|2|{_tag:"Only"}){return match(s){when {_tag:"Only"}:1;}}
+export function booleans(s:boolean|{_tag:"Only"}){return match(s){when {_tag:"Only"}:1;}}
+export function bigints(s:1n|2n|{_tag:"Only"}){return match(s){when {_tag:"Only"}:1;}}
+export function symbols(s:typeof A|typeof B|{_tag:"Only"}){return match(s){when {_tag:"Only"}:1;}}

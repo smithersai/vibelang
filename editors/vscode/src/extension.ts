@@ -74,13 +74,16 @@ async function start(): Promise<void> {
     status.text = "vibelang not found"
     status.detail = "Run bun install in the project, set vibelang.server.path, or put vibelang on PATH"
     output.error("Cannot find vibelang: vibelang.server.path is empty, no node_modules/.bin/vibelang was found, and vibelang is not on PATH.")
-    const choice = await vscode.window.showErrorMessage(
+    // A notification stays open until the user answers it. Recovery and
+    // activation must remain available while they install the compiler.
+    void Promise.resolve(vscode.window.showErrorMessage(
       "VibeLang cannot find vibelang. Run bun install in the project (it installs vibelang), set vibelang.server.path, or put vibelang on PATH.",
       "Open Settings",
       "Show Output"
-    )
-    if (choice === "Open Settings") await vscode.commands.executeCommand("workbench.action.openSettings", "vibelang.server.path")
-    if (choice === "Show Output") output.show()
+    )).then(async (choice) => {
+      if (choice === "Open Settings") await vscode.commands.executeCommand("workbench.action.openSettings", "vibelang.server.path")
+      if (choice === "Show Output") output.show()
+    }).catch((error) => output.warn(`Showing server recovery actions failed: ${String(error)}`))
     return
   }
 
@@ -120,7 +123,7 @@ async function start(): Promise<void> {
       const info = started.initializeResult?.serverInfo
       status.severity = vscode.LanguageStatusSeverity.Information
       status.text = "vibelang"
-      status.detail = `${server.command}${info?.version ? ` (TypeScript ${info.version})` : ""}`
+      status.detail = `${server.command}${info?.version ? ` (${info.version})` : ""}`
     } else if (newState === State.Stopped) {
       status.severity = vscode.LanguageStatusSeverity.Warning
       status.text = "vibelang stopped"

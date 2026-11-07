@@ -83,12 +83,26 @@ func extractedLength(c *checker.Checker, matcher *ast.Node) (int, bool) {
 		}
 		return len(builtin.Values), true
 	}
-	symbol := c.GetSymbolAtLocation(matcher)
-	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
-		symbol = c.GetAliasedSymbol(symbol)
-	}
-	if symbol != nil && isExtractedErrorClass(c, symbol.ValueDeclaration()) {
-		return 1, true
+	// As for built-in matchers, a local const alias retains the constructor.
+	// A type annotation alone or a mutable local binding does not establish
+	// the registered constructor's identity.
+	seen := map[*ast.Symbol]bool{}
+	for {
+		matcher = ast.SkipOuterExpressions(matcher, ast.OEKAll)
+		symbol := resolvedAlias(c, c.GetSymbolAtLocation(matcher))
+		if symbol == nil || seen[symbol] {
+			break
+		}
+		seen[symbol] = true
+		declaration := symbol.ValueDeclaration()
+		if isExtractedErrorClass(c, declaration) {
+			return 1, true
+		}
+		if !ast.IsIdentifier(matcher) || declaration == nil || !ast.IsVariableDeclaration(declaration) ||
+			ast.GetCombinedNodeFlags(declaration)&ast.NodeFlagsConst == 0 || declaration.Initializer() == nil {
+			break
+		}
+		matcher = declaration.Initializer()
 	}
 	return 0, false
 }

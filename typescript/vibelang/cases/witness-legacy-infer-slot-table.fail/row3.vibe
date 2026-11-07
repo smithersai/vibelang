@@ -1,0 +1,1 @@
+export class C { effect m(): Effect.Effect<number, infer E, never> { return 1 } }

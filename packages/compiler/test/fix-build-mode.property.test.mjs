@@ -49,7 +49,7 @@ test("build aliases repair once and preserve source line endings", async () => {
         const source = ["// Preserve this authored contract.", "export type Held = Effect.Effect<number>", ""].join(ending)
         writeFileSync(join(root, "main.vibe"), source)
         const args = input.fixFirst ? ["--fix", input.flag] : [input.flag, "--fix"]
-        const run = () => spawnSync(native, [...args, "--pretty", "false"], { cwd: root, encoding: "utf8", timeout: 60000 })
+        const run = () => spawnSync(native, [...args, "-v", "--pretty", "false"], { cwd: root, encoding: "utf8", timeout: 60000 })
         const first = run()
         assert.equal(first.status, 0, JSON.stringify(input) + "\n" + first.stdout + first.stderr)
         const fixed = readFileSync(join(root, "main.vibe"), "utf8")

@@ -1,0 +1,32 @@
+// expect-result: [{"id":"u1"},{"id":"u2"}]
+// rule-evidence: docs/design/src/900-appendices.md#appendix-e-shipped-throws-and-rethrows-annotations
+// Appendix E: data-last duals — spec-rule: docs/design/src/900-appendices.md#a7784a1571a0e6a0
+// The data-last overloads of Effect.map and Effect.retry carry
+// `@throws {never}`, so building this pipe in effect code needs no
+// Effect.try: no EK0403. EK4802 still applies to the pipe call that is not
+// the direct operand of try, at each argument whose callback result is the
+// inferred Effect (expected/diagnostics.txt).
+error NotFound { id: string }
+
+effect function fetchUser(id: string): { name: string }!NotFound {
+  return { name: id }
+}
+
+function toDto(user: { name: string }) {
+  return { id: user.name }
+}
+
+const policy = Schedule.recurs(2)
+
+export effect function load(id: string) {
+  return try fetchUser(id).pipe(Effect.map(toDto), Effect.retry(policy))
+}
+
+export effect function deferred(id: string) {
+  const program = fetchUser(id).pipe(Effect.map(toDto), Effect.retry(policy))
+  return try program
+}
+
+export effect function main() {
+  return [try load("u1"), try deferred("u2")]
+}

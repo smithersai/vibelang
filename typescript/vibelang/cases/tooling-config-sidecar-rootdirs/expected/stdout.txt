@@ -1,0 +1,1 @@
+stock tsc resolves ./user.vibe through .vibe/declarations only with the rootDirs pair

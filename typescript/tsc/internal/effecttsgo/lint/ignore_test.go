@@ -76,7 +76,7 @@ func lintFixture(t *testing.T) (dir string, write func(name, text string)) {
 func runLint(t *testing.T, dir string, args ...string) (status int, out, errOut string) {
 	t.Helper()
 	sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-	status = Command(context.Background(), sys, append([]string{"-c", ".oxlintrc.effect.json", "--deny-warnings"}, args...))
+	status = oxlintAdapterCommand(context.Background(), sys, append([]string{"-c", ".oxlintrc.effect.json", "--deny-warnings"}, args...))
 	return status, sys.out.String(), sys.err.String()
 }
 

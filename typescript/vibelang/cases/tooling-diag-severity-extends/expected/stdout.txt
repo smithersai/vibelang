@@ -1,0 +1,1 @@
+extends merges before validation; an invalid entry reports EK3006 and overrides nothing

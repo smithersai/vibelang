@@ -1,0 +1,15 @@
+// expect: TS2339 TS2709
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics
+// Native errors after removal — spec-rule: docs/design/src/900-appendices.md#f859faffa8a95f75
+// The equivalent explicit namespace imports keep TypeScript's meaning: a
+// namespace used as a type is TS2709 and an absent namespace member is
+// TS2339, as tsc reports for the same .ts source. No EK code is involved.
+import { FileSystem, Option, Scope } from "effect"
+
+export type Maybe = Option<number>
+
+export function scoped(scope: Scope): number {
+  return 1
+}
+
+export const make = FileSystem.of

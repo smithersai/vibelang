@@ -38,7 +38,7 @@ func genericMatchRemainder(c *checker.Checker, call *ast.Node) (declared, left *
 			left = genericArmRemainder(c, subject, left, arm)
 		}
 	}
-	return declared, left
+	return declared, remainingPatternMembers(c, call, left)
 }
 
 // Each parser arm is a block of declarations followed by nested if tests.

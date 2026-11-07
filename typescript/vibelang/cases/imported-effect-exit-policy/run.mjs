@@ -48,6 +48,7 @@ try {
         }, files: ["main.ts"] }
         const r = invoke(config, warning)
         const fails = severity !== "off" && !ignore
+        // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#39c414d762f77a15 | Compiler diagnostics imported under VIP-38 retain the pinned native Effect TypeScript compiler's exit and `noEmitOnError` policy under the same effective rule, category, inclusion and ignore options; imported warnings affect both by default.
         assert.equal(r.status, fails ? mode === "noEmitOnError" ? 1 : 2 : 0, JSON.stringify({severity,ignore,mode,output:r.output}))
         assert.equal(r.emitted, mode !== "check" && !(mode === "noEmitOnError" && fails), r.output)
         if (severity !== "off") assert.match(r.output, /EK3897/)
@@ -80,6 +81,7 @@ try {
         name: "@effect/language-service", diagnosticSeverity: { promiseInEffectSuccess: severity },
         ignoreEffectErrorsInTscExitCode: ignore, ignoreEffectWarningsInTscExitCode: ignore
       }] }, files: ["main.ts"] }, warning, ["lint"])
+      // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#4f830a9522879e89 | The standalone `vibelang lint` command fails only on errors; warnings or suggestions alone exit 0.
       assert.equal(r.status, severity === "warning" ? 0 : 1, r.output)
       assert.match(r.output, /EK3897/)
     }

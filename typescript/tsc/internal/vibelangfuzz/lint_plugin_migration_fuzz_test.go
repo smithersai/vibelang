@@ -18,6 +18,9 @@ func TestLintPluginMigrationQuoted(t *testing.T) {
 		t.Fatalf("missing VIP-38 migration oracle %q", quote)
 	}
 }
+
+// VIP-38 preserving migration writes the plugin entry and keeps inherited plugins, options and comments.
+// Appendix B: EK3012 — spec-rule: docs/design/src/900-appendices.md#51031b8ea0acdca6
 func FuzzLintPluginMigration(f *testing.F) {
 	startShortBudget(f)
 	for _, key := range []string{"local", "inherited", "empty", "root", "trailing-comma"} {

@@ -45,6 +45,8 @@ func TestRetiredConfigOptions(t *testing.T) {
 						if len(ds) != len(keys) {
 							t.Fatalf("want retirement warnings; got %v", ds)
 						}
+						// rule-evidence: docs/design/vips/0030-config-files.md#da5fca5d499ba3d9 | Both historical paths, root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle`, are ignored with nonfatal deprecation warning `EK3011` for every value, including invalid values.
+						// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#1f31a646ee3fe04a | The retired `declarationImportStyle` paths are ignored with nonfatal deprecation warning `EK3011` for every value (VIP-30).
 						for i, key := range keys {
 							d := ds[i]
 							code := int32(3010)

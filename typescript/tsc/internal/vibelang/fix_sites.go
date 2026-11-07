@@ -55,10 +55,11 @@ type trackedSite struct {
 type fixSites struct {
 	original func(tspath.RootedFilePath) string
 	sites    map[tspath.RootedFilePath][]*trackedSite
+	audit    *fixAudit
 }
 
 func newFixSites(original func(tspath.RootedFilePath) string) *fixSites {
-	return &fixSites{original: original, sites: map[tspath.RootedFilePath][]*trackedSite{}}
+	return &fixSites{original: original, sites: map[tspath.RootedFilePath][]*trackedSite{}, audit: newFixAudit()}
 }
 
 // add records the site [start, end) of current, the text of name it was
@@ -69,12 +70,13 @@ func (s *fixSites) add(name tspath.RootedFilePath, current string, start, end in
 	if current != original {
 		os, oe, isNew = spanBefore(textHunks(original, current), start, end)
 	}
+	site := RefusedSite{File: name, Start: os, End: oe, Code: code, New: isNew, Reason: reason}
+	s.audit.record(site, current, start, end)
 	for _, t := range s.sites[name] {
 		if !t.resolved && t.Start == os && t.End == oe && t.Code == code {
 			return
 		}
 	}
-	site := RefusedSite{File: name, Start: os, End: oe, Code: code, New: isNew, Reason: reason}
 	site.StartLine, site.StartColumn = lineColumn(original, os)
 	site.EndLine, site.EndColumn = lineColumn(original, oe)
 	s.sites[name] = append(s.sites[name], &trackedSite{RefusedSite: site, seen: current, start: start, end: end})

@@ -1,0 +1,18 @@
+// rule-evidence: docs/design/vips/0031-runtime-guarantees.md#3b6a6d7f1a6aa353 | Types alone execute nothing; TypeScript modules, including VIP-40 bodies, keep ordinary dependency order and arrange initialization before using the key, normally with `import "vibelang-runtime"` first.
+// VIP-31 runtime guarantees: TypeScript code keeps ordinary dependency order.
+// Neither the type-only import nor either module body asks for matcher
+// initialization; only the body that imports "vibelang-runtime" first sees
+// the key, and modules evaluated after it see the same key.
+import { typed } from "./types-only.js"
+module bare {
+  export const seen = typeof (Symbol as { customMatcher?: symbol }).customMatcher
+}
+module arranged {
+  import "vibelang-runtime"
+  export const seen = typeof (Symbol as { customMatcher?: symbol }).customMatcher
+}
+import { seen as bareSeen } from bare
+import { seen as arrangedSeen } from arranged
+import { after } from "./after.js"
+
+export const order = { typed, bare: bareSeen, arranged: arrangedSeen, after }

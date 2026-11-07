@@ -1,0 +1,19 @@
+// expect: EK0401
+// A plain function whose return type is wholly effectful never throws, so a
+// call whose throwing is unknown is EK0401 there (chapter 3, Plain code never
+// throws). A caught call, a never contract, a non-effectful or partly
+// effectful return, and a nested arrow are not.
+import { Effect, Exit, Stream } from "effect"
+import { untagged, safe, dynamic } from "./lib.js"
+function local() { return 1 }
+export function e1(): Effect.Effect<number> { untagged(); return Effect.succeed(1) }
+export function e2(): Exit.Exit<number> { return Exit.succeed(untagged()) }
+export const e3 = (): Stream.Stream<number> => Stream.make(untagged())
+export function e4() { return Effect.succeed(untagged()) }
+export function e5(): Effect.Effect<number> { dynamic.call(); return Effect.succeed(1) }
+export function c1(): Effect.Effect<number> { try { untagged() } catch { } return Effect.succeed(1) }
+export function c2(): Effect.Effect<number> { safe(); return Effect.succeed(local()) }
+export function c3() { return untagged() }
+export function c4(): Effect.Effect<number> { const f = () => untagged(); return Effect.sync(() => 1) }
+export function c5(): Effect.Effect<number> | undefined { untagged(); return undefined }
+export effect function c6() { return 1 }

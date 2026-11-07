@@ -12,13 +12,36 @@ import (
 
 const platformCompanionMarker = "// Generated platform helpers for this VibeLang module.\n"
 
+// platformCompanionSuffixes are the files that claim a companion name: any
+// one of them on disk refuses the repair.
+var platformCompanionSuffixes = []string{".ts", ".tsx", ".js", ".d.ts"}
+
+func platformCompanionStem(module string) string {
+	return strings.TrimSuffix(module, ".vibe") + ".platform"
+}
+
+// freshPlatformCompanion returns the companion the platform repair of module
+// would create, when module is a .vibe module and no file claims the name.
+func freshPlatformCompanion(fs vfs.FS, module tspath.RootedFilePath) (tspath.RootedFilePath, bool) {
+	if !strings.HasSuffix(module.AsString(), ".vibe") {
+		return "", false
+	}
+	stem := platformCompanionStem(module.AsString())
+	for _, suffix := range platformCompanionSuffixes {
+		if fs.FileExists(tspath.RootedFilePath(stem + suffix)) {
+			return "", false
+		}
+	}
+	return tspath.RootedFilePath(stem + ".ts"), true
+}
+
 // One invocation owns one new companion per source. It can append to its
 // verified overlay, but never edits a TypeScript file that already exists.
 func platformCompanion(fs vfs.FS, file *ast.SourceFile, texts map[tspath.RootedFilePath]string) (tspath.RootedFilePath, string, string) {
-	stem := strings.TrimSuffix(file.FileName().AsString(), ".vibe") + ".platform"
+	stem := platformCompanionStem(file.FileName().AsString())
 	name := tspath.RootedFilePath(stem + ".ts")
 	previous := texts[name]
-	for _, suffix := range []string{".ts", ".tsx", ".js", ".d.ts"} {
+	for _, suffix := range platformCompanionSuffixes {
 		if fs.FileExists(tspath.RootedFilePath(stem + suffix)) {
 			if suffix == ".ts" && strings.HasPrefix(previous, platformCompanionMarker) {
 				// The fix filesystem freezes previous reads for its Original

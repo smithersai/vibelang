@@ -34,9 +34,9 @@ var (
 	// EK4604: await inside a hatch body that is not async.
 	EK4604 = message(4604, errorCategory, "await in a hatch body is JavaScript's await, which needs an async function.")
 	// EK1903: a break that would leave a for concurrent loop.
-	EK1903 = message(1903, errorCategory, "break cannot leave a for concurrent loop: each item runs in its own fiber.")
+	EK1903 = message(1903, errorCategory, "break cannot leave a for concurrent loop.")
 	// EK1904: a return in the body of a for concurrent loop.
-	EK1904 = message(1904, errorCategory, "return cannot leave a for concurrent loop: each item runs in its own fiber.")
+	EK1904 = message(1904, errorCategory, "return cannot leave a for concurrent loop.")
 	// EK4607: a select statement, replaced by try.race (D197, VIP-18).
 	EK4607 = message(4607, errorCategory, "select is outside the first release; vibelang --fix refuses an unproved selection rewrite. Choose explicit Effect selection for the intended behavior.")
 	// EK4609: native await on a Fiber (VIP-5). {0} is the operand.
@@ -681,7 +681,7 @@ func fiberFormQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 	case "$select":
 		return "select", "Replaced by try.race (EK4607)."
 	case "$forConcurrent":
-		return "for concurrent", "Runs the body for each item in its own fiber and joins them all before the loop ends; a failure interrupts the rest."
+		return "for concurrent", "Runs Effect.forEach with the loop's concurrency limit. Numeric limits at or below 1 run the items sequentially on the enclosing fiber. All items join before the loop ends; a failure interrupts the rest."
 	}
 	return "", ""
 }

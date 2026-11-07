@@ -1,0 +1,6 @@
+import "vibelang/platform/node"
+
+// main needs FileSystem, so the legacy compiler selected NodeServices.layer.
+export effect function main() {
+  try Console.log(`node services ${try (try FileSystem.FileSystem).exists("package.json")}`)
+}

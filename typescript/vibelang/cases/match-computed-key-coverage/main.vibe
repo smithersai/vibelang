@@ -1,0 +1,21 @@
+// expect-result: [[1,2,"TypeError",5,1],[1,2,"TypeError",5,1]]
+import { nativeLabels } from "./native.js"
+let reads=0
+const Key={get field():"_tag"{reads++;return "_tag"}}
+function label<T extends {_tag:"A"|"B"}>(s:T):number {
+ return match(s){when {[Key.field]:"A"}:1;when {[Key.field]:"B"}:2;}
+}
+function parameter(s:{_tag:"A"|"B"},tag:"_tag"):number {
+ return match(s){when {[tag]:"A"}:1;when {[tag]:"B"}:2;}
+}
+function labels(){
+ const a=label({_tag:"A"})
+ const b=label({_tag:"B"})
+ let missing="bad"
+ try{label({_tag:"C"} as any)}catch(error){missing=error instanceof TypeError&&error.message===""?"TypeError":"wrong"}
+ const p=parameter({_tag:"A"},"_tag")
+ const values=[a,b,missing,reads,p]
+ return values
+}
+
+export effect function main(){return [labels(),nativeLabels()]}

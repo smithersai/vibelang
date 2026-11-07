@@ -69,6 +69,43 @@ func RegisterCodeFixProvider(provider *CodeFixProvider) {
 	codeFixProviders = append(codeFixProviders, provider)
 }
 
+// codeFixAliases maps, by diagnostic source, a code that reports another
+// code's check to that code.
+var codeFixAliases = map[string]map[int32]int32{}
+
+// RegisterCodeFixAlias says that a diagnostic of source with code alias is
+// the check of code under another number, as a VibeLang port is when a
+// project sets its severity through the rule's assigned lint code. A
+// provider for code fixes it too, and its CodeFixContext.ErrorCode is code.
+// Call it only from an init function, as RegisterCodeFixProvider.
+func RegisterCodeFixAlias(source string, alias, code int32) {
+	if codeFixAliases[source] == nil {
+		codeFixAliases[source] = map[int32]int32{}
+	}
+	codeFixAliases[source][alias] = code
+}
+
+// providerFixCode returns the code provider fixes diagnostic as: the
+// diagnostic's own code, or the code it is an alias of, and false when
+// provider fixes neither.
+func providerFixCode(provider *CodeFixProvider, diagnostic *lsproto.Diagnostic) (int32, bool) {
+	if diagnostic.Code == nil || diagnostic.Code.Integer == nil {
+		return 0, false
+	}
+	code := *diagnostic.Code.Integer
+	if containsErrorCode(provider.ErrorCodes, code) {
+		return code, true
+	}
+	source := "ts"
+	if diagnostic.Source != nil {
+		source = *diagnostic.Source
+	}
+	if original, ok := codeFixAliases[source][code]; ok && containsErrorCode(provider.ErrorCodes, original) {
+		return original, true
+	}
+	return 0, false
+}
+
 // QuickInfoTextHook rewrites the quick info line of a hover on node after
 // the QuickInfoHooks ran, for example to write its types another way.
 type QuickInfoTextHook func(c *checker.Checker, node *ast.Node, text string) string

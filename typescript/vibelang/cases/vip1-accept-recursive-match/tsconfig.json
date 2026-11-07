@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "rewriteRelativeImportExtensions": true,
     "target": "es2022",
     "lib": ["esnext", "dom"],
     "module": "esnext",

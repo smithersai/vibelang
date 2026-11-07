@@ -1,0 +1,1 @@
+generated, schema and user-written matchers and a runtime copy share Symbol.customMatcher

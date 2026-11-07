@@ -62,10 +62,12 @@ ln -s "$package" "$modules/vibelang-unplugin"
 # manifest cache skips it (https://github.com/oven-sh/bun/issues/45831).
 # Keep --no-cache until that is fixed.
 # The compiler peer may be unpublished; fixtures use this checkout.
+# Adapter comparisons import the sibling Vite plugin as well.
+(cd "$repo/packages/vite" && bun install --frozen-lockfile --no-cache --omit peer)
 (cd "$package" && bun install --frozen-lockfile --no-cache --omit peer)
 rm -rf "$package/node_modules/vibelang"
 ln -s "$repo/packages/compiler" "$package/node_modules/vibelang"
 
 cd "$package"
 # A test that runs past five minutes fails with its name; none takes a minute.
-exec node --test --test-timeout=300000 "$@" test/child.test.mjs test/lifecycle.test.mjs test/backend-cache.test.mjs test/bundlers.test.mjs test/ts-directive.test.mjs test/virtual-source-ids.test.mjs test/bundlers.property.test.mjs test/deferred.test.mjs test/deferred-types.test.mjs test/entry.test.mjs test/entry-sidecars.test.mjs test/entry-globs.property.test.mjs test/bun-filter.test.mjs test/bun-register.test.mjs test/bun-cwd.test.mjs test/embedded.test.mjs test/source-conditions.property.test.mjs test/migrate-rolldown.test.mjs test/preload.test.mjs test/bun-bundler-preload.test.mjs test/rolldown-cwd.test.mjs test/workspace-barrels.property.test.mjs test/runtime-boundary.property.test.mjs test/vibex-sidecar-entries.test.mjs test/vibex-load-include.test.mjs
+exec node --test --test-timeout=300000 "$@" test/child.test.mjs test/lifecycle.test.mjs test/backend-cache.test.mjs test/bundlers.test.mjs test/ts-directive.test.mjs test/virtual-source-ids.test.mjs test/bundlers.property.test.mjs test/missing-imports.property.test.mjs test/encoded-imports.property.test.mjs test/encoded-reexports.property.test.mjs test/deferred.test.mjs test/deferred-types.test.mjs test/entry.test.mjs test/entry-sidecars.test.mjs test/entry-globs.property.test.mjs test/bun-filter.test.mjs test/bun-register.test.mjs test/bun-cwd.test.mjs test/embedded.test.mjs test/source-conditions.property.test.mjs test/migrate-rolldown.test.mjs test/preload.test.mjs test/bun-bundler-preload.test.mjs test/rolldown-cwd.test.mjs test/workspace-barrels.property.test.mjs test/runtime-boundary.property.test.mjs test/vibex-sidecar-entries.test.mjs test/vibex-load-include.test.mjs test/module-body-names.test.mjs

@@ -1,0 +1,34 @@
+{
+  "key": "platform:alchemy-platform-dual-value-type:EK4402",
+  "source": "alchemy partition conversion: a resource value and its same-named type moved with the provider that reads the host, leaving the module no value of its own",
+  "cases": [
+    {
+      "key": "alchemy:docker-image-sync-cwd",
+      "file": "src/Image.ts",
+      "globals": ["process"],
+      "names": ["Image"],
+      "text": "import * as Provider from \"alchemy/Provider\";\nimport { Resource } from \"alchemy/Resource\";\nimport * as Effect from \"effect/Effect\";\n\nexport interface ImageProps {\n  readonly context: string;\n}\n\nexport interface Image extends Resource<\"Docker.Image\", ImageProps, { readonly imageRef: string }> {}\n\nexport const Image = Resource<Image>(\"Docker.Image\");\n\nexport const ImageProvider = () =>\n  Provider.effect(\n    Image,\n    Effect.gen(function* () {\n      return {\n        create: Effect.fn(function* ({ news }) {\n          const cwd = yield* Effect.sync(() => process.cwd());\n          return { imageRef: cwd + \"/\" + news.context };\n        }),\n      };\n    }),\n  );\n"
+    },
+    {
+      "key": "alchemy:fly-asset-deployment-create-hash",
+      "file": "src/Website/AssetDeployment.ts",
+      "globals": [],
+      "names": ["AssetDeployment"],
+      "text": "import { createHash } from \"node:crypto\";\nimport * as Provider from \"alchemy/Provider\";\nimport { Resource } from \"alchemy/Resource\";\nimport * as Effect from \"effect/Effect\";\n\nconst s3Concurrency = 16;\n\nexport interface AssetDeploymentProps {\n  readonly prefix?: string;\n}\n\nexport interface AssetDeployment extends Resource<\"Fly.Website.AssetDeployment\", AssetDeploymentProps, { readonly etag: string }> {}\n\nexport const AssetDeployment = Resource<AssetDeployment>(\"Fly.Website.AssetDeployment\");\n\nexport const AssetDeploymentProvider = () =>\n  Provider.effect(\n    AssetDeployment,\n    Effect.succeed({\n      create: (body: string) => Effect.sync(() => ({ etag: createHash(\"md5\").update(body).digest(\"hex\"), concurrency: s3Concurrency })),\n    }),\n  );\n"
+    },
+    {
+      "key": "alchemy:neon-query-gateway-service",
+      "file": "src/QueryAIGateway.ts",
+      "globals": [],
+      "names": ["QueryAIGateway"],
+      "text": "import { createHash } from \"node:crypto\";\nimport * as Binding from \"alchemy/Binding\";\nimport * as Effect from \"effect/Effect\";\nimport * as Layer from \"effect/Layer\";\n\nexport interface QueryAIGatewayClient {\n  readonly key: (query: string) => Effect.Effect<string>;\n}\n\nexport interface QueryAIGateway extends Binding.Service<QueryAIGateway, \"Neon.QueryAIGateway\", QueryAIGatewayClient> {}\n\nexport const QueryAIGateway = Binding.Service<QueryAIGateway>(\"Neon.QueryAIGateway\");\n\nexport const QueryAIGatewayHttp = Layer.effect(\n  QueryAIGateway,\n  Effect.succeed({\n    key: (query: string) => Effect.sync(() => createHash(\"sha256\").update(query).digest(\"hex\")),\n  }),\n);\n"
+    },
+    {
+      "key": "alchemy:prisma-contract-resolve-cwd",
+      "file": "src/ORM/Contract.ts",
+      "globals": ["process"],
+      "names": ["Contract"],
+      "text": "import * as Provider from \"alchemy/Provider\";\nimport { Resource } from \"alchemy/Resource\";\nimport * as Effect from \"effect/Effect\";\nimport * as Path from \"effect/Path\";\n\nexport type ContractProps = {\n  readonly config?: string;\n};\n\nexport type Contract = Resource<\"Prisma.Contract\", ContractProps, { readonly config: string }>;\n\nexport const Contract = Resource<Contract>(\"Prisma.Contract\");\n\nexport const ContractProvider = () =>\n  Provider.effect(\n    Contract,\n    Effect.gen(function* () {\n      const path = yield* Path.Path;\n      const relative = (abs: string) => path.relative(process.cwd(), abs);\n      return {\n        create: Effect.fn(function* ({ news }) {\n          return { config: relative(path.resolve(process.cwd(), news.config ?? \"./prisma.config.ts\")) };\n        }),\n      };\n    }),\n  );\n"
+    }
+  ]
+}

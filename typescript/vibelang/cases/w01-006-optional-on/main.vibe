@@ -1,0 +1,35 @@
+export schema S {
+  mutable plain?: string
+  readonly frozen?: number
+  mutable loose?: string | undefined
+  readonly nested?: { mutable value?: boolean; readonly inner?: { readonly deep?: string } }
+}
+export schema N {
+  mutable items: { readonly tag?: string }[]
+  readonly table: Record<string, { readonly n?: number }>
+  readonly pair: readonly [string, number?]
+}
+export schema error E { plain?: string; loose?: string | undefined }
+export schema T = [string, number?]
+export schema U = readonly [string, (number | undefined)?]
+export data D { Ready { plain?: string; loose?: string | undefined } }
+export const looseUndefined = D.Ready({ loose: undefined })
+export type SEncoded = typeof S.Encoded
+export type NEncoded = typeof N.Encoded
+export type EEncoded = typeof E.Encoded
+export type TEncoded = typeof T.Encoded
+export type UEncoded = typeof U.Encoded
+export schema Exact {
+  readonly name?: string
+  readonly explicit?: string | undefined
+}
+
+// rule-evidence: docs/design/src/006-data.md#meaning | The optional rows below show the default with `exactOptionalPropertyTypes` off; the optional-wrapper rule after the table applies when it is on.
+// rule-evidence: docs/design/src/006-data.md#meaning | The project's `exactOptionalPropertyTypes` setting controls mapped optional fields and tuple elements, matching TypeScript under that same configuration:
+// rule-evidence: docs/design/src/006-data.md#meaning | | `name?: T` / `T?` | `Schema.optional(S)`: missing or present `undefined` | `Schema.optionalKey(S)`: missing only |
+// rule-evidence: docs/design/src/006-data.md#meaning | | `name?: T \| undefined` / `(T \| undefined)?` | `Schema.optional(S)` | `Schema.optional(S)` |
+// rule-evidence: docs/design/src/006-data.md#meaning | The rule applies to ordinary schemas, schema errors, and nested mappings; `Schema.mutableKey` keeps its current position outside the optional wrapper.
+// rule-evidence: docs/design/src/006-data.md#meaning | Native `data` payloads follow TypeScript's optional-property types directly.
+// rule-evidence: docs/design/src/006-data.md#meaning | `Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default; with `exactOptionalPropertyTypes`, an optional key whose type excludes `undefined` instead uses `Schema.optionalKey`.
+// rule-evidence: docs/design/src/006-data.md#exact-optional-keys | With `strict` and `exactOptionalPropertyTypes` enabled, the same optional-key contract is written as follows.
+// rule-evidence: docs/design/src/006-data.md#exact-optional-keys | Missing keys decode successfully; a present `undefined` fails for `name` and succeeds for `explicit`.

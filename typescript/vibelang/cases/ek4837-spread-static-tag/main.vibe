@@ -1,0 +1,17 @@
+// expect:
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK4837` | lint warning: A class written with `Schema.TaggedError`, except one with spread fields or a user-written static `_tag` | 29, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
+// Only the ordinary Schema.TaggedError class (line 7) draws EK4837. Spread
+// fields or a user-written static _tag keep the class form without it; the
+// Data.TaggedError controls draw EK4830 the same way (line 16, not 13).
+import { Data, Schema } from "effect"
+export class Plain extends Schema.TaggedError<Plain>()("Plain", { id: Schema.String }) {}
+const shared = { id: Schema.String }
+export class Spread extends Schema.TaggedError<Spread>()("Spread", { ...shared, count: Schema.Number }) {}
+export class StaticTag extends Schema.TaggedError<StaticTag>()("StaticTag", { id: Schema.String }) {
+  static readonly _tag = "StaticTag"
+}
+export class DataStatic extends Data.TaggedError("DataStatic")<{ readonly id: string }> {
+  static readonly _tag = "DataStatic"
+}
+export class DataPlain extends Data.TaggedError("DataPlain")<{ readonly id: string }> {}
+// Stable rule id: docs/design/src/900-appendices.md#f24b6687d292be29

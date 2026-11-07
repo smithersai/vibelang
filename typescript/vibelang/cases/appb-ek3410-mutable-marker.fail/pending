@@ -1,0 +1,1 @@
+relic-mutable EK3410 is not reported yet: the compiler accepts mutable on an ordinary type member and a plain-error payload. Enforcement waits for the preserving migration (chapter 7, Ordinary mutable marker migration).

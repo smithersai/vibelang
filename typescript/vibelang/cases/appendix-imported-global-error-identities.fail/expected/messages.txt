@@ -1,0 +1,3 @@
+errors.ts(3,36): 
+EK3849: globalErrorInEffectFailure: Global 'Error' loses type safety
+EK3848: globalErrorInEffectCatch: The `catch` callback in `Effect.tryPromise` returns the global `Error` type

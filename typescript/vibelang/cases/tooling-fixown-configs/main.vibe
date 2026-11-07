@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation | | Owned configs | Legacy severity maps, retired `declarationSidecars`, the `EK3012` plugin-entry migration and the `--fix-vip-only` `EK4802` severity override ([below](#fix-scopes)).
+// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation | Traverse `extends` only inside the repository and outside `node_modules`; report external configs without editing them.
+export const witness = 1

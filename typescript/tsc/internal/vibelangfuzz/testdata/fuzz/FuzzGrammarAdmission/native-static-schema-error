@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-static-schema-error\nschema error S { static async async\nid: Missing }")

@@ -95,7 +95,7 @@ const compilerTest = (shard: number) => S.Shell.Test({
   // (scripts/compiler-formatter-gate.test.mjs). They write no output the node tests read, and in every shard they cost
   // 206-297 s of a box before the tests start (measured 2026-11-04).
   data: [compilerNative, ...(shard === 1 ? [Tsc["go-vibelangfmt"]] : []), runtimeDist, S.glob("compiler/**"), migrationSources,
-    S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
+    S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"), S.file("//docs/tools/lint-code-assignments.json"),
     S.file("//scripts/testing/node-failures.mjs"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/004-match.md"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/007-tooling.md"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"),
     S.file("vite/src/vibe-directive.js"), S.file("unplugin/src/vibe-directive.js"),
@@ -211,6 +211,21 @@ const migrateHelperIdentity = S.Shell.Test({
 // this checkout's compiler into its fixtures and builds a private copy of the
 // runtime's sources with the native compiler, under test/.fixtures: it never
 // writes packages/runtime, which the runtime and compiler targets read.
+// A compiler rule change can reject the code the migrate flow generates, and
+// before this target only the full migrate-test (four shards, over twenty
+// minutes) compiled it. This file compiles the generated source-child helper
+// with the native compiler in about a minute, so any compiler change reruns it.
+const migrateSourceChildNative = S.Shell.Test({
+  summary: "Compile migrated source-child helpers with the native compiler.",
+  shell: "cd packages/compiler && bun install --frozen-lockfile && cd ../.. && " +
+    "node --test .smithers/flows/migrate/test/source-child-vibe-module.property.test.mjs",
+  data: [compilerNative, runtimeDist, migrationSources, ...install, S.file("compiler/package.json"), S.file("compiler/bun.lock"),
+    S.file("//docs/design/vips/0040-module-declarations.md")],
+  tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
+  sandbox: "none",
+  timeout: "4m"
+})
+
 const migrateToolchainBaseline = S.Shell.Test({
   summary: "Reject toolchain regressions after valid target dependency probes.",
   shell: "node --test .smithers/flows/migrate/test/toolchain-baseline.property.test.mjs",
@@ -237,7 +252,7 @@ const compilerToolsTest = S.Shell.Test({
   summary: "vibelang/metro, vibelang/babel and vibelang/emit against Metro, Babel, the React Compiler and Oxc.",
   shell: "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/compiler/test/tools/run.sh",
   // The migrate flow patches oxc-transform-react with lib/react-tools.mjs; one test applies it to the real package.
-  data: [compilerNative, S.glob("compiler/**"), S.file("vite/package.json"), S.glob("vite/src/**"), migrationSources, S.file("//experiments/package.json"), S.file("//experiments/bun.lock")],
+  data: [compilerNative, S.glob("compiler/**"), S.file("vite/package.json"), S.file("vite/bun.lock"), S.glob("vite/src/**"), migrationSources, S.file("//experiments/package.json"), S.file("//experiments/bun.lock")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",
   timeout: "10m"
@@ -290,6 +305,7 @@ export const Package = S.Package({
     "compiler-test-3": compilerTest(3),
     "compiler-test-4": compilerTest(4),
     "migrate-helper-identity": migrateHelperIdentity,
+    "migrate-source-child-native": migrateSourceChildNative,
     "migrate-test": migrateTest,
     "migrate-lost-wrapper": migrateLostWrapper,
     "migrate-record-provenance": migrateRecordProvenance,

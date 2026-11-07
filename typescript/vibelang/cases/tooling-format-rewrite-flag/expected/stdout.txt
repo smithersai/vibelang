@@ -1,0 +1,1 @@
+source-extension rewriting follows rewriteRelativeImportExtensions, as the native twin

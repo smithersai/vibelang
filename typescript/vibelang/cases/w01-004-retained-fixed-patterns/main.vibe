@@ -1,0 +1,115 @@
+// expect-result: {"errors":[["NoSuchElementError",true],["TimeoutError",true],["IllegalArgumentError",true],["ExceededCapacityError",true],["AsyncFiberError",true],["UnknownError",true],["SchemaError",true],["CronParseError",true],["PlatformError",true],["SemVerError",true],["QuitError",true],["TextDiffError",true],["AiError",true],["McpClientError",true],["CryptoError",true],["CsvError",true],["EncodingError",true],["JsonArrayError",true],["NdjsonError",true],["TarError",true],["XmlError",true],["ZipError",true],["GraphQLClientError",true],["CookiesError",true],["HeaderParseError",true],["HttpBodyError",true],["HttpClientError",true],["HttpServerError",true],["MultipartError",true],["JoseError",true],["DatagramSocketError",true],["SocketError",true],["SqlError",true],["WorkerError",true]],"fixed":[true,true,true,true,true,true],"zero":[true,false,false,false]}
+// rule-evidence: docs/design/src/004-match.md#retained-fixed-patterns | VIP-7 keeps today's fixed checks until Effect ships matchers: the six `Option`, `Exit` and `Result` patterns and Effect 4.1.1's thirty-four tagged errors.
+// rule-evidence: docs/design/src/004-match.md#retained-fixed-patterns | | `JoseError.JoseError` (`effect/jose/JoseError`) | `JoseError.isJoseError(s)` | `[s]` |
+// rule-evidence: docs/design/src/004-match.md#class-patterns | Zero-argument extractors: `Option.None()` matches (`[]`); `NotFound()` and the thirty-four retained error constructors with `()` never match (`[s]`).
+// Each of the thirty-four retained tagged errors is recognized through its
+// module binding and tested with that module's own guard, the oracle here:
+// on a branded copy, an unbranded object with the same `_tag`, a different
+// brand and null, the bare pattern agrees with the guard, `X(let e)` binds
+// the subject itself (`[s]`), `X(...let r)` extracts one value and `X()`
+// never matches. `Option.None()` matches its empty list.
+import { Exit, Option, Result } from "effect"
+import * as M0 from "effect/Cause"
+import * as M1 from "effect/Cause"
+import * as M2 from "effect/Cause"
+import * as M3 from "effect/Cause"
+import * as M4 from "effect/Cause"
+import * as M5 from "effect/Cause"
+import * as M6 from "effect/Schema"
+import * as M7 from "effect/Cron"
+import * as M8 from "effect/PlatformError"
+import * as M9 from "effect/SemVer"
+import * as M10 from "effect/Terminal"
+import * as M11 from "effect/TextDiff"
+import * as M12 from "effect/ai/AiError"
+import * as M13 from "effect/ai/McpClientError"
+import * as M14 from "effect/crypto/CryptoError"
+import * as M15 from "effect/encoding/Csv"
+import * as M16 from "effect/encoding/EncodingError"
+import * as M17 from "effect/encoding/JsonArray"
+import * as M18 from "effect/encoding/Ndjson"
+import * as M19 from "effect/encoding/Tar"
+import * as M20 from "effect/encoding/Xml"
+import * as M21 from "effect/encoding/Zip"
+import * as M22 from "effect/graphql/GraphQLClientError"
+import * as M23 from "effect/http/Cookies"
+import * as M24 from "effect/http/Headers"
+import * as M25 from "effect/http/HttpBody"
+import * as M26 from "effect/http/HttpClientError"
+import * as M27 from "effect/http/HttpServerError"
+import * as M28 from "effect/http/Multipart"
+import * as M29 from "effect/jose/JoseError"
+import * as M30 from "effect/socket/DatagramSocket"
+import * as M31 from "effect/socket/Socket"
+import * as M32 from "effect/sql/SqlError"
+import * as M33 from "effect/workers/WorkerError"
+import { isSchemaErrorGuard } from "./guards.js"
+error NotFound { id: string }
+type Row = { readonly name: string; readonly brand: string; readonly guard: (u: unknown) => boolean; readonly check: (s: unknown) => readonly boolean[] }
+const rows: readonly Row[] = [
+  { name: "NoSuchElementError", brand: "~effect/Cause/NoSuchElementError", guard: M0.isNoSuchElementError, check: (s) => [match (s) { when M0.NoSuchElementError: true; default: false; }, match (s) { when M0.NoSuchElementError(let e): e === s; default: false; }, match (s) { when M0.NoSuchElementError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M0.NoSuchElementError(): true; default: false; }] },
+  { name: "TimeoutError", brand: "~effect/Cause/TimeoutError", guard: M1.isTimeoutError, check: (s) => [match (s) { when M1.TimeoutError: true; default: false; }, match (s) { when M1.TimeoutError(let e): e === s; default: false; }, match (s) { when M1.TimeoutError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M1.TimeoutError(): true; default: false; }] },
+  { name: "IllegalArgumentError", brand: "~effect/Cause/IllegalArgumentError", guard: M2.isIllegalArgumentError, check: (s) => [match (s) { when M2.IllegalArgumentError: true; default: false; }, match (s) { when M2.IllegalArgumentError(let e): e === s; default: false; }, match (s) { when M2.IllegalArgumentError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M2.IllegalArgumentError(): true; default: false; }] },
+  { name: "ExceededCapacityError", brand: "~effect/Cause/ExceededCapacityError", guard: M3.isExceededCapacityError, check: (s) => [match (s) { when M3.ExceededCapacityError: true; default: false; }, match (s) { when M3.ExceededCapacityError(let e): e === s; default: false; }, match (s) { when M3.ExceededCapacityError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M3.ExceededCapacityError(): true; default: false; }] },
+  { name: "AsyncFiberError", brand: "~effect/Cause/AsyncFiberError", guard: M4.isAsyncFiberError, check: (s) => [match (s) { when M4.AsyncFiberError: true; default: false; }, match (s) { when M4.AsyncFiberError(let e): e === s; default: false; }, match (s) { when M4.AsyncFiberError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M4.AsyncFiberError(): true; default: false; }] },
+  { name: "UnknownError", brand: "~effect/Cause/UnknownError", guard: M5.isUnknownError, check: (s) => [match (s) { when M5.UnknownError: true; default: false; }, match (s) { when M5.UnknownError(let e): e === s; default: false; }, match (s) { when M5.UnknownError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M5.UnknownError(): true; default: false; }] },
+  { name: "SchemaError", brand: "~effect/Schema/SchemaError", guard: isSchemaErrorGuard, check: (s) => [match (s) { when M6.SchemaError: true; default: false; }, match (s) { when M6.SchemaError(let e): e === s; default: false; }, match (s) { when M6.SchemaError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M6.SchemaError(): true; default: false; }] },
+  { name: "CronParseError", brand: "~effect/Cron/CronParseError", guard: M7.isCronParseError, check: (s) => [match (s) { when M7.CronParseError: true; default: false; }, match (s) { when M7.CronParseError(let e): e === s; default: false; }, match (s) { when M7.CronParseError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M7.CronParseError(): true; default: false; }] },
+  { name: "PlatformError", brand: "~effect/PlatformError", guard: M8.isPlatformError, check: (s) => [match (s) { when M8.PlatformError: true; default: false; }, match (s) { when M8.PlatformError(let e): e === s; default: false; }, match (s) { when M8.PlatformError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M8.PlatformError(): true; default: false; }] },
+  { name: "SemVerError", brand: "~effect/SemVer/SemVerError", guard: M9.isSemVerError, check: (s) => [match (s) { when M9.SemVerError: true; default: false; }, match (s) { when M9.SemVerError(let e): e === s; default: false; }, match (s) { when M9.SemVerError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M9.SemVerError(): true; default: false; }] },
+  { name: "QuitError", brand: "~effect/Terminal/QuitError", guard: M10.isQuitError, check: (s) => [match (s) { when M10.QuitError: true; default: false; }, match (s) { when M10.QuitError(let e): e === s; default: false; }, match (s) { when M10.QuitError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M10.QuitError(): true; default: false; }] },
+  { name: "TextDiffError", brand: "~effect/TextDiff/TextDiffError", guard: M11.isTextDiffError, check: (s) => [match (s) { when M11.TextDiffError: true; default: false; }, match (s) { when M11.TextDiffError(let e): e === s; default: false; }, match (s) { when M11.TextDiffError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M11.TextDiffError(): true; default: false; }] },
+  { name: "AiError", brand: "~effect/ai/AiError", guard: M12.isAiError, check: (s) => [match (s) { when M12.AiError: true; default: false; }, match (s) { when M12.AiError(let e): e === s; default: false; }, match (s) { when M12.AiError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M12.AiError(): true; default: false; }] },
+  { name: "McpClientError", brand: "~effect/ai/McpClientError", guard: M13.isMcpClientError, check: (s) => [match (s) { when M13.McpClientError: true; default: false; }, match (s) { when M13.McpClientError(let e): e === s; default: false; }, match (s) { when M13.McpClientError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M13.McpClientError(): true; default: false; }] },
+  { name: "CryptoError", brand: "~effect/crypto/CryptoError", guard: M14.isCryptoError, check: (s) => [match (s) { when M14.CryptoError: true; default: false; }, match (s) { when M14.CryptoError(let e): e === s; default: false; }, match (s) { when M14.CryptoError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M14.CryptoError(): true; default: false; }] },
+  { name: "CsvError", brand: "~effect/encoding/Csv/CsvError", guard: M15.isCsvError, check: (s) => [match (s) { when M15.CsvError: true; default: false; }, match (s) { when M15.CsvError(let e): e === s; default: false; }, match (s) { when M15.CsvError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M15.CsvError(): true; default: false; }] },
+  { name: "EncodingError", brand: "~effect/encoding/EncodingError", guard: M16.isEncodingError, check: (s) => [match (s) { when M16.EncodingError: true; default: false; }, match (s) { when M16.EncodingError(let e): e === s; default: false; }, match (s) { when M16.EncodingError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M16.EncodingError(): true; default: false; }] },
+  { name: "JsonArrayError", brand: "~effect/encoding/JsonArray/JsonArrayError", guard: M17.isJsonArrayError, check: (s) => [match (s) { when M17.JsonArrayError: true; default: false; }, match (s) { when M17.JsonArrayError(let e): e === s; default: false; }, match (s) { when M17.JsonArrayError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M17.JsonArrayError(): true; default: false; }] },
+  { name: "NdjsonError", brand: "~effect/encoding/Ndjson/NdjsonError", guard: M18.isNdjsonError, check: (s) => [match (s) { when M18.NdjsonError: true; default: false; }, match (s) { when M18.NdjsonError(let e): e === s; default: false; }, match (s) { when M18.NdjsonError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M18.NdjsonError(): true; default: false; }] },
+  { name: "TarError", brand: "~effect/encoding/Tar/TarError", guard: M19.isTarError, check: (s) => [match (s) { when M19.TarError: true; default: false; }, match (s) { when M19.TarError(let e): e === s; default: false; }, match (s) { when M19.TarError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M19.TarError(): true; default: false; }] },
+  { name: "XmlError", brand: "~effect/encoding/Xml/XmlError", guard: M20.isXmlError, check: (s) => [match (s) { when M20.XmlError: true; default: false; }, match (s) { when M20.XmlError(let e): e === s; default: false; }, match (s) { when M20.XmlError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M20.XmlError(): true; default: false; }] },
+  { name: "ZipError", brand: "~effect/encoding/Zip/ZipError", guard: M21.isZipError, check: (s) => [match (s) { when M21.ZipError: true; default: false; }, match (s) { when M21.ZipError(let e): e === s; default: false; }, match (s) { when M21.ZipError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M21.ZipError(): true; default: false; }] },
+  { name: "GraphQLClientError", brand: "~effect/graphql/GraphQLClientError", guard: M22.isGraphQLClientError, check: (s) => [match (s) { when M22.GraphQLClientError: true; default: false; }, match (s) { when M22.GraphQLClientError(let e): e === s; default: false; }, match (s) { when M22.GraphQLClientError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M22.GraphQLClientError(): true; default: false; }] },
+  { name: "CookiesError", brand: "~effect/http/Cookies/CookieError", guard: M23.isCookiesError, check: (s) => [match (s) { when M23.CookiesError: true; default: false; }, match (s) { when M23.CookiesError(let e): e === s; default: false; }, match (s) { when M23.CookiesError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M23.CookiesError(): true; default: false; }] },
+  { name: "HeaderParseError", brand: "~effect/http/Headers/HeaderParseError", guard: M24.isHeaderParseError, check: (s) => [match (s) { when M24.HeaderParseError: true; default: false; }, match (s) { when M24.HeaderParseError(let e): e === s; default: false; }, match (s) { when M24.HeaderParseError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M24.HeaderParseError(): true; default: false; }] },
+  { name: "HttpBodyError", brand: "~effect/http/HttpBody/HttpBodyError", guard: M25.isHttpBodyError, check: (s) => [match (s) { when M25.HttpBodyError: true; default: false; }, match (s) { when M25.HttpBodyError(let e): e === s; default: false; }, match (s) { when M25.HttpBodyError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M25.HttpBodyError(): true; default: false; }] },
+  { name: "HttpClientError", brand: "~effect/http/HttpClientError", guard: M26.isHttpClientError, check: (s) => [match (s) { when M26.HttpClientError: true; default: false; }, match (s) { when M26.HttpClientError(let e): e === s; default: false; }, match (s) { when M26.HttpClientError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M26.HttpClientError(): true; default: false; }] },
+  { name: "HttpServerError", brand: "~effect/http/HttpServerError", guard: M27.isHttpServerError, check: (s) => [match (s) { when M27.HttpServerError: true; default: false; }, match (s) { when M27.HttpServerError(let e): e === s; default: false; }, match (s) { when M27.HttpServerError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M27.HttpServerError(): true; default: false; }] },
+  { name: "MultipartError", brand: "~effect/http/Multipart/MultipartError", guard: M28.isMultipartError, check: (s) => [match (s) { when M28.MultipartError: true; default: false; }, match (s) { when M28.MultipartError(let e): e === s; default: false; }, match (s) { when M28.MultipartError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M28.MultipartError(): true; default: false; }] },
+  { name: "JoseError", brand: "~effect/jose/JoseError", guard: M29.isJoseError, check: (s) => [match (s) { when M29.JoseError: true; default: false; }, match (s) { when M29.JoseError(let e): e === s; default: false; }, match (s) { when M29.JoseError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M29.JoseError(): true; default: false; }] },
+  { name: "DatagramSocketError", brand: "~effect/socket/DatagramSocket/DatagramSocketError", guard: M30.isDatagramSocketError, check: (s) => [match (s) { when M30.DatagramSocketError: true; default: false; }, match (s) { when M30.DatagramSocketError(let e): e === s; default: false; }, match (s) { when M30.DatagramSocketError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M30.DatagramSocketError(): true; default: false; }] },
+  { name: "SocketError", brand: "~effect/socket/Socket/SocketError", guard: M31.isSocketError, check: (s) => [match (s) { when M31.SocketError: true; default: false; }, match (s) { when M31.SocketError(let e): e === s; default: false; }, match (s) { when M31.SocketError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M31.SocketError(): true; default: false; }] },
+  { name: "SqlError", brand: "~effect/sql/SqlError", guard: M32.isSqlError, check: (s) => [match (s) { when M32.SqlError: true; default: false; }, match (s) { when M32.SqlError(let e): e === s; default: false; }, match (s) { when M32.SqlError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M32.SqlError(): true; default: false; }] },
+  { name: "WorkerError", brand: "~effect/workers/WorkerError", guard: M33.isWorkerError, check: (s) => [match (s) { when M33.WorkerError: true; default: false; }, match (s) { when M33.WorkerError(let e): e === s; default: false; }, match (s) { when M33.WorkerError(...let r): r.length === 1 && r[0] === s; default: false; }, match (s) { when M33.WorkerError(): true; default: false; }] },
+]
+function errorRow(row: Row, other: string): readonly unknown[] {
+  const subjects: unknown[] = [{ _tag: row.name, [row.brand]: row.brand }, { _tag: row.name }, { _tag: row.name, [other]: other }, null]
+  const agrees = subjects.every((s) => {
+    const [bare, bound, rest, zero] = row.check(s)
+    const expected = row.guard(s)
+    return bare === expected && bound === expected && rest === expected && zero === false
+  })
+  return [row.name, agrees && row.guard(subjects[0]) && !row.guard(subjects[1])]
+}
+function fixed(): readonly boolean[] {
+  return [
+    match (Option.some(1) as unknown) { when Option.Some(let v): v === 1; default: false; },
+    match (Option.none() as unknown) { when Option.None: true; default: false; },
+    match (Exit.succeed(2) as unknown) { when Exit.Success(let v): v === 2; default: false; },
+    match (Exit.fail("x") as unknown) { when Exit.Failure(let c): Exit.isExit(Exit.failCause(c)); default: false; },
+    match (Result.succeed(3) as unknown) { when Result.Success(let v): v === 3; default: false; },
+    match (Result.fail("y") as unknown) { when Result.Failure(let e): e === "y"; default: false; },
+  ]
+}
+function zero(): readonly boolean[] {
+  const missing = new NotFound({ id: "1" })
+  return [
+    match (Option.none() as unknown) { when Option.None(): true; default: false; },
+    match (Option.some(1) as unknown) { when Option.None(): true; default: false; },
+    match (missing as unknown) { when NotFound(): true; default: false; },
+    match (missing as unknown) { when NotFound(let e): e !== missing; default: true; },
+  ]
+}
+export effect function main() {
+  return { errors: rows.map((row, i) => errorRow(row, rows[(i + 1) % rows.length].brand)), fixed: fixed(), zero: zero() }
+}

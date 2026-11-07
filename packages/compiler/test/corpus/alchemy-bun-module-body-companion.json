@@ -1,0 +1,9 @@
+{
+  "source": "Alchemy unit collection: Kubernetes Connection.vibe.throwing.js and Railway LoginSession.vibe.platform.js; minimum module throwing { export const value = 1 } export { value } from throwing, consumer imports ./Leaf.vibe",
+  "cases": [
+    { "name": "throwing", "imports": "none", "runner": "test", "dynamic": false, "value": 1 },
+    { "name": "platform", "imports": "none", "runner": "test", "dynamic": false, "value": 7 },
+    { "name": "platform", "imports": "helper", "runner": "test", "dynamic": false, "value": 7 },
+    { "name": "platform", "imports": "extensionless", "runner": "test", "dynamic": false, "value": 7 }
+  ]
+}

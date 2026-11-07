@@ -1,0 +1,9 @@
+{
+  "exports": {
+    "./*/neon": {
+      "types": "./lib/*/neon.d.ts",
+      "default": "./lib/*/neon.js"
+    }
+  },
+  "declaration": "/** Stable value. */\nexport interface Value { readonly value: number }\n"
+}

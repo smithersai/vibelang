@@ -1,0 +1,1 @@
+vibex throw expressions follow throw statements

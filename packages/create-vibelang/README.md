@@ -14,7 +14,9 @@ npm create vibelang@latest my-app
 The command copies a starter app into `my-app`, pins `vibelang`,
 `vibelang-runtime`, and `vibelang-vite` to its own version, and installs
 dependencies with the package manager that ran it. It refuses a non-empty
-directory and never runs `git init`.
+directory and never runs `git init`. If a filesystem error prevents creation, it
+reports the target and error code. Check the path and directory permissions,
+then retry with a new or empty directory.
 
 | Option | Effect |
 | --- | --- |
@@ -48,4 +50,6 @@ The extension starts the project's own compiler as the language server.
 ## Requirements
 
 Node 22.22.3 (22.x) or Node 24.11.1 or later. The starter app depends on `effect@4.1.1` exactly, the
-version the VibeLang runtime is built against.
+version the VibeLang runtime is built against. The generated app includes both
+npm/Bun `overrides` and Yarn `resolutions` to keep the platform helper on that
+version.

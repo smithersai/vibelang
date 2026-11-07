@@ -1,0 +1,36 @@
+{
+  "source": "Smithers modules the platform split refused because a platform-using export was an arrow with an inferred return type: build/examples digest-npmrc.ts (async, resolves with a value from another module), src/NodeControl.ts layerServer (returns a type built from a builtin's type, takes an exported options interface) and a generic reader whose type parameter its arguments do not fix. .smithers/flows/invoke/host.ts layer, whose inferred return reads a type the module keeps private, so the sibling's copy must be exported for the module's declarations to name it. Minimized; shapes kept.",
+  "ambient": "declare module \"node:fs\" { export function readFileSync(path: string, encoding: \"utf8\"): string }\ndeclare module \"node:fs/promises\" { export function mkdtemp(prefix: string): Promise<string>; export function writeFile(path: string, data: string, encoding: \"utf8\"): Promise<void> }\ndeclare module \"node:path\" { export function join(...paths: string[]): string; export function resolve(...paths: string[]): string }\ndeclare module \"node:http\" { export interface Server { listen(port: number): Server } export function createServer(): Server }\ndeclare module \"node:crypto\" { export interface Hash { update(data: string): Hash; digest(encoding: \"hex\"): string } export function createHash(algorithm: string): Hash }\n",
+  "others": {
+    "Digest.ts": "export interface Digest {\n  readonly hex: string\n}\nexport const of = (text: string): Digest => ({ hex: text })\n",
+    "Layer.ts": "export interface Layer<A> {\n  readonly build: () => A\n}\nexport const make = <A>(build: () => A): Layer<A> => ({ build })\n"
+  },
+  "modules": [
+    {
+      "file": "digest-npmrc.ts",
+      "text": "import * as Fs from \"node:fs/promises\"\nimport * as Path from \"node:path\"\nimport * as Digest from \"./Digest.ts\"\n\n/**\n * Writes `npmrc` as the `.npmrc` of a fresh project and resolves with its digest.\n */\nexport const digestNpmrc = async (npmrc: string) => {\n  const projectRoot = await Fs.mkdtemp(Path.join(\"build\", \"npmrc-\"))\n  await Fs.writeFile(Path.join(projectRoot, \".npmrc\"), npmrc, \"utf8\")\n  return Digest.of(npmrc)\n}\n",
+      "wrapped": [
+        "digestNpmrc"
+      ]
+    },
+    {
+      "file": "NodeControl.ts",
+      "text": "import { createServer } from \"node:http\"\nimport * as Layer from \"./Layer.ts\"\n\nexport interface ServerOptions {\n  readonly port: number\n}\n\n/** Serves the control API on the options' port. */\nexport const layerServer = (options: ServerOptions) => Layer.make(() => createServer().listen(options.port))\n\nexport const defaultOptions: ServerOptions = { port: 4000 }\n",
+      "wrapped": [
+        "layerServer"
+      ]
+    },
+    {
+      "file": "Rows.ts",
+      "text": "import { readFileSync } from \"node:fs\"\n\nexport interface Row {\n  readonly id: string\n}\n\nexport function readRows<T extends Row>(path: string, limit = 10) {\n  return (JSON.parse(readFileSync(path, \"utf8\")) as ReadonlyArray<T>).slice(0, limit)\n}\n",
+      "wrapped": [
+        "readRows"
+      ]
+    },
+    {
+      "file": "host.ts",
+      "text": "import { createHash } from \"node:crypto\"\nimport { resolve } from \"node:path\"\n\ntype Measured = { readonly path: string; readonly contentDigest?: string | undefined }\n\nconst byPath = (modules: ReadonlyArray<Measured>) =>\n  [...modules].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)\n\n/** SHA-256 over the entry, then each measured module sorted by path. */\nexport const sourceDigest = (entry: string, imports: ReadonlyArray<Measured>): string | undefined => {\n  const hash = createHash(\"sha256\").update(entry)\n  for (const module of byPath(imports)) {\n    if (module.contentDigest === undefined) return undefined\n    hash.update(`\\0${module.path}\\0${module.contentDigest}`)\n  }\n  return hash.digest(\"hex\")\n}\n\nexport const layer = (root: string, imports: ReadonlyArray<Measured>) => {\n  const entry = resolve(root, \"flow.ts\")\n  return { entry, digest: sourceDigest(entry, imports), modules: byPath(imports) }\n}\n",
+      "wrapped": ["sourceDigest", "layer"]
+    }
+  ]
+}

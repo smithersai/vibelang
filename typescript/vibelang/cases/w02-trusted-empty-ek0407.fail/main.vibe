@@ -1,0 +1,10 @@
+// expect: EK0407
+// rule-evidence: docs/design/src/007-tooling.md#empty-legacy-trust-wrappers | `EK0407` retires the resolved `trusted(f, [])` wrapper.
+// The resolved runtime trusted with an empty failure list is the retired
+// wrapper, even over a function that cannot throw.
+import { trusted } from "vibelang-runtime"
+const add = (a: number, b: number): number => a + b
+const safeAdd = trusted(add, [])
+export effect function main() {
+  return safeAdd(40, 2)
+}

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:Error/3-of-1/to-untagged/initializer")

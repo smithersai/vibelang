@@ -40,6 +40,8 @@ effect function stringify(value: unknown) {
 // Output: {"sequential":[2,4],"bounded":[2,4,6,8],"unbounded":[10,12,14]}
 ```
 
+A head default or computed key runs inside the item's Effect, in both compiler and TypeScript-mapper output. It may use `try`; a default runs only when its bound value is `undefined`. The written body keeps its own block scope, so its local declarations do not shadow a head default.
+
 A destructuring head keeps native `for…of` binding inference. A default may supply a missing property of a fresh object literal, as in `for concurrent (const { n = 1 } of [{}]) { … }`. A named or explicitly typed `{}[]` still has no `n` property and reports `TS2339`, as in TypeScript.
 
 A non-iterable `for concurrent` operand reports `EK1901`; pass an `Iterable`, or use `for try` to consume a Stream. `any`, `never`, readonly arrays, sets and strings follow ordinary assignability, including a `Stream` that also implements `Iterable`. Independent type errors in an iterable operand or the loop body retain their TypeScript diagnostics. An iterable union keeps every possible element type: `number[] | Set<string>` gives `number | string` in the loop head, as a native `for...of` loop does.
@@ -52,7 +54,7 @@ With `noUnusedLocals`, an unused named head reports `TS6133`, as in native `for.
 
 A concurrency limit bounds running work, not iterable pulling. In pinned Effect, `for concurrent(1)` pulls incrementally and an item failure does not call the iterator's `return()`. The parallel branch, including an omitted limit or `"unbounded"`, first materializes a non-array iterable; an endless one cannot finish that step. An existing array is reused by reference and its custom iterator is not called in that branch. Use a Stream with `for try` for ordered Stream consumption. See the [runtime witness](https://vibelang.sh/spec/008-runtime#iterable-lifecycle).
 
-A `return` cannot leave a `for concurrent` item, including its head binding initialization, computed member names and class heritage. These positions report `EK1904`. A nested method or function keeps its own returns. Use `continue` to finish one item. A labeled `continue` naming the concurrent loop itself, including any label in a chain, also finishes that item, including from a `do` expression; nested loops keep their own jump targets.
+A `return` cannot leave a `for concurrent` item, including its head binding initialization, computed member names and class heritage. These positions report `EK1904`. A nested method or function keeps its own returns. Use `continue` to finish one item. The same jump restrictions apply at every concurrency limit, including `1`. A labeled `continue` naming the concurrent loop itself, including any label in a chain, also finishes that item, including from a `do` expression; nested loops keep their own jump targets.
 
 A label cannot be repeated inside the statement it labels. Reusing an enclosing label in a `for concurrent` body reports `TS1114`; a nested function has its own label scope.
 
@@ -63,6 +65,8 @@ A written `for concurrent(limit())` limit is evaluated once, before the iterable
 Group a comma expression used as a limit with extra parentheses: `for concurrent((record(), 4)) (...)`. A bare comma list in the limit reports `TS1005`; `vibelang --fix` adds the parentheses while preserving evaluation order.
 
 A written concurrency limit must be assignable to Effect's `Types.Concurrency` (`number | "unbounded"`). Other types, including explicit `undefined` and `null`, report `EK1907`. Omitting the limit runs unbounded. Ordinary TypeScript assignability still admits `any` and `never`. If an unchecked written limit evaluates to `undefined` or `null`, Effect receives that value unchanged and runs items sequentially. The `"unbounded"` sentinel also works through a variable, parameter, type alias or generic constrained to `Types.Concurrency`.
+
+An explicit `try` in an object or class computed method name runs as the operands are built, before the collection starts. The method body remains deferred.
 
 ## Interrupting computations
 
@@ -205,7 +209,7 @@ For `try.allSettled`, explicit array-literal elements keep their tuple positions
 
 `try.all`, `try.race`, `try.any` and `try.allSettled` require arrays or tuples of Effects (`EK1801`). The check uses TypeScript assignability to `ReadonlyArray<Effect.Effect<any, any, any>>`, so `any`, arrays or tuples with `any` elements, and `never` pass; `unknown` does not. For an object, use `try all({ user: load() }, { concurrency: "unbounded" })`; the `try.all` quick fix writes this form. The removed spellings `await.all`, `await.race`, `await.any` and `await.allSettled` report `EK1802`, including inside native `async` functions, arrows and methods. In effect code, `vibelang --fix` rewrites them to these operations. An async callable retains its JavaScript context: construct the corresponding Effect operation and wait with `await Effect.runPromise(...)`. The fixer does not insert effect-only `try` syntax into that body.
 
-Each operation runs its elements on separate fibers. Provide their service requirements around the combined `Effect`.
+Each operation runs its elements on separate fibers. Provide their service requirements around the combined `Effect`. The operations use the project's `Effect` instance, including the `Effect.exit` wrappers used by `try.allSettled`. A local binding named `Effect` does not change these operations.
 
 Both a braced body and a single statement support the same head patterns and `is` bindings in the TypeScript projection.
 

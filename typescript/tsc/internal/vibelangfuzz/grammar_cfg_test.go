@@ -45,6 +45,7 @@ type grammarGsym struct {
 	prose     bool // an assertion only Appendix A's prose rules make
 	effectArg int8 // explicit [+Effect] or [~Effect] on this nonterminal
 	eff       bool // the symbol stands in effect code ([+Effect])
+	await     grammarAwaitContext
 }
 
 type grammarGrule struct {
@@ -510,7 +511,7 @@ ClassElement = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? Op
 OptionalClassMethod = "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd
 ClassMemberModifiers = ClassMemberModifier | ClassMemberModifiers ClassMemberModifier
 ClassMemberModifier = "static" | "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here] | "override" [no LineTerminator here]
-FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? "=" "throw" UnaryExpression LineTerminator [lookahead ∈ { "*" }]
+FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName [no LineTerminator here] "!" TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? "=" "throw" UnaryExpression LineTerminator [lookahead ∈ { "*" }]
 MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | GetAccessor | "set" [no LineTerminator here] PropertyName "(" FormalParameter ")" Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
 GetAccessor = "get" [no LineTerminator here] PropertyName "(" ")" TypeAnnotation? Block
 NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
@@ -527,7 +528,7 @@ NamespaceImport = "*" "as" BindingIdentifier
 NamedImports = "{" "}" | "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
 ImportSpecifier = BindingIdentifier | ModuleExportName "as" BindingIdentifier | "type" BindingIdentifier | "type" ModuleExportName "as" BindingIdentifier
-ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd
+ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" ImportEqualsDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd
 DefaultExportDeclaration = FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression
 ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral StatementEnd
 ExportFromClause = "*" | "*" "as" IdentifierName | NamedExports
@@ -584,7 +585,7 @@ PropertyDefinitionList = PropertyDefinition | PropertyDefinitionList "," Propert
 PropertyDefinition = IdentifierReference | PropertyName ":" AssignmentExpression | MethodDefinition | "..." AssignmentExpression
 PropertyName = IdentifierName | StringLiteral | NumericLiteral | "[" AssignmentExpression "]"
 FunctionExpression = "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
-ClassExpression = "class" BindingIdentifier? ClassHeritage? "{" ClassElement* "}"
+ClassExpression = "class" BindingIdentifier? TypeParameters? ClassHeritage? "{" ClassElement* "}"
 ParenthesizedExpression = "(" Expression ")"
 ArrowFunction = ArrowParameters [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" TypeAnnotation [no LineTerminator here] "=>" ConciseBody | TypeParameters "(" FormalParameters ")" [no LineTerminator here] "=>" ConciseBody
 ArrowParameters = BindingIdentifier | "(" FormalParameters ")"
@@ -596,7 +597,7 @@ FormalParameter = ParameterModifier? BindingIdentifier "?"? TypeAnnotation? Init
 ParameterModifier = "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here]
 TypeAnnotation = ":" Type
 ReturnType = ":" Type
-TypeParameters = "<" TypeParameterList ">"
+TypeParameters = "<" TypeParameterList ","? ">"
 TypeParameterList = TypeParameter | TypeParameterList "," TypeParameter
 TypeParameter = BindingIdentifier | BindingIdentifier "extends" Type
 TypeArguments = "<" TypeList ">"
@@ -618,7 +619,9 @@ ObjectType = "{" "}" | "{" TypeMemberList TypeMemberEnd? "}"
 TypeMemberList = TypeMember | TypeMemberList TypeMemberSeparator TypeMember
 TypeMemberSeparator = ";" | "," | LineTerminator
 TypeMemberEnd = ";" | ","
-TypeMember = PropertySignature | MethodSignature | CallSignature
+TypeMember = PropertySignature | MethodSignature | CallSignature | GetAccessorSignature | SetAccessorSignature
+GetAccessorSignature = "get" PropertyName "(" ")" TypeAnnotation?
+SetAccessorSignature = "set" PropertyName "(" FormalParameter ")"
 CallSignature = TypeParameters? "(" FormalParameters ")" TypeAnnotation?
 RejectedMemberShape = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? | CallSignature
 PropertySignature = PropertyName "?"? TypeAnnotation? | "readonly" [no LineTerminator here] PropertyName "?"? TypeAnnotation?
@@ -789,6 +792,10 @@ type grammarAppendixData struct {
 	keywords []grammarKeywordRule
 	rules    []grammarProseRule
 	text     string // Appendix A's prose
+	// relational drops the expression type-argument alternatives of
+	// MemberExpression: the reading TypeScript's parser falls back to when
+	// tryParseTypeArgumentsInExpression rewinds a list that does not close.
+	relational bool
 }
 
 // A grammarExample is a line of a text block in Appendix A that is not a
@@ -906,6 +913,28 @@ func grammarReadAppendix(text, file string) (*grammarAppendixData, error) {
 	return a, nil
 }
 
+// grammarWithoutExpressionTypeArguments removes MemberExpression's
+// `MemberExpression TypeArguments ...` alternatives, the instantiation
+// expression readings.
+func grammarWithoutExpressionTypeArguments(d grammarNdef) grammarNdef {
+	var alts [][]grammarNelem
+	var prose []string
+	for k, alt := range d.alts {
+		if len(alt) > 1 && alt[0].name == "MemberExpression" && alt[1].name == "TypeArguments" {
+			continue
+		}
+		alts = append(alts, alt)
+		if k < len(d.prose) {
+			prose = append(prose, d.prose[k])
+		}
+	}
+	d.alts = alts
+	if d.prose != nil {
+		d.prose = prose
+	}
+	return d
+}
+
 // grammarBuildGrammar resolves an appendix against the subset into one grammar.
 func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 	g := &grammarCfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}, effectWords: map[string]bool{}, comments: map[string][]string{}}
@@ -916,6 +945,9 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 			d := grammarParseDef(m[1], strings.TrimSpace(l[strings.Index(l, "=")+1:]), 0)
 			tsDefs[d.name] = d
 		}
+	}
+	if a.relational {
+		tsDefs["MemberExpression"] = grammarWithoutExpressionTypeArguments(tsDefs["MemberExpression"])
 	}
 	defined := map[string]bool{}
 	for _, d := range a.defs {
@@ -1191,15 +1223,28 @@ func (g *grammarCfg) effectDeclarationNames() {
 // function's with [~Await].
 var grammarEffectBodies = map[string]bool{"FunctionDeclaration": true, "FunctionExpression": true, "AsyncFunctionExpression": true, "AsyncGeneratorExpression": true, "GeneratorExpression": true, "ArrowFunction": true, "AsyncArrowFunction": true, "MethodDefinition": true, "GetAccessor": true, "NonStaticMethod": true}
 
-// parameterize carries Effect context and the native async-body context.
-// The latter selects the for-of head only; other Await and Yield early errors
-// remain outside the bounded lab. Plain callables reset both contexts, while
-// async callables enable their own native context and Effect constructs reset it.
+// Module top level reserves await, but retains the ordinary for-of head.
+// Async bodies reserve await and permit the distinct async assignment head.
+// Plain callable bodies and field initializers reset the native context.
+type grammarAwaitContext uint8
+
+const (
+	grammarAwaitNone grammarAwaitContext = iota
+	grammarAwaitModule
+	grammarAwaitAsync
+)
+
+// parameterize carries Effect and the bounded native Await context. It models
+// await IdentifierReference reservation and ordinary for-of head selection;
+// other native Await and Yield early errors remain outside the bounded lab.
 func (g *grammarCfg) parameterize() *grammarCfg {
 	h := &grammarCfg{index: map[string]int{}, ordered: map[int]bool{}, vibe: map[int]bool{}, helper: map[int]bool{}, prose: g.prose, unresolved: g.unresolved, hooks: g.hooks, comments: g.comments}
-	idx := func(nt int, effect, await bool) int {
+	idx := func(nt int, effect bool, await grammarAwaitContext) int {
 		name := g.names[nt]
-		if await {
+		switch await {
+		case grammarAwaitModule:
+			name += "ᵐ"
+		case grammarAwaitAsync:
 			name += "ᵃ"
 		}
 		if effect {
@@ -1214,7 +1259,7 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 	}
 	for nt := range g.names {
 		for _, effect := range []bool{false, true} {
-			for _, await := range []bool{false, true} {
+			for _, await := range []grammarAwaitContext{grammarAwaitNone, grammarAwaitModule, grammarAwaitAsync} {
 				idx(nt, effect, await)
 			}
 		}
@@ -1231,26 +1276,42 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 		callable := plain && rawOwner == owner
 		resetAwait := callable || !r.vibe && rawOwner == "FieldDefinition"
 		for _, effect := range []bool{false, true} {
-			for _, await := range []bool{false, true} {
+			for _, await := range []grammarAwaitContext{grammarAwaitNone, grammarAwaitModule, grammarAwaitAsync} {
 				rhs := slices.Clone(r.rhs)
 				child := effect && !plain
-				childAwait := await && !resetAwait
+				childAwait := await
+				if resetAwait {
+					childAwait = grammarAwaitNone
+				}
 				for k := range rhs {
 					s := &rhs[k]
 					if callable && s.kind == grammarSymTok && s.text == "async" {
-						childAwait = true
+						childAwait = grammarAwaitAsync
 					}
 					if s.kind == grammarSymTok && s.text == "effect" || s.kind == grammarSymNT && s.text == "EffectModifier" {
 						child = true
-						childAwait = false
+						childAwait = grammarAwaitNone
 					}
 					s.eff = effect
+					s.await = childAwait
+					// Native declarations take their name from the enclosing
+					// context; expressions take it from their own callable.
+					if rawOwner == "FunctionDeclaration" && s.kind == grammarSymClass && s.text == "BindingIdentifier" {
+						s.await = await
+					}
 					if r.vibe && s.kind == grammarSymClass {
 						s.eff = child
 					}
 					if s.kind == grammarSymNT {
 						s.eff = child
 						symbolAwait := childAwait
+						// Computed names precede their callable/initializer context.
+						if s.text == "PropertyName" || s.text == "ClassElementName" {
+							symbolAwait = await
+						}
+						if rawOwner == "ClassElement" && len(r.rhs) == 2 && r.rhs[0].text == "static" && s.text == "Block" {
+							symbolAwait = grammarAwaitAsync
+						}
 						if (owner == "EffectFunctionDeclaration" || owner == "EffectFunctionOverloadDeclaration" || owner == "ProducerDeclaration") && s.text == "Name?" {
 							s.eff = effect
 							symbolAwait = await
@@ -1259,7 +1320,7 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 							s.eff = s.effectArg > 0
 						}
 						target := s.nt
-						if childAwait && s.text == "ForOfHead" {
+						if childAwait == grammarAwaitAsync && s.text == "ForOfHead" {
 							target = g.index["ForAwaitOfHead"]
 						}
 						s.nt = idx(target, s.eff, symbolAwait)
@@ -1270,7 +1331,7 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 			}
 		}
 	}
-	h.start, h.startE = idx(g.start, false, false), idx(g.start, true, false)
+	h.start, h.startE = idx(g.start, false, grammarAwaitModule), idx(g.start, true, grammarAwaitNone)
 	h.analyze()
 	return h
 }
@@ -1278,7 +1339,7 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 // named returns every supported context copy of a nonterminal.
 func (g *grammarCfg) named(name string) []int {
 	var out []int
-	for _, suffix := range []string{"", "⁺", "ᵃ", "ᵃ⁺"} {
+	for _, suffix := range []string{"", "⁺", "ᵐ", "ᵐ⁺", "ᵃ", "ᵃ⁺"} {
 		if i, ok := g.index[name+suffix]; ok {
 			out = append(out, i)
 		}
@@ -1288,7 +1349,7 @@ func (g *grammarCfg) named(name string) []int {
 
 // base is a nonterminal's name without its context parameters.
 func (g *grammarCfg) base(nt int) string {
-	return strings.TrimSuffix(strings.TrimSuffix(g.names[nt], "⁺"), "ᵃ")
+	return strings.TrimRight(g.names[nt], "⁺ᵃᵐ")
 }
 
 func grammarWalkNames(alt []grammarNelem, f func(string)) {

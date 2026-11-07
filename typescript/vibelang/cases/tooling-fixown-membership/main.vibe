@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation | | Owned `.vibe`/`.vibex` program sources | Includes an owned source an import reaches even when `exclude` omits it from root discovery.
+export const witness = 1

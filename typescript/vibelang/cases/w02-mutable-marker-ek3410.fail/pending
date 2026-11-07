@@ -1,0 +1,1 @@
+witness-02 EK3410 is registered but no checker reports a retired mutable marker on an ordinary type member or plain error payload; 007-tooling.md "Legacy fork, try-statement and wire migration" states this rejection as the target that waits for preserving codemods and zero migration-repository uses.

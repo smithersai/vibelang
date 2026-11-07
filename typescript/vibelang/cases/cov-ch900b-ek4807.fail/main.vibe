@@ -1,0 +1,26 @@
+// expect:
+// Appendix B: EK4807 — spec-rule: docs/design/src/900-appendices.md#a6961d425e081439
+// Layer.mergeAll of a layer that needs another is a warning by default;
+// independent layers are not.
+service Directory { lookup(id: string): string!! }
+service Users { find(id: string): string!! }
+service Clock { now(): number!! }
+
+const DirectoryLive = Layer.succeed(Directory, {
+  effect lookup(id) { return id }
+})
+
+const UsersLive = Layer.effect(Users, effect {
+  const directory = try Directory
+  return {
+    effect find(id) { return try directory.lookup(id) }
+  }
+})
+
+const ClockLive = Layer.succeed(Clock, {
+  effect now() { return 0 }
+})
+
+export const AppLive = Layer.mergeAll(DirectoryLive, UsersLive)
+
+export const Independent = Layer.mergeAll(DirectoryLive, ClockLive)

@@ -34,19 +34,19 @@ test("discovers the installed compiler, honors the project option, shares compil
   plugin.configResolved({ root, logger: { warn(message) { assert.fail(message) } } })
   const watched = []
   const context = { addWatchFile(file) { watched.push(file) }, error(error) { throw new Error(error.message) } }
-  const [a, b] = await Promise.all([plugin.transform.call(context, "", first), plugin.transform.call(context, "", second)])
+  const [a, b] = await Promise.all([plugin.load.call(context, first), plugin.load.call(context, second)])
   assert.match(a.code, /answer = 42/)
   assert.match(b.code, /other = ['"]hello['"]/)
   assert.ok(a.map.sources.includes(first))
   assert.ok(a.map.sourcesContent.some((source) => source.includes("answer: number")))
-  assert.deepEqual(watched, [config, config])
+  assert.deepEqual(watched, [config, first, config, second])
   // Reading the project's jsx setting compiles nothing.
   const invocations = () => readFileSync(calls, "utf8").trim().split("\n").map((line) => JSON.parse(line)).filter((args) => !args.includes("--showConfig"))
   assert.equal(invocations().length, 1, "concurrent module requests share one whole-project compile")
   assert.deepEqual(invocations()[0].slice(0, 2), ["--project", config])
   writeFileSync(first, "export const answer: number = 43\n")
   plugin.watchChange(first)
-  const changed = await plugin.transform.call(context, "", first)
+  const changed = await plugin.load.call(context, first)
   assert.match(changed.code, /answer = 43/)
   assert.equal(invocations().length, 2)
 })

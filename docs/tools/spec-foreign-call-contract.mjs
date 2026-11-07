@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { marked } from "marked";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -36,4 +37,21 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const violations = checkForeignExamples(root);
   for (const message of violations) console.error(message);
   process.exitCode = violations.length ? 1 : 0;
+}
+
+// Chapter 003's effectful-callable contract takes precedence over foreign tags.
+// Keep this exception beside the general bridge guidance in the entry points.
+export const effectfulForeignClause =
+  "A callable returning an `Effect`, `Stream` or `Layer` is effectful: call it directly, regardless of `@throws`.";
+export function effectfulForeignGuidanceProblems(markdown) {
+  function* paragraphs(tokens) {
+    for (const token of tokens) {
+      if (token.type === "paragraph" || token.type === "text") yield token.text;
+      else if (token.type === "blockquote") yield* paragraphs(token.tokens);
+      else if (token.type === "list") for (const item of token.items) yield* paragraphs(item.tokens);
+    }
+  }
+  const prose = [...paragraphs(marked.lexer(markdown))].join(" ").replace(/\s+/g, " ");
+  return prose.includes(effectfulForeignClause) ? [] :
+    ["Foreign-call guidance omits the effectful-return exception to @throws."];
 }

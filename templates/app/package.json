@@ -26,5 +26,8 @@
   },
   "overrides": {
     "@effect/platform-node-shared": "4.1.1"
+  },
+  "resolutions": {
+    "@effect/platform-node-shared": "4.1.1"
   }
 }

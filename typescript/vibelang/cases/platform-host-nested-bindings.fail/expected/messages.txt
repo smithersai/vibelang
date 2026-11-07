@@ -1,0 +1,5 @@
+AbortSignal.timeout reaches the host and cannot be used in a .vibe file.
+Use Effect.timeout for a time limit, or move signal construction into a sibling .ts module.
+URL.createObjectURL reaches the host and cannot be used in a .vibe file.
+Move this object-URL operation into a sibling .ts module and expose it through an Effect.
+URL.revokeObjectURL reaches the host and cannot be used in a .vibe file.

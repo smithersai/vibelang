@@ -240,3 +240,151 @@ test("function-model probe accepts only the generated never contract", async () 
     ), { seed: 27136, numRuns: 48 })
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+// alchemy-codemod-legacy-plain-boundaries (32 partition sources): the pass
+// wrote `: infer _` into a VIP-40 module body, whose source is TypeScript
+// ("A body is a TypeScript file stored inside a `.vibe` file"), where it is
+// TS1338; and into the callbacks of an object passed as an argument, which
+// TypeScript, and a legacy-inference toolchain, type from the parameter they
+// fill: unmarked, `Effect.try({ try: () => JSON.parse(text), catch: (cause)
+// => cause })` declares `Effect<unknown, unknown>` on the legacy pin.
+const legacyBoundaries = JSON.parse(readFileSync(new URL("./corpus/alchemy-legacy-plain-boundaries.json", import.meta.url), "utf8"))
+for (const sample of legacyBoundaries.samples) {
+  test(`corpus: ${legacyBoundaries.repo} ${sample.key}`, () => {
+    assert.equal(mark(sample.before).text, sample.after)
+  })
+}
+
+test("a function an argument holds through an object, array, parentheses, as, satisfies or a conditional stays as written", () => {
+  const source = [
+    "declare function take(x: unknown): void",
+    "export const a = take({ f: (n: number) => n })",
+    "export const b = take([(n: number) => n])",
+    "export const c = take(((n: number) => n))",
+    "export const d = take({ m(n: number) { return n } } as object)",
+    "export const e = take(Math.random() > 0.5 ? (n: number) => n : (n: number) => -n)",
+    "export const f = take({ nested: { g: function (n: number) { return n } } } satisfies object)",
+    "export const g = new Proxy({} as Record<string, number>, { get: (_target, key) => String(key).length })",
+    ""
+  ].join("\n")
+  const { text, result } = mark(source)
+  assert.equal(text, source)
+  assert.equal(result, undefined)
+})
+
+test("a function a callback builds, or an argument computes, is no argument and is still marked", () => {
+  const { text } = mark([
+    "declare function take(x: unknown): void",
+    "export const a = take(() => ({ f: (n: number) => n }))",
+    "export const b = take(((n: number) => n)(1))",
+    "export const o = { f: (n: number) => n }",
+    ""
+  ].join("\n"))
+  assert.equal(text, [
+    "declare function take(x: unknown): void",
+    "export const a = take(() => ({ f: (n: number): infer _ => n }))",
+    "export const b = take(((n: number): infer _ => n)(1))",
+    "export const o = { f: (n: number): infer _ => n }",
+    ""
+  ].join("\n"))
+})
+
+test("a namespace is VibeLang code and is marked; only a module body is left alone", () => {
+  const { text } = mark("export namespace N { export const f = (n: number) => n }\nmodule body { export const g = (n: number) => n }\n")
+  assert.equal(text, "export namespace N { export const f = (n: number): infer _ => n }\nmodule body { export const g = (n: number) => n }\n")
+})
+
+test("property: an argument's wrapped function stays as written, the same function bound to a name is marked once, and a module body never changes", () => {
+  const fc = createRequire(join(runtime, "package.json"))("fast-check")
+  const functions = {
+    arrow: () => "(n: number) => n + 1",
+    expression: () => "function (n: number) { return n + 1 }",
+  }
+  const wrappers = {
+    object: (e) => `{ f: ${e} }`,
+    method: null,
+    array: (e) => `[${e}]`,
+    paren: (e) => `(${e})`,
+    as: (e) => `(${e}) as unknown`,
+    satisfies: (e) => `(${e}) satisfies unknown`,
+    whenTrue: (e) => `Math.random() > 0.5 ? ${e} : undefined`,
+    whenFalse: (e) => `Math.random() > 0.5 ? undefined : ${e}`,
+  }
+  const keys = Object.keys(wrappers).filter((k) => wrappers[k])
+  fc.assert(fc.property(
+    fc.constantFrom(...Object.keys(functions)),
+    fc.array(fc.constantFrom(...keys), { maxLength: 4 }),
+    fc.boolean(),
+    (kind, chain, inBody) => {
+      let expression = functions[kind]()
+      for (const key of chain) expression = wrappers[key](expression)
+      const argument = `declare function take(x: unknown): void\nexport const a = take(${expression})\n`
+      assert.equal(mark(argument).text, argument, argument)
+      const bound = `export const a = ${expression}\n`
+      const marked = mark(bound).text
+      assert.equal(marked.split("infer _").length - 1, 1, marked)
+      if (inBody) {
+        const body = `module platform {\nexport const a = ${expression}\nexport const free = (n: number) => n\n}\nexport { a, free } from platform\n`
+        assert.equal(mark(body).text, body, body)
+      }
+    }
+  ), { seed: 1107, numRuns: 60 })
+})
+
+// alchemy-provider-layer-requirements-widened (Fly Secret): Effect.fn is
+// overloaded, so its generator argument read as an overloaded reader's
+// callback, and the pass wrote the generator's printed type on it. A written
+// `Generator<any, Attributes, any>` erased the Effect's requirements, and the
+// provider's layer declared `unknown` for them.
+const effectBodies = JSON.parse(readFileSync(new URL("./corpus/alchemy-provider-effect-fn-bodies.json", import.meta.url), "utf8"))
+for (const sample of effectBodies.samples) {
+  test(`corpus: ${effectBodies.repo} ${sample.key}`, () => {
+    assert.equal(mark(sample.before).text, sample.after)
+  })
+}
+
+test("an Effect's generator body keeps its unwritten type under any import name, and an ordinary generator is still written", () => {
+  const source = [
+    'import * as E from "effect/Effect"',
+    'export const named = E.fn("named")(function* () { return 1 })',
+    "export const untraced = E.fnUntraced(function* (n: number) { return n })",
+    "export const program = E.gen(function* () { return 1 })",
+    "export function* ordinary() { yield 1; return 2 }",
+    ""
+  ].join("\n")
+  assert.equal(mark(source).text, source.replace("export function* ordinary() {", "export function* ordinary(): Generator<number, number, unknown> {"))
+})
+
+test("property: no Effect generator body gets a written Generator type", () => {
+  const fc = createRequire(join(runtime, "package.json"))("fast-check")
+  const imports = {
+    named: { line: 'import { Effect } from "effect"', E: "Effect" },
+    namespace: { line: 'import * as Fx from "effect/Effect"', E: "Fx" },
+  }
+  const runners = {
+    gen: (E, body) => `${E}.gen(function* () { ${body} })`,
+    fn: (E, body) => `${E}.fn(function* (id: string) { ${body} })`,
+    named: (E, body) => `${E}.fn("op")(function* (id: string) { ${body} })`,
+    untraced: (E, body) => `${E}.fnUntraced(function* (id: string) { ${body} })`,
+  }
+  const bodies = {
+    value: () => "return 1",
+    early: () => 'if (Math.random() > 0.5) return undefined; return { done: true as const }',
+    yields: (E) => `const n = yield* ${E}.succeed(1); return n`,
+  }
+  const holders = {
+    bound: (e) => `export const op = ${e}`,
+    typed: (e, E) => `declare function take(o: { op: unknown }): void\nexport const live = take({ op: ${e} })`,
+    factory: (e) => `export const make = () => ({ op: ${e} })`,
+  }
+  fc.assert(fc.property(
+    fc.constantFrom(...Object.keys(imports)), fc.constantFrom(...Object.keys(runners)),
+    fc.constantFrom(...Object.keys(bodies)), fc.constantFrom(...Object.keys(holders)),
+    (i, r, b, h) => {
+      const { line, E } = imports[i]
+      const text = `${line}\n${holders[h](runners[r](E, bodies[b](E)), E)}\n`
+      const marked = mark(text).text
+      assert.ok(!marked.includes("Generator<"), marked)
+    }
+  ), { seed: 2911, numRuns: 48 })
+})

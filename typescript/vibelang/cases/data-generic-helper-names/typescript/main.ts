@@ -14,6 +14,11 @@ export type Four<A,B,C,D> = Data.TaggedEnum<{V:{first:A;second:B;third:C;fourth:
 export interface $Four$Definition$2 extends Data.TaggedEnum.WithGenerics<4> { readonly taggedEnum: Four<this["A"],this["B"],this["C"],this["D"]> }
 export const Four = Data.taggedEnum<$Four$Definition$2>()
 export type $Two$Definition = "later"
+export type $Hole$Definition = "taken"
+export type $Hole$Definition$3 = 3
+export type Hole<A> = Data.TaggedEnum<{V:{first:A}}>
+export interface $Hole$Definition$2 extends Data.TaggedEnum.WithGenerics<1> { readonly taggedEnum: Hole<this["A"]> }
+export const Hole = Data.taggedEnum<$Hole$Definition$2>()
 export type $Fo\u0075r$Definition = "escaped"
 export function main():Effect.Effect<readonly unknown[],never> {return Effect.gen(function*(){
   const one=One.V({first:1})

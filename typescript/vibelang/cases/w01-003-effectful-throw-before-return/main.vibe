@@ -1,0 +1,34 @@
+// rule-evidence: docs/design/src/003-failures.md#effectful-callables | This is a static contract, not a JavaScript runtime guarantee: a `.ts` implementation that throws before returning produces a defect when evaluated inside an Effect generator.
+// rule-evidence: docs/design/src/003-failures.md#effectful-callables | Evaluated in a parameter default, before the Effect exists, it throws a JavaScript exception at the call of a plain function, and makes the call of an `effect` function return an Effect that dies with the thrown value, as an `async` function's call returns a rejected Promise ([Functions](001-functions.md#meaning), [Code outside the generator](#code-outside-the-generator)).
+import { Effect } from "effect"
+import { early } from "./fixtures.js"
+
+export let bodies = 0
+
+// Inside the generator: `try early()` needs no wrapper, because an effectful
+// callable's thrown type is `never`; the JavaScript throw becomes a defect.
+export effect function inGenerator() {
+  bodies++
+  const n = try early()
+  return n + 1
+}
+
+// In a parameter default of a plain function: the call itself throws.
+export function plainDefault(value: number!! = early()): string {
+  bodies++
+  return "plain body"
+}
+
+// In a parameter default of an `effect` function: the call returns an Effect
+// that dies with the thrown value, and the body never runs.
+export effect function effectDefault(value: number!! = early()) {
+  bodies++
+  return "effect body"
+}
+
+// The same default in an `async` function, for comparison: the call returns a
+// rejected Promise.
+export async function asyncDefault(value: number!! = early()): Promise<string> {
+  bodies++
+  return "async body"
+}

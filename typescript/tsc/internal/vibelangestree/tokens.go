@@ -122,7 +122,8 @@ func (l *lexicalContext) collect(file *ast.SourceFile, text string) {
 			}
 		case ast.KindIdentifier:
 			// A pipe's topic, %, is an identifier the parser flags; its token is %.
-			if n.Flags&ast.NodeFlagsReparsed == 0 && n.Flags&ast.NodeFlagsVibeLang == 0 {
+			// A cache name may retain a literal's span without changing its token kind.
+			if n.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang|ast.NodeFlagsVibeLangTemporary) == 0 {
 				l.identifiers[start(n)] = true
 			}
 		}

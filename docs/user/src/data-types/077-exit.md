@@ -28,8 +28,7 @@ An exit is `Success` with `.value` or `Failure` with `.cause`. `try exit(program
 ## Creating success and cause-based failure exits
 
 ```vibe
-// pending: VIP-5, VIP-14
-// run: const outcomes = sampleOutcomes(); try Console.log(Exit.isSuccess(outcomes.successful), Exit.isFailure(outcomes.failed), Exit.isSuccess(constantSuccess())); if (Exit.isFailure(outcomes.failed)) try Console.log(try Effect.try(() => JSON.stringify(outcomes.failed.cause.reasons.map((reason) => reason._tag))))
+// run: const outcomes = sampleOutcomes(); try Console.log(Exit.isSuccess(outcomes.successful), Exit.isFailure(outcomes.failed), Exit.isSuccess(constantSuccess())); if (Exit.isFailure(outcomes.failed)) { const tags = outcomes.failed.cause.reasons.map((reason) => reason._tag); try Console.log(try Effect.try(() => JSON.stringify(tags))) }
 function sampleOutcomes() {
   const successful = Exit.succeed(12)
   const failed = Exit.failCause(

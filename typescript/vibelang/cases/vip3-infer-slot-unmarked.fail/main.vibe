@@ -1,0 +1,11 @@
+// expect: EK4857 EK4857 EK4857 EK4857 EK4857
+// Chapter 900: EK4857 legacy written infer return slots - spec-rule: docs/design/src/900-appendices.md#6b45fa73e5783959
+// An unmarked callable is plain (VIP-1): returning an Effect leaves it unrun,
+// so each channel written infer is the channel of the Effect the body returns.
+// vibelang --fix writes those types, which preserve the declaration and the
+// plain runtime; it never removes an unmarked callable's annotation.
+export function failure(): Effect.Effect<number, infer E> { return Effect.fail("missing") }
+export function success(): Effect.Effect<infer A, never> { return Effect.succeed(1) }
+export function every(): Effect.Effect<infer A, infer E, infer R> { return Effect.succeed("ready") }
+export const object = { m(): Effect.Effect<infer A, infer E, infer R> { return Effect.succeed(2) } }
+export function shorthand(): infer A!infer E!infer R { return Effect.succeed(true) }

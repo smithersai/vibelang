@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/src/007-tooling.md#empty-legacy-trust-wrappers | For each private direct synchronous call in an explicit Effect body, `vibelang --fix` writes an identity-mapped `Effect.try` and `Effect.orDie` bridge over `f`, captured at the original declaration, or refuses if preservation cannot be proved.
+// The trusted(f, []) migration runs on temp projects in run.mjs.
+export const witness = 1

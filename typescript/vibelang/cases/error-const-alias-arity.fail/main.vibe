@@ -1,0 +1,10 @@
+// expect: EK0703 EK0703 EK0703 EK0703
+error Plain{code:number}
+schema error Encoded{code:number}
+const First=Plain
+const PlainAlias:typeof Plain=First
+const SchemaAlias=(Encoded)
+export function plainZero(s:unknown){return match(s){when PlainAlias():1;default:0;}}
+export function plainTwo(s:unknown){return match(s){when PlainAlias(let a,let b):1;default:0;}}
+export function schemaZero(s:unknown){return match(s){when SchemaAlias():1;default:0;}}
+export function schemaTwo(s:unknown){return match(s){when SchemaAlias(let a,let b):1;default:0;}}

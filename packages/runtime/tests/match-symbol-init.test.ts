@@ -4,6 +4,9 @@
 // non-enumerable and non-configurable, like a well-known symbol. A pre-existing
 // host symbol is preserved with its native identity."
 //
+// rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | **Matcher symbol initialization.** When the host lacks `Symbol.customMatcher`, runtime initialization defines an own property on the global `Symbol` with value `Symbol.for("Symbol.customMatcher")`, non-writable, non-enumerable and non-configurable, like a well-known symbol.
+// Stable rule id: docs/design/src/008-runtime.md#4ea1ce61385bfacf
+//
 // Each scenario starts a fresh Node and Bun process, because the property can
 // be defined only once per realm.
 import { afterAll, expect, test } from "bun:test"
@@ -51,6 +54,7 @@ console.log(JSON.stringify({
 
 test("matcher symbol: a host without Symbol.customMatcher gets the registry key as a non-writable, non-enumerable, non-configurable own property", () => {
   for (const [name, executable] of hosts) {
+    // rule-evidence: docs/design/vips/0031-runtime-guarantees.md#35cbcb19358f981e | **Clarified 2026-11-03: global matcher initialization.** Where absent, the runtime defines an own global `Symbol.customMatcher` with value `Symbol.for("Symbol.customMatcher")`, non-writable, non-enumerable and non-configurable.
     expect([name, observe(executable, null)]).toEqual([name, {
       hadBefore: false, isSymbol: true, registryKey: "Symbol.customMatcher", hostIdentity: null, exportIsKey: true,
       writable: false, enumerable: false, configurable: false,

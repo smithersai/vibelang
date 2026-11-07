@@ -156,6 +156,9 @@ func platformHostOrigin(c *checker.Checker, node *ast.Node, seen map[*ast.Symbol
 		return platformHostValue{}
 	}
 	symbol := c.GetSymbolAtLocation(node)
+	if node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent) {
+		symbol = c.GetShorthandAssignmentValueSymbol(node.Parent)
+	}
 	if symbol == nil || seen[symbol] {
 		return platformHostValue{}
 	}
@@ -175,6 +178,9 @@ func platformHostOrigin(c *checker.Checker, node *ast.Node, seen map[*ast.Symbol
 			return platformHostOrigin(c, declaration.Initializer(), seen, cache, writes, values)
 		}
 		if ast.IsBindingElement(declaration) && declaration.Parent != nil && ast.IsObjectBindingPattern(declaration.Parent) {
+			if declaration.AsBindingElement().DotDotDotToken != nil {
+				return platformHostValue{}
+			}
 			variable := declaration.Parent.Parent
 			if ast.IsVariableDeclaration(variable) && platformHostStable(variable, symbol, writes) {
 				name := declaration.PropertyName()
@@ -195,15 +201,33 @@ func checkPlatformHostMembers(c *checker.Checker, file *ast.SourceFile) {
 
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindTypeQuery {
+			return false
+		}
 		var at *ast.Node
+		var selected platformHostValue
 		switch {
 		case ast.IsBindingElement(node):
 			at = node.Name()
-			if at == nil || !ast.IsIdentifier(at) {
+			if at == nil {
 				break
 			}
+			if !ast.IsIdentifier(at) {
+				if node.Parent == nil || !ast.IsObjectBindingPattern(node.Parent) {
+					break
+				}
+				variable := node.Parent.Parent
+				if !ast.IsVariableDeclaration(variable) {
+					break
+				}
+				selected = platformHostProperty(platformHostOrigin(c, variable.Initializer(), map[*ast.Symbol]bool{}, cache, writes, values), platformHostKey(node.PropertyName()))
+				if selected.member == "" {
+					break
+				}
+				at = node.PropertyName()
+			}
 		case ast.IsIdentifier(node):
-			if node.Parent != nil && ast.IsBindingElement(node.Parent) && (node.Parent.Name() == node || node.Parent.PropertyName() == node) || !isValueUse(node) {
+			if node.Parent != nil && ast.IsBindingElement(node.Parent) && (node.Parent.Name() == node || node.Parent.PropertyName() == node) || !isValueUse(node) && !(node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent)) {
 				break
 			}
 			at = node
@@ -213,7 +237,11 @@ func checkPlatformHostMembers(c *checker.Checker, file *ast.SourceFile) {
 			}
 		}
 		if at != nil {
-			if value := platformHostOrigin(c, at, map[*ast.Symbol]bool{}, cache, writes, values); value.member != "" {
+			value := selected
+			if value.member == "" {
+				value = platformHostOrigin(c, at, map[*ast.Symbol]bool{}, cache, writes, values)
+			}
+			if value.member != "" {
 				name := value.root + "." + value.member
 				d := report(c, at, EK4402.With("{0} reaches the host and cannot be used in a .vibe file."), name)
 				if value.root == "AbortSignal" {

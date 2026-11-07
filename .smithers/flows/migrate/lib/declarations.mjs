@@ -480,11 +480,27 @@ function recordedOutputLayout(ts, parsed, snapshot, configPath, project) {
   return selected
 }
 
+// The deepest directory holding every file, as TypeScript computes a common
+// source directory when no rootDir is configured.
+function commonDirectory(files) {
+  if (!files.length) return undefined
+  let parts = dirname(resolve(files[0])).split(sep)
+  for (const file of files.slice(1)) {
+    const other = dirname(resolve(file)).split(sep)
+    let same = 0
+    while (same < parts.length && same < other.length && parts[same] === other[same]) same++
+    parts = parts.slice(0, same)
+  }
+  return parts.join(sep) || sep
+}
+
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
 const absentSourceDir = ".migrate-absent-sources"
+// Project errors for a source outside the declaration output root.
+const layoutErrors = new Set(["TS5011", "TS6059"])
 
 export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten, emitDiagnostics, emitRoot = packageDir } = {}) {
-  const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map(), companions = new Set()
+  const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map(), projectOutputs = new Map(), companions = new Set()
   // Why a declaration was not emitted is known only at emit; a later record keeps it.
   const recorded = join(dir, "public-surface.json")
   const absentDeclarations = emitDiagnostics || !existsSync(recorded) ? {}
@@ -527,10 +543,28 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     projectDeclarations.set(context, new Set(parsed.fileNames.filter(file => /\.d\.[cm]?ts$/.test(file)).map(file => rel(packageDir, file))))
     const emitted = recordedOutputLayout(ts, parsed, resolve(dir, prefix), path, tsconfig)
     context.outputLayout = emitted.receipt
+    // Where this project would write a declaration for a source at a given
+    // path. The root stays the one the emitted files selected (TypeScript's
+    // rootDir, composite or common-source rule), so no extra input widens it.
+    const outputFileNames = parsed.fileNames.map(file => file.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts"))
+    projectOutputs.set(context, source => {
+      const options = emitted.originalOptions
+      const root = options.rootDir ?? (options.composite && options.configFilePath ? dirname(options.configFilePath)
+        : commonDirectory(outputFileNames.filter(file => !/\.d\.[cm]?ts$/.test(file))))
+      const inside = root && relative(root, source)
+      if (!inside || inside.startsWith("..") || isAbsolute(inside)) return []
+      return ts.getOutputFileNames({ ...parsed, fileNames: [...outputFileNames, source], options: { ...options, rootDir: root } },
+        source, false).filter(file => /\.d\.[cm]?ts$/.test(file))
+    })
     const present = new Set(emitted.present.map(({ output }) => output))
     for (const { source, output, originals } of emitted.outputs) {
       if (present.has(output)) continue
-      const reasons = (emitDiagnostics ?? []).filter(d => d.category === "error" && d.file && resolve(emitRoot, d.file) === resolve(source))
+      const errors = (emitDiagnostics ?? []).filter(d => d.category === "error")
+      let reasons = errors.filter(d => d.file && resolve(emitRoot, d.file) === resolve(source))
+      // Without rootDir, a source above the tsconfig fails emit with a project
+      // layout error, and its declaration lands outside the snapshot.
+      if (!reasons.length && output && !resolve(output).startsWith(resolve(dir, prefix) + sep))
+        reasons = errors.filter(d => layoutErrors.has(d.code))
       const logical = originals.find(file => /\.d\.[cm]?ts$/.test(file))
       if (reasons.length && logical) absentDeclarations[rel(packageDir, logical)] =
         reasons.map(({ code, file, line, column }) => ({ code, file, line, column }))
@@ -606,14 +640,39 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
   // Keep package-tree declarations in the run snapshot, never as live paths.
   // Aliases of emitted files win over stale build output from the target.
   const originals = handwritten ?? new Map([...declarationFiles(packageDir, resolve(dir))].map(([file, bytes]) => [rel(packageDir, file), bytes]))
+  const retained = []
   for (const [file, bytes] of originals) {
     if (!/\.d\.[cm]?ts$/.test(file) || /\.d\.vibex?\.ts$/.test(file) || aliases[file]) continue
     const stored = posix.join(shippedDir, file)
     mkdirSync(join(dir, stored, ".."), { recursive: true })
     writeFileSync(join(dir, stored), bytes)
     aliases[file] = stored
+    aliases[file.replace(/\.d\.ts$/, ".js").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs")] ??= stored
     logicalPaths[stored] = file
-    for (const context of projectContexts) if (projectDeclarations.get(context).has(file)) context.files.push(stored)
+    retained.push({ file, bytes, stored })
+    for (const context of projectContexts) {
+      if (projectDeclarations.get(context).has(file)) context.files.push(stored)
+    }
+  }
+  // Reserve every explicit declaration before inferring copied output paths.
+  // Otherwise a source encountered first can hide a different published copy.
+  for (const { file, bytes, stored } of retained) {
+    for (const context of projectContexts) {
+      if (!projectDeclarations.get(context).has(file)) continue
+      // TypeScript does not emit an input declaration. A package build that
+      // copies it publishes it where the project writes declarations, as
+      // dist/esm/x.d.ts for src/x.d.ts beside src/x.js, and the manifest names
+      // that path. Only module declarations stand for an entry point, and an
+      // emitted declaration keeps its own path.
+      if (!ts.isExternalModule(ts.createSourceFile(file, String(bytes), ts.ScriptTarget.Latest))) continue
+      const source = resolve(packageDir, file.replace(/\.d\.([cm]?)ts$/, ".$1ts"))
+      for (const output of projectOutputs.get(context)(source)) {
+        const published = rel(packageDir, output)
+        if (published === file || published === ".." || published.startsWith("../")) continue
+        aliases[published] ??= stored
+        aliases[published.replace(/\.d\.ts$/, ".js").replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs")] ??= stored
+      }
+    }
   }
   const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, projectContexts, packageDir: resolve(packageDir),
     ...(Object.keys(absentDeclarations).length ? { absentDeclarations } : {}),
@@ -678,7 +737,17 @@ function publishedEquivalent(ts, a, b, sides) {
   return excused
 }
 
-export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false, includePrivate = false, profile, workerHeaps, diagnosticBatchSize } = {}) {
+// Grouping sizes pass to the API check as given. A present value, even an
+// invalid 0, must reach its validation rather than fall back to the default.
+const batchSizeOptions = ["entryBatchSize", "probeBatchSize", "diagnosticBatchSize"]
+function batchSizes(options) {
+  const unknown = Object.keys(options).filter(key => !batchSizeOptions.includes(key))
+  if (unknown.length) throw new Error("compareDeclarations: unknown option " + unknown.join(", "))
+  return Object.fromEntries(batchSizeOptions.filter(key => options[key] !== undefined).map(key => [key, options[key]]))
+}
+
+export function compareDeclarations(ts, baselineDir, currentDir, { canonical = false, includePrivate = false, profile, workerHeaps, ...batches } = {}) {
+  const batchOptions = batchSizes(batches)
   const before = listDeclarations(baselineDir)
   const after = listDeclarations(currentDir)
   const surface = dir => {
@@ -773,8 +842,14 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
       if (published) {
         const manifest = saved?.apiMetadata?.manifest ?? JSON.parse(readFileSync(join(projection.directory, "package.json"), "utf8"))
         if ((manifest.publishConfig?.exports ?? manifest.exports) == null) {
+          // A module body's companion is emitted support (VIP-40), not a deep entry.
+          const internal = new Set(saved?.apiMetadata?.companions ?? [])
           for (const stored of saved?.roots ?? []) {
-            const logical = saved?.apiMetadata?.logicalPaths?.[stored] ?? stored
+            if (internal.has(stored)) continue
+            // A paired .d.mts -> .d.ts rename keeps its original entry name.
+            const source = originalName.get(stored)
+            const logical = source ? aSurface?.apiMetadata?.logicalPaths?.[source] ?? source
+              : saved?.apiMetadata?.logicalPaths?.[stored] ?? stored
             const name = "./" + logical.replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs").replace(/\.d\.ts$/, ".js")
             const target = projection.destinations.get(stored) ?? stored
             published[name] = join(projection.directory, target)
@@ -792,7 +867,7 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
     api = compareApiIdentity(ts, left.directory, right.directory, {
       beforeEntrypoints: aEntries, afterEntrypoints: bEntries,
       projectContexts: [...left.projectContexts, ...right.projectContexts], moduleRoots: [...new Set(modules)], includeComparedFiles: true,
-      absentDeclarations: absentFrom(aSurface, bSurface, { before: left.absentSources, after: right.absentSources }), profile, ...(workerHeaps ? { workerHeaps } : {}), ...(diagnosticBatchSize ? { diagnosticBatchSize } : {}),
+      absentDeclarations: absentFrom(aSurface, bSurface, { before: left.absentSources, after: right.absentSources }), profile, ...(workerHeaps ? { workerHeaps } : {}), ...batchOptions,
     })
     const comparedFiles = Object.fromEntries([["before", left], ["after", right]].map(([side, projection]) =>
       [side, [...new Set((api.comparedFiles?.[side] ?? []).map(file =>

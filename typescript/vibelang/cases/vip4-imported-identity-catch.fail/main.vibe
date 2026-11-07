@@ -1,0 +1,11 @@
+// expect: EK0402
+// rule-evidence: docs/design/vips/0004-throw.md#retirement-of-the-empty-legacy-trust-wrapper
+// VIP-4: an unannotated imported identity may throw unknown and cannot satisfy
+// the catch callback's never contract, which is why the generated bridge
+// writes the inline mapper (e) => e instead.
+import { identity } from "effect"
+import { parse } from "./helpers.ts"
+
+export effect function load(s: string): number!! {
+  return try Effect.orDie(Effect.try({ try: () => parse(s), catch: identity }))
+}

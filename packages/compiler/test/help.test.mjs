@@ -24,13 +24,14 @@ function checkHelp(args) {
     ["estree", /Parse.*stdin.*ESTree JSON/],
     ["write-dprint-plugin", /Write the dprint process plugin/],
     ["loader-root", /Type-check and emit only the \.vibe files under a directory, as a module loader's compile does/],
-    ["vibelang", /Configure diagnostics and trusted packages in tsconfig.json/]
+    ["vibelang", /Legacy diagnostics in tsconfig.json.*use vibe.severities/]
   ]) {
     const section = sections.find((text) => new RegExp(`^\\s*--${flag}\\b`).test(text))
     assert.ok(section, `missing --${flag} in ${args.join(" ")}`)
     assert.match(section.replace(/\s+/g, " "), description)
     if (flag === "vibelang") {
       assert.match(section, /config only/)
+      assert.doesNotMatch(section, /trusted packages/)
       assert.doesNotMatch(section, /default:\s*undefined/)
     }
   }

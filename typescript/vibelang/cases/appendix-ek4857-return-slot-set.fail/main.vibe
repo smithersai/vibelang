@@ -1,0 +1,18 @@
+// expect: EK4857 TS1338 TS2322
+// Appendix B: EK4857, an immediate written infer channel in the legacy return-slot set replaces TS1338, preserving independent native errors — spec-rule: docs/design/src/900-appendices.md#6b45fa73e5783959
+// EK4857: an unmarked function, an effect method, and an effect function whose
+// body also has an independent TS2322. Native TS1338: a parenthesized channel
+// and a function type. No written infer: no diagnostic. The repair writes the
+// inferred channel types, and removes the annotation only on the
+// effect-marked callable whose every channel is infer.
+export function p(): Effect.Effect<number, infer E> { return Effect.succeed(1) }
+export class C { effect m(): Effect.Effect<number, infer E, never> { return 1 } }
+export const a = (): number!(infer E) => Effect.succeed(1)
+export type F = () => Effect.Effect<number, infer E>
+export function q(): number { return 1 }
+export effect function both(): Effect.Effect<number, infer E, never> {
+  const label: string = 1
+  return label.length
+}
+export function unmarkedAll(): Effect.Effect<infer A, infer E, infer R> { return Effect.succeed(1) }
+export effect function markedAll(): Effect.Effect<infer A, infer E, infer R> { return 1 }

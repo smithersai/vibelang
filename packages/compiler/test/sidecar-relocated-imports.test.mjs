@@ -114,7 +114,7 @@ test("declarations keep filesystem spellings while emitted JavaScript escapes ES
     put("src/main.vibe", names.map((name, i) => `export { type T${i}, v${i} } from "./${name}.ts"`).join("\n"))
     put("tsconfig.json", JSON.stringify({ compilerOptions: {
       ...options, noEmit: false, declaration: true, rootDir: ".", outDir: "js", declarationDir: "public",
-      rewriteRelativeImportExtensions: false
+      rewriteRelativeImportExtensions: true
     }, include: ["src"] }))
     const emitted = spawnSync(native, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
     assert.equal(emitted.status, 0, emitted.stdout + emitted.stderr)

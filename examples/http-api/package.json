@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vibelang -p .",
-    "start": "node dist/main.js",
+    "start": "node dist/entry.js",
     "test": "vitest run"
   },
   "dependencies": {

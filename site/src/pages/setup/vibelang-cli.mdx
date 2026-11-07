@@ -10,10 +10,19 @@ description: "vibelang replaces tsc. It checks .vibe and .ts files as one progra
 
 `vibelang format --write` formats `.vibe` files with the shared formatter; `vibelang format --check` reports files that need formatting without writing them. `vibelang format --help` lists the options. Both accept file paths or glob patterns and use the nearest dprint configuration, as editor formatting does ([Format with dprint](/setup/formatting)).
 
+Formatting an existing file path takes precedence over glob expansion, including paths such as `'src/[id]/page.vibe'`. Quote paths that contain shell glob characters.
+
 If the emitted program needs `vibelang-runtime` but the package cannot be resolved, compilation reports one `TS2307` naming the missing package. Install `vibelang-runtime` at the compiler's version. Written imports of the same absent package in `.vibe` and `.ts` files share that dependency error. Independent errors in your source still report.
 
 
+Formatting reports a missing explicit file or unmatched glob before writing any file. Use `--` before paths that begin with `-`; `--check` and `--write` cannot be combined.
+
+
 VibeLang uses TypeScript 7, which rejects removed options such as `moduleResolution: "node"` / `"node10"` and `baseUrl` (TS5108 / TS5102); update an older tsconfig using the [TypeScript 7 migration notes](https://github.com/microsoft/typescript-go/blob/main/CHANGES.md).
+
+An interrupted check or build exits unsuccessfully. If the compiler handles `SIGINT` or `SIGTERM` while it is working, it prints `vibelang: compilation cancelled`; a completed compiler stage cannot make that cancelled command report success. Rerun the command to complete the check or build.
+
+Exporting `main` adds no startup call. An explicit top-level runner starts it and checks its service requirements, as in Effect TypeScript.
 
 ## 1. Configure tsconfig.json
 
@@ -60,7 +69,11 @@ The cached-default repair retains eager evaluation, the same object on repeated 
 - `vibelang --showConfig` prints the effective project configuration, including inherited options, without compiling. Invalid local or inherited settings report configuration errors and make the command exit unsuccessfully. Warnings keep the preview successful and leave its JSON output intact. Use `-p path/to/tsconfig.json` to inspect another project.
 - `vibelang --noEmit --module nodenext --target es2022 src/hello.vibe` checks explicit files using the supplied compiler options. File arguments bypass config discovery, including nearby or parent `vibe.config.json`, `tsconfig.json` and `jsconfig.json` files; project include patterns and references do not apply. `--ignoreConfig` remains accepted and is optional for explicit files. Combining files with `-p`/`--project` is an error.
 
+When `--fix` is combined with `--help`, `--all`, `--version`, `--showConfig` or `--init`, the requested information or initialization command runs without repairing source files. Help and version output work outside a project too.
+
 ### Diagnostic severities
+
+The `vibelang` entry in `--help` describes legacy diagnostics configuration. Use `vibe.severities` for new settings; the former package-trust settings are ignored.
 
 TypeScript's own lexical, syntax and static errors keep their `TS` codes, including errors inside embedded expressions and types. VibeLang's productions, placement rules and adopted proposal restrictions use the owning VIP's `EK` codes, regardless of the parser helper used. A specific diagnostic takes priority for the same rejection; independent native errors still report.
 
@@ -115,7 +128,9 @@ In `package.json`, replace `tsc` with `vibelang` in every script. `vibelang` run
 
 `vibelang --fix` reports its phase, round, applied and pending fixes, program-check counts and memory use on standard error during long runs. When the migration runner has a log path, it also saves those structured counters with the process ID and invocation number in `.progress.jsonl` files beside the completed diagnostic logs.
 
-Built project references retain native exports through TypeScript barrels. When a declaration uses the native twin's relative `.ts` or `.tsx` name, the compiler can resolve the native module's emitted declaration even though its source is `.vibe` or `.vibex`. Ordinary written TypeScript imports keep their resolution rules. Inferred declarations also retain the package export that names a referenced native type, including a type reached indirectly through another emitted declaration. A private module absent from the package's exports remains private.
+With `--pprofDir <dir>`, `vibelang --fix` also writes CPU and memory profiles of the repair itself to `<dir>/fix`. The compile that follows the repair writes its own profiles to `<dir>`. On a large project, most of a `--fix` run's time goes to the repair's program checks.
+
+Built project references retain native exports through TypeScript barrels. When a declaration uses the native twin's relative `.ts` or `.tsx` name, the compiler can resolve the native module's emitted declaration even though its source is `.vibe` or `.vibex`. Ordinary written TypeScript imports keep their resolution rules. Inferred declarations also retain the package export that names a referenced native type, including a type reached indirectly through another emitted declaration. A private module absent from the package's exports remains private. Inferred import types also respect exact and more specific `exports` entries: a broad wildcard cannot reopen a subpath blocked with `null` or redirected to another file. A re-exported body type is named through its public export.
 
 
 When repairing a `Schema.TaggedError` class, `--fix` names a field codec in a constant if it has no direct `schema error` field form. That constant retains the codec's checked contextual type. Generic factories such as `Schema.instanceOf(Date)` therefore keep the original schema input type instead of selecting a narrower default after hoisting.
@@ -150,7 +165,7 @@ Plain `vibelang --fix` and the editor quick fix also rewrite service access writ
 
 When a reserved-name repair such as renaming `join` or `fork` is declined, `--fix` preserves each binding and use it would change. Independent repairs between those uses still apply.
 
-To fix part of a large package, list the modules: `vibelang --fix --only src/a.vibe,src/b.vibe`, or `--only @batch.txt` with one path per line. Paths are relative to the current directory. The repairs write no other file, even if you interrupt them, so a repair that would create one, such as the sibling `.ts` module of an `EK4402` platform split, is refused for that site with the reason; they check only the listed modules, so they take far less time than a run over the package. A repair that would create a file, such as moving a platform wrapper into a new `.platform-N.ts` module, is refused at its site, and the run keeps its other fixes. The compilation after them still checks the whole project and writes its usual output, such as declaration sidecars. Because the repairs do not check the rest, a fix that breaks a module you did not list is kept, and that compilation reports the error. The report calls the run a partial repair: a clean run does not verify the project. An empty list, or a path that is not a `.vibe` module of the project, stops the run before it writes anything. `--only` does not combine with `--fix-migration-only` or `--fix-vip-only`.
+To fix part of a large package, list the modules: `vibelang --fix --only src/a.vibe,src/b.vibe`, or `--only @batch.txt` with one path per line. Paths are relative to the current directory. The repairs write no other file, even if you interrupt them, with one exception: the `EK4402` platform repair of a listed module creates that module's new `x.platform.ts` companion, as plain `--fix` does, and only when no file of that name exists. The repairs check only the listed modules, so they take far less time than a run over the package. The compilation after them still checks the whole project and writes its usual output, such as declaration sidecars. Because the repairs do not check the rest, a fix that breaks a module you did not list is kept, and that compilation reports the error. The report calls the run a partial repair: a clean run does not verify the project. An empty list, or a path that is not a `.vibe` module of the project, stops the run before it writes anything. `--only` does not combine with `--fix-migration-only` or `--fix-vip-only`.
 
 The VIP-1 migration writes `try` before each call that ran where it stood before VIP-1, whatever the position: a statement, an initializer, a return value, an arm of `?:` or `match`, either side of `??` or `||`, the right side of `&&`, a `do` expression's result, an `effect` arrow's body, a `catch` handler or fallback, an argument, an element or a property value, as in `when Option.None: try die(new Error("missing"))`. A function the old compiler made an Effect function gets `effect`: a declaration, a method, an arrow that initializes an unannotated `const`, or a `catch` handler that ran a call (`catch effect (e) => try load(e.id)`). The `try` before a call of a plain declaration whose result is data, such as an error instance, goes. Where the migration can't tell whether a call ran, as in a callback whose form came from where it was passed, it writes nothing and reports the line as `try not written: …`. Ordinary `vibelang --fix` adds none of these. A returned Effect stays success data without an own `EK4802` warning; write `return try program` explicitly to run it. Own `EK4802` is reserved for inferred Effect arguments at plain generic calls.
 
@@ -188,11 +203,7 @@ Lint leaves existing declaration sidecars and incremental build information unch
 
 The plugin also checks plain `.ts` projects, including schemas built with `Schema.optional` or `Schema.optionalKey`; no `.vibe` file is required. The presence of `.oxlintrc.json` or `oxlint.config.ts` does not change the project, compiler options or diagnostics selected by `vibelang lint -p tsconfig.json`. Native lint help also follows the compiler's options.
 
-An explicit legacy Oxlint adapter invocation, `vibelang lint -c .oxlintrc.json [--deny-warnings] [<path>...]` runs the configuration's `effecttsgo/*` rules on the `.vibe` files under each path and walks the files Oxlint walks for the same invocation. It skips files that `.gitignore` files up to the repository root (a directory with `.git` or `.jj`) and `.git/info/exclude` ignore, the configuration's `ignorePatterns`, the `--ignore-path` file (`.eslintignore` by default, read beside each `.gitignore`) and each `--ignore-pattern` glob. `--no-ignore` turns off the ignore file and the patterns only. Build output such as a package's `dist/` that the repository ignores is not walked, so a copied source there is not reported as outside its project. Exact Unicode filenames such as `src/café.vibe` match in both `overrides[].files` and `ignorePatterns`. A `*` stays within a path segment, `**` crosses segments, `?` matches one character, and `[!…]` negates a character class.
-
-The explicit adapter follows project `references` when finding the configuration that includes a selected file. A solution `tsconfig.json` with `"files": []` can point to `tsconfig.node.json` or another referenced project. This works with automatic discovery and when `-p` selects the solution file or its directory. A file excluded from every selected project still reports that it was not linted and makes the command fail.
-
-In that explicit adapter, a rule the configuration turns on reports a `.vibe` file under its `EK38xx` code, including a rule the [Devtools table](/getting-started/012-devtools) answers with syntax or a build diagnostic: a migrated file that still writes `Effect.succeed(undefined)` under `effecttsgo/effect-succeed-with-void` gets `EK3834`. Imported `effecttsgo/floating-effect` reports once as `EK3801` on selected `.ts` and `.vibe` inputs, using the configured severity. The rules read the program's types, and `vibelang lint` does not print the compiler's own errors, so build referenced projects first (`vibelang -b`): a reference with no built declaration files gives `unknown` types, which `missing-effect-error`, `missing-effect-context` and `missing-layer-context` report as missing Effect errors or services. `missed-pipeable-opportunity` counts no `try` or `catch` as a pipeline stage, though both compile to calls. Builds and the language server keep the table's rule set. `vibelang lint --help` prints this help with or without a configuration.
+Legacy Oxlint adapter flags, including `-c`, `--deny-warnings`, `--ignore-path`, `--ignore-pattern` and `--no-ignore`, report `TS5023`. Select a compiler project with `-p` or `--project`. The separate Oxlint integration uses Oxlint's configuration, overrides and ignore patterns.
 
 Imported Effect warnings make a compiler build exit non-zero and block `noEmitOnError` by default, as in the pinned Effect TypeScript compiler. Suggestions print when `includeSuggestionsInTsc` is `true` and affect a build only when `ignoreEffectSuggestionsInTscExitCode` is `false`.
 
@@ -200,11 +211,11 @@ The plugin's `ignoreEffectErrorsInTscExitCode`, `ignoreEffectWarningsInTscExitCo
 
 `vibelang agents init` also teaches coding agents to run `vibelang lint` before finishing a change.
 
-`vibelang lint` accepts the compiler's options, including `-p`/`--project` and file arguments, and has no options of its own. The unsupported `--config` alias reports `TS5023`; select a compiler project with `-p` or `--project`. Without file arguments, it reads the first of `vibe.config.json`, `tsconfig.json` and `jsconfig.json` in each directory. Explicit files bypass that discovery and use the supplied compiler options, as with the compiler. It reports the same diagnostics as the compiler and the language server. It exits with status `1` on an error. Warnings never change the exit status, so set a code to `"error"` in `vibe.severities` to fail CI. Invalid project settings report their compiler diagnostic and exit with status `2`.
+`vibelang lint` accepts the compiler's options, including `-p`/`--project` and file arguments, and has no options of its own. The unsupported `--config` alias reports `TS5023`; select a compiler project with `-p` or `--project`. Without file arguments, it reads the first of `vibe.config.json`, `tsconfig.json` and `jsconfig.json` in each directory. Explicit files bypass that discovery and use the supplied compiler options, as with the compiler. It reports the same diagnostics as the compiler and the language server. It exits with status `1` on an error. Warnings never change the exit status, so set a code to `"error"` in `vibe.severities` to fail CI. Invalid project settings report their compiler diagnostic and exit with status `1`.
 
 In a `.vibe` file, a rule runs in one of three ways. A rule whose pattern VibeLang's syntax rules out, such as `missingStarInYieldEffectGen`, does not run. A rule that a VibeLang diagnostic already ports runs as that diagnostic at the rule's severity. Every other rule runs as Effect wrote it. [Effect language service rules](/getting-started/012-devtools#effect-language-service-rules) lists each rule's answer.
 
-The explicit Oxlint adapter honors the disable comments a migrated file keeps from its TypeScript, as Oxlint does: `// oxlint-disable-next-line effecttsgo/schema-sync -- why` turns the rule off on the next line, `oxlint-disable-line` on its own line, and `/* oxlint-disable effecttsgo/schema-sync */` until the matching `oxlint-enable`; the `eslint-` spellings work the same, and a comment that names no rule turns every rule off. Builds and the language server read `// @effect-diagnostics-next-line schemaSync:off`.
+Use `// @effect-diagnostics-next-line schemaSync:off` to configure imported diagnostics for a line in builds, the language server and `vibelang lint`. The separate Oxlint integration retains its own conventions for disable comments.
 
 ### Bridge imported validation helpers
 
@@ -214,6 +225,8 @@ An imported TypeScript validation helper may throw even when its return type is
 The `catch` mapping retains the original thrown value, and `Effect.orDie`
 keeps it as a defect. The helper runs when the Effect runs. Do not mark a
 throwing validation helper `@nothrow` to pass a non-throwing callback check.
+
+With `vibelang lint --build --clean`, project outputs are listed as a dry run and existing files stay intact. Ordinary `vibelang --build --clean` removes its selected build outputs as TypeScript does.
 
 ## 3. Compile a first module
 
@@ -229,7 +242,7 @@ export effect function hello(name: string) {
 
 Run `npx vibelang`: it prints nothing, exits with status 0, and writes `hello.js` to the `outDir` (`dist/` above). Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](#let-typescript-tools-read-vibe-modules).
 
-In `.vibe` files, import local modules by their source name: `import { hello } from "./hello.vibe"`. For this CLI build, a `.ts` importer can use `./hello.js`: VibeLang resolves it to `hello.vibe` while checking, and Node loads the emitted `hello.js`. With Vite or Vitest, use `./hello.vibe` from `.ts` too, so the plugin loads the source ([Vite setup](/setup/vite#3-add-a-first-module)); `rewriteRelativeImportExtensions` permits that source extension and rewrites it when emitting JavaScript.
+In `.vibe` files, import local modules by their source name: `import { hello } from "./hello.vibe"`. As for a `.ts` import, that needs `rewriteRelativeImportExtensions`, which also rewrites it to `./hello.js` in emitted JavaScript (or `allowImportingTsExtensions` with `noEmit`). For this CLI build, a `.ts` importer can use `./hello.js`: VibeLang resolves it to `hello.vibe` while checking, and Node loads the emitted `hello.js`. With Vite or Vitest, use `./hello.vibe` from `.ts` too, so the plugin loads the source ([Vite setup](/setup/vite#3-add-a-first-module)); `rewriteRelativeImportExtensions` permits that source extension and rewrites it when emitting JavaScript.
 
 JSX VibeLang sources use `.vibex` with the same `jsx` option as `.tsx`. Runtime and extensionless imports prefer native TypeScript files before VibeLang files:
 
@@ -242,7 +255,7 @@ JSX VibeLang sources use `.vibex` with the same `jsx` option as `.tsx`. Runtime 
 
 TypeScript's `moduleSuffixes`, `paths`, package exports, and resolution mode still apply. Declaration and JavaScript fallbacks follow the source lookup. A written VibeLang extension can also resolve its own compatibility declaration when the source is absent. Wildcard project discovery excludes `App.d.vibex.ts` when `App.vibex` is present, including relocated sidecars; an explicitly listed sidecar stays an input.
 
-A native `.ts` or `.tsx` consumer importing a live `.vibe` or `.vibex` source follows the corresponding `.ts` or `.tsx` source-extension checks. Without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`, a value import reports `TS5097`; `allowArbitraryExtensions` does not permit a live source import. With `rewriteRelativeImportExtensions`, relative JavaScript imports use `.js` (`.jsx` for `.vibex` under `jsx: preserve`). With rewriting disabled, emitted imports keep the written extension. Plain `tsc` reading only a compatibility sidecar uses arbitrary-extension declaration rules instead.
+An importer, whether `.ts`, `.tsx`, `.vibe` or `.vibex`, that names a live `.ts`, `.tsx`, `.vibe` or `.vibex` source follows the `.ts` or `.tsx` source-extension checks. Without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`, a value import reports `TS5097`, as in TypeScript; `allowArbitraryExtensions` does not permit a live source import. With `rewriteRelativeImportExtensions`, relative JavaScript imports use `.js` (`.jsx` for `.vibex` under `jsx: preserve`). With rewriting disabled, emitted imports keep the written extension. Plain `tsc` reading only a compatibility sidecar uses arbitrary-extension declaration rules instead.
 
 Declaration emit imports a prelude module whose name the source uses when an inferred type needs it: for example, `Layer.empty` declares a value of `Layer.Layer<never, never, never>` through an import from `effect`. This also applies with `module: Preserve` and `moduleResolution: Bundler`.
 
@@ -330,9 +343,13 @@ Migration setup excludes generated module-body declarations such as `main.vibe.p
 
 Stock `tsc`, `tsrs`, TypeDoc and other checkers built on TypeScript cannot read a `.vibe` file, so the compiler writes each module's declarations beside it (VIP-27). `vibelang`, `vibelang --watch` and `vibelang -b` write them, `src/greet.d.vibe.ts` for `src/greet.vibe`, even with `--noEmit`. A sidecar is rewritten only when its text changes. Published declarations retain the corresponding TypeScript class surface: generated matcher members and runtime reference directives are not added. Generated matchers remain in JavaScript; VibeLang consumers load the protocol from their own runtime prelude. User-written matcher members retain their TypeScript declarations and explicit dependencies. Its text is the module's declaration file with one change: an import or re-export of another `.vibe` module names its source, `./name.vibe`, even when an unrelated `name.ts`, `name.tsx`, `name.d.ts` or `name.js` sits beside it. An explicit native import keeps its native target. Relative module specifiers are resolved as decoded TypeScript strings, so quoted filenames and Unicode escapes select the same module as the source import. Rewritten paths keep the declaration's quote style and escape that quote when needed. With `vibe.sidecarDir`, relative imports and references are rebased from the sidecar's actual location. Reference directives are relocated and source-map directives removed only in actual line comments; directive-looking text inside string or template literal types and block comments stays unchanged.
 
+Parallel workspace imports share each owning project’s inferred sidecar layout. Compiler traces include `vibeSidecarLayout` spans for these probes, with a project fingerprint and root-file count.
+
 When comparing a published declaration with an ordinary TypeScript implementation, retain the TypeScript source as written. A locally declared non-effectful VibeLang callable adds the generated `@throws {never}` contract. That permitted addition does not excuse changed parameter or return types, changes to authored comments, or additional JSDoc tags.
 
-A TypeScript `module parse { … }` body in `src/main.vibe` also gets `src/main.vibe.parse.d.ts`, beside the source, even with `--noEmit` (VIP-40). A sidecar re-export such as `export { port } from parse` names that declaration through `./main.vibe.parse.js`, so stock `tsc` sees the exported types and TypeScript's JSDoc, including `@throws`. With `vibe.sidecarDir`, the body declaration stays beside the source and the relocated sidecar refers back to it. Wildcard discovery ignores a declaration belonging to a source's module body; an explicitly listed declaration remains an input and is protected from being overwritten. When a declaration's inferred import type names that body's virtual source, a native check reads the body from its owning `.vibe` or `.vibex` file, including after a previous check emitted the body declaration. Written imports of a `.d.ts` file keep naming that declaration.
+A TypeScript `module parse { … }` body in `src/main.vibe` also gets `main.vibe.parse.d.ts` beside the file's sidecar, `src/main.vibe.parse.d.ts` by default, even with `--noEmit` (VIP-40). A sidecar re-export such as `export { port } from parse` names that declaration through `./main.vibe.parse.js`, so stock `tsc` sees the exported types and TypeScript's JSDoc, including `@throws`. With `vibe.sidecarDir`, the body declaration is written at the mirrored path under that directory, beside the relocated sidecar, and changing the layout removes the old copy. Wildcard discovery ignores a declaration belonging to a source's module body; an explicitly listed declaration remains an input and is protected from being overwritten. When a declaration's inferred import type names that body's virtual source, a native check reads the body from its owning `.vibe` or `.vibex` file, including after a previous check emitted the body declaration. Written imports of a `.d.ts` file keep naming that declaration.
+
+A project reference that reads a built `.vibe` or `.vibex` source also reads its named bodies from that project’s declaration output. Type re-exports and inherited interface members remain available with `outDir` or `declarationDir`; a written declaration input keeps its own identity. With `--generateTrace`, `vibeProjectReferenceBodyOutput` records each selected body output, its source kind and whether a previous body declaration was present.
 
 A `schema` declaration's JSDoc is emitted on its constant only; the generated `typeof Name.Type` alias has no comment. This includes visibility and deprecation tags, following ordinary TypeScript declaration emit. One written, nongeneric `type Name = typeof Name.Type` beside either ordinary `schema Name` form replaces the generated alias in the same scope, in either order. The written declarations keep their own comments, order and exports; `removeComments` and `stripInternal` apply as on the native pair. `vibelang --fix` keeps such a documented type when it rewrites the native pair to a `schema` declaration, and removes an undocumented one.
 
@@ -358,7 +375,7 @@ A workspace package can expose a module through its `x.d.vibe.ts` declaration un
 
 This source preference also applies when `moduleSuffixes` places a paired `.d.vibe` fallback after its original suffix. Stock TypeScript keeps its own suffix order, which can select the sidecar before a `.tsx` sibling.
 
-Cyclic inferred declaration types retain TypeScript 5.9/7.0 elision: a repeated anonymous type prints `/*elided*/ any` rather than the new TypeScript 7.1 `TS5088`. Other recursion checks still apply; see [Declaration output](https://vibelang.sh/spec/001-functions#declaration-output).
+Cyclic inferred declaration types retain TypeScript 5.9/7.0 elision: a repeated anonymous type prints `/*elided*/ any` rather than the new TypeScript 7.1 `TS5088`. Nested returned objects retain their structure before cycle elision, and finite reverse mappings retain their complete property types. Other recursion checks still apply; see [Declaration output](https://vibelang.sh/spec/001-functions#declaration-output).
 
 What a sidecar cannot print, such as `TS4094` for a private member of an exported class expression or `TS2883` for a type it can name only through `node_modules`, is an error where the project emits declarations (`declaration` or `composite`): declaration emit writes `any` in its place, and a stock checker that reads the sidecar would accept that `any` silently. A project with neither publishes nothing, so its sidecars name such a type by its path into `node_modules`, which its own checkers resolve. What it still cannot print there, such as `TS4094`, is an error only where a `.ts` file of the project imports the module, as for the same TypeScript under `tsc`, since that file reads the sidecar: it is reported at that import. Annotate the export, or keep the module `.ts`.
 
@@ -491,6 +508,8 @@ native entry. Without the preload, Node cannot parse VibeLang syntax.
 
 ## Run sources with Bun
 
+Imports and re-exports keep source filenames containing spaces, `#`, `%` or Unicode text, including through another `.vibe` module. Each compiled import resolves from its original source spelling. Written `.js` imports keep their native literal filename, including when the same module also imports a different percent-containing source filename.
+
 Bun can run and test the project from source, without `dist/`. Preload `vibelang/bun`, in `bunfig.toml`:
 
 ```toml
@@ -559,9 +578,9 @@ adapter follows a missing source to its `.vibe` sibling. Existing native
 files, in-memory entries, and imports marked external retain their priority.
 Inherited aliases are reread for each build.
 
-### Bun runtime watch limitation
+### Watch source modules in Bun
 
-With Bun 1.4.1, `bun --watch --preload vibelang/bun` does not reliably restart after a `.vibe` save. The preload compiles once per process and does not invalidate that result during watch. For development, use the starter's `npm run dev` or `bun run dev`: its compiler watch and Node process rebuild and restart the app.
+With the `vibelang/bun` preload configured, `bun test --watch` reruns tests after an imported `.vibe` source changes, including through re-exports. `bun --watch --preload vibelang/bun src/main.ts` restarts an application after those changes. Each restart reads the changed source and reuses a cached compile only while its inputs remain unchanged.
 
 Bun sets each test’s time budget through `--timeout`. For service-initialization tests that need more than the default five seconds, use `bun test --timeout 30000`. This changes the test deadline, not the Effect’s cancellation or service lifetime.
 
@@ -601,7 +620,7 @@ test("greeting", () => {
 
 Run `bun test`. Use `Effect.runPromise` in an async test when the Effect is asynchronous; provide any required services before running it.
 
-Typed ESLint integration follows the same config discovery: `typedProgram()` checks `vibe.config.json`, `tsconfig.json`, then `jsconfig.json` in each directory, starting at `tsconfigRootDir`. Set `project` to select an explicit config file.
+Typed ESLint integration follows the same config discovery: `typedProgram()` checks `vibe.config.json`, `tsconfig.json`, then `jsconfig.json` in each directory, starting at `tsconfigRootDir`. Set `project` to select an explicit config file. The compiler's compatibility sidecars keep native imports distinct from neighbouring TypeScript files and follow configured sidecar locations.
 
 For VIP-22, interruption blocks outside effect code report `EK2201`. The old compiler emitted them as ordinary JavaScript blocks. `vibelang --fix` removes only the `uninterruptible`, `interruptible` or `restore` keyword there, retaining the block, comments, scope and control flow. The migration also runs under `--fix-vip-only`. To mask an Effect instead, move the block into an `effect` function or `effect { }` block.
 
@@ -610,6 +629,8 @@ For VIP-2, `vibelang --fix` also migrates a `do { … }` used as an Effect argum
 The `--fix-vip-only` pass reads pre-VIP-1 code and preserves the old call's run phase: it removes a known wrapper's run even when its result was an error value or another Effect. It refuses unknown provenance. Ordinary `--fix` keeps intentional `try` operations in current source. A non-Effect operand keeps `EK0502`; no `asEffect()` call is guessed.
 
 The `--fix` command changes only your project's `.vibe` and `.vibex` program sources and eligible owned configs. For an inherited configuration, repository ownership is bounded by the nearest `.jj` or `.git` marker; without one, only the selected project's directory is owned. A parent configuration outside that boundary remains unchanged. It includes owned imported sources even when excluded from root discovery, and never edits dependency configs under `node_modules`, foreign TypeScript/JavaScript, generated declarations or another referenced project's files. `vibelang --help`, `vibelang -h`, and their `--all` forms describe project repairs in build order and the `--watch` restriction.
+
+For local per-span refusal audits, set `VIBELANG_FIX_AUDIT_DIR` as described in [Devtools](/getting-started/012-devtools). Each run retains the intermediate source and native fix phase/round in private artifacts without printing source in diagnostics. Logged migration attempts request these artifacts automatically.
 
 With `vibelang --build --fix tsconfig.json`, projects are fixed separately in build order, including each project's eligible config migrations, before the normal build. A shared dependency is repaired once. The repair report identifies each project and its position in that order. Build-only options such as `--force` retain their normal meaning; `--dry`, `--clean` and `--help` apply no repairs. Cyclic project references are reported before repairs write anything. `--fix --only` validates its complete file list before repairing each listed module in its owning project; it writes no configs. `--watch` remains incompatible with `--fix`. The platform repair can create a new absent sibling `.ts` file when it proves preservation, but never overwrite one.
 
@@ -627,9 +648,13 @@ When emitted-import routing is enabled, migration planning can include library d
 
 The migration flow keeps only the selected batch's fixes. It lists the compiler project's VibeLang sources and dependency closure before the fix loop and restores earlier batches within that graph on every exit, including interruption. Concurrent calls in one flow process take turns when their source graphs overlap; disjoint projects can fix their files together. The `*.scope.log` receipt records project discovery and when the fix acquires and releases its source graph. Projects above `240` modules normally use import-closed temporary projects for selected roots. If a selected import closure exceeds that cap, the flow fixes the original project so every root, including retained TypeScript and TSX importers, stays in the compiler's safety check. The `mode` and `fallback` receipts record this choice and its closure size. The same timeout and fix limits apply; use a box with enough memory for the full project. A selected module outside every configured project is reported in `fix.uncovered`; the fix pass fails and preserves its source. Include its actual project in the migration run before retrying. Project membership comes from the compiler's `--listFilesOnly` result. An import that resolves to a declaration does not authorize fixing the corresponding source, even when the migration graph reaches it. Temporary shards keep the same membership boundary, and each project's `membership` receipt links its discovery log.
 
+A global `TS6059` diagnostic does not prevent fix scope discovery when the compiler returns the complete source list. The diagnostic can name a compiler-only namespace input. The `*.scope.log` receipt retains the source error, and normal checking still reports it. Unreadable configurations and incomplete output stop discovery.
+
 Temporary fixing projects list only roots from the original project; imported TypeScript and VibeLang dependencies remain imports. This preserves `rootDir` checks and declaration-backed views. If retained roots cannot reach a selected module, the flow keeps the original project. Each shard receipt lists its `roots` separately from its dependency closure.
 
 A local `const` retained after a platform split keeps the imported value's exact type, including unique-symbol keys, and its original declaration position. This preserves computed-property access and narrowing in closures.
+
+A value initialized by a moved concrete factory keeps its inferred member documentation through `ReturnType<typeof factory>`. The call stays in its original position. Written result annotations stay unchanged; the migration keeps the module in TypeScript when a generic or overloaded factory, a contextually typed function, or a shadowed `ReturnType` prevents a safe preserving annotation.
 
 Migration into a TypeScript module body keeps merged declarations in one lexical scope. A class, function or enum moved into the body takes its type-only namespace companions, including reopened and nested namespaces. Namespace-local types keep their scope. A companion with runtime initialization prevents the split, preserving the original statement order.
 
@@ -665,6 +690,8 @@ During migration, a generated source-child helper that cannot safely move to a p
 
 ## Legacy readonly upgrade
 
+For existing packages with `"name": ""`, `vibelang --fix --fix-legacy-service-keys` also writes the service keys that older compilers derived from the package directory. This retains runtime lookup, declaration key types, and writable shape properties. The option requires `--fix` and respects `--only`. Newly authored services derive their key from the empty package name, including its leading `/`; ordinary `--fix` leaves that identity intact.
+
 Use `vibelang --fix --fix-migration-only` on existing `.vibe` source to preserve the former readonly defaults of schema fields and service shape properties. It adds `readonly` to their unmarked fields, including the keys of a nested schema in a `schema error` payload. Error and data fields are already readonly at the property only; the upgrade writes explicit modifiers on nested payload and error method-type members that the pre-pin compiler made readonly so published declarations stay identical. Ordinary classes, interfaces and object types outside these declarations retain their written modifiers. Normal checking and ordinary `--fix` use shallow readonlyness and keep schema fields and service properties writable unless written `readonly`. Combined with `exactOptionalPropertyTypes`, the upgrade preserves both readonly fields and acceptance of explicitly written `undefined`.
 
 For example, `interface Options { name: string; readonly id: number }` keeps `name` writable and `id` readonly after the upgrade. The same rule applies inside ordinary nested object types, index signatures, mapped types, classes and namespaces; only the legacy schema, service, error and data shapes above receive restored defaults.
@@ -693,3 +720,20 @@ A configuration with an assigned `EK38xx` entry in `vibe.severities` and no reso
 The readonly source upgrade interprets existing members using their pre-flip defaults before establishing the diagnostic baseline. A pre-existing invalid schema codec can expose downstream diagnostics when its former readonly API is restored; those diagnostics remain visible. The report counts the fields upgraded. Codec expansions and all other repairs still use the project-wide no-new-errors gate.
 
 For an imported `EK3801` diagnostic in a `.vibe` file, ordinary `--fix` writes `void (expression)`. The expression is still evaluated once and the Effect remains unrun; use `try` explicitly when execution is intended.
+
+
+## Profile compilation
+
+`vibelang --generateCpuProfile compiler.cpuprofile` writes native compiler CPU samples in Chrome CPU-profile JSON format. The option also works with `--build`, and the profile is written when compilation reports source errors. Parent output directories are created as needed. An existing directory receives a timestamped profile file, as in TypeScript; an unwritable destination makes the command fail with a diagnostic.
+
+The native runtime aggregates repeated stacks. The exported call tree keeps their sample counts and duration without inventing a chronological sample timeline. For Go CPU and memory profiles, use `--pprofDir profiles` instead. Choose one profiler per command; these two options cannot be combined.
+
+Build-mode paths, including `--generateCpuProfile`, `--generateTrace` and `--pprofDir`, resolve relative to the command working directory. Paths read from response files use that same directory. Absolute paths retain their location.
+
+The `--pprofDir` option reports directory creation, CPU-profile startup and profile-output failures as command errors. A failed profiling destination does not produce an uncaught stack trace, and a failure while finishing the profiles makes an otherwise successful compilation fail.
+Use `vibelang --lsp --help` to inspect language-server options without starting a server or selecting a transport. The `-h` alias has the same successful exit status.
+The language server communicates through `--stdio`. Its `--pipe` and `--socket` options are reserved for compatibility; requesting either without `--stdio` reports that only standard input/output is supported.
+
+With `--build --generateTrace traces`, each project that is compiled writes `trace.json`, `types_*.json` and `legend.json` in its own `project-*` subdirectory under `traces`. The legend identifies the project's configuration file and its trace/type files. Separate directories preserve output when projects build concurrently. Up-to-date, dry-run and clean-only projects do not compile, so they do not create traces.
+
+For a printed imported lint code, look up its rule and repair message in the [imported lint diagnostic reference](/vibelang-features/imported-lint-diagnostics).

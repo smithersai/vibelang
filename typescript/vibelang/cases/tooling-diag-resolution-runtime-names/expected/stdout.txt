@@ -1,0 +1,1 @@
+runtime names reach .vibe and .vibex as their .ts twins; ./x.ts keeps native candidates and never VibeLang source

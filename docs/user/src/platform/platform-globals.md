@@ -1,14 +1,16 @@
 # Platform globals in VibeLang
 
-Node.js reaches a `.vibe` file only through Effect's services, which a layer provides, or by escaping to TypeScript: a `.ts` file. So Node.js's globals, such as `process`, `Buffer`, `require`, and `__dirname`, and the web's globals that do I/O or read the clock or randomness, such as `fetch`, `setTimeout`, `crypto`, `performance`, and `localStorage`, are not in scope in a `.vibe` file, and a `.vibe` file does not import a Node.js built-in module, such as `node:fs` or `fs`, as a value. Each use is `EK4402`, and the error names what replaces it. A type-only import, as in `import type { Server } from "node:http"`, stays allowed, and `.ts` files keep every global. With `verbatimModuleSyntax` enabled, `import { type Server } from "node:http"` and `import {} from "node:http"` keep an empty runtime import and report `EK4402`. The quick fix and `vibelang --fix` rewrite type bindings to a whole `import type` clause, preserving aliases and comments. An explicit empty import has no type bindings to rewrite: move that dependency into TypeScript. With import elision enabled, already-erased imports remain allowed.
+Node.js reaches a `.vibe` file only through Effect's services, which a layer provides, or by escaping to TypeScript: a `.ts` file or a native `module` declaration. So Node.js's globals, such as `process`, `Buffer`, `require`, and `__dirname`, and the web's globals that do I/O or read the clock or randomness, such as `fetch`, `setTimeout`, `crypto`, `performance`, and `localStorage`, are not in scope in a `.vibe` file, and a `.vibe` file does not import a Node.js built-in module, such as `node:fs` or `fs`, as a value. Each use is `EK4402`, and the error names what replaces it. Object-rest bindings create new local objects: `const { ...timeout } = AbortSignal` does not select `AbortSignal.timeout`, regardless of the local binding's name. Selecting that method explicitly still reports `EK4402`. Selecting a host method through a nested pattern, such as `const { timeout: { name } } = AbortSignal`, reads that method before its metadata and reports `EK4402`. For eligible leading `const` bindings in an ES module, the quick fix and `vibelang --fix` retain the same eager reads and live bindings in a native `module` declaration. Captured or annotated initializers, other runtime dependencies, documentation or directives, and other module formats need an explicit TypeScript boundary. A type-only import, as in `import type { Server } from "node:http"`, stays allowed, and `.ts` files keep every global. With `verbatimModuleSyntax` enabled, `import { type Server } from "node:http"` and `import {} from "node:http"` keep an empty runtime import and report `EK4402`. The quick fix and `vibelang --fix` rewrite type bindings to a whole `import type` clause, preserving aliases and comments. An explicit empty import has no type bindings to rewrite: move that dependency into TypeScript. With import elision enabled, already-erased imports remain allowed.
 
 The same boundary applies to `import FS = require("node:fs")`, including an unused alias and `export import`. A type-only alias, such as `import type FS = require("node:fs")`, stays allowed. When the alias has only type uses or no uses, `vibelang --fix` writes `import type`; a value use or re-export keeps the diagnostic and its service advice. Internal aliases such as `import Alias = Local` and ordinary package imports keep TypeScript's behavior.
+
+With `verbatimModuleSyntax`, `export { type Stats } from "node:fs"` and `export {} from "fs"` retain runtime loads and report `EK4402`. The quick fix and `vibelang --fix` retain each runtime dependency in a side-effect-imported native `module` declaration and keep type bindings in a whole `export type` clause. Aliases and comments within the export are preserved; exports with attributes, leading JSDoc or tool directives need a manual boundary. With import elision enabled, these inline type and empty re-exports remain allowed.
 
 ECMAScript's built-ins stay: `Array`, `Map`, `Set`, `JSON`, `Math`, `Promise`, `Symbol`, `Date`, `Intl`, and the rest, including `Date.now()`, `Date()`, `new Date()`, and `Math.random()`. `Temporal.Now` reads stay available when the selected ECMAScript library declares `Temporal`. A test can't control those reads, so code under test reads time through `try Clock.currentTimeMillis` and randomness through `try Random.next`. `Intl` is an ECMAScript library declaration and needs no web-utility allowlist entry. A closed list of the web's pure helpers stays too, because they touch nothing outside the program: `URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `AbortController`, `AbortSignal`, `Intl`, `atob` and `btoa`. Every other web or Node.js global, such as `Blob`, `FormData`, `EventTarget` and the web streams, is EK4402 as a value. In a value position, bare `Headers`, `Response` and `Event` name Effect's namespaces from its subpaths; as types they keep the DOM's meaning.
 
 The restriction covers the whole file, including plain and `async` functions and the bodies passed to `Effect.try`, `tryPromise`, `sync` and `callback`. Wrapping a host read changes its failure handling, not its platform access. Keep native timer registration and cancellation in a sibling `.ts` adapter when testing a `callback` finalizer. For an Effect wrapper, `vibelang --fix` creates a new TypeScript adapter and keeps the public declaration and deferred execution. It moves a self-contained wrapper whole. When the wrapper reads a binding of the file, it moves only the platform call. See [the platform introduction](105-introduction.md).
 
-The migrate flow moves a direct `import.meta.resolve(specifier)` call into a fresh `<source>.platform.ts` function before renaming the source. The call stays inside its original callback and `try`/`catch`, so captured inputs and deferred execution stay unchanged. A source wildcard export map gains an exact `null` entry for the new helper subpath to keep it private; revert removes that entry. Existing companions, unsupported `import.meta` uses and publication layouts the flow cannot prove safe receive a refusal. `import.meta.url` stays in the original module.
+The migrate flow moves a module's `import.meta` reads into a fresh `<source>.platform.ts` companion before renaming the source. A direct `import.meta.resolve` call with one or two arguments calls a companion function instead. Its arguments stay where they were, inside the original callback and `try`/`catch`, so captured inputs and deferred execution stay unchanged. `import.meta.filename` and `import.meta.dirname` become companion calls that receive the module's own `import.meta.url`, so they still name the module, and they stay `undefined` for a URL other than `file:`, as in Node.js. `import.meta.env` becomes a companion call that returns the build's environment. Code that reads `import.meta.filename` or `import.meta.dirname` never moves into the companion itself, where it would name the companion. A source wildcard export map gains an exact `null` entry for the new helper subpath to keep it private; revert removes that entry. Existing companions, `import.meta.main`, writes to `import.meta` members, other unsupported `import.meta` uses and publication layouts the flow cannot prove safe receive a refusal. `import.meta.url` stays in the original module. Code that reaches the platform and reads `import.meta.url` stays in the module too: only its host calls and reads move, so `import.meta.url` still names the module.
 
 Platform repairs from one source share one fresh `<source>.platform.ts` companion. Explicit `sync` inputs stay evaluated at the original call site, in order; the callback still runs only when its Effect runs. A callback that captures other bindings or a lexical receiver keeps the existing preservation checks, and an existing foreign module is never rewritten. During migration, host access inside formerly accepted boundary callbacks reports an `EK4402` warning; `--fix` and `--fix-migration-only` can repair explicit-input writes and deletes such as restoring `process.env`. Unwrapped host access remains an error.
 
@@ -24,7 +26,9 @@ Adding a type-only host interface augmentation in a `.ts` or `.d.ts` file does n
 
 ## Replacements
 
-Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. EK4402 reads the same table. In effect code, `try` runs an Effect value. Get a service first, then call its members. In effect code, `vibelang --fix` writes a `console` call as Effect's `Console`, which needs no layer: `console.error("failed:", name)` becomes `try Console.error("failed:", name)`.
+Console replacement advice includes `try`: `Console.log(message)` builds a logging Effect, and `try Console.log(message)` runs it in effect code. If implicit Effect modules are disabled, import `Console` from `effect` first.
+
+Each row says what replaces a global or one of its members: an Effect API first, then VibeLang's experimental service where Effect lacks one, then the escape to TypeScript, with the reason. The compiler's `EK4402` advice names these APIs; the guide runs Effect values with `try` and explains where native behavior needs a TypeScript adapter. In effect code, `try` runs an Effect value. Get a service first, then call its members. In effect code, `vibelang --fix` writes a `console` call as Effect's `Console`, which needs no layer: `console.error("failed:", name)` becomes `try Console.error("failed:", name)`.
 
 FileSystem advice gets the implementation with `try FileSystem.FileSystem` before calling a member. Run a returned Effect with `try`, as in `try (try FileSystem.FileSystem).readFileString(path)`. The module `FileSystem` supplies the service key; its methods belong to the retrieved implementation.
 
@@ -35,6 +39,7 @@ FileSystem advice gets the implementation with `try FileSystem.FileSystem` befor
 | `BroadcastChannel` | escape to TypeScript for now: Effect has no service for messages between browser tabs; a Worker carries messages to a worker. |
 | `Buffer` | `new TextEncoder().encode(text)` |
 | `Buffer.alloc` | `new Uint8Array(size)` |
+| `Buffer.byteLength` | `new TextEncoder().encode(text).length` |
 | `Buffer.concat` | `new Uint8Array([...a, ...b])` |
 | `Buffer.from` | `new TextEncoder().encode(text)` |
 | `Bun` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
@@ -242,6 +247,7 @@ effect function replacements(
   const roll = try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })
   const digest = try (try Digest.Digest).digest(Digest.sha256, bytes)
   const encoded = new TextEncoder().encode(text)
+  const byteLength = new TextEncoder().encode(text).length
   const empty = new Uint8Array(size)
   const joined = new Uint8Array([...a, ...b])
   const response = try HttpClient.get(url)
@@ -254,7 +260,7 @@ effect function replacements(
   try yieldNow
   const fiber = fork effect { try repeat(program, Schedule.spaced("1 second")) }
   try Fiber.interrupt(fiber)
-  return { name, args, directory, here, file, line, random, id, roll, digest, encoded, empty, joined, response, socket, stored, events, millis, nanos }
+  return { name, args, directory, here, file, line, random, id, roll, digest, encoded, byteLength, empty, joined, response, socket, stored, events, millis, nanos }
 }
 ```
 
@@ -414,12 +420,12 @@ export function loadModule(specifier: string) {
 ```
 
 ```vibe
-// fragment
-// pending: VIP-1, VIP-4, VIP-5, VIP-14
+// run: const value = try loadData(); try Console.log(value.default)
 import { loadModule } from "./load-module.ts"
 effect function loadData() {
   return try Effect.tryPromise(() => loadModule("data:text/javascript,export default 1"))
 }
+// Output: 1
 ```
 
 A computed `import(specifier)` stays unchecked by this rule. Type-level `import(…)` queries keep their TypeScript meaning.
@@ -439,3 +445,7 @@ To construct a native `Request` at a different URL while retaining its body, hea
 ### Scoped IPv6 predicates
 
 Replace `node:net`'s `isIPv6` with the pure `Experimental.NetAddress.isIPv6(address)` when Node's scoped-host syntax must be retained. It needs no layer or `try`. It delegates bare IPv6 parsing to Effect and preserves Node's ASCII zone syntax, including numeric scope strings beyond the unsigned 32-bit range. Effect's own `NetAddress.ipv6FromString` remains the bare-address decoder.
+
+Object shorthand keeps a host alias's identity: reading `{ timeout }` after `const timeout = AbortSignal.timeout` has the same platform restriction as reading `timeout` directly. A local parameter or another shadowing binding keeps its own meaning.
+
+A type query such as `typeof timeout` is erased and does not read the host, even when `timeout` aliases `AbortSignal.timeout`. Value uses of the same alias still follow the platform rule.

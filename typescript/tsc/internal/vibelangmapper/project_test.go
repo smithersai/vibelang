@@ -171,22 +171,22 @@ var projectionCases = []struct {
 	{
 		name:    "concurrent unbounded with continue",
 		source:  "function f(xs: number[]) { for concurrent (const x of xs) { if (x) continue; } }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;(yield* $run(Effect.forEach(xs, (x) => $gen(function* () { if (x) return; }), { concurrency: \"unbounded\", discard: true }))); })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;(yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { if (x) return; } }), { concurrency: \"unbounded\", discard: true }))); })}",
 	},
 	{
 		name:    "concurrent bounded single statement",
 		source:  "function f(xs: number[]) { for concurrent(2) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = 2; (yield* $run(Effect.forEach(xs, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), { concurrency: $concurrency, discard: true }))); } })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = 2; (yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { ;(yield* $run(log(x)));  } }), { concurrency: $concurrency, discard: true }))); } })}",
 	},
 	{
 		name:    "concurrent written undefined single statement",
 		source:  "function f(xs: number[]) { for concurrent(undefined as any) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = undefined as any; (yield* $run(Effect.forEach(xs, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), { concurrency: $concurrency, discard: true }))); } })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = undefined as any; (yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { ;(yield* $run(log(x)));  } }), { concurrency: $concurrency, discard: true }))); } })}",
 	},
 	{
 		name:    "concurrent written null single statement",
 		source:  "function f(xs: number[]) { for concurrent(null as any) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = null as any; (yield* $run(Effect.forEach(xs, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), { concurrency: $concurrency, discard: true }))); } })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = null as any; (yield* $run(Effect.forEach(xs, ($concurrentItem) => $gen(function* () { const x = $concurrentItem; { ;(yield* $run(log(x)));  } }), { concurrency: $concurrency, discard: true }))); } })}",
 	},
 	{
 		name:    "all takes its array elements by name",
@@ -1125,14 +1125,14 @@ func TestConcurrentContinueRegions(t *testing.T) {
 	}
 }
 
-// TestJoinAnnotatedFactory uses a function's written value channel after
-// its Effect runs, while a held Effect itself remains an invalid join leaf.
+// TestJoinAnnotatedFactory keeps a plain factory call as the native Fiber
+// argument, without adding an implicit Effect execution step.
 func TestJoinAnnotatedFactory(t *testing.T) {
-	source := "declare function make(): Fiber.Fiber<number>!!; function f() { return join make() }"
+	source := "declare function make(): Fiber.Fiber<number>; effect function f() { return join make() }"
 	projection := Project(source, testContext)
 	assert.Equal(t, len(projection.Diagnostics), 0, "%v", projection.Diagnostics)
 	assertParses(t, projection.Text)
-	assert.Assert(t, strings.Contains(projection.Text, "$join((yield* $run(make())))"), "%s", projection.Text)
+	assert.Assert(t, strings.Contains(projection.Text, "$join(make())"), "%s", projection.Text)
 }
 
 // TestFiberFormsInSynthesizedExpressions keeps fiber operations in do and

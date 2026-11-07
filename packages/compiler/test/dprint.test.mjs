@@ -45,7 +45,7 @@ const run = (dir, ...args) => spawnSync(dprint, args, { cwd: dir, encoding: "utf
 
 test("dprint check fails on an unformatted .vibe file and dprint fmt formats it", { skip }, () => {
   const dir = project({
-    "a.vibe": "function f(): string!Gone {\n    return withSpan('x') { return g() catch (e) => match (e) { when Gone: \"g\"; } }\n}\n",
+    "a.vibe": "function f(): string!Gone {\n    return withSpan('x', () => { return g() catch (e) => match (e) { when Gone: \"g\"; } })\n}\n",
     "b.ts": "export const b = 1\n"
   })
   try {
@@ -56,7 +56,7 @@ test("dprint check fails on an unformatted .vibe file and dprint fmt formats it"
     const fmt = run(dir, "fmt")
     assert.equal(fmt.status, 0, fmt.stdout + fmt.stderr)
     assert.equal(readFileSync(join(dir, "a.vibe"), "utf8"),
-      "function f(): string!Gone {\n  return withSpan(\"x\") {\n    return g() catch (e) => match (e) { when Gone: \"g\"; }\n  }\n}\n")
+      "function f(): string!Gone {\n  return withSpan(\"x\", () => {\n    return g() catch (e) => match (e) { when Gone: \"g\"; }\n  })\n}\n")
     const again = run(dir, "check")
     assert.equal(again.status, 0, again.stdout + again.stderr)
   } finally {

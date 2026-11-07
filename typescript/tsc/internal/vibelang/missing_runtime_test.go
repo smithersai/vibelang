@@ -95,6 +95,7 @@ func TestMissingRuntimeDependency(t *testing.T) {
 						t.Fatalf("dependency message: %s", d.String())
 					}
 				}
+				// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#313dd1003a2ff858 | A compilation that needs `vibelang-runtime` and cannot resolve it fails with one error naming the package (`TS2307`), as a missing dependency does in TypeScript, not with an unresolved name per compiler-generated helper.
 				if len(printed) != len(tc.codes) {
 					t.Fatalf("diagnostics=%v; want error codes=%v", summary, tc.codes)
 				}

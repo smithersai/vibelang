@@ -1,0 +1,8 @@
+import { trusted } from "vibelang-runtime"
+import { measure } from "./helpers.ts"
+
+const measured = trusted(measure, [])
+
+export effect function main() {
+  return measured("abc")
+}

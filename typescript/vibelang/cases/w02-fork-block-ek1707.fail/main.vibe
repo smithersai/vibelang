@@ -1,0 +1,11 @@
+// expect: EK1707
+// rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | | `EK1707` | Bare `fork { … }` | `fork effect { … }`; explicit Effect operands stay unchanged (VIP-2, VIP-17).
+// rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | For these retirements and the mutable-marker, receiver-method and prelude-shorthand retirements above, enforcement waits until preserving codemods ship and every migration repository has zero remaining uses.
+// rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | This states the target, not completion of implementation or consumer migration.
+// A bare fork block is the retired form; the explicit Effect block beside it
+// is the accepted spelling and adds no diagnostic.
+export effect function main() {
+  const child = fork { return 7 }
+  const explicit = fork effect { return 8 }
+  return [join child, join explicit]
+}

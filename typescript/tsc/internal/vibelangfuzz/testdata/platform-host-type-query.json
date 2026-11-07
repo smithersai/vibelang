@@ -1,0 +1,263 @@
+[
+  {
+    "Key": "AbortSignal-timeout-direct",
+    "Source": "const held = AbortSignal.timeout;\nexport type Read = typeof held;\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-return",
+    "Source": "const held = AbortSignal.timeout;\nexport type Read = ReturnType<typeof held>;\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-parameters",
+    "Source": "const held = AbortSignal.timeout;\nexport type Read = Parameters<typeof held>;\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-interface",
+    "Source": "const held = AbortSignal.timeout;\nexport interface Read { value: typeof held }\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-tuple",
+    "Source": "const held = AbortSignal.timeout;\nexport type Read = [typeof held];\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-array",
+    "Source": "const held = AbortSignal.timeout;\nexport type Read = (typeof held)[];\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-intersection",
+    "Source": "const held = AbortSignal.timeout;\nexport type Read = typeof held & { readonly label?: string };\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-constraint",
+    "Source": "const held = AbortSignal.timeout;\nexport function read<T extends typeof held>() { return 1 }\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-value",
+    "Source": "const held = AbortSignal.timeout;\nexport const result = held;\n",
+    "Spans": [
+      "AbortSignal.timeout",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-shorthand",
+    "Source": "const held = AbortSignal.timeout;\nexport const result = { held };\n",
+    "Spans": [
+      "AbortSignal.timeout",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-global-query",
+    "Source": "export type Read = typeof AbortSignal.timeout;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-receiver-query",
+    "Source": "const Receiver = AbortSignal;\nexport type Read = typeof Receiver.timeout;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-local-query",
+    "Source": "declare const held: typeof AbortSignal.timeout;\nexport type Read = typeof held;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-direct",
+    "Source": "const held = URL.createObjectURL;\nexport type Read = typeof held;\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-return",
+    "Source": "const held = URL.createObjectURL;\nexport type Read = ReturnType<typeof held>;\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-parameters",
+    "Source": "const held = URL.createObjectURL;\nexport type Read = Parameters<typeof held>;\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-interface",
+    "Source": "const held = URL.createObjectURL;\nexport interface Read { value: typeof held }\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-tuple",
+    "Source": "const held = URL.createObjectURL;\nexport type Read = [typeof held];\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-array",
+    "Source": "const held = URL.createObjectURL;\nexport type Read = (typeof held)[];\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-intersection",
+    "Source": "const held = URL.createObjectURL;\nexport type Read = typeof held & { readonly label?: string };\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-constraint",
+    "Source": "const held = URL.createObjectURL;\nexport function read<T extends typeof held>() { return 1 }\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-value",
+    "Source": "const held = URL.createObjectURL;\nexport const result = held;\n",
+    "Spans": [
+      "URL.createObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-shorthand",
+    "Source": "const held = URL.createObjectURL;\nexport const result = { held };\n",
+    "Spans": [
+      "URL.createObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-global-query",
+    "Source": "export type Read = typeof URL.createObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-receiver-query",
+    "Source": "const Receiver = URL;\nexport type Read = typeof Receiver.createObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-local-query",
+    "Source": "declare const held: typeof URL.createObjectURL;\nexport type Read = typeof held;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-direct",
+    "Source": "const held = URL.revokeObjectURL;\nexport type Read = typeof held;\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-return",
+    "Source": "const held = URL.revokeObjectURL;\nexport type Read = ReturnType<typeof held>;\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-parameters",
+    "Source": "const held = URL.revokeObjectURL;\nexport type Read = Parameters<typeof held>;\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-interface",
+    "Source": "const held = URL.revokeObjectURL;\nexport interface Read { value: typeof held }\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-tuple",
+    "Source": "const held = URL.revokeObjectURL;\nexport type Read = [typeof held];\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-array",
+    "Source": "const held = URL.revokeObjectURL;\nexport type Read = (typeof held)[];\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-intersection",
+    "Source": "const held = URL.revokeObjectURL;\nexport type Read = typeof held & { readonly label?: string };\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-constraint",
+    "Source": "const held = URL.revokeObjectURL;\nexport function read<T extends typeof held>() { return 1 }\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-value",
+    "Source": "const held = URL.revokeObjectURL;\nexport const result = held;\n",
+    "Spans": [
+      "URL.revokeObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-shorthand",
+    "Source": "const held = URL.revokeObjectURL;\nexport const result = { held };\n",
+    "Spans": [
+      "URL.revokeObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-global-query",
+    "Source": "export type Read = typeof URL.revokeObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-receiver-query",
+    "Source": "const Receiver = URL;\nexport type Read = typeof Receiver.revokeObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-local-query",
+    "Source": "declare const held: typeof URL.revokeObjectURL;\nexport type Read = typeof held;\n",
+    "Spans": []
+  }
+]

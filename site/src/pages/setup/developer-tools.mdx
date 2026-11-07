@@ -8,7 +8,13 @@ description: "The migration setup extends the repository's existing format and l
 The migration setup extends the repository's existing format and lint scripts,
 rather than accepting a green command that skips VibeLang.
 
+An included source outside the compilation root reports that boundary directly. Set the root to a directory containing the source, or give an external source package its own `package.json` and `tsconfig.json`; changing an already-correct `include` is unnecessary.
+
 ## Build entry points
+
+Write an explicit runner such as `Effect.runSync(main())` at the application
+entry. Bundlers execute that call; exporting or importing a function named
+`main` does not start it.
 
 When setup removes an old loader wrapper from a shell probe but keeps a sibling launch of TypeScript or VibeLang sources, it refreshes the retained helper in the same pass. Replaying setup leaves the resulting file unchanged.
 
@@ -25,6 +31,20 @@ The Rolldown plugin excludes generated `.d.vibe.ts` sidecars from build
 entries, including expanded `tsdown` entry globs. Array order and named
 entry aliases stay as configured; `.ts` and `.vibe` sources still build.
 Use the `.vibe` source when choosing a single entry.
+
+In bundler watch mode, creating a missing relative source also triggers a rebuild. Rollup continues watching source, type-only dependencies and configuration after recovering from errors. This includes directory indexes and source imports written with their emitted `.js` extension. Set `VIBELANG_UNPLUGIN_DEBUG=1` to see which missing source candidates the plugin watches.
+
+Explicit `.vibex` imports work through `vibelang-unplugin`, including module queries and dependencies whose imports rewrite to `.js` or `.jsx`. The esbuild adapter applies the project's effective JSX settings when output preserves JSX and retains original source maps. Ordinary TypeScript sources keep their resolution priority when filenames share a stem.
+
+Source maps in esbuild bundles keep original source filenames, including Unicode, spaces and literal `%` sequences, when Node prints mapped stack traces.
+
+Existing `import.meta.hot.accept` dependency handlers keep updates inside the page and preserve its state when a VibeLang dependency changes. Ordinary TypeScript dependency updates continue through Vite's normal hot-reload handling.
+
+Diagnostics from source loaders retain their source details and exclude compiler file-list output.
+
+For a custom compiler, set `VIBELANG_BINARY` to its native executable. Selecting the package's JavaScript launcher reports an error before another compiler starts.
+
+Imports between `.vibe` modules preserve Unicode, spaces and literal `%` in file names through bundler builds. Use the original source name in the import. Literal JavaScript import names retain TypeScript's filename meaning. Importing `./créé.vibe` and `./cr%C3%A9%C3%A9.js` in the same module keeps the source and literal JavaScript file distinct.
 
 For programmatic Rolldown builds, `vibelang-unplugin/rolldown` uses
 Rolldown's `cwd` as its default compiler root. A plugin `project` path is
@@ -174,7 +194,9 @@ learns the `.vibe` extension and its parser. A TypeScript glob on a script's
 `--no-error-on-unmatched-pattern`. A configuration in another shape, such as
 `module.exports`, gets a setup warning instead. A test's fixtures stay as they are.
 
-For `for concurrent`, the lint tree retains the written limit expression and item scope. Compiler-generated cache names are marked as synthetic, so scope rules inspect your own identifiers.
+For `for concurrent`, the lint tree retains the written limit expression and item scope. Compiler-generated cache names are marked as synthetic, so scope rules inspect your own identifiers. The `8` in `for concurrent(8)` has the `Numeric` token kind.
+
+TypeScript module bodies retain the stock lint parser's JSDoc type nodes and source ranges.
 
 The lint parser reports `EK1010` for an unparenthesized throw expression before a comma. Write `[(throw error), value]` or apply `vibelang --fix`; the grouped form remains visible to lint rules.
 
@@ -187,6 +209,10 @@ package that installs Knip or sets a `knip` key in `package.json` a
 `knip.config.ts` with the `vibelang/knip` compiler. A `--config` that names a JSON
 file replaces it, and a JSON file cannot hold a compiler, so Knip then does not
 read `.vibe` modules: such a command needs a JavaScript configuration.
+
+Default aliases such as `export default value` keep their named binding. Knip
+can report the named and default exports as duplicates, matching TypeScript;
+its unused-export findings and JSDoc tags keep their usual meaning.
 
 For an installed Knip release whose compiled-output mapper searches only its
 built-in extensions, setup also writes a versioned patch under `patches/` and
@@ -234,18 +260,28 @@ invocation's `--deny-warnings` or `--max-warnings 0` policy. Running setup
 again refreshes its generated configurations and passes. When a local JS plugin is
 migrated, setup preloads `vibelang/register` separately for Oxlint and each
 generated ESLint command, so both Node processes can import its `.vibe`
-modules. The preload retains existing `NODE_OPTIONS`. Direct `oxlint`, `vp lint` and
+modules. The preload retains existing `NODE_OPTIONS`. Project package preloads such
+as `--import` and `--require` keep resolving from the calling project for native
+linting and `--print-config`. Direct `oxlint`, `vp lint` and
 `vp check` invocations in GitHub workflow `run` steps get the same preload;
 workflow names and unrelated commands stay as written.
 Setup adds `--no-error-on-unmatched-pattern` to the native invocation so a
 directory containing only `.vibe` files still reaches ESLint.
 It also follows local JavaScript and TypeScript runners launched by package
 scripts, including their relative imports. In runners that invoke Oxlint it
-extends TypeScript extension filters to `.vibe`, keeps directory and package
-filters, and excludes `.d.vibe.ts` declaration sidecars. Unsupported filter
+extends TypeScript extension filters to `.vibe` and `.vibex`, keeps directory
+and package filters, and excludes both declaration sidecar extensions. A filter
+that selects only `.tsx` adds only `.vibex`; repeated setup also repairs older
+filters that added `.vibe` but omitted `.vibex`. Unsupported filter
 shapes produce a setup warning naming the runner.
 
-File-list runners invoke the generated `.vibelang/oxlint.mjs` adapter.
+File-list runners invoke the generated `.vibelang/oxlint.mjs` adapter. An explicitly named source file must exist; a missing file reports its path and exits with status `2`, including with `--vibe-native`. Unmatched globs retain the adapter's empty-selection policy. Explicit `.vibex` paths reach the same source and native passes as `.vibe` paths; both declaration sidecar extensions are excluded. A `.tsx` glob selects `.vibex`, and a mixed `{ts,tsx}` glob selects both source extensions.
+The adapter's `--fix` applies the ESLint pass's source fixes to selected
+`.vibe` and `.vibex` files, then reports remaining findings. Informational
+invocations do not apply fixes.
+The generated command's `--help`, `--version`, `--print-config` and `--init`
+requests run without parsing or linting input files, even when their paths are missing.
+`--vibe-native --print-config` prints the native projection's configuration.
 Upstream Oxlint checks their TypeScript files; ESLint and the native pass
 check their VibeLang files on the original source tree. The
 generated configuration retains rule names, options, severities and directory
@@ -295,12 +331,12 @@ TypeScript rules stay with the native pass because the source ESLint parser has
 no TypeScript program. This also keeps resolved Oxlint defaults from requiring
 parser services before repository JavaScript plugin rules run.
 
-The pass applies no `--fix`, because a fix on projected text is not a source
+The native pass applies no `--fix`, because a fix on projected text is not a source
 edit. It leaves `reportUnusedDisableDirectives` off, because a directive naming a
 rule of the ESLint pass would look unused.
 
 Existing `oxlint-disable`, `oxlint-disable-line`,
-`oxlint-disable-next-line` and `oxlint-enable` comments keep their scope. TypeScript rule names written as
+`oxlint-disable-next-line` and `oxlint-enable` comments keep their scope. A directive containing only a reason, such as `// oxlint-disable-next-line -- explanation`, follows the installed Oxlint release: the bridge checks whether that engine treats it as a blanket suppression. TypeScript rule names written as
 `typescript/`, `typescript-eslint/` or `@typescript-eslint/` refer to the same
 registered ESLint rule.
 The bridge also recognizes ESLint directives and the native core/TypeScript
@@ -312,9 +348,13 @@ The ESLint configuration carries applicable core, TypeScript and JS plugin
 rules. It also supplies `oxc/no-accumulating-spread`, checked against upstream
 Oxlint's reducer and loop behavior. A file-list runner fails with the names of
 enabled JS plugin rules that the plugin does not define, rather than silently
-skipping them. When the default correctness category is enabled,
-typescript-eslint's recommended rules provide the existing ESLint fallback;
-turning that category off disables that fallback. Rules of Effect's language
+skipping them. When the default correctness category is enabled and installed
+Oxlint cannot resolve the rules, typescript-eslint's recommended rules provide
+the existing ESLint fallback; turning that category off disables that fallback.
+Where installed Oxlint resolves the rules, they are the whole set, so a `.vibe`
+file gets no rule its `.ts` original does not. A configuration written as a
+module, `oxlint.config.ts` or one a lint script names with `-c`, is read
+through installed Oxlint's `--print-config`. Rules of Effect's language
 service remain with `vibelang lint` (VIP-38).
 
 The mapped `no-unused-vars` rule counts `typeof` reads as Oxlint does,
@@ -387,6 +427,8 @@ see this [Bun runtime limitation](https://github.com/oven-sh/bun/issues/40579).
 
 ## Bundlers inside unchanged tests
 
+Multiline diagnostics retain their source excerpts, including source text that resembles a bundled library URL. The compiler's file listing is excluded from the diagnostic message.
+
 Node tests that call Rolldown or esbuild on native source graphs can preload
 `vibelang-unplugin/rolldown/register` or `vibelang-unplugin/esbuild/register`
 with `node --import`. The preloads include the runtime loader and add a fresh
@@ -454,6 +496,16 @@ enables `vibelang-source` in the package's compiler projects' `customConditions`
 so a cold compiler build reads sources before declaration sidecars exist.
 Node, Rolldown and Vite consume the emitted JavaScript through `default`.
 
+The routes serve tools that read sources. Compiled output names each routed
+module by its own output instead, `./user.js` for `#vibelang/emitted/src/user`,
+in JavaScript and in declarations, so no route reaches a published package and
+the program loads one copy of the module.
+Migration's record emit checks this: when a published package's compiled
+declarations still name a route, it restores that package's routes and
+reports the declaration files and every affected module, including targets of
+routes retained from an earlier emit, so the modules its tests bundle stay
+TypeScript.
+
 Setup records every selected source, output and alias in
 `setup.json`'s `wired.emittedImports.modules`. It uses exact entries instead
 of wildcard selectors and leaves tests, fixtures, test scripts, type-only
@@ -471,7 +523,10 @@ conditional exports through their existing emitted declarations, keeping
 TypeScript's condition order and reporting missing declarations.
 
 Saved declaration checks also recognize a shipped copy and its identical
-original as the same recorded logical file. Conflicting declarations and
+original as the same recorded logical file. An existing published declaration
+keeps its own snapshot identity before the recorder infers copied output paths
+for handwritten source declarations. A changed published copy therefore remains
+visible even when its source copy is unchanged. Conflicting declarations and
 missing alias targets still fail verification.
 
 Declaration snapshots retain each owning project’s effective `types`, `typeRoots` and module-resolution settings, including inherited options and automatic type-package names selected during setup. Comparison restores those settings against the frozen declaration layout; it does not reread a subsequently edited source configuration. Installed dependency declarations remain pinned resolution inputs. An explicit empty `types` list stays empty, and missing types or changed public declarations still fail verification. When `rootDir` is omitted, the recorder matches the emitted files against the compiler's config-directory or common-source layout, using one consistent layout for the project. Each project's `outputLayout` receipt records the selected strategy and matched, missing and unassigned declaration counts; ambiguous source ownership stops recording. Recreate older snapshots from their original setup inputs when the required project context was not recorded; preserve the frozen source options and declaration bytes. When one side loads two installed copies of the same package version, the comparison treats them as one origin only if every file matches byte for byte, their dependency closures prove equivalent, and the first and last load of each origin keep the other side's order; otherwise it refuses. A workspace package reached as source in one checkout and as its declaration in another keeps one ambient identity, and pairs when its ambient blocks and the local declarations they reach print the same. Setup records why a declaration was not emitted. When an emit error such as `TS7056` leaves one absent on both sides, each export that reaches it is reported unavailable by name, setup continues, and the package stays incomplete rather than identical.
@@ -496,6 +551,11 @@ positions, so diagnostics and source maps name `.vibe` lines:
 The React Compiler sees JavaScript. On a `.vibe` module's JavaScript it
 reports the same diagnostics and writes the same output as on the module's
 `.ts` twin.
+
+Migration setup follows relative imports in source files and tests as well as
+manifest dependencies, including transitive consumers. A test package that
+imports `../other/src/module.vibe` gets the same setup as a manifest-dependent
+package. Reading these imports leaves test files unchanged.
 
 Migration setup wires each package that reaches a migrated module: it wraps
 the `metro.config` export in `withVibeLang`, adds `vibelang/babel` to the
@@ -561,3 +621,7 @@ The formatter preserves comparisons after Effect type assertions, including `val
 ## Last resort: keep TypeScript file names
 
 Use the compiler, plugins and editor integrations above with `.vibe` and `.vibex` files whenever possible. A project that cannot rename its TypeScript files can consider the experimental [TypeScript shim](/setup/typescript-shim) as the final fallback. Stock readers can accept marked files with different meaning; read the shim's limitations first.
+
+Relative imports keep source files and JavaScript siblings distinct: importing `./value.vibe` and `./value.js` in one module loads each file separately, including when their names use only ASCII characters.
+
+Development imports and hot updates preserve literal percent sequences in filenames. A source such as `percent%20.vibe` and a JavaScript dependency such as `percent%2520.js` retain their own contents and original source-map locations, including under a configured Vite `base`.

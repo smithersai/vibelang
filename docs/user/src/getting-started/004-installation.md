@@ -63,7 +63,7 @@ See [Getting Started](../013-getting-started.md) for the starter's files and [Ru
 
 ## Add VibeLang to an existing project
 
-Before installing, add this transitive pin to `package.json` (npm and Bun both honor `overrides`):
+For npm, merge this transitive pin into the root `package.json`:
 
 ```json
 {
@@ -74,6 +74,20 @@ Before installing, add this transitive pin to `package.json` (npm and Bun both h
 ```
 
 This keeps the platform package from selecting a newer patch with a different Effect peer requirement.
+
+With Bun, keep using the active pin table in the root `package.json`. If `overrides` already exists, merge the helper pin there. If only `resolutions` exists, keep its other entries and add the pin to it:
+
+```json
+{
+  "resolutions": {
+    "@effect/platform-node-shared": "4.1.1"
+  }
+}
+```
+
+If neither table exists, use `overrides` as shown above. When both fields are present, [Bun uses only `overrides`](https://bun.com/docs/pm/overrides#resolutions). Adding `overrides` to a project that uses only `resolutions` would disable its existing pins.
+
+Then run:
 
 ```sh
 bun add --exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-node@4.1.1
@@ -131,7 +145,7 @@ Add scripts to `package.json`, which must have `"type": "module"`:
 }
 ```
 
-`src/main.vibe` calls its runner at the top level, as an Effect TypeScript program does: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`. A function named `main` is an ordinary function.
+`src/main.vibe` calls its runner at the top level, as an Effect TypeScript program does: `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`. A function named `main` is an ordinary function. The compiler adds no call to `main`; the top-level runner starts it.
 
 `node --enable-source-maps` maps JavaScript locations back to `.vibe` lines. It does not add the logical caller chain, and VibeLang adds no spans of its own, so a defect can show only one frame. Name a span where it matters with `try withSpan(effect { ... }, "checkout")`. For a sparse failure message or a missing caller stack, follow [Debug stack traces](012-devtools.md#debug-stack-traces).
 
@@ -189,7 +203,7 @@ From a project, run:
 
 ```sh
 bun run build
-bun run dev
+bun run start
 bun run test
 bun x --no-install vibelang --noEmit
 ```

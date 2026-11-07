@@ -1,0 +1,16 @@
+{
+  "results": [
+    {
+      "label": "//packages:compiler-test-2",
+      "status": "failed",
+      "key": "077f5edb20805c4f9cf848e205730e3885f1ba9fa89493c2864cf090fa7690f4",
+      "durationMs": 107.126816
+    },
+    {
+      "label": "//packages:migrate-test",
+      "status": "failed",
+      "key": "d96e2a57ef20330ef6eb30e97d7520a7d1997e1c396680b9cdcb43391d5bfdba",
+      "durationMs": 98.17585700000001
+    }
+  ]
+}

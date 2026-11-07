@@ -47,10 +47,15 @@ function emit(files) {
 // drive-t3code-apps' minimized MacSettingsWindow.ts.
 const macSettings = readFileSync(new URL("./corpus/t3code-platform-schema-value.ts", import.meta.url), "utf8")
 
-test("t3code Desktop MacSettingsWindow: a moved value read takes the value, and the split refuses because the exported type reads it", () => {
-  assert.deepEqual(emit({ "main.ts": macSettings }).errors, [])
+test("t3code Desktop MacSettingsWindow: a moved value read takes the value, and the exported type of its name moves with it", () => {
+  const before = emit({ "main.ts": macSettings })
+  assert.deepEqual(before.errors, [])
   const result = splitPlatform(macSettings, "main.ts", ts)
-  assert.equal(result.refused, "main.ts: the type Shape reads the value Shape, which main.platform.ts would take, so the module's declarations would change")
+  assert.ok(!result.refused, result.refused)
+  // The private value stays private; the type is re-exported as a type, as `export type` declares it.
+  assert.match(result.module, /^export type \{ Shape \} from "\.\/main\.platform\.ts"$/m)
+  const after = emit({ "main.ts": result.module, "main.platform.ts": result.platform })
+  assert.deepEqual(after.errors, [], result.module + "\n---\n" + result.platform)
 })
 
 test("t3code Desktop MacSettingsWindow: the refused module compiles natively as written", { skip: !compiler && "set VIBELANG_BINARY" }, () => {
@@ -67,9 +72,12 @@ test("t3code Desktop MacSettingsWindow: the refused module compiles natively as 
 
 // Modules with a same-name value and type, `X`, whose moved function reads X
 // as a value, as a type, both or neither, and whose type reads the value or
-// not. Either the split refuses with the named reason, exactly when a kept
-// type reads a moved value, or the program checks and the module's
-// declaration is stock TypeScript's declaration of the original.
+// not. When the moved code reads the value, the type moves with it and the
+// module re-exports what it exported; only an exported value whose type of
+// the same name is private stays. A private type the sibling would copy that
+// reads the value is refused as before. Otherwise the program checks and the
+// module's declaration is stock TypeScript's, or, through a re-export, has
+// the same names and types.
 test("a same-name value and type split by how the moved code reads them, keeping declarations", () => {
   let split = 0, refused = 0
   const shape = fc.record({
@@ -96,21 +104,24 @@ test("a same-name value and type split by how the moved code reads them, keeping
     assert.deepEqual(before.errors, [], text)
     const result = splitPlatform(text, "m.ts", ts)
     assert.ok(result, text)
-    // The moved code takes X's value exactly when it reads it, and the type X stays, so that split is refused.
-    // A private type the sibling would copy that reads the value X is refused as before.
-    const copiesTypeOfValue = s.movedTypeRead && s.typeReadsValue && !s.typeExported
-    assert.equal(Boolean(result.refused), s.movedValueRead || copiesTypeOfValue, (result.refused ?? result.platform) + "\n" + text)
+    const copiesTypeOfValue = !s.movedValueRead && s.movedTypeRead && s.typeReadsValue && !s.typeExported
+    const privateTwinOfExported = s.movedValueRead && s.valueExported && !s.typeExported
+    assert.equal(Boolean(result.refused), copiesTypeOfValue || privateTwinOfExported, (result.refused ?? result.platform) + "\n" + text)
     if (result.refused) {
-      const named = s.typeReadsValue ? /the type X reads the value X/ : /the value X would move to m.platform.ts but the type X stays/
-      // An exported value is also refused as before, since it is not a function that can stay.
-      assert.ok(named.test(result.refused) || (s.valueExported && /export X uses platform code/.test(result.refused)), result.refused)
+      const named = copiesTypeOfValue ? /the type X reads the value X/ : /the value X would move to m.platform.ts but the type X stays/
+      assert.ok(named.test(result.refused), result.refused)
       refused++
       return
     }
     // A type-only read imports the module's exported type or copies a private one, as before.
     const after = emit({ "m.ts": result.module, "m.platform.ts": result.platform })
     assert.deepEqual(after.errors, [], text + "\n----\n" + result.module + "\n----\n" + result.platform)
-    assert.equal(after.out["m.d.ts"], before.out["m.d.ts"], result.module)
+    if (!s.movedValueRead) assert.equal(after.out["m.d.ts"], before.out["m.d.ts"], result.module)
+    else {
+      // The module re-exports or imports X from the sibling; its exported names and their types are the original's.
+      const exportsOf = (out) => [...new Set([...[...out.matchAll(/^export (?:declare )?(?:const|function|type) (\w+)/gm)].map((m) => m[1]), ...[...out.matchAll(/^export (?:type )?\{ ([^}]+) \}/gm)].flatMap((m) => m[1].split(", "))])].sort()
+      assert.deepEqual(exportsOf(after.out["m.d.ts"]), exportsOf(before.out["m.d.ts"]), after.out["m.d.ts"] + "\n---\n" + before.out["m.d.ts"])
+    }
     split++
   }), { seed: 2026110208, numRuns: 80 })
   assert.ok(split > 10 && refused > 5, `split ${split}, refused ${refused}`)

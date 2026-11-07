@@ -29,7 +29,7 @@ install() {
 	[ ! -L "$1/node_modules" ] || return 0
 	(cd "$1" && bun install --frozen-lockfile >/dev/null)
 }
-for dir in .smithers packages/runtime packages/compiler packages/compiler/test/tools experiments docs/tools; do install "$dir"; done
+for dir in .smithers packages/runtime packages/compiler packages/compiler/test/tools packages/create-vibelang packages/vite experiments docs/tools; do install "$dir"; done
 node scripts/share-effect.mjs
 
 # The parity tests compare with the stock TypeScript the mapper pins.

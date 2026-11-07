@@ -1,0 +1,5 @@
+export function unmarkedOne(): number!never { return Effect.succeed(1) }
+export effect function markedOne(): number!never { return 3 }
+export effect function markedAll() { return 4 }
+export function plain(): number { return 5 }
+unmarked all-infer: annotation kept

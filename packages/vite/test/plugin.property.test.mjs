@@ -121,9 +121,7 @@ async function hooks(root, input) {
       assert.equal(direct.status, 0, direct.stdout + direct.stderr)
       for (const output of outputs(root, project, direct)) {
         const id = output.id + input.query
-        const result = output.id === output.source
-          ? await plugin.transform.call(hookContext, project.files[output.file], id)
-          : await plugin.load.call(hookContext, id)
+        const result = await plugin.load.call(hookContext, id)
         assertEmit(result, output, root, project)
         assert.equal(plugin.resolveId("./" + output.emitted.split("/").at(-1) + input.query,
           join(dirname(output.source), "importer.ts")), id)
@@ -171,11 +169,9 @@ async function buildDev(root, input) {
       assert.equal(oracle.status, 0, oracle.stderr)
       assert.deepEqual(JSON.parse(oracle.stdout), project.expected)
       for (const output of outputs(root, project, direct)) {
-        // Vite's full transform rewrites imports; its pre-transform must be the
+        // Vite's full transform rewrites imports; its load result must be the
         // compiler's exact emit, and its composed map must retain source tokens.
-        const raw = output.id === output.source
-          ? await plugin.transform.call(hookContext, project.files[output.file], output.id + input.query)
-          : await plugin.load.call(hookContext, output.id + input.query)
+        const raw = await plugin.load.call(hookContext, output.id + input.query)
         assertEmit(raw, output, root, project)
         // transformRequest receives the decoded URL used by Vite's middleware.
         // Module declarations are requested at the URL in the compiler's import,
@@ -233,7 +229,10 @@ async function hotGraph(root, input) {
   try {
     const affected = await plugin.handleHotUpdate({ file: changed.file, modules: [changed],
       server: { moduleGraph: graph, config: { logger: { error: assert.fail } }, ws: { send: assert.fail } } })
-    assert.deepEqual(new Set(affected), expected)
+    // Contract invalidation reaches every importer. HMR dispatch starts
+    // at the changed source and compiled outputs, preserving native accept boundaries.
+    const expectedUpdates = new Set([...expected].filter(node => node === changed || node.file.endsWith(".vibe")))
+    assert.deepEqual(new Set(affected), expectedUpdates)
     assert.deepEqual(invalidated, expected)
     for (const node of nodes) assert.equal(node.transformResult === null, expected.has(node))
     for (const method of ["defineCacheKeyGenerator", "experimental_defineCacheKeyGenerator"]) {

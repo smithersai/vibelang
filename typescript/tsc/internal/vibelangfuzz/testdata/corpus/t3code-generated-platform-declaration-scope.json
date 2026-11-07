@@ -1,0 +1,20 @@
+{
+  "source": "module platform {\n export interface Value { readonly value: number }\n export function make(): Value { return { value: 1 } }\n}\nimport { make } from platform\nexport { make }\n",
+  "planned": "probe.ts",
+  "path": "probe.vibe",
+  "generated": [
+    "probe.d.vibe.ts",
+    "probe.vibe.platform.d.ts"
+  ],
+  "codemod": {
+    "platform": {
+      "splits": [
+        {
+          "file": "probe.ts",
+          "platform": null,
+          "module": "platform"
+        }
+      ]
+    }
+  }
+}

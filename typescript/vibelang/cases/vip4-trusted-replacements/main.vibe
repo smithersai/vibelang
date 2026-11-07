@@ -1,0 +1,19 @@
+// rule-evidence: docs/design/vips/0004-throw.md#retirement-of-the-empty-legacy-trust-wrapper
+// VIP-4, the replacements for the retired trusted(f, []) wrapper. A reviewed
+// TypeScript helper with @throws {never} is called directly. The generated
+// bridge, Effect.orDie(Effect.try({ try: () => f(x), catch: (e) => e })),
+// needs no identity import: its inline catch mapper provably cannot throw, and
+// a throw in f stays a defect without widening the error channel.
+// expect-result: {"measured":3,"parsed":7,"defect":true}
+import { measure, parse } from "./helpers.ts"
+
+effect function load(s: string): number!! {
+  return try Effect.orDie(Effect.try({ try: () => parse(s), catch: (e) => e }))
+}
+
+export effect function main() {
+  const measured = measure("abc")
+  const parsed = try load("7")
+  const exit = try Effect.exit(load("{"))
+  return { measured, parsed, defect: Exit.isFailure(exit) && Cause.hasDies(exit.cause) }
+}

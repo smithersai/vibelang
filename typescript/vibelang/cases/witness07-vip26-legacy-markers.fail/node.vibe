@@ -1,0 +1,5 @@
+// expect: EK2601
+// rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-legacy-entry-markers | The retired side-effect imports `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser` report `EK2601`, naming `vibelang --fix`.
+// One marker per file, so no file names two platforms (EK3206).
+import "vibelang/platform/node"
+export effect function main() { return 1 }

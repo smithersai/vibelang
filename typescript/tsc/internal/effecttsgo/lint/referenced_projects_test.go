@@ -54,7 +54,7 @@ func TestCommandFollowsReferencedLintProjects(t *testing.T) {
 					args = append(args, "-p", ".")
 				}
 				sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-				status := Command(context.Background(), sys, args)
+				status := oxlintAdapterCommand(context.Background(), sys, args)
 				if status != 0 || !strings.Contains(sys.out.String(), "in 1 .vibe file(s).") || strings.Contains(sys.err.String(), "not linted") {
 					t.Fatalf("referenced native input was not checked: status=%d\n%s%s", status, sys.out.String(), sys.err.String())
 				}
@@ -80,7 +80,7 @@ func TestCommandReferencedLintSelectionKeepsCoverageFailures(t *testing.T) {
 		}
 	}
 	sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-	if status := Command(context.Background(), sys, []string{"-c", ".oxlintrc.json", "stray.vibe"}); status != 1 || !strings.Contains(sys.err.String(), "stray.vibe:") || !strings.Contains(sys.err.String(), "not linted") {
+	if status := oxlintAdapterCommand(context.Background(), sys, []string{"-c", ".oxlintrc.json", "stray.vibe"}); status != 1 || !strings.Contains(sys.err.String(), "stray.vibe:") || !strings.Contains(sys.err.String(), "not linted") {
 		t.Fatalf("an input outside every referenced project must still fail coverage\n%s%s", sys.out.String(), sys.err.String())
 	}
 }

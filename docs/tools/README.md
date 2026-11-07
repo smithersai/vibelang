@@ -34,7 +34,8 @@ filename comment in either of the first two lines, such as `// launch-options.ts
 after `// TypeScript (.ts)` or `// main.vibe`, names that file and makes it
 available to relative imports. Its extension must match the fence, or the
 checker stops with an error. `.ts` companions keep TypeScript semantics and
-must import their own dependencies. Blocks with repeated captions are
+must import their own dependencies. A fragment's filename caption never reserves
+or renames a complete companion module. Complete blocks with repeated captions are
 independent examples and keep numbered filenames, as do unnamed blocks, such as
 `block-3.vibe`. Later blocks see earlier examples' imports and declarations; a
 new name shadows the earlier one. Blocks that deliberately fail or opt out
@@ -76,7 +77,7 @@ Temporary files are removed on success and failure; `--keep` preserves the
 temporary projects for debugging. Compiler crashes, missing runtime builds, and
 project configuration errors exit 2. Snippet failures exit 1.
 
-The pending-marker output regression uses executable logging fixtures with `export effect function main()` and `try Console.log(...)`. Its native property checks 32 generated Unicode and quoted messages against exact output and a changed final line. The three-stage CLI regression reports phase timings, exit status and output byte counts within a two-minute deadline.
+The pending-marker output regression uses executable logging fixtures with `export effect function main()`, `try Console.log(...)` and an explicit `await runPromise(main())`. An exported `main` alone stays unrun. Its native property checks 32 generated Unicode and quoted messages against exact output, a changed final line and an unrun entry. The three-stage CLI regression reports phase timings, exit status and output byte counts within a two-minute deadline.
 
 `bun docs/tools/fix-snippets.ts` uses the same extraction, page scope and temporary
 projects to run `vibelang --fix --fix-migration-only`. It writes changed code
@@ -114,9 +115,10 @@ function greet(name: string) { return `Hello, ${name}!` }
 
 The optional header comment `// run: <expression>` runs that expression inside
 a generated VibeLang entry function, with the block's declarations and imports
-in scope. Without it, Node runs the emitted block as the entry module:
-export `function main()` or include an explicit top-level runner. Markers never
-make a function run in the published example itself.
+in scope. Without it, Node executes the emitted module. Start a standalone
+program with an explicit top-level runner. A hook imports the module first, so
+its top-level statements still run; examples with a runner must finish on
+their own. Markers never make a function run in the published example itself.
 
 The `check:snippets` package script and the pre-deploy snippet check both use
 `--run`. Both also test the locally scaffolded starter, including Vitest without

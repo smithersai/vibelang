@@ -26,7 +26,7 @@ import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inve
 import * as Enumerations from "./enumerations.mjs"
 import { sidecarPath, sidecarProjectLayout } from "./sidecar-config.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { packageDirOf, refreshSidecarExports, sidecarOf, bareVibeExports, fixToFixedPoint, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { packageDirOf, refreshSidecarExports, sidecarOf, bareVibeExports, compilerCompanionOf, fixToFixedPoint, isCompilerCompanion, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
@@ -65,6 +65,7 @@ import { wireDeveloperTools } from "./tooling.mjs"
 import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { routeBundledImports, routePrefix as bundledImportPrefix } from "./bundled-imports.mjs"
+import { declarationRouteLeaks } from "./route-declarations.mjs"
 import { routeSourceDeclarationImports, sourceDeclarationPrefix } from "./source-declaration-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { wireNodeTests } from "./node-tests.mjs"
@@ -1504,7 +1505,7 @@ export function recordOutputs(outputs, dir, written, ownerOf) {
   return outputs
 }
 
-export async function emitMigratedJs(config, t, logs) {
+export async function emitMigratedJs(config, t, logs, { routeDeclarations } = {}) {
   const snippets = await captureTrackedSourceSnippets(t, { ts: () => typeScriptOf(config) })
   const artifact = compilerArtifactOf(config.toolchain)
   const emitted = [], sourceOutputs = new Map(), outputs = {}
@@ -1548,6 +1549,27 @@ export async function emitMigratedJs(config, t, logs) {
     if (!affected.length) break
     if (pass >= config.packages.length) throw new Error("Emission routing did not reach a fixed point: " + changedSources.join(", "))
     for (const pkg of affected) await emit(pkg, pass + 1)
+  }
+  // Published declarations never name a route (route-declarations.mjs). A
+  // published package whose compiled declarations still do gets its routes
+  // restored and its modules emitted again; the modules its tests bundle then
+  // return to TypeScript at the test gate instead of shipping an import that no
+  // consumer resolves. Tests pass routeDeclarations for the declaration emit.
+  const routedFiles = routingPasses.flatMap(pass => pass.routed.changed)
+  const declareRoutes = routeDeclarations ?? ((pkg, outDir) => emitPackageDeclarations({ compiler: compilerOf(config), ts: typeScriptOf(config), t, pkg: { ...pkg, dtsTsconfig: pkg.dtsTsconfig ?? pkg.tsconfig }, outDir, log: outDir + ".log" }))
+  for (const pkg of config.packages) {
+    const manifest = join(t, pkg.dir, "package.json")
+    if (!existsSync(manifest) || readJson(manifest).private === true) continue
+    if (!routedFiles.some(file => packageDirOf(t, file) === pkg.dir) && !readFileSync(manifest, "utf8").includes(bundledImportPrefix)) continue
+    const outDir = join(logs, "route-declarations", slug(pkg.dir))
+    await declareRoutes(pkg, outDir)
+    const leaks = declarationRouteLeaks(outDir)
+    if (!leaks.length) continue
+    const modules = [...new Set(routingPasses.flatMap(pass => pass.routed.modules).filter(module => packageDirOf(t, module) === pkg.dir))]
+    const restored = bundledImports({ ...config, packages: [pkg] }, { root: t, restore: true })
+    if (emitted.some(entry => entry.package === pkg.dir && !entry.restored)) await emit(pkg, routingPasses.length + 1)
+    emitted.push({ package: pkg.dir, files: 0, code: 0, restored: true, packingFiles: restored.changed, refusedRoutes: { declarations: leaks, modules },
+      warnings: [posix.join(pkg.dir, "package.json") + ": routes reach published declarations (" + leaks.join(", ") + "); restored them"] })
   }
   // A restored package emitted nothing and gets no record, as before.
   const recorded = emitted.filter((entry) => !entry.restored)
@@ -1710,6 +1732,7 @@ export async function codemod(options) {
   const refused = []
   const restored = []
   const rounds = []
+  const companions = []
   let settled = true
   for (const pkg of config.packages.filter((pkg) => files.some((f) => packageOf(config, f) === pkg))) {
     const projects = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
@@ -1721,6 +1744,11 @@ export async function codemod(options) {
       for (const [file, kinds] of Object.entries(fixed.byFile)) byFile[file] = kinds
       refused.push(...fixed.refused)
       restored.push(...fixed.restored)
+      // A platform companion the compiler created belongs to its module's batch.
+      for (const companion of fixed.companions ?? []) {
+        const rename = renames.find(r => compilerCompanionOf(r.to) === companion)
+        if (rename && !companions.some(c => c.companion === companion)) companions.push({ file: rename.from, companion })
+      }
       rounds.push(...fixed.rounds.map((r) => ({ package: pkg.dir, ...(projects.length > 1 ? { project: tsconfig } : {}), ...r })))
       settled &&= fixed.settled
       Object.assign(progress, { finishedAt: new Date().toISOString(), settled: fixed.settled, rounds: fixed.rounds.length })
@@ -1732,14 +1760,15 @@ export async function codemod(options) {
   const sourceFiles = [...new Set([
     ...(state.writes ?? []).map(write => write.file),
     ...(state.referenceWrites ?? []).map(write => write.file),
-    ...platform.splits.flatMap(split => split.platform ?? [])
+    ...platform.splits.flatMap(split => split.platform ?? []),
+    ...companions.map(c => c.companion)
   ])].filter(file => !isProtectedFile(file))
   const sourceFormatLog = join(p.batch(b), "logs", "source-format.log")
   const sourceFormatted = await formatWritten(t, sourceFiles, sourceFormatLog)
   const formatted = { ...sourceFormatted, log: sourceFormatted.files.length ? posix.relative(p.run, sourceFormatLog) : null }
-  const platformFiles = new Set(platform.splits.flatMap(split => split.platform ?? []))
+  const platformFiles = new Set([...platform.splits.flatMap(split => split.platform ?? []), ...companions.map(c => c.companion)])
   const platformFormattedFiles = formatted.files.filter(file => platformFiles.has(file))
-  const platformResult = { ...platform, formatted: { ...formatted, files: platformFormattedFiles,
+  const platformResult = { ...platform, companions, formatted: { ...formatted, files: platformFormattedFiles,
     code: platformFormattedFiles.length ? formatted.code : 0, log: platformFormattedFiles.length ? formatted.log : null } }
   const emittedJs = await emitMigratedJs(config, t, join(p.batch(b), "logs"))
   state.attempts.at(-1).finishedAt = new Date().toISOString()
@@ -1973,6 +2002,10 @@ export async function revertMany(options) {
     const split = cm.platform?.splits?.find(s => s.file === ts)
     restorePrivateResolverExports(config.target, split)
     if (split?.platform) rmSync(join(config.target, split.platform), { force: true })
+    // The compiler's companion of the module, recorded or left by a fix that
+    // stopped, goes with the .vibe file it served.
+    const companion = compilerCompanionOf(vibePath(ts))
+    if (companion && isCompilerCompanion(config.target, companion)) rmSync(join(config.target, companion), { force: true })
     const recordedBuildEntries = cm.buildEntries?.edits ?? []
     const buildEntryEdits = recordedBuildEntries.some(edit => edit.source === ts)
       ? restoreBuildEntrypoints(config.target, recordedBuildEntries, ts, typeScriptOf(config)) : []

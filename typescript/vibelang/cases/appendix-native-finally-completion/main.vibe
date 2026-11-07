@@ -1,0 +1,18 @@
+// expect-result: ["finally",2]
+// Appendix B: EK2006 successor, native finally keeps JavaScript completion semantics — spec-rule: docs/design/src/900-appendices.md#ee7196fae3526b5a
+// A return in finally replaces the try block's return; a break still runs finally.
+function overridden(): string {
+  try { return "try" } finally { return "finally" }
+}
+
+function counted(): number {
+  let n = 0
+  for (const i of [1, 2, 3]) {
+    try { if (i === 2) break } finally { n++ }
+  }
+  return n
+}
+
+export effect function main() {
+  return [overridden(), counted()]
+}

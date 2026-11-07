@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { fileHasVibeDirective, hasVibeDirective } from "./source.mjs"
-import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync, globSync, readFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync, globSync as expandGlob, readFileSync, symlinkSync, statSync } from "node:fs"
 import { availableParallelism, tmpdir } from "node:os"
 import { basename, dirname, join, resolve } from "node:path"
 import { createRequire } from "node:module"
@@ -80,10 +80,14 @@ const unreadable = (path, why) =>
 function withConfig(style, action) {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-format-"))
   try {
+    // Keep npm process references in their package context, including when
+    // the caller is outside the project or the package is read-only.
+    mkdirSync(join(dir, "node_modules"))
+    symlinkSync(fileURLToPath(new URL(".", import.meta.url)), join(dir, "node_modules", "vibelang"), process.platform === "win32" ? "junction" : "dir")
     const config = join(dir, "dprint.json")
     writeFileSync(config, JSON.stringify({
       lineWidth: style.lineWidth,
-      plugins: [typescriptPlugin, fileURLToPath(new URL("./dprint-plugin.json", import.meta.url)) + "@" + createHash("sha256").update(readFileSync(new URL("./dprint-plugin.json", import.meta.url))).digest("hex")],
+      plugins: [typescriptPlugin, "npm:vibelang/dprint-plugin.json@" + createHash("sha256").update(readFileSync(new URL("./dprint-plugin.json", import.meta.url))).digest("hex")],
       typescript: { semiColons: "asi", quoteStyle: style.quoteStyle }
     }))
     return action(config)
@@ -106,16 +110,21 @@ export function formatSource(text, filePath = "file.vibe", style = repositorySty
   return formatText(text, filePath, style, ["--no-gitignore", "--allow-node-modules"])
 }
 function formatText(text, filePath, style, flags = []) {
+  const requestedPath = filePath
   // Read the supplied buffer: an editor's unsaved directive can differ from disk.
   if (hasVibeDirective(filePath, text)) {
     filePath = filePath.replace(/\.tsx$/, ".vibex").replace(/\.[cm]?ts$/, ".vibe")
   }
-  return withConfig(style, config => dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text))
+  try {
+    return withConfig(style, config => dprint(["fmt", ...flags, "--config", config, "--stdin", resolve(filePath)], text))
+  } catch (error) {
+    throw new Error(`${requestedPath}: ${error.message}`, { cause: error })
+  }
 }
-// discoverable lists the absolute paths dprint would format, which is what
+// discoverable lists every supported source path dprint would format, which is what
 // `--stdin` formats too: it returns a gitignored file's text unchanged.
 function discoverable(config) {
-  const result = spawnDprint(["output-file-paths", "--config", config, "**/*.vibe"])
+  const result = spawnDprint(["output-file-paths", "--config", config, "**/*.{vibe,vibex,ts,tsx,mts,cts}"])
   return result.status === 0 ? new Set(result.stdout.split("\n").filter(Boolean)) : new Set()
 }
 // cleanTexts remembers, across runs and per working directory, the texts dprint
@@ -147,7 +156,11 @@ function cleanTexts() {
     }
   } catch { return none }
 }
-const textKey = (style, text) => createHash("sha256").update(JSON.stringify(style)).update("\0").update(text).digest("base64url")
+// The same bytes can be clean plain syntax and invalid JSX.
+const textKey = (style, text, file) => createHash("sha256")
+  .update(JSON.stringify(style)).update("\0")
+  .update(/\.(?:vibex|tsx)$/.test(file) ? "tsx" : "ts").update("\0")
+  .update(text).digest("base64url")
 // Each dprint run spends a core on its one TypeScript host path, so a large
 // batch gains from one run per core. A smaller shard costs more to start than it saves.
 const shardSize = 256
@@ -178,7 +191,7 @@ function formatBatch(files, clean) {
     let style, input
     try { style = repositoryStyle(file); input = readFileSync(file, "utf8") }
     catch { continue }
-    const key = textKey(style, input)
+    const key = textKey(style, input, file)
     if (clean.has(key)) { results.set(file, { input, output: input, key }); continue }
     const group = JSON.stringify(style)
     if (!groups.has(group)) groups.set(group, { style, entries: [] })
@@ -190,7 +203,7 @@ function formatBatch(files, clean) {
     if (listed.length === 0) return
     const dir = dirname(config)
     const shards = Math.max(1, Math.min(availableParallelism(), Math.floor(listed.length / shardSize)))
-    const places = listed.map((entry, index) => join(dir, `shard${index % shards}`, String(index).padStart(7, "0") + ".vibe"))
+    const places = listed.map((entry, index) => join(dir, `shard${index % shards}`, String(index).padStart(7, "0") + (/\.(?:vibex|tsx)$/.test(entry.file) ? ".vibex" : ".vibe")))
     for (let shard = 0; shard < shards; shard++) {
       mkdirSync(join(dir, `shard${shard}`))
       // dprint takes a run's base from its config's directory when given no paths.
@@ -198,7 +211,7 @@ function formatBatch(files, clean) {
     }
     listed.forEach((entry, index) => writeFileSync(places[index], entry.input))
     const run = spawnSync(process.execPath, ["--input-type=module", "-e", parallelDprint, createRequire(import.meta.url).resolve("dprint/bin.cjs"), dir, String(shards)], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 })
-    const refused = new Set([...`${run.stderr}${run.stdout}`.matchAll(/Error formatting .*?(\d+\.vibe)\. Message:/g)].map(match => match[1]))
+    const refused = new Set([...`${run.stderr}${run.stdout}`.matchAll(/Error formatting .*?(\d+\.vibex?)\. Message:/g)].map(match => match[1]))
     if (run.error || (run.status !== 0 && refused.size === 0)) return
     listed.forEach((entry, index) => {
       if (!refused.has(basename(places[index]))) results.set(entry.file, { input: entry.input, output: readFileSync(places[index], "utf8"), key: entry.key })
@@ -206,30 +219,63 @@ function formatBatch(files, clean) {
   })
   return results
 }
-export function formatFiles(args) {
-  const check = args.includes("--check")
-  const paths = args.filter(arg => arg !== "--check" && arg !== "--write")
+// Existing source paths are literal, including bracketed route names. Other
+// inputs, including the default extension pattern, still use glob expansion.
+function globSync(pattern, options) {
+  if (/\.(?:vibex?|[cm]?ts|tsx)$/.test(pattern) && existsSync(pattern) && statSync(pattern).isFile()) {
+    return options?.exclude?.(pattern) ? [] : [pattern]
+  }
+  return expandGlob(pattern, options)
+}
+export function formatFiles(args, command = "vibelang-format") {
+  const separator = args.indexOf("--")
+  const flags = separator < 0 ? args : args.slice(0, separator)
+  if (flags.includes("--help") || flags.includes("-h")) {
+    console.log(command + " [--check | --write] [--] [files or glob patterns...]")
+    console.log("  --check  Report files that need formatting without writing them.")
+    console.log("  --write  Format files in place (the default).")
+    console.log("  --       Treat following arguments as file paths or glob patterns.")
+    return 0
+  }
+  const unknown = flags.find(arg => arg.startsWith("-") && arg !== "--check" && arg !== "--write")
+  if (unknown) throw new Error(command + ": unknown option " + unknown + ". Run " + command + " --help.")
+  const check = flags.includes("--check")
+  if (check && flags.includes("--write")) throw new Error(command + ": cannot combine --check and --write. Run " + command + " --help.")
+  const paths = flags.filter(arg => arg !== "--check" && arg !== "--write")
+    .concat(separator < 0 ? [] : args.slice(separator + 1))
   const inputs = paths.length ? paths : ["**/*.{vibe,vibex,ts,tsx,mts,cts}"]
-  const files = [...new Set(inputs.flatMap(pattern => globSync(pattern, {
-    exclude: path => /(^|[/\\])(?:node_modules|dist|build|coverage|\.git|\.jj)([/\\]|$)/.test(path)
-  })))].filter(file => /\.vibex?$/.test(file) || fileHasVibeDirective(file))
+  // Validate every explicit input before formatting any file. An ignored match
+  // still exists; an empty default scan is also a valid clean project.
+  const files = [...new Set(inputs.flatMap(pattern => {
+    const matches = globSync(pattern, {
+      exclude: path => /(^|[/\\])(?:node_modules|dist|build|coverage|\.git|\.jj)([/\\]|$)/.test(path)
+    })
+    if (paths.length && matches.length === 0 && globSync(pattern).length === 0) {
+      throw new Error(command + ": no files match " + JSON.stringify(pattern) + ". Check the path or glob pattern.")
+    }
+    return matches
+  }))].filter(file => /\.vibex?$/.test(file) || fileHasVibeDirective(file))
   const clean = cleanTexts()
   const batched = formatBatch(files, clean)
   const keys = new Set()
   let failed = false
   try {
     for (const file of files) {
-      const before = readFileSync(file, "utf8")
-      const result = batched.get(file)
-      // formatText selects the plugin from the source kind, including marked TSX.
-      const after = result?.input === before ? result.output : formatText(before, file, repositoryStyle(file))
-      if (before === after) {
-        // A gitignored file comes back unchanged without being formatted, so it never counts as clean.
-        if (result?.input === before) keys.add(result.key)
-        continue
+      try {
+        const before = readFileSync(file, "utf8")
+        const result = batched.get(file)
+        // formatText selects the plugin from the source kind, including marked TSX.
+        const after = result?.input === before ? result.output : formatText(before, file, repositoryStyle(file))
+        if (before === after) {
+          // A gitignored file comes back unchanged without being formatted, so it never counts as clean.
+          if (result?.input === before) keys.add(result.key)
+          continue
+        }
+        if (check) { console.error(file + ": needs formatting"); failed = true }
+        else writeFileSync(file, after)
+      } catch (error) {
+        throw new Error(file + ": " + error.message, { cause: error })
       }
-      if (check) { console.error(file + ": needs formatting"); failed = true }
-      else writeFileSync(file, after)
     }
   } finally { clean.save(keys) }
   return failed ? 1 : 0

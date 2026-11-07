@@ -204,3 +204,96 @@ func TestForeignDynamicCallFix(t *testing.T) {
 		}
 	}
 }
+
+// A partial Stream return formerly suppressed the whole synchronous throws
+// contract. Migration keeps those exceptions as defects, not typed failures.
+func TestForeignThrowsGateFixPreservesPartialStreamReturn(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, signature, call string
+		defect                bool
+	}{
+		{"marker", "knownMarker(): Marker", "knownMarker()", true},
+		{"union", "knownMarker(): Marker | import(\"effect\").Stream.Stream<number>", "knownMarker()", true},
+		{"constraint", "knownMarker<T extends Marker>(): T", "knownMarker()", true},
+		{"instantiated", "knownMarker<T>(): T", "knownMarker<Marker>()", false},
+		{"mixed", "knownMarker(): Marker | number", "knownMarker()", false},
+		{"optional-result", "knownMarker(): Marker | undefined", "knownMarker()", false},
+		{"optional-call", "knownMarker(): Marker | undefined", "knownMarker?.()", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/stream-return-contract.fail"), root)
+			for _, file := range []string{"lib.ts", "main.vibe"} {
+				path := filepath.Join(dir, file)
+				input, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				text := string(input)
+				if file == "lib.ts" {
+					text = strings.Replace(text, "knownMarker(): Marker", tc.signature, 1)
+				} else {
+					text = strings.Replace(text, "return knownMarker()", "return "+tc.call, 1)
+				}
+				if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			result := fixCase(t, dir)
+			if result.Err != nil || len(result.Refused) != 0 {
+				t.Fatalf("fix: %v, refused %v", result.Err, result.Refused)
+			}
+			var text string
+			for name, fixed := range result.Files {
+				if filepath.Base(name.AsString()) == "main.vibe" {
+					text = fixed.Text
+					if err := os.WriteFile(name.AsString(), []byte(text), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			want := 3
+			if tc.defect {
+				want = 4
+			}
+			if strings.Count(text, "orDie(Effect.try(") != want || strings.Contains(text, "instanceof") == tc.defect {
+				t.Fatalf("changed the former Stream call's failure channel:\n%s", text)
+			}
+			if again := fixCase(t, dir); len(again.Files) != 0 || len(again.Refused) != 0 {
+				t.Fatalf("not idempotent: files %v, refused %v", again.Order, again.Refused)
+			}
+		})
+	}
+}
+
+// Optional syntax formerly erased a callable's own nullable return member,
+// suppressing its written throws contract. The migration keeps E=never.
+func TestForeignThrowsGateFixPreservesNullableOptionalReturn(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/effectful-optional-nullable-return.fail"), root)
+	result := fixCase(t, dir)
+	if result.Err != nil || len(result.Refused) != 0 {
+		t.Fatalf("fix: %v, refused %v", result.Err, result.Refused)
+	}
+	var text string
+	for name, fixed := range result.Files {
+		if filepath.Base(name.AsString()) == "main.vibe" {
+			text = fixed.Text
+			if err := os.WriteFile(name.AsString(), []byte(text), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if strings.Count(text, "orDie(Effect.try(") != 6 || strings.Contains(text, "instanceof") {
+		t.Fatalf("changed the former optional call's defect channel:\n%s", text)
+	}
+	if again := fixCase(t, dir); len(again.Files) != 0 || len(again.Refused) != 0 {
+		t.Fatalf("not idempotent: files %v, refused %v", again.Order, again.Refused)
+	}
+}

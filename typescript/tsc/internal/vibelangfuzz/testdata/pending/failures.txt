@@ -7,15 +7,11 @@
 # target            key                       owner     what is missing
 FuzzFailuresSpec  feature:effect-decode-sync  compiler  VIP-4: 003-failures.md rejects the marked call for "VibeLang also ships annotations for Effect's non-effectful exports: `Option.some` throws `never`; `Schema.d…"; lane w2-throw
 FuzzFailuresSpec  feature:function-type-opts-in  compiler  VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:new-tracked  compiler  VIP-4: 003-failures.md rejects the marked call for "`new X()` is throw-tracked; getter and setter access is not."; lane w2-throw
 FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
-FuzzFailuresSpec feature:tagged-template-throw compiler VIP-4: 003-failures.md contract tagged-template-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:callable-union-throw compiler VIP-4: 003-failures.md contract callable-union-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec corpus:effect-decode-sync compiler VIP-4: minimized reproduction of feature:effect-decode-sync; lane w2-throw
 FuzzFailuresSpec corpus:function-type-opts-in compiler VIP-4: minimized reproduction of feature:function-type-opts-in; lane w2-throw
-FuzzFailuresSpec corpus:new-tracked compiler VIP-4: minimized reproduction of feature:new-tracked; lane w2-throw
 FuzzFailuresSpec corpus:effect-decoder-call compiler VIP-4: minimized reproduction of feature:effect-decoder-call; lane w2-throw
-FuzzFailuresSpec corpus:tagged-template-throw compiler VIP-4: minimized reproduction of feature:tagged-template-throw; lane w2-throw
 FuzzFailuresSpec corpus:callable-union-throw compiler VIP-4: minimized reproduction of feature:callable-union-throw; lane w2-throw
 FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail 66): current 003-failures.md contract effect-decoder-sync-call cannot be checked before the effect marker parses (TS1434); lane vip-core2
 FuzzFailuresSpec corpus:effect-decoder-sync-call compiler VIP-4: minimized reproduction of feature:effect-decoder-sync-call; lane vip-core2
@@ -37,10 +33,6 @@ FuzzFailuresSpec feature:rethrows-reduce-no-initial compiler VIP-4: the chapter 
 FuzzFailuresSpec corpus:rethrows-reduce-no-initial compiler VIP-4: minimized reproduction of feature:rethrows-reduce-no-initial; lane w2-throw
 
 # Extensible native bases witness the inheritance ban independently of tag compatibility.
-FuzzFailuresSpec feature:throws-generic-constructor-range-effect compiler Chapter 3 Calls in effect code requires EK0403 for a non-never foreign invocation; the gate currently visits ordinary calls only.
-FuzzFailuresSpec corpus:throws-generic-constructor-range-effect compiler Chapter 3 Calls in effect code requires EK0403 for a non-never foreign invocation; the gate currently visits ordinary calls only.
-FuzzFailuresSpec feature:throws-generic-tag-range-effect compiler Chapter 3 Calls in effect code requires EK0403 for a non-never foreign invocation; the gate currently visits ordinary calls only.
-FuzzFailuresSpec corpus:throws-generic-tag-range-effect compiler Chapter 3 Calls in effect code requires EK0403 for a non-never foreign invocation; the gate currently visits ordinary calls only.
 FuzzFailuresSpec feature:throws-destructured-receiver-function-array-never-effect compiler Chapter 3 const aliases preserve their foreign signature contract; callable-only containers still lose receiver substitutions used only by throws metadata.
 FuzzFailuresSpec corpus:throws-destructured-receiver-function-array-never-effect compiler Chapter 3 const aliases preserve their foreign signature contract; callable-only containers still lose receiver substitutions used only by throws metadata.
 FuzzFailuresSpec feature:throws-destructured-receiver-function-array-never-plain compiler Chapter 3 const aliases preserve their foreign signature contract; callable-only containers still lose receiver substitutions used only by throws metadata.
@@ -49,3 +41,20 @@ FuzzFailuresSpec feature:throws-destructured-receiver-function-object-never-effe
 FuzzFailuresSpec corpus:throws-destructured-receiver-function-object-never-effect compiler Chapter 3 const aliases preserve their foreign signature contract; callable-only containers still lose receiver substitutions used only by throws metadata.
 FuzzFailuresSpec feature:throws-destructured-receiver-function-object-never-plain compiler Chapter 3 const aliases preserve their foreign signature contract; callable-only containers still lose receiver substitutions used only by throws metadata.
 FuzzFailuresSpec corpus:throws-destructured-receiver-function-object-never-plain compiler Chapter 3 const aliases preserve their foreign signature contract; callable-only containers still lose receiver substitutions used only by throws metadata.
+
+FuzzFailuresSpec feature:layer-return-marker compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-marker compiler VIP-4: minimized reproduction of feature:layer-return-marker; lane compiler
+FuzzFailuresSpec feature:layer-return-no-pipe compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-no-pipe compiler VIP-4: minimized reproduction of feature:layer-return-no-pipe; lane compiler
+FuzzFailuresSpec feature:layer-return-fake compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-fake compiler VIP-4: minimized reproduction of feature:layer-return-fake; lane compiler
+FuzzFailuresSpec feature:layer-return-union compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-union compiler VIP-4: minimized reproduction of feature:layer-return-union; lane compiler
+FuzzFailuresSpec feature:layer-return-constraint compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-constraint compiler VIP-4: minimized reproduction of feature:layer-return-constraint; lane compiler
+FuzzFailuresSpec feature:layer-return-known compiler VIP-4: 003-failures.md requires complete Layer assignability; the incomplete Layer return bypasses EK0403; lane compiler
+FuzzFailuresSpec corpus:layer-return-known compiler VIP-4: minimized reproduction of feature:layer-return-known; lane compiler
+FuzzFailuresSpec feature:layer-return-plain-body compiler VIP-4: 003-failures.md requires complete Layer assignability; a plain factory returning an incomplete Layer view incorrectly receives EK0401; lane compiler
+FuzzFailuresSpec corpus:layer-return-plain-body compiler VIP-4: minimized reproduction of feature:layer-return-plain-body; lane compiler
+FuzzFailuresSpec feature:layer-return-plain-default compiler VIP-4: 003-failures.md requires complete Layer assignability; a plain factory returning an incomplete Layer view incorrectly receives EK0401; lane compiler
+FuzzFailuresSpec corpus:layer-return-plain-default compiler VIP-4: minimized reproduction of feature:layer-return-plain-default; lane compiler

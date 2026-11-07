@@ -136,6 +136,9 @@ func (w *printer) node(n *ast.Node, e env) {
 	if !w.rawExtraction && w.errorExtractorFlow(n, e) {
 		return
 	}
+	if w.computedPatternKeyAssignment(n, e) {
+		return
+	}
 	// These forms have source spans but synthesized descendants. Let their
 	// own lowering preserve lazy operands and lexical pipe topics, including
 	// when a match arm or do expression contains them.
@@ -153,6 +156,9 @@ func (w *printer) node(n *ast.Node, e env) {
 		if w.captureRead(n, e) {
 			return
 		}
+		if w.computedPatternKeyRead(n) {
+			return
+		}
 		w.write(w.identifier(n))
 	case ast.KindStringLiteral:
 		quoted, _ := json.Marshal(n.Text())
@@ -161,6 +167,12 @@ func (w *printer) node(n *ast.Node, e env) {
 		w.write(n.Text())
 	case ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword, ast.KindThisKeyword, ast.KindUndefinedKeyword:
 		w.write(scanner.TokenToString(n.Kind))
+	case ast.KindSatisfiesExpression:
+		w.write("(")
+		w.node(n.Expression(), e)
+		printed := tsprinter.NewPrinter(tsprinter.PrinterOptions{RemoveComments: true}, tsprinter.PrintHandlers{}, nil).Emit(n.Type(), p.file)
+		w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{" satisfies " + strings.TrimSpace(printed), ""}})
+		w.write(")")
 	case ast.KindAsExpression:
 		if n.Type().Flags&ast.NodeFlagsReparsed == 0 {
 			w.chunks = append(w.chunks, chunk{node: n, env: e})
@@ -378,8 +390,14 @@ func (w *printer) variableList(list *ast.Node, e env) {
 		if i > 0 {
 			w.write(", ")
 		}
-		w.node(declaration.Name(), e)
-		if typ := declaration.Type(); typ != nil && ast.IsIdentifier(declaration.Name()) &&
+		if declaration.Flags&ast.NodeFlagsVibeLangPatternHoist != 0 {
+			// This declaration precedes the source expression owning its name.
+			// Copy the name so it does not advance that expression's source cursor.
+			w.write(w.identifier(declaration.Name()))
+		} else {
+			w.node(declaration.Name(), e)
+		}
+		if typ := declaration.Type(); typ != nil && !parser.MatchKeyTypeHoisted(declaration) && ast.IsIdentifier(declaration.Name()) &&
 			declaration.Name().Flags&ast.NodeFlagsVibeLangTemporary != 0 && strings.HasPrefix(declaration.Name().Text(), "$matchKey") {
 			printed := tsprinter.NewPrinter(tsprinter.PrinterOptions{RemoveComments: true}, tsprinter.PrintHandlers{}, nil).Emit(typ, p.file)
 			w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{": " + strings.TrimSpace(printed), ""}})
@@ -542,7 +560,7 @@ func (w *printer) builtinTest(n *ast.Node, e env) bool {
 func (w *printer) identifier(n *ast.Node) string {
 	name := n.Text()
 	switch {
-	case name == "$propertyKey" || name == "$matchCache" || name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$relation" || name == "$patternError":
+	case name == "$propertyKey" || name == "$matchCache" || name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$relation" || name == "$relates" || name == "$patternError":
 		return helperRef(name)
 	case strings.HasPrefix(name, "$match") || strings.HasPrefix(name, "$is"):
 		return w.temporary(name)

@@ -1,0 +1,4 @@
+{
+  "source": "import { EOL } from \"node:os\"\nexport const make = () => ({\n  /** Read decoded bytes. */\n  read: () => EOL\n})\nexport const pure = 1\nexport const api = make()\n",
+  "expected": "The inferred api.read export retains the factory member documentation after a platform module split."
+}

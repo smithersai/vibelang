@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/src/007-tooling.md#empty-legacy-trust-wrappers | `EK0407` retires the resolved `trusted(f, [])` wrapper.
+// The EK0407 checks run on temp projects in run.mjs.
+export const witness = 1

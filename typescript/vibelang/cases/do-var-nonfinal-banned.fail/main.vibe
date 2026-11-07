@@ -1,0 +1,12 @@
+// expect: EK0107 EK0107 EK0107 EK0107 EK0107
+// rule-evidence: docs/design/vips/tc39-do-expressions/README.md#feeb915d69300b3c
+// rule-evidence: docs/design/vips/tc39-do-expressions/README.md#variable-statements-at-the-end | The pinned proposal permits a nonfinal `var` and hoists it to the enclosing function, but VIP-4's amended legacy-JavaScript ban rejects it in `.vibe` code.
+// rule-evidence: docs/design/vips/tc39-do-expressions/README.md#e419821b7c1c982d
+// rule-evidence: docs/design/vips/tc39-do-expressions/README.md#variable-statements-at-the-end | A nonfinal `var` outside a parameter list reports `EK0107`.
+// Each nonfinal var below is outside a parameter list, so each reports EK0107
+// alone: none is final (EK0201) and none is in a parameter list (EK0203).
+export function plainBody() { return do { var n = 1; n } }
+export effect function effectBody() { return do { var n = 2; n } }
+export function nestedBlock() { return do { { var n = 3; } 3 } }
+export function beforeEmptyBlockThenValue() { return do { var n = 4; {} n } }
+export function insideNestedDo() { return do { const value = do { var n = 5; n }; value } }

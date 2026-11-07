@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "outDir": "out/switches" },
+  "vibe": { "effectGlobals": false, "effectModules": false }
+}

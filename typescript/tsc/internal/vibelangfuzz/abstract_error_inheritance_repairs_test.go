@@ -57,7 +57,7 @@ func FuzzAbstractErrorInheritanceRepairs(f *testing.F) {
 		}
 		files := map[string]string{"main.vibe": parent + child}
 		if key == "imported" {
-			files = map[string]string{"base.vibe": parent, "main.vibe": "import { Base } from './base.vibe'\n" + child}
+			files = map[string]string{"base.vibe": parent, "main.vibe": "import { Base } from './base.js'\n" + child}
 		}
 		if key == "namespace" {
 			files["main.vibe"] = "export namespace Family {\n" + parent + child + "}\n"

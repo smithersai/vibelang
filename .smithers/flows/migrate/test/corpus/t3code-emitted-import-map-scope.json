@@ -1,0 +1,12 @@
+{
+  "property": "packing-manifest-scope",
+  "quote": "Setup writes exact private \u0060#vibelang/emitted/…\u0060 imports, with \u0060vibelang-source\u0060 for compiler builds, \u0060types\u0060 for type checkers and \u0060default\u0060 for the JavaScript the package's existing build produces.",
+  "input": [
+    { "stage": "codemod", "ids": [] },
+    { "stage": "verify", "ids": [0] },
+    { "stage": "record", "ids": [] },
+    { "stage": "verify", "ids": [] },
+    { "stage": "restore", "ids": [0] }
+  ],
+  "repoPattern": "A generated private import map is first written during verification after a codemod receipt without emission metadata; manifest-only ownership must survive the next empty receipt and journal reload."
+}

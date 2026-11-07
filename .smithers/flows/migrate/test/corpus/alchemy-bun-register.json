@@ -1,0 +1,12 @@
+{
+  "files": {
+    "package.json": "{\"private\": true, \"workspaces\": [\"tools\"]}",
+    "tools/package.json": "{\"name\": \"tools\", \"bin\": {\"tool\": \"./cli.ts\"}, \"scripts\": {\"dev\": \"bun cli.ts\"}}",
+    "tools/cli.ts": "#!/usr/bin/env bun\nimport { value } from \"./value.ts\"\nconsole.log(value)\n",
+    "tools/value.ts": "import * as Effect from \"effect/Effect\"\nexport const value = Effect.void\n",
+    "tools/bunfig.toml": "preload = [\"vibelang-unplugin/bun/register\"]\n"
+  },
+  "selected": [
+    "tools/value.ts"
+  ]
+}

@@ -1,0 +1,1 @@
+--only refuses a scope flag and is TS5023 without --fix

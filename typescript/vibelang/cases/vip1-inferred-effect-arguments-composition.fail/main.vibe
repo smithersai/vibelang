@@ -1,0 +1,13 @@
+// expect: EK4802
+// rule-evidence: docs/design/vips/0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03
+// VIP-1, inferred Effect arguments: composition calls such as
+// pipe(e, Effect.map(f)) and e.pipe(Effect.map(f)) follow the same
+// argument-position test, including callback contracts; pipe has no
+// name-based exemption. Only the direct operand of try is exempt.
+export effect function composed(e: number!!) {
+  const a = pipe(e, Effect.map((n: number) => n + 1))
+  const b = e.pipe(Effect.map((n: number) => n + 1))
+  const c = try pipe(e, Effect.map((n: number) => n + 1))
+  const d = try (e.pipe(Effect.map((n: number) => n + 1)))
+  return c + d
+}

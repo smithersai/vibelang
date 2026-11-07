@@ -20,7 +20,15 @@ const header = "Written by `npx vibelang agents init`; rerun it to update."
 
 export async function main(args, findBinary) {
   const [command, ...rest] = args
-  if (command === "init") return init(realpathSync(resolve(rest[0] ?? ".")))
+  if (command === "init") {
+    let root
+    try { root = realpathSync(resolve(rest[0] ?? ".")) }
+    catch (error) {
+      console.error(`vibelang agents init: cannot open the target: ${error.message}. Pass an existing project directory containing package.json.`)
+      return 1
+    }
+    return init(root)
+  }
   if (command === "check") return check(rest, findBinary)
   if (command === "hook") return hook(findBinary)
   console.error(command === undefined || command === "--help" ? usage : `vibelang agents: unknown command ${command}.\n${usage}`)

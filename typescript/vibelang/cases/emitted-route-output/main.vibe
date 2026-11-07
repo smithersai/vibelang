@@ -1,0 +1,12 @@
+// expect-result: [2,true,2]
+// docs/design/src/007-tooling.md: Output names, emitted routes. routed.ts
+// reaches counter.vibe through #vibelang/emitted/counter. Its compiled
+// output names counter's own output, so the route's state and the direct
+// import's state are one object.
+import { bumpTwice, state } from "./routed.js"
+import { state as direct } from "./counter.vibe"
+
+export effect function main() {
+  const twice = bumpTwice()
+  return [twice, state === direct, direct.count]
+}

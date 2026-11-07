@@ -1,0 +1,13 @@
+// expect-result: [[["TypeError",""],1],[["TypeError",""],1]]
+import { nativeLabels } from "./native.js"
+type P=string&{readonly _tag:"P"}
+type S=P|{_tag:"O"}
+function classify(subject:S){return match(subject){when {_tag:"O"}:1;}}
+function labels(){
+ const values:S[]=["primitive" as P,{_tag:"O"}]
+ return values.map(value=>{
+  try{return classify(value)}
+  catch(error){return [error instanceof TypeError?"TypeError":"other",error instanceof Error?error.message:String(error)]}
+ })
+}
+export effect function main(){return [labels(),nativeLabels()]}

@@ -156,6 +156,10 @@ func isParsedExtractedErrorClass(decl *ast.Node) bool {
 	}
 	registered := false
 	for _, member := range decl.Members() {
+		// Instance members do not replace the constructor's own tag matcher.
+		if member.Kind != ast.KindClassStaticBlockDeclaration && !ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) {
+			continue
+		}
 		// Plain and schema errors install an own [subject] tag matcher.
 		// Only the parser's registration can establish this guarantee;
 		// written members retain the conservative extraction relationship.

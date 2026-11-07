@@ -29,7 +29,8 @@ func TestLegacyVarDeclarations(t *testing.T) {
 		{"generated-effect-temporaries", "export effect function value() { const result = try Effect.succeed(1); return result + 1 }", 0},
 		{"do-direct", "export function value(): number { return do { var result = 1; result } }", 1},
 		{"do-nested", "export function value(): number { return do { { var result = 1 }; result } }", 1},
-		{"do-parameter", "export function value(x = do { var result = 1; result }): number { return x }", 1},
+		// VIP-2: EK0203 owns a var in a parameter list do, so EK0107 is not repeated.
+		{"do-parameter", "export function value(x = do { var result = 1; result }): number { return x }", 0},
 		{"using", "export function value(resource: Disposable): number { using handle = resource; return 1 }", 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {

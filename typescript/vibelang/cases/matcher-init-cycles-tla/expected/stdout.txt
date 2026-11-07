@@ -1,0 +1,7 @@
+b body, a hoists function
+a body, b says b:a
+tla start
+after
+tla resumed
+tla ready
+entry ready true,true,true,true,false

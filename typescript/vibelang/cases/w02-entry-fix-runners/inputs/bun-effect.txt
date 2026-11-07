@@ -1,0 +1,7 @@
+import "vibelang/platform/bun"
+
+// main needs no service: the legacy compiler selected no layer, and the
+// marker does not add one.
+export effect function main() {
+  try Console.log("bun effect main ran")
+}

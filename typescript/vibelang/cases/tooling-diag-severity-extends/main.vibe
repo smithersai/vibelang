@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | Merge `extends` before validating each effective severity entry.
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | An invalid entry reports `EK3006` and contributes no override; valid entries and independent options still apply.
+export const witness = 1

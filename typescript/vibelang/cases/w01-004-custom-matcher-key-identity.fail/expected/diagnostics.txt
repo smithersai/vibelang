@@ -1,0 +1,2 @@
+main.vibe(7,14): error TS2322
+main.vibe(8,25): error TS2367

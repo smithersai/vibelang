@@ -1018,7 +1018,7 @@ try {
     await shows("service Seats", 0, /class Seats/)
     await shows("service Gate", 0, /class Gate/)
     await shows("join first", 0, /Runs Fiber.join on the fiber/)
-    await shows("concurrent(2)", 0, /Runs the body for each item in its own fiber/)
+    await shows("concurrent(2)", 0, /Runs Effect\.forEach.*enclosing fiber/)
     await shows("const id of ids", 6, /const id: string/)
     await shows("of ids)", 3, /\(parameter\) ids: readonly string\[\]/)
   })

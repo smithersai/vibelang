@@ -1,0 +1,1 @@
+witness-02 vibelang --fix has no entry migration: it does not remove an inert vibelang/platform/* marker from a module without an eligible main (007-tooling.md, Legacy entry-dispatch migration)

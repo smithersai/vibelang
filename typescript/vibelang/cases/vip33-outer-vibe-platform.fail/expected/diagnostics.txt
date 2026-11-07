@@ -1,0 +1,5 @@
+main.vibe(8,10): error EK4402
+main.vibe(10,26): error EK4402
+main.vibe(11,39): error EK4402
+main.vibe(13,64): warning EK4402
+main.vibe(14,75): error EK4402

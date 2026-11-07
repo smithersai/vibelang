@@ -1,0 +1,1 @@
+the language server reads the in-program x.vibe, not its stale sidecar

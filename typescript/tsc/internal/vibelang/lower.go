@@ -32,7 +32,8 @@ type lowering struct {
 	matchPropertyCaches map[*ast.Node]*ast.Node
 	bindingSentinel     *ast.IdentifierNode // private lexical-pattern TDZ identity, created once per module
 
-	jsx core.JsxEmit // native .tsx output names follow the project JSX mode
+	jsx     core.JsxEmit // native .tsx output names follow the project JSX mode
+	rewrite bool         // rewriteRelativeImportExtensions: source specifiers name their output, as in TypeScript
 	transformers.Transformer
 	plan         *plan
 	effect       *ast.IdentifierNode // local name for effect's Effect module, imported on first use
@@ -85,6 +86,7 @@ func newLowering(opts *transformers.TransformOptions, file *ast.SourceFile) *tra
 		matchPropertyCaches: parser.MatchPropertyCaches(file),
 		plan:                planFile(opts.EmitResolver, file),
 		jsx:                 opts.CompilerOptions.Jsx,
+		rewrite:             opts.CompilerOptions.RewriteRelativeImportExtensions.IsTrue(),
 		frames:              findFrameReferences(file),
 		fresh:               freshNames{file: file},
 		commonJS:            opts.GetEmitModuleFormatOfFile != nil && opts.GetEmitModuleFormatOfFile(file) == core.ModuleKindCommonJS,
@@ -465,8 +467,16 @@ func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 		call = tx.runtimeCall("$catch", value, tx.visit(node.Arguments()[1]))
 	} else if fiberHelper(node) == "$forConcurrent" && len(node.Arguments()) == 3 {
 		call = tx.concurrentForCall(node) // its limit runs before its items (order.go)
-	} else if tryOperationName(node) == "try.all" {
+	} else if name := tryOperationName(node); name == "try.all" || name == "try.allSettled" {
 		call = tx.nativeTryAllCall(node)
+	} else if name == "try.race" || name == "try.any" {
+		f := tx.Factory()
+		method := "raceAllFirst"
+		if name == "try.any" {
+			method = "raceAll"
+		}
+		callee := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier(method), ast.NodeFlagsNone)
+		call = f.UpdateCallExpression(node.AsCallExpression(), callee, node.QuestionDotToken(), nil, f.NewNodeList([]*ast.Node{tx.Visitor().VisitNode(node.Arguments()[0])}), node.Flags)
 	} else if isNativeFork(node) {
 		f := tx.Factory()
 		fork := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("forkChild"), ast.NodeFlagsNone)

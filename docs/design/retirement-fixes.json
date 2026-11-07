@@ -65,15 +65,14 @@
       {
         "input": "typescript/vibelang/cases/rethrows-optional-tuple.fail",
         "output": "typescript/vibelang/cases/rethrows-optional-tuple-fixed-output"
-      }
-    ]
-  },
-  {
-    "code": "EK4401",
-    "cases": [
+      },
       {
-        "input": "typescript/vibelang/cases/ek4401-fix.fail",
-        "output": "typescript/vibelang/cases/ek4401-fix-fixed-output"
+        "input": "typescript/vibelang/cases/stream-return-contract.fail",
+        "output": "typescript/vibelang/cases/stream-return-contract-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/effectful-optional-nullable-return.fail",
+        "output": "typescript/vibelang/cases/effectful-optional-nullable-return-fixed-output"
       }
     ]
   },
@@ -96,6 +95,22 @@
       {
         "input": "typescript/vibelang/cases/platform-import-equals.fail",
         "output": "typescript/vibelang/cases/platform-import-equals-fixed"
+      },
+      {
+        "input": "typescript/vibelang/cases/platform-preserved-type-exports.fail",
+        "output": "typescript/vibelang/cases/platform-preserved-type-exports-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/platform-host-nested-bindings.fail",
+        "output": "typescript/vibelang/cases/platform-host-nested-bindings-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/platform-host-shorthand.fail",
+        "output": "typescript/vibelang/cases/platform-host-shorthand-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/platform-host-alias-type-query.fail",
+        "output": "typescript/vibelang/cases/platform-host-alias-type-query-fixed-output"
       }
     ]
   },
@@ -122,6 +137,10 @@
       {
         "input": "typescript/vibelang/cases/diag-nested-exhaustive.fail",
         "output": "typescript/vibelang/cases/diag-nested-exhaustive-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/match-primitive-wrapper-tag.fail",
+        "output": "typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output"
       }
     ]
   },
@@ -131,6 +150,10 @@
       {
         "input": "typescript/vibelang/cases/vip3-infer-slot.fail",
         "output": "typescript/vibelang/cases/vip3-infer-slot-migration-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/vip3-infer-slot-unmarked.fail",
+        "output": "typescript/vibelang/cases/vip3-infer-slot-unmarked-migration-output"
       }
     ]
   },
@@ -243,6 +266,24 @@
       {
         "input": "typescript/vibelang/cases/retired-service-class.fail",
         "output": "typescript/vibelang/cases/retired-service-class-fixed-output"
+      }
+    ]
+  },
+  {
+    "code": "EK0103",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/await-effect-generator.fail",
+        "output": "typescript/vibelang/cases/await-effect-generator-fixed-output"
+      }
+    ]
+  },
+  {
+    "code": "EK4802",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/effect-subtype-generic-argument.fail",
+        "output": "typescript/vibelang/cases/effect-subtype-generic-argument-fixed-output"
       }
     ]
   }

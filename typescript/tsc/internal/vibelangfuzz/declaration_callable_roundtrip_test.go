@@ -91,7 +91,7 @@ func FuzzDeclarationCallableRoundTrip(f *testing.F) {
 		if len(codes) != 0 || emitted == "" {
 			t.Fatalf("invalid producer: %v\n%s", codes, emitted)
 		}
-		_, codes = compile(map[string]string{"producer.vibe": producer, "main.vibe": "import { make } from \"./producer.vibe\"\n" + consumer}, "main.vibe", false)
+		_, codes = compile(map[string]string{"producer.vibe": producer, "main.vibe": "import { make } from \"./producer.js\"\n" + consumer}, "main.vibe", false)
 		if len(codes) != 0 {
 			t.Fatalf("native-import control: %v", codes)
 		}

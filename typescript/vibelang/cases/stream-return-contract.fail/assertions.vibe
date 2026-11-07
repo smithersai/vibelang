@@ -1,0 +1,6 @@
+import type { Marker, NoChannel, NoPipe } from "./lib.js"
+import { markerResult, missingChannel, missingPipe, knownResult } from "./main.js"
+export const markerChecked: Marker!! = markerResult()
+export const channelChecked: NoChannel!! = missingChannel()
+export const pipeChecked: NoPipe!! = missingPipe()
+export const knownChecked: Marker!! = knownResult()

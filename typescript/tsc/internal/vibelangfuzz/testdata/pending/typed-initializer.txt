@@ -1,0 +1,2 @@
+FuzzTypedEffectInitializerTry cold-let-initializer projector VIP-1 and VIP-5: an untried typed let initializer must preserve its cold Effect.
+FuzzTypedEffectInitializerTry corpus:cold-let-initializer projector VIP-1 and VIP-5: reproduces cold-let-initializer.

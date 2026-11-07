@@ -458,7 +458,9 @@ The inherited `for await … of` head has its own production. Unlike an ordinary
 
 The module-level ordinary `for (async of xs)` head remains pending as `admission:for-of-async-module`. Stock TypeScript reports `TS1106` even in an external module under `NodeNext`. The VibeLang root enables `AwaitContext` for top-level await, also suppressing that unrelated native head check. The classifier follows actual ordinary for-of nodes outside source callables; real async functions, declarations, parenthesized/property targets and for-await heads stay separate.
 
-The lab carries native async-body context when selecting an ordinary `for … of` head. A bare target named `async` derives inside async functions, arrows, methods and generators. Nested plain callables reset that context; nested async callables restore their own. Module-level ordinary heads retain their native restriction and separate pending compiler gap. This models the head distinction; other `Await` and `Yield` early errors remain outside the bounded lab.
+The lab distinguishes module top level, async bodies and non-async bodies. A bare target named `async` in an ordinary `for … of` head derives inside async functions, arrows, methods and generators. Nested plain callables reset that context; nested async callables restore their own. Module-level ordinary heads retain their native restriction and separate pending compiler gap.
+
+The same context admits TypeScript's `await` `IdentifierReference` in a non-async body or class field initializer: `function f() { return await.target; }` reports only an unresolved name, even in an external module. Bare `await` in object shorthand, a `new` callee or a `typeof` operand follows the same rule. Module top level, async bodies, computed member names in an enclosing async context and static blocks retain the reservation. Property names such as `obj.await` remain ordinary `IdentifierName` positions. Native plain bodies also admit bindings and labels named `await`; module and async reservations remain in place, and a function declaration's own name retains its enclosing context. Keyed ordinary and deep mutations cover the admitted reference forms. Other `Await` and `Yield` early errors remain outside the bounded lab.
 
 Native `for … of`, `for … in` and `for await … of` heads retain TypeScript assignment-target assertions: `as`, `satisfies` and prefix type assertions. The lab derives those wrappers without admitting an arbitrary arithmetic target. Postfix assertions keep their line restrictions; ordinary bare `async` heads keep the separate context rule.
 
@@ -486,6 +488,8 @@ class methods derive independently; their object-literal twins report
 `TS1162` and stay outside that class-only branch.
 
 Parenthesized Effect types retain the existing `admission:effect-type-trailing-bang` gap: `type T = (number!string!);` has no final slot. The classifier tracks bangs separately in each delimiter scope, including nested parentheses, tuple entries, object fields and function returns. It groups this family only when removing those dangling bangs restores a complete Appendix A derivation, so an independent expression or body gap keeps its own key. A keyed corpus preserves the multiline minimized witness and its pending XPASS check.
+
+`admission:effect-type-line-break` also covers a line break before the second `!` in a grouped Effect type, including nested parentheses, tuple and object types and function returns. The classifier keeps delimiter scopes separate and requires removing only those line breaks to restore a complete Appendix A derivation. Valid statement boundaries and independent syntax gaps keep their own meaning. Keyed corpus entries preserve the multiline witness and its pending XPASS checks.
 
 Native regular-expression literals use an independently validated lexical token. Literal boundaries and flags are checked, and Node's `vm.Script` compiles the literal without executing it. `RegularExpressionLiteral` is its own grammar category, so it cannot become a binding or type merely by replacing it with an identifier. The complete tokenized program must still derive from Appendix A, preserving independent gaps. Alternation, groups, classes, escapes and Unicode modes share this lexical path. The `admission:native-regexp-literal` pending entry and its three corpus entries are removed because these witnesses now derive.
 
@@ -561,3 +565,143 @@ misses because its lookahead stops at the assertion. `error is` before a line
 that can continue an `is` pattern looks like a third form but is a declaration,
 because a `DeclarationStart` begins a declaration wherever one can start, so
 the lab no longer holds that statement open.
+
+A sweep that stacks up to two mutations on every seed and keyed program found
+four more kinds of result. A repeated `readonly` on a schema field is
+`admission:schema-duplicate-readonly`: `Field` admits one `readonly`, and an
+unresolved field type reports only `EK2109`, which covers TS1030. In an
+object-type alias the family includes an untyped name, a method signature
+and an object type behind a type operator such as `readonly { … }`. An
+object-type alias field written `async async` before a line break is an
+untyped field named `async` with an `async` modifier, and joins
+`admission:schema-async-field`. The key scanner had read the line after an
+unfinished `>`, `>>`, `>>>`, `<<`, `as` or `satisfies` as a declaration
+position, so `x >` newline `schema is 1 + 1` now keeps its
+`admission:is-operand-precedence` key; a `>` that may close a type argument
+list still ends the statement. The checker's index-signature grammar errors
+(TS1017 to TS1022, TS1025 and TS1096) count as syntax rejections. Five lab
+gaps were TypeScript the lab had left out: a class expression's type
+parameters, a class field's definite assignment `!`, an exported import
+alias, a type parameter list's trailing comma, and a relational `<` whose right operand starts a type operator,
+as in `C < readonly` before a block on the next line. TypeScript parses
+expression type arguments speculatively and rewinds a list that does not
+close (`tryParseTypeArgumentsInExpression`), but an Earley set keeps that
+reading alive, and a token it can scan blocks automatic semicolon insertion
+for the reading TypeScript keeps. A sentence with no derivation is read again
+without the instantiation alternatives of `MemberExpression`.
+
+The next sweep keyed three more programs into existing families and found one
+new form. A `readonly` method signature in a schema object-type alias is
+`admission:schema-readonly-method`: TypeScript rejects `readonly` on a method
+with TS1024, and the alias's `EK2109` for the method covers it. An untyped
+alias member with `=`, such as `{ id? = Missing }`, is TS1247 and joins
+`admission:schema-field-initializer`. An angle-bracket assertion and a type
+argument list hold an `EffectType` too, so `<A!E!>x` and `f<A!E!>` join
+`admission:effect-type-trailing-bang`.
+Type-literal `get` and `set` accessor signatures were TypeScript the lab had
+left out; TypeScript reads them with no line-break restriction after the
+keyword.
+
+
+The readonly-method family follows the complete modifier prefix, including
+`static readonly` and `async readonly`, and accepts literal and computed
+property names in its classifier. A member named `readonly` is separate:
+`readonly()` carries no modifier. The field-initializer family likewise
+recognizes numeric, string and computed names, such as `{ 1? = Missing }`. String-literal initializers that already
+produce native parse errors remain rejection controls.
+These programs stay pending; the classifier changes no compiler admission.
+
+Native accessor diagnostics also reject grammar: getters cannot have value
+parameters, setters require one value parameter, accessors have no type
+parameters, and setters have no return annotation or optional, rest or
+initialized value parameter. These checks already run in TypeScript's
+`checkGrammarAccessor`. The oracle counts their error diagnostics while
+preserving the category and diagnostic-source boundaries.
+
+
+An `async` method signature in a schema alias is the separate
+`admission:schema-async-method` family. A call or method signature with an
+illegal parameter modifier is `admission:schema-signature-parameter-modifier`.
+Both report only `EK2109` for the unsupported member, covering native
+grammar rejection. Mapping an earlier unresolved field can also cover
+`TS1070` on the final untyped `async` member; it retains
+`admission:schema-async-field`.
+
+VIP-13's `EK1302` rejects user-written static error members and owns their
+recovered native shape diagnostics. The oracle counts that existing error,
+including in a `schema error`, rather than recording another pending gap.
+Accessor `this` parameters are likewise rejected by TypeScript's
+`TS2784`.
+
+The deep campaign also found a `static` method in a schema alias:
+`admission:schema-static-method`. The same unsupported-member mapping
+covers its native `TS1070`; a method named `static` without a modifier
+remains separate.
+
+The alias mapping explains these masked diagnostics.
+`parseSchemaAliasDeclaration` maps the written type through
+`vibelangSchemaOf` and synthesizes `typeof S.Type` as its companion.
+`vibelangSchemaProperties` replaces an unsupported member with a property
+whose value is a flagged `Schema.Unknown` placeholder;
+`checkSchemaValue` reports `EK2109` for that placeholder. The generated
+companion type does not retain the original unsupported member shape.
+
+A reserved binding in a schema-alias signature has its own
+`admission:schema-signature-reserved-binding` family. For example,
+`schema S = { readonly; (static) }` reports only `EK2109`, while its
+TypeScript twin reports `TS1212`. The strict-mode binding words remain
+reserved in typed, optional, rest and destructured parameters.
+This is separate from a parameter modifier: `(static static)` retains
+`admission:schema-signature-parameter-modifier`.
+The classifier reads binding positions; property keys, type references
+and initializer expressions do not become reserved parameter bindings.
+The compiler is unchanged and the known witnesses remain pending.
+
+An `effect` method signature in a schema alias is
+`admission:schema-effect-method`. Appendix A rejects an interface or
+type-literal member written with that modifier with `EK0108`, and
+`type S = { effect id() }` reports it. `schema S = { effect id() }`
+reports only `EK2109` for the unsupported member, which covers that
+rejection, as it covers `TS1024` and `TS1070` for the `readonly`, `async`
+and `static` method families. An untyped `async` property ended by a line
+break does not change the cover. A method named `effect`, an `effect`
+modifier ended by a line break and the named-body `EK1505` rejection stay
+outside the family. An optional `effect id?()` signature is a method in
+this family, not the `admission:schema-effect-field` field form. The
+compiler is unchanged and the witnesses remain pending.
+
+A `fork` or `join` that heads a `new` callee or an `extends` clause in
+Effect code is `admission:fiber-primary-reference`. Appendix A reserves
+both words wherever an `IdentifierReference` could stand under `[+Effect]`,
+as `await` is reserved under `[+Await]`. The parser tests for them only
+where a unary expression starts, so `effect function f() { return new
+join.target; }` reads `join` as an identifier. The compiler then reports
+only the old compiler compatibility error `EK4410` for a stored intrinsic and `TS2339` for the member, not the
+reservation error `EK1702`. `class extends fork.C {}` in the same body
+reports only `TS2339`. A non-null assertion inside the head, as in
+`new join.target!`, does not change the reading. The `async function f() { return new await.target;
+}` twin reports `TS1109`. A shorthand property `{ join }` already reports
+`EK1702`, and `new (join).target` reports `TS1109`, so both stay outside
+the family. A nested plain callable resets the context, as do plain code
+and a member name such as `new x.join`, and these remain ordinary
+identifiers. The compiler is unchanged and the witnesses remain pending.
+
+The `admission:schema-signature-parameter-modifier` family also covers an
+`async` parameter modifier and a modifier before a binding pattern or rest
+parameter, as TypeScript's `canFollowModifier` reads them.
+`schema S = { (async {p}: Missing): Missing }` reports only `EK2109`; its
+`type` twin reports `TS1090`. `async` must share the line with what follows,
+as TypeScript requires. A parameter named `async`, as in `(async: T)`,
+`(async, b)` or `(async?: T)`, is not a modifier. `(static {p})` and
+`(public ...p)` were keyed as reserved bindings; they now key as parameter
+modifiers. `(static: T)` and `(...static: T[])` remain reserved bindings.
+The compiler is unchanged and the witnesses remain pending.
+
+An optional schema-alias member with an initializer keeps
+`admission:schema-field-initializer` after a modifier prefix.
+`schema S = { readonly 1 ? =\nMissing }` and `readonly id ? = Missing`
+report only `EK2109`; the `type` twins report `TS1247`. Without the `?`,
+`readonly 1 = Missing` and `readonly id = Missing` already report a
+syntax error, and `static [k] = Missing` reports the `static` type-member
+rejection. These stay outside the family. The compiler is unchanged and
+the witnesses remain pending.

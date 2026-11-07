@@ -1,0 +1,28 @@
+{
+  "key": "migrate:alchemy-plain-native-peer-resolution:EK9203",
+  "source": "alchemy partition conversion: event-source consumers converted in the same batch as the EventBridge peer whose Effect they return",
+  "cases": [
+    {
+      "key": "alchemy:acm-expiry-event-source",
+      "consumer": "src/ACM/ExpiryEventSource.ts",
+      "selected": ["src/EventBridge/EventSource.ts", "src/ACM/ExpiryEventSource.ts"],
+      "effect": ["consumeExpiryEvents"],
+      "plain": ["expiryPattern"],
+      "files": {
+        "src/EventBridge/EventSource.ts": "import * as Effect from \"effect/Effect\";\nimport type * as Stream from \"effect/Stream\";\n\nexport interface EventRecord {\n  readonly detail: unknown;\n}\n\nexport interface EventRouteProps {\n  readonly id?: string;\n  readonly description?: string;\n}\n\nexport const consumeBusEvents = (...args: any[]) => {\n  // The handler is the LAST positional argument.\n  const process = args[args.length - 1] as (events: Stream.Stream<EventRecord, never, never>) => Effect.Effect<void, never, never>;\n  return Effect.suspend(() => Effect.as(Effect.void, args.length - 1)).pipe(Effect.tap(() => process));\n};\n",
+        "src/ACM/ExpiryEventSource.ts": "import type * as Effect from \"effect/Effect\";\nimport type * as Stream from \"effect/Stream\";\nimport {\n  consumeBusEvents,\n  type EventRecord,\n  type EventRouteProps,\n} from \"../EventBridge/EventSource.ts\";\n\nexport interface ExpiryEventSourceProps extends EventRouteProps {\n  readonly certificateArns?: ReadonlyArray<string>;\n}\n\nexport const expiryPattern = (props: ExpiryEventSourceProps) => ({\n  source: [\"aws.acm\"],\n  \"detail-type\": [\"ACM Certificate Approaching Expiration\"],\n  ...(props.certificateArns !== undefined ? { resources: [...props.certificateArns] } : {}),\n});\n\nexport const consumeExpiryEvents = <StreamReq = never, Req = never>(\n  props: ExpiryEventSourceProps,\n  process: (events: Stream.Stream<EventRecord, never, StreamReq>) => Effect.Effect<void, never, Req>,\n) =>\n  consumeBusEvents(\n    props.id ?? \"AcmExpiryEvents\",\n    expiryPattern(props),\n    { description: props.description },\n    process,\n  );\n"
+      }
+    },
+    {
+      "key": "alchemy:access-analyzer-findings-event-source",
+      "consumer": "src/AccessAnalyzer/FindingsEventSource.ts",
+      "selected": ["src/EventBridge/EventSource.ts", "src/AccessAnalyzer/FindingsEventSource.ts"],
+      "effect": ["consumeFindingsEvents"],
+      "plain": [],
+      "files": {
+        "src/EventBridge/EventSource.ts": "import * as Effect from \"effect/Effect\";\n\nexport const consumeBusEvents = (...args: any[]) => Effect.succeed(args.length);\n",
+        "src/AccessAnalyzer/FindingsEventSource.ts": "import { consumeBusEvents } from \"../EventBridge/EventSource.ts\";\n\nexport const consumeFindingsEvents = (id: string, process: (n: number) => void) =>\n  consumeBusEvents(id, { source: [\"aws.access-analyzer\"] }, process);\n"
+      }
+    }
+  ]
+}

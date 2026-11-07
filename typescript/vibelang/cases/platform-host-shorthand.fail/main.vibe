@@ -1,0 +1,10 @@
+// expect: EK4402
+const timeout = AbortSignal.timeout
+const create = URL.createObjectURL
+const revoke = URL.revokeObjectURL
+export const direct = { timeout, create, revoke }
+export function nested() { return { timeout, ...{ create, revoke } } }
+export function shadow(timeout: number, create: string, revoke: boolean) {
+  return { timeout, create, revoke }
+}
+export type Creator = typeof URL.createObjectURL

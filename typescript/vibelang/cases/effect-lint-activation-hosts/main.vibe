@@ -1,0 +1,2 @@
+// The scenarios are separate projects built by run.mjs.
+export const ok = 1

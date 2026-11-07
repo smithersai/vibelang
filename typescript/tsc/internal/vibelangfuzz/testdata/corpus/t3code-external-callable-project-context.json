@@ -1,0 +1,8 @@
+{
+  "module": "vite-plus",
+  "declaration": "import type { Plugin } from \"vite-plus\";\nexport declare function plugin(): Plugin;\n",
+  "project": {
+    "rootDir": "../..",
+    "composite": false
+  }
+}

@@ -1047,7 +1047,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK2104 layer setup order report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1058,7 +1058,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK2005 resumeWith contract report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1069,7 +1069,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK3201 legacy provider report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1080,7 +1080,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK3007 service-key arguments report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1091,7 +1091,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK9100 fatal mapper form choice report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1102,7 +1102,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK9101 fatal mapper data-method choice report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1341,7 +1341,7 @@
       "by": "Will",
       "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
     },
-    "reason": "Accepted VIP-40 makes a module name a lexical binding: a second module of the same name, or a module beside a value binding, is the error EK4005. This fixture witnesses Appendix B\u2019s EK4408 retirement sentence. Choosing which binding to rename can change identity or API, so no automatic rename is asserted."
+    "reason": "Accepted VIP-40 makes a module name a lexical binding: a second module of the same name, or a module beside a value binding, is the error EK4005. This fixture witnesses Appendix B’s EK4408 retirement sentence. Choosing which binding to rename can change identity or API, so no automatic rename is asserted."
   },
   {
     "code": "TS2345",
@@ -1928,5 +1928,485 @@
       "reference": "docs/design/DECISIONS.md: retired layer declarations"
     },
     "reason": "The existing invalid setup-order fixture already fails with EK9209; the retired declaration additionally reports its preserving migration error EK2121."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/effectful-plain-unknown-call.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: the accepted effectful-callables amendment says a function whose return type is wholly Effect, Stream or Layer cannot throw; docs/design/src/003-failures.md (Plain code never throws) makes any thrown type other than never EK0401 in such a plain function. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The call's .ts callee has no @throws tag, so its thrown type is unknown. A repair must choose between making the function effect, which changes its declaration and its callers, declaring a contract on the foreign callee, or moving the code to a .ts file; each needs author intent, and a mechanical rewrite must not change when or whether the call's exception surfaces."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/effectful-plain-unknown-default.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: the accepted effectful-callables amendment says a function whose return type is wholly Effect, Stream or Layer cannot throw; docs/design/src/003-failures.md (Plain code never throws) makes an effectful function's parameter list stricter, so a default whose thrown type is not never is EK0401. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The default's .ts callee has no @throws tag, so its thrown type is unknown, and a parameter default runs at the call, before the Effect exists. A repair must choose between computing the value in the body, declaring a contract on the foreign callee, or moving the code to a .ts file; each needs author intent."
+  },
+  {
+    "code": "EK0501",
+    "case": "typescript/vibelang/cases/witness07-vip26-top-level-try.fail",
+    "vip": "VIP-26",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0026-top-level-and-main.md#decision: accepted VIP-26 says a module's top level is not an effect function, so try is not allowed there. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing top-level try rejection in a declaration, a statement, an if block and a bare block. A repair must move the work into an effect function, which needs author intent."
+  },
+  {
+    "code": "EK2601",
+    "case": "typescript/vibelang/cases/witness07-vip26-legacy-markers.fail",
+    "vip": "VIP-26",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0026-top-level-and-main.md#amendment-legacy-entry-markers and docs/design/src/007-tooling.md#legacy-entry-dispatch-migration: accepted VIP-26 requires EK2601 for the retired platform markers and specifies the preserving vibelang --fix. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "A pending (broken) witness: the compiler does not report EK2601 yet, so this case rejects nothing today. The entry migration in 007-tooling must land with the diagnostic and its registered fixed-output case."
+  },
+  {
+    "code": "TS1378",
+    "case": "typescript/vibelang/cases/witness07-vip26-top-level-await-module.fail",
+    "vip": "VIP-26",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind: accepted VIP-26 says top-level await requires supported module and target options, under ordinary TypeScript rules. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "TypeScript's own option diagnostic, reported for the .vibe file and its .ts twin alike under module es2020. A repair changes project options, which needs author intent."
+  },
+  {
+    "code": "TS1378",
+    "case": "typescript/vibelang/cases/witness07-vip26-top-level-await-target.fail",
+    "vip": "VIP-26",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind: accepted VIP-26 says top-level await requires supported module and target options, under ordinary TypeScript rules. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "TypeScript's own option diagnostic, reported for the .vibe file and its .ts twin alike under target es2016. A repair changes project options, which needs author intent."
+  },
+  {
+    "code": "TS2304",
+    "case": "typescript/vibelang/cases/witness07-vip26-noderuntime-import.fail",
+    "vip": "VIP-26",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0026-top-level-and-main.md#decision: the accepted correction says NodeRuntime from @effect/platform-node is not in scope without its import (VIP-14). This cites existing published acceptance, not a new approval."
+    },
+    "reason": "TypeScript's unresolved-name error for an unimported NodeRuntime; the imported control compiles. Choosing the runtime package to import needs author intent."
+  },
+  {
+    "code": "TS2451",
+    "case": "typescript/vibelang/cases/witness07-vip26-external-modules.fail",
+    "vip": "VIP-26",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind and docs/design/vips/0030-config-files.md: moduleDetection keeps its ordinary meaning for .ts files while every .vibe file is a module. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The errors are TypeScript's own, in the two .ts script controls only; the .vibe files with the same text report nothing. No VibeLang source is rejected."
+  },
+  {
+    "code": "TS2393",
+    "case": "typescript/vibelang/cases/witness07-vip26-external-modules.fail",
+    "vip": "VIP-26",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind and docs/design/vips/0030-config-files.md: moduleDetection keeps its ordinary meaning for .ts files while every .vibe file is a module. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The errors are TypeScript's own, in the two .ts script controls only; the .vibe files with the same text report nothing. No VibeLang source is rejected."
+  },
+  {
+    "code": "EK1907",
+    "case": "typescript/vibelang/cases/witness07-vip19-concurrency-domain.fail",
+    "vip": "VIP-19",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0019-for-concurrent.md#decision: accepted VIP-19 passes the limit to Effect's concurrency option, whose pinned Types.Concurrency is a number or \"unbounded\"; \"inherit\" is not a member. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing limit-domain rejection for a literal and a named \"inherit\"; the accepted controls compile. Choosing a replacement limit needs author intent."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/witness07-vip19-concurrency-domain.fail",
+    "vip": "VIP-19",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0019-for-concurrent.md#decision: accepted VIP-19 passes the limit to Effect's concurrency option, whose pinned Types.Concurrency is a number or \"unbounded\"; \"inherit\" is not a member. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "TypeScript's own error in the stock Effect.forEach twin with the same \"inherit\" operand; no VibeLang source is newly rejected."
+  },
+  {
+    "code": "EK2102",
+    "case": "typescript/vibelang/cases/witness07-vip21-written-contracts.fail",
+    "vip": "VIP-21",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0021-producers.md#wills-words: accepted VIP-21 checks written producer annotations as TypeScript checks the Stream.callback counterpart, channel by channel, and an incompatible annotation is EK2102. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing non-Stream and incompatible-union annotation rejections, each beside its rejected Stream.callback twin. Choosing a new annotation needs author intent."
+  },
+  {
+    "code": "EK9201",
+    "case": "typescript/vibelang/cases/witness07-vip21-written-contracts.fail",
+    "vip": "VIP-21",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0021-producers.md#wills-words: accepted VIP-21 checks written producer annotations as TypeScript checks the Stream.callback counterpart, channel by channel, and an incompatible annotation is EK2102. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing error-channel check against a written Stream contract, beside its rejected Stream.callback twin. Widening the contract or handling the failure needs author intent."
+  },
+  {
+    "code": "EK9202",
+    "case": "typescript/vibelang/cases/witness07-vip21-written-contracts.fail",
+    "vip": "VIP-21",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0021-producers.md#wills-words: accepted VIP-21 checks written producer annotations as TypeScript checks the Stream.callback counterpart, channel by channel, and an incompatible annotation is EK2102. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing requirement-channel check against a written Stream contract, beside its rejected Stream.callback twin. Providing the service or widening the contract needs author intent."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/witness07-vip21-written-contracts.fail",
+    "vip": "VIP-21",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0021-producers.md#wills-words: accepted VIP-21 checks written producer annotations as TypeScript checks the Stream.callback counterpart, channel by channel, and an incompatible annotation is EK2102. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "TypeScript's own yield and return mismatches, in the producers and their Stream.callback twins; nothing new is rejected."
+  },
+  {
+    "code": "TS2739",
+    "case": "typescript/vibelang/cases/witness07-vip21-written-contracts.fail",
+    "vip": "VIP-21",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0021-producers.md#wills-words: accepted VIP-21 checks written producer annotations as TypeScript checks the Stream.callback counterpart, channel by channel, and an incompatible annotation is EK2102. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "TypeScript's own error in the Stream.callback twin annotated as an Effect; the producer reports EK2102 at the same declaration."
+  },
+  {
+    "code": "TS2741",
+    "case": "typescript/vibelang/cases/witness07-vip21-written-contracts.fail",
+    "vip": "VIP-21",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0021-producers.md#wills-words: accepted VIP-21 checks written producer annotations as TypeScript checks the Stream.callback counterpart, channel by channel, and an incompatible annotation is EK2102. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "TypeScript's own error in the Stream.callback twin annotated as an Iterable; the producer reports EK2102 at the same declaration."
+  },
+  {
+    "code": "EK3006",
+    "case": "typescript/vibelang/cases/witness07-vip21-retired-ek2101-config.fail",
+    "vip": "VIP-21",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0021-producers.md#decision: accepted VIP-21 retires EK2101 for good; docs/design/src/007-tooling.md lets vibe.severities configure only warning codes and assigned lint codes. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Configuration control: vibe.severities refuses the retired EK2101 exactly as it refuses a never-assigned code, while an assigned warning is accepted. Removing the entry is the only repair."
+  },
+  {
+    "code": "EK2202",
+    "case": "typescript/vibelang/cases/witness07-vip22-restore-concurrent-limits.fail",
+    "vip": "VIP-22",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0022-interruption-blocks.md#decision: accepted VIP-22 makes restore in any for concurrent head binding initialization or body EK2202, whatever the limit. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing item-region restore rejection at every limit, with accepted limit and iterable controls. Moving the mask per item needs author intent."
+  },
+  {
+    "code": "EK2301",
+    "case": "typescript/vibelang/cases/witness07-vip23-pipe-arrows.fail",
+    "vip": "VIP-23",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0023-pipe.md#prior-art: accepted VIP-23 rejects a bare plain, async or effect arrow pipe body and a missing topic with EK2301. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing bare-arrow and conditional pipe-body rejections; witness07-vip23-pipe-parenthesized-arrow runs the parenthesized forms. Choosing where parentheses go changes meaning, so no automatic repair is asserted."
+  },
+  {
+    "code": "EK2301",
+    "case": "typescript/vibelang/cases/witness07-vip23-pipe-topics.fail",
+    "vip": "VIP-23",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0023-pipe.md#prior-art: accepted VIP-23 rejects a bare plain, async or effect arrow pipe body and a missing topic with EK2301. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing missing-topic and outside-topic rejections. Placing the topic needs author intent."
+  },
+  {
+    "code": "TS2379",
+    "case": "typescript/vibelang/cases/w01-006-optional-on-types.fail",
+    "vip": "VIP-15",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0015-schema-declarations.md#decision and docs/design/src/006-data.md#meaning: the accepted rule maps optional fields and tuple elements as TypeScript does under the project exactOptionalPropertyTypes setting, and native data payloads follow TypeScript optional-property types directly. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "These negative controls witness TypeScript own exactOptionalPropertyTypes checks on a native data payload, a schema field and a schema tuple element. Stock tsc 5.9.3 reports the same codes at the same positions on the .ts twin, and the compiler before this commit already rejects the same program with them; no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2375",
+    "case": "typescript/vibelang/cases/w01-006-optional-on-types.fail",
+    "vip": "VIP-15",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0015-schema-declarations.md#decision and docs/design/src/006-data.md#meaning: the accepted rule maps optional fields and tuple elements as TypeScript does under the project exactOptionalPropertyTypes setting, and native data payloads follow TypeScript optional-property types directly. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "These negative controls witness TypeScript own exactOptionalPropertyTypes checks on a native data payload, a schema field and a schema tuple element. Stock tsc 5.9.3 reports the same codes at the same positions on the .ts twin, and the compiler before this commit already rejects the same program with them; no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/w01-006-optional-on-types.fail",
+    "vip": "VIP-15",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0015-schema-declarations.md#decision and docs/design/src/006-data.md#meaning: the accepted rule maps optional fields and tuple elements as TypeScript does under the project exactOptionalPropertyTypes setting, and native data payloads follow TypeScript optional-property types directly. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "These negative controls witness TypeScript own exactOptionalPropertyTypes checks on a native data payload, a schema field and a schema tuple element. Stock tsc 5.9.3 reports the same codes at the same positions on the .ts twin, and the compiler before this commit already rejects the same program with them; no form that compiled before is rejected."
+  },
+  {
+    "code": "EK4837",
+    "case": "typescript/vibelang/cases/w01-007-ek4837-exemptions.fail",
+    "vip": "VIP-29",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0029-schema-errors.md: Status accepted, 2026-10-29; docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms defines the EK4830 and EK4837 advisories and their spread and static-tag exemptions. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Both codes are default warnings; the case raises them to errors only through its own vibe.severities, so it can pin their positions. The default severity is unchanged and the compiler before this commit reports the same diagnostics, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK4830",
+    "case": "typescript/vibelang/cases/w01-007-ek4837-exemptions.fail",
+    "vip": "VIP-29",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0029-schema-errors.md: Status accepted, 2026-10-29; docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms defines the EK4830 and EK4837 advisories and their spread and static-tag exemptions. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Both codes are default warnings; the case raises them to errors only through its own vibe.severities, so it can pin their positions. The default severity is unchanged and the compiler before this commit reports the same diagnostics, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK4833",
+    "case": "typescript/vibelang/cases/w01-007-ek4833-qualified-alias.fail",
+    "vip": "VIP-3",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0003-effect-type-shorthand.md: Status accepted by Will, 2026-10-28; docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms states when the EK4833 advisory treats a qualified alias named Effect as an equivalent spelling. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "EK4833 is a default warning; the case raises it to an error only through its own vibe.severities, so it can pin its positions. The default severity is unchanged and the compiler before this commit reports the same diagnostics, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0403",
+    "case": "typescript/vibelang/cases/w01-007-trusted-packages-ignored.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28, amended 2026-11-02 to retire trustedPackages; docs/design/src/007-tooling.md#config-files ignores the key with EK3010, so an unannotated npm call in effect code is still EK0403. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2339",
+    "case": "typescript/vibelang/cases/w01-004-custom-matcher-standalone-ts.fail",
+    "vip": "VIP-7",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns makes the runtime SymbolConstructor.customMatcher augmentation program-wide and states that a standalone .ts program without the provider does not see it. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "A standalone .ts program reads Symbol.customMatcher without the provider; TypeScript itself reports TS2339 there, as stock tsc does, and the compiler before this commit reports the same code at the same position, so no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/w01-004-custom-matcher-key-identity.fail",
+    "vip": "VIP-7",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns gives Symbol.customMatcher the same unique symbol type as the runtime customMatcher export. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The negative controls show that another unique symbol is not assignable to or comparable with the key; TypeScript itself reports TS2322 and TS2367, and the compiler before this commit reports the same codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2367",
+    "case": "typescript/vibelang/cases/w01-004-custom-matcher-key-identity.fail",
+    "vip": "VIP-7",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns gives Symbol.customMatcher the same unique symbol type as the runtime customMatcher export. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The negative controls show that another unique symbol is not assignable to or comparable with the key; TypeScript itself reports TS2322 and TS2367, and the compiler before this commit reports the same codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0403",
+    "case": "typescript/vibelang/cases/effect-untagged-invocations.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md and docs/design/src/003-failures.md (Calls in effect code): a call, new expression, tagged template or class evaluation whose thrown type is not never is EK0403 in effect code, and an untagged foreign declaration throws unknown. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "An untagged or throwing .ts constructor or tag in effect code needs its exception routed into the error channel or declared impossible. Choosing between try Effect.try, a typed catch mapper and a @throws {never} contract on the foreign declaration needs author intent; a mechanical rewrite must not change when the exception surfaces."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/effect-untagged-invocations.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md and docs/design/src/003-failures.md (Calls in effect code): a call, new expression, tagged template or class evaluation whose thrown type is not never is EK0403 in effect code, and an untagged foreign declaration throws unknown. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The same invocation in a plain function whose return type is wholly effectful runs before any Effect exists. A repair must choose between making the function effect, declaring a contract on the foreign callee, or moving the code to a .ts file; each needs author intent."
+  },
+  {
+    "code": "EK0201",
+    "case": "typescript/vibelang/cases/w01-002-do-var-both.fail",
+    "vip": "VIP-2",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0002-effect-blocks-and-do.md: Status accepted by Will, 2026-10-28; docs/design/src/002-running.md#do-expressions states that a final var is EK0201, var in a parameter-list do is EK0203, and both are reported when both apply. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0203",
+    "case": "typescript/vibelang/cases/w01-002-do-var-both.fail",
+    "vip": "VIP-2",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0002-effect-blocks-and-do.md: Status accepted by Will, 2026-10-28; docs/design/src/002-running.md#do-expressions states that a final var is EK0201, var in a parameter-list do is EK0203, and both are reported when both apply. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0107",
+    "case": "typescript/vibelang/cases/w01-002-do-var-nonfinal.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28, amended to ban var in all .vibe code; docs/design/src/002-running.md#do-expressions states that a nonfinal var outside a parameter list remains EK0107. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/w01-003-plain-throw-caught.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28; docs/design/src/003-failures.md#plain-code-never-throws makes a throw statement or throw expression EK0401 even when a try statement in the same function catches it. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0403",
+    "case": "typescript/vibelang/cases/w01-005-npm-thrown-contract.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28, amended to retire trusted packages; docs/design/src/005-services.md#effects-modules-are-in-scope and docs/design/src/003-failures.md#thrown-types give an npm signature without @throws the thrown type unknown, which effect code must bridge with Effect.try (EK0403). This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2454",
+    "case": "typescript/vibelang/cases/w01-004-is-definite-assignment.fail",
+    "vip": "VIP-7",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#is-expressions sends reads of a binding that may not have run, including a for update read of a test binding, through TypeScript definite-assignment checks (TS2454) and a read before the binding position to TS2448. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case pins TypeScript own TS2454 and TS2448 reports, which stock tsc 5.9.3 gives at the same positions on the .ts twin. The compiler before this commit reports these and more (TS2454 on exempt types); this commit only removes errors, so no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2448",
+    "case": "typescript/vibelang/cases/w01-004-is-definite-assignment.fail",
+    "vip": "VIP-7",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#is-expressions sends reads of a binding that may not have run, including a for update read of a test binding, through TypeScript definite-assignment checks (TS2454) and a read before the binding position to TS2448. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case pins TypeScript own TS2454 and TS2448 reports, which stock tsc 5.9.3 gives at the same positions on the .ts twin. The compiler before this commit reports these and more (TS2454 on exempt types); this commit only removes errors, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/effectful-unknown-promise.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: the accepted effectful-callables amendment forbids throws in wholly effectful functions; docs/design/src/003-failures.md (Plain code never throws) applies the stricter rule to effectful parameter lists. A Promise return alone supplies no synchronous never-throw contract."
+    },
+    "reason": "Choosing a foreign never-throw contract, moving the computation into an effect body, or moving the declaration to TypeScript requires author intent and can change its call-time behavior."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/effect-erased-callable-default.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: calls through any or Function throw unknown; docs/design/src/003-failures.md (Plain code never throws) applies the stricter no-throw rule to effectful parameter lists."
+    },
+    "reason": "An erased callable has no signature contract to prove non-throwing. Choosing a concrete callable type, moving the work into an Effect body, or moving the declaration to TypeScript requires author intent and may change call-time behavior."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/declaration-nested-linked.fail",
+    "vip": "VIP-34",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision: accepted VIP-34 says \"With `rewriteRelativeImportExtensions`, relative specifiers `./x.vibe` in emitted JavaScript are rewritten to `./x.js`, as for `.ts`; source-extension admission follows the same tsconfig checks as the native twin\"; docs/design/src/007-tooling.md#config-files requires TS5097 without allowImportingTsExtensions or rewriteRelativeImportExtensions. This records existing published authority, not a new language decision."
+    },
+    "reason": "The case only gained `rewriteRelativeImportExtensions: true` in tsconfig.json, the flag its .ts twin needs to import a source extension; its sources and expected diagnostics are unchanged, so it rejects no new form."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/nothrow-sync-throw.fail",
+    "vip": "VIP-34",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision: accepted VIP-34 says \"With `rewriteRelativeImportExtensions`, relative specifiers `./x.vibe` in emitted JavaScript are rewritten to `./x.js`, as for `.ts`; source-extension admission follows the same tsconfig checks as the native twin\"; docs/design/src/007-tooling.md#config-files requires TS5097 without allowImportingTsExtensions or rewriteRelativeImportExtensions. This records existing published authority, not a new language decision."
+    },
+    "reason": "The case only gained `rewriteRelativeImportExtensions: true` in tsconfig.json, the flag its .ts twin needs to import a source extension; its sources and expected diagnostics are unchanged, so it rejects no new form."
+  },
+  {
+    "code": "EK0107",
+    "case": "typescript/vibelang/cases/witness-var-declarations.fail",
+    "vip": "VIP-1",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0001-effect-and-async-functions.md: Status accepted by Will, 2026-10-28; its amendment banning legacy JavaScript in all .vibe code makes every var declaration a compile error, and docs/design/src/001-functions.md#direct-eval lists var, for (var ...) included, under EK0107. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing var rejection at each declaration form: top level, function body, for, for-in, for-of, effect code and a nonfinal var in a do body; a property named var compiles. The compiler before this commit reports the same sites, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0201",
+    "case": "typescript/vibelang/cases/witness-do-var-specific.fail",
+    "vip": "VIP-2",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0002-effect-blocks-and-do.md#clarification-overlapping-var-diagnostics: accepted VIP-2 reports EK0201 for a final var declaration in a do block and EK0203 for var in a do expression in a parameter list, both when both apply, instead of EK0107. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing do early errors: a final var declaration reports EK0201, with EK0203 beside it in a parameter list, and neither site reports EK0107. Ending the block with its value is the author's choice, so no automatic repair is asserted."
+  },
+  {
+    "code": "EK0203",
+    "case": "typescript/vibelang/cases/witness-do-var-specific.fail",
+    "vip": "VIP-2",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0002-effect-blocks-and-do.md#clarification-overlapping-var-diagnostics: accepted VIP-2 reports EK0201 for a final var declaration in a do block and EK0203 for var in a do expression in a parameter list, both when both apply, instead of EK0107. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing parameter-list do early error, alone for a nonfinal var and beside EK0201 for a final one, with no EK0107 at either site. Choosing let or const for the binding needs author intent."
+  },
+  {
+    "code": "EK0402",
+    "case": "typescript/vibelang/cases/class-override-throws.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md#decision and docs/design/src/003-failures.md#assignability: accepted throws contracts attach to call signatures, and the assignability rule applies wherever TypeScript checks one call signature against another, class overrides included. This instantiates that existing rule; it introduces no new rejection policy."
+    },
+    "reason": "Each rejected field overrides a base class member whose function type admits only never with a function that may throw. Choosing a catching wrapper or a base member type that admits the throw requires author intent; a mechanical rewrite must not change when or whether the override's exception surfaces."
   }
 ]

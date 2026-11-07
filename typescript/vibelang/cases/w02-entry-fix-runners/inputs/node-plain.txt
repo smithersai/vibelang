@@ -1,0 +1,7 @@
+import "vibelang/platform/node"
+import { say } from "./say.ts"
+
+// An eligible plain main: the runner receives Effect.sync(main).
+export function main(): void {
+  say("node plain main ran")
+}

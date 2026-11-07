@@ -1,0 +1,1 @@
+explicit namespace imports report native TS2709 and TS2339

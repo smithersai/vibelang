@@ -1,0 +1,75 @@
+[
+  {
+    "Key": "short-config",
+    "Args": [
+      "-c",
+      "not-an-oxlint-config.json"
+    ],
+    "Selector": "-c"
+  },
+  {
+    "Key": "inline-short-config",
+    "Args": [
+      "-c=not-an-oxlint-config.json"
+    ],
+    "Selector": "-c"
+  },
+  {
+    "Key": "deny-warnings",
+    "Args": [
+      "--deny-warnings"
+    ],
+    "Selector": "--deny-warnings"
+  },
+  {
+    "Key": "inline-deny-warnings",
+    "Args": [
+      "--deny-warnings=true"
+    ],
+    "Selector": "--deny-warnings"
+  },
+  {
+    "Key": "ignore-path",
+    "Args": [
+      "--ignore-path",
+      "not-an-ignore-file"
+    ],
+    "Selector": "--ignore-path"
+  },
+  {
+    "Key": "inline-ignore-path",
+    "Args": [
+      "--ignore-path=not-an-ignore-file"
+    ],
+    "Selector": "--ignore-path"
+  },
+  {
+    "Key": "ignore-pattern",
+    "Args": [
+      "--ignore-pattern",
+      "generated/**"
+    ],
+    "Selector": "--ignore-pattern"
+  },
+  {
+    "Key": "inline-ignore-pattern",
+    "Args": [
+      "--ignore-pattern=generated/**"
+    ],
+    "Selector": "--ignore-pattern"
+  },
+  {
+    "Key": "no-ignore",
+    "Args": [
+      "--no-ignore"
+    ],
+    "Selector": "--no-ignore"
+  },
+  {
+    "Key": "inline-no-ignore",
+    "Args": [
+      "--no-ignore=true"
+    ],
+    "Selector": "--no-ignore"
+  }
+]

@@ -1,0 +1,21 @@
+// expect-result: [5,"cfg","Missing","a",2,7,["Die"],["exit","config","missing","later","later","broken"]]
+// An Exit, a Config and an error instance are Effects, so a function returning
+// one is effectful: its thrown type is never, effect code calls it directly,
+// and its written @throws adds nothing to the error channel. A throw before
+// such a function returns is a defect, not a typed failure. Plain code calls
+// it directly too.
+import { Effect } from "effect"
+import { exit, config, missing, later, broken, events } from "./lib.js"
+effect function direct() { const value = broken(); return 0 }
+function plainProgram(n = 7) { return later(n) }
+export effect function main() {
+  const n = try exit(5)
+  const c = try config("cfg")
+  const failure = missing("a")
+  const program = later(2)
+  const m = try program
+  const p = try plainProgram()
+  const outcome = try Effect.exit(direct())
+  const reasons = outcome._tag === "Failure" ? outcome.cause.reasons.map((r) => r._tag) : []
+  return [n, c, failure._tag, failure.id, m, p, reasons, events]
+}

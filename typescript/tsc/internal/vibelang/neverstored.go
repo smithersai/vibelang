@@ -42,8 +42,10 @@ func checkNeverStoredCall(c *checker.Checker, a *analyzer, file *ast.SourceFile,
 		return
 	}
 	// A call the parser wrote for a form, such as $await for `await x`, has
-	// its own diagnostics, and resume's result is the handle's (EK2110).
-	if isHelperCall(call) || resumeKind(c, call) != "" {
+	// its own diagnostics, and resume's result is the handle's (EK2110). A
+	// throw expression is the parser's call too, not one that runs: VIP-41
+	// writes `[a, throw e]` to fail there, as a throw statement does.
+	if isHelperCall(call) || isThrowExpression(file, call) || resumeKind(c, call) != "" {
 		return
 	}
 	if c.GetTypeAtLocation(call).Flags()&checker.TypeFlagsNever == 0 {

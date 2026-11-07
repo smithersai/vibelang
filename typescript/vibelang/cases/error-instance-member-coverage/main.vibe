@@ -1,0 +1,22 @@
+// expect-result: [[7,9,7,9,7,9,7,9,7,7],[7,9,7,9,7,9,7,9,7,7]]
+import { nativeLabels } from "./native.js"
+error Plain { code:number; label():number{return this.code} }
+schema error Encoded { get label():number{return this.code}; code:number }
+type P={_tag:"Plain";payload:7}|{_tag:"Other";payload:9}
+type S={_tag:"Encoded";payload:7}|{_tag:"Other";payload:9}
+function plain(s:P):number{return match(s){when Plain:s.payload;when {_tag:"Other"}:s.payload;}}
+function extracted(s:P):number{return match(s){when Plain(let e):e.payload;when {_tag:"Other"}:s.payload;}}
+function schema(s:S):number{return match(s){when Encoded:s.payload;when {_tag:"Other"}:s.payload;}}
+function schemaExtracted(s:S):number{return match(s){when Encoded(let e):e.payload;when {_tag:"Other"}:s.payload;}}
+function own(s:unknown):number{return match(s){when Plain(let e):e.code;default:-1;}}
+function schemaOwn(s:unknown):number{return match(s){when Encoded(let e):e.code;default:-1;}}
+export effect function main(){
+ const values=[
+  plain({_tag:"Plain",payload:7}),plain({_tag:"Other",payload:9}),
+  extracted({_tag:"Plain",payload:7}),extracted({_tag:"Other",payload:9}),
+  schema({_tag:"Encoded",payload:7}),schema({_tag:"Other",payload:9}),
+  schemaExtracted({_tag:"Encoded",payload:7}),schemaExtracted({_tag:"Other",payload:9}),
+  own(new Plain({code:7})),schemaOwn(new Encoded({code:7}))
+ ]
+ return [values,nativeLabels()]
+}

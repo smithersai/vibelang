@@ -1,0 +1,6 @@
+import "vibelang/platform/node"
+
+// A default-exported main is not a legacy startup.
+export default effect function main() {
+  try Console.log("default main ran")
+}

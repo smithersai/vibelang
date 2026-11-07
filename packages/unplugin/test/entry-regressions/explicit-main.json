@@ -1,0 +1,11 @@
+{
+  "property": "explicit-entry-runner",
+  "rule": "gets no entry diagnostic and causes no implicit startup",
+  "input": {
+    "bundler": "esbuild",
+    "format": "cjs",
+    "runner": "runSync",
+    "entryName": "main",
+    "value": 0
+  }
+}

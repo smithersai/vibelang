@@ -398,11 +398,30 @@ func checkProvideProviders(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
+// mayCallProvide checks the callee without checking its arguments. Quick
+// return inference must not resolve unrelated calls: their arguments can
+// depend on a later assignment in a loop whose initializer is still inferred.
+func mayCallProvide(c *checker.Checker, call *ast.Node) bool {
+	if !ast.IsCallExpression(call) || !isVibeLangFile(ast.GetSourceFileOfNode(call)) {
+		return false
+	}
+	for _, signature := range c.GetSignaturesOfType(c.GetTypeAtLocation(call.Expression()), checker.SignatureKindCall) {
+		owner := ownerOf(signature.Declaration())
+		if owner == nil || declarationName(owner) != "provide" {
+			continue
+		}
+		file := ast.GetSourceFileOfNode(owner)
+		if moduleOf(file) == "Effect" && packageOf(c, file) == "effect" {
+			return true
+		}
+	}
+	return false
+}
+
 // effectProvideArguments distinguishes Effect.provide(self, provider) from
 // Effect.provide(provider, options), using the resolved overload's parameters.
 func effectProvideArguments(c *checker.Checker, call *ast.Node) (provider, self *ast.Node) {
-	if !ast.IsCallExpression(call) || !isVibeLangFile(ast.GetSourceFileOfNode(call)) ||
-		!isExportOf(c, call, "effect", "Effect", []string{"provide"}) {
+	if !mayCallProvide(c, call) || !isExportOf(c, call, "effect", "Effect", []string{"provide"}) {
 		return nil, nil
 	}
 	signature := c.GetResolvedSignature(call)

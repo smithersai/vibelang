@@ -44,7 +44,8 @@ const kinds = {
   "{0} is platform code, which VibeLang code does not import.": "module",
   "{0} from {1} is platform code, which a .vibe file does not import as a value.": "import",
   "This import keeps a runtime load of {0}; write import type for type bindings, or move the import to a .ts file.": "module",
-  "Only import.meta.url is available in a .vibe file; use the Path or Config service for host state, or move this import.meta use to a .ts file.": "none",
+  "This export keeps a runtime load of {0}; write export type for type bindings, or move the export to a .ts file.": "module",
+  "Only import.meta.url is available in a .vibe file; use the Path service or Config.String for host state, or move this import.meta use to a .ts file.": "none",
 }
 
 const fill = (template, args) => template.replace(/\{(\d)\}/g, (_, i) => args[Number(i)])
@@ -61,7 +62,8 @@ test("smithers: a clock or randomness read names its global through the call", (
   assert.deepEqual(platformGlobalsOf([text("crypto.randomUUID()")]), ["crypto"])
   assert.deepEqual(platformGlobalsOf([text("crypto.getRandomValues()")]), ["crypto"])
   assert.deepEqual(platformGlobalsOf([text("performance.now()")]), ["performance"])
-  assert.deepEqual(platformGlobalsOf([text("globalThis.crypto.randomUUID()")]), ["globalThis"])
+  // A qualified read names its member too, for the split to read against the source.
+  assert.deepEqual(platformGlobalsOf([text("globalThis.crypto.randomUUID()")]), ["globalThis", "globalThis.crypto"])
   assert.deepEqual(platformGlobalsOf([text("new Date()")]), ["Date"])
 })
 
@@ -85,7 +87,8 @@ test("platformGlobalsOf names exactly the globals of the compiler's global texts
   const templates = ek4402Templates()
   const globalTexts = templates.filter((t) => kinds[t] === "global")
   const otherTexts = templates.filter((t) => kinds[t] !== "global")
-  const identifier = fc.stringMatching(/^[A-Za-z_$][A-Za-z0-9_$]{0,8}$/).filter((s) => s !== "import")
+  // globalThis also names its member (test/platform-globals-qualified.property.test.mjs).
+  const identifier = fc.stringMatching(/^[A-Za-z_$][A-Za-z0-9_$]{0,8}$/).filter((s) => s !== "import" && s !== "globalThis")
   const member = fc.array(fc.oneof(fc.stringMatching(/^\??\.[A-Za-z_$][A-Za-z0-9_$]{0,6}$/), fc.constant('["key"]')), { maxLength: 3 }).chain((parts) => fc.constantFrom("", "()").map((call) => parts.join("") + call))
   const site = fc.oneof(
     fc.record({ global: identifier, member, template: fc.constantFrom(...globalTexts), prefix: fc.boolean() }),

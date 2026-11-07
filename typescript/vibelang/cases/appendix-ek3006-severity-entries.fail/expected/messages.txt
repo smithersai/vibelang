@@ -1,0 +1,9 @@
+EK4701 cannot appear in vibe.severities; remove the entry.
+EK9204 cannot appear in vibe.severities; remove the entry.
+EK7999 cannot appear in vibe.severities; remove the entry.
+vibe.severities.EK4830 must be error, warning, suggestion or off; replace this value.
+vibe.severities.EK4831 must be error, warning, suggestion or off; replace this value.
+vibe.severities.EK4832 must be error, warning, suggestion or off; replace this value.
+vibe.severities.EK4833 must be error, warning, suggestion or off; replace this value.
+vibe.severities.EK4834 must be error, warning, suggestion or off; replace this value.
+vibe.severities.EK4835 must be error, warning, suggestion or off; replace this value.

@@ -1,0 +1,7 @@
+// rule-evidence: docs/design/src/007-tooling.md#config-files | | `vibe.sidecarDir` | String; absent by default.
+// rule-evidence: docs/design/src/007-tooling.md#config-files | Relative paths use the declaring config; a leading `${configDir}` uses the selected config.
+// Without `vibe.sidecarDir` the sidecar sits beside its source. A relative
+// `sidecarDir` in an extended base resolves from the base's directory; a
+// leading `${configDir}` resolves from the selected project config's directory.
+// run.mjs builds `app/tsconfig.json` against each base.
+export const witness = 1

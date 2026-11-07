@@ -21,6 +21,7 @@ var lintDirectiveKeys = []string{
 }
 
 func TestLintDirectiveScopeQuoted(t *testing.T) {
+	SkipRetired(t, lintDirectiveTarget)
 	// VIP-38 inherits the configured lint and TypeScript's lexical distinction:
 	// directive comments select rules; string/template contents are ordinary data.
 	// The retained Oxlint adapter is selected explicitly by its .oxlintrc.json.
@@ -89,6 +90,7 @@ func TestLintDirectiveCorpusModels(t *testing.T) {
 // spelling, physical line endings, nesting and UTF-16 source positions.
 func FuzzLintDirectiveScope(f *testing.F) {
 	startShortBudget(f)
+	SkipRetired(f, lintDirectiveTarget)
 	fixtures := lintDirectiveFixtures(f)
 	for _, key := range []string{"next-line", "same-line", "literal-template", "same-effective-config"} {
 		f.Add(key, byte(15))

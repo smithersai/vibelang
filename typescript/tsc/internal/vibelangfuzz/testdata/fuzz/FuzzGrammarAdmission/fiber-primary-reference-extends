@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:fiber-primary-reference-extends\neffect function f() { return class extends fork.C {}; }")

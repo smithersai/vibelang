@@ -88,11 +88,11 @@ func (options *CompilerOptions) GetAllowImportingTsExtensions() bool {
 }
 
 // AllowImportingTsExtensionsFrom reports whether fileName may import a
-// TypeScript source by its own extension. A VibeLang (.vibe) file always
-// may: it imports ./welcome.vibe and ./format.ts, and its emitted JavaScript
-// imports ./welcome.js and ./format.js.
+// TypeScript or VibeLang source by its own extension. A .vibe or .vibex file
+// follows its .ts/.tsx twin (VIP-34): it needs allowImportingTsExtensions or
+// rewriteRelativeImportExtensions, as TypeScript code does.
 func (options *CompilerOptions) AllowImportingTsExtensionsFrom(fileName tspath.RootedFilePath) bool {
-	return options.GetAllowImportingTsExtensions() || fileName.IsDeclarationFile() || fileName.IsVibeLangSource()
+	return options.GetAllowImportingTsExtensions() || fileName.IsDeclarationFile()
 }
 
 func (options *CompilerOptions) GetResolveJsonModule() bool {

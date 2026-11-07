@@ -1,5 +1,5 @@
-needs an Effect
-needs a Fiber
+fork runs an Effect on a new fiber
+join takes a Fiber
 number
-fork effect
-join the value
+fork Effect.succeed(1)
+try Effect.succeed(1)

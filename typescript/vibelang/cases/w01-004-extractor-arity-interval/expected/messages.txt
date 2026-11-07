@@ -1,0 +1,3 @@
+Write NotFound or NotFound(let value).
+Write Option.Some or Option.Some(let value).
+Write Option.None or Option.None().

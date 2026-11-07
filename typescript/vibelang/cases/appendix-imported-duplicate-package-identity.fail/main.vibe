@@ -1,0 +1,5 @@
+// expect: EK3823
+// Appendix B: EK4803, the imported duplicatePackage rule uses its assigned EK38… identity — spec-rule: docs/design/src/900-appendices.md#2c534a0a65d81006
+// vendor/one and vendor/two are two versions of one package that peers on
+// effect. The imported rule prints EK3823 duplicatePackage for dup.ts.
+export const ready = 1

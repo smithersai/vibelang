@@ -60,14 +60,20 @@ var foreignCallFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK0403.Code, EK4401.Code},
 	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		callee := tsFormNodeAt(fix.SourceFile, fix.Span, isCallee)
-		if callee == nil {
-			return nil, nil
+		call := tsFormNodeAt(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
+			return ast.IsNewExpression(node) || ast.IsTaggedTemplateExpression(node)
+		})
+		if call == nil {
+			callee := tsFormNodeAt(fix.SourceFile, fix.Span, isCallee)
+			if callee == nil {
+				return nil, nil
+			}
+			call = callee.Parent
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()
 		var actions []*ls.CodeAction
-		rewrite := planForeignCall(c, fix.SourceFile, callee.Parent)
+		rewrite := planForeignCall(c, fix.SourceFile, call)
 		if rewrite.fixable() {
 			var changes []*lsproto.TextEdit
 			for _, edit := range rewrite.edits {
@@ -75,8 +81,8 @@ var foreignCallFix = &ls.CodeFixProvider{
 			}
 			actions = append(actions, &ls.CodeAction{Description: "Write " + rewrite.description, Changes: changes})
 		}
-		if fix.ErrorCode == EK0403.Code {
-			if action := throwsNeverAction(c, fix, callee.Parent); action != nil {
+		if fix.ErrorCode == EK0403.Code && ast.IsCallExpression(call) {
+			if action := throwsNeverAction(c, fix, call); action != nil {
 				actions = append(actions, action)
 			}
 		}
@@ -86,6 +92,9 @@ var foreignCallFix = &ls.CodeFixProvider{
 
 // planForeignCall plans the preserving foreign-call fix, or returns nil.
 func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
+	if ast.IsNewExpression(call) || ast.IsTaggedTemplateExpression(call) {
+		return planForeignInvocation(c, file, call)
+	}
 	if !ast.IsCallExpression(call) || call.Flags&ast.NodeFlagsVibeLangTry != 0 {
 		return nil
 	}

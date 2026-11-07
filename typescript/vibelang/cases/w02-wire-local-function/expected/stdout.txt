@@ -1,0 +1,1 @@
+a local wire is an ordinary function in .vibe and in its .ts twin

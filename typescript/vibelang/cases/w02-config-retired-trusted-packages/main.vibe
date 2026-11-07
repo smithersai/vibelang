@@ -1,0 +1,7 @@
+// rule-evidence: docs/design/src/007-tooling.md#vibelang-warnings | | The retired `trustedPackages` key is ignored ([VIP-4](../vips/0004-throw.md), amended 2026-11-02) | `EK3010` | Remove the key; npm functions follow the ordinary foreign-callable contract.
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | The retired `trustedPackages` key is ignored in `vibe` and supported legacy sections, with warning `EK3010`: remove it.
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | Npm functions follow the same foreign-callable contract as local TypeScript, including `unknown` without `@throws`; use a signature contract or an explicit `Effect.try` bridge ([VIP-4](../vips/0004-throw.md#decision), amended).
+// The retired key warns in `vibe`, root `vibelang` and `compilerOptions.vibelang`
+// for every value, never fails the compile, and changes nothing: an npm
+// function still needs a bridge in effect code. run.mjs compiles each layout.
+export const witness = 1

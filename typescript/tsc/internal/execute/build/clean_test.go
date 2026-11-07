@@ -122,3 +122,20 @@ func newCleanTestOrchestrator(sys tsc.System, args ...string) *build.Orchestrato
 		Command: command,
 	})
 }
+
+type analysisOnlyCleanSystem struct{ tsc.System }
+
+func (analysisOnlyCleanSystem) SuppressEmit() bool { return true }
+
+func TestCleanAnalysisOnlyPreservesFiles(t *testing.T) {
+	sys := newCleanTestSystem()
+	orchestrator := newCleanTestOrchestrator(analysisOnlyCleanSystem{sys}, "a", "c")
+	result := orchestrator.Clean("a")
+	assert.Equal(t, result.Result.Status, tsc.ExitStatusSuccess)
+	assert.Equal(t, result.Statistics.Projects, 2)
+	assert.Assert(t, len(result.FilesToDelete) > 0)
+	for _, project := range []string{"a", "b", "c"} {
+		assert.Assert(t, sys.FS().FileExists(tspath.RootedFilePath("/project/"+project+"/dist/index.js")))
+		assert.Assert(t, sys.FS().FileExists(tspath.RootedFilePath("/project/"+project+"/dist/index.d.ts")))
+	}
+}

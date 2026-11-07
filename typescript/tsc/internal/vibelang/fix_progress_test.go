@@ -12,7 +12,11 @@ import (
 )
 
 // fixProgressLine is a line fixProgress prints.
-var fixProgressLine = regexp.MustCompile(`^vibelang --fix: [0-9hms]+: (start|round [0-9]+|try( [0-9]+)?|effect|prelude|imports): [0-9]+ fix(es)? applied, [0-9]+ pending(, [0-9]+ refused)?; [0-9]+ checks?, [0-9]+ this (round|phase) \([0-9]+ whole, [0-9]+ partial\); (reading the project|finding fixes|finding rewrites|removing unused imports|checking the project|checking [0-9]+ fix(es)? in [0-9]+ files?|checking the rewrites of [0-9]+ files?) for [0-9hms]+(; (building program|program built|checking baseline|finding fixes|checking diagnostics|diagnostics collected|finding remaining fix sites|comparing diagnostics|diagnostics compared|checking partial diagnostics|tracing error origins) for [0-9hms]+)?; heap [0-9]+ MiB, goal [0-9]+ MiB, [0-9]+ GCs$`)
+var fixProgressLine = regexp.MustCompile(`^vibelang --fix: [0-9hms]+: (start|round [0-9]+|try( [0-9]+)?|effect|prelude|imports): [0-9]+ fix(es)? applied, [0-9]+ pending(, [0-9]+ refused)?; [0-9]+ checks?, [0-9]+ this (round|phase) \([0-9]+ whole, [0-9]+ partial\); (reading the project|finding fixes|finding rewrites|removing unused imports|checking the project|checking [0-9]+ fix(es)? in [0-9]+ files?|checking the rewrites of [0-9]+ files?) for [0-9hms]+(; (building program|program built|checking baseline|finding fixes|checking diagnostics|checking changed files|checking fixable files|diagnostics collected|finding remaining fix sites|comparing diagnostics|diagnostics compared|checking partial diagnostics|tracing error origins|finding rewrites|emitting declarations|finding declarations) for [0-9hms]+)?; heap [0-9]+ MiB, goal [0-9]+ MiB, [0-9]+ GCs$`)
+
+// fixCostLine is the line a run that printed progress ends with: what it
+// cost.
+var fixCostLine = regexp.MustCompile(`^vibelang --fix: cost: [0-9hms]+; [0-9]+ checks? \([0-9]+ whole, [0-9]+ partial\); peak heap [0-9]+ MiB, [0-9]+ MiB from the system(; [0-9]+ checks? of changed files, [0-9]+ files each(, [0-9]+ differed)?)?(; whole for [a-z -]+ [0-9]+(, [a-z -]+ [0-9]+)*)?(; [a-z ]+ [0-9hms]+ \([0-9]+\)(, [a-z ]+ [0-9hms]+ \([0-9]+\))*)?$`)
 
 // A --fix run says on stderr what it is doing, at most once each
 // ProgressEvery: its phase and round, the fixes applied and pending, the
@@ -40,10 +44,15 @@ func TestFixPrintsProgressOnStderr(t *testing.T) {
 		t.Fatalf("wrote %v; a run that says nothing writes %v", got, want)
 	}
 	lines := strings.Split(strings.TrimSuffix(sys.stderr.String(), "\n"), "\n")
-	for _, line := range lines {
+	for _, line := range lines[:len(lines)-1] {
 		if !fixProgressLine.MatchString(line) {
 			t.Fatalf("stderr line %q is not a progress line; stderr:\n%s", line, sys.stderr.String())
 		}
+	}
+	// The last says what the run cost: its checks, its memory, and the
+	// stages it spent its time in.
+	if last := lines[len(lines)-1]; !fixCostLine.MatchString(last) {
+		t.Fatalf("stderr ends with %q, not what the run cost; stderr:\n%s", last, sys.stderr.String())
 	}
 	stderr := sys.stderr.String()
 	for _, want := range []*regexp.Regexp{

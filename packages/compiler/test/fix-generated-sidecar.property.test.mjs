@@ -12,7 +12,7 @@ const native = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/nati
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const stock = join(modules, "typescript/bin/tsc")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-fix-generated-sidecar.json", import.meta.url), "utf8"))
-const options = { target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true, noEmit: true, rootDir: ".", types: [] }
+const options = { target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true, noEmit: true, allowImportingTsExtensions: true, rootDir: ".", types: [] }
 
 // Chapter 7: "A quick fix is offered only when it preserves evaluation order,
 // coldness, types, comments, and declaration output". TypeScript's original

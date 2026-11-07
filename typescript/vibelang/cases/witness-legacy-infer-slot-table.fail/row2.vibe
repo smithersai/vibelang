@@ -1,0 +1,1 @@
+export const a = (): number!(infer E) => Effect.succeed(1)

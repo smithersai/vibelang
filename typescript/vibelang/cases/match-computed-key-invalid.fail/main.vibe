@@ -1,0 +1,4 @@
+// expect: TS2322 TS2538 TS2322 TS2538 TS2538 TS18048
+declare function booleanKey():boolean;export function booleanPattern(subject:Record<PropertyKey,number>){return match(subject){when {[booleanKey()]:let value}:value;default:0;}}
+declare function objectKey():object;export function objectPattern(subject:Record<PropertyKey,number>){return match(subject){when {[objectKey()]:let value}:value;default:0;}}
+declare function undefinedKey():undefined;export function undefinedPattern(subject:Record<PropertyKey,number>){return match(subject){when {[undefinedKey()]:let value}:value;default:0;}}

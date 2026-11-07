@@ -19,7 +19,8 @@
 // Scorers: flaky, exactly the flaky targets; tests, the known flaky tests are
 // named; intermittent, exactly the tests that failed again after their target
 // passed (fixture-intermittent); causes, each target's top cause; slow, a replay never ranks as slow;
-// regressed, exactly the targets that got slower, with the timeouts counted.
+// regressed, exactly the targets that got slower, with the timeouts counted;
+// rendered, both Markdown tables display the original test names literally.
 // A scorer whose field a case does not state scores 1 there.
 //
 //   bun .smithers/flows/ci-health/eval.ts            run, compare with baseline.json, exit 1 on a drop
@@ -33,6 +34,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execute } from "./run.ts";
 import { stepKey } from "../step-key.mjs";
+import { exactly, regressionScore } from "./scoring.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const baselineFile = join(here, "baseline.json");
@@ -45,6 +47,7 @@ type Input = {
   readonly tests?: ReadonlyArray<string>;
   readonly exactTests?: boolean;
   readonly causes?: Readonly<Record<string, string>>;
+  readonly unattributedCauses?: Readonly<Record<string, Readonly<Record<string, number>>>>;
   readonly regressed?: Readonly<Record<string, number>>;
   readonly intermittent?: ReadonlyArray<string>;
 };
@@ -52,9 +55,11 @@ type Output = {
   readonly flaky: ReadonlyArray<string>;
   readonly tests: ReadonlyArray<string>;
   readonly causes: Readonly<Record<string, string>>;
+  readonly unattributedCauses: Readonly<Record<string, Readonly<Record<string, number>>>>;
   readonly slow: ReadonlyArray<string>;
   readonly regressed: Readonly<Record<string, number>>;
   readonly intermittent: ReadonlyArray<string>;
+  readonly literalNames: boolean;
 };
 
 const cases: Array<{ readonly name: string; readonly input: Input }> = [{
@@ -88,6 +93,13 @@ cases.push({
     flaky: [],
     intermittent: ["a direct command deadline retains partial output and names the timeout"]
   } satisfies Input
+});
+
+// Real varying-key runs have no duration regression; an explicit empty
+// expectation must receive a usable perfect score.
+cases.push({
+  name: "empty-regressions",
+  input: { fixture: "fixture-intermittent", split: "", flaky: [], regressed: {} } satisfies Input
 });
 
 // A real Go compilation failure, followed by a successful same-key retry.
@@ -133,9 +145,9 @@ cases.push({
     fixture: "fixture-node-reporter",
     split: "",
     flaky: ["//packages:compiler-test-2"],
-    tests: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"],
+    tests: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators", "__proto__", "constructor", "toString", "multiline\nname\r\nwith\rcontrols | tail"],
     exactTests: true,
-    intermittent: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"],
+    intermittent: ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators", "__proto__", "constructor", "toString", "multiline\nname\r\nwith\rcontrols | tail"],
     causes: { "//packages:compiler-test-2": "timeout" }
   } satisfies Input
 });
@@ -147,21 +159,103 @@ cases.push({
     fixture: "fixture-migrate-reporter",
     split: "",
     flaky: ["//packages:migrate-test"],
-    tests: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"],
+    tests: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators", "__proto__", "constructor", "toString", "multiline\nname\r\nwith\rcontrols | tail"],
     exactTests: true,
-    intermittent: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"],
+    intermittent: ["structured migration check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators", "__proto__", "constructor", "toString", "multiline\nname\r\nwith\rcontrols | tail"],
     causes: { "//packages:migrate-test": "timeout" }
   } satisfies Input
 });
 
-const score = (id: string, f: (input: Input, output: Output) => number) =>
-  Scorer.make({ id: `ci-health/${id}`, version: "1", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
+// Both actual reporter histories contain shared names under separate targets.
+// Expected membership is the union of the two existing fixture oracles.
+const reporterNames = [...new Set(cases
+  .filter(item => item.name === "node-reporter" || item.name === "migrate-reporter")
+  .flatMap(item => item.input.tests ?? []))];
+cases.push({
+  name: "combined-reporters",
+  input: {
+    fixture: "fixture-combined-reporters",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: reporterNames,
+    exactTests: true,
+    intermittent: reporterNames,
+    causes: { "//packages:compiler-test-2": "timeout", "//packages:migrate-test": "timeout" }
+  } satisfies Input
+});
 
-// Precision times recall of a set of labels.
-const exactly = (want: ReadonlyArray<string>, got: ReadonlyArray<string>) => {
-  const right = want.filter((t) => got.includes(t)).length;
-  return got.length === 0 ? (want.length === 0 ? 1 : 0) : (right / want.length) * (right / got.length);
-};
+// Both real reporters retain names that ordinary HTML whitespace collapses.
+cases.push({
+  name: "whitespace-names",
+  input: {
+    fixture: "fixture-whitespace",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: ["same name", "  same name  ", "same  name", "\tsame name\t", "same\tname", "first\n second "],
+    exactTests: true,
+    intermittent: ["same name", "  same name  ", "same  name", "\tsame name\t", "same\tname", "first\n second "],
+    causes: { "//packages:compiler-test-2": "assertion", "//packages:migrate-test": "assertion" }
+  } satisfies Input
+});
+
+// Actual reporter diagnostics distinguish assertion errors from error-handling names.
+const causeNames = [
+  "handles ENOSPC diagnostics", "handles SIGKILL diagnostics",
+  "handles TimedOut: ChildProcess.spawn diagnostics", "handles timed out after diagnostics",
+  "handles ECONNRESET diagnostics", "Cannot find package 'example' imported from metadata",
+  "property example failed; saved metadata"
+];
+cases.push({
+  name: "cause-metadata",
+  input: {
+    fixture: "fixture-cause-metadata",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: causeNames,
+    intermittent: causeNames,
+    regressed: {},
+    exactTests: true,
+    causes: { "//packages:compiler-test-2": "assertion", "//packages:migrate-test": "assertion" }
+  } satisfies Input
+});
+
+// Node preserves whitespace-only names and normalizes the empty name.
+const blankNames = ["<anonymous>", " ", "\t", "\n", "\r\n", "\u2028", "\u2029", "\u00a0"];
+cases.push({
+  name: "blank-names",
+  input: {
+    fixture: "fixture-blank-names",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: blankNames,
+    exactTests: true,
+    intermittent: blankNames,
+    regressed: {},
+    causes: { "//packages:compiler-test-2": "assertion", "//packages:migrate-test": "assertion" }
+  } satisfies Input
+});
+
+// The same file output comes from an expected control, then a real failure.
+// Node cannot attribute it to either test; preserve that uncertainty in the report.
+cases.push({
+  name: "output-scope",
+  input: {
+    fixture: "fixture-output-scope",
+    split: "",
+    flaky: ["//packages:compiler-test-2", "//packages:migrate-test"],
+    tests: ["ordinary failure"],
+    exactTests: true,
+    intermittent: ["ordinary failure"],
+    regressed: {},
+    causes: { "//packages:compiler-test-2": "assertion", "//packages:migrate-test": "assertion" },
+    unattributedCauses: Object.fromEntries(["//packages:compiler-test-2", "//packages:migrate-test"]
+      .map(label => [label, { "disk full": 2, killed: 2, timeout: 2, connection: 2 }]))
+  } satisfies Input
+});
+
+const score = (id: string, f: (input: Input, output: Output) => number) =>
+  Scorer.make({ id: `ci-health/${id}`, version: "3", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
+
 const flaky = score("flaky", (i, o) => (i.flaky ? exactly(i.flaky, o.flaky) : 1));
 const intermittent = score("intermittent", (i, o) => (i.intermittent ? exactly(i.intermittent, o.intermittent) : 1));
 const tests = score("tests", (i, o) => {
@@ -170,17 +264,23 @@ const tests = score("tests", (i, o) => {
   if (i.exactTests) return exactly(i.tests, o.tests);
   return i.tests.filter((t) => o.tests.includes(t)).length / i.tests.length;
 });
+const rendered = score("rendered", (_, o) => Number(o.literalNames));
 const causes = score("causes", (i, o) => {
-  if (!i.causes) return 1;
-  const want = Object.entries(i.causes);
-  return want.filter(([t, c]) => o.causes[t] === c).length / want.length;
+  const checks = Object.entries(i.causes ?? {}).map(([t, c]) => o.causes[t] === c);
+  if (i.unattributedCauses) {
+    checks.push(exactly(Object.keys(i.unattributedCauses), Object.keys(o.unattributedCauses)) === 1);
+    for (const [label, want] of Object.entries(i.unattributedCauses)) {
+      const actual = o.unattributedCauses[label] ?? {};
+      checks.push(exactly(Object.keys(want), Object.keys(actual)) === 1);
+      for (const [name, count] of Object.entries(want)) checks.push(actual[name] === count);
+    }
+  }
+  return checks.length ? checks.filter(Boolean).length / checks.length : 1;
 });
 const slow = score("slow", (_, o) => o.slow.length > 0 && !o.slow.includes("//:cached") ? 1 : 0);
 const regressed = score("regressed", (i, o) => {
   if (!i.regressed) return 1;
-  const want = Object.keys(i.regressed), got = Object.keys(o.regressed);
-  const timeouts = want.filter((t) => o.regressed[t] === i.regressed![t]).length / want.length;
-  return exactly(want, got) * timeouts;
+  return regressionScore(i.regressed, o.regressed);
 });
 
 // A checkout gives every fixture file one mtime; a fixture's times.json, when
@@ -199,6 +299,25 @@ function results(fixture: string, scratch: string): string {
   return copy;
 }
 
+// Compare the actual Markdown renderer's cells with literal source names.
+function literalTable(markdown: string, heading: string, next: string, names: ReadonlyArray<string>): boolean {
+  const section = markdown.split(`## ${heading}\n`)[1]?.split(`## ${next}\n`)[0];
+  if (section === undefined) return false;
+  const html = Bun.markdown.html(section);
+  const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1] ?? "";
+  const cells = [...body.matchAll(/<tr>([\s\S]*?)<\/tr>/g)]
+    .map(row => [...row[1].matchAll(/<td>([\s\S]*?)<\/td>/g)][1]?.[1]);
+  const escaped: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+  const expected = names.map(name => name.replace(/[&<>"]/g, char => escaped[char])
+    .replace(/\r\n|[\r\n\u2028\u2029]/g, "<br>"));
+  return cells.every((cell, i) => {
+    if (cell === undefined) return false;
+    const content = cell.replace(/^<pre>([\s\S]*)<\/pre>$/, "$1");
+    const spacing = /^ | $| {2}|\t|[\r\n\u2028\u2029] | [\r\n\u2028\u2029]/.test(names[i] ?? "");
+    return content === expected[i] && (!spacing || /^<pre>[\s\S]*<\/pre>$/.test(cell));
+  }) && cells.length === expected.length;
+}
+
 async function report(input: Input): Promise<Output> {
   const scratch = mkdtempSync(join(tmpdir(), "ci-health-eval-"));
   const run = join(scratch, "run");
@@ -207,12 +326,16 @@ async function report(input: Input): Promise<Output> {
     if (Exit.isFailure(exit)) throw new Error(String(exit.cause));
     const read = (step: string) => JSON.parse(readFileSync(join(run, `${step}.json`), "utf8"));
     const result = read("report"), analysis = read("analyze");
+    const markdown = readFileSync(join(run, "report.md"), "utf8");
     const top = (c: Record<string, number>) => Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
     return {
       flaky: result.flaky,
       tests: result.tests,
       intermittent: result.intermittent,
+      literalNames: literalTable(markdown, "Flaky tests", "Intermittent tests", result.tests) &&
+        literalTable(markdown, "Intermittent tests", "Slower targets", result.intermittent.slice(0, 30)),
       slow: result.slow,
+      unattributedCauses: Object.fromEntries(analysis.flaky.map((t: { label: string; unattributedCauses: Record<string, number> }) => [t.label, t.unattributedCauses])),
       causes: Object.fromEntries(analysis.flaky.map((t: { label: string; causes: Record<string, number> }) => [t.label, top(t.causes)])),
       regressed: Object.fromEntries(analysis.regressed.map((t: { label: string; timeouts: number }) => [t.label, t.timeouts]))
     };
@@ -234,7 +357,7 @@ const program = Effect.gen(function* () {
   const suite = yield* Suite.make({
     name: "ci-health",
     cases,
-    bindings: [flaky, tests, intermittent, causes, slow, regressed].map((scorer) => Binding.make({ scorer, appliesTo: target })),
+    bindings: [flaky, tests, intermittent, causes, slow, regressed, rendered].map((scorer) => Binding.make({ scorer, appliesTo: target })),
     concurrency: 1
   });
   const run = yield* Runner.run(suite, { runId: `ci-health-${Date.now()}`, at: new Date().toISOString() });

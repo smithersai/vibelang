@@ -1,0 +1,27 @@
+// expect-result: {"blockConditional":1,"blockChain":7,"parenthesizedConditional":1,"functionConditional":2,"parenthesizedChain":7,"functionChain":7,"blockChainSucceeded":3,"assigned":4,"sequence":5}
+// rule-evidence: docs/design/src/002-running.md#syntax | After a parenthesized handler, a function expression handler or a block-bodied arrow handler, another `catch` or a lower-precedence operator may follow, but a member access or call can't attach to the handler, so `a catch function () { }.call(o)` is a syntax error (`EK0512`).
+// rule-evidence: docs/design/src/002-running.md#syntax | A block-bodied arrow closes at its `}`; a following conditional tests the recovered value, and a following `catch` runs that value if it is an Effect.
+// rule-evidence: docs/design/src/002-running.md#syntax | The plain handler in `closedCatchChain` deliberately returns an unrun Effect (`EK0508` warning); the second `catch` runs it.
+// rule-evidence: docs/design/src/002-running.md#syntax | These have `Success(1)` and `Success(7)` respectively:
+effect function closedCatchConditional() {
+  return fail("e") catch () => { return true } ? 1 : 2
+}
+effect function closedCatchChain() {
+  return fail("e") catch () => { return succeed(7) } catch () => 9
+}
+export effect function main() {
+  const blockConditional = try closedCatchConditional()
+  const blockChain = try closedCatchChain()
+  // A parenthesized handler and a function expression handler also close.
+  const parenthesizedConditional = fail("e") catch (() => true) ? 1 : 2
+  const functionConditional = fail("e") catch function () { return false } ? 1 : 2
+  const parenthesizedChain = fail("e") catch (() => succeed(7)) catch () => 9
+  const functionChain = fail("e") catch function () { return succeed(7) } catch () => 9
+  // The second catch runs the value the first one gives; here the first succeeds with an Effect.
+  const blockChainSucceeded = succeed(succeed(3)) catch () => { return succeed(8) } catch () => 9
+  // Assignment and the comma operator have lower precedence than catch.
+  let assigned = 0
+  assigned = fail("e") catch () => { return 4 }
+  const sequence = (fail("e") catch () => { return 0 }, 5)
+  return { blockConditional, blockChain, parenthesizedConditional, functionConditional, parenthesizedChain, functionChain, blockChainSucceeded, assigned, sequence }
+}

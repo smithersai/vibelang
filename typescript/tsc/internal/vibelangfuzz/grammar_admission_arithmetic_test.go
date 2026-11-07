@@ -83,7 +83,7 @@ func TestGrammarAdmissionArithmeticGrouping(t *testing.T) {
 				found := false
 				var visit func(*grammarPtree)
 				visit = func(node *grammarPtree) {
-					if node.nt >= 0 && g.names[node.nt] == "ExponentiationExpression" && node.i == c.start && node.j == c.end {
+					if node.nt >= 0 && g.base(node.nt) == "ExponentiationExpression" && node.i == c.start && node.j == c.end {
 						found = true
 					}
 					for _, child := range node.kids {

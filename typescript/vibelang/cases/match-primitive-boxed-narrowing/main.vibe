@@ -1,0 +1,17 @@
+// expect-result: {"string":[2,"miss",2,2],"number":["1.50","1.50","miss"],"boolean":[true,"miss"],"not":[3,"string"]}
+// Chapter 004, Typing and Class patterns: a primitive class pattern tests the
+// primitive or its boxed object, and narrows the subject to either, as
+// typeof s === "string" || s instanceof String does in TypeScript.
+function stringLength(s: unknown) { return match (s) { when String and { length: let n }: n; default: "miss"; } }
+function anyLength(s: unknown) { if (s is String) { return s.length } return -1 }
+function fixed(s: unknown) { if (s is Number) { return s.toFixed(2) } return "miss" }
+function flag(s: unknown) { return match (s) { when Boolean: s.valueOf(); default: "miss"; } }
+function other(s: string | String | number) { return match (s) { when not String: s + 1; default: "string"; } }
+export effect function main() {
+  return {
+    string: [stringLength(new String("ab")), stringLength("ab"), anyLength("ab"), anyLength(new String("ab"))],
+    number: [fixed(1.5), fixed(new Number(1.5)), fixed("x")],
+    boolean: [flag(new Boolean(true)), flag("x")],
+    not: [other(2), other(new String("a"))]
+  }
+}

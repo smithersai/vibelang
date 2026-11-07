@@ -19,6 +19,21 @@ test("VIP module and resource references use the accepted Effect pin", () => {
   assert.ok(vip("0008-using-denied.md").includes("## Effect's scope functions (effect " + pin + ")"))
 })
 
+// rule-evidence: docs/design/vips/0032-effect-version.md#9b6571022cf245d5 | **Amended 2026-11-03: the pin is `effect` 4.1.1; the `4.1` minimum means the pin never moves below `4.1`** (Will: "Effect 4.1 has been released please update accordingly and make 4.1 the earliest version we support now").
+test("VIP-32: the published peers, the runtime guard and the compiler check the accepted pin, never below 4.1", () => {
+  const pin = effectPin(vip("0032-effect-version.md"))
+  const repo = (file) => readFileSync(new URL("../../" + file, import.meta.url), "utf8")
+  const peer = (dir) => JSON.parse(repo("packages/" + dir + "/package.json")).peerDependencies.effect
+  assert.deepEqual({
+    compiler: peer("compiler"),
+    runtime: peer("runtime"),
+    guard: /^const PINNED_EFFECT_VERSION = "([^"]*)"$/m.exec(repo("packages/runtime/src/version-guard.cts"))?.[1],
+    checker: /^const supportedEffectVersion = "([^"]*)"$/m.exec(repo("typescript/tsc/internal/vibelang/effectavailable.go"))?.[1],
+  }, { compiler: pin, runtime: pin, guard: pin, checker: pin })
+  const [major, minor] = pin.split(".").map(Number)
+  assert.ok(major > 4 || (major === 4 && minor >= 1), "the pin " + pin + " is below the 4.1 minimum")
+})
+
 const versionParts = fc.tuple(
   fc.integer({ min: 0, max: 99 }),
   fc.integer({ min: 0, max: 999 }),

@@ -1,0 +1,6 @@
+import "vibelang/platform/browser"
+
+// The browser marker selects BrowserRuntime.runMain.
+export effect function main() {
+  try Console.log("browser main ran")
+}

@@ -1,0 +1,14 @@
+// expect-result: [1,2,3,4,5]
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK1702` | `fork` or `join` as an `effect` function or producer expression's own name, or as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in a plain or `async` arrow head inheriting that reservation, including one in an Effect callable's parameters; the arrow body has its own context; or a reserved `fork` or `join` as a shorthand property, `{ join }` | 17 | [Running Effects](002-running.md#fork-and-join) |
+// The controls: a declaration's own name takes the enclosing plain context,
+// a plain arrow's body and a nested plain function have their own context,
+// plain code may bind both names, and a method may be named join.
+export effect function fork() { return 1 }
+const callFork = () => fork()
+effect function body() { const k = () => { const join = 2; return join }; return k() }
+effect function nested() { function h(join: number) { return join } return h(3) }
+function plain(join: number) { const fork = join; return fork }
+class C { effect join() { return 5 } }
+export effect function main() {
+  return [try callFork(), try body(), try nested(), plain(4), try new C().join()]
+}

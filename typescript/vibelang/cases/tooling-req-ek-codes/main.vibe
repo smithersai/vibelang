@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#compiler-and-tooling-requirements | [Appendix B](900-appendices.md#appendix-b-diagnostics) assigns each VibeLang rule its `EK` code.
+export const witness = 1

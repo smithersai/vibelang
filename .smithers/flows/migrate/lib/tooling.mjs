@@ -260,14 +260,16 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   if (ts) for (const file of all.filter(f => /\.(?:[cm]?[jt]sx?|vibe|json)$/.test(f) && !/\.d\.(?:vibe\.)?[cm]?ts$/.test(f))) {
     warnings.push(...extensionAllowlistWarnings(ts, readFileSync(join(root, file), "utf8"), file))
   }
-  // VibeLang's dprint plugin is an npm: specifier, which carries no checksum.
-  // A dprint configuration that pins every plugin by checksum (Smithers'
-  // DprintPlugins test requires it) keeps its plugin list, and the dprint
-  // scripts it governs run vibelang-format after dprint instead.
+  // VibeLang's npm plugin has no checksum. Pinned configurations keep their
+  // authored plugins and run vibelang-format after dprint instead. Ignore an
+  // earlier setup's own plugin when recognizing that configuration.
+  const dprintPlugin = "npm:vibelang/dprint-plugin.json"
+  const dprintTypescriptPlugin = "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"
   const dprintConfigs = all.filter(f => /(^|\/)dprint\.json$/.test(f))
   const pinned = new Set(dprintConfigs.filter(f => {
-    const plugins = JSON.parse(readFileSync(join(root, f), "utf8")).plugins ?? []
-    return plugins.length > 0 && plugins.every(p => /@[0-9a-f]{64}$/.test(p))
+    const plugins = (JSON.parse(readFileSync(join(root, f), "utf8")).plugins ?? [])
+      .filter(plugin => plugin !== dprintPlugin)
+    return plugins.every(p => /@[0-9a-f]{64}$/.test(p))
   }))
   const dprintConfigOf = dir => {
     for (let d = dir; ; d = posix.dirname(d)) {
@@ -351,9 +353,12 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   }
   for (const file of dprintConfigs) {
     const config = JSON.parse(readFileSync(join(root, file), "utf8"))
-    if (!pinned.has(file)) {
+    if (pinned.has(file)) {
+      const plugins = (config.plugins ?? []).filter(plugin => plugin !== dprintPlugin)
+      config.plugins = plugins.length ? plugins : [dprintTypescriptPlugin]
+    } else {
       const plugins = config.plugins ?? []
-      config.plugins = [...new Set([...plugins, ...plugins.some(p => /typescript.*\.wasm/.test(p)) ? [] : ["https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"], "npm:vibelang/dprint-plugin.json"])]
+      config.plugins = [...new Set([...plugins, ...plugins.some(p => /typescript.*\.wasm/.test(p)) ? [] : [dprintTypescriptPlugin], dprintPlugin])]
       config.includes = [...new Set([...(config.includes ?? ["**/*"]), "**/*.vibe"])]
       needsCompiler = true
     }
@@ -395,7 +400,7 @@ import parser from "vibelang/eslint"
 import { spawnSync } from "node:child_process"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import oxc from "./oxlint-rules.mjs"
-import { withOxlintComments } from "./oxlint-comments.mjs"
+import { withOxlintComments, blanketReasonPolicy } from "./oxlint-comments.mjs"
 const aliases = new Map()
 export const writtenConfigs = new Map()
 const nativePlugins = new Set(["eslint", "typescript", "@typescript-eslint", "unicorn", "react", "react_perf", "react-perf", "react-hooks", "jsx-a11y", "jsx_a11y", "nextjs", "next", "oxc", "deepscan", "import", "import-x", "jsdoc", "jest", "vitest", "promise", "node", "n", "regex", "vue"])
@@ -406,7 +411,8 @@ aliases.clear()
 // overrides (a *.ts glob read as *.vibe) apply to .vibe files wherever ESLint,
 // typescript-eslint or one of the configuration's JS plugins has the rule.
 // typescript-eslint's recommended rules stand in for Oxlint's default
-// correctness rules unless the configuration turns that category off. Rules of
+// correctness rules unless the configuration turns that category off or the
+// installed tool resolves the rules itself. Rules of
 // Oxlint's other built-in plugins, such as unicorn, are not carried:
 // vibelang/oxlint runs them on the projected TypeScript. Each run names any
 // JS plugin rule that runs nowhere.
@@ -428,23 +434,36 @@ const viteLint = async () => {
   return null
 }
 const fromVite = ${vpLint && !oxlintrc ? "configPath ? null : await viteLint()" : "null"}
-const text = fromVite ? null : configPath ? readFileSync(configPath, "utf8") : ${oxlintrc ? "read(" + JSON.stringify(oxlintrc) + ")" : 'read(".oxlintrc.json") ?? read(".oxlintrc.jsonc")'}
+// A configuration written as a module, oxlint.config.ts or one a lint script
+// names with -c, is code only Oxlint loads: it imports defineConfig and may
+// compute its rules. Oxlint's printed configuration stands for its text.
+const scriptName = /\\.[cm]?[jt]s$/
+const named = configPath ?? ${oxlintrc ? JSON.stringify(oxlintrc) : "null"}
+const script = fromVite ? null : named !== null ? (scriptName.test(named) ? named : null)
+  : read(".oxlintrc.json") === null && read(".oxlintrc.jsonc") === null ? ["oxlint.config.ts", "oxlint.config.mts", "oxlint.config.cts", "oxlint.config.js", "oxlint.config.mjs", "oxlint.config.cjs"].find((name) => read(name) !== null) ?? null : null
+const text = fromVite || script ? null : configPath ? readFileSync(configPath, "utf8") : ${oxlintrc ? "read(" + JSON.stringify(oxlintrc) + ")" : 'read(".oxlintrc.json") ?? read(".oxlintrc.jsonc")'}
 const base = configPath ? new URL("./", pathToFileURL(configPath)) : new URL("../" + ${JSON.stringify(oxlintrc && posix.dirname(oxlintrc) !== "." ? posix.dirname(oxlintrc) + "/" : "")}, import.meta.url)
-const written = fromVite ?? text ? fromVite ?? JSON.parse(text.replace(/("(?:\\\\.|[^"\\\\])*")|\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*/g, (all, string) => string ?? "").replace(/,(\\s*[}\\]])/g, "$1")) : {}
 // Categories and plugin defaults decide most of a .ts file's rules, so the
 // rules come from the tool's own resolution, with the written rules over them
 // (it leaves JS plugin rules out of its base rules). Without the tool installed
 // the written rules are all there is.
 const tool = new URL("../node_modules/.bin/" + (fromVite ? "vp" : "oxlint"), import.meta.url)
-const resolvedRules = () => {
-  if (!existsSync(tool) || (!fromVite && !text)) return {}
-  const named = configPath ?? ${oxlintrc ? JSON.stringify(oxlintrc) : `(read(".oxlintrc.json") ? ".oxlintrc.json" : ".oxlintrc.jsonc")`}
-  const args = fromVite ? ["lint", "--print-config"] : ["-c", named, "--print-config"]
+const printConfig = (args) => {
   const printed = spawnSync(fileURLToPath(tool), args, { cwd: fileURLToPath(new URL("../", import.meta.url)), encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
   if (printed.status !== 0) throw new Error(tool.pathname + " " + args.join(" ") + " failed: " + printed.stdout + printed.stderr)
-  return JSON.parse(printed.stdout).rules ?? {}
+  return JSON.parse(printed.stdout)
 }
-const oxlint = { ...written, rules: { ...resolvedRules(), ...written.rules } }
+if (script && !existsSync(tool)) throw new Error(script + " is a module only Oxlint loads, and " + fileURLToPath(tool) + " is not installed")
+const printedScript = script ? printConfig(["-c", script, "--print-config"]) : null
+const written = printedScript ?? (fromVite ?? text ? fromVite ?? JSON.parse(text.replace(/("(?:\\\\.|[^"\\\\])*")|\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*/g, (all, string) => string ?? "").replace(/,(\\s*[}\\]])/g, "$1")) : {})
+const resolvedRules = () => {
+  if (printedScript) return printedScript.rules ?? {}
+  if (!existsSync(tool) || (!fromVite && !text)) return {}
+  const named = configPath ?? ${oxlintrc ? JSON.stringify(oxlintrc) : `(read(".oxlintrc.json") ? ".oxlintrc.json" : ".oxlintrc.jsonc")`}
+  return printConfig(fromVite ? ["lint", "--print-config"] : ["-c", named, "--print-config"]).rules ?? {}
+}
+const toolRules = resolvedRules()
+const oxlint = { ...written, rules: { ...toolRules, ...written.rules } }
 writtenConfigs.set(configPath ?? null, { written, base: fileURLToPath(base) })
 // An Oxlint JS plugin is an ESLint plugin. Each loads as Oxlint loads it: a
 // path from the configuration's directory, else a package, named by its alias,
@@ -565,11 +584,16 @@ const overrides = (oxlint.overrides ?? [])
   .filter((override) => override.files.length && Object.keys(override.rules).length)
 // Like Oxlint, ignorePatterns are relative to the lint invocation's cwd.
 const ignores = (${nativeIgnorePatterns.toString()})(oxlint.ignorePatterns ?? [])
-const correctness = levels[oxlint.categories?.correctness] !== "off"
+// typescript-eslint's recommended rules stand in for Oxlint's default
+// correctness rules only where the tool's resolution is unavailable. Where it
+// resolved the rules, they are Oxlint's whole set: a recommended rule Oxlint
+// does not run, such as no-empty-object-type, would report on .vibe what its
+// .ts original never reported.
+const correctness = levels[oxlint.categories?.correctness] !== "off" && Object.keys(toolRules).length === 0
 const configs = [
   { ignores: [...ignores, "**/node_modules/**", "**/dist/**", "**/build/**", "**/*.d.vibe.ts", "**/*.d.vibex.ts"] },
   ...(correctness && tseslint ? tseslint.configs.recommended.map((config) => ({ ...config, ...(config.plugins ? { plugins: { ...config.plugins, "@typescript-eslint": tseslint.plugin } } : {}), files: ["**/*.{vibe,vibex}"] })) : []),
-  { files: ["**/*.{vibe,vibex}"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases) }, plugins: { oxc, ...(adaptedUnused ? { vibelang: { rules: { "no-unused-vars": adaptedUnused } } } : {}), ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
+  { files: ["**/*.{vibe,vibex}"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases, blanketReasonPolicy(fileURLToPath(tool), fromVite ? ["lint"] : [])) }, plugins: { oxc, ...(adaptedUnused ? { vibelang: { rules: { "no-unused-vars": adaptedUnused } } } : {}), ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
   ...overrides
 ]
 // vibelang/oxlint runs the native plugins' other rules on the projected TypeScript.

@@ -1,0 +1,1 @@
+{"property":"snippet-fragment-captions","rule":"A fragment cannot rename a complete companion","input":{"segments":["a"],"fragments":1,"before":false,"language":"ts"}}

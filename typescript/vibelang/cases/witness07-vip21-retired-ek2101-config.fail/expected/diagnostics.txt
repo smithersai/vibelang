@@ -1,0 +1,2 @@
+tsconfig.json(6,7): error EK3006
+tsconfig.json(7,7): error EK3006

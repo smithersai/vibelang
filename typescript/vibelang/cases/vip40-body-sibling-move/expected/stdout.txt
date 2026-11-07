@@ -1,0 +1,91 @@
+{
+ "summary": {
+  "declarations": {
+   "codes": [],
+   "runtime": {
+    "keys": [
+     "Box",
+     "Limits",
+     "Mode",
+     "bump",
+     "counter",
+     "observe",
+     "port"
+    ],
+    "observed": [
+     80,
+     1,
+     65535,
+     3,
+     1,
+     1
+    ],
+    "runs": null
+   }
+  },
+  "type-errors": {
+   "codes": [
+    "TS2322",
+    "TS2552"
+   ],
+   "runtime": {
+    "keys": [
+     "missing",
+     "observe",
+     "wrong"
+    ],
+    "observed": [
+     "text"
+    ],
+    "runs": null
+   }
+  },
+  "top-level-await": {
+   "codes": [],
+   "runtime": {
+    "keys": [
+     "observe"
+    ],
+    "observed": [
+     42
+    ],
+    "runs": null
+   }
+  },
+  "script": {
+   "codes": [],
+   "runtime": {
+    "keys": [],
+    "observed": null,
+    "runs": [
+     7
+    ]
+   }
+  },
+  "jsx": {
+   "codes": [],
+   "runtime": {
+    "keys": [
+     "element",
+     "observe"
+    ],
+    "observed": [
+     "object"
+    ],
+    "runs": null
+   }
+  }
+ },
+ "refused": {
+  "vibelang syntax": [
+   "TS1128",
+   "TS1434"
+  ],
+  "identifier specifier": [
+   "EK4007"
+  ],
+  "import.meta": [
+   "EK4009"
+  ]
+ }
+}

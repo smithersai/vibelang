@@ -1,0 +1,1 @@
+export class User { private readonly brand = "other"; constructor(readonly name: string) {} }

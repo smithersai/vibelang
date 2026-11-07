@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as Effect from \"effect/Effect\"\nimport * as Layer from \"effect/Layer\"\nimport * as Logger from \"effect/Logger\"\nconst sink = { log: (x: unknown): void => { void x } }\n/** Replaces the default logger with a sink. */\nexport const live = Layer.unwrap(Effect.gen(function* () {\n  const current = yield* Logger.CurrentLoggers\n  return Logger.layer([...current].filter((logger) => logger !== Logger.defaultLogger).concat(Logger.make<unknown, void>((options) => sink.log(options))))\n}))\n")

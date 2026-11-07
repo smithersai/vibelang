@@ -1,0 +1,76 @@
+// rule-evidence: docs/design/src/002-running.md#do-expressions | <a id="evaluation-order"></a>**Evaluation order.** A `do` or `match` runs where ECMAScript evaluates the expression that holds it, never earlier or more often.
+// rule-evidence: docs/design/src/002-running.md#do-expressions | Everything to its left runs first, in source order, fully evaluated as ECMA-262 specifies (callee and receiver read, spreads iterated, computed object-literal keys converted, earlier template substitutions stringified), so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`.
+// expect-result: {"skipped":["left"],"taken":["do1","match","do2"],"loop":[[1,2,3],["do","do","do"]],"method":[["get m","a","match","call"],true,"a:two"],"spread":["next","next","next","do"],"key":["key","do"],"template":[["str","do"],"S-1"]}
+// Every `do` and `match` below runs an Effect, so the compiler lowers it.
+import { Effect } from "effect"
+
+const log: string[] = []
+const run = (s: string) => Effect.sync(() => { log.push(s); return s })
+
+// A `do` or `match` in a position ECMAScript skips never runs; in a position
+// it evaluates, it runs once, in place.
+effect function conditional(flag: boolean) {
+  log.length = 0
+  const a = flag || do { try run("do1"); true }
+  const b = flag ? try run("left") : match (1) { when 1: try run("match"); default: "x"; }
+  const c = !flag && do { try run("do2"); true }
+  void a; void b; void c
+  return [...log]
+}
+
+effect function loop() {
+  log.length = 0
+  const out: number[] = []
+  for (let i = 1; i <= 3; i++) out.push(do { try run("do"); i })
+  return [out, [...log]]
+}
+
+function m(this: unknown, x: string, y: string) {
+  log.push("call")
+  return [this === o, x + ":" + y] as const
+}
+const o = { get m() { log.push("get m"); return m } }
+
+effect function method() {
+  log.length = 0
+  const x = 2
+  const a = () => run("a")
+  const result = o.m(try a(), match (x) { when 2: do { try run("match"); "two" }; default: "other"; })
+  return [[...log], result[0], result[1]]
+}
+
+function* items() { for (const n of [1, 2]) { log.push("next"); yield n } log.push("next") }
+const count = (...xs: number[]) => xs.length
+
+effect function spread() {
+  log.length = 0
+  count(...items(), do { try run("do"); 3 })
+  return [...log]
+}
+
+effect function key() {
+  log.length = 0
+  const k = { toString() { log.push("key"); return "p" } }
+  const obj = { [k as unknown as string]: 1, v: do { try run("do"); 2 } }
+  void obj
+  return [...log]
+}
+
+effect function template() {
+  log.length = 0
+  const s = { toString() { log.push("str"); return "S" } }
+  const text = `${s}-${do { try run("do"); 1 }}`
+  return [[...log], text]
+}
+
+export effect function main() {
+  return {
+    skipped: try conditional(true),
+    taken: try conditional(false),
+    loop: try loop(),
+    method: try method(),
+    spread: try spread(),
+    key: try key(),
+    template: try template(),
+  }
+}

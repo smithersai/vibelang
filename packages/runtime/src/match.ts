@@ -297,6 +297,18 @@ export function $rest<T, K extends PropertyKey>(subject: T, keys: ReadonlyArray<
 }
 
 /**
+ * Tells whether a relational pattern admits its subject, which the proposal's
+ * RelationalPatternMatches checks before it evaluates the operand (VIP-7):
+ * `<`, `>`, `<=` and `>=` admit a string, a number or a bigint, and `in` a
+ * property key. The compiler tests it first, so an operand such as a getter
+ * does not run for any other subject.
+ */
+export function $relates(operator: "<" | ">" | "<=" | ">=" | "in", subject: unknown): boolean {
+  if (operator === "in") return typeof subject === "string" || typeof subject === "symbol"
+  return typeof subject === "string" || typeof subject === "number" || typeof subject === "bigint"
+}
+
+/**
  * Tests a relational pattern that the compiler does not write as its
  * operator (VIP-7): `< v`, `> v`, `<= v` and `>= v` are false unless the
  * subject is a string, a number or a bigint, and `in v` is false unless the
@@ -304,12 +316,11 @@ export function $rest<T, K extends PropertyKey>(subject: T, keys: ReadonlyArray<
  * RelationalPatternMatches says.
  */
 export function $relation(operator: "<" | ">" | "<=" | ">=" | "in", subject: unknown, value: unknown): boolean {
+  if (!$relates(operator, subject)) return false
   if (operator === "in") {
-    if (typeof subject !== "string" && typeof subject !== "symbol") return false
     if (value === null || (typeof value !== "object" && typeof value !== "function")) return false
-    return subject in (value as object)
+    return (subject as PropertyKey) in (value as object)
   }
-  if (typeof subject !== "string" && typeof subject !== "number" && typeof subject !== "bigint") return false
   const s = subject as any
   const v = value as any
   switch (operator) {

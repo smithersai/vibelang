@@ -1,0 +1,1 @@
+main.ts(5,40): error TS2339

@@ -94,8 +94,41 @@ function observesRuntimeEnumeration(source, comments) {
   return resolver && enumerate && extension ? { at: resolver.index, names } : null
 }
 
+// A regex literal: after an operator, never a division after a value.
+const regexLiteral = /(^|[(,=:[!&|?{};]|\breturn)(\s*)\/(?![*/])((?:\\.|\[(?:\\.|[^\]\\\n])*\]|[^/\\\n[])+)\/([dgimsuvy]*)/g
+
+// A test may assert a module's file name with a pattern, as
+// assert.match(hook, /scripts[\\/]lib[\\/]windows-jsign\.ts$/) does on an
+// electron-builder hook path. Renaming the module fails that unchanged oracle.
+// A pattern names a module when it matches the module's path, not its native
+// path, and not a sibling's: /\.tsx?$/ selects every module and is widened by
+// regex-selectors, not deferred.
+function filenamePatterns(source, comments) {
+  const masked = maskRanges(source, comments)
+  const code = maskRanges(masked, [...masked.matchAll(literal)].map(m => [m.index, m.index + m[0].length]))
+  const patterns = []
+  for (const m of code.matchAll(regexLiteral)) {
+    const at = m.index + m[1].length + m[2].length, text = source.slice(at + 1, at + 1 + m[3].length)
+    try { patterns.push({ at, text: text.replaceAll("\\", ""), re: new RegExp(text, m[4].replace(/[gy]/g, "")) }) } catch {}
+  }
+  return patterns
+}
+
+// A module's path, file stem and native path, for namesModule.
+function patternTarget(module) {
+  const ext = posix.extname(module)
+  return { module, stem: posix.basename(module, ext), native: module.slice(0, -ext.length) + (ext === ".tsx" ? ".vibex" : ".vibe"), sibling: posix.join(posix.dirname(module), "vibelang-sibling" + ext) }
+}
+
+function namesModule(pattern, { module, stem, native, sibling }) {
+  if (!pattern.text.includes(stem)) return false
+  const matches = path => pattern.re.test(path) || pattern.re.test("/" + path)
+  return matches(module) && !matches(native) && !matches(sibling)
+}
+
 export function pathReadDeferrals(root, modules, files, { pinned } = {}) {
   const want = new Set(modules), available = new Set(files), causes = new Map(), inputs = new Map()
+  let modulesOf = null
   for (const file of files) {
     if (!code.test(file) || !existsSync(join(root,file))) continue
     const source = readFileSync(join(root,file),"utf8"), comments = commentRanges(source), imports = parseImports(source)
@@ -111,6 +144,19 @@ export function pathReadDeferrals(root, modules, files, { pinned } = {}) {
       })
     }
     if (!testFile.test(file)) continue
+    // A test observes its own package's modules: /adapter\.(ts|js)$/ in one
+    // package names no other package's adapter.
+    if (!modulesOf) {
+      modulesOf = new Map()
+      for (const target of want) if (/\.tsx?$/.test(target)) {
+        const dir = packageDirOf(root,target)
+        if (!modulesOf.has(dir)) modulesOf.set(dir, [])
+        modulesOf.get(dir).push(patternTarget(target))
+      }
+    }
+    for (const pattern of filenamePatterns(source, comments)) for (const target of modulesOf.get(packageDirOf(root,file)) ?? []) {
+      if (!causes.has(target.module) && namesModule(pattern, target)) causes.set(target.module,{ file: target.module, reason: "PATHNAME-PATTERN: " + file + ":" + source.slice(0,pattern.at).split("\n").length + " matches its file name with a pattern; keep .ts (detail 272 addendum 4)" })
+    }
     const bundleInputs = observesBundleInputs(source, comments)
     for (const m of source.matchAll(strings)) {
       if (!/^tsx?$/.test(m[3])) continue

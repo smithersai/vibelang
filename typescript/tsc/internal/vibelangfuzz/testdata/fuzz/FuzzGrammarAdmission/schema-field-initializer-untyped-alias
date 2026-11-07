@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-field-initializer-untyped-alias\nschema S = { id ? = Missing }")

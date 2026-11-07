@@ -4,8 +4,10 @@ import {readFileSync as readCaptureFixtures} from "node:fs"
 import { checkExample, resolveExamples } from "./diagnostic-examples.mjs"
 import {join} from "node:path"
 import {archiveExamples} from "./diagnostic-archive-examples.mjs"
-import {appendixCodes,repository} from "./diagnostic-identity.mjs"
+import {appendixCodes,appendixCategory,repository} from "./diagnostic-identity.mjs"
 import fc from "fast-check"
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
 
 const example={name:"release-0011-pipe",code:"EK2301",source:"export const noTopic = 1 |> 2"}
 const appendix=new Map([["EK2301","a pipe body without a topic | 23 | Running Effects |"]])
@@ -47,11 +49,11 @@ test("a meaning anchor on another source diagnostic cannot hide the wrong target
 })
 
 test("registration-only hosts cannot silently hide unproved compiler emission",()=>{
- const fixture={code:"EK1013",host:"registration-only",emissionPending:true,testPath:"typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",testName:"TestAppendixRegisteredOnlyHostExamples"}
- assert.throws(()=>resolveExamples([fixture],new Map([["EK1013","error"]])),/missing pending emission label/)
- assert.throws(()=>resolveExamples([{...fixture,emissionPending:false}],new Map([["EK1013","error"]])),/must declare pending emission/)
+ const fixture={code:"EK4406",host:"registration-only",emissionPending:true,testPath:"typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",testName:"TestAppendixRegisteredOnlyHostExamples"}
+ assert.throws(()=>resolveExamples([fixture],new Map([["EK4406","error"]])),/missing pending emission label/)
+ assert.throws(()=>resolveExamples([{...fixture,emissionPending:false}],new Map([["EK4406","error"]])),/must declare pending emission/)
  assert.throws(()=>resolveExamples([{...fixture,code:"EK9998"}],new Map([["EK9998","error: Emission witness pending for `EK9998`"]])),/missing pending emission test/)
- assert.deepEqual(resolveExamples([fixture],new Map([["EK1013","error: Emission witness pending for `EK1013`"]])),[])
+ assert.deepEqual(resolveExamples([fixture],new Map([["EK4406","error: Emission witness pending for `EK4406`"]])),[])
 })
 
 test("retired lexical-capture and clock diagnostics require no live Appendix example and cannot be resurrected",()=>{
@@ -73,15 +75,18 @@ test("current fixtures resolve and every host witness runs in the Appendix host 
  for(const fixture of fixtures)if(fixture.host)assert.match(fixture.testName,new RegExp(selected[1]),fixture.code)
 })
 
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:21:12](../../../typescript/vibelang/cases/match-patterns.fail/main.vibe).
+// rule-evidence: docs/design/src/900-appendices.md | The old `EK4704` is retired and will never be reassigned: VIP-7 admits computed property-key expressions under the pinned pattern grammar.
 
-test("EK4704 replays the computed key the parser still refuses, not an adopted optional binding",()=>{
+test("the computed-key limitation diagnostic stays retired",()=>{
  const chapter=readCaptureFixtures(join(repository,"docs/design/src/900-appendices.md"),"utf8")
- const appendix=appendixCodes(chapter)
- const [example]=archiveExamples(new Map([["EK4704",appendix.get("EK4704")]]),repository)
- assert.ok(example)
- const line=readCaptureFixtures(join(example.project,"main.vibe"),"utf8").split("\n")[example.at.line-1]
- assert.ok(line.slice(example.at.column-1).startsWith("[key()]"),line)
+ assert.ok(!appendixCodes(chapter).has("EK4704"))
+ assert.ok(chapter.includes("The old `EK4704` is retired and will never be reassigned"))
+ const fixtures=JSON.parse(readCaptureFixtures(join(repository,"typescript/vibelang/cases/appendix-diagnostic-identities/examples.json"),"utf8"))
+ const fixture=fixtures.find(example=>example.code==="EK4704")
+ assert.equal(fixture?.retired,true)
+ assert.equal(fixture?.archive,undefined)
+ assert.deepEqual(resolveExamples([fixture],new Map()),[])
+ assert.throws(()=>resolveExamples([fixture],new Map([["EK4704","error"]])),/retired fixture still has a row or registration/)
 })
 
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:13:10; error; also EK0403](../../../typescript/vibelang/cases/any-call-error-recovery.fail/main.vibe).
@@ -111,4 +116,58 @@ test("the Appendix replay budget covers every compiled example on a loaded runne
  const budget=/const specAppendixExamples = S\.Shell\.Test\(\{[\s\S]*?timeout: "(\d+)m"/.exec(read("../../PACKAGE.ts"))
  assert.ok(budget,"spec-appendix-examples declares a timeout in minutes")
  assert.ok(Number(budget[1])*60>=compiled.length*5/4,compiled.length+" examples need more than "+budget[1]+"m")
+})
+
+ 
+test("registration-only replays require a documented native case and its exact expected diagnostics", t => {
+ const root=mkdtempSync(join(tmpdir(),"appendix-emission-replay-"))
+ t.after(()=>rmSync(root,{recursive:true,force:true}))
+ const project="typescript/vibelang/cases/archived-control.fail"
+ mkdirSync(join(root,project),{recursive:true})
+ writeFileSync(join(root,project,"main.vibe"),"// expect: EK3501\ncontrol Ask { ask(): number!! }\n")
+ writeFileSync(join(root,"host.go"),"func TestRegistry(t *testing.T) {}")
+ const fixture={code:"EK4201",host:"registration-only",testPath:"host.go",testName:"TestRegistry",
+  emissionReplay:{project,code:"EK3501"}}
+ const rows=new Map([["EK4201","error: `EK4201` archived input reports `EK3501`; [emission replay](../../../"+project+"/main.vibe)"],["EK3501","error"]])
+ const [example]=resolveExamples([fixture],rows,root)
+ assert.equal(example.code,"EK3501")
+ assert.equal(example.name,"appendix-current-emission-EK4201")
+ assert.equal(example.project,join(root,project))
+ assert.throws(()=>resolveExamples([{...fixture,emissionReplay:undefined}],rows,root),/must declare pending emission or an emission replay/)
+ assert.throws(()=>resolveExamples([{...fixture,emissionPending:true}],rows,root),/exclusively/)
+ for(const project of ["../outside","typescript/vibelang/cases/../outside","typescript/vibelang/cases"]){
+  assert.throws(()=>resolveExamples([{...fixture,emissionReplay:{project,code:"EK3501"}}],rows,root),/must name a native case/)
+ }
+ assert.throws(()=>resolveExamples([fixture],new Map([["EK4201","error"],["EK3501","error"]]),root),/lacks its Appendix link/)
+ assert.throws(()=>resolveExamples([{...fixture,emissionReplay:{project,code:"EK4201"}}],rows,root),/differs from its case expectations/)
+ writeFileSync(join(root,project,"main.vibe"),"// expect: EK3501 TS2304\ncontrol Ask {}\n")
+ assert.throws(()=>resolveExamples([fixture],rows,root),/differs from its case expectations/)
+ const warningRows=new Map([...rows,["EK4856","warning"]])
+ const withWarning={...fixture,emissionReplay:{...fixture.emissionReplay,also:["EK4856"]}}
+ writeFileSync(join(root,project,"main.vibe"),"// expect: EK3501\n// expect-warnings: EK4856\ncontrol Ask {}\n")
+ assert.equal(resolveExamples([withWarning],warningRows,root).length,1)
+ writeFileSync(join(root,project,"main.vibe"),"// expect: EK3501 EK4856\ncontrol Ask {}\n")
+ assert.throws(()=>resolveExamples([withWarning],warningRows,root),/differs from its case expectations/)
+})
+
+// Appendix B retains interim registrations separately from current emitted diagnostics.
+test("fast-check: completed emission replays reject legacy codes, wrong severity and extra diagnostics",()=>{
+ const chapter=readCaptureFixtures(join(repository,"docs/design/src/900-appendices.md"),"utf8")
+ const appendix=appendixCodes(chapter)
+ const allFixtures=JSON.parse(readCaptureFixtures(join(repository,"typescript/vibelang/cases/appendix-diagnostic-identities/examples.json"),"utf8"))
+ const fixtures=allFixtures.filter(f=>f.emissionReplay)
+ assert.equal(fixtures.length,7)
+ const resolved=resolveExamples(allFixtures,appendix)
+ const examples=fixtures.map(f=>({fixture:f,example:resolved.find(e=>e.name==="appendix-current-emission-"+f.code)}))
+ fc.assert(fc.property(fc.constantFrom(...examples),fc.boolean(),fc.integer({min:1,max:4}),({fixture,example},reverse,copies)=>{
+  const diagnostic=(code,category="error")=>"main.vibe(1,1): "+category+" "+code+": current replay"
+  const lines=[example.code,...example.also??[]].flatMap(code=>Array(copies).fill(diagnostic(code,code.startsWith("TS")?"error":appendixCategory(appendix.get(code)))))
+  if(reverse)lines.reverse()
+  assert.deepEqual(checkExample(example,appendix,{status:2,stdout:lines.join("\n")}),[])
+  assert.ok(checkExample(example,appendix,{status:2,stdout:lines.join("\n")+"\n"+diagnostic("TS9999")}).length)
+  assert.ok(checkExample(example,appendix,{status:2,stdout:lines.map(line=>line.replace(": error ",": warning ")).join("\n")}).length)
+  if(fixture.code!==example.code){
+   assert.ok(checkExample(example,appendix,{status:2,stdout:lines.join("\n")+"\n"+diagnostic(fixture.code)}).length)
+  }
+ }),{seed:42014202,numRuns:140})
 })

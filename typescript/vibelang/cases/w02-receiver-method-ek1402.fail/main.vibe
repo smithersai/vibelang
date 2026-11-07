@@ -1,0 +1,9 @@
+// expect: EK1402
+// rule-evidence: docs/design/src/007-tooling.md#legacy-data-receiver-methods | `EK1402` rejects a legacy Effect data receiver method such as `Option.some(1).map(f)`.
+// rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | For these retirements and the mutable-marker, receiver-method and prelude-shorthand retirements above, enforcement waits until preserving codemods ship and every migration repository has zero remaining uses.
+// The receiver call on an Option is the retired form. The data-first call and
+// an array's own map method are outside it and add no diagnostic.
+const f = (n: number): number => n + 1
+export const mapped = Option.some(1).map(f)
+export const dataFirst = Option.map(Option.some(1), f)
+export const own = [1, 2].map(f)

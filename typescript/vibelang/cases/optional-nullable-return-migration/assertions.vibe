@@ -1,0 +1,6 @@
+import type { Effect } from "effect"
+import { valueResult, emptyResult, thrownResult, absentResult } from "./main.js"
+export const valueChecked: (Effect.Effect<number> | undefined)!! = valueResult()
+export const emptyChecked: (Effect.Effect<number> | undefined)!! = emptyResult()
+export const thrownChecked: (Effect.Effect<number> | undefined)!! = thrownResult()
+export const absentChecked: (Effect.Effect<number> | undefined)!! = absentResult()

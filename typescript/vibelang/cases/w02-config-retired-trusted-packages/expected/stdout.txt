@@ -1,0 +1,6 @@
+without the key: no diagnostics, exit 0
+vibe.trustedPackages: one EK3010 warning at the key for 8 values, exit 0, output unchanged
+vibelang.trustedPackages: one EK3010 warning at the key for 8 values, exit 0, output unchanged
+compilerOptions.vibelang.trustedPackages: one EK3010 warning at the key for 8 values, exit 0, output unchanged
+vibe.config.json vibe.trustedPackages: EK3010 warning, exit 0
+direct npm call in effect code: EK0403 with and without trustedPackages in each section

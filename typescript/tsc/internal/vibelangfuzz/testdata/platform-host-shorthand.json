@@ -1,0 +1,211 @@
+[
+  {
+    "Key": "AbortSignal-timeout-direct",
+    "Source": "const held = AbortSignal.timeout;\nexport const result = { held };\n",
+    "Spans": [
+      "AbortSignal.timeout",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-chain",
+    "Source": "const original = AbortSignal.timeout;\nconst held = original;\nexport const result = { held };\n",
+    "Spans": [
+      "AbortSignal.timeout",
+      "original",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-destructure",
+    "Source": "const { timeout: held } = AbortSignal;\nexport const result = { held };\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested",
+    "Source": "const held = AbortSignal.timeout;\nexport const result = { nested: { held } };\n",
+    "Spans": [
+      "AbortSignal.timeout",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-returned",
+    "Source": "const held = AbortSignal.timeout;\nexport function result() { return { held } }\n",
+    "Spans": [
+      "AbortSignal.timeout",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-local-let",
+    "Source": "export function result() { let held = AbortSignal.timeout; return { held } }\n",
+    "Spans": [
+      "AbortSignal.timeout",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-parameter-shadow",
+    "Source": "const held = AbortSignal.timeout;\nexport function result(held: number) { return { held } }\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-explicit-key",
+    "Source": "const held = AbortSignal.timeout;\nexport const result = { held: 1 };\n",
+    "Spans": [
+      "AbortSignal.timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-type-only",
+    "Source": "declare const held: typeof AbortSignal.timeout;\nexport const result = { held };\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-direct",
+    "Source": "const held = URL.createObjectURL;\nexport const result = { held };\n",
+    "Spans": [
+      "URL.createObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-chain",
+    "Source": "const original = URL.createObjectURL;\nconst held = original;\nexport const result = { held };\n",
+    "Spans": [
+      "URL.createObjectURL",
+      "original",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-destructure",
+    "Source": "const { createObjectURL: held } = URL;\nexport const result = { held };\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested",
+    "Source": "const held = URL.createObjectURL;\nexport const result = { nested: { held } };\n",
+    "Spans": [
+      "URL.createObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-returned",
+    "Source": "const held = URL.createObjectURL;\nexport function result() { return { held } }\n",
+    "Spans": [
+      "URL.createObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-local-let",
+    "Source": "export function result() { let held = URL.createObjectURL; return { held } }\n",
+    "Spans": [
+      "URL.createObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-parameter-shadow",
+    "Source": "const held = URL.createObjectURL;\nexport function result(held: number) { return { held } }\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-explicit-key",
+    "Source": "const held = URL.createObjectURL;\nexport const result = { held: 1 };\n",
+    "Spans": [
+      "URL.createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-type-only",
+    "Source": "declare const held: typeof URL.createObjectURL;\nexport const result = { held };\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-direct",
+    "Source": "const held = URL.revokeObjectURL;\nexport const result = { held };\n",
+    "Spans": [
+      "URL.revokeObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-chain",
+    "Source": "const original = URL.revokeObjectURL;\nconst held = original;\nexport const result = { held };\n",
+    "Spans": [
+      "URL.revokeObjectURL",
+      "original",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-destructure",
+    "Source": "const { revokeObjectURL: held } = URL;\nexport const result = { held };\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested",
+    "Source": "const held = URL.revokeObjectURL;\nexport const result = { nested: { held } };\n",
+    "Spans": [
+      "URL.revokeObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-returned",
+    "Source": "const held = URL.revokeObjectURL;\nexport function result() { return { held } }\n",
+    "Spans": [
+      "URL.revokeObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-local-let",
+    "Source": "export function result() { let held = URL.revokeObjectURL; return { held } }\n",
+    "Spans": [
+      "URL.revokeObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-parameter-shadow",
+    "Source": "const held = URL.revokeObjectURL;\nexport function result(held: number) { return { held } }\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-explicit-key",
+    "Source": "const held = URL.revokeObjectURL;\nexport const result = { held: 1 };\n",
+    "Spans": [
+      "URL.revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-type-only",
+    "Source": "declare const held: typeof URL.revokeObjectURL;\nexport const result = { held };\n",
+    "Spans": []
+  },
+  {
+    "Key": "local-binding",
+    "Source": "export function result(held: number) { return { held } }\n",
+    "Spans": []
+  }
+]

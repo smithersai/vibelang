@@ -1,0 +1,11 @@
+effect function load(n: number) {
+  try yieldNow
+  return n
+}
+
+export effect function f() {
+  return [1].map((n) => {
+    load(n)
+    return n
+  })
+}

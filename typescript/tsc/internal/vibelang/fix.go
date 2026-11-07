@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+	"weak"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
@@ -25,6 +27,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/module"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/pprof"
 	"github.com/microsoft/TypeScript/tsc/internal/sourcemap"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -100,12 +103,14 @@ const FixFlag = "--fix"
 // when not 0, replace fixIsolationChecks and fixCheckpointFirst
 // (fix_gate.go): FuzzFixGateBounds varies them, and no command line sets
 // them. Only, when not nil, limits the run to those modules (fix_only.go),
-// and --only sets it.
+// and --only sets it. LegacyServiceKeys explicitly retains historical keys of
+// services in empty-name packages without applying former readonly defaults.
 type FixOptions struct {
 	// programBuilt observes allocation lifetimes in the fixer resource tests.
 	// It must not retain the program. No command line or external caller sets it.
 	programBuilt                         func(*compiler.Program)
 	MigrationOnly, VIPOnly, CheckEachFix bool
+	LegacyServiceKeys                    bool
 	Only                                 []tspath.RootedFilePath
 	onlyGiven, onlyNoValue               bool
 	onlyValues                           []string
@@ -114,6 +119,9 @@ type FixOptions struct {
 	Progress                             io.Writer
 	ProgressEvery                        time.Duration
 	IsolationChecks, CheckpointFirst     int
+	// Checks says how the gate checks a trial's whole program
+	// (fix_incremental.go); the command line reads VIBELANG_FIX_CHECKS.
+	Checks FixChecks
 }
 
 // FixOptionsArguments removes the optional scope flags after --fix was found.
@@ -127,6 +135,8 @@ func FixOptionsArguments(args []string) ([]string, FixOptions) {
 			options.MigrationOnly = true
 		} else if strings.EqualFold(arg, "--fix-vip-only") {
 			options.VIPOnly = true
+		} else if strings.EqualFold(arg, "--fix-legacy-service-keys") {
+			options.LegacyServiceKeys = true
 		} else if strings.EqualFold(arg, FixOnlyFlag) {
 			i = options.onlyArgument(args, i)
 		} else {
@@ -155,6 +165,14 @@ func Fix(ctx context.Context, sys tsc.System, args []string) int {
 }
 
 func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options FixOptions) int {
+	commandLine := tsoptions.ParseCommandLine(args, sys.FS(), sys.GetCurrentDirectory())
+	flags := commandLine.CompilerOptions()
+	buildMode := len(args) > 0 && slices.Contains([]string{"-b", "--b", "-build", "--build"}, strings.ToLower(args[0]))
+	// Inspection and initialization keep the compiler's normal command-line
+	// precedence. They must not discover a repair project or write its sources.
+	if !buildMode && (flags.Help.IsTrue() || flags.All.IsTrue() || flags.Version.IsTrue() || flags.ShowConfig.IsTrue() || flags.Init.IsTrue()) {
+		return 0
+	}
 	for _, arg := range args {
 		switch strings.ToLower(arg) {
 		case "-w", "--w", "-watch", "--watch":
@@ -167,13 +185,33 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", err)
 		return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
 	}
+	// --pprofDir profiles the repair too, whose checks are most of a large
+	// project's run. It writes to dir/fix: the compile after it writes its
+	// own profiles to dir, named by the same process id.
+	if dir := flags.PprofDir; dir != "" {
+		session, err := pprof.BeginProfiling(filepath.Join(dir.AsString(), "fix"), sys.ErrorWriter())
+		if err != nil {
+			fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: --pprofDir: cannot start profiling: %v\n", err)
+			return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
+		}
+		defer func() {
+			if err := session.Stop(); err != nil {
+				fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: --pprofDir: cannot write profiles: %v\n", err)
+			}
+		}()
+	}
+	if options.Checks == FixChecksChanged {
+		if options.Checks, err = fixChecksFromEnvironment(); err != nil {
+			fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: %v\n", err)
+			return int(tsc.ExitStatusInvalidProject_OutputsSkipped)
+		}
+	}
 	if len(args) > 0 {
 		switch strings.ToLower(args[0]) {
 		case "-b", "--b", "-build", "--build":
 			return fixBuild(ctx, sys, args, options)
 		}
 	}
-	commandLine := tsoptions.ParseCommandLine(args, sys.FS(), sys.GetCurrentDirectory())
 	if len(commandLine.Errors) > 0 {
 		return 0 // the compilation reports them
 	}
@@ -526,16 +564,20 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// the last one when the overlay is the same.
 	var lastOverlay [32]byte
 	var last *compiler.Program
+	built := &fixBuilt{}
 	build := func(overlay map[tspath.RootedFilePath]string) *compiler.Program {
 		key := overlayKey(overlay)
 		if last == nil || key != lastOverlay {
 			progress.building()
 			last = nil // the last program can go while the next is built
 			last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), key
+			built.program, built.again = weak.Make(last), false
 			progress.stage("program built")
 			if options.programBuilt != nil {
 				options.programBuilt(last)
 			}
+		} else {
+			built.again = true
 		}
 		return last
 	}
@@ -560,6 +602,13 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			return result
 		}
 	}
+	if options.LegacyServiceKeys && materializeLegacyEmptyPackageKeys(ctx, program, scope, texts, result) {
+		program = build(texts)
+		verified(texts)
+		if done.Err() != nil {
+			return result
+		}
+	}
 	if preserveGeneratorConstructors(ctx, program, scope, texts, result) {
 		program = build(texts)
 		verified(texts)
@@ -571,13 +620,27 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		progress.building()
 		last = nil
 		last, lastOverlay = fixProgram(fs, libraryPath, config, parsed, overlay), overlayKey(overlay)
+		built.program, built.again = weak.Make(last), false
 		progress.stage("program built")
 		if options.programBuilt != nil {
 			options.programBuilt(last)
 		}
 		return last
 	}
-	g := &fixGate{ctx: ctx, done: done, build: build, fresh: fresh, baseline: baselineFrom(program, scope.errors(ctx, program)), scope: scope, refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress, isolationChecks: options.IsolationChecks, checkpointFirst: options.CheckpointFirst}
+	// The same errors as scope.errors, and when there is no scope the
+	// semantic ones apart, which a check of changed files carries over for
+	// the files it does not check again (fix_incremental.go).
+	var baselineErrors, baselineSemantic []*ast.Diagnostic
+	if scope == nil {
+		baselineErrors, baselineSemantic = programErrorsOf(ctx, program)
+	} else {
+		baselineErrors = scope.errors(ctx, program)
+	}
+	g := &fixGate{ctx: ctx, done: done, build: build, fresh: fresh, baseline: baselineFrom(program, baselineErrors), scope: scope, refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress, isolationChecks: options.IsolationChecks, checkpointFirst: options.CheckpointFirst, checks: options.Checks, built: built}
+	if scope == nil {
+		g.checked, g.known = checkedOf(program, baselineErrors, baselineSemantic), knownErrors{program: weak.Make(program), errors: baselineErrors}
+		g.changedOnly = changedOnly(ctx, program)
+	}
 	g.original = g.baseline
 	var roundRefusals []FixRefusal
 	sites := newFixSites(func(name tspath.RootedFilePath) string {
@@ -637,7 +700,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		}
 		roundRefusals = nil
 		g.refused = map[string]bool{}
-		g.baseline = g.baseline.with(baselineOf(ctx, program))
+		g.baseline = g.baseline.with(baselineFrom(program, g.programErrors(program)))
 	}
 	// Legacy running calls must become explicit before a retired infer slot
 	// is frozen: before try is inserted its error channel can look like never.
@@ -646,6 +709,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// propose returns a round's fixes: in each fixable file of program, the
 	// fixes options select whose edits do not overlap.
 	propose := func(program *compiler.Program) []proposal {
+		g.checkFixable(program, scope.fixable(program))
 		hatchTypes := legacyPreludeCompatibilityFixes(ctx, program, g.refused, options.MigrationOnly, options.VIPOnly)
 		if !options.VIPOnly && !options.MigrationOnly {
 			if p := cliThrowsNeverFixes(ctx, program, scope, g.refused); len(p) > 0 {
@@ -784,6 +848,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			removeUnusedTypeNames(g, texts, result)
 			verified(texts)
 		}
+		sites.auditPhase("final", 0)
 		// A diagnostic the run leaves without a fix is a refused site too. A
 		// round's diagnostic without a fix is not one yet: a later round or
 		// rewrite may repair it.
@@ -796,6 +861,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			// program that a later round or rewrite repaired is no site, and
 			// one the run moved is where it now stands.
 			final := build(texts)
+			g.checkFixable(final, fixableFiles(final))
 			progress.stage("finding remaining fix sites")
 			for _, file := range fixableFiles(final) {
 				declined := fileFixes(ctx, final, file, g.refused, codes).declined
@@ -828,6 +894,9 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		if reverted && result.Err == nil && done.Err() == nil {
 			verified(texts)
 		}
+		if sites.audit != nil && sites.audit.err != nil && result.Err == nil {
+			result.Err = fmt.Errorf("cannot write refusal audit: %w", sites.audit.err)
+		}
 		result.Sites = sites.all()
 		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
 		return result
@@ -847,6 +916,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				return result
 			}
 			round++
+			sites.auditPhase("round", round)
 			progress.enter("round", round, fixesApplied(result), len(result.Refused), "finding fixes")
 			progress.stage("finding fixes")
 			proposals := propose(program)
@@ -868,11 +938,17 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				accept = g.acceptEach
 			}
 			refusedBefore := len(roundRefusals)
+			names := make([]tspath.RootedFilePath, len(proposals))
+			for i, p := range proposals {
+				names[i] = p.file.FileName()
+			}
+			g.beginRound(program, names)
 			// Proposals hold the immutable source and edits they need, not the
 			// old checker. Keeping program live across accept retains all its
 			// type caches while the trial checks another complete program.
 			program = nil
 			accepted := accept(texts, proposals, refuse)
+			g.endRound()
 			if done.Err() != nil {
 				return result
 			}
@@ -940,6 +1016,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			if done.Err() == nil {
 				var refused []FixRefusal
 				for round := 1; round <= maxTryRounds && done.Err() == nil; round++ {
+					sites.auditPhase("try", round)
 					progress.enter("try", round, fixesApplied(result), len(result.Refused), "finding rewrites")
 					var wrote bool
 					wrote, refused = rewriteTries(g, fs, build(texts), texts, result)
@@ -965,6 +1042,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		} else {
 			// What the prelude makes shorter (D310, D311).
 			if done.Err() == nil {
+				sites.auditPhase("prelude", 0)
 				progress.enter("prelude", 0, fixesApplied(result), len(result.Refused), "finding rewrites")
 				rewritePrelude(g, fs, program, texts, result)
 				verified(texts)
@@ -1044,6 +1122,7 @@ func removeUnusedEffectImports(g *fixGate, program *compiler.Program, texts map[
 	if len(cleaned) == 0 {
 		return
 	}
+	g.sites.auditPhase("imports", 0)
 	g.progress.enter("imports", 0, fixesApplied(result), len(result.Refused), "removing unused imports")
 	if _, ok := g.passes(texts, cleaned); !ok {
 		return
@@ -1145,7 +1224,13 @@ func fixState(program *compiler.Program) [32]byte {
 // as fixGate.accept keeps a round's fixes. It records them in result and
 // texts.
 func rewritePrelude(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
-	rewrites := preludeRewriteProject(g.ctx, program, g.scope.fixable(program), texts, g.fresh)
+	g.progress.stage("finding rewrites")
+	fresh := func(overlay map[tspath.RootedFilePath]string) *compiler.Program {
+		program := g.fresh(overlay)
+		g.progress.stage("emitting declarations")
+		return program
+	}
+	rewrites := preludeRewriteProject(g.ctx, program, g.scope.fixable(program), texts, fresh)
 	if len(rewrites) == 0 {
 		return
 	}
@@ -1713,15 +1798,29 @@ type fixGate struct {
 	// isolationChecks and checkpointFirst replace fixIsolationChecks and
 	// fixCheckpointFirst when not 0 (FixOptions).
 	isolationChecks, checkpointFirst int
+	// checks says how errorsOf checks a trial's whole program, built the
+	// program build or fresh built last, checked what the last check of a
+	// program found, known the errors errorsOf last returned, changedOnly
+	// whether the run may check only changed files and their readers, and
+	// round the program the round under way started from
+	// (fix_incremental.go).
+	checks      FixChecks
+	built       *fixBuilt
+	checked     *checkedProgram
+	known       knownErrors
+	changedOnly bool
+	round       *fixRound
 }
 
 // passes reports whether the program with overlay over texts adds no error,
 // and returns the first error it adds.
 func (g *fixGate) passes(texts, overlay map[tspath.RootedFilePath]string) (string, bool) {
 	g.progress.checkFiles(len(overlay))
-	program := g.build(maps(texts, overlay))
+	trial := maps(texts, overlay)
+	program := g.build(trial)
 	g.progress.label("")
-	added := addedKeys(g.errors(program), g.baseline)
+	program, errors := g.errorsOf(program, trial)
+	added := addedKeys(errors, g.baseline)
 	if len(added) > 0 {
 		g.lastFailed = program
 		return added[0], false
@@ -1890,6 +1989,9 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 				}
 				if !ok {
 					candidate, ok = preservingSuspendThrows(c, file, site, key)
+				}
+				if !ok {
+					candidate, ok = preservingCallbackCallThrows(c, file, site, key)
 				}
 				if ok {
 					candidate.siteStart, candidate.siteEnd = d.Pos(), d.End()
@@ -2126,6 +2228,15 @@ func migrateSeverityConfigs(sys tsc.System, name tspath.RootedFilePath) error {
 	config, _ = tsoptions.GetParsedCommandLineOfConfigFilePath(name, path, nil, nil, sys.FS(), &tsc.ExtendedConfigCache{})
 	if config != nil && core.VibeNeedsLintPlugin(config.CompilerOptions()) {
 		for _, diagnostic := range config.GetConfigFileParsingDiagnostics() {
+			// A retired declarationSidecars setting in an owned config is an
+			// error this run repairs right after (sidecarConfigFixes), and it
+			// says nothing of plugins: waiting for it left the plugin entry to
+			// a second run, which then changed the config.
+			if diagnostic.File() != nil && owned(diagnostic.File().FileName()) {
+				if _, changes := sidecarConfigFixes(sys.FS(), []*ast.Diagnostic{diagnostic}); len(changes) > 0 {
+					continue
+				}
+			}
 			if diagnostic.Category() == diagnostics.CategoryError && !(diagnostic.Source() == "EK" && diagnostic.Code() == core.VibeLintPluginCode) {
 				fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: not fixed: resolve config errors before preserving inherited plugin settings.\n", relativeName(sys, name))
 				return nil

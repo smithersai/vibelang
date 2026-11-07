@@ -1,0 +1,31 @@
+// expect: EK2102 TS2322 EK9201 EK9202 TS2739 TS2741
+import { Effect, Stream } from "effect"
+declare const needsDb: number!!"Db"
+type Numbers = Stream.Stream<number>
+
+// rule-evidence: docs/design/vips/0021-producers.md#wills-words | **Clarified 2026-11-03: written producer contracts.** Written return annotations follow TypeScript's ordinary contract checking on the `Stream.callback` counterpart.
+// native.ts writes each producer below as a function with the same written
+// return annotation over Stream.callback. Each declaration here is rejected
+// exactly where its native counterpart is (expected/diagnostics.txt).
+
+// rule-evidence: docs/design/vips/0021-producers.md#wills-words | A written `Stream.Stream<A, E, R>` checks the yielded values, escaping errors and supplied requirements; otherwise infer the body channels and check the resulting Stream against the annotation.
+export effect function* okDirect(): Stream.Stream<number> { yield 1 }
+export effect function* okFull(): Stream.Stream<number, string, "Db"> { yield try needsDb; throw "bad" }
+export effect function* okWide(): Stream.Stream<number | string, string | boolean, "Db" | "Log"> { yield 1 }
+export effect function* badYield(): Stream.Stream<string> { yield 1 }
+export effect function* badError(): Stream.Stream<number> { yield 1; throw "bad" }
+export effect function* badRequirement(): Stream.Stream<number> { yield try needsDb }
+export effect function* okStructural(): {} { yield 1 }
+export effect function* badEffect(): Effect.Effect<number> { yield 1 }
+export effect function* badIterable(): Iterable<number> { yield 1 }
+export const okExpression = effect function* (): Stream.Stream<number> { yield 1 }
+export const badExpression = effect function* (): Stream.Stream<string> { yield 1 }
+
+// rule-evidence: docs/design/vips/0021-producers.md#wills-words | Aliases, `any`, `unknown` and compatible unions are admitted; an incompatible annotation is `EK2102`.
+export effect function* okAlias(): Numbers { yield 1 }
+export effect function* okAny(): any { yield 1 }
+export effect function* okUnknown(): unknown { yield 1 }
+export effect function* okUnion(): Numbers | Stream.Stream<string> { yield 1 }
+export effect function* okOptional(): Numbers | undefined { yield 1 }
+export effect function* badUnion(): Stream.Stream<string> | undefined { yield 1 }
+export effect function* badNever(): never { yield 1 }

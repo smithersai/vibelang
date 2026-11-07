@@ -1,0 +1,6 @@
+preserve-declarations: x.d.ts x.js xt.d.ts xt.js y.d.ts y.jsx yt.d.ts yt.jsx
+preserve-no-declarations: x.js xt.js y.jsx yt.jsx
+react-jsx-declarations: x.d.ts x.js xt.d.ts xt.js y.d.ts y.js yt.d.ts yt.js
+react-jsx-no-declarations: x.js xt.js y.js yt.js
+react-declarations: x.d.ts x.js xt.d.ts xt.js y.d.ts y.js yt.d.ts yt.js
+react-no-declarations: x.js xt.js y.js yt.js

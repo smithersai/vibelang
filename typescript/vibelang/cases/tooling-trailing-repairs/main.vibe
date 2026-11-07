@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/src/007-tooling.md#trailing-block-migration | | `EK1101` | A rejected trailing block | Pass the block as the last argument: `Layer.effect(Users) { … }` becomes `Layer.effect(Users, effect { … })`; `it.effect("loads") { … }` becomes `it.effect("loads", effect () => { … })`; a plain callback becomes `() => { … }`.
+// rule-evidence: docs/design/src/007-tooling.md#trailing-block-migration | | `TS2345`, `TS2554`, `TS2769`, or transitional `EK1023` | A legacy Effect-dual trailing block; `EK1023` applies when appending the block type-checks with changed meaning | The versioned dual migration runs first, preserves the original data-first or curried argument position and emits no duplicate `EK1101`.
+export const witness = 1

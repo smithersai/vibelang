@@ -1,0 +1,1 @@
+each sampled VibeLang rule prints its Appendix B EK code and category

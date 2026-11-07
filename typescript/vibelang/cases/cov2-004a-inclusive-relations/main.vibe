@@ -1,9 +1,9 @@
 import { Effect } from "effect"
 function probe(): unknown {
 let bounds = 0
-function bound() { bounds++; return 2 }
+const limits = { get bound() { bounds++; return 2 } }
 const xs: unknown[] = [1,2,3,NaN,{},"1",1n]
-const result = xs.map(s => [s is <= bound(), s is >= bound()])
+const result = xs.map(s => [s is <= limits.bound, s is >= limits.bound])
 return [result,bounds]
 }
 export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }

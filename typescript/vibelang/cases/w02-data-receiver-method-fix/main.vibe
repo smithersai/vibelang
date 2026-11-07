@@ -1,0 +1,1 @@
+export const witness = "data-receiver-method-migration"

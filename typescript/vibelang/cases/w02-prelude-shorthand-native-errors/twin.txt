@@ -1,0 +1,5 @@
+// The explicit namespace imports equivalent to the retired shorthand.
+import { FileSystem, Option, Scope } from "effect"
+export function scoped(s: Scope): number { return 1 }
+export type Maybe = Option<number>
+export const noop = FileSystem.of

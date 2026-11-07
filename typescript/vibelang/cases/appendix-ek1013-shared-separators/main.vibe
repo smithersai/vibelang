@@ -1,0 +1,12 @@
+// expect-result: 2
+// Appendix B: interim EK1013, root error payload fields, data variants, services and schema fields accept the shared separators — spec-rule: docs/design/src/900-appendices.md#f0248dae34631b27
+// Each declaration below separates its members with commas and compiles; the
+// inherited error's comma is EK1013 (appendix-ek1013-inherited-error-comma.fail).
+export error OutOfStock { sku: string, available: number }
+export data Shape { Circle { radius: number, label: string }, Square { side: number } }
+service Stock { static readonly key = "separators/Stock"; region: string, count(sku: string): number!! }
+export schema Item { readonly sku: string, readonly available: number }
+
+export effect function main() {
+  return new OutOfStock({ sku: "a", available: 2 }).available
+}

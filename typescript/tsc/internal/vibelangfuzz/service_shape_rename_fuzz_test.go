@@ -38,7 +38,7 @@ func FuzzServiceShapeRename(f *testing.F) {
 			qualifier = "Tags." + name
 		case "import":
 			files["settings.vibe"] = "export " + declaration
-			prefix = fmt.Sprintf(`import { %s as Local } from "./settings.vibe"`, name)
+			prefix = fmt.Sprintf(`import { %s as Local } from "./settings.js"`, name)
 			qualifier = "Local"
 			probeName = "Local"
 		case "foreign":

@@ -1,0 +1,6 @@
+// expect: EK0407
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK0407` | the retired resolved `trusted(f, [])` wrapper; use the preserving `vibelang --fix` migration or a reviewed `.ts` helper with `@throws {never}` before rejection | 4 | [Migration](007-tooling.md#empty-legacy-trust-wrappers) |
+import { trusted } from "vibelang-runtime"
+function f(x: number) { return x + 1 }
+const g = trusted(f, [])
+export effect function main() { return g(1) }

@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | Emitted `.vibe` and `.vibex` modules that use the key request the runtime initialization dependency first, before every other import or re-export dependency, independently of the Effect prelude switches.
+import { seen } from "./probe-x.ts"
+export * from "./plain.vibe"
+
+export const key = Symbol.customMatcher
+export { seen }

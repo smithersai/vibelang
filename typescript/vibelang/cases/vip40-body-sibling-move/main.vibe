@@ -1,0 +1,9 @@
+// rule-evidence: docs/design/vips/0040-module-declarations.md#8dfeacef2d1e8c91
+// VIP-40, decision: > **A body is a TypeScript file stored inside a `.vibe` file.** Moving the body to a sibling `.ts` file (`.tsx` for a body in `.vibex`), preserving its external-module classification as specified below, and replacing `from name` with that file's string specifier changes no diagnostic, type, emitted statement, declaration or run-time observation.
+// rule-evidence: docs/design/vips/0040-module-declarations.md#c0eae1f0feaca0e1
+// VIP-40, decision: Apart from the empty module marker needed to preserve that classification, the move is a copy: no VibeLang syntax, no identifier specifier, no `import.meta`.
+// run.mjs compiles each body of its corpus twice, as a module declaration and
+// as a sibling .ts or .tsx copy, and compares diagnostics, emitted JavaScript,
+// declarations and what the program observes. It then checks that the three
+// things a copy cannot carry are refused inside a body.
+export const witness = 1

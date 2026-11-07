@@ -1,0 +1,21 @@
+// expect-result: [[1,2,1,2,7,8,3,4],[1,2,1,2,7,8,3,4]]
+import { nativeLabels } from "./native.js"
+function stringTag<T extends {_tag:"A"|"B"}>(s:T):number {
+ return match(s){when {_tag:"A"}:1;when {_tag:"B"}:2;}
+}
+function booleanTag<U extends {_tag:boolean},T extends U>(s:T):number {
+ return match(s){when {_tag:true}:1;when {_tag:false}:2;}
+}
+function payload<T extends {_tag:"A"|"B";value:number}>(s:T):number {
+ return match(s){when {_tag:"A",let value}:value;when {_tag:"B",const value}:value;}
+}
+function shared<T extends {_tag:"A";left:number}|{_tag:"A";right:number}>(s:T):number {
+ return match(s){when {_tag:"A"}:3;}
+}
+function alternatives<T extends {_tag:1|2}>(s:T):number {
+ return match(s){when {_tag:1} or {_tag:2}:4;}
+}
+export effect function main() {
+ const labels = [stringTag({_tag:"A"}),stringTag({_tag:"B"}),booleanTag({_tag:true}),booleanTag({_tag:false}),payload({_tag:"A",value:7}),payload({_tag:"B",value:8}),shared({_tag:"A",left:0}),alternatives({_tag:2})]
+ return [labels,nativeLabels()]
+}

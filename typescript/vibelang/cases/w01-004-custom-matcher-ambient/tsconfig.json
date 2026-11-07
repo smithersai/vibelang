@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["esnext", "dom"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "outDir": "out",
+    "declaration": true,
+    "jsx": "react"
+  },
+  "include": ["*.vibe", "*.vibex", "*.ts"],
+  "vibe": { "effectGlobals": false, "effectModules": false }
+}

@@ -1,0 +1,29 @@
+// Effect's subpath namespaces are in scope without an import, and lib.dom's
+// FileSystem does not win over Effect's (VIP-14's platform-specific row); a
+// local binding and an import shadow them. vip33-subpath-namespaces-off.fail
+// turns the prelude off.
+import { modules } from "./native.ts"
+import { imported } from "./shadow.vibe"
+
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#e6ded71d7db14c05 | **Subpath namespaces are in scope** (`HttpClient`, `FileSystem`, `Path`, `ChildProcess`, … from Effect's subpath packages), with VIP-14's precedence rules.
+export const bare = { HttpClient, FileSystem, Path, ChildProcess }
+
+function local() {
+  const Path = { label: "local" }
+  return Path.label
+}
+
+// expect-result: {"same":{"HttpClient":true,"FileSystem":true,"Path":true,"ChildProcess":true},"command":"StandardCommand","local":"local","imported":"imported"}
+export effect function main() {
+  return {
+    same: {
+      HttpClient: bare.HttpClient === modules.HttpClient,
+      FileSystem: bare.FileSystem === modules.FileSystem,
+      Path: bare.Path === modules.Path,
+      ChildProcess: bare.ChildProcess === modules.ChildProcess,
+    },
+    command: ChildProcess.make("git", ["status"])._tag,
+    local: local(),
+    imported,
+  }
+}

@@ -1,0 +1,2 @@
+// The case's work is in run.mjs; this module only keeps the project nonempty.
+export const placeholder = 0

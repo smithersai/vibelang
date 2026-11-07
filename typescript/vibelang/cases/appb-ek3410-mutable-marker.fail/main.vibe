@@ -1,0 +1,10 @@
+// expect: EK3410
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK3410` | retired `mutable` marker on an ordinary type member or plain-error payload; run `vibelang --fix` to remove redundant markers or preserve payloads in a compatibility class; enforce after preserving migration | 34 | [Migration](007-tooling.md#ordinary-mutable-marker-migration) |
+export type T = { mutable x: number }
+export error E { mutable n: number }
+export effect function main() {
+  const t: T = { x: 1 }
+  t.x = 2
+  const e = new E({ n: 3 })
+  return [t.x, e.n, e._tag, e instanceof E]
+}

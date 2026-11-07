@@ -1,0 +1,71 @@
+// rule-evidence: docs/design/src/002-running.md#do-expressions | Calls keep ECMA-262's `EvaluateCall` and `ArgumentListEvaluation`, and lowering adds no observable helper lookup, temporary name ([source names](001-functions.md#source-names)) or change to `this` and `super()` order.
+// expect-result: {"method":[["receiver","f","a1","do","call"],true,15],"free":[["a1","do","call"],true],"superOrder":["arg","do","A","B"],"notCallable":[true,"TypeError","TypeError",["do"]]}
+// The called functions carry own `call`, `apply` and `bind` getters that log
+// "helper"; a lowering that looked them up would show in the trace. A call of
+// a noncallable value still evaluates its arguments first, then throws.
+import { Effect, Exit, Cause } from "effect"
+
+const log: string[] = []
+const run = (s: string, v: number) => Effect.sync(() => { log.push(s); return v })
+const arg = (s: string, v: number) => (log.push(s), v)
+
+function poison(f: object) {
+  for (const name of ["call", "apply", "bind"]) {
+    Object.defineProperty(f, name, { get() { log.push("helper " + name); return undefined } })
+  }
+}
+
+const receiver = {
+  n: 10,
+  f(x: number, y: number): number { log.push("call"); return this === receiver ? this.n + x + y - 1 : -1 },
+}
+poison(receiver.f)
+const holder = { get receiver() { log.push("receiver"); return receiver } }
+
+function free(this: unknown, x: number, y: number): boolean { log.push("call"); return this === undefined && x + y === 3 }
+poison(free)
+
+effect function method() {
+  log.length = 0
+  const value = holder.receiver[(log.push("f"), "f")](arg("a1", 2), do { const v = try run("do", 4); v })
+  return [[...log], log.every(s => !s.startsWith("helper")), value]
+}
+
+effect function freeCall() {
+  log.length = 0
+  const ok = free(arg("a1", 1), do { const v = try run("do", 2); v })
+  return [[...log], ok]
+}
+
+class A { constructor(_x: number, _y: number) { log.push("A") } }
+class B extends A {
+  constructor() {
+    super(arg("arg", 1), do { log.push("do"); 2 })
+    log.push("B")
+  }
+}
+
+const notFunction = { g: 1 } as unknown as { g(x: number): number }
+
+// ECMA-262 fixes the error's type, not its message text, which is the host's.
+function nameOf(exit: Exit.Exit<unknown, unknown>): string {
+  return Exit.isFailure(exit) ? String((Cause.squash(exit.cause) as Error).name) : "succeeded"
+}
+
+export effect function main() {
+  const m = try method()
+  const f = try freeCall()
+  log.length = 0
+  new B()
+  const superOrder = [...log]
+  log.length = 0
+  const lowered = try Effect.exit(effect { return notFunction.g(do { const v = try run("do", 1); v }) })
+  const loweredLog = [...log]
+  const native = try Effect.exit(effect { return notFunction.g(1) })
+  return {
+    method: m,
+    free: f,
+    superOrder,
+    notCallable: [Exit.isFailure(lowered), nameOf(lowered), nameOf(native), loweredLog],
+  }
+}

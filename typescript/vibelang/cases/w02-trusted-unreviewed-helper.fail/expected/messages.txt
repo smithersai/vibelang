@@ -1,0 +1,1 @@
+An unannotated foreign function has thrown type unknown; this callback type does not admit it.

@@ -1,0 +1,359 @@
+[
+  {
+    "Key": "AbortSignal-timeout-nested-name",
+    "Source": "const { timeout: { name } } = AbortSignal;\nexport const result = name;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-length",
+    "Source": "const { timeout: { length } } = AbortSignal;\nexport const result = length;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-empty",
+    "Source": "const { timeout: {} } = AbortSignal;\nexport const result = 1;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-rest",
+    "Source": "const { timeout: { ...held } } = AbortSignal;\nexport const result = held;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-rename",
+    "Source": "const { timeout: { name: held } } = AbortSignal;\nexport const result = held;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-shadow-name",
+    "Source": "const { timeout: { name: timeout } } = AbortSignal;\nexport const result = timeout;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-string-key",
+    "Source": "const { [\"timeout\"]: { name } } = AbortSignal;\nexport const result = name;\n",
+    "Spans": [
+      "[\"timeout\"]"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-template-key",
+    "Source": "const { [`timeout`]: { name } } = AbortSignal;\nexport const result = name;\n",
+    "Spans": [
+      "[`timeout`]"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-receiver-alias",
+    "Source": "const Receiver = AbortSignal;\nconst { timeout: { name } } = Receiver;\nexport const result = name;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-local-let",
+    "Source": "export function result() { let { timeout: { name } } = AbortSignal; return name; }\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-mutable-declaration",
+    "Source": "let { timeout: { name } } = AbortSignal;\nexport const result = name;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-asserted-array",
+    "Source": "const { timeout: [held] } = (AbortSignal as { timeout: any });\nexport const result = held;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-nested-asserted-receiver",
+    "Source": "const { timeout: { name } } = (AbortSignal as typeof AbortSignal);\nexport const result = name;\n",
+    "Spans": [
+      "timeout"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-direct-control",
+    "Source": "const { timeout: held } = AbortSignal;\nexport const result = held;\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-local-control",
+    "Source": "const Receiver = { timeout: { name: \"local\" } };\nconst { timeout: { name } } = Receiver;\nexport const result = name;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-shadowed-global-control",
+    "Source": "const AbortSignal = { timeout: { name: \"local\" } };\nconst { timeout: { name } } = AbortSignal;\nexport const result = name;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-pure-control",
+    "Source": "const { prototype: { constructor } } = AbortSignal;\nexport const result = constructor;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-type-control",
+    "Source": "export type Read = typeof AbortSignal.timeout;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-nested-name",
+    "Source": "const { createObjectURL: { name } } = URL;\nexport const result = name;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-length",
+    "Source": "const { createObjectURL: { length } } = URL;\nexport const result = length;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-empty",
+    "Source": "const { createObjectURL: {} } = URL;\nexport const result = 1;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-rest",
+    "Source": "const { createObjectURL: { ...held } } = URL;\nexport const result = held;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-rename",
+    "Source": "const { createObjectURL: { name: held } } = URL;\nexport const result = held;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-shadow-name",
+    "Source": "const { createObjectURL: { name: createObjectURL } } = URL;\nexport const result = createObjectURL;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-string-key",
+    "Source": "const { [\"createObjectURL\"]: { name } } = URL;\nexport const result = name;\n",
+    "Spans": [
+      "[\"createObjectURL\"]"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-template-key",
+    "Source": "const { [`createObjectURL`]: { name } } = URL;\nexport const result = name;\n",
+    "Spans": [
+      "[`createObjectURL`]"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-receiver-alias",
+    "Source": "const Receiver = URL;\nconst { createObjectURL: { name } } = Receiver;\nexport const result = name;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-local-let",
+    "Source": "export function result() { let { createObjectURL: { name } } = URL; return name; }\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-mutable-declaration",
+    "Source": "let { createObjectURL: { name } } = URL;\nexport const result = name;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-asserted-array",
+    "Source": "const { createObjectURL: [held] } = (URL as { createObjectURL: any });\nexport const result = held;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-nested-asserted-receiver",
+    "Source": "const { createObjectURL: { name } } = (URL as typeof URL);\nexport const result = name;\n",
+    "Spans": [
+      "createObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-direct-control",
+    "Source": "const { createObjectURL: held } = URL;\nexport const result = held;\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-local-control",
+    "Source": "const Receiver = { createObjectURL: { name: \"local\" } };\nconst { createObjectURL: { name } } = Receiver;\nexport const result = name;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-shadowed-global-control",
+    "Source": "const URL = { createObjectURL: { name: \"local\" } };\nconst { createObjectURL: { name } } = URL;\nexport const result = name;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-pure-control",
+    "Source": "const { prototype: { constructor } } = URL;\nexport const result = constructor;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-type-control",
+    "Source": "export type Read = typeof URL.createObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-name",
+    "Source": "const { revokeObjectURL: { name } } = URL;\nexport const result = name;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-length",
+    "Source": "const { revokeObjectURL: { length } } = URL;\nexport const result = length;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-empty",
+    "Source": "const { revokeObjectURL: {} } = URL;\nexport const result = 1;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-rest",
+    "Source": "const { revokeObjectURL: { ...held } } = URL;\nexport const result = held;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-rename",
+    "Source": "const { revokeObjectURL: { name: held } } = URL;\nexport const result = held;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-shadow-name",
+    "Source": "const { revokeObjectURL: { name: revokeObjectURL } } = URL;\nexport const result = revokeObjectURL;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-string-key",
+    "Source": "const { [\"revokeObjectURL\"]: { name } } = URL;\nexport const result = name;\n",
+    "Spans": [
+      "[\"revokeObjectURL\"]"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-template-key",
+    "Source": "const { [`revokeObjectURL`]: { name } } = URL;\nexport const result = name;\n",
+    "Spans": [
+      "[`revokeObjectURL`]"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-receiver-alias",
+    "Source": "const Receiver = URL;\nconst { revokeObjectURL: { name } } = Receiver;\nexport const result = name;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-local-let",
+    "Source": "export function result() { let { revokeObjectURL: { name } } = URL; return name; }\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-mutable-declaration",
+    "Source": "let { revokeObjectURL: { name } } = URL;\nexport const result = name;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-asserted-array",
+    "Source": "const { revokeObjectURL: [held] } = (URL as { revokeObjectURL: any });\nexport const result = held;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-nested-asserted-receiver",
+    "Source": "const { revokeObjectURL: { name } } = (URL as typeof URL);\nexport const result = name;\n",
+    "Spans": [
+      "revokeObjectURL"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-direct-control",
+    "Source": "const { revokeObjectURL: held } = URL;\nexport const result = held;\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-local-control",
+    "Source": "const Receiver = { revokeObjectURL: { name: \"local\" } };\nconst { revokeObjectURL: { name } } = Receiver;\nexport const result = name;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-shadowed-global-control",
+    "Source": "const URL = { revokeObjectURL: { name: \"local\" } };\nconst { revokeObjectURL: { name } } = URL;\nexport const result = name;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-pure-control",
+    "Source": "const { prototype: { constructor } } = URL;\nexport const result = constructor;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-type-control",
+    "Source": "export type Read = typeof URL.revokeObjectURL;\n",
+    "Spans": []
+  }
+]

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("dry")
+byte(31)

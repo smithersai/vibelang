@@ -1,0 +1,19 @@
+// expect: EK0107 EK0107 EK0107 EK0107 EK0107 EK0107 EK0107 EK0107 EK0107 EK0107 TS1101 TS2410
+// Appendix B: EK0107 — spec-rule: docs/design/src/900-appendices.md#06205907fbf4ee7b
+export const direct = eval("1")
+export const constructorAlias = Function
+export function count() { return arguments.length }
+export function total(xs: number[]) { var t = 0; for (const x of xs) t += x; return t }
+// `with` is also TypeScript's strict-mode error.
+export function read(o: { a: number }) { with (o) { return a } }
+export const viaComputedKey = (k: string) => globalThis[k]
+export const constructorOfFunction = (async () => {}).constructor
+export const dataImport = () => import("data:text/javascript,export default 1")
+export const blobImport = () => import("blob:code")
+export function patternVar(s: unknown) { return match (s) { when var value: value; default: 0; } }
+// A do early error replaces EK0107 for the same declaration; TestDoVarEarlyErrorsReplaceEK0107 asserts it.
+// Allowed: statically named globalThis members, the Function exemptions and property names.
+export const named = globalThis.Math.abs(-1)
+export const isFunction = (x: unknown) => x instanceof Function
+export const functionPrototype = Function.prototype
+export const property = { var: 1, eval: 2, arguments: 3 }.var

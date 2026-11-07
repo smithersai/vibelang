@@ -23,7 +23,7 @@ func main() {
 	os.Exit(runMain())
 }
 
-func runMain() int {
+func runMain() (status int) {
 	stopParent, parentError := watchCompilerParent()
 	if parentError != nil {
 		fmt.Fprintln(os.Stderr, "vibelang:", parentError)
@@ -54,6 +54,16 @@ func runMain() int {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	defer func() {
+		// A compiler stage can finish before observing cancellation. Its
+		// successful result must not hide an interrupted command.
+		if ctx.Err() != nil {
+			fmt.Fprintln(os.Stderr, "vibelang: compilation cancelled")
+			if status == 0 {
+				status = 1
+			}
+		}
+	}()
 	sys := newSystem()
 	args, projectEmit := vibelang.ProjectEmitArguments(args)
 	args, loaderRoot, err := vibelang.LoaderRootArguments(args, sys.GetCurrentDirectory())

@@ -1,0 +1,9 @@
+// expect: EK4301
+// Appendix B: EK4301 — spec-rule: docs/design/src/900-appendices.md#d59fe6e38177aeb5
+// The row's replay: a statement that discards a structured Effect result,
+// which only try runs, is the compiler's remaining EK4301 error.
+import type { SqlClient } from "effect/sql/SqlClient"
+
+export effect function migration(sql: SqlClient) {
+  sql.unsafe("CREATE TABLE example (id TEXT)")
+}

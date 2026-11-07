@@ -1,0 +1,7 @@
+// A TypeScript module body is outside the migration: native TS1338.
+module inner {
+  import { Effect } from "effect"
+  export function body(): Effect.Effect<number, infer E> { return Effect.succeed(1) }
+}
+import { body } from inner
+export const fromModule = body

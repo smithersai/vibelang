@@ -1,4 +1,6 @@
 // expect-result: {"found":"Ada","missing":"Missing","id":"9"}
+// rule-evidence: docs/design/vips/0039-vibex.md#3845388553e07e51
+// "`x ?? throw <E/>` is a throw expression, adopted from the pinned TC39 throw-expressions proposal under VIP-41: its operand is a `UnaryExpression`, so `<` starts JSX there too."
 // A throw expression's unary operand may start JSX in a .vibex file.
 export error Missing { id: string }
 

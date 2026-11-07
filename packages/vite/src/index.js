@@ -1,6 +1,8 @@
+import { clientUrls, moduleUrls } from "./url-output.js"
+import { relativeOutput } from "./relative-output.js"
 import { aliasImport } from "./paths-imports.js"
 import { extensionlessImport } from "./relative-imports.js"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync, realpathSync } from "node:fs"
 import { createRequire } from "node:module"
 import { isVibeLangFile } from "./vibe-directive.js"
 import { dirname, isAbsolute, join, resolve } from "node:path"
@@ -27,6 +29,20 @@ function sourceConditionConfig(config) {
 }
 
 const cleanId = (id) => id.split("?")[0]
+
+// Emitted relative imports are URLs; bundler hooks resolve filesystem names.
+// Decode once so a literal percent sequence retains its filename spelling.
+function outputPath(source, importer, written) {
+  if (!importer || !isCompiled(cleanId(importer)) || !source.startsWith(".") || !/\.jsx?$/.test(source)) return source
+  let decoded
+  try { decoded = decodeURIComponent(source) } catch { return source }
+  if (decoded === source) return source
+  // Authored .js imports retain TypeScript's literal filename spelling,
+  // including when only a declaration file exists for the runtime module.
+  if (written(source, importer)) return source
+  return decoded
+}
+
 const isSource = isVibeLangFile
 // A JSX-shaped id lets the framework's ordinary JSX filter see compiler output.
 function jsxSource(file) {
@@ -142,7 +158,9 @@ const debug = process.env.VIBELANG_VITE_DEBUG ? (text) => console.error(`vibelan
 // whose plugin context has meta.rolldownVersion) run before the scanner's own.
 // A .vibe module's source names none of the imports its JavaScript adds, such
 // as effect/Schema for a schema, so the scan reads that JavaScript.
-const scannedId = /\.(?:vibex?(?:\.jsx|\.[^./\\]+\.js)?|tsx?|[cm]ts)$/
+// A module declaration of a .vibex file outputs .jsx under preserved JSX, as in
+// isModuleOutput; without it the scanner reads the absent file and fails.
+const scannedId = /\.(?:vibex?(?:\.jsx|\.[^./\\]+\.jsx?)?|tsx?|[cm]ts)$/
 function scanConfig(config, meta, load) {
   const extensions = [".vibe", ".vibex"].filter(extension => !config.optimizeDeps?.extensions?.includes(extension))
   const scan = async (file) => isCompiled(file) ? load(file) : undefined
@@ -198,7 +216,10 @@ async function acquireProjects(backend, options) {
 
 /** @param {import('./index.d.ts').VibeLangOptions} options */
 export default function vibelang(options = {}) {
-  let root, project, logger, backend, modules, current, closing
+  let root, project, logger, backend, modules, current, closing, serving, clientGraph
+  let urlBase = "/"
+  const urlVersions = new Map()
+  const rewrittenUrls = new WeakSet()
 
   // One compile per tsconfig: the project for root's modules, and each
   // workspace package's own for modules outside root.
@@ -211,7 +232,27 @@ export default function vibelang(options = {}) {
     return modules
   }
 
+  const writtenImports = new Map()
+  function writtenOutput(source, importer) {
+    const file = sourceFile(cleanId(importer))
+    const selected = current?.projectOf?.(file) ?? backend.nearestProject(file) ?? project
+    const canonical = path => { try { return realpathSync(path) } catch { return resolve(path) } }
+    const from = canonical(file)
+    const text = readFileSync(file, "utf8")
+    let entry = writtenImports.get(from)
+    if (entry?.project !== selected || entry.text !== text) {
+      const result = backend.projectImports({ root: backend.packageRoot(selected), project: selected, compiler: backend.findCompiler(root, options.compiler) })
+      entry = { project: selected, text, imports: new Set(result.imports.filter(item => canonical(item.importer) === from).map(item => cleanId(item.specifier))) }
+      writtenImports.set(from, entry)
+    }
+    const written = entry.imports.has(source)
+    debug(`relative output name from ${file}: ${written ? "written import" : "rewritten import"}`)
+    return written
+  }
+
   function close() {
+    writtenImports.clear()
+    urlVersions.clear()
     const pending = modules
     modules = undefined
     current = undefined
@@ -228,11 +269,16 @@ export default function vibelang(options = {}) {
   // the diagnostics.
   async function scanned(file) {
     try {
-      const { code } = await (await loaded()).load(sourceFile(file))
+      const { code } = await loadModule(sourceFile(file))
       return code ?? ""
     } catch {
       return ""
     }
+  }
+
+  async function loadModule(file) {
+    const result = await (await loaded()).load(file)
+    return relativeOutput(result, file, backend, () => backend.findCompiler(root, options.compiler), debug)
   }
 
   function diagnostics(errors, file) {
@@ -242,6 +288,58 @@ export default function vibelang(options = {}) {
       id: first.file || file,
       loc: first.file && { file: first.file, line: first.line, column: first.column - 1 }
     }
+  }
+
+  async function hotUpdate(context, environment) {
+    if (context.file.includes("%")) {
+      urlVersions.set(context.file, context.timestamp || Date.now())
+      const graph = environment?.moduleGraph ?? context.server.moduleGraph
+      // Vite's soft invalidation edits its cached raw URLs. Our escaped URLs
+      // need a fresh post transform, including the dependency's update timestamp.
+      for (const module of context.modules) for (const importer of module.importers) {
+        if (rewrittenUrls.has(importer)) {
+          graph.invalidateModule(importer)
+          debug(`served URL importer invalidated: ${importer.id}`)
+        }
+      }
+    }
+    if (isGeneratedDeclaration(context.file)) { debug(`ignore generated declaration ${context.file}`); return [] }
+    if (!/\.(?:vibex?|[cm]?tsx?)$/.test(context.file) && !context.file.endsWith(".json")) return
+    const graph = environment?.moduleGraph ?? context.server.moduleGraph
+    const channel = environment?.hot ?? context.server.ws
+    debug(`hot ${context.type ?? "update"} ${context.file}; environment=${environment?.name ?? "legacy"}, modules=${context.modules.length}`)
+    const projects = await loaded()
+    projects.invalidate()
+    // Any source can change the contracts used to compile a .vibe importer.
+    const affected = new Set()
+    const visit = (module) => {
+      if (affected.has(module)) return
+      affected.add(module)
+      for (const importer of module.importers) visit(importer)
+    }
+    for (const module of context.modules) visit(module)
+    for (const module of graph.idToModuleMap.values()) {
+      if (module.file && isCompiled(module.file)) visit(module)
+    }
+    for (const module of affected) graph.invalidateModule(module)
+    // Recompile the sources Vite has loaded. A watched TypeScript source
+    // can change their contracts without making its own errors loader errors.
+    const errors = []
+    const sources = new Set([...affected].map((module) => module.file).filter((file) => file && isCompiled(file)))
+    for (const file of sources) errors.push(...(await projects.load(sourceFile(file))).errors)
+    if (errors.length) {
+      const { message, id, loc } = diagnostics(errors, context.file)
+      context.server.config.logger.error(message)
+      channel.send({ type: "error", err: { message, stack: "", plugin: "vibelang", id, loc } })
+      return []
+    }
+    // Recompile every affected contract, then let Vite propagate from the
+    // changed modules and compiled outputs. Returning JavaScript ancestors
+    // as changed roots would bypass their dependency accept boundaries.
+    const updates = new Set(context.modules)
+    for (const module of affected) if (module.file && isCompiled(module.file)) updates.add(module)
+    debug(`hot roots: changed=${context.modules.length}, affected=${affected.size}, updates=${updates.size}`)
+    return [...updates]
   }
 
   return {
@@ -281,10 +379,13 @@ export default function vibelang(options = {}) {
     },
     configResolved(config) {
       root = config.root
+      serving = config.command === "serve"
+      urlBase = config.base || "/"
       project = resolve(root, options.project || "tsconfig.json")
       logger = config.logger
     },
     configureServer(server) {
+      clientGraph = server.environments?.client?.moduleGraph ?? server.moduleGraph
       // Vite otherwise treats an unknown extension as a static asset on HTTP.
       server.middlewares.use((request, _response, next) => {
         const url = new URL(request.url || "/", "http://localhost")
@@ -296,8 +397,9 @@ export default function vibelang(options = {}) {
       })
     },
     resolveId(source, importer, resolveOptions) {
-      const file = cleanId(source)
-      const query = source.slice(file.length)
+      const original = cleanId(source)
+      const query = source.slice(original.length)
+      const file = outputPath(original, importer, writtenOutput)
       const serve = target => slash(isModuleId(source) ? servedId(target) : target) + query
       if (isModuleId(source) && /\.vibex(?:\.jsx)?$/.test(file) && (isAbsolute(file) || file.startsWith("."))) {
         const candidates = isAbsolute(file) ? [file, ...(root ? [resolve(root, "." + file)] : [])] :
@@ -325,21 +427,29 @@ export default function vibelang(options = {}) {
       // Emitted imports keep the original source in Vite's module graph.
       if (!/\.jsx?$/.test(file)) return
       const target = resolve(dirname(cleanId(importer)), file)
-      if (existsSync(target)) return
+      if (existsSync(target)) {
+        if (isCompiled(cleanId(importer)) && /%[\da-f]{2}/i.test(original)) {
+          debug(`relative existing file: original=${original}, selected=${file}, target=${target}`)
+        }
+        return file !== original ? this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true }) : undefined
+      }
       if (isModuleOutput(target)) return slash(target) + query
       const stem = target.replace(/\.jsx?$/, "")
       for (const extension of file.endsWith(".jsx") ? [".vibex"] : [".vibe", ".vibex"]) {
         const source = stem + extension
         if (existsSync(source)) return serve(source)
       }
+      if (file !== original) return this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true })
     },
-    // A module declaration's JavaScript comes from its .vibe file's compile.
+    // Source modules and module declarations share the owning project compile.
     async load(id) {
       const file = cleanId(id)
-      if ((!isModuleOutput(file) && !jsxSource(file)) || !isModuleId(id)) return
-      const { project, code, map, errors, warnings, error } = await (await loaded()).load(sourceFile(file))
+      if (!isCompiled(file) || !isModuleId(id)) return
+      const { project, code, map, errors, warnings, error } = await loadModule(sourceFile(file))
       this.addWatchFile(project)
-      if (jsxSource(file)) this.addWatchFile(sourceFile(file))
+      // Handling load bypasses Vite's filesystem loader, which normally adds
+      // watches for source files outside its root.
+      this.addWatchFile(backend.moduleDeclarationSource?.(file) ?? sourceFile(file))
       if (errors.length) this.error(diagnostics(errors, file))
       for (const warning of warnings) logger.warn(backend.formatDiagnostic(warning))
       if (error) this.error(error)
@@ -347,50 +457,33 @@ export default function vibelang(options = {}) {
       // caches these objects across requests, so each caller owns its copy.
       return { code, map: structuredClone(map) }
     },
-    async transform(_source, id) {
-      const file = cleanId(id)
-      if (!isSource(file) || !isModuleId(id)) return
-      const { project, code, map, errors, warnings, error } = await (await loaded()).load(sourceFile(file))
-      this.addWatchFile(project)
-      // Reject diagnostics for this source, including on repeated requests.
-      if (errors.length) this.error(diagnostics(errors, file))
-      for (const warning of warnings) logger.warn(backend.formatDiagnostic(warning))
-      if (error) this.error(error)
-      return { code, map: structuredClone(map) }
+    // Import analysis runs after ordinary transforms. Compile in load so this
+    // post transform can serialize the resolved module URLs without changing IDs.
+    transform: {
+      order: "post",
+      async handler(code, id) {
+        if (!serving || !isModuleId(id) || this.environment?.config.consumer === "server") return
+        const client = clientUrls(code, cleanId(id))
+        if (client) return client
+        if (!code.includes("%")) return
+        const graph = this.environment?.moduleGraph ?? clientGraph
+        if (![...(graph?.getModuleById(id)?.importedModules ?? [])].some(module => module.file?.includes("%"))) return
+        await loaded()
+        return moduleUrls(code, id, {
+          base: urlBase, graph, backend, compiler: () => backend.findCompiler(root, options.compiler),
+          debug, versions: urlVersions, rewritten: rewrittenUrls
+        })
+      }
     },
     watchChange(id) {
       if (isGeneratedDeclaration(id)) { debug(`ignore generated declaration ${id}`); return }
       if (/\.(?:vibex?|[cm]?tsx?|json)$/.test(id)) current?.invalidate()
     },
+    async hotUpdate(context) {
+      return hotUpdate(context, this.environment)
+    },
     async handleHotUpdate(context) {
-      if (isGeneratedDeclaration(context.file)) { debug(`ignore generated declaration ${context.file}`); return [] }
-      if (!/\.(?:vibex?|[cm]?tsx?)$/.test(context.file) && !context.file.endsWith(".json")) return
-      const projects = await loaded()
-      projects.invalidate()
-      // Any source can change the contracts used to compile a .vibe importer.
-      const affected = new Set()
-      const visit = (module) => {
-        if (affected.has(module)) return
-        affected.add(module)
-        for (const importer of module.importers) visit(importer)
-      }
-      for (const module of context.modules) visit(module)
-      for (const module of context.server.moduleGraph.idToModuleMap.values()) {
-        if (module.file && isCompiled(module.file)) visit(module)
-      }
-      for (const module of affected) context.server.moduleGraph.invalidateModule(module)
-      // Recompile the sources Vite has loaded. A watched TypeScript source
-      // can change their contracts without making its own errors loader errors.
-      const errors = []
-      const sources = new Set([...affected].map((module) => module.file).filter((file) => file && isCompiled(file)))
-      for (const file of sources) errors.push(...(await projects.load(sourceFile(file))).errors)
-      if (errors.length) {
-        const { message, id, loc } = diagnostics(errors, context.file)
-        context.server.config.logger.error(message)
-        context.server.ws.send({ type: "error", err: { message, stack: "", plugin: "vibelang", id, loc } })
-        return []
-      }
-      return [...affected]
+      return hotUpdate(context)
     },
     closeBundle: close,
     closeWatcher: close

@@ -63,7 +63,8 @@ no target arguments. A failed install retains its diagnostic and nonzero exit
 status; provisioned `node_modules` symlinks stay with their owner.
 
 `scripts/ci.sh` installs what the targets read (`.smithers`, the runtime, the
-compiler package, `packages/compiler/test/tools`, `experiments`, `docs/tools`) from their lockfiles, then runs
+compiler package, `packages/compiler/test/tools`, `packages/create-vibelang`,
+`packages/vite`, `experiments`, `docs/tools`) from their lockfiles, then runs
 `smthrs ci`, which runs build and test targets alike. `explain` prints a
 target's inputs, its key and whether the cache holds a result for it.
 
@@ -407,6 +408,8 @@ queue:
 | `//:go-module-highlights` | Module reference/rename and document-highlight implementations and regression tests; verifies merged module bindings in ordinary and multi-document highlighting. |
 | `//:go-vibelang-fix-twins` | a non-test Go source in the parser, `internal/vibelang/` or `internal/effectglobals/` |
 
+`//:docs-check` also runs `docs/tools/check-case-collisions.mjs`, which fails when two tracked paths, or two of their directories, differ only by letter case. A macOS or Windows checkout folds case, keeps one of the two files and reports the other as deleted, so a commit made there deletes it. Rename such a file so its name differs by more than case; a Go fuzz seed under `testdata/fuzz/<target>/` may take any name.
+
 The complete parser package takes less than a second after compilation and includes the clash-corpus expectations. Parser and corpus changes select it from their first matching train.
 
 The runtime package check runs the existing entrypoint, export-identity and Effect-version tests, plus 500 generated error-matcher subclass histories and checks the README's public export table after building the runtime. It takes about eight seconds after the build. It joins the first matching train, without waiting for a post-merge receipt: adding a helper to the main entry while omitting it from the guarded entry must fail before landing.
@@ -667,6 +670,16 @@ The `//:spec-tests` target runs `go test -json` through
 failures, and `go-progress` records appear immediately, every ten seconds, at
 package boundaries and on exit. Each record includes a run identifier,
 elapsed time and counts of started and finished packages and tests.
+
+On exit, a bounded failure summary repeats up to 32 failing test roots so a
+long successful tail cannot hide which tests failed. Records use the usual
+`--- FAIL: TestName` prefix so existing failure collectors retain them. Each
+includes the run identifier, a hash of the package identity, the root test name and its
+failed-event count. Subtest names and test output are excluded because they
+can contain input data. The summary reports omitted events when more roots
+fail or a name cannot be represented safely; it does not imply the omitted
+failures passed. The original JSON stream and exit status remain unchanged.
+
 The target uses the shared graph check deadline. Its regression reads that
 default from the actual check factory and verifies the target retains it;
 changing the default does not leave a stale deadline assertion. Missing,
@@ -1090,6 +1103,10 @@ change every run: `.smithers/flows/ci-health/README.md`.
 
 Migration failure names come from the `[migrate-test]` reporter's `test-failed` records. Health reports include nested and cancelled tests, retain escaped names, and exclude skipped and todo failures. A `skip` or `todo` reason of `""` still marks an expected failure, as it does in Node. Names containing `U+2028` or `U+2029` are retained. The `migrate-reporter` eval executes the actual flow on four real reporter runs with exact expected failure and returning-test names.
 
+Structured reporter cause attribution uses decoded test errors. The records’ test-name, file-name and progress fields do not supply cause evidence, and marked `skip` and `todo` failure records are excluded. The same diagnostic filtering prevents error-handling names from creating false duration regressions. The `cause-metadata` eval runs both real reporters on assertion failures whose names mention resource and timeout errors. Stdout, stderr and diagnostic messages without test identity remain visible as structured output, with possible causes counted separately in the saved `unattributedCauses` field and the report’s `Unattributed output` column. These candidates do not override test errors or establish timeout regressions: Node does not identify which test wrote them. The `output-scope` eval moves identical output between an expected control and a real failure through both actual reporters and checks that the uncertainty stays explicit.
+
+Whitespace-only names are valid test names: reports retain spaces, tabs and line separators without trimming them. Node normalizes an empty written name to `<anonymous>`. The `blank-names` eval checks both real reporters, saved counts and both rendered test tables; malformed name fields remain excluded.
+
 ## Finding the commit that broke a target
 
 The first-bad flow reruns targets that fail at a bad commit, to separate breaks
@@ -1301,7 +1318,9 @@ The [specification contracts](#specification-contracts) run in `//:spec-lint`. A
 
 The release documentation check, `node docs/tools/release-docs.mjs --check`, rejects unresolved merge-conflict boundaries in its Markdown and MDX inputs, including historical release notes and generated site copies. It reports the first marker's file and line. The `--write` mode also rejects these pages and leaves their text intact for manual resolution; regeneration cannot discard a conflict inside a generated compatibility box. Markdown heading underlines and inline marker examples remain valid. `node --test docs/tools/release-conflicts.test.mjs` checks real jj conflicts in `diff`, `snapshot` and `git` marker styles, resolved notes retaining both fixes, and generated marker widths, line endings and page locations.
 
-The `//:docs-tools` target runs its test files with `bun test --timeout 60000 --parallel=3 --no-isolate`.
+The platform introduction comparison checks every replacement row, including constructor calls, optional calls, inline prose and pure helpers. It keeps lookup names separate from displayed calls and checks intentional byte, stream, inherited-stdio, server-layer and elapsed-clock examples explicitly. Mutation controls reject removed or duplicated rows, wrong replacements, changed Effect execution and wrong layers. The advice type check also checks all displayed replacement expressions against the pinned Effect declarations; fuzz seeds exercise generated replacement and layer cells.
+
+The `//:docs-tools` target runs its test files with `bun test --timeout 60000 --parallel=3 --no-isolate`. The compact-guide check accepts `non-Effect` and `non-effectful` when the same guidance explains `@throws`; missing annotations or an unrelated mention do not satisfy that check. The factory guidance must still explain direct calls to `Effect`, `Stream` and `Layer` factories, their error channels and the cold-program result of an `Effect.try` bridge.
 Three worker processes run files in parallel; tests within each file retain their normal order.
 Each worker reuses its module registry between files, as the serial runner does.
 All `docs/tools/*.test.*` files are discovered on each run, except the separately declared
@@ -1429,6 +1448,13 @@ the current `docs/design/inventory/throws.json` bytes. A changed input or artifa
 or a missing or corrupt receipt, runs the analysis again; a failed check never
 saves a receipt. Delete the receipt to force analysis. The direct inventory
 regression test always regenerates the expected inventory without this cache.
+
+Generation classifies each exported value with the pinned TypeScript checker
+before resolving its implementation. Values without call or construct signatures
+retain their non-callable entries and need no source or dual-arity resolution.
+Callable exports retain the full source analysis. The complete inventory test
+checks unchanged output and counts real resolution calls for callable and
+non-callable `Duration` exports.
 
 ## Example compile diagnostics
 
@@ -1738,6 +1764,8 @@ compiler directives, configuration changes and added source files still
 require retirement authority. Without an earlier compiler, the check
 conservatively treats new failing witnesses as retirements.
 
+Declaration snapshots under an output case's `expected/` directory are reference outputs, not source files. Every actual input source still needs a matching fixed source, and extra fixed sources are rejected. Type assertions used by a repaired example belong in both its input and output; a repair must not create an unrelated assertion file. Generated source and module declaration companions stay outside the source inventory on reruns; authored `.d.ts` files remain inputs.
+
 Register a fix in `docs/design/retirement-fixes.json`:
 
 ```json
@@ -1755,6 +1783,10 @@ Register a fix in `docs/design/retirement-fixes.json`:
 ```
 
 Both directories are committed fixtures; the input includes `tsconfig.json`.
+Files under either fixture’s `expected/` directory are saved harness output,
+including declaration snapshots, rather than sources to compare or compile.
+Every authored fixed-output source must have a corresponding input source;
+unmatched sources are named in the failure diagnostic.
 Every widened failing case needs its own matching input. The runner requires
 the original error, a nonzero applied-fix count for that diagnostic, exact
 expected source output, unchanged configuration, and successful compilation
@@ -1808,6 +1840,17 @@ The captured parser-arity failure in
 covers a real compiler error before testing. The observer tests also check
 mixed test/build events, 128 stream partitions, oversized output recovery
 and a real native Go compilation failure.
+
+The CI health analyzer keeps independent failure counts for every test name,
+including `__proto__`, `constructor` and `toString`. Real compiler and migration
+reporter fixtures check those names through saved analysis and rendered reports;
+generated runs also cover duplicate records, multiple keys and replayed passes.
+Multiline names render with `<br>` inside table cells; `CRLF` counts as one
+break. Markdown punctuation is escaped, so formatting, links, HTML-like text
+and entities display literally. Pipes and backslashes stay inside the cell,
+and saved JSON keeps the original name. Real reporter fixtures and generated
+names check both failure and returning tables through the actual Markdown
+renderer; the workflow eval also checks the rendered names.
 
 The release script glob excludes `scripts/api-identity*.test.mjs`. The release
 target depends on `//:api-identity-test`, so a focused release runs the API
@@ -2397,6 +2440,8 @@ The corrected pipeline repair check retains all original factory-order, mutable-
 
 Compiler shards use `scripts/testing/node-failures.mjs` to report failures with their original error details, ordinary test output, and Node's execution totals. Successful test names do not crowd the graph preview. A progress record lists completed files and files awaiting a summary every 30 seconds. The reporter preserves exit status, nested failures, cancellation, skips and todos; `scripts/compiler-failure-output.test.mjs` runs each real shard command against controlled files to verify those boundaries.
 
+Health-report test cells preserve edge spaces, repeated spaces and tabs with preformatted text. Actual compiler and migration reporter histories and generated whitespace names check both test tables and their saved names.
+
 The module-body corpus follows accepted VIP-40: the original throwing helper and all retained names and export forms must compile without diagnostics. Ordinary namespace controls, extracted bodies and identifier-import rejection are checked with stock TypeScript; twelve seeded mutations retain the same checks without a pending acceptance exception.
 
 The `//:legacy-directive-category-controls` target retains the original spliced JSON witness and compares source-scoped legacy severities with actual diagnostics. Keyed cases cover file and next-line scope, unrelated files, strings, block comments, wildcard precedence, near-miss codes and both line endings. Injected wrong categories must still fail the oracle; no original corpus input is removed.
@@ -2410,3 +2455,28 @@ Optional object-property bindings initialize their lexical cell only after a suc
 The runner inventory identifies the documentation suites by their file selector. Reporting flags and option order can change without losing that identity; the Bun budget check still requires the explicit deadline. Real Bun fixtures retain the selected suites, exclusions and failure status across reporting and worker-count profiles.
 
 The module sidecar property uses the stock TypeScript API to check every generated consumer, including expected-error directives and re-exported JSDoc. Its fixed example also invokes the stock `tsc` command. Stage timing records include the generated case and child-process status so a timeout identifies the compiler phase.
+
+
+The CI health evaluation gives explicit empty expectations usable scores.
+Matching empty results score `1`; empty/nonempty mismatches score `0`,
+including duration-regression expectations and their timeout counts.
+The `empty-regressions` case runs the real workflow on recorded varying-key
+runs, and generated label sets and duration maps check the score boundaries.
+
+
+CI health set scores count duplicate expected and observed names once.
+Two targets can report failures with the same name without losing points
+when the expected name set matches. The joint actual-reporter fixture keeps
+both targets and their independent counters; generated repetitions and
+permutations check that grading still penalizes missing and extra names.
+
+The isolated compiler-tool and source-map fixtures install the Vite plugin's
+runtime dependencies from their own pinned manifests. Copied plugins resolve
+those dependencies beside their private compiler peer, without writing to a
+plugin install another target may be using.
+
+Compiler fixtures that emit relative source-extension imports set
+`rewriteRelativeImportExtensions`, as their TypeScript twins do. An editor
+archive that exercises such imports carries its own `tsconfig.json`, so the
+original project and the project after a quick fix use the same extension
+policy. Keep static and dynamic imports of both `.vibe` and `.vibex` covered.

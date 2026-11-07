@@ -1,0 +1,1 @@
+{"compilerOptions": {"target": "es2016", "lib": ["esnext"], "module": "esnext", "moduleResolution": "bundler", "moduleDetection": "legacy", "strict": true, "types": [], "skipLibCheck": true, "outDir": "out"}, "include": ["*.vibe", "*.ts"]}

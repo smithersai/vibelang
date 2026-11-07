@@ -1,0 +1,4 @@
+// rule-evidence: docs/design/src/007-tooling.md#selecting-ordinary-fix-files | An empty list, or a path that is not a `.vibe` or `.vibex` module of the project, stops the invocation before it writes anything.
+// run.mjs gives --fix --only lists that cannot select a module, in a project
+// that emits, and checks that no file is written: no source, config or output.
+export const witness = 1

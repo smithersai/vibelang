@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-getter-parameter\ntype T = { get size(x: number): number }")

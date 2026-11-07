@@ -1,0 +1,17 @@
+// expect: EK3204
+// Appendix B: EK3204 — spec-rule: docs/design/src/900-appendices.md#c480a7c9187134b2
+// A wire argument whose type does not list its layers, here a spread of a
+// call that returns a tuple, is EK3204.
+service A { value: string }
+service B { value: string }
+
+const LA = Layer.succeed(A, { value: "a" })
+const LB = Layer.effect(B, effect {
+  return { value: (try A).value + "b" }
+})
+
+function layers(): readonly [typeof LA, typeof LB] {
+  return [LA, LB]
+}
+
+export const App = wire(...layers())

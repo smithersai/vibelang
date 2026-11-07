@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation | | Fresh sibling `.ts` | Only the platform repair, after proving preservation of run phase, captures, receiver and public types; it never overwrites an existing file.
+export const witness = 1

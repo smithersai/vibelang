@@ -47,7 +47,7 @@ writeFileSync(${JSON.stringify(ready)}, String(process.pid))
           await pending
           await rm(root, { recursive: true, force: true })
         })
-        pending = (plugin.transform
+        pending = (typeof plugin.transform === "function"
           ? plugin.transform.call(context, "", source)
           : plugin.load.call(context, source)).then(value => ({ value }), error => ({ error }))
         const deadline = Date.now() + 10000
@@ -111,7 +111,7 @@ writeFileSync(${JSON.stringify(ready)}, String(process.pid))
     plugin.configResolved?.({ root, logger: { warn() {} } })
     const context = { addWatchFile() {}, error(error) { throw new Error(error.message) } }
     let settled = false
-    const pending = (plugin.transform
+    const pending = (typeof plugin.transform === "function"
       ? plugin.transform.call(context, "", join(root, "main.vibe"))
       : plugin.load.call(context, join(root, "main.vibe"))).catch(() => {}).finally(() => { settled = true })
     t.after(async () => {
@@ -143,7 +143,7 @@ console.log(${JSON.stringify(source)})
     for (const value of [42, 43]) {
       await writeFile(source, `export const answer = ${value}\n`)
       // The stub deliberately emits no module, so each load reports that error.
-      await (plugin.transform
+      await (typeof plugin.transform === "function"
         ? plugin.transform.call(context, "", source)
         : plugin.load.call(context, source)).catch(() => {})
       await Promise.all([plugin.closeBundle(), plugin.closeWatcher()])

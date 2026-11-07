@@ -148,6 +148,8 @@ type processedFiles struct {
 type compilerResolutionHost struct {
 	sidecarConfigs collections.SyncMap[tspath.PathKey, *tsoptions.ParsedCommandLine]
 	sidecarRoots   collections.SyncMap[tspath.PathKey, string]
+	sidecarRootsMu sync.Mutex
+	sidecarTrace   *tracing.Tracing
 	host           CompilerHost
 	baseDirectory  tspath.RootedDirectoryPath
 }
@@ -345,7 +347,7 @@ func (p *fileLoader) addProjectReferenceTasks(singleThreaded bool) {
 			config:                      p.opts.Config,
 			useSourceOfProjectReference: p.opts.canUseProjectReferenceSource(),
 		},
-		host: &compilerResolutionHost{host: p.host, baseDirectory: p.opts.Config.BaseDirectory()},
+		host: &compilerResolutionHost{host: p.host, baseDirectory: p.opts.Config.BaseDirectory(), sidecarTrace: p.tracing},
 	}
 	projectReferences := p.opts.Config.ResolvedProjectReferencePaths()
 	if len(projectReferences) == 0 {
@@ -921,8 +923,10 @@ func (p *fileLoader) resolveImportsAndModuleAugmentations(t *parseTask) {
 			// A referenced declaration uses the native twin's relative spelling.
 			// Its source directory can no longer contain that .ts/.tsx name after
 			// migration. Resolve the emitted name beside the declaration only
-			// when the reference map proves the target is a native source's output.
-			if err == nil && (resolvedModule == nil || !resolvedModule.IsResolved()) &&
+			// when the reference map proves the target is a native source's output
+			// or an actual named body of that source. A prior sidecar must not
+			// replace that output with an unregistered virtual reference source.
+			if err == nil && (resolvedModule == nil || !resolvedModule.IsResolved() || bodyOwner != "") &&
 				file.IsDeclarationFile && fileName != file.FileName() && tspath.PathIsRelative(moduleName) {
 				emitted, emittedTrace, emittedErr := p.resolver.ResolveModuleName(moduleName, file.FileName(), mode, redirect)
 				trace = append(trace, emittedTrace...)
@@ -930,8 +934,10 @@ func (p *fileLoader) resolveImportsAndModuleAugmentations(t *parseTask) {
 					err = emittedErr
 				} else if emitted != nil && emitted.IsResolved() {
 					target := p.projectReferences.getProjectReferenceFromOutputDts(emitted.ResolvedPath)
-					if target != nil && target.Source.IsVibeLangSource() {
+					if target != nil && target.Source.IsVibeLangSource() ||
+						p.isProjectReferenceModuleBodyOutput(moduleName, emitted) {
 						resolvedModule = emitted
+						bodyOwner = ""
 					}
 				}
 			}

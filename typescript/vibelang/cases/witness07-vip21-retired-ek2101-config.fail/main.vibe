@@ -1,0 +1,7 @@
+// expect: EK3006
+// rule-evidence: docs/design/vips/0021-producers.md#decision | The old `EK2101` is retired and will never be reassigned.
+// Configuration control for TestRetiredEK2101Unassigned: vibe.severities
+// refuses the retired EK2101 exactly as it refuses the never-assigned EK2199
+// (expected/diagnostics.txt), while the assigned warning EK4834 is accepted.
+import { Effect } from "effect"
+export effect function main() { try Effect.fail("bad") }

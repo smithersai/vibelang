@@ -47,6 +47,40 @@ string characters even though JavaScript also treats them as line separators.
 A `skip` or `todo` reason string marks a test even when it is `""`, matching
 Node's successful exit and skipped/todo counts. Both reporter fixtures include
 actual executions of these empty-reason controls.
+
+Whitespace-only names are valid Node test names. The analyzer retains spaces,
+tabs, line separators and other whitespace without trimming them. Node turns an
+empty written name into `<anonymous>`; records with a missing, nonstring
+or empty name field remain invalid.
+
+Failure counters treat every test name as a key, including `__proto__`,
+`constructor` and other inherited property names. They retain independent counts
+and last-failure times through saved analysis and the rendered report.
+Rendered table cells show line breaks with `<br>`, including `CRLF` as one
+break, so a multiline name cannot split a row. Saved JSON retains the original
+name. Markdown punctuation is escaped, so formatting, links, HTML-like text
+and entities display as literal parts of the name. Pipes and backslashes
+remain inside the displayed cell. Preformatted cells preserve edge spaces,
+repeated spaces and tabs, so distinct whitespace names remain distinguishable.
+
+For structured records, cause attribution and timeout detection read decoded
+error text. Test-name, file-name
+and progress fields in these records supply no cause evidence. Marked `skip` and `todo` failure
+records are excluded even when their reason is empty. Incomplete records supply
+no diagnostic evidence; legacy plain-text diagnostics remain supported.
+
+Captured stdout, stderr and diagnostic records lack a test identity. The
+compiler reporter preserves each chunk as an `output` record with `scope: "file"`
+and its stream. Diagnostic records retain their `file` or `run` scope. Migration `failure-output` records have the same file scope.
+Compiler chunks are reassembled by file and stream before matching, without joining
+different origins or separate capture frames. Their possible causes appear separately as `unattributedCauses` in saved analysis
+and `Unattributed output` in the report. Each count is the number of failed runs
+containing that possible cause. These records cannot override attributed test
+errors or establish a timeout regression. Inspect the original log before
+assigning file output to a failure; it may come from a passing test or an
+expected control. Older unstructured compiler output retains its legacy treatment
+because those logs do not record the distinction.
+
 Migration checks emit `[migrate-test]` records through
 `scripts/testing/migrate-progress.mjs`. The analyzer reads their `test-failed`
 events with the same name, skip and todo rules. Legacy Bun, Node, Go and
@@ -122,12 +156,48 @@ excluding skip/todo controls. Regenerate with
 | `tests` | The report names the known flaky tests |
 | `intermittent` | The report names exactly the tests that failed again after their target passed |
 | `causes` | Each target's top cause matches the logs |
+| `rendered` | Both rendered test tables display the original names literally, with their line breaks inside the cells |
 | `slow` | Targets rank by run time, and a target that only replayed never ranks |
 | `regressed` | The report names exactly `//packages:compiler-test` as slower, with its two timeouts; `//:docs-tools`, 1.4 times slower under load, is not named |
 
 A scorer whose field a case does not state scores 1 there.
 
+An explicit empty expectation still receives a finite score: matching empty
+results score `1`, and an empty/nonempty mismatch scores `0`. Duration
+comparisons apply the same rule before comparing timeout counts.
+The `empty-regressions` eval replays the real `fixture-intermittent/` runs
+with an explicit empty duration expectation. Generated label sets and duration
+maps check empty boundaries, finite scores and matching results.
+
+
 ```sh
 cd .smithers && bun flows/ci-health/eval.ts            # compare with baseline.json; exit 1 on a drop
 cd .smithers && bun flows/ci-health/eval.ts --update   # record baseline.json
 ```
+
+
+The set scorers count a repeated expected or observed name once. Separate
+targets can fail tests with the same name; reports retain those targets and
+their counters, while grading compares name membership. The `combined-reporters`
+eval joins both actual reporter histories and checks their overlapping names.
+Regenerate the joint history with
+`node .smithers/flows/ci-health/fixture-combined-reporters/record.mjs` after
+refreshing either source history.
+
+The `cause-metadata` eval uses `fixture-cause-metadata/`: eight
+actual reporter executions alternate ordinary assertion failures and success.
+Names describe resource and timeout handling, and expected skip/todo controls
+carry resource or deadline errors. The flow must attribute the ordinary
+assertions correctly while retaining the exact failed names and counters.
+
+The `blank-names` eval uses `fixture-blank-names/`: four graph
+histories from eight actual reporter executions retain seven whitespace-only
+names and Node's anonymous-name control. The report must save every name,
+two failures per name and its returning-test observation in both test tables.
+
+The `output-scope` eval runs the actual flow on `fixture-output-scope/`. Eight
+actual reporter executions move identical stdout, stderr and diagnostic text between an expected
+control and an ordinary test. The report retains assertion attribution and all
+four file-output candidates with independent counts, while preserving failure
+names and duration checks. Regenerate it with
+`node .smithers/flows/ci-health/fixture-output-scope/record.mjs`.

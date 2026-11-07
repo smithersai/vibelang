@@ -1,0 +1,19 @@
+// expect-result: [1,true]
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics
+// Transitional prelude shorthand — spec-rule: docs/design/src/900-appendices.md#f1121fe6535123d1
+// No EK code — spec-rule: docs/design/src/900-appendices.md#f06ee3c255e92c78
+// The transitional compiler accepts the bare prelude Scope type and a
+// module's name written for its same-named export with no diagnostic at all
+// (expected/diagnostics.txt is empty).
+export type Maybe = Option<number>
+
+export function scoped(scope: Scope): Scope {
+  return scope
+}
+
+export const make = FileSystem.of
+
+export effect function main() {
+  const maybe: Maybe = Option.some(1)
+  return [Option.getOrElse(maybe, () => 0), typeof make === "function"]
+}

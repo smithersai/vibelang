@@ -11,7 +11,6 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-pinned-dprint-rerun.json", import.meta.url)))
 const shipped = "npm:vibelang/dprint-plugin.json"
-const raw = process.env.VIBELANG_DPRINT_PINNED_RAW === "1"
 const quote = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 
 function scenario(input) {
@@ -27,7 +26,9 @@ function scenario(input) {
     else put(join(dir, "package.json"), { name: "app", scripts: { fmt: input.command } })
     const configFile = join(dir, "dprint.json")
     put(configFile, {
-      plugins: [...input.plugins, ...(input.stale ? [shipped] : [])],
+      plugins: input.stale
+        ? [shipped, ...input.plugins.flatMap(plugin => [plugin, shipped])]
+        : input.plugins,
       includes: ["src/**/*.ts"], excludes: ["**/dist"], lineWidth: input.width,
     })
     const first = wireDeveloperTools({ root, specsFor: () => ({ vibelang: "0.0.11" }) })
@@ -40,17 +41,7 @@ function scenario(input) {
     assert.ok(config.excludes.includes("**/*.d.vibe.ts"))
     assert.deepEqual(wireDeveloperTools({ root, specsFor: () => ({ vibelang: "0.0.11" }) }).changed, [], "rerunning setup is idempotent")
     const wanted = /dprint\s+check\b/.test(input.command) ? "--check" : "--write"
-    if (input.stale && !raw) {
-      assert.equal(corpus.pending.owner, "migfix-smithers")
-      assert.equal(corpus.pending.key, "smithers:pinned-dprint:stale-own-plugin")
-      const fallback = "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"
-      const legacy = [...input.plugins, shipped, ...input.plugins.some(p => /typescript.*\.wasm/.test(p)) ? [] : [fallback]]
-      assert.deepEqual(config.plugins, legacy, "XPASS: retire only the stale own-plugin gap")
-      assert.equal(pkg.scripts.fmt, input.command, "only the exact stale classification gap is pending")
-      assert.ok(!first.warnings.some(w => w.includes("pins every plugin by checksum")), "the pending failure is stale pinned-config recognition")
-      return
-    }
-    assert.deepEqual(config.plugins, input.plugins, corpus.pending.key)
+    assert.deepEqual(config.plugins, input.plugins, corpus.key)
     const suffix = " && vibelang-format " + wanted
     assert.ok(pkg.scripts.fmt.endsWith(suffix))
     assert.ok([input.command, "(" + input.command + ")"].includes(pkg.scripts.fmt.slice(0, -suffix.length)), "original command remains grouped")

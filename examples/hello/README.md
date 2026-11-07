@@ -1,8 +1,8 @@
 # Hello
 
 The smallest Node.js VibeLang program: one function and one log.
-`Console.log` runs when called. The module exports `main`, so running its
-JavaScript with `node dist/main.js` runs `main` with `NodeRuntime.runMain`.
+`src/main.vibe` exports the Effect function. `src/entry.vibe` provides
+`NodeServices.layer` and starts it with `NodeRuntime.runMain`.
 
 From this directory, with `vibelang` on `PATH`:
 ```sh
@@ -20,6 +20,5 @@ const main = Effect.fnUntraced(function* () {
 })
 ```
 
-The compiler ends `main.js` with
-`$entry(import.meta.main, import.meta.url, main, () => NodeRuntime.runMain(main()))`,
-which runs `main` when Node starts the module, so importing it runs nothing.
+The written runner in `entry.vibe` starts the application. Importing
+`main.vibe` leaves its exported function unrun.

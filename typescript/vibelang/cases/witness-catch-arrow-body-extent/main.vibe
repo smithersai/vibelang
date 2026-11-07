@@ -1,0 +1,21 @@
+// expect-result: {"conditionalSucceeded":5,"conditionalFailed":"d","pipedSucceeded":5,"pipedFailed":1,"pipedOutside":6,"nestedSucceeded":5,"nestedFailed":"c"}
+// rule-evidence: docs/design/src/002-running.md#syntax | An expression-bodied arrow handler takes an `AssignmentExpression` as its body, as in `(e) => a ?? b`: `a catch () => b ? c : d` means `a catch (() => (b ? c : d))`, and `a catch () => b |> % + 1` means `a catch (() => (b |> % + 1))`: with `a` succeeding with `5` and `b` equal to `0` it gives `5`, and `(a catch () => b) |> % + 1` gives `6`.
+const a: Effect.Effect<number, string> = Effect.succeed(5)
+const failing = Effect.fail("bad")
+const b = 0
+const c = "c"
+const d = "d"
+export effect function main() {
+  // The conditional is the handler body, so it never tests the success value 5.
+  const conditionalSucceeded = a catch () => b ? c : d
+  const conditionalFailed = failing catch () => b ? c : d
+  // The pipe is the handler body, so a success is not piped.
+  const pipedSucceeded = a catch () => b |> % + 1
+  const pipedFailed = failing catch () => b |> % + 1
+  // Parenthesized, the pipe takes the whole catch expression.
+  const pipedOutside = (a catch () => b) |> % + 1
+  // An effect handler's body is an AssignmentExpression too, so a nested catch stays inside it.
+  const nestedSucceeded = a catch effect () => failing catch () => c
+  const nestedFailed = failing catch effect () => failing catch () => c
+  return { conditionalSucceeded, conditionalFailed, pipedSucceeded, pipedFailed, pipedOutside, nestedSucceeded, nestedFailed }
+}

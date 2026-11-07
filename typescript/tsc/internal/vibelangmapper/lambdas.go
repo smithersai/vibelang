@@ -391,6 +391,13 @@ func (p *projector) callArgument(argument *ast.Node, e env) {
 	if p.programPipeArgument(argument, e) || p.programCollection(argument, e) || p.byNameArgument(argument, e) {
 		return
 	}
+	if argument.Kind == ast.KindParenthesizedExpression && p.isMatchForm(argument) {
+		// A pattern holder spans the complete written is expression. Its
+		// generated tests may share an earlier span; unwrapping the holder
+		// would visit those tests as independent source edits.
+		p.visit(argument, e)
+		return
+	}
 	switch argument.Kind {
 	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindNonNullExpression:
 		p.callArgument(argument.Expression(), e)
@@ -402,6 +409,7 @@ func (p *projector) callArgument(argument *ast.Node, e env) {
 			p.callArgument(element, e)
 		}
 	case ast.KindObjectLiteralExpression:
+		p.rememberComputedNames(argument, e)
 		for _, property := range argument.Properties() {
 			if property.Kind == ast.KindPropertyAssignment {
 				p.visit(property.Name(), e)

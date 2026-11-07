@@ -34,6 +34,12 @@ bun create vibelang my-app --no-install
 npm create vibelang@latest my-app -- --no-install
 ```
 
+If the destination cannot be created or written, the starter reports the target and filesystem error code. Check that each parent path is a directory and that you have permission to write there, then retry with a new or empty directory.
+
+The starter includes npm/Bun `overrides` and Yarn `resolutions` that keep
+`@effect/platform-node-shared` at the runtime's exact Effect version, including
+when you switch package managers.
+
 Then run `bun install` or `npm install` in `my-app` before step 2.
 
 ## 2. Build and run
@@ -65,7 +71,7 @@ With npm, run `npm run test`. The output includes:
       Tests  2 passed (2)
 ```
 
-`bun run dev` rebuilds and restarts the program on every save until Ctrl+C stops it. Don't run it in a session that waits for each command to exit.
+`bun run dev` waits until the compiler is watching before starting the program, then rebuilds and restarts it on every save until Ctrl+C stops it. Don't run it in a session that waits for each command to exit.
 
 ## Next
 

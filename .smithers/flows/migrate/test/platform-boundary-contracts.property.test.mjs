@@ -55,15 +55,15 @@ function check(input) {
       "the pragma control must prove the native lint is active: " + unsuppressed.output)
     const split = splitPlatform(original, "original.ts", ts)
     assert.ok(split, "platform import is a real split candidate")
-    // 3e2aa319488c: an exported type that reads the moved schema value, under
-    // its own name or another, would change the module's declarations, so the
-    // split refuses and the module stays whole. A directive boundary moves.
+    // An exported type that reads the moved schema value under its own name
+    // moves with it and is re-exported as a type; under another name it stays
+    // and reads the value through the module's import. A directive boundary moves.
+    assert.ok(!split.refused, "the split moves the platform boundary: " + split.refused)
     if (input.kind === "schema") {
       const typeName = input.collision ? input.name : "Public" + input.name
-      assert.match(split.refused ?? "", new RegExp("^original\\.ts: the type " + typeName + " reads the value " + input.name + ","))
-      return
+      if (input.collision) assert.match(split.module, new RegExp("^export type \\{ " + typeName + " \\} from \"\\./original\\.platform\\.ts\"$", "m"))
+      else assert.match(split.module, new RegExp("^export type " + typeName + " = typeof " + input.name + "\\.Type", "m"))
     }
-    assert.ok(!split.refused, "the split moves the platform boundary: " + split.refused)
     assert.ok(split.platform.includes("node:fs"))
     const helper = split.platform.replaceAll('"./original.ts"', '"./main.vibe"')
     writeFileSync(join(root, "main.vibe"), split.module)

@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"types":[],"outDir":"out","plugins":[{"name":"@effect/language-service","ignoreEffectWarningsInTscExitCode":true}]},"vibe":{"severities":{"EK38103":"warning"}},"include":["*.vibe","*.ts"]}

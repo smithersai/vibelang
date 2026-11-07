@@ -137,32 +137,23 @@ func FuzzLintVoidSuccessTwins(f *testing.F) {
 			Gap(t, "FuzzLintVoidSuccessTwins", key, "written twin diagnostic spans differ: %v / %v", tsSites, vibeSites)
 		}
 		// Run the actual lint command with VibeLang's checker hooks registered.
-		// Its Oxlint adapter selects the same pinned rule as the TypeScript oracle.
+		// Its compiler project selects the same pinned rule as the TypeScript oracle.
 		// The lint package's own unit tests cannot register VibeLang (an import
 		// cycle), so this additionally checks that EK4802 is never promoted.
 		var lintConfig map[string]any
 		if err := json.Unmarshal(cfg, &lintConfig); err != nil {
 			t.Fatal(err)
 		}
-		delete(lintConfig["compilerOptions"].(map[string]any), "plugins")
+		lintConfig["files"] = []string{"vibe/twin.vibe"}
 		lintJSON, err := json.Marshal(lintConfig)
 		if err != nil {
 			t.Fatal(err)
 		}
-		oxSeverity := severity
-		if oxSeverity == "warning" {
-			oxSeverity = "warn"
-		}
-		for name, data := range map[string][]byte{
-			"lint-config.json": lintJSON,
-			".oxlintrc.json":   []byte(fmt.Sprintf(`{"rules":{"effecttsgo/effect-in-void-success":%q}}`, oxSeverity)),
-		} {
-			if err := os.WriteFile(filepath.Join(dir, name), data, 0644); err != nil {
-				t.Fatal(err)
-			}
+		if err := os.WriteFile(filepath.Join(dir, "lint-config.json"), lintJSON, 0644); err != nil {
+			t.Fatal(err)
 		}
 		sys := &sidecarParitySystem{fs: w.fs, cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-		status := lint.Command(t.Context(), sys, []string{"-p", filepath.Join(dir, "lint-config.json"), "-c", filepath.Join(dir, ".oxlintrc.json"), filepath.Join(dir, "vibe/twin.vibe")})
+		status := lint.Command(t.Context(), sys, []string{"-p", filepath.Join(dir, "lint-config.json")})
 		output := sys.output.String()
 		cliCount := strings.Count(output, " EK3830:")
 		if cliCount != want || strings.Contains(output, "error EK4802:") {

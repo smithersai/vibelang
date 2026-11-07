@@ -1,0 +1,2 @@
+// A module that does not use the matcher key.
+export const other = 2

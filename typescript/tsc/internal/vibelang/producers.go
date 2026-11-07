@@ -11,23 +11,11 @@ import (
 
 // Producers and loops over streams (design D26, chapters 8 and 26).
 //
-//	function* lines(path: string) {        function lines(path) {
-//	  const file = Files.open(path)            return runtime.$produce(Effect.fnUntraced(function* lines() {
-//	  while (true) {                               const file = yield* (yield* Files).open(path);
-//	    const line = file.readLine()               while (true) {
-//	    if (line === undefined) return                 const line = yield* file.readLine();
-//	    yield line                                     if (line === undefined) return;
-//	  }                                                yield* runtime.$yield(line);
-//	}                                              }
-//	                                           }));
-//	                                         }
-//
 // An effect function* is a producer (VIP-21). A plain function* keeps its
 // native iterator and return value (VIP-1).
-// Its body is an Effect body, as any .vibe function's is, so its calls
-// run; `yield v` offers v to the producer's queue, and `yield* p` yields
+// Its body is effect code, so its calls run; `yield v` offers v to the producer's queue, and `yield* p` yields
 // every element of p. Calling a producer runs none of its body: it returns a
-// Stream, the runtime's $produce, which is Effect's Stream.callback with one
+// Stream, built with the project's Stream.callback with one
 // element of buffer, so the body runs on a fiber of its own and may run up to
 // two elements ahead of its consumer (VIP-21). To TypeScript, and to
 // every caller, a producer is therefore a function that returns
@@ -311,7 +299,7 @@ func bodyPauses(c *checker.Checker, statement *ast.Node) bool {
 }
 
 // visitProducer turns a producer into a plain function that returns
-// runtime.$produce(Effect.fnUntraced(function* name() { body })): its
+// a native Stream.callback with its body factory: its
 // parameters stay on the plain function, and its body, an Effect body, runs
 // each time the Stream it returns runs.
 //
@@ -351,7 +339,7 @@ func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	if usesThis(node.Body()) {
 		run = tx.generated(tx.runtimeCall("$bindMethod", run, f.NewThisExpression()))
 	}
-	produce := tx.runtimeCall("$produce", run)
+	produce := tx.nativeProducerCall(run)
 	block := f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(produce)}), true /*multiLine*/)
 	if bindingMayThrow(node) {
 		parameters, block = tx.producerBindingBoundary(node, parameters, produce)
@@ -410,7 +398,7 @@ func (tx *lowering) producerBindingBoundary(node *ast.Node, parameters *ast.Node
 	call := f.NewCallExpression(f.NewParenthesizedExpression(bind), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{f.NewSpreadElement(tx.generated(tx.runtimeCall("$spreadItems", f.NewIdentifier("arguments"))))}), ast.NodeFlagsNone)
 	thrown := f.NewUniqueName("e")
 	die := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("die"), ast.NodeFlagsNone), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{thrown}), ast.NodeFlagsNone)
-	dies := tx.runtimeCall("$produce", f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), die))
+	dies := tx.nativeProducerCall(f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), die))
 	catch := f.NewCatchClause(f.NewVariableDeclaration(thrown, nil, nil, nil), f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(dies))}), true /*multiLine*/))
 	try := f.NewTryStatement(f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(call)}), true /*multiLine*/), catch, nil /*finallyBlock*/)
 	return f.NewNodeList(placeholders), f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(try)}), true /*multiLine*/)

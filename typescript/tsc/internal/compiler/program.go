@@ -890,6 +890,21 @@ func (p *Program) GetSemanticDiagnostics(ctx context.Context, sourceFile *ast.So
 	return p.collectCheckerDiagnostics(ctx, sourceFile, p.getSemanticDiagnosticsWithChecker)
 }
 
+// GetSemanticDiagnosticsOfFiles returns the semantic diagnostics of each of
+// files, in their order, sorted, as GetSemanticDiagnostics(ctx, nil) finds
+// them for the files of the program; it differs from GetSemanticDiagnostics
+// for one file only in a file the checker skips, whose include diagnostics
+// it returns. Each checker checks its own files in their order in files, as
+// it does when they are asked for one by one, so it reads what it would; the
+// checkers run at once, as for the whole program.
+func (p *Program) GetSemanticDiagnosticsOfFiles(ctx context.Context, files []*ast.SourceFile) [][]*ast.Diagnostic {
+	result := p.collectCheckerDiagnosticsFromFiles(ctx, files, p.getSemanticDiagnosticsWithChecker)
+	for i, diagnostics := range result {
+		result[i] = filterAndSortDiagnostics(diagnostics)
+	}
+	return result
+}
+
 // GetSemanticDiagnosticsForIncremental includes newly discovered globals in each
 // file's cached diagnostics and leaves noEmit filtering to the builder.
 func (p *Program) GetSemanticDiagnosticsForIncremental(ctx context.Context, sourceFiles []*ast.SourceFile) map[*ast.SourceFile][]*ast.Diagnostic {
@@ -1488,7 +1503,8 @@ func (p *Program) verifyCompilerOptions() {
 			// So is each body's declaration, which may be the path its ordinary
 			// declaration output already claimed.
 			for _, body := range source.EmbeddedModules() {
-				declaration := tspath.RootedFilePathFromNormalized(moduleBodyDeclarationPath(body))
+				path, _ := p.moduleBodyDeclarationPaths(body)
+				declaration := tspath.RootedFilePathFromNormalized(path)
 				if !emitFilesSeen.Has(p.PathKeyForFileName(declaration)) {
 					verifyEmitFilePath(declaration)
 				}

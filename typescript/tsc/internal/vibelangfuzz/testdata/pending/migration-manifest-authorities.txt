@@ -1,0 +1,2 @@
+FuzzMigrationManifestAuthorities authority:authored-name-map-only compiler VIP-34: recording a generated import-map path also admits an unrelated authored manifest name change; lane migfix-t3code
+FuzzMigrationManifestAuthorities corpus:t3code-generated-map-authored-name compiler VIP-34: generated-map authority must preserve unrelated authored fields; lane migfix-t3code

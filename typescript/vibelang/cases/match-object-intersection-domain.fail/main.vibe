@@ -1,0 +1,5 @@
+// expect: EK4701 EK4701
+type P={readonly _tag:"P"}&{field:number}
+type S=P|{_tag:"O"}
+export function ordinary(subject:S){return match(subject){when {_tag:"O"}:1;}}
+export function generic<T extends S>(subject:T){return match(subject){when {_tag:"O"}:1;}}

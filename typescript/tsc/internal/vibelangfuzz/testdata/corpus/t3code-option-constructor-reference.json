@@ -1,0 +1,4 @@
+{
+  "original": "import { Effect, Option } from \"effect\";\nexport const f = (x: Option.Option<number>) => Option.match(x, {\n  onNone: () => Effect.interrupt,\n  onSome: Effect.succeed\n});\n",
+  "emitted": "import { Effect, Option } from \"effect\";\nexport const f = (x) => Option.match(x, {\n  onNone: () => Effect.interrupt,\n  onSome: (value) => Effect.succeed(value)\n});\n"
+}

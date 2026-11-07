@@ -1,0 +1,5 @@
+without the setting: exit 0, main.d.ts imports ./user.ts
+vibelang.declarationImportStyle: one EK3011 warning at the key for 11 values, exit 0, output unchanged
+compilerOptions.vibelang.declarationImportStyle: one EK3011 warning at the key for 11 values, exit 0, output unchanged
+both legacy locations: two EK3011 warnings, exit 0
+vibe.declarationImportStyle: error EK3007 (unknown vibe key), exit 1

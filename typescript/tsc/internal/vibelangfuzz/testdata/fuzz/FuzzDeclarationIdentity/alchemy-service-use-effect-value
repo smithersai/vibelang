@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nimport * as Effect from \"effect/Effect\";\nimport * as Context from \"effect/Context\";\nexport class Service extends Context.Service<Service, Effect.Effect<number>>()(\"Service\") {\n  static current = Service.use(value => value);\n}\n-- package.json --\n{\"type\":\"module\"}\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"strict\":true,\"skipLibCheck\":true,\"declaration\":true,\"outDir\":\"out\",\"singleThreaded\":true},\"files\":[\"main.ts\"]}\n")

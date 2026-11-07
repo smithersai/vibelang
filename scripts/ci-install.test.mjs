@@ -5,7 +5,7 @@ import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 
-const directories = [".smithers", "packages/runtime", "packages/compiler", "packages/compiler/test/tools", "experiments", "docs/tools"]
+const directories = [".smithers", "packages/runtime", "packages/compiler", "packages/compiler/test/tools", "packages/create-vibelang", "packages/vite", "experiments", "docs/tools"]
 
 function fixture(t) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "vibe-ci-install-"))

@@ -1,0 +1,1 @@
+shipped global annotations are @throws {T} types with their written meaning

@@ -29,7 +29,7 @@ import (
 //	Convert the pipe to calls       the reverse
 //	Write pipe(x, …) / x.pipe(…)    toggles the two pipe styles
 //
-// Move module to a .ts file (module_refactor.go) stands for no refactor of
+// Move module to a TypeScript file (module_refactor.go) stands for no refactor of
 // Effect's; it writes a module declaration's body to a file of its own.
 
 func init() {
@@ -269,6 +269,12 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 			return nil
 		}
 		promise := await.Expression()
+		if asyncAwaitOperandThrows(rc.file, promise) {
+			return nil
+		}
+		if asyncAwaitOperandJumps(rc.file, promise) {
+			return nil
+		}
 		plain = append(plain, rc.textEdit(nodeStart(rc.file, await), await.End(), wrappedCall("tryPromise", nodeText(rc.file, promise), "")))
 		name := uniqueName(failureName(promise), takenNames)
 		takenNames = append(takenNames, name)

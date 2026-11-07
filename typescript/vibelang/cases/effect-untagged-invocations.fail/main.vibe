@@ -1,0 +1,20 @@
+// expect: EK0403 EK0401
+// A new expression or a tagged template whose thrown type is not never is
+// EK0403 in effect code, as a call is (chapter 3, Calls in effect code): a
+// written @throws names its classes, and an untagged foreign constructor or
+// tag throws unknown. In a plain function whose return type is wholly
+// effectful the same invocation is EK0401. A never contract, a wrapped
+// invocation, lib constructors, VibeLang classes and a constructor no class
+// declares, which has no signature to tag, are not.
+import { Effect } from "effect"
+import { Known, knownTag, Implicit, Explicit, Safe, untaggedTag } from "./lib.js"
+class Local { n = 1 }
+export effect function known() { return new Known(1) }
+export effect function knownTagged() { return knownTag`x` }
+export effect function explicit() { return new Explicit(1).n }
+export effect function tagged() { return untaggedTag`x` }
+export function plainEffectful(): Effect.Effect<number> { return Effect.succeed(new Explicit(1).n) }
+export effect function safe() { return new Safe() }
+export effect function wrapped() { return try Effect.try(() => new Explicit(1).n) }
+export effect function libraries() { return [new Map<string, number>().size, new Error("x").message, new Local().n, new Implicit().value] }
+export function plainValue() { return new Explicit(1).n }

@@ -1253,6 +1253,9 @@ func failuresCases() []*failCase {
 	for _, c := range failuresHeritageCatchCases() {
 		add(c)
 	}
+	for _, c := range failuresEnumCatchCases() {
+		add(c)
+	}
 	for _, c := range failuresAliasedThrowsCases() {
 		add(c)
 	}
@@ -1320,7 +1323,7 @@ func failuresProject(c *failCase, choice byte) (files map[string]string, span [2
 	if decls != "" && choice&1 != 0 && c.Host != "none" && !strings.Contains(decls, "⟦") {
 		helpers := exportAll(decls)
 		files["helpers.vibe"] = strings.Join(imports, "\n") + "\n" + helpers + "\n"
-		imports = append(imports, "import { "+strings.Join(exportedNames(helpers), ", ")+" } from \"./helpers.vibe\"")
+		imports = append(imports, "import { "+strings.Join(exportedNames(helpers), ", ")+" } from \"./helpers.js\"")
 		decls = ""
 	}
 	text := strings.Join(imports, "\n") + "\n" + decls + "\n" + failuresHost(c, body)

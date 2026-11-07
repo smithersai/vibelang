@@ -1,0 +1,10 @@
+{
+  "property": "KnipComputedNamespaceUsage",
+  "rule": "Chapter7: Knip reads .vibe; computed namespace references must match Knip's TypeScript analysis.",
+  "input": {
+    "extension": "vibe",
+    "form": "double",
+    "namespace": "Util",
+    "member": "used"
+  }
+}

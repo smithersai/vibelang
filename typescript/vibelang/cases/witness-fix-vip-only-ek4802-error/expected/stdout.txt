@@ -1,0 +1,1 @@
+a refused --fix-vip-only run makes EK4802 an error project-wide

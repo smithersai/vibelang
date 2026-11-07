@@ -1,0 +1,18 @@
+// rule-evidence: docs/design/vips/0015-schema-declarations.md#decision
+// VIP-15: without exactOptionalPropertyTypes, TypeScript has no exact optional
+// key, so neither does the schema sugar: name?: T admits undefined. A program
+// that needs Schema.optionalKey writes Effect's schema directly, and the
+// compiler accepts it without an advisory.
+// expect-result: {"sugarMissing":true,"sugarUndefined":true,"exactMissing":true,"exactUndefined":false}
+export schema Loose { id?: string }
+export const Exact = Schema.Struct({ id: Schema.optionalKey(Schema.String) })
+
+export effect function main() {
+  const ok = (exit: Exit.Exit<unknown, unknown>) => Exit.isSuccess(exit)
+  return {
+    sugarMissing: ok(Schema.decodeUnknownExit(Loose)({})),
+    sugarUndefined: ok(Schema.decodeUnknownExit(Loose)({ id: undefined })),
+    exactMissing: ok(Schema.decodeUnknownExit(Exact)({})),
+    exactUndefined: ok(Schema.decodeUnknownExit(Exact)({ id: undefined })),
+  }
+}

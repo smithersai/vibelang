@@ -15,3 +15,5 @@ export type Listen = void!Error!(| RangeError
 export type Outer = (void!!)!!
 
 // Appendix B: EK4833 — spec-rule: docs/design/src/900-appendices.md#bd2b6979a6e8cc0d
+// rule-evidence: docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms | EK4833's quick fix may add parentheses required by the shorthand: `Effect.Effect<number> | null` becomes `(number!!) | null`, and `Effect.Effect<A, E | Error>` becomes `A!(E | Error)`.
+// Stable rule id: docs/design/src/007-tooling.md#e370fa661de6015f

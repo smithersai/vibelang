@@ -1,0 +1,1 @@
+VIP-34 emit names and declaration specifiers: 13 checks passed

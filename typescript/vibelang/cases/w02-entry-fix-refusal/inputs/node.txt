@@ -1,0 +1,7 @@
+import "vibelang/platform/node"
+
+// @effect/platform-node is not installed, so NodeRuntime.runMain is
+// unavailable: the migration refuses and the marker stays.
+export effect function main() {
+  try Console.log("node main ran")
+}

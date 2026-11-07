@@ -1,0 +1,10 @@
+// expect-result: {"outside":false,"inside":true}
+export effect function hasParent(): boolean!! {
+  const parent = currentParentSpan catch () => undefined
+  return parent !== undefined && typeof parent.spanId === "string"
+}
+export effect function main() {
+  const outside = try hasParent()
+  const inside = try withSpan(hasParent(), "parent")
+  return { outside, inside }
+}

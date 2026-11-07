@@ -138,12 +138,22 @@ const specTests = [
   "TestGrammarAdmissionIsPrefixPrecedenceKeys",
   "TestGrammarAdmissionContextualDeclarationKeys",
   "TestGrammarAdmissionContextualDeclarationRegression",
+  "TestGrammarAdmissionRelationalReadingDropsTypeArguments",
+  "TestGrammarAdmissionLabTypeScriptReadings",
+  "TestGrammarAdmissionDeclarationOperatorPrefixes",
+  "TestGrammarAdmissionDeclarationOperatorRegression",
+  "TestGrammarAdmissionIndexSignatureGrammar",
   "TestGrammarAdmissionIsPrefixPrecedenceRegression",
   "TestGrammarAdmissionIsPrefixCorpusReplay",
   "TestGrammarAdmissionSchemaJSDocKeys",
   "TestGrammarAdmissionSchemaJSDocRegression",
   "TestGrammarAdmissionOptionalTuples",
   "TestGrammarAdmissionDynamicImport",
+  "TestGrammarAdmissionSchemaAliasMemberKeys",
+  "TestGrammarAdmissionSchemaAliasMemberRegression",
+  "TestGrammarAdmissionSchemaDuplicateReadonlyKeys",
+  "TestGrammarAdmissionSchemaAsyncUntypedAliasKeys",
+  "TestGrammarAdmissionSchemaDuplicateReadonlyRegression",
   "TestGrammarAdmissionSchemaStaticKeys",
   "TestGrammarAdmissionSchemaStaticRegression",
   "TestGrammarAdmissionSchemaAsyncKeys",
@@ -324,7 +334,7 @@ const vibelangTopicTargets = Object.fromEntries(
 const specInputs = S.Filegroup({ srcs: [...S.glob([
   "docs/design/**", "typescript/vibelang/cases/**", "docs/tools/spec-rules*", "docs/tools/spec-schema-constructor*", "docs/tools/spec-examples*", "docs/tools/spec-lint*", "docs/tools/spec-pipe-arrows*", "docs/tools/spec-native-source-resolution*", "docs/tools/spec-diagnostic-*",
   "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md",
-  "docs/tools/diagnostic-identity*", "docs/tools/diagnostic-archive-examples*", "docs/tools/diagnostic-examples*", "docs/tools/diagnostic-native-projects*", "typescript/vibelang/cases/appendix-diagnostic-identities/examples.json", "scripts/diagnostic-inventory.mjs", "docs/tools/factory-diagnostic-retirement.test.mjs", "docs/tools/retirement-gate*", "scripts/mq-retirement-precheck*",
+  "docs/tools/diagnostic-identity*", "docs/tools/diagnostic-archive-examples*", "docs/tools/diagnostic-examples*", "docs/tools/diagnostic-native-projects*", "typescript/vibelang/cases/appendix-diagnostic-identities/examples.json", "scripts/diagnostic-inventory.mjs", "docs/tools/factory-diagnostic-retirement.test.mjs", "docs/tools/retirement-gate*", "docs/tools/retirement-admission-rules*", "scripts/mq-retirement-precheck*", "scripts/mq-retirement-integration.patch",
   "typescript/tsc/internal/vibelangfuzz/testdata/fuzz/**", "docs/tools/property-regressions/gate6-ek4804.json", "docs/tools/property-regressions/gate6-mapper-ek2115.json", "typescript/tsc/internal/vibelang/diagnostics.go",
   "docs/user/src/getting-started/012-devtools.md", "PACKAGE.ts",
   "typescript/tsc/internal/diagnostics/diagnosticMessages.json",
@@ -396,7 +406,7 @@ const specSchemaConstructor = check(
 )
 const specLinterTests = S.Shell.Test({
   summary: "Historical spec defects, VIP links and supersession, module extraction scope and projection source kinds, seeded properties and native example checks reject regressions.",
-  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/spec-rules-import-grammar.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/diagnostic-examples.test.mjs docs/tools/diagnostic-archive-examples.test.mjs docs/tools/diagnostic-native-projects.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs docs/tools/retirement-gate.test.mjs && python3 -B scripts/mq-retirement-precheck.test.py && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts spec-native-source-resolution.test.ts",
+  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/spec-rules-import-grammar.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/diagnostic-examples.test.mjs docs/tools/diagnostic-archive-examples.test.mjs docs/tools/diagnostic-native-projects.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs docs/tools/retirement-gate.test.mjs docs/tools/retirement-admission-rules.test.mjs && python3 -B scripts/mq-retirement-precheck.test.py && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts spec-native-source-resolution.test.ts",
   data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
   tools: [node, bun, S.Host.bin("jj"), S.Host.bin("python3")], sandbox: "none", timeout: "10m"
 })
@@ -526,15 +536,17 @@ const targets = {
   ),
   "create-cli": S.Shell.Test({
     summary: "Run the scaffolder's fast CLI unit tests.",
-    shell: "node --test packages/create-vibelang/test/create.test.mjs",
+    shell: "node --test packages/create-vibelang/test/create.test.mjs packages/create-vibelang/test/dev.test.mjs packages/create-vibelang/test/filesystem.property.test.mjs packages/create-vibelang/test/pin.property.test.mjs",
     data: [
       S.file("packages/create-vibelang/package.json"),
       S.file("packages/create-vibelang/bin/create-vibelang.mjs"),
-      S.file("packages/create-vibelang/test/create.test.mjs"),
+      S.file("packages/create-vibelang/bun.lock"),
+      S.glob("packages/create-vibelang/test/**"),
+      S.file("scripts/testing/property.mjs"),
       S.glob("templates/app/**"),
       S.file("docs/user/llms-essentials.md")
     ],
-    tools: [node],
+    tools: [node, S.Host.bin("npm"), S.Host.bin("tar")],
     sandbox: "none",
     timeout: "1m"
   }),
@@ -1497,6 +1509,8 @@ const targets = {
       "docs/tools/spec-legacy-effect-alias-transition.test.mjs",
       "docs/tools/spec-builtins-contracts.test.mjs",
       "docs/tools/spec-foreign-call-contract.test.mjs",
+      "docs/tools/spec-foreign-call-contract.mjs",
+      "packages/compiler/skills/vibelang/SKILL.md",
       "docs/tools/spec-nothrow.test.mjs",
       "docs/tools/spec-r16-carried.test.mjs",
       "docs/tools/spec-is-statement-body-home.test.mjs",
@@ -1554,6 +1568,24 @@ const targets = {
     [],
     [bun, node]
   ),
+  "docs-pnpm-install-pins": check(
+    "pnpm installation examples keep the transitive Effect pin in the workspace configuration.",
+    "bun docs/tools/pnpm-install-pins.mjs && bun test --timeout 30000 docs/tools/pnpm-install-pins.test.ts",
+    [],
+    [bun]
+  ),
+  "docs-yarn-install-pins": check(
+    "Yarn setup routes keep the transitive Effect pin in root package resolutions.",
+    "bun docs/tools/yarn-install-pins.mjs && bun test --timeout 30000 docs/tools/yarn-install-pins.test.ts",
+    [],
+    [bun]
+  ),
+  "docs-bun-install-pins": check(
+    "Bun installation examples preserve the project's active dependency pin table.",
+    "bun docs/tools/bun-install-pins.mjs && bun test --timeout 30000 docs/tools/bun-install-pins.test.ts",
+    [],
+    [bun]
+  ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --only-failures --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
@@ -1570,7 +1602,7 @@ const targets = {
     sandbox: "none",
     timeout: "30m"
   }),
-  "docs-check": check("Generated docs and tracked-leak checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),
+  "docs-check": check("Generated docs, tracked-leak and case-collision checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),
   // The compiler corpus runs as `//typescript/vibelang/...`, one cached target
   // per case, through the binary users run.
   "go-vibelang": goVibelang(

@@ -130,8 +130,7 @@ func typeReadImports(file *ast.SourceFile) map[string]bool {
 // and the name's error then reports the name as any other error does.
 func removeUnusedTypeNames(g *fixGate, texts map[tspath.RootedFilePath]string, result *FixResult) {
 	for range fixPassLimit {
-		program := g.build(texts)
-		errors := programErrors(g.ctx, program)
+		program, errors := g.errorsOf(g.build(texts), texts)
 		added := strictAddedCounts(errors, g.original)
 		found := map[tspath.RootedFilePath][]*ast.Diagnostic{}
 		for _, d := range errors {

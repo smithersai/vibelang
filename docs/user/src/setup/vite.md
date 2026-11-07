@@ -4,7 +4,9 @@
 
 ![Hot reload and type errors in Vite](/videos/vite-dev.mp4)
 
-Unicode file names and diagnostic text are preserved, including in large compiler output.
+Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning. Source diagnostics retain their excerpts without appending compiler file-list output.
+
+Creating a missing source file clears the development error overlay and updates its importers. Deleting an imported source reports the compiler error, and restoring it recovers without restarting the server.
 
 Plugin instances in one process share project compiles when their root,
 project configuration and compiler match, including main and worker bundles.
@@ -29,6 +31,10 @@ The migration flow keeps bundled private imports as exact source entries. When a
 
 
 The `// @vibe` check reads real source files. Virtual module identifiers from another bundler plugin stay with that plugin, even when their names end in `.ts` or `.vibe`.
+
+Existing `import.meta.hot.accept` dependency handlers keep updates inside the page and preserve its state when a VibeLang dependency changes. Ordinary TypeScript dependency updates continue through Vite's normal hot-reload handling.
+
+An included source outside the compilation root reports that boundary directly. Set the root to a directory containing the source, or give an external source package its own `package.json` and `tsconfig.json`; changing an already-correct `include` is unnecessary.
 
 ## 1. Add the plugin to Vite
 
@@ -113,7 +119,7 @@ Support for the new forms and configuration files arrives with the compiler's VI
 
 The plugin compiles the project `tsconfig.json` describes, with its options and diagnostics. Its compile backend automatically enables `rewriteRelativeImportExtensions` when emitting JavaScript, so source imports such as `./greet.vibe` work with Vite's `allowImportingTsExtensions` configuration. Check two things:
 
-1. `include` selects the app's `.vibe` files under Vite's root. A `.vibe` file of another workspace package, such as one the app imports by name, compiles with the nearest `tsconfig.json` above it instead: that package's own project. This holds outside the root and for a package nested inside it, one with its own `package.json` and `tsconfig.json`.
+1. `include` selects the app's `.vibe` files. When Vite's `root` is a directory inside your package, such as `root: "web"`, name the package's config as `vibelang({ project: "../tsconfig.json" })`: the plugin compiles every module it includes, inside Vite's root or not. A `.vibe` file of another workspace package, such as one the app imports by name, compiles with the nearest `tsconfig.json` above it instead: that package's own project. This holds outside the root and for a package nested inside it, one with its own `package.json` and `tsconfig.json`.
 2. If `tsconfig.json` has `"files": []` and only lists `references`, each module compiles under the first referenced configuration whose program contains it. You can also name a configuration explicitly, for example `vibelang({ project: "tsconfig.app.json" })`.
 
 A package may have separate projects for its app, worker and tools without a
@@ -218,8 +224,16 @@ When using Vitest's `test.projects`, add `vibelang()` to each project's own `plu
 For `node --test`, write a `.test.ts` suite that imports `.vibe` modules and runs their programs with `Effect.runSync` or `Effect.runPromise`. Include the suite in `tsconfig.test.json`, install `@types/node`, and add `"node"` to that project's `compilerOptions.types` (keeping any existing entries). Load the source hook and select that project:
 
 ```sh
-VIBELANG_PROJECT=tsconfig.test.json node --import vibelang/register --test src/greet.test.ts
+VIBELANG_PROJECT=tsconfig.test.json node --enable-source-maps --import vibelang/register --test src/greet.test.ts
 ```
+
+For Node's built-in coverage, keep `--enable-source-maps` on the command line and add `--experimental-test-coverage`:
+
+```sh
+VIBELANG_PROJECT=tsconfig.test.json node --enable-source-maps --import vibelang/register --test --experimental-test-coverage src/greet.test.ts
+```
+
+Coverage counts authored `.vibe` functions and excludes compiler-generated functions. Add `--test-coverage-functions=100` to fail when a source function remains uncalled. The source hook enables mapped stacks inside test processes; the command-line flag also enables source-map remapping in Node's test controller. Without it, that controller can treat generated JavaScript offsets as source offsets and incorrectly report an uncalled function as covered.
 
 The repository does not provide a Jest transformer for `.vibe` sources. Use Vitest for `.test.vibe` suites.
 
@@ -275,7 +289,7 @@ Set up the editor: [VS Code and Cursor](vscode.md), [Neovim](neovim.md), [Zed](z
 
 The source loaders compile the whole project for type-directed emit, but report
 only diagnostics for the source being loaded and project-wide errors, including
-configuration diagnostics. Multiline warnings can include source excerpts, including comments resembling network paths; these remain diagnostic text and do not add watched files or trigger another compile.
+configuration diagnostics. Multiline warnings can include source excerpts, including comments resembling network paths and labels resembling library URLs; these remain diagnostic text and do not add watched files or trigger another compile.
 An unrelated file's type errors do not prevent loading a clean module. Run
 `vibelang -p tsconfig.json` to check every project file.
 
@@ -291,3 +305,5 @@ and serves it with a virtual `.jsx` ID so framework plugins use their ordinary
 JSX filters. Source maps and diagnostics name the original `.vibex` file.
 Module queries such as `?import` keep compiling; resource queries such as
 `?raw` and `?url` keep their resource behavior.
+
+Development imports and hot updates preserve literal percent sequences in filenames. A source such as `percent%20.vibe` and a JavaScript dependency such as `percent%2520.js` retain their own contents and original source-map locations, including under a configured Vite `base`.

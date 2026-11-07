@@ -11,12 +11,14 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// Imports between files (design decision D31). A .vibe file imports a module by
-// its source name, ./welcome.vibe or ./format.ts, and the emitted JavaScript
-// imports the output, ./welcome.js and ./format.js, whether or not the
-// project sets rewriteRelativeImportExtensions. TypeScript code imports a .vibe
-// module as ./welcome.js, which the module resolver resolves to welcome.vibe as
-// it resolves ./format.js to format.ts.
+// Imports between files (VIP-34). A .vibe file imports a module as its .ts
+// twin would: ./welcome.js, or by its source name, ./welcome.vibe or
+// ./format.ts, under the same allowImportingTsExtensions and
+// rewriteRelativeImportExtensions checks. With rewriteRelativeImportExtensions
+// the emitted JavaScript imports the output, ./welcome.js and ./format.js;
+// without it a source specifier stays as written, as in TypeScript.
+// TypeScript code imports a .vibe module as ./welcome.js, which the module
+// resolver resolves to welcome.vibe as it resolves ./format.js to format.ts.
 
 // visitImportOrExport rewrites the module specifier of an import or export
 // declaration in a .vibe file.
@@ -40,7 +42,10 @@ func (tx *lowering) outputSpecifier(specifier *ast.Node) *ast.Node {
 	if specifier == nil || !ast.IsStringLiteral(specifier) {
 		return specifier
 	}
-	text, changed := outputSpecifierTextWithJSX(specifier.Text(), tx.jsx)
+	text, changed := specifier.Text(), false
+	if tx.rewrite {
+		text, changed = outputSpecifierTextWithJSX(specifier.Text(), tx.jsx)
+	}
 	// Identifier module references are generated output names, independent of
 	// source-extension rewriting. A JSX body preserves JSX in its own .jsx file.
 	if parser.IsVibeLangModuleReference(specifier) && tx.jsx == core.JsxEmitPreserve && tx.fresh.file.LanguageVariant == core.LanguageVariantJSX {

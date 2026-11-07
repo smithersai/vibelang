@@ -50,4 +50,3 @@ function isSent(value) {
 export function main() {
     return Effect.sync({ main: () => { return [describe(Delivery.Waiting()), describe(Delivery.Sent({ tracking: "parcel-8" })), isSent(Delivery.Sent({ tracking: "x" })), isSent({ tracking: "x" })]; } }.main);
 }
-runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

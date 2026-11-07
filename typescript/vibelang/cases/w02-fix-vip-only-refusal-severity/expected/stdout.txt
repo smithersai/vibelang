@@ -1,0 +1,1 @@
+a refusing --fix-vip-only makes EK4802 an error in the config and says why

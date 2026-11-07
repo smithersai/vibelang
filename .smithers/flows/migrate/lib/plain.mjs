@@ -6,7 +6,7 @@
 // and a written Generator type on ordinary generators. Functions returning
 // Effects stay available for the compiler's TypeScript-form fixes.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
-import { isAbsolute, join, relative, sep } from "node:path"
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { quote, run } from "./util.mjs"
 
 /**
@@ -56,18 +56,106 @@ function overloadedReader(ts, checker, node) {
 }
 
 /**
+ * The call or new expression whose argument node fills, directly or as a
+ * member of an object or array literal passed there, or null. TypeScript
+ * types such a function from the parameter it fills, and so does a
+ * legacy-inference toolchain: `Effect.try({ try: () => JSON.parse(text),
+ * catch: (cause) => cause })` declares `Effect<unknown, unknown>` there
+ * unannotated, and `new Proxy(target, { get: (_, key) => ... })` keeps its
+ * handler's types (alchemy, 32 partition sources).
+ */
+function argumentOf(ts, node) {
+  let child = node
+  for (let parent = node.parent; parent; child = parent, parent = parent.parent) {
+    if ((ts.isCallExpression(parent) || ts.isNewExpression(parent)) && parent.arguments?.includes(child)) return parent
+    const passesThrough = ts.isParenthesizedExpression(parent) || ts.isObjectLiteralExpression(parent) || ts.isArrayLiteralExpression(parent) ||
+      ts.isAsExpression(parent) || ts.isSatisfiesExpression(parent) ||
+      (ts.isPropertyAssignment(parent) && parent.initializer === child) ||
+      (ts.isConditionalExpression(parent) && parent.condition !== child)
+    if (!passesThrough) return null
+  }
+  return null
+}
+
+// Effect's constructors whose generator argument is an Effect's body.
+const effectBodyRunners = new Set(["gen", "genUntraced", "fn", "fnUntraced", "fnUntracedEager"])
+
+/**
+ * Whether node, a generator, is the body of an Effect: the argument of
+ * Effect.gen, or of Effect.fn and its kin, directly or after a name
+ * (`Effect.fn("name")(function* ...)`), under any import name. Its yields
+ * carry the Effect's failures and requirements, so a written `Generator<...>`
+ * type erases them: alchemy's Fly SecretProvider declared
+ * `Layer<Provider<Secret>, never, unknown>` under `Generator<any, Attributes, any>`.
+ */
+function effectBody(ts, checker, node) {
+  if (!node.asteriskToken) return false
+  const call = node.parent
+  if (!call || !ts.isCallExpression(call) || !call.arguments.includes(node)) return false
+  const callee = ts.isCallExpression(call.expression) ? call.expression.expression : call.expression
+  const name = ts.isPropertyAccessExpression(callee) ? callee.name : ts.isIdentifier(callee) ? callee : null
+  if (!name || !effectBodyRunners.has(name.text)) return false
+  let symbol = checker.getSymbolAtLocation(name)
+  if (symbol && symbol.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol)
+  return !!symbol?.declarations?.some((d) => /[\\/]effect[\\/]/.test(d.getSourceFile().fileName))
+}
+
+/**
  * A function the toolchain would make an Effect function: written with no
- * modifier and no return annotation, not an inline callback unless it is an
- * overloaded reader's (overloadedReader).
+ * modifier and no return annotation, not an Effect's generator body
+ * (effectBody), not a callback (argumentOf) unless it is an overloaded
+ * reader's (overloadedReader).
  */
 function candidate(ts, checker, node) {
   if (!(ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node))) return false
   if (!node.body || node.type) return false
+  if (effectBody(ts, checker, node)) return false
   if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) return false
   if (ts.isMethodDeclaration(node) && !(ts.isClassLike(node.parent) || ts.isObjectLiteralExpression(node.parent))) return false
-  const parent = node.parent
-  const callback = (ts.isCallExpression(parent) || ts.isNewExpression(parent)) && parent.arguments?.includes(node)
-  return !callback || overloadedReader(ts, checker, node)
+  if (ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node) && ts.isClassLike(node.parent)) return true
+  const call = argumentOf(ts, node)
+  return !call || call === node.parent && overloadedReader(ts, checker, node)
+}
+
+/**
+ * A VIP-40 `module name { }` body, which a platform or throwing split writes
+ * before this pass runs. Its source is TypeScript ("A body is a TypeScript
+ * file stored inside a `.vibe` file"), where `: infer _` is TS1338. A
+ * `namespace` and `declare global` are not bodies.
+ */
+const typeScriptBody = (ts, node) => ts.isModuleDeclaration(node) && ts.isIdentifier(node.name) &&
+  !(node.flags & (ts.NodeFlags.Namespace | ts.NodeFlags.GlobalAugmentation))
+
+// The local names that value imports of a native module the program cannot
+// read bind: a .vibe or .vibex peer converted earlier, with no declaration
+// beside it. Every use of such a name reads as any, so a function returning
+// one has a return type nobody has read, not a value (alchemy partition: a
+// consumer of an earlier-converted event source, marked plain, failed EK9203).
+function unreadNativeBindings(ts, checker, sf) {
+  const names = new Set()
+  for (const statement of sf.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
+    if (!/\.vibex?$/.test(statement.moduleSpecifier.text) || checker.getSymbolAtLocation(statement.moduleSpecifier)) continue
+    const clause = statement.importClause
+    if (!clause || clause.isTypeOnly) continue
+    if (clause.name) names.add(clause.name.text)
+    const bindings = clause.namedBindings
+    if (bindings && ts.isNamespaceImport(bindings)) names.add(bindings.name.text)
+    if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) if (!element.isTypeOnly) names.add(element.name.text)
+  }
+  return names
+}
+
+// Whether node reads one of names as a value: an identifier, not a property name.
+function readsName(ts, node, names) {
+  let found = false
+  const visit = (n) => {
+    if (found) return
+    if (ts.isIdentifier(n) && names.has(n.text) && !(n.parent && (ts.isPropertyAccessExpression(n.parent) || ts.isQualifiedName(n.parent)) && n.parent.name === n)) found = true
+    else ts.forEachChild(n, visit)
+  }
+  visit(node)
+  return found
 }
 
 /** The text after a function's parameter list, or around a bare arrow parameter, that annotates its return. */
@@ -82,17 +170,28 @@ function annotation(ts, sf, node, text) {
 /**
  * Legacy-inference edits: `: infer _` for value-only functions, a written
  * Generator type for plain generators, and unprintable generators by line.
- * Plain-by-syntax needs none of these edits or legacy leftovers.
+ * A function whose unknown return comes from a native peer the program
+ * cannot read is left for the compiler, which reads the peer, and listed by
+ * line in unread. Plain-by-syntax needs none of these edits or legacy leftovers.
  */
 export function plainEdits(ts, checker, sf, { flipped = false } = {}) {
   const edits = []
   const left = []
+  const unread = []
+  // Plain by syntax reads no types, so it has nothing unread.
   if (flipped) return { edits, left }
+  const natives = unreadNativeBindings(ts, checker, sf)
   const visit = (node) => {
+    if (typeScriptBody(ts, node)) return
     if (candidate(ts, checker, node)) {
       const signature = checker.getSignatureFromDeclaration(node)
       const returned = signature && checker.getReturnTypeOfSignature(signature)
       const unknownType = !returned || returned.flags & ts.TypeFlags.Any
+      if (unknownType && natives.size && readsName(ts, node.body, natives)) {
+        unread.push(sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1)
+        ts.forEachChild(node, visit)
+        return
+      }
       // A return type the program could not read: a body that names an Effect module may build a program.
       const program = unknownType ? /\b(Effect|Stream|Layer)\s*\./.test(node.body.getText(sf)) : isProgram(ts, checker, returned)
       if (!program) {
@@ -108,7 +207,7 @@ export function plainEdits(ts, checker, sf, { flipped = false } = {}) {
     ts.forEachChild(node, visit)
   }
   visit(sf)
-  return { edits, left }
+  return unread.length ? { edits, left, unread } : { edits, left }
 }
 
 /** text with edits applied; edits at one position keep their order. */
@@ -123,9 +222,10 @@ export function applyPlainEdits(text, edits) {
  * before the codemod renames them, reading types through the TypeScript
  * program of the first of tsconfigs (paths relative to root) that includes
  * the file. Returns { file: { marked, left } } for each file it changed or
- * had to leave a generator in.
+ * had to leave a generator in. renamed maps each module the batch renames
+ * to the TypeScript source it is renamed from, both relative to root.
  */
-export function markPlainFunctions(ts, root, files, tsconfigs, { read, write, exists, flipped = false } = {}) {
+export function markPlainFunctions(ts, root, files, tsconfigs, { read, write, exists, flipped = false, renamed = new Map() } = {}) {
   // The compiler probe already proved that syntax preserves plain functions.
   // Do not load package graphs for a legacy annotation pass that cannot edit them.
   if (flipped) return {}
@@ -146,15 +246,31 @@ export function markPlainFunctions(ts, root, files, tsconfigs, { read, write, ex
     const options = { ...(config?.options ?? {}), noEmit: true, skipLibCheck: true }
     const compilerHost = ts.createCompilerHost(options, true)
     Object.assign(compilerHost, { readFile, fileExists })
+    // The batch's imports already name its renamed modules, ./peer.vibe for
+    // ./peer.ts, and no declaration of peer.vibe exists before the compiler
+    // runs. Stock TypeScript would read every import of such a peer as any,
+    // and a function returning the peer's Effect would be marked plain. Read
+    // the peer from the source it is renamed from, which is still here.
+    if (renamed.size) {
+      compilerHost.resolveModuleNameLiterals = (literals, containingFile, redirected, compilerOptions, containingSourceFile) => literals.map((literal) => {
+        const mode = containingSourceFile && ts.getModeForUsageLocation ? ts.getModeForUsageLocation(containingSourceFile, literal, compilerOptions) : undefined
+        const resolved = ts.resolveModuleName(literal.text, containingFile, compilerOptions, compilerHost, undefined, redirected, mode)
+        if (resolved.resolvedModule || !/^\.\.?\//.test(literal.text)) return resolved
+        const from = renamed.get(inRoot(resolve(dirname(containingFile), literal.text)))
+        if (!from) return resolved
+        const extension = from.endsWith(".tsx") ? ts.Extension.Tsx : from.endsWith(".mts") ? ts.Extension.Mts : from.endsWith(".cts") ? ts.Extension.Cts : ts.Extension.Ts
+        return { resolvedModule: { resolvedFileName: join(root, from), extension, isExternalLibraryImport: false, resolvedUsingTsExtension: true } }
+      })
+    }
     const program = ts.createProgram({ rootNames: group.map((f) => join(root, f)), options, host: compilerHost })
     const checker = program.getTypeChecker()
     for (const file of group) {
       const sf = program.getSourceFile(join(root, file))
       if (!sf) continue
-      const { edits, left } = plainEdits(ts, checker, sf, { flipped })
-      if (!edits.length && !left.length) continue
+      const { edits, left, unread = [] } = plainEdits(ts, checker, sf, { flipped })
+      if (!edits.length && !left.length && !unread.length) continue
       if (edits.length) write ? write(file, applyPlainEdits(sf.text, edits)) : ts.sys.writeFile(join(root, file), applyPlainEdits(sf.text, edits))
-      result[file] = { marked: edits.filter((e) => e.text !== "(").length, left }
+      result[file] = { marked: edits.filter((e) => e.text !== "(").length, left, ...(unread.length ? { unread } : {}) }
     }
   }
   return result

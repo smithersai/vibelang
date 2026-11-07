@@ -7,6 +7,8 @@ description: "Runners start a program at an application boundary. Inside an effe
 
 Runners start a program at an application boundary. Inside an effect function, `try` runs an Effect on the current fiber, so reserve runners for entry points and framework adapters. `try` before a value that is not an Effect, such as a number or a promise, is `EK0502`: drop the `try`, or wrap a promise with `Effect.tryPromise`.
 
+A `try` runs one Effect, including when parentheses, `as`, `satisfies` or a conditional wrap its operand. If that Effect succeeds with another Effect, the returned Effect stays cold until its own execution site. Plain calls inside the operand construct their values in source order.
+
 Call a runner at module top level, in an `async` function, or in a plain function or callback (one that `effect` does not mark), such as a `describe` body or framework route handler, wherever it is passed. A runner directly inside code a fiber runs (an `effect` function or block) is EK1005; run the Effect with `try` or use `fork` instead. Tests in `.vibe` use `it.effect` from `@effect/vitest`; Promise-style tests stay in `.ts`.
 
 An effect function at the top level builds an Effect without running it:
@@ -45,7 +47,7 @@ bun run dev
 bun run test
 ```
 
-`build` runs `vibelang` with the project's `tsconfig.json`. `start` builds, then runs `node --enable-source-maps dist/main.js`. `dev` builds once, then runs `vibelang --watch` beside `node --watch --enable-source-maps dist/main.js`. `test` runs Vitest on `src/**/*.test.vibe` through `vibelang-vite`, which compiles the project with `vibelang` and serves the JavaScript, so tests need no prior build. Node and Vitest receive JavaScript; neither interprets `.vibe` sources.
+`build` runs `vibelang` with the project's `tsconfig.json`. `start` builds, then runs `node --enable-source-maps dist/main.js`. `dev` builds once, starts `vibelang --watch`, waits for its first successful watch build, then starts `node --watch --enable-source-maps dist/main.js`. `test` runs Vitest on `src/**/*.test.vibe` through `vibelang-vite`, which compiles the project with `vibelang` and serves the JavaScript, so tests need no prior build. Node and Vitest receive JavaScript; neither interprets `.vibe` sources.
 
 The starter's `main.vibe` exports an effect function named `main` and calls `NodeRuntime.runMain(main())` at module top level, the application boundary reached by `node dist/main.js`. Its greeting and recovery messages quickly confirm that the service layer and typed failure both run.
 

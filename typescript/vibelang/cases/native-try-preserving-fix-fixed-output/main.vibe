@@ -1,6 +1,6 @@
 
 import * as $nativeTryEffect from "effect/Effect";
 // expect: EK0503
-effect function f(): number!! { { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { return { kind: "return:" as const, value: 1 }; }, effect () => { return { kind: "return:" as const, value: 2 }; });
+effect function f(): number!! { { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { return { kind: "return:" as const, value: ((1) satisfies number) }; }, effect () => { return { kind: "return:" as const, value: ((2) satisfies number) }; });
 return $nativeTryCompletion.value;
 } }

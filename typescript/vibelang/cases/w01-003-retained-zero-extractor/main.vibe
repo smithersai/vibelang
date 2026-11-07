@@ -1,0 +1,102 @@
+// rule-evidence: docs/design/src/003-failures.md#meaning | The 34 retained Effect error constructors, like `NotFound`, extract one subject, so their zero-argument extractors never match, and VibeLang reports a lint warning on such an extractor (`EK0703`).
+// expect-result: [[0,1,1],[0,1,1],[0,1,1],[0,1,1],[0,1,1]]
+// Each of Effect's thirty-four retained tagged errors extracts [subject]: a
+// zero-argument extractor is the lint warning EK0703 and never matches, while
+// the bare test and the one-argument extractor match the same subject.
+import * as Cause from "effect/Cause"
+import * as Schema from "effect/Schema"
+import * as Cron from "effect/Cron"
+import * as PlatformError from "effect/PlatformError"
+import * as SemVer from "effect/SemVer"
+import * as Terminal from "effect/Terminal"
+import * as TextDiff from "effect/TextDiff"
+import * as AiError from "effect/ai/AiError"
+import * as McpClientError from "effect/ai/McpClientError"
+import * as CryptoError from "effect/crypto/CryptoError"
+import * as Csv from "effect/encoding/Csv"
+import * as EncodingError from "effect/encoding/EncodingError"
+import * as JsonArray from "effect/encoding/JsonArray"
+import * as Ndjson from "effect/encoding/Ndjson"
+import * as Tar from "effect/encoding/Tar"
+import * as Xml from "effect/encoding/Xml"
+import * as Zip from "effect/encoding/Zip"
+import * as GraphQLClientError from "effect/graphql/GraphQLClientError"
+import * as Cookies from "effect/http/Cookies"
+import * as Headers from "effect/http/Headers"
+import * as HttpBody from "effect/http/HttpBody"
+import * as HttpClientError from "effect/http/HttpClientError"
+import * as HttpServerError from "effect/http/HttpServerError"
+import * as Multipart from "effect/http/Multipart"
+import * as JoseError from "effect/jose/JoseError"
+import * as DatagramSocket from "effect/socket/DatagramSocket"
+import * as Socket from "effect/socket/Socket"
+import * as SqlError from "effect/sql/SqlError"
+import * as WorkerError from "effect/workers/WorkerError"
+import { Effect } from "effect"
+
+const zeroArgument: readonly ((s: unknown) => number)[] = [
+  (s) => match (s) { when Cause.NoSuchElementError(): 1; default: 0; },
+  (s) => match (s) { when Cause.TimeoutError(): 1; default: 0; },
+  (s) => match (s) { when Cause.IllegalArgumentError(): 1; default: 0; },
+  (s) => match (s) { when Cause.ExceededCapacityError(): 1; default: 0; },
+  (s) => match (s) { when Cause.AsyncFiberError(): 1; default: 0; },
+  (s) => match (s) { when Cause.UnknownError(): 1; default: 0; },
+  (s) => match (s) { when Schema.SchemaError(): 1; default: 0; },
+  (s) => match (s) { when Cron.CronParseError(): 1; default: 0; },
+  (s) => match (s) { when PlatformError.PlatformError(): 1; default: 0; },
+  (s) => match (s) { when SemVer.SemVerError(): 1; default: 0; },
+  (s) => match (s) { when Terminal.QuitError(): 1; default: 0; },
+  (s) => match (s) { when TextDiff.TextDiffError(): 1; default: 0; },
+  (s) => match (s) { when AiError.AiError(): 1; default: 0; },
+  (s) => match (s) { when McpClientError.McpClientError(): 1; default: 0; },
+  (s) => match (s) { when CryptoError.CryptoError(): 1; default: 0; },
+  (s) => match (s) { when Csv.CsvError(): 1; default: 0; },
+  (s) => match (s) { when EncodingError.EncodingError(): 1; default: 0; },
+  (s) => match (s) { when JsonArray.JsonArrayError(): 1; default: 0; },
+  (s) => match (s) { when Ndjson.NdjsonError(): 1; default: 0; },
+  (s) => match (s) { when Tar.TarError(): 1; default: 0; },
+  (s) => match (s) { when Xml.XmlError(): 1; default: 0; },
+  (s) => match (s) { when Zip.ZipError(): 1; default: 0; },
+  (s) => match (s) { when GraphQLClientError.GraphQLClientError(): 1; default: 0; },
+  (s) => match (s) { when Cookies.CookiesError(): 1; default: 0; },
+  (s) => match (s) { when Headers.HeaderParseError(): 1; default: 0; },
+  (s) => match (s) { when HttpBody.HttpBodyError(): 1; default: 0; },
+  (s) => match (s) { when HttpClientError.HttpClientError(): 1; default: 0; },
+  (s) => match (s) { when HttpServerError.HttpServerError(): 1; default: 0; },
+  (s) => match (s) { when Multipart.MultipartError(): 1; default: 0; },
+  (s) => match (s) { when JoseError.JoseError(): 1; default: 0; },
+  (s) => match (s) { when DatagramSocket.DatagramSocketError(): 1; default: 0; },
+  (s) => match (s) { when Socket.SocketError(): 1; default: 0; },
+  (s) => match (s) { when SqlError.SqlError(): 1; default: 0; },
+  (s) => match (s) { when WorkerError.WorkerError(): 1; default: 0; },
+]
+
+function observed(): number[][] {
+  const subjects: readonly [number, unknown][] = [
+    [0, new Cause.NoSuchElementError()],
+    [1, new Cause.TimeoutError()],
+    [2, new Cause.IllegalArgumentError()],
+    [3, new Cause.ExceededCapacityError()],
+    [5, new Cause.UnknownError("why")],
+  ]
+  return subjects.map(([i, s]) => [zeroArgument[i](s), bare[i](s), single[i](s)])
+}
+
+const bare: Record<number, (s: unknown) => number> = {
+  0: (s) => match (s) { when Cause.NoSuchElementError: 1; default: 0; },
+  1: (s) => match (s) { when Cause.TimeoutError: 1; default: 0; },
+  2: (s) => match (s) { when Cause.IllegalArgumentError: 1; default: 0; },
+  3: (s) => match (s) { when Cause.ExceededCapacityError: 1; default: 0; },
+  5: (s) => match (s) { when Cause.UnknownError: 1; default: 0; },
+}
+const single: Record<number, (s: unknown) => number> = {
+  0: (s) => match (s) { when Cause.NoSuchElementError(let e): e === s ? 1 : 2; default: 0; },
+  1: (s) => match (s) { when Cause.TimeoutError(let e): e === s ? 1 : 2; default: 0; },
+  2: (s) => match (s) { when Cause.IllegalArgumentError(let e): e === s ? 1 : 2; default: 0; },
+  3: (s) => match (s) { when Cause.ExceededCapacityError(let e): e === s ? 1 : 2; default: 0; },
+  5: (s) => match (s) { when Cause.UnknownError(let e): e === s ? 1 : 2; default: 0; },
+}
+
+export function main(): number[][]!! {
+  return Effect.sync(observed)
+}

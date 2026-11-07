@@ -12,6 +12,10 @@ import { isFixtureFile, isTestFile } from "./inventory.mjs"
 import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 
 const loader = /\bvibelang\/(?:register|bun)\b/
+// The published Bun register installs both runtime and test-owned build hooks.
+// It is a Bun preload, so recognizing it must not certify a Node entry.
+const bunRegister = /(?:^|[\s"'=])vibelang-unplugin\/bun\/register(?=$|[\s"',;\]\)])/
+const hasLoader = (text, runner) => loader.test(text) || (runner === "bun" && bunRegister.test(text))
 const runners = new Set(["node", "bun", "tsx", "ts-node"])
 // Words that may stand before a runner in a script's command.
 const wrappers = new Set(["exec", "npx", "bunx", "time", "cross-env", "dotenv", "--", "if", "!", "then", "else", "elif", "while", "until", "do", "-", "run:"])
@@ -45,12 +49,12 @@ export function scriptEntries(script, { locations = false } = {}) {
     let at = cwd, wired = false, file = null
     for (let i = 0; i < args.length && file === null; i++) {
       const word = args[i]
-      if (loader.test(word)) wired = true
+      if (hasLoader(word, runner)) wired = true
       if (word.startsWith("-")) {
         if (word === "--test" || word === "--eval" || word === "-e" || word === "-p" || word === "--print") { file = false; break }
         if (valueFlags.has(word)) {
           const value = args[++i] ?? ""
-          if (loader.test(value)) wired = true
+          if (hasLoader(value, runner)) wired = true
           if (word === "--cwd") at = posix.normalize(posix.join(at, value))
         }
         continue
@@ -106,7 +110,10 @@ const executable = (root, file) => process.platform === "win32" || (statSync(joi
 
 const bunfigPreloads = (root, dir) => {
   const path = join(root, dir, "bunfig.toml")
-  return existsSync(path) && /(?:^|\n)\s*preload\s*=[^\n]*vibelang\/bun/.test(readFileSync(path, "utf8").split(/\n\s*\[/)[0])
+  if (!existsSync(path)) return false
+  const top = readFileSync(path, "utf8").split(/(?:^|\n)\s*\[/)[0]
+  const preload = /(?:^|\n)\s*preload\s*=[^\n]*/.exec(top)?.[0] ?? ""
+  return /\bvibelang\/bun\b/.test(preload) || bunRegister.test(preload)
 }
 
 /**
@@ -130,8 +137,9 @@ export function bareRunnerDeferrals(root, selected, { paths = {}, ts, routed = f
       if (!entry) continue
       binEntries.add(entry)
       const shebang = /^#!.*$/.exec(text(entry).split("\n", 1)[0])?.[0] ?? ""
-      const loads = loader.test(shebang) || parseImports(text(entry)).some(i => loader.test(i.specifier)) || (/\bbun\b/.test(shebang) && bunfigPreloads(root, dir))
-      add(!loads, { runner: /\bbun\b/.test(shebang) ? "bun" : "node", entry, via: `${posix.join(dir, "package.json")} bin ${name}` })
+      const runner = /\bbun\b/.test(shebang) ? "bun" : "node"
+      const loads = hasLoader(shebang, runner) || parseImports(text(entry)).some(i => loader.test(i.specifier)) || (runner === "bun" && bunfigPreloads(root, dir))
+      add(!loads, { runner, entry, via: `${posix.join(dir, "package.json")} bin ${name}` })
     }
     for (const [name, script] of Object.entries(manifest.scripts ?? {})) {
       if (typeof script !== "string") continue
@@ -172,7 +180,7 @@ export function bareRunnerDeferrals(root, selected, { paths = {}, ts, routed = f
     // With no execute bit the line runs nothing; whatever starts the file names its runner, and is read above.
     const shebang = /^#!.*\b(node|bun|tsx|ts-node)\b.*$/.exec(text(file).split("\n", 1)[0])
     if (shebang && !binEntries.has(file) && executable(root, file)) {
-      const served = loader.test(shebang[0]) || parseImports(text(file)).some(i => loader.test(i.specifier))
+      const served = hasLoader(shebang[0], shebang[1]) || parseImports(text(file)).some(i => loader.test(i.specifier))
       add(!served, { runner: shebang[1], entry: file, via: `${file} shebang` })
     }
     // Playwright compiles a config and its tests with Babel, whatever else the package sets up.

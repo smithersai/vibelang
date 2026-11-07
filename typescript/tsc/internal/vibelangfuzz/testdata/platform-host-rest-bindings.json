@@ -1,0 +1,239 @@
+[
+  {
+    "Key": "AbortSignal-timeout-rest-direct",
+    "Source": "const { ...timeout } = AbortSignal;\nexport const result = typeof timeout;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-return",
+    "Source": "export function result() { const { ...timeout } = AbortSignal; return timeout; }\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-copy",
+    "Source": "const { ...timeout } = AbortSignal;\nconst held = timeout;\nexport const result = held;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-shorthand",
+    "Source": "const { ...timeout } = AbortSignal;\nexport const result = { timeout };\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-local-let",
+    "Source": "export function result() { let { ...timeout } = AbortSignal; return typeof timeout; }\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-receiver-alias",
+    "Source": "const Receiver = AbortSignal;\nconst { ...timeout } = Receiver;\nexport const result = timeout;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-asserted-receiver",
+    "Source": "const { ...timeout } = (AbortSignal as typeof AbortSignal);\nexport const result = timeout;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-after-pure-member",
+    "Source": "const { prototype: ignored, ...timeout } = AbortSignal;\nvoid ignored;\nexport const result = timeout;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-rename-control",
+    "Source": "const { ...held } = AbortSignal;\nexport const result = held;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-local-control",
+    "Source": "const Receiver = { timeout: 1 };\nconst { ...timeout } = Receiver;\nexport const result = timeout;\n",
+    "Spans": []
+  },
+  {
+    "Key": "AbortSignal-timeout-selected-host-control",
+    "Source": "const { timeout: held } = AbortSignal;\nexport const result = held;\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-direct-host-control",
+    "Source": "const held = AbortSignal.timeout;\nexport const result = held;\n",
+    "Spans": [
+      "AbortSignal.timeout",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-selected-host-and-rest",
+    "Source": "const { timeout: held, ...timeout } = AbortSignal;\nexport const result = [held, timeout];\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "AbortSignal-timeout-rest-type-query",
+    "Source": "const { ...timeout } = AbortSignal;\nexport type Result = typeof timeout;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-direct",
+    "Source": "const { ...createObjectURL } = URL;\nexport const result = typeof createObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-return",
+    "Source": "export function result() { const { ...createObjectURL } = URL; return createObjectURL; }\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-copy",
+    "Source": "const { ...createObjectURL } = URL;\nconst held = createObjectURL;\nexport const result = held;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-shorthand",
+    "Source": "const { ...createObjectURL } = URL;\nexport const result = { createObjectURL };\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-local-let",
+    "Source": "export function result() { let { ...createObjectURL } = URL; return typeof createObjectURL; }\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-receiver-alias",
+    "Source": "const Receiver = URL;\nconst { ...createObjectURL } = Receiver;\nexport const result = createObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-asserted-receiver",
+    "Source": "const { ...createObjectURL } = (URL as typeof URL);\nexport const result = createObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-after-pure-member",
+    "Source": "const { prototype: ignored, ...createObjectURL } = URL;\nvoid ignored;\nexport const result = createObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-rename-control",
+    "Source": "const { ...held } = URL;\nexport const result = held;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-rest-local-control",
+    "Source": "const Receiver = { createObjectURL: 1 };\nconst { ...createObjectURL } = Receiver;\nexport const result = createObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-createObjectURL-selected-host-control",
+    "Source": "const { createObjectURL: held } = URL;\nexport const result = held;\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-direct-host-control",
+    "Source": "const held = URL.createObjectURL;\nexport const result = held;\n",
+    "Spans": [
+      "URL.createObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-selected-host-and-rest",
+    "Source": "const { createObjectURL: held, ...createObjectURL } = URL;\nexport const result = [held, createObjectURL];\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-createObjectURL-rest-type-query",
+    "Source": "const { ...createObjectURL } = URL;\nexport type Result = typeof createObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-direct",
+    "Source": "const { ...revokeObjectURL } = URL;\nexport const result = typeof revokeObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-return",
+    "Source": "export function result() { const { ...revokeObjectURL } = URL; return revokeObjectURL; }\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-copy",
+    "Source": "const { ...revokeObjectURL } = URL;\nconst held = revokeObjectURL;\nexport const result = held;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-shorthand",
+    "Source": "const { ...revokeObjectURL } = URL;\nexport const result = { revokeObjectURL };\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-local-let",
+    "Source": "export function result() { let { ...revokeObjectURL } = URL; return typeof revokeObjectURL; }\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-receiver-alias",
+    "Source": "const Receiver = URL;\nconst { ...revokeObjectURL } = Receiver;\nexport const result = revokeObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-asserted-receiver",
+    "Source": "const { ...revokeObjectURL } = (URL as typeof URL);\nexport const result = revokeObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-after-pure-member",
+    "Source": "const { prototype: ignored, ...revokeObjectURL } = URL;\nvoid ignored;\nexport const result = revokeObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-rename-control",
+    "Source": "const { ...held } = URL;\nexport const result = held;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-local-control",
+    "Source": "const Receiver = { revokeObjectURL: 1 };\nconst { ...revokeObjectURL } = Receiver;\nexport const result = revokeObjectURL;\n",
+    "Spans": []
+  },
+  {
+    "Key": "URL-revokeObjectURL-selected-host-control",
+    "Source": "const { revokeObjectURL: held } = URL;\nexport const result = held;\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-direct-host-control",
+    "Source": "const held = URL.revokeObjectURL;\nexport const result = held;\n",
+    "Spans": [
+      "URL.revokeObjectURL",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-selected-host-and-rest",
+    "Source": "const { revokeObjectURL: held, ...revokeObjectURL } = URL;\nexport const result = [held, revokeObjectURL];\n",
+    "Spans": [
+      "held",
+      "held"
+    ]
+  },
+  {
+    "Key": "URL-revokeObjectURL-rest-type-query",
+    "Source": "const { ...revokeObjectURL } = URL;\nexport type Result = typeof revokeObjectURL;\n",
+    "Spans": []
+  }
+]

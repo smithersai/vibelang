@@ -2033,7 +2033,19 @@ func getFileNamesFromConfigSpecs(
 			extension = tspath.ExtensionVibex
 		}
 		suffix := ".d" + extension + ".ts"
-		if literalFileMap.Has(keyMapper(file)) || !strings.HasSuffix(name, suffix) {
+		if literalFileMap.Has(keyMapper(file)) {
+			return true
+		}
+		// A body's declaration under vibe.sidecarDir, beside its file's
+		// relocated sidecar, is an output while the mirrored source declares
+		// that body (VIP-40).
+		if sidecarDir := options.VibeLang; sidecarDir != nil && sidecarDir.SidecarDir != "" && root != "" && tspath.ContainsPath(sidecarDir.SidecarDir, name, host.CaseSensitivity()) {
+			mirrored := tspath.CombinePaths(root, tspath.GetRelativePathFromDirectory(sidecarDir.SidecarDir, name, host.CaseSensitivity()))
+			if isModuleBodyDeclaration(tspath.RootedFilePathFromNormalized(mirrored), host) {
+				return false
+			}
+		}
+		if !strings.HasSuffix(name, suffix) {
 			return true
 		}
 		beside := strings.TrimSuffix(name, suffix) + extension

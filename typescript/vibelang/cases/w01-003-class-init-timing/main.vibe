@@ -1,0 +1,37 @@
+// expect-result: ["Top static","Top static field","after Top","called","body start","Inner static","after Inner","Inner field","after new Inner","Top field","after new Top"]
+// rule-evidence: docs/design/src/003-failures.md#code-outside-the-generator | **Field initializers and static blocks** run in `new X()` and at class evaluation.
+// Static blocks and static field initializers run when the class is
+// evaluated: at module evaluation for a top-level class, and when the
+// generator reaches the declaration for a class in an effect function's body.
+// Instance field initializers run in `new X()`. None of them runs at the call
+// of the effect function.
+const log: string[] = []
+function note(s: string): number { log.push(s); return log.length }
+
+class Top {
+  static { note("Top static") }
+  static order = note("Top static field")
+  field = note("Top field")
+}
+note("after Top")
+
+effect function body() {
+  note("body start")
+  class Inner {
+    static order = note("Inner static")
+    field = note("Inner field")
+  }
+  note("after Inner")
+  const inner = new Inner()
+  note("after new Inner")
+  const top = new Top()
+  note("after new Top")
+  return [inner.field, top.field]
+}
+
+export effect function main() {
+  const program = body()
+  note("called")
+  const fields = try program
+  return log
+}

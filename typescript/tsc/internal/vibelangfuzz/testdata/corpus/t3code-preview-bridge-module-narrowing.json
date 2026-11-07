@@ -1,0 +1,5 @@
+{
+  "source": "const nativePreviewBridge: { readonly n: number } | null =\n  typeof window === \"undefined\" ? null : (window.value ?? null)\n\nexport const previewBridge = nativePreviewBridge\n  ? { capture: () => nativePreviewBridge.n }\n  : null\nexport const stable = 1\n",
+  "ambient": "declare var window: { readonly value?: { readonly n: number } }\n",
+  "key": "closure"
+}

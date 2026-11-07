@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/src/007-tooling.md#legacy-prelude-shorthand | All three `--fix` scopes select their resolved legacy bindings:
+// rule-evidence: docs/design/src/007-tooling.md#legacy-prelude-shorthand | | Bare prelude `Scope` type | `Scope.Scope` | Native `TS2709` for using a module namespace as a type |
+// rule-evidence: docs/design/src/007-tooling.md#legacy-prelude-shorthand | | Same-named module export, such as `Option<A>` or `FileSystem.of(impl)` | `Option.Option<A>` or `FileSystem.FileSystem.of(impl)` | Native `TS2709` for a namespace type or `TS2339` for an absent namespace member |
+// rule-evidence: docs/design/src/007-tooling.md#legacy-prelude-shorthand | These are TypeScript's errors on equivalent explicit namespace imports, not new `EK` codes.
+// The prelude shorthand migration runs on temp projects in run.mjs.
+export const witness = 1

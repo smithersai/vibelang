@@ -1,0 +1,109 @@
+
+
+
+
+
+
+
+
+
+
+export const makeOpenCodeAdapterV2 = effect (
+  options: OpenCodeAdapterV2Options,
+) => try withSpan(effect {
+  
+  
+
+  return ProviderAdapter.ProviderAdapterV2.of({
+    instanceId: options.instanceId,
+    driver: OPENCODE_PROVIDER,
+    getCapabilities: Effect.fn("OpencodeAdapter.getCapabilities")(function () {
+      
+    }),
+    planSelectionTransition: Effect.fn("OpencodeAdapter.planSelectionTransition")(function () {
+      
+    }),
+    openSession: effect (input: ProviderAdapter.ProviderAdapterV2OpenSessionInput) => try withSpan(effect {
+      
+
+      
+
+      
+
+      const resolveRuntimeRequest = effect (
+        nativeRequestId: string,
+        status: "cancelled" | "resolved",
+      ) => {
+        
+        
+        
+        
+      };
+
+      const resolveSessionOwner = effect (sessionId: string) => {
+        
+        
+        for (let depth = 0; depth < 5; depth += 1) {
+          const response = try (sdkCall("session.get", { sessionID: cursor }, () =>
+            client.session.get({ sessionID: cursor }),
+          ) |> Effect.option(%));
+          const info = Option.getOrUndefined(response)?.data;
+          const parentId = info?.parentID;
+          if (parentId === undefined) return undefined;
+          
+          if (owner !== undefined) {
+            for (const hop of hops) relatedSessionOwners.set(hop, owner);
+            
+          }
+          cursor = parentId;
+        }
+        
+      };
+
+      const routeRuntimeRequest = effect (
+        nativeRequestId: string,
+        sessionId: string,
+        request:
+          { readonly type: "permission"; readonly value: PermissionRequest; } | { readonly type: "question"; readonly value: QuestionRequest; },
+      ) => {
+        if (pendingChildRequestRoutes.has(nativeRequestId)) return;
+        const attempt = effect {
+          
+          if (owner === undefined) return false;
+          
+          
+        };
+        if (try attempt) return;
+        pendingChildRequestRoutes.add(nativeRequestId);
+        try (effect {
+          for (let retry = 0; retry < 5; retry += 1) {
+            
+            if (try attempt) return;
+          }
+        }
+          |> Effect.ensuring(%, effect {  })
+          |> Effect.forkIn(%, scope));
+      };
+
+      
+
+      
+
+      
+    } |> ((effect, input) =>
+        effect
+          |> Effect.mapError(
+            %, (cause) =>
+              new ProviderAdapter.ProviderAdapterOpenSessionError({
+                driver: OPENCODE_PROVIDER,
+                providerSessionId: input.providerSessionId,
+                cause,
+              }),
+          ))(%, input), "OpenCodeAdapterV2.openSession"),
+  });
+}, "makeOpenCodeAdapterV2");
+
+
+
+
+

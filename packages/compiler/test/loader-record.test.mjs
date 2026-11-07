@@ -44,7 +44,7 @@ async function workspace(t) {
   cpSync(runtime, join(root, "node_modules/vibelang-runtime"), { recursive: true, filter: (path) => !path.includes("node_modules") })
   symlinkSync(compilerPackage, join(root, "node_modules/vibelang"))
   const protocol = join(root, "packages/protocol")
-  const emitted = spawnSync(native, ["-p", "tsconfig.json", "--noEmit", "false", "--declaration", "false", "--outDir", ".vibelang/js", "--rootDir", "."], { cwd: protocol, encoding: "utf8" })
+  const emitted = spawnSync(native, ["-p", "tsconfig.json", "--noEmit", "false", "--declaration", "false", "--outDir", ".vibelang/js", "--rootDir", ".", "--rewriteRelativeImportExtensions", "true"], { cwd: protocol, encoding: "utf8" })
   assert.equal(emitted.status, 0, emitted.stdout + emitted.stderr)
   const calls = join(top, "calls")
   const compiler = join(top, "compiler.mjs")

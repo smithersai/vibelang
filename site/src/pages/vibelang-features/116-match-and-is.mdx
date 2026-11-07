@@ -15,6 +15,8 @@ Every arm ends in `;`, the last one included, and a new line does not separate a
 
 Object properties run left to right. Cached pattern reads reuse getters across arms, while object rest copies normally and can read a getter again. Array patterns accept any iterable, including strings, sets and generators, and reuse one iterator and its pulled values across arms. Their bindings keep the iterable element type, including tuple positions; a rest binding from a tuple keeps the remaining positions, including optional and variadic elements, in a mutable tuple copy. Other rest bindings contain the remaining elements in an array. An `unknown` subject gives `unknown` elements. Each elision comma skips one required position; a missing optional element consumes none, while a present `undefined` still gets tested. Optional array, object-property and extractor bindings initialize only when a value exists. Missing bindings remain in their temporal dead zone. TypeScript reports `TS2454` when its definite-assignment checks find an uninitialized read; other reads throw `ReferenceError` while the binding is uninitialized. The `EK0703` fixed-extractor warning uses the required-to-total position interval, so `Option.None(1?)` is admitted.
 
+An `is` binding initialized by a successful condition stays assigned through `do` expressions in that condition.
+
 Fixed `Option`, `Exit` and `Result` extractors give their bindings the type left by the container and variant guards. Open subjects give `unknown` payloads.
 
 ```vibe
@@ -43,7 +45,7 @@ An extractor calls its matcher once for each pattern attempt and reuses that res
 
 An arm always keeps its expression when `vibelang --fix` removes a no-op Effect. For example, `when true: try Effect.void;` becomes `when true: (undefined as void);`: the assertion preserves an inferred `void` result. `try Effect.undefined` becomes `undefined`. If a local binding shadows `undefined`, the fix uses `void 0` instead. A held `Effect.void` without `try` stays an Effect.
 
-A synchronous `match` introduces no function or Effect boundary in any expression position. An arm may `yield` in an enclosing generator or use `try` in effect code.
+A synchronous `match` introduces no function or Effect boundary in any expression position. An arm may `yield` in an enclosing generator or use `try` in effect code. This also applies when the match is returned or used as a statement, including a `yield` in its subject.
 
 Evaluating the subject preserves an anonymous function or class's empty `.name`, including what its class static initializers observe.
 
@@ -111,7 +113,7 @@ function shape(value: ReadonlyArray<number> | { kind: string; size?: number }) {
 // Output: ["empty","one: 2","2 then 2 more","box of 5","point with 1 more keys","other"]
 ```
 
-An object pattern matches only an object or a function, never a primitive, and reads no property of a primitive: `{ length: let n }` does not match a string. It checks only the properties it names, and `...let rest` collects the others. A property that is not a valid name needs quotes, `{ "content-type": let type }`, and a computed key can be a name, `{ [key]: let value }`. A computed key is evaluated and converted to a property key once per property clause, after the subject is known to be an object. Its presence check, value read and rest exclusion use that saved key. Later properties run only after earlier properties match.
+An object pattern matches only an object or a function, never a primitive, and reads no property of a primitive: `{ length: let n }` does not match a string. It checks only the properties it names, and `...let rest` collects the others. A property that is not a valid name needs quotes, `{ "content-type": let type }`, and a computed key can be an expression, such as `{ [key]: let value }` or `{ [chooseKey()]: let value }`. Its expression keeps its TypeScript key type, including a unique symbol or a literal returned by an overloaded call. A computed key is evaluated and converted to a property key once per property clause, after the subject is known to be an object. Its presence check, value read and rest exclusion use that saved key. Later properties run only after earlier properties match.
 
 ## Option, Exit, Result, and primitives
 
@@ -193,6 +195,10 @@ A plain `error` pattern compares `_tag`, so it also accepts a value from another
 
 An `error` or `schema error` class has a `Symbol.customMatcher` that tests `_tag`, so two classes with the same tag match each other; as an extractor it gives the instance: `when NotFound(let error):`. Class arms use the class's `Symbol.customMatcher`, independently of the subject's static type. A class without its own matcher, such as one imported from a `.ts` file, matches by `instanceof`: an object whose prototype was changed after construction no longer matches. A function that is not a class works as a predicate: `when isUser:` calls `isUser(value)` and narrows `value` as `if (isUser(value))` does, and `when Array.isArray:` tests for an array. A member predicate such as `when matcher.test:` or `value is matcher.test` keeps `matcher` as `this`; a member extractor does too. The receiver expression and any computed key are evaluated once, before reading the method. Own `Symbol.customMatcher` methods keep the matcher as `this` and receive the member receiver as their third argument. A predicate must return a `boolean`; one that returns an Effect or a Promise is an error, so test it in a guard instead. A user matcher function, including a type predicate, covers no finite case for `EK4701`; use explicit case patterns or a `default`. Predicate narrowing inside its arm and `default` is unchanged.
 
+Instance methods and getters do not change an `error` or `schema error` declaration's one-element extraction or tag coverage. An extracted binding keeps the matched subject member's type, including additional fields on an object with the same tag. Patterns with an impossible number of bindings still report `EK0703`.
+
+A local `const` alias of an `error` or `schema error` constructor keeps its known extraction length. This includes an explicit `typeof` annotation and a chain of aliases, such as `const Alias = NotFound`. An opaque constructor type by itself does not establish its runtime matcher.
+
 An own matcher returning `boolean` narrows neither the matching arm nor the `default` or a negated arm. `Symbol.hasInstance` does not replace that matcher.
 
 A legacy concrete error root still tests its own tag, so a child with a different tag misses that root's arm. A legacy abstract plain-error root retains native instance matching. Preserving migration keeps that distinction.
@@ -259,7 +265,7 @@ function classify(job: { status: string; attempts: number }) {
 
 An `is` expression returns a `boolean` even when its subject runs an Effect with `try`, including inside a generic Effect callback. Passing the result to an assertion or another generic function does not require a recursive function contract.
 
-In `while` and `do…while`, lexical `is` bindings belong to a loop head and get fresh cells for each condition. A true condition and its following body share those cells. A skipped binding stays in TDZ, even when an earlier iteration initialized it, and the initial `do` body has uninitialized head cells; a closure captured there stays in TDZ later. A direct read in that initial body is `TS2448`; a closure read while its cell is uninitialized throws `ReferenceError`. Outer names remain unchanged outside the loop.
+In `while` and `do…while`, lexical `is` bindings belong to a loop head and get fresh cells for each condition. A true condition and its following body share those cells. A skipped binding stays in TDZ, even when an earlier iteration initialized it, and the initial `do` body has uninitialized head cells; a closure captured there stays in TDZ later. A direct read in that initial body is `TS2448`; a closure read while its cell is uninitialized throws `ReferenceError`. Outer names remain unchanged outside the loop. This holds wherever the condition writes the `is`, for example `while (done || (next() is let v))`, under `!`, in a conditional or in a call argument.
 
 `value is pattern` is `true` when the pattern matches. It binds as tightly as `instanceof`:
 
@@ -296,17 +302,21 @@ The compiler reports `EK0705` for an `is` binding that would need formal-paramet
 
 ## Exhaustiveness
 
+A broad primitive type stays open when intersected with a brand: `string & { readonly _tag: "Text" }` still describes primitive values. Its brand does not make it a finite tagged object domain. Object and boxed-object intersections keep the ordinary tagged-member check.
+
 A complete match keeps its coverage and extracted binding types in unreachable code, such as code after an unconditional `return`. This does not make that code execute.
 
 A match after an unconditional `return` or `throw` still checks finite coverage and the types of its extracted bindings. An exhaustive unreachable match compiles; a missing case still reports `EK4701`. The unreachable subject and arms do not run. Source references keep TypeScript’s ordinary unreachable-code narrowing rules.
 
 `match` is exhaustive for the specified finite cases. Without a `default` arm, `EK4701` checks a match when every normalized subject member is a supported finite case. These include literals, `boolean`, `null`, `undefined`, enums, data variants, `error` and `schema error` instances, `Option`, `Exit` and `Result` cases, retained Effect errors, and tagged members.
 
-An object, interface or class instance is tagged when its `_tag` has a literal type or a union of literal types. Only `_tag` counts as a discriminant. Each tag literal is a case. An optional `_tag` also has an `undefined` case. Members sharing a literal `_tag` are covered by that tag pattern even where TypeScript does not narrow the whole union. Coverage counts each member and each literal in its tag type separately. A pattern operand with a union type is one runtime value; it does not cover every value of that union. A pattern that also tests a payload key covers only members where that key is required; an optional key or an absent optional tag can still fail the pattern. An error-class pattern also covers plain objects with the same tag; a member with several tag cases still needs all its cases covered.
+An object, interface or class instance is tagged when its `_tag` has a literal type or a union of literal types. Only `_tag` counts as a discriminant. Each tag literal is a case. An optional `_tag` also has an `undefined` case. Members sharing a literal `_tag` are covered by that tag pattern even where TypeScript does not narrow the whole union. Coverage counts each member and each literal in its tag type separately. A primitive literal member stays uncovered by an object pattern even when its wrapper interface, such as `String`, declares `_tag`; the pattern rejects primitive values before reading any property. A pattern operand with a union type is one runtime value; it does not cover every value of that union. A pattern that also tests a payload key covers only members where that key is required; an optional key or an absent optional tag can still fail the pattern. An error-class pattern also covers plain objects with the same tag; a member with several tag cases still needs all its cases covered.
 
 Only unguarded arms cover cases. Literal and enum-member patterns cover their cases. A bare `error` pattern or its one-binding extractor covers that error case. The fixed patterns above cover their cases with the required argument count and bare `let` or `const` arguments, or with bare `Option.None`. A retained error's bare or one-binding extractor also covers its case.
 
 An object pattern such as `{ _tag: "Sent", let tracking }` covers its tag case only for members that declare every other tested property as required. Each other property test must be a bare key or a `let` or `const` binding. Members sharing a tag are checked separately. Only a bare binding covers the `undefined` case of an optional `_tag`.
+
+Computed property names participate in that coverage when TypeScript proves one string, number or unique-symbol key. This includes `["_tag"]` and a key whose type is exactly `"_tag"`, in generic functions too. A union of possible key names provides no such proof; optional properties and guarded arms keep their existing rules.
 
 `or` covers the union of its alternatives. An irrefutable `let` or `const` capture on either side of `and`, such as `{ _tag: "Square" } and let square`, preserves the other pattern's coverage, including nested captures. A conjunction of only captures covers every value. An `and` with two refutable conjuncts, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing. Add `default` when cases remain. Runtime matching continues to use the pinned TC39 rules. The tests still narrow values inside arms and in `default`; that narrowing does not prove coverage. 
 
@@ -398,7 +408,7 @@ A regular expression is a pattern: `when /^\d+$/:` matches a string the expressi
 
 A global regex literal extractor binds each element as `RegExpExecArray`, with a required numeric `index`. A non-global literal or a named `RegExp` value binds `RegExpMatchArray`, whose `index` can be `undefined`. The compiler options `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes` preserve these binding types.
 
-A relational pattern compares the value on its left with an operand: `<`, `>`, `<=` and `>=` match only a string, a number or a bigint that compares as JavaScript does; `===`, `!==`, `==` and `!=` test as the operators do; `instanceof` and `in` test as the operators do, and `in` fails on a subject that is not a property key. The operand follows the pinned grammar: a literal, a template without substitutions, a member expression, or its permitted signed form. A regex can be a standalone pattern or occur inside a member access, such as `when < limits[/b/.source]:`; a raw `when < /b/:` is not a relational pattern.
+A relational pattern compares the value on its left with an operand: `<`, `>`, `<=` and `>=` match only a string, a number or a bigint that compares as JavaScript does; `===`, `!==`, `==` and `!=` test as the operators do; `instanceof` and `in` test as the operators do, and `in` fails on a subject that is not a property key. For `<`, `>`, `<=`, `>=` and `in`, a subject of any other type fails before the operand is evaluated, so a getter in `when <= limits.max:` runs only for a subject that can match. The operand follows the pinned grammar: a literal, a template without substitutions, a member expression, or its permitted signed form. A regex can be a standalone pattern or occur inside a member access, such as `when < limits[/b/.source]:`; a raw `when < /b/:` is not a relational pattern.
 
 ```vibe
 function size(n: unknown): string {
@@ -434,13 +444,6 @@ function load() {
 
 A thrown exception, including the no-match `TypeError`, rejects the Promise. A `return` belonging to the match, or a `break` or `continue` targeting a statement outside it, reports `EK0706`. Nested functions keep their own `return`; loops inside the match keep their own jumps. In effect code, run the Promise through a bridge such as `try Effect.promise(() => load())`.
 
-## Not yet supported
-
-
-- A computed key other than a name or a literal (`EK4704`).
-
-Support for the new forms arrives with the compiler's VIP implementation. VIP-7 accepts the full TC39 proposal, including regular-expression patterns, relational patterns, and `async match`.
-
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.
 
 `Date` patterns test `subject instanceof Date`, as other built-in constructor patterns do, so `Object.create(Date.prototype)` matches and a date from another realm may not. Replacing a date’s prototype can make it stop matching. Errors from prototype lookup propagate normally.
@@ -474,10 +477,12 @@ An `is` binding in an `if` head belongs to the block that holds the `if`, as a `
 
 The TypeScript mapper supports binding `is` tests in `for` heads, including parenthesized subjects and separate initializer and update expressions. Each condition evaluation reads its subject once, and projected source locations continue to refer to the written loop.
 
+Binding `is` tests also work inside a call argument and its literal containers, such as `consume(subject is let value)`. The bindings belong to the caller's lexical block, and the mapper preserves the subject's single evaluation and the written source locations.
+
 
 Pattern bindings follow TypeScript's project options. With `exactOptionalPropertyTypes`, `when { let x }` on `{ x?: number }` binds `number`; an explicit `number | undefined` payload stays a union. A successful pattern proves extraction presence, so the access options add no artificial `undefined` to its binding. Reads you write in an arm or guard keep the ordinary access checks.
 A class pattern names a class. A `data` declaration's name, a `schema` declaration's name or a `Context.Reference` is a value, not a class, so `when Delivery:`, `when Address:` or `when Limit:` reports `EK0702`: match a variant with `when { _tag: "Sent" }:`, and test a schema in a guard, `when let value and if (Schema.is(Address)(value)):`.
-An extractor pattern whose argument count can never match what its matcher extracts is the warning `EK0703`: an `error` declaration and Effect's retained errors extract the subject, so `when NotFound():` or `when NotFound(let a, let b):` never matches; `Option.None` extracts nothing, so `when Option.None(let v):` never matches. Write the bare pattern, the right number of bindings, or a rest pattern.
+An extractor pattern whose argument count can never match what its matcher extracts is the warning `EK0703`: an `error` declaration and Effect's retained errors extract the subject, so `when NotFound():` or `when NotFound(let a, let b):` never matches; `Option.None` extracts nothing, so `when Option.None(let v):` never matches. Write the bare pattern, the right number of bindings, or a rest pattern. The editor offers the bare pattern and, for a matcher that extracts one value, an extractor with a fresh binding. These quick fixes preserve comments and decline to remove a binding used by the arm or its guard. `vibelang --fix` leaves the choice to you because the repair changes which subjects match.
 
 Coverage restrictions do not change TypeScript narrowing while a pattern runs or inside its arm. Nested `or` alternatives keep their ordinary flow types even when an enclosing `and` or `not` contributes no exhaustiveness coverage.
 
@@ -498,5 +503,12 @@ Computed presence keys need no colon: `{ ["field"] }`, `{ [key] }` and `{ [symbo
 The built-in `String` matcher accepts a primitive string or an instance of
 `String`. Boxed values are extracted through `valueOf()`: for example,
 matching `new String("text")` extracts `"text"`.
+
+In the arm, the subject has the type that TypeScript gives it after
+`typeof s === "string" || s instanceof String`: `string | String` for an
+`unknown` subject, so `when String and { length: let n }:` reads a boxed
+string's `length`. `not String` removes both types. To use the value as a
+`string`, bind it: `when String(let text):`. `Number`, `Boolean`, `BigInt` and
+`Symbol` work the same way.
 
 A class's own `Symbol.customMatcher` value is read once. A non-callable value other than `undefined` raises the native `TypeError`. An own `undefined` value selects identity matching for a bare pattern and raises `TypeError` for an extractor. A class with no own matcher uses `instanceof`.

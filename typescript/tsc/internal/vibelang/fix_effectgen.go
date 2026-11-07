@@ -163,13 +163,14 @@ func noteEffectGenFix(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnosti
 
 // A generatorCall is an Effect.gen or Effect.fn call, as EK1002's fix reads it.
 type generatorCall struct {
-	generator  *ast.Node
-	isFn       bool        // Effect.fn or Effect.fnUntraced, not Effect.gen
-	span       []*ast.Node // Effect.fn("n", options)'s arguments
-	stages     []*ast.Node // the stages after an Effect.fn's generator
-	module     string      // the text that names Effect at the call
-	selfIsThis bool        // Effect.gen({ self: this }, …)
-	returns    string      // the Effect type an Effect.fn.Return<A, E, R> annotation names, or ""
+	generator   *ast.Node
+	isFn        bool        // Effect.fn or Effect.fnUntraced, not Effect.gen
+	span        []*ast.Node // Effect.fn("n", options)'s arguments
+	stages      []*ast.Node // the stages after an Effect.fn's generator
+	module      string      // the text that names Effect at the call
+	selfIsThis  bool        // Effect.gen({ self: this }, …)
+	returns     string      // the Effect type an Effect.fn.Return<A, E, R> annotation names, or ""
+	outerReturn string      // the original final named function contract when requirements remain generic
 }
 
 // readGeneratorCall reads call. It returns nil for a call of another API,
@@ -256,6 +257,18 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 			g.returns = c.TypeToStringEx(returned, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
 		}
 	}
+	// withSpan excludes ParentSpan from requirements. For an open generic
+	// requirement that changes the public contract of Effect.fn, which retains
+	// its original R. Keep the checked final result outside every stage; an
+	// inner body annotation would accidentally apply a stage's output to its input.
+	if g.isFn && g.span != nil {
+		if signature := singleCallSignature(c, c.GetTypeAtLocation(call)); signature != nil {
+			returned := c.GetReturnTypeOfSignature(signature)
+			if isEffectType(c, returned) && effectFnOpenRequirement(c, channelType(c, returned, "_R"), map[*checker.Type]bool{}) {
+				g.outerReturn = c.TypeToStringEx(returned, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+			}
+		}
+	}
 	// Effect.fn can also receive its result contract from the declaration
 	// that holds it. Keep that contextual return type beside the body,
 	// including when withSpan introduces a generic call around the program.
@@ -276,6 +289,33 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		}
 	}
 	return g, ""
+}
+
+// effectFnOpenRequirement finds a generic requirement even inside a union,
+// intersection, indexed access, conditional type or generic service wrapper.
+func effectFnOpenRequirement(c *checker.Checker, t *checker.Type, seen map[*checker.Type]bool) bool {
+	if t == nil || seen[t] {
+		return false
+	}
+	seen[t] = true
+	if t.Flags()&(checker.TypeFlagsTypeParameter|checker.TypeFlagsIndexedAccess|checker.TypeFlagsConditional) != 0 {
+		return true
+	}
+	if t.Flags()&(checker.TypeFlagsUnion|checker.TypeFlagsIntersection) != 0 {
+		for _, member := range t.Types() {
+			if effectFnOpenRequirement(c, member, seen) {
+				return true
+			}
+		}
+	}
+	if t.Flags()&checker.TypeFlagsObject != 0 && t.ObjectFlags()&checker.ObjectFlagsReference != 0 {
+		for _, argument := range c.GetTypeArguments(t) {
+			if effectFnOpenRequirement(c, argument, seen) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // fnReturnEffectType returns the Effect type that t, a written
@@ -360,9 +400,8 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		}
 		edits = append(edits, edit...)
 	}
-	for _, thrower := range scan.throwing {
-		edits = append(edits, keepThrowDefect(file, thrower)...)
-	}
+	defects := keepThrowDefects(c, a, file, generator, scan.throwing)
+	edits = append(edits, defects.edits...)
 	// A .pipe in the body changes with it: try f().pipe(g) is EK4502.
 	// Plan children before parents. A captured pipe replaces its whole call,
 	// including nested pipelines in the receiver or a stage callback.
@@ -396,7 +435,7 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 			if os.Getenv("VIBELANG_FIX_EDIT_TRACE") == "1" && len(nested) != 0 {
 				fmt.Fprintf(os.Stderr, "[fix-edit-plan] compose file=%s call=%d:%d nested=%d\n", file.FileName(), start, end, len(nested))
 			}
-			rewrite = capturedEffectPipeWithEdits(file, pipe, nested)
+			rewrite = capturedEffectPipeChecked(c, file, pipe, nested)
 			if !rewrite.fixable() {
 				return refuse("nested pipeline changes cannot retain their original source positions")
 			}
@@ -468,7 +507,16 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		return refuse("a comment stands between " + nodeText(file, apiName(call)) + " and its generator's body")
 	}
 	edits = joinEditsAt(edits)
-	edits = append(edits, dedentEdits(file, block, len(lineIndent(text, blockStart))-len(lineIndent(text, opening)), edits)...)
+	width := len(lineIndent(text, blockStart)) - len(lineIndent(text, opening))
+	dedent := dedentEdits(file, block, width, edits)
+	if dedent == nil {
+		width = 0
+	}
+	// A const goes before a wrapper that starts where its statement does, and
+	// a branch's closing brace after a wrapper that ends where it does.
+	opens, closes := defects.hoistEdits(file, width)
+	edits = joinEditsAt(slices.Concat(opens, edits, closes))
+	edits = append(edits, dedent...)
 	edits = joinEditsAt(edits)
 	if !orderedEditRangesValid(edits, blockStart, blockEnd) {
 		if os.Getenv("VIBELANG_FIX_EDIT_TRACE") == "1" {
@@ -518,10 +566,19 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		program = "(effect (): " + g.returns + " => " + body + ")()"
 	}
 	// Effect.gen(…).pipe(stages) changes with its .pipe, whose stages read the
-	// block's type: effect { … } |> stages.
+	// block's type: effect { … } |> stages. A captured pipe replaces its whole
+	// call, this receiver included, so the block is written inside the capture.
 	if pipe := pipeOfReceiver(outer); pipe != nil {
 		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() {
-			return &formRewrite{edits: joinEditsAt(append(rewrite.edits, sourceEdit{start, end, program})), description: "an effect block"}
+			block := sourceEdit{start, end, program}
+			if len(rewrite.edits) == 1 && rewrite.edits[0].start == nodeStart(file, pipe) && rewrite.edits[0].end == pipe.End() {
+				captured := capturedEffectPipeChecked(c, file, pipe, []sourceEdit{block})
+				if !captured.fixable() {
+					return refuse("nested pipeline changes cannot retain their original source positions")
+				}
+				return &formRewrite{edits: captured.edits, description: "an effect block"}
+			}
+			return &formRewrite{edits: joinEditsAt(append(rewrite.edits, block)), description: "an effect block"}
 		}
 	}
 	return &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, program)}}, description: "an effect block"}
@@ -764,7 +821,9 @@ func effectFnHead(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 		body = "{ " + strings.Join(bindings, " ") + body[1:]
 	}
 	signature := applyEdits(text[:close], head)[open:]
-	if g.returns != "" && len(g.stages) == 0 {
+	if g.outerReturn != "" {
+		signature += ": " + g.outerReturn
+	} else if g.returns != "" && len(g.stages) == 0 {
 		// Stages may change the success, error or requirement type. Their
 		// output is inferred; the written contract stays on the inner program.
 		signature += ": " + g.returns // a span keeps the Effect's type
@@ -1289,6 +1348,18 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 				s.pipes = append(s.pipes, node)
 			}
 			markPipeCalls(node, operands)
+		case ast.IsNewExpression(node) && effectCode == 0 && own && throwing == nil && needsGeneratorDefectBridge(c, node):
+			if foreignInvocationHasDirectEval(node) {
+				s.why = "a throwing constructor has direct eval in its operands"
+				return true
+			}
+			if holdsYield(node) {
+				s.why = "a throwing constructor has a yield* in its operands"
+				return true
+			}
+			s.throwing = append(s.throwing, node)
+			throwing = node
+			defer func() { throwing = nil }()
 		case isInvocation(node) && !operands[node] && effectCode == 0:
 			if why := effectGenCallMeaning(c, a, file, node, own, callback); why != "" {
 				s.why = why
@@ -1303,6 +1374,20 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 				throwing = node
 				defer func() { throwing = nil }()
 			}
+		case isInvocation(node) && operands[node] && effectCode == 0 && own && throwing == nil && !isPipeCall(node) && needsGeneratorDefectBridge(c, node):
+			// A pipe's stage or receiver that a call builds, as
+			// effect.pipe(instances.provide(session)), runs where the pipe
+			// stands, and the generator meets its exception as a defect. What
+			// the call means follows from the pipe, so the case above passes
+			// over it, but a foreign call there needs the bridge all the same
+			// (opencode's server handlers: EK0403 in the rewrite).
+			if holdsYield(node) {
+				s.why = shortText(expressionText(file, node), "a call") + " can throw, and a yield* stands in its arguments, where the function that keeps its exception a defect could not run it"
+				return true
+			}
+			s.throwing = append(s.throwing, node)
+			throwing = node
+			defer func() { throwing = nil }()
 		}
 		return node.ForEachChild(func(child *ast.Node) bool { return visit(child, own, lexical, callback) })
 	}

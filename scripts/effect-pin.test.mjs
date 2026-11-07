@@ -1,4 +1,5 @@
 import { test } from "node:test"
+import { createRequire } from "node:module"
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -90,4 +91,34 @@ test("installed dependencies have one pin across production and development sect
   // Libraries still declare a peer dependency and install it for development.
   // Only two competing declarations of the same installed dependency warn in Bun.
   assert.deepEqual(overlaps, [], "declare each installed dependency in dependencies or devDependencies once")
+})
+
+
+// VIP-32: VibeLang pins exactly one Effect version, including nested package peers.
+test("fast-check: nested fixture peers keep distinct package identities on the exact Effect pin", () => {
+  const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
+  fc.assert(fc.property(
+    fc.integer({ min: 1, max: 5 }),
+    fc.constantFrom("*", "^4.1.1", "~4.1.1", ">=4.1.0", "4.0.6", "4.1.1"),
+    (depth, peer) => {
+      const vendor = "cases/duplicate.fail/" + "nested/".repeat(depth) + "vendor/"
+      const files = { [RUNTIME]: JSON.stringify({ peerDependencies: { effect: "4.1.1" } }) }
+      for (const [side, version] of [["one", "1.0.0"], ["two", "2.0.0"]]) {
+        files[vendor + side + "/package.json"] = JSON.stringify({
+          name: "@effect/fixture", version, peerDependencies: { effect: peer }
+        })
+      }
+      const root = fixture(files)
+      try {
+        assert.equal(drift(root).length, peer === "4.1.1" ? 0 : 2)
+        write(root)
+        assert.deepEqual(drift(root), [])
+        for (const side of ["one", "two"]) {
+          const file = vendor + side + "/package.json"
+          const after = JSON.parse(readFileSync(path.join(root, file), "utf8"))
+          assert.deepEqual(after, { ...JSON.parse(files[file]), peerDependencies: { effect: "4.1.1" } })
+        }
+      } finally { rmSync(root, { recursive: true, force: true }) }
+    }
+  ), { seed: 32032, numRuns: 100 })
 })

@@ -1,0 +1,46 @@
+{
+  "key": "platform:alchemy-import-meta-selector:EK4402",
+  "source": "alchemy partition conversion: import.meta members the platform companion refused (filename, dirname, env, computed and parent-argument resolve)",
+  "cases": [
+    {
+      "key": "alchemy:lambda-main-filename",
+      "file": "src/JobFunction.ts",
+      "text": "import * as AWS from \"@alchemy.run/aws\";\nimport * as Effect from \"effect/Effect\";\n\nexport default class JobFunction extends AWS.Lambda.Function<JobFunction>()(\n  \"JobFunction\",\n  {\n    main: import.meta.filename,\n    functionUrl: true,\n  },\n  Effect.succeed({ fetch: Effect.succeed(\"ok\") }),\n) {}\n"
+    },
+    {
+      "key": "alchemy:worker-main-filename-property",
+      "file": "src/backend/api.ts",
+      "text": "import * as Cloudflare from \"@alchemy.run/cloudflare\";\n\nexport default class Backend extends Cloudflare.Worker<Backend>()(\n  \"Backend\",\n  {\n    main: import.meta.filename,\n    workersDev: false, // no workers.dev URL; we use the service binding instead\n  },\n) {}\n"
+    },
+    {
+      "key": "alchemy:vite-client-env",
+      "file": "src/client.ts",
+      "text": "import { HttpApiClient } from \"effect/unstable/httpapi\";\nimport { ShortyApi } from \"./ShortyApi.vibe\";\n\nexport const API_URL = import.meta.env.VITE_API_URL as string;\n\n// A typed client derived from the same `ShortyApi` value the Worker serves.\nconst makeClient = HttpApiClient.make(ShortyApi, { baseUrl: API_URL });\nexport const client = makeClient;\n"
+    },
+    {
+      "key": "alchemy:vite-main-env-default",
+      "file": "src/main.tsx",
+      "text": "import ReactDOM from \"react-dom/client\";\n\nconst API_URL = import.meta.env.VITE_API_URL ?? \"http://localhost:8787\";\n\nReactDOM.createRoot(document.getElementById(\"root\")!).render(<p>{API_URL}</p>);\n"
+    },
+    {
+      "key": "alchemy:ecs-task-context-dirname",
+      "file": "alchemy.run.ts",
+      "text": "import * as AWS from \"@alchemy.run/aws\";\nimport * as Effect from \"effect/Effect\";\n\nexport const program = Effect.gen(function* () {\n  const reportTask = yield* AWS.ECS.Task(\"ReportTask\", {\n    context: `${import.meta.dirname}/src/report`,\n    cpu: 256,\n  });\n  return reportTask;\n});\n"
+    },
+    {
+      "key": "alchemy:script-root-dirname",
+      "file": "scripts/test-example-cli.ts",
+      "text": "import * as Effect from \"effect/Effect\";\nimport * as Path from \"effect/Path\";\n\nexport const root = Effect.gen(function* () {\n  const path = yield* Path.Path;\n  const repositoryRoot = path.resolve(import.meta.dirname, \"..\");\n  return repositoryRoot;\n});\n"
+    },
+    {
+      "key": "alchemy:server-local-parent-resolve",
+      "file": "src/Website/Server.ts",
+      "text": "import { moduleExtension } from \"../Util/Node.ts\";\n\nexport const ServerProviderLocal = () =>\n  LocalProvider.make(\n    Server,\n    import.meta.resolve(`./ServerLocal${moduleExtension(import.meta.url)}`, import.meta.url),\n  );\n"
+    },
+    {
+      "key": "alchemy:local-function-computed-resolve",
+      "file": "src/LocalFunctionProvider.ts",
+      "text": "import { moduleExtension } from \"./Util.ts\";\n\nexport const LocalFunctionProvider = () =>\n  LocalProvider.make(Function, import.meta.resolve(`./LocalFunction${moduleExtension(import.meta.url)}`));\n"
+    }
+  ]
+}

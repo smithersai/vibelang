@@ -1,0 +1,5 @@
+// expect: EK4857
+// An unmarked arrow whose expression body returns an Effect is plain (VIP-1):
+// each channel written infer is the returned Effect's channel, so EK4857 is
+// its only error and the quick fix writes Effect.Effect<number, never, never>.
+export const every = (): Effect.Effect<infer A, infer E, infer R> => Effect.succeed(1)

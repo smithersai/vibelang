@@ -1,0 +1,20 @@
+main.vibe(3,23)
+eval is not allowed in a .vibe file
+main.vibe(4,33)
+Function reaches the Function constructor
+main.vibe(5,34)
+arguments is not allowed in a .vibe file
+main.vibe(6,39)
+var is not allowed in a .vibe file
+main.vibe(8,42)
+with is not allowed in a .vibe file
+main.vibe(9,46)
+Use globalThis only as the object of a statically named member access
+main.vibe(10,55)
+constructor of a function value reaches the Function constructor
+main.vibe(11,40)
+A data: module supplies code in a string
+main.vibe(12,40)
+A blob: module supplies code in a string
+main.vibe(13,66)
+A pattern binds a name with let or const

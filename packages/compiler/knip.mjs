@@ -65,7 +65,12 @@ export function compile(text, path = "file.vibe") {
     if (node.type === "ExportAllDeclaration" || (node.type === "ExportNamedDeclaration" && !node.declaration)) lines.push(doc + source(node))
     // TypeScript gives a statement's JSDoc to its first declaration only.
     else if (node.type === "ExportNamedDeclaration") lines.push(...stubs(node.declaration, typeReads(node.declaration)).map((stub, i) => (i ? "" : doc) + stub))
-    else if (node.type === "ExportDefaultDeclaration") lines.push(doc + "export default 0")
+    else if (node.type === "ExportDefaultDeclaration") {
+      let value = node.declaration
+      while (value?.type === "ParenthesizedExpression") value = value.expression
+      // Keep aliases so Knip can associate default and named exports.
+      lines.push(doc + (value?.type === "Identifier" ? source(node) : "export default 0"))
+    }
   })
   const reads = new Set()
   // Knip reads this output as TypeScript, so preserve tag uses as value
@@ -78,7 +83,18 @@ export function compile(text, path = "file.vibe") {
       const root = name?.split(".")[0]
       if (name && imported.has(root) && (name.includes(".") || !/^[a-z]/.test(name))) reads.add(name)
     } else if (node.type === "ImportExpression" && node.source?.type === "Literal" && typeof node.source.value === "string") reads.add(`import(${JSON.stringify(node.source.value)})`)
-    else if (node.type === "MemberExpression" && !node.computed && node.object?.type === "Identifier" && namespaces.has(node.object.name) && node.property?.type === "Identifier") reads.add(`${node.object.name}.${node.property.name}`)
+    else if (node.type === "MemberExpression" && node.object?.type === "Identifier" && namespaces.has(node.object.name)) {
+      if (!node.computed && node.property?.type === "Identifier") reads.add(`${node.object.name}.${node.property.name}`)
+      else if (node.computed) {
+        // Keep static bracket keys in the form Knip reads in TypeScript.
+        // An unknown key can read any export; a nonliteral key keeps Knip's
+        // conservative namespace read without copying VibeLang syntax.
+        const property = node.property
+        if (property?.type === "Literal" && typeof property.value === "string") reads.add(`${node.object.name}[${JSON.stringify(property.value)}]`)
+        else if (property?.type === "TemplateLiteral" && property.expressions.length === 0) reads.add(source(node))
+        else reads.add(`${node.object.name}[void 0]`)
+      }
+    }
     else if ((node.type === "TSQualifiedName") && node.left?.type === "Identifier" && namespaces.has(node.left.name) && node.right?.type === "Identifier") reads.add(`${node.left.name}.${node.right.name}`)
   })
   for (const read of reads) lines.push(`${read}`)

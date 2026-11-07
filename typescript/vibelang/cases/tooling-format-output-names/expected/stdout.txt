@@ -1,0 +1,1 @@
+x.vibe emits x.js and x.d.ts; x.vibex emits x.jsx only under preserve, as the native twin

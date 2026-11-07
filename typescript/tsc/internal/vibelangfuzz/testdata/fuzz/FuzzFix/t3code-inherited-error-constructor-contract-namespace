@@ -1,0 +1,2 @@
+go test fuzz v1
+string("native-ts:\n-- main.vibe --\nimport * as Effect from \"effect/Effect\";\nexport class LegacyError extends Error { readonly _tag = \"LegacyError\"; override readonly name = \"LegacyError\"; }\nexport const main = () => Effect.sync(() => { const error = new LegacyError(\"message\", { cause: 1 }); const empty = new LegacyError(); return { message: error.message, cause: error.cause, name: error.name, tag: error._tag, inherited: error instanceof Error, empty: empty.message }; });\n")

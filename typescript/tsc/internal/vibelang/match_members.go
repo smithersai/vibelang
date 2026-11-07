@@ -16,7 +16,12 @@ func remainingPatternMembers(c *checker.Checker, call *ast.Node, left *checker.T
 	}
 	var remaining []*checker.Type
 	for _, member := range members(left) {
-		tag := c.GetTypeOfPropertyOfType(member, "_tag")
+		// Primitive wrapper declarations can expose _tag, but object patterns
+		// reject primitive values before reading any property.
+		var tag *checker.Type
+		if isFiniteMatchObjectType(member) {
+			tag = c.GetTypeOfPropertyOfType(member, "_tag")
+		}
 		covered := tag != nil && isLiteralTagType(tag)
 		if tag == nil && member.Flags()&checker.TypeFlagsUnit != 0 {
 			for _, arm := range arms {
@@ -68,23 +73,42 @@ func memberArmCovers(c *checker.Checker, arm parser.MatchMemberArm, member, tag 
 		}
 		return false
 	}
-	if len(arm.Tags) == 0 {
+	if tag == nil || len(arm.Properties) == 0 {
 		return false
 	}
-	for _, name := range arm.Required {
-		property := c.GetPropertyOfType(member, name)
-		if property == nil || property.Flags()&ast.SymbolFlagsOptional != 0 {
+	hasTag := false
+	for _, property := range arm.Properties {
+		name := ""
+		if property.Computed {
+			key := c.GetTypeAtLocation(property.Key)
+			if key == nil || key == c.GetErrorType() {
+				return false
+			}
+			if constraint := c.GetBaseConstraintOfType(key); constraint != nil {
+				key = constraint
+			}
+			if !checker.IsTypeUsableAsPropertyName(key) {
+				return false
+			}
+			name = checker.GetPropertyNameFromType(key)
+		} else {
+			name = property.Key.Text()
+		}
+		field := c.GetPropertyOfType(member, name)
+		if field == nil || field.Flags()&ast.SymbolFlagsOptional != 0 {
 			return false
 		}
-	}
-	for _, literal := range arm.Tags {
-		if parser.IsSignedNumberZero(literal) {
+		if property.Value == nil {
+			continue
+		}
+		if name != "_tag" || parser.IsSignedNumberZero(property.Value) {
 			return false
 		}
-		value := c.GetTypeAtLocation(literal)
+		value := c.GetTypeAtLocation(property.Value)
 		if value == nil || value.Flags()&checker.TypeFlagsUnion != 0 || !isLiteralTagType(value) || !c.IsTypeAssignableTo(tag, value) {
 			return false
 		}
+		hasTag = true
 	}
-	return true
+	return hasTag
 }

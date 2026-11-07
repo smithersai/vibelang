@@ -1,0 +1,17 @@
+// VIP-28: generic data declarations of every admitted arity, compared with
+// their Data.TaggedEnum.WithGenerics twins in effect/main.ts.
+// rule-evidence: docs/design/vips/0028-generic-data.md#decision | A `data` declaration (VIP-16) may have up to 4 type parameters, which is the limit of Effect's own `WithGenerics`.
+export data One<A>{Got{a:A};None}
+export data Two<A,B>{Left{left:A};Right{right:B}}
+export data Three<A,B,C>{Triple{a:A;b:B;c:C};Nothing}
+export data Four<A,B,C,D>{Quad{a:A;b:B;c:C;d:D};Empty}
+// rule-evidence: docs/design/vips/0028-generic-data.md#decision | **Amended 2026-10-29: a hygienic helper.** The generated generic-data helper (`XDefinition` in the example) gets a fresh name; it is not a reserved user-visible name.
+type FourDefinition=string
+export effect function main(){
+ const reserved:FourDefinition="free"
+ const one:One<string>=One.Got({a:"one"})
+ const two:Two<number,string>=Two.Right({right:"two"})
+ const three:Three<string,number,boolean>=Three.Triple({a:"x",b:3,c:true})
+ const four:Four<string,number,boolean,bigint>=Four.Quad({a:"y",b:4,c:false,d:4n})
+ return [one._tag,one.a,two._tag,two.right,three.a,three.b,three.c,four.a,four.b,four.c,String(four.d),One.None()._tag,Three.Nothing()._tag,Four.Empty()._tag,reserved]
+}

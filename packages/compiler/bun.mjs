@@ -1,5 +1,5 @@
 import { loaderScope } from "./loader-scope.mjs"
-import Module, { createRequire } from "node:module"
+import Module, { createRequire, SourceMap } from "node:module"
 import { exportsDefault } from "./bun-export-surface.mjs"
 import { inlineSourceMap } from "./inline-source-map.mjs"
 import { extensionlessImport, pathSpecifier } from "./relative-imports.mjs"
@@ -20,7 +20,7 @@ import { diagnosticsForFile } from "./diagnostics.mjs"
 // on disk; its JavaScript comes from the same compile.
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { dirname, join, resolve, isAbsolute } from "node:path"
-import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
+import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, projectImports, workspaceProject } from "./project.mjs"
 
 if (typeof Bun === "undefined") {
   throw new Error("vibelang/bun is a Bun preload; under Node, use node --import vibelang/register")
@@ -98,6 +98,7 @@ try { createRequire(import.meta.url).resolve("./bun.mjs") } catch { /* The probe
 Module._resolveFilename = parentless ? resolveFilename : resolveVibeFilename
 
 const results = new Map()
+const sourceMaps = new Map()
 
 // Modules their first project left out, each with the project findProject named.
 const owners = new Map()
@@ -137,6 +138,7 @@ function emitted(file) {
   if (output === undefined) {
     throw new Error(`vibelang/bun: ${project} does not include ${file}; set VIBELANG_PROJECT to a tsconfig that does`)
   }
+  sourceMaps.set(file, output.map)
   return output
 }
 
@@ -176,14 +178,37 @@ const pathOf = (importer) => importer?.startsWith(`${moduleNamespace}:`) ? impor
 // .vibe module through the CommonJS resolve hook above instead.
 const esImports = (code, loader) => new Bun.Transpiler({ loader }).scan(code).imports
 const relativeJs = /^\.\.?\/.*\.jsx?$/
+// The compiler writes relative output specifiers as URL paths. Bun's source
+// resolver takes filesystem names instead, so decode compiled imports once.
+function decodedImport(specifier) {
+  try { return decodeURIComponent(specifier) } catch { return specifier }
+}
+const importGraphs = new Map()
+function sourceImportPath(importer, specifier) {
+  const source = moduleDeclarationSource(importer) ?? importer
+  if (!/\.vibex?$/.test(source) || !/%[0-9a-f]{2}/i.test(specifier)) return specifier
+  const project = projectOf(source)
+  let imports = importGraphs.get(project)
+  if (imports === undefined) {
+    imports = projectImports({ project, compiler: findCompiler(dirname(project)) }).imports
+    importGraphs.set(project, imports)
+  }
+  // A written .js specifier is already a native filesystem name. Only a
+  // source-extension rewrite introduced URL escaping; preserve authored
+  // literal-percent names even when the decoded sibling also exists.
+  const original = realpathSync(source)
+  if (imports.some((entry) => entry.specifier === specifier &&
+      (entry.importer === source || realpathSync(entry.importer) === original))) return specifier
+  return decodedImport(specifier)
+}
 const escapeRegExp = (value) => value.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&")
 // What a module declaration's output imports, from its .vibe file's directory.
 // A relative .js name is the emitted name of a .vibe or .ts file beside it.
 // Bun.resolveSync would pass it to the onResolve hook below with the directory
 // as its importer, one level too high, so it is looked up here.
-function fromModuleOutput(directory, specifier) {
+function fromModuleOutput(directory, specifier, importer, fromSource = false) {
   if (relativeJs.test(specifier)) {
-    const target = resolve(directory, specifier)
+    const target = resolve(directory, fromSource ? specifier : sourceImportPath(importer, specifier))
     if (existsSync(target)) return target
     const stem = target.replace(/\.jsx?$/, "")
     return [".ts", ".tsx", ".vibe", ".vibex"].map((extension) => stem + extension).find(existsSync)
@@ -200,26 +225,66 @@ const registeredImport = (directory, specifier) =>
   globalThis[Symbol.for("vibelang.bun.import-resolvers")]?.get(specifier)?.(directory)
 
 function resolveImports(path, contents, loader, inNamespace = false) {
+  const map = sourceMaps.get(path)
   const replacements = new Map()
-  for (const entry of esImports(contents, loader)) {
-    let source = registeredImport(dirname(path), entry.path) ?? vibeImport(dirname(path), entry.path)
-    // Bun resolves an import from a plugin namespace's path as a directory of
-    // its own, /vibelang-module:/x, so it finds no extensionless file, package
-    // or imports map, and a dynamic import reaches no onResolve hook. A module
-    // declaration's output resolves from its .vibe file's directory.
-    if (source === undefined && inNamespace) source = fromModuleOutput(dirname(path), entry.path)
+  const entries = esImports(contents, loader)
+  function resolveSpecifier(specifier) {
+    let source = registeredImport(dirname(path), specifier) ?? vibeImport(dirname(path), specifier)
+    if (source === undefined && inNamespace) source = fromModuleOutput(dirname(path), specifier, path)
+    return source
+  }
+  const encoded = (specifier) => map !== undefined && relativeJs.test(specifier) && /%[0-9a-f]{2}/i.test(specifier)
+  let sourceMap
+  function originalSpecifier(specifier, offset) {
+    if (!encoded(specifier)) return undefined
+    sourceMap ??= new SourceMap(map)
+    const before = contents.slice(0, offset)
+    const entry = sourceMap.findEntry(before.split("\n").length - 1, offset - before.lastIndexOf("\n") - 1)
+    const text = map.sourcesContent?.[map.sources.indexOf(entry.originalSource)]
+    if (text === undefined || entry.originalLine === undefined) return undefined
+    const from = text.split(/\r?\n/).slice(entry.originalLine).join("\n").slice(entry.originalColumn)
+    const literal = from.match(/^(?:"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|`(?:\\[\s\S]|[^`\\])*`)/)
+    if (literal === null) return undefined
+    // Two source imports can share emitted text while naming different files.
+    // Their individual map positions retain the original literal and target.
+    try { return esImports("import(" + literal[0] + ")", "js")[0]?.path } catch { return undefined }
+  }
+  for (const entry of entries) {
+    const source = encoded(entry.path) ? entry.path : resolveSpecifier(entry.path)
     if (source !== undefined) replacements.set(entry.path, source)
   }
   if (replacements.size === 0) return { contents, loader }
-  const quoted = new RegExp("([\"'`])(" + [...replacements.keys()].map(escapeRegExp).join("|") + ")\\1", "g")
-  // A mark keeps the copy's quote and needs no escape, so the source still parses.
-  const mark = (specifier, copy) => specifier + "#vibelang-copy-" + copy
+  const spellings = new Set()
+  for (const specifier of replacements.keys()) {
+    const escaped = JSON.stringify(specifier).slice(1, -1)
+    const unquoted = escaped.replace(/\\"/g, '"')
+    for (const spelling of [specifier, escaped, unquoted.replace(/'/g, "\\'"),
+      unquoted.replace(/`/g, "\\`").replace(/\$\{/g, "\\${")]) spellings.add(spelling)
+  }
+  const quoted = new RegExp("([\"'`])(" + [...spellings].map(escapeRegExp).join("|") + ")\\1", "g")
+  // Mark each literal copy before parsing, preserving its original escapes.
+  // A fresh suffix also keeps authored imports from looking like a mark.
+  let marker = "#vibelang-copy-"
+  while (contents.includes(marker) || entries.some((entry) => entry.path.includes(marker))) marker += "_"
   let copies = 0
-  const marked = contents.replace(quoted, (_, quote, specifier) => quote + mark(specifier, copies++) + quote)
-  const imports = new Set(esImports(marked, loader).map((entry) => entry.path))
+  const marked = contents.replace(quoted, (_, quote, spelling) => quote + spelling + marker + copies++ + quote)
+  const imports = new Map()
+  for (const entry of esImports(marked, loader)) {
+    const split = entry.path.lastIndexOf(marker)
+    if (split < 0) continue
+    const copy = Number(entry.path.slice(split + marker.length))
+    if (Number.isSafeInteger(copy) && copy >= 0 && copy < copies) imports.set(copy, entry.path.slice(0, split))
+  }
   let copy = 0
-  const rewritten = contents.replace(quoted, (match, quote, specifier) =>
-    imports.has(mark(specifier, copy++)) ? JSON.stringify(replacements.get(specifier)) : match)
+  const rewritten = contents.replace(quoted, (match, quote, spelling, offset) => {
+    const specifier = imports.get(copy++)
+    if (!replacements.has(specifier)) return match
+    const original = originalSpecifier(specifier, offset)
+    const target = original === undefined ? resolveSpecifier(specifier) ?? replacements.get(specifier)
+      : fromModuleOutput(dirname(path), original, path, true) ?? resolveSpecifier(original) ?? original
+    return JSON.stringify(target).replace(/[^\x00-\x7f]/g,
+      (character) => "\\u" + character.charCodeAt(0).toString(16).padStart(4, "0"))
+  })
   return { contents: rewritten, loader }
 }
 
@@ -241,7 +306,27 @@ function needsTranspiler(code) {
   }
 }
 
-function withSourceMap({ contents, loader }, map) {
+function withSourceMap({ contents, loader }, map, source) {
+  // A runtime onLoad result has no native file descriptor for Bun to watch.
+  // A distinct file-attribute import registers the original source without
+  // parsing it or sharing its compiled module identity. Bun retains the file
+  // dependency for a bound import; a side-effect-only asset import is elided.
+  const names = contents.replace(/\\u(?:\{([0-9a-f]+)\}|([0-9a-f]{4}))/gi, (text, braced, fixed) => {
+    const character = parseInt(braced ?? fixed, 16)
+    return character < 128 ? String.fromCharCode(character) : text
+  })
+  let binding = "__vibelangSourceWatch"
+  while (names.includes(binding)) binding += "_"
+  const dependency = JSON.stringify(source + "?vibelang-watch")
+    .replace(/[^\x00-\x7f]/g, (character) => "\\u" + character.charCodeAt(0).toString(16).padStart(4, "0"))
+  const line = contents.split("\n").length
+  contents += `\nimport ${binding} from ${dependency} with { type: "file" };\n`
+  if (map !== undefined) {
+    const mappings = map.mappings.split(";")
+    while (mappings.length <= line) mappings.push("")
+    mappings[line] = "A"
+    map = { ...map, mappings: mappings.join(";") }
+  }
   if (map === undefined || needsTranspiler(contents)) return { contents, loader }
   // The mark is a line above the code the map describes.
   return { contents: `// @bun\n${contents}\n${inlineSourceMap({ ...map, mappings: ";" + map.mappings })}\n`, loader: "js" }
@@ -343,7 +428,7 @@ Bun.plugin({
       const fromModule = importer?.startsWith(`${moduleNamespace}:`)
       importer = pathOf(importer)
       if (importer === undefined || /[\\/]node_modules[\\/]/.test(importer)) return undefined
-      const target = resolve(dirname(importer), path)
+      const target = resolve(dirname(importer), sourceImportPath(importer, path))
       if (existsSync(target)) return fromModule ? { path: target } : undefined
       if (isModuleOutput(target)) return { path: target, namespace: moduleNamespace }
       // A TypeScript module's own .ts or .tsx file still wins, as without vibelang.
@@ -362,7 +447,12 @@ Bun.plugin({
       claim(source)
       return { contents: reexportOf(source, exportsDefault(source, emitted, loaderOf)), loader: "js" }
     })
-    build.onLoad({ filter: /\.vibex?$/ }, ({ path }) => { const { code, map } = emitted(path), loader = path.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return withSourceMap(resolveImports(path, code, loader), map) })
-    build.onLoad({ filter: /\.jsx?$/, namespace: moduleNamespace }, ({ path }) => { const { code, map } = emitted(path), loader = moduleDeclarationSource(path)?.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return withSourceMap(resolveImports(path, code, loader, true), map) })
+    build.onLoad({ filter: /\.vibex?$/ }, ({ path, loader: requestedLoader }) => {
+      if (requestedLoader === "file" || requestedLoader === "text") return undefined
+      const { code, map } = emitted(path), loader = path.endsWith(".vibex") ? "jsx" : "js"
+      discover(path, code, loader)
+      return withSourceMap(resolveImports(path, code, loader), map, path)
+    })
+    build.onLoad({ filter: /\.jsx?$/, namespace: moduleNamespace }, ({ path }) => { const { code, map } = emitted(path), loader = moduleDeclarationSource(path)?.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return withSourceMap(resolveImports(path, code, loader, true), map, moduleDeclarationSource(path)) })
   }
 })

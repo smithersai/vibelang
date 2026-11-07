@@ -1,0 +1,10 @@
+// rule-evidence: docs/design/src/007-tooling.md#legacy-prelude-shorthand | These are TypeScript's errors on equivalent explicit namespace imports, not new `EK` codes.
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Coordinated removal follows preserving codemods and zero remaining migration-repository uses; afterwards the equivalent namespace imports report native `TS2709` for namespace-as-type uses and `TS2339` for absent namespace members.
+// rule-evidence: docs/design/src/007-tooling.md#legacy-prelude-shorthand | Written imports, local or ambient types, type parameters, already qualified exports and a namespace's own members keep their TypeScript meaning.
+// run.mjs compiles written.txt and twin.txt in a fresh project. A written
+// import of Effect's Scope module keeps TypeScript's meaning: using the
+// namespace as a type is native TS2709, with no EK code. The twin writes the
+// explicit namespace imports the retired shorthand stands for and gets
+// TypeScript's TS2709 for Scope and Option as types and TS2339 for the absent
+// FileSystem.of.
+export const witness = "prelude-shorthand-native-errors"

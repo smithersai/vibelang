@@ -797,19 +797,45 @@ export function mergeFixes(into, files) {
   return into
 }
 
+// The compiler's platform repair moves a host read into a new companion beside
+// its module, x.vibe's x.platform.ts, headed by this line. Under --only it may
+// create the companion of a listed module that no file claims yet (chapter 7,
+// Selecting ordinary fix files); the batch owns that file.
+export const compilerCompanionMarker = "// Generated platform helpers for this VibeLang module.\n"
+
+/** The companion the compiler's platform repair names for module, or null. */
+export const compilerCompanionOf = module => /\.vibe$/.test(module) ? module.replace(/\.vibe$/, ".platform.ts") : null
+
+const claimsCompanion = (root, companion) =>
+  [".ts", ".tsx", ".js", ".d.ts"].some(extension => existsSync(join(root, companion.replace(/\.ts$/, extension))))
+
+/** Whether file, relative to root, is a companion the compiler wrote. */
+export const isCompilerCompanion = (root, file) => {
+  try { return readFileSync(join(root, file), "utf8").startsWith(compilerCompanionMarker) } catch { return false }
+}
+
 /**
  * Runs `vibelang -p tsconfig --fix --noEmit --declaration` until a run fixes nothing, at
  * most maxRounds times. Returns every round's report, the merged rewrites by
- * file and kind, the refusals, and the diagnostics of the last run. With
- * only, ordinary repairs use --only for the batch's files (relative to root).
+ * file and kind, the refusals, the diagnostics of the last run, and the
+ * companions the compiler created for selected modules. With only, ordinary
+ * repairs use --only for the batch's files (relative to root).
  * A defensive snapshot still restores nonselected sources if a compiler writes
  * outside its selection, including on interruption. An earlier batch's file,
  * hand repairs included, stays as committed. An empty selection starts no fix.
  */
 export async function fixToFixedPoint(options) {
   if (options.only?.length === 0) {
-    return { settled: true, rounds: [], byFile: {}, refused: [], restored: [], diagnostics: [] }
+    return { settled: true, rounds: [], byFile: {}, refused: [], restored: [], diagnostics: [], companions: [] }
   }
+  const companionRoot = resolve(options.root ?? options.cwd ?? ".")
+  const fresh = [...new Set((options.only ?? []).map(compilerCompanionOf).filter(Boolean))]
+    .filter(companion => !claimsCompanion(companionRoot, companion))
+  const fixed = await fixToFixedPointUnscoped(options)
+  return { ...fixed, companions: fresh.filter(companion => isCompilerCompanion(companionRoot, companion)).sort() }
+}
+
+async function fixToFixedPointUnscoped(options) {
   const files = await fixProgramFiles(options)
   const snippetRoot = resolve(options.root ?? options.cwd ?? ".")
   const snippetTs = () => loadTypeScript([snippetRoot, resolve(options.compiler ?? ".", "..")])
@@ -863,24 +889,42 @@ async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds
   // `restored` lists the modules whose committed bytes the rounds put back.
   const restored = []
   let last
+  // A compiler older than --only (VibeLang 0.0.11) rejects it with TS5023 and
+  // fixes nothing. The round reruns without it: the snapshot above puts back
+  // every nonselected source after each round, and the report keeps the
+  // selected files only, so the batch still changes only its own files.
+  let onlySupported = true
   for (let round = 1; round <= maxRounds; round++) {
     // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
     let result, pid
+    const audit = log && resolve(`${log}.${round}.audit`)
     const progressLog = log && `${log}.${round}.progress.jsonl`
     if (progressLog) writeFileSync(progressLog, "")
-    const progress = fixProgressStream(event => {
-      const record = { event: "compiler-fix-progress", invocation: round, pid, ...event }
-      if (progressLog) appendFileSync(progressLog, JSON.stringify(record) + "\n")
-      onProgress?.(record)
-    })
-    try {
-      const selection = selectionFile ? ` --only ${quote("@" + selectionFile)}` : ""
+    const invoke = async selection => {
+      const progress = fixProgressStream(event => {
+        const record = { event: "compiler-fix-progress", invocation: round, pid, ...event }
+        if (progressLog) appendFileSync(progressLog, JSON.stringify(record) + "\n")
+        onProgress?.(record)
+      })
       try {
-        result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix${selection} --noEmit --declaration --pretty false --singleThreaded`, {
+        return await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix${selection} --noEmit --declaration --pretty false --singleThreaded`, {
           cwd, log: log && `${log}.${round}.log`, timeoutMs,
+          ...(audit ? { env: { VIBELANG_FIX_AUDIT_DIR: audit } } : {}),
           onStderr: (chunk, process) => { pid = process.pid; progress.write(chunk) }
         })
       } finally { progress.end() }
+    }
+    try {
+      const selected = selectionFile && onlySupported
+      result = await invoke(selected ? ` --only ${quote("@" + selectionFile)}` : "")
+      if (selected && result.code !== 0 && /TS5023: Unknown compiler option ['"]--only['"]/i.test(result.stdout + result.stderr)) {
+        onlySupported = false
+        if (log) {
+          writeFileSync(`${log}.${round}.only-unsupported.log`, readFileSync(`${log}.${round}.log`))
+          appendFileSync(`${log}.scope.log`, `# fix scope ${JSON.stringify({ stage: "only-unsupported", round, restoring: others.size })}\n`)
+        }
+        result = await invoke("")
+      }
     } finally {
       // An interrupted compiler may keep verified writes without printing
       // per-file statistics. Restore the whole nonselected byte snapshot.
@@ -905,14 +949,15 @@ async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds
       })
     }
     assertFinished(result, log && `${log}.${round}.log`)
-    rounds.push({ round, code: result.code, fixes: parsed.total, files: parsed.files, refused: parsed.refused })
+    rounds.push({ round, code: result.code, fixes: parsed.total, files: parsed.files, refused: parsed.refused, ...(audit ? { audit } : {}) })
     mergeFixes(byFile, parsed.files)
     refused.push(...parsed.refused)
     last = result
     if (parsed.total === 0) break
   }
   const settled = rounds.at(-1).fixes === 0
-  return { settled, rounds, byFile, refused, restored: [...new Set(restored)].sort(), diagnostics: parseDiagnostics(last.stdout + last.stderr, { cwd, root }) }
+  return { settled, rounds, byFile, refused, restored: [...new Set(restored)].sort(), diagnostics: parseDiagnostics(last.stdout + last.stderr, { cwd, root }),
+    ...(selectionFile && !onlySupported ? { onlyUnsupported: true } : {}) }
 }
 
 /** Totals of the rewrites that fired, by kind, over every file. */

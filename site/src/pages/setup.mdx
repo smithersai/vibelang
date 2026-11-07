@@ -11,7 +11,7 @@ VibeLang is a fork of TypeScript for Effect programs. These steps set it up in a
 
 ## 1. Check the tools
 
-Run `node --version` and expect `v26.0.0` or later. With Bun, run `bun --version` and expect `1.4.0` or later.
+Run `node --version`. Use Node `22.22.3` (`22.x`) or Node `24.11.1` or later. With Bun, run `bun --version` and expect `1.4.0` or later.
 
 Version 0.0.12 publishes native packages for macOS, Linux and Windows on arm64 and x64. The end-to-end npm and Bun rehearsal runs on Linux x64.
 
@@ -27,7 +27,8 @@ Read the project's root directory and record:
 | | A `package.json` | Existing project |
 | Package manager | `bun.lock` or `bun.lockb` | Bun |
 | | `package-lock.json`, or no lockfile | npm |
-| | `pnpm-lock.yaml` or `yarn.lock` | pnpm or Yarn: install the npm commands' packages with `pnpm add` or `yarn add` |
+| | `pnpm-lock.yaml` | pnpm: install the npm commands' packages with `pnpm add` |
+| | `yarn.lock` | Yarn: configure its [transitive pin](/setup/existing-project#2-install-the-packages), then use `yarn add` |
 | Build | `vite` or `vitest` in `package.json`, or a `vite.config.*` or `vitest.config.*` file | Vite |
 | | `webpack`, `rollup`, `esbuild`, or `@rspack/core` in `package.json`, or `bun build` in a script | Another bundler: `vibelang-unplugin` |
 | | `metro` or `expo` in `package.json`, or a `metro.config.*` file | Metro |
@@ -38,6 +39,8 @@ Read the project's root directory and record:
 | Editor | A `.vscode/` or `.cursor/` directory | VS Code or Cursor |
 | | A `.zed/` directory | Zed |
 | | None of these | Ask the user |
+
+For `pnpm`, configure the [workspace pin](/setup/existing-project#2-install-the-packages) before installing packages.
 
 ## 3. Follow the matching pages
 

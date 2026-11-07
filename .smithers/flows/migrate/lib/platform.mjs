@@ -1,4 +1,4 @@
-import { splitImportMeta, privateResolverExports } from "./import-meta-platform.mjs"
+import { splitImportMeta, privateResolverExports, isWritten } from "./import-meta-platform.mjs"
 // Platform code in a module the batch migrates (spec 005, EK4402: "The quick
 // fix and the codemod move the code into a sibling `.ts` module, or point to
 // the Effect service"). A .vibe file does not import a Node or Bun builtin as
@@ -6,8 +6,8 @@ import { splitImportMeta, privateResolverExports } from "./import-meta-platform.
 // that uses one, with the module's own declarations it needs, into
 // <Name>.platform.ts beside the module, verbatim. The module keeps every
 // export: an exported function that moved stays as a function with the same
-// written signature that calls the moved one, so the module's declarations
-// are unchanged. A module whose moved exports are not such functions keeps
+// signature that calls the moved one, so the module's declarations are
+// unchanged. A module whose moved exports are not such functions keeps
 // its platform code, and EK4402 sends it back to TypeScript as before.
 //
 // A host global (process.env, globalThis.fetch) is moved only when the
@@ -53,11 +53,15 @@ const diagnosticNotes = notes => Array.isArray(notes)
 
 // A clock or randomness read is named as written, with its call: crypto.randomUUID(), new Date().
 const globalMessage = new RegExp(String.raw`^(?:new )?([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])*(?:\(\))? (?:${globalWordings.join("|")})`)
+// A read through a cast names the global it casts: "(globalThis as { readonly
+// location?: … }).location is platform code" (smithers FetchFailures).
+const castMessage = new RegExp(String.raw`^\(\s*([A-Za-z_$][\w$]*)\s+(?:as|satisfies)\s[\s\S]*\)(?:\??\.[\w$.?]*|\[[^\]]*\])*(?:\(\))? (?:${globalWordings.join("|")})`)
 
 /**
  * The host globals that EK4402 messages name, as the identifiers a
  * declaration reads: "process.env is platform code" names process,
- * "globalThis.crypto.subtle is platform code" names globalThis, "Blob
+ * "globalThis.crypto.subtle is platform code" names globalThis and
+ * globalThis.crypto (globalNames reads that entry against the source), "Blob
  * reads a host global" (a global VIP-33 derives) names Blob, and
  * "AbortSignal.timeout reaches the host" (a platform member) names
  * AbortSignal. A builtin import ("createHash from node:crypto is platform
@@ -75,8 +79,16 @@ export function platformGlobalsOf(messages) {
     const prelude = preludePlatformNote.exec(text)
     if (prelude) { names.add(prelude[1]); continue }
     if (/^\S+ from \S+ is platform code/.test(text)) continue
+    const cast = castMessage.exec(text)
+    if (cast) { names.add(cast[1]); continue }
     const m = globalMessage.exec(text)
     if (m && m[1] !== "import") names.add(m[1])
+    // vibelang --fix qualifies a constructor the prelude hides, so
+    // `new Response(…)` is checked as `new globalThis.Response(…)` and the
+    // message names globalThis. The qualified member is named too, for the
+    // split to read against the TypeScript, which may spell it bare.
+    const member = m?.[1] === "globalThis" && /^(?:new )?globalThis(?:\??\.([A-Za-z_$][\w$]*)|\??\.?\[(["'`])([A-Za-z_$][\w$]*)\2\])/.exec(text)
+    if (member) names.add("globalThis." + (member[1] ?? member[3]))
   }
   return [...names].sort()
 }
@@ -144,23 +156,46 @@ export const platformPath = (file) => file.replace(/\.(m?ts|tsx|vibex)$/, (_, ex
  * builtin as a value and reads none of globals, the host globals to move
  * (platformGlobalsOf).
  */
-export function splitPlatform(text, file, ts, { globals = [] } = {}) {
+export function splitPlatform(text, file, ts, { globals = [], returnsAvoid } = {}) {
   const meta = splitImportMeta(text, file, platformPath(file), ts)
-  if (!meta) return splitDeclarationsPlatform(text, file, ts, { globals })
+  if (!meta) return splitDeclarationsPlatform(text, file, ts, { globals, returnsAvoid })
   if (meta.refused) return meta
-  const declarations = splitDeclarationsPlatform(meta.module, file, ts, { globals })
+  const declarations = splitDeclarationsPlatform(meta.module, file, ts, { globals, returnsAvoid })
   if (declarations?.refused) return declarations
   const directives = fileDirectives(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), ts)
   meta.platform = [...directives, meta.platform].join("\n")
   if (!declarations) return meta
   // Both repairs share the fresh companion. Moved declarations call its local
-  // resolver instead of importing the companion from itself.
-  return { ...declarations, importMeta: meta.importMeta,
-    platform: meta.platform + "\n" + declarations.platform.replace(meta.importText + "\n", ""),
+  // helpers instead of importing the companion from itself.
+  const companion = posix.basename(platformPath(file))
+  const self = new RegExp("^import \\{[^}\\n]*\\} from \"\\./" + escapeRegExp(companion) + "\"\\n?", "m")
+  const moved = declarations.platform.replace(self, "")
+  return { ...declarations, importMeta: meta.importMeta, importText: meta.importText,
+    platform: meta.platform + "\n" + moved,
     moved: [...meta.moved, ...declarations.moved] }
 }
 
-function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
+// The identifiers a split moves the readers of, for the globals the messages
+// name. A "globalThis.X" entry is a qualified read the message reports: when
+// the source spells it so, globalThis already names its readers; when the
+// source never does, vibelang --fix qualified a bare X (a constructor the
+// prelude hides), and the bare X is what the source reads.
+function globalNames(globals, source, ts) {
+  const qualified = new Set()
+  const visit = (node) => {
+    if ((ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) && ts.isIdentifier(node.expression) && node.expression.text === "globalThis") {
+      const key = ts.isPropertyAccessExpression(node) ? node.name.text : ts.isStringLiteralLike(node.argumentExpression) ? node.argumentExpression.text : undefined
+      if (key !== undefined) qualified.add(key)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return [...new Set([...globals].flatMap((name) => !name.startsWith("globalThis.") ? [name] : qualified.has(name.slice("globalThis.".length)) ? [] : [name.slice("globalThis.".length)]))]
+}
+
+const escapeRegExp = text => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
@@ -173,7 +208,8 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
     }
   }
   const declaredAtTop = new Set(source.statements.flatMap((s) => (ts.isImportDeclaration(s) ? [] : [...declaredNames(s, ts)])))
-  for (const name of globals) if (!imported.has(name) && !declaredAtTop.has(name)) platform.add(name)
+  const hostGlobals = new Set(globalNames(globals, source, ts).filter((name) => !imported.has(name) && !declaredAtTop.has(name)))
+  for (const name of hostGlobals) platform.add(name)
   if (!platform.size) return null
   // Each top-level declaration: the names it declares and the names it reads.
   const declarations = []
@@ -194,7 +230,12 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
     const value = valueByName.get(name), type = typeByName.get(name)
     return value && type ? (d.valueReads.has(name) ? value : type) : (value ?? type)
   }
-  const moved = new Set(declarations.filter((d) => [...d.reads].some((n) => platform.has(n) && !byName.has(n))))
+  // A type alias or interface names a host global only as a type, which a .vibe
+  // file may write (`readonly signal?: AbortSignal`, `ReturnType<typeof
+  // setTimeout>`), so it moves only for a builtin import it reads; moved code
+  // that reads it takes a private copy, and the module keeps the declaration.
+  const platformRead = (d, n) => platform.has(n) && !byName.has(n) && !(typeOnly(d) && hostGlobals.has(n))
+  const moved = new Set(declarations.filter((d) => [...d.reads].some((n) => platformRead(d, n))))
   if (!moved.size) return null
   // The moved code takes the module's own declarations it reads, values and types.
   // Types stay in the module, whose declarations name them. The sibling has
@@ -203,6 +244,10 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   // original was one module, with no cycle (t3code mobile's dependency-graph
   // test). An exported type is imported instead when the copy would read a
   // value of the module, merge with another declaration, or is a default export.
+  // An exported const whose value is a primitive computed from literals,
+  // `export const limit = 64`, is copied the same way: a primitive has no
+  // identity, so the module keeps its export and the moved code reads an equal
+  // private copy (constantCopies below keeps its temporal dead zone).
   const declarationCount = new Map()
   for (const d of declarations) for (const name of d.names) declarationCount.set(name, (declarationCount.get(name) ?? 0) + 1)
   const copiesExported = (d, seen = new Set()) => {
@@ -216,6 +261,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
     }
     return true
   }
+  const constants = primitiveConstants(declarations, ts)
   const typesFromModule = new Set()
   const copied = new Set()
   for (let grew = true; grew; ) {
@@ -230,6 +276,8 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
           else { copied.add(needed); grew = true }
           continue
         }
+        // A copied const takes its own constants with it.
+        if (constants.has(needed) && (needed.exported || copied.has(d))) { copied.add(needed); grew = true; continue }
         if (copied.has(d)) return { refused: `${file}: the type ${[...d.names].join(", ")} reads the value ${name}` }
         moved.add(needed); grew = true
       }
@@ -240,40 +288,97 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
       if (moved.has(d) || typeOnly(d)) continue
       if ([...writtenNames(d.statement, ts)].some((n) => movedNames.has(n) && !d.names.has(n))) { moved.add(d); grew = true }
     }
+    // A type of a moved value's name, Effect's schema pattern `const Shape =
+    // Schema.String` with `type Shape = typeof Shape.Type`, moves with it: the
+    // sibling declares both and the module re-exports the one name.
+    for (const name of movedNames) {
+      const twin = typeByName.get(name)
+      if (!twin || moved.has(twin)) continue
+      // A private type of an exported value would be exported with it.
+      if (valueByName.get(name).exported && !twin.exported) return { refused: `${file}: the value ${name} would move to ${posix.basename(platformPath(file))} but the type ${name} stays, so the module's declarations would change` }
+      moved.add(twin); copied.delete(twin); typesFromModule.delete(name); grew = true
+    }
   }
   for (const d of moved) {
     if (!isMovable(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} cannot move to ${posix.basename(platformPath(file))}` }
   }
-  const kept = declarations.filter((d) => !moved.has(d))
-  // A kept type that reads a moved value, `type Shape = typeof Shape.Type`,
-  // would make the module's declaration import it from the sibling.
-  const movedValues = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
-  for (const d of kept) {
-    if (!typeOnly(d)) continue
-    const read = [...d.valueReads].find((name) => movedValues.has(name))
-    if (read) return { refused: `${file}: the type ${[...d.names].join(", ")} reads the value ${read}, which ${posix.basename(platformPath(file))} would take, so the module's declarations would change` }
+  const early = earlyConstant(declarations, moved, copied, constants, ts)
+  if (early) return { refused: `${file}: export ${[...early.names].join(", ")} is read by platform code that a statement above it runs while the module loads, so its copy in ${posix.basename(platformPath(file))} would be initialized before that read` }
+  // import.meta.url names the module that reads it, so in the sibling it would
+  // name the sibling. A URL resolved against it for a path beside the module
+  // means the same in either file.
+  const requires = createRequireNames(imports, ts)
+  requires.directories = directoryNames(imports, ts)
+  for (const d of moved) {
+    if (namesModule(d.statement, ts, requires)) return { refused: `${file}: ${firstLine(source, d.statement)} reads import.meta, which would name ${posix.basename(platformPath(file))} after the move` }
   }
-  // A type stays in the module, and its declaration carries the value of the
-  // same name with it (TypeScript emits the merged symbol).
-  const twin = [...movedValues].find((name) => typeByName.has(name))
-  if (twin) return { refused: `${file}: the value ${twin} would move to ${posix.basename(platformPath(file))} but the type ${twin} stays, so the module's declarations would change` }
+  const kept = declarations.filter((d) => !moved.has(d))
+  const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
+  if (inferredTypes.refused) return inferredTypes
+  // A kept type that reads a moved value, `type Item = typeof Issue.Type`,
+  // reads it through the module's import from the sibling.
   const keptReads = new Set(kept.flatMap((d) => [...d.reads]))
-  // A moved export stays in the module as a function with its written
-  // signature; any other moved export means the module cannot keep its API.
+  // A moved export stays in the module as a function with its signature that
+  // calls the moved one. Any other moved export, an error class, a schema, a
+  // Layer, an object, and the type of its name, the module re-exports from the
+  // sibling: the same binding, so the same identity, type and documentation.
+  // The sibling's declaration file then ships with the package; it joins no
+  // `exports` entry, and the API identity gate still compares the module.
   const wrappers = []
+  const reexported = []
+  const namedInSibling = new Set()
+  const exportedForInference = []
   for (const d of moved) {
     if (!d.exported) continue
-    const wrapper = wrapperOf(d.statement, source, ts)
-    if (!wrapper) return { refused: `${file}: export ${[...d.names].join(", ")} uses platform code and is not a function with written parameter and return types, so it cannot stay in the .vibe module` }
-    wrappers.push({ d, ...wrapper })
+    const wrapper = typeOnly(d) ? null : wrapperOf(d.statement, source, ts)
+    if (wrapper) wrappers.push({ d, ...wrapper })
+    else reexported.push(d)
+  }
+  const loadsEarly = earlyConstant(declarations, moved, new Set(reexported.filter((d) => !typeOnly(d))), null, ts)
+  if (loadsEarly) return { refused: `${file}: export ${[...loadsEarly.names].join(", ")} would be initialized in ${posix.basename(platformPath(file))} before a statement above it that reads it while the module loads` }
+  // An inferred return type is written into the module's declarations from
+  // the sibling. A type only the sibling declares, a private copy or a moved
+  // private class or enum, has no name there unless the sibling exports it
+  // (TS4058), so an exported type the moved code reads is imported from the
+  // module instead of copied.
+  // returnsAvoid(name, types), when the caller has a type checker, proves that
+  // export name's return type names none of types; when every inferred
+  // result is proved so, the sibling exports none of them. Otherwise the
+  // sibling exports each private type a result may name, a copy or a moved
+  // class or enum, so the module's declarations name it there.
+  const inferredWrappers = wrappers.filter((w) => w.inferred && !returnsOnlyElements(w.d.statement, ts))
+  if (inferredWrappers.length) {
+    const unnamed = [...[...copied].filter((d) => typeOnly(d) && !d.exported),
+      ...[...moved].filter((d) => !d.exported && (ts.isClassDeclaration(d.statement) || ts.isEnumDeclaration(d.statement)))]
+    const unnamedNames = unnamed.flatMap((d) => [...d.names])
+    if (unnamed.length && inferredWrappers.some((w) => !returnsAvoid?.(w.name, unnamedNames))) for (const d of unnamed) { namedInSibling.add(d); exportedForInference.push(...d.names) }
+    for (const d of [...copied]) if (typeOnly(d) && d.exported) { copied.delete(d); for (const name of d.names) typesFromModule.add(name) }
   }
   if (moved.size === declarations.length && !wrappers.length) return { refused: `${file} is platform code only` }
+  // A private type the module kept for the moved code alone is the sibling's
+  // copy now; left in the module, nothing reads it (TS6196 under
+  // noUnusedLocals: opencode app runtime/persistence/storage). It goes, and so
+  // does a private type only such a type read.
+  const unread = new Set()
+  for (let grew = true; grew; ) {
+    grew = false
+    for (const d of kept) {
+      if (unread.has(d) || !typeOnly(d) || d.exported || !copied.has(d)) continue
+      const reads = (names) => [...d.names].some((n) => names.has(n))
+      if (kept.some((k) => k !== d && !unread.has(k) && reads(k.reads)) || wrappers.some((w) => reads(w.reads))) continue
+      unread.add(d)
+      grew = true
+    }
+  }
+  const moduleKeptReads = new Set(kept.filter((d) => !unread.has(d)).flatMap((d) => [...d.reads]))
+  const reexportedNames = [...new Set(reexported.flatMap((d) => [...d.names]))]
   const namespace = uniqueName("$platform", new Set([...byName.keys(), ...imports.flatMap((i) => bindingsOf(i, ts).map((b) => b.name))]))
   const sibling = "./" + posix.basename(platformPath(file))
   // The module: kept imports, the import of the moved code, kept declarations and wrappers, in source order.
-  const movedReadsByKept = [...moved].filter((d) => !d.exported).flatMap((d) => [...d.names].filter((n) => keptReads.has(n)))
+  const movedReadsByKept = [...moved].filter((d) => !d.exported).flatMap((d) => [...d.names].filter((n) => moduleKeptReads.has(n)))
   const fromSibling = [...new Set(movedReadsByKept)].sort()
-  const moduleReads = new Set([...keptReads, ...wrappers.flatMap((w) => [...w.reads])])
+  const moduleReads = new Set([...moduleKeptReads, ...wrappers.flatMap((w) => [...w.reads])])
+  const reexportedReads = reexportedNames.filter((n) => moduleReads.has(n)).sort()
   const moduleImports = imports.map((i) => importText(i, source, ts, (b) => moduleReads.has(b.name))).filter(Boolean)
   const head = [...moduleImports]
   if (wrappers.length) head.push(`import * as ${namespace} from "${sibling}"`)
@@ -281,31 +386,57 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
   // moved const comes back under an alias and is bound to a local const of its
   // own name where it stood. Its explicit type retains unique-symbol identity
   // as well as the imported value type and local-const narrowing.
-  const movedConsts = new Set([...moved].filter((d) => !d.exported && ts.isVariableStatement(d.statement) && (d.statement.declarationList.flags & ts.NodeFlags.Const)).flatMap((d) => [...d.names]))
+  // A name with a moved type too keeps both meanings through a plain import.
+  const movedTypeNames = new Set([...moved].filter((d) => typeOnly(d)).flatMap((d) => [...d.names]))
+  const movedConsts = new Set([...moved].filter((d) => !d.exported && ts.isVariableStatement(d.statement) && (d.statement.declarationList.flags & ts.NodeFlags.Const)).flatMap((d) => [...d.names]).filter((n) => !movedTypeNames.has(n)))
   const taken = new Set([...byName.keys(), ...imports.flatMap((i) => bindingsOf(i, ts).map((b) => b.name)), namespace])
   const alias = new Map()
   for (const name of fromSibling) if (movedConsts.has(name)) { const a = uniqueName(name + "$platform", taken); taken.add(a); alias.set(name, a) }
-  if (fromSibling.length) head.push(`import { ${fromSibling.map((n) => (alias.has(n) ? `${n} as ${alias.get(n)}` : n)).join(", ")} } from "${sibling}"`)
+  const siblingImports = [...fromSibling.map((n) => (alias.has(n) ? `${n} as ${alias.get(n)}` : n)), ...reexportedReads.filter((n) => !fromSibling.includes(n))]
+  if (siblingImports.length) head.push(`import { ${siblingImports.join(", ")} } from "${sibling}"`)
   const body = []
+  const exportedAgain = new Set()
   for (const d of declarations) {
-    if (!moved.has(d)) body.push(statementText(source, d.statement))
-    else if (d.exported) body.push(wrappers.find((w) => w.d === d).text(namespace))
+    if (unread.has(d)) continue
+    const wrapper = wrappers.find((w) => w.d === d)
+    if (!moved.has(d)) body.push(inferredTypes.text(d.statement))
+    else if (wrapper) body.push(wrapper.text(namespace))
+    else if (d.exported) {
+      const names = [...d.names].filter((n) => !exportedAgain.has(n))
+      for (const name of names) exportedAgain.add(name)
+      // An exported type whose value of the same name stays private is
+      // re-exported as a type only.
+      const typeOnlyExport = typeOnly(d) && names.every((n) => valueByName.get(n) && !valueByName.get(n).exported)
+      if (names.length) body.push(`export ${typeOnlyExport ? "type " : ""}{ ${names.join(", ")} } from "${sibling}"`)
+    }
     else for (const name of [...d.names].filter((n) => alias.has(n))) body.push(`const ${name}: typeof ${alias.get(name)} = ${alias.get(name)}`)
   }
   const moduleText = joinParts(leadingHeader(source), head, body)
-  // The sibling: the imports the moved code reads, then the moved code, each
-  // declaration the module reads exported.
+  // The sibling: the module's header, the imports the moved code reads, the
+  // moved code as written, then an export of each private declaration the
+  // module reads or its inferred types name.
   const movedList = declarations.filter((d) => moved.has(d) || copied.has(d))
   const movedReads = new Set(movedList.flatMap((d) => [...d.reads]))
   const platformImports = imports.map((i) => importText(i, source, ts, (b) => movedReads.has(b.name))).filter(Boolean)
   if (typesFromModule.size) platformImports.push(`import type { ${[...typesFromModule].sort().join(", ")} } from "./${posix.basename(file)}"`)
-  const platformBody = movedList.map((d) => (copied.has(d) && d.exported ? unexportedText(source, d.statement, ts) : !d.exported && fromSibling.some((n) => d.names.has(n)) ? exportedText(source, d.statement) : statementText(source, d.statement)))
+  // A private declaration keeps its text, so a convention that reads
+  // exported declarations, such as Smithers' JSDoc on every export, meets it
+  // as the original wrote it; the sibling exports it in a list after the code.
+  const listed = movedList.filter((d) => !d.exported && (fromSibling.some((n) => d.names.has(n)) || namedInSibling.has(d)))
+  const platformBody = movedList.map((d) => (copied.has(d) && d.exported ? unexportedText(source, d.statement, ts) : statementText(source, d.statement)))
+  const listedValues = [...new Set(listed.filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))]
+  const listedTypes = [...new Set(listed.filter(typeOnly).flatMap((d) => [...d.names]))].filter((n) => !listedValues.includes(n))
+  const platformExports = [listedValues.length ? `export { ${listedValues.join(", ")} }` : "", listedTypes.length ? `export type { ${listedTypes.join(", ")} }` : ""].filter(Boolean)
   const note = `// The platform code of ${posix.basename(file).replace(/\.tsx$/, ".vibex").replace(/\.m?ts$/, ".vibe")}, which a .vibe file does not import as a value (EK4402).`
-  // A file-wide directive governed the moved code too, so the sibling keeps it
-  // (t3code Desktop: `// @effect-diagnostics nodeBuiltinImport:off`).
-  const directives = fileDirectives(source, ts).filter((d) => !platformImports.some((i) => i.includes(d)))
-  const platformText = joinParts(directives, [note], platformImports, platformBody)
-  return { module: moduleText, platform: platformText, moved: movedList.filter((d) => moved.has(d)).map((d) => [...d.names]).flat(), wrapped: wrappers.map((w) => w.name) }
+  // The sibling holds part of the module, so it starts with the module's
+  // header, a license or the module's documentation, which a repository may
+  // require of every file (Smithers: prose and `@since`); a shebang stays in
+  // the module. A file-wide directive outside the header governed the moved
+  // code too (t3code Desktop: `// @effect-diagnostics nodeBuiltinImport:off`).
+  const header = leadingHeader(source).map((h) => h.replace(/^#!.*(?:\r?\n|$)/, "").replace(/^\s*\n/, "")).filter((h) => h.trim())
+  const directives = fileDirectives(source, ts).filter((d) => !platformImports.some((i) => i.includes(d)) && !header.some((h) => h.includes(d)))
+  const platformText = joinParts(header, directives, [note], platformImports, platformBody, platformExports)
+  return { module: moduleText, platform: platformText, moved: movedList.filter((d) => moved.has(d)).map((d) => [...d.names]).flat(), wrapped: wrappers.map((w) => w.name), reexported: reexportedNames, exportedForInference }
 }
 
 // A sibling is a new public entry point when a published package admits
@@ -313,6 +444,16 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
 // maps still go through the declaration graph gate, which rejects any new
 // reachable declaration. An unknown wildcard mapping is deliberately refused
 // rather than guessed from one tsconfig: packages may publish multiple builds.
+function owningManifest(root, file, { exists, read }) {
+  const boundary = resolve(root)
+  for (let dir = dirname(resolve(root, file)); dir === boundary || dir.startsWith(boundary + "/"); dir = dirname(dir)) {
+    const path = posix.relative(boundary, join(dir, "package.json"))
+    if (exists(path)) { try { return JSON.parse(read(path)) } catch { return undefined } }
+    if (dir === boundary) break
+  }
+  return undefined
+}
+
 function publishedSiblingRisk(root, file, { exists, read }) {
   const boundary = resolve(root)
   let dir = dirname(resolve(root, file))
@@ -323,8 +464,17 @@ function publishedSiblingRisk(root, file, { exists, read }) {
       try { manifest = JSON.parse(read(path)) }
       catch { return "cannot establish the package's published module surface" }
       if (manifest.private === true) return null
+      // A wildcard target whose text after * ends in a fixed file name, such
+      // as "./dist/*/neon.js", matches only files of that name. A companion is
+      // named <stem>.platform.<extension>, so no such target can publish it.
+      const fixedFile = target => {
+        const parts = target.split("*")
+        if (parts.length !== 2) return false
+        const slash = parts[1].lastIndexOf("/")
+        return slash >= 0 && !parts[1].slice(slash + 1).includes(".platform.")
+      }
       const open = value => typeof value === "string"
-        ? value.includes("*") || value.endsWith("/")
+        ? value.includes("*") && !fixedFile(value) || value.endsWith("/")
         : Array.isArray(value) ? value.some(open)
         : value && typeof value === "object" ? Object.values(value).some(open) : false
       if (manifest.exports === undefined || open(manifest.exports)) {
@@ -336,6 +486,59 @@ function publishedSiblingRisk(root, file, { exists, read }) {
     dir = dirname(dir)
   }
   return null
+}
+
+/**
+ * A type checker over file as its tsconfig compiles it, or null when none can
+ * be built. The returned returnsAvoid(name, types) says whether export name's
+ * return type provably names none of types, the module's own private types:
+ * it walks type arguments, unions, intersections and the structures this file
+ * declares, and an `any` it meets (an import the checker could not resolve,
+ * such as a .vibe module) proves nothing.
+ */
+export function checkedReturns(root, file, ts) {
+  const path = resolve(root, file)
+  let program
+  try {
+    const config = ts.findConfigFile(dirname(path), ts.sys.fileExists)
+    const parsed = config ? ts.getParsedCommandLineOfConfigFile(config, {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} }) : undefined
+    program = ts.createProgram({ rootNames: [path], options: { ...(parsed?.options ?? {}), noEmit: true } })
+  } catch {
+    return null
+  }
+  const source = program.getSourceFile(path)
+  const checker = program.getTypeChecker()
+  const module = source && checker.getSymbolAtLocation(source)
+  if (!module) return null
+  return (name, types) => {
+    const symbol = checker.getExportsOfModule(module).find((s) => s.name === name)
+    if (!symbol) return false
+    const wanted = new Set(types)
+    const own = (s) => (s?.declarations ?? []).some((d) => d.getSourceFile() === source)
+    const seen = new Set()
+    let proven = true
+    const visit = (type, depth) => {
+      if (!proven || !type || seen.has(type)) return
+      seen.add(type)
+      if (depth > 16 || type.flags & ts.TypeFlags.Any) { proven = false; return }
+      for (const s of [type.aliasSymbol, type.symbol]) if (s && wanted.has(s.name) && own(s)) { proven = false; return }
+      for (const t of type.aliasTypeArguments ?? []) visit(t, depth + 1)
+      for (const t of type.types ?? []) visit(t, depth + 1)
+      if (!(type.flags & ts.TypeFlags.Object)) return
+      if (type.objectFlags & ts.ObjectFlags.Reference) for (const t of checker.getTypeArguments(type)) visit(t, depth + 1)
+      // Another module's named type cannot name this module's private types,
+      // except through its type arguments, visited above.
+      if (!own(type.symbol)) return
+      for (const p of checker.getPropertiesOfType(type)) visit(checker.getTypeOfSymbolAtLocation(p, source), depth + 1)
+      for (const info of checker.getIndexInfosOfType(type)) visit(info.type, depth + 1)
+      for (const s of [...type.getCallSignatures(), ...type.getConstructSignatures()]) {
+        visit(checker.getReturnTypeOfSignature(s), depth + 1)
+        for (const p of s.parameters) visit(checker.getTypeOfSymbolAtLocation(p, source), depth + 1)
+      }
+    }
+    for (const s of checker.getTypeOfSymbolAtLocation(symbol, source).getCallSignatures()) visit(checker.getReturnTypeOfSignature(s), 0)
+    return proven
+  }
 }
 
 /**
@@ -355,18 +558,53 @@ export function splitBatchPlatform(root, files, ts, {
   throwBodies = true,
   exists = file => existsSync(join(root, file)),
   read = file => readFileSync(join(root, file), "utf8"),
-  write = (file, text) => writeFileSync(join(root, file), text)
+  write = (file, text) => writeFileSync(join(root, file), text),
+  returnsAvoidOf = file => checkedReturns(root, file, ts)
 } = {}) {
   const splits = []
   const refused = []
+  // A body cannot hold import.meta (EK4009): the import.meta reads the
+  // companion serves keep it beside the body, private as for the sibling split.
+  const bodySplit = (file, sibling) => {
+    const text = read(file)
+    const meta = splitImportMeta(text, file, sibling, ts)
+    if (meta?.refused) return meta
+    const body = splitPlatformToModule(meta ? meta.module : text, file, ts, { globals: globalsOf(file), throws: throwBodies })
+    if (!body || body.refused || !meta) return body
+    const risk = publishedSiblingRisk(root, file, { exists, read })
+    const privateExports = risk && meta.importMeta ? privateResolverExports(root, file, sibling, { exists, read }) : null
+    if (risk && !privateExports) return { refused: file + ": refusing " + sibling + " for the import.meta helpers beside module " + body.name + ": " + risk }
+    const directives = fileDirectives(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), ts)
+    return { ...body, platform: [...directives, meta.platform].join("\n"), privateExports, moved: [...meta.moved, ...body.moved] }
+  }
+  const writeBody = (file, sibling, body) => {
+    write(file, body.module)
+    if (body.platform) write(sibling, body.platform)
+    if (body.privateExports) {
+      const pkg = JSON.parse(read(body.privateExports.manifest))
+      for (const key of body.privateExports.keys) pkg.exports[key] = null
+      write(body.privateExports.manifest, JSON.stringify(pkg, null, 2) + "\n")
+    }
+    splits.push({ file, platform: body.platform ? sibling : null, ...(body.privateExports ? { privateExports: body.privateExports } : {}), module: body.name, moved: body.moved, wrapped: [], ...(body.throwing.length ? { throwing: body.throwing } : {}) })
+  }
   for (const file of files) {
     if (!/\.(?:m?ts|tsx|vibex)$/.test(file) || /\.d\.(?:m?ts|tsx|vibex)$/.test(file)) continue
     const sibling = platformPath(file)
     if (exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
-    const result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
+    let result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
+    // A split whose sibling exports private types only because an inferred
+    // return type might name them is retried with a type checker that proves
+    // which exports avoid them; a proved split exports none.
+    if (result && !result.refused && result.exportedForInference?.length) {
+      const returnsAvoid = returnsAvoidOf(file)
+      if (returnsAvoid) result = splitPlatform(read(file), file, ts, { globals: globalsOf(file), returnsAvoid })
+    }
     // Code that throws in plain code reports EK0401 in a .vibe module; a body
     // keeps it TypeScript, the 2026-10-31 ruling's "ts module using module syntax".
-    const throwing = (text) => throwBodies ? splitPlatformToModule(text, file, ts, { throws: true, platform: moduleBodies, reexports: moduleBodies }) : null
+    // An export the body holds is re-exported: its `x.vibe.throwing.d.ts`
+    // ships with the package and joins no `exports` entry, and the module's
+    // declarations keep its names, types and documentation.
+    const throwing = (text) => throwBodies ? splitPlatformToModule(text, file, ts, { throws: true, platform: moduleBodies, reexports: true }) : null
     if (!result) {
       const body = throwing(read(file))
       if (body?.refused) refused.push(body.refused)
@@ -379,12 +617,26 @@ export function splitBatchPlatform(root, files, ts, {
     const risk = result.refused ? null : publishedSiblingRisk(root, file, { exists, read })
     const privateExports = risk && result.importMeta ? privateResolverExports(root, file, sibling, { exists, read }) : null
     const refusal = result.refused ?? (risk && !privateExports && file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript")
+    // Every module of a private package is an API entry, so a sibling adds one;
+    // a VIP-40 body adds none. With moduleBodies, prefer it and keep the sibling as fallback.
+    // A sibling that re-exports a moved value takes the value out of the
+    // module; a body that moves only the host operations keeps it (alchemy's
+    // dual value/type resources), so it is preferred there too.
+    // A body cannot hold import.meta (EK4009), so a module whose import.meta
+    // reads need the companion's helpers keeps the sibling.
+    if (!refusal && moduleBodies && !result.importText && (result.reexported?.length || owningManifest(root, file, { exists, read })?.private === true)) {
+      const body = splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies, wrap: true })
+      if (body && !body.refused) {
+        write(file, body.module)
+        splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: body.wrapped, ...(body.throwing.length ? { throwing: body.throwing } : {}) })
+        continue
+      }
+    }
     if (refusal) {
       // A sibling cannot serve this module. With moduleBodies, a VIP-40 body may.
-      const body = moduleBodies ? splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies }) : null
+      const body = moduleBodies ? bodySplit(file, sibling) : null
       if (!body || body.refused) { refused.push(body?.refused ? refusal + "; " + body.refused : refusal); continue }
-      write(file, body.module)
-      splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: [], ...(body.throwing.length ? { throwing: body.throwing } : {}) })
+      writeBody(file, sibling, body)
       continue
     }
     const body = throwing(result.module)
@@ -397,7 +649,7 @@ export function splitBatchPlatform(root, files, ts, {
       for (const key of privateExports.keys) pkg.exports[key] = null
       write(privateExports.manifest, JSON.stringify(pkg, null, 2) + "\n")
     }
-    splits.push({ file, platform: sibling, ...(privateExports ? { privateExports } : {}), moved: result.moved, wrapped: result.wrapped, ...(kept ? { module: kept.name, throwing: kept.throwing } : {}) })
+    splits.push({ file, platform: sibling, ...(privateExports ? { privateExports } : {}), moved: result.moved, wrapped: result.wrapped, ...(result.exportedForInference?.length ? { exportedForInference: result.exportedForInference } : {}), ...(kept ? { module: kept.name, throwing: kept.throwing } : {}) })
   }
   return { splits, refused }
 }
@@ -518,15 +770,162 @@ function valueReadNames(statement, ts) {
 
 const isExported = (statement, ts) => (statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
 
+// The top-level consts whose value is a primitive computed from literals and
+// other such consts, with no written type: `const limit = 64`, `const name =
+// "ps"`, `const bytes = 4 * 1024`. Evaluating one runs no code and gives an
+// equal value each time, so a copy of it is the same constant.
+function primitiveConstants(declarations, ts) {
+  const candidates = new Map()
+  for (const d of declarations) {
+    const s = d.statement
+    if (!ts.isVariableStatement(s) || !(s.declarationList.flags & ts.NodeFlags.Const)) continue
+    const [v, ...rest] = s.declarationList.declarations
+    if (rest.length || !ts.isIdentifier(v.name) || v.type || !v.initializer) continue
+    candidates.set(v.name.text, d)
+  }
+  const primitive = (node, names) => {
+    while (ts.isParenthesizedExpression(node) || ((ts.isAsExpression(node) || ts.isSatisfiesExpression(node)) && constType(node.type, ts))) node = node.expression
+    if (ts.isNumericLiteral(node) || ts.isBigIntLiteral(node) || ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return true
+    if ([ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(node.kind)) return true
+    if (ts.isIdentifier(node)) { names.push(node.text); return true }
+    if (ts.isPrefixUnaryExpression(node)) return [ts.SyntaxKind.MinusToken, ts.SyntaxKind.PlusToken, ts.SyntaxKind.ExclamationToken, ts.SyntaxKind.TildeToken].includes(node.operator) && primitive(node.operand, names)
+    if (ts.isTemplateExpression(node)) return node.templateSpans.every((span) => primitive(span.expression, names))
+    if (ts.isConditionalExpression(node)) return primitive(node.condition, names) && primitive(node.whenTrue, names) && primitive(node.whenFalse, names)
+    if (ts.isBinaryExpression(node)) return primitiveOperators(ts).has(node.operatorToken.kind) && primitive(node.left, names) && primitive(node.right, names)
+    return false
+  }
+  // Each const reads only literals and other primitive consts; one that reads
+  // anything else, or a const that does, is not one.
+  const reads = new Map()
+  for (const [name, d] of candidates) {
+    const names = []
+    if (primitive(d.statement.declarationList.declarations[0].initializer, names)) reads.set(name, names)
+  }
+  for (let shrank = true; shrank; ) {
+    shrank = false
+    for (const [name, names] of reads) if (names.some((n) => !reads.has(n) || n === name)) { reads.delete(name); shrank = true }
+  }
+  return new Set([...reads.keys()].map((name) => candidates.get(name)))
+}
+
+const constType = (type, ts) => ts.isTypeReferenceNode(type) && ts.isIdentifier(type.typeName) && type.typeName.text === "const" ||
+  ts.isLiteralTypeNode(type) || [ts.SyntaxKind.NumberKeyword, ts.SyntaxKind.StringKeyword, ts.SyntaxKind.BooleanKeyword, ts.SyntaxKind.BigIntKeyword].includes(type.kind)
+
+const primitiveOperators = (ts) => new Set([ts.SyntaxKind.PlusToken, ts.SyntaxKind.MinusToken, ts.SyntaxKind.AsteriskToken, ts.SyntaxKind.AsteriskAsteriskToken, ts.SyntaxKind.SlashToken, ts.SyntaxKind.PercentToken,
+  ts.SyntaxKind.LessThanLessThanToken, ts.SyntaxKind.GreaterThanGreaterThanToken, ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken, ts.SyntaxKind.AmpersandToken, ts.SyntaxKind.BarToken, ts.SyntaxKind.CaretToken,
+  ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken, ts.SyntaxKind.EqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsToken,
+  ts.SyntaxKind.LessThanToken, ts.SyntaxKind.LessThanEqualsToken, ts.SyntaxKind.GreaterThanToken, ts.SyntaxKind.GreaterThanEqualsToken,
+  ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken])
+
+// The sibling evaluates before the module body, so a copied const is
+// initialized before any kept statement runs. In the original a kept statement
+// above the const whose load ran moved code that reads it read it in its
+// temporal dead zone and threw a ReferenceError; the copy would not. Such a
+// const is not copied: the split refuses. Moved code that never reads it runs
+// the same in either file (smithers build/targets Exec.ts: a schema above
+// defaultPathExtensions reads moved code at load that does not read it).
+function earlyConstant(declarations, moved, copied, constants, ts) {
+  const copies = declarations.filter((d) => copied.has(d) && (constants === null || constants.has(d)))
+  if (!copies.length) return null
+  const byName = new Map(declarations.flatMap((d) => [...d.names].map((n) => [n, d])))
+  // The declarations a kept statement's load can run: what it reads at load,
+  // then everything a declaration it reaches reads, since a call runs its body.
+  const reached = (k) => {
+    const seen = new Set(), queue = [...loadReads(k.statement, ts)]
+    while (queue.length) {
+      const t = byName.get(queue.pop())
+      if (!t || seen.has(t)) continue
+      seen.add(t)
+      queue.push(...t.reads)
+    }
+    return seen
+  }
+  // Moved code reads the sibling's declaration, initialized before the module
+  // body runs. A kept read of a copied const reads the module's own, which
+  // keeps its temporal dead zone; a declaration that moved is the sibling's
+  // for every reader.
+  const readsEarly = (t, d) => t === d ? moved.has(d) : moved.has(t) && [...t.reads].some((n) => d.names.has(n))
+  const kept = []
+  for (const d of declarations) {
+    if (copies.includes(d) && kept.some((k) => [...reached(k)].some((t) => readsEarly(t, d)))) return d
+    if (!moved.has(d)) kept.push(d)
+  }
+  return null
+}
+
+// The names a top-level statement reads while the module loads. A function
+// stored as a value, in a variable, an object or array literal or a class
+// member, runs only when something calls it later; a function passed to a
+// call may run now, so its body counts. Types and instance field initializers
+// read nothing at load.
+function loadReads(statement, ts) {
+  const reads = new Set()
+  const stored = (node) => ts.isVariableStatement(node) || ts.isVariableDeclarationList(node) || ts.isVariableDeclaration(node) || ts.isObjectLiteralExpression(node) ||
+    ts.isPropertyAssignment(node) || ts.isArrayLiteralExpression(node) || ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) ||
+    ts.isNonNullExpression(node) || ts.isConditionalExpression(node) || ts.isClassDeclaration(node) || ts.isClassExpression(node) || ts.isPropertyDeclaration(node) || ts.isExportAssignment(node) ||
+    ts.isBinaryExpression(node) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(node.operatorToken.kind)
+  const visit = (node, value) => {
+    if (ts.isTypeNode(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isTypeParameterDeclaration(node) || ts.isHeritageClause(node) && node.token === ts.SyntaxKind.ImplementsKeyword) return
+    if (ts.isPropertyDeclaration(node) && !(node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword) && node.parent && ts.isClassLike(node.parent)) {
+      if (node.name && ts.isComputedPropertyName(node.name)) visit(node.name, false)
+      return
+    }
+    if (ts.isFunctionLike(node) && node.body !== undefined) {
+      if (node.name && ts.isComputedPropertyName(node.name)) visit(node.name, false)
+      if (value) return
+    }
+    if (ts.isIdentifier(node)) {
+      const parent = node.parent
+      const declares = parent && (ts.isVariableDeclaration(parent) || ts.isFunctionDeclaration(parent) || ts.isFunctionExpression(parent) || ts.isClassDeclaration(parent) || ts.isClassExpression(parent) || ts.isEnumDeclaration(parent) || ts.isParameter(parent) || ts.isBindingElement(parent)) && parent.name === node
+      const member = parent && ((ts.isPropertyAccessExpression(parent) && parent.name === node) || ((ts.isPropertyAssignment(parent) || ts.isPropertyDeclaration(parent) || ts.isMethodDeclaration(parent) || ts.isGetAccessor(parent) || ts.isSetAccessor(parent) || ts.isEnumMember(parent)) && parent.name === node))
+      if (!declares && !member) reads.add(node.text)
+    }
+    if (ts.isShorthandPropertyAssignment(node)) reads.add(node.name.text)
+    ts.forEachChild(node, (child) => visit(child, value && stored(node) && !(ts.isConditionalExpression(node) && child === node.condition)))
+  }
+  visit(statement, true)
+  return reads
+}
+
 function isMovable(statement, ts) {
   if ((statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)) return false
   return ts.isVariableStatement(statement) || ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement) || ts.isEnumDeclaration(statement)
 }
 
-// A function with written parameter and return types, written again in the
-// module to call the moved one: export const f = (a: A, b = 1): R => ...,
-// or export function f(a: A): R { ... }. The declaration file prints the
-// same signature for both.
+// A function with written parameter types, written again in the module to
+// call the moved one: export const f = (a: A, b = 1): R => ..., or export
+// function f(a: A) { ... }. The declaration file prints the same signature
+// for both; a return type the original leaves to inference stays inferred.
+// Whether a function's inferred return type can name no type of its module:
+// every value it returns is a JSX element, null or undefined, or it returns
+// none, so the type is JSX.Element, null, undefined or void (in a Promise
+// when async). A component such as `export const Terminal = (props:
+// TerminalProps) => { ...; return <div /> }` keeps its wrapper even when
+// moved code reads a private type.
+function returnsOnlyElements(statement, ts) {
+  let fn = statement
+  if (ts.isVariableStatement(statement)) {
+    fn = statement.declarationList.declarations[0]?.initializer
+    while (fn && ts.isParenthesizedExpression(fn)) fn = fn.expression
+  }
+  if (!fn || !(ts.isFunctionDeclaration(fn) || ts.isArrowFunction(fn) || ts.isFunctionExpression(fn)) || fn.asteriskToken || !fn.body) return false
+  const element = (e) => {
+    while (e && ts.isParenthesizedExpression(e)) e = e.expression
+    if (!e || e.kind === ts.SyntaxKind.NullKeyword || ts.isIdentifier(e) && e.text === "undefined") return true
+    if (ts.isJsxElement(e) || ts.isJsxSelfClosingElement(e) || ts.isJsxFragment(e)) return true
+    return ts.isConditionalExpression(e) && element(e.whenTrue) && element(e.whenFalse)
+  }
+  if (!ts.isBlock(fn.body)) return element(fn.body)
+  let only = true
+  const visit = (node) => {
+    if (!only || ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    if (ts.isReturnStatement(node) && !element(node.expression)) only = false
+    else ts.forEachChild(node, visit)
+  }
+  ts.forEachChild(fn.body, visit)
+  return only
+}
+
 function wrapperOf(statement, source, ts) {
   let fn, name, kind
   if (ts.isFunctionDeclaration(statement) && statement.body && statement.name) {
@@ -541,7 +940,7 @@ function wrapperOf(statement, source, ts) {
   } else {
     return null
   }
-  if (!fn.type || fn.asteriskToken) return null
+  if (fn.asteriskToken) return null
   const params = []
   for (const p of fn.parameters) {
     if (!ts.isIdentifier(p.name) || p.name.text === "this") return null
@@ -552,21 +951,26 @@ function wrapperOf(statement, source, ts) {
   const typeParams = fn.typeParameters ? `<${fn.typeParameters.map((t) => t.getText(source)).join(", ")}>` : ""
   const paramText = params.map((p) => p.getText(source)).join(", ")
   const args = params.map((p) => (p.dotDotDotToken ? "..." : "") + p.name.text).join(", ")
-  const ret = fn.type.getText(source)
-  const asyncWord = (fn.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword) ? "async " : ""
+  // An inferred return type stays inferred: the wrapper returns the moved
+  // function's result, a value of the same type, and an async one's promise as is.
+  const inferred = !fn.type
+  const ret = inferred ? "" : ": " + fn.type.getText(source)
+  const asyncWord = !inferred && (fn.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword) ? "async " : ""
   const constKeyword = kind === "const" ? statement.declarationList.getText(source).match(/^(const|let|var)/)[1] : ""
   const reads = new Set()
   for (const p of params) for (const n of readNames(p, ts)) reads.add(n)
-  for (const n of readNames(fn.type, ts)) reads.add(n)
+  if (fn.type) for (const n of readNames(fn.type, ts)) reads.add(n)
   for (const t of fn.typeParameters ?? []) for (const n of readNames(t, ts)) reads.add(n)
-  const text = (namespace) => {
-    const call = `${namespace}.${name}(${args})`
+  const text = (namespace, callee = `${namespace}.${name}`) => {
+    // An inferred result may name a type parameter the arguments do not fix.
+    const typeArgs = inferred && fn.typeParameters ? `<${fn.typeParameters.map((t) => t.name.text).join(", ")}>` : ""
+    const call = `${callee}${typeArgs}(${args})`
     const declaration = kind === "const"
-      ? `export ${constKeyword} ${name} = ${asyncWord}${typeParams}(${paramText}): ${ret} => ${asyncWord ? "await " : ""}${call}`
-      : `export ${asyncWord}function ${name}${typeParams}(${paramText}): ${ret} {\n  return ${call}\n}`
+      ? `export ${constKeyword} ${name} = ${asyncWord}${typeParams}(${paramText})${ret} => ${asyncWord ? "await " : ""}${call}`
+      : `export ${asyncWord}function ${name}${typeParams}(${paramText})${ret} {\n  return ${call}\n}`
     return doc + declaration
   }
-  return { name, text, reads }
+  return { name, text, reads, inferred }
 }
 
 function exportedText(source, statement) {
@@ -652,16 +1056,19 @@ function firstLine(source, statement) {
 // value moves with it, since a declaration cannot read it through a body's
 // value otherwise. A body cannot hold import.meta (EK4009), nor a module export = (EK4008).
 // A top-level statement keeps its place only among its neighbours, and a body
-// evaluates when imported, so a module with one to move stays TypeScript. So
-// does a module left with no value of its own: a body holding the whole file is
-// a .ts file with a harder name.
+// evaluates when imported, so such a statement never moves: it stays where it
+// stands, and only its host operations move (hostOperations), called in place.
+// A module left with no value of its own stays TypeScript: a body holding the
+// whole file is a .ts file with a harder name. A declaration that would move but
+// reads import.meta, or a value that would move only because moved code reads
+// it, stays instead, and only the module's host operations move.
 
 /**
  * Splits the TypeScript module text of file into a module with a module body.
- * Returns { module, moved, kept, name }, or { refused } saying why the module
+ * Returns { module, moved, kept, name, wrapped }, or { refused } saying why the module
  * keeps its platform code, or null when it reaches no platform code.
  */
-export function splitPlatformToModule(text, file, ts, { globals = [], throws = false, platform: platformCode = true, reexports = true } = {}) {
+export function splitPlatformToModule(text, file, ts, { globals = [], throws = false, platform: platformCode = true, reexports = true, wrap = false } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
@@ -678,40 +1085,94 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   }))
   const declared = new Map()
   for (const d of declarations) for (const name of d.names) declared.set(name, [...(declared.get(name) ?? []), d])
-  for (const name of globals) if (!imported.has(name) && !declared.has(name)) platform.add(name)
+  for (const name of globalNames(globals, source, ts)) if (!imported.has(name) && !declared.has(name)) platform.add(name)
   const platformSeed = !platformCode ? [] : declarations.filter((d) => !reexport_(d, ts) && ([...d.reads].some((n) => platform.has(n) && !declared.has(n)) || importsPlatform(d.statement, ts)))
   const throwSeed = throws ? declarations.filter((d) => !reexport_(d, ts) && !platformSeed.includes(d) && throwsPlainly(d.statement, ts)) : []
   if (!platformSeed.length && !throwSeed.length) return null
   if (source.statements.some((s) => ts.isExportAssignment(s) && s.isExportEquals)) return { refused: `${file}: export = has no place beside a module body (EK4008)` }
   const typeOnly = (d) => ts.isInterfaceDeclaration(d.statement) || ts.isTypeAliasDeclaration(d.statement) || typeNamespace(d.statement, ts)
   const reexport = (d) => ts.isExportDeclaration(d.statement)
-  const moved = new Set([...platformSeed, ...throwSeed])
-  for (let grew = true; grew; ) {
-    grew = false
-    const add = (d) => { if (!moved.has(d)) { moved.add(d); grew = true } }
-    for (const d of [...moved]) {
-      for (const name of new Set([...d.reads, ...d.valueReads])) for (const needed of declared.get(name) ?? []) add(needed)
-      for (const name of d.names) for (const twin of declared.get(name) ?? []) add(twin)
+  const close = (seed) => {
+    const moved = new Set(seed)
+    for (let grew = true; grew; ) {
+      grew = false
+      const add = (d) => { if (!moved.has(d)) { moved.add(d); grew = true } }
+      for (const d of [...moved]) {
+        for (const name of new Set([...d.reads, ...d.valueReads])) for (const needed of declared.get(name) ?? []) add(needed)
+        for (const name of d.names) for (const twin of declared.get(name) ?? []) add(twin)
+      }
+      const values = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
+      for (const d of declarations) if (typeOnly(d) && [...d.valueReads].some((n) => values.has(n))) add(d)
+      // An import is read-only (TS2632): whatever writes a moved binding moves with it.
+      for (const d of declarations) if (!reexport(d) && [...writtenNames(d.statement, ts)].some((n) => values.has(n))) add(d)
     }
-    const values = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
-    for (const d of declarations) if (typeOnly(d) && [...d.valueReads].some((n) => values.has(n))) add(d)
-    // An import is read-only (TS2632): whatever writes a moved binding moves with it.
-    for (const d of declarations) if (!reexport(d) && [...writtenNames(d.statement, ts)].some((n) => values.has(n))) add(d)
+    return moved
   }
+  let moved = close([...platformSeed, ...throwSeed])
+  // VIP-40: "A body that needs metadata receives it as an argument." A
+  // declaration that would move and reads import.meta stays where it is; only
+  // the host operations of the module's kept code move into the body
+  // (hostOperations), and import.meta stays in the module. Throwing code still
+  // moves whole.
+  const metaReader = platformCode ? [...moved].find((d) => readsImportMeta(d.statement, ts)) : undefined
+  // A move that would take every value of the module, though some value
+  // reaches no platform code, takes it only because moved code reads it: a
+  // resource value and its same-named type beside the provider that reads
+  // the host. The module keeps them, and only the host operations move. A
+  // module whose every value reaches the platform is platform code and stays
+  // TypeScript.
+  const value = (d) => !typeOnly(d) && !reexport(d)
+  const dragged = platformCode && !metaReader && !declarations.some((d) => value(d) && !moved.has(d)) &&
+    declarations.some((d) => value(d) && !platformSeed.includes(d) && !throwSeed.includes(d))
   const movable = (s) => ts.isVariableStatement(s) || ts.isFunctionDeclaration(s) || ts.isClassDeclaration(s) || ts.isInterfaceDeclaration(s) || ts.isTypeAliasDeclaration(s) || ts.isEnumDeclaration(s) || ts.isExportAssignment(s) || typeNamespace(s, ts)
+  // A statement that runs in order among the module's statements, the platform
+  // code would take into the body, stays too: a body evaluates when imported,
+  // before the module's own statements, while a helper called where the
+  // statement performed the operation keeps the order of evaluation. Throwing
+  // code still moves whole.
+  const ordered = platformCode && !metaReader ? [...close(platformSeed)].find((d) => !movable(d.statement)) : undefined
+  let operations = null
+  if (metaReader || dragged || ordered) {
+    moved = close(throwSeed)
+    const names = new Set()
+    const collect = (node) => { if (ts.isIdentifier(node)) names.add(node.text); ts.forEachChild(node, collect) }
+    collect(source)
+    operations = hostOperations(source, declarations.filter((d) => !moved.has(d)).map((d) => d.statement), platform, ts, names, file)
+    if (operations.refused) {
+      const why = metaReader
+        ? `${firstLine(source, metaReader.statement)} reads import.meta, which a module body cannot (EK4009)`
+        : ordered ? `${firstLine(source, ordered.statement)} runs in order among the module's statements, so it cannot move to a module body`
+        : "moving its platform code would take every value of the module"
+      return { refused: `${file}: ${why}, and its host operations cannot move on their own: ${operations.refused}` }
+    }
+  }
   for (const d of moved) {
     if (!movable(d.statement)) return { refused: `${file}: ${firstLine(source, d.statement)} runs in order among the module's statements, so it cannot move to a module body` }
     if (readsImportMeta(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} reads import.meta, which a module body cannot (EK4009)` }
   }
   const kept = declarations.filter((d) => !moved.has(d))
-  if (!kept.some((d) => !typeOnly(d) && !reexport(d))) return { refused: platformSeed.length ? `${file} is platform code only` : `${file}: every value of the module reaches a throw, so it stays TypeScript` }
-  const keptReads = new Set(kept.flatMap((d) => [...d.reads]))
-  const taken = new Set([...declared.keys(), ...imported, ...declarations.flatMap((d) => [...d.reads])])
-  const name = uniqueName(platformSeed.length ? "platform" : "throwing", taken)
+  const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
+  if (inferredTypes.refused) return inferredTypes
   const isDefault = (d) => ts.isExportAssignment(d.statement) || (d.statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
+  // With wrap, a module whose every value is platform code keeps each export
+  // as a function with its written signature that calls the body, as the
+  // sibling split's wrappers do; any other export leaves the module TypeScript.
+  let wrappers = []
+  if (!kept.some((d) => !typeOnly(d) && !reexport(d))) {
+    const exportedValues = platformSeed.length && wrap ? [...moved].filter((d) => d.exported && !typeOnly(d)) : []
+    // A type of a wrapped name would lose its export beside the wrapper.
+    wrappers = exportedValues.map((d) => !isDefault(d) && ![...d.names].some((n) => declared.get(n).some(typeOnly)) && wrapperOf(d.statement, source, ts)).map((w, i) => w && { d: exportedValues[i], ...w })
+    if (!wrappers.length || !wrappers.every(Boolean)) return { refused: platformSeed.length ? `${file} is platform code only` : `${file}: every value of the module reaches a throw, so it stays TypeScript` }
+  }
+  const keptReads = new Set([...kept.flatMap((d) => [...d.reads]), ...wrappers.flatMap((w) => [...w.reads])])
+  const taken = new Set([...declared.keys(), ...imported, ...declarations.flatMap((d) => [...d.reads]), ...(operations?.helpers.map((h) => h.name) ?? [])])
+  const name = uniqueName(platformSeed.length ? "platform" : "throwing", taken)
+  taken.add(name)
+  const alias = new Map()
+  for (const w of wrappers) { const a = uniqueName(w.name + "$platform", taken); taken.add(a); alias.set(w.name, a) }
   const movedList = declarations.filter((d) => moved.has(d))
   // What the module reads from the body, and what it re-exports, by meaning.
-  const imports_ = [], typeImports = [], exports_ = [], typeExports = []
+  const imports_ = [], typeImports = [], exports_ = [], typeExports = [], bound = []
   let reexportsDefault = false
   const seen = new Set()
   for (const d of movedList) {
@@ -725,6 +1186,19 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
       seen.add(n)
       const all = declared.get(n)
       const value = all.some((x) => !typeOnly(x))
+      if (alias.has(n)) { imports_.push(`${n} as ${alias.get(n)}`); continue }
+      // An import is not narrowed inside a closure the way a local const is
+      // (t3code Web previewBridge.ts, TS18047), so a private moved const that
+      // kept code reads in a closure comes back under an alias and is bound to
+      // a local const of its own name, as the sibling split binds it. A
+      // function or class value has nothing to narrow.
+      if (keptReads.has(n) && !all.some((x) => x.exported) && all.every((x) => narrowableConst(x.statement, ts)) && kept.some((d) => readsInClosure(d.statement, n, ts))) {
+        const a = uniqueName(n + "$platform", taken)
+        taken.add(a)
+        imports_.push(`${n} as ${a}`)
+        bound.push(`const ${n}: typeof ${a} = ${a}`)
+        continue
+      }
       if (keptReads.has(n)) (value ? imports_ : typeImports).push(n)
       if (all.some((x) => x.exported && !typeOnly(x))) exports_.push(n)
       else if (all.some((x) => x.exported)) typeExports.push(n)
@@ -738,10 +1212,15 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
     return i === source.statements[0] ? source.text.slice(i.getStart(source), i.end) : statementText(source, i)
   }
   const fileComment = imports[0] === source.statements[0] ? leadingComments(source, imports[0]).trimEnd() : ""
-  const head = imports.map((i) => bare(i, (b) => moduleReads.has(b.name))).filter(Boolean)
+  const builtin = (i) => ts.isStringLiteral(i.moduleSpecifier) && isPlatformModule(i.moduleSpecifier.text)
+  const head = imports.map((i) => operations && builtin(i)
+    ? typeImportText(i, source, ts, (b) => operations.typeReads.has(b.name) || (b.type && moduleReads.has(b.name)))
+    : bare(i, (b) => moduleReads.has(b.name))).filter(Boolean)
   if (fileComment) head.unshift(fileComment)
   const movedReads = new Set(movedList.flatMap((d) => [...d.reads]))
-  const bodyImports = imports.map((i) => i.importClause ? bare(i, (b) => movedReads.has(b.name)) : null).filter(Boolean)
+  const bodyImports = imports.map((i) => i.importClause ? bare(i, (b) => movedReads.has(b.name) || (!!operations && !b.type && operations.roots.has(b.name)))
+    // A builtin loaded for its effect loads from the body, with the host operations.
+    : operations && builtin(i) ? statementText(source, i) : null).filter(Boolean)
   // A body exports a private declaration that kept code reads, and every one a
   // kept declaration's inferred type may name, which TypeScript could do in one
   // file (TS4023 across two): a type, class, enum or function, and a variable
@@ -752,7 +1231,8 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   const queried = typeQueryNames(source, ts)
   const seam = (d) => !ts.isVariableStatement(d.statement) || [...d.names].some((n) => keptReads.has(n) || queried.has(n)) || namesItsOwnType(d.statement, ts)
   const bodyStatements = movedList.map((d) => (!d.exported && !isDefault(d) && d.names.size && seam(d) ? exportedText(source, d.statement) : statementText(source, d.statement)))
-  const body = [`module ${name} {`, joinParts(fileDirectives(source, ts), bodyImports, bodyStatements).trimEnd(), "}"].join("\n")
+  const body = [`module ${name} {`, joinParts(fileDirectives(source, ts), bodyImports, bodyStatements, operations?.helpers.map((h) => h.text) ?? []).trimEnd(), "}"].join("\n")
+  imports_.push(...(operations?.helpers.map((h) => h.name) ?? []))
   const from = []
   if (imports_.length) from.push(`import { ${[...imports_].sort().join(", ")} } from ${name}`)
   if (typeImports.length) from.push(`import type { ${[...typeImports].sort().join(", ")} } from ${name}`)
@@ -764,11 +1244,100 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   if (!reexports && (exports_.length || typeExports.length || reexportsDefault)) {
     return { refused: `${file}: ${[...exports_, ...typeExports, ...(reexportsDefault ? ["default"] : [])].join(", ")} would be declared by \`module ${name}\`, a new public declaration file; platformModuleBodies allows it` }
   }
-  const module = joinParts(leadingHeader(source), head, [body], from, kept.map((d) => statementText(source, d.statement)))
-  return { module, name, moved: movedList.flatMap((d) => [...d.names]), kept: kept.flatMap((d) => [...d.names]), throwing: throwSeed.flatMap((d) => [...d.names]) }
+  const module = joinParts(leadingHeader(source), head, [body], [...from, ...bound], [...kept.map((d) => inferredTypes.text(d.statement, operations?.edits.get(d.statement))), ...wrappers.map((w) => w.text(name, alias.get(w.name)))])
+  return { module, name, moved: [...movedList.flatMap((d) => [...d.names]), ...(operations?.helpers.map((h) => h.name) ?? [])], kept: kept.flatMap((d) => [...d.names]), throwing: throwSeed.flatMap((d) => [...d.names]),
+    ...(operations ? { hostOperations: operations.helpers.map((h) => h.name) } : {}), wrapped: wrappers.map((w) => w.name) }
 }
 
 const intersect = (a, b) => new Set([...a].filter((x) => b.has(x)))
+
+// A const whose every initializer is a value a condition can narrow: no
+// function or class expression.
+function narrowableConst(statement, ts) {
+  if (!ts.isVariableStatement(statement) || !(statement.declarationList.flags & ts.NodeFlags.Const)) return false
+  return statement.declarationList.declarations.every((v) => {
+    let init = v.initializer
+    while (init && (ts.isParenthesizedExpression(init) || ts.isAsExpression(init) || ts.isSatisfiesExpression(init))) init = init.expression
+    return init && !ts.isArrowFunction(init) && !ts.isFunctionExpression(init) && !ts.isClassExpression(init)
+  })
+}
+
+// Whether node reads the identifier name inside a function or method.
+function readsInClosure(node, name, ts) {
+  const visit = (n, inside) => {
+    if (ts.isIdentifier(n) && n.text === name && inside) {
+      const p = n.parent
+      if (!(p && ts.isPropertyAccessExpression(p) && p.name === n) && !(p && ts.isPropertyAssignment(p) && p.name === n)) return true
+    }
+    const fn = ts.isFunctionLike(n) && !ts.isTypeNode(n)
+    return ts.forEachChild(n, (c) => visit(c, inside || fn)) ?? false
+  }
+  return visit(node, false)
+}
+
+
+// An imported factory's inferred object is expanded without its member JSDoc
+// by TypeScript declaration emit. Keep its concrete return type linked to the
+// factory instead of moving the initializer, which could reorder evaluation.
+function inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file) {
+  const factories = new Map()
+  const callable = (statement, name) => {
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === name) return { node: statement, contextual: false }
+    if (!ts.isVariableStatement(statement)) return null
+    const variable = statement.declarationList.declarations.find(d => ts.isIdentifier(d.name) && d.name.text === name)
+    let node = variable?.initializer
+    while (node && ts.isParenthesizedExpression(node)) node = node.expression
+    return node && (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) ? { node, contextual: !!variable.type } : null
+  }
+  const memberDocs = node => !!node && (
+    !!node.jsDoc?.length && (
+      ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node) ||
+      ts.isPropertySignature(node) || ts.isMethodDeclaration(node) ||
+      ts.isMethodSignature(node) || ts.isGetAccessor(node) || ts.isSetAccessor(node)
+    ) || !!ts.forEachChild(node, child => memberDocs(child) || undefined)
+  )
+  for (const declaration of moved) for (const name of declaration.names) {
+    const fn = callable(declaration.statement, name)
+    if (!fn || !memberDocs(fn.node)) continue
+    const overloaded = declarations.filter(d => d.names.has(name)).length !== 1
+    factories.set(name, { ...fn, unsupported: overloaded || fn.contextual || !!fn.node.typeParameters?.length || !!fn.node.asteriskToken })
+  }
+  const shadowed = imported.has("ReturnType") || declarations.some(d => d.names.has("ReturnType") && (
+    ts.isTypeAliasDeclaration(d.statement) || ts.isInterfaceDeclaration(d.statement) ||
+    ts.isClassDeclaration(d.statement) || ts.isEnumDeclaration(d.statement) || ts.isModuleDeclaration(d.statement)
+  ))
+  const insertions = new Map()
+  for (const declaration of kept) {
+    if (!ts.isVariableStatement(declaration.statement)) continue
+    for (const variable of declaration.statement.declarationList.declarations) {
+      if (variable.type || !ts.isIdentifier(variable.name)) continue
+      let call = variable.initializer
+      while (call && ts.isParenthesizedExpression(call)) call = call.expression
+      if (!call || !ts.isCallExpression(call) || call.questionDotToken) continue
+      let target = call.expression
+      while (ts.isParenthesizedExpression(target)) target = target.expression
+      if (!ts.isIdentifier(target)) continue
+      const factory = factories.get(target.text)
+      if (!factory) continue
+      if (factory.unsupported || call.typeArguments?.length) return {
+        refused: `${file}: inferred member documentation for ${variable.name.text} depends on a generic, overloaded or contextually typed factory; keep the module in TypeScript`
+      }
+      if (shadowed) return { refused: `${file}: ReturnType is shadowed, so inferred member documentation for ${variable.name.text} cannot retain its factory type` }
+      const edits = insertions.get(declaration.statement) ?? []
+      edits.push({ at: variable.name.end, text: `: ReturnType<typeof ${target.text}>` })
+      insertions.set(declaration.statement, edits)
+    }
+  }
+  return { text: (statement, extra = []) => {
+    let text = statementText(source, statement)
+    const start = statement.end - text.length
+    for (const edit of [...(insertions.get(statement) ?? []), ...extra].sort((a, b) => b.at - a.at)) {
+      const at = edit.at - start
+      text = text.slice(0, at) + edit.text + text.slice((edit.end ?? edit.at) - start)
+    }
+    return text
+  } }
+}
 
 // The names a `typeof x` type query reads anywhere in source.
 function typeQueryNames(source, ts) {
@@ -800,11 +1369,124 @@ function namesItsOwnType(statement, ts) {
   })
 }
 
+// The host operations of statements, moved into a module body as helpers the
+// module calls where it performed them (VIP-40: a body that needs metadata
+// receives it as an argument; the compiler's platformCallSplit does the same
+// inside wrappers). Each free reference to a name in platform, a value import
+// of a builtin or a host global the compiler named, becomes:
+//   a call      fileURLToPath(new URL("./x", import.meta.url))  ->  $fileURLToPath(new URL("./x", import.meta.url))
+//   a read      process.env.TOKEN                                ->  $process_env_TOKEN()
+//   a typeof    typeof Bun                                       ->  $typeof_Bun()
+//   a write     process.exitCode = 1                             ->  $set_process_exitCode(1)
+// A called helper has the callee's own type, overloads and generics included,
+// and calls it on the same receiver. Arguments, type arguments and callbacks
+// stay where they were, so they run in order and still see the module's
+// import.meta. A read, typeof or write helper performs that one operation
+// when the module reaches it, and throws only what the operation throws.
+// What cannot move this way is refused: new, a tagged template, an optional
+// call of a member, a write other than =, delete, a re-export of the name.
+// Returns { edits: Map(statement -> [{ at, end, text }]), helpers: [{ name, text }],
+// typeReads, roots } or { refused }.
+function hostOperations(source, statements, platform, ts, taken, file) {
+  const helpers = new Map(), edits = new Map(), typeReads = new Set(), roots = new Set()
+  const where = (node) => file + ":" + (source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1)
+  const fresh = (base) => { let name = base; for (let i = 2; taken.has(name); i++) name = base + i; taken.add(name); return name }
+  const helper = (key, base, text) => {
+    let h = helpers.get(key)
+    if (!h) { const name = fresh(base); h = { name, text: text(name) }; helpers.set(key, h) }
+    return h.name
+  }
+  const never = "/** @throws {never} */\n"
+  for (const statement of statements) {
+    if (ts.isExportDeclaration(statement) && !statement.moduleSpecifier && statement.exportClause && ts.isNamedExports(statement.exportClause)) {
+      const named = statement.exportClause.elements.find((e) => platform.has((e.propertyName ?? e.name).text))
+      if (named) return { refused: `${where(statement)}: export { ${named.getText(source)} } re-exports platform code` }
+    }
+    const sites = []
+    freeNames(statement, ts, false, (node, type) => { if (platform.has(node.text)) { if (type) typeReads.add(node.text); else sites.push(node) } })
+    const own = []
+    for (const id of sites) {
+      roots.add(id.text)
+      if (ts.isShorthandPropertyAssignment(id.parent) && id.parent.name === id) {
+        const name = helper("read " + id.text, "$" + id.text, (h) => `${never}export function ${h}() { return ${id.text} }`)
+        own.push({ at: id.getStart(source), end: id.end, text: `${id.text}: ${name}()` })
+        continue
+      }
+      let top = id
+      const path = [id.text]
+      while (ts.isPropertyAccessExpression(top.parent) && top.parent.expression === top && !top.parent.questionDotToken && ts.isIdentifier(top.parent.name)) {
+        top = top.parent
+        path.push(top.name.text)
+      }
+      if (/\/[*/]/.test(top.getText(source))) return { refused: `${where(id)}: ${path.join(".")} has comments that cannot move unchanged` }
+      const chain = path.join("."), base = "$" + path.join("_")
+      const parent = top.parent
+      if (ts.isExportAssignment(parent)) return { refused: `${where(id)}: export default ${chain} exports platform code` }
+      if (ts.isCallExpression(parent) && parent.expression === top && !(parent.questionDotToken && top !== id)) {
+        if (parent.questionDotToken) {
+          const name = helper("read " + chain, base, (h) => `${never}export function ${h}() { return ${chain} }`)
+          own.push({ at: top.getStart(source), end: top.end, text: name + "()" })
+        } else {
+          const name = helper("call " + chain, base, (h) => callHelper(h, chain, path))
+          own.push({ at: top.getStart(source), end: top.end, text: name })
+        }
+      } else if (ts.isCallExpression(parent) && parent.expression === top) {
+        return { refused: `${where(id)}: ${chain}?.() would lose its receiver` }
+      } else if (ts.isNewExpression(parent) && parent.expression === top) {
+        return { refused: `${where(id)}: new ${chain} constructs platform code` }
+      } else if (ts.isTaggedTemplateExpression(parent) && parent.tag === top) {
+        return { refused: `${where(id)}: ${chain} tags a template` }
+      } else if (ts.isTypeOfExpression(parent) && top === id) {
+        const name = helper("typeof " + chain, "$typeof_" + id.text, (h) => `${never}export function ${h}() { return typeof ${id.text} }`)
+        own.push({ at: parent.getStart(source), end: parent.end, text: name + "()" })
+      } else if (isWritten(top, ts)) {
+        if (!(ts.isBinaryExpression(parent) && parent.left === top && parent.operatorToken.kind === ts.SyntaxKind.EqualsToken && top !== id)) return { refused: `${where(id)}: ${chain} is written in place` }
+        const name = helper("set " + chain, "$set_" + path.join("_"), (h) => `${never}export function ${h}(value: typeof ${chain}) { return ${chain} = value }`)
+        own.push({ at: parent.getStart(source), end: parent.right.getStart(source), text: name + "(" }, { at: parent.end, end: parent.end, text: ")" })
+      } else {
+        const name = helper("read " + chain, base, (h) => `${never}export function ${h}() { return ${chain} }`)
+        own.push({ at: top.getStart(source), end: top.end, text: name + "()" })
+      }
+    }
+    if (own.length) edits.set(statement, own)
+  }
+  return { edits, helpers: [...helpers.values()], typeReads, roots }
+}
+
+// The helper for a moved call of chain. It has the callee's own type, so
+// overloads, generics and assertion signatures resolve as they did. The
+// compiler reports a host clock or randomness read by the declaration its
+// call resolves to (VIP-33; vibelang's clockReads): a helper with the host
+// method's type would still resolve there, so those reads get a function of
+// their own signature instead.
+function callHelper(h, chain, path) {
+  const member = path.at(-1), owner = path.at(-2)
+  const clock = path.length >= 2 && (owner === "crypto" && ["randomUUID", "getRandomValues"].includes(member) || owner === "performance" && member === "now")
+  if (!clock) return `export const ${h}: typeof ${chain} = ((...args: Parameters<typeof ${chain}>) => ${chain}(...args)) as typeof ${chain}`
+  // getRandomValues returns the array it fills, typed as the array passed.
+  if (member === "getRandomValues") return `export function ${h}<T extends Parameters<typeof ${chain}>[0]>(array: T): T { return ${chain}(array) }`
+  return `export function ${h}(...args: Parameters<typeof ${chain}>): ReturnType<typeof ${chain}> { return ${chain}(...args) }`
+}
+
+// An import type declaration for the bindings of i that keep keeps, or null.
+// A default and named bindings take two statements, as import type requires.
+function typeImportText(i, source, ts, keep) {
+  const kept = bindingsOf(i, ts).filter(keep)
+  if (!kept.length) return null
+  const specifier = i.moduleSpecifier.getText(source)
+  const out = []
+  const def = kept.find((b) => b.kind === "default"), ns = kept.find((b) => b.kind === "namespace"), named = kept.filter((b) => b.kind === "named")
+  if (def) out.push(`import type ${def.name} from ${specifier}`)
+  if (ns) out.push(`import type * as ${ns.name} from ${specifier}`)
+  if (named.length) out.push(`import type { ${named.map((b) => (b.property ? b.property + " as " : "") + b.name).join(", ")} } from ${specifier}`)
+  return out.join("\n")
+}
+
 // The names statement reads that it does not bind itself at the read: a
 // parameter or local of the name is no read of the top-level binding, and an
 // import no kept code reads would be TS6133. Values and types have scopes of
 // their own, `(session: session) => session`. With valuesOnly, value reads alone.
-function freeNames(statement, ts, valuesOnly = false) {
+function freeNames(statement, ts, valuesOnly = false, onFree) {
   const free = new Set()
   const bindingNames = (name, into) => {
     if (ts.isIdentifier(name)) into.add(name.text)
@@ -853,7 +1535,7 @@ function freeNames(statement, ts, valuesOnly = false) {
     if (ts.isTypeQueryNode(node)) {
       let name = node.exprName
       while (ts.isQualifiedName(name)) name = name.left
-      if (ts.isIdentifier(name) && !v.some((s) => s.has(name.text))) free.add(name.text)
+      if (ts.isIdentifier(name) && !v.some((s) => s.has(name.text))) { free.add(name.text); onFree?.(name, true) }
       for (const a of node.typeArguments ?? []) walk(a, v, t, true)
       return
     }
@@ -865,8 +1547,8 @@ function freeNames(statement, ts, valuesOnly = false) {
     if (ts.isIdentifier(node) && node.parent && !isDeclarationName(node, node.parent) && !isMemberName(node, node.parent)) {
       const parent = node.parent
       const typeRead = typeHere || (ts.isHeritageClause(parent.parent ?? parent)) || ts.isExpressionWithTypeArguments(parent) && !ts.isClassLike(parent.parent?.parent ?? parent)
-      if (typeRead && !ts.isTypePredicateNode(parent)) { if (!valuesOnly && !t.some((s) => s.has(node.text))) free.add(node.text) }
-      else if (!v.some((s) => s.has(node.text))) free.add(node.text)
+      if (typeRead && !ts.isTypePredicateNode(parent)) { if (!valuesOnly && !t.some((s) => s.has(node.text))) { free.add(node.text); onFree?.(node, true) } }
+      else if (!v.some((s) => s.has(node.text))) { free.add(node.text); onFree?.(node, false) }
     }
     if (ts.isShorthandPropertyAssignment(node) && !v.some((s) => s.has(node.name.text))) free.add(node.name.text)
     ts.forEachChild(node, (child) => walk(child, v, t, typeHere))
@@ -916,6 +1598,65 @@ function throwsPlainly(node, ts, plain = true) {
   let inner = plain
   if (ts.isFunctionLike(node) && node.body) inner = !node.asteriskToken && !(node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)
   return !!ts.forEachChild(node, (child) => throwsPlainly(child, ts, inner) || undefined)
+}
+
+// The local names of createRequire imported from node:module.
+function createRequireNames(imports, ts) {
+  const names = new Set()
+  for (const i of imports) {
+    if (!ts.isStringLiteral(i.moduleSpecifier) || !["module", "node:module"].includes(i.moduleSpecifier.text)) continue
+    for (const b of bindingsOf(i, ts)) if (!b.type && b.kind === "named" && (b.property ?? b.name) === "createRequire") names.add(b.name)
+  }
+  return names
+}
+
+// The names the module's imports bind for path's dirname and url's
+// fileURLToPath: "dirname" and "fileURLToPath" for a named import, and a
+// namespace import's name with the member, "NodePath.dirname".
+function directoryNames(imports, ts) {
+  const names = new Map()
+  for (const i of imports) {
+    if (!ts.isStringLiteral(i.moduleSpecifier)) continue
+    const from = i.moduleSpecifier.text
+    const member = ["path", "node:path", "path/posix", "node:path/posix"].includes(from) ? "dirname" : ["url", "node:url"].includes(from) ? "fileURLToPath" : null
+    if (!member) continue
+    for (const b of bindingsOf(i, ts)) {
+      if (b.type) continue
+      if (b.kind === "named" && (b.property ?? b.name) === member) names.set(b.name, member)
+      if (b.kind === "namespace" || b.kind === "default") names.set(b.name + "." + member, member)
+    }
+  }
+  return names
+}
+
+// What callee, an identifier or a namespace member, names among names.
+const calleeName = (callee, ts) => ts.isIdentifier(callee) ? callee.text
+  : ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && !callee.questionDotToken ? callee.expression.text + "." + callee.name.text : null
+
+// Whether node reads import.meta for the module's own identity: anything but
+// import.meta.url as the base of new URL(<a path beside the module>, ...),
+// the argument of createRequire, whose resolution starts from the module's
+// directory, or what names that directory in a sibling beside it too: the
+// directory of fileURLToPath(import.meta.url), and the companion's
+// $importMetaDirname and $importMetaResolve helpers given import.meta.url.
+function namesModule(node, ts, requires) {
+  if (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword) {
+    const url = node.parent
+    if (!ts.isPropertyAccessExpression(url) || url.expression !== node || url.questionDotToken || url.name.text !== "url") return true
+    const use = url.parent
+    if (ts.isCallExpression(use) && use.arguments.length === 1 && use.arguments[0] === url && ts.isIdentifier(use.expression) && requires.has(use.expression.text)) return false
+    if (ts.isCallExpression(use) && use.arguments.at(-1) === url && ts.isIdentifier(use.expression) && /^\$importMeta(?:Dirname|Resolve)\d*$/.test(use.expression.text)) return false
+    const directories = requires.directories ?? new Map()
+    if (ts.isCallExpression(use) && use.arguments.length === 1 && directories.get(calleeName(use.expression, ts)) === "fileURLToPath") {
+      const parent = use.parent
+      if (ts.isCallExpression(parent) && parent.arguments.length === 1 && parent.arguments[0] === use && directories.get(calleeName(parent.expression, ts)) === "dirname") return false
+    }
+    if (!ts.isNewExpression(use) || use.arguments?.length !== 2 || use.arguments[1] !== url || !ts.isIdentifier(use.expression) || use.expression.text !== "URL") return true
+    const first = use.arguments[0]
+    const head = ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first) ? first.text : ts.isTemplateExpression(first) ? first.head.text : null
+    return head === null || !(head === "." || head === ".." || head.startsWith("./") || head.startsWith("../"))
+  }
+  return !!ts.forEachChild(node, (child) => namesModule(child, ts, requires) || undefined)
 }
 
 function readsImportMeta(node, ts) {

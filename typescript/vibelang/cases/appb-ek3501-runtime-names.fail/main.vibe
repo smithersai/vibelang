@@ -1,0 +1,6 @@
+// expect: EK3501
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK3501` | retired continuation forms: `control`/`handle` syntax or resolved continuation-runtime `Control`, `resume`, `resumeWith`, `abandon` or `handle`; migrate proved local service patterns with `vibelang --fix`, otherwise repair manually | 35 (open; removal only) | [Retirement](000-intro.md#retired-continuation-forms) |
+import { handle as h, resume as r, resumeWith as rw, abandon as a, Control as C } from "vibelang-runtime"
+import * as Runtime from "vibelang-runtime"
+export const named = [h, r, rw, a, C]
+export const qualified = [Runtime.handle, Runtime.resume, Runtime.resumeWith, Runtime.abandon, Runtime.Control]

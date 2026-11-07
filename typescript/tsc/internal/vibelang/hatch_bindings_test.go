@@ -14,7 +14,7 @@ func TestHatchCapturesFollowVIP6(t *testing.T) {
 		"const parse = (text: string): number => Number(text)\nexport effect function invalid(text: string) { return try sync((input: typeof text): ReturnType<typeof parse> => parse(input), text) }",
 		"export const f=sync;export const g=callback;export const n=never",
 		"const n = 7; export effect function main() { return try sync(() => n + 1) }",
-		"const n = 7; export effect function main() { return try callback<number>((resume) => resume(n + 1)) }",
+		"const n = 7; export effect function main() { return try callback<number>((resume) => resume(succeed(n + 1))) }",
 	} {
 		t.Run(source, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, source)

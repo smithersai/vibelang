@@ -1,0 +1,5 @@
+FuzzMigrationRecordProtectedLayout layout:long compiler VIP-34: record's formatter reflows a protected TypeScript test outside the permitted import literal; lane migfix-t3code
+FuzzMigrationRecordProtectedLayout layout:comment-long compiler VIP-34: record's formatter reflows a protected TypeScript test outside the permitted import literal; lane migfix-t3code
+FuzzMigrationRecordProtectedLayout layout:fixture-long compiler VIP-34: record's formatter reflows a protected TypeScript test outside the permitted import literal; lane migfix-t3code
+FuzzMigrationRecordProtectedLayout layout:spec-long compiler VIP-34: record's formatter reflows a protected TypeScript test outside the permitted import literal; lane migfix-t3code
+FuzzMigrationRecordProtectedLayout corpus:t3code-record-protected-import-layout compiler VIP-34: see layout:long; lane migfix-t3code

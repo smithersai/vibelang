@@ -1,0 +1,11 @@
+// expect-result: [1,2,3,4]
+// rule-evidence: docs/design/vips/0023-pipe.md#prior-art | Parenthesize the arrow, `x |> (() => %)`.
+// The parenthesized plain, async and effect arrows are ordinary pipe bodies
+// that capture the topic; pipe-arrows.fail rejects the same arrows bare.
+export effect function main() {
+  const plain = 1 |> (() => %)
+  const later = 2 |> (async () => %)
+  const effectful = 3 |> (effect () => %)
+  const param = 3 |> ((x: number) => % + x)
+  return [plain(), try Effect.promise(() => later()), try effectful(), param(1)]
+}

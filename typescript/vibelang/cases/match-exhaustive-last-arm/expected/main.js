@@ -1,7 +1,6 @@
 import * as Option from "effect/Option";
 import { $noMatch } from "vibelang-runtime/internal";
 import * as Effect from "effect/Effect";
-import * as runtime from "vibelang-runtime/internal";
 // expect-result: {"phases":["Draft","Review","Published"],"widths":[5,6,9],"logged":["draft","review","published"],"failures":["no user 7","retry","denied Ada"],"greetings":["Hello","Hello, Ada"],"announced":"published","text":"text: hi"}
 // A match without default that D209 proves exhaustive tests its last arm
 // with a check that adds no branch (D405): no final if and no $noMatch,
@@ -43,4 +42,3 @@ export function main() {
         };
     });
 }
-runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

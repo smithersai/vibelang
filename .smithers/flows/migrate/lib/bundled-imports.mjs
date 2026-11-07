@@ -60,9 +60,18 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
     // root, from the package, or from above the package. Name the one that exists.
     const sidecarOf = (source, path) => {
       const name = ".d" + posix.extname(source) + ".ts"
-      const written = [path, path.replace(/^[^/]+\//, ""), posix.join(posix.basename(dir), path)]
+      const stems = [path, path.replace(/^[^/]+\//, "")]
+      const directories = posix.normalize(dir).split("/")
+      for (let depth = directories.length - 1; depth >= 0; depth--)
+        stems.push(posix.join(...directories.slice(depth), path))
+      const written = [...new Set(stems)]
         .map(stem => ".vibe/declarations/" + stem + name).find(file => existsSync(join(root, dir, file)))
-      return "./" + (written ?? (sidecars ? ".vibe/declarations/" : "") + path + name)
+      const target = "./" + (written ?? (sidecars ? ".vibe/declarations/" : "") + path + name)
+      if (native && outputs && !existsSync(join(root, dir, target))) {
+        const warning = posix.join(dir, "package.json") + ": missing compatibility declaration for " + source + " (" + target + ")"
+        if (!warnings.includes(warning)) warnings.push(warning)
+      }
+      return target
     }
     const targetFor = (source, path) => ({
       types: /\.vibex?$/.test(source) ? sidecarOf(source, path) : "./" + inPackage(source),
@@ -75,12 +84,16 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
       // Exact routes from normal project emission retain their own output.
       if (prior && typeof prior === "object" && typeof prior["vibelang-source"] === "string") {
         const originalSource = posix.join(dir, prior["vibelang-source"])
+        // Refusals need the complete graph, including edges kept by a later emit.
+        modules.add(originalSource)
         if (native && outputs && generated(prior) && /\.vibex?$/.test(originalSource)) {
           const output = outputs[originalSource]
           if (!output || !existsSync(join(root, output))) {
             warnings.push(posix.join(dir, "package.json") + ": missing emitted JavaScript for " + originalSource + " (" + key + ")")
           } else {
-            targets.set(key, { ...prior, default: "./" + posix.relative(dir, output) })
+            const types = typeof prior.types === "string" && existsSync(join(root, dir, prior.types))
+              ? prior.types : sidecarOf(originalSource, key.slice(routePrefix.length))
+            targets.set(key, { ...prior, types, default: "./" + posix.relative(dir, output) })
             return
           }
         }
@@ -92,6 +105,7 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
       source ??= [".vibe", ".ts", ".mts", ".cts"].map(ext => posix.join(dir, path + ext)).find(file => all.has(file))
       if (!source) throw new Error(posix.join(dir, "package.json") + ": emitted import " + key + " has no source counterpart")
       targets.set(key, targetFor(source, path))
+      modules.add(source)
     }
     // A previously native importer can itself become VibeLang. Keep its
     // existing routes even though only native value edges need rewriting.
@@ -122,7 +136,6 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
         const key = routePrefix + path
         keep(key, source)
         edits.push({ start: edge.start, end: edge.end, text: key })
-        modules.add(source)
       }
       if (edits.length) {
         writeFileSync(join(root, file), applyEdits(text, edits))

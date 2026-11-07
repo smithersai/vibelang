@@ -15,10 +15,9 @@
 // typedProgram gives typed lint of a project's .ts files the types of the
 // .vibe modules they import.
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs"
+import { existsSync, readFileSync, realpathSync } from "node:fs"
 import { createRequire } from "node:module"
-import { tmpdir } from "node:os"
-import { basename, dirname, join, parse as parsePath, relative, resolve } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { findProject, nearestProject, packageRoot, workspaceProject } from "./project.mjs"
 
@@ -43,6 +42,13 @@ const jsxVisitorKeys = Object.freeze({
   JSXIdentifier: [],
   JSXMemberExpression: ["object", "property"],
   JSXNamespacedName: ["namespace", "name"]
+})
+
+// Stock typescript-estree can return these generic JSDoc type nodes.
+const jsdocVisitorKeys = Object.freeze({
+  TSJSDocAllType: [],
+  TSJSDocNullableType: ["typeAnnotation"],
+  TSJSDocNonNullableType: ["typeAnnotation"]
 })
 
 /** Child keys of the ESTree node types VibeLang adds. */
@@ -159,7 +165,7 @@ export function parseForESLint(code, options = {}) {
   finish(ast, code)
   ast.sourceType = options.sourceType ?? "module"
   const { analyze, Visitor, visitorKeys: typescriptKeys } = typescriptEslint(options.filePath)
-  const visitorKeys = { ...typescriptKeys, ...jsxVisitorKeys, ...vibeVisitorKeys }
+  const visitorKeys = { ...typescriptKeys, ...jsxVisitorKeys, ...jsdocVisitorKeys, ...vibeVisitorKeys }
   const scopeManager = withModuleScopes(Visitor, () => analyze(ast, {
     childVisitorKeys: visitorKeys,
     globalReturn: false,
@@ -376,7 +382,7 @@ export function typedProgram(options = {}) {
   })
   const compiler = options.compiler ? resolve(root, options.compiler) : nativeCompiler()
   const projectRoot = dirname(project)
-  const compiled = new Map() // tsconfig -> Map(declaration path -> text)
+  const compiled = new Map() // tsconfig -> Set(source paths)
   const owners = new Map(), programs = new Map() // what findProject learned
   const declarations = (owner) => {
     if (!compiled.has(owner)) compiled.set(owner, vibeDeclarations(compiler, owner, owner === project ? projectRoot : packageRoot(owner)))
@@ -394,11 +400,12 @@ export function typedProgram(options = {}) {
     const owner = owners.get(source) ?? workspaceProject(source, projectRoot, project)
     if (owner === undefined) return undefined
     const declaration = join(dirname(source), basename(path))
-    if (declarations(owner).has(declaration) || owners.has(source)) return declarations(owner).get(declaration)
+    if (declarations(owner).has(source) || owners.has(source)) return existsSync(declaration) ? readFileSync(declaration, "utf8") : undefined
     const other = findProject(source, { project, tried: owner, compiler, programs }).project
     if (other === undefined) return undefined
     owners.set(source, other)
-    return declarations(other).get(declaration)
+    declarations(other)
+    return existsSync(declaration) ? readFileSync(declaration, "utf8") : undefined
   }
   const compilerOptions = { ...parsed.options, allowArbitraryExtensions: true, noEmit: true }
   const host = ts.createCompilerHost(compilerOptions, true)
@@ -448,38 +455,23 @@ function vibeSourceOf(path) {
   return /^(.+\.vibex?)\.[^./\\]+\.d\.ts$/.exec(path)?.[1]
 }
 
-// vibeDeclarations compiles project once and returns the declaration of each
-// of its .vibe modules by the path the program reads it at: x.d.vibe.ts
-// beside x.vibe, and a module declaration's file, such as x.vibe.text.d.ts,
-// at its own name. As a loader's compile does, --loader-root checks and emits
-// only the files under root; another package's modules compile with their
-// own project.
+// Compile the owning project before TypeScript reads its compatibility
+// sidecars. Public declarations can name a VibeLang dependency as x.ts;
+// compatibility sidecars retain x.vibe, including beside an unrelated x.ts.
 function vibeDeclarations(compiler, project, root) {
-  const out = mkdtempSync(join(tmpdir(), "vibelang-eslint-"))
-  try {
-    const result = spawnSync(compiler, [
-      "--project", project, "--loader-root", root, "--pretty", "false",
-      "--noEmit", "false", "--declaration", "--emitDeclarationOnly", "--declarationMap", "false",
-      "--composite", "false", "--incremental", "false", "--noEmitOnError", "false",
-      "--outDir", out, "--rootDir", parsePath(root).root, "--listEmittedFiles"
-    ], { cwd: root, encoding: "utf8", maxBuffer: 1024 * 1024 * 1024 })
-    if (result.error) throw new Error(`vibelang/eslint: cannot run the compiler: ${result.error.message}`)
-    const declarations = new Map()
-    for (const line of result.stdout.split("\n")) {
-      if (!line.startsWith("TSFILE: ")) continue
-      const emitted = line.slice("TSFILE: ".length).trim()
-      if (!emitted.endsWith(".d.ts")) continue
-      const base = resolve(parsePath(root).root, relative(out, emitted)).slice(0, -".d.ts".length)
-      const path = vibeSidecar(base) ?? base + ".d.ts"
-      if (vibeSourceOf(path) !== undefined) declarations.set(path, readFileSync(emitted, "utf8"))
-    }
-    if (result.status !== 0 && declarations.size === 0) {
-      throw new Error(`vibelang/eslint: ${project} did not compile, so typed lint has no types for its .vibe modules:\n${(result.stdout + result.stderr).trim().slice(0, 4000)}`)
-    }
-    return declarations
-  } finally {
-    rmSync(out, { recursive: true, force: true })
+  const result = spawnSync(compiler, [
+    "--project", project, "--loader-root", root, "--pretty", "false", "--noEmit", "true", "--listFiles"
+  ], { cwd: root, encoding: "utf8", maxBuffer: 1024 * 1024 * 1024 })
+  if (result.error) throw new Error("vibelang/eslint: cannot run the compiler: " + result.error.message)
+  if (result.status !== 0) {
+    throw new Error("vibelang/eslint: " + project + " did not compile, so typed lint has no types for its .vibe modules:\n" + (result.stdout + result.stderr).trim().slice(0, 4000))
   }
+  const sources = new Set()
+  for (const line of result.stdout.split("\n")) {
+    const file = resolve(root, line.trim())
+    if (/\.vibex?$/.test(file) && existsSync(file)) sources.add(realpathSync(file))
+  }
+  return sources
 }
 
 // vibeDeclarationFor returns the declaration path of the .vibe module that a

@@ -29,7 +29,7 @@
 // nested function once the codemod writes `(value) => Effect.succeed(value)`,
 // so that spelling of the same member counts for the original's arm.
 import { existsSync, readFileSync } from "node:fs"
-import { join, posix } from "node:path"
+import { dirname, join, posix } from "node:path"
 const isTestFile = (path) => /\.(?:test|spec)\.[^/]+$/.test(path)
 const inTestDirectory = (path) => /(?:^|\/)(?:test|tests|__tests__)\//.test(path)
 
@@ -315,25 +315,122 @@ export function functionsOf(ts, text, file = "module.ts") {
   return found
 }
 
+/**
+ * The name paths of the values in text whose initializer reads Effect, named
+ * as functionsOf names the functions they hold: `export const program =
+ * Effect.gen(...)` is `/program`.
+ */
+function programValuesOf(ts, text, file) {
+  const kind = file.endsWith("x") ? ts.ScriptKind.TSX : /\.[cm]?js$/.test(file) ? ts.ScriptKind.JS : ts.ScriptKind.TS
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind)
+  const bound = bindingsOf(ts, source)
+  const values = new Set()
+  const visit = (node, path) => {
+    if ((ts.isVariableDeclaration(node) || ts.isPropertyAssignment(node) || ts.isPropertyDeclaration(node)) && node.initializer && staticName(ts, node.name) !== null) {
+      const at = `${path}/${staticName(ts, node.name)}`
+      if (readsEffect(ts, node.initializer, bound)) values.add(at)
+      visit(node.initializer, at)
+      return
+    }
+    if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isMethodDeclaration(node)) && node.name && staticName(ts, node.name) !== null) {
+      ts.forEachChild(node, child => child !== node.name && visit(child, `${path}/${staticName(ts, node.name)}`))
+      return
+    }
+    ts.forEachChild(node, child => visit(child, path))
+  }
+  ts.forEachChild(source, child => visit(child, ""))
+  return values
+}
+
+/** The path before a function's first callback segment, `/program` of `/program/x.pipe(0)/Effect.flatMap(0)`, or null for no callback. */
+const holderOf = (name) => {
+  const segments = name.split("/")
+  const at = segments.findIndex(segment => /\(\d+\)(?:#\d+)?$/.test(segment))
+  return at > 1 ? segments.slice(0, at).join("/") : null
+}
+
 /** Whether the emitted function still hands a program back on every path: a generator, or nothing but Effect returns and no throw at the call. */
 const keepsProgram = fn => fn.generator || fn.factory || (fn.returns > 0 && fn.effects === fn.returns && fn.throws === 0)
 /** The original's arms whose named members the emitted function forwards to, each the same read of Effect. */
 const forwardedArms = (fn, counterpart) => fn.named.filter(members => members.every(member => counterpart.forwards.includes(member))).length
 
-/** The functions the original had that return Effect values and the emitted text lost, and those it has no function for. */
-export function lostWrappers({ ts, original, originalPath = "original.ts", emitted, emittedPath = "emitted.js" }) {
+/**
+ * The module's top-level functions that only call the export of their own name
+ * in a companion, by name path: the platform split keeps an export as such a
+ * wrapper, `export const load = () => $platform.load()`, and the companion's
+ * function is the original's, moved verbatim, so it is the one that pairs.
+ */
+function delegatingWrappers(ts, text, path, companions) {
+  const found = new Map()
+  if (!companions.length) return found
+  const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
+  const namespaces = new Map()
+  for (const statement of source.statements) {
+    const bindings = ts.isImportDeclaration(statement) && statement.importClause?.namedBindings
+    if (!bindings || !ts.isNamespaceImport(bindings) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
+    const target = companions.find(c => posix.basename(c.path) === posix.basename(statement.moduleSpecifier.text))
+    if (target) namespaces.set(bindings.name.text, target.path)
+  }
+  const delegatesTo = (fn, name) => {
+    let body = fn.body
+    if (body && ts.isBlock(body)) body = body.statements.length === 1 && ts.isReturnStatement(body.statements[0]) ? body.statements[0].expression : undefined
+    while (body && ts.isParenthesizedExpression(body)) body = body.expression
+    if (!body || !ts.isCallExpression(body) || !ts.isPropertyAccessExpression(body.expression)) return undefined
+    const callee = body.expression
+    return ts.isIdentifier(callee.expression) && callee.name.text === name ? namespaces.get(callee.expression.text) : undefined
+  }
+  for (const statement of source.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name) {
+      const target = delegatesTo(statement, statement.name.text)
+      if (target) found.set("/" + statement.name.text, target)
+    } else if (ts.isVariableStatement(statement)) {
+      for (const d of statement.declarationList.declarations) {
+        const init = d.initializer
+        if (!ts.isIdentifier(d.name) || !init || !(ts.isArrowFunction(init) || ts.isFunctionExpression(init))) continue
+        const target = delegatesTo(init, d.name.text)
+        if (target) found.set("/" + d.name.text, target)
+      }
+    }
+  }
+  return found
+}
+
+/**
+ * The functions the original had that return Effect values and the emitted
+ * text lost, and those it has no function for. companions are the emitted
+ * JavaScript of the module's VIP-40 bodies, `[{ path, text }]`: a body holds
+ * the original's declarations verbatim, under their own names, and the
+ * module imports or re-exports them, so a body's function pairs with the
+ * original function of its name. The platform split's `<Name>.platform.js`
+ * is one too: a wrapper that only calls its moved function of the same name
+ * pairs through that function (delegatingWrappers).
+ */
+export function lostWrappers({ ts, original, originalPath = "original.ts", emitted, emittedPath = "emitted.js", companions = [] }) {
   const before = functionsOf(ts, original, originalPath), after = functionsOf(ts, emitted, emittedPath)
-  const flags = [], unpaired = []
+  const programs = programValuesOf(ts, emitted, emittedPath)
+  const delegating = delegatingWrappers(ts, emitted, emittedPath, companions)
+  for (const companion of companions) {
+    for (const [name, fn] of functionsOf(ts, companion.text, companion.path)) if (!after.has(name) || delegating.get(name) === companion.path) after.set(name, fn)
+    for (const name of programValuesOf(ts, companion.text, companion.path)) programs.add(name)
+  }
+  // Direct-style lowering inlines a callback into the program around it:
+  // `x.pipe(Effect.flatMap((n) => Effect.succeed(n + 1)))` becomes
+  // `effect { const n = try x; return n + 1 }`, whose steps the callback's
+  // Effects now are. Such a callback has no emitted function. It is inlined,
+  // not unpaired, when its holder is still a program in the emit: a function
+  // that keeps its program, or a value that reads Effect.
+  const program = (holder) => holder !== null && (after.has(holder) ? keepsProgram(after.get(holder)) : programs.has(holder))
+  const flags = [], unpaired = [], inlined = []
   let paired = 0
   for (const [name, fn] of before) {
     const returned = fn.factory ? 1 : fn.generator ? 0 : fn.effects
     const counterpart = after.get(name)
     if (counterpart) paired++
     if (returned === 0) continue
-    if (!counterpart) unpaired.push({ function: name, line: fn.line, effectReturns: returned })
+    if (!counterpart) (program(holderOf(name)) ? inlined : unpaired).push({ function: name, line: fn.line, effectReturns: returned })
     else if (!keepsProgram(counterpart) && counterpart.effects + forwardedArms(fn, counterpart) < returned) flags.push({ function: name, line: fn.line, effectReturns: returned, emittedEffectReturns: counterpart.effects, cast: fn.cast })
   }
-  return { flags, unpaired, paired }
+  return { flags, unpaired, inlined, paired }
 }
 
 /** The allow-list of a run, `[{ file, function, reason }]`. `function: "*"` excuses a module the check cannot read, and no flag. An entry with no reason allows nothing. */
@@ -343,6 +440,28 @@ export function readAllowList(path) {
   if (!Array.isArray(list)) throw new Error(path + " must be a JSON array of { file, function, reason }")
   const valid = entry => typeof entry?.file === "string" && typeof entry?.function === "string" && typeof entry?.reason === "string" && entry.reason.trim() !== ""
   return { entries: list.filter(valid), invalid: list.filter(entry => !valid(entry)) }
+}
+
+/**
+ * The emitted JavaScript of the VIP-40 bodies that emitted, the JavaScript of
+ * the module file (repository-relative), imports or re-exports: x.vibe's body
+ * `platform` emits beside x.js as `x.vibe.platform.js`.
+ */
+export function bodyCompanionsOf(file, emitted, read = path => existsSync(path) ? readFileSync(path, "utf8") : null) {
+  const base = posix.basename(file)
+  // The platform split's sibling, x.platform.ts beside x.vibe, emits as x.platform.js.
+  const stem = base.replace(/\.vibex?$/, "")
+  const companions = new Map()
+  for (const m of emitted.text.matchAll(/\b(?:from|import)\s*["']\.\/([^"'/]+)["']/g)) {
+    const name = m[1]
+    const sibling = name === stem + ".platform.js" || name === stem + ".platform.jsx"
+    if (!sibling && (!name.startsWith(base + ".") || !/^[A-Za-z_$][\w$]*\.jsx?$/.test(name.slice(base.length + 1)))) continue
+    const path = join(dirname(emitted.path), name)
+    if (companions.has(path)) continue
+    const text = read(path)
+    if (text !== null && text !== undefined) companions.set(path, { path, text })
+  }
+  return [...companions.values()]
 }
 
 /** The package directory that holds a repository path, the longest of `packages`, and the emitted JavaScript of the module there. */
@@ -366,8 +485,8 @@ export function emittedPathOf(file, packages) {
  * listed under noOriginal without stopping the batch; one it renamed and kept
  * no original for is unchecked.
  */
-export function lostWrapperCheck({ ts, files, original, emitted, renamed = () => true, allow = { entries: [], invalid: [] } }) {
-  const flags = [], allowed = [], unpaired = [], unchecked = [], excused = [], noOriginal = []
+export function lostWrapperCheck({ ts, files, original, emitted, renamed = () => true, allow = { entries: [], invalid: [] }, read }) {
+  const flags = [], allowed = [], unpaired = [], inlined = [], unchecked = [], excused = [], noOriginal = []
   let modules = 0, paired = 0
   const used = new Set()
   const cannotRead = (file, reason) => {
@@ -389,14 +508,15 @@ export function lostWrapperCheck({ ts, files, original, emitted, renamed = () =>
       continue
     }
     modules++
-    const found = lostWrappers({ ts, original: before.text, originalPath: before.path, emitted: after.text, emittedPath: after.path })
+    const found = lostWrappers({ ts, original: before.text, originalPath: before.path, emitted: after.text, emittedPath: after.path, companions: bodyCompanionsOf(file, after, read) })
     paired += found.paired
     unpaired.push(...found.unpaired.map(entry => ({ file, ...entry })))
+    inlined.push(...found.inlined.map(entry => ({ file, ...entry })))
     for (const flag of found.flags) {
       const entry = allow.entries.find(e => e.file === file && e.function === flag.function)
       if (entry) { used.add(entry); allowed.push({ file, ...flag, reason: entry.reason }) }
       else flags.push({ file, ...flag })
     }
   }
-  return { modules, paired, flags, allowed, unpaired, unchecked, excused, noOriginal, invalidAllow: allow.invalid, unusedAllow: allow.entries.filter(e => !used.has(e)), blocking: flags }
+  return { modules, paired, flags, allowed, unpaired, inlined, unchecked, excused, noOriginal, invalidAllow: allow.invalid, unusedAllow: allow.entries.filter(e => !used.has(e)), blocking: flags }
 }

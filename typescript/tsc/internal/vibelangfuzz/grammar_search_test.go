@@ -22,10 +22,15 @@ type grammarLab struct {
 }
 
 func grammarNewGrammarLab(text, file string) (*grammarLab, error) {
+	return grammarNewGrammarLabReading(text, file, false)
+}
+
+func grammarNewGrammarLabReading(text, file string, relational bool) (*grammarLab, error) {
 	a, err := grammarReadAppendix(text, file)
 	if err != nil {
 		return nil, err
 	}
+	a.relational = relational
 	g := grammarBuildGrammar(a)
 	ps := grammarNewProseSet(a, g)
 	ps.apply(g)

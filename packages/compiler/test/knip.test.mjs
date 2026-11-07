@@ -57,7 +57,7 @@ test("a .vibe module compiles to its imports, export stubs, dynamic imports and 
     "export class K {}",
     'export { a as b } from "./a.vibe"',
     'export * from "./all.vibe"',
-    "export default 0",
+    "export default find",
     "Users.count",
     'import("./lazy.vibe")',
     "Users.Row",

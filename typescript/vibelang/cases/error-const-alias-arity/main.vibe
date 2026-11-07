@@ -1,0 +1,22 @@
+// expect-result: [[0,7,0,0,9,0,0,8,0,0,10,0,-1,-1],[0,7,0,0,9,0,0,8,0,0,10,0,-1,-1]]
+import { nativeLabels } from "./native.js"
+error Plain{code:number}
+schema error Encoded{code:number}
+const PlainAlias=Plain
+const PlainTyped:typeof Plain=PlainAlias
+const PlainChain=(PlainTyped)
+const SchemaAlias=Encoded
+const SchemaTyped:typeof Encoded=SchemaAlias
+const SchemaChain=(SchemaTyped)
+function zero(s:unknown){return match(s){when PlainTyped():1;default:0;}}
+function one(s:unknown){return match(s){when PlainChain(let e):e.code;default:-1;}}
+function two(s:unknown){return match(s){when PlainAlias(let a,let b):1;default:0;}}
+function schemaZero(s:unknown){return match(s){when SchemaTyped():1;default:0;}}
+function schemaOne(s:unknown){return match(s){when SchemaChain(let e):e.code;default:-1;}}
+function schemaTwo(s:unknown){return match(s){when SchemaAlias(let a,let b):1;default:0;}}
+function labels(){
+ const p=new Plain({code:7}),s=new Encoded({code:8})
+ const copy={_tag:"Plain",code:9},schemaCopy={_tag:"Encoded",code:10}
+ return [zero(p),one(p),two(p),zero(copy),one(copy),two(copy),schemaZero(s),schemaOne(s),schemaTwo(s),schemaZero(schemaCopy),schemaOne(schemaCopy),schemaTwo(schemaCopy),one(undefined),schemaOne(undefined)]
+}
+export effect function main(){return [labels(),nativeLabels()]}

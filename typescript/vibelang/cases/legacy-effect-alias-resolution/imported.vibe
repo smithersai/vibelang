@@ -1,0 +1,2 @@
+import type { Effect } from "effect/Effect"
+export type Imported = Effect<number>

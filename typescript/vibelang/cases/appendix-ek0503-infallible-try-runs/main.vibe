@@ -1,0 +1,6 @@
+// expect-result: 2
+// Appendix B: EK9204 successor, an infallible Effect is still run with try e — spec-rule: docs/design/src/900-appendices.md#7ea68a10943532da
+export effect function main() {
+  const n = try Effect.succeed(2)
+  return n
+}

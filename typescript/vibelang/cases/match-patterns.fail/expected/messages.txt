@@ -1,5 +1,3 @@
 This match does not handle every case of NotFound | Timeout: Timeout is left.
 Bindings in an is pattern have no home here yet: they work in a statement of a block, in an if, while or do…while condition, in a for (init; test; update) head unless init is var or using, in a match arm, in a concise arrow body and in a class field initializer.
-A computed key other than a name or a literal patterns are not supported yet.
 Patterns joined by and, or, or not cannot share a level; add parentheses.
-Bind the value and test it in a guard: when let v and if (…): …

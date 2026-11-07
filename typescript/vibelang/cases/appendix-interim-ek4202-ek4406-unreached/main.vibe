@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics
+// Appendix B, interim EK4202 and EK4406. Current declaration output carries
+// @throws: this plain function's declaration says @throws {never}. run.mjs
+// replays both archived inputs: EK3501 rejects EK4202's control input first,
+// and EK4406's input reaches no EK4406 reporter on the current compiler.
+export function plain(n: number): number { return n + 1 }

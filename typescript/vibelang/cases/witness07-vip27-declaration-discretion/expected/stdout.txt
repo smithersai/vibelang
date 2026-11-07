@@ -1,0 +1,1 @@
+declaration identity ignores spelling and order, and counts names, types and docs

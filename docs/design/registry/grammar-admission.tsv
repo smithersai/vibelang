@@ -173,7 +173,7 @@ parser/vibelang_match.go:Parser.parseVibeLangIs	admission:is	004-match.md	suppor
 parser/vibelang_match.go:patternHasBindings	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.mIdent	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.mTemp	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
-parser/vibelang_match.go:Parser.freshenVibeLangTemps	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.freshenVibeLangTemps	admission:match	900-appendices.md#MatchExpression,900-appendices.md#DataDeclaration,006-data.md	support	VIP-7 matcher temporary hygiene and VIP-28 generic-data helper names follow lexical identifier roles
 parser/vibelang_match.go:Parser.mToken	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.mString	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.mBinary	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
@@ -216,7 +216,7 @@ parser/vibelang_match.go:Parser.matchStatement	admission:match	900-appendices.md
 parser/vibelang_match.go:conjuncts	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.conditionSteps	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:endsInJump	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
-parser/vibelang_match.go:Parser.restructureVibeLangWhile	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.restructureVibeLangWhile	admission:is-binding-tdz	004-match.md	support	VIP-7: give `while` conditions fresh loop-head binding cells, including bindings below the condition's `&&` chain
 parser/vibelang_match.go:Parser.keywordRangeAt	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.mPatternRead	admission:match	900-appendices.md#MatchExpression	support	VIP-7 marks property and positional reads for match binding type inference
 parser/vibelang_match.go:Parser.hoistVibeLangIs	admission:is	004-match.md	support	VIP-7 / Chapter 004 binding homes for `is`; synthesized `let` hoisting supports explicit source homes
@@ -614,6 +614,7 @@ vibelang/provide.go:layerChannels	admission:provide	900-appendices.md#ProvideSta
 vibelang/provide.go:lowering.visitProvideBlock	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
 vibelang/provide.go:checkProvideBlocks	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
 vibelang/provide.go:checkProvideProviders	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
+vibelang/provide.go:mayCallProvide	admission:provide	000-intro.md,900-appendices.md#ProvideStatement	support	Canonical callee screening preserves native call return inference before resolving provider overloads
 vibelang/provide.go:effectProvideArguments	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
 vibelang/provide.go:providedCallType	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
 vibelang/provide.go:providerCall	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 providers
@@ -819,6 +820,7 @@ parser/vibelang_effect.go:Parser.isStartOfVibeLangEffectBlock	admission:effect-b
 parser/vibelang_effect.go:Parser.parseVibeLangEffectBlock	admission:effect-block	900-appendices.md#EffectBlock	admitted	VIP-2: expression-position effect block; separated from the VIP-1 function entry point
 parser/vibelang_fibers.go:Parser.parseVibeLangFork@outside-effect	admission:fork-outside-effect	-	pending	VIP-1/17 requires Effect context; an unreachable legacy fork prefix currently reports only name/discard diagnostics
 parser/vibelang_fibers.go:Parser.parseVibeLangJoin@outside-effect	admission:join-outside-effect	-	pending	VIP-1/17 requires Effect context; a legacy join prefix in plain code currently reports only name and EK1704 operand diagnostics
+parser/vibelang_fibers.go:Parser.isStartOfVibeLangJoin@fiber-primary-reference	admission:fiber-primary-reference	-	pending	VIP-17 (amended) reserves `fork` and `join` wherever an `IdentifierReference` could stand in Effect code; a `new` callee or `extends` clause reads either word as an identifier and reports only checker errors, such as the old compiler compatibility error `EK4410`, instead of the reservation error `EK1702`
 parser/vibelang_fibers.go:Parser.isStartOfVibeLangJoin@fiber-binding	admission:fiber-binding	-	pending	VIP-17 (amended) reserves fork and join in Effect callable parameters (EK1702); parameter bindings are not checked
 parser/vibelang_data.go:Parser.parseDataFields	admission:data	900-appendices.md#DataDeclaration	support	VIP-16 data members; a missing member separator recovers as `EK1605`
 parser/vibelang_data.go:dataMemberSeparatorDiagnostic	admission:data	900-appendices.md#DataDeclaration	recovery	VIP-16: `EK1605` reports a missing data member separator
@@ -921,6 +923,7 @@ parser/vibelang_throw_lookahead.go:Parser.atVibeLangThrowStop	admission:throw-ex
 parser/vibelang_throw_lookahead.go:Parser.reportVibeLangThrowStop	admission:throw-expression	900-appendices.md	support	VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support
 parser/vibelang_match.go:Parser.parseMatchRelationOperand	admission:match	004-match.md	support	VIP-7: relational patterns of the pinned TC39 snapshot, such as < 0
 parser/vibelang_match.go:Parser.relationTest	admission:match	004-match.md	support	VIP-7: relational patterns of the pinned TC39 snapshot, such as < 0
+parser/vibelang_match.go:isAdmittedRelation	admission:match	004-match.md	support	VIP-7: relational patterns that test their subject before their operand runs
 parser/vibelang_catch_precedence.go:Parser.reportVibeLangCatchPrecedence	admission:catch	900-appendices.md#CatchExpression,900-appendices.md#CatchHandler,002-running.md	recovery	VIP-5/detail 247: Report EK0512 while retaining the legacy tree for a preserving migration
 parser/vibelang_catch_precedence.go:vibeLangCatchMixedHead	admission:catch	900-appendices.md#CatchExpression,900-appendices.md#CatchHandler,002-running.md	recovery	VIP-5/detail 247: Reject logical/coalesce operators in an unparenthesized CatchHead; stop at expression boundaries
 parser/vibelang_catch_precedence.go:IsVibeLangCatchHandlerContinuation	admission:catch	900-appendices.md#CatchExpression,900-appendices.md#CatchHandler,002-running.md	recovery	VIP-5/detail 247: Recognize forbidden closed-handler continuations for EK0512 and suppress duplicate EK0509
@@ -990,8 +993,10 @@ parser/vibelang_declaration_body.go:Parser.reportVibeLangMissingBody	admission:s
 parser/vibelang_fibers.go:Parser.rewriteConcurrentLabelContinues	admission:for-concurrent	900-appendices.md#ForConcurrent	support	VIP-19 self-labeled `continue` ends the current item, preserving source callable boundaries
 parser/vibelang.go:Parser.vibelangSchemaFields@schema-async-field	admission:schema-async-field	-	pending	VIP-15: an unresolved schema field reference reports `EK2109` and covers the declaration, hiding native `async` modifier rejection
 parser/vibelang.go:Parser.vibelangSchemaFields@schema-static-field	admission:schema-static-field	-	pending	VIP-15: an unresolved `static` schema field reports `EK2109` and covers the declaration, hiding the modifier rejection; `Field` admits only `readonly`
+parser/vibelang.go:Parser.vibelangSchemaFields@schema-duplicate-readonly	admission:schema-duplicate-readonly	-	pending	VIP-15: a repeated `readonly` on an unresolved schema field reports `EK2109` and covers the declaration, hiding native `TS1030`; `Field` admits one `readonly`
+parser/vibelang.go:Parser.vibelangSchemaFields@schema-readonly-method	admission:schema-readonly-method	-	pending	VIP-15: a `readonly` method signature in a schema object-type alias reports `EK2109` and covers native `TS1024`; `Field` is a property
 parser/vibelang_do.go:Parser.hasYieldingMatch	admission:match	900-appendices.md#MatchExpression,002-running.md	support	VIP-7 and VIP-2: identify a match whose arm yields into its enclosing source generator
-parser/vibelang_do.go:Parser.matchArmsYield	admission:match	900-appendices.md#MatchExpression,002-running.md	support	VIP-7 and VIP-2: inspect source arm yields while preserving nested callable boundaries
+parser/vibelang_do.go:Parser.matchArmsYield	admission:match	900-appendices.md#MatchExpression,002-running.md	support	VIP-7 preserves the enclosing activation of yielding matches; only live expression calls require lifting
 parser/vibelang_match.go:coveragePattern	admission:match	900-appendices.md#MatchExpression,004-match.md	support	VIP-7: remove irrefutable captures only from coverage analysis while preserving source pattern evaluation
 parser/vibelang_match.go:Parser.mExtractCall	admission:match	900-appendices.md#MatchExpression,900-appendices.md#RegularExpressionPattern,004-match.md	support	VIP-7: emit the existing extractor call and preserve the global regular-expression literal flag for its extraction type
 parser/vibelang_modules.go:Parser.vibelangModuleReference@keyword	admission:module-specifier-keyword	-	pending	VIP-40: a strict reserved word is retained as an identifier module specifier with only module-name diagnostics
@@ -1014,3 +1019,13 @@ parser/vibelang.go:Parser.isVibeLangFile@for-of-async-module	admission:for-of-as
 vibelang/error_constructor_lower.go:lowerFieldlessErrorConstructor	admission:error	003-failures.md	recovery	VIP-13 rejects error inheritance; shared generated-constructor lowering preserves legacy payload handling for diagnostics and migration without admitting subclasses
 parser/vibelang_effect.go:Parser.parseVibeLangEffectMember@optional-class-member	admission:effect-optional-class-member	001-functions.md,002-running.md	admitted	VIP-1 and VIP-21 inherit native `async` class method positions; Appendix A omits the optional marker, tracked as a specification gap
 vibelang/match_builtins.go:narrowConstructorExtraction	admission:match-builtins	004-match.md	support	VIP-7 built-in extractor recognition follows native TypeScript tests
+vibelang/producer_instance.go:lowering.nativeProducerCall	admission:producer	900-appendices.md#Producer	support	VIP-21 emits the native project Stream callback and supplies its internal yield queue; no new syntax
+parser/vibelang.go:Parser.vibelangSchemaProperties@schema-async-method	admission:schema-async-method	-	pending	VIP-15: a schema object-type alias reports only `EK2109` for an `async` method signature, covering native `TS1070`
+parser/vibelang.go:Parser.vibelangSchemaProperties@schema-signature-parameter-modifier	admission:schema-signature-parameter-modifier	-	pending	VIP-15: a schema object-type alias reports only `EK2109` for a call signature, covering native parameter-modifier rejection
+parser/vibelang.go:Parser.vibelangSchemaProperties@schema-static-method	admission:schema-static-method	-	pending	VIP-15: a `static` schema-alias method reports only `EK2109`, covering native `TS1070`
+parser/vibelang.go:Parser.vibelangSchemaProperties@schema-effect-method	admission:schema-effect-method	-	pending	VIP-15: a schema object-type alias reports only `EK2109` for an `effect` method signature, covering the `EK0108` rejection of an `effect` type-literal member
+parser/vibelang.go:Parser.vibelangSchemaProperties@schema-signature-reserved-binding	admission:schema-signature-reserved-binding	-	pending	VIP-15: a schema-alias signature reports only `EK2109` for a strict-mode reserved parameter binding, covering native `TS1212`
+parser/vibelang_match_key_types.go:MatchKeyTypeSource	admission:match	900-appendices.md#MatchExpression,004-match.md	support	VIP-7 retains the original computed expression type for key captures
+parser/vibelang_match_key_types.go:Parser.recordMatchKeyType	admission:match	900-appendices.md#MatchExpression,004-match.md	support	VIP-7 records computed expressions without introducing a runtime boundary
+parser/vibelang_match_key_types.go:Parser.attachMatchKeyTypes	admission:match	900-appendices.md#MatchExpression,004-match.md	support	VIP-7 attaches key expression metadata to its source file
+parser/vibelang_match_key_types.go:MatchKeyTypeHoisted	admission:match	900-appendices.md#MatchExpression,004-match.md	support	VIP-7 preserves exact key types across inline captures

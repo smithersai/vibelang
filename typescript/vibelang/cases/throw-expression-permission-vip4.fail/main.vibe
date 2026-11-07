@@ -1,0 +1,28 @@
+// expect: EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401
+// rule-evidence: docs/design/vips/0041-throw-expressions.md#a1c019ce0ca083ab
+// rule-evidence: docs/design/vips/0041-throw-expressions.md#existing-placement-and-match-arm-rules | [VIP-4's no-throw rule](0004-throw.md) (`EK0401`) decides that.
+// The throw-expression grammar grants no permission to throw: each throw
+// expression in synchronous VibeLang code, including an eager parameter
+// initializer, is EK0401, one per throw; effect code and async functions
+// keep their meaning and report nothing.
+error Missing { site: string }
+declare const maybe: number | undefined
+
+export function plain(x: number | undefined): number { return x ?? throw new Missing({ site: "plain" }) }
+export const arrow = (x: number | undefined): number => x ?? throw new Missing({ site: "arrow" })
+export class Port {
+  read(x: number | undefined): number { return x ?? throw new Missing({ site: "method" }) }
+}
+export function defaulted(x: number = maybe ?? throw new Missing({ site: "plain default" })): number { return x }
+export effect function eagerDefault(x: number = maybe ?? throw new Missing({ site: "effect default" })) { return x }
+export effect function nestedPlain() {
+  const inner = (x: number | undefined): number => x ?? throw new Missing({ site: "plain arrow in effect code" })
+  return inner(1)
+}
+export function element(): number[] { return [1, throw new Missing({ site: "element" })] }
+
+// Controls: no diagnostic.
+export effect function effectBody(x: number | undefined) { return x ?? throw new Missing({ site: "Effect.fail" }) }
+export const effectArrow = effect (x: number | undefined) => x ?? throw new Missing({ site: "Effect.fail arrow" })
+export effect function effectElement() { return [1, throw new Missing({ site: "Effect.fail element" })] }
+export async function rejects(x: number | undefined) { return x ?? throw new Error("rejects the Promise") }

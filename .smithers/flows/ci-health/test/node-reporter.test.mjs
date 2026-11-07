@@ -5,7 +5,7 @@ import { test } from "node:test"
 import { failedTests, targetLines } from "../lib/steps.mjs"
 
 const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
-export const expected = ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators"]
+export const expected = ["structured compiler check", 'quoted "child" / Unicode ☃', "nested group", "bounded unfinished check", "Unicode \u2028 and \u2029 separators", "__proto__", "constructor", "toString", "multiline\nname\r\nwith\rcontrols | tail"]
 const record = item => "[node-test] " + JSON.stringify(item)
 
 test("real compiler reporter names nested and cancelled failures while excluding todos", () => {
@@ -24,7 +24,7 @@ test("structured failure names survive generated JSON escapes, duplicates and sk
     name: fc.oneof(
       fc.constant("Unicode \u2028 and \u2029 separators"),
       fc.array(fc.integer({ min: 0, max: 0xffff }), { minLength: 1, maxLength: 80 }).map(units => String.fromCharCode(...units))
-    ).filter(name => name.trim().length > 0),
+    ).filter(name => name.length > 0),
     event: fc.constantFrom("failure", "progress", "diagnostic", "summary"),
     todo: fc.constantFrom(false, true, "", "future control"),
     skip: fc.constantFrom(false, true, "", "skip control")
@@ -38,7 +38,7 @@ test("structured failure names survive generated JSON escapes, duplicates and sk
 test("structured records reject truncated JSON, wrong shapes and non-failure events without inventing tests", () => {
   const lines = [
     "[node-test] {", "[node-test] null", "[node-test] []", record("failure"),
-    record({ event: "failure", name: 17 }), record({ event: "failure", name: "  " }),
+    record({ event: "failure", name: 17 }), record({ event: "failure", name: "" }),
     record({ event: "summary", name: "not a test" }), record({ event: "failure" }),
     'ordinary stdout [node-test] {"event":"failure","name":"not a record"}',
     record({ event: "failure", name: 'escaped \n name " \\ ☃', todo: false, skip: false }),

@@ -77,3 +77,61 @@ test("an existing listed input remains a file immediately after a warning", (t) 
   assert.deepEqual(parsed.files, [listed])
   assert.equal(parsed.diagnostics[0].text, "warning")
 })
+
+test("embedded library listings terminate diagnostics without becoming filesystem inputs", async () => {
+  const root = resolve("project")
+  await checkProperty(fc, {
+    name: "project-embedded-library-listings",
+    rule: "Only listed source files become watched project inputs; compiler file lists are not diagnostic text.",
+    command: "node --test packages/compiler/test/project-diagnostic-excerpts.property.test.mjs",
+    numRuns: 100,
+    arbitrary: fc.record({
+      libraries: fc.array(fc.constantFrom("lib.es5.d.ts", "lib.es2022.full.d.ts", "lib.dom.d.ts", "lib.esnext.iterator.d.ts"), { minLength: 1, maxLength: 30 }),
+      category: fc.constantFrom("error", "warning"),
+      indent: fc.constantFrom("  ", "\t"),
+      eol: fc.constantFrom("\n", "\r\n")
+    }),
+    check: ({ libraries, category, indent, eol }) => {
+      const excerpt = indent + "bundled:///libs/lib.es5.d.ts"
+      const file = join(root, "main.vibe")
+      const parsed = parseOutput([
+        `main.vibe(3,2): ${category} TS2322: wrong type`,
+        excerpt,
+        ...libraries.map(name => "bundled:///libs/" + name),
+        file
+      ].join(eol), root)
+      assert.deepEqual(parsed.files, [file])
+      assert.equal(parsed.diagnostics.length, 1)
+      assert.equal(parsed.diagnostics[0].text, "wrong type\n" + excerpt)
+      assert.equal(parsed.diagnostics[0].category, category)
+    }
+  })
+})
+
+test("embedded-library-shaped source excerpts remain in diagnostic text", async () => {
+  const root = resolve("project")
+  await checkProperty(fc, {
+    name: "project-library-shaped-excerpts",
+    rule: "A multiline diagnostic preserves quoted source text, including URL-shaped labels.",
+    command: "node --test packages/compiler/test/project-diagnostic-excerpts.property.test.mjs",
+    numRuns: 100,
+    arbitrary: fc.record({
+      libraries: fc.array(fc.constantFrom("lib.es5.d.ts", "lib.dom.d.ts", "lib.esnext.iterator.d.ts"), { minLength: 1, maxLength: 5 }),
+      indent: fc.constantFrom("", " ", "\t"),
+      eol: fc.constantFrom("\n", "\r\n")
+    }),
+    check: ({ libraries, indent, eol }) => {
+      const excerpt = ["effect {", ...libraries.map(name => indent + "bundled:///libs/" + name), "return 1", "} cannot fail"]
+      const file = join(root, "main.vibe")
+      const parsed = parseOutput(["warning EK9204: " + excerpt[0], ...excerpt.slice(1), file].join(eol), root)
+      assert.deepEqual(parsed.files, [file])
+      assert.equal(parsed.diagnostics[0].text, excerpt.join("\n"))
+    }
+  })
+})
+
+test("embedded library listings can end the compiler output without a disk input", () => {
+  const parsed = parseOutput("error TS18003: No inputs\nbundled:///libs/lib.es5.d.ts\nbundled:///libs/lib.dom.d.ts\n", resolve("project"))
+  assert.deepEqual(parsed.files, [])
+  assert.equal(parsed.diagnostics[0].text, "No inputs")
+})

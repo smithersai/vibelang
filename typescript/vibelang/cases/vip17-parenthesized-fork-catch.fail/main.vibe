@@ -1,0 +1,10 @@
+// expect: EK0505 EK0505 EK1703 EK0506
+// rule-evidence: docs/design/vips/0017-fork.md#decision
+// VIP-17: fork e catch h and join f catch h are EK0505. The parenthesized
+// forms are not: fork (e catch h) runs e here and forks its result, EK1703
+// unless that result is an Effect, and (fork e) catch h is EK0506, because a
+// Fiber is not an Effect in Effect 4.1.1.
+export effect function head(e: number!string) { const f = fork e catch (_x) => 0; return 0 }
+export effect function joined(e: number!string) { const f = fork e; return join f catch (_x) => 0 }
+export effect function inner(e: number!string) { const f = fork (e catch (_x) => 0); return 0 }
+export effect function outer(e: number!string) { const f = (fork e) catch (_x) => 0; return 0 }

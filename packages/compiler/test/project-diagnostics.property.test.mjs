@@ -54,6 +54,9 @@ async function check({ count, nested, async, record, bad = true, warning = false
       assert.deepEqual(result.errors.filter(d => d.code === "TS2322").map(d => d.file).sort(), (bad ? files : []).map(file => join(root, file)).sort())
       assert.deepEqual(result.warnings.filter(d => d.code === "EK3833").map(d => d.file).sort(), (warning ? files : []).map(file => join(root, file)).sort())
       assert.deepEqual([...result.outputs.keys()], [join(root, "main.vibe")])
+      for (const diagnostic of [...result.errors, ...result.warnings]) {
+        assert.doesNotMatch(diagnostic.text, /^bundled:\/\/\/libs\//m, "compiler file listings stay out of diagnostics")
+      }
     }
     if (!bad) assert.ok(trace.some(line => line.includes("from the cache")), trace.join("\n"))
     assert.deepEqual(compileProjectSync({ ...options, [loaderScope]: true }).warnings, [], "public warnings never enter the loader cache")

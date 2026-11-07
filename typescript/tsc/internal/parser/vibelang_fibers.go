@@ -35,7 +35,7 @@ func (p *Parser) tokenRange() core.TextRange {
 // context (VIP-17, amended). Outside it, only unambiguous legacy forms
 // are recovered for their outside-effect diagnostics and migration.
 func (p *Parser) isStartOfVibeLangFork() bool {
-	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "fork" && p.isVibeLangFile() && (p.vibelangFiberContext && !p.lookAhead((*Parser).nextTokenIsEqualsGreaterThan) || p.lookAhead((*Parser).nextTokenStartsLegacyForkOperand))
+	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "fork" && p.isVibeLangFile() && (p.opts.VibeLangFiberOperations.Has(p.scanner.TokenStart()) || p.vibelangFiberContext && !p.lookAhead((*Parser).nextTokenIsEqualsGreaterThan) || p.lookAhead((*Parser).nextTokenStartsLegacyForkOperand))
 }
 
 func (p *Parser) nextTokenStartsLegacyForkOperand() bool {
@@ -51,17 +51,14 @@ func (p *Parser) nextTokenStartsLegacyForkOperand() bool {
 		return p.lookAhead((*Parser).nextTokenIsOpenBraceOnSameLine)
 	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindNewKeyword, ast.KindSuperKeyword, ast.KindOpenBraceToken, ast.KindAwaitKeyword:
 		return true
-	case ast.KindOpenParenToken:
-		return p.parenthesesLeadToArrow()
 	}
 	return false
 }
 
 // parenthesesLeadToArrow reports whether the parentheses at the current token
-// are an arrow's parameters. After fork or a fork owner, that is a TypeScript
-// syntax error, and it is how the mapper's parse sees a written effect block
-// once it blanks the keyword: effect { … } reads as ()=> { … } at the same
-// offsets.
+// are an arrow's parameters. The mapper's parse sees a written effect block
+// that way once it blanks the keyword: effect { … } reads as ()=> { … } at the
+// same offsets, so fork's operand there is an arrow, not a unary expression.
 func (p *Parser) parenthesesLeadToArrow() bool {
 	return p.skipParentheses() && p.token == ast.KindEqualsGreaterThanToken
 }
@@ -96,8 +93,6 @@ func (p *Parser) legacyForkOwnerHasOperand() bool {
 	switch p.token {
 	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindNewKeyword, ast.KindSuperKeyword, ast.KindAwaitKeyword:
 		return true
-	case ast.KindOpenParenToken:
-		return p.parenthesesLeadToArrow()
 	}
 	return false
 }
@@ -232,7 +227,7 @@ func (p *Parser) parseVibeLangFork() *ast.Node {
 // isStartOfVibeLangJoin uses the same source Effect reservation as fork.
 // Outside it, valid TypeScript identifier expressions retain their reading.
 func (p *Parser) isStartOfVibeLangJoin() bool {
-	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "join" && p.isVibeLangFile() && (p.vibelangFiberContext && !p.lookAhead((*Parser).nextTokenIsEqualsGreaterThan) || p.lookAhead((*Parser).nextTokenStartsLegacyJoinOperand))
+	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "join" && p.isVibeLangFile() && (p.opts.VibeLangFiberOperations.Has(p.scanner.TokenStart()) || p.vibelangFiberContext && !p.lookAhead((*Parser).nextTokenIsEqualsGreaterThan) || p.lookAhead((*Parser).nextTokenStartsLegacyJoinOperand))
 }
 
 func (p *Parser) nextTokenStartsLegacyJoinOperand() bool {

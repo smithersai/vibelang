@@ -9,7 +9,7 @@ import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { compilerCompanionOf, fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { assertFinished, newErrors, parseDiagnostics, styleProblems, warningExceptions } from "./diagnostics.mjs"
 import { parseImports, resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
@@ -467,6 +467,13 @@ async function fix(config, p, cm, options) {
               cm.fix.rounds.push(...fixed.rounds.map(r => ({ ...project, sweep, shard: i, ...r })))
               mergeFixes(cm.fix.byFile, fixed.byFile)
               cm.fix.refused.push(...fixed.refused)
+              // A platform companion the compiler created belongs to its module.
+              for (const companion of fixed.companions ?? []) {
+                const rename = cm.renames.find(r => compilerCompanionOf(r.to) === companion)
+                cm.platform ??= { splits: [], refused: [] }
+                cm.platform.companions ??= []
+                if (rename && !cm.platform.companions.some(c => c.companion === companion)) cm.platform.companions.push({ file: rename.from, companion })
+              }
               if (!fixed.settled) throw new Error("fix did not reach a fixed point within " + maxRounds + " rounds")
             } finally { if (temporary) { rmSync(temporary, { force: true }); temporary = undefined } }
           }

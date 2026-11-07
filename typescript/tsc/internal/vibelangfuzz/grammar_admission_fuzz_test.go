@@ -59,10 +59,26 @@ var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 	return grammarNewGrammarLab(SpecText(grammarAppendix), grammarAppendix)
 })
 
+// TypeScript reads expression type arguments speculatively: it rewinds a
+// `<` list that does not close or that the next token cannot follow
+// (tryParseTypeArgumentsInExpression in internal/parser/parser.go). An Earley
+// set keeps that doomed reading alive, and it can scan a later line's first
+// token, so ASI never fires for the relational reading TypeScript commits to:
+// `C < readonly` newline `{ T` newline `T }` has no derivation. A sentence
+// with none is read again without the instantiation alternatives.
+var admissionRelationalLab = sync.OnceValues(func() (*grammarLab, error) {
+	return grammarNewGrammarLabReading(SpecText(grammarAppendix), grammarAppendix, true)
+})
+
 // Keyed witnesses stay keyed when the valid seed list is reordered. Mutations
 // operate only in the explicitly bounded TS subset of the grammar lab. A
 // mismatch can be a compiler admission bug OR an incomplete lab; minimize and
 // classify before adding a pending line.
+// grammarAdmissionRawSeeds is how many leading seeds an unkeyed input's first
+// byte chooses among. Seeds added after them are reached by key, so a new
+// seed leaves the replay of every raw corpus file unchanged.
+const grammarAdmissionRawSeeds = 156
+
 var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"plain", "const n = 1;"},
 	{"native-export-modifiers", "export export { } ;"},
@@ -229,6 +245,42 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-mixed-async-effect-field", "schema S { async async effect id : Missing }"},
 	{"throw-assertion-lookahead", "const b = throw 1 as 1 ?? 1"},
 	{"schema-field-initializer", "schema S { key : Missing = \"k\" }"},
+	{"native-class-expression-type-parameters", "const C = class <T> { a?: T };"},
+	{"schema-duplicate-readonly", "schema S { readonly readonly id : Missing }"},
+	{"schema-duplicate-readonly-alias", "schema S = { readonly readonly id: Missing };"},
+	{"schema-async-untyped-alias", "schema S = { async async\nid : Missing\n}"},
+	{"schema-readonly-method", "schema S = { readonly id ( ) }"},
+	{"schema-field-initializer-untyped-alias", "schema S = { id ? = Missing }"},
+	{"effect-type-assertion-trailing-bang", "x = <number ! string !> y;"},
+	{"native-type-accessor-signatures", "type T = { get size(): number; set size(v: number) };"},
+	{"schema-readonly-method-static", "schema S = { static readonly id() }"},
+	{"schema-readonly-method-async", "schema S = { async readonly id() }"},
+	{"schema-field-initializer-numeric", "schema S = { 1 ? = Missing }"},
+	{"native-literal-initializer-rejection", "schema S = { 'id' = Missing }"},
+	{"native-getter-parameter", "type T = { get size(x: number): number }"},
+	{"native-setter-arity", "type T = { set size() }"},
+	{"schema-async-method", "schema S = { async readonly (\n) }"},
+	{"schema-signature-parameter-modifier", "schema S = { readonly; (static static) }"},
+	{"schema-async-last-alias-field", "schema S = { fork:\nasync\nasync Missing\n}"},
+	{"native-static-schema-error", "schema error S { static async async\nid: Missing }"},
+	{"schema-static-method", "schema S = { static id() }"},
+	{"schema-signature-reserved-binding", "schema S = { readonly; (static) }"},
+	{"schema-signature-reserved-destructure", "schema S = { ({p: static}: Missing): Missing }"},
+	{"schema-signature-reserved-rest", "schema S = { (...static: Missing[]): Missing }"},
+	{"effect-type-second-bang-line-break", "{ type T = (\nnumber ! string\n! 1 )\nboolean }"},
+	{"effect-type-second-bang-nested", "type T = [number, (number!string\n!boolean)];"},
+	{"schema-effect-method", "schema S = { effect id() }"},
+	{"schema-effect-method-line-break", "schema S =\n{ async\neffect effect (\n) }"},
+	{"fiber-primary-reference", "effect function f() { return new join.target; }"},
+	{"fiber-primary-reference-extends", "effect function f() { return class extends fork.C {}; }"},
+	{"fiber-primary-reference-spaced", "effect function f ( ) { return new join . target ; }"},
+	{"schema-signature-async-parameter", "schema S = { ( async { p : static } : Missing ) : Missing }"},
+	{"schema-signature-modifier-pattern", "schema S = { (readonly [p]: Missing): Missing }"},
+	{"schema-field-initializer-modifier", "schema S = { readonly 1 ? =\nMissing }"},
+	{"native-await-identifier", "function f() { return await.target; }"},
+	{"native-await-shorthand", "async function outer() { const f = () => ({ await }); }"},
+	{"effect-await-identifier", "effect function f() { return new await; }"},
+	{"native-await-binding-label", "function f(await: number) { await: while (false) { break await; } return await; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -342,14 +394,13 @@ func grammarPatternCombinator(word, before grammarToken) bool {
 
 // grammarSchemaFieldInitializer reports a field type followed by `=` in a
 // schema body. Field has no initializer, and an unresolved type's EK2109 covers
-// the native TS1247 rejection.
+// the native TS1247 rejection. In an object-type alias an untyped member's
+// `=` (`{ id? = Missing }`) is the same TS1247.
 func grammarSchemaFieldInitializer(ts []grammarToken) bool {
-	for i, tok := range ts {
-		if tok.text != "schema" || i+2 >= len(ts) || ts[i+1].kind != 'w' || ts[i+2].text != "{" {
-			continue
-		}
+	return grammarSchemaBodies(ts, func(open int, alias bool) bool {
 		depth, typed := 0, false
-		for _, next := range ts[i+2:] {
+		for k, next := range ts[open:] {
+			k += open
 			switch next.text {
 			case "{", "(", "[":
 				depth++
@@ -369,6 +420,65 @@ func grammarSchemaFieldInitializer(ts []grammarToken) bool {
 				typed = false
 			case typed && next.text == "=":
 				return true
+			case alias && next.text == "=":
+				// Match a complete direct property name, rather than only a
+				// word before '='. Numeric, string and computed names have the
+				// same native initializer rejection.
+				for start := open + 1; start < k; start++ {
+					if start != open+1 && !ts[start].nl && ts[start-1].text != ";" && ts[start-1].text != "," {
+						continue
+					}
+					at := grammarSchemaPropertyEnd(ts, start)
+					if at < len(ts) && ts[at].text == "?" {
+						at++
+					}
+					if at == k {
+						return true
+					}
+					// After a modifier prefix only an optional name reaches the
+					// initializer: `readonly 1 = T` is already a syntax error.
+					if name, _ := grammarSchemaModifierPrefix(ts, start, ""); name != start {
+						if at := grammarSchemaPropertyEnd(ts, name); at+1 == k && ts[at].text == "?" {
+							return true
+						}
+					}
+				}
+			}
+		}
+		return false
+	})
+}
+
+// An angle-bracket assertion and a type argument list hold a Type, so
+// `<A!E!>x` and `f<A!E!>` end their EffectType in a dangling bang as
+// `type T = A!E!;` does. A relational `<` here is a syntax error anyway.
+func grammarAssertionEffectTrailingBang(ts []grammarToken) bool {
+	for i, tok := range ts {
+		if tok.text != "<" {
+			continue
+		}
+		depth, angle, last := 0, 1, -1
+		for k := i + 1; k < len(ts) && depth >= 0 && angle > 0 && ts[k].text != ";"; k++ {
+			switch ts[k].text {
+			case "(", "[", "{":
+				depth++
+			case ")", "]", "}":
+				depth--
+			case "<":
+				if depth == 0 {
+					angle++
+				}
+			case ">":
+				if depth == 0 {
+					angle--
+				}
+			case "!":
+				if depth == 0 && angle == 1 {
+					if last >= 0 && last != k-1 && k+1 < len(ts) && ts[k+1].text == ">" {
+						return true
+					}
+					last = k
+				}
 			}
 		}
 	}
@@ -424,7 +534,7 @@ func grammarAdmissionInput(data []byte) (string, string) {
 			}
 		}
 	}
-	s := grammarAdmissionSeeds[int(data[0])%len(grammarAdmissionSeeds)]
+	s := grammarAdmissionSeeds[int(data[0])%grammarAdmissionRawSeeds]
 	return grammarAdmissionMutate(s.source, data)
 }
 
@@ -483,6 +593,11 @@ func grammarAdmissionMismatch(source string) (bool, string) {
 	if r.count == 0 {
 		if tokens, ok := grammarValidatedRegExpTokens(source); ok {
 			r = lab.read(lab.g, tokens, grammarParseMode{prose: true, names: true})
+		}
+	}
+	if r.count == 0 {
+		if rel, err := admissionRelationalLab(); err == nil {
+			r = rel.read(rel.g, toks, grammarParseMode{prose: true, names: true})
 		}
 	}
 	if r.count == 0 {
@@ -725,8 +840,35 @@ func grammarDeclarationExpressionPrefix(ts []grammarToken, i int) bool {
 		"(", "[", ",", ".", "?.", "?", ":",
 		"+", "-", "*", "/", "%", "**", "&", "|", "^", "&&", "||", "??", "|>",
 		"typeof", "void", "delete", "new", "in", "instanceof", "throw", "~",
-		"<", "<=", ">=", "==", "!=", "===", "!==":
+		"<", "<=", ">=", "==", "!=", "===", "!==", "<<":
 		return true
+	case ">", ">>", ">>>":
+		// A comparison or shift needs its right operand. The same tokens close
+		// a type argument list (`let x: A<B>` newline `schema C`), so only a
+		// statement with no earlier "<" reads them as operators.
+		for k := i - 2; k >= 0; k-- {
+			switch ts[k].text {
+			case "<":
+				return false
+			case ";", "{", "}":
+				return true
+			}
+		}
+		return true
+	case "as", "satisfies":
+		// TypeScript reads `as` and `satisfies` as operators only on the
+		// operand's line; their type then continues across the line break.
+		if ts[i-1].nl || i < 2 {
+			return false
+		}
+		before := ts[i-2]
+		switch before.kind {
+		case 's', 'n', 't':
+			return true
+		case 'w':
+			return !grammarReservedWords[before.text] || before.text == "this" || before.text == "null" || before.text == "true" || before.text == "false" || before.text == "super"
+		}
+		return before.text == ")" || before.text == "]"
 	case "!":
 		// Prefix negation needs an operand; a postfix assertion ends one.
 		if i == 1 {
@@ -892,7 +1034,10 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
-	if grammarParenthesizedEffectTrailingBang(ts) {
+	if grammarSecondBangLineBreak(ts) {
+		return "admission:effect-type-line-break"
+	}
+	if grammarParenthesizedEffectTrailingBang(ts) || grammarAssertionEffectTrailingBang(ts) {
 		return "admission:effect-type-trailing-bang"
 	}
 	if grammarThrowAssertionLookahead(ts) {
@@ -906,6 +1051,27 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarSchemaStaticField(ts) {
 		return "admission:schema-static-field"
+	}
+	if grammarSchemaDuplicateReadonlyField(ts) {
+		return "admission:schema-duplicate-readonly"
+	}
+	if grammarSchemaReadonlyMethod(ts) {
+		return "admission:schema-readonly-method"
+	}
+	if grammarSchemaAsyncMethod(ts) {
+		return "admission:schema-async-method"
+	}
+	if grammarSchemaModifiedMethod(ts, "static") {
+		return "admission:schema-static-method"
+	}
+	if grammarSchemaEffectMethod(ts) {
+		return "admission:schema-effect-method"
+	}
+	if grammarSchemaSignatureParameterModifier(ts) {
+		return "admission:schema-signature-parameter-modifier"
+	}
+	if grammarSchemaSignatureReservedBinding(ts) {
+		return "admission:schema-signature-reserved-binding"
 	}
 	if grammarInvalidImportMeta(ts) {
 		return "admission:import-meta-property"
@@ -1091,6 +1257,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarFiberParameter.MatchString(source) {
 		return "admission:fiber-binding"
+	}
+	if grammarFiberPrimaryReference(file) {
+		return "admission:fiber-primary-reference"
 	}
 	for _, form := range forms {
 		if form.Kind != parser.VibeSyntaxBlockStatement {
@@ -1842,6 +2011,8 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 2125: // A data Field requires its Type.
 		return true
+	case 1302: // VIP-13: user-written static error members, including their recovered native shape.
+		return true
 	case 1304: // RejectedElement: an error body element that parses, then a static rule rejects.
 		return true
 	case 909, 2121: // Retired declaration recovery supports only diagnosis and migration.
@@ -1897,6 +2068,17 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	case 1024, 1028, 1029, 1030, 1031, 1038, 1040, 1042, 1044,
 		1070, 1071, 1079, 1089, 1090, 1091, 1097, 1098, 1120, 1123, 1184, 1187, 1188, 1189, 1190, 1191, 1193, 1242, 1243, 1248,
 		1273, 1274, 1275, 1277, 1317, 1433, 1491, 1495, 5086, 18010, 18019:
+		return true
+	// checkGrammarAccessor rejects accessor arity, type parameters, setter
+	// return annotations, and optional/rest/initialized setter parameters.
+	case 1049, 1051, 1052, 1053, 1054, 1094, 1095, 2784:
+		return true
+	// checkGrammarIndexSignatureParameters (checker/grammarchecks.go): an
+	// IndexSignature is "[" one BindingIdentifier TypeAnnotation "]"
+	// TypeAnnotation. The parser reads `{ [ ] }` or `[k?: string]` for
+	// recovery, then the checker rejects the parameter list's shape. The
+	// parameter-type checks (TS1268, TS1337) are type errors and stay out.
+	case 1017, 1018, 1019, 1020, 1021, 1022, 1025, 1096:
 		return true
 	// checkGrammarModuleElementContext (checker/grammarchecks.go): an import,
 	// export, export assignment, namespace or ambient module declaration

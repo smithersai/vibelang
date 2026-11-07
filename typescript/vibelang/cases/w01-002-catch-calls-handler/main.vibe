@@ -1,0 +1,23 @@
+// rule-evidence: docs/design/src/002-running.md#meaning | On a failure in its error channel it calls `h` with the error.
+// expect-result: {"same":true,"plain":"bad input","tagged":["NotFound","u1"],"success":"ok","calls":[1,1,1,0]}
+// `h` receives the failure value itself, once per failure, whatever its type,
+// and runs not at all when `e` succeeds.
+import { Effect } from "effect"
+
+error NotFound { id: string }
+
+const calls = [0, 0, 0, 0]
+const failure = { reason: "identity" }
+
+effect function find(id: string): string!NotFound! {
+  if (id !== "ok") throw new NotFound({ id })
+  return "ok"
+}
+
+export effect function main() {
+  const same = Effect.fail(failure) catch (e) => { calls[0]++; return e === failure }
+  const plain = Effect.fail("bad input") catch (e) => { calls[1]++; return e }
+  const tagged = find("u1") catch (e) => { calls[2]++; return [e._tag, e.id] }
+  const success = find("ok") catch (e) => { calls[3]++; return e.id }
+  return { same, plain, tagged, success, calls }
+}

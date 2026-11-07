@@ -624,8 +624,11 @@ func checkTrust(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsFunctionLike(node) && node.Body() != nil {
 			boundary = boundary || isBoundaryCallback(c, node)
 		}
-		if ast.IsCallExpression(node) && !boundary && !outsideFibers(c, a, node) {
+		if ast.IsCallExpression(node) && !boundary && (!outsideFibers(c, a, node) || a.inEffectfulPlainHome(node)) {
 			checkCall(c, a, file, node)
+		}
+		if (ast.IsNewExpression(node) || ast.IsTaggedTemplateExpression(node)) && !boundary && (!outsideFibers(c, a, node) || a.inEffectfulPlainHome(node)) {
+			checkInvocation(c, a, file, node)
 		}
 		if hatchOf(node) != "" {
 			// A hatch's TypeScript is a boundary (D148); its mapper and inputs are VibeLang (D232).
@@ -645,8 +648,12 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	if unwrappedPromiseInvocation(c, call) {
 		return
 	}
+	effectfulPlain := false
 	if fn := enclosingFunction(call); fn != nil && !a.runsAsEffect(fn) {
-		return // D282: a plain function's calls of TypeScript code are JavaScript calls
+		if !a.isEffectfulPlainHome(fn, call) {
+			return // D282: a plain function's calls of TypeScript code are JavaScript calls
+		}
+		effectfulPlain = true
 	}
 	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performs(call) || isPlatformCallee(c, call) || returnsEffectful(c, call) {
 		return
@@ -654,6 +661,16 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	t := callTrust(c, call)
 	callee := call.Expression()
 	name := nodeText(file, callee)
+	if effectfulPlain {
+		// Chapter 3 (Plain code never throws): a plain function whose return
+		// type is wholly effectful is stricter, and any thrown type other than
+		// never is EK0401. A written contract is the plain-code pass's.
+		// Returning a Promise does not rule out a synchronous throw.
+		if _, written := foreignThrowsContract(c, call); !written && (t.kind == trustForeign || t.kind == trustUnknown) && !t.value && a.knownThrows(call) == nil {
+			report(c, callee, unknownThrowInEffectful, name)
+		}
+		return
+	}
 	// Chapter 1 (Static rules) and chapter 3 (Code outside the generator):
 	// an effect function's parameter list, a class field initializer and a
 	// static block are not effect code. A call whose throwing is unknown
@@ -668,7 +685,7 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	case ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(call, home):
 		// Known throws are already owned by the plain-code pass. The
 		// stricter parameter check adds only previously unknown throwing.
-		if t.kind == trustForeign && !t.promise && a.knownThrows(call) == nil {
+		if (t.kind == trustForeign || t.kind == trustUnknown) && a.knownThrows(call) == nil {
 			d := report(c, callee, foreignCallInEffectParameters, name)
 			note(d, "Compute the value in the body with {0}.", boundaryCall(c, file, "try", call, ""))
 		}
@@ -717,6 +734,114 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	}
 }
 
+// checkInvocation is checkCall for a new expression or a tagged template.
+// Chapter 3 (Calls in effect code): a call, new expression, tagged template
+// or class evaluation whose thrown type is not never is EK0403 in effect
+// code; a written contract names its classes, and an untagged foreign callee
+// throws unknown.
+func checkInvocation(c *checker.Checker, a *analyzer, file *ast.SourceFile, node *ast.Node) {
+	if unwrappedPromiseInvocation(c, node) {
+		return
+	}
+	effectfulPlain := false
+	if fn := enclosingFunction(node); fn != nil && !a.runsAsEffect(fn) {
+		if !a.isEffectfulPlainHome(fn, node) {
+			return
+		}
+		effectfulPlain = true
+	}
+	if a.performs(node) || returnsEffectful(c, node) || isPlatformInvocation(c, node) {
+		return
+	}
+	// A constructor no class declares has no signature to carry a tag, so
+	// it stays untracked, as before; so does a lib constructor or tag the
+	// shipped table does not list.
+	decl := signatureDeclaration(c, node)
+	if decl == nil && ast.IsNewExpression(node) {
+		return
+	}
+	t := callTrust(c, node)
+	if decl != nil && isLibFile(c, ast.GetSourceFileOfNode(decl)) && t.kind == trustForeign {
+		return
+	}
+	callee := ast.GetInvokedExpression(node)
+	name := nodeText(file, callee)
+	bound, written := foreignThrowsContract(c, node)
+	unknown := (t.kind == trustForeign || t.kind == trustUnknown) && !t.promise && !t.value
+	if effectfulPlain {
+		if !written && unknown && a.knownThrows(node) == nil {
+			report(c, node, unknownThrowInEffectful, name)
+		}
+		return
+	}
+	switch home := a.plainHomeOf(node); {
+	case home == nil:
+	case home.Kind == ast.KindPropertyDeclaration && home.Initializer() != nil && ast.IsNodeDescendantOf(node, home.Initializer()),
+		home.Kind == ast.KindClassStaticBlockDeclaration:
+		return
+	case ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(node, home):
+		if t.kind == trustForeign && !t.promise && a.knownThrows(node) == nil {
+			report(c, node, foreignCallInEffectParameters, name)
+		}
+		return
+	}
+	if written && !t.value && !t.promise {
+		if bound != "" {
+			report(c, node, foreignThrowingCall, name, bound)
+		}
+		return
+	}
+	switch {
+	case unknown:
+		d := report(c, node, EK0403)
+		note(d, "Run it through {0}.", wrappedCall("try", nodeText(file, node), ""))
+	case t.kind == trustBuiltin && len(t.failures) > 0:
+		var names []string
+		for _, failure := range t.failures {
+			names = append(names, failure.name)
+		}
+		report(c, node, foreignThrowingCall, name, strings.Join(names, " | "))
+	}
+}
+
+// isPlatformInvocation is isPlatformCallee for any invocation.
+func isPlatformInvocation(c *checker.Checker, node *ast.Node) bool {
+	root := ast.SkipParentheses(ast.GetInvokedExpression(node))
+	for ast.IsPropertyAccessExpression(root) || ast.IsElementAccessExpression(root) {
+		root = ast.SkipParentheses(root.Expression())
+	}
+	_, ok := platformReference(c, root)
+	return ok
+}
+
+// unknownThrowInEffectful is EK0401's text for a call whose throwing is
+// unknown in a plain function whose return type is wholly effectful.
+var unknownThrowInEffectful = EK0401.With("'{0}' may throw, and a function that returns an Effect, a Stream or a Layer never throws: its failures belong in that value. Make the function 'effect' and run the call with 'try Effect.try(() => …)', declare the callee's '@throws', or move the code to a '.ts' file.")
+
+// inEffectfulPlainHome reports whether call, outside a hatch and an async
+// function, runs where isEffectfulPlainHome holds for its enclosing function.
+func (a *analyzer) inEffectfulPlainHome(call *ast.Node) bool {
+	fn := enclosingFunction(call)
+	return fn != nil && !inHatch(call) && !ast.HasSyntacticModifier(fn, ast.ModifierFlagsAsync) && !a.isEffect(fn) && a.isEffectfulPlainHome(fn, call)
+}
+
+// isEffectfulPlainHome reports whether call runs in fn, a plain function or
+// method whose return type, written or inferred, is wholly effectful: in its
+// body or its parameter list, outside a try block with a catch clause and
+// outside a literal whose throws belong to the call it is passed to. A plain
+// catch handler is plain code of its own: an unannotated call there stays an
+// ordinary call.
+func (a *analyzer) isEffectfulPlainHome(fn *ast.Node, call *ast.Node) bool {
+	if !ast.IsFunctionLike(fn) || fn.Body() == nil || isMarkedEffect(fn) || isProducer(fn) || isCatchHandlerOf(fn) || inCatchingTry(call) {
+		return false
+	}
+	if a.plainHomeOf(call) != fn || a.throwsBelongToCall(fn, call) {
+		return false
+	}
+	signature := a.checker.GetSignatureFromDeclaration(fn)
+	return signature != nil && isEffectfulType(a.checker, a.checker.GetReturnTypeOfSignature(signature))
+}
+
 // returnsEffectful reports whether call's callee returns wholly an Effect, a
 // Stream or a Layer. Such a function can't throw: its failures are its
 // Effect's error channel, so a call of it is never throw-tracked, whether the
@@ -731,17 +856,20 @@ func returnsEffectful(c *checker.Checker, call *ast.Node) bool {
 	for sig.Target() != nil {
 		sig = sig.Target()
 	}
-	result := c.GetReturnTypeOfSignature(sig)
-	if ast.IsOptionalChain(call) {
-		// f?.() calls f only when it is there; the checker's call-chain
-		// signature adds undefined to what f returns.
-		result = c.GetNonNullableType(result)
-	}
+	result := c.GetReturnTypeOfSignatureWithoutCallChain(sig)
+	// The signature target is the callable's own contract. Optional
+	// reference syntax must not erase its legitimate nullable results.
 	return isEffectfulType(c, result)
 }
 
 // isEffectfulType reports whether every value of t is an Effect, a Stream or
-// a Layer. any, unknown and a union with another member are not.
+// a Layer. any, unknown and a union with another member are not. An Effect
+// here is chapter 3's test, assignability to Effect<any, any, any>, so an
+// Exit, a Config, an error instance or a service key is one too.
+// A Stream's variance marker alone does not establish its channel or pipe
+// contract; use the same full assignability test as for try. The Effect
+// interface itself counts even when the program has a second copy of effect,
+// whose Effect the assignability test would not accept.
 func isEffectfulType(c *checker.Checker, t *checker.Type) bool {
 	if t != nil && t.Flags()&checker.TypeFlagsTypeParameter != 0 {
 		t = c.GetBaseConstraintOfType(t)
@@ -760,7 +888,7 @@ func isEffectfulType(c *checker.Checker, t *checker.Type) bool {
 	if t.Flags()&(checker.TypeFlagsObject|checker.TypeFlagsIntersection) == 0 {
 		return false
 	}
-	return isEffectType(c, t) || c.GetPropertyOfType(t, streamTypeID) != nil || isLayerType(c, t)
+	return isEffectType(c, t) || isEffectOperandType(c, t) || (c.GetPropertyOfType(t, streamTypeID) != nil && forTryOperandType(c, t)) || isLayerType(c, t)
 }
 
 // trustedNote is EK0403's other fix: declare the function's failures with

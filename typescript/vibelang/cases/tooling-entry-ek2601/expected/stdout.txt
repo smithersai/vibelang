@@ -1,0 +1,1 @@
+EK2601 rejects every retired platform marker with the exact message

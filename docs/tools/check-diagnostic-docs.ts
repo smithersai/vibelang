@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { basename, join, relative, resolve } from "node:path"
+import { compilerCodes } from "./diagnostic-identity.mjs"
 
 const repo = resolve(import.meta.dir, "../..")
 
@@ -74,8 +75,12 @@ export function undocumentedCodes(codes: string[], pages: string[]): string[] {
 export function checkDiagnosticDocs(root = repo): string[] {
   const sources = files(join(root, "typescript/tsc/internal/vibelang"), ".go")
     .filter(path => !path.endsWith("_test.go")).map(path => readFileSync(path, "utf8"))
-  const pages = files(join(root, "docs/user/src"), ".md").map(path => readFileSync(path, "utf8"))
-  return undocumentedCodes(diagnosticCodes(sources), pages)
+  const pages = files(join(root, "docs/user/src"), ".md").filter(path => basename(path) !== "release-notes.md").map(path => readFileSync(path, "utf8"))
+  const registered = files(join(root, "typescript/tsc/internal"), ".go")
+    .filter(path => !path.endsWith("_test.go"))
+    .map(path => ({ path: relative(root, path), text: readFileSync(path, "utf8") }))
+  const codes = [...new Set([...diagnosticCodes(sources), ...compilerCodes(registered).keys()])].sort()
+  return undocumentedCodes(codes, pages)
 }
 
 

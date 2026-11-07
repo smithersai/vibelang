@@ -20,12 +20,22 @@ function editsOf(text, edits) {
 }
 
 function regexWithVibe(text) {
-  if (text.includes("vibe")) return text
-  // Only extension suffixes: preserve preceding directory constraints,
-  // capturing groups and flags.
-  return text.replace(/\\\.\((\?:)?((?:[cm]?tsx?\|?)+)\)\$/, (all, noncapture = "", extensions) =>
-    "\\.(" + noncapture + extensions + "|vibe)$")
-    .replace(/\\\.([cm]?tsx?\??)\$/, "\\.(?:$1|vibe)$")
+  const mapped = extensions => {
+    const values = extensions.split("|")
+    const additions = [
+      ...(values.some(ext => /^[cm]?ts$/.test(ext)) ? ["vibe"] : []),
+      ...(values.some(ext => /^[cm]?tsx$/.test(ext)) ? ["vibex"] : []),
+    ]
+    return [...new Set([...values, ...additions])].join("|")
+  }
+  // Preserve the regex's directory constraints, capturing groups and flags.
+  // Also repair filters an earlier setup extended only to plain VibeLang.
+  return text.replace(/\\\.\((\?:)?((?:(?:[cm]?tsx?|vibex?)\|?)+)\)\$/g,
+    (all, noncapture = "", extensions) => "\\.(" + noncapture + mapped(extensions) + ")$")
+    .replace(/\\\.([cm]?tsx?\??)\$/g, (all, extension) => {
+      const variants = extension.endsWith("x?") ? extension.slice(0, -2) + "|" + extension.slice(0, -1) : extension
+      return "\\.(?:" + mapped(variants) + ")$"
+    })
 }
 
 export function addOxlintSelectors(text, ts) {
@@ -55,10 +65,13 @@ export function addOxlintSelectors(text, ts) {
             }
             if (child.expression.name.text === "includes" && ts.isArrayLiteralExpression(receiver)) {
               const extensions = receiver.elements.filter(ts.isStringLiteral).map(value => value.text)
-              if (extensions.some(value => /^\.?[cm]?tsx?$/.test(value)) && !extensions.some(value => value === "vibe" || value === ".vibe")) {
-                const dot = extensions.some(value => value.startsWith(".")) ? "." : ""
-                const added = ["vibe", ...(extensions.some(value => value.endsWith("tsx")) ? ["vibex"] : [])]
-                local.push({ start: receiver.end - 1, end: receiver.end - 1, text: added.map(extension => ", " + JSON.stringify(dot + extension)).join("") })
+              const dot = extensions.some(value => value.startsWith(".")) ? "." : ""
+              const added = [
+                ...(extensions.some(value => /^\.?[cm]?ts$/.test(value)) ? ["vibe"] : []),
+                ...(extensions.some(value => /^\.?[cm]?tsx$/.test(value)) ? ["vibex"] : []),
+              ].map(extension => dot + extension).filter(extension => !extensions.includes(extension))
+              if (added.length) {
+                local.push({ start: receiver.end - 1, end: receiver.end - 1, text: added.map(extension => ", " + JSON.stringify(extension)).join("") })
                 return
               }
             }

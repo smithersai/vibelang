@@ -1,0 +1,21 @@
+// rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | The runtime's `customMatcher` export and every generated or user-written matcher use that actual key; no runtime copy creates a fresh fallback symbol.
+// A generated error matcher, a generated schema error matcher and a
+// user-written matcher all sit under Symbol.customMatcher itself. run.mjs
+// checks the key on each and loads a second copy of the runtime package.
+export error NotFound { id: string }
+export schema error Invalid { reason: string }
+export class Even {
+  static [Symbol.customMatcher](value: unknown) {
+    return typeof value === "number" && value % 2 === 0
+  }
+}
+
+export function classify(value: unknown) {
+  return match (value) {
+    when NotFound: "missing";
+    when Invalid: "invalid";
+    when Even: "even";
+    default: "other";
+  }
+}
+// Stable rule id: docs/design/src/008-runtime.md#36f4e4c68eaa657a

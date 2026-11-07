@@ -1,0 +1,4 @@
+go test fuzz v1
+string("BigInt")
+byte(1)
+byte(1)

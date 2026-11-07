@@ -94,8 +94,8 @@ for name in hello users http-api file-tree resilience approval pipeline react-vi
     printf 'OK   %-10s compile (long-running server; use bun run test)\n' "$name"
     continue
   fi
-  # main.js runs its exported main when node starts it (D135).
-  entry=dist/main.js
+  # Each Node application has a written runner in src/entry.vibe.
+  entry=dist/entry.js
   # Bound execution so an incorrect producer or fiber lifetime cannot hang CI.
   if ! (cd "$dir" && node --input-type=module - "$entry" <<'JS'
 import { spawnSync } from "node:child_process"

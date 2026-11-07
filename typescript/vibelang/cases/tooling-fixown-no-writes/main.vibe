@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation | | Dependencies, `typeRoots`, bundled libraries, foreign `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, declarations (`.d.ts`, `.d.vibe.ts`, `.d.vibex.ts`), emitted output, `tsBuildInfoFile`, lock files and other referenced projects | No repair writes.
+export const witness = 1

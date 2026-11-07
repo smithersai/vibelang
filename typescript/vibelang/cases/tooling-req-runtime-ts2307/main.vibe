@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#compiler-and-tooling-requirements | When emitted JavaScript needs `vibelang-runtime` and the package cannot resolve, report one `TS2307` naming that package, never unresolved names for its generated helpers.
+export const witness = 1

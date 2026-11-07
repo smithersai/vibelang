@@ -1,0 +1,1 @@
+{"source":"module $throw$ts {\nexport function raise(value: unknown): never { throw value }\n}\nimport { raise as $raise } from $throw$ts\nexport function View({ fail }: { fail: boolean }) {\n  if (fail) $raise(\"fixture\");\n  return <div>ready</div>;\n}\n"}

@@ -12,13 +12,19 @@ const binary = process.env.VIBELANG_BINARY ?? join(root, "packages/compiler/nati
 const fc = createRequire(new URL("../package.json", import.meta.url))(process.env.VIBELANG_FAST_CHECK ?? "fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-solution-lint.json", import.meta.url), "utf8"))
 
+// VIP-38: "`vibelang lint` accepts compiler options and files only, never an
+// Oxlint config or lint-specific flags", and "compiler builds, the language
+// server and `vibelang lint` use the same activation and selection". Over
+// generated solution graphs, lint therefore selects exactly the files the
+// compiler checks for the same arguments, reports the same diagnostics, exits 1
+// where the compiler fails, and writes nothing. A referenced leaf project is
+// linted by selecting it, with one error per seeded file.
 function check({ depth, rootConfig, leafConfig, directory, count, mode, explicitFiles, jsonc }) {
   const cwd = mkdtempSync(join(tmpdir(), "lint-references-"))
   const write = (file, text) => { const path = join(cwd, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, text) }
   try {
-    write(".oxlintrc.json", "{}")
     const files = Array.from({ length: count }, (_, i) => directory + "/src/input_" + i + ".vibe")
-    for (const file of files) write(file, "export const value = 42\n")
+    for (const file of files) write(file, "export const value: string = 42\n")
     const leaf = directory + "/" + leafConfig
     write(leaf, JSON.stringify({
       compilerOptions: { types: [], noEmit: true, skipLibCheck: true },
@@ -32,19 +38,27 @@ function check({ depth, rootConfig, leafConfig, directory, count, mode, explicit
     }
     const solution = { files: [], references: [{ path: "./" + reference }] }
     write(rootConfig, jsonc ? '{\n// solution\n"files" :\n[],\n"references": ' + JSON.stringify(solution.references) + ",\n}\n" : JSON.stringify(solution))
-    const args = ["lint", "-c", ".oxlintrc.json"]
-    if (mode === "file") args.push("-p", rootConfig)
-    if (mode === "directory") args.push("-p", ".")
-    const result = spawnSync(resolve(binary), args, { cwd, encoding: "utf8", timeout: 90000 })
-    const output = result.stdout + result.stderr
-    assert.equal(result.status, 0, output)
-    assert.match(output, new RegExp("in " + count + " \\.vibe file\\(s\\)\\."), output)
-    assert.doesNotMatch(output, /not linted/)
-    for (const file of files) assert.equal(existsSync(join(cwd, file.replace(/\.vibe$/, ".js"))), false)
+    const run = (args) => {
+      const result = spawnSync(resolve(binary), [...args, "--pretty", "false"], { cwd, encoding: "utf8", timeout: 90000 })
+      assert.ifError(result.error)
+      for (const file of files) assert.equal(existsSync(join(cwd, file.replace(/\.vibe$/, ".js"))), false, args.join(" ") + " wrote " + file)
+      return { status: result.status, output: result.stdout + result.stderr }
+    }
+    const selection = mode === "file" ? ["-p", rootConfig] : mode === "directory" ? ["-p", "."] : []
+    const compiler = run(["--noEmit", ...selection])
+    const lint = run(["lint", ...selection])
+    const context = JSON.stringify({ selection, compiler, lint })
+    assert.equal(lint.output, compiler.output, context)
+    assert.equal(lint.status, compiler.status === 0 ? 0 : 1, context)
+    assert.doesNotMatch(lint.output, /TS5023/, context)
+    const selected = run(["lint", "-p", leaf])
+    assert.equal(selected.status, 1, selected.output)
+    assert.equal(selected.output.match(/error TS2322:/g)?.length, count, selected.output)
+    for (const file of files) assert.ok(selected.output.includes(file.slice(directory.length + 1).split("/").pop()), file + "\n" + selected.output)
   } finally { rmSync(cwd, { recursive: true, force: true }) }
 }
 
-test("solution-referenced native files are linted through configured projects", { skip: !existsSync(binary) }, () => {
+test("lint selects solution-referenced native files as the compiler does", { skip: !existsSync(binary) }, () => {
   for (const mode of ["auto", "file", "directory"]) check({ ...corpus, mode })
 })
 

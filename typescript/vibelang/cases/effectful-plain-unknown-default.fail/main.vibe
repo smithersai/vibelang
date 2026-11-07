@@ -1,0 +1,12 @@
+// expect: EK0401
+// A plain function whose return type is wholly effectful is effectful, and an
+// effectful function's parameter list is stricter: a default whose throwing is
+// unknown is EK0401 (chapter 3, Plain code never throws). A plain function
+// returning a plain value, and a default with a never contract, are not.
+import { Effect } from "effect"
+import { untagged, safe } from "./lib.js"
+export function viaDefault(p = untagged()): Effect.Effect<number> { return Effect.succeed(p) }
+export const viaArrow = (p = untagged()): Effect.Effect<number> => Effect.succeed(p)
+export function viaBinding({ n = untagged() }: { n?: number }): Effect.Effect<number> { return Effect.succeed(n) }
+export function plainValue(p = untagged()) { return p }
+export function neverContract(p = safe()): Effect.Effect<number> { return Effect.succeed(p) }

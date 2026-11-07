@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.ts --\nimport { Effect } from \"effect\";\nexport function make<A, E, R>() { return Effect.fn(\"read\")(function* (value: Effect.Effect<A, E, R>) { yield* Effect.scope; return yield* value; }); }\nexport const main = () => Effect.scoped(make<number, never, never>()(Effect.succeed(1)));\n")

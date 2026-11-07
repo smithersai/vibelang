@@ -32,6 +32,9 @@ func TestWideDiagnosticLists(t *testing.T) {
 	})
 	t.Run("EK3205", func(t *testing.T) {
 		var source strings.Builder
+		// EK3205 belongs to the explicitly marked legacy entry migration.
+		const marker = "import \"vibelang/platform/node\"\n"
+		source.WriteString(marker)
 		for i := 0; i < 300; i++ {
 			fmt.Fprintf(&source, "service Need%03d { value: number }\n", i)
 		}
@@ -53,7 +56,14 @@ func TestWideDiagnosticLists(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Fatal("missing EK3205")
+			t.Fatalf("missing EK3205: %v", program.GetSemanticDiagnostics(t.Context(), file))
+		}
+		// The same requirements in ordinary source do not select implicit startup.
+		ordinary, ordinaryFile, _, _ := editorProgram(t, strings.TrimPrefix(source.String(), marker))
+		for _, d := range ordinary.GetSemanticDiagnostics(t.Context(), ordinaryFile) {
+			if d.Code() == 3205 {
+				t.Fatal("unmarked main selected a legacy entry diagnostic")
+			}
 		}
 	})
 }

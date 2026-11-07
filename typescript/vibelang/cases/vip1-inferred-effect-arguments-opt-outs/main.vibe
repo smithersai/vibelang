@@ -1,0 +1,28 @@
+// rule-evidence: docs/design/vips/0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03
+// VIP-1, inferred Effect arguments: the exclusions, with EK4802 an error so
+// any report fails the case. A signature with a declared Effect result, an
+// argument already run with try, explicit call type arguments, an explicitly
+// instantiated callee and a declared Effect.Effect<T> parameter all keep
+// TypeScript inference without the warning; try factory(e) runs only the
+// factory, so e stays a value. expect(try e) passes the result.
+// expect-result: {"explicit":true,"instantiated":true,"declared":true,"factory":true,"result":42,"cold":0,"runs":1}
+function expect<T>(actual: T, message?: string): T { return actual }
+function stop<T>(a: Effect.Effect<T>): Effect.Effect<T> { return a }
+function factory<T>(a: T): Effect.Effect<T> { return Effect.succeed(a) }
+
+export effect function main() {
+  let runs = 0
+  effect function awaited() {
+    runs++
+    return 42
+  }
+  const e = awaited()
+  const explicit = Effect.isEffect(expect<Effect.Effect<number>>(e))
+  const checkProgram = expect<Effect.Effect<number>>
+  const instantiated = checkProgram(e) === e
+  const declared = stop(e) === e
+  const cold = runs
+  const fromFactory = Effect.isEffect(try factory(e))
+  const result = expect(try e)
+  return { explicit, instantiated, declared, factory: fromFactory, result, cold, runs }
+}

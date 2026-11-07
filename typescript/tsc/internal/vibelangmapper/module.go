@@ -39,7 +39,7 @@ func moduleKey(fileName string, read func(string) ([]byte, error)) string {
 	for dir := path.Dir(fileName); ; dir = path.Dir(dir) {
 		if data, err := read(path.Join(dir, "package.json")); err == nil {
 			prefix := path.Base(dir)
-			if name := packageName(data); name != "" {
+			if name, named := packageName(data); named {
 				prefix = name
 			}
 			return prefix + "/" + strings.TrimPrefix(module, strings.TrimSuffix(dir, "/")+"/")
@@ -51,15 +51,18 @@ func moduleKey(fileName string, read func(string) ([]byte, error)) string {
 	return path.Base(module)
 }
 
-// packageName returns the name field of a package.json, or "".
-func packageName(data []byte) string {
-	var manifest struct {
-		Name string `json:"name"`
-	}
+// packageName distinguishes every string name, including "", from an absent
+// or non-string field. Decode the selected field after JSON's last-key rule.
+func packageName(data []byte) (string, bool) {
+	var manifest map[string]json.RawMessage
 	if json.Unmarshal(data, &manifest) != nil {
-		return ""
+		return "", false
 	}
-	return manifest.Name
+	var name *string
+	if json.Unmarshal(manifest["name"], &name) != nil || name == nil {
+		return "", false
+	}
+	return *name, true
 }
 
 // maxWatchedDirectories bounds the walk for package.json files under a
@@ -108,7 +111,11 @@ func projectPackageFiles(configFileName string) (files []string, identity string
 		hash.Write([]byte(file))
 		hash.Write([]byte{0})
 		if data, err := os.ReadFile(filepath.FromSlash(file)); err == nil {
-			hash.Write([]byte("name:" + packageName(data)))
+			if name, named := packageName(data); named {
+				hash.Write([]byte("name:" + name))
+			} else {
+				hash.Write([]byte("unnamed"))
+			}
 		} else {
 			hash.Write([]byte("absent"))
 		}

@@ -18,6 +18,10 @@ func isExtractedErrorClass(c *checker.Checker, decl *ast.Node) bool {
 	tag := ""
 	registered := false
 	for _, member := range decl.Members() {
+		// Instance members do not replace the constructor's own tag matcher.
+		if member.Kind != ast.KindClassStaticBlockDeclaration && !ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) {
+			continue
+		}
 		if ast.IsPropertyDeclaration(member) && (member.Flags&ast.NodeFlagsAmbient != 0 || ast.HasSyntacticModifier(member, ast.ModifierFlagsAmbient)) && member.Initializer() == nil {
 			continue
 		}

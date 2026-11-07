@@ -1,0 +1,4 @@
+preserve   d.ts ["./user.ts","./App.tsx","./other.js","./App2.jsx","./third","./plain.ts"]
+preserve   js   ["./user.js","./App.jsx","./other.js","./App2.jsx","./third","./plain.js"]
+react-jsx  d.ts ["./user.ts","./App.tsx","./other.js","./App2.jsx","./third","./plain.ts"]
+react-jsx  js   ["./user.js","./App.js","./other.js","./App2.jsx","./third","./plain.js"]

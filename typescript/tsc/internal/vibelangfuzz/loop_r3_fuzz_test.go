@@ -409,6 +409,7 @@ func FuzzOwnerSyntaxCodes(f *testing.F) {
 			}
 			return
 		}
+		// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#6f0eb19b09ab0119 | A rejection that depends on a VibeLang production, placement rule, proposal-specific early error or explicitly adopted reconciliation uses its owning VIP's `EK` code, even when a TypeScript parser helper implements it.
 		bare := slices.ContainsFunc(errs, func(e string) bool { return e == "TS1005" || e == "TS1109" || e == "TS1134" })
 		if !slices.Contains(errs, s.want) || bare {
 			Gap(t, "FuzzOwnerSyntaxCodes", "missing:"+s.want, "Appendix B: %s; %s reports %v:\n%s", ownerCodeQuotes[s.want], s.name, errs, source)

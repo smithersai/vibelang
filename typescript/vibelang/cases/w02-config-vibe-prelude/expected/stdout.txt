@@ -1,0 +1,10 @@
+no vibe object: globals.vibe, modules.vibe and imported.vibe compile clean
+vibe {}: globals.vibe, modules.vibe and imported.vibe compile clean
+both true: globals.vibe, modules.vibe and imported.vibe compile clean
+default run: succeed(1) = 1, Effect.succeed(2) = 2, Effect.sleep runs, Duration.toMillis = 1000
+effectGlobals false: succeed is TS2304; Effect.succeed, Effect.sleep and Duration compile and run
+effectModules false: unimported Effect and Duration are unresolved (4 sites); succeed stays; imports compile and run
+both false: bare and unimported names are unresolved; explicit imports compile and run
+root effectGlobals false: succeed still resolves; config diagnostics: clean
+compilerOptions.effectGlobals false: succeed still resolves; config diagnostics: tsconfig.json error TS5023
+vibelang.effectGlobals false: succeed still resolves; config diagnostics: tsconfig.json error TS5023

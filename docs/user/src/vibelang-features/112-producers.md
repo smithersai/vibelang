@@ -28,7 +28,7 @@ effect function firstAlert() {
 // Output: 25
 ```
 
-`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses `Stream.callback` with a one-element buffer and can run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. This bound is for one sequential emitter. In a `for concurrent` body, each active item can compute its value before waiting to offer it; the one-element buffer does not bound all pending offers or upstream work.
+`readings()` constructs a lazy Stream. Its body starts when the Stream runs. Each `yield` emits one value. The producer uses the project's `Stream.callback` and Effect instance with a one-element buffer and can run up to two elements ahead of the consumer: one in the buffer and one waiting to be offered. This bound is for one sequential emitter. In a `for concurrent` body, each active item can compute its value before waiting to offer it; the one-element buffer does not bound all pending offers or upstream work.
 
 A `yield` inside a `for concurrent` item body emits on the enclosing producer's queue. Nested concurrent loops keep that same producer; a nested source function or arrow owns its own `yield` rules. The inferred `Stream` element type includes the item body's yields.
 
@@ -36,7 +36,9 @@ The consumer stops at 25; before `firstAlert` returns, the producer's finalizer 
 
 In `.vibe`, `effect function*` declares a producer; use a plain `function*` for `Effect.gen` or other generator-based APIs. A plain `function*`, with or without a JavaScript iterator return type, is a JavaScript generator ([below](#javascript-generators)). Generator methods on objects remain JavaScript generators unless marked `effect`. The value of `yield x` is `undefined` after the offer completes, including when it waits for room in the buffer. A bare `yield` offers `undefined`. The `yield` expression has type `undefined`. A JavaScript generator keeps its declared type for the value received by `yield`. A producer cannot delegate with `yield*` (`EK2103`); use `for try` and `yield` to forward another stream's elements. Independent TypeScript errors inside the rejected operand keep their own diagnostics.
 
-A class or object method written `effect *values() { yield this.value }` is also a producer. Calling it constructs a `Stream` without running its body. Each collection runs the body again with the original receiver and observes its current fields; `super` keeps the enclosing method’s meaning. TypeScript member modifiers, private names and generic parameters keep their usual meaning.
+A producer expression such as `const values = effect function* () { yield 1 }` also constructs a lazy `Stream` when called. Naming or parenthesizing the expression keeps that meaning.
+
+A class or object method written `effect *values() { yield this.value }` is also a producer. Calling it constructs a `Stream` without running its body. Each collection runs the body again with the original receiver and observes its current fields; `super` keeps the enclosing method’s meaning. TypeScript member modifiers, private names and generic parameters keep their usual meaning. A producer method can follow a class field on a new line without a written semicolon, just as an `async *` method can.
 
 A producer expression cannot use `fork` or `join` as its own name (`EK1702`), just like a non-generator `effect function` expression. Top-level declarations and method names are allowed. `vibelang --fix` preserves the expression's name and self-references through a local constant in a plain arrow; see [Fibers](../concurrency/047-fibers.md).
 

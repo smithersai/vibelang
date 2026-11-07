@@ -161,7 +161,9 @@ export function compilerCodes(sources) {
         const value = arg.length === 1 ? arg[0].value :
           arg.length === 3 && arg[1].value === "." ? arg[2].value : undefined
         const local = mapperConstants.get(packageDirectory)
-        const n = /^\d+$/.test(value ?? "") ? Number(value) : local?.get(value) ?? constants.get(value)
+        // A forwarded runtime value is not a constant merely because another
+        // package assigns a number to the same parameter or field name.
+        const n = /^\d+$/.test(value ?? "") ? Number(value) : local?.get(value)
         if (n > 0) add(codeName(n), path, ts[i].offset, "mapper", {forwarder: token})
       }
       // The stock TypeScript content mapper reports its own EK diagnostics

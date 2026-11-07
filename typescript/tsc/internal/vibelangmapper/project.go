@@ -145,7 +145,8 @@ type env struct {
 
 // projector holds the state of one Project call.
 type projector struct {
-	cacheWitnesses map[string]bool
+	computedNameEnvs map[*ast.Node]env
+	cacheWitnesses   map[string]bool
 
 	file *ast.SourceFile
 	text string
@@ -232,6 +233,7 @@ func lower(text string, ctx FileContext) *projector {
 		kind = core.ScriptKindTSX
 	}
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
+	fiberOperations := fiberOperationPositions(file, text)
 	effectDeclarations := writtenEffectDeclarationMarks(file)
 	operandTries := tryOperandMarks(file, text)
 	effectLambdas := writtenEffectLambdaMarks(file)
@@ -241,10 +243,10 @@ func lower(text string, ctx FileContext) *projector {
 		operandTries = append(operandTries, tryBlockMarks(file, text, keywords)...)
 	}
 	if len(keywords) > 0 {
-		methods := producerMethodMarks(file)
+		methods := producerCallableMarks(file)
 		text = blank(text, keywords)
-		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
-		restoreProducerMethodMarks(file, methods)
+		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true, VibeLangFiberOperations: fiberOperations}, text, kind)
+		restoreProducerCallableMarks(file, methods)
 	}
 	restoreWrittenEffectLambdaMarks(file, effectLambdas)
 	restoreWrittenEffectBlockMarks(file, effectBlocks)
@@ -292,6 +294,12 @@ func lower(text string, ctx FileContext) *projector {
 
 // visit walks node and records the edits that lower it.
 func (p *projector) visit(node *ast.Node, e env) {
+	if defining, ok := p.computedNameEnvs[node]; ok {
+		e = defining
+	}
+	if ast.IsClassLike(node) || ast.IsObjectLiteralExpression(node) {
+		p.rememberComputedNames(node, e)
+	}
 	if p.rejectRetiredControlSyntax(node) {
 		return
 	}
@@ -532,8 +540,30 @@ func (p *projector) visit(node *ast.Node, e env) {
 	p.visitChildren(node, e)
 }
 
+// Computed names execute where their object or class is defined, while
+// member bodies and initializers keep their separate source environments.
+func (p *projector) rememberComputedNames(node *ast.Node, e env) {
+	node.ForEachChild(func(member *ast.Node) bool {
+		name := member.Name()
+		if name != nil && name.Kind == ast.KindComputedPropertyName {
+			if p.computedNameEnvs == nil {
+				p.computedNameEnvs = make(map[*ast.Node]env)
+			}
+			if _, found := p.computedNameEnvs[name]; !found {
+				defining := e
+				defining.holdCalls = true
+				p.computedNameEnvs[name] = defining
+			}
+		}
+		return false
+	})
+}
+
 // visitChildren walks node's children in order.
 func (p *projector) visitChildren(node *ast.Node, e env) {
+	if ast.IsObjectLiteralExpression(node) {
+		p.rememberComputedNames(node, e)
+	}
 	if node.Kind == ast.KindBlock {
 		p.visitList(node.Statements(), e)
 		return
@@ -547,7 +577,7 @@ func (p *projector) visitChildren(node *ast.Node, e env) {
 // visitList walks nodes in order.
 func (p *projector) visitList(nodes []*ast.Node, e env) {
 	for _, node := range nodes {
-		if parser.VibeLangMatchCacheDeclaration(node) == nil {
+		if parser.VibeLangMatchCacheDeclaration(node) == nil && !isPatternHoist(node) {
 			continue
 		}
 		owner := node.Parent
@@ -566,6 +596,21 @@ func (p *projector) visitList(nodes []*ast.Node, e env) {
 	for _, node := range nodes {
 		p.visit(node, e)
 	}
+}
+
+// Pattern declarations share their source span with the later is expression.
+// Render their block once, as for match-cache declarations, so the binding
+// declaration cannot replace text inside the call that contains its pattern.
+func isPatternHoist(node *ast.Node) bool {
+	if !ast.IsVariableStatement(node) {
+		return false
+	}
+	for _, declaration := range node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+		if declaration.Flags&ast.NodeFlagsVibeLangPatternHoist != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // formResolver answers the form decisions the projection needs from the

@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": [],
+    "skipLibCheck": true,
+    "outDir": "out"
+  },
+  "files": [
+    "main.ts"
+  ]
+}

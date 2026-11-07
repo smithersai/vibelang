@@ -1,0 +1,4 @@
+// rule-evidence: docs/design/src/007-tooling.md#vibelang-warnings | Batch `--fix` chooses only `try` and refuses an edit that adds an error.
+// run.mjs runs --fix over EK4802 sites: a direct argument it runs with try, a
+// try that would add an error, and sites only explicit type arguments repair.
+export const witness = 1

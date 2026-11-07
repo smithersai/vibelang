@@ -1,0 +1,18 @@
+{
+  "description": "A main-only package retains the logical API entry of an MTS source after native migration.",
+  "manifest": {
+    "private": true,
+    "type": "module",
+    "main": "./main.ts"
+  },
+  "before": {
+    "main.ts": "export const entry: number = 0;\n",
+    "leaf.mts": "export const value: number = 1;\n"
+  },
+  "after": {
+    "main.ts": "export const entry: number = 0;\n",
+    "leaf.vibe": "export const value: number = 1;\n"
+  },
+  "declaration": "export declare const value: number;\n",
+  "mainDeclaration": "export declare const entry: number;\n"
+}

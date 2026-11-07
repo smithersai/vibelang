@@ -1,0 +1,17 @@
+{
+  "repo": "alchemy",
+  "cause": "alchemy-codemod-legacy-plain-boundaries",
+  "note": "Minimized from 32 partition sources (frontend-frameworks astro/aws, astro/config, railway Bind among them). The legacy-inference pass wrote `: infer _` into a VIP-40 module body and into callbacks of an object passed as an argument; the first is TS1338 in TypeScript, the second made the generator conversion introduce TS1338.",
+  "samples": [
+    {
+      "key": "module-body-proxy-handler",
+      "before": "module platform {\nexport const make = (): unknown => new Proxy({}, { get: (_obj, prop) => String(prop) });\nexport const helper = (n: number) => n + 1;\n}\n\nexport { make, helper } from platform\n\nexport const nativeValue = 1;\nexport const twice = (n: number) => n * 2;\n",
+      "after": "module platform {\nexport const make = (): unknown => new Proxy({}, { get: (_obj, prop) => String(prop) });\nexport const helper = (n: number) => n + 1;\n}\n\nexport { make, helper } from platform\n\nexport const nativeValue = 1;\nexport const twice = (n: number): infer _ => n * 2;\n"
+    },
+    {
+      "key": "effect-try-object-callbacks",
+      "before": "import * as Effect from \"effect/Effect\";\nexport const program = Effect.gen(function* () {\n  return yield* Effect.try({\n    try: () => JSON.parse(\"1\") as unknown,\n    catch: (cause) => cause\n  });\n});\n",
+      "after": "import * as Effect from \"effect/Effect\";\nexport const program = Effect.gen(function* () {\n  return yield* Effect.try({\n    try: () => JSON.parse(\"1\") as unknown,\n    catch: (cause) => cause\n  });\n});\n"
+    }
+  ]
+}

@@ -199,6 +199,8 @@ processes that inherit the environment. The preload must run before the entry.
 
 ## Run .vibe modules in Bun
 
+Imports and re-exports preserve source filenames containing spaces, `#`, `%` and Unicode text. Each compiled import resolves from its original source spelling. Written `.js` imports keep their native literal filename, including when the same module also imports a different percent-containing source filename.
+
 Use Bun `1.4.2` or newer for the runtime loader. Bun `1.3.13` can return an asset path instead of a module for computed imports that a plugin resolves, and Bun `1.4.0` can corrupt Unicode import paths.
 
 ```sh
@@ -302,7 +304,9 @@ module, a `tsconfig.json` elsewhere in the package does, such as a
 `worker/tsconfig.json` that includes `../db`: the first by path that lists the
 module, else the first by path that imports it. Sibling discovery does not enter
 nested packages. Custom-named configs must be selected explicitly or referenced. `project` stands for
-the config of `root`'s own directories. `load(file)` returns
+the config of `root`'s own directories. When `project` sits above or beside `root`, as a
+nested Vite root's `../tsconfig.json` does, it compiles from its package's directory instead, so every module it includes
+loads, inside `root` or not. `load(file)` returns
 the module's JavaScript, its source map, and its source diagnostics and project-wide diagnostics, for a
 `.vibe` file or for the output of one of its `module` declarations,
 `main.vibe.text.js` beside `main.vibe`, which `moduleDeclarationSource(path)`
@@ -310,7 +314,7 @@ recognizes;
 `invalidate()` makes every project compile again on its next load, or load from
 the cache when nothing changed. A compile runs `vibelang -p <tsconfig>
 --loader-root <root>`, which type-checks and emits only the `.vibe` files under
-`root`, the modules it serves; the project's `.ts` files only supply types. When the compiler is the `vibelang` launcher, the compile
+`root` (under the package's directory, for a project above or beside `root`), the modules it serves; the project's `.ts` files only supply types. When the compiler is the `vibelang` launcher, the compile
 runs the native compiler the launcher would run, without starting Node for it.
 
 The public `compileProjectSync` and `projectBackend().compile` results include
@@ -388,7 +392,7 @@ it tracks native sources, dependencies, configs and compiler changes. Await
 `close()` when finished. Module loader hooks do not change `readFile` or
 directory enumeration.
 
-`findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package.
+`findBinary()` from `vibelang/binary` returns the path of the native compiler: `VIBELANG_BINARY`, a checkout's build, or the installed platform package. The override must select a compiler executable; selecting the package's JavaScript launcher reports an error instead of starting it recursively.
 
 `isVibeLangFile(file)` says whether a file is VibeLang source: a `.vibe` or `.vibex` file, or a TypeScript source whose first line is `// @vibe`. `hasVibeDirective(file, text)` answers from text you already hold. Virtual module IDs containing a NUL byte are not filesystem paths: `isVibeLangFile(file)` and `fileHasVibeDirective(file)` return `false` without reading them.
 
@@ -451,7 +455,8 @@ const formatted = formatSource(source, filePath)
 
 `formatSource(text, filePath)` formats a supplied buffer, including an unsaved
 file whose path is ignored or under `node_modules`. The full path selects the
-repository's quote style and line width. File-scanning commands
+repository's quote style and line width. A formatting error names the supplied
+file path and preserves the underlying formatter message. File-scanning commands
 `vibelang-format --write` and `vibelang-format --check` apply ignore rules
 when selecting files. See [developer tools](https://vibelang.sh/setup/developer-tools#prettier-and-oxfmt)
 for configuration formats and Oxfmt integration.
@@ -517,7 +522,9 @@ of `.vibe` and `.vibex` sources, then maps diagnostics back to the original
 source. Reports on generated code are dropped. Migration setup wires this
 through `node .vibelang/oxlint.mjs --vibe-native`; use the
 [Oxlint integration](https://vibelang.sh/setup/developer-tools#oxlint) for
-configuration and rule coverage.
+configuration and rule coverage. File-list runners also accept `--fix` for the
+ESLint pass's fixes to selected authored source files; the native projection is
+never fixed.
 
 ## Find unused code with Knip
 
@@ -525,7 +532,10 @@ configuration and rule coverage.
 `.vibe` and `.vibex` files. It gives Knip a module's imports, re-exports, dynamic imports,
 export names, JSX tag references and namespace member reads, from the compiler's ESTree, and the
 `vibelang-runtime` import its JavaScript has. Knip takes a compiler only from a
-configuration that is code:
+configuration that is code. Default aliases such as `export default value`
+retain their binding so Knip can report duplicate exports. Bracket access such as `Users["find"]` counts as a
+namespace member read; an unknown computed key retains all namespace exports,
+as Knip does for TypeScript:
 
 ```js
 // knip.config.js
@@ -544,7 +554,7 @@ optional dependencies, and npm installs the one that matches your platform:
 runs `VIBELANG_BINARY` when set, then `native/vibelang` (`native/vibelang.exe` on Windows) beside the package in a
 VibeLang checkout, then the platform package. If you installed with optional
 dependencies omitted, reinstall without that option. The launcher forwards
-arguments, standard streams, signals, and the exit status.
+arguments, standard streams, signals, and the exit status. Set `VIBELANG_BINARY` to the native compiler executable, not the package's `bin/vibelang` JavaScript launcher. The launcher and bundler backend reject that recursive override, including aliases of the launcher.
 
 Package metadata is available through `vibelang/package.json`.
 
@@ -566,9 +576,9 @@ node --test packages/compiler/test/*.test.mjs
 A checkout's launcher prefers `native/vibelang`, so projects that link to the
 checkout use a rebuilt compiler without reinstalling.
 
-### Bun runtime watch limitation
+### Watch source modules in Bun
 
-With Bun 1.4.1, `bun --watch --preload vibelang/bun` does not reliably restart after a `.vibe` save. The preload compiles once per process and does not invalidate that result during watch. For development, use the starter's `npm run dev` or `bun run dev`: its compiler watch and Node process rebuild and restart the app.
+With the `vibelang/bun` preload configured, `bun test --watch` reruns tests after an imported `.vibe` source changes, including through re-exports. `bun --watch --preload vibelang/bun src/main.ts` restarts an application after those changes. Each restart reads the changed source and reuses a cached compile only while its inputs remain unchanged.
 
 ### Bun test types
 
@@ -627,3 +637,5 @@ or CommonJS calls. Literal bundle entry filenames remain unchanged.
 ## Last resort: keep TypeScript file names
 
 Prefer the CLI, plugins, loaders and editor integrations above with `.vibe` or `.vibex` files. Only when a project cannot rename its TypeScript files, consider the experimental [TypeScript shim](https://vibelang.sh/setup/typescript-shim). It runs the compiler as `tsc`, but stock readers can accept a marked file with different meaning.
+
+Loader diagnostics distinguish sources outside the compilation root from sources absent from a project. An outside source needs a containing root or its own package and project; a source excluded by `tsconfig.json` still receives `include` guidance.

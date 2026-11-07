@@ -25,6 +25,7 @@ func legacyPreludeCompatibilityFixes(ctx context.Context, program *compiler.Prog
 	plans := legacyHatchTypeMigrationFixes(ctx, program, refused)
 	for _, file := range fixableFiles(program) {
 		p := legacyEffectGlobalFixes(ctx, program, file, refused, legacy, preVIP, nil)
+		p = p.withFixes(plainInferReturnFixes(ctx, program, file, refused))
 		if len(p.fixes) == 0 {
 			continue
 		}

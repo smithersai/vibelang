@@ -21,6 +21,7 @@ import { wireNativeViteConfigs } from "./vite-config.mjs"
 import { addVitestProjectPlugins } from "./vitest-projects.mjs"
 import { wireBunFixtureTests } from "./bun-fixtures.mjs"
 import { localPackageDependencies } from "./workspace-dependencies.mjs"
+import { sourcePackageDependencies } from "./workspace-source-dependencies.mjs"
 import { jsonStrings, workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { applyEdits } from "./imports.mjs"
 import { must, quote } from "./util.mjs"
@@ -403,10 +404,16 @@ function addWorkerPlugin(text, ts, call) {
  * (`defineConfig` from electron-vite), first in the plugins of each of its
  * `main`, `preload` and `renderer` builds, each a Vite build of its own
  * (opencode's packages/desktop: the main and preload builds loaded `.vibe`
- * modules with no plugin). Returns the text unchanged when the plugin is
- * already imported; throws for a shape this edit does not know.
+ * modules with no plugin). With worker, the renderer's worker.plugins gains it
+ * too, as a Vite config's does (addVitePlugin): a worker the renderer starts,
+ * or a local workspace dependency it bundles starts, is a build of its own
+ * (opencode's Office preview in gui-plugins). Returns the text unchanged when
+ * the plugin is already imported, apart from that worker plugin; throws for a
+ * shape this edit does not know.
  */
-export function addElectronVitePlugin(text, ts) {
+export function addElectronVitePlugin(text, ts, { worker = false } = {}) {
+  const imported = /import\s+([\w$]+)\s+from\s+['"]vibelang-vite['"]/.exec(text)
+  if (imported) return worker ? addRendererWorkerPlugin(text, ts, `${imported[1]}()`) : text
   if (/from\s+['"]vibelang-vite['"]/.test(text)) return text
   const source = ts.createSourceFile("electron.vite.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const config = defineConfigObject(source, ts)
@@ -418,8 +425,22 @@ export function addElectronVitePlugin(text, ts) {
     const object = ts.isPropertyAssignment(section) ? unwrapped(section.initializer, ts) : undefined
     if (!object || !ts.isObjectLiteralExpression(object)) throw new Error(`the electron-vite config's ${section.name.text} build is not an object literal; add vibelang() to its plugins by hand`)
     edits.push(pluginEdit(text, source, object, ts, `the electron-vite config's ${section.name.text}.plugins is not an array literal; add vibelang() to it by hand`))
+    if (worker && section.name.text === "renderer") edits.push(workerEdit(text, source, object, ts, "vibelang()"))
   }
   return applyPluginEdits(text, edits)
+}
+
+/** text with call in its electron-vite renderer's worker.plugins, unless a call of the same plugin is there. */
+function addRendererWorkerPlugin(text, ts, call) {
+  const source = ts.createSourceFile("electron.vite.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const config = defineConfigObject(source, ts)
+  const renderer = config && propertyOf(config, "renderer", ts)
+  const object = renderer && ts.isPropertyAssignment(renderer) ? unwrapped(renderer.initializer, ts) : undefined
+  if (!object || !ts.isObjectLiteralExpression(object)) return text
+  const worker = propertyOf(object, "worker", ts)
+  const name = call.slice(0, call.indexOf("("))
+  if (worker && new RegExp(`\\b${name}\\(`).test(text.slice(worker.getStart(source), worker.end))) return text
+  return applyPluginEdits(text, [workerEdit(text, source, object, ts, call)])
 }
 
 // Whether a package or one of its local workspace dependencies starts a Vite
@@ -695,7 +716,7 @@ function wireViteConfig({ root, file, packages, ts, specsFor, changed, warnings,
   let owner = posix.dirname(file)
   while (owner !== "." && !existsSync(join(root, owner, "package.json"))) owner = posix.dirname(owner)
   // electron-vite builds main, preload and renderer with a plugin list each; a Vite app's workers build with worker.plugins.
-  const pluginText = electronViteConfigFile.test(posix.basename(file)) ? addElectronVitePlugin(text, ts) : addVitePlugin(text, ts, { register, worker: startsWorkers(root, owner) })
+  const pluginText = electronViteConfigFile.test(posix.basename(file)) ? addElectronVitePlugin(text, ts, { worker: startsWorkers(root, owner) }) : addVitePlugin(text, ts, { register, worker: startsWorkers(root, owner) })
   write(file, text, addVitestProjectPlugins(pluginText, ts, { root, file, packages, warn: message => warnings.push(file + ": " + message) }))
   const manifest = posix.join(owner, "package.json")
   const before = readFileSync(join(root, manifest), "utf8")
@@ -801,7 +822,7 @@ const electronViteConfigFile = /^electron\.vite\.config\.m?[jt]s$/
 /**
  * The repository's packages that load migrated sources: each migrated package
  * and each that depends on one through workspace packages
- * (`"foldkit": "workspace:*"`). migrated holds the migrated packages' directories.
+ * or relative source/test imports. migrated holds the migrated packages' directories.
  */
 export function packagesReaching(root, migrated) {
   const all = repositoryPackages(root)
@@ -811,11 +832,13 @@ export function packagesReaching(root, migrated) {
   // A recursive walk cannot memoize false while a dependency cycle is open:
   // another branch may still connect the whole cycle to a migrated package.
   const dependents = new Map()
+  const sourceImports = sourcePackageDependencies(root, all)
   for (const pkg of all) {
-    for (const dependency of local(pkg)) {
-      const consumers = dependents.get(dependency.dir) ?? []
+    const dependencies = new Set([...local(pkg).map(dependency => dependency.dir), ...sourceImports.get(pkg.dir)])
+    for (const dependency of dependencies) {
+      const consumers = dependents.get(dependency) ?? []
       consumers.push(pkg.dir)
-      dependents.set(dependency.dir, consumers)
+      dependents.set(dependency, consumers)
     }
   }
   const reached = new Set(migrated)

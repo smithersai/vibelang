@@ -134,6 +134,7 @@ var preludeModules = map[string]string{
 	"$extract":      runtimeModule,
 	"$matchCache":   runtimeModule,
 	"$relation":     runtimeModule,
+	"$relates":      runtimeModule,
 	"$rest":         runtimeModule,
 	"$propertyKey":  runtimeModule,
 	"$noMatch":      runtimeModule,
@@ -725,7 +726,7 @@ func effectExportSymbol(c *checker.Checker, state *preludeState, file *ast.Sourc
 // JavaScript needs no import of it.
 func isLoweredHatchCallee(location *ast.Node) bool {
 	parent := location.Parent
-	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() == location && hatchNames[location.Text()]
+	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() == location && hatchOf(parent) != ""
 }
 
 // isBuiltinGlobal gives ECMAScript globals precedence over Effect's module

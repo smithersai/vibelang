@@ -1,0 +1,3 @@
+// The marked modules under test live in inputs/; run.mjs migrates copies of
+// them, so this project holds only ordinary source.
+export const ordinary = true

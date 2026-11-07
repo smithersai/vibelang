@@ -1,0 +1,16 @@
+// expect: EK4833 EK4833 EK4833
+// rule-evidence: docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms | The `EK4833` advisory treats a custom qualified alias named `Effect` as an equivalent spelling only when its resolved type is Effect's own `Effect` interface and its written arguments match that type's success, error and requirements slots.
+// rule-evidence: docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms | An omitted slot must resolve to `never`.
+// Only the exact forwarding alias, written with one, two or three arguments,
+// is an equivalent spelling. Each other alias would change the repaired type.
+import type { Forward, Defaulted, Swapped, Wrapped, Required, Nullable, Foreign } from "./aliases.ts"
+
+export type One = Forward.Effect<number>
+export type Two = Forward.Effect<number, string>
+export type Three = Forward.Effect<number, string, never>
+export type DefaultedSlot = Defaulted.Effect<number>
+export type SwappedSlots = Swapped.Effect<string, number>
+export type WrappedSlot = Wrapped.Effect<number>
+export type AddedRequirement = Required.Effect<number>
+export type UnionBranch = Nullable.Effect<number>
+export type NotEffect = Foreign.Effect<number>

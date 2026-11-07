@@ -1,0 +1,1 @@
+{"source": "export function operation(value: number) {\n  return value + 1;\n}\nexport const source = Function.prototype.toString.call(operation);\nexport const literal = \"Function.prototype.toString: keep this data\";\nexport const arity = operation.length;\n"}

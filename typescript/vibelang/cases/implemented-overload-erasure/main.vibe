@@ -1,0 +1,40 @@
+// expect-result: [1,"x",true]
+// TypeScript relates overloaded signature lists with their type parameters
+// erased, so each class here implements its interface with fewer overloads
+// than it declares. The thrown-type check pairs the same signatures: a
+// VibeLang method throws never and a @throws {never} overload fits, so none
+// of these is EK0402 (chapter 003, Assignability).
+import type { Pipeable } from "effect/Pipeable"
+import * as Schema from "effect/Schema"
+import type { Apply } from "./handlers.js"
+import { safeApply } from "./handlers.js"
+
+export class Fewer implements Apply {
+  apply<A>(a: A): A
+  apply<A, B>(a: A, ab: (_: A) => B): B
+  apply(a: unknown, ...fs: ReadonlyArray<(_: never) => unknown>): unknown {
+    return fs.length === 0 ? a : a
+  }
+}
+
+export class Piped implements Pipeable {
+  pipe(): unknown {
+    return this
+  }
+}
+
+export class Window extends Schema.Class<Window>("Window")({ size: Schema.Number }) implements Pipeable {
+  pipe<A>(this: A): A
+  pipe<A, B>(this: A, ab: (_: A) => B): B
+  pipe(this: unknown, ...operators: ReadonlyArray<(input: never) => unknown>): unknown {
+    return operators.length === 0 ? this : this
+  }
+}
+
+export class Tagged implements Apply {
+  apply = safeApply
+}
+
+export effect function main() {
+  return [new Fewer().apply(1), new Tagged().apply("x"), new Piped().pipe() instanceof Piped]
+}

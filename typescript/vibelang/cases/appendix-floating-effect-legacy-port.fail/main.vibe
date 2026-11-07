@@ -1,0 +1,6 @@
+// expect: EK4801
+// Appendix B: EK4801, this is the still-registered legacy port — spec-rule: docs/design/src/900-appendices.md#25a38cb81cd5fbd5
+// Without the Effect plugin, the same discarded Effect statement reports the
+// registered legacy port EK4801.
+import { Effect } from "effect"
+export effect function main() { const p = Effect.succeed(1); p; return 1 }

@@ -1,0 +1,5 @@
+// expect: TS2304
+// rule-evidence: docs/design/vips/0026-top-level-and-main.md#decision | *Corrected 2026-11-02: the Decision example imports `NodeRuntime` from `@effect/platform-node`, which is not in scope (VIP-14), as chapter 1 does (found by the round-6 review).*
+// Without the import, NodeRuntime is not in scope: TS2304 here only.
+export effect function main() { return 1 }
+NodeRuntime.runMain(main())

@@ -18,9 +18,9 @@ import (
 // the Stream's E and R, and leaves any other iterable as it is (D26).
 
 // isProducer reports whether node is a producer: a generator function
-// declaration or method marked effect, with a body, and not async (VIP-21).
+// declaration, expression or method marked effect, with a body, and not async (VIP-21).
 func isProducer(node *ast.Node) bool {
-	if node.Kind != ast.KindFunctionDeclaration && node.Kind != ast.KindMethodDeclaration || node.Flags&ast.NodeFlagsVibeLangEffect == 0 || node.Flags&ast.NodeFlagsReparsed != 0 {
+	if node.Kind != ast.KindFunctionDeclaration && node.Kind != ast.KindFunctionExpression && node.Kind != ast.KindMethodDeclaration || node.Flags&ast.NodeFlagsVibeLangEffect == 0 || node.Flags&ast.NodeFlagsReparsed != 0 {
 		return false
 	}
 	return node.Body() != nil && node.BodyData().AsteriskToken != nil && !ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync)
@@ -146,13 +146,13 @@ func (p *projector) forOfStatement(node *ast.Node, e env) {
 	p.visit(statement.Statement, e)
 }
 
-// producerMethodMarks keeps the syntax-selected producer form when the
+// producerCallableMarks keeps producer methods and expressions when the
 // projector blanks VIP keywords and reparses. Body positions do not change.
-func producerMethodMarks(file *ast.SourceFile) map[int]bool {
+func producerCallableMarks(file *ast.SourceFile) map[int]bool {
 	marks := map[int]bool{}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if node.Kind == ast.KindMethodDeclaration && node.Body() != nil && node.Flags&ast.NodeFlagsVibeLangEffect != 0 && ast.GetFunctionFlags(node)&ast.FunctionFlagsGenerator != 0 {
+		if (node.Kind == ast.KindMethodDeclaration || node.Kind == ast.KindFunctionExpression) && node.Body() != nil && node.Flags&ast.NodeFlagsVibeLangEffect != 0 && ast.GetFunctionFlags(node)&ast.FunctionFlagsGenerator != 0 {
 			marks[node.Body().Pos()] = true
 		}
 		return node.ForEachChild(visit)
@@ -161,13 +161,13 @@ func producerMethodMarks(file *ast.SourceFile) map[int]bool {
 	return marks
 }
 
-func restoreProducerMethodMarks(file *ast.SourceFile, marks map[int]bool) {
+func restoreProducerCallableMarks(file *ast.SourceFile, marks map[int]bool) {
 	if len(marks) == 0 {
 		return
 	}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if node.Kind == ast.KindMethodDeclaration && node.Body() != nil && marks[node.Body().Pos()] {
+		if (node.Kind == ast.KindMethodDeclaration || node.Kind == ast.KindFunctionExpression) && node.Body() != nil && marks[node.Body().Pos()] {
 			node.Flags |= ast.NodeFlagsVibeLangEffect
 		}
 		return node.ForEachChild(visit)

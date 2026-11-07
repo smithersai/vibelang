@@ -67,7 +67,22 @@ export function parseOutput(output, root) {
   const files = []
   const diagnostics = []
   let diagnostic
-  for (const line of output.split(/\r?\n/)) {
+  const lines = output.split(/\r?\n/)
+  const library = /^bundled:\/\/\/libs\/lib\.[^/\s]+\.d\.ts$/
+  const libraryListings = new Set()
+  let listing = true
+  // A library block ends at a filesystem listing or the end of the output.
+  // Source excerpts can quote the same URLs before continuing their message.
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const line = lines[index]
+    if (!line) continue
+    if (library.test(line)) {
+      if (listing) libraryListings.add(index)
+    } else {
+      listing = isAbsolute(line.trim())
+    }
+  }
+  for (const [index, line] of lines.entries()) {
     let match
     if ((match = line.match(located))) {
       diagnostic = {
@@ -80,6 +95,10 @@ export function parseOutput(output, root) {
       diagnostics.push(diagnostic)
     } else if (/^\s/.test(line)) {
       if (diagnostic) diagnostic.text += "\n" + line
+    } else if (libraryListings.has(index)) {
+      // Embedded standard libraries belong to the compiler's file listing.
+      // They have no filesystem path to watch or fingerprint.
+      diagnostic = undefined
     } else if (isAbsolute(line.trim()) &&
       // A multiline message can quote source comments at column zero.
       // Keep existing input paths even when their spelling resembles a
@@ -533,6 +552,12 @@ export function packageRoot(path) {
   }
 }
 
+// within says whether path is directory itself or lies below it.
+const within = (directory, path) => {
+  const rest = relative(directory, path)
+  return !rest.startsWith("..") && !isAbsolute(rest)
+}
+
 /**
  * workspaceProject names the project to try first for a module when `project`
  * (whose directory is `root`) is the one asked for: the nearest config above
@@ -678,8 +703,9 @@ const failed = "throw new Error(\"vibelang: this module did not compile; see the
  * projects compiles .vibe modules for a bundler, one whole-project compile per
  * tsconfig. A module belongs to the nearest config above it, which is `project`
  * for root's own directories, and to the one findProject names when that config
- * leaves it out. Each project compiles once per revision; invalidate() starts a
- * new revision.
+ * leaves it out. `project` may sit above root, as a nested Vite root's
+ * `../tsconfig.json` does; it then compiles every module it includes. Each
+ * project compiles once per revision; invalidate() starts a new revision.
  *
  * load(file) resolves to { project, code, map, inputs, errors, warnings, first, error }.
  * errors and warnings belong to the loaded source or are project-wide.
@@ -712,8 +738,12 @@ export function projects({ root, project, compiler, cache, debug = () => {}, pre
   function stateOf(tsconfig) {
     let state = states.get(tsconfig)
     if (state === undefined) {
-      const projectRoot = tsconfig === project ? root : packageRoot(tsconfig)
-      state = { tsconfig, backend: projectBackend({ root: projectRoot, compiler, cache, debug, preserveJsx, [loaderScope]: true }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
+      // A root nested below the asked project's directory, such as a Vite root
+      // of `vite` beside `core`, would narrow the loader to that root and leave
+      // the project's other modules unemitted; such a project compiles from its
+      // package, as another package's project does.
+      const projectRoot = tsconfig === project && within(root, tsconfig) ? root : packageRoot(tsconfig)
+      state = { tsconfig, root: projectRoot, backend: projectBackend({ root: projectRoot, compiler, cache, debug, preserveJsx, [loaderScope]: true }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
       states.set(tsconfig, state)
     }
     return state
@@ -793,11 +823,21 @@ export function projects({ root, project, compiler, cache, debug = () => {}, pre
       state.reported = state.compiled
       if (errors.length) return { project: state.tsconfig, code: failed, inputs, errors, warnings, first }
       const output = outputs.get(file)
+      let error = false
+      if (!output) {
+        const path = relative(state.root, file)
+        const outsideRoot = path === ".." || slash(path).startsWith("../") || isAbsolute(path)
+        debug(`missing output: ${file}; project=${state.tsconfig}; root=${state.root}; listed=${result.files.includes(file)}; outsideRoot=${outsideRoot}`)
+        error = {
+          message: outsideRoot
+            ? `vibelang: ${file} is outside the compilation root ${state.root}. Set the root to a directory containing this source, or give the source its own package.json and tsconfig.json.`
+            : `vibelang: ${file} is not part of ${[state.tsconfig, ...others].join(" or ")}. Add it to the tsconfig's include.`,
+          id: file
+        }
+      }
       return {
         project: state.tsconfig, code: output?.code ?? failed, map: output?.map, inputs, errors, warnings, first,
-        error: !output && {
-          message: `vibelang: ${file} is not part of ${[state.tsconfig, ...others].join(" or ")}. Add it to the tsconfig's include.`, id: file
-        }
+        error
       }
     }
   }

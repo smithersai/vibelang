@@ -145,7 +145,6 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4616` | error: legacy compiler compatibility — the retired `try(…)` hatch form is used.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Wrap native code with `Effect.try` or `tryPromise`, then run its Effect with `try`.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:9:13](../../../typescript/vibelang/cases/ek4616-try-hatch.fail/main.vibe).
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4704` | error: legacy compiler compatibility — the current lowering does not support a pattern form.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4801` | error: legacy compiler compatibility — an Effect value is discarded as a statement.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4803` | warning: legacy compiler compatibility — multiple versions of an Effect package are loaded.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4804` | warning: legacy compiler compatibility — an Effect failure is a global `Error` without a distinguishing tag.
@@ -304,7 +303,26 @@ export function resolveExamples(fixtures,appendix,root=repository) {
       if(!appendix.has(fixture.code))throw Error(fixture.code+": host fixture has no Appendix row")
       const test=readFileSync(join(root,fixture.testPath),"utf8")
       if(!test.includes("func "+fixture.testName+"("))throw Error(fixture.code+": missing executable host test")
-      if((fixture.host==="registration-only")!==!!fixture.emissionPending)throw Error(fixture.code+": registration-only host must declare pending emission")
+      if((fixture.host==="registration-only")!==!!(fixture.emissionPending||fixture.emissionReplay)||fixture.emissionPending&&fixture.emissionReplay)throw Error(fixture.code+": registration-only host must declare pending emission or an emission replay, exclusively")
+      if(fixture.emissionReplay) {
+        const replay=fixture.emissionReplay
+        const project=resolve(root,replay.project)
+        const cases=resolve(root,"typescript/vibelang/cases")+sep
+        if(!project.startsWith(cases)||project===cases.slice(0,-1))throw Error(fixture.code+": emission replay must name a native case")
+        const relative=project.slice(resolve(root).length+1).split(sep).join("/")
+        const row=appendix.get(fixture.code)
+        if(!row.includes("(../../../"+relative+"/main.vibe)"))throw Error(fixture.code+": emission replay lacks its Appendix link")
+        if(!appendix.has(replay.code)||!row.includes("\x60"+replay.code+"\x60"))throw Error(fixture.code+": emission replay lacks its documented diagnostic")
+        const source=readFileSync(join(project,"main.vibe"),"utf8")
+        const expected=[replay.code,...replay.also??[]]
+        const category=code=>code.startsWith("TS")?"error":appendixCategory(appendix.get(code))
+        const declared=/^\/\/ expect: ([^\n]+)$/m.exec(source)?.[1].trim().split(/\s+/).sort()
+        const warnings=/^\/\/ expect-warnings: ([^\n]+)$/m.exec(source)?.[1].trim().split(/\s+/).sort()??[]
+        if(JSON.stringify(declared)!==JSON.stringify(expected.filter(code=>category(code)==="error").sort())||
+          JSON.stringify(warnings)!==JSON.stringify(expected.filter(code=>category(code)==="warning").sort()))
+          throw Error(fixture.code+": emission replay differs from its case expectations")
+        examples.push({...replay,name:"appendix-current-emission-"+fixture.code,source,project})
+      }
       if(fixture.emissionPending) {
         if(!appendix.get(fixture.code).includes("Emission witness pending for `"+fixture.code+"`"))throw Error(fixture.code+": missing pending emission label")
         const source=readFileSync(join(root,"docs/tools/spec-diagnostic-compatibility-pending.test.mjs"),"utf8")
@@ -333,3 +351,4 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
 // rule-evidence: docs/design/src/900-appendices.md | The old `EK9210` is retired and will never be reassigned: the first-release continuation retirement reports `EK3501` before provider or operation-contract analysis; VIP-35 remains open.
 
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK0909` | retired `service class Name { … }`; run `vibelang --fix` to remove `class` while preserving the service key and contract. Example: `service class Users { get(): string }` Replay [example: main.vibe:2:1](../../../typescript/vibelang/cases/retired-service-class.fail/main.vibe). | 9 | [Services](005-services.md#syntax) |
+// rule-evidence: docs/design/src/900-appendices.md | The old `EK4704` is retired and will never be reassigned: VIP-7 admits computed property-key expressions under the pinned pattern grammar.

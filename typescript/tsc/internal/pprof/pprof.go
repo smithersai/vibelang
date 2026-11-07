@@ -20,49 +20,49 @@ type ProfileSession struct {
 }
 
 // BeginProfiling starts CPU and memory profiling, writing the profiles to the specified directory.
-func BeginProfiling(profileDir string, logWriter io.Writer) *ProfileSession {
+func BeginProfiling(profileDir string, logWriter io.Writer) (*ProfileSession, error) {
 	if err := os.MkdirAll(profileDir, 0o755); err != nil {
-		panic(err)
+		return nil, fmt.Errorf("create profile directory: %w", err)
 	}
-
 	pid := os.Getpid()
-
 	cpuProfilePath := filepath.Join(profileDir, fmt.Sprintf("%d-cpuprofile.pb.gz", pid))
 	memProfilePath := filepath.Join(profileDir, fmt.Sprintf("%d-memprofile.pb.gz", pid))
 	cpuFile, err := os.Create(cpuProfilePath)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("create CPU profile: %w", err)
 	}
-
 	if err := pprof.StartCPUProfile(cpuFile); err != nil {
-		panic(err)
+		cpuFile.Close()
+		os.Remove(cpuProfilePath)
+		return nil, fmt.Errorf("start CPU profiling: %w", err)
 	}
-
 	return &ProfileSession{
 		cpuFilePath: cpuProfilePath,
 		memFilePath: memProfilePath,
 		cpuFile:     cpuFile,
 		logWriter:   logWriter,
-	}
+	}, nil
 }
 
-func (p *ProfileSession) Stop() {
+func (p *ProfileSession) Stop() error {
 	pprof.StopCPUProfile()
-	p.cpuFile.Close()
-
+	if err := p.cpuFile.Close(); err != nil {
+		return fmt.Errorf("close CPU profile: %w", err)
+	}
+	defer fmt.Fprintf(p.logWriter, "CPU profile: %v\n", p.cpuFilePath)
 	if p.memFilePath != "" {
 		memFile, err := os.Create(p.memFilePath)
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("create memory profile: %w", err)
 		}
-		if err := pprof.Lookup("allocs").WriteTo(memFile, 0); err != nil {
-			panic(err)
+		writeErr := pprof.Lookup("allocs").WriteTo(memFile, 0)
+		closeErr := memFile.Close()
+		if err := errors.Join(writeErr, closeErr); err != nil {
+			return fmt.Errorf("write memory profile: %w", err)
 		}
-		memFile.Close()
 		fmt.Fprintf(p.logWriter, "Memory profile: %v\n", p.memFilePath)
 	}
-
-	fmt.Fprintf(p.logWriter, "CPU profile: %v\n", p.cpuFilePath)
+	return nil
 }
 
 // CPUProfiler manages on-demand CPU profiling.
@@ -114,10 +114,10 @@ func (c *CPUProfiler) StopCPUProfile() (string, error) {
 	}
 
 	filePath := c.session.cpuFilePath
-	c.session.Stop()
+	err := c.session.Stop()
 	c.session = nil
 
-	return filePath, nil
+	return filePath, err
 }
 
 // SaveHeapProfile saves a heap profile to the specified directory.

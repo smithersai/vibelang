@@ -1,3 +1,4 @@
+import { checkedOverride } from "./compiler-override.mjs"
 import { existsSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join } from "node:path"
@@ -10,7 +11,7 @@ const executable = process.platform === "win32" ? "vibelang.exe" : "vibelang"
 // findBinary returns the native compiler: VIBELANG_BINARY, else native/vibelang
 // beside this package (a checkout build), else the installed platform package.
 export function findBinary() {
-  if (process.env.VIBELANG_BINARY) return process.env.VIBELANG_BINARY
+  if (process.env.VIBELANG_BINARY) return checkedOverride(process.env.VIBELANG_BINARY, fileURLToPath(new URL("./bin/vibelang", import.meta.url)))
   const local = fileURLToPath(new URL(`./native/${executable}`, import.meta.url))
   if (existsSync(local)) return local
   const target = `${process.platform}-${process.arch}`

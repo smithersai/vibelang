@@ -70,10 +70,17 @@ test("smithers flows/database: a module's platform code moves to a sibling and i
 })
 
 test("a module keeps its platform code when an export that uses it cannot stay in the .vibe module", () => {
+  // A value export the platform code computes is re-exported from the sibling; a module of nothing else stays.
   const value = 'import { readFileSync } from "node:fs"\nexport const config = readFileSync("config.json")\n'
-  assert.match(splitPlatform(value, "src/Config.ts", ts).refused, /export config uses platform code/)
+  assert.match(splitPlatform(value, "src/Config.ts", ts).refused, /is platform code only/)
+  const reexported = splitPlatform(value + "export const name = \"config\"\n", "src/Config.ts", ts)
+  assert.deepEqual(reexported.reexported, ["config"])
+  assert.match(reexported.module, /^export \{ config \} from "\.\/Config\.platform\.ts"$/m)
+  const untyped = 'import { readFileSync } from "node:fs"\nexport const read = (path) => readFileSync(path)\n'
+  assert.match(splitPlatform(untyped, "src/Read.ts", ts).refused, /is platform code only/)
+  // An inferred return type stays inferred (platform-inferred-return.property.test.mjs).
   const inferred = 'import { readFileSync } from "node:fs"\nexport const read = (path: string) => readFileSync(path)\n'
-  assert.match(splitPlatform(inferred, "src/Read.ts", ts).refused, /written parameter and return types/)
+  assert.ok(!splitPlatform(inferred, "src/Read.ts", ts).refused)
   // A private type the platform code reads stays, and the sibling gets a copy.
   const privateType = 'import { readFileSync } from "node:fs"\ntype Text = string\nconst decode = (t: Text): Text => readFileSync(t)\nexport const read = (path: Text): Text => decode(path)\n'
   const { files } = splitProject("Typed.ts", privateType)
@@ -139,7 +146,7 @@ test("platformGlobalsOf names the host globals that EK4402 messages report", () 
     "EK4402: createHash from node:crypto is platform code, which a .vibe file does not import as a value.",
     "EK4402: import.meta.dirname is platform code, which VibeLang code does not use directly.",
     "EK4401: Dialect.integer is a plain TypeScript function, and nothing says what its exceptions mean.",
-  ]), ["globalThis", "process"])
+  ]), ["globalThis", "globalThis.process", "globalThis.setTimeout", "process"])
 })
 
 // VIP-33's derived ban reports a global the platform table does not list in

@@ -1,0 +1,4 @@
+// rule-evidence: docs/design/vips/0027-declaration-output.md#0e5c71d26e4133c6
+// VIP-27: formatting, quote style, import extension spelling and import and member order do not count in API identity.
+// run.mjs drives the declaration comparator the harness uses for typescript/ twins.
+export const witness = 1

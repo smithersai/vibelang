@@ -168,17 +168,16 @@ Keep mutable per-run state inside a function, as in `countdown`, so consumptions
 ## Periodic elements
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-14
-// run: const clock = try Clock.Clock; provide Clock.Clock = { ...clock, currentTimeMillis: succeed(123), currentTimeMillisUnsafe: () => 123 } { { const jsonValue = try collectSamples(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
+// run: const values = try collectSamples(); try Console.log(values.length, values.every(Number.isFinite))
 const samples = Stream.mapEffect(Stream.tick("250 millis"), () => Clock.currentTimeMillis)
 
 effect function collectSamples() {
   return try Stream.runCollect(Stream.take(samples, 4))
 }
-// Output: [123,123,123,123]
+// Output: 4 true
 ```
 
-`tick` emits `void` on an interval; map each signal to the value you need. Backpressure still applies, so slow work can fall behind that frequency.
+`tick` emits `void` on an interval; map each signal to the value you need. This example collects four timestamps. Backpressure still applies, so slow work can fall behind that frequency.
 
 ## Unfolding state and paginating responses
 

@@ -1,0 +1,107 @@
+[
+  {
+    "Key": "method-log",
+    "Source": "export effect function run() { console.log(\"message\") }",
+    "Advice": "try Console.log(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.log(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "method-error",
+    "Source": "export effect function run() { console.error(\"message\") }",
+    "Advice": "try Console.error(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.error(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "method-warn",
+    "Source": "export effect function run() { console.warn(\"message\") }",
+    "Advice": "try Console.warn(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.warn(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "method-info",
+    "Source": "export effect function run() { console.info(\"message\") }",
+    "Advice": "try Console.info(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.info(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "method-debug",
+    "Source": "export effect function run() { console.debug(\"message\") }",
+    "Advice": "try Console.debug(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.debug(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "method-trace",
+    "Source": "export effect function run() { console.trace(\"message\") }",
+    "Advice": "try Console.trace(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.trace(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "method-table",
+    "Source": "export effect function run() { console.table([]) }",
+    "Advice": "try Console.table(rows)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.table([]) }",
+    "Want": 1
+  },
+  {
+    "Key": "console-value",
+    "Source": "export const logger = console",
+    "Advice": "try Console.log(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.log(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "stdout",
+    "Source": "export const stream = process.stdout",
+    "Advice": "try Console.log(text)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.log(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "stderr",
+    "Source": "export const stream = process.stderr",
+    "Advice": "try Console.error(text)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.error(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "import-log",
+    "Source": "import { log as write } from \"node:console\"; export const logValue = write",
+    "Advice": "try Console.log(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.log(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "import-warn",
+    "Source": "import { warn as write } from \"node:console\"; export const logValue = write",
+    "Advice": "try Console.warn(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.warn(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "import-namespace",
+    "Source": "import * as logger from \"node:console\"; export const logValue = logger",
+    "Advice": "try Console.log(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.log(\"message\") }",
+    "Want": 1
+  },
+  {
+    "Key": "shadow",
+    "Source": "const console = { log: (value: string) => value }; export const message = console.log(\"message\")",
+    "Advice": "try Console.log(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.log(\"message\") }",
+    "Want": 0
+  },
+  {
+    "Key": "native",
+    "Source": "import { Console } from \"effect\"; export effect function run() { try Console.log(\"message\") }",
+    "Advice": "try Console.log(message)",
+    "Replacement": "import { Console } from \"effect\"; export effect function run() { try Console.log(\"message\") }",
+    "Want": 0
+  }
+]

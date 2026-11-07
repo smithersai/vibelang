@@ -1,0 +1,12 @@
+// expect: EK4402
+const timeout = AbortSignal.timeout
+const create = URL.createObjectURL
+const revoke = URL.revokeObjectURL
+export type Timer = ReturnType<typeof timeout>
+export type Creator = Parameters<typeof create>
+export type Revoker = typeof revoke
+export interface Signatures { timeout: typeof timeout; create: typeof create; revoke: typeof revoke }
+export const reads = { timeout, create, revoke }
+export function local(timeout: number, create: string, revoke: boolean) {
+  return { timeout, create, revoke }
+}

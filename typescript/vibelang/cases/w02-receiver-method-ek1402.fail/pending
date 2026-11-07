@@ -1,0 +1,1 @@
+witness-02 EK1402 is registered but no checker reports a legacy Effect data receiver method such as Option.some(1).map(f); 007-tooling.md "Legacy fork, try-statement and wire migration" states this rejection as the target that waits for preserving codemods and zero migration-repository uses.

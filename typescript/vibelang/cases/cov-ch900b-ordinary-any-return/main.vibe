@@ -1,0 +1,13 @@
+// expect-result: 42
+// Appendix B: EK4409 — spec-rule: docs/design/src/900-appendices.md#0aed7c80f04f4ee3
+// An ordinary function that returns a call of a value typed any keeps
+// TypeScript's treatment of any: no diagnostic, and the Effect the call
+// returns is returned unrun. try obtains that Effect's success value.
+export function ordinary(value: any) {
+  return value()
+}
+
+export effect function main() {
+  const program: number!! = ordinary(() => Effect.succeed(41))
+  return (try program) + 1
+}

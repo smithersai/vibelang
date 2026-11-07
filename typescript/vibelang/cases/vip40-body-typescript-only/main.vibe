@@ -16,6 +16,7 @@ module shapes {
 
   @tagged
   export class Point {
+    /** @throws {never} */
     constructor(public readonly x: number) {}
   }
 

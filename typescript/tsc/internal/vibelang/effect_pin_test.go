@@ -56,6 +56,11 @@ func TestEffectPinMismatch(t *testing.T) {
 					t.Fatalf("%q: want one EK3201, got %d: %v", source, len(pins), program.GetSemanticDiagnostics(t.Context(), file))
 				}
 				text := pins[0].MessageText()
+				// rule-evidence: docs/design/vips/0032-effect-version.md#2b98b32c1ca369f2 | Any other resolved version, including `4.1.0`, is `EK3201`; the minimum does not admit a supported version range.
+				// rule-evidence: docs/design/vips/0032-effect-version.md#1cc56090e3b485bb | **Amended 2026-10-30: an off-pin Effect is a compile error.** VibeLang declares `effect` as an exact `peerDependency`, and the compiler reads the resolved `effect/package.json`: a version other than the pin is `EK3201` ("the resolved effect is X; VibeLang Y pins Z: upgrade both together"), in the editor and in CI.
+				if want := fmt.Sprintf("The resolved effect is %s; VibeLang %s pins %s: upgrade both together.", test.version, Version, supportedEffectVersion); text != want {
+					t.Fatalf("%q: EK3201 text %q, want %q", source, text, want)
+				}
 				for _, part := range []string{test.version, Version, supportedEffectVersion, "upgrade both together"} {
 					if !strings.Contains(text, part) {
 						t.Fatalf("%q: EK3201 text %q lacks %q", source, text, part)

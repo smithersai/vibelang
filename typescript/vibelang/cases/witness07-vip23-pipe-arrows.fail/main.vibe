@@ -1,0 +1,18 @@
+// expect: EK2301
+// rule-evidence: docs/design/vips/0023-pipe.md#prior-art | **Clarified 2026-11-03: arrows at the right edge.** The arrow-body covering restriction includes `EffectArrow`, as it includes `AsyncArrowFunction`.
+// Each EffectArrow body is rejected exactly where its AsyncArrowFunction and
+// plain ArrowFunction counterparts are (expected/diagnostics.txt).
+export const plainConcise = 1 |> () => %
+export const asyncConcise = 1 |> async () => %
+export const effectConcise = 1 |> effect () => %
+export const plainParam = 1 |> (x: number) => % + x
+export const asyncParam = 1 |> async (x: number) => % + x
+export const effectParam = 1 |> effect (x: number) => % + x
+export const plainBlock = 1 |> () => { return % }
+export const asyncBlock = 1 |> async () => { return % }
+export const effectBlock = 1 |> effect () => { return % }
+
+// rule-evidence: docs/design/vips/0023-pipe.md#prior-art | **Clarified 2026-11-03: pipe diagnostics.** Adopted pipe grammar and early errors without a more specific code use `EK2301`, including a missing topic and a whole bare plain, `async` or `effect` arrow body.
+// The bare arrows above are its whole-arrow-body case; a conditional body is
+// another adopted grammar error without a more specific code.
+export const conditionalBody = 1 |> % ? 2 : 3

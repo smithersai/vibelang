@@ -293,7 +293,7 @@ func (p *Parser) prepareDoMatches() {
 }
 
 // hasYieldingMatch reports whether a match expression written as a call
-// yields from its arms. Such a match must be lifted into its enclosing
+// yields from its subject, patterns or arms. Such a match is lifted into its enclosing
 // generator even in a file without do expressions.
 func (p *Parser) hasYieldingMatch() bool {
 	for call := range p.vibelangMatches {
@@ -305,11 +305,13 @@ func (p *Parser) hasYieldingMatch() bool {
 }
 
 // matchArmsYield reports whether call, a match expression lowered to a call
-// of an arrow, has a yield expression in its arms outside any function the
+// of an arrow, has a yield expression in its body outside any function the
 // source wrote inside them. An async match has its own boundary.
 func (p *Parser) matchArmsYield(call *ast.Node) bool {
 	info := p.vibelangMatches[call]
-	if call.Kind != ast.KindCallExpression || info == nil || info.async != nil {
+	// A return or statement may already have replaced the original call.
+	// It must not be lowered again or reparent the live match's source nodes.
+	if call.Parent == nil || call.Kind != ast.KindCallExpression || info == nil || info.async != nil {
 		return false
 	}
 	arrow := ast.SkipParentheses(call.Expression())

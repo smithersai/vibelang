@@ -1,0 +1,11 @@
+main.vibe(8,22): 
+Its quick fix writes Effect.Effect<number, never>; vibelang --fix
+main.vibe(10,30): 
+main.vibe(11,45): 
+'infer' declarations are only permitted in the 'extends' clause of a conditional type.
+main.vibe(14,9): 
+Type 'number' is not assignable to type 'string'.
+main.vibe(17,32): 
+Its quick fix writes Effect.Effect<number, never, never>; vibelang --fix
+main.vibe(18,37): 
+Its quick fix writes an unannotated function, which infers all three slots

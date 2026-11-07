@@ -26,3 +26,4 @@ export effect function main(){
 // rule: docs/design/vips/0028-generic-data.md#ce83e32260759663
 // VIP-28 four-parameters-hygienic-helper
 // rule: docs/design/vips/0028-generic-data.md#aaa2f2da31c09042
+// rule-evidence: docs/design/vips/0028-generic-data.md#decision | **Amended 2026-10-29: a hygienic helper.** The generated generic-data helper (`XDefinition` in the example) gets a fresh name; it is not a reserved user-visible name.

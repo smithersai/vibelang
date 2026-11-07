@@ -27,6 +27,7 @@ data Members {
 
 // EK2801 limits the parameter count; EK2126 rejects a constraint.
 data Five<A, B, C, D, E> { Five { a: A; e: E } }
+// rule-evidence: docs/design/vips/0028-generic-data.md#698d7b6fa614cd8f | **Amended 2026-10-29: no constraints.** A constraint on a generic `data` type parameter (`<A extends string>`) is a compile error, since this VIP doesn't add them (EK2126 keeps that part).
 data Bound<A extends string> { Bound { a: A } }
 
 // A user NameDefinition remains independent from the generated helper.

@@ -1,0 +1,1 @@
+EK3011 warns and ignores declarationImportStyle in 12 configs

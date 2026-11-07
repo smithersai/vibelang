@@ -28,7 +28,7 @@ export default async function* progress(events) {
       }
       if (event.type === "test:fail" && data.details?.error) {
         if (output.has(file)) {
-          yield line("failure-output", { file, output: output.get(file) })
+          yield line("failure-output", { file, scope: "file", output: output.get(file) })
           output.delete(file)
         }
         yield line("test-failed", { file, name: data.name, todo: data.todo, skip: data.skip,

@@ -1,0 +1,4 @@
+// expect: EK0503
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK0503` | a `try` statement in effect code; `vibelang --fix` applies the preserving `try statements` codemod | 5 | [Running Effects](002-running.md#try) |
+export effect function caught(): number!! { try { return 1 } catch { return 2 } }
+export effect function cleaned(): number!! { try { return 1 } finally { } }

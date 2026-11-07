@@ -1,0 +1,58 @@
+[
+  {
+    "Key": "timeout-name",
+    "Source": "const { timeout: { name: value } } = AbortSignal\nexport { value }\n"
+  },
+  {
+    "Key": "timeout-rest",
+    "Source": "const { \"timeout\": { ...value } } = AbortSignal\nexport { value }\n"
+  },
+  {
+    "Key": "timeout-direct",
+    "Source": "const value = AbortSignal.timeout\nexport { value }\n"
+  },
+  {
+    "Key": "createObjectURL-name",
+    "Source": "const { createObjectURL: { name: value } } = URL\nexport { value }\n"
+  },
+  {
+    "Key": "createObjectURL-rest",
+    "Source": "const { \"createObjectURL\": { ...value } } = URL\nexport { value }\n"
+  },
+  {
+    "Key": "createObjectURL-direct",
+    "Source": "const value = URL.createObjectURL\nexport { value }\n"
+  },
+  {
+    "Key": "revokeObjectURL-name",
+    "Source": "const { revokeObjectURL: { name: value } } = URL\nexport { value }\n"
+  },
+  {
+    "Key": "revokeObjectURL-rest",
+    "Source": "const { \"revokeObjectURL\": { ...value } } = URL\nexport { value }\n"
+  },
+  {
+    "Key": "revokeObjectURL-direct",
+    "Source": "const value = URL.revokeObjectURL\nexport { value }\n"
+  },
+  {
+    "Key": "globalThis",
+    "Source": "const { timeout: { length: value } } = globalThis.AbortSignal\nexport { value }\n"
+  },
+  {
+    "Key": "three-bindings",
+    "Source": "const { timeout: { name: signalName } } = AbortSignal\nconst { createObjectURL: { name: createName } } = URL\nconst { [\"revokeObjectURL\"]: { ...copy } } = URL\nexport { signalName, createName, copy }\n"
+  },
+  {
+    "Key": "shorthand",
+    "Source": "const timeout = AbortSignal.timeout\nconst create = URL.createObjectURL\nconst revoke = URL.revokeObjectURL\nexport const values = { timeout, create, revoke }\n"
+  },
+  {
+    "Key": "type-query",
+    "Source": "const timeout = AbortSignal.timeout\nexport type Timer = typeof timeout\nexport const value = timeout\n"
+  },
+  {
+    "Key": "fresh-name",
+    "Source": "const { timeout: { name: value } } = AbortSignal\nfunction $platformBindings() { return 1 }\nexport { value, $platformBindings }\n"
+  }
+]

@@ -7,13 +7,13 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// Entry modules (D135).
+// Legacy marked entry modules (D135).
 //
 //	export function main() {
 //	  Console.log("Hello")
 //	}
 //
-// A module that exports a function declaration named main with no parameters
+// A legacy marked module that exports a function declaration named main with no parameters
 // runs it when the host starts the module: the emitted JavaScript ends with
 //
 //	runtime.$entry(import.meta.main, import.meta.url, main, () => NodeRuntime.runMain(main()));
@@ -172,12 +172,14 @@ func entryModules(file *ast.SourceFile) []string {
 	return modules
 }
 
-// entryCandidate returns the declaration of file's exported main function
+// entryCandidate returns a marked file's exported main function declaration
 // with no parameters, or nil. It reads only syntax, so the implicit imports
 // can use it; a candidate whose module starts its program itself still
 // resolves the modules an entry would use, which loads them and nothing more.
 func entryCandidate(file *ast.SourceFile) *ast.Node {
-	if !isVibeLangFile(file) {
+	// VIP-26: unmarked modules execute only their written top-level code.
+	// Only a legacy platform marker selects the remaining entry migration.
+	if !isVibeLangFile(file) || namedPlatform(file) == nil {
 		return nil
 	}
 	var main *ast.Node

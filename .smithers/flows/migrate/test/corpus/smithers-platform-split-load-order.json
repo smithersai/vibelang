@@ -1,0 +1,26 @@
+{
+  "source": "Smithers modules the platform split refused because a kept statement above an export ran moved code while the module loaded, although that code never read the export: build/targets Exec.ts (a schema above the copied defaultPathExtensions reads the moved Payload) and build/targets ToolBuild.ts (a kept value above the re-exported CapturePayload reads moved Options). Also LlmLint.ts, GeneratedFile.ts, Cli.ts, PackagePlanner.ts and flows/examples sandboxed-child.ts. Minimized; shapes kept.",
+  "ambient": "declare module \"node:path\" { export const delimiter: string; export const sep: string }\n",
+  "modules": [
+    {
+      "file": "Exec.ts",
+      "text": "import { delimiter } from \"node:path\"\n\n/** What a tool invocation records. */\nexport const Payload = { separator: delimiter }\n\n/** A tool invocation, built when the module loads. */\nexport const Exec = { payload: Payload }\n\n/** The extensions Windows tries for a bare command. */\nexport const defaultPathExtensions = \".COM;.EXE;.BAT;.CMD\"\n\n/** The names a bare command may resolve to. */\nexport function executableNames(name: string): string[] {\n  return defaultPathExtensions.split(\";\").map((extension) => name + extension + delimiter)\n}\n",
+      "copied": [
+        "defaultPathExtensions"
+      ],
+      "probe": "return JSON.stringify([m.executableNames(\"git\"), m.Exec, m.defaultPathExtensions])",
+      "reexported": [
+        "Payload"
+      ]
+    },
+    {
+      "file": "ToolBuild.ts",
+      "text": "import { sep } from \"node:path\"\n\n/** Where a tool build runs. */\nexport const Options = { root: sep }\n\n/** The tool build, built when the module loads. */\nexport const ToolBuild = { options: Options }\n\n/** What a capture records. */\nexport const CapturePayload = { separator: sep }\n\n/** The payload of one capture. */\nexport const capture = (): { readonly separator: string } => CapturePayload\n",
+      "reexported": [
+        "CapturePayload",
+        "Options"
+      ],
+      "probe": "return JSON.stringify([m.capture(), m.ToolBuild])"
+    }
+  ]
+}

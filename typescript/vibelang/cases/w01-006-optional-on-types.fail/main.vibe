@@ -1,0 +1,14 @@
+// expect: TS2379 TS2375 TS2322
+export data D { Ready { plain?: string; loose?: string | undefined } }
+export schema S { readonly plain?: string; readonly loose?: string | undefined }
+export schema T = [string, number?]
+export const plain = D.Ready({ plain: undefined })
+export const loose = D.Ready({ loose: undefined })
+const present: S = { plain: undefined }
+const kept: S = { loose: undefined }
+const element: T = ["a", undefined]
+export const typed = [present, kept, element]
+
+// rule-evidence: docs/design/src/006-data.md#meaning | The project's `exactOptionalPropertyTypes` setting controls mapped optional fields and tuple elements, matching TypeScript under that same configuration:
+// rule-evidence: docs/design/src/006-data.md#meaning | Native `data` payloads follow TypeScript's optional-property types directly.
+// rule-evidence: docs/design/src/006-data.md#meaning | `Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default; with `exactOptionalPropertyTypes`, an optional key whose type excludes `undefined` instead uses `Schema.optionalKey`.

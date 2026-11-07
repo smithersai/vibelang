@@ -1,0 +1,20 @@
+// expect: EK3501 TS2339 TS2740 TS7006
+// Appendix B: interim EK4201, emission witness pending: its archived control input is rejected earlier by EK3501 — spec-rule: docs/design/src/900-appendices.md#99a3f7dbfc3af7f6
+// The archived EK4201 input below reports EK3501 and the TypeScript errors of
+// its unresolved control class, never EK4201.
+
+import { Fiber } from "effect"
+
+abstract class Ask extends Control {
+  abstract ask(question: string): Effect<number, never, never>
+}
+
+effect function forked() {
+  return try handle(effect {
+    const child = fork Ask.ask("in a child fiber")
+    return try Fiber.join(child)
+  }, Ask, {
+    effect ask(question, k) { return try resume(k, question.length) }
+  })
+}
+// expect-warnings: EK4856

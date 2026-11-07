@@ -51,7 +51,7 @@ func FuzzEffectParameterDiagnosticOwnership(f *testing.F) {
 		if kind == "method" {
 			body = "export class Reader {effect run(" + parameter + "){return value}}"
 		}
-		source := "import {read} from \"./foreign.ts\"\n" + body + "\n"
+		source := "import {read} from \"./foreign.js\"\n" + body + "\n"
 		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source, "foreign.ts": tag + "export function read(value:string):unknown{return value}\n"}})
 		if err != nil {
 			t.Fatal(err)

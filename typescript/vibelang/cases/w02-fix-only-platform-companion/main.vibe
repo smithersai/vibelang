@@ -1,0 +1,7 @@
+// rule-evidence: docs/design/src/007-tooling.md#selecting-ordinary-fix-files | The one exception is a listed module's fresh platform companion, `<module>.platform.ts`: the platform repair creates it only when no tracked or untracked `.ts`, `.tsx`, `.js` or `.d.ts` file of that name exists, it never edits or deletes an unlisted file, and the companion's errors refuse fixes as the listed module's do.
+// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-words | Configs and unlisted files are never repair targets, with one exception: a listed module's platform repair may create its fresh `<module>.platform.ts` companion when no tracked or untracked file claims that name, and it never edits or deletes an unlisted file.
+// run.mjs runs vibelang --fix --only on a module whose exported value wraps a
+// host read: the listed module gets its fresh x.platform.ts companion, as plain
+// --fix makes it; an unlisted module's companion is never written; and a file
+// that already claims the name is left as it was, the repair refused.
+export const witness = 1

@@ -15,3 +15,5 @@ export {}
 // Appendix B: EK2801 — spec-rule: docs/design/src/900-appendices.md#ebbee38dc078949c
 
 // Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607
+// rule-evidence: docs/design/vips/0028-generic-data.md#decision | More is a compile error that names the limit.
+// Five is EK2801, whose message names WithGenerics' four; Four is admitted.

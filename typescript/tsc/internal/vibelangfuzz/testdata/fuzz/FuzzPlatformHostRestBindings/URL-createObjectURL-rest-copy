@@ -1,0 +1,3 @@
+go test fuzz v1
+string("URL-createObjectURL-rest-copy")
+byte('\x1f')

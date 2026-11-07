@@ -1,5 +1,4 @@
 import * as Effect_1 from "effect/Effect";
-import * as runtime from "vibelang-runtime/internal";
 import { Config, Console } from "effect";
 import { findName } from "./users.js";
 // Pure: no call runs an Effect, so it stays a plain JavaScript function
@@ -39,4 +38,3 @@ export function main() {
         yield* Console.log(`found ${name.toUpperCase()}`);
     });
 }
-runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

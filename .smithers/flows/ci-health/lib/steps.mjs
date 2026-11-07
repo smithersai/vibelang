@@ -177,12 +177,13 @@ export function intermittent(runs, testsOf) {
     .sort((a, b) => b.returns - a.returns || b.failures - a.failures)
 }
 
+// Node marks a test even when its skip or todo reason is an empty string.
+const marked = flag => typeof flag === "string" || Boolean(flag)
+
 // failedTests names what failed in one target's output lines, across the
 // runners the graph uses: bun, node --test, go test and the compiler case
 // harness (typescript/vibelang/harness.mjs).
 export function failedTests(lines) {
-  // Node marks a test even when its skip or todo reason is an empty string.
-  const marked = flag => typeof flag === "string" || Boolean(flag)
   const out = new Set()
   for (const line of lines) {
     // Compiler and migration reporters retain nested and cancelled failures.
@@ -193,7 +194,7 @@ export function failedTests(lines) {
         const item = JSON.parse(record[2])
         const event = record[1] === "node-test" ? "failure" : "test-failed"
         if (item?.event === event && !marked(item.todo) && !marked(item.skip) &&
-            typeof item.name === "string" && item.name.trim()) out.add(item.name)
+            typeof item.name === "string" && item.name.length > 0) out.add(item.name)
       } catch { /* A truncated record must not invent a failed test. */ }
       continue
     }
@@ -225,7 +226,42 @@ export const CAUSES = [
   ["assertion", /AssertionError|expected|--- FAIL|\(fail\)|✖/i]
 ]
 
-export const cause = (lines) => CAUSES.find(([, pattern]) => lines.some((l) => pattern.test(l)))?.[0] ?? "unknown"
+// Reporter stdout/stderr and diagnostic records do not identify the test that wrote
+// them. Retain their possible causes separately: expected controls may print
+// the same diagnostics as genuine failures in that file.
+const evidence = lines => {
+  const diagnostics = [], unattributed = [], chunks = new Map()
+  const append = (to, text) => { for (const part of text.split(/\r\n|[\r\n\u2028\u2029]/)) to.push(part) }
+  const flush = () => {
+    for (const parts of chunks.values()) append(unattributed, parts.join(""))
+    chunks.clear()
+  }
+  for (const line of lines) {
+    const record = /^\[(node-test|migrate-test)\] (.*)$/s.exec(line)
+    if (!record) { flush(); diagnostics.push(line); continue }
+    let item
+    try { item = JSON.parse(record[2]) } catch { flush(); continue }
+    if (record[1] === "node-test" && item?.event === "output" && typeof item.message === "string") {
+      const key = JSON.stringify([item.file, item.stream])
+      const parts = chunks.get(key) ?? []
+      parts.push(item.message)
+      chunks.set(key, parts)
+      continue
+    }
+    const event = record[1] === "node-test" ? "failure" : "test-failed"
+    let text, output
+    if (item?.event === event && !marked(item.todo) && !marked(item.skip)) text = item.error
+    else if (record[1] === "node-test" && item?.event === "diagnostic") output = item.message
+    else if (record[1] === "migrate-test" && item?.event === "failure-output") output = item.output
+    if (typeof text === "string") append(diagnostics, text)
+    if (typeof output === "string") append(unattributed, output)
+  }
+  flush()
+  return { diagnostics, unattributed }
+}
+const diagnosticLines = lines => evidence(lines).diagnostics
+const classifications = lines => CAUSES.filter(([, pattern]) => lines.some(line => pattern.test(line))).map(([name]) => name)
+export const cause = lines => classifications(diagnosticLines(lines))[0] ?? "unknown"
 
 // targetLines returns one target's output from a graph log. Live lines start
 // with "<label>: " up to a limit; the line "<label>  failed  ..." is followed
@@ -265,14 +301,16 @@ export const analyze = (run) => once(run, "analyze", ({ results, split }) => {
   const found = flakes(runs)
   const targets = new Map()
   for (const f of found) {
-    const t = targets.get(f.label) ?? { label: f.label, keys: 0, failures: 0, passes: 0, last: "", causes: {}, tests: {} }
+    const t = targets.get(f.label) ?? { label: f.label, keys: 0, failures: 0, passes: 0, last: "", causes: {}, unattributedCauses: {}, tests: Object.create(null) }
     t.keys++
     t.passes += f.passed
     if (f.last > t.last) t.last = f.last
     for (const id of f.failed) {
       t.failures++
       const lines = targetLines(log(id), f.label)
-      const c = cause(lines)
+      const found = evidence(lines)
+      const c = classifications(found.diagnostics)[0] ?? "unknown"
+      for (const candidate of classifications(found.unattributed)) t.unattributedCauses[candidate] = (t.unattributedCauses[candidate] ?? 0) + 1
       t.causes[c] = (t.causes[c] ?? 0) + 1
       for (const name of failedTests(lines)) {
         const test = t.tests[name] ?? { failures: 0, last: "" }
@@ -287,7 +325,7 @@ export const analyze = (run) => once(run, "analyze", ({ results, split }) => {
     ...t,
     tests: Object.entries(t.tests).map(([name, test]) => ({ name, ...test })).sort((a, b) => b.failures - a.failures)
   }))
-  const timedOut = (id, label) => targetLines(log(id), label).some((l) => /timed out after/.test(l))
+  const timedOut = (id, label) => diagnosticLines(targetLines(log(id), label)).some((l) => /timed out after/.test(l))
   const regressed = regressions(runs, { split, timedOut })
   const returned = intermittent(runs, (id, label) => failedTests(targetLines(log(id), label)))
   return { ok: true, runs: runs.length, flaky: ranked, intermittent: returned, slow: slow(runs), regressed, summary: `${ranked.length} flaky targets, ${returned.length} intermittent tests, ${regressed.length} slower over ${runs.length} runs` }
@@ -308,7 +346,8 @@ export const ACTIONS = {
   unknown: "Read the log"
 }
 
-const cell = (s) => String(s).replaceAll("|", "\\|")
+// Escape punctuation before adding markup; preformatted cells preserve spaces and tabs.
+const cell = (s) => "<pre>" + String(s).replace(/[!-/:-@[-`{-~]/g, "\\$&").replaceAll(/\r\n|[\r\n\u2028\u2029]/g, "<br>") + "</pre>"
 const day = (iso) => iso.slice(0, 16).replace("T", " ")
 
 // report writes report.md and the ranking a follow-up reads.
@@ -316,11 +355,13 @@ export const report = (run) => once(run, "report", () => {
   const a = read(paths(run).analyze)
   const lines = [`# CI health: ${a.runs} runs`, ""]
   lines.push("## Flaky targets", "", "The same key, so the same declared inputs, both passed and failed.", "")
-  lines.push("| Target | Keys | Failures | Passes | Last failed | Causes | Next step |", "| --- | --- | --- | --- | --- | --- | --- |")
+  lines.push("| Target | Keys | Failures | Passes | Last failed | Causes | Unattributed output | Next step |", "| --- | --- | --- | --- | --- | --- | --- | --- |")
   for (const t of a.flaky) {
+    const output = Object.entries(t.unattributedCauses ?? {}).map(([c, n]) => `${c} ${n}`).join(", ") || "-"
     const top = Object.entries(t.causes).sort((x, y) => y[1] - x[1])
-    lines.push(`| \`${t.label}\` | ${t.keys} | ${t.failures} | ${t.passes} | ${day(t.last)} | ${top.map(([c, n]) => `${c} ${n}`).join(", ")} | ${ACTIONS[top[0][0]]} |`)
+    lines.push(`| \`${t.label}\` | ${t.keys} | ${t.failures} | ${t.passes} | ${day(t.last)} | ${top.map(([c, n]) => `${c} ${n}`).join(", ")} | ${output} | ${ACTIONS[top[0][0]]} |`)
   }
+  lines.push("", "Unattributed output is stdout, stderr or diagnostic text without a test identity: it may come from a passing test or an expected failure. Counts show failed runs containing each possible cause. Inspect the original log before assigning it to a failure.")
   lines.push("", "## Flaky tests", "", "A test that stopped failing was probably fixed: check the last failure before fixing it again.", "", "| Target | Test | Failures | Last failed |", "| --- | --- | --- | --- |")
   const tests = a.flaky.flatMap((t) => t.tests.map((x) => ({ label: t.label, ...x }))).sort((x, y) => y.failures - x.failures).slice(0, 30)
   for (const t of tests) lines.push(`| \`${t.label}\` | ${cell(t.name)} | ${t.failures} | ${day(t.last)} |`)

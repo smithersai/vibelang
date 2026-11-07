@@ -32,7 +32,7 @@ vibelang.vibelang
 
 ## 3. Open your project in the editor
 
-Open the project directory and trust the workspace: the extension runs the workspace's `node_modules/.bin/vibelang`, so it does not run in an untrusted workspace. When it cannot find `vibelang`, the status item next to the language mode reads "vibelang not found".
+Open the project directory and trust the workspace: the extension runs the workspace's `node_modules/.bin/vibelang`, so it does not run in an untrusted workspace. When it cannot find `vibelang`, the status item next to the language mode reads "vibelang not found". When the server is running, its status detail shows the compiler path and the version reported by the server, including its TypeScript version.
 
 Without adjacent declaration sidecars, VS Code's built-in TypeScript cannot resolve `.vibe` imports. To have VibeLang check a `.ts` file that imports a `.vibe` module, run **VibeLang: Serve TypeScript Files in This Workspace** from the command palette. In Cursor, the command turns the built-in TypeScript features off for the workspace; in VS Code, it shows the extension to disable, "TypeScript and JavaScript Language Features". Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
 
@@ -63,7 +63,7 @@ These are language-server capabilities, not a guarantee that every construct off
 
 **Expand Selection** follows nested source ranges in `schema` and `data` declarations, `match` and typed `catch` expressions, including mutable schema arrays with nested arrays or record values.
 
-Select a TypeScript `module` declaration and request **Move module to a .ts file** to copy its body to a sibling TypeScript file and rewrite its imports and re-exports. The [refactor guide](/getting-started/012-devtools#move-a-typescript-module-body-to-a-file) describes filename collisions and import extensions.
+Select a TypeScript `module` declaration and request **Move module to a TypeScript file** to copy its body to a sibling TypeScript file and rewrite its imports and re-exports. The [refactor guide](/getting-started/012-devtools#move-a-typescript-module-body-to-a-file) describes filename collisions and import extensions.
 
 Retired `service class` and `layer` declarations report `EK0909` and `EK2121` as errors. Both diagnostics offer a quick fix when the rewrite preserves the declaration; changing warning settings does not make either spelling valid.
 
@@ -75,7 +75,7 @@ Retired `service class` and `layer` declarations report `EK0909` and `EK2121` as
 | `vibelang.server.typeScriptFiles` | `"auto"` | Serve TypeScript when the built-in server is off; `"on"` always serves it, `"off"` leaves it to the built-in server |
 | `vibelang.trace.server` | `"off"` | Set `"messages"` or `"verbose"` to log LSP traffic |
 
-After changing the executable or rebuilding the compiler, run **VibeLang: Restart Language Server** from the command palette. Use **VibeLang: Show Language Server Output** to inspect the server log. For protocol problems, enable tracing, restart, reproduce, then turn tracing off. Review logs before sharing them: protocol traffic can contain source text and file paths.
+After changing the executable or rebuilding the compiler, run **VibeLang: Restart Language Server** from the command palette. After installing a missing compiler, restart the server even if the earlier notification is still open; it does not block activation or restart. Use **VibeLang: Show Language Server Output** to inspect the server log. For protocol problems, enable tracing, restart, reproduce, then turn tracing off. Review logs before sharing them: protocol traffic can contain source text and file paths.
 
 ## JSX highlighting
 

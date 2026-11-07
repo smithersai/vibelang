@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | | `EK4853` | Warning | An omitted requirement slot formerly inferred requirements | Write those requirements, or omit the whole return annotation to infer the contract (VIP-3).
+export const witness = 1

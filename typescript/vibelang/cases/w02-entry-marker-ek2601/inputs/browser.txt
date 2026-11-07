@@ -1,0 +1,4 @@
+import "vibelang/platform/browser"
+
+// A marker is rejected even in a module that declares no main.
+export const platform = "browser"

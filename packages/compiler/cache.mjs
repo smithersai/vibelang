@@ -1,3 +1,4 @@
+import { checkedOverride } from "./compiler-override.mjs"
 // The persistent compile cache behind vibelang/project.
 //
 // A whole-project compile costs hundreds of milliseconds, and every Node
@@ -161,7 +162,7 @@ export function launcherBinary(compiler) {
     return undefined
   }
   if (!isNodeScript(compiler)) return undefined
-  if (process.env.VIBELANG_BINARY) return resolve(process.env.VIBELANG_BINARY)
+  if (process.env.VIBELANG_BINARY) return resolve(checkedOverride(process.env.VIBELANG_BINARY, compiler))
   const executable = process.platform === "win32" ? "vibelang.exe" : "vibelang"
   const local = join(dirname(compiler), "../native", executable)
   if (existsSync(local)) return local

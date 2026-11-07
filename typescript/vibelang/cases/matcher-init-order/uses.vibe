@@ -1,0 +1,16 @@
+// rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | Emitted `.vibe` and `.vibex` modules that use the key request the runtime initialization dependency first, before every other import or re-export dependency, independently of the Effect prelude switches.
+// The key is initialized before probe-a, probe-b and plain evaluate, and they
+// keep their written order.
+import { seen } from "./probe-a.ts"
+export { seen as reexported } from "./probe-b.ts"
+export { other } from "./plain.vibe"
+
+class Even {
+  static [Symbol.customMatcher](value: unknown) {
+    return typeof value === "number" && value % 2 === 0
+  }
+}
+
+export const even = (value: unknown) => value is Even
+export { seen }
+// Stable rule id: docs/design/src/008-runtime.md#77fff9f8c6321568

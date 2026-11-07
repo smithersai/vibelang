@@ -1,0 +1,12 @@
+{
+  "repo": "alchemy",
+  "cause": "alchemy-provider-layer-requirements-widened",
+  "note": "Minimized from packages/fly/src/Secret.ts: provider operations written as Effect.fn generators in an object a provider constructor types. The legacy-inference pass wrote Generator<never, ..., never> and Generator<any, ..., any> on them, which erased the operations' requirements and widened the provider layer's environment to unknown.",
+  "samples": [
+    {
+      "key": "provider-effect-fn-bodies",
+      "before": "import { Effect } from \"effect\"\ntype Operations = {\n  diff: (input: { id: string }) => Effect.Effect<{ action: \"replace\" } | undefined>\n  reconcile: (input: { id: string }) => Effect.Effect<{ name: string }, never, never>\n}\ndeclare function provider(operations: Operations): void\nexport const live = provider({\n  diff: Effect.fn(function* ({ id }) {\n    if (id === \"\") return undefined\n    return { action: \"replace\" as const }\n  }),\n  reconcile: Effect.fn(function* ({ id }) {\n    const name = yield* Effect.succeed(id)\n    return { name }\n  }),\n})\n",
+      "after": "import { Effect } from \"effect\"\ntype Operations = {\n  diff: (input: { id: string }) => Effect.Effect<{ action: \"replace\" } | undefined>\n  reconcile: (input: { id: string }) => Effect.Effect<{ name: string }, never, never>\n}\ndeclare function provider(operations: Operations): void\nexport const live = provider({\n  diff: Effect.fn(function* ({ id }) {\n    if (id === \"\") return undefined\n    return { action: \"replace\" as const }\n  }),\n  reconcile: Effect.fn(function* ({ id }) {\n    const name = yield* Effect.succeed(id)\n    return { name }\n  }),\n})\n"
+    }
+  ]
+}

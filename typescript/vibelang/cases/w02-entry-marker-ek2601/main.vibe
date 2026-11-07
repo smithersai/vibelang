@@ -1,0 +1,3 @@
+// The markers under test live in inputs/: a module that imports one is
+// rejected, so this project holds only ordinary source.
+export const ordinary = true

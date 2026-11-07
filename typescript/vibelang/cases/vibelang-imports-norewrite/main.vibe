@@ -1,11 +1,15 @@
-// Without rewriteRelativeImportExtensions, a .vibe file still imports ./names.vibe
-// and ./format.ts by their source names, with no TS5097, and the emitted
-// JavaScript imports ./names.js and ./format.js (D31).
+// expect: TS5097
+// Without allowImportingTsExtensions or rewriteRelativeImportExtensions, a .vibe
+// file that imports ./names.vibe or ./format.ts reports TS5097 at each value
+// import and export, as its .ts twin does (VIP-34), and its JavaScript keeps
+// the written specifiers (vip34-source-extension-admission). tsc 5.9.3 reports
+// TS5097 at the same places in the twin. Case vibelang-imports runs the
+// program with rewriteRelativeImportExtensions.
+// rule-evidence: docs/design/src/007-tooling.md#config-files | Written `./x.vibe` and `./x.vibex` imports follow the `.ts`/`.tsx` twin's source-extension checks, including `TS5097` for a value import without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`.
 import { fullName } from "./names.vibe"
 import { formatName } from "./format.ts"
 export { fullName } from "./names.vibe"
 
-// expect-result: ["Lovelace, Ada","Hopper, Grace"]
 export effect function main() {
   return [try fullName("Ada", "Lovelace"), formatName("Grace", "Hopper")]
 }

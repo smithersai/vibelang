@@ -137,11 +137,26 @@ export function oxlintBinary(root) {
   throw new Error("vibelang-oxlint: oxlint is not installed: install it beside vibelang, or vite-plus for vp lint.")
 }
 
-// The temporary tree loads no JS plugin, and a preload named by package does not
-// resolve from it.
+// The projected pass loads no source plugins, so it omits VibeLang's source
+// loader. Other inherited Node options keep their project context.
 function oxlintEnvironment() {
   const preloads = (process.env.NODE_OPTIONS ?? "").replace(/--import(?:=|\s+)vibelang\/register/g, "").trim()
   return { ...process.env, NODE_OPTIONS: preloads }
+}
+
+// Node resolves inherited package preloads from the caller's directory.
+// Enter the virtual tree only after Node has loaded them; the native engine
+// still sees its projected configuration, paths and ordinary CLI arguments.
+function runOxlint(binary, args, tree, maxBuffer = 1024 * 1024 * 1024) {
+  const bootstrap = [
+    'import { pathToFileURL } from "node:url"',
+    'const [cwd, entry, ...args] = process.argv.slice(1)',
+    'process.chdir(cwd)',
+    'process.argv = [process.execPath, entry, ...args]',
+    'await import(pathToFileURL(entry).href)',
+  ].join("\n")
+  return spawnSync(process.execPath, ["--input-type=module", "--eval", bootstrap, "--", tree, binary, ...args],
+    { env: oxlintEnvironment(), encoding: "utf8", maxBuffer })
 }
 
 /** The configuration as the temporary tree needs it, without JS plugins. */
@@ -320,7 +335,7 @@ export async function lintProjected({ config, base, cwd = process.cwd(), paths =
     })
     output.number_of_files = modules.size
     if (config.options?.typeAware || forward.includes("--type-aware")) mirrorProgramFiles(tree, root, new Set([...modules.values()].map(({ file }) => dirname(file))))
-    const run = spawnSync(process.execPath, [binary, "-f", "json", "--no-error-on-unmatched-pattern", ...forward, ...inTreePaths(paths, cwd, root, tree)], { cwd: tree, env: oxlintEnvironment(), encoding: "utf8", maxBuffer: 1024 * 1024 * 1024 })
+    const run = runOxlint(binary, ["-f", "json", "--no-error-on-unmatched-pattern", ...forward, ...inTreePaths(paths, cwd, root, tree)], tree)
     if (run.error) throw run.error
     let result
     try { result = JSON.parse(run.stdout) } catch {
@@ -357,7 +372,7 @@ export function printProjectedConfig({ config, base, elsewhere = [], binary = ox
   const tree = mkdtempSync(join(realpathSync(tmpdir()), "vibelang-oxlint-"))
   try {
     writeConfig(tree, join(tree, ".oxlintrc.json"), config, base, new Set([...elsewhere].map(canonicalRule)))
-    const printed = spawnSync(process.execPath, [binary, "--print-config"], { cwd: tree, env: oxlintEnvironment(), encoding: "utf8", maxBuffer: 256 * 1024 * 1024 })
+    const printed = runOxlint(binary, ["--print-config"], tree, 256 * 1024 * 1024)
     if (printed.status !== 0) throw new Error(`vibelang/oxlint: Oxlint failed: ${printed.stdout}${printed.stderr}`)
     return printed.stdout
   } finally {

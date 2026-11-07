@@ -37,7 +37,12 @@ import (
 // draws no warning, preserving its codec API. So does an exported
 // constant with no type of its name in a project that emits declarations:
 // the declaration would add the type to the declaration file, which the
-// TypeScript did not export (D501). EK4841
+// TypeScript did not export (D501). So does a module or namespace constant
+// with no type of its name that the declaration file names, through a type
+// query (typeof X, typeof X.Type, Schema.Schema.Type<typeof X>), an export
+// list or export default: a declaration file prints every declaration of a
+// name it prints, so it would gain type X = typeof X.Type, which the
+// TypeScript did not declare, and an export list would export it. EK4841
 // (fix_schema_alias.go, D474) writes a constant of another schema with D280's
 // alias form, schema Name = type.
 
@@ -119,7 +124,10 @@ func schemaConstantRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.N
 	}
 	exported := ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport)
 	edits, kept, ok := schemaTypeEdits(c, file, statement, name, exported)
-	if !ok || exported && len(edits) == 0 && !kept && c.CompilerOptions().GetEmitDeclarations() {
+	if !ok {
+		return nil
+	}
+	if len(edits) == 0 && !kept && c.CompilerOptions().GetEmitDeclarations() && (exported || declarationNamesConstant(c, file, statement, name)) {
 		return nil
 	}
 	start := nodeStart(file, statement)
@@ -130,6 +138,35 @@ func schemaConstantRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.N
 	declarationText := "schema " + name.Text() + " " + fields
 	edits = append([]sourceEdit{{start, end, declarationText}}, edits...)
 	return withImportRemovals(c, file, &formRewrite{edits: edits, description: shortText(declarationText, "schema "+name.Text()+" { … }")})
+}
+
+// declarationNamesConstant reports whether the declaration file can print the
+// constant name names, declared by statement at a module's or namespace's top
+// level: the file names it in a type query, or exports it through an export
+// list or export default. A constant in a function body is never printed.
+func declarationNamesConstant(c *checker.Checker, file *ast.SourceFile, statement *ast.Node, name *ast.Node) bool {
+	if !ast.IsSourceFile(statement.Parent) && !ast.IsModuleBlock(statement.Parent) {
+		return false
+	}
+	symbol := c.GetSymbolAtLocation(name)
+	if symbol == nil {
+		return true
+	}
+	found := false
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		switch {
+		case ast.IsTypeQueryNode(node):
+			found = c.GetSymbolAtLocation(ast.GetFirstIdentifier(node.AsTypeQueryNode().ExprName)) == symbol
+		case ast.IsExportSpecifier(node) && node.Parent.Parent.AsExportDeclaration().ModuleSpecifier == nil:
+			found = c.GetExportSpecifierLocalTargetSymbol(node) == symbol
+		case ast.IsExportAssignment(node) && ast.IsIdentifier(node.Expression()):
+			found = c.GetSymbolAtLocation(node.Expression()) == symbol
+		}
+		return found || node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	return found
 }
 
 // schemaTypeEdits returns the edits that remove the struct's own type written

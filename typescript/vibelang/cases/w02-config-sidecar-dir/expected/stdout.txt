@@ -1,0 +1,5 @@
+no sidecarDir: ["app/src/user.d.vibe.ts"], showConfig vibe.sidecarDir undefined
+base sidecarDir "decl": ["configs/decl/src/user.d.vibe.ts"], showConfig "../configs/decl"
+base sidecarDir "${configDir}/decl": ["app/decl/src/user.d.vibe.ts"], showConfig "decl"
+app sidecarDir "decl": ["app/decl/src/user.d.vibe.ts"]
+non-string sidecarDir (true, 1, null, array): error EK3007

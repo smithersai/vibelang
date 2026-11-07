@@ -1,0 +1,54 @@
+{
+ "vibe": [
+  "main.d.ts",
+  "main.d.ts.map",
+  "main.js",
+  "main.js.map",
+  "main.vibe.-24-x.d.ts",
+  "main.vibe.-24-x.d.ts.map",
+  "main.vibe.-24-x.js",
+  "main.vibe.-24-x.js.map",
+  "main.vibe.-54-ext.d.ts",
+  "main.vibe.-54-ext.d.ts.map",
+  "main.vibe.-54-ext.js",
+  "main.vibe.-54-ext.js.map",
+  "main.vibe.-dc-ber.d.ts",
+  "main.vibe.-dc-ber.d.ts.map",
+  "main.vibe.-dc-ber.js",
+  "main.vibe.-dc-ber.js.map",
+  "main.vibe.snake_case9.d.ts",
+  "main.vibe.snake_case9.d.ts.map",
+  "main.vibe.snake_case9.js",
+  "main.vibe.snake_case9.js.map"
+ ],
+ "vibex": {
+  "preserve": [
+   "main.d.ts",
+   "main.d.ts.map",
+   "main.jsx",
+   "main.jsx.map",
+   "main.vibex.-dc-ber.d.ts",
+   "main.vibex.-dc-ber.d.ts.map",
+   "main.vibex.-dc-ber.jsx",
+   "main.vibex.-dc-ber.jsx.map",
+   "main.vibex.parse.d.ts",
+   "main.vibex.parse.d.ts.map",
+   "main.vibex.parse.jsx",
+   "main.vibex.parse.jsx.map"
+  ],
+  "react": [
+   "main.d.ts",
+   "main.d.ts.map",
+   "main.js",
+   "main.js.map",
+   "main.vibex.-dc-ber.d.ts",
+   "main.vibex.-dc-ber.d.ts.map",
+   "main.vibex.-dc-ber.js",
+   "main.vibex.-dc-ber.js.map",
+   "main.vibex.parse.d.ts",
+   "main.vibex.parse.d.ts.map",
+   "main.vibex.parse.js",
+   "main.vibex.parse.js.map"
+  ]
+ }
+}

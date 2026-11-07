@@ -33,7 +33,7 @@ func FuzzPureRequestPipeReceiver(f *testing.F) {
 		case "named", "alias", "reexport":
 			module := "effect/http/HttpClientRequest"
 			if key == "reexport" {
-				module = "./request.vibe"
+				module = "./request.js"
 				files["request.vibe"] = "export { get as request, setUrlParams as params, setHeader as header } from 'effect/http/HttpClientRequest'\n"
 			}
 			if key == "named" {

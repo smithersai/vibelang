@@ -1,2 +1,5 @@
 // docs/design/src/900-appendices.md#6862d4a8b5fb062a — Chapter 900: cov900-catch-specific-codes.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#decision
+// VIP-5: EK0504 to EK0510 keep their specific triggers, one probe each; the
+// retired EK0511 trigger, a throw in a plain handler, is EK0401.
 export {}

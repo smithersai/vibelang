@@ -191,6 +191,8 @@ var cliFlags = sync.OnceValue(func() []cliFlag {
 			flags = append(flags, cliFlag{"-" + option.ShortName, values, "TypeScript's command line"})
 		}
 	}
+	// Append new flags so existing byte-indexed corpus entries keep their arguments.
+	flags = append(flags, cliFlag{"--fix-legacy-service-keys", cliBareOnly, "007-tooling.md, Legacy service-key upgrade; requires --fix"})
 	return flags
 })
 
@@ -233,6 +235,10 @@ func cliValues(option *tsoptions.CommandLineOption) []string {
 // bytes chooses a flag and its value. No bytes is bare vibelang, which
 // Chapter 28 says "checks and emits".
 func cliDecode(choice []byte) []string {
+	// Keep the initializer regression independent of flag-table insertion order.
+	if string(choice) == "key:init-existing-config" {
+		return []string{"--init"}
+	}
 	flags := cliFlags()
 	var args []string
 	for i := 0; i+1 < len(choice) && i < 24; i += 2 {
@@ -312,6 +318,12 @@ func cliSeeds() []cliSeed {
 		{"--fix", "--fix-migration-only", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
 		{"--fix-vip-only", "--fix", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
 		{"--fix", "--only", "main.vibe", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
+		{"--fix", "--fix-legacy-service-keys", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
+		{"--fix-legacy-service-keys", "--fix", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
+		{"--fix-legacy-service-keys", "--noEmit"},
+		{"--init"},
+		{"--fix", "--fix-migration-only", "--only", "main.vibe", "--explainFiles", "false", "--init"},
+		{"--init", "--target", "nope"},
 	}
 	var cases []Seed
 	for _, seed := range CaseSeeds() {
@@ -709,13 +721,13 @@ func cliHasFix(args []string) bool {
 
 // cliFixFlag reports whether the CLI removes arg before TypeScript parses the
 // command line, fix saying whether it holds --fix: --fix always, and its
-// scope flags --fix-migration-only and --fix-vip-only only beside --fix, as
+// scope flags and --fix-legacy-service-keys only beside --fix, as
 // docs/tools/README.md writes `vibelang --fix --fix-migration-only` and
 // internal/vibelang/fix.go removes "the optional scope flag after --fix was
 // found". A scope flag alone scopes nothing, so TypeScript reports it as an
 // unknown option (TS5023).
 func cliFixFlag(arg string, fix bool) bool {
-	return strings.EqualFold(arg, "--fix") || fix && (strings.EqualFold(arg, "--fix-migration-only") || strings.EqualFold(arg, "--fix-vip-only"))
+	return strings.EqualFold(arg, "--fix") || fix && (strings.EqualFold(arg, "--fix-migration-only") || strings.EqualFold(arg, "--fix-vip-only") || strings.EqualFold(arg, "--fix-legacy-service-keys"))
 }
 
 // cliNeutral reports whether a command line compiles the project as its
@@ -828,6 +840,11 @@ func cliCheck(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, pro
 	if len(args) > 0 && args[0] == "--estree" {
 		stdin = project.Files[main]
 	}
+	options := cliOptions(w, dir, args)
+	var initConfig []byte
+	if options != nil && options.CompilerOptions().Init.IsTrue() {
+		initConfig, _ = os.ReadFile(filepath.Join(dir, "tsconfig.json"))
+	}
 	before := cliSources(dir, project)
 	run := cliExec(binary, dir, args, stdin, project)
 	report := func() string {
@@ -869,7 +886,6 @@ func cliCheck(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, pro
 			before[name] = text
 		}
 	}
-	options := cliOptions(w, dir, args)
 	printed := cliParse(run.Stdout)
 	errors := slices.ContainsFunc(printed, func(d cliDiagnostic) bool { return d.Category == "error" })
 	// Chapter 28: "vibelang exits non-zero when it reports any error". A run
@@ -888,8 +904,21 @@ func cliCheck(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, pro
 	after := cliSources(dir, project)
 	changed := cliChanged(before, after)
 	library, decided := cliLibraryStatus(r, options, cliNeutral(args, options) && len(changed) == 0 && !cliHasFix(args))
+	// TypeScript's initializer is not a compilation: an existing configuration
+	// reports only TS5054 and returns success. Check that exact refusal and
+	// preserve its inputs; every other error keeps the compilation status oracle.
+	initRefusal := options != nil && options.CompilerOptions().Init.IsTrue() && len(options.Errors) == 0 &&
+		len(printed) == 1 && printed[0].Prefix == "TS" && printed[0].Code == 5054 && printed[0].Category == "error"
 	switch {
 	case run.Watching:
+	case initRefusal:
+		if run.Status != 0 {
+			g.Add("status:init-refusal", "TypeScript's existing-config refusal exits zero, got %d:\n%s", run.Status, report())
+		}
+		configAfter, err := os.ReadFile(filepath.Join(dir, "tsconfig.json"))
+		if initConfig == nil || err != nil || string(configAfter) != string(initConfig) || len(changed) != 0 {
+			g.Add("init:existing-config-changed", "--init did not preserve the existing configuration and sources:\n%s", report())
+		}
 	case decided && library && run.Status == 0:
 		g.Add("status:error-exit-zero", "the compiler reports an error for this command line, and it exited 0:\n%s", report())
 	case decided && !library && run.Status != 0 && !quiet:

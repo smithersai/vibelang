@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/google/pprof v0.0.0-20261105003125-4bf881d7fb0b
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/matryer/moq v0.7.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect

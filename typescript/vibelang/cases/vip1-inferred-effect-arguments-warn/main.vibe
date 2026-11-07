@@ -1,0 +1,57 @@
+// rule-evidence: docs/design/vips/0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03
+// VIP-1, inferred Effect arguments, at the default severity. EK4802 is a
+// warning at each argument whose own inferred type argument is an Effect:
+// through a union, an intersection, an array, a Promise, an object property,
+// a callback parameter and a callback result, in an overload, a method and
+// under T extends unknown. A declared Effect position stops the search. The
+// warning changes neither inference nor execution: every callee receives the
+// unrun program, and only try runs it.
+// expect-result: {"pair":true,"union":true,"intersection":true,"array":true,"property":true,"callbackParameter":true,"callbackResult":true,"declared":true,"constrained":true,"overload":true,"method":true,"same":true,"cold":0,"value":42,"runs":1}
+function pair<T>(a: T, b: T): boolean { return Effect.isEffect(a) && Effect.isEffect(b) }
+function union<T>(a: T | undefined): boolean { return Effect.isEffect(a) }
+function intersection<T>(a: T & object): boolean { return Effect.isEffect(a) }
+function array<T>(a: T[]): boolean { return Effect.isEffect(a[0]) }
+function promised<T>(a: Promise<T>): number { return 1 }
+function property<T>(a: { readonly v: T }): boolean { return Effect.isEffect(a.v) }
+function callbackParameter<T>(a: T, f: (x: T) => boolean): boolean { return f(a) }
+function callbackResult<T>(f: () => T): boolean { return Effect.isEffect(f()) }
+function declared<T>(a: T!!): boolean { return Effect.isEffect(a) }
+function constrained<T extends unknown>(a: T): boolean { return Effect.isEffect(a) }
+function overload<T>(a: T): boolean
+function overload(a: unknown): boolean { return Effect.isEffect(a) }
+class Box { take<T>(a: T): boolean { return Effect.isEffect(a) } }
+function held<T>(a: T): T { return a }
+
+// A Promise argument is checked only: effect code cannot construct one here.
+export effect function pending(p: Promise<number!!>) { return promised(p) }
+
+export effect function main() {
+  let runs = 0
+  effect function awaited() {
+    runs++
+    return 42
+  }
+  const e = awaited()
+  const result = {
+    pair: pair(e, e),
+    union: union(e),
+    intersection: intersection(e),
+    array: array([e]),
+    property: property({ v: e }),
+    callbackParameter: callbackParameter(e, (x) => Effect.isEffect(x)),
+    callbackResult: callbackResult(() => e),
+    declared: declared(e),
+    constrained: constrained(e),
+    overload: overload(e),
+    method: new Box().take(e),
+  }
+  // Inference is unchanged: held(e) is the Effect, never its success.
+  const kept = held(e)
+  const typed: number!! = kept
+  // @ts-expect-error An unrun Effect is not a number.
+  const wrong: number = kept
+  const same = typed === e
+  const cold = runs
+  const value = try e
+  return { ...result, same, cold, value, runs }
+}

@@ -7,3 +7,5 @@ export effect function main() {
 }
 
 runMain(main())
+
+import "vibelang/platform/node"

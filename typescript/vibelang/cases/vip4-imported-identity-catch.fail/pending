@@ -1,0 +1,1 @@
+witness-06 Effect's identity is declared as a const with a function type, and default_callback_throws.go skips foreign callables typed by a function type until the open ruling on Effect's own untagged callables passed as callbacks (Order.Number, Schema.brand(...)). VIP-4 says this catch: identity is EK0402; the compiler accepts it.

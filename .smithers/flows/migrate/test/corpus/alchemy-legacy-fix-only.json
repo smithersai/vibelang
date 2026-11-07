@@ -1,0 +1,13 @@
+{
+  "key": "migrate:alchemy-migration-legacy-fix-flags:TS5023",
+  "source": "alchemy partition conversion with the repository's pinned compiler, which predates --only",
+  "compiler": "VibeLang 0.0.11 (TypeScript 7.1.0-dev)",
+  "rejection": "error TS5023: Unknown compiler option '--only'.",
+  "exit": 1,
+  "files": {
+    "src/GlobalVmExtensionPolicy.vibe": "import * as Effect from \"effect/Effect\"\nexport const program = Effect.gen(function* () { return 1 })\n",
+    "src/Storage.vibe": "import * as Effect from \"effect/Effect\"\nexport const storage = Effect.gen(function* () { return \"bucket\" })\n",
+    "src/Platform.vibe": "import * as Effect from \"effect/Effect\"\nexport const control = Effect.gen(function* () { return 0 })\n"
+  },
+  "selected": ["src/GlobalVmExtensionPolicy.vibe", "src/Storage.vibe"]
+}

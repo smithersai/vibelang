@@ -1,0 +1,1 @@
+export type F = () => Effect.Effect<number, infer E>

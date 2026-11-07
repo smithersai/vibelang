@@ -126,6 +126,7 @@ type Parser struct {
 	vibelangAsyncMatches     []*ast.Node                    // async match source boundaries
 	vibelangMatches          map[*ast.Node]*matchInfo       // match expressions as written, by their call or statement (vibelang_match.go)
 	vibelangMatchMemberArms  map[*ast.Node][]MatchMemberArm // normalized tagged-member coverage
+	vibelangMatchKeyTypes    map[*ast.Node]*ast.Node        // original computed key expressions by generated declaration
 	vibelangIsBindings       map[*ast.Node]*isInfo          // is expressions whose patterns bind names, by their markers (vibelang_match.go)
 	vibelangIsHolders        map[*ast.Node]*ast.Node        // the parenthesized expression written around each such marker, which hoistVibeLangIs fills (vibelang_match.go)
 	vibelangSchemaTypes      map[*ast.Node]bool             // synthesized ordinary-schema companions, distinct from data aliases
@@ -562,6 +563,7 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 		result.GetOrComputeData(matchPropertyCachesKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return p.vibelangPropertyCaches })
 		p.attachVibeLangModules(result) // module declarations' bodies (vibelang_modules.go)
 		p.attachMatchMemberArms(result)
+		p.attachMatchKeyTypes(result)
 		p.checkVibeLangEffectChannels(result)
 	}
 	return result

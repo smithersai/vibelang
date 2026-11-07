@@ -72,9 +72,10 @@ This boundary recovers only causes made entirely of domain failures; checking on
 ## Restoring causes after inspection
 
 ```vibe
-effect function readWithInspection() {
+effect function readWithInspection(): never!InvalidRow {
   return try Effect.catch(sandboxedRow(), effect (cause) => {
-    try Console.log("Row computation stopped", try Effect.try(() => JSON.stringify(cause.reasons.map((reason) => reason._tag))))
+    const kinds = cause.reasons.map((reason) => reason._tag)
+    try Console.log("Row computation stopped", try orDie(Effect.try(() => JSON.stringify(kinds))))
     return try failCause(cause)
   })
 }
@@ -87,6 +88,8 @@ Row computation stopped ["Fail"]
 ```
 
 `failCause(cause)` restores the original failure model, with every expected failure, defect, and interruption in the cause; `fail(cause)` and `throw cause` instead keep the cause as typed error data. For a single inspection or recovery step, `catchCause(readRow(), handler)` avoids changing the error channel first.
+
+The diagnostic serializes only reason tags. `orDie` keeps a serialization bug out of the restored domain error channel.
 
 ---
 

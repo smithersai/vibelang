@@ -1,0 +1,16 @@
+// rule-evidence: docs/design/vips/0027-declaration-output.md#a9bfea09ebda13fb
+// VIP-27: a non-effectful exported function carries @throws {never}.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#cc386c482c3d099c
+// VIP-27: the effect function carries no generated tag.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#2ab653ed5d3d179e
+// VIP-27: the unannotated twin passes API identity against the generated tag.
+// expected/main.d.ts is the exact declaration; typescript/ is the unannotated
+// stock twin the harness compares it with; run.mjs consumes the declaration.
+/** Adds two numbers. */
+export function add(a: number, b: number) { return a + b }
+export function bare(a: number) { return a }
+/**
+ * Loads by id.
+ * @param id the key
+ */
+export effect function load(id: string) { return id.length }

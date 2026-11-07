@@ -1,0 +1,30 @@
+// expect-result: {"ordered":[["small",1],["large",2],["other",3],["none",3],["none",3],["nan",4]],"inKey":[["key",1],["missing",2],["none",2]],"nested":[["low",1],["none",1]],"inline":[[true,1],[false,1]],"strict":[["same",1],["none",2]]}
+// Chapter 004, Inclusive relations, and the pinned RelationalPatternMatches:
+// <, >, <= and >= admit a string, a number or a bigint, and in a property
+// key, before the bound is evaluated. Other subjects fail without running it.
+// ===, !==, == and != evaluate their operand for every subject.
+let reads = 0
+const limits = { get bound(): number { reads++; return 2 }, get table(): object { reads++; return { a: 1 } } }
+function ordered(s: unknown) {
+  return match (s) { when <= limits.bound: "small"; when Number: "large"; when String: "other"; default: "none"; }
+}
+function keyed(s: unknown) { return match (s) { when in limits.table: "key"; when String: "missing"; default: "none"; } }
+function nested(s: unknown) { return match (s) { when { v: < limits.bound }: "low"; default: "none"; } }
+function strict(s: unknown) { return match (s) { when === limits.bound: "same"; default: "none"; } }
+function run<T>(values: unknown[], f: (s: unknown) => T) {
+  reads = 0
+  return values.map(s => {
+    const r = f(s)
+    return [typeof s === "number" && Number.isNaN(s) ? "nan" : r, reads]
+  })
+}
+export effect function main() {
+  const inline = (() => { reads = 0; const a = 1 is < limits.bound; const r1 = reads; const b = ({}) is < limits.bound; return [[a, r1], [b, reads]] })()
+  return {
+    ordered: run([1, 3, "x", {}, null, NaN], ordered),
+    inKey: run(["a", "b", 1], keyed),
+    nested: run([{ v: 1 }, { v: {} }], nested),
+    inline,
+    strict: run([2, {}], strict)
+  }
+}

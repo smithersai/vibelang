@@ -17,6 +17,32 @@ const specifier = path => {
   const output = slash(path).replace(/\.d\.(vibex?)\.ts$/, ".$1").replace(/\.d\.mts$/, ".d.mjs").replace(/\.d\.cts$/, ".d.cjs").replace(/\.d\.ts$/, ".d.js")
   return output.startsWith(".") ? output : "./" + output
 }
+// A declaration map trailer describes a stored file, not its exported surface.
+// Parse the declaration before scanning its trailing trivia, so map-looking
+// text in template literal types and block comments remains significant.
+function snapshotWithoutMapTrailer(ts, text) {
+  if (typeof ts.createSourceFile !== "function" || typeof ts.createScanner !== "function") return { text, metadata: false }
+  const source = ts.createSourceFile("snapshot.d.ts", text, ts.ScriptTarget.Latest, true)
+  if (source.parseDiagnostics.length) return { text, metadata: false }
+  const end = source.statements.at(-1)?.end ?? 0
+  const trailing = text.slice(end)
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, ts.LanguageVariant.Standard, trailing)
+  let output = "", copied = 0, metadata = false
+  for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+    if (token !== ts.SyntaxKind.SingleLineCommentTrivia || !/^\/\/[#@][ \t]*sourceMappingURL=/.test(scanner.getTokenText())) continue
+    output += trailing.slice(copied, scanner.getTokenPos())
+    copied = scanner.getTextPos()
+    metadata = true
+  }
+  return metadata ? { text: (text.slice(0, end) + output + trailing.slice(copied)).trimEnd(), metadata }
+    : { text, metadata }
+}
+function sameSnapshotDeclaration(ts, left, right) {
+  if (left === right) return true
+  const a = snapshotWithoutMapTrailer(ts, left), b = snapshotWithoutMapTrailer(ts, right)
+  return (a.metadata || b.metadata) && a.text.trimEnd() === b.text.trimEnd()
+}
+
 export function apiProjection(ts, directory, surface, files, { published = true, absentSources: comparable } = {}) {
   const metadata = surface?.apiMetadata
   const original = resolve(directory)
@@ -55,9 +81,13 @@ export function apiProjection(ts, directory, surface, files, { published = true,
     for (const file of files) {
       const layout = (metadata.layouts ?? []).filter(entry => typeof entry.directory === "string" &&
         (entry.prefix === "." || file.startsWith(entry.prefix + "/"))).sort((a,b) => b.prefix.length - a.prefix.length)[0]
-      const destination = metadata.logicalPaths[file] ?? (layout ? posix.join(layout.directory, posix.relative(layout.prefix, file)) : file)
+      // A layout directory above the package re-enters it by its real name,
+      // which the projection's ancestors do not have: resolve it there.
+      const placed = layout && slash(relative(metadata.packageDir,
+        resolve(metadata.packageDir, layout.directory, posix.relative(layout.prefix, file))))
+      const destination = metadata.logicalPaths[file] ?? (layout ? placed || "." : file)
       const text = readFileSync(join(original, file), "utf8")
-      if (originals.has(destination) && readFileSync(path(destination), "utf8") !== text)
+      if (originals.has(destination) && !sameSnapshotDeclaration(ts, readFileSync(path(destination), "utf8"), text))
         throw new Error("Conflicting declaration snapshot paths: " + destination)
       put(destination, text)
       originals.set(destination, file)
@@ -70,7 +100,7 @@ export function apiProjection(ts, directory, surface, files, { published = true,
       if (!physical) throw new Error("Declaration snapshot alias has no stored target: " + name)
       if (originals.has(destination)) {
         // Explicit logical-path provenance can store the same declaration
-        // twice. Their bytes were checked above; a different owner still fails.
+        // twice. Their declarations were checked above; a different owner still fails.
         if (originals.get(destination) !== target && destination !== physical)
           throw new Error("Conflicting declaration snapshot alias: " + name)
         continue
@@ -143,6 +173,17 @@ export function apiProjection(ts, directory, surface, files, { published = true,
       const owners = new Set(saved.files)
       const projectedFiles = [...originals].filter(([, owner]) => owners.has(owner)).map(([file]) => path(file))
       if (projectedFiles.length) projectContexts.push({ directory, compilerOptions: parsed.options, files: projectedFiles })
+    }
+    // A file placed off the package's ancestor chain, such as a saved source in
+    // a sibling package, resolves bare imports from its own directories first.
+    const chain = new Set(ancestors)
+    for (const name of originals.keys()) {
+      let real = dirname(resolve(metadata.packageDir, name)), copy = dirname(path(name))
+      for (; !chain.has(real) && copy.startsWith(temporary + sep); real = dirname(real), copy = dirname(copy)) {
+        const modules = join(real, "node_modules"), link = join(copy, "node_modules")
+        if (!slash(real).includes("/node_modules/") && existsSync(modules) && !existsSync(link))
+          symlinkSync(modules, link, "junction")
+      }
     }
     return { directory: root, originals, destinations, projectContexts, absentSources,
       cleanup() { rmSync(temporary, { recursive: true, force: true }) } }

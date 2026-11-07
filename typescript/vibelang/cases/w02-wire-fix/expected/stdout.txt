@@ -1,0 +1,1 @@
+wire becomes Layer.provideMerge; the local wire keeps its meaning

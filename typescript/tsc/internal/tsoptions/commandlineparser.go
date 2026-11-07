@@ -70,15 +70,16 @@ func ParseBuildCommandLine(
 		commandLine = []string{}
 	}
 	parser := parseCommandLineWorker(buildOptionsDidYouMeanDiagnostics, commandLine, fs, currentDirectory)
+	options := convertToOptionsWithAbsolutePaths(parser.options.Clone(), CommandLineCompilerOptionsMap, currentDirectory)
 	compilerOptions := &core.CompilerOptions{}
-	for key, value := range parser.options.Entries() {
+	for key, value := range options.Entries() {
 		buildOption := BuildNameMap.Get(key)
 		if buildOption == &TscBuildOption || buildOption == CompilerNameMap.Get(key) {
 			ParseCompilerOptions(key, value, compilerOptions)
 		}
 	}
 	result := &ParsedBuildCommandLine{
-		BuildOptions:    convertMapToOptions(parser.options, &buildOptionsParser{&core.BuildOptions{}}).BuildOptions,
+		BuildOptions:    convertMapToOptions(options, &buildOptionsParser{&core.BuildOptions{}}).BuildOptions,
 		CompilerOptions: compilerOptions,
 		Projects:        parser.fileNames,
 		Errors:          parser.errors,

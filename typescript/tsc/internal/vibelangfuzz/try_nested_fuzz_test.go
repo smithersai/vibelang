@@ -93,7 +93,7 @@ func FuzzTryNested(f *testing.F) {
 				expression = "try (" + expression + ")"
 			}
 		}
-		source := "import { held, make, box } from \"./lib.ts\"\n" + helper + "export effect function main() {\n" + setup + "  const v = " + expression + "\n  return v\n}\n"
+		source := "import { held, make, box } from \"./lib.js\"\n" + helper + "export effect function main() {\n" + setup + "  const v = " + expression + "\n  return v\n}\n"
 		var result *Result
 		var err error
 		within(t, "compile", func() {

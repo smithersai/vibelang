@@ -13,7 +13,7 @@ const vibe: LanguageRegistration = {
 }
 
 export default defineConfig({
-  accentColor: 'light-dark(#646cff, #a5a9ff)',
+  accentColor: 'light-dark(#4f46e5, #a5a9ff)',
   baseUrl: 'https://vibelang.sh',
   banner:
     'VibeLang is in early alpha. The language will change in major, breaking ways. It is not suitable for production use.',

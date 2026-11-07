@@ -57,6 +57,9 @@ func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Code
 		return nil, nil
 	}
 	a := analyzerFor(c)
+	if usingScopedCapturesScope(a, statement) {
+		return nil, nil
+	}
 	for _, name := range []string{"scoped", "acquireDisposable"} {
 		if !isEffectGlobalAt(c, name, block) {
 			return nil, nil
@@ -67,18 +70,23 @@ func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Code
 	indent := lineIndent(text, start)
 	var body strings.Builder
 	body.WriteString("return try scoped(effect {\n")
+	body.WriteString(indent + "  const")
+	cursor := start + len("using")
 	for _, declaration := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
 		initializer := declaration.Initializer()
 		t := c.GetTypeAtLocation(declaration.Name())
 		if initializer == nil || usingScopedLosesName(initializer) || a.runsEffect(initializer) || t.Flags()&checker.TypeFlagsAny != 0 || c.GetNonNullableType(t) != t || !c.IsSyncDisposableType(t) {
 			return nil, nil
 		}
-		value := text[nodeStart(file, initializer):initializer.End()]
-		if ast.IsObjectLiteralExpression(ast.SkipOuterExpressions(initializer, ast.OEKAll)) {
-			value = "(" + value + ")"
-		}
-		body.WriteString(indent + "  const " + declaration.Name().Text() + " = try acquireDisposable(effect { return " + value + " })\n")
+		// Keep the written declaration and its trivia; only wrap each initializer.
+		// Parentheses let a leading line comment follow return without ending it.
+		body.WriteString(text[cursor:initializer.Pos()])
+		body.WriteString("try acquireDisposable(effect { return (")
+		body.WriteString(text[initializer.Pos():initializer.End()])
+		body.WriteString(") })")
+		cursor = initializer.End()
 	}
+	body.WriteString(text[cursor:statement.End()] + "\n")
 	end := block.End() - 1
 	rest := strings.TrimRight(text[statement.End():end], " \t\r\n")
 	rest = strings.TrimPrefix(strings.TrimLeft(rest, " \t\r\n;"), ";")
@@ -90,6 +98,80 @@ func usingScopedActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Code
 		Description: "Acquire with acquireDisposable inside scoped",
 		Changes:     replaceRange(fix, start, end, body.String()),
 	}}, nil
+}
+
+// usingScopedCapturesScope reports whether the part moved into scoped still
+// needs its caller's Scope. A new Scope would consume that requirement and
+// change declarations or service lookups. Earlier statements stay outside it.
+// scoped removes Scope from the moved suffix's requirements. Preserve the
+// original contract by declining the edit when that suffix needs Scope, or a
+// deferred requirement could become Scope at a later instantiation.
+func usingScopedCapturesScope(a *analyzer, statement *ast.Node) bool {
+	c := a.checker
+	var scope *checker.Type
+	if symbol := servicesFor(c).effectExport("Scope", "Scope"); symbol != nil {
+		scope = c.GetDeclaredTypeOfSymbol(resolvedAlias(c, symbol))
+	}
+	var deferredKey func(*checker.Type) bool
+	deferredKey = func(t *checker.Type) bool {
+		if t == nil {
+			return false
+		}
+		if t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown|checker.TypeFlagsInstantiable) != 0 {
+			return true
+		}
+		if t.Flags()&checker.TypeFlagsUnionOrIntersection != 0 {
+			for _, member := range t.Types() {
+				if deferredKey(member) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	var needsScope func(*checker.Type) bool
+	needsScope = func(t *checker.Type) bool {
+		if t == nil || t.Flags()&checker.TypeFlagsNever != 0 {
+			return false
+		}
+		if t.Flags()&checker.TypeFlagsUnionOrIntersection != 0 {
+			for _, member := range t.Types() {
+				if needsScope(member) {
+					return true
+				}
+			}
+			return false
+		}
+		if t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown|checker.TypeFlagsInstantiableNonPrimitive) != 0 {
+			return true
+		}
+		if t.ObjectFlags()&checker.ObjectFlagsMapped != 0 {
+			mapped := t.AsMappedType()
+			mapped.ResolveComponents(c, t)
+			if deferredKey(mapped.ConstraintType()) || deferredKey(mapped.NameType()) {
+				return true
+			}
+		}
+		return scope == nil || c.IsTypeAssignableTo(t, scope) || c.GetPropertyOfType(t, "~effect/Scope") != nil
+	}
+	moved := false
+	for _, item := range statement.Parent.Statements() {
+		if item == statement {
+			moved = true
+		}
+		if !moved {
+			continue
+		}
+		for _, requirement := range a.flowOf(item).requirements {
+			// Broad requirements can receive Scope without declaring its members.
+			// Check the whole type: a broad intersection constituent alone does
+			// not mean that Scope satisfies the complete requirement.
+			if needsScope(requirement) || scope != nil && c.IsTypeAssignableTo(scope, requirement) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // isEffectGlobalAt reports whether name at location resolves to the export of

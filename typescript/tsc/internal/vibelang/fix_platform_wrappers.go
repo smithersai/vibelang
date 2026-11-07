@@ -92,10 +92,10 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 			if companionRefusal != "" {
 				refusal = companionRefusal
 			}
-			// Chapter 7: under --only the repairs write no other file, and a
-			// fix that would edit another file is not applied. The new module
-			// is never listed, so refuse here: reaching fixKeeper would stop
-			// the run and keep none of its fixes.
+			// Chapter 7: under --only the repairs write the listed modules and
+			// the fresh companion of a listed module (fixScope.companions), and
+			// a fix that would write another file is not applied. Refuse here:
+			// reaching fixKeeper would stop the run and keep none of its fixes.
 			if refusal == "" && !g.scope.includes(foreign) {
 				refusal = "--only limits this run to its listed modules, and moving the wrapper would create " + path.Base(foreign.AsString())
 			}
@@ -157,7 +157,7 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 				}
 			}
 			if refusal == "" {
-				// --only writes no file it does not list (fix_keep.go), and the
+				// --only writes no file outside its scope (fix_keep.go), and the
 				// keeper stops the whole run at one: refuse this site instead.
 				for target := range overlay {
 					if !g.scope.includes(target) {

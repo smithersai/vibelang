@@ -1,0 +1,2 @@
+// run.mjs builds private projects with `vibe.sidecarDir` and compares each sidecar layout with stock tsc's `declarationDir` layout for the `.ts` twin.
+export const witness = "sidecar layout"

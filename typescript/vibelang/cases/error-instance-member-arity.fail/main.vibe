@@ -1,0 +1,7 @@
+// expect: EK0703 EK0703 EK0703 EK0703
+error Plain { code:number; label():number{return this.code} }
+schema error Encoded { get label():number{return this.code}; code:number }
+export function plainZero(s:unknown){return match(s){when Plain():1;default:0;}}
+export function plainTwo(s:unknown){return match(s){when Plain(let a,let b):1;default:0;}}
+export function schemaZero(s:unknown){return match(s){when Encoded():1;default:0;}}
+export function schemaTwo(s:unknown){return match(s){when Encoded(let a,let b):1;default:0;}}

@@ -15,9 +15,9 @@ func init() {
 	tsFormFixCodes = append(tsFormFixCodes, EK4402.Code)
 	tsFormRules[EK4402.Code] = &tsFormRule{
 		message:   platformTypeImportDiagnostic,
-		find:      findPlatformTypeImports,
-		plan:      platformTypeImportRewrite,
-		diagnosed: ast.IsImportDeclaration,
+		find:      findPlatformTypeLoads,
+		plan:      platformTypeLoadRewrite,
+		diagnosed: platformTypeLoadDiagnosticNode,
 	}
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4402.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }

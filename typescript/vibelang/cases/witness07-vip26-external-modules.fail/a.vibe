@@ -1,0 +1,8 @@
+// expect: TS2451 TS2393
+// rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind | Every source `.vibe` compilation unit is an external module before binding and checking, independently of written imports and exports, required prelude imports, `vibe.effectGlobals` and `vibe.effectModules`.
+// No import, no export, no prelude and moduleDetection "legacy": still a
+// module, so these top-level
+// names are this file's own and do not collide with the other .vibe file.
+const shared = "a"
+function helper() { return shared }
+helper()

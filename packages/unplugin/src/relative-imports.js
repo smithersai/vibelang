@@ -1,5 +1,5 @@
 import { existsSync, statSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 
 // A specifier ending in one of these names its file's extension; TypeScript
 // removes it before it tries its own (tspath's extensionsToRemove).
@@ -37,3 +37,34 @@ export function extensionlessImport(directory, specifier) {
   return undefined
 }
 
+
+// The compiler lists existing program files, so a failed relative import is
+// absent from that list. Watch its source candidates as well: creating the
+// missing file must recover a failed watch build without editing its importer.
+export function missingRelativeInputs(diagnostics) {
+  const inputs = new Set()
+  for (const diagnostic of diagnostics) {
+    if (!diagnostic.file) continue
+    const specifier = diagnostic.code === "TS2307"
+      ? /^Cannot find module '(.+)' or its corresponding type declarations\./.exec(diagnostic.text)?.[1]
+      : diagnostic.code === "TS6263"
+        ? /^Module '(.+)' was resolved to '.*', but '--allowArbitraryExtensions' is not set\./.exec(diagnostic.text)?.[1]
+        : undefined
+    if (!specifier || !/^\.\.?(?:[\\/]|$)/.test(specifier)) continue
+    const target = resolve(dirname(diagnostic.file), specifier)
+    if (/\.(?:vibex?|[cm]?tsx?|json)$/.test(target)) {
+      inputs.add(target)
+      continue
+    }
+    // A written JavaScript extension can resolve to a TypeScript or VibeLang
+    // source. An extensionless import can also resolve to a directory index.
+    const extension = /\.(?:[cm]?js|jsx)$/.exec(target)?.[0]
+    const stem = extension ? target.slice(0, -extension.length) : target
+    const extensions = extension === ".mjs" ? [".mts", ".d.mts", ".mjs"]
+      : extension === ".cjs" ? [".cts", ".d.cts", ".cjs"]
+      : implicitExtensions
+    for (const suffix of extensions) inputs.add(stem + suffix)
+    if (!extension) for (const suffix of implicitExtensions) inputs.add(join(target, "index") + suffix)
+  }
+  return [...inputs]
+}

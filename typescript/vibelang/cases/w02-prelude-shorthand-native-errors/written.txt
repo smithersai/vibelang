@@ -1,0 +1,2 @@
+import { Scope } from "effect"
+export function written(s: Scope): number { return 1 }

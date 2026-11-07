@@ -32,6 +32,8 @@ func migrationFactoryModel(t *testing.T, area, key string, mode uint8) (bool, st
 	encodedMode := mode & 1
 	if strings.HasPrefix(key, "traced-") {
 		encodedMode = mode & 7
+	} else if strings.HasPrefix(key, "constructor-") {
+		encodedMode = mode & 63
 	}
 	cmd := exec.CommandContext(ctx, "node", script, area, key, strconv.Itoa(int(encodedMode)))
 	cmd.Dir = Root()
@@ -76,7 +78,15 @@ func FuzzMigrationThrowCallHome(f *testing.F) {
 
 func FuzzMigrationEffectContainers(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"object", "nested", "array", "identity", "class", "drop-array", "traced-object", "traced-nested", "traced-direct", "traced-drop-direct"}
+	fuzzMigrationContainers(f, migrationContainerTarget, []string{"object", "nested", "array", "identity", "class", "drop-array", "traced-object", "traced-nested", "traced-direct", "traced-drop-direct"})
+}
+
+func FuzzMigrationConstructorReferences(f *testing.F) {
+	startShortBudget(f)
+	fuzzMigrationContainers(f, "FuzzMigrationConstructorReferences", []string{"constructor-reference", "constructor-alias", "constructor-same-arrow", "constructor-same-reference", "constructor-drop"})
+}
+
+func fuzzMigrationContainers(f *testing.F, target string, keys []string) {
 	for _, key := range keys {
 		modes := []uint8{0, 1}
 		if strings.HasPrefix(key, "traced-") {
@@ -92,14 +102,15 @@ func FuzzMigrationEffectContainers(f *testing.F) {
 			if key == "" {
 				key = keys[0]
 			} else {
+				// Each target retains its original byte-index fallback.
 				key = keys[int(key[0])%len(keys)]
 			}
 		}
 		gapKey := fmt.Sprintf("container:%s/%d", key, mode&1)
 		if ok, details := migrationFactoryModel(t, "container", key, mode); !ok {
-			Gap(t, migrationContainerTarget, gapKey, "Chapter 1: %q; a returned container is distinct from the programs its methods construct; the direct dropped Effect wrapper remains a negative control\n%s", migrationPlainQuote, details)
+			Gap(t, target, gapKey, "Chapter 1: %q; a returned container is distinct from the programs its methods construct; the direct dropped Effect wrapper remains a negative control\n%s", migrationPlainQuote, details)
 		}
-		ExpectPending(t, migrationContainerTarget, gapKey)
-		ExpectPending(t, migrationContainerTarget, specCorpusKey(t))
+		ExpectPending(t, target, gapKey)
+		ExpectPending(t, target, specCorpusKey(t))
 	})
 }

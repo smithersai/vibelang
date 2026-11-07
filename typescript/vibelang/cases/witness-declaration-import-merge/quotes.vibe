@@ -1,0 +1,4 @@
+// The joined import keeps the source import's double quotes.
+import { Option } from "effect"
+
+export effect function third(): Option.Option<number>!! { return Option.none() }

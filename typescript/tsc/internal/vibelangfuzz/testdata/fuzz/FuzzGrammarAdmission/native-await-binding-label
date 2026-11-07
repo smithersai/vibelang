@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-await-binding-label\nfunction f(await: number) { await: while (false) { break await; } return await; }")

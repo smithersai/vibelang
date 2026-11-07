@@ -43,7 +43,9 @@ func (p *projector) join(call *ast.Node, e env) {
 	}
 	p.plan.mark(editRun, partOpen, start, start, "")
 	p.plan.replace(start, p.tokenStart(operand), helperRef("$join")+"(")
-	p.visit(operand, e)
+	operandEnv := e
+	operandEnv.holdCalls = true
+	p.visit(operand, operandEnv)
 	p.plan.insert(call.End(), ")")
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }
@@ -212,7 +214,9 @@ func (p *projector) tryValue(call *ast.Node, e env) {
 	}
 	p.plan.mark(editRun, partOpen, start, start, "")
 	p.plan.replace(start, p.tokenStart(operand), helperRef("$try")+"(")
-	p.visit(operand, e)
+	operandEnv := e
+	operandEnv.holdCalls = true
+	p.visit(operand, operandEnv)
 	p.plan.insert(call.End(), ")")
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }
@@ -297,6 +301,11 @@ func vipKeywords(file *ast.SourceFile, text string, lint bool) []keyword {
 			at = scanner.SkipTrivia(text, at)
 			if strings.HasPrefix(text[at:], "effect") {
 				with := "      "
+				// Removing effect exposes a generator method's star to the previous
+				// class field's initializer. Keep the member boundary during reparse.
+				if node.Kind == ast.KindMethodDeclaration && ast.IsClassLike(node.Parent) && node.BodyData().AsteriskToken != nil && (node.Modifiers() == nil || len(node.Modifiers().Nodes) == 0) {
+					with = ";     "
+				}
 				if body := node.Body(); ast.IsArrowFunction(node) && body != nil && ast.IsBlock(body) && len(node.Parameters()) == 0 && scanner.SkipTrivia(text, at+len("effect")) == scanner.SkipTrivia(text, body.Pos()) {
 					with = "()=>  " // effect { … }: the parser's arrow has no => of its own
 					if lint {

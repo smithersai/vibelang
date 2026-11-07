@@ -1,0 +1,18 @@
+// rule-evidence: docs/design/vips/0040-module-declarations.md#f8a32a3ac4cf66c4
+// VIP-40, emit: It keeps `a`–`z`, `0`–`9` and `_`, and writes every other code point as `-`, its code point in lowercase hexadecimal without leading zeros, and `-` (`Text` → `-54-ext`, `Über` → `-dc-ber`, `$x` → `-24-x`).
+// rule-evidence: docs/design/vips/0040-module-declarations.md#1327103670ae08b1
+// VIP-40, emit: The output stem is the source file's full basename, including `.vibe` or `.vibex`, followed by `.` and the encoded name: `main.vibe.-dc-ber` or `main.vibex.-dc-ber`.
+// rule-evidence: docs/design/vips/0040-module-declarations.md#9179442f30e5f845
+// VIP-40, emit: The canonical stem also gives `main.vibex.parse.d.ts` and `main.vibe.-dc-ber.d.ts` for the examples above.
+// app/main.vibex holds the .vibex half; run.mjs checks every output name.
+module Text { export const n = 1 }
+module Über { export const n = 2 }
+module $x { export const n = 3 }
+module snake_case9 { export const n = 4 }
+
+import { n as a } from Text
+import { n as b } from Über
+import { n as c } from $x
+import { n as d } from snake_case9
+
+export const result = [a, b, c, d]

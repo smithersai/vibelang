@@ -1,5 +1,7 @@
 # Format with dprint
 
+An explicit file path or glob pattern that matches no files makes the format command fail before writing any files. Check the spelling and quote glob patterns so the formatter receives them intact. Running without paths may find no files and succeed.
+
 [dprint](https://dprint.dev) formats `.vibe` files through the `vibelang` package's dprint plugin. The plugin writes each `.vibe` file as TypeScript, has dprint's TypeScript plugin format it, and writes the result back as VibeLang, so `.vibe` and `.ts` files follow the same `typescript` settings of the project's dprint configuration. Install the packages with [Add VibeLang to an existing project](existing-project.md) first.
 
 ![vibelang format with dprint](/videos/eco-format.mp4)
@@ -35,6 +37,8 @@ Add `vibe` to `includes` and the plugin `npm:vibelang/dprint-plugin.json` to `pl
 
 dprint finds the plugin in `node_modules/vibelang` from `dprint.json`'s directory, so the configuration needs no checksum for it. The plugin's executable is the native compiler: the manifest names the platform package that holds it, such as `vibelang-linux-x64`, with that package's tarball checksum; dprint downloads the tarball from the npm registry once, checks it, and caches it. List the TypeScript plugin too: the VibeLang plugin formats with it. The VibeLang plugin has no settings; put style settings under `typescript`.
 
+If your project requires a checksum on every plugin, keep its pinned plugin list and run `vibelang-format --write` after `dprint fmt`, or `vibelang-format --check` after `dprint check`. Migration setup wires these commands automatically. If no plugins are configured, it supplies a pinned TypeScript plugin and uses the same command pair. When rerun after an older setup, it removes the old `npm:vibelang/dprint-plugin.json` entry and preserves the pinned plugins and their order.
+
 ## 3. Format and check
 
 ```sh
@@ -54,6 +58,8 @@ npx vibelang format --write src/view.tsx
 ```
 
 Default discovery includes marked `.tsx` files as well as the other marked TypeScript extensions and `.vibe`/`.vibex` files. `--check` exits with status `1` when formatting is needed and writes nothing; `--write` updates the selected files. Unmarked TypeScript files remain unchanged, including explicit paths.
+
+For `vibelang format` and `vibelang-format`, an explicit path to an existing file selects that file before interpreting glob characters. This includes bracketed route folders. Quote a path such as `vibelang-format --write 'src/[id]/page.vibe'` to pass it unchanged through the shell. A pattern with no literal file of that name still expands to matching files, and discovery exclusions still apply.
 
 ## What the formatter changes
 
@@ -111,6 +117,8 @@ The plugin reports the file and leaves it unchanged when:
 
 This check also covers ordinary `/* @internal */` comments on fields, methods and accessors. Parameter comments follow the compiler's parameter attachment rules; a line break that keeps the same meaning can still format.
 
+The formatter commands and `formatSource` include the original file path before a formatting failure, including an error from dprint that names no file. Marked TypeScript files retain their written `.ts`, `.tsx`, `.mts` or `.cts` path in the message. A refused file keeps its original bytes.
+
 Comments between ordinary TypeScript `try`/`catch`/`finally` clauses are supported and follow dprint’s TypeScript formatting.
 
 Comments between `catch` and its literal handler are preserved, including line comments.
@@ -128,9 +136,11 @@ Files containing the Unicode line and paragraph separators, `U+2028` and `U+2029
 
 VibeLang has one formatter (VIP-34). A JSDoc comment before a parenthesized assignment stays attached to that expression; an automatically inserted `;` does not take the comment.
 
-The language server's `textDocument/formatting`, `textDocument/rangeFormatting` and `textDocument/onTypeFormatting` requests format the current editor text, saved or not, through the same formatter as `vibelang format`, `vibelang-format` and `vibelang/prettier`. All of them read the nearest Oxfmt, Prettier or dprint configuration for the file's quote style and print width ([Developer tools](developer-tools.md)), and the package supplies the VibeLang plugin itself; without a configuration they use double quotes and width 120. A file the formatter refuses is left as it is and the editor shows the error.
+The language server's `textDocument/formatting`, `textDocument/rangeFormatting` and `textDocument/onTypeFormatting` requests format the current editor text, saved or not, through the same formatter as `vibelang format`, `vibelang-format` and `vibelang/prettier`. All of them read the nearest Oxfmt, Prettier or dprint configuration for the file's quote style and print width ([Developer tools](developer-tools.md)), and the package supplies the VibeLang plugin itself; without a configuration they use double quotes and width 120. The formatter resolves the installed package’s plugin from the package itself, including when the editor’s working directory is outside the project. A file the formatter refuses is left as it is and the editor shows the error.
 
-`vibelang format --write` formats `.vibe` and `.vibex` files with the shared formatter; `vibelang format --check` reports files that need formatting without writing them. `vibelang format --help` lists the options. Both accept file paths or glob patterns. Both run dprint once per quote style, width and core, over all the selected files, and remember the file contents dprint left unchanged, so a check of a clean tree starts no dprint. `VIBELANG_DISABLE_CACHE=1` turns that memory off and `VIBELANG_CACHE_DIR` moves it, as for the compile cache.
+`vibelang format --write` formats `.vibe` and `.vibex` files with the shared formatter; `vibelang format --check` reports files that need formatting without writing them. `vibelang format --help` lists the options. Both accept file paths or glob patterns. Both batch `.vibe`, `.vibex` and marked TypeScript files with dprint once per quote style, width and core, and remember the file contents dprint left unchanged, so a check of a clean tree starts no dprint. `VIBELANG_DISABLE_CACHE=1` turns that memory off and `VIBELANG_CACHE_DIR` moves it, as for the compile cache. Cached checks validate each file's syntax kind, so clean plain VibeLang cannot hide a JSX error in a `.vibex` or marked `.tsx` file.
+
+Both formatting commands report missing explicit files, unmatched explicit glob patterns, unknown options and conflicting `--check` and `--write` modes before changing any file. A default scan with no matching source files succeeds. Use `--` before paths that begin with `-`. The companion's `vibelang-format --help` lists the same options.
 
 ## Prettier, Oxfmt and migration
 

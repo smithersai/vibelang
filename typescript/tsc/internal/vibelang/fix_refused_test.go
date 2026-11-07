@@ -24,6 +24,7 @@ import (
 // fails to compile until it is migrated by hand; the owner removes the
 // setting when a run refuses none. A second run does not write it twice.
 // Chapter 007 / refused legacy run sites receive a documented failing severity: docs/design/src/007-tooling.md#d5b818651d984d56
+// Appendix B: EK4802 refusal severity — spec-rule: docs/design/src/900-appendices.md#048b7ad9fa0e5511
 func TestFixVIPRefusalFailsAndMakesEK4802AnError(t *testing.T) {
 	source := legacyRunsPrelude + "effect function f() {\n  return [1].map((n) => {\n    load(n)\n    return n\n  })\n}\n"
 	_, file, _, _ := editorProgram(t, source)
@@ -43,6 +44,7 @@ func TestFixVIPRefusalFailsAndMakesEK4802AnError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#10b8a597b9ef26f4 | **Amended 2026-11-01, extended 2026-11-03 for VIP-38’s config migration: which files `--fix` writes.** A run writes only its selected project's owned `.vibe`/`.vibex` program sources, including imported owned sources excluded from root discovery, and owned configs for the named legacy-severity, retired-`declarationSidecars` and VIP-38 `EK3012` plugin-entry codemods and VIP-1's `--fix-vip-only` `EK4802` severity override.
 	if !strings.Contains(string(config), `"EK4802": "error"`) || !strings.Contains(string(config), "// vibelang --fix-vip-only refused 1 call that may have run before VIP-1") {
 		t.Fatalf("tsconfig.json:\n%s", config)
 	}

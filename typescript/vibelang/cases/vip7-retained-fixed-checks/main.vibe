@@ -1,0 +1,172 @@
+// rule-evidence: docs/design/vips/0007-match.md#decision
+// VIP-7: the retained fixed checks cover every public effect/… module. Effect
+// 4.1.1 adds effect/jose, whose JoseError is a tagged error with the guard
+// isJoseError, so the inventory holds 40 fixed checks, 34 of them tagged errors.
+// Each tagged pattern agrees with its module's guard and extracts [s]; a bare
+// _tag copy matches none. The six Option, Exit and Result variants extract
+// their fields.
+// expect-result: {"tagged":34,"variants":6,"misses":[]}
+import * as M_ai_AiError from "effect/ai/AiError"
+import * as M_Cause from "effect/Cause"
+import * as M_http_Cookies from "effect/http/Cookies"
+import * as M_Cron from "effect/Cron"
+import * as M_crypto_CryptoError from "effect/crypto/CryptoError"
+import * as M_encoding_Csv from "effect/encoding/Csv"
+import * as M_socket_DatagramSocket from "effect/socket/DatagramSocket"
+import * as M_encoding_EncodingError from "effect/encoding/EncodingError"
+import * as M_graphql_GraphQLClientError from "effect/graphql/GraphQLClientError"
+import * as M_http_Headers from "effect/http/Headers"
+import * as M_http_HttpBody from "effect/http/HttpBody"
+import * as M_http_HttpClientError from "effect/http/HttpClientError"
+import * as M_http_HttpServerError from "effect/http/HttpServerError"
+import * as M_jose_JoseError from "effect/jose/JoseError"
+import * as M_encoding_JsonArray from "effect/encoding/JsonArray"
+import * as M_ai_McpClientError from "effect/ai/McpClientError"
+import * as M_http_Multipart from "effect/http/Multipart"
+import * as M_encoding_Ndjson from "effect/encoding/Ndjson"
+import * as M_PlatformError from "effect/PlatformError"
+import * as M_Terminal from "effect/Terminal"
+import * as M_Schema from "effect/Schema"
+import * as M_SemVer from "effect/SemVer"
+import * as M_socket_Socket from "effect/socket/Socket"
+import * as M_sql_SqlError from "effect/sql/SqlError"
+import * as M_encoding_Tar from "effect/encoding/Tar"
+import * as M_TextDiff from "effect/TextDiff"
+import * as M_workers_WorkerError from "effect/workers/WorkerError"
+import * as M_encoding_Xml from "effect/encoding/Xml"
+import * as M_encoding_Zip from "effect/encoding/Zip"
+
+const misses: string[] = []
+function check(name: string, guard: boolean, extracted: boolean, bare: boolean): number {
+  if (guard && extracted && !bare) return 1
+  misses.push(name)
+  return 0
+}
+
+function tagged(): number {
+  let n = 0
+  const cAiError = { _tag: "AiError", ["~effect/ai/AiError"]: "~effect/ai/AiError" }
+  const bAiError: unknown = { _tag: "AiError" }
+  n += check("AiError", M_ai_AiError.isAiError(cAiError), match (cAiError) { when M_ai_AiError.AiError(let e): e === cAiError; default: false; }, match (bAiError) { when M_ai_AiError.AiError: true; default: false; })
+  const cAsyncFiberError = { _tag: "AsyncFiberError", ["~effect/Cause/AsyncFiberError"]: "~effect/Cause/AsyncFiberError" }
+  const bAsyncFiberError: unknown = { _tag: "AsyncFiberError" }
+  n += check("AsyncFiberError", M_Cause.isAsyncFiberError(cAsyncFiberError), match (cAsyncFiberError) { when M_Cause.AsyncFiberError(let e): e === cAsyncFiberError; default: false; }, match (bAsyncFiberError) { when M_Cause.AsyncFiberError: true; default: false; })
+  const cCookiesError = { _tag: "CookiesError", ["~effect/http/Cookies/CookieError"]: "~effect/http/Cookies/CookieError" }
+  const bCookiesError: unknown = { _tag: "CookiesError" }
+  n += check("CookiesError", M_http_Cookies.isCookiesError(cCookiesError), match (cCookiesError) { when M_http_Cookies.CookiesError(let e): e === cCookiesError; default: false; }, match (bCookiesError) { when M_http_Cookies.CookiesError: true; default: false; })
+  const cCronParseError = { _tag: "CronParseError", ["~effect/Cron/CronParseError"]: "~effect/Cron/CronParseError" }
+  const bCronParseError: unknown = { _tag: "CronParseError" }
+  n += check("CronParseError", M_Cron.isCronParseError(cCronParseError), match (cCronParseError) { when M_Cron.CronParseError(let e): e === cCronParseError; default: false; }, match (bCronParseError) { when M_Cron.CronParseError: true; default: false; })
+  const cCryptoError = { _tag: "CryptoError", ["~effect/crypto/CryptoError"]: "~effect/crypto/CryptoError" }
+  const bCryptoError: unknown = { _tag: "CryptoError" }
+  n += check("CryptoError", M_crypto_CryptoError.isCryptoError(cCryptoError), match (cCryptoError) { when M_crypto_CryptoError.CryptoError(let e): e === cCryptoError; default: false; }, match (bCryptoError) { when M_crypto_CryptoError.CryptoError: true; default: false; })
+  const cCsvError = { _tag: "CsvError", ["~effect/encoding/Csv/CsvError"]: "~effect/encoding/Csv/CsvError" }
+  const bCsvError: unknown = { _tag: "CsvError" }
+  n += check("CsvError", M_encoding_Csv.isCsvError(cCsvError), match (cCsvError) { when M_encoding_Csv.CsvError(let e): e === cCsvError; default: false; }, match (bCsvError) { when M_encoding_Csv.CsvError: true; default: false; })
+  const cDatagramSocketError = { _tag: "DatagramSocketError", ["~effect/socket/DatagramSocket/DatagramSocketError"]: "~effect/socket/DatagramSocket/DatagramSocketError" }
+  const bDatagramSocketError: unknown = { _tag: "DatagramSocketError" }
+  n += check("DatagramSocketError", M_socket_DatagramSocket.isDatagramSocketError(cDatagramSocketError), match (cDatagramSocketError) { when M_socket_DatagramSocket.DatagramSocketError(let e): e === cDatagramSocketError; default: false; }, match (bDatagramSocketError) { when M_socket_DatagramSocket.DatagramSocketError: true; default: false; })
+  const cEncodingError = { _tag: "EncodingError", ["~effect/encoding/EncodingError"]: "~effect/encoding/EncodingError" }
+  const bEncodingError: unknown = { _tag: "EncodingError" }
+  n += check("EncodingError", M_encoding_EncodingError.isEncodingError(cEncodingError), match (cEncodingError) { when M_encoding_EncodingError.EncodingError(let e): e === cEncodingError; default: false; }, match (bEncodingError) { when M_encoding_EncodingError.EncodingError: true; default: false; })
+  const cExceededCapacityError = { _tag: "ExceededCapacityError", ["~effect/Cause/ExceededCapacityError"]: "~effect/Cause/ExceededCapacityError" }
+  const bExceededCapacityError: unknown = { _tag: "ExceededCapacityError" }
+  n += check("ExceededCapacityError", M_Cause.isExceededCapacityError(cExceededCapacityError), match (cExceededCapacityError) { when M_Cause.ExceededCapacityError(let e): e === cExceededCapacityError; default: false; }, match (bExceededCapacityError) { when M_Cause.ExceededCapacityError: true; default: false; })
+  const cGraphQLClientError = { _tag: "GraphQLClientError", ["~effect/graphql/GraphQLClientError"]: "~effect/graphql/GraphQLClientError" }
+  const bGraphQLClientError: unknown = { _tag: "GraphQLClientError" }
+  n += check("GraphQLClientError", M_graphql_GraphQLClientError.isGraphQLClientError(cGraphQLClientError), match (cGraphQLClientError) { when M_graphql_GraphQLClientError.GraphQLClientError(let e): e === cGraphQLClientError; default: false; }, match (bGraphQLClientError) { when M_graphql_GraphQLClientError.GraphQLClientError: true; default: false; })
+  const cHeaderParseError = { _tag: "HeaderParseError", ["~effect/http/Headers/HeaderParseError"]: "~effect/http/Headers/HeaderParseError" }
+  const bHeaderParseError: unknown = { _tag: "HeaderParseError" }
+  n += check("HeaderParseError", M_http_Headers.isHeaderParseError(cHeaderParseError), match (cHeaderParseError) { when M_http_Headers.HeaderParseError(let e): e === cHeaderParseError; default: false; }, match (bHeaderParseError) { when M_http_Headers.HeaderParseError: true; default: false; })
+  const cHttpBodyError = { _tag: "HttpBodyError", ["~effect/http/HttpBody/HttpBodyError"]: "~effect/http/HttpBody/HttpBodyError" }
+  const bHttpBodyError: unknown = { _tag: "HttpBodyError" }
+  n += check("HttpBodyError", M_http_HttpBody.isHttpBodyError(cHttpBodyError), match (cHttpBodyError) { when M_http_HttpBody.HttpBodyError(let e): e === cHttpBodyError; default: false; }, match (bHttpBodyError) { when M_http_HttpBody.HttpBodyError: true; default: false; })
+  const cHttpClientError = { _tag: "HttpClientError", ["~effect/http/HttpClientError"]: "~effect/http/HttpClientError" }
+  const bHttpClientError: unknown = { _tag: "HttpClientError" }
+  n += check("HttpClientError", M_http_HttpClientError.isHttpClientError(cHttpClientError), match (cHttpClientError) { when M_http_HttpClientError.HttpClientError(let e): e === cHttpClientError; default: false; }, match (bHttpClientError) { when M_http_HttpClientError.HttpClientError: true; default: false; })
+  const cHttpServerError = { _tag: "HttpServerError", ["~effect/http/HttpServerError"]: "~effect/http/HttpServerError" }
+  const bHttpServerError: unknown = { _tag: "HttpServerError" }
+  n += check("HttpServerError", M_http_HttpServerError.isHttpServerError(cHttpServerError), match (cHttpServerError) { when M_http_HttpServerError.HttpServerError(let e): e === cHttpServerError; default: false; }, match (bHttpServerError) { when M_http_HttpServerError.HttpServerError: true; default: false; })
+  const cIllegalArgumentError = { _tag: "IllegalArgumentError", ["~effect/Cause/IllegalArgumentError"]: "~effect/Cause/IllegalArgumentError" }
+  const bIllegalArgumentError: unknown = { _tag: "IllegalArgumentError" }
+  n += check("IllegalArgumentError", M_Cause.isIllegalArgumentError(cIllegalArgumentError), match (cIllegalArgumentError) { when M_Cause.IllegalArgumentError(let e): e === cIllegalArgumentError; default: false; }, match (bIllegalArgumentError) { when M_Cause.IllegalArgumentError: true; default: false; })
+  const cJoseError = { _tag: "JoseError", ["~effect/jose/JoseError"]: "~effect/jose/JoseError" }
+  const bJoseError: unknown = { _tag: "JoseError" }
+  n += check("JoseError", M_jose_JoseError.isJoseError(cJoseError), match (cJoseError) { when M_jose_JoseError.JoseError(let e): e === cJoseError; default: false; }, match (bJoseError) { when M_jose_JoseError.JoseError: true; default: false; })
+  const cJsonArrayError = { _tag: "JsonArrayError", ["~effect/encoding/JsonArray/JsonArrayError"]: "~effect/encoding/JsonArray/JsonArrayError" }
+  const bJsonArrayError: unknown = { _tag: "JsonArrayError" }
+  n += check("JsonArrayError", M_encoding_JsonArray.isJsonArrayError(cJsonArrayError), match (cJsonArrayError) { when M_encoding_JsonArray.JsonArrayError(let e): e === cJsonArrayError; default: false; }, match (bJsonArrayError) { when M_encoding_JsonArray.JsonArrayError: true; default: false; })
+  const cMcpClientError = { _tag: "McpClientError", ["~effect/ai/McpClientError"]: "~effect/ai/McpClientError" }
+  const bMcpClientError: unknown = { _tag: "McpClientError" }
+  n += check("McpClientError", M_ai_McpClientError.isMcpClientError(cMcpClientError), match (cMcpClientError) { when M_ai_McpClientError.McpClientError(let e): e === cMcpClientError; default: false; }, match (bMcpClientError) { when M_ai_McpClientError.McpClientError: true; default: false; })
+  const cMultipartError = { _tag: "MultipartError", ["~effect/http/Multipart/MultipartError"]: "~effect/http/Multipart/MultipartError" }
+  const bMultipartError: unknown = { _tag: "MultipartError" }
+  n += check("MultipartError", M_http_Multipart.isMultipartError(cMultipartError), match (cMultipartError) { when M_http_Multipart.MultipartError(let e): e === cMultipartError; default: false; }, match (bMultipartError) { when M_http_Multipart.MultipartError: true; default: false; })
+  const cNdjsonError = { _tag: "NdjsonError", ["~effect/encoding/Ndjson/NdjsonError"]: "~effect/encoding/Ndjson/NdjsonError" }
+  const bNdjsonError: unknown = { _tag: "NdjsonError" }
+  n += check("NdjsonError", M_encoding_Ndjson.isNdjsonError(cNdjsonError), match (cNdjsonError) { when M_encoding_Ndjson.NdjsonError(let e): e === cNdjsonError; default: false; }, match (bNdjsonError) { when M_encoding_Ndjson.NdjsonError: true; default: false; })
+  const cNoSuchElementError = { _tag: "NoSuchElementError", ["~effect/Cause/NoSuchElementError"]: "~effect/Cause/NoSuchElementError" }
+  const bNoSuchElementError: unknown = { _tag: "NoSuchElementError" }
+  n += check("NoSuchElementError", M_Cause.isNoSuchElementError(cNoSuchElementError), match (cNoSuchElementError) { when M_Cause.NoSuchElementError(let e): e === cNoSuchElementError; default: false; }, match (bNoSuchElementError) { when M_Cause.NoSuchElementError: true; default: false; })
+  const cPlatformError = { _tag: "PlatformError", ["~effect/PlatformError"]: "~effect/PlatformError" }
+  const bPlatformError: unknown = { _tag: "PlatformError" }
+  n += check("PlatformError", M_PlatformError.isPlatformError(cPlatformError), match (cPlatformError) { when M_PlatformError.PlatformError(let e): e === cPlatformError; default: false; }, match (bPlatformError) { when M_PlatformError.PlatformError: true; default: false; })
+  const cQuitError = { _tag: "QuitError", ["~effect/Terminal/QuitError"]: "~effect/Terminal/QuitError" }
+  const bQuitError: unknown = { _tag: "QuitError" }
+  n += check("QuitError", M_Terminal.isQuitError(cQuitError), match (cQuitError) { when M_Terminal.QuitError(let e): e === cQuitError; default: false; }, match (bQuitError) { when M_Terminal.QuitError: true; default: false; })
+  const cSchemaError = { _tag: "SchemaError", ["~effect/Schema/SchemaError"]: "~effect/Schema/SchemaError" }
+  const bSchemaError: unknown = { _tag: "SchemaError" }
+  n += check("SchemaError", M_Schema.isSchemaError(cSchemaError), match (cSchemaError) { when M_Schema.SchemaError(let e): e === cSchemaError; default: false; }, match (bSchemaError) { when M_Schema.SchemaError: true; default: false; })
+  const cSemVerError = { _tag: "SemVerError", ["~effect/SemVer/SemVerError"]: "~effect/SemVer/SemVerError" }
+  const bSemVerError: unknown = { _tag: "SemVerError" }
+  n += check("SemVerError", M_SemVer.isSemVerError(cSemVerError), match (cSemVerError) { when M_SemVer.SemVerError(let e): e === cSemVerError; default: false; }, match (bSemVerError) { when M_SemVer.SemVerError: true; default: false; })
+  const cSocketError = { _tag: "SocketError", ["~effect/socket/Socket/SocketError"]: "~effect/socket/Socket/SocketError" }
+  const bSocketError: unknown = { _tag: "SocketError" }
+  n += check("SocketError", M_socket_Socket.isSocketError(cSocketError), match (cSocketError) { when M_socket_Socket.SocketError(let e): e === cSocketError; default: false; }, match (bSocketError) { when M_socket_Socket.SocketError: true; default: false; })
+  const cSqlError = { _tag: "SqlError", ["~effect/sql/SqlError"]: "~effect/sql/SqlError" }
+  const bSqlError: unknown = { _tag: "SqlError" }
+  n += check("SqlError", M_sql_SqlError.isSqlError(cSqlError), match (cSqlError) { when M_sql_SqlError.SqlError(let e): e === cSqlError; default: false; }, match (bSqlError) { when M_sql_SqlError.SqlError: true; default: false; })
+  const cTarError = { _tag: "TarError", ["~effect/encoding/Tar/TarError"]: "~effect/encoding/Tar/TarError" }
+  const bTarError: unknown = { _tag: "TarError" }
+  n += check("TarError", M_encoding_Tar.isTarError(cTarError), match (cTarError) { when M_encoding_Tar.TarError(let e): e === cTarError; default: false; }, match (bTarError) { when M_encoding_Tar.TarError: true; default: false; })
+  const cTextDiffError = { _tag: "TextDiffError", ["~effect/TextDiff/TextDiffError"]: "~effect/TextDiff/TextDiffError" }
+  const bTextDiffError: unknown = { _tag: "TextDiffError" }
+  n += check("TextDiffError", M_TextDiff.isTextDiffError(cTextDiffError), match (cTextDiffError) { when M_TextDiff.TextDiffError(let e): e === cTextDiffError; default: false; }, match (bTextDiffError) { when M_TextDiff.TextDiffError: true; default: false; })
+  const cTimeoutError = { _tag: "TimeoutError", ["~effect/Cause/TimeoutError"]: "~effect/Cause/TimeoutError" }
+  const bTimeoutError: unknown = { _tag: "TimeoutError" }
+  n += check("TimeoutError", M_Cause.isTimeoutError(cTimeoutError), match (cTimeoutError) { when M_Cause.TimeoutError(let e): e === cTimeoutError; default: false; }, match (bTimeoutError) { when M_Cause.TimeoutError: true; default: false; })
+  const cUnknownError = { _tag: "UnknownError", ["~effect/Cause/UnknownError"]: "~effect/Cause/UnknownError" }
+  const bUnknownError: unknown = { _tag: "UnknownError" }
+  n += check("UnknownError", M_Cause.isUnknownError(cUnknownError), match (cUnknownError) { when M_Cause.UnknownError(let e): e === cUnknownError; default: false; }, match (bUnknownError) { when M_Cause.UnknownError: true; default: false; })
+  const cWorkerError = { _tag: "WorkerError", ["~effect/workers/WorkerError"]: "~effect/workers/WorkerError" }
+  const bWorkerError: unknown = { _tag: "WorkerError" }
+  n += check("WorkerError", M_workers_WorkerError.isWorkerError(cWorkerError), match (cWorkerError) { when M_workers_WorkerError.WorkerError(let e): e === cWorkerError; default: false; }, match (bWorkerError) { when M_workers_WorkerError.WorkerError: true; default: false; })
+  const cXmlError = { _tag: "XmlError", ["~effect/encoding/Xml/XmlError"]: "~effect/encoding/Xml/XmlError" }
+  const bXmlError: unknown = { _tag: "XmlError" }
+  n += check("XmlError", M_encoding_Xml.isXmlError(cXmlError), match (cXmlError) { when M_encoding_Xml.XmlError(let e): e === cXmlError; default: false; }, match (bXmlError) { when M_encoding_Xml.XmlError: true; default: false; })
+  const cZipError = { _tag: "ZipError", ["~effect/encoding/Zip/ZipError"]: "~effect/encoding/Zip/ZipError" }
+  const bZipError: unknown = { _tag: "ZipError" }
+  n += check("ZipError", M_encoding_Zip.isZipError(cZipError), match (cZipError) { when M_encoding_Zip.ZipError(let e): e === cZipError; default: false; }, match (bZipError) { when M_encoding_Zip.ZipError: true; default: false; })
+  return n
+}
+
+function variants(): number {
+  const some: unknown = Option.some(1)
+  const none: unknown = Option.none()
+  const success: unknown = Exit.succeed(2)
+  const failure: unknown = Exit.fail("e")
+  const ok: unknown = Result.succeed(3)
+  const bad: unknown = Result.fail("f")
+  return [
+    match (some) { when Option.Some(let v): v === 1; default: false; },
+    match (none) { when Option.None(): true; default: false; },
+    match (success) { when Exit.Success(let v): v === 2; default: false; },
+    match (failure) { when Exit.Failure(let cause): Cause.isCause(cause); default: false; },
+    match (ok) { when Result.Success(let v): v === 3; default: false; },
+    match (bad) { when Result.Failure(let e): e === "f"; default: false; },
+  ].filter((x) => x).length
+}
+
+export effect function main() {
+  return { tagged: tagged(), variants: variants(), misses }
+}

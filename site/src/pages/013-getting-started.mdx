@@ -9,7 +9,7 @@ Create a project, run it, test it, and find the guide you need. [Welcome](/001-o
 
 ## Create and run a project
 
-You need Node 22.22.3 or later. Bun is optional, at 1.4 or later.
+You need Node `22.22.3` (`22.x`) or Node `24.11.1` or later. Bun is optional, at 1.4 or later.
 
 ```sh
 npm create vibelang@latest my-app
@@ -36,7 +36,7 @@ Recovered from EmptyName
 
 `src/greeting.vibe` declares an `EmptyName` error and a `greeting` function that fails with it. `src/main.vibe` declares a `Greeter` service, supplies it with a `Layer.succeed` layer, looks it up with `const greeter = try Greeter`, recovers from the typed failure with a `catch effect` handler, and runs `main` with `NodeRuntime.runMain` at the top of the module. `src/greeting.test.vibe` tests both paths with `it.effect`. Vitest compiles `src/**/*.test.vibe` through `vibelang-vite`, so the tests need no build step.
 
-`npm run dev` (or `bun run dev`) recompiles on every change and restarts Node when the output changes. Ctrl+C stops both watchers.
+`npm run dev` (or `bun run dev`) waits until the compiler is watching before starting Node, then recompiles on every change and restarts Node when the output changes. Ctrl+C stops both watchers.
 
 ## Your first program
 

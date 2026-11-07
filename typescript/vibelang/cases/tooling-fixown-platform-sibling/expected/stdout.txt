@@ -1,0 +1,1 @@
+only the platform repair writes a fresh sibling .ts, never over an existing file

@@ -1,0 +1,27 @@
+// expect: TS2454 TS2454 TS2448 TS2454 TS2454
+// rule-evidence: docs/design/src/004-match.md#is-expressions | A read on a path where the binding may not have run, because short-circuiting skipped it or the pattern failed before reaching it, follows TypeScript’s definite-assignment checks (`TS2454`), including its exemptions for `any`, `unknown`, `void` and types containing `undefined`; a read before the binding's position in its scope is `TS2448`.
+// rule-evidence: docs/design/src/004-match.md#is-expressions | In `for (init; test; update)`, a direct read in `update` of a binding from `test` follows the same type-dependent `TS2454` checks: `update` starts in a fresh iteration environment before the `test` that initializes that cell.
+// Each checked read below is TS2454 or TS2448; each exempt read compiles, as
+// the same read of a `let` does in the TypeScript twin.
+
+// Short-circuiting skipped the binding.
+export function skippedNumber(a: boolean, s: number) { if (a || (s is let n)) return n; return 0 }
+export function skippedAny(a: boolean, s: any) { if (a || (s is let n)) return n; return 0 }
+export function skippedUnknown(a: boolean, s: unknown) { if (a || (s is let n)) return n; return 0 }
+export function skippedVoid(a: boolean, s: void) { if (a || (s is let n)) return n; return undefined }
+export function skippedOptional(a: boolean, s: number | undefined) { if (a || (s is let n)) return n; return 0 }
+
+// The pattern failed before reaching the binding.
+export function failedNumber(s: [number, number]) { if (s is [1, let v]) {} return v }
+export function failedAny(s: [number, any]) { if (s is [1, let v]) {} return v }
+export function failedUnknown(s: [number, unknown]) { if (s is [1, let v]) {} return v }
+export function failedVoid(s: [number, void]) { if (s is [1, let v]) {} return v }
+export function failedOptional(s: [number, string | undefined]) { if (s is [1, let v]) {} return v }
+
+// A read before the binding's position in its scope.
+export function before(s: number) { const early = n; const ok = s is let n; return [ok, early] }
+
+// A test binding read directly in the update.
+export function updateNumber(it: Iterator<number>) { let total = 0; for (; it.next() is { done: false, value: let v }; total += v) {} return total }
+export function updateUnknown(it: Iterator<unknown>) { const seen: unknown[] = []; for (; it.next() is { done: false, value: let v }; seen.push(v)) {} return seen }
+export function updateOptional(it: Iterator<number | undefined>) { const seen: unknown[] = []; for (; it.next() is { done: false, value: let v }; seen.push(v)) {} return seen }

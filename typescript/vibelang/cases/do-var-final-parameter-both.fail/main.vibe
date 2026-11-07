@@ -1,0 +1,5 @@
+// expect: EK0201 EK0203
+// rule-evidence: docs/design/vips/tc39-do-expressions/README.md#d343b586e1079ca5
+// rule-evidence: docs/design/vips/tc39-do-expressions/README.md#variable-statements-at-the-end | For the same declaration, the specific `do` errors replace `EK0107` (VIP-34): a final `var` reports `EK0201`, a `var` in a parameter list reports `EK0203`, and a final `var` in a parameter list reports both.
+// One final var in a parameter list reports both specific errors and no EK0107.
+export function finalInParameter(x = do { var n = 1 }) { return x }

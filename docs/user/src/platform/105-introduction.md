@@ -10,7 +10,7 @@ The restriction covers the whole file: plain and `async` functions, nested callb
 
 For a self-contained wrapper, `vibelang --fix` moves the wrapper into a new sibling `.ts` factory and imports it. The factory builds the Effect at the original call site, so platform work stays deferred until the Effect runs. It keeps the rewrite only when checking succeeds and the public declaration stays identical. When the wrapper reads another binding of the file or `this`, as `Effect.try({ try: () => decrypt(Buffer.from(value)), catch: ... })` does, the wrapper stays and `--fix` moves only the platform code, `Buffer.from(value)`, into a new sibling `.ts` function that takes its arguments as parameters. `--fix-vip-only` does the same for modules that were already converted. An existing foreign module is never overwritten.
 
-The migrate flow moves a direct `import.meta.resolve(specifier)` call into a fresh `<source>.platform.ts` function before renaming the source. The call stays inside its original callback and `try`/`catch`, so captured inputs and deferred execution stay unchanged. A source wildcard export map gains an exact `null` entry for the new helper subpath to keep it private; revert removes that entry. Existing companions, unsupported `import.meta` uses and publication layouts the flow cannot prove safe receive a refusal. `import.meta.url` stays in the original module.
+The migrate flow moves a module's `import.meta` reads into a fresh `<source>.platform.ts` companion before renaming the source. A direct `import.meta.resolve` call with one or two arguments calls a companion function instead. Its arguments stay where they were, inside the original callback and `try`/`catch`, so captured inputs and deferred execution stay unchanged. `import.meta.filename` and `import.meta.dirname` become companion calls that receive the module's own `import.meta.url`, so they still name the module, and they stay `undefined` for a URL other than `file:`, as in Node.js. `import.meta.env` becomes a companion call that returns the build's environment. Code that reads `import.meta.filename` or `import.meta.dirname` never moves into the companion itself, where it would name the companion. A source wildcard export map gains an exact `null` entry for the new helper subpath to keep it private; revert removes that entry. Existing companions, `import.meta.main`, writes to `import.meta` members, other unsupported `import.meta` uses and publication layouts the flow cannot prove safe receive a refusal. `import.meta.url` stays in the original module. Code that reaches the platform and reads `import.meta.url` stays in the module too: only its host calls and reads move, so `import.meta.url` still names the module.
 
 Platform repairs from one source share one fresh `<source>.platform.ts` companion. Explicit `sync` inputs stay evaluated at the original call site, in order; the callback still runs only when its Effect runs. A callback that captures other bindings or a lexical receiver keeps the existing preservation checks, and an existing foreign module is never rewritten. During migration, host access inside formerly accepted boundary callbacks reports an `EK4402` warning; `--fix` and `--fix-migration-only` can repair explicit-input writes and deletes such as restoring `process.env`. Unwrapped host access remains an error.
 
@@ -63,7 +63,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 | `process.cwd` | `(try Path.Path).resolve()` | `NodeServices.layer` |
 | `child_process.execFileSync` | `try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))` | `NodeServices.layer` |
 | `fetch` | `try HttpClient.get(url)` | `FetchHttpClient.layer` |
-| `http.createServer` | `try HttpRouter.serve(app)` | `ExperimentalNodeHttpServer.layer({ port })` |
+| `http.createServer` | `try Layer.launch(HttpRouter.serve(app))` | `ExperimentalNodeHttpServer.layer({ port })` |
 | `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` | `NodeCrypto.layer` |
 | `crypto.subtle.digest` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` | `NodeCrypto.layer` |
 | `process.argv.slice(2)` | `try (try Stdio.Stdio).args` | `NodeServices.layer` |
@@ -82,6 +82,8 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 | `Math.random` | `try Random.next` | none |
 
 `try (try FileSystem.FileSystem).readFile(path)` returns bytes, as Node’s default `fs.readFile` does. For UTF-8 text, use `try (try FileSystem.FileSystem).readFileString(path)`, corresponding to `fs.readFile(path, "utf8")`.
+
+`HttpRouter.serve(app)` builds a `Layer`. Run it with `try Layer.launch(HttpRouter.serve(app))` to keep the server alive until interruption, and provide the server layer named in the table.
 
 The old `EK4403` is retired: host `performance` and `crypto` reads report `EK4402`, even when a legacy config tries to lower that code. Run native clock Effect values with `try`, and look up `SecureRandom.SecureRandom` before calling its methods.
 
@@ -197,26 +199,26 @@ The entry provides `BunServices.layer` from `@effect/platform-bun`. The same `gr
 
 ## Starting `main` in a browser
 
-Use `@effect/platform-browser`'s `BrowserRuntime.runMain` to start the browser program; the compiled module imports nothing of Node's. A `main` that needs `Experimental.Crypto`, `Experimental.Locks` or `Experimental.MediaQuery` uses `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`. Keep the browser program separate from the module that starts it:
+Use `@effect/platform-browser`'s `BrowserRuntime.runMain` to start the browser program; the compiled module imports nothing of Node's. Provide `BrowserCrypto.layer` for Effect's crypto services. A program that also needs `Experimental.Locks` or `Experimental.MediaQuery` provides `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`. Keep the browser program separate from the module that starts it:
 
 ```vibe
 // app.vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-33
 export effect function main() {
-  const crypto = try Experimental.Crypto
+  const mac = try Mac.Mac
   const encoder = new TextEncoder()
-  const mac = try crypto.hmac("SHA-256", Redacted.make(encoder.encode("key")), encoder.encode("hello"))
-  try Console.log(mac.length)
+  const key = try Mac.key(Mac.hmacSha256, encoder.encode("key"))
+  const tag = try mac.sign(key, encoder.encode("hello"))
+  try Console.log(tag.length)
 }
 ```
 
 ```vibe
 // page.vibe
 import { BrowserRuntime } from "@effect/platform-browser"
-import { ExperimentalBrowserCrypto } from "vibelang-runtime/experimental/platform-browser"
+import * as BrowserCrypto from "@effect/platform-browser/BrowserCrypto"
 import { main } from "./app.vibe"
 
-BrowserRuntime.runMain(Effect.provide(main(), ExperimentalBrowserCrypto.layer))
+BrowserRuntime.runMain(Effect.provide(main(), BrowserCrypto.layer))
 ```
 
 The page loads `page.vibe`'s JavaScript as a module script, bundled or not, and the runner call at its top level starts `main`, as a top-level runner call does in any module. `BrowserRuntime.runMain` interrupts `main` when the page is discarded.

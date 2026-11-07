@@ -18,16 +18,19 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
-func runLSP(args []string) int {
-	flag := flag.NewFlagSet("lsp", flag.ContinueOnError)
-	stdio := flag.Bool("stdio", false, "use stdio for communication")
-	pprofDir := flag.String("pprofDir", "", "Generate pprof CPU/memory profiles to the given directory.")
-	pipe := flag.String("pipe", "", "use named pipe for communication")
+func runLSP(args []string) (status int) {
+	flags := flag.NewFlagSet("lsp", flag.ContinueOnError)
+	stdio := flags.Bool("stdio", false, "use stdio for communication")
+	pprofDir := flags.String("pprofDir", "", "Generate pprof CPU/memory profiles to the given directory.")
+	pipe := flags.String("pipe", "", "Reserved for compatibility; only --stdio is currently supported.")
 	_ = pipe
-	socket := flag.String("socket", "", "use socket for communication")
+	socket := flags.String("socket", "", "Reserved for compatibility; only --stdio is currently supported.")
 	_ = socket
-	clientProcessID := flag.Int("clientProcessId", 0, "use the given PID for the parent process watchdog")
-	if err := flag.Parse(args); err != nil {
+	clientProcessID := flags.Int("clientProcessId", 0, "use the given PID for the parent process watchdog")
+	if err := flags.Parse(args); err != nil {
+		if err == flag.ErrHelp {
+			return 0
+		}
 		return 2
 	}
 
@@ -38,8 +41,19 @@ func runLSP(args []string) int {
 
 	if *pprofDir != "" {
 		fmt.Fprintf(os.Stderr, "pprof profiles will be written to: %v\n", *pprofDir)
-		profileSession := pprof.BeginProfiling(*pprofDir, os.Stderr)
-		defer profileSession.Stop()
+		profileSession, err := pprof.BeginProfiling(*pprofDir, os.Stderr)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "vibelang --lsp: --pprofDir: cannot start profiling: %v\n", err)
+			return 1
+		}
+		defer func() {
+			if err := profileSession.Stop(); err != nil {
+				fmt.Fprintf(os.Stderr, "vibelang --lsp: --pprofDir: cannot write profiles: %v\n", err)
+				if status == 0 {
+					status = 1
+				}
+			}
+		}()
 	}
 
 	fs := bundled.WrapFS(osvfs.FS())

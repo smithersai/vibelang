@@ -668,7 +668,6 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			}
 			result.clauses = append(result.clauses, clause)
 		case p.token == ast.KindOpenBracketToken:
-			keyAnchor := p.tokenRange()
 			p.nextToken()
 			key := p.parseAssignmentExpressionOrHigher()
 			p.parseExpected(ast.KindCloseBracketToken)
@@ -676,10 +675,6 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			var sub *pattern
 			if p.parseOptional(ast.KindColonToken) {
 				sub = p.parseMatchPattern()
-			}
-			if p.cloneIdentExpression(key) == nil && key.Kind != ast.KindStringLiteral && key.Kind != ast.KindNumericLiteral {
-				result.items = append(result.items, &pattern{kind: patternInvalid, anchor: keyAnchor, code: 4704, detail: "A computed key other than a name or a literal"})
-				continue
 			}
 			// A literal key reads the same as a written one, ["a"] as "a".
 			result.clauses = append(result.clauses, objectClause{key: key, computed: !isLiteralKey(key), optional: optional, pattern: sub})
@@ -847,6 +842,12 @@ func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
 	// Keep it when an if/while is turns their declarations into assignments.
 	hoistedDeclaration := hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
 	hoistedDeclaration.AsVariableDeclaration().Type = declaration.Type()
+	if source := p.vibelangMatchKeyTypes[declaration]; source != nil {
+		// An is test can hoist an already-captured key again into its home.
+		// Keep the source type attached to the declaration that binding sees.
+		delete(p.vibelangMatchKeyTypes, declaration)
+		p.recordMatchKeyType(hoistedDeclaration, source)
+	}
 	p.overrideParentInImmediateChildren(hoistedDeclaration)
 	hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangPatternHoist
 	if name.Flags&ast.NodeFlagsReparsed == 0 {
@@ -1239,6 +1240,7 @@ func (p *Parser) freshenVibeLangTemps(file *ast.SourceFile) {
 		names[id.Text()] = true
 	}
 	spelled := map[string]bool{}
+	helperSpelled := map[string]bool{}
 	propertyCaches := map[*ast.Node]*ast.Node{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -1247,6 +1249,22 @@ func (p *Parser) freshenVibeLangTemps(file *ast.SourceFile) {
 		}
 		if ast.IsIdentifier(node) && !temps[node] {
 			spelled[node.Text()] = true
+			// Data helpers occupy a lexical name. Noncomputed member names
+			// and destructuring property selectors do not occupy that scope.
+			memberName := false
+			if node.Parent != nil {
+				switch node.Parent.Kind {
+				case ast.KindPropertyDeclaration, ast.KindPropertySignature,
+					ast.KindMethodDeclaration, ast.KindMethodSignature,
+					ast.KindGetAccessor, ast.KindSetAccessor, ast.KindEnumMember,
+					ast.KindPropertyAssignment, ast.KindPropertyAccessExpression,
+					ast.KindQualifiedName, ast.KindBindingElement, ast.KindImportSpecifier:
+					memberName = ast.IsIdentifierName(node)
+				}
+			}
+			if !memberName {
+				helperSpelled[node.Text()] = true
+			}
 		}
 		node.ForEachChild(visit)
 		return false
@@ -1262,11 +1280,14 @@ func (p *Parser) freshenVibeLangTemps(file *ast.SourceFile) {
 				continue
 			}
 			if strings.HasPrefix(name, "$") && strings.HasSuffix(name, "$Definition") {
+				if !helperSpelled[name] {
+					continue
+				}
 				// Detail83: data helpers use their own first-free suffix, not
 				// the counter shared by match bindings and labels.
 				for suffix := 2; ; suffix++ {
 					fresh = name + "$" + strconv.Itoa(suffix)
-					if !spelled[fresh] && !names[fresh] {
+					if !helperSpelled[fresh] && !names[fresh] {
 						break
 					}
 				}
@@ -1470,13 +1491,13 @@ func (p *Parser) patternKeyType(expr *ast.Node) *ast.Node {
 		index := p.vibelangSynthesized(p.factory.NewLiteralTypeNode(literal), at)
 		return p.vibelangSynthesized(p.factory.NewIndexedAccessTypeNode(p.patternKeyType(expr.Expression()), index), at)
 	}
-	return nil // computed clauses admit only cloneIdentExpression's name shapes
+	return nil // general expressions retain their checker type through source metadata
 }
 
 // capturePatternKey evaluates a computed name and ToPropertyKey once, before
 // the presence test, value read and rest exclusion use it (chapter 004).
-// An explicit type on both a const and its inline hoist prevents unique-symbol
-// widening. The assertion preserves the source key's static indexing checks;
+// An explicit type or the original expression type prevents unique-symbol
+// widening, including after inline hoisting. The source type retains indexing checks;
 // only its runtime representation changes to a string or symbol.
 func (p *Parser) capturePatternKey(clause objectClause, steps *[]matchStep, ctx *matchCompile) objectClause {
 	if !clause.computed {
@@ -1485,12 +1506,36 @@ func (p *Parser) capturePatternKey(clause objectClause, steps *[]matchStep, ctx 
 	at := clause.key.Loc
 	p.vibelangMatchTemps++
 	key := "$matchKey" + strconv.Itoa(p.vibelangMatchTemps)
+	original := clause.key
+	complex := p.cloneIdentExpression(original) == nil
+	if complex {
+		// A readonly tuple retains a call's unique-symbol or literal result.
+		// Its type query also gives the converted scalar a real declaration type,
+		// which TypeScript uses when narrowing discriminated payloads.
+		rawName := key + "Source"
+		array := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(at, []*ast.Node{original}), false), at)
+		constType := p.vibelangSynthesized(p.factory.NewTypeReferenceNode(p.mIdent("const", at), nil), at)
+		tuple := p.vibelangSpanning(p.factory.NewAsExpression(array, constType), at)
+		// Keep inference of a hoisted tuple independent of its assignment target.
+		unknown := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindUnknownKeyword), at)
+		initializer := p.vibelangSpanning(p.factory.NewSatisfiesExpression(tuple, unknown), at)
+		raw := p.mConst(p.mTemp(rawName, at), ast.NodeFlagsConst, initializer, at)
+		typedRaw := raw
+		if ctx.inline {
+			*steps = append(*steps, matchStep{test: p.hoistDeclaration(raw, at)})
+			typedRaw = p.reparseList[len(p.reparseList)-1]
+		} else {
+			*steps = append(*steps, matchStep{decl: raw})
+		}
+		rawDeclaration := typedRaw.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+		p.recordMatchKeyType(rawDeclaration, tuple)
+		clause.key = p.vibelangSpanning(p.factory.NewElementAccessExpression(p.mTemp(rawName, at), nil, p.mNumber(0, at), ast.NodeFlagsNone), at)
+	}
+	sourceType := p.patternKeyType(clause.key)
 	converted := p.mCall(p.vibelangIntrinsic("$propertyKey", at), []*ast.Node{clause.key}, at)
-	// Keep invalid source key types on their native in/index diagnostics, without
-	// adding a TS2352 for the compiler's representation conversion.
 	unknown := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindUnknownKeyword), at)
 	converted = p.vibelangSpanning(p.factory.NewAsExpression(converted, unknown), at)
-	value := p.vibelangSpanning(p.factory.NewAsExpression(converted, p.patternKeyType(clause.key)), at)
+	value := p.vibelangSpanning(p.factory.NewAsExpression(converted, sourceType), at)
 	decl := p.mConst(p.mTemp(key, at), ast.NodeFlagsConst, value, at)
 	typed := decl
 	if ctx.inline {
@@ -1501,8 +1546,9 @@ func (p *Parser) capturePatternKey(clause objectClause, steps *[]matchStep, ctx 
 	}
 	declaration := typed.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
 	declaration.AsVariableDeclaration().Type = p.patternKeyType(clause.key)
-	// mConst attached its original children before this annotation existed.
-	// Attach the new type too, so its names resolve through the lexical home.
+	if complex {
+		p.recordMatchKeyType(declaration, original)
+	}
 	p.overrideParentInImmediateChildren(declaration)
 	clause.key = p.mTemp(key, at)
 	return clause
@@ -1958,16 +2004,29 @@ func IsSignedNumberZero(expr *ast.Node) bool {
 // checker narrows them. <, >, <=, >= and in call $relation, which is false
 // for a subject the proposal does not compare: not a string, number or
 // bigint, or for in, not a property key or with an operand that is not an
-// object.
+// object. The proposal rejects such a subject before it evaluates the
+// operand, so $relates tests it first: $relates("<=", s) && $relation("<=",
+// s, bound). Neither narrows the subject, as chapter 004's Typing says.
 func (p *Parser) relationTest(pat *pattern, path matchPath) *ast.Node {
 	at := pat.anchor
-	switch pat.operator {
-	case ast.KindEqualsEqualsEqualsToken, ast.KindExclamationEqualsEqualsToken, ast.KindEqualsEqualsToken,
-		ast.KindExclamationEqualsToken, ast.KindInstanceOfKeyword:
+	if !isAdmittedRelation(pat.operator) {
 		return p.mParens(p.mBinary(path(), pat.operator, pat.expr, testsSpan(at, pat.expr)), at)
 	}
 	operator := scanner.TokenToString(pat.operator)
-	return p.mCall(p.vibelangIntrinsic("$relation", at), []*ast.Node{p.mString(operator, at), path(), pat.expr}, testsSpan(at, pat.expr))
+	admits := p.mCall(p.vibelangIntrinsic("$relates", at), []*ast.Node{p.mString(operator, at), path()}, at)
+	compare := p.mCall(p.vibelangIntrinsic("$relation", at), []*ast.Node{p.mString(operator, at), path(), pat.expr}, testsSpan(at, pat.expr))
+	return p.mParens(p.mBinary(admits, ast.KindAmpersandAmpersandToken, compare, testsSpan(at, pat.expr)), at)
+}
+
+// isAdmittedRelation reports whether a relational pattern with operator
+// tests its subject before it evaluates its operand: <, >, <=, >= and in.
+func isAdmittedRelation(operator ast.Kind) bool {
+	switch operator {
+	case ast.KindEqualsEqualsEqualsToken, ast.KindExclamationEqualsEqualsToken, ast.KindEqualsEqualsToken,
+		ast.KindExclamationEqualsToken, ast.KindInstanceOfKeyword:
+		return false
+	}
+	return true
 }
 
 // enterSubject returns the path through which pat, the pattern of a part of a
@@ -2013,7 +2072,12 @@ func subjectReads(pat *pattern) int {
 	}
 	n := 0
 	switch pat.kind {
-	case patternLiteral, patternValue, patternBinding, patternRelation:
+	case patternRelation:
+		if isAdmittedRelation(pat.operator) {
+			return 2 // $relates and $relation
+		}
+		return 1
+	case patternLiteral, patternValue, patternBinding:
 		return 1
 	case patternArray:
 		n = 2 // Array.isArray and length
@@ -2541,13 +2605,28 @@ func endsInJump(statement *ast.Node) bool {
 //
 //	while (true) { if (...) { const name = ...; if (...) { S; continue } } break }
 //
+// An is that binds below the && chain, as in while (a || x is P) S, has the
+// same loop-head home (chapter 004, Pattern bindings): each evaluation of the
+// condition starts with fresh uninitialized cells that a true result shares
+// with S. That is the home hoistForHead gives a for statement's test, so the
+// loop becomes for (<cells>; condition; ) S, as restructureVibeLangDo does.
 // It returns nil when no is in the condition binds names.
 func (p *Parser) restructureVibeLangWhile(condition, body *ast.Node, pos int) *ast.Node {
+	anchor := p.keywordRangeAt(pos, "while")
+	nested := false
+	for _, part := range conjuncts(condition) {
+		if p.vibelangIsBindings[part] == nil && p.bindsIs(part) {
+			nested = true
+		}
+	}
+	if nested {
+		initializer := p.hoistForHead(nil, condition, nil, anchor)
+		return p.finishNode(p.factory.NewForStatement(initializer, condition, nil, body), pos)
+	}
 	steps := p.conditionSteps(condition)
 	if steps == nil {
 		return nil
 	}
-	anchor := p.keywordRangeAt(pos, "while")
 	success := []*ast.Node{body}
 	if !endsInJump(body) {
 		success = append(success, p.vibelangSpanning(p.factory.NewContinueStatement(nil), anchor))

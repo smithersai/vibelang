@@ -1,0 +1,4 @@
+// A retired bun marker without main.
+import "vibelang/platform/bun"
+
+export const host = "bun"

@@ -1,0 +1,10 @@
+// expect: EK3410
+// rule-evidence: docs/design/src/007-tooling.md#ordinary-mutable-marker-migration | `EK3410` rejects a retired `mutable` marker on an ordinary interface or object-type property or index signature, or a plain `error` payload.
+// rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | For these retirements and the mutable-marker, receiver-method and prelude-shorthand retirements above, enforcement waits until preserving codemods ship and every migration repository has zero remaining uses.
+// The marked interface property, object-type index signature and plain error
+// payload are the retired forms. The property and method named mutable are
+// ordinary TypeScript members and add no diagnostic.
+export interface Point { mutable x: number; y: number; mutable?: boolean }
+export type Bag = { mutable [key: string]: number }
+export error Failed { mutable code: number }
+export interface Tool { mutable(): number }

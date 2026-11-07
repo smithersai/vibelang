@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import { createRequire } from "node:module"
+import { readFileSync } from "node:fs"
 import { test } from "node:test"
 import { withPackingScope } from "../lib/pack-policy.mjs"
 import { foreignChanges } from "../lib/touched.mjs"
@@ -9,12 +10,12 @@ const fc=createRequire(new URL("../../../../packages/runtime/package.json",impor
 const rule="Only recorded packing changes belong to the batch; ownership survives re-emission, restart and restore."
 const paths=id=>["package.json",".npmignore",".vibelang/pack-policy.json"].map(file=>"packages/p"+id+"/"+file)
 
-function trace(phases) {
+function trace(phases, recordedPaths = paths) {
  let journal={batch:"01",marker:"retained",emittedJs:[]}
  const expected=new Set()
  for(const phase of phases){
-  const emitted=phase.ids.map(id=>({package:"packages/p"+id,packingFiles:paths(id),restored:phase.stage==="restore"}))
-  for(const id of phase.ids)for(const file of paths(id))expected.add(file)
+  const emitted=phase.ids.map(id=>({package:"packages/p"+id,packingFiles:recordedPaths(id),restored:phase.stage==="restore"}))
+  for(const id of phase.ids)for(const file of recordedPaths(id))expected.add(file)
   journal=JSON.parse(JSON.stringify(withPackingScope(journal,emitted)))
   assert.equal(journal.marker,"retained")
   assert.deepEqual(withPackingScope(journal,[]),journal,"no new policy is an idempotent restart")
@@ -43,4 +44,26 @@ test("property: exact packing ownership survives arbitrary phase histories and j
  await checkProperty(fc,{name:"packing-phase-scope",rule,command:"node --test test/packing-scope.property.test.mjs",
   arbitrary:fc.array(fc.record({stage:fc.constantFrom("codemod","verify","record","restore"),ids:fc.uniqueArray(fc.integer({min:0,max:4}),{maxLength:5})}),{minLength:1,maxLength:20}),
   check:trace,numRuns:200,regressions:new URL("./corpus/",import.meta.url)})
+})
+
+const manifestPaths = id => ["packages/p" + id + "/package.json"]
+const manifestCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-emitted-import-map-scope.json", import.meta.url), "utf8"))
+test("migration import-map scope oracle quotes the routing contract", () => {
+ const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8")
+ assert.ok(readme.includes(manifestCorpus.quote))
+})
+test("t3code: recorded private import-map ownership survives verification restarts", () => {
+ trace(manifestCorpus.input, manifestPaths)
+})
+test("property: manifest-only routing receipts never authorize neighboring files", async () => {
+ await checkProperty(fc, {
+  name: "packing-manifest-scope", rule: manifestCorpus.quote,
+  command: "node --test test/packing-scope.property.test.mjs",
+  arbitrary: fc.array(fc.record({
+   stage: fc.constantFrom("codemod", "verify", "record", "restore"),
+   ids: fc.uniqueArray(fc.integer({ min: 0, max: 4 }), { maxLength: 5 })
+  }), { minLength: 1, maxLength: 20 }),
+  check: phases => trace(phases, manifestPaths), numRuns: 200,
+  regressions: new URL("./corpus/", import.meta.url)
+ })
 })

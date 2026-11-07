@@ -59,13 +59,34 @@ func checkIterationCellReads(c *checker.Checker, file *ast.SourceFile, increment
 			if nodeStart(file, node) < nodeStart(file, name) {
 				c.AddDiagnostic(ast.NewDiagnostic(file, at, diagnostics.Block_scoped_variable_0_used_before_its_declaration, node.Text()))
 			}
-		default:
+		case !iterationCellAssumedInitialized(c, symbol, node):
 			// A test binding: the update of an iteration runs before its test.
 			c.AddDiagnostic(ast.NewDiagnostic(file, at, diagnostics.Variable_0_is_used_before_being_assigned, node.Text()))
 		}
 		return false
 	}
 	visit(incrementor)
+}
+
+// iterationCellAssumedInitialized reports whether TypeScript's own
+// definite-assignment check would accept a read of an uninitialized cell:
+// without strictNullChecks, under a non-null assertion, or when the declared
+// type is any, unknown or void or contains undefined (checker.checkIdentifier's
+// assumeInitialized and containsUndefinedType tests). The read in update of a
+// test binding follows the same type-dependent TS2454 check (chapter 004).
+func iterationCellAssumedInitialized(c *checker.Checker, symbol *ast.Symbol, node *ast.Node) bool {
+	options := c.CompilerOptions()
+	if !options.GetStrictOptionValue(options.StrictNullChecks) || node.Parent != nil && ast.IsNonNullExpression(node.Parent) {
+		return true
+	}
+	t := c.GetTypeOfSymbol(symbol)
+	if t == nil || t.Flags()&(checker.TypeFlagsAnyOrUnknown|checker.TypeFlagsVoid) != 0 {
+		return true
+	}
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		t = t.Types()[0]
+	}
+	return t.Flags()&checker.TypeFlagsUndefined != 0
 }
 
 // isPlainAssignmentTarget reports whether node is the left side of a plain

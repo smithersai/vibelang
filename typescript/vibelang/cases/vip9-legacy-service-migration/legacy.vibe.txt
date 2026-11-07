@@ -1,0 +1,8 @@
+export abstract class Users { abstract name: string }
+service Flags { static readonly key = "vip9/Flags"; static readonly default: Flags.Shape = { enabled: true }; enabled: boolean }
+service Fallback { static readonly key = "vip9/Fallback"; static readonly defaultValue = () => ({ enabled: false }); enabled: boolean }
+export const cached = Flags.default
+export const same = Flags.default === Flags.default
+export const key = Flags.key
+export effect function readFlags() { return (try Flags).enabled }
+export effect function readFallback() { return (try Fallback).enabled }

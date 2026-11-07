@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/vips/0027-declaration-output.md#68feb199cb49dd6e
+// VIP-27: shipped global annotations use the @throws {T} spelling.
+// run.mjs parses every shipped annotation as a JSDoc `@throws {T}` tag and
+// checks that a global and a .ts declaration written with its annotation
+// compile to the same diagnostics.
+export const witness = 1

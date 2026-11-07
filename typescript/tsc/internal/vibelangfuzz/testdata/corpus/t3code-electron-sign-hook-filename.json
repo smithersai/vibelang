@@ -1,0 +1,5 @@
+{
+  "source": "import { Effect } from \"effect\"\nexport const operation = Effect.void\nexport default async function sign(): Promise<void> {}\n",
+  "observer": "import assert from \"node:assert/strict\"\nimport { signHook as hook } from \"./build-desktop-artifact.ts\"\nassert.match(hook, /scripts[\\\\/]lib[\\\\/]windows-jsign\\.ts$/)\n",
+  "caller": "export const signHook = \"scripts/lib/windows-jsign.ts\"\n"
+}

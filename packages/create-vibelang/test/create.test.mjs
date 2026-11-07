@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -270,4 +270,21 @@ test("printed cd commands reach targets containing shell metacharacters", (t) =>
     assert.equal(changed.status, 0, changed.stderr)
     assert.equal(changed.stdout.trim(), realpathSync(join(directory, name)))
   }
+})
+
+test("filesystem failures report the target and recovery without a stack trace", (t) => {
+  const directory = scratch(t)
+  writeFileSync(join(directory, "parent"), "preserve")
+  symlinkSync("absent", join(directory, "dangling"))
+  for (const [target, code] of [["parent/app", /ENOTDIR/], ["dangling", /ENOENT|EEXIST/], ["x".repeat(256), /ENAMETOOLONG/]]) {
+    const result = run(directory, target, "--no-install")
+    assert.equal(result.status, 1)
+    assert.match(result.stderr, /create-vibelang: Could not create/)
+    assert.ok(result.stderr.includes(target))
+    assert.match(result.stderr, code)
+    assert.match(result.stderr, /path.*permissions.*new or empty directory/)
+    assert.doesNotMatch(result.stderr, /\n\s+at |node:fs|Node\.js v/)
+    assert.doesNotMatch(result.stdout, /Created|Next steps/)
+  }
+  assert.equal(readFileSync(join(directory, "parent"), "utf8"), "preserve")
 })

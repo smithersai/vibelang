@@ -1,0 +1,5 @@
+// rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | | `EK1707` | Bare `fork { … }` | `fork effect { … }`; explicit Effect operands stay unchanged (VIP-2, VIP-17).
+// rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | | `EK0503` | A `try` statement in effect code | Explicit Effects, `catch effect` and native cleanup combinators (VIP-5).
+// rule-evidence: docs/design/src/007-tooling.md#legacy-fork-try-statement-and-wire-migration | | `EK2401` | The resolved retired `wire` intrinsic | Explicit `Layer.provideMerge` composition replaces the rejected form; an unrelated local `wire` keeps its TypeScript meaning (VIP-24).
+// The fork, try-statement and wire migrations run on temp projects in run.mjs.
+export const witness = 1

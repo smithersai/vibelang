@@ -1,0 +1,18 @@
+{
+  "property": "smithers-declaration-map-projection",
+  "rule": "Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin",
+  "repository": "smithers",
+  "input": {
+    "body": "raise",
+    "eol": "\n",
+    "at": false,
+    "leftMap": false,
+    "rightMap": true,
+    "url": "Redaction"
+  },
+  "files": {
+    "emit.d.ts": "export declare function raise(value: unknown): never;\n",
+    "shipped.d.ts": "export declare function raise(value: unknown): never;\n//# sourceMappingURL=Redaction.vibe.$throw$ts.d.ts.map\n"
+  },
+  "logicalPath": "dist/esm/Redaction.vibe.$throw$ts.d.ts"
+}

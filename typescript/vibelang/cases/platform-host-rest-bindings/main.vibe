@@ -1,0 +1,9 @@
+export let copies = 0
+export function copy(): string[] {
+  copies++
+  const { ...timeout } = AbortSignal
+  const { ...createObjectURL } = URL
+  const { ...revokeObjectURL } = URL
+  return [typeof timeout, typeof createObjectURL, typeof revokeObjectURL]
+}
+export effect function main(): string[]!! { return copy() }
