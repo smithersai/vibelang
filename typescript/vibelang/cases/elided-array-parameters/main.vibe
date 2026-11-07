@@ -1,0 +1,13 @@
+// Chapter 3: parameter binding runs at the call, and binding exceptions die.
+import { note } from "./state.js"
+export effect function declaration([, value]: number[]) { note(); return value }
+export const expression = effect function([, value]: number[]) { note(); return value }
+export const arrow = effect ([, value]: number[]) => { note(); return value }
+export const methods = {
+  effect one([, value]: number[]) { note(); return value },
+  effect *many([, value]: number[]) { note(); yield value }
+}
+export effect function* producer([, value]: number[]) { note(); yield value }
+export effect function nested({ a: [, value] }: { a: number[] }) { note(); return value }
+export effect function only([,]: number[]) { note(); return 0 }
+export effect function rest([, value, ...tail]: number[]) { note(); return [value, tail] }

@@ -22,10 +22,10 @@ import (
 var producerBindingQuote = "a producer's gives a `Stream` that dies with it, as an `async` function rejects. The call itself never throws."
 
 // Each parameter is a binding and its default, if any.
-var producerBindingParams = [][2]string{{"a", ""}, {"{ a }", ""}, {"{ a: { b } }", ""}, {"[a]", ""}, {"a", "1"}, {"{ a }", "{}"}, {"{ a = 2 }", ""}, {"[a]", "[]"}, {"{ [key()]: a }", ""}}
+var producerBindingParams = [][2]string{{"a", ""}, {"{ a }", ""}, {"{ a: { b } }", ""}, {"[a]", ""}, {"a", "1"}, {"{ a }", "{}"}, {"{ a = 2 }", ""}, {"[a]", "[]"}, {"{ [key()]: a }", ""}, {"[, a]", ""}, {"[,, a]", ""}, {"[,]", ""}, {"[, ...a]", ""}, {"[[, a]]", ""}, {"{ a: [, b] }", ""}, {"[, a]", "[]"}, {"[, a,]", ""}}
 
 // Parameter i binds a<i> and b<i>, so the objects name every parameter's keys.
-var producerBindingArgs = []string{"undefined", "null", "5", "{}", "{ a0: { b0: 1 }, a1: { b1: 1 }, a2: { b2: 1 } }", "[1]", "throwing", "{ k: 1 }"}
+var producerBindingArgs = []string{"undefined", "null", "5", "{}", "{ a0: { b0: 1 }, a1: { b1: 1 }, a2: { b2: 1 } }", "[1]", "throwing", "{ k: 1 }", "{ a0: [0,1], a1: [0,1], a2: [0,1] }", "[[0,1]]", "[0,1,2]"}
 
 func producerBindingChapter(tb testing.TB) {
 	if !strings.Contains(SpecText("003-failures.md"), producerBindingQuote) {
@@ -70,17 +70,27 @@ func FuzzProducerBinding(f *testing.F) {
 	startShortBudget(f)
 	producerBindingChapter(f)
 	seeds := map[string][2][]int{
-		"object-undefined":   {{1}, {0}},
-		"object-getter":      {{1}, {6}},
-		"nested-empty":       {{2}, {3}},
-		"array-number":       {{3}, {2}},
-		"default-null":       {{5}, {1}},
-		"inner-default":      {{6}, {0}},
-		"array-default-ok":   {{7}, {0}},
-		"computed-getter":    {{8}, {6}},
-		"second-of-two":      {{0, 1}, {2, 0}},
-		"identifiers-only":   {{0, 4}, {0, 1}},
-		"three-mixed-values": {{1, 3, 4}, {4, 5, 2}},
+		"array-elision-success":  {{9}, {10}},
+		"array-elision-multiple": {{10}, {10}},
+		"array-elision-only":     {{11}, {10}},
+		"array-elision-rest":     {{12}, {10}},
+		"array-elision-nested":   {{13}, {9}},
+		"array-elision-object":   {{14}, {8}},
+		"array-elision-default":  {{15}, {0}},
+		"array-elision-trailing": {{16}, {10}},
+		"array-elision-null":     {{9}, {1}},
+		"array-elision-number":   {{10}, {2}},
+		"object-undefined":       {{1}, {0}},
+		"object-getter":          {{1}, {6}},
+		"nested-empty":           {{2}, {3}},
+		"array-number":           {{3}, {2}},
+		"default-null":           {{5}, {1}},
+		"inner-default":          {{6}, {0}},
+		"array-default-ok":       {{7}, {0}},
+		"computed-getter":        {{8}, {6}},
+		"second-of-two":          {{0, 1}, {2, 0}},
+		"identifiers-only":       {{0, 4}, {0, 1}},
+		"three-mixed-values":     {{1, 3, 4}, {4, 5, 2}},
 	}
 	for key := range seeds {
 		f.Add([]byte(key))

@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "NodeNext",
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    "strict": true,
+    "types": [],
+    "outDir": "out",
+    "noEmitOnError": true,
+    "declaration": true
+  },
+  "files": [
+    "main.vibe",
+    "state.ts"
+  ]
+}

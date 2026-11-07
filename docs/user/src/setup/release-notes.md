@@ -89,6 +89,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Following the Yarn installation guide could leave Vitest unable to start because Vite was missing. The guide now installs that required peer when the project does not already provide a compatible version.
 
+- Array parameter patterns with omitted elements could crash compilation of an Effect function or producer. They now compile and retain native iterator steps, skipped value reads and binding defects.
+
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.

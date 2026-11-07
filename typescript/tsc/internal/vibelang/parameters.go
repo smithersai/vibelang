@@ -12,6 +12,9 @@ func writesParameters(c *checker.Checker, fn *ast.Node) bool {
 	parameters := map[*ast.Symbol]bool{}
 	var bind func(*ast.Node)
 	bind = func(name *ast.Node) {
+		if name == nil {
+			return // Array elisions bind no name.
+		}
 		if ast.IsIdentifier(name) {
 			if symbol := c.GetSymbolAtLocation(name); symbol != nil {
 				parameters[symbol] = true

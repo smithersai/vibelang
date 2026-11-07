@@ -3798,6 +3798,10 @@ typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:7:23 lambda program
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:7:43 lambda program table
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:8:22 lambda plain annotation
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:9:23 lambda program keyword
+typescript/vibelang/cases/elided-array-parameters/main.vibe:4:27 lambda effectFn keyword
+typescript/vibelang/cases/elided-array-parameters/main.vibe:5:22 lambda effectFn keyword
+typescript/vibelang/cases/elided-array-parameters/main.vibe:7:3 lambda effectFn keyword
+typescript/vibelang/cases/elided-array-parameters/main.vibe:8:3 lambda choice fallback
 typescript/vibelang/cases/entry-const-main-tdz/main.vibe:5:21 lambda plain annotation
 typescript/vibelang/cases/entry-main-runner-names/main.vibe:3:27 lambda plain annotation
 typescript/vibelang/cases/entry-main-runner-variable/main.vibe:6:35 byname program table
