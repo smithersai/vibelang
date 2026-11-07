@@ -686,6 +686,13 @@ const targets = {
     [node],
     "5m"
   ),
+  "case-import-extensions": check(
+    "Every case importing a .ts, .vibe or .vibex path sets an extension option or expects TS5097, with no compiler.",
+    "node --test typescript/vibelang/case-import-extensions.test.mjs",
+    [],
+    [node],
+    "2m"
+  ),
   "spec-catch-diagnostics": specCatchDiagnostics,
   release: check(
     "The release, contributor and site generator node tests, the upgrade and maintenance flows' steps, and their evals' step keys.",
