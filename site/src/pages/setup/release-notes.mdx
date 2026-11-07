@@ -13,8 +13,35 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
-- Migration examples with contextual plugin factories could still be reported as unsupported after their inferred contracts were preserved. They now verify the supported repair, including named wrappers and generic factories.
+- A base constructor's `@rethrows` callback could throw through `super(...)` without a diagnostic. These calls now report `EK0401` when the callback is known to throw, just as `new` does.
 
+- An implicit `Effect.gen` repair could be refused when its body constructed a foreign class. It now preserves those constructor exceptions as defects, including member and aliased constructors.
+
+- Screen-reader navigation could not distinguish the site menu, documentation sidebar and page outline. Each navigation landmark now has its own name.
+
+- The homepage suggested Node versions that the packages do not support. It now lists both supported Node release lines and their minimum versions.
+
+- Copying either homepage greeting example printed nothing. Both examples now start their Effect and print `Hello, Ada`.
+
+- File-system replacement hints could construct an operation without running it. They now show the outer `try` for reads, writes and other operations that return Effects.
+
+- Converting an `async` method with a computed numeric, template-literal or union key could violate its indexed `Promise` contract. The editor now withholds that conversion until the contract is migrated too.
+
+- Bundled dynamic imports could be reported as having an incorrect source position when a generated import used the same module name. Valid positions are now recognized while shifted mappings still fail.
+
+- Generating the diagnostic reference from sources with same-named constants could replace a diagnostic with another package's code. It now keeps the code selected by the source package and imports.
+
+- Vite SSR stacks could show generated JavaScript positions after a compiler cache write. Cache entries now preserve loaded modules and their original source locations.
+
+- Formatting a standalone `do` expression could fail with `'while' expected`. The formatter now keeps the parentheses that distinguish it from a `do`/`while` statement.
+
+- Migration examples with contextual plugin factories could still be reported as unsupported after their inferred contracts were preserved. They now verify the supported repair, including named wrappers and generic factories.
+- The HTTP handler migration example could report missing `Request` or `Response` types when its declarations were checked. Both the original and repaired examples now load the web types their signatures require.
+- Migration examples could reject the expected source-extension diagnostic as a failed conversion. They now follow TypeScript for value and type-only imports, including when neither extension option is enabled.
+
+- The migrate flow kept a module in TypeScript with "the type Item reads the value Issue" when its platform code named a private type that reads a module value, such as `type Item = typeof Issue.Type` beside a private schema `Issue`. The `.platform.ts` companion copies such a type, so the value it reads now moves to the companion with it, and the module imports the value back or re-exports it.
+- The target-selection tests could stop with `can't cd to packages/unplugin` after a new prerequisite was added. They now prepare standalone package installs and reach target selection.
+- A rejected release-note entry could be buried in an error that printed the entire release list. The error now shows the offending entry, including wrapped lines.
 - A `.vibe` class constructor calling `super(...)` on a `.ts` base class whose constructor declares `@throws {RangeError}` was accepted, so constructing the class could throw from synchronous VibeLang code. The call is now `EK0401`, as any other call known to throw in a constructor.
 
 - A `schema` field typed `Date`, `URL`, `RegExp`, `Uint8Array`, `ReadonlySet<T>` or `ReadonlyMap<K, V>` reported `EK2109`. These TypeScript-library types now map to Effect's `Schema.Date`, `Schema.URL`, `Schema.RegExp`, `Schema.Uint8Array`, `Schema.ReadonlySet` and `Schema.ReadonlyMap`. `Set` and `Map` still report `EK2109`, now with a note that names the read-only form.
@@ -503,6 +530,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The `EK4810` warning, for an assertion that drops a type from an Effect's channel, printed its "No automatic fix" note twice. It prints the note once.
 
 - A plain `catch` handler with a written return type, such as `x catch (): number => 0` or `x catch (): Effect.Effect<number> => Effect.succeed(7)`, was rejected with `TS2322`, `TS2345` or `EK0502`: the compiler read the annotation as an `effect` function's Effect type. The annotation now types what the handler returns, as on any plain function, and the `catch` gives that value, an Effect included, unrun.
+
+- The migrate flow kept a module in TypeScript when its platform code built a URL beside the module from a path written without `./`, such as `new URL("results/", import.meta.url)`, because it read the path as naming the module's file. Any written path that is not empty and starts with neither `?` nor `#` drops the file name, so it names the same URL from the `.platform.ts` companion, and such code now moves.
 
 ### Upgrade from 0.0.12
 
