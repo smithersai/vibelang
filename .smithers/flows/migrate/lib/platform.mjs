@@ -203,7 +203,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
     }
   }
   const declaredAtTop = new Set(source.statements.flatMap((s) => (ts.isImportDeclaration(s) ? [] : [...declaredNames(s, ts)])))
-  const hostGlobals = new Set([...globals].filter((name) => !imported.has(name) && !declaredAtTop.has(name)))
+  const hostGlobals = new Set(globalNames(globals, source, ts).filter((name) => !imported.has(name) && !declaredAtTop.has(name)))
   for (const name of hostGlobals) platform.add(name)
   if (!platform.size) return null
   // Each top-level declaration: the names it declares and the names it reads.
