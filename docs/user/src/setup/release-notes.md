@@ -56,6 +56,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration `verify` reported a `package.json` as a foreign file when the codemod moved one of its scripts to a renamed module and emission added `#vibelang/emitted/*` routes to it. Those routes are now in the batch's scope; any other change to the manifest still fails.
 - Vite's dependency scan failed with `UNLOADABLE_DEPENDENCY` on a `.vibex` file with a `module` body under `"jsx": "preserve"`, because the scan read the absent `.jsx` output from disk. `vibelang-vite` now loads that output from the compile.
 - A throwing call used to compute a class's base could be rejected inside `try`/`catch`; the surrounding handler now covers the `extends` expression.
+- Inline type re-exports and empty re-exports of Node builtins could retain unreported runtime loads. They now report `EK4402`, and `vibelang --fix` preserves those loads behind a native module boundary.
+
 
 - In effect code, a call of a `.ts` function that returns an `Exit`, a `Config`, an `error` instance or another kind of Effect was rejected when the function had a `@throws` tag, and the tagged classes were added to the caller's error type. Such a function is now effectful, as one returning `Effect` is: effect code calls it directly, its tag adds no failure, and a throw before it returns is a defect.
 

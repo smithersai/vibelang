@@ -1,0 +1,398 @@
+[
+  {
+    "Key": "node-fs-false-inline",
+    "Source": "export { type Stats } from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-false-alias",
+    "Source": "export { type Stats as Entry } from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-false-comment",
+    "Source": "export { type /* keep */ Stats } from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-false-two-aliases",
+    "Source": "export { type Stats as Left, type Stats as Right } from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-false-empty",
+    "Source": "export {} from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-false-whole-type",
+    "Source": "export type { Stats } from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-false-whole-type-star",
+    "Source": "export type * from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-false-whole-type-namespace",
+    "Source": "export type * as Native from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-false-star-control",
+    "Source": "export * from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": [
+      "\"node:fs\""
+    ]
+  },
+  {
+    "Key": "node-fs-false-namespace-control",
+    "Source": "export * as Native from \"node:fs\";\n",
+    "Verbatim": false,
+    "Spans": [
+      "\"node:fs\""
+    ]
+  },
+  {
+    "Key": "node-fs-true-inline",
+    "Source": "export { type Stats } from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"node:fs\""
+    ]
+  },
+  {
+    "Key": "node-fs-true-alias",
+    "Source": "export { type Stats as Entry } from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"node:fs\""
+    ]
+  },
+  {
+    "Key": "node-fs-true-comment",
+    "Source": "export { type /* keep */ Stats } from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"node:fs\""
+    ]
+  },
+  {
+    "Key": "node-fs-true-two-aliases",
+    "Source": "export { type Stats as Left, type Stats as Right } from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"node:fs\""
+    ]
+  },
+  {
+    "Key": "node-fs-true-empty",
+    "Source": "export {} from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"node:fs\""
+    ]
+  },
+  {
+    "Key": "node-fs-true-whole-type",
+    "Source": "export type { Stats } from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-true-whole-type-star",
+    "Source": "export type * from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-true-whole-type-namespace",
+    "Source": "export type * as Native from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "node-fs-true-star-control",
+    "Source": "export * from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"node:fs\""
+    ]
+  },
+  {
+    "Key": "node-fs-true-namespace-control",
+    "Source": "export * as Native from \"node:fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"node:fs\""
+    ]
+  },
+  {
+    "Key": "fs-false-inline",
+    "Source": "export { type Stats } from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "fs-false-alias",
+    "Source": "export { type Stats as Entry } from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "fs-false-comment",
+    "Source": "export { type /* keep */ Stats } from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "fs-false-two-aliases",
+    "Source": "export { type Stats as Left, type Stats as Right } from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "fs-false-empty",
+    "Source": "export {} from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "fs-false-whole-type",
+    "Source": "export type { Stats } from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "fs-false-whole-type-star",
+    "Source": "export type * from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "fs-false-whole-type-namespace",
+    "Source": "export type * as Native from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "fs-false-star-control",
+    "Source": "export * from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": [
+      "\"fs\""
+    ]
+  },
+  {
+    "Key": "fs-false-namespace-control",
+    "Source": "export * as Native from \"fs\";\n",
+    "Verbatim": false,
+    "Spans": [
+      "\"fs\""
+    ]
+  },
+  {
+    "Key": "fs-true-inline",
+    "Source": "export { type Stats } from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"fs\""
+    ]
+  },
+  {
+    "Key": "fs-true-alias",
+    "Source": "export { type Stats as Entry } from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"fs\""
+    ]
+  },
+  {
+    "Key": "fs-true-comment",
+    "Source": "export { type /* keep */ Stats } from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"fs\""
+    ]
+  },
+  {
+    "Key": "fs-true-two-aliases",
+    "Source": "export { type Stats as Left, type Stats as Right } from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"fs\""
+    ]
+  },
+  {
+    "Key": "fs-true-empty",
+    "Source": "export {} from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"fs\""
+    ]
+  },
+  {
+    "Key": "fs-true-whole-type",
+    "Source": "export type { Stats } from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "fs-true-whole-type-star",
+    "Source": "export type * from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "fs-true-whole-type-namespace",
+    "Source": "export type * as Native from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "fs-true-star-control",
+    "Source": "export * from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"fs\""
+    ]
+  },
+  {
+    "Key": "fs-true-namespace-control",
+    "Source": "export * as Native from \"fs\";\n",
+    "Verbatim": true,
+    "Spans": [
+      "\"fs\""
+    ]
+  },
+  {
+    "Key": "ordinary-false-inline",
+    "Source": "export { type Stats } from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-false-alias",
+    "Source": "export { type Stats as Entry } from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-false-comment",
+    "Source": "export { type /* keep */ Stats } from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-false-two-aliases",
+    "Source": "export { type Stats as Left, type Stats as Right } from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-false-empty",
+    "Source": "export {} from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-false-whole-type",
+    "Source": "export type { Stats } from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-false-whole-type-star",
+    "Source": "export type * from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-false-whole-type-namespace",
+    "Source": "export type * as Native from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-false-star-control",
+    "Source": "export * from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-false-namespace-control",
+    "Source": "export * as Native from \"ordinary\";\n",
+    "Verbatim": false,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-inline",
+    "Source": "export { type Stats } from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-alias",
+    "Source": "export { type Stats as Entry } from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-comment",
+    "Source": "export { type /* keep */ Stats } from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-two-aliases",
+    "Source": "export { type Stats as Left, type Stats as Right } from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-empty",
+    "Source": "export {} from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-whole-type",
+    "Source": "export type { Stats } from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-whole-type-star",
+    "Source": "export type * from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-whole-type-namespace",
+    "Source": "export type * as Native from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-star-control",
+    "Source": "export * from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  },
+  {
+    "Key": "ordinary-true-namespace-control",
+    "Source": "export * as Native from \"ordinary\";\n",
+    "Verbatim": true,
+    "Spans": []
+  }
+]

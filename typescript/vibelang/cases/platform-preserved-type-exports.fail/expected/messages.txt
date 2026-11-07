@@ -1,0 +1,2 @@
+This export keeps a runtime load of node:fs; write export type for type bindings, or move the export to a .ts file.
+This export keeps a runtime load of fs; write export type for type bindings, or move the export to a .ts file.

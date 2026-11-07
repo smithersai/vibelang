@@ -1,0 +1,74 @@
+[
+  {
+    "Key": "node-fs-inline",
+    "Source": "export { type Stats } from \"node:fs\"\n",
+    "Module": "node:fs",
+    "TypeOnly": true
+  },
+  {
+    "Key": "node-fs-alias",
+    "Source": "export { type Stats as Size } from \"node:fs\"\n",
+    "Module": "node:fs",
+    "TypeOnly": true
+  },
+  {
+    "Key": "node-fs-empty",
+    "Source": "export {} from \"node:fs\"\n",
+    "Module": "node:fs",
+    "TypeOnly": false
+  },
+  {
+    "Key": "node-fs-comments",
+    "Source": "export /* before */ { type /* binding */ Stats as Size } from \"node:fs\"\n",
+    "Module": "node:fs",
+    "TypeOnly": true
+  },
+  {
+    "Key": "node-fs-keyword",
+    "Source": "export { type Stats as \"size-data\" } from \"node:fs\"\n",
+    "Module": "node:fs",
+    "TypeOnly": true
+  },
+  {
+    "Key": "fs-inline",
+    "Source": "export { type Stats } from \"fs\"\n",
+    "Module": "fs",
+    "TypeOnly": true
+  },
+  {
+    "Key": "fs-alias",
+    "Source": "export { type Stats as Size } from \"fs\"\n",
+    "Module": "fs",
+    "TypeOnly": true
+  },
+  {
+    "Key": "fs-empty",
+    "Source": "export {} from \"fs\"\n",
+    "Module": "fs",
+    "TypeOnly": false
+  },
+  {
+    "Key": "fs-comments",
+    "Source": "export /* before */ { type /* binding */ Stats as Size } from \"fs\"\n",
+    "Module": "fs",
+    "TypeOnly": true
+  },
+  {
+    "Key": "fs-keyword",
+    "Source": "export { type Stats as \"size-data\" } from \"fs\"\n",
+    "Module": "fs",
+    "TypeOnly": true
+  },
+  {
+    "Key": "multiple",
+    "Source": "export { type Stats } from \"node:fs\"\nexport {} from \"fs\"\n",
+    "Module": "node:fs",
+    "TypeOnly": true
+  },
+  {
+    "Key": "fresh-name",
+    "Source": "const $platformExport29 = 1;\nexport { type Stats } from \"node:fs\"\nvoid $platformExport29\n",
+    "Module": "node:fs",
+    "TypeOnly": true
+  }
+]

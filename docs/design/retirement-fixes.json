@@ -96,6 +96,10 @@
       {
         "input": "typescript/vibelang/cases/platform-import-equals.fail",
         "output": "typescript/vibelang/cases/platform-import-equals-fixed"
+      },
+      {
+        "input": "typescript/vibelang/cases/platform-preserved-type-exports.fail",
+        "output": "typescript/vibelang/cases/platform-preserved-type-exports-fixed-output"
       }
     ]
   },

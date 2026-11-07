@@ -1,0 +1,3 @@
+go test fuzz v1
+string("ordinary-true-whole-type")
+byte(23)
