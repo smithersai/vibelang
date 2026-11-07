@@ -1,6 +1,6 @@
 # Cheat sheet
 
-Every VibeLang change beside the Effect code it replaces: VibeLang and Effect 4 TypeScript in labeled tabs. The [specification](../../../design/src/000-intro.md) states the rules behind each. In a `.vibe` file, the Effect tab's error classes, services, schemas, Effect types, `Effect.succeed` and `Effect.fail`, catch combinators, and `withSpan` and `provide` calls draw warnings whose quick fixes, and `vibelang --fix`, write the VibeLang tab where it keeps the program's meaning ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Complete Effect tabs import their dependencies and are typechecked. Tabs marked `// fragment` use the declarations below or a surrounding `Effect.gen` body. Converted VibeLang blocks name the VIPs they need with `// pending:`. Support for the new forms arrives with the compiler's VIP implementation. The VibeLang examples share these declarations:
+Every VibeLang change beside the Effect code it replaces: VibeLang and Effect 4 TypeScript in labeled tabs. The [specification](../../../design/src/000-intro.md) states the rules behind each. In a `.vibe` file, the Effect tab's error classes, services, schemas, Effect types, `Effect.succeed` and `Effect.fail`, catch combinators, and `withSpan` and `provide` calls draw warnings whose quick fixes, and `vibelang --fix`, write the VibeLang tab where it keeps the program's meaning ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Complete Effect tabs import their dependencies and are typechecked. Tabs marked `// fragment` use the declarations below or a surrounding `Effect.gen` body. The VibeLang examples share these declarations:
 
 ![Every form on one page](/videos/periodic.mp4)
 
@@ -263,8 +263,7 @@ const greetUser = Effect.fn("greetUser")(function* (id: string) {
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
-// run: try Console.log(try Effect.provide(greetUser("1"), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))])))
+// run: const output = try Console.Console; try Console.log(try Effect.provide(greetUser("1"), Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))])))
 effect function greetUser(id: string) {
   return try withSpan(effect {
     const user = try getUser(id)
@@ -412,8 +411,7 @@ NodeRuntime.runMain(main)
 
 ```vibe es
 // main.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: try Effect.provide(main(), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]))
+// run: const output = try Console.Console; try Effect.provide(main(), Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))]))
 export effect function main() {
   try log("Hello")
 }
@@ -440,7 +438,6 @@ const safe = (id: string) =>
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log(try safe("1")); try Console.log((try safe("missing")).includes("NotFound"))
 effect function safe(id: string) {
   return match (try exit(getUser(id))) {
@@ -462,7 +459,6 @@ const logged = getUser("1").pipe(
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
 // run: { const jsonValue = try logged(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function logged() {
   const outcome = try exit(getUser("1"))
@@ -485,8 +481,7 @@ const tracked = getUser("1").pipe(
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
-// run: const user = try Effect.provide(tracked(), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))])); try Console.log(user.name)
+// run: const output = try Console.Console; const user = try Effect.provide(tracked(), Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))])); try Console.log(user.name)
 effect function tracked() {
   return try onExit(getUser("1"), (outcome) => log(`lookup ${outcome._tag}`))
 }
@@ -504,7 +499,6 @@ if (result._tag === "Failure") yield* Effect.interrupt
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log((try outcome())._tag)
 effect function outcome() {
   const result = try exit(getUser("1"))
@@ -534,7 +528,6 @@ const cancellable = Effect.interruptible(getOrders("1"))
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-22
 // run: { const jsonValue = [try guarded(), try cancellable()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function guarded() {
   uninterruptible {
@@ -590,7 +583,6 @@ const size = (path: string) =>
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 // run: provide FileSystem.layerNoop({ readFileString: () => succeed("hello") }) { try Console.log(try size("notes.txt")) }
 effect function size(path: string) {
   const fs = try FileSystem.FileSystem
@@ -610,7 +602,6 @@ const patient = Effect.gen(function* () {
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try patient(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function patient() {
   try sleep("10 millis")
@@ -653,7 +644,6 @@ const shout = pipe(user.name, (name) => name.toUpperCase(), (name) => `${name}!`
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-14, VIP-23
 // run: try Console.log(try shout())
 effect function shout() {
   return (try getUser("1")).name |> %.toUpperCase() |> `${%}!`
@@ -672,7 +662,6 @@ const findUser = (users: Map<string, User>, id: string) =>
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log((try findUser(new Map([["1", { id: "1", name: "Ada" }]]), "1")).name); try Console.log((try result(findUser(new Map<string, User>(), "missing")))._tag)
 effect function findUser(users: Map<string, User>, id: string) {
   const user = users.get(id)
@@ -694,7 +683,6 @@ const label = (id: string) =>
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-2, VIP-5, VIP-14
 // run: try Console.log(try label("1"))
 effect function label(id: string) {
   const name = do {
@@ -743,7 +731,6 @@ it.live("finds a user", () =>
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try loaded())
 effect function loaded() {
   return try withSpan(effect {
@@ -755,7 +742,6 @@ effect function loaded() {
 ```
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6
 import { assert, it } from "@effect/vitest"
 
 it.live("finds a user", () => effect {
@@ -785,7 +771,6 @@ const phaseLabel = (phase: "draft" | "published") =>
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([phaseLabel("draft"), phaseLabel("published")])))
 function phaseLabel(phase: "draft" | "published") {
   return match (phase) {
@@ -809,7 +794,6 @@ const describeFailure = (failure: NotFound | Timeout) =>
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([describeFailure(new NotFound({ id: "7" })), describeFailure(new Timeout())])))
 function describeFailure(failure: NotFound | Timeout) {
   return match (failure) {
@@ -831,7 +815,6 @@ const deliveryLabel = Delivery.$match({
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([deliveryLabel(Delivery.Waiting()), deliveryLabel(Delivery.Sent({ tracking: "parcel-8" }))])))
 function deliveryLabel(delivery: Delivery) {
   return match (delivery) {
@@ -853,7 +836,6 @@ const failed = (outcome: Exit.Exit<User, NotFound>) => Exit.isFailure(outcome)
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(greet(Option.some("Ada"))); try Console.log(greet(Option.none())); try Console.log(failed(Exit.fail(new NotFound({ id: "7" })))); try Console.log(failed(Exit.succeed({ id: "1", name: "Ada" })))
 function greet(name: Option.Option<string>) {
   return match (name) {
@@ -880,7 +862,6 @@ const firstFailure = (outcome: Exit.Exit<User, NotFound>) =>
 ```
 
 ```vibe es
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(firstFailure(Exit.succeed({ id: "1", name: "Ada" }))); try Console.log(firstFailure(Exit.fail(new NotFound({ id: "7" }))).includes("NotFound"))
 function firstFailure(outcome: Exit.Exit<User, NotFound>) {
   if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause)) return Cause.pretty(cause)
@@ -948,7 +929,7 @@ const name = await Effect.runPromise(greetUser("1"))
 
 ```vibe es
 // pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-12, VIP-13, VIP-14, VIP-33
-// run: provide Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]) { const ticker = try sync(() => makeTicker()); const value = try wrappedCalls('{"ok":true}', ".", ticker); try Console.log(try Effect.try(() => JSON.stringify({ ...value, up: typeof value.up, key: value.key.type, free: typeof value.free }))) }
+// run: const output = try Console.Console; provide Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))]) { const ticker = try sync(() => makeTicker()); const value = try wrappedCalls('{"ok":true}', ".", ticker); try Console.log(try Effect.try(() => JSON.stringify({ ...value, up: typeof value.up, key: value.key.type, free: typeof value.free }))) }
 import { makeTicker, offTick, onceTick, statfs, uptime } from "./node-apis.ts"
 import type { EventEmitter } from "node:events"
 import { generateKey } from "./web-apis.ts"
@@ -1030,7 +1011,6 @@ return [yield* Fiber.join(user), yield* Fiber.join(orders)]
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-14, VIP-17
 // run: { const jsonValue = try both(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function both() {
   const user = fork getUser("1")
@@ -1049,7 +1029,6 @@ const pair = yield* Effect.all({ user: getUser("1"), orders: getOrders("1") }, {
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
 // run: { const jsonValue = try many(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function many() {
   const [user, orders] = try.all [getUser("1"), getOrders("1")]
@@ -1068,7 +1047,6 @@ const outcomes = yield* Effect.all([Effect.exit(getUser("1")), Effect.exit(getOr
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-18
 // run: const value = try outcomes(); try Console.log(value.fastest.name); try Console.log(try Effect.try(() => JSON.stringify(value.results.map((result) => result._tag)))); { const jsonValue = (try.allSettled [getUser("missing"), getOrders("1")]).map((result) => result._tag); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = (try.all [exit(die("defect")), exit(getOrders("1"))]).map((e) => e._tag); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function outcomes() {
   const fastest = try.any [getUser("1"), getUser("2")]
@@ -1092,7 +1070,6 @@ const withHeartbeat = Effect.scoped(Effect.gen(function* () {
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-12, VIP-14, VIP-17
 // run: provide Logger.layer([]) { try Console.log((try withHeartbeat()).name) }
 effect function withHeartbeat() {
   return try scoped(effect {
@@ -1113,7 +1090,6 @@ const fiber = yield* Effect.forkIn(getUser("2"), scope)
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-14, VIP-17
 // run: try Console.log(Exit.isFailure(try Fiber.await(try background())))
 effect function background() {
   fork.detached getUser("1")
@@ -1181,8 +1157,7 @@ yield* Effect.forEach(ids, (id) => Effect.flatMap(getUser(id), (user) => Effect.
 ```
 
 ```vibe es
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-19
-// run: try Effect.provide(logAll(["1", "2"]), Logger.layer([Logger.make(({ message }) => console.log(...(message as unknown[])))]))
+// run: const output = try Console.Console; try Effect.provide(logAll(["1", "2"]), Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))]))
 effect function logAll(ids: string[]) {
   for concurrent(8) (const id of ids) {
     try log((try getUser(id)).name)
