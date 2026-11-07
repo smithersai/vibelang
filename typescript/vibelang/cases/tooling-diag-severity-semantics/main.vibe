@@ -1,0 +1,4 @@
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | For VibeLang's own diagnostics, `"error"` fails both `vibelang` and `vibelang lint` and participates in `noEmitOnError`; `"warning"` prints without changing exit status; `"suggestion"` is shown only by the language server ([VIP-34](../vips/0034-compiler-and-tooling.md#decision)).
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | For every code, `"off"` reports nothing.
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | To fail CI on an own warning, set it to `"error"`.
+export const witness = 1

@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | Written `./x.vibe` and `./x.vibex` imports follow the `.ts`/`.tsx` twin's source-extension checks, including `TS5097` for a value import without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`.
+export const witness = 1

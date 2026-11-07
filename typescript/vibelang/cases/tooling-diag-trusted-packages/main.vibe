@@ -1,0 +1,3 @@
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | The retired `trustedPackages` key is ignored in `vibe` and supported legacy sections, with warning `EK3010`: remove it.
+// rule-evidence: docs/design/src/007-tooling.md#diagnostic-settings | Npm functions follow the same foreign-callable contract as local TypeScript, including `unknown` without `@throws`; use a signature contract or an explicit `Effect.try` bridge ([VIP-4](../vips/0004-throw.md#decision), amended).
+export const witness = 1

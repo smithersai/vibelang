@@ -1,0 +1,1 @@
+an extensionless import of a VibeLang module suggests its runtime name as the .ts twin does

@@ -1,0 +1,1 @@
+.vibe importers of ./x.vibe and ./x.vibex get the .ts twin's source-extension diagnostics

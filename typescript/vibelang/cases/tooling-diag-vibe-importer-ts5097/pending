@@ -1,0 +1,1 @@
+tooling a .vibe importer of ./x.vibe or ./x.vibex gets no TS5097 without allowImportingTsExtensions or rewriteRelativeImportExtensions, unlike its .ts twin; AllowImportingTsExtensionsFrom returns true for every VibeLang source
