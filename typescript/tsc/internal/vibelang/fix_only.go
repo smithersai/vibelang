@@ -181,7 +181,7 @@ func (s *fixScope) check(program *compiler.Program) error {
 	if n := len(missing) - len(shown); n > 0 {
 		more = fmt.Sprintf(" and %d more", n)
 	}
-	return fmt.Errorf("--only lists %d %s that %s not .vibe %s of this project: %s%s", len(missing), plural(len(missing), "file", "files"), plural(len(missing), "is", "are"), plural(len(missing), "module", "modules"), strings.Join(shown, ", "), more)
+	return fmt.Errorf("--only lists %d %s of this project: %s%s", len(missing), plural(len(missing), "file that is not a .vibe or .vibex module", "files that are not .vibe or .vibex modules"), strings.Join(shown, ", "), more)
 }
 
 // partial says what a listed run did not do, for its report: the modules it

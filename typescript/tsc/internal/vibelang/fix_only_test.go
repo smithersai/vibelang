@@ -442,3 +442,23 @@ func TestFixOnlyProperty(t *testing.T) {
 		})
 	}
 }
+
+// The refusal names what a listed file must be, in plain words: a .vibe or
+// .vibex module of the project.
+func TestFixOnlyBadListMessage(t *testing.T) {
+	for name, tc := range map[string]struct {
+		args []string
+		want string
+	}{
+		"one":  {[]string{"--only", "plain.ts"}, "--only lists 1 file that is not a .vibe or .vibex module of this project: "},
+		"many": {[]string{"--only", "plain.ts,missing.vibe"}, "--only lists 2 files that are not .vibe or .vibex modules of this project: "},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := onlyProject(t, map[string]string{"a.vibe": onlyFixableA, "plain.ts": "export const plain = 1\n"})
+			status, sys := runFix(t, dir, tc.args...)
+			if status == 0 || !strings.Contains(sys.stderr.String(), tc.want) {
+				t.Fatalf("status %d, stderr %q; want %q", status, sys.stderr.String(), tc.want)
+			}
+		})
+	}
+}

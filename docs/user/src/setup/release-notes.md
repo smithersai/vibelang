@@ -79,6 +79,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Cleaning build projects through `vibelang lint` could delete existing outputs. It now reports the files without removing them.
 - `vibelang lint` could switch configurations and reject compiler options when an old lint flag was present. It now uses compiler options consistently and reports old lint flags as unknown options.
 - An inferred declaration could name a private package subpath blocked by `exports`, causing `TS2307` in TypeScript consumers. It now respects the selected export entry and uses the available public type.
+- `vibelang --fix --only` refused a list naming a file outside the project with `lists 1 file that is not .vibe module of this project`, which left out `.vibex` modules. It now says `lists 1 file that is not a .vibe or .vibex module of this project`.
 - The migrate flow sent a module back to TypeScript with `EK4402` when it read `import.meta.filename`, `import.meta.dirname` or `import.meta.env`, or called `import.meta.resolve` with a computed or second argument. It now serves these reads from the `.platform.ts` companion, passing the module's own `import.meta.url` where the value names the module, so `main: import.meta.filename` still names the module after migration.
 
 - A migrated lint runner could drop JSX files in its extension filter before linting them. Setup now includes JSX source, preserves directory scope, and repairs filters from earlier setup runs.
