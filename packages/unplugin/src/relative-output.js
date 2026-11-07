@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs"
+import { dirname, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 import { SourceMap } from "node:module"
 import MagicString from "magic-string"
@@ -5,7 +7,13 @@ import remapping from "@jridgewell/remapping"
 
 const sourceSuffix = /\.(?:vibex?|[cm]?tsx?)$/
 const outputSuffix = /\.(?:[cm]?js|jsx)$/
-const encodedOutput = /["'`]\.\.?\/[^"'\n]*%[\da-f]{2}[^"'\n]*\.(?:[cm]?js|jsx)["'`]/i
+const relativeOutputs = /["'`](\.\.?\/[^"'`\n]*\.(?:[cm]?js|jsx))["'`]/g
+function needsOriginalImports(code, file) {
+  for (const match of code.matchAll(relativeOutputs)) {
+    if (/%[\da-f]{2}/i.test(match[1]) || existsSync(resolve(dirname(file), match[1]))) return true
+  }
+  return false
+}
 const cache = new WeakMap()
 
 function lineStarts(text) {
@@ -49,13 +57,13 @@ function moduleSource(node) {
   if (node.type === "CallExpression" && node.callee?.type === "Identifier" && node.callee.name === "require") return node.arguments[0]
 }
 
-// URL escaping can make a rewritten source import and a literal .js import
+// Source extension rewriting can make a source import and a literal .js import
 // identical. Restore each source import from its mapped original syntax before
 // the bundler resolves it. Ordinary strings and authored .js imports keep their
 // exact meaning; composing the edits retains the original source positions.
 export function relativeOutput(result, file, backend, compiler, debug) {
   const { code, map } = result
-  if (result.errors?.length || !map?.sourcesContent || !encodedOutput.test(code)) return result
+  if (result.errors?.length || !map?.sourcesContent || !needsOriginalImports(code, file)) return result
   const previous = cache.get(map)
   if (previous?.code === code) return { ...result, ...previous.output }
 
@@ -80,7 +88,7 @@ export function relativeOutput(result, file, backend, compiler, debug) {
   let count = 0
   for (const node of nodes(ast)) {
     const source = moduleSource(node), emitted = stringValue(source)
-    if (typeof emitted !== "string" || !/^\.\.?\//.test(emitted) || !outputSuffix.test(emitted) || !/%[\da-f]{2}/i.test(emitted)) continue
+    if (typeof emitted !== "string" || !/^\.\.?\//.test(emitted) || !outputSuffix.test(emitted)) continue
     const [line, column] = position(lines, source.range[0])
     const origin = sourceMap.findOrigin(line, column)
     const index = map.sources.indexOf(origin.fileName), text = map.sourcesContent[index]

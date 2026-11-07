@@ -337,3 +337,5 @@ only diagnostics for the source being loaded and project-wide errors, including
 configuration diagnostics.
 An unrelated file's type errors do not prevent loading a clean module. Run
 `vibelang -p tsconfig.json` to check every project file.
+
+Relative imports keep source files and JavaScript siblings distinct: importing `./value.vibe` and `./value.js` in one module loads each file separately, including when their names use only ASCII characters.
