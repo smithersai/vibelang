@@ -2368,5 +2368,35 @@
       "reference": "docs/design/vips/0034-compiler-and-tooling.md#decision: accepted VIP-34 says \"With `rewriteRelativeImportExtensions`, relative specifiers `./x.vibe` in emitted JavaScript are rewritten to `./x.js`, as for `.ts`; source-extension admission follows the same tsconfig checks as the native twin\"; docs/design/src/007-tooling.md#config-files requires TS5097 without allowImportingTsExtensions or rewriteRelativeImportExtensions. This records existing published authority, not a new language decision."
     },
     "reason": "The case only gained `rewriteRelativeImportExtensions: true` in tsconfig.json, the flag its .ts twin needs to import a source extension; its sources and expected diagnostics are unchanged, so it rejects no new form."
+  },
+  {
+    "code": "EK0107",
+    "case": "typescript/vibelang/cases/witness-var-declarations.fail",
+    "vip": "VIP-1",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0001-effect-and-async-functions.md: Status accepted by Will, 2026-10-28; its amendment banning legacy JavaScript in all .vibe code makes every var declaration a compile error, and docs/design/src/001-functions.md#direct-eval lists var, for (var ...) included, under EK0107. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing var rejection at each declaration form: top level, function body, for, for-in, for-of, effect code and a nonfinal var in a do body; a property named var compiles. The compiler before this commit reports the same sites, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0201",
+    "case": "typescript/vibelang/cases/witness-do-var-specific.fail",
+    "vip": "VIP-2",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0002-effect-blocks-and-do.md#clarification-overlapping-var-diagnostics: accepted VIP-2 reports EK0201 for a final var declaration in a do block and EK0203 for var in a do expression in a parameter list, both when both apply, instead of EK0107. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing do early errors: a final var declaration reports EK0201, with EK0203 beside it in a parameter list, and neither site reports EK0107. Ending the block with its value is the author's choice, so no automatic repair is asserted."
+  },
+  {
+    "code": "EK0203",
+    "case": "typescript/vibelang/cases/witness-do-var-specific.fail",
+    "vip": "VIP-2",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0002-effect-blocks-and-do.md#clarification-overlapping-var-diagnostics: accepted VIP-2 reports EK0201 for a final var declaration in a do block and EK0203 for var in a do expression in a parameter list, both when both apply, instead of EK0107. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Witness of the existing parameter-list do early error, alone for a nonfinal var and beside EK0201 for a final one, with no EK0107 at either site. Choosing let or const for the binding needs author intent."
   }
 ]

@@ -1,0 +1,36 @@
+// rule-evidence: docs/design/src/002-running.md#meaning | Valid native iteration is never rejected, or converted to `for try`, because its operand is a Stream.
+// The operand is a Stream and also iterable: each native loop compiles with no
+// diagnostic and reads the native iterator (2, 20 and 3, 30), never the
+// Stream's single element 1. The empty expected/diagnostics.txt rules out a
+// type-directed rejection (no `EK2007`) or warning, and the emitted loops stay
+// native `for...of` and `for await`, not a Stream run.
+// expect-result: {"plain":[2,20],"async":[3,30],"effect":[2,20],"stream":[1],"seen":[4,2,1]}
+import {Effect,Stream} from "effect"
+import {make,counts,type Dual} from "./native.js"
+
+function plainValues(rows:Dual):number[] {
+  const values:number[]=[]
+  for (const value of rows) values.push(value)
+  return values
+}
+async function asyncValues(rows:Dual):Promise<number[]> {
+  const values:number[]=[]
+  for await (const value of rows) values.push(value)
+  return values
+}
+effect function effectValues(rows:Dual) {
+  const values:number[]=[]
+  for (const value of rows) {
+    if (value > 100) continue
+    values.push(value)
+  }
+  return values
+}
+export effect function main() {
+  const plain = plainValues(try Effect.try(() => make()))
+  const async = try Effect.promise(() => asyncValues(make()))
+  const effect = try effectValues(try Effect.try(() => make()))
+  const stream = Array.from(try Stream.runCollect(try Effect.try(() => make())))
+  const seen = try Effect.try(() => counts())
+  return {plain, async, effect, stream, seen}
+}
