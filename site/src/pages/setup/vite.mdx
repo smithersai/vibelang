@@ -221,8 +221,16 @@ When using Vitest's `test.projects`, add `vibelang()` to each project's own `plu
 For `node --test`, write a `.test.ts` suite that imports `.vibe` modules and runs their programs with `Effect.runSync` or `Effect.runPromise`. Include the suite in `tsconfig.test.json`, install `@types/node`, and add `"node"` to that project's `compilerOptions.types` (keeping any existing entries). Load the source hook and select that project:
 
 ```sh
-VIBELANG_PROJECT=tsconfig.test.json node --import vibelang/register --test src/greet.test.ts
+VIBELANG_PROJECT=tsconfig.test.json node --enable-source-maps --import vibelang/register --test src/greet.test.ts
 ```
+
+For Node's built-in coverage, keep `--enable-source-maps` on the command line and add `--experimental-test-coverage`:
+
+```sh
+VIBELANG_PROJECT=tsconfig.test.json node --enable-source-maps --import vibelang/register --test --experimental-test-coverage src/greet.test.ts
+```
+
+Coverage counts authored `.vibe` functions and excludes compiler-generated functions. Add `--test-coverage-functions=100` to fail when a source function remains uncalled. The source hook enables mapped stacks inside test processes; the command-line flag also enables source-map remapping in Node's test controller. Without it, that controller can treat generated JavaScript offsets as source offsets and incorrectly report an uncalled function as covered.
 
 The repository does not provide a Jest transformer for `.vibe` sources. Use Vitest for `.test.vibe` suites.
 
