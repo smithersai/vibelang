@@ -129,6 +129,13 @@ yarn add --exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.
 yarn add --dev --exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
+Yarn does not install peer dependencies automatically. Keep an existing Vite 7 or 8 dependency. If the project has neither, install the required `vite` peer before running Vite or Vitest:
+
+```sh
+yarn add --dev --exact vite@8
+```
+
+
 | Package | Install as | Purpose |
 | --- | --- | --- |
 | `vibelang-runtime` | Dependency | Small helpers used by compiled code |
@@ -136,6 +143,7 @@ yarn add --dev --exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect
 | `vibelang` | Dev dependency | The compiler and language server, its native binary, and the VS Code extension |
 | `vibelang-vite` | Dev dependency | Compiles `.vibe` modules for Vite and Vitest |
 | `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` 4.1.1 for tests |
+| `vite` | Dev dependency | Vite 7 or 8, required by the Vite plugin and Vitest; Yarn projects provide this peer explicitly |
 
 Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at 4.1.1. `vibelang`, `vibelang-runtime`, and `vibelang-vite` release together; keep them at one version.
 
