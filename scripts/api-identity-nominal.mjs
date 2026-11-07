@@ -77,23 +77,38 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     if (!brands.has(key)) brands.set(key, "b" + brands.size)
     return brands.get(key)
   }
-  // tsc never calls two `infer` declarations identical, so an unchanged generic
-  // alias using one fails strict identity unless its whole file is proved equal,
-  // and so does every generic export over it. Each side states such an alias in
-  // a form without `infer`, where a signature's own type parameters compare by
-  // position. The strict probe of those forms is the proof; the after side then
-  // forwards to the before side, so one alias serves both.
+  // tsc never calls two `infer` declarations identical, and it compares a
+  // mapped type's `as` clause by reference, so an unchanged generic alias using
+  // either fails strict identity unless its whole file is proved equal, and so
+  // does every generic export over it. Each side states such an alias in a form
+  // without them, where a signature's own type parameters compare by position.
+  // The strict probe of those forms is the proof; the after side then forwards
+  // to the before side, so one alias serves both.
   const inferProofs = [], forwarded = new Map(), appended = new Map()
-  const usesInfer = node => ts.isInferTypeNode(node) || Boolean(ts.forEachChild(node, usesInfer))
+  const usesInfer = node => ts.isInferTypeNode(node) || ts.isMappedTypeNode(node) && Boolean(node.nameType) ||
+    Boolean(ts.forEachChild(node, usesInfer))
   const typeParameters = ({ statement, source }) => statement.typeParameters.map(parameter => printer.printNode(ts.EmitHint.Unspecified,
     factory.updateTypeParameterDeclaration(parameter, undefined, parameter.name, parameter.constraint, parameter.default), source)).join(", ")
   const withoutInfer = ({ statement, source }) => {
     const form = context => {
+      // `{ [K in C as N]: T }` becomes `["__api_mapped", modifiers, <K extends C>() => [N, T]]`:
+      // equal forms mean equal constraints, `as` types, templates and modifiers.
+      const mapped = (node, inner) => {
+        const key = node.typeParameter
+        const token = t => t ? ts.tokenToString(t.kind) : ""
+        const signature = factory.createFunctionTypeNode([factory.updateTypeParameterDeclaration(key, undefined, key.name,
+          ts.visitNode(key.constraint, inner), undefined)], [], factory.createTupleTypeNode([ts.visitNode(node.nameType, inner),
+          node.type ? ts.visitNode(node.type, inner) : factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)]))
+        return factory.createTupleTypeNode([factory.createLiteralTypeNode(factory.createStringLiteral("__api_mapped")),
+          factory.createLiteralTypeNode(factory.createStringLiteral(token(node.readonlyToken) + "|" + token(node.questionToken))), signature])
+      }
       const conditional = node => {
+        if (ts.isMappedTypeNode(node) && node.nameType) return mapped(node, conditional)
         if (!ts.isConditionalTypeNode(node)) return ts.visitEachChild(node, conditional, context)
         const scoped = new Map()
         const extended = child => {
           if (ts.isConditionalTypeNode(child)) return conditional(child)
+          if (ts.isMappedTypeNode(child) && child.nameType) return mapped(child, extended)
           if (!ts.isInferTypeNode(child)) return ts.visitEachChild(child, extended, context)
           const parameter = child.typeParameter, name = parameter.name.text
           // `infer` takes a constraint from its position; a parameter needs it written.

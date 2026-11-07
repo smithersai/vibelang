@@ -1,0 +1,6 @@
+{
+  "repository": "smithers",
+  "module": "packages/smithers/flows/plan/src/Node.ts",
+  "pattern": "An unchanged recursive alias whose mapped type has an as clause, in a declaration file that changed elsewhere (a declaration moved behind a re-export).",
+  "source": "export declare const PlannedTypeId: unique symbol;\nexport interface Identity<out T> { readonly node: string; readonly path: ReadonlyArray<string>; readonly _T: (_: never) => T }\nexport type Planned<T> = { readonly [PlannedTypeId]: Identity<T> } & ([T] extends [object] ? { readonly [K in keyof T]: Planned<T[K]> } : unknown);\nexport type Succeed<A> = A extends Planned<infer Value> ? Value : A extends bigint ? never : A extends Date ? string | null : A extends { toJSON: (...args: any) => infer Value } ? Succeed<Value> : A extends (...args: any) => any ? undefined : A extends symbol ? undefined : A extends ReadonlyArray<unknown> ? { [K in keyof A]: SucceedArrayMember<A[K]> } : A extends object ? { [K in keyof A as K extends string | number ? [Succeed<A[K]>] extends [undefined] ? never : K : never]: Succeed<A[K]> } : A;\nexport type SucceedArrayMember<A> = A extends Planned<infer Value> ? Value : A extends unknown ? Succeed<A> extends infer Value ? Value extends undefined ? null : Value : never : never;\n"
+}
