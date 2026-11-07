@@ -1,0 +1,4 @@
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | `vibelang --fix` retains its safety checks and refusal rules.
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | | `EK4854` | Warning | The retired abstract-class service spelling | Write `service`, retaining its contract and key (VIP-9).
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | | `EK4855` | Warning | A service's cached `static readonly default` | Use an equivalent native `Context.Service` class, retaining its key, eager initialization, cached identity, field and type reads, mutable shape members and missing-provider failure; otherwise refuse (VIP-9).
+export const witness = 1

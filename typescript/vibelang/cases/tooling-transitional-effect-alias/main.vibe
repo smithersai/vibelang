@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | `vibelang --fix` retains its safety checks and refusal rules.
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | | `EK4856` | Warning | A type resolves to the retired global `Effect<A, E, R>` alias | Write `A!E!R` where it needs no new parentheses, otherwise `Effect.Effect<A, E, R>`, including heritage elements (VIP-3).
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | `EK4856` selects the resolved legacy symbol: local and imported types named `Effect` retain their TypeScript meaning.
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | Keep existing parentheses, written default slots and the `Effect` namespace binding; otherwise refuse.
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | Emitted declarations already use `Effect.Effect<…>` and stay unchanged.
+export const witness = 1

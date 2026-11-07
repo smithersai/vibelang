@@ -1,0 +1,2 @@
+// rule-evidence: docs/design/src/007-tooling.md#transitional-diagnostics | | `EK4857` | Error | An immediate written `infer` channel belongs to the [legacy return-slot set](001-functions.md#legacy-written-infer-return-slots) | Write checker-proved channel types; only on an explicitly `effect`-marked callable with every channel `infer`, omit the annotation if preservation is proved (VIP-3).
+export const witness = 1
