@@ -1,0 +1,5 @@
+// expect: EK3848 EK3849
+// Appendix B: EK4804 successor, imported global-error failure/catch rules use their assigned EK38… identities — spec-rule: docs/design/src/900-appendices.md#a0216046f42d6c02
+// globalErrorInEffectFailure prints EK3849 and globalErrorInEffectCatch prints
+// EK3848, each with its rule name, for the TypeScript input errors.ts.
+export const ready = 1

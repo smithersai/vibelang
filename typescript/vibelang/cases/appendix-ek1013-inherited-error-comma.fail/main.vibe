@@ -1,0 +1,5 @@
+// expect: EK1013 EK2117
+// Appendix B: interim EK1013, a comma remains a class-body separator in an inherited error declaration — spec-rule: docs/design/src/900-appendices.md#f0248dae34631b27
+// The inherited error is also EK2117; its comma is EK1013. Root forms that
+// accept commas are in appendix-ek1013-shared-separators.
+export error Gone extends Error { since: number, by: string }

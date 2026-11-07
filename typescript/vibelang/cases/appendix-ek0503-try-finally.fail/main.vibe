@@ -1,0 +1,5 @@
+// expect: EK0503
+// Appendix B: EK2006 successor, effect code rejects try statements with EK0503 — spec-rule: docs/design/src/900-appendices.md#ee7196fae3526b5a
+export effect function cleanup(close: () => void) {
+  try { return 1 } finally { close() }
+}

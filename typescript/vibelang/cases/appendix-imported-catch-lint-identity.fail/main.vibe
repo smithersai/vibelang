@@ -1,0 +1,5 @@
+// expect: EK38122
+// Appendix B: EK4806 successor, imported catch lint has its EK38… identity — spec-rule: docs/design/src/900-appendices.md#e55ee46ae340cf3f
+// The imported unknownInEffectCatch rule prints its assigned code EK38122 and
+// rule name for the TypeScript input catch.ts.
+export const ready = 1

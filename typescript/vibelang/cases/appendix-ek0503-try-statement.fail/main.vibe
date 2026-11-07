@@ -1,0 +1,10 @@
+// expect: EK0503
+// Appendix B: EK9204 successor, a try statement in effect code is EK0503 and an infallible Effect still runs with try e — spec-rule: docs/design/src/900-appendices.md#7ea68a10943532da
+export effect function statement() {
+  try { return 1 } catch (e) { return 2 }
+}
+
+export effect function infallible() {
+  const n = try Effect.succeed(2)
+  return n
+}

@@ -1,0 +1,1 @@
+EK3823: duplicatePackage: Multiple versions of package `@effect/fake` were detected
