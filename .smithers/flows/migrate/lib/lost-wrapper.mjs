@@ -315,6 +315,40 @@ export function functionsOf(ts, text, file = "module.ts") {
   return found
 }
 
+/**
+ * The name paths of the values in text whose initializer reads Effect, named
+ * as functionsOf names the functions they hold: `export const program =
+ * Effect.gen(...)` is `/program`.
+ */
+function programValuesOf(ts, text, file) {
+  const kind = file.endsWith("x") ? ts.ScriptKind.TSX : /\.[cm]?js$/.test(file) ? ts.ScriptKind.JS : ts.ScriptKind.TS
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, kind)
+  const bound = bindingsOf(ts, source)
+  const values = new Set()
+  const visit = (node, path) => {
+    if ((ts.isVariableDeclaration(node) || ts.isPropertyAssignment(node) || ts.isPropertyDeclaration(node)) && node.initializer && staticName(ts, node.name) !== null) {
+      const at = `${path}/${staticName(ts, node.name)}`
+      if (readsEffect(ts, node.initializer, bound)) values.add(at)
+      visit(node.initializer, at)
+      return
+    }
+    if ((ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isMethodDeclaration(node)) && node.name && staticName(ts, node.name) !== null) {
+      ts.forEachChild(node, child => child !== node.name && visit(child, `${path}/${staticName(ts, node.name)}`))
+      return
+    }
+    ts.forEachChild(node, child => visit(child, path))
+  }
+  ts.forEachChild(source, child => visit(child, ""))
+  return values
+}
+
+/** The path before a function's first callback segment, `/program` of `/program/x.pipe(0)/Effect.flatMap(0)`, or null for no callback. */
+const holderOf = (name) => {
+  const segments = name.split("/")
+  const at = segments.findIndex(segment => /\(\d+\)(?:#\d+)?$/.test(segment))
+  return at > 1 ? segments.slice(0, at).join("/") : null
+}
+
 /** Whether the emitted function still hands a program back on every path: a generator, or nothing but Effect returns and no throw at the call. */
 const keepsProgram = fn => fn.generator || fn.factory || (fn.returns > 0 && fn.effects === fn.returns && fn.throws === 0)
 /** The original's arms whose named members the emitted function forwards to, each the same read of Effect. */
@@ -330,20 +364,29 @@ const forwardedArms = (fn, counterpart) => fn.named.filter(members => members.ev
  */
 export function lostWrappers({ ts, original, originalPath = "original.ts", emitted, emittedPath = "emitted.js", companions = [] }) {
   const before = functionsOf(ts, original, originalPath), after = functionsOf(ts, emitted, emittedPath)
+  const programs = programValuesOf(ts, emitted, emittedPath)
   for (const companion of companions) {
     for (const [name, fn] of functionsOf(ts, companion.text, companion.path)) if (!after.has(name)) after.set(name, fn)
+    for (const name of programValuesOf(ts, companion.text, companion.path)) programs.add(name)
   }
-  const flags = [], unpaired = []
+  // Direct-style lowering inlines a callback into the program around it:
+  // `x.pipe(Effect.flatMap((n) => Effect.succeed(n + 1)))` becomes
+  // `effect { const n = try x; return n + 1 }`, whose steps the callback's
+  // Effects now are. Such a callback has no emitted function. It is inlined,
+  // not unpaired, when its holder is still a program in the emit: a function
+  // that keeps its program, or a value that reads Effect.
+  const program = (holder) => holder !== null && (after.has(holder) ? keepsProgram(after.get(holder)) : programs.has(holder))
+  const flags = [], unpaired = [], inlined = []
   let paired = 0
   for (const [name, fn] of before) {
     const returned = fn.factory ? 1 : fn.generator ? 0 : fn.effects
     const counterpart = after.get(name)
     if (counterpart) paired++
     if (returned === 0) continue
-    if (!counterpart) unpaired.push({ function: name, line: fn.line, effectReturns: returned })
+    if (!counterpart) (program(holderOf(name)) ? inlined : unpaired).push({ function: name, line: fn.line, effectReturns: returned })
     else if (!keepsProgram(counterpart) && counterpart.effects + forwardedArms(fn, counterpart) < returned) flags.push({ function: name, line: fn.line, effectReturns: returned, emittedEffectReturns: counterpart.effects, cast: fn.cast })
   }
-  return { flags, unpaired, paired }
+  return { flags, unpaired, inlined, paired }
 }
 
 /** The allow-list of a run, `[{ file, function, reason }]`. `function: "*"` excuses a module the check cannot read, and no flag. An entry with no reason allows nothing. */
@@ -396,7 +439,7 @@ export function emittedPathOf(file, packages) {
  * no original for is unchecked.
  */
 export function lostWrapperCheck({ ts, files, original, emitted, renamed = () => true, allow = { entries: [], invalid: [] }, read }) {
-  const flags = [], allowed = [], unpaired = [], unchecked = [], excused = [], noOriginal = []
+  const flags = [], allowed = [], unpaired = [], inlined = [], unchecked = [], excused = [], noOriginal = []
   let modules = 0, paired = 0
   const used = new Set()
   const cannotRead = (file, reason) => {
@@ -421,11 +464,12 @@ export function lostWrapperCheck({ ts, files, original, emitted, renamed = () =>
     const found = lostWrappers({ ts, original: before.text, originalPath: before.path, emitted: after.text, emittedPath: after.path, companions: bodyCompanionsOf(file, after, read) })
     paired += found.paired
     unpaired.push(...found.unpaired.map(entry => ({ file, ...entry })))
+    inlined.push(...found.inlined.map(entry => ({ file, ...entry })))
     for (const flag of found.flags) {
       const entry = allow.entries.find(e => e.file === file && e.function === flag.function)
       if (entry) { used.add(entry); allowed.push({ file, ...flag, reason: entry.reason }) }
       else flags.push({ file, ...flag })
     }
   }
-  return { modules, paired, flags, allowed, unpaired, unchecked, excused, noOriginal, invalidAllow: allow.invalid, unusedAllow: allow.entries.filter(e => !used.has(e)), blocking: flags }
+  return { modules, paired, flags, allowed, unpaired, inlined, unchecked, excused, noOriginal, invalidAllow: allow.invalid, unusedAllow: allow.entries.filter(e => !used.has(e)), blocking: flags }
 }

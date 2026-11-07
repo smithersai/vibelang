@@ -356,7 +356,9 @@ export const read = (id: string) => get(id).pipe(Effect.flatMap((r: any) => Effe
   const emitted = jsHeader + `export const read = Effect.fnUntraced(function* (id) { return yield* Effect.filterOrFail(Effect.gen(function* () { const r = yield* get(id); return r.body; }), (b) => ok(b), () => "bad"); });\n`
   const result = scan(original, emitted)
   assert.deepEqual(result.flags, [])
-  assert.deepEqual(result.unpaired.map(u => u.function), ["/read/get().pipe(0)/Effect.flatMap(0)"])
+  // The factory around it is still a program, so the callback is inlined, never paired with the predicate.
+  assert.deepEqual(result.unpaired, [])
+  assert.deepEqual(result.inlined.map(u => u.function), ["/read/get().pipe(0)/Effect.flatMap(0)"])
 })
 
 test("a list method's Effect.gen inlined into the enclosing generator never pairs with a later data callback (alchemy MailManager, EC2)", () => {
@@ -532,4 +534,58 @@ test("only a body of this module counts: another module's companion and a non-bo
     read: path => { read.push(path); return null },
   })
   assert.deepEqual(read, [])
+})
+
+// alchemy-lost-wrapper-inlining-pairing (9 partition sources: alchemy-test
+// Http, cloudflare-test-tools e2e/Vite, git Engine among them): direct-style
+// lowering inlines a pipeline callback into the program around it, so the
+// callback has no emitted function and was listed unpaired, though its
+// Effects are that program's steps.
+const inliningOriginal = header + `export const program = Effect.succeed(1).pipe(\n  Effect.flatMap(n => Effect.succeed(n + 1))\n)\nexport const f = (s: string) => Effect.succeed(s).pipe(Effect.map((n) => n.length), Effect.flatMap((k) => Effect.succeed(k * 2)))\n`
+const inliningEmitted = `import * as Effect_1 from "effect/Effect";\nimport * as Effect from "effect/Effect";\nexport const program = Effect_1.gen(function* program() {\n    const n = yield* Effect.succeed(1);\n    return n + 1;\n});\nexport const f = (s) => Effect_1.gen(function* () {\n    const n = yield* Effect.succeed(s);\n    const k = n.length;\n    return k * 2;\n});\n`
+
+test("corpus: a callback inlined into the program around it is inlined, not unpaired", () => {
+  const { flags, unpaired, inlined } = scan(inliningOriginal, inliningEmitted)
+  assert.deepEqual(flags, [])
+  assert.deepEqual(unpaired, [])
+  assert.deepEqual(inlined.map(i => i.function), ["/program/Effect.succeed().pipe(0)/Effect.flatMap(0)", "/f/Effect.succeed().pipe(1)/Effect.flatMap(0)"])
+})
+
+test("a callback whose holder is no longer a program stays unpaired, and a holder that lost its program is flagged", () => {
+  const plainValue = scan(inliningOriginal, jsHeader + `export const program = 2;\nexport const f = (s) => Effect.gen(function* () { return s.length * 2; });\n`)
+  assert.deepEqual(plainValue.unpaired.map(u => u.function), ["/program/Effect.succeed().pipe(0)/Effect.flatMap(0)"])
+  const lostHolder = scan(inliningOriginal, inliningEmitted.replace(/export const f = [\s\S]*$/, "export const f = (s) => s.length * 2;\n"))
+  assert.deepEqual(lostHolder.flags.map(f => f.function), ["/f"])
+  assert.deepEqual(lostHolder.unpaired.map(u => u.function), ["/f/Effect.succeed().pipe(1)/Effect.flatMap(0)"])
+})
+
+test("property: lowering a pipeline into the program around it inlines its callbacks; lowering it to a value leaves them unpaired", () => {
+  const fc = require("fast-check")
+  const steps = {
+    flatMap: (i) => [`Effect.flatMap((v${i}) => Effect.succeed(v${i} + ${i}))`, `const v${i + 1} = yield* Effect.succeed(v${i} + ${i});`, true],
+    map: (i) => [`Effect.map((v${i}) => v${i} + ${i})`, `const v${i + 1} = v${i} + ${i};`, false],
+    andThen: (i) => [`Effect.andThen((v${i}) => Effect.succeed(v${i} * ${i + 1}))`, `const v${i + 1} = yield* Effect.succeed(v${i} * ${i + 1});`, true],
+  }
+  const holders = {
+    value: (pipe, gen) => [`export const h = ${pipe}\n`, `export const h = Effect.gen(function* () { ${gen} });\n`, `export const h = 0;\n`],
+    fn: (pipe, gen) => [`export const h = (v0: number) => ${pipe}\n`, `export const h = (v0) => Effect.gen(function* () { ${gen} });\n`, null],
+    property: (pipe, gen) => [`export const o = { h: ${pipe} }\n`, `export const o = { h: Effect.gen(function* () { ${gen} }) };\n`, `export const o = { h: 0 };\n`],
+  }
+  fc.assert(fc.property(fc.constantFrom(...Object.keys(holders)), fc.array(fc.constantFrom(...Object.keys(steps)), { minLength: 1, maxLength: 4 }), (holder, chain) => {
+    const built = chain.map((key, i) => steps[key](i))
+    const start = holder === "fn" ? "Effect.succeed(v0)" : "Effect.succeed(0)"
+    const pipe = `${start}.pipe(${built.map(([p]) => p).join(", ")})`
+    const gen = `let v0 = ${holder === "fn" ? "v0" : "0"}; ${built.map(([, g]) => g).join(" ")} return v${chain.length};`.replace(/^let v0 = v0; /, "")
+    const [original, lowered, plain] = holders[holder](pipe, gen)
+    const effectful = built.filter(([, , effect]) => effect).length
+    const ok = scan(header + original, jsHeader + lowered)
+    assert.deepEqual(ok.flags, [], lowered)
+    assert.deepEqual(ok.unpaired, [], lowered)
+    assert.equal(ok.inlined.length, effectful, lowered)
+    if (plain) {
+      const lost = scan(header + original, jsHeader + plain)
+      assert.equal(lost.unpaired.length, effectful, plain)
+      assert.deepEqual(lost.inlined, [], plain)
+    }
+  }), { seed: 4402, numRuns: 120 })
 })
