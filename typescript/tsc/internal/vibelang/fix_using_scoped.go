@@ -163,7 +163,10 @@ func usingScopedCapturesScope(a *analyzer, statement *ast.Node) bool {
 			continue
 		}
 		for _, requirement := range a.flowOf(item).requirements {
-			if needsScope(requirement) {
+			// Broad requirements can receive Scope without declaring its members.
+			// Check the whole type: a broad intersection constituent alone does
+			// not mean that Scope satisfies the complete requirement.
+			if needsScope(requirement) || scope != nil && c.IsTypeAssignableTo(scope, requirement) {
 				return true
 			}
 		}
