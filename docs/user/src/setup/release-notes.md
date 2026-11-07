@@ -53,6 +53,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A call as the operand of a relational pattern, such as `when <= limit():` or `x is < limit()`, reported a misleading `TS1005: '=>' expected`. It now reports `EK0707`, which says to compare the value in a guard: `when let v and if (v <= limit()):`.
 
 - Migrating a plain generic function that returned an Effect could leave a retired inference marker in its return type. The repair now uses the returned program's channels and preserves real callback errors and service requirements.
+- Checking the diagnostic reference could report a missing code that no compiler emitted. It now resolves a mapper diagnostic code from the constants in its own package.
 
 - Calling a foreign function with `?.()` could bypass throwing-call checks when its own result was an `Effect`, `Stream` or `Layer` combined with `null` or `undefined`. Optional calls now keep that nullable return contract and require the same bridge as ordinary calls.
 

@@ -163,6 +163,7 @@ export function compilerCodes(sources) {
         const local = mapperConstants.get(packageDirectory)
         // A forwarded runtime value is not a constant merely because another
         // package assigns a number to the same parameter or field name.
+        // A dynamic argument is not a constant from an unrelated Go package.
         const n = /^\d+$/.test(value ?? "") ? Number(value) : local?.get(value)
         if (n > 0) add(codeName(n), path, ts[i].offset, "mapper", {forwarder: token})
       }
