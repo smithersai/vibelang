@@ -1492,6 +1492,16 @@ const targets = {
     [go, node, bun],
     "15m"
   ),
+  "docs-import-meta-relocation": S.Shell.Test({
+    summary: "Platform guides distinguish entry filenames from shared sibling directories.",
+    shell: "node docs/tools/import-meta-relocation-docs.mjs && node --test docs/tools/import-meta-relocation-docs.test.mjs",
+    data: S.glob([
+      "docs/tools/import-meta-relocation-docs.mjs", "docs/tools/import-meta-relocation-docs.test.mjs",
+      "docs/tools/package.json", "docs/tools/bun.lock",
+      "docs/user/src/platform/105-introduction.md", "docs/user/src/platform/platform-globals.md"
+    ]),
+    tools: [node], sandbox: "none", timeout: "2m"
+  }),
   "docs-contracts": S.Shell.Test({
     summary: "Published documentation contracts and their native counterparts remain consistent.",
     shell: "node --test --test-concurrency=2 docs/tools/spec-colon-leads.test.mjs docs/tools/spec-catch-pipe-input.test.mjs docs/tools/spec-sidecar-roots.test.mjs docs/tools/spec-ts-custom-matcher.test.mjs docs/tools/spec-schema-jsdoc.test.mjs docs/tools/spec-direct-try-advisories.test.mjs docs/tools/spec-sidecar-input-protection.test.mjs docs/tools/spec-sidecar-final-path.test.mjs docs/tools/spec-async-throws.test.mjs docs/tools/spec-constructor-static-contract.test.mjs docs/tools/spec-generator-call-phase.test.mjs docs/tools/spec-handler-initialization.test.mjs docs/tools/spec-callable-contracts.test.mjs docs/tools/spec-contracts-overload.test.mjs docs/tools/spec-throw-contracts.test.mjs docs/tools/vip34-diagnostic-ownership.test.mjs docs/tools/spec-legacy-effect-alias-transition.test.mjs docs/tools/spec-builtins-contracts.test.mjs docs/tools/spec-foreign-call-contract.test.mjs docs/tools/spec-r16-carried.test.mjs docs/tools/spec-is-statement-body-home.test.mjs docs/tools/spec-is-limit-catch-homes.test.mjs docs/tools/relative-url-docs.test.mjs && node docs/tools/relative-url-docs.mjs && node --test --test-name-pattern='^Appendix B' docs/tools/spec-nothrow.test.mjs",
