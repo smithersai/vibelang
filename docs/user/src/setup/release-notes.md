@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Installing a bundler example could reject the exact source-map helper versions required by the VibeLang plugins. The examples now exempt those pinned helpers from the minimum release age.
+
 - The `EK0403` message said it applied in a plain `catch` handler, where a call whose throwing is unknown is an ordinary call and a call known to throw is `EK0401`. It now says it applies in effect code, and names class evaluation among the forms it covers.
 
 - A `try` around a type assertion or conditional could run a returned Effect too early in TypeScript mapper output. It now runs only the operand's outer Effect, preserving the returned Effect for its own execution site.

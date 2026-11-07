@@ -22,6 +22,7 @@ examples build browser bundles with Vite.
 Each Node application starts in `src/entry.vibe`, which calls `NodeRuntime.runMain` with its platform services. The exported functions in `src/main.vibe` stay unrun when imported by tests.
 
 Each example pins the published VibeLang packages; no compiler source build or Go installation is needed.
+The seven-day minimum release age exempts the exact dependencies those packages require, including the bundler source-map helpers `magic-string` and `@jridgewell/remapping`. Other dependencies retain the minimum age.
 In a Node example directory, run `bun install`,
 `bun run build`, and `bun run start`. In a frontend example, run
 `bun install`, `bun run dev`, or `bun run test` to check and build it.
