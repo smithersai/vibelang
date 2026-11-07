@@ -85,6 +85,20 @@ func recursiveParityBaseline(t *testing.T, w *Workspace, project Project, fork *
 			from[name] = filepath.ToSlash(relative)
 		}
 	}
+	// Record only structure and sizes, never the generated program's contents.
+	// A baseline refusal must identify the differing source, emit or map guard.
+	type outputReceipt struct {
+		Name, Source                             string
+		NativeBytes, BaselineBytes, CurrentBytes int
+		SameBaseline, HasElision                 bool
+	}
+	var receipts []outputReceipt
+	for _, name := range slices.Sorted(maps.Keys(fork.Outputs)) {
+		text := fork.Outputs[name]
+		receipts = append(receipts, outputReceipt{name, from[name], len(text), len(outputs[name]), len(written[name]), text == outputs[name], strings.Contains(text, "/*elided*/ any")})
+	}
+	t.Logf("recursive declaration baseline: current_spans=%v historical_spans=%v no_emit_on_error=%t outputs=%+v",
+		spanStrings(spans), spanStrings(baseline), fork.Program.Options().NoEmitOnError.IsTrue(), receipts)
 	acceptedSpans, acceptedOutputs, ok := cycleParityExpectation(spans, baseline, fork.Outputs, written, outputs, from, fork.Program.Options().NoEmitOnError.IsTrue())
 	if ok {
 		t.Logf("VIP-27: verified anonymous cycle declarations against stock TypeScript %s; retained %d native diagnostic spans", manifest.Version, len(acceptedSpans))

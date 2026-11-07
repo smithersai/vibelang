@@ -4,7 +4,11 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 const read = name => readFileSync(new URL(name, import.meta.url), "utf8")
-for (const name of ["out/reversed.d.ts", "out/reversed-vibe.d.ts"]) assert.match(read(name), /self: \/\*elided\*\/ any;/, name)
+for (const name of ["out/reversed.d.ts", "out/reversed-vibe.d.ts"]) {
+  const declaration = read(name).replace(/^ *\/\*\* @throws \{never\} \*\/\n/gm, "")
+  assert.match(declaration, /self: \/\*elided\*\/ any;/, name)
+  assert.equal(declaration, read("expected/reversed.d.ts"), name)
+}
 // main.vibe declares what TypeScript 7.0.2 declares for lib.ts (expected/lib.d.ts),
 // plus the @throws {never} tags VIP-27 adds to a .vibe file's plain callables.
 assert.equal(read("out/main.d.ts").replace(/^ *\/\*\* @throws \{never\} \*\/\n/gm, ""), read("expected/lib.d.ts"))

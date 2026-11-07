@@ -3,3 +3,9 @@ type Deep<T> = { [K in keyof T]: Deep<T[K]> }
 declare function deep<T>(x: Deep<T>): T
 declare const node: { n: number; self: typeof node }
 export const reversed = deep(node)
+
+// Wrappers must preserve the historical declaration's complete cycle boundary.
+export const make = () => ({ level0: deep(node) })
+export const entry = () => make()
+const local = () => ({ level0: { level1: deep(node) } })
+export const localEntry = () => local()
