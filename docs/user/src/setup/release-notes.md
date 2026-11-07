@@ -31,6 +31,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Examples with declaration snapshots could be rejected despite a valid repair. Declaration snapshots now stay separate from the source being repaired.
 
+- Native TypeScript importers could lose exported types after migration when compatibility declarations were emitted from a monorepo ancestor. Bundler routes now select the existing declaration file for that layout.
+
 - The selected page-outline link was too faint in the light theme on wide screens. Active links now meet the text contrast requirement.
 
 - Imported Effect lint codes were missing from the user diagnostic reference. Every imported rule now lists its full code, default category and repair messages.
