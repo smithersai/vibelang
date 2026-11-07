@@ -17,6 +17,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Following the pnpm install guide could select a newer Node helper and report incompatible Effect peers. The guide now puts the transitive pin in `pnpm-workspace.yaml`.
 
 - Following the Yarn install guide could stop compilation with `EK3201` after selecting a newer Node helper. The guide now pins that helper with Yarn's `resolutions` setting.
+
+- Migration could keep files in TypeScript even when Bun already used the published native-module preload. It now recognizes that preload and distinguishes ordinary Bun programs from test-only configuration.
+
 - Object-rest bindings such as `const { ...timeout } = AbortSignal` could be rejected as platform calls. They now compile as ordinary object copies.
 
 - A test name containing a line break could split its health-report table row and separate it from its failure count. The name and count now stay in the same row.
