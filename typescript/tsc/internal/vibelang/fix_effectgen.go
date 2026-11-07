@@ -163,13 +163,14 @@ func noteEffectGenFix(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnosti
 
 // A generatorCall is an Effect.gen or Effect.fn call, as EK1002's fix reads it.
 type generatorCall struct {
-	generator  *ast.Node
-	isFn       bool        // Effect.fn or Effect.fnUntraced, not Effect.gen
-	span       []*ast.Node // Effect.fn("n", options)'s arguments
-	stages     []*ast.Node // the stages after an Effect.fn's generator
-	module     string      // the text that names Effect at the call
-	selfIsThis bool        // Effect.gen({ self: this }, …)
-	returns    string      // the Effect type an Effect.fn.Return<A, E, R> annotation names, or ""
+	generator   *ast.Node
+	isFn        bool        // Effect.fn or Effect.fnUntraced, not Effect.gen
+	span        []*ast.Node // Effect.fn("n", options)'s arguments
+	stages      []*ast.Node // the stages after an Effect.fn's generator
+	module      string      // the text that names Effect at the call
+	selfIsThis  bool        // Effect.gen({ self: this }, …)
+	returns     string      // the Effect type an Effect.fn.Return<A, E, R> annotation names, or ""
+	outerReturn string      // the original final named function contract when requirements remain generic
 }
 
 // readGeneratorCall reads call. It returns nil for a call of another API,
@@ -256,6 +257,18 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 			g.returns = c.TypeToStringEx(returned, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
 		}
 	}
+	// withSpan excludes ParentSpan from requirements. For an open generic
+	// requirement that changes the public contract of Effect.fn, which retains
+	// its original R. Keep the checked final result outside every stage; an
+	// inner body annotation would accidentally apply a stage's output to its input.
+	if g.isFn && g.span != nil {
+		if signature := singleCallSignature(c, c.GetTypeAtLocation(call)); signature != nil {
+			returned := c.GetReturnTypeOfSignature(signature)
+			if isEffectType(c, returned) && effectFnOpenRequirement(c, channelType(c, returned, "_R"), map[*checker.Type]bool{}) {
+				g.outerReturn = c.TypeToStringEx(returned, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+			}
+		}
+	}
 	// Effect.fn can also receive its result contract from the declaration
 	// that holds it. Keep that contextual return type beside the body,
 	// including when withSpan introduces a generic call around the program.
@@ -276,6 +289,33 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		}
 	}
 	return g, ""
+}
+
+// effectFnOpenRequirement finds a generic requirement even inside a union,
+// intersection, indexed access, conditional type or generic service wrapper.
+func effectFnOpenRequirement(c *checker.Checker, t *checker.Type, seen map[*checker.Type]bool) bool {
+	if t == nil || seen[t] {
+		return false
+	}
+	seen[t] = true
+	if t.Flags()&(checker.TypeFlagsTypeParameter|checker.TypeFlagsIndexedAccess|checker.TypeFlagsConditional) != 0 {
+		return true
+	}
+	if t.Flags()&(checker.TypeFlagsUnion|checker.TypeFlagsIntersection) != 0 {
+		for _, member := range t.Types() {
+			if effectFnOpenRequirement(c, member, seen) {
+				return true
+			}
+		}
+	}
+	if t.Flags()&checker.TypeFlagsObject != 0 && t.ObjectFlags()&checker.ObjectFlagsReference != 0 {
+		for _, argument := range c.GetTypeArguments(t) {
+			if effectFnOpenRequirement(c, argument, seen) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // fnReturnEffectType returns the Effect type that t, a written
@@ -781,7 +821,9 @@ func effectFnHead(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 		body = "{ " + strings.Join(bindings, " ") + body[1:]
 	}
 	signature := applyEdits(text[:close], head)[open:]
-	if g.returns != "" && len(g.stages) == 0 {
+	if g.outerReturn != "" {
+		signature += ": " + g.outerReturn
+	} else if g.returns != "" && len(g.stages) == 0 {
 		// Stages may change the success, error or requirement type. Their
 		// output is inferred; the written contract stays on the inner program.
 		signature += ": " + g.returns // a span keeps the Effect's type

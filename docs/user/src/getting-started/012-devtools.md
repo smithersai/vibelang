@@ -264,6 +264,8 @@ An `Effect.gen` generator with a written `Effect.fn.Return<A, E, R>` or an alias
 
 Legacy `: infer _` annotations in plain callbacks checked as TypeScript by `Effect.try`, `Effect.tryPromise`, `sync` or `callback` can report `TS1338`. `--fix` removes a simple whole-return marker and keeps TypeScript's inferred result, including inside a converted generator. Conditional `infer` types keep their meaning; an async or generator return contract, a named inference parameter, or an annotation containing comments is left for a manual edit.
 
+`--fix` also preserves a named `Effect.fn` generator's generic requirement contract. When `withSpan` would otherwise infer `Exclude<R, ParentSpan>`, the converted function retains the original final `Effect` return type, including any pipeline stages. A written generator contract still belongs to the cold inner program.
+
 A bare `return` in an `Effect.fn` generator must satisfy its written `Effect.fn.Return<A>` success type. If it does not, `--fix` leaves the generator unchanged and reports the incompatible return; `void`, `undefined` and success types that include `undefined` remain eligible for conversion.
 
 Async conversion requires every `await` operand to be statically `PromiseLike`. JavaScript also permits `await` on a scalar, an unknown value or a mixed union. Normalize those operands explicitly, for example with `await Promise.resolve(value)`, before requesting the refactor.

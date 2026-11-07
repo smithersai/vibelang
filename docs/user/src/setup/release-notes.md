@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Converting a named Effect generator could narrow a generic service requirement and change its public type. The converted function now keeps the original requirement, including through pipeline stages.
+
 - Generic data declarations could gain unnecessary helper suffixes when a matching name appeared only in an object or class member. Generated declarations now keep the first free helper name.
 
 - Using `yield` in a returned match or a match statement could crash the compiler. These forms now retain the surrounding generator's variables and suspend normally.
