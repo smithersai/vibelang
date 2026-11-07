@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -15,10 +15,14 @@ const skip = !existsSync(native) && "run sh scripts/build-vibelang.sh"
 const runtime = fileURLToPath(new URL("../../runtime/", import.meta.url))
 const skipRuntime = skip || (!existsSync(join(runtime, "dist")) && "build packages/runtime")
 
-// The rules come from .oxlintrc.json, so this runs the explicit legacy adapter:
-// a plain vibelang lint ignores that file and selects rules through the Effect
-// plugin in tsconfig.json (VIP-38, amended 2026-11-03).
-function lint(rules, source) {
+// VIP-38: "`vibelang lint` accepts compiler options and files only, never an
+// Oxlint config or lint-specific flags", and "the existing Effect
+// language-service configuration in `compilerOptions.plugins` selects the
+// imported `effecttsgo/*` rules". Each test names its rule as Oxlint spells it
+// and turns it on through that plugin entry, with every other imported rule off.
+const assigned = JSON.parse(readFileSync(new URL("../../../docs/tools/lint-code-assignments.json", import.meta.url), "utf8"))
+const ruleName = (rule) => rule.replace(/^effecttsgo\//, "").replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+function lint(rules, files) {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-lint-rules-"))
   try {
     const effect = dirname(createRequire(import.meta.url).resolve("effect/package.json"))
@@ -29,70 +33,64 @@ function lint(rules, source) {
     cpSync(join(runtime, "package.json"), join(dir, "node_modules", "vibelang-runtime", "package.json"))
     if (existsSync(join(runtime, "dist"))) cpSync(join(runtime, "dist"), join(dir, "node_modules", "vibelang-runtime", "dist"), { recursive: true })
     writeFileSync(join(dir, "package.json"), '{"private":true,"type":"module"}')
-    writeFileSync(join(dir, "tsconfig.json"), '{"compilerOptions":{"target":"es2022","module":"nodenext","moduleResolution":"nodenext","strict":true,"types":[],"skipLibCheck":true,"noEmit":true},"files":["m.vibe"]}')
-    writeFileSync(join(dir, ".oxlintrc.json"), JSON.stringify({ rules }))
-    writeFileSync(join(dir, "m.vibe"), source)
-    return spawnSync(process.execPath, [launcher, "lint", "-c", ".oxlintrc.json"], { cwd: dir, encoding: "utf8", env: { ...process.env, VIBELANG_BINARY: native, NO_COLOR: "1" } })
+    const diagnosticSeverity = Object.fromEntries(Object.keys(assigned).map((name) => [name, "off"]))
+    for (const [rule, severity] of Object.entries(rules)) {
+      assert.ok(ruleName(rule) in assigned, rule + " is an assigned imported rule")
+      diagnosticSeverity[ruleName(rule)] = severity
+    }
+    writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({
+      compilerOptions: { target: "es2022", module: "nodenext", moduleResolution: "nodenext", strict: true, types: [], skipLibCheck: true, noEmit: true,
+        plugins: [{ name: "@effect/language-service", diagnosticSeverity }] },
+      files: Object.keys(files)
+    }))
+    for (const [name, text] of Object.entries(files)) writeFileSync(join(dir, name), text)
+    return spawnSync(process.execPath, [launcher, "lint", "-p", "tsconfig.json"], { cwd: dir, encoding: "utf8", env: { ...process.env, VIBELANG_BINARY: native, NO_COLOR: "1" } })
   } finally { rmSync(dir, { recursive: true, force: true }) }
 }
 const header = 'import * as Effect from "effect/Effect"\n'
 
-// toolcover-alchemy's two repros: 0 errors under vibelang lint, against an error for the .ts twin under Oxlint.
-test("effect-succeed-with-void reports a .vibe file under its imported code", { skip }, () => {
-  const result = lint({ "effecttsgo/effect-succeed-with-void": "error" }, header + "export const e = Effect.succeed(undefined)\n")
-  assert.equal(result.status, 1, result.stdout + result.stderr)
-  assert.match(result.stdout, /m\.vibe\(2,18\): error EK3834: effectSucceedWithVoid:/)
-  assert.equal(result.stderr, "")
-})
-
 test("floating-effect reports a .vibe file once, under its imported code", { skip }, () => {
-  const result = lint({ "effecttsgo/floating-effect": "error" }, header + "export const g = Effect.gen(function* () { Effect.succeed(1); return 1 })\n")
+  const result = lint({ "effecttsgo/floating-effect": "error" }, { "m.vibe": header + "export const g = Effect.gen(function* () { Effect.succeed(1); return 1 })\n" })
   assert.equal(result.status, 1, result.stdout + result.stderr)
   assert.equal(result.stdout.match(/m\.vibe\(2,/g)?.length, 1, result.stdout)
   assert.match(result.stdout, /m\.vibe\(2,44\): error EK3801: floatingEffect:/)
 })
 
-// alchemy's 207 reports of unknown types came from an unbuilt tree: each sat on a
-// compiler error that vibelang lint does not print (TS6305, TS2307 upstream).
-// On a typed program each rule reports the fault the compiler finds, once, and
-// not the correct twin beside it.
-const typeRules = [
-  ["missing-effect-error", "error Boom { readonly code: string }\nexport const wrong: () => number!never = effect () => {\n  throw new Boom({ code: \"x\" })\n}\nexport const right: () => number!Boom = effect () => {\n  throw new Boom({ code: \"x\" })\n}\n", /m\.vibe\(2,14\): error EK3866: missingEffectError: Missing errors Boom /],
-  ["missing-effect-context", "service Port { static readonly key = \"Port\"; n: number }\nexport const wrong: () => number!never!never = effect () => {\n  const p = try Port\n  return p.n\n}\nexport const right: () => number!never!Port = effect () => {\n  const p = try Port\n  return p.n\n}\n", /m\.vibe\(2,14\): error EK3865: missingEffectContext: .*`Port`/],
-  ["missing-layer-context", "service Port { static readonly key = \"Port\"; n: number }\nservice Host { static readonly key = \"Host\"; name: string }\nexport const wrong = (l: Layer.Layer<Port, never, Host>): Layer.Layer<Port> => l\nexport const right = (l: Layer.Layer<Port, never, Host>): Layer.Layer<Port, never, Host> => l\n", /m\.vibe\(3,80\): error EK3868: missingLayerContext: Missing 'Host' /],
-  ["catch-unfailable-effect", "error Boom { readonly code: string }\nconst fail = (): number!Boom => effect { throw new Boom({ code: \"x\" }) }\nexport const never = Effect.succeed(1) |> Effect.catch(%, () => Effect.succeed(2))\nexport const fails = fail() |> Effect.catch(%, () => Effect.succeed(2))\nexport const syntax = effect () => (try fail()) catch effect (e) => 2\n", /m\.vibe\(3,43\): error EK3818: catchUnfailableEffect:/],
+// docs/user/src/getting-started/012-devtools.md: "In a `.vibe` file, a rule this
+// table marks "Not needed" or "Covered" does not run". The removed Oxlint
+// adapter ran these rules on .vibe files anyway; native lint runs each on its
+// .ts twin, under its assigned code, and on the .vibe file not at all.
+const tsHeader = 'import * as Context from "effect/Context"\nimport * as Data from "effect/Data"\nimport * as Effect from "effect/Effect"\nimport * as Layer from "effect/Layer"\n' +
+  'export class Boom extends Data.TaggedError("Boom")<{ readonly code: string }> {}\n' +
+  'export class Port extends Context.Service<Port, { readonly n: number }>()("Port") {}\n' +
+  'export class Host extends Context.Service<Host, { readonly name: string }>()("Host") {}\n'
+const vibeOnly = [
+  ["effect-succeed-with-void", "EK3834",
+    header + "export const e = Effect.succeed(undefined)\n",
+    "export const e = Effect.succeed(undefined)\n"],
+  ["missing-effect-error", "EK3866",
+    "error Boom { readonly code: string }\nexport const wrong: () => number!never = effect () => {\n  throw new Boom({ code: \"x\" })\n}\nexport const right: () => number!Boom = effect () => {\n  throw new Boom({ code: \"x\" })\n}\n",
+    "export const wrong: Effect.Effect<number> = Effect.fail(new Boom({ code: \"x\" }))\n"],
+  ["missing-effect-context", "EK3865",
+    "service Port { static readonly key = \"Port\"; n: number }\nexport const wrong: () => number!never!never = effect () => {\n  const p = try Port\n  return p.n\n}\nexport const right: () => number!never!Port = effect () => {\n  const p = try Port\n  return p.n\n}\n",
+    "export const wrong: Effect.Effect<number> = Effect.gen(function* () { const p = yield* Port; return p.n })\n"],
+  ["missing-layer-context", "EK3868",
+    "service Port { static readonly key = \"Port\"; n: number }\nservice Host { static readonly key = \"Host\"; name: string }\nexport const wrong = (l: Layer.Layer<Port, never, Host>): Layer.Layer<Port> => l\nexport const right = (l: Layer.Layer<Port, never, Host>): Layer.Layer<Port, never, Host> => l\n",
+    "export const wrong = (l: Layer.Layer<Port, never, Host>): Layer.Layer<Port> => l\n"],
+  ["catch-unfailable-effect", "EK3818",
+    "export const never = Effect.succeed(1) |> Effect.catch(%, () => Effect.succeed(2))\n",
+    "export const never = Effect.succeed(1).pipe(Effect.catch(() => Effect.succeed(2)))\n"],
+  ["missed-pipeable-opportunity", "EK3864",
+    header + "export const nested = Effect.asVoid(Effect.flatten(Effect.succeed(Effect.succeed(1))))\n",
+    "export const nested = Effect.asVoid(Effect.flatten(Effect.succeed(Effect.succeed(1))))\n"],
 ]
-for (const [rule, source, expected] of typeRules) {
-  test(`${rule} reports the faulty .vibe declaration and not its correct twin`, { skip: skipRuntime }, () => {
-    const result = lint({ [`effecttsgo/${rule}`]: "error" }, source)
-    assert.equal(result.status, 1, result.stdout + result.stderr)
-    assert.match(result.stdout, expected)
-    assert.equal(result.stdout.match(/m\.vibe\(/g)?.length, 1, result.stdout)
-    assert.equal(result.stderr, "")
+for (const [rule, code, vibe, ts] of vibeOnly) {
+  test(`${rule} reports its .ts twin as ${code} and does not run on the .vibe file`, { skip: skipRuntime }, () => {
+    const result = lint({ [`effecttsgo/${rule}`]: "error" }, { "m.vibe": vibe, "t.ts": tsHeader + ts })
+    const output = result.stdout + result.stderr
+    assert.equal(result.status, 1, output)
+    assert.equal(output.match(new RegExp(`^t\\.ts\\(\\d+,\\d+\\): error ${code}: ${ruleName(rule)}:`, "gm"))?.length, 1, output)
+    assert.doesNotMatch(output, /^m\.vibe\(\d+,\d+\): \w+ EK38\d+:/m, output)
+    assert.doesNotMatch(output, /TS5023/, output)
   })
 }
-
-// try x is $try(x) and x catch h is $catchExpression(() => x, h) to the checker,
-// so the rule read alchemy's AnomalyDetector.vibe as three nested calls.
-test("missed-pipeable-opportunity counts no try or catch as a stage", { skip: skipRuntime }, () => {
-  const source = 'import * as Effect from "effect/Effect"\nimport * as Option from "effect/Option"\nimport * as Stream from "effect/Stream"\n' +
-    "error Missing { readonly id: string }\n" +
-    "const items = (id: string): Stream.Stream<{ alias: string }, Missing> => Stream.fromIterable([{ alias: id }])\n" +
-    "export const find = effect (alias: string) => {\n" +
-    "  const summary = (Option.getOrUndefined(\n" +
-    "    try (items(alias)\n" +
-    "      |> Stream.filter(%, (s) => s.alias === alias)\n" +
-    "      |> Stream.runHead(%)),\n" +
-    "  )) catch effect (e) => match (e) {\n" +
-    '    when { _tag: "Missing" }: undefined;\n' +
-    "  }\n" +
-    "  return summary\n" +
-    "}\n" +
-    "export const nested = Effect.asVoid(Effect.flatten(Effect.succeed(Effect.succeed(1))))\n" +
-    "export const piped = Effect.succeed(1) |> Effect.map(%, (n) => n + 1) |> Effect.map(%, (n) => n + 2)\n"
-  const result = lint({ "effecttsgo/missed-pipeable-opportunity": "error" }, source)
-  assert.equal(result.status, 1, result.stdout + result.stderr)
-  assert.equal(result.stdout.match(/m\.vibe\(/g)?.length, 1, result.stdout)
-  assert.match(result.stdout, /m\.vibe\(16,23\): error EK3864: missedPipeableOpportunity:/)
-  assert.equal(result.stderr, "")
-})
