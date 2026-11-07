@@ -1,0 +1,4 @@
+{
+  "schema": "export type Status = \"ready\" | \"stopped\";\n",
+  "main": "import type { Status } from \"../schema/expo.graphql.ts\";\nexport declare const status: Status;\n"
+}
