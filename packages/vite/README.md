@@ -244,3 +244,5 @@ as `.tsx`. The adapter compiles them before JavaScript parsing and hands
 framework plugins a virtual `.jsx` module ID. Their ordinary JSX filters
 apply; source maps and diagnostics retain the original `.vibex` source.
 Development updates and dependency scanning include these modules.
+
+Relative imports keep source files and JavaScript siblings distinct: importing `./value.vibe` and `./value.js` in one module loads each file separately, including when their names use only ASCII characters.

@@ -133,8 +133,8 @@ test("esbuild source maps preserve the exact source filename like TypeScript", a
   })
 })
 
-for (const tool of ["webpack", "rspack", "rollup", "esbuild", "vite", "vite7"]) {
-  test(`${tool}: mixed escaped source and literal JavaScript imports keep distinct identities`, async () => {
+for (const tool of ["webpack", "rspack", "rollup", "esbuild", "vite", "vite7"]) for (const plain of [false, true]) {
+  test(`${tool}: mixed ${plain ? "sibling" : "escaped"} source and literal JavaScript imports keep distinct identities`, async () => {
     async function check({ name, form = "named", escaped = false }) {
       const directory = join(repo, "packages/unplugin/test/.fixtures")
       await mkdir(directory, { recursive: true })
@@ -209,12 +209,12 @@ for (const tool of ["webpack", "rspack", "rollup", "esbuild", "vite", "vite7"]) 
         }
       } finally { await rm(root, { recursive: true, force: true }) }
     }
-    for (const name of [...names, "rocket-😀 %20"]) for (const form of ["named", "namespace", "reexport"]) await check({ name, form })
-    await check({ name: "créé", escaped: true })
+    for (const name of (plain ? ["plain", "nested-name", "module_20"] : [...names, "rocket-😀 %20"])) for (const form of ["named", "namespace", "reexport"]) await check({ name, form })
+    await check({ name: plain ? "plain" : "créé", escaped: true })
     await checkProperty(fc, {
-      name: `mixed-escaped-imports-${tool}`,
+      name: `mixed-${plain ? "sibling" : "escaped"}-imports-${tool}`,
       rule: "Relative source imports and literal JavaScript imports denote distinct files, matching the native TypeScript bundler control.",
-      arbitrary: fc.record({ name: arbitrary.map(name => name + "é"), form: fc.constantFrom("named", "namespace", "reexport"), escaped: fc.boolean() }),
+      arbitrary: fc.record({ name: plain ? fc.array(fc.constantFrom("a", "b", "_", "-", "2", "0"), { minLength: 1, maxLength: 10 }).map(chars => "module-" + chars.join("")) : arbitrary.map(name => name + "é"), form: fc.constantFrom("named", "namespace", "reexport"), escaped: fc.boolean() }),
       numRuns: 8, check, command: "node --test test/encoded-imports.property.test.mjs"
     })
   })

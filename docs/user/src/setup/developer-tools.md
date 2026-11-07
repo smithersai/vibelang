@@ -610,3 +610,5 @@ The formatter preserves comparisons after Effect type assertions, including `val
 ## Last resort: keep TypeScript file names
 
 Use the compiler, plugins and editor integrations above with `.vibe` and `.vibex` files whenever possible. A project that cannot rename its TypeScript files can consider the experimental [TypeScript shim](typescript-shim.md) as the final fallback. Stock readers can accept marked files with different meaning; read the shim's limitations first.
+
+Relative imports keep source files and JavaScript siblings distinct: importing `./value.vibe` and `./value.js` in one module loads each file separately, including when their names use only ASCII characters.
