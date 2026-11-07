@@ -104,9 +104,12 @@ const joinSchemaErrorFamilies = (error: object, own: SchemaAST.AST): void => {
 }
 
 /**
- * VIP-7/VIP-29: an error declaration matches its written tag, across
- * package copies. Both matcher modes extract the original subject; the
- * closure keeps its tag independently of the call receiver.
+ * VIP-7/VIP-13/VIP-29: an error declaration matches a subject tagged with its
+ * name, across package copies, or an instance of its class. The instance test
+ * keeps a family's base matching the subclasses that `vibelang --fix` writes
+ * with their own tags (D278, VIP-34), as instanceof does. Both matcher modes
+ * extract the original subject; the closure keeps its tag and class
+ * independently of the call receiver.
  */
 export const $schemaErrorMatcher = (error: abstract new(...args: any) => unknown, tag: string, privateFactoryBase = false): void => {
   // Plain declarations have a private TaggedError/$errorSubclass factory base.
@@ -115,7 +118,7 @@ export const $schemaErrorMatcher = (error: abstract new(...args: any) => unknown
   if (privateFactoryBase) Reflect.deleteProperty(Object.getPrototypeOf(error), customMatcher)
   const matcher = {
     match(this: unknown, subject: unknown, _hint?: MatchHint): false | [unknown] {
-      return (subject as { _tag?: unknown } | null | undefined)?._tag === tag ? [subject] : false
+      return (subject as { _tag?: unknown } | null | undefined)?._tag === tag || subject instanceof error ? [subject] : false
     }
   }.match
   Object.defineProperty(error, customMatcher, { value: matcher, configurable: true, writable: true })

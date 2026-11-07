@@ -49,10 +49,9 @@ process.stdout.write(JSON.stringify(await Effect.runPromiseExit(main())));
 `]
     const originalExit = JSON.parse(command("run-before", process.execPath, runArgs))
     assert.equal(originalExit._tag, "Success")
-    // VIP-7/13/29 give concrete errors an own tag matcher. Only legacy
-    // abstract plain roots retain native instance-based family recognition.
-    const matched = !family || form === "error" && variant === "abstract-family" ? "family" : "miss"
-    assert.deepEqual(originalExit.value, [family ? "Child" : "E", id, matched, true])
+    // An error's matcher tests its tag, then instanceof its class, so every
+    // legacy family root, concrete or abstract, matches its child (D278).
+    assert.deepEqual(originalExit.value, [family ? "Child" : "E", id, "family", true])
     command("fix", compiler, [...compileArgs, "--fix"])
     const fixed = fs.readFileSync(source, "utf8")
     assert.ok(fixed.includes("class E extends"), "the reserved field was not migrated to its class")

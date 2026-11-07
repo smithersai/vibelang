@@ -90,6 +90,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - In effect code, `try` in a decorator, such as `@(try loadDecorator()) class Repo { }`, reported `EK0501`, and a decorated class with `try` in its `extends` clause or a computed member name compiled to JavaScript that failed to load with a `SyntaxError`. These now run in the enclosing Effect in class definition order, as `await` does in an `async` function. A decorated class with `await` in those places in an `async` function also loads now.
 
+- After `vibelang --fix` rewrote error inheritance, `is` and `match` rejected a subclass's error for its base although `instanceof` accepted it. An error's matcher now also accepts instances of its class, so the base matches its subclasses again.
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.

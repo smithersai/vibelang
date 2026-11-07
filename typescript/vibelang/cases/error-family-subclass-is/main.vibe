@@ -1,0 +1,100 @@
+// expect-result: {"subclass":[true,true,true],"instanceOf":[true,true,true],"classified":["child","base Sibling","base Base","schema base","other"],"rejected":[false,false,false,false,false,false,false],"copies":[true,true,true]}
+// vibelang --fix writes a legacy error family (D278) as native classes: a
+// concrete base whose tag type is widened, and subclasses tagged with their
+// own names. The repair keeps what the family matches (VIP-34): `is` and
+// `match` accept a subclass's error for its base, as instanceof does. They
+// still reject a value that is neither tagged with the pattern's name
+// (VIP-13) nor an instance of its class.
+import { $schemaErrorMember } from "vibelang-runtime"
+import { $schemaErrorFamily as $ErrorSchemaFamily } from "vibelang-runtime"
+import { $schemaErrorMatcher as $ErrorMatcher2 } from "vibelang-runtime"
+import { $errorSubclass } from "vibelang-runtime"
+import { $schemaErrorMatcher } from "vibelang-runtime"
+import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
+import { $schemaErrorMatcher as $ErrorMatcher } from "vibelang-runtime"
+class Base extends $ErrorTaggedError("Base" as string)<{
+    readonly _tag: string;
+    readonly message: string;
+}> {
+static { $ErrorMatcher(this, "Base") }
+}
+class Child extends $errorSubclass(Base, "Child") {
+static {
+    $schemaErrorMatcher(this, "Child", true);
+}
+declare readonly _tag: "Child";
+}
+class Sibling extends $errorSubclass(Base, "Sibling") {
+static {
+    $schemaErrorMatcher(this, "Sibling", true);
+}
+declare readonly _tag: "Sibling";
+}
+class SchemaBase extends Schema.TaggedError<SchemaBase>()("SchemaBase" as string, {
+    message: Schema.String,
+}) {
+static { $ErrorMatcher2(this, "SchemaBase") }
+
+static {
+    $schemaErrorMatcher(this, "SchemaBase");
+    $ErrorSchemaFamily(this);
+}
+}
+class SchemaChild extends SchemaBase
+    .extend<SchemaChild>("SchemaChild")({
+    _tag: Schema.tag("SchemaChild")
+}) {
+static {
+    $schemaErrorMatcher(this, "SchemaChild");
+    $schemaErrorMember(this);
+}
+}
+
+// The family's fields under another tag.
+error SameShape { message: string }
+
+function classify(value: unknown): string {
+  return match (value) {
+    when Child: "child";
+    when Base(let error): `base ${error._tag}`;
+    when SchemaBase: "schema base";
+    default: "other";
+  }
+}
+
+function test(value: unknown, pattern: "Base" | "Child" | "SameShape" | "SchemaChild"): boolean {
+  return match (pattern) {
+    when "Base": value is Base;
+    when "Child": value is Child;
+    when "SameShape": value is SameShape;
+    when "SchemaChild": value is SchemaChild;
+  }
+}
+
+export effect function main() {
+  const base = new Base({ message: "b" })
+  const child = new Child({ message: "c" })
+  const sibling = new Sibling({ message: "s" })
+  const schemaChild = new SchemaChild({ message: "s" })
+  const sameShape = new SameShape({ message: "c" })
+  return {
+    subclass: [child is Base, sibling is Base, schemaChild is SchemaBase],
+    instanceOf: [child instanceof Base, sibling instanceof Base, schemaChild instanceof SchemaBase],
+    classified: [classify(child), classify(sibling), classify(base), classify(schemaChild), classify(sameShape)],
+    rejected: [
+      test(sameShape, "Base"),
+      test({ _tag: "SameShape", message: "c" }, "Base"),
+      test(base, "Child"),
+      test(sibling, "Child"),
+      test(new SchemaBase({ message: "b" }), "SchemaChild"),
+      test(child, "SameShape"),
+      // A copy of a subclass carries only its own tag.
+      test({ _tag: "Child", message: "c" }, "Base")
+    ],
+    copies: [
+      test({ _tag: "Base", message: "copy" }, "Base"),
+      test({ _tag: "Child", message: "copy" }, "Child"),
+      test({ _tag: "SameShape", message: "copy" }, "SameShape")
+    ]
+  }
+}

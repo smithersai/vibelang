@@ -488,18 +488,18 @@ error Timeout
 // fragment
 class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {
   get message() { return `no user ${this.id}` }
-  static [Symbol.customMatcher](subject: unknown) {          // VIP-7: tests _tag
-    return (subject as { _tag?: unknown } | null)?._tag === "NotFound" ? [subject] : false
+  static [Symbol.customMatcher](subject: unknown) {          // VIP-7: tests _tag, then the class
+    return (subject as { _tag?: unknown } | null)?._tag === "NotFound" || subject instanceof NotFound ? [subject] : false
   }
 }
 class Timeout extends Data.TaggedError("Timeout") {
   static [Symbol.customMatcher](subject: unknown) {
-    return (subject as { _tag?: unknown } | null)?._tag === "Timeout" ? [subject] : false
+    return (subject as { _tag?: unknown } | null)?._tag === "Timeout" || subject instanceof Timeout ? [subject] : false
   }
 }
 ```
 
-The matcher gives `[subject]` on a match, so `when NotFound(let e):` binds the error, and `false` otherwise. `when NotFound:` is a bare test; `when NotFound():` never matches because its zero patterns cannot match the singleton extraction list. By comparison, `when Option.None():` matches: its extracted list is empty. The 34 retained Effect error constructors, like `NotFound`, extract one subject, so their zero-argument extractors never match, and VibeLang reports a lint warning on such an extractor (`EK0703`). An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](004-match.md#class-patterns)).
+The matcher gives `[subject]` on a match, so `when NotFound(let e):` binds the error, and `false` otherwise. It also accepts an instance of the class, so a class that `vibelang --fix` writes for retired inheritance, tagged with its own name, still matches its base. `when NotFound:` is a bare test; `when NotFound():` never matches because its zero patterns cannot match the singleton extraction list. By comparison, `when Option.None():` matches: its extracted list is empty. The 34 retained Effect error constructors, like `NotFound`, extract one subject, so their zero-argument extractors never match, and VibeLang reports a lint warning on such an extractor (`EK0703`). An error is constructed with its fields as one object, `new NotFound({ id })`. Two packages that both declare `error NotFound` match each other in `match`, as with Effect's `catchTag`, because an `error` class's matcher tests `_tag` ([Pattern matching](004-match.md#class-patterns)).
 
 VIP-7 retains module-guard checks for Effect's own tagged errors, without patching Effect. For example, `when Cause.TimeoutError(let e):` tests `Cause.isTimeoutError(subject)` and binds `subject` as `e`. A bare `{ _tag: "TimeoutError" }` does not pass that guard. These checks use neither a universal `_tag` test nor `instanceof`. The 34 resolved constructors, alias and shadowing rules and singleton extraction are listed in [Retained fixed patterns](004-match.md#retained-fixed-patterns).
 
@@ -539,12 +539,12 @@ schema error Timeout
 // fragment
 class NotFound extends Schema.TaggedError<NotFound>()("NotFound", { id: Schema.String }) {
   static [Symbol.customMatcher](subject: unknown) {          // as for error
-    return (subject as { _tag?: unknown } | null)?._tag === "NotFound" ? [subject] : false
+    return (subject as { _tag?: unknown } | null)?._tag === "NotFound" || subject instanceof NotFound ? [subject] : false
   }
 }
 class Timeout extends Schema.TaggedError<Timeout>()("Timeout", {}) {
   static [Symbol.customMatcher](subject: unknown) {
-    return (subject as { _tag?: unknown } | null)?._tag === "Timeout" ? [subject] : false
+    return (subject as { _tag?: unknown } | null)?._tag === "Timeout" || subject instanceof Timeout ? [subject] : false
   }
 }
 ```
