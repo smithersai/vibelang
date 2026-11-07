@@ -1,0 +1,4 @@
+generator: Die early
+plain default: throws early
+effect default: returns an Effect that dies with early
+async default: rejects with early

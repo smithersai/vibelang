@@ -1,0 +1,52 @@
+// expect: EK0401 EK0401 EK0401 EK0401 EK0401 EK0401
+// rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws | A `throw` statement or throw expression is `EK0401`, even when a `try` statement in the same function catches it: `const v = s ?? throw new Error("empty")` in a plain function is `EK0401` ([Throw expressions](#throw-expressions)).
+// rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws | A `throw` statement or throw expression in the literal is still `EK0401`.
+
+// A throw expression and a throw statement in a plain function, each inside
+// the try block of a try statement whose catch clause handles it.
+export function caughtExpression(s: string | undefined): string {
+  try {
+    const v = s ?? throw new Error("empty")
+    return v
+  } catch {
+    return "caught"
+  }
+}
+export function caughtStatement(n: number): number {
+  try {
+    if (n < 0) throw new Error("negative")
+    return n
+  } catch {
+    return 0
+  }
+}
+// Uncaught, for comparison: the same throw expression.
+export function uncaughtExpression(s: string | undefined): string {
+  const v = s ?? throw new Error("empty")
+  return v
+}
+
+// A literal passed where the parameter's function type admits throws may
+// call functions known to throw; a throw statement or throw expression in
+// that literal is still EK0401.
+export effect function thunkStatement(text: string) {
+  return try Effect.try(() => { if (text === "") throw new Error("blank"); return JSON.parse(text) })
+}
+export effect function thunkExpression(text: string | undefined) {
+  return try Effect.try(() => JSON.parse(text ?? throw new Error("missing")))
+}
+export function executorThrow(text: string) {
+  return new Promise<unknown>((resolve) => { if (text === "") throw new Error("blank"); resolve(JSON.parse(text)) })
+}
+
+// Controls: the known-throwing call in those literals and a caught call in
+// a try statement report nothing.
+export effect function thunkCall(text: string) {
+  return try Effect.try(() => JSON.parse(text))
+}
+export function executorCall(text: string) {
+  return new Promise<unknown>((resolve) => { resolve(JSON.parse(text)) })
+}
+export function caughtCall(text: string): unknown {
+  try { return JSON.parse(text) } catch { return null }
+}

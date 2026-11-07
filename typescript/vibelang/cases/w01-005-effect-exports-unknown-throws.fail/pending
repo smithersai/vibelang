@@ -1,0 +1,1 @@
+needs-ruling the compiler trusts every export of the effect package (origins.go isTrustedPackage returns true for isEffectPackage), so a bare call of an Effect function without @throws, such as pipe or Array.head, reports no EK0403 in effect code

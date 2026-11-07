@@ -1,0 +1,50 @@
+// rule-evidence: docs/design/src/005-services.md#the-platform-standard-library | The additions include `Experimental.Dns` (Effect's `effect/net/Dns` service extended only with TXT queries sent directly to a supplied authority) and `Experimental.Encoding.decodeBase64Lenient` (pure `Result`, no service or layer).
+// rule-evidence: docs/design/src/005-services.md#the-platform-standard-library | Node DNS queries only the supplied server for TXT; Worker DNS uses TCP with recursion disabled and requires AA, or fails typed `Unsupported` when the host lacks that transport.
+// rule-evidence: docs/design/src/005-services.md#the-platform-standard-library | Effect already supplies strict `Base64` and `Base64Url`; only Node-compatible leniency is added.
+import { ExperimentalNodeDns } from "vibelang-runtime/experimental/platform-node"
+import { ExperimentalWorkerDns } from "vibelang-runtime/experimental/platform-worker"
+
+// The direct-authority TXT query through the extended service; a typed
+// failure becomes its reason.
+effect function txtAt(server: string, name: string) {
+  const dns = try Experimental.Dns.Dns
+  return dns.resolveTxtAt(server, name) catch (e) => ["error:" + e.reason]
+}
+
+// Effect's own members stay on the extended service: it is the same value as
+// Effect's `Dns` key.
+effect function sharesEffectKey() {
+  return (try Experimental.Dns.Dns) === (try Dns.Dns)
+}
+
+export effect function viaNode(nameServer: string, server: string, name: string) {
+  provide ExperimentalNodeDns.layerWith({ nameServers: [nameServer], timeout: 500, tries: 1 }) {
+    return { shared: try sharesEffectKey(), txt: try txtAt(server, name) }
+  }
+}
+
+export effect function viaWorker(connect: ExperimentalWorkerDns.Options["connect"], server: string, name: string) {
+  provide Layer.provide(ExperimentalWorkerDns.layerWith({ connect, timeout: 2000 }), FetchHttpClient.layer) {
+    return try txtAt(server, name)
+  }
+}
+
+// Outside Cloudflare's runtime the Worker host has no TCP socket API.
+export effect function viaWorkerHost(server: string, name: string) {
+  provide Layer.provide(ExperimentalWorkerDns.layer, FetchHttpClient.layer) {
+    return try txtAt(server, name)
+  }
+}
+
+// Pure: a Result, with no service or layer.
+export function lenient(input: string): Result.Result<Uint8Array, EncodingError.EncodingError> {
+  return Experimental.Encoding.decodeBase64Lenient(input)
+}
+
+// Effect's strict decoders, unchanged.
+export function strict(input: string): Result.Result<Uint8Array, EncodingError.EncodingError> {
+  return Base64.decode(input)
+}
+export function strictUrl(input: string): Result.Result<Uint8Array, EncodingError.EncodingError> {
+  return Base64Url.decode(input)
+}

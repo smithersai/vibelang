@@ -1,0 +1,10 @@
+// expect: EK0403 EK0403
+// rule-evidence: docs/design/src/005-services.md#effects-modules-are-in-scope | An npm signature without `@throws` throws `unknown`, so these non-effectful calls use `Effect.try` bridges; an actual explicit annotation keeps its ordinary contract ([Thrown types](003-failures.md#thrown-types)).
+// The prelude preserves each imported signature's thrown contract. Effect's
+// own `pipe` and `Array.head` declarations carry no `@throws`, so in effect
+// code their bare calls throw `unknown` and need `Effect.try` bridges.
+export effect function bare() {
+  const two = pipe(1, (n: number) => n + 1)
+  const first = Effect.Array.head([1, 2])
+  return { two, first }
+}
