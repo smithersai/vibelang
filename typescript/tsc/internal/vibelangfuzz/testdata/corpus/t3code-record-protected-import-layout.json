@@ -1,0 +1,5 @@
+{
+  "test": "import * as HostProcess from \"./HostProcess.ts\";\nimport { resolveNodeExecutable, resolveSelfInvocation, selfInvocationArgs } from \"./nodeRuntime.vibe\";\nvoid [HostProcess, resolveNodeExecutable, resolveSelfInvocation, selfInvocationArgs];\n",
+  "module": "export const value = 1;\n",
+  "declaration": "export declare const value = 1;\n"
+}
