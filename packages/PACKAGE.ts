@@ -287,6 +287,17 @@ const typescriptShimTest = S.Shell.Test({
   timeout: "5m"
 })
 
+// The tooling witness imports these adapters directly. Declare their globs
+// here: workspace-rooted globs still respect the declaring package's boundary.
+const toolingAdapterSources = S.Filegroup({
+  srcs: [
+    S.glob("compiler/*.mjs"),
+    S.glob("vite/src/**"),
+    S.file("vite/package.json"),
+    S.file("vite/bun.lock")
+  ]
+})
+
 /** Every file in the npm packages, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
@@ -299,6 +310,7 @@ export const Package = S.Package({
     "runtime-readme-exports": runtimeReadmeExports,
     "runtime-published": runtimePublished,
     "compiler-native": compilerNative,
+    "tooling-adapter-srcs": toolingAdapterSources,
     "migrate-toolchain-baseline": migrateToolchainBaseline,
     "compiler-test-1": compilerTest(1),
     "compiler-test-2": compilerTest(2),

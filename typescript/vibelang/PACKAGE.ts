@@ -56,6 +56,7 @@ for (const name of cases) {
       `VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --verbose ${name}`,
     data: [
       ...shared,
+      ...(name === "tooling-format-tool-inputs" ? [Packages["tooling-adapter-srcs"]] : []),
       ...(name === "imported-diagnostic-reference" ? [
         S.file("//docs/design/src/007-tooling.md"),
         S.file("//docs/design/inventory/lint-codes.json"),
