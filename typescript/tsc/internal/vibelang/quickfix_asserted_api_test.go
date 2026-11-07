@@ -18,8 +18,8 @@ func TestQuickFixKeepsAssertedAPI(t *testing.T) {
 				for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 					if d.Source() == "EK" && d.Code() == 4810 {
 						found = true
-						if !strings.Contains(notesOf(d), "No automatic fix") {
-							t.Error("refusal needs an explanation")
+						if n := strings.Count(notesOf(d), "No automatic fix"); n != 1 {
+							t.Errorf("refusal needs one explanation, got %d", n)
 						}
 					}
 				}

@@ -464,6 +464,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - With a compiler before VIP-1, the migrate flow also marked a function `: infer _` when it returned a call into a module converted in an earlier batch that had no declaration file yet, and the converted module failed `EK9203`. The flow now leaves such a function unmarked for the compiler, which reads the converted module.
 
+- The `EK4810` warning, for an assertion that drops a type from an Effect's channel, printed its "No automatic fix" note twice. It prints the note once.
+
 ### Upgrade from 0.0.12
 
 | Before | After and repair |

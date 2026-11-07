@@ -309,9 +309,6 @@ func newDiagnosticAt(options *core.CompilerOptions, file *ast.SourceFile, loc co
 	if m.Code == EK4810.Code {
 		note(d, "No automatic fix: removing this assertion changes the program's public channel types. Write and check the intended contract explicitly.")
 	}
-	if m.Code == EK4810.Code {
-		note(d, "No automatic fix: removing this assertion changes the program's public channel types. Write and check the intended contract explicitly.")
-	}
 	if m.Code == EK4817.Code {
 		note(d, "No automatic fix: replacing instanceof with Schema.is can reorder operand evaluation and changes the test being requested. Write the intended test explicitly.")
 	}
