@@ -1,0 +1,1 @@
+{"source":"import * as Effect from \"effect/Effect\";\nexport const directory = Effect.gen(function* () { return import.meta.dirname; });\n"}
