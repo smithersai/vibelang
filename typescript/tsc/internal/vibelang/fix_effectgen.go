@@ -774,6 +774,28 @@ func effectFnHead(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 	if deferred && (g.span != nil || len(g.stages) > 0) {
 		return "", "", "parameter bindings must remain inside the generator before its stages"
 	}
+	// Effect.fn infers its parameter tuple from the generator, so TypeScript
+	// types an unannotated parameter from the tuple's constraint, any, and a
+	// default does not narrow it: Effect.fn(function* (v = 1) {}) declares
+	// (v?: any) => .... An effect function has no such context, so the
+	// checked any is written where the parameter had no annotation. With
+	// every parameter defaulted and a stage, tsc infers an empty tuple, a
+	// signature an effect function that binds them cannot declare.
+	if slices.ContainsFunc(generator.Parameters(), func(parameter *ast.Node) bool {
+		return parameter.Type() == nil && (parameter.Initializer() != nil || parameter.QuestionToken() != nil)
+	}) {
+		call := generator.Parent
+		for call != nil && ast.IsParenthesizedExpression(call) {
+			call = call.Parent
+		}
+		if call != nil && ast.IsCallExpression(call) {
+			if signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(call), checker.SignatureKindCall); len(signatures) == 1 {
+				if expanded := c.GetExpandedParameters(signatures[0], true); len(expanded) == 1 && len(expanded[0]) != len(generator.Parameters()) {
+					return "", "", "the original declares a parameter list its bindings do not match"
+				}
+			}
+		}
+	}
 	var bindings []string
 	var head []sourceEdit
 	for index, parameter := range generator.Parameters() {
@@ -808,6 +830,19 @@ func effectFnHead(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 			head = append(head, sourceEdit{nodeStart(file, parameter), parameter.End(), header})
 			bindings = append(bindings, "let "+nodeText(file, parameter.Name())+" = "+value+";")
 			continue
+		}
+		if parameter.Type() == nil && ast.IsIdentifier(parameter.Name()) {
+			want := "any"
+			if parameter.AsParameterDeclaration().DotDotDotToken != nil {
+				want = "any[]"
+			}
+			if c.TypeToStringEx(c.GetTypeAtLocation(parameter), parameter, checker.TypeFormatFlagsNoTruncation, nil) == want {
+				at := parameter.Name().End()
+				if question := parameter.QuestionToken(); question != nil {
+					at = question.End()
+				}
+				head = append(head, sourceEdit{at, at, ": " + want})
+			}
 		}
 		if annotation := parameter.Type(); annotation != nil {
 			inferred := c.GetTypeFromTypeNode(annotation)

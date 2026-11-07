@@ -106,7 +106,7 @@ func TestEffectGenQuickFixes(t *testing.T) {
 		{"Effect.fnUntraced where a plain member is declared", "import * as Context from \"effect/Context\"\nexport const Addresses = Context.Reference<Effect.Effect<ReadonlySet<string>>>(\"Addresses\", {\n  defaultValue: Effect.fnUntraced(function* () {\n    const resolved = yield* Effect.succeed([\"a\"])\n    return new Set(resolved)\n  }),\n})\n",
 			"import * as Context from \"effect/Context\"\nexport const Addresses = Context.Reference<Effect.Effect<ReadonlySet<string>>>(\"Addresses\", {\n  defaultValue: () => effect {\n    const resolved = [\"a\"]\n    return new Set(resolved)\n  },\n})\n"},
 		{"Effect.fnUntraced with a default", "export const f = Effect.fnUntraced(function* (n = 1) {\n  return yield* Effect.succeed(n)\n})\n",
-			"export const f = effect (n = 1) => {\n  return n\n}\n"},
+			"export const f = effect (n: any = 1) => {\n  return n\n}\n"},
 		{"Effect.fn with a name", "export const f = Effect.fn(\"f\")(function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n",
 			"export const f = effect (n: number) => try Effect.withSpan(effect {\n  return n\n}, \"f\")\n"},
 		{"Effect.fn with span options", "export const f = Effect.fn(\"f\", { kind: \"client\" })(function* () {\n  return yield* Effect.succeed(1)\n})\n",

@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -10,6 +11,11 @@ import (
 )
 
 const effectFnParameterDeclarationTarget = "FuzzEffectFnParameterDeclaration"
+
+// Unannotated generator parameters, which Effect.fn's inferred tuple types as
+// any: defaults of each literal kind, after an annotated parameter, in a
+// generic generator (not contextual), bare and optional, and before a stage.
+var effectFnContextualParameterKeys = []string{"default-string", "default-number", "default-object", "default-after-annotated", "default-generic", "bare", "bare-optional", "bare-staged", "default-staged"}
 
 func TestEffectFnParameterDeclarationQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), migrationDeclarationFixQuote) {
@@ -27,6 +33,8 @@ func TestEffectFnParameterDeclarationQuoted(t *testing.T) {
 // The native Effect.fn result infers a parameter tuple. Copying the generator's
 // annotation onto an arrow must not replace that public inferred declaration.
 // Compare names, strict tsc type identity and JSDoc with the valid native source.
+// An unannotated parameter, defaulted or not, takes the tuple constraint's any
+// in the native twin; the contextual keys check the converted function keeps it.
 func FuzzEffectFnParameterDeclaration(f *testing.F) {
 	startShortBudget(f)
 	keys := []string{"readonly", "brand", "structural", "union", "tuple", "generic", "undefined-literal", "callback"}
@@ -45,6 +53,13 @@ func FuzzEffectFnParameterDeclaration(f *testing.F) {
 		f.Add(key, uint8(1), false)
 	}
 	f.Add("namespace-return", uint8(0), false)
+	for _, key := range effectFnContextualParameterKeys {
+		f.Add(key, uint8(1), false)
+		if !testing.Short() || toolsFuzzing() {
+			f.Add(key, uint8(0), false)
+			f.Add(key, uint8(2), false)
+		}
+	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, mode uint8, optional bool) {
 		TestEffectFnParameterDeclarationQuoted(t)
@@ -84,7 +99,10 @@ func FuzzEffectFnParameterDeclaration(f *testing.F) {
 			typ = "ReadonlyArray<T>"
 			generic = "<T extends string>"
 		default:
-			return
+			if !slices.Contains(effectFnContextualParameterKeys, key) {
+				return
+			}
+			optional = false
 		}
 		prefix, api := "import { Effect, Schema } from \"effect\"\n", "Effect"
 		if key == "namespace-return" {
@@ -102,7 +120,28 @@ func FuzzEffectFnParameterDeclaration(f *testing.F) {
 		if optional {
 			mark = "?"
 		}
-		source := prefix + extra + "export const cleanup = " + start + "(function* " + generic + "(input" + mark + ": " + typ + ") { return input })\n"
+		parameters, stage := "input"+mark+": "+typ, ""
+		switch key {
+		case "default-string":
+			parameters = "input = \"unknown\""
+		case "default-number":
+			parameters = "input = 1"
+		case "default-object":
+			parameters = "input = { k: 1 }"
+		case "default-after-annotated":
+			parameters = "head: string, input = \"unknown\""
+		case "default-generic":
+			parameters, generic = "head: T, input = 0", "<T>"
+		case "bare":
+			parameters = "input"
+		case "bare-optional":
+			parameters = "input?"
+		case "bare-staged":
+			parameters, stage = "input", ", "+api+".orDie"
+		case "default-staged":
+			parameters, stage = "input = true", ", "+api+".orDie"
+		}
+		source := prefix + extra + "export const cleanup = " + start + "(function* " + generic + "(" + parameters + ") { return input }" + stage + ")\n"
 		original := toolsCompile(t, w, effectFnParameterDeclarationTarget, map[string]string{"main.ts": source})
 		defer original.Remove()
 		if !toolsErrorFree(original) {

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- `vibelang --fix` converting an `Effect.fn` generator with an unannotated parameter, such as `Effect.fn("start")(function* (version = "unknown") { … })`, wrote `effect (version = "unknown") =>`, so the declaration changed from TypeScript's `(version?: any)` to `(version?: string)`, and a parameter with no default, `function* (x)`, was refused with `TS7006`. The converted function now writes the `any` TypeScript inferred, `effect (version: any = "unknown") =>`, and keeps the generator when TypeScript inferred a parameter list the function cannot declare.
+
 - Generated packing receipts could fail the repository's format check after migration. Packing metadata now uses the repository's formatter before loader records are saved.
 
 - Migration could reject an unchanged generic factory after a type dependency gained only a re-export. API comparison now follows re-exports that preserve every exported name, type and value.
