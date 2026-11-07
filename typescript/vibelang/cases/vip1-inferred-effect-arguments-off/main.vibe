@@ -1,0 +1,19 @@
+// rule-evidence: docs/design/vips/0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03
+// VIP-1, inferred Effect arguments, configured "off" (VIP-34): the program
+// compiles without any diagnostic, and the Effect argument stays unrun. No
+// error is enforced and no try is inserted.
+// expect-result: {"program":true,"cold":0,"value":42,"runs":1}
+function expect<T>(actual: T, message?: string): T { return actual }
+
+export effect function main() {
+  let runs = 0
+  effect function awaited() {
+    runs++
+    return 42
+  }
+  const e = awaited()
+  const program = Effect.isEffect(expect(e))
+  const cold = runs
+  const value = try e
+  return { program, cold, value, runs }
+}

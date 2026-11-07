@@ -1,0 +1,14 @@
+main.vibe(26,72): warning EK4802
+main.vibe(36,16): warning EK4802
+main.vibe(36,19): warning EK4802
+main.vibe(37,18): warning EK4802
+main.vibe(38,32): warning EK4802
+main.vibe(39,18): warning EK4802
+main.vibe(40,24): warning EK4802
+main.vibe(41,42): warning EK4802
+main.vibe(41,45): warning EK4802
+main.vibe(42,36): warning EK4802
+main.vibe(44,30): warning EK4802
+main.vibe(45,24): warning EK4802
+main.vibe(46,28): warning EK4802
+main.vibe(49,21): warning EK4802
