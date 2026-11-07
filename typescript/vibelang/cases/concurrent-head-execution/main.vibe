@@ -1,0 +1,13 @@
+// expect-result: [7,2,8,9,10,11,7,4]
+export effect function main() {
+  const seen: number[] = []
+  let defaults = 0
+  const seed = 7
+  for concurrent(1) (const { n = do { defaults++; try Effect.succeed(7) } } of [{}, { n: 2 }] as Array<{ n?: number }>) { seen.push(n) }
+  for concurrent (let [n = do { defaults++; try Effect.succeed(7) }] of [[]] as number[][]) { n++; seen.push(n) }
+  for concurrent (const { [do { try Effect.void; "n" }]: n } of [{ n: 9 }] as Record<string, number>[]) { seen.push(n) }
+  for concurrent (const { pair: [n = do { defaults++; try Effect.succeed(10) }] } of [{ pair: [] }] as Array<{ pair: number[] }>) { seen.push(n) }
+  for concurrent (const { n = do { defaults++; try Effect.succeed(11) } } of [{}] as Array<{ n?: number }>) seen.push(n)
+  for concurrent (const { n = do { try Effect.void; seed } } of [{}] as Array<{ n?: number }>) { const seed = 99; seen.push(n); void seed }
+  return [...seen, defaults]
+}

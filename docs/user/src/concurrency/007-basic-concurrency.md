@@ -40,6 +40,8 @@ effect function stringify(value: unknown) {
 // Output: {"sequential":[2,4],"bounded":[2,4,6,8],"unbounded":[10,12,14]}
 ```
 
+A head default or computed key runs inside the item's Effect, in both compiler and TypeScript-mapper output. It may use `try`; a default runs only when its bound value is `undefined`. The written body keeps its own block scope, so its local declarations do not shadow a head default.
+
 A destructuring head keeps native `for…of` binding inference. A default may supply a missing property of a fresh object literal, as in `for concurrent (const { n = 1 } of [{}]) { … }`. A named or explicitly typed `{}[]` still has no `n` property and reports `TS2339`, as in TypeScript.
 
 A non-iterable `for concurrent` operand reports `EK1901`; pass an `Iterable`, or use `for try` to consume a Stream. `any`, `never`, readonly arrays, sets and strings follow ordinary assignability, including a `Stream` that also implements `Iterable`. Independent type errors in an iterable operand or the loop body retain their TypeScript diagnostics. An iterable union keeps every possible element type: `number[] | Set<string>` gives `number | string` in the loop head, as a native `for...of` loop does.
