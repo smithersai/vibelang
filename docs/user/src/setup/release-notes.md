@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Calling a value typed `any` or `Function` in an Effect function’s or producer’s parameter default could bypass the no-throw check. These calls now report `EK0401` because their thrown type is unknown.
+
 - An unannotated foreign function returning a Promise could bypass the no-throw check in an Effect function’s parameter default or a plain factory returning an Effect, Stream or Layer. These calls now report `EK0401`, since they may throw before returning the Promise.
 
 - JSX imports could fail in bundlers with missing-loader or module-resolution errors. Explicit JSX sources, module queries and rewritten dependencies now build with the project's JSX settings and original source maps.

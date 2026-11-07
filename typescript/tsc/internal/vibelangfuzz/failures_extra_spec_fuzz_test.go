@@ -83,6 +83,22 @@ func failuresExtraCases() []*failCase {
 	} {
 		add(&failCase{Name: "unknown-promise-control-" + body.name, Quote: effectfulBody, Host: "none", Lib: unknownPromise, Decls: body.decls})
 	}
+	// Erasing a callable signature keeps unknown throws at eager defaults.
+	for _, typ := range []struct{ name, value string }{{"any", "any"}, {"function", "Function"}} {
+		for _, body := range []struct{ name, decls string }{
+			{"effect", "export effect function probe(p = ⟦invoke()⟧) { return p }"},
+			{"producer", "export effect function* probe(p = ⟦invoke()⟧) { yield p }"},
+			{"binding", "export effect function probe({ p = ⟦invoke()⟧ }: { p?: number }) { return p }"},
+		} {
+			add(&failCase{Name: "erased-default-" + typ.name + "-" + body.name, Quote: effectfulBody, Code: 401, Host: "none", Decls: "declare const invoke: " + typ.value + "\n" + body.decls})
+		}
+		for _, body := range []struct{ name, decls string }{
+			{"plain", "export function probe(p = invoke()) { return p }"},
+			{"async", "export async function probe(p = invoke()) { return p }"},
+		} {
+			add(&failCase{Name: "erased-default-control-" + typ.name + "-" + body.name, Quote: effectfulBody, Host: "none", Decls: "declare const invoke: " + typ.value + "\n" + body.decls})
+		}
+	}
 	const methods = "[ClassMethod](900-appendices.md#classmethod) (ordinary TypeScript class methods, including plain and `async` overload signatures, generator and `async` generator implementations, getters, setters and private names), with TypeScript's class modifiers, decorators, overload ordering, adjacent-implementation and compatibility checks, plus [effect methods](900-appendices.md#effectmethod) and [producer methods](900-appendices.md#producermethod), as any class can have (VIP-13)."
 	const rejected = "| any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |"
 	const priority = "A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form."
