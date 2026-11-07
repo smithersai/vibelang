@@ -64,6 +64,29 @@ test("property: generated names, source runtime and shadowed local spellings kee
     }finally{f.dispose()}
   }),{seed:561173,numRuns:48})
 })
+// Launchers return Effects, so a plain launcher may call only a helper that
+// cannot throw (Chapter 3). The generated helper declares @throws {never}, and
+// keeps the authored arguments when its loader cannot be resolved.
+function generatedHelper(text){
+  const body=text.match(/module __vibelangSourceChildPlatform\d* \{\n([\s\S]*?)\n\}\nimport \{/)[1]
+  assert.match(body,/\/\*\* @throws \{never\} \*\/\n\s*export function __vibelangSourceChild/)
+  const js=ts.transpileModule(body.replace(/^\s*import .*$/gm,"").replace(/export function/,"function"),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText
+  const {createRequire:cr}=require("node:module"), url=require("node:url")
+  return new Function("createRequire","fileURLToPath","pathToFileURL","Schema",js+"\nreturn __vibelangSourceChild")(cr,url.fileURLToPath,url.pathToFileURL,require("effect").Schema)
+}
+test("property: a generated helper whose loader cannot resolve keeps the authored arguments",()=>{
+  const f=fixture()
+  try{
+    const helper=generatedHelper(f.result(f.plan()))
+    assert.deepEqual(helper("node",["--import","x.mjs","./worker.ts"],s=>"file:///loaders/"+s+".mjs"),["node",["--import","x.mjs","--import","file:///loaders/vibelang/register.mjs","./worker.ts"]])
+    fc.assert(fc.property(fc.constantFrom("node","bun","/usr/bin/node","nodejs.exe"),fc.constantFrom("./worker.ts","src/main.vibe","a.mts"),
+      fc.constantFrom("thrown","bad-url","default"),(command,entry,failure)=>{
+        const args=["--enable-source-maps",entry]
+        const resolver=failure==="thrown"?()=>{throw new Error("Cannot find module vibelang/register")}:failure==="bad-url"?()=>"file://remote-host/x.mjs":undefined
+        assert.deepEqual(helper(command,args,resolver,"file:///nonexistent-parent/child.js"),[command,args])
+      }),{seed:4401,numRuns:24})
+  }finally{f.dispose()}
+})
 test("an authored resolver beside a generated helper keeps its private sibling and null export",()=>{
  fc.assert(fc.property(fc.constantFrom("node","bun"),fc.constantFrom("./a.js","./nested/b.js"),(runtime,specifier)=>{
   const f=fixture({runtime,suffix:'\nexport const located = () => import.meta.resolve("'+specifier+'")\n'})

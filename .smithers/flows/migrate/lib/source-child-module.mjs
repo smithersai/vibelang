@@ -104,7 +104,13 @@ function canonicalSourceChildModule(text, file, ts) {
     const old=helper.parameters[2]
     const parameter=f.updateParameterDeclaration(old,old.modifiers,old.dotDotDotToken,old.name,old.questionToken,old.type,resolver)
     const parentParameter=f.createParameterDeclaration(undefined,undefined,parent,undefined,f.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),f.createStringLiteral(""))
-    const fn=f.updateFunctionDeclaration(helper,[f.createModifier(ts.SyntaxKind.ExportKeyword)],helper.asteriskToken,helper.name,helper.typeParameters,[...helper.parameters.slice(0,2),parameter,parentParameter],helper.type,helper.body)
+    // A plain function that returns an Effect cannot call a callee that may
+    // throw (Chapter 3), and launchers return Effects. Loader resolution can
+    // throw, so the helper keeps the authored arguments when it fails, which
+    // makes the generated @throws {never} contract true.
+    const authored=f.createReturnStatement(f.createArrayLiteralExpression(helper.parameters.slice(0,2).map(p=>f.createIdentifier(p.name.text))))
+    const total=f.createBlock([f.createTryStatement(f.createBlock(helper.body.statements,true),f.createCatchClause(undefined,f.createBlock([authored],true)),undefined)],true)
+    const fn=f.updateFunctionDeclaration(helper,[f.createModifier(ts.SyntaxKind.ExportKeyword)],helper.asteriskToken,helper.name,helper.typeParameters,[...helper.parameters.slice(0,2),parameter,parentParameter],helper.type,total)
     const transformed=ts.transform(fn,[context=>node=>{
       const visit=node=>{
         if(ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text===url && node.name.text==="fileURLToPath") return f.createIdentifier("fileURLToPath")
@@ -113,7 +119,7 @@ function canonicalSourceChildModule(text, file, ts) {
       }
       return ts.visitNode(node,visit)
     }])
-    const body=['import { createRequire } from "node:module"','import { fileURLToPath, pathToFileURL } from "node:url"','import { Schema } from "effect"',print(transformed.transformed[0])].join("\n\n")
+    const body=['import { createRequire } from "node:module"','import { fileURLToPath, pathToFileURL } from "node:url"','import { Schema } from "effect"',print(transformed.transformed[0]).replace(/^export function /m,"/** @throws {never} */\nexport function ")].join("\n\n")
     transformed.dispose()
     const rendered="module "+moduleName+" {\n"+body.split("\n").map(line=>line?"  "+line:"").join("\n")+"\n}\nimport { "+helper.name.text+" } from "+moduleName+"\n"
     const at=Math.min(...imports.map(node=>node.getStart(source)))
