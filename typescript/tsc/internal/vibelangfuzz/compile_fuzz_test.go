@@ -167,6 +167,7 @@ func CheckCompile(t *testing.T, w *Workspace, target, archive string) {
 	if reason := Admissible(project); reason != "" {
 		t.Skip(reason)
 	}
+	t.Logf("compile input: %s", SeedName(archive))
 	g := &Gaps{Target: target, Input: SeedName(archive)}
 	key := ""
 	if name := corpusFile(t, target); name != "" {

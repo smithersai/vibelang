@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.12
 
 - Migration examples with contextual plugin factories could still be reported as unsupported after their inferred contracts were preserved. They now verify the supported repair, including named wrappers and generic factories.
+- The HTTP handler migration example could report missing `Request` or `Response` types when its declarations were checked. Both the original and repaired examples now load the web types their signatures require.
 
 - A `.vibe` class constructor calling `super(...)` on a `.ts` base class whose constructor declares `@throws {RangeError}` was accepted, so constructing the class could throw from synchronous VibeLang code. The call is now `EK0401`, as any other call known to throw in a constructor.
 

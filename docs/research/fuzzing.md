@@ -126,6 +126,8 @@ Stock baseline commands keep each compiler's tuning separate. Native TypeScript 
 
 Declaration comparisons skip an ineligible stock baseline only when `tsc` prints a TypeScript error diagnostic. A launcher or runtime failure instead fails the test with the process output, so broken tooling cannot make `FuzzDeclarationIdentity` or `FuzzErrorDeclarationTwin` silently pass.
 
+HTTP handler migration fixtures load `dom` alongside `esnext`, because their public declarations use `Request` and `Response`. `FuzzHttpHandlerDeclarations` replays both the original and repaired examples under the strict native and stock consumers, including renamed exports and CRLF source. Its keyed corpus retains the minimized web-handler pattern independently of the changing case sample.
+
 The stock TypeScript declaration consumer keeps the producer's native module and resolution policy. A package selecting extensionless declaration imports for a bundler is checked with bundler resolution; native `NodeNext` and `Node16` consumers keep their own explicit-extension checks. A keyed resolution target covers both policies and TypeScript-extension imports. Native JSX output imports are attributed to their written `.tsx` source under `preserve` and `react-native`; unrelated source suffixes and ordinary string literals do not authorize `.jsx` imports.
 
 Contextual `Effect.fn` factory repairs are positive declaration-identity checks, including named and unnamed wrappers in `satisfies`, returned and generic factories. Keyed mutations retain import aliases, documentation and CRLF line endings; a changed-requirements control must still fail the API comparison. The minimized factory remains in the corpus after its resolved pending records are removed.
