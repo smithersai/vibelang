@@ -67,8 +67,22 @@ func (p *projector) plainContractEffectCall(call *ast.Node) bool {
 	if p.builtinFailure(call) != "" || p.callObstacle(call, func(string) (obstacle, bool) { return obstacleUnknown, false }) != obstacleBlocking {
 		return false
 	}
-	if r, ok := p.forms.(*Resolver); ok && r.Callee(call).Kind == CalleeTable {
-		return r.returnsEffect(call)
+	if r, ok := p.forms.(*Resolver); ok {
+		if r.Callee(call).Kind == CalleeTable {
+			return r.returnsEffect(call)
+		}
+		receiver := call.Expression()
+		if ast.IsPropertyAccessExpression(receiver) {
+			receiver = receiver.Expression()
+		}
+		if ast.IsIdentifier(receiver) && p.mayBeServiceKey(receiver) {
+			// A capitalization-based adaptation hint is not evidence that a
+			// plain contract reads a service. Resolve the actual lexical
+			// declaration; parameters and ordinary values can shadow a key.
+			declaration := r.binding(receiver, receiver.Text())
+			return p.pinnedContextKey(receiver) ||
+				declaration != nil && (isServiceClass(declaration) || isServiceShapeClass(declaration))
+		}
 	}
 	return true
 }

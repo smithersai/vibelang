@@ -24,6 +24,8 @@ Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns
 
 A direct `try` call whose return type is `any` contributes `unknown` error and requirement channels, just like storing that result and trying the value. Parenthesized calls, method calls and calls selected by a conditional preserve the same channels. Give a dynamic call a precise `Effect.Effect<A, E, R>` return type when those channels are known.
 
+An ordinary call keeps its TypeScript meaning when its receiver has a capitalized name. A local object, class, function or parameter such as `Box` does not become a service key because of its spelling; a parameter also shadows an outer service with the same name. The TypeScript view used by editors follows the resolved lexical binding.
+
 A plain function's written return type checks the whole value it returns. For `function make(value: string): { type: "dataUrl"; value: string }!unknown { return Effect.succeed({ type: "dataUrl", value }) }`, the return expression is typed by the full `Effect`, preserving `"dataUrl"` as a literal, as in TypeScript. An `effect` function's body instead returns the `Effect`'s success value.
 
 `noImplicitReturns` checks that success value, including when the return type is inferred. An `effect` function whose branches only use bare `return` or fall through succeeds with `undefined`; it needs no value-returning statement. A branch that returns a value while another falls through still reports `TS7030`, as its `Effect.gen` counterpart does.

@@ -168,6 +168,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A type query of a platform-method alias could receive a platform error even though it runs nothing. Erased `typeof` queries now keep their TypeScript meaning.
 
+- Editors could reject ordinary calls such as `Box.key()` as service access when a local object's name began with a capital letter. The TypeScript view now recognizes the ordinary binding, including a parameter that shadows a service.
+
 
 - A plain function that returns an Effect, an `Exit`, a `Stream` or a `Layer` could call a `.ts` function with no `@throws` tag, although such a function must never throw. The call now reports `EK0401`: make the function `effect` and run the call with `try Effect.try(() => …)`, declare the callee's `@throws`, or move the code to a `.ts` file. The same holds for the function's parameter defaults.
 
