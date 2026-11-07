@@ -201,25 +201,26 @@ The entry provides `BunServices.layer` from `@effect/platform-bun`. The same `gr
 
 ## Starting `main` in a browser
 
-Use `@effect/platform-browser`'s `BrowserRuntime.runMain` to start the browser program; the compiled module imports nothing of Node's. A `main` that needs `Experimental.Crypto`, `Experimental.Locks` or `Experimental.MediaQuery` uses `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`. Keep the browser program separate from the module that starts it:
+Use `@effect/platform-browser`'s `BrowserRuntime.runMain` to start the browser program; the compiled module imports nothing of Node's. Provide `BrowserCrypto.layer` for Effect's crypto services. A program that also needs `Experimental.Locks` or `Experimental.MediaQuery` provides `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`. Keep the browser program separate from the module that starts it:
 
 ```vibe
 // app.vibe
 export effect function main() {
-  const crypto = try Experimental.Crypto
+  const mac = try Mac.Mac
   const encoder = new TextEncoder()
-  const mac = try crypto.hmac("SHA-256", Redacted.make(encoder.encode("key")), encoder.encode("hello"))
-  try Console.log(mac.length)
+  const key = try Mac.key(Mac.hmacSha256, encoder.encode("key"))
+  const tag = try mac.sign(key, encoder.encode("hello"))
+  try Console.log(tag.length)
 }
 ```
 
 ```vibe
 // page.vibe
 import { BrowserRuntime } from "@effect/platform-browser"
-import { ExperimentalBrowserCrypto } from "vibelang-runtime/experimental/platform-browser"
+import * as BrowserCrypto from "@effect/platform-browser/BrowserCrypto"
 import { main } from "./app.vibe"
 
-BrowserRuntime.runMain(Effect.provide(main(), ExperimentalBrowserCrypto.layer))
+BrowserRuntime.runMain(Effect.provide(main(), BrowserCrypto.layer))
 ```
 
 The page loads `page.vibe`'s JavaScript as a module script, bundled or not, and the runner call at its top level starts `main`, as a top-level runner call does in any module. `BrowserRuntime.runMain` interrupts `main` when the page is discarded.
