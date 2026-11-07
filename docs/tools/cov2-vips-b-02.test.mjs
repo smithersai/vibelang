@@ -1,21 +1,6 @@
 // Pending coverage obligations; each activation checks the whole assigned rule.
 import { test } from "node:test"
 
-// rule-evidence: docs/design/vips/0030-config-files.md#620eaee7d226e458
-// VIP-30: native ts js module detection.
-// Activation: Cross legacy/auto/force and package type for ordinary .ts and .js with prelude switches off, comparing script binding and diagnostics against native TypeScript.
-test.todo("rule-evidence: docs/design/vips/0030-config-files.md#decision | cov2-vips-b native ts js module detection | present | **Amendment: source module classification.** `moduleDetection` keeps its ordinary meaning for `.ts` and `.js`.")
-
-// rule-evidence: docs/design/vips/0030-config-files.md#af110eae679bbb0b
-// VIP-30: no declarationImportStyle setting.
-// Activation: Require EK3007 for the retired setting and compare ordinary .d.ts import spelling with TypeScript option controls.
-test.todo("rule-evidence: docs/design/vips/0030-config-files.md#decision | cov2-vips-b no declarationImportStyle setting | present | **Amended 2026-11-03: declaration import spelling follows TypeScript.** There is no `declarationImportStyle` setting.")
-
-// rule-evidence: docs/design/vips/0030-config-files.md#c77e9663aa746fc7
-// VIP-30: interim severity code rejection.
-// Activation: Try warning/error/off severities for EK9201 and EK9202 and require EK3006 without changing their default diagnostics.
-test.todo("rule-evidence: docs/design/vips/0030-config-files.md#wills-words | cov2-vips-b interim severity code rejection | present | **Amended 2026-11-01: interim severity codes.** Interim `EK92xx` codes are not configurable through `vibe.severities`, even when printed as warnings; an entry is `EK3006`.")
-
 // rule-evidence: docs/design/vips/0033-platform-stdlib.md#9adea56c74ab839d
 // VIP-33: module body native platform rules.
 // Activation: Compile identical platform references in a named top-level module body and sibling .ts file, with a .vibe outer-scope negative control.
