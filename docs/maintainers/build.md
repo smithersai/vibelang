@@ -62,6 +62,13 @@ execution. Run the desired build or test command afterward. This mode accepts
 no target arguments. A failed install retains its diagnostic and nonzero exit
 status; provisioned `node_modules` symlinks stay with their owner.
 
+The CI-selection fixtures prepare prerequisites from both the install loop and
+standalone package installs before running the actual CI shell. Their mutation
+controls add package scopes through each form, including repeated installs,
+indentation and comments, so a new prerequisite does not hide target-selection
+or missing-baseline failures. Run these checks with
+`node --test scripts/fuzz-gate.test.mjs`.
+
 The native companion probes load source-map helpers from `packages/unplugin`. Preparation installs that package’s locked dependencies and preserves a provisioned `node_modules` link, as it does for the other package scopes.
 
 `scripts/ci.sh` installs what the targets read (`.smithers`, the runtime, the

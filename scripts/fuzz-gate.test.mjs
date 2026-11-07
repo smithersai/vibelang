@@ -119,7 +119,12 @@ function fixture(t, ciSource = process.env.CI_SCRIPT_SOURCE ? readFileSync(proce
   write("scripts/share-effect.mjs", read("scripts/share-effect.mjs"))
   const installs = /^for dir in ([^;\n]+); do install "\$dir"; done$/m.exec(ciSource)
   assert.ok(installs, "the CI selection fixture needs explicit install directories")
-  for (const dir of installs[1].trim().split(/\s+/)) {
+  const directories = new Set(installs[1].trim().split(/\s+/))
+  // Preparation also installs package scopes outside the shared loop.
+  for (const match of ciSource.matchAll(/^[ \t]*install[ \t]+([\w./-]+)[ \t]*(?:#.*)?$/gm)) {
+    directories.add(match[1])
+  }
+  for (const dir of directories) {
     mkdirSync(join(root, dir, "node_modules"), { recursive: true })
   }
   write("packages/ts-mapper/package.json", JSON.stringify({ devDependencies: { typescript: "fixture" } }))
@@ -151,6 +156,24 @@ test("selection fixtures prepare newly declared package prerequisites", t => {
   assert.equal(run.status, 0, run.stderr)
   assert.deepEqual(f.args().slice(0, 4), ["ci", "//packages:compiler-test", "--jobs", "8"])
 })
+
+for (const [name, commands] of [
+  ["plain", "install packages/extra-prerequisite"],
+  ["indented", "  install packages/extra-prerequisite"],
+  ["commented", "install packages/extra-prerequisite # additional package scope"],
+  ["multiple", "install packages/extra-prerequisite\ninstall packages/another-prerequisite"],
+  ["repeated", "install packages/extra-prerequisite\ninstall packages/extra-prerequisite"],
+]) {
+  test("selection fixtures prepare standalone package prerequisites: " + name, t => {
+    const source = read("scripts/ci.sh")
+    const extended = source.replace("node scripts/share-effect.mjs", commands + "\nnode scripts/share-effect.mjs")
+    assert.notEqual(extended, source)
+    const f = fixture(t, extended)
+    const run = f.run()
+    assert.equal(run.status, 0, run.stdout + run.stderr)
+    assert.deepEqual(f.args().slice(0, 4), ["ci", "//packages:compiler-test", "--jobs", "8"])
+  })
+}
 
 test("the actual CI shell appends selected labels from a mirror's paths file", t => {
   const f = fixture(t)
