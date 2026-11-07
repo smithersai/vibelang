@@ -236,6 +236,8 @@ For an `Effect.fn` callback that is not an inline generator, ordinary `--fix` re
 
 Written generator return annotations, such as `Effect.fn.Return`, keep their checked `Effect` result contract when `--fix` converts `Effect.gen`. The converted program stays cold and retains contextual literal types. A direct `Generator` annotation already selects a native JavaScript generator and stays native.
 
+Legacy `: infer _` annotations in plain callbacks checked as TypeScript by `Effect.try`, `Effect.tryPromise`, `sync` or `callback` can report `TS1338`. `--fix` removes a simple whole-return marker and keeps TypeScript's inferred result, including inside a converted generator. Conditional `infer` types keep their meaning; an async or generator return contract, a named inference parameter, or an annotation containing comments is left for a manual edit.
+
 A bare `return` in an `Effect.fn` generator must satisfy its written `Effect.fn.Return<A>` success type. If it does not, `--fix` leaves the generator unchanged and reports the incompatible return; `void`, `undefined` and success types that include `undefined` remain eligible for conversion.
 
 For `Effect.fn` generators with a written `Effect.fn.Return<A, E, R>` annotation and later pipeline stages, `--fix` keeps that annotation on the cold inner program. The stages keep their order and may change the final success or error type without changing the generator's return contract.
