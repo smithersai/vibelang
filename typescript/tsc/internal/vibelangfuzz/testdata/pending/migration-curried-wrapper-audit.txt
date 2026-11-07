@@ -1,0 +1,5 @@
+FuzzMigrationCurriedWrapperAudit wrapper:staged compiler Chapter 1: a curried Effect operator in an emitted IIFE still returns the program held by its locals; lane migfix-t3code
+FuzzMigrationCurriedWrapperAudit wrapper:staged-alias compiler Chapter 1: a curried Effect operator in an emitted IIFE still returns the program held by its locals; lane migfix-t3code
+FuzzMigrationCurriedWrapperAudit wrapper:nested compiler Chapter 1: a curried Effect operator in an emitted IIFE still returns the program held by its locals; lane migfix-t3code
+FuzzMigrationCurriedWrapperAudit wrapper:returned-local compiler Chapter 1: a curried Effect operator in an emitted IIFE still returns the program held by its locals; lane migfix-t3code
+FuzzMigrationCurriedWrapperAudit corpus:t3code-curried-pipeline-iife compiler Chapter 1: see wrapper:staged; lane migfix-t3code
