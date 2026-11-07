@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.
+
 - Generated metadata imports could fail a repository's required namespace spelling. They now select the conventional `NodeURL` name using the companion's own scope.
 
 - The migration's API identity check refused a package with "Ambient declaration closures differ" when a declaration that augments a module, such as a router's TanStack Router `Register`, reached an inferred `import("./work").WorkFilter` that the converted side spelled `import("./work.ts")`. Such a respelling of the same module now leaves the closure the same; a changed type or a different module still refuses.

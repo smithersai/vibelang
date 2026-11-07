@@ -467,6 +467,14 @@ func capturedEffectPipeChecked(c *checker.Checker, file *ast.SourceFile, call *a
 	program := names.freshName("pipe$program")
 	indent := lineIndent(file.Text(), nodeStart(file, call))
 	var text strings.Builder
+	// A capture starts with a parenthesis; keep a preceding semicolon-free
+	// statement separate without adding an empty body to an unbraced control.
+	if statement := call.Parent; statement != nil && ast.IsExpressionStatement(statement) && statement.Parent != nil {
+		parent := statement.Parent
+		if ast.IsSourceFile(parent) || ast.IsBlock(parent) || ast.IsModuleBlock(parent) || ast.IsCaseClause(parent) || ast.IsDefaultClause(parent) {
+			text.WriteByte(';')
+		}
+	}
 	text.WriteString("(() => {\n" + indent + "  const " + program + " = " + editedText(receiver) + ";\n")
 	var stages []string
 	for i, stage := range call.Arguments() {
