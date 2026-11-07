@@ -1,0 +1,24 @@
+// expect-result: {"own":["own 1","other"],"object":["even","odd"],"view":["view","other"],"key":"symbol"}
+// rule-evidence: docs/design/src/004-match.md#class-patterns | Every `.vibe` and `.vibex` source file sees the runtime's declaration of `SymbolConstructor.customMatcher`, including when `vibe.effectModules` or `vibe.effectGlobals` is disabled.
+// rule-evidence: docs/design/src/004-match.md#class-patterns | Thus an ordinary class or object may declare its own `[Symbol.customMatcher]` method without a source import or reference directive.
+// rule-evidence: docs/design/src/004-match.md#class-patterns | The ambient `SymbolConstructor` augmentation is program-wide, so `.ts` files in the same TypeScript program see it too; a standalone `.ts` program without the provider does not.
+// Both Effect prelude switches are off, and no file in this program imports
+// vibelang-runtime or writes a reference directive: the compiler-loaded
+// runtime prelude alone types the key in main.vibe, view.vibex and native.ts.
+import { Effect } from "effect"
+import { label } from "./view.js"
+import type { BooleanMatcher, MatcherKey } from "./native.js"
+class Numeric {
+  static [Symbol.customMatcher](s: unknown, _options: { matchType: "extractor" }): false | [number] {
+    return s === 1 ? [s] : false
+  }
+}
+const Even: BooleanMatcher = {
+  [Symbol.customMatcher](subject: unknown) { return typeof subject === "number" && subject % 2 === 0 }
+}
+function own(s: unknown) { return match (s) { when Numeric(let n): `own ${n}`; default: "other"; } }
+function parity(n: number) { return match (n) { when Even: "even"; default: "odd"; } }
+export function main(): Effect.Effect<unknown> {
+  const key: MatcherKey = Symbol.customMatcher
+  return Effect.sync(() => ({ own: [own(1), own(2)], object: [parity(2), parity(3)], view: [label("v"), label(1)], key: typeof key }))
+}

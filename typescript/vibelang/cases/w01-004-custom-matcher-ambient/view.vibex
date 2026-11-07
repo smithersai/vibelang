@@ -1,0 +1,7 @@
+// A .vibex source file sees the same ambient key.
+class Text {
+  static [Symbol.customMatcher](s: unknown, _options: { matchType: "boolean" }): boolean {
+    return typeof s === "string"
+  }
+}
+export function label(s: unknown) { return match (s) { when Text: "view"; default: "other"; } }

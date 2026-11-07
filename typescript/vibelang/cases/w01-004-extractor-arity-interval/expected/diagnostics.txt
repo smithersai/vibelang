@@ -1,0 +1,13 @@
+main.vibe(21,28): warning EK0703
+main.vibe(22,28): warning EK0703
+main.vibe(23,28): warning EK0703
+main.vibe(24,28): warning EK0703
+main.vibe(25,28): warning EK0703
+main.vibe(26,28): warning EK0703
+main.vibe(27,25): warning EK0703
+main.vibe(28,25): warning EK0703
+main.vibe(29,25): warning EK0703
+main.vibe(30,28): warning EK0703
+main.vibe(31,28): warning EK0703
+main.vibe(32,23): warning EK0703
+main.vibe(33,24): warning EK0703

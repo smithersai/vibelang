@@ -1,0 +1,14 @@
+// expect-result: ["one",null]
+// rule-evidence: docs/design/src/004-match.md#class-patterns | Emitted declarations that name `Symbol.customMatcher` carry the runtime type reference under [Declaration output](001-functions.md#declaration-output).
+// The source names the key through the compiler-loaded ambient type alone;
+// its declaration imports the runtime's `customMatcher`, so a consumer
+// without the VibeLang prelude still resolves the member's key type.
+import { Effect } from "effect"
+export class One {
+  static [Symbol.customMatcher](s: unknown, _options: { matchType: "extractor" }): false | [number] {
+    return s === 1 ? [s] : false
+  }
+}
+export function main(): Effect.Effect<unknown> {
+  return Effect.sync(() => [match (1 as unknown) { when One(let n): "one"; default: null; }, match (2 as unknown) { when One(let n): "one"; default: null; }])
+}

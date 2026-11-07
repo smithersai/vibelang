@@ -1,0 +1,11 @@
+// expect-result: [true,true,"symbol"]
+// rule-evidence: docs/design/src/004-match.md#class-patterns | `Symbol.customMatcher` has the same unique symbol type as the runtime's `customMatcher` export.
+// Each unique symbol type is assignable only to itself, so both assignments
+// and the comparison compile only when the two types are one type.
+import { Effect } from "effect"
+import { customMatcher } from "vibelang-runtime"
+const fromRuntime: typeof Symbol.customMatcher = customMatcher
+const fromSymbol: typeof customMatcher = Symbol.customMatcher
+export function main(): Effect.Effect<unknown> {
+  return Effect.sync(() => [Symbol.customMatcher === customMatcher, fromRuntime === fromSymbol, typeof fromRuntime])
+}

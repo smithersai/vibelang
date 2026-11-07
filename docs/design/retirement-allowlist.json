@@ -2208,5 +2208,35 @@
       "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28, amended 2026-11-02 to retire trustedPackages; docs/design/src/007-tooling.md#config-files ignores the key with EK3010, so an unannotated npm call in effect code is still EK0403. This cites existing published acceptance, not a new approval."
     },
     "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2339",
+    "case": "typescript/vibelang/cases/w01-004-custom-matcher-standalone-ts.fail",
+    "vip": "VIP-7",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns makes the runtime SymbolConstructor.customMatcher augmentation program-wide and states that a standalone .ts program without the provider does not see it. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "A standalone .ts program reads Symbol.customMatcher without the provider; TypeScript itself reports TS2339 there, as stock tsc does, and the compiler before this commit reports the same code at the same position, so no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/w01-004-custom-matcher-key-identity.fail",
+    "vip": "VIP-7",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns gives Symbol.customMatcher the same unique symbol type as the runtime customMatcher export. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The negative controls show that another unique symbol is not assignable to or comparable with the key; TypeScript itself reports TS2322 and TS2367, and the compiler before this commit reports the same codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "TS2367",
+    "case": "typescript/vibelang/cases/w01-004-custom-matcher-key-identity.fail",
+    "vip": "VIP-7",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0007-match.md: Status accepted by Will, 2026-10-28; docs/design/src/004-match.md#class-patterns gives Symbol.customMatcher the same unique symbol type as the runtime customMatcher export. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The negative controls show that another unique symbol is not assignable to or comparable with the key; TypeScript itself reports TS2322 and TS2367, and the compiler before this commit reports the same codes at the same positions, so no form that compiled before is rejected."
   }
 ]

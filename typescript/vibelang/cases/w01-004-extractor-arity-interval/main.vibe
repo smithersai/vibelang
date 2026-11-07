@@ -1,0 +1,48 @@
+// expect-result: {"warned":[0,0,0,0,0,0,0,0,0,0,0,0,0],"admitted":[1,1,1,1,1,1]}
+// rule-evidence: docs/design/src/004-match.md#class-patterns | When a class or fixed pattern's extracted list has a statically known length (an `error` or `schema error` class and the thirty-four retained errors: 1; `Option.Some`, `Exit.*`, `Result.*`: 1; `Option.None`: 0) and its known length lies outside the admitted interval of an extractor without a rest pattern: required positions through total positions, counting every elision slot and counting optional elements only in the maximum, VibeLang reports the VIP-38 lint warning `EK0703`, with the quick fixes `when X:` and, for a singleton list, `when X(let e):`.
+// Every arm in `warned` lies outside its interval, is EK0703 at its matcher
+// (expected/diagnostics.txt) and never matches; every arm in `admitted`
+// holds the known length inside its interval, is not warned, and matches.
+import * as Cause from "effect/Cause"
+import { Exit, Option, Result } from "effect"
+error NotFound { id: string }
+schema error Invalid { reason: string }
+const missing: unknown = new NotFound({ id: "1" })
+const invalid: unknown = new Invalid({ reason: "r" })
+const timeout: unknown = new Cause.TimeoutError()
+const some: unknown = Option.some(1)
+const none: unknown = Option.none()
+const success: unknown = Exit.succeed(1)
+const failure: unknown = Exit.fail("x")
+const ok: unknown = Result.succeed(1)
+const err: unknown = Result.fail("x")
+function warned(): readonly number[] {
+  return [
+    match (missing) { when NotFound(): 1; default: 0; },
+    match (missing) { when NotFound(let a, let b): 1; default: 0; },
+    match (missing) { when NotFound(, let a): 1; default: 0; },
+    match (missing) { when NotFound(let a, , 3?): 1; default: 0; },
+    match (invalid) { when Invalid(): 1; default: 0; },
+    match (timeout) { when Cause.TimeoutError(let a, let b): 1; default: 0; },
+    match (some) { when Option.Some(): 1; default: 0; },
+    match (none) { when Option.None(let a): 1; default: 0; },
+    match (none) { when Option.None(, 1?): 1; default: 0; },
+    match (success) { when Exit.Success(let a, let b): 1; default: 0; },
+    match (failure) { when Exit.Failure(): 1; default: 0; },
+    match (ok) { when Result.Success(): 1; default: 0; },
+    match (err) { when Result.Failure(let a, let b): 1; default: 0; },
+  ]
+}
+function admitted(): readonly number[] {
+  return [
+    match (none) { when Option.None(1?): 1; default: 0; },
+    match (missing) { when NotFound(let a, 2?): 1; default: 0; },
+    match (some) { when Option.Some(let a, 2?, 3?): 1; default: 0; },
+    match (missing) { when NotFound(let e): 1; default: 0; },
+    match (invalid) { when Invalid(let e): 1; default: 0; },
+    match (missing) { when NotFound(...let all): all.length; default: 0; },
+  ]
+}
+export effect function main() {
+  return { warned: warned(), admitted: admitted() }
+}

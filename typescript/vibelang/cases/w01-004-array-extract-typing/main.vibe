@@ -1,0 +1,30 @@
+// expect-result: [["1","other","other"],["7","other"],[1,null,7,null]]
+// rule-evidence: docs/design/src/004-match.md#typing | The `number` annotation checks the selected element before the nonthrowing `String(n)` call.
+// An `Array(let n)` arm over `number[]` and a tuple-returning custom matcher
+// bind `n` as `number`: `satisfies number` checks the selected element before
+// `String(n)`, and the declarations equal the TypeScript twin's.
+import { Effect } from "effect"
+class Numeric {
+  static [Symbol.customMatcher](s: unknown, _options: { matchType: "extractor" }): false | [number] {
+    return typeof s === "number" ? [s] : false
+  }
+}
+export function first(s: number[]) {
+  return match (s) { when Array(let n): String(n satisfies number); default: "other"; }
+}
+export function numeric(s: unknown) {
+  return match (s) { when Numeric(let n): String(n satisfies number); default: "other"; }
+}
+export function firstValue(s: number[]) {
+  return match (s) { when Array(let n): n; default: undefined; }
+}
+export function numericValue(s: unknown) {
+  return match (s) { when Numeric(let n): n; default: undefined; }
+}
+export function main(): Effect.Effect<readonly unknown[]> {
+  return Effect.sync(() => [
+    [first([1]), first([]), first([1, 2])],
+    [numeric(7), numeric("7")],
+    [firstValue([1]) ?? null, firstValue([1, 2]) ?? null, numericValue(7) ?? null, numericValue("7") ?? null],
+  ])
+}

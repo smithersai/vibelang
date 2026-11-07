@@ -1,0 +1,8 @@
+// expect: TS2322 TS2367
+// rule-evidence: docs/design/src/004-match.md#class-patterns | `Symbol.customMatcher` has the same unique symbol type as the runtime's `customMatcher` export.
+// The control: another unique symbol is a different type, so the assignment
+// and the comparison that compile for the runtime's export fail here.
+import { customMatcher } from "vibelang-runtime"
+declare const other: unique symbol
+export const assigned: typeof customMatcher = other
+export const compared = Symbol.customMatcher === other
