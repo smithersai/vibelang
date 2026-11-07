@@ -60,7 +60,6 @@ func TestFixNothrowCallbackCallRefusesOutsideTheFiber(t *testing.T) {
 		// the callback's die is not Effect.die
 		"export const main=(s:string)=>Effect.suspend(()=>{const die=(e:unknown)=>Effect.fail(e);return Effect.succeed(JSON.parse(s))})",
 		// a parameter default runs at the call, outside the body
-		"export const main=(s:string)=>Effect.flatMap(Effect.void,(v=JSON.parse(s))=>Effect.succeed(v))",
 		// an Eager variant may call its callback while the program is built
 		"export const main=(s:string)=>Effect.flatMapEager(Effect.void,()=>Effect.succeed(JSON.parse(s)))",
 		"export const main=(s:string)=>Effect.matchCauseEffectEager(Effect.void,{onFailure:()=>Effect.void,onSuccess:()=>Effect.succeed(JSON.parse(s))})",

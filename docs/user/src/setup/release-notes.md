@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Automatic fixes left throwing calls in effectful parameter defaults for manual migration. Supported calls now use a TypeScript adapter that keeps their call-time work, return types and original exceptions, including callback defaults.
+
 - `vibelang --fix` could keep a `.pipe` call before `satisfies` or a following property or arithmetic expression. These calls now migrate with the surrounding expression intact.
 
 - A migrated module's generated platform companion asserted its call helpers to the callee's type with no justification, so a repository lint that requires a `SAFETY:` comment on every type assertion rejected the companion. Each asserted helper now carries that comment.

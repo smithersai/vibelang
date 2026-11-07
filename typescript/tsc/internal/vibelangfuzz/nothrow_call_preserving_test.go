@@ -20,6 +20,9 @@ func FuzzNothrowCallPreservation(f *testing.F) {
 	for _, key := range []string{"polymorphic-receiver", "polymorphic-indexed", "t3code-gitcafe-BigInt-narrowing", "predicate", "call", "conditional", "default", "receiver", "new", "strict-effect-default", "yield-operand", "smithers-Catalog-tracked-call"} {
 		f.Add(key, int8(7))
 	}
+	for _, key := range []string{"default-effect-arrow", "default-effect-method", "default-producer", "default-producer-method", "default-factory", "default-stream-factory", "default-object-binding", "default-array-binding", "default-computed-binding", "default-foreign-unknown", "default-constructor", "default-optional", "default-eval-refusal", "default-body-refusal", "default-predicate-refusal"} {
+		f.Add(key, int8(7))
+	}
 	for _, key := range []string{"overload-call", "overload-default", "overload-receiver", "overload-field", "overload-new", "overload-two-prefix", "overload-zero-prefix", "overload-parameter-refusal", "overload-return-refusal", "overload-generic-refusal", "overload-predicate-refusal", "overload-this-refusal", "overload-rest-refusal", "overload-arity-refusal", "overload-optional-refusal"} {
 		f.Add(key, int8(7))
 	}
@@ -29,6 +32,7 @@ func FuzzNothrowCallPreservation(f *testing.F) {
 			text := fmt.Sprintf("%q", fmt.Sprint(value))
 			source := ""
 			refuse := false
+			boxed := false
 			switch key {
 
 			case "overload-call":
@@ -72,6 +76,52 @@ func FuzzNothrowCallPreservation(f *testing.F) {
 				source = "import {Box} from \"./native.js\";export function main(n:number):Box{return new Box(n)}"
 			case "strict-effect-default":
 				source = "export effect function main(s=JSON.parse(" + text + ")) {return s}"
+				boxed = true
+
+			case "default-effect-arrow":
+				source = "export const main=effect(value=JSON.parse(" + text + "))=>{return value}"
+				boxed = true
+			case "default-effect-method":
+				source = "export const holder={effect main(value=JSON.parse(" + text + ")){return value}}"
+				boxed = true
+			case "default-producer":
+				source = "export effect function* main(value=JSON.parse(" + text + ")){yield value}"
+				boxed = true
+			case "default-producer-method":
+				source = "export const holder={effect *main(value=JSON.parse(" + text + ")){yield value}}"
+				boxed = true
+			case "default-factory":
+				source = "export function main(value=JSON.parse(" + text + ")):Effect.Effect<unknown>{return Effect.succeed(value)}"
+				boxed = true
+			case "default-stream-factory":
+				source = "export function main(value=JSON.parse(" + text + ")){return Stream.succeed(value)}"
+				boxed = true
+			case "default-object-binding":
+				source = "export effect function main(text=" + text + ",{value=JSON.parse(text)}:{value?:unknown}={}){return value}"
+				boxed = true
+			case "default-array-binding":
+				source = "export effect function main(text=" + text + ",[value=JSON.parse(text)]:unknown[]=[]){return value}"
+				boxed = true
+			case "default-computed-binding":
+				source = "export effect function main(text=" + text + ",{[JSON.parse(text)]:value=7}:Record<string,number>={}){return value}"
+				boxed = true
+			case "default-foreign-unknown":
+				source = "import {load} from \"./native.js\";export effect function main(value=load(" + fmt.Sprint(value) + ")){return value}"
+				boxed = true
+			case "default-constructor":
+				source = "import {Box} from \"./native.js\";export effect function main(value=new Box(" + fmt.Sprint(value) + ")){return value}"
+				boxed = true
+			case "default-optional":
+				source = "const reader:{parse?:typeof JSON.parse}={parse:JSON.parse};export effect function main(value=reader.parse?.(" + text + ")){return value}"
+				boxed = true
+			case "default-eval-refusal":
+				source = "export effect function main(value=JSON.parse(eval(" + text + "))){return value}"
+				refuse = true
+			case "default-body-refusal":
+				source = "export function main():Effect.Effect<unknown>{return Effect.succeed(JSON.parse(" + text + "))}"
+				refuse = true
+			case "default-predicate-refusal":
+				source = "import {predicate} from \"./native.js\";export effect function main(n:unknown,value=predicate(n)?n.length:0){return value}"
 				refuse = true
 			case "yield-operand":
 				source = "export function* main():Generator<string,unknown,string>{return JSON.parse(yield " + text + ")}"
@@ -163,6 +213,11 @@ export const incompatible:{
 			if runtimeCheck {
 				files["runner.ts"] = "import {Effect} from \"effect\";import {main as call} from \"./main.js\";import {events,marker} from \"./native.js\";export const main=()=>Effect.sync(()=>[\"" + fmt.Sprint(value) + "\",\"throw\"].map(s=>{events.length=0;try{return {events:[...events],result:call(s),after:[...events],same:false}}catch(e){return {events:[...events],same:e===marker}}}))"
 			}
+
+			files["native.ts"] += "\n/** @throws {unknown} */\nexport function load(n:number):number{return n}\n"
+			if boxed && !strings.Contains(SpecText("003-failures.md"), "run at the call, before the Effect exists.") {
+				t.Fatal("missing call-time binding authority")
+			}
 			before := toolsCompile(t, w, "FuzzNothrowCallPreservation", files)
 			defer before.Remove()
 			if strings.HasPrefix(key, "overload-") {
@@ -197,12 +252,16 @@ export const incompatible:{
 				Gap(t, "FuzzNothrowCallPreservation", key+":changed", "refused bytes changed: %+v", result.Changed)
 			}
 			if refuse {
-				if strings.Contains(fixed["main.vibe"], "$invoke(") || len(result.Sites) == 0 {
+				if strings.Contains(fixed["main.vibe"], "$invoke(") || strings.Contains(fixed["main.vibe"], "$default(") || len(result.Sites) == 0 {
 					Gap(t, "FuzzNothrowCallPreservation", key, "unsupported call must refuse at its site")
 				}
 				return
 			}
-			if !strings.Contains(fixed["main.vibe"], "$invoke(") || len(result.Sites) != 0 {
+			boundary := "$invoke("
+			if boxed {
+				boundary = "$default("
+			}
+			if !strings.Contains(fixed["main.vibe"], boundary) || len(result.Sites) != 0 {
 				Gap(t, "FuzzNothrowCallPreservation", key, "missing preserving TypeScript call: %+v\n%s", result, fixed["main.vibe"])
 			}
 			after := toolsCompile(t, w, "FuzzNothrowCallPreservation", fixed)
@@ -240,6 +299,25 @@ export const incompatible:{
 					relative := strings.TrimPrefix(name.AsString(), filepath.ToSlash(after.Dir)+"/")
 					if prior, ok := fixed[relative]; ok && file.Text != prior {
 						t.Fatalf("non-idempotent repair: %s", relative)
+					}
+				}
+			}
+
+			if boxed {
+				if len(before.Outputs) == 0 {
+					t.Fatal("original diagnostic-bearing fixture has no declaration oracle")
+				}
+				if mismatch := toolsContractMismatch(t, w, before, after, false); mismatch != "" {
+					Gap(t, "FuzzNothrowCallPreservation", key+":api", "default changed the public contract: %s", mismatch)
+				}
+				again := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, after.Dir), vibelang.FixOptions{})
+				if again.Err != nil || len(again.Sites) != 0 {
+					t.Fatalf("second default fix: %+v", again)
+				}
+				for name, file := range again.Files {
+					relative := strings.TrimPrefix(name.AsString(), filepath.ToSlash(after.Dir)+"/")
+					if prior, ok := fixed[relative]; ok && prior != file.Text {
+						t.Fatalf("default helper changed again: %s", relative)
 					}
 				}
 			}

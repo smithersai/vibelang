@@ -61,12 +61,11 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 	if home == nil {
 		return fileFix{}, false
 	}
+	strictHome := false
 	if ast.IsFunctionLike(home) {
-		if isMarkedEffect(home) {
-			return fileFix{}, false
-		}
+		strictHome = isMarkedEffect(home)
 		if sig := c.GetSignatureFromDeclaration(home); sig != nil && isEffectfulType(c, c.GetReturnTypeOfSignature(sig)) {
-			return fileFix{}, false
+			strictHome = true
 		}
 	}
 	safe := true
@@ -89,6 +88,9 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 	}
 	if !safe {
 		return fileFix{}, false
+	}
+	if strictHome {
+		return preservingDefaultCallFix(c, file, site, key, home)
 	}
 
 	callee := site.Expression()
