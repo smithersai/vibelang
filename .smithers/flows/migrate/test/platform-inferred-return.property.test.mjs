@@ -78,9 +78,10 @@ test("an inferred return type that may name a type only the sibling declares kee
   assert.match(splitPlatform(privateType, "src/Rows.ts", ts).refused, /inferred return type that may name Row/)
   const privateClass = 'import { readFileSync } from "node:fs"\nclass Handle { constructor(readonly text: string) {} }\nexport const open = (path: string) => new Handle(readFileSync(path, "utf8"))\n'
   assert.match(splitPlatform(privateClass, "src/Open.ts", ts).refused, /inferred return type that may name Handle/)
-  // A parameter with no written type still has no signature to write.
-  const untyped = 'import { readFileSync } from "node:fs"\nexport const read = (path) => readFileSync(path, "utf8")\n'
-  assert.match(splitPlatform(untyped, "src/Read.ts", ts).refused, /export read uses platform code/)
+  // A parameter with no written type has no signature to write: the function is re-exported instead.
+  const untyped = 'import { readFileSync } from "node:fs"\nexport const read = (path) => readFileSync(path, "utf8")\nexport const name = "read"\n'
+  const split = splitPlatform(untyped, "src/Read.ts", ts)
+  assert.deepEqual([split.wrapped, split.reexported], [[], ["read"]])
 })
 
 // Neighbourhood: an inferred platform export over each parameter form, sync

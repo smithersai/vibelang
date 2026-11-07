@@ -4,7 +4,8 @@
 // editor and interaction, gui-plugins browser and chromium, core instance).
 // A moved export stays in the module as a wrapper of the same name and
 // signature, so the type reads the wrapper and every export keeps its type.
-// A kept type that reads a moved value with no wrapper keeps the refusal.
+// A kept type that reads a moved value with no wrapper reads it through the
+// module's import from the sibling, and keeps its type.
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -73,9 +74,11 @@ test("opencode: a kept type that reads a moved export reads its wrapper", () => 
   }
 })
 
-test("a kept type that reads a moved value with no wrapper keeps the refusal", () => {
+test("a kept type that reads a moved value with no wrapper reads it from the sibling", () => {
+  const ambient = 'declare module "node:fs" { export function readFileSync(path: string, encoding: "utf8"): string }\n'
   const text = 'import { readFileSync } from "node:fs"\nconst read = (path: string) => readFileSync(path, "utf8")\nexport type Read = typeof read\nexport const size = 1\n'
-  assert.match(splitPlatform(text, "src/Read.ts", ts)?.refused ?? "", /the type Read reads the value read, which Read\.platform\.ts would take/)
+  const split = assertSplitPreserves("src/Read.ts", text, ambient)
+  assert.match(split.module, /^import \{ read as read\$platform \} from "\.\/Read\.platform\.ts"$/m)
 })
 
 // Neighbourhood: a moved export as a function declaration or a const arrow,

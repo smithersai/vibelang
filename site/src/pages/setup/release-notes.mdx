@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migration kept a module in TypeScript when its platform code read an export that is not a function, such as an error class, a schema and the type of its name, or an object. The `.platform.ts` companion now declares such an export and the module re-exports it, so the export keeps its identity, type and documentation; the companion's declaration file ships with the package and is added to no `exports` entry.
 - Migrating a host constructor such as `new Response(...)` could leave its module in TypeScript when the diagnostic named `globalThis.Response`. Both companion-file and module-body migrations now recognize the original bare constructor while preserving local bindings.
 
 - A saved declaration alongside a migration example could make a valid quick fix fail verification. Saved declarations now stay separate from the sources the fix must produce, and mismatches name the unmatched source files.

@@ -288,6 +288,16 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
       if (moved.has(d) || typeOnly(d)) continue
       if ([...writtenNames(d.statement, ts)].some((n) => movedNames.has(n) && !d.names.has(n))) { moved.add(d); grew = true }
     }
+    // A type of a moved value's name, Effect's schema pattern `const Shape =
+    // Schema.String` with `type Shape = typeof Shape.Type`, moves with it: the
+    // sibling declares both and the module re-exports the one name.
+    for (const name of movedNames) {
+      const twin = typeByName.get(name)
+      if (!twin || moved.has(twin)) continue
+      // A private type of an exported value would be exported with it.
+      if (valueByName.get(name).exported && !twin.exported) return { refused: `${file}: the value ${name} would move to ${posix.basename(platformPath(file))} but the type ${name} stays, so the module's declarations would change` }
+      moved.add(twin); copied.delete(twin); typesFromModule.delete(name); grew = true
+    }
   }
   for (const d of moved) {
     if (!isMovable(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} cannot move to ${posix.basename(platformPath(file))}` }
@@ -305,32 +315,25 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   const kept = declarations.filter((d) => !moved.has(d))
   const inferredTypes = inferredFactoryTypeText(source, kept, moved, declarations, imported, ts, file)
   if (inferredTypes.refused) return inferredTypes
-  // A kept type that reads a moved value, `type Shape = typeof Shape.Type`,
-  // would make the module's declaration import it from the sibling. A moved
-  // export that stays as a wrapper of its own name and signature is still the
-  // module's value, so `type Timer = ReturnType<typeof createTimer>` reads the
-  // wrapper and its declaration does not change.
-  const movedValues = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
-  const wrapped = new Set([...moved].filter((d) => d.exported && !typeOnly(d) && wrapperOf(d.statement, source, ts)).flatMap((d) => [...d.names]))
-  for (const d of kept) {
-    if (!typeOnly(d)) continue
-    const read = [...d.valueReads].find((name) => movedValues.has(name) && !wrapped.has(name))
-    if (read) return { refused: `${file}: the type ${[...d.names].join(", ")} reads the value ${read}, which ${posix.basename(platformPath(file))} would take, so the module's declarations would change` }
-  }
-  // A type stays in the module, and its declaration carries the value of the
-  // same name with it (TypeScript emits the merged symbol).
-  const twin = [...movedValues].find((name) => typeByName.has(name))
-  if (twin) return { refused: `${file}: the value ${twin} would move to ${posix.basename(platformPath(file))} but the type ${twin} stays, so the module's declarations would change` }
+  // A kept type that reads a moved value, `type Item = typeof Issue.Type`,
+  // reads it through the module's import from the sibling.
   const keptReads = new Set(kept.flatMap((d) => [...d.reads]))
-  // A moved export stays in the module as a function with its written
-  // signature; any other moved export means the module cannot keep its API.
+  // A moved export stays in the module as a function with its signature that
+  // calls the moved one. Any other moved export, an error class, a schema, a
+  // Layer, an object, and the type of its name, the module re-exports from the
+  // sibling: the same binding, so the same identity, type and documentation.
+  // The sibling's declaration file then ships with the package; it joins no
+  // `exports` entry, and the API identity gate still compares the module.
   const wrappers = []
+  const reexported = []
   for (const d of moved) {
     if (!d.exported) continue
-    const wrapper = wrapperOf(d.statement, source, ts)
-    if (!wrapper) return { refused: `${file}: export ${[...d.names].join(", ")} uses platform code and is not a function with written parameter types, so it cannot stay in the .vibe module` }
-    wrappers.push({ d, ...wrapper })
+    const wrapper = typeOnly(d) ? null : wrapperOf(d.statement, source, ts)
+    if (wrapper) wrappers.push({ d, ...wrapper })
+    else reexported.push(d)
   }
+  const loadsEarly = earlyConstant(declarations, moved, new Set(reexported.filter((d) => !typeOnly(d))), null, ts)
+  if (loadsEarly) return { refused: `${file}: export ${[...loadsEarly.names].join(", ")} would be initialized in ${posix.basename(platformPath(file))} before a statement above it that reads it while the module loads` }
   // An inferred return type is written into the module's declarations from
   // the sibling. A type only the sibling declares, a private copy or a moved
   // private class or enum, has no name there (TS4058), so an exported type the
@@ -365,12 +368,14 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
     }
   }
   const moduleKeptReads = new Set(kept.filter((d) => !unread.has(d)).flatMap((d) => [...d.reads]))
+  const reexportedNames = [...new Set(reexported.flatMap((d) => [...d.names]))]
   const namespace = uniqueName("$platform", new Set([...byName.keys(), ...imports.flatMap((i) => bindingsOf(i, ts).map((b) => b.name))]))
   const sibling = "./" + posix.basename(platformPath(file))
   // The module: kept imports, the import of the moved code, kept declarations and wrappers, in source order.
   const movedReadsByKept = [...moved].filter((d) => !d.exported).flatMap((d) => [...d.names].filter((n) => moduleKeptReads.has(n)))
   const fromSibling = [...new Set(movedReadsByKept)].sort()
   const moduleReads = new Set([...moduleKeptReads, ...wrappers.flatMap((w) => [...w.reads])])
+  const reexportedReads = reexportedNames.filter((n) => moduleReads.has(n)).sort()
   const moduleImports = imports.map((i) => importText(i, source, ts, (b) => moduleReads.has(b.name))).filter(Boolean)
   const head = [...moduleImports]
   if (wrappers.length) head.push(`import * as ${namespace} from "${sibling}"`)
@@ -378,16 +383,29 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   // moved const comes back under an alias and is bound to a local const of its
   // own name where it stood. Its explicit type retains unique-symbol identity
   // as well as the imported value type and local-const narrowing.
-  const movedConsts = new Set([...moved].filter((d) => !d.exported && ts.isVariableStatement(d.statement) && (d.statement.declarationList.flags & ts.NodeFlags.Const)).flatMap((d) => [...d.names]))
+  // A name with a moved type too keeps both meanings through a plain import.
+  const movedTypeNames = new Set([...moved].filter((d) => typeOnly(d)).flatMap((d) => [...d.names]))
+  const movedConsts = new Set([...moved].filter((d) => !d.exported && ts.isVariableStatement(d.statement) && (d.statement.declarationList.flags & ts.NodeFlags.Const)).flatMap((d) => [...d.names]).filter((n) => !movedTypeNames.has(n)))
   const taken = new Set([...byName.keys(), ...imports.flatMap((i) => bindingsOf(i, ts).map((b) => b.name)), namespace])
   const alias = new Map()
   for (const name of fromSibling) if (movedConsts.has(name)) { const a = uniqueName(name + "$platform", taken); taken.add(a); alias.set(name, a) }
-  if (fromSibling.length) head.push(`import { ${fromSibling.map((n) => (alias.has(n) ? `${n} as ${alias.get(n)}` : n)).join(", ")} } from "${sibling}"`)
+  const siblingImports = [...fromSibling.map((n) => (alias.has(n) ? `${n} as ${alias.get(n)}` : n)), ...reexportedReads.filter((n) => !fromSibling.includes(n))]
+  if (siblingImports.length) head.push(`import { ${siblingImports.join(", ")} } from "${sibling}"`)
   const body = []
+  const exportedAgain = new Set()
   for (const d of declarations) {
     if (unread.has(d)) continue
+    const wrapper = wrappers.find((w) => w.d === d)
     if (!moved.has(d)) body.push(inferredTypes.text(d.statement))
-    else if (d.exported) body.push(wrappers.find((w) => w.d === d).text(namespace))
+    else if (wrapper) body.push(wrapper.text(namespace))
+    else if (d.exported) {
+      const names = [...d.names].filter((n) => !exportedAgain.has(n))
+      for (const name of names) exportedAgain.add(name)
+      // An exported type whose value of the same name stays private is
+      // re-exported as a type only.
+      const typeOnlyExport = typeOnly(d) && names.every((n) => valueByName.get(n) && !valueByName.get(n).exported)
+      if (names.length) body.push(`export ${typeOnlyExport ? "type " : ""}{ ${names.join(", ")} } from "${sibling}"`)
+    }
     else for (const name of [...d.names].filter((n) => alias.has(n))) body.push(`const ${name}: typeof ${alias.get(name)} = ${alias.get(name)}`)
   }
   const moduleText = joinParts(leadingHeader(source), head, body)
@@ -403,7 +421,7 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   // (t3code Desktop: `// @effect-diagnostics nodeBuiltinImport:off`).
   const directives = fileDirectives(source, ts).filter((d) => !platformImports.some((i) => i.includes(d)))
   const platformText = joinParts(directives, [note], platformImports, platformBody)
-  return { module: moduleText, platform: platformText, moved: movedList.filter((d) => moved.has(d)).map((d) => [...d.names]).flat(), wrapped: wrappers.map((w) => w.name) }
+  return { module: moduleText, platform: platformText, moved: movedList.filter((d) => moved.has(d)).map((d) => [...d.names]).flat(), wrapped: wrappers.map((w) => w.name), reexported: reexportedNames }
 }
 
 // A sibling is a new public entry point when a published package admits
@@ -585,9 +603,12 @@ export function splitBatchPlatform(root, files, ts, {
     const refusal = result.refused ?? (risk && !privateExports && file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript")
     // Every module of a private package is an API entry, so a sibling adds one;
     // a VIP-40 body adds none. With moduleBodies, prefer it and keep the sibling as fallback.
+    // A sibling that re-exports a moved value takes the value out of the
+    // module; a body that moves only the host operations keeps it (alchemy's
+    // dual value/type resources), so it is preferred there too.
     // A body cannot hold import.meta (EK4009), so a module whose import.meta
     // reads need the companion's helpers keeps the sibling.
-    if (!refusal && moduleBodies && !result.importText && owningManifest(root, file, { exists, read })?.private === true) {
+    if (!refusal && moduleBodies && !result.importText && (result.reexported?.length || owningManifest(root, file, { exists, read })?.private === true)) {
       const body = splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies, wrap: true })
       if (body && !body.refused) {
         write(file, body.module)
@@ -787,7 +808,7 @@ const primitiveOperators = (ts) => new Set([ts.SyntaxKind.PlusToken, ts.SyntaxKi
 // not copied: the first kept statement above it whose evaluation can reach the
 // moved code, through a name that reads it, makes the split refuse.
 function earlyConstant(declarations, moved, copied, constants, ts) {
-  const copies = declarations.filter((d) => copied.has(d) && constants.has(d))
+  const copies = declarations.filter((d) => copied.has(d) && (constants === null || constants.has(d)))
   if (!copies.length) return null
   const reaching = new Set([...moved].flatMap((d) => [...d.names]))
   for (let grew = true; grew; ) {

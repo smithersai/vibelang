@@ -13,8 +13,10 @@ import { materialize, restore, statements } from "./helpers/host-operations-orac
 // and it stayed TypeScript. The sibling split refused the same module, since
 // the value would move without its type. The module now keeps its
 // declarations, both namespaces of the name included, and only the host
-// operations move. A module whose every value reaches the platform is
-// platform code and still stays TypeScript.
+// operations move. The sibling split now serves such a module by moving the
+// value and its type together and re-exporting them; with module bodies the
+// batch prefers the body, which keeps them. A module whose every value
+// reaches the platform is platform code and still stays TypeScript.
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
@@ -32,7 +34,20 @@ const image = [
   ""].join("\n")
 
 test("a resource value and its type stay beside the provider; only the host read moves", () => {
-  assert.match(splitPlatform(image, "src/x.ts", ts, { globals: ["process"] }).refused, /the value Image would move .* but the type Image stays/)
+  assert.deepEqual(splitPlatform(image, "src/x.ts", ts, { globals: ["process"] }).reexported, ["Image"])
+  // A published package the sibling may serve: with bodies the batch keeps Image in the module.
+  for (const moduleBodies of [true, false]) {
+    const root = mkdtempSync(join(tmpdir(), "dragged-values-prefer-"))
+    try {
+      mkdirSync(join(root, "src"), { recursive: true })
+      writeFileSync(join(root, "package.json"), JSON.stringify({ name: "example", type: "module", exports: { ".": "./src/x.ts" } }))
+      writeFileSync(join(root, "src/x.ts"), image)
+      const batch = splitBatchPlatform(root, ["src/x.ts"], ts, { moduleBodies, globalsOf: () => ["process"] })
+      assert.equal(batch.splits.length, 1, JSON.stringify(batch))
+      assert.equal(batch.splits[0].platform, moduleBodies ? null : "src/x.platform.ts", JSON.stringify(batch))
+      if (moduleBodies) assert.match(materialize(readFileSync(join(root, "src/x.ts"), "utf8")).module, /^export const Image = Resource<Image>\("Docker\.Image"\);$/m)
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  }
   const result = split(image, { globals: ["process"] })
   assert.ok(result && !result.refused, JSON.stringify(result))
   const { body, module } = materialize(result.module)
