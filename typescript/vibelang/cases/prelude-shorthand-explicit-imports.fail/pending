@@ -1,0 +1,1 @@
+witness-02 written namespace imports keep the prelude shorthand: import { Option, FileSystem } from "effect" accepts Option<number> and FileSystem.of, where tsc reports TS2709 and TS2339. Rule: docs/design/src/900-appendices.md#f859faffa8a95f75

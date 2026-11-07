@@ -1,0 +1,46 @@
+// expect: EK1023 TS1005 TS2345 TS2554 TS2769
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics
+// Appendix B: EK1023 — spec-rule: docs/design/src/900-appendices.md#46125cd013963f48
+// Appendix B: dual compatibility — spec-rule: docs/design/src/900-appendices.md#6a1dcc1c66cf636f
+// Through 0.0.10 a block after an Effect dual was its program. Each site
+// keeps its native call error (TS2345, TS2554, TS2769), or EK1023 where the
+// appended block type-checks with changed meaning; none reports EK1101.
+effect function work() {
+  try sleep("1 millis")
+  return "done"
+}
+
+// Appending the block picks the second overload: EK1023.
+function tagged<A, E, R>(self: Effect.Effect<A, E, R>, label: string): Effect.Effect<A, E, R>
+function tagged(label: string, fallback?: Effect.Effect<string>): Effect.Effect<string>
+function tagged(first: unknown, second?: unknown): Effect.Effect<unknown> {
+  return Effect.succeed([first, second])
+}
+
+export function labelled() {
+  return tagged("load") {
+    return "done"
+  }
+}
+
+// An incompatible argument: TS2345.
+export function timed() {
+  return timeout("1 second") {
+    return try work()
+  }
+}
+
+// A wrong argument count: TS2554.
+export function guarded() {
+  const semaphore = Semaphore.makeUnsafe(1)
+  return semaphore.withPermits(1) {
+    return try work()
+  }
+}
+
+// No overload matches: TS2769.
+export function spanned() {
+  return withSpan("load") {
+    return try work()
+  }
+}

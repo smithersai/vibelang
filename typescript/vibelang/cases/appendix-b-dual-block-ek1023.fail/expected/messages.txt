@@ -1,0 +1,8 @@
+EK1023: This block is `tagged`'s last argument, which `tagged` accepts; through VibeLang 0.0.10 the block was `tagged`'s program.
+A block is its call's last argument. `tagged` takes its program first: write `tagged(effect { … }, "load")`.
+TS2345: Argument of type 'string' is not assignable to parameter of type 'Effect<unknown, unknown, unknown>'.
+A block is its call's last argument. `timeout` takes its program first: write `timeout(effect { … }, "1 second")`.
+TS2554: Expected 1 arguments, but got 2.
+A block is its call's last argument. `semaphore.withPermits(1)` returns the function that takes the program: write `semaphore.withPermits(1)(effect { … })`.
+TS2769: No overload matches this call.
+A block is its call's last argument. `withSpan` takes its program first: write `withSpan(effect { … }, "load")`.

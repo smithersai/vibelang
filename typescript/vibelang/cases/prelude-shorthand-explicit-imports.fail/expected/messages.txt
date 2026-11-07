@@ -1,0 +1,3 @@
+TS2709: Cannot use namespace 'Option' as a type.
+TS2709: Cannot use namespace 'Scope' as a type.
+TS2339: Property 'of' does not exist on type
