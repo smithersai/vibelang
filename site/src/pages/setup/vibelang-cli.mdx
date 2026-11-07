@@ -151,6 +151,8 @@ The VIP migration also marks Effect functions `effect`, including arrows with an
 
 Use `PlatformError.PlatformError` to name the failure type through the implicit `PlatformError` module. An annotation can also use an imported alias for that same type.
 
+When converting an `Effect.gen` or `Effect.fn` body, `--fix` makes an intentionally discarded Effect explicit with `void`, including inside a plain callback. It keeps argument evaluation at the same point and leaves the discarded program unrun. For example, an unyielded `Effect.succeed(value)` statement becomes `void Effect.succeed(value)`.
+
 When an `Effect.gen` body binds an Effect returned by a factory, `--fix` keeps the factory call at that binding. Reusing the bound program preserves one factory invocation and its shared closure state; it does not postpone startup validation until each run.
 Legacy bare `yieldNow(priority)`, `yieldNow()` and `interrupt()` factory calls migrate to native Effect values under `--fix`, `--fix-vip-only` and `--fix-migration-only`. The fix evaluates the priority once, including when it is optional, and preserves comments and local bindings. Held and returned programs remain cold in effect code, plain factories and top-level initializers. Existing `try` operations still run them; a discarded Effect statement, already rejected with `EK4801`, gains an explicit `try`. Native `yieldNow` is a value; new code runs it with `try yieldNow`, or uses `try Effect.yieldNowWith(priority)` for a numeric priority.
 

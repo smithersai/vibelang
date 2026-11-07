@@ -263,6 +263,8 @@ vibelang --fix -p tsconfig.json
 
 One `vibelang --fix` run applies fixes until none applies; running it again changes nothing. A run that has not converged within its pass limit reports the remaining fixes as an error. Quick fixes and codemods use the formatter to preserve the parse under Appendix A.
 
+A generator repair writes an intentionally discarded Effect-valued expression as `void expression`, including in plain callbacks. Constructing the expression still happens where it did in TypeScript, and the resulting Effect stays unrun. Already explicit discards are not wrapped again, and returned programs stay unrun.
+
 Generator repairs preserve nested pipeline edits when an outer pipeline captures its receiver and stages. Set `VIBELANG_FIX_EDIT_TRACE=1` to report captured-pipeline ranges and nested edit counts, or a refused generator plan’s range and edit count. These records include no source text.
 
 A run repairs only the selected project's own files ([VIP-34](../vips/0034-compiler-and-tooling.md#decision)):

@@ -409,6 +409,19 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		return refuse(why)
 	}
 	edits = append(edits, constructorEdits...)
+	// The original TypeScript constructs and drops these values.
+	// Make that discard explicit without running or deferring the expression.
+	for _, expression := range scan.discarded {
+		start := nodeStart(file, expression)
+		opening, closing := "void ", ""
+		if tryOperandNeedsParentheses(c, expression) {
+			opening, closing = "void (", ")"
+		}
+		edits = append(edits, sourceEdit{start, start, opening})
+		if closing != "" {
+			edits = append(edits, sourceEdit{expression.End(), expression.End(), closing})
+		}
+	}
 	for _, y := range scan.yields {
 		edit, why := effectGenTryEdit(c, file, y)
 		if why != "" {
@@ -1220,13 +1233,14 @@ func isEffectGenFunction(fn *ast.Node) bool {
 
 // effectGenScan is what a generator's body holds that its rewrite depends on.
 type effectGenScan struct {
-	yields   []*ast.Node // the body's yield* expressions, outermost first
-	pipes    []*ast.Node // the .pipe calls of an Effect in it, which the rewrite writes as pipes
-	throws   []*ast.Node // the throw statements of its own code
-	held     []*ast.Node // const initializers that build a program
-	throwing []*ast.Node // the calls in its own code whose throws would join E
-	usesThis bool        // the body reads this, its own or through an arrow
-	why      string      // the first construct whose rewrite would mean something else
+	yields    []*ast.Node // the body's yield* expressions, outermost first
+	pipes     []*ast.Node // the .pipe calls of an Effect in it, which the rewrite writes as pipes
+	throws    []*ast.Node // the throw statements of its own code
+	held      []*ast.Node // const initializers that build a program
+	discarded []*ast.Node // expressions whose cold result the original statement discards
+	throwing  []*ast.Node // the calls in its own code whose throws would join E
+	usesThis  bool        // the body reads this, its own or through an arrow
+	why       string      // the first construct whose rewrite would mean something else
 }
 
 // heldProgram returns the initializer of node, a variable declaration, when
@@ -1349,6 +1363,11 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 			}
 		case ast.IsVariableDeclarationList(node) && node.Flags&ast.NodeFlagsUsing != 0:
 			s.why = "a using declaration in a generator disposes as JavaScript does, which in VibeLang would hold a scope"
+		case ast.IsExpressionStatement(node) && effectCode == 0:
+			expression := node.Expression()
+			if !isDiscardingForm(expression) && isEffectType(c, c.GetTypeAtLocation(expression)) {
+				s.discarded = append(s.discarded, expression)
+			}
 		case ast.IsVariableDeclaration(node) && own:
 			if held := heldProgram(c, node); held != nil {
 				s.held = append(s.held, held)
@@ -1522,7 +1541,14 @@ func effectGenTryEdit(c *checker.Checker, file *ast.SourceFile, y *ast.Node) ([]
 	// Effect.succeed(x) without type arguments gives x.
 	if ast.IsCallExpression(inner) && inner.TypeArguments() == nil && len(inner.Arguments()) == 1 && isEffectFunction(c, inner.Expression(), "Effect", "succeed") && strings.TrimSpace(gap) == "" {
 		argument := inner.Arguments()[0]
-		return []sourceEdit{{start, nodeStart(file, argument), ""}, {argument.End(), operand.End(), ""}}, ""
+		opening, closing := "", ""
+		if ast.IsExpressionStatement(y.Parent) && droppedProgram(c, y, inner, t) {
+			opening = "void "
+			if tryOperandNeedsParentheses(c, argument) {
+				opening, closing = "void (", ")"
+			}
+		}
+		return []sourceEdit{{start, nodeStart(file, argument), opening}, {argument.End(), operand.End(), closing}}, ""
 	}
 	// Effect.fail(e) in a statement is throw e. An error instance fails as
 	// throw fails with it, which only a statement writes: elsewhere it is

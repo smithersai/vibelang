@@ -171,6 +171,8 @@ If a previous migration left `./user.ts` pointing at a renamed `user.vibe`, `--f
 
 Imports used by bare type references stay, and qualified types keep their qualification when shortening would expose a bare name. This preserves a shared module’s types when its consumers use different `lib` or `types` settings.
 
+When converting an `Effect.gen` or `Effect.fn` body, `--fix` makes an intentionally discarded Effect explicit with `void`, including inside a plain callback. It keeps argument evaluation at the same point and leaves the discarded program unrun. For example, an unyielded `Effect.succeed(value)` statement becomes `void Effect.succeed(value)`.
+
 An `Effect.fn` parameter may retain its written type, such as `ReturnType<typeof make>`, when expanding it would import a generated declaration. Repeated builds and `--fix` runs keep that source type rather than treating a sidecar as an input.
 
 Code written for an earlier VibeLang release can use forms that are now retired, such as a trailing block or a legacy platform entry marker. `--fix` rewrites those too; [Migrating retired forms](migrating-retired-forms.md) describes how.

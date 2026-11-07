@@ -1,0 +1,11 @@
+
+export let constructed = 0
+export let runs = 0
+
+export const make = effect () => {
+  const job = Effect.sync(() => { runs++; return 99 })
+  void Effect.succeed(constructed++)
+  void job
+  const values = [1, 2].map(n => { void Effect.succeed(constructed++); return n })
+  return { values, constructed, runs }
+}

@@ -24,6 +24,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
+- Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.
 - Migration test measurement could not read a `node --test` run whose skipped or todo tests give a reason, such as `it("x", { skip: "needs a host" })`: the reason and the run's duration became part of the test's name, so identical runs reported missing and extra skipped tests, and a todo with a reason counted as passed. Test names now stop before the duration, and every skip or todo counts as skipped.
 - Migration reported a documentation difference, one comment block fewer, when a module's first exported constant moved to its `.platform.ts` companion: the module's header comment, which TypeScript's declaration output stacks above that constant, stayed at the top of the converted module. A header kept verbatim at the head of the converted module now counts as kept, and a changed, removed or duplicated header still fails.
 - Migration could discard an original declaration oracle solely because its inferred output layout reported `TS5011`. It now keeps the diagnostic and requires the complete stock/native API comparison before qualifying the migration.
