@@ -136,8 +136,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Keep .ts file names** | **1,400** |
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |
-| **Upgrade** | **160,000** |
-| [Release notes](../setup/release-notes.md) | 160,000 |
+| **Upgrade** | **170,000** |
+| [Release notes](../setup/release-notes.md) | 170,000 |
 | **All 22 pages** | **230,000** |
 
 ### Guides
@@ -293,7 +293,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 19,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
 | **Appendices** | **120,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 97,000 |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 98,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
 | **All 11 pages** | **250,000** |
 
