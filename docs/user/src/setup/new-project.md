@@ -36,6 +36,10 @@ npm create vibelang@latest my-app -- --no-install
 
 If the destination cannot be created or written, the starter reports the target and filesystem error code. Check that each parent path is a directory and that you have permission to write there, then retry with a new or empty directory.
 
+The starter includes npm/Bun `overrides` and Yarn `resolutions` that keep
+`@effect/platform-node-shared` at the runtime's exact Effect version, including
+when you switch package managers.
+
 Then run `bun install` or `npm install` in `my-app` before step 2.
 
 ## 2. Build and run

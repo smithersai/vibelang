@@ -54,5 +54,7 @@ bun add -d vibelang@latest vibelang-vite@latest
 ```
 
 Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at 4.1.1: the
-runtime requires that exact Effect version.
+runtime requires that exact Effect version. The project keeps the transitive
+`@effect/platform-node-shared` helper at that version through npm/Bun
+`overrides` and Yarn `resolutions`.
 

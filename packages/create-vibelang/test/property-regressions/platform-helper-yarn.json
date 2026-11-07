@@ -1,0 +1,11 @@
+{
+  "property": "scaffold-platform-helper-pins",
+  "rule": "docs/user/src/setup/new-project.md: 1. Create the project; the platform helper stays on the pinned Effect version",
+  "input": {
+    "source": "checkout",
+    "manager": "yarn",
+    "name": "app"
+  },
+  "generatorVersion": 1,
+  "command": "node --test packages/create-vibelang/test/pin.property.test.mjs"
+}
