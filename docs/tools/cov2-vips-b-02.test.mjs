@@ -31,11 +31,6 @@ test.todo("rule-evidence: docs/design/vips/0033-platform-stdlib.md#decision | co
 // Activation: Compare try FileSystem.FileSystem and try Path.Path with yielded namespaces, requiring service success versus native namespace defect.
 test.todo("rule-evidence: docs/design/vips/0033-platform-stdlib.md#decision | cov2-vips-b filesystem namespace versus service key | present | *Corrected 2026-10-29: the module `FileSystem` is a namespace, and the service key it exports is `FileSystem.FileSystem` (likewise `Path.Path`); in effect 4.1.1, `yield*` of the namespace is a defect.*")
 
-// rule-evidence: docs/design/vips/0033-platform-stdlib.md#858260c113fa8903
-// VIP-33: origin based banned globals.
-// Activation: Resolve symbols from each banned lib family and allowed ES/decorators family, with allowlist and local-shadow controls; require EK4402 only for banned resolved origins.
-test.todo("rule-evidence: docs/design/vips/0033-platform-stdlib.md#decision | cov2-vips-b origin based banned globals | present | **Amended 2026-10-29: the banned globals are derived, not listed.** A value reference in `.vibe` code is `EK4402` when the symbol it resolves to is declared in `lib.dom*.d.ts`, `lib.webworker*.d.ts`, `lib.scripthost.d.ts` or `@types/node`, not in `lib.es*.d.ts` or `lib.decorators*.d.ts`, and is not on the allowlist.")
-
 // rule-evidence: docs/design/vips/0033-platform-stdlib.md#62d8805f69f4827a
 // VIP-33: platform quick fix service names.
 // Activation: Require the correct service replacement for Path/Config.String cases and safe sibling-.ts alternatives for unsupported globals.
