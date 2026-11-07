@@ -133,7 +133,10 @@ export function run(args) {
     return [signal, handler]
   })
   child.stdout.on("data", chunk => {
-    process.stdout.write(chunk)
+    if (!process.stdout.write(chunk)) {
+      child.stdout.pause()
+      process.stdout.once("drain", () => child.stdout.resume())
+    }
     observer.consume(decoder.write(chunk), event => record(event))
   })
   child.on("error", error => { spawnError = error.code || "UNKNOWN" })

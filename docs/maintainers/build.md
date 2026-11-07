@@ -88,6 +88,13 @@ The native compiler, mapper and forms-generator keys exclude `internal/vibelangf
 
 The forms-generator test distinguishes the native source group from Go test inputs. Its real cache-key fixtures also copy the parser corpus that target declarations read while loading. Production code, embedded tables, module files and compiler tools must still change native keys.
 
+The Go progress reporter pauses its child output while a slow output reader's
+pipe is full. It forwards every byte and keeps the Go process's exit status,
+failure summary and cancellation handling. Run the real-pipe regressions with
+`node --test scripts/go-test-progress-backpressure.test.mjs`; they check the
+`write`/`drain` contract, complete output hashes, fragmented Unicode and both
+passing and failing checks.
+
 ## Remote contributor checks
 
 `scripts/remote.sh <command...>` synchronizes the current workspace to a
