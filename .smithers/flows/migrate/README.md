@@ -19,6 +19,8 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 | record | none | Rejects foreign changes before formatting and before committing, including when forced; commits the batch with `jj`, naming its files, with o200k token counts before and after | `batches/NN/record.json` |
 | report | none | Batches, tests, declaration identity, tokens, codemod gaps, issues and idiom lessons | `report.md`, `report.json` |
 
+Declaration snapshots can contain both an emitted helper and its shipped declaration. A trailing `sourceMappingURL` comment is file metadata, so it does not make identical declarations conflict. Types, documentation, ordinary comments and nominal declaration identity remain part of the comparison.
+
 The fix loop writes the batch's physical source paths to a temporary `@batch.txt`, preserving spaces and commas in filenames, and removes it after success or interruption. An empty selection starts no compiler. Selected repairs are partial: the normal post-fix checks still verify the project. A defensive snapshot continues to restore unrelated source files if a compiler writes outside its selection.
 
 
