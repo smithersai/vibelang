@@ -2258,5 +2258,35 @@
       "reference": "docs/design/vips/0004-throw.md and docs/design/src/003-failures.md (Calls in effect code): a call, new expression, tagged template or class evaluation whose thrown type is not never is EK0403 in effect code, and an untagged foreign declaration throws unknown. This cites existing published acceptance, not a new approval."
     },
     "reason": "The same invocation in a plain function whose return type is wholly effectful runs before any Effect exists. A repair must choose between making the function effect, declaring a contract on the foreign callee, or moving the code to a .ts file; each needs author intent."
+  },
+  {
+    "code": "EK0201",
+    "case": "typescript/vibelang/cases/w01-002-do-var-both.fail",
+    "vip": "VIP-2",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0002-effect-blocks-and-do.md: Status accepted by Will, 2026-10-28; docs/design/src/002-running.md#do-expressions states that a final var is EK0201, var in a parameter-list do is EK0203, and both are reported when both apply. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0203",
+    "case": "typescript/vibelang/cases/w01-002-do-var-both.fail",
+    "vip": "VIP-2",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0002-effect-blocks-and-do.md: Status accepted by Will, 2026-10-28; docs/design/src/002-running.md#do-expressions states that a final var is EK0201, var in a parameter-list do is EK0203, and both are reported when both apply. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
+  },
+  {
+    "code": "EK0107",
+    "case": "typescript/vibelang/cases/w01-002-do-var-nonfinal.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: Status accepted by Will, 2026-10-28, amended to ban var in all .vibe code; docs/design/src/002-running.md#do-expressions states that a nonfinal var outside a parameter list remains EK0107. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "The case is a negative control for the rule the cited section already states; the compiler before this commit already rejects the same program with these codes at the same positions, so no form that compiled before is rejected."
   }
 ]
