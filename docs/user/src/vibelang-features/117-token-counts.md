@@ -20,7 +20,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,164 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,515 |
 | The skill and the user guide (144 pages) | 530,000 |
-| The user guide alone | 520,000 |
+| The user guide alone | 530,000 |
 | The specification (11 chapters) | 250,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -113,15 +113,15 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Known limitations](../setup/known-limitations.md) | 660 |
 | [Source maps](../setup/source-maps.md) | 780 |
 | **Start a project** | **9,700** |
-| [New project](../setup/new-project.md) | 620 |
+| [New project](../setup/new-project.md) | 670 |
 | [Existing project](../setup/existing-project.md) | 4,300 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 4,700 |
-| **Build and test** | **23,000** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 19,000 |
-| [Vite and Vitest](../setup/vite.md) | 4,000 |
+| **Build and test** | **24,000** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 20,000 |
+| [Vite and Vitest](../setup/vite.md) | 4,100 |
 | **Format and lint** | **13,000** |
-| [Format with dprint](../setup/formatting.md) | 3,100 |
-| [Developer tools](../setup/developer-tools.md) | 9,500 |
+| [Format with dprint](../setup/formatting.md) | 3,200 |
+| [Developer tools](../setup/developer-tools.md) | 9,700 |
 | **Frameworks** | **11,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 490 |
