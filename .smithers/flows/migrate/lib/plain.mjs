@@ -126,6 +126,38 @@ function candidate(ts, checker, node) {
 const typeScriptBody = (ts, node) => ts.isModuleDeclaration(node) && ts.isIdentifier(node.name) &&
   !(node.flags & (ts.NodeFlags.Namespace | ts.NodeFlags.GlobalAugmentation))
 
+// The local names that value imports of a native module the program cannot
+// read bind: a .vibe or .vibex peer converted earlier, with no declaration
+// beside it. Every use of such a name reads as any, so a function returning
+// one has a return type nobody has read, not a value (alchemy partition: a
+// consumer of an earlier-converted event source, marked plain, failed EK9203).
+function unreadNativeBindings(ts, checker, sf) {
+  const names = new Set()
+  for (const statement of sf.statements) {
+    if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) continue
+    if (!/\.vibex?$/.test(statement.moduleSpecifier.text) || checker.getSymbolAtLocation(statement.moduleSpecifier)) continue
+    const clause = statement.importClause
+    if (!clause || clause.isTypeOnly) continue
+    if (clause.name) names.add(clause.name.text)
+    const bindings = clause.namedBindings
+    if (bindings && ts.isNamespaceImport(bindings)) names.add(bindings.name.text)
+    if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) if (!element.isTypeOnly) names.add(element.name.text)
+  }
+  return names
+}
+
+// Whether node reads one of names as a value: an identifier, not a property name.
+function readsName(ts, node, names) {
+  let found = false
+  const visit = (n) => {
+    if (found) return
+    if (ts.isIdentifier(n) && names.has(n.text) && !(n.parent && (ts.isPropertyAccessExpression(n.parent) || ts.isQualifiedName(n.parent)) && n.parent.name === n)) found = true
+    else ts.forEachChild(n, visit)
+  }
+  visit(node)
+  return found
+}
+
 /** The text after a function's parameter list, or around a bare arrow parameter, that annotates its return. */
 function annotation(ts, sf, node, text) {
   const children = node.getChildren(sf)
@@ -138,18 +170,28 @@ function annotation(ts, sf, node, text) {
 /**
  * Legacy-inference edits: `: infer _` for value-only functions, a written
  * Generator type for plain generators, and unprintable generators by line.
- * Plain-by-syntax needs none of these edits or legacy leftovers.
+ * A function whose unknown return comes from a native peer the program
+ * cannot read is left for the compiler, which reads the peer, and listed by
+ * line in unread. Plain-by-syntax needs none of these edits or legacy leftovers.
  */
 export function plainEdits(ts, checker, sf, { flipped = false } = {}) {
   const edits = []
   const left = []
+  const unread = []
+  // Plain by syntax reads no types, so it has nothing unread.
   if (flipped) return { edits, left }
+  const natives = unreadNativeBindings(ts, checker, sf)
   const visit = (node) => {
     if (typeScriptBody(ts, node)) return
     if (candidate(ts, checker, node)) {
       const signature = checker.getSignatureFromDeclaration(node)
       const returned = signature && checker.getReturnTypeOfSignature(signature)
       const unknownType = !returned || returned.flags & ts.TypeFlags.Any
+      if (unknownType && natives.size && readsName(ts, node.body, natives)) {
+        unread.push(sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1)
+        ts.forEachChild(node, visit)
+        return
+      }
       // A return type the program could not read: a body that names an Effect module may build a program.
       const program = unknownType ? /\b(Effect|Stream|Layer)\s*\./.test(node.body.getText(sf)) : isProgram(ts, checker, returned)
       if (!program) {
@@ -165,7 +207,7 @@ export function plainEdits(ts, checker, sf, { flipped = false } = {}) {
     ts.forEachChild(node, visit)
   }
   visit(sf)
-  return { edits, left }
+  return unread.length ? { edits, left, unread } : { edits, left }
 }
 
 /** text with edits applied; edits at one position keep their order. */
@@ -225,10 +267,10 @@ export function markPlainFunctions(ts, root, files, tsconfigs, { read, write, ex
     for (const file of group) {
       const sf = program.getSourceFile(join(root, file))
       if (!sf) continue
-      const { edits, left } = plainEdits(ts, checker, sf, { flipped })
-      if (!edits.length && !left.length) continue
+      const { edits, left, unread = [] } = plainEdits(ts, checker, sf, { flipped })
+      if (!edits.length && !left.length && !unread.length) continue
       if (edits.length) write ? write(file, applyPlainEdits(sf.text, edits)) : ts.sys.writeFile(join(root, file), applyPlainEdits(sf.text, edits))
-      result[file] = { marked: edits.filter((e) => e.text !== "(").length, left }
+      result[file] = { marked: edits.filter((e) => e.text !== "(").length, left, ...(unread.length ? { unread } : {}) }
     }
   }
   return result

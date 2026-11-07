@@ -97,6 +97,40 @@ test("the marks of a consumer do not depend on whether its peer is converted wit
   }), { numRuns: 40, seed: 9203001 })
 })
 
+// A peer converted in an earlier pass is a .vibe file; with no declaration
+// beside it the program cannot read it, and its return type is unknown, not
+// a value. The compiler reads the peer, so the marks leave such callers to it.
+const nativePeer = 'export const consume = (n: number) => Effect.succeed(n);\nexport const label = (n: number) => "n" + n;\n'
+const nativeConsumer = consumer.replace("./peer.ts", "./peer.vibe")
+const peerSidecar = 'import type * as Effect from "effect/Effect";\nexport declare const consume: (n: number) => Effect.Effect<number>;\nexport declare const label: (n: number) => string;\n'
+test("a consumer of a native peer it cannot read leaves the peer's calls to the compiler; a declaration decides", () => {
+  const unread = marked({ "src/peer.vibe": nativePeer, "src/consumer.ts": nativeConsumer }, ["src/consumer.ts"], "src/consumer.ts")
+  rmSync(unread.root, { recursive: true, force: true })
+  assert.equal(marks(unread.text), 0, unread.text)
+  assert.deepEqual(unread.state.plain["src/consumer.ts"]?.unread, [2, 3])
+  const declared = marked({ "src/peer.vibe": nativePeer, "src/peer.d.vibe.ts": peerSidecar, "src/consumer.ts": nativeConsumer }, ["src/consumer.ts"], "src/consumer.ts")
+  rmSync(declared.root, { recursive: true, force: true })
+  assert.match(declared.text, /^export const program = \(n: number\) => consume\(n\);$/m)
+  assert.match(declared.text, /^export const name = \(n: number\): infer _ => label\(n\);$/m)
+})
+
+test("only callers of an unread native peer are left unmarked; other value helpers keep their marks", () => {
+  fc.assert(fc.property(fc.array(fc.record({ form: fc.integer({ min: 0, max: forms.length - 1 }), peer: fc.boolean() }), { minLength: 1, maxLength: 5 }), fc.boolean(), (picks, namespace) => {
+    const head = namespace ? 'import * as Peer from "./peer.vibe";\n' : 'import { consume } from "./peer.vibe";\n'
+    const callee = namespace ? "Peer.consume" : "consume"
+    const consumerText = head + picks.map((p, i) => forms[p.form](p.peer ? callee : "inc", i)).join("\n") + "\nconst inc = (n: number) => n + 1;\n"
+    const { text, state, root } = marked({ "src/peer.vibe": nativePeer, "src/consumer.ts": consumerText }, ["src/consumer.ts"], "src/consumer.ts")
+    rmSync(root, { recursive: true, force: true })
+    const lines = text.split("\n")
+    picks.forEach((p, i) => {
+      const line = lines.find((l) => l.includes("c" + i + "(") || l.includes("c" + i + " =") || l.includes("K" + i + " "))
+      assert.ok(line, text)
+      assert.equal(/infer _/.test(line), !p.peer, line)
+    })
+    assert.equal((state.plain["src/consumer.ts"]?.unread ?? []).length, picks.filter((p) => p.peer).length)
+  }), { numRuns: 40, seed: 9203002 })
+})
+
 test("alchemy corpus: event-source consumers converted with their peer stay Effect functions", () => {
   for (const { key, files, selected, consumer, plain, effect } of corpus.cases) {
     const { text, root } = marked(files, selected, consumer)
