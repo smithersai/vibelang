@@ -25,3 +25,5 @@ After updating the individual clips, run
 `node scripts/record-ecosystem-overview.mjs`. It composes the ecosystem and introductory overviews from
 the listed reviewed clips. Its receipt records every input hash; changing a
 component without rebuilding the overview fails the media guard.
+
+Run `node scripts/record-effect-lint.mjs` for the project-based Effect lint clip. Its clean npm project enables the language-service plugin, observes `EK3897`, checks the corrected source, compiles it and executes its awaited result. The receipt binds all four fixture files and every observed command to the recording. Rebuild both overviews afterward.

@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "compilerVersion": "0.0.12",
+  "effectVersion": "4.1.1",
+  "source": "import { pending } from \"./pending.ts\"\nexport const program = Effect.succeed(pending)\n",
+  "sourceSha256": "a2a60ab62be4b8b95f8bf6bbc74af0bdc6d036e557254d00b06d201f608814b3",
+  "inputs": {
+    "before.vibe": "a2a60ab62be4b8b95f8bf6bbc74af0bdc6d036e557254d00b06d201f608814b3",
+    "after.vibe": "17ddd90ba6b03a1b81dd9005df290d62e8922223cce97829148468aa011b6c8c",
+    "pending.ts": "8811434d2c4623a20bac39826f00360107789e13ad2f6307e279aae1efeb8a52",
+    "tsconfig.json": "03548625ff416cf5e25b26050afa6b7c9ae340b44b8f2a74f884a883f10b5f1a"
+  },
+  "command": "vibelang lint -p tsconfig.json",
+  "exitCode": 0,
+  "output": "src/main.vibe(2,24): warning EK3897: promiseInEffectSuccess: The Effect success channel contains a Promise that is not awaited. Use Effect.promise or Effect.tryPromise to represent async work. effect(promiseInEffectSuccess)",
+  "commands": [
+    {
+      "command": "vibelang lint -p tsconfig.json",
+      "exitCode": 0,
+      "output": "src/main.vibe(2,24): warning EK3897: promiseInEffectSuccess: The Effect success channel contains a Promise that is not awaited. Use Effect.promise or Effect.tryPromise to represent async work. effect(promiseInEffectSuccess)"
+    },
+    {
+      "command": "vibelang lint -p tsconfig.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "vibelang -p tsconfig.json",
+      "exitCode": 0,
+      "output": ""
+    },
+    {
+      "command": "node --input-type=module -e 'import { Effect } from \"effect\"; import { program } from \"./dist/main.js\"; console.log(await Effect.runPromise(program))'",
+      "exitCode": 0,
+      "output": "1"
+    }
+  ],
+  "videoSha256": "9d8a840e78ffbc9cdfe7d7516cbd4f4c57d64e47babb8c52989af0e3199569e9",
+  "posterSha256": "b7dec5ac43d428de0ce1c9c6840549a814d4e2e4398692eda36531c09a78348b"
+}

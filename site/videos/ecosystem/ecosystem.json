@@ -14,8 +14,8 @@
     },
     {
       "file": "eco-lint-effect.mp4",
-      "sha256": "53dd05f8bb03bddeaa976fa35ab0570fad76e729988e4b169a51fea1a8e9c76d",
-      "duration": 11.68
+      "sha256": "9d8a840e78ffbc9cdfe7d7516cbd4f4c57d64e47babb8c52989af0e3199569e9",
+      "duration": 21.28
     },
     {
       "file": "eco-lint-eslint.mp4",
@@ -43,6 +43,6 @@
       "duration": 15.96
     }
   ],
-  "videoSha256": "5b7de65dc183c58fd696d8209b904ab6c79eb6d7d641ab8f0dcba77810bcd645",
+  "videoSha256": "43e381b5fe7149e37c754dbcb6fb83c786db7900b7bd67e38d2a7b37cdda0449",
   "posterSha256": "cb7b9769cdfd993116ab8ca11812f31b9c729e71cd045541e487e439f6827388"
 }

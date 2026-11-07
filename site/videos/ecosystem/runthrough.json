@@ -39,10 +39,10 @@
     },
     {
       "file": "ecosystem.mp4",
-      "sha256": "5b7de65dc183c58fd696d8209b904ab6c79eb6d7d641ab8f0dcba77810bcd645",
-      "duration": 83.737
+      "sha256": "43e381b5fe7149e37c754dbcb6fb83c786db7900b7bd67e38d2a7b37cdda0449",
+      "duration": 93.337
     }
   ],
-  "videoSha256": "7f35e4ca52b558a34e60ed34e504288ec8def55e2d3d10e4bf690289e7510b09",
+  "videoSha256": "f452588f5dc7cbe1844d352f09b727dc06017aafcf886263ff14cd4b45f8f718",
   "posterSha256": "cb7b9769cdfd993116ab8ca11812f31b9c729e71cd045541e487e439f6827388"
 }

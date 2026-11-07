@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The Effect lint video showed a retired configuration flag and rule; it now demonstrates project-based linting, the current Promise warning and a correction that compiles and runs.
+
 - Introductory and tooling videos displayed a personal machine's absolute project path. Their recordings now use project-relative display paths.
 
 - The coding-agent video showed outdated compiler diagnostics. It now shows the compiler rejecting a discarded Effect and the corrected program printing its greeting.

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const hash = value => createHash('sha256').update(value).digest('hex')
 for (const [name, exitCode, expected] of [
+  ['eco-lint-effect', 0, /EK3897/],
   ['eco-lint-eslint', 1, /no-unused-vars/],
   ['eco-vitest', 0, /Tests\s+2 passed/],
 ]) {
@@ -15,19 +16,21 @@ for (const [name, exitCode, expected] of [
     const proof = JSON.parse(readFileSync(new URL('../videos/ecosystem/' + name + '.json', import.meta.url), 'utf8'))
     assert.equal(proof.exitCode, exitCode)
     assert.match(proof.output, expected)
-    assert.match(proof.output, /my-app/)
+    if (name !== 'eco-lint-effect') assert.match(proof.output, /my-app/)
     assert.doesNotMatch(proof.output, /(?:^|[\s(])(?:[A-Za-z]:\\|\/(?:[^/\s]+\/){2})/m)
     assert.equal(proof.sourceSha256, hash(proof.source))
     for (const [extension, key] of [['mp4', 'videoSha256'], ['jpg', 'posterSha256']])
       assert.equal(hash(readFileSync(new URL('../public/videos/' + name + '.' + extension, import.meta.url))), proof[key])
   })
   test(name + ' plays from the production site', { timeout: 60_000 }, async () => {
+    const receipt = JSON.parse(readFileSync(new URL('../videos/ecosystem/' + name + '.json', import.meta.url), 'utf8'))
+    assert.equal(hash(readFileSync(new URL('../dist/public/videos/' + name + '.mp4', import.meta.url))), receipt.videoSha256)
     const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined, args: ['--disable-dev-shm-usage'] })
     try {
       const context = await browser.newContext()
       await routeBuiltSite(context, fileURLToPath(new URL('../dist/public', import.meta.url)))
       const page = await context.newPage()
-      await page.goto('https://vibelang.sh' + (name === 'eco-vitest' ? '/setup/vite' : '/setup/developer-tools'), { waitUntil: 'networkidle' })
+      await page.goto('https://vibelang.sh' + (name === 'eco-vitest' ? '/setup/vite' : name === 'eco-lint-effect' ? '/setup/vibelang-cli' : '/setup/developer-tools'), { waitUntil: 'networkidle' })
       const player = page.locator('video').filter({ has: page.locator('source[src="/videos/' + name + '.mp4"]') })
       await player.scrollIntoViewIfNeeded()
       await player.evaluate(video => video.play())
@@ -61,6 +64,8 @@ for (const [name, route] of [['ecosystem', '/setup'], ['vite-dev', '/setup/vite'
     }
   })
   test(name + ' plays from the production site', { timeout: 60_000 }, async () => {
+    const receipt = JSON.parse(readFileSync(new URL('../videos/ecosystem/' + name + '.json', import.meta.url), 'utf8'))
+    assert.equal(hash(readFileSync(new URL('../dist/public/videos/' + name + '.mp4', import.meta.url))), receipt.videoSha256)
     const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined, args: ['--disable-dev-shm-usage'] })
     try {
       const context = await browser.newContext()
@@ -77,3 +82,17 @@ for (const [name, route] of [['ecosystem', '/setup'], ['vite-dev', '/setup/vite'
     } finally { await browser.close() }
   })
 }
+
+
+test('the Effect lint clip shows project configuration, a real warning and its running correction', () => {
+  const proof = JSON.parse(readFileSync(new URL('../videos/ecosystem/eco-lint-effect.json', import.meta.url), 'utf8'))
+  for (const [file, expected] of Object.entries(proof.inputs))
+    assert.equal(hash(readFileSync(new URL('../videos/effect-lint/' + file, import.meta.url))), expected)
+  assert.deepEqual(Object.keys(proof.inputs).sort(), ['after.vibe', 'before.vibe', 'pending.ts', 'tsconfig.json'])
+  assert.deepEqual(proof.commands.map(stage => stage.command), ['vibelang lint -p tsconfig.json', 'vibelang lint -p tsconfig.json', 'vibelang -p tsconfig.json', 'node --input-type=module -e \'import { Effect } from "effect"; import { program } from "./dist/main.js"; console.log(await Effect.runPromise(program))\''])
+  for (const command of proof.commands) assert.equal(command.exitCode, 0)
+  assert.match(proof.commands[0].output, /EK3897.*promiseInEffectSuccess/)
+  assert.doesNotMatch(proof.commands[1].output, /EK3897/)
+  assert.equal(proof.commands[3].output, '1')
+  assert.doesNotMatch(JSON.stringify(proof), /lint -c|effect-succeed-with-void/)
+})

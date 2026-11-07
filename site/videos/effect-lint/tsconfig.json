@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": [],
+    "rewriteRelativeImportExtensions": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "plugins": [
+      {
+        "name": "@effect/language-service"
+      }
+    ]
+  },
+  "include": [
+    "src/**/*.vibe",
+    "src/**/*.ts"
+  ]
+}

@@ -195,6 +195,8 @@ Repeated foreign calls in one effect function can be fixed together without rede
 
 <figure className="vibe-video"><video controls preload="metadata" playsInline poster="/videos/eco-lint-effect.jpg"><source src="/videos/eco-lint-effect.mp4" type="video/mp4" /></video><figcaption>Effect's lint rules in vibelang lint</figcaption></figure>
 
+The recording enables `@effect/language-service` in the project's `compilerOptions.plugins` and runs `vibelang lint -p tsconfig.json`. It shows `EK3897` for a `Promise` in an `Effect`'s success channel, replaces `Effect.succeed(pending)` with `tryPromise(() => pending)`, then compiles and runs the corrected program. The lint command accepts compiler project options; a separate `-c` lint configuration is not supported.
+
 Lint leaves existing declaration sidecars and incremental build information unchanged and creates no output files.
 
 `vibelang` runs Effect's type-aware lint rules, the `effecttsgo/*` rules of [`@effect/tsgo`](https://github.com/Effect-TS/tsgo), inside the compiler on selected `.ts` and `.vibe` inputs (VIP-38), keeping the pinned upstream rule/file eligibility and declaration/library exclusions. VibeLang-specific language checks remain confined to `.vibe`. They run wherever VibeLang reports diagnostics: every `vibelang` build, the language server, and `vibelang lint` for CI. The repository's existing Effect language-service configuration, the `@effect/language-service` plugin in `tsconfig.json`, selects and configures them, so a lint script covers `.vibe` as it covers `.ts`. A `vibe.severities` entry only overrides a rule of the resolved plugin. It does not activate an absent plugin or override `diagnosticSeverity: null` or `diagnostics: false`:
