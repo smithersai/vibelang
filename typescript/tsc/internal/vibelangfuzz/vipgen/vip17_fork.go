@@ -2,8 +2,12 @@ package vipgen
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
 // VIP-17: `fork`, `fork.in(scope)`, `fork.scoped`, `fork.detached` and
@@ -446,4 +450,112 @@ func (g *Gen) joinNativeObservations(s *Scope) []Stmt {
 		s.Locals = append(s.Locals, value)
 	}
 	return out
+}
+
+func init() {
+	Register(&Construct{
+		Key:       "vip17.mapper-join-native-observations",
+		VIP:       17,
+		Requires:  []string{"vip01.effect-function", "vip05.try", "vip17.join"},
+		Citations: append([]Citation(nil), Lookup("vip17.join-native-observations").Citations...),
+		Focus:     func(g *Gen, s *Scope) []Stmt { return g.mapperJoinNativeObservations(s) },
+		Stmt:      func(g *Gen, s *Scope) Stmt { return &Seq{Stmts: g.mapperJoinNativeObservations(s)} },
+	})
+}
+
+type mapperJoinCall struct{ actual, reference string }
+
+func (x *mapperJoinCall) Vibe(w *Writer)   { w.Write(x.actual + "()") }
+func (x *mapperJoinCall) Effect(w *Writer) { w.Write(x.reference) }
+
+var mapperJoinImports = regexp.MustCompile(`(?m)^import \{ ([^}]+) \} from "([^"]+)";\n`)
+
+// Execute mapper output only on the actual side. The shared native helper
+// holds it as data: the reference never evaluates that data or calls the
+// mapper. Its literal Effect.gen/Fiber.join printer remains the VIP oracle.
+func (g *Gen) mapperJoinNativeObservations(s *Scope) []Stmt {
+	g.UseEffect()
+	g.Use("vip05.try")
+	g.Use("vip17.join")
+	g.UseModule("Fiber", false)
+	actual, impl := g.Name("mappedJoin"), g.Name("mappedJoinImpl")
+	value, form := g.Intn(100), g.Intn(7)
+	operand, refOperand := "viewed", "viewed"
+	setup, refSetup, await, refAwait, keep := "", "", "", "", "0"
+	switch form {
+	case 1:
+		operand, refOperand = "(viewed)", "(viewed)"
+	case 2:
+		operand = "(viewed as F.Fiber<number>)"
+		refOperand = "(viewed)"
+	case 3:
+		setup = "function read(): F.Fiber<number> { reads++; return viewed }"
+		refSetup = "function read() { reads++; return viewed }"
+		operand, refOperand = "read()", "read()"
+	case 4:
+		setup = "const $join=17;"
+		refSetup = setup
+		keep = "$join"
+	case 5:
+		await = "try F.await(fiber);"
+		refAwait = "yield* Fiber.await(fiber);"
+	case 6:
+		operand, refOperand = "((try E.succeed(viewed)) as F.Fiber<number>)", "(yield* Effect.succeed(viewed))"
+	}
+	source := fmt.Sprintf(`import {Effect as E,Fiber as F} from "effect"
+effect function %s(): E.Effect<number, unknown> {
+ const observations:string[]=[]; let reads=0;
+ const fiber:F.Fiber<number>=try E.forkChild(E.succeed(%d));
+ %s
+ const viewed:F.Fiber<number>=try E.try(()=>new Proxy(fiber,{has(target,key):boolean{observations.push(String(key));return key in target}}));
+ %s
+ const joined=join %s;
+ return joined+observations.length*1000+reads*10000+%s
+}`, impl, value, await, setup, operand, keep)
+	js, _, diagnostics := vibelangmapper.Emit(source, vibelangmapper.FileContext{})
+	if len(diagnostics) != 0 {
+		panic(fmt.Sprintf("mapper join template: %v\n%s", diagnostics, source))
+	}
+	modules := map[string]string{"effect": "__joinRoot", "effect/Effect": "__joinEffect", "effect/Fiber": "__joinFiber", "effect/Context": "__joinContext", "vibelang-runtime": "__joinRuntime", "vibelang-runtime/internal": "__joinInternal"}
+	var parameters, arguments []string
+	for _, m := range mapperJoinImports.FindAllStringSubmatch(js, -1) {
+		namespace, ok := modules[m[2]]
+		if !ok {
+			panic("unexpected mapper join import: " + m[2])
+		}
+		for _, binding := range strings.Split(m[1], ",") {
+			names := strings.Split(strings.TrimSpace(binding), " as ")
+			imported, local := names[0], names[0]
+			if len(names) == 2 {
+				local = names[1]
+			}
+			parameters = append(parameters, strconv.Quote(local))
+			arguments = append(arguments, namespace+"["+strconv.Quote(imported)+"]")
+		}
+	}
+	body := mapperJoinImports.ReplaceAllString(js, "")
+	// The Function body is strict, like the original emitted ES module. All
+	// imports bind to native modules before execution; no I/O or Promise race
+	// is introduced. The generated JavaScript is not checked as TypeScript.
+	bridge := `import * as __joinRoot from "effect"
+import * as __joinEffect from "effect/Effect"
+import * as __joinFiber from "effect/Fiber"
+import * as __joinContext from "effect/Context"
+import * as __joinRuntime from "vibelang-runtime"
+import * as __joinInternal from "vibelang-runtime/internal"
+`
+	bridge += fmt.Sprintf("export function %s(): __joinEffect.Effect<number,unknown> { return __joinEffect.suspend(() => { const execute = new Function(%s, %s); return execute(%s) as __joinEffect.Effect<number,unknown> }) }\n", actual, strings.Join(parameters, ","), strconv.Quote("\"use strict\";\n"+body+"\nreturn "+impl+"();"), strings.Join(arguments, ","))
+	g.AddFile(actual+".ts", bridge, actual)
+	reference := fmt.Sprintf(`Effect.gen(function* () {
+ const observations=[]; let reads=0;
+ const fiber=yield* Effect.forkChild(Effect.succeed(%d));
+ %s
+ const viewed=yield* Effect.try(()=>new Proxy(fiber,{has(target,key){observations.push(String(key));return key in target}}));
+ %s
+ const joined=yield* Fiber.join(%s);
+ return joined+observations.length*1000+reads*10000+%s
+})`, value, refAwait, refSetup, refOperand, keep)
+	result := g.Name("joined")
+	s.Locals = append(s.Locals, result)
+	return []Stmt{&Const{Name: result, Value: &Try{X: &mapperJoinCall{actual: actual, reference: reference}}}}
 }

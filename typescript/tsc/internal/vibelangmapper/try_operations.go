@@ -90,7 +90,7 @@ func tryOperandMarks(file *ast.SourceFile, text string) []tryOperandMark {
 		if operand && node.Flags&ast.NodeFlagsVibeLangTry != 0 {
 			marks = append(marks, tryOperandMark{node.Kind, scanner.SkipTrivia(text, node.Pos()), node.End()})
 		}
-		if tryOperationHelper(node) != "" {
+		if tryOperationHelper(node) != "" || isFiberHelper(node, "$join", 1) {
 			visit(node.Arguments()[0], true)
 			return
 		}
