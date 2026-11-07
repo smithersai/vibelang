@@ -144,7 +144,8 @@ async function checkProgram({ program, variant, bundler, key: programKey }) {
     // A program with errors or a pending construct emits nothing to read.
     if (!existsSync(output + ".map") || /error (?:TS|EK)/.test(emit.output)) return
     compiled++
-    wordsRead += await checkMap(JSON.parse(readFileSync(output + ".map", "utf8")), readFileSync(output, "utf8"), source)
+    const compiledCode = readFileSync(output, "utf8"), compiledMap = JSON.parse(readFileSync(output + ".map", "utf8"))
+    wordsRead += await checkMap(compiledMap, compiledCode, source)
     // Rollup reads JavaScript alone, and some programs import a .ts helper.
     if (bundler === "none" || bundler === "rollup" && Object.keys(files).some((name) => name.endsWith(".ts"))) return
     if (bundler === "esbuild" && labelChain.test(source)) return
@@ -157,7 +158,7 @@ async function checkProgram({ program, variant, bundler, key: programKey }) {
     const code = readFileSync(output, "utf8")
     const map = JSON.parse(readFileSync(output + ".map", "utf8"))
     if (variant === "directive") assert.ok(code.includes("//# sourceMappingURL=keep"), `${key}: ${bundler} lost a string's line`)
-    const read = await checkBundle(map, code, source, pathToFileURL(join(root, "src/main.vibe")).href, pathToFileURL(output + ".map").href)
+    const read = await checkBundle(map, code, source, pathToFileURL(join(root, "src/main.vibe")).href, pathToFileURL(output + ".map").href, temporaryReads(compiledMap, compiledCode))
     bundlesRead++
     bundleTokensRead += read
   } catch (error) {
@@ -180,8 +181,34 @@ test("esbuild still rejects continue to an outer label of a chain", async () => 
   await assert.rejects(transform(chain), /Cannot continue to label "a"/)
 })
 
-// Strings survive a bundler, whose map holds one source among others.
-async function checkBundle(map, code, source, sourceName, mapURL) {
+// A lowering keeps a string in a temporary, and the compiled map gives each read
+// of the temporary its form's position (Sugar): `$do1` reads at `do`. A bundler
+// that inlines the temporary moves the string to that read and keeps the read's
+// segment: rolldown turns `$do1 = "length"` ... `url[($do1)]` into
+// `url["length"]` at `do`. By string, the source positions of the reads of the
+// compiler temporary the compiled output assigns it to.
+const temporaryAssignment = /(?<![\w$])(\$[A-Za-z_]+\d+)\s*=\s*$/
+function temporaryReads(map, code) {
+  const trace = new TraceMap(map)
+  const reads = new Map()
+  for (const [text, at] of quoted(code)) {
+    const name = temporaryAssignment.exec(code.slice(Math.max(0, at - 64), at))?.[1]
+    if (!name) continue
+    const positions = []
+    for (const use of code.matchAll(new RegExp(`(?<![\\w$])${name.replace("$", "\\$")}(?![\\w$])`, "g"))) {
+      const after = code.slice(use.index + name.length)
+      if (/^\s*=(?!=)/.test(after) || /(?:let|const|var)\s+$/.test(code.slice(Math.max(0, use.index - 8), use.index))) continue
+      const found = originalPositionFor(trace, position(code, use.index))
+      if (found.line !== null) positions.push({ line: found.line, column: found.column })
+    }
+    reads.set(text, positions)
+  }
+  return reads
+}
+
+// Strings survive a bundler, whose map holds one source among others. A string
+// held in a compiler temporary may instead take a read of that temporary.
+async function checkBundle(map, code, source, sourceName, mapURL, inlined = new Map()) {
   const trace = new TraceMap(map, mapURL)
   const inCode = quoted(code, false)
   let read = 0
@@ -193,7 +220,10 @@ async function checkBundle(map, code, source, sourceName, mapURL) {
     // the same opening quote. Read inside the token to select its segment.
     const found = originalPositionFor(trace, position(code, codeAt + 1))
     assert.equal(found.source, sourceName, `the bundle's ${text} source`)
-    assert.deepEqual({ line: found.line, column: found.column }, position(source, sourceAt), `the bundle's ${text} position`)
+    const at = { line: found.line, column: found.column }
+    if (!(inlined.get(text) ?? []).some((read) => read.line === at.line && read.column === at.column)) {
+      assert.deepEqual(at, position(source, sourceAt), `the bundle's ${text} position`)
+    }
     read++
   }
   return read
@@ -233,6 +263,35 @@ test("the bundle check rejects missing sources, missing mappings and shifted pos
     // An eliminated module has no retained token to require a source for.
     assert.equal(await checkBundle({ ...correct, sources: [], mappings: "" }, "", source, expectedSource, mapURL), 0)
   }), { numRuns: 48 })
+})
+
+test("a string inlined from a compiler temporary may take that temporary's read and no other position", async () => {
+  const source = 'export const x = u[(do { "length" })]\n'
+  const quote = position(source, source.indexOf('"length"')), keyword = position(source, source.indexOf("do {"))
+  const compiled = 'let $do1;\n{\n    $do1 = "length";\n}\nexport const x = u[($do1)];\n'
+  const generator = new SourceMapGenerator({ file: "main.js" })
+  const at = (text, from = 0) => position(compiled, compiled.indexOf(text, from))
+  generator.addMapping({ generated: at("$do1;"), original: keyword, source: "main.vibe" })
+  generator.addMapping({ generated: at("$do1 ="), original: quote, source: "main.vibe" })
+  generator.addMapping({ generated: at('"length"'), original: quote, source: "main.vibe" })
+  generator.addMapping({ generated: at("u["), original: position(source, source.indexOf("u[")), source: "main.vibe" })
+  generator.addMapping({ generated: at("$do1)"), original: keyword, source: "main.vibe" })
+  const reads = temporaryReads(generator.toJSON(), compiled)
+  assert.deepEqual(reads.get('"length"'), [keyword])
+  const bundled = 'const x = u["length"];\n'
+  const bundle = (original) => {
+    const map = new SourceMapGenerator({ file: "main.js" })
+    map.addMapping({ generated: position(bundled, bundled.indexOf('"length"')), original, source: "main.vibe" })
+    return map.toJSON()
+  }
+  assert.equal(await checkBundle(bundle(keyword), bundled, source, "main.vibe", undefined, reads), 1)
+  assert.equal(await checkBundle(bundle(quote), bundled, source, "main.vibe", undefined, reads), 1)
+  await assert.rejects(checkBundle(bundle(position(source, source.indexOf("u["))), bundled, source, "main.vibe", undefined, reads), undefined, "another token")
+  await assert.rejects(checkBundle(bundle({ ...keyword, column: keyword.column + 1 }), bundled, source, "main.vibe", undefined, reads), undefined, "beside the read")
+  await assert.rejects(checkBundle(bundle(keyword), bundled, source, "main.vibe", undefined, new Map()), undefined, "no temporary")
+  // A written name is no compiler temporary.
+  const written = 'let t;\n{\n    t = "length";\n}\nexport const x = u[(t)];\n'
+  assert.equal(temporaryReads(generator.toJSON(), written).size, 0)
 })
 
 test("generated programs keep their tokens at both ends", async () => {

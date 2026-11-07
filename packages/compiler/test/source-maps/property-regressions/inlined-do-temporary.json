@@ -1,0 +1,9 @@
+{
+  "property": "source-map-programs",
+  "rule": "docs/maintainers/source-maps.md: Tokens and Sugar; a string a bundler inlines from a do temporary takes that temporary's read",
+  "input": {
+    "key": "vip02.do-syntax-meta-plain",
+    "variant": "plain",
+    "bundler": "rolldown"
+  }
+}
