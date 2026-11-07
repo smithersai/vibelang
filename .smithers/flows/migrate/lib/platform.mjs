@@ -326,6 +326,8 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   // `exports` entry, and the API identity gate still compares the module.
   const wrappers = []
   const reexported = []
+  const namedInSibling = new Set()
+  const exportedForInference = []
   for (const d of moved) {
     if (!d.exported) continue
     const wrapper = typeOnly(d) ? null : wrapperOf(d.statement, source, ts)
@@ -336,19 +338,20 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   if (loadsEarly) return { refused: `${file}: export ${[...loadsEarly.names].join(", ")} would be initialized in ${posix.basename(platformPath(file))} before a statement above it that reads it while the module loads` }
   // An inferred return type is written into the module's declarations from
   // the sibling. A type only the sibling declares, a private copy or a moved
-  // private class or enum, has no name there (TS4058), so an exported type the
-  // moved code reads is imported from the module instead of copied, and a
-  // private one keeps the module in TypeScript.
+  // private class or enum, has no name there unless the sibling exports it
+  // (TS4058), so an exported type the moved code reads is imported from the
+  // module instead of copied.
   // returnsAvoid(name, types), when the caller has a type checker, proves that
-  // export name's return type names none of types; a proved export keeps its
-  // wrapper beside them (splitBatchPlatform supplies it from the module's tsconfig).
+  // export name's return type names none of types; when every inferred
+  // result is proved so, the sibling exports none of them. Otherwise the
+  // sibling exports each private type a result may name, a copy or a moved
+  // class or enum, so the module's declarations name it there.
   const inferredWrappers = wrappers.filter((w) => w.inferred && !returnsOnlyElements(w.d.statement, ts))
   if (inferredWrappers.length) {
     const unnamed = [...[...copied].filter((d) => typeOnly(d) && !d.exported),
       ...[...moved].filter((d) => !d.exported && (ts.isClassDeclaration(d.statement) || ts.isEnumDeclaration(d.statement)))]
     const unnamedNames = unnamed.flatMap((d) => [...d.names])
-    const inferred = unnamed.length ? inferredWrappers.find((w) => !returnsAvoid?.(w.name, unnamedNames)) : undefined
-    if (inferred) return { refused: `${file}: export ${inferred.name} has an inferred return type that may name ${[...unnamed[0].names].join(", ")}, which only ${posix.basename(platformPath(file))} would declare, so the module's declarations would change` }
+    if (unnamed.length && inferredWrappers.some((w) => !returnsAvoid?.(w.name, unnamedNames))) for (const d of unnamed) { namedInSibling.add(d); exportedForInference.push(...d.names) }
     for (const d of [...copied]) if (typeOnly(d) && d.exported) { copied.delete(d); for (const name of d.names) typesFromModule.add(name) }
   }
   if (moved.size === declarations.length && !wrappers.length) return { refused: `${file} is platform code only` }
@@ -415,13 +418,13 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   const movedReads = new Set(movedList.flatMap((d) => [...d.reads]))
   const platformImports = imports.map((i) => importText(i, source, ts, (b) => movedReads.has(b.name))).filter(Boolean)
   if (typesFromModule.size) platformImports.push(`import type { ${[...typesFromModule].sort().join(", ")} } from "./${posix.basename(file)}"`)
-  const platformBody = movedList.map((d) => (copied.has(d) && d.exported ? unexportedText(source, d.statement, ts) : !d.exported && fromSibling.some((n) => d.names.has(n)) ? exportedText(source, d.statement) : statementText(source, d.statement)))
+  const platformBody = movedList.map((d) => (copied.has(d) && d.exported ? unexportedText(source, d.statement, ts) : !d.exported && (fromSibling.some((n) => d.names.has(n)) || namedInSibling.has(d)) ? exportedText(source, d.statement) : statementText(source, d.statement)))
   const note = `// The platform code of ${posix.basename(file).replace(/\.tsx$/, ".vibex").replace(/\.m?ts$/, ".vibe")}, which a .vibe file does not import as a value (EK4402).`
   // A file-wide directive governed the moved code too, so the sibling keeps it
   // (t3code Desktop: `// @effect-diagnostics nodeBuiltinImport:off`).
   const directives = fileDirectives(source, ts).filter((d) => !platformImports.some((i) => i.includes(d)))
   const platformText = joinParts(directives, [note], platformImports, platformBody)
-  return { module: moduleText, platform: platformText, moved: movedList.filter((d) => moved.has(d)).map((d) => [...d.names]).flat(), wrapped: wrappers.map((w) => w.name), reexported: reexportedNames }
+  return { module: moduleText, platform: platformText, moved: movedList.filter((d) => moved.has(d)).map((d) => [...d.names]).flat(), wrapped: wrappers.map((w) => w.name), reexported: reexportedNames, exportedForInference }
 }
 
 // A sibling is a new public entry point when a published package admits
@@ -577,9 +580,10 @@ export function splitBatchPlatform(root, files, ts, {
     const sibling = platformPath(file)
     if (exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
     let result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
-    // A refusal only an inferred return type's possible private names caused
-    // is retried with a type checker that proves which exports avoid them.
-    if (result?.refused && / has an inferred return type that may name /.test(result.refused)) {
+    // A split whose sibling exports private types only because an inferred
+    // return type might name them is retried with a type checker that proves
+    // which exports avoid them; a proved split exports none.
+    if (result && !result.refused && result.exportedForInference?.length) {
       const returnsAvoid = returnsAvoidOf(file)
       if (returnsAvoid) result = splitPlatform(read(file), file, ts, { globals: globalsOf(file), returnsAvoid })
     }
@@ -633,7 +637,7 @@ export function splitBatchPlatform(root, files, ts, {
       for (const key of privateExports.keys) pkg.exports[key] = null
       write(privateExports.manifest, JSON.stringify(pkg, null, 2) + "\n")
     }
-    splits.push({ file, platform: sibling, ...(privateExports ? { privateExports } : {}), moved: result.moved, wrapped: result.wrapped, ...(kept ? { module: kept.name, throwing: kept.throwing } : {}) })
+    splits.push({ file, platform: sibling, ...(privateExports ? { privateExports } : {}), moved: result.moved, wrapped: result.wrapped, ...(result.exportedForInference?.length ? { exportedForInference: result.exportedForInference } : {}), ...(kept ? { module: kept.name, throwing: kept.throwing } : {}) })
   }
   return { splits, refused }
 }
