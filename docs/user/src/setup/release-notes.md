@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Bun could load the wrong sibling file when a module mixed source-extension and `.js` imports for percent-containing filenames. Each import now keeps its own target.
+
 - Imports between `.vibe` files with Unicode, spaces or `%` in their names could fail in bundler builds. They now resolve to the original source files.
 
 - Bun watch mode could keep passing stale tests after an imported VibeLang file changed. It now watches those source files and reruns tests after changes and recovery.

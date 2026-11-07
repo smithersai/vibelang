@@ -499,7 +499,7 @@ native entry. Without the preload, Node cannot parse VibeLang syntax.
 
 ## Run sources with Bun
 
-Imports and re-exports keep source filenames containing spaces, `#`, `%` or Unicode text, including through another `.vibe` module. Compiler-emitted paths are decoded once, so a literal `%25` in a filename stays literal. Written `.js` imports keep their native literal filename, even when a decoded sibling exists.
+Imports and re-exports keep source filenames containing spaces, `#`, `%` or Unicode text, including through another `.vibe` module. Each compiled import resolves from its original source spelling. Written `.js` imports keep their native literal filename, including when the same module also imports a different percent-containing source filename.
 
 Bun can run and test the project from source, without `dist/`. Preload `vibelang/bun`, in `bunfig.toml`:
 
