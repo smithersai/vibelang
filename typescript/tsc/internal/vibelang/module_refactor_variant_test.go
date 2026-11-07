@@ -86,17 +86,23 @@ func TestMoveModuleRefactorKeepsSourceVariantAndModuleClassification(t *testing.
 		{"vibe under rewriteRelativeImportExtensions", "main.vibe", `,"rewriteRelativeImportExtensions":true`,
 			"module /*cursor*/parse { export const n = 1 }\nexport { n } from parse\n",
 			"export { n } from \"./parse.ts\"\n", "export const n = 1\n", "parse.ts"},
-		// A body with no import or export would be a script: it gains export {},
-		// even when the containing file has a side-effect import.
+		// NodeNext defaults moduleDetection to force, so these copied bodies
+		// are modules without a marker. The legacy-mode case needs one.
 		{"script body in a file with a side-effect import", "main.vibe", "",
 			"import \"./side.js\"\nmodule /*cursor*/parse { const hidden = 1 }\nimport parse\n",
-			"import \"./side.js\"\nimport \"./parse.js\"\n", "const hidden = 1\nexport {}\n", "parse.ts"},
+			"import \"./side.js\"\nimport \"./parse.js\"\n", "const hidden = 1\n", "parse.ts"},
 		{"script body in vibex", "main.vibex", `,"jsx":"preserve"`,
 			"module /*cursor*/parse { const hidden = 1 }\nimport parse\n",
-			"import \"./parse.js\"\n", "const hidden = 1\nexport {}\n", "parse.tsx"},
+			"import \"./parse.js\"\n", "const hidden = 1\n", "parse.tsx"},
 		{"script body under legacy moduleDetection", "main.vibe", `,"moduleDetection":"legacy"`,
 			"module /*cursor*/parse { const hidden = 1 }\nimport parse\n",
 			"import \"./parse.js\"\n", "const hidden = 1\nexport {}\n", "parse.ts"},
+		{"script body under force moduleDetection", "main.vibe", `,"moduleDetection":"force"`,
+			"module /*cursor*/parse { const hidden = 1 }\nimport parse\n",
+			"import \"./parse.js\"\n", "const hidden = 1\n", "parse.ts"},
+		{"script body under auto moduleDetection", "main.vibe", `,"moduleDetection":"auto"`,
+			"module /*cursor*/parse { const hidden = 1 }\nimport parse\n",
+			"import \"./parse.js\"\n", "const hidden = 1\n", "parse.ts"},
 		// A body that is a module by its own syntax gains nothing.
 		{"side-effect import body", "main.vibe", "",
 			"module /*cursor*/parse {\n  import \"./side.js\"\n  const hidden = 1\n}\nimport parse\n",
@@ -123,15 +129,19 @@ func TestMoveModuleRefactorKeepsSourceVariantAndModuleClassification(t *testing.
 				t.Fatal(err)
 			}
 			var chosen *lsproto.CodeAction
+			var available []string
 			if response.CommandOrCodeActionArray != nil {
 				for _, action := range *response.CommandOrCodeActionArray {
-					if action.CodeAction != nil && action.CodeAction.Title == "Move module to a .ts file" {
+					if action.CodeAction != nil {
+						available = append(available, action.CodeAction.Title)
+					}
+					if action.CodeAction != nil && action.CodeAction.Title == moveModuleTitle {
 						chosen = action.CodeAction
 					}
 				}
 			}
 			if chosen == nil || chosen.Edit == nil || chosen.Edit.DocumentChanges == nil {
-				t.Fatalf("missing Move module to a .ts file refactor: %+v", chosen)
+				t.Fatalf("missing %q refactor: %+v; available %q", moveModuleTitle, chosen, available)
 			}
 			created := lsproto.DocumentUri("")
 			textByURI := map[lsproto.DocumentUri][]*lsproto.TextEdit{}
