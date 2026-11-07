@@ -10,6 +10,8 @@ If the emitted program needs `vibelang-runtime` but the package cannot be resolv
 
 VibeLang uses TypeScript 7, which rejects removed options such as `moduleResolution: "node"` / `"node10"` and `baseUrl` (TS5108 / TS5102); update an older tsconfig using the [TypeScript 7 migration notes](https://github.com/microsoft/typescript-go/blob/main/CHANGES.md).
 
+An interrupted check or build exits unsuccessfully. If the compiler handles `SIGINT` or `SIGTERM` while it is working, it prints `vibelang: compilation cancelled`; a completed compiler stage cannot make that cancelled command report success. Rerun the command to complete the check or build.
+
 ## 1. Configure tsconfig.json
 
 VibeLang discovers `vibe.config.json`, `tsconfig.json`, then `jsconfig.json`, in that order. `vibe.config.json` accepts every tsconfig field and a top-level `"vibe"` section for language options. If the project has no configuration, create this `tsconfig.json`. It selects `.vibe` files under `src/` and emits Node ESM to `dist/`:
