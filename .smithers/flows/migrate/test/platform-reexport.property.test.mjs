@@ -18,6 +18,7 @@ import { isPlatformModule, platformPath, splitPlatform } from "../lib/platform.m
 const require = createRequire(new URL("../../../../docs/tools/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-platform-split-reexport.json", import.meta.url), "utf8"))
+const loadOrder = JSON.parse(readFileSync(new URL("./corpus/smithers-platform-split-load-order.json", import.meta.url), "utf8"))
 
 // The declaration files stock TypeScript emits for files, and its errors.
 function emit(files, ambient) {
@@ -100,10 +101,30 @@ test("smithers: a moved export that is not a function is re-exported from the si
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
+test("smithers build/targets: a statement above an export that runs moved code not reading it splits, with the same API and load", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-platform-load-order-"))
+  try {
+    for (const [index, { file, text, copied, reexported, probe }] of loadOrder.modules.entries()) {
+      const split = assertReexportSplit(text, loadOrder.ambient)
+      assert.deepEqual([...split.reexported].sort(), [...reexported].sort(), file)
+      for (const name of copied ?? []) assert.match(split.platform, new RegExp(`^const ${name} = `, "m"), `${file}: the sibling copies ${name}`)
+      const original = await behaviour(join(root, `o${index}`), { "m.ts": text }, probe)
+      const after = await behaviour(join(root, `s${index}`), { "m.ts": split.module, "m.platform.ts": split.platform }, probe)
+      assert.equal(after, original, split.module + "\n---\n" + split.platform)
+    }
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
 test("a re-export the module would read before it is initialized keeps the refusal", () => {
   // The original throws ReferenceError at load: the array reads the class in its temporal dead zone.
   const early = 'import { sep } from "node:path"\nexport const known = [Refused]\nexport class Refused extends Error {}\nexport const check = (s: string): boolean => { if (s === sep) throw new Refused(); return true }\n'
   assert.match(splitPlatform(early, "src/m.ts", ts).refused, /export Refused would be initialized in m\.platform\.ts before a statement above it/)
+  // So does a kept function the statement calls that reads it.
+  const through = 'import { sep } from "node:path"\nfunction first(): unknown { return Refused }\nexport const known = [first()]\nexport class Refused extends Error {}\nexport const check = (s: string): boolean => { if (s === sep) throw new Refused(); return true }\n'
+  assert.match(splitPlatform(through, "src/m.ts", ts).refused, /export Refused would be initialized in m\.platform\.ts before a statement above it/)
+  // Moved code a statement above runs that never reads it runs the same in either file.
+  const other = 'import { sep } from "node:path"\nexport const known = [check("x")]\nexport class Refused extends Error {}\nexport function check(s: string): boolean { return s.length > sep.length }\nexport const refuse = (s: string): boolean => { if (s === sep) throw new Refused(); return true }\n'
+  assert.ok(!splitPlatform(other, "src/m.ts", ts).refused, splitPlatform(other, "src/m.ts", ts).refused)
   // An exported value whose type of the same name is private cannot be re-exported without exporting the type.
   const twin = 'import { sep } from "node:path"\nexport const Shape = { sep }\ntype Shape = typeof Shape\nexport const shape = (): Shape => Shape\n'
   assert.match(splitPlatform(twin, "src/m.ts", ts).refused ?? "", /the value Shape would move/)

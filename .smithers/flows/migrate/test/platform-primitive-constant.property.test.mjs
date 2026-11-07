@@ -71,13 +71,16 @@ test("smithers: an exported primitive const the platform code reads stays export
 test("a primitive const read in its temporal dead zone keeps the refusal", () => {
   // The original throws ReferenceError at load: `early` runs answer() before STATUS exists.
   const tdz = 'import { sep } from "node:path"\nexport const early = answer()\nexport const STATUS = 499\nexport function answer(): number { return sep.length + STATUS }\n'
-  assert.match(splitPlatform(tdz, "src/source.ts", ts).refused, /export STATUS uses platform code/)
+  assert.match(splitPlatform(tdz, "src/source.ts", ts).refused, /export STATUS is read by platform code that a statement above it runs while the module loads/)
   // A callback passed to a call may run at load, so it counts as a read there.
   const callback = 'import { sep } from "node:path"\nexport const checked = [1].map((n) => answer() + n)\nexport const STATUS = 499\nexport function answer(): number { return sep.length + STATUS }\n'
-  assert.match(splitPlatform(callback, "src/source.ts", ts).refused, /export STATUS uses platform code/)
+  assert.match(splitPlatform(callback, "src/source.ts", ts).refused, /export STATUS is read by platform code that a statement above it runs while the module loads/)
   // So does a kept function the statement calls that reaches the moved code.
   const indirect = 'import { sep } from "node:path"\nfunction through(): number { return answer() }\nexport const early = through()\nexport const STATUS = 499\nexport function answer(): number { return sep.length + STATUS }\n'
-  assert.match(splitPlatform(indirect, "src/source.ts", ts).refused, /export STATUS uses platform code/)
+  assert.match(splitPlatform(indirect, "src/source.ts", ts).refused, /export STATUS is read by platform code that a statement above it runs while the module loads/)
+  // Moved code that never reads the const runs the same in either file.
+  const other = 'import { sep } from "node:path"\nexport const early = other()\nexport const STATUS = 499\nexport function answer(): number { return sep.length + STATUS }\nexport function other(): number { return sep.length }\n'
+  assert.ok(!splitPlatform(other, "src/source.ts", ts).refused)
   // The same call below the const reads it after it is initialized.
   const after = 'import { sep } from "node:path"\nexport const STATUS = 499\nexport const late = answer()\nexport function answer(): number { return sep.length + STATUS }\n'
   assert.ok(!splitPlatform(after, "src/source.ts", ts).refused)
@@ -110,9 +113,9 @@ async function load(dir, files, entry) {
 }
 
 // Neighbourhood: one or two primitive consts, a platform function that reads
-// them, and kept statements that call it, at load, later, through a stored
-// function, through a callback, or through another kept function, in any
-// order. A split module behaves as the original did when it loads: the same
+// them, another that does not, and kept statements that call either, at load,
+// later, through a stored function, through a callback, or through another
+// kept function, in any order. A split module behaves as the original did when it loads: the same
 // error, or the same values. It compiles with identical declarations.
 test("a split with copied constants loads and behaves as the original, or refuses", async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-platform-constant-run-"))
@@ -125,16 +128,19 @@ test("a split with copied constants loads and behaves as the original, or refuse
     "export function g{k}(): number { return answer() }",
     "function h{k}(): number { return answer() }\nexport const i{k} = h{k}()",
     "export const v{k} = LIMIT + 1",
-    "export const w{k} = `${LIMIT}`")
+    "export const w{k} = `${LIMIT}`",
+    "export const p{k} = other()",
+    "export const q{k} = [0].map(() => other())[0]")
   const value = fc.constantFrom("64", '"ps"', "4 * 1024", "-1", "`v${1}`", "true ? 2 : 3", "1 as const")
   let splits = 0, runs = 0
   try {
-    await fc.assert(fc.asyncProperty(fc.array(kept, { maxLength: 4 }), value, fc.boolean(), fc.nat(5), fc.nat(5), async (uses, literal, chained, at, answerAt) => {
+    await fc.assert(fc.asyncProperty(fc.array(kept, { maxLength: 4 }), value, fc.boolean(), fc.nat(5), fc.nat(5), fc.nat(5), async (uses, literal, chained, at, answerAt, otherAt) => {
       const consts = chained ? [`const BASE = ${literal}`, "export const LIMIT = BASE"] : [`export const LIMIT = ${literal}`]
       const answer = "export function answer(): number { return sep.length + String(LIMIT).length }"
       const body = uses.map((u, k) => u.replaceAll("{k}", String(k)))
       body.splice(Math.min(at, body.length), 0, ...consts)
       body.splice(Math.min(answerAt, body.length), 0, answer)
+      body.splice(Math.min(otherAt, body.length), 0, "export function other(): number { return sep.length }")
       const text = 'import { sep } from "node:path"\n' + body.join("\n") + "\n"
       // TypeScript rejects a direct read above the declaration (TS2448); a read through a call it admits.
       const before = check({ "m.ts": text }, ambient)
@@ -146,7 +152,7 @@ test("a split with copied constants loads and behaves as the original, or refuse
       const original = await load(join(root, `o${runs}`), { "m.ts": text }, "m.ts")
       const after = await load(join(root, `s${runs}`), { "m.ts": split.module, "m.platform.ts": split.platform }, "m.ts")
       assert.deepEqual(after, original, text + "\n---\n" + split.module + "\n---\n" + split.platform)
-    }), { numRuns: 60 })
+    }), { numRuns: 90 })
   } finally { rmSync(root, { recursive: true, force: true }) }
   assert.ok(splits > runs / 4, `only ${splits} of ${runs} modules split`)
 })
