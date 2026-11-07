@@ -109,6 +109,25 @@ for (const { source, native } of kinds) {
     assert.deepEqual(pathReadDeferrals(root, [from], [from, test]).map(cause => cause.file), [from])
   }))
 
+  // dp-t3code-04 2026-11-07: scripts/build-desktop-artifact.test.ts asserts an
+  // electron-builder hook path with /scripts[\\/]lib[\\/]windows-jsign\.ts$/,
+  // so renaming the hook fails the unchanged oracle.
+  test(`a test that matches ${from}'s filename with a pattern keeps it TypeScript`, () => inRepository(root => {
+    const ext = source.slice(1)
+    put(root, "package.json", "{}")
+    put(root, from, "export const Card = 1\n")
+    put(root, "tests/hook.test.ts", "assert.match(config.sign, /src[\\\\/]Card\\." + ext + "$/)\n")
+    put(root, "tests/other.test.ts", [
+      "assert.match(name, /\\.tsx?$/)",
+      "assert.match(name, /Card\\.(?:" + ext + "|" + native.slice(1) + ")$/)",
+      "// assert.match(name, /Card\\." + ext + "$/)",
+      "const text = '/Card." + ext + "$/'",
+      "const half = total / 2, Card = half / 3"
+    ].join("\n") + "\n")
+    assert.deepEqual(pathReadDeferrals(root, [from], [from, "tests/hook.test.ts"]).map(cause => [cause.file, cause.reason.split(":")[0]]), [[from, "PATHNAME-PATTERN"]])
+    assert.deepEqual(pathReadDeferrals(root, [from], [from, "tests/other.test.ts"]), [])
+  }))
+
   test(`a build input ${from} follows the rename and comes back`, () => inRepository(root => {
     const file = "vite.config.ts", text = 'export default { build: { lib: { entry: "./' + from + '" } } }\n'
     put(root, "package.json", "{}")
