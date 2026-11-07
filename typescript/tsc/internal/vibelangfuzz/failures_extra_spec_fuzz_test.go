@@ -199,5 +199,19 @@ func failuresExtraCases() []*failCase {
 	const assign = "A callable whose thrown type is `T` is assignable to a function type only when that type admits `T`: a type without `@throws` admits only `never`, `@throws {U}` admits subtypes of `U`, `@throws {unknown}` admits anything, and a parameter named by `@rethrows` admits anything."
 	add(&failCase{Name: "assign-incompatible-contract", Quote: assign, Code: 402, Host: "plain", Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string\n" + "export type Reader = { /** @throws {number} */ (s: string): string }\n", Body: "⟦const reader: Reader = parse⟧"})
 	add(&failCase{Name: "effectful-error-value-throw", Quote: effectfulBody, Code: 401, Host: "none", Decls: "error Missing\nexport function missing(): Missing { ⟦throw new Error(\"bad\")⟧ }"})
+	// An interface named Effect that copies the `~effect/Effect` marker but
+	// declares no A, E and R parameters is not assignable to Effect.Effect, so
+	// its callers are ordinary calls with their written contracts. Checking
+	// any such call once crashed the compiler.
+	const effectCopies = "import type { Effect as Native } from \"effect\"\ninterface Effect { readonly \"~effect/Effect\": Native.Effect<number>[\"~effect/Effect\"] }\nexport declare function copy(): Effect\n/** @throws {RangeError} */\nexport declare function knownCopy(): Effect\n/** @throws {never} */\nexport declare function safeCopy(): Effect\nexport declare function whole(): Native.Effect<number>\n"
+	for _, call := range []struct{ name, expr string }{{"untagged", "copy()"}, {"known", "knownCopy()"}} {
+		add(&failCase{Name: "effect-interface-copy-" + call.name, Owner: "compiler", Quote: effectful, Code: 403, Lib: effectCopies, Body: "const value = ⟦" + call.expr + "⟧"})
+	}
+	for _, call := range []struct{ name, expr string }{{"never", "safeCopy()"}, {"whole", "whole()"}, {"bridge", "try Effect.orDie(Effect.try(() => copy()))"}} {
+		add(&failCase{Name: "effect-interface-copy-control-" + call.name, Owner: "compiler", Quote: effectful, Lib: effectCopies, Body: "const value = " + call.expr})
+	}
+	add(&failCase{Name: "effect-interface-copy-control-plain", Owner: "compiler", Quote: effectful, Host: "plain", Lib: effectCopies, Body: "const value = copy()"})
+	add(&failCase{Name: "effect-interface-copy-control-top", Owner: "compiler", Quote: effectful, Host: "none", Lib: effectCopies, Decls: "export const value = copy()"})
+	add(&failCase{Name: "effect-interface-copy-control-return", Owner: "compiler", Quote: effectful, Host: "none", Lib: effectCopies, Decls: "export function probe(): ReturnType<typeof copy> { return copy() }"})
 	return append(cases, failuresRound20Cases()...)
 }
