@@ -1,0 +1,7 @@
+{
+  "repository": "smithers",
+  "module": "packages/smithers/agent/model-host/src/DurableChatProducer.ts",
+  "pattern": "A host function bound for a default parameter, in a declaration that stays in place because it reads import.meta.",
+  "globals": ["fetch", "globalThis"],
+  "source": "type FetchLike = typeof fetch\nexport const producer = (name: string, fetchImpl: FetchLike = fetch.bind(globalThis)) => ({ name, fetchImpl, from: import.meta.url })\nexport const value = 1\n"
+}

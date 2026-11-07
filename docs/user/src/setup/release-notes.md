@@ -17,6 +17,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Generated `import.meta.dirname` companions could fail projects that reject named Node imports or `node:path`. They now use a namespace `node:url` import and preserve directory names, including drive and network-share roots.
 - Migration could report a returned Effect as lost after a plain identity pipeline stage. Its wrapper check now follows unchanged arguments through proven identity returns, while still rejecting discarded programs and async results.
 - Migrating an executable script could move its shebang into a platform companion and cause a parse error. The shebang now stays at the start of the entry module.
+- The migration's platform split turned a kept declaration's `fetch.bind(globalThis)` into a helper typed `typeof fetch.bind`, whose call returns `void`, so the converted module failed with `TS2322` (for example against a `typeof fetch` default parameter) and stayed TypeScript. `bind`, `call` and `apply` on a host function now move only the function, `$fetch().bind(globalThis)`, and keep their types.
 
 - A base constructor's `@rethrows` callback could throw through `super(...)` without a diagnostic. These calls now report `EK0401` when the callback is known to throw, just as `new` does.
 

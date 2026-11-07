@@ -1382,6 +1382,7 @@ function namesItsOwnType(statement, ts) {
 //   a call      fileURLToPath(new URL("./x", import.meta.url))  ->  $fileURLToPath(new URL("./x", import.meta.url))
 //   a read      process.env.TOKEN                                ->  $process_env_TOKEN()
 //   a typeof    typeof Bun                                       ->  $typeof_Bun()
+//   a bind      fetch.bind(globalThis)                           ->  $fetch().bind(globalThis)
 //   a write     process.exitCode = 1                             ->  $set_process_exitCode(1)
 // A called helper has the callee's own type, overloads and generics included,
 // and calls it on the same receiver. Arguments, type arguments and callbacks
@@ -1431,6 +1432,13 @@ function hostOperations(source, statements, platform, ts, taken, file) {
         if (parent.questionDotToken) {
           const name = helper("read " + chain, base, (h) => `${never}export function ${h}() { return ${chain} }`)
           own.push({ at: top.getStart(source), end: top.end, text: name + "()" })
+        } else if (path.length >= 2 && ["bind", "call", "apply"].includes(path.at(-1))) {
+          // Function.prototype's bind, call and apply take the function as
+          // `this: T`; a detached helper would infer T as void. They are
+          // ECMAScript lib methods, so only the receiver moves.
+          const receiver = path.slice(0, -1).join(".")
+          const name = helper("read " + receiver, "$" + path.slice(0, -1).join("_"), (h) => `${never}export function ${h}() { return ${receiver} }`)
+          own.push({ at: top.getStart(source), end: top.expression.end, text: name + "()" })
         } else {
           const name = helper("call " + chain, base, (h) => callHelper(h, chain, path))
           own.push({ at: top.getStart(source), end: top.end, text: name })
