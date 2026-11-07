@@ -852,7 +852,7 @@ Source-reference wiring parses source and configuration inputs. It preserves pro
 
 Every changed literal is recorded in `referenceEdits` with its file, line,
 original spelling and kind. Assertions, expected values, test names and
-type literals stay as written. Unknown glob dialects and unguarded extension
+type literals stay as written. Temporary fixture paths stay as written when an immutable directory comes from Node’s `mkdtemp` or `mkdtempSync` and its joined path or build `cwd` keeps the input inside that directory. Real source imports still follow the rename. Unknown glob dialects and unguarded extension
 lists produce `referenceWarnings` for repair. The journal flushes all edits
 before mutation; replay preserves checked hand repairs, and `revert` restores
 exact filename literals in either order.

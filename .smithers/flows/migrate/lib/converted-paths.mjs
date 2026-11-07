@@ -4,6 +4,7 @@
 // that line. The codemod rewrites a static reference; verify refuses what is left.
 import { posix } from "node:path"
 import { isFixtureFile, isTestFile } from "./inventory.mjs"
+import { syntheticPathOperands } from "./synthetic-paths.mjs"
 import { Minimatch } from "./vendor/minimatch.mjs"
 
 export const REFUSAL = "path-to-converted-file"
@@ -437,6 +438,7 @@ export function scanSource(ts, text, file, index) {
   const json = jsonData.test(file)
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, json ? ts.ScriptKind.JSON : ts.ScriptKind.TS)
   const env = { source, file, bindings: bindingsOf(ts, source) }
+  const synthetic = syntheticPathOperands(ts, source, file)
   const refusals = [], reports = [], consumed = new Set(), found = new Set()
   let opaque = 0
   const test = isTestFile(file)
@@ -497,6 +499,7 @@ export function scanSource(ts, text, file, index) {
   }
   const checkExpression = (node, kind) => {
     consume(node)
+    if (synthetic(node)) return
     const variants = evaluate(ts, node, env).map(merge)
     // An expression that can spell both names has already been told about .vibe.
     const spellings = new Set(variants.filter(parts => !parts.some(part => part.hole)).map(parts => parts.filter(part => typeof part === "string").join("")))

@@ -1,0 +1,5 @@
+{
+  "key": "flow:t3code-synthetic-main-bundle",
+  "file": "scripts/main-process-bundle.test.mjs",
+  "source": "import { mkdtemp, writeFile } from \"node:fs/promises\";\nimport { join } from \"node:path\";\nimport { tmpdir } from \"node:os\";\nimport { build } from \"vite-plus/pack\";\nconst root = await mkdtemp(join(tmpdir(), \"bundle-fixture-\"));\nawait writeFile(join(root, \"src/main.ts\"), \"export const value = 1;\\n\");\nawait build({ entry: [\"src/main.ts\"], cwd: root, config: false, tsconfig: false });\n"
+}

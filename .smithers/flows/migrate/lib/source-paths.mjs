@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { posix, join } from "node:path"
 import { Minimatch } from "./vendor/minimatch.mjs"
 import { isFixtureFile } from "./inventory.mjs"
+import { syntheticPathOperands } from "./synthetic-paths.mjs"
 import { isDeclarationFile } from "./util.mjs"
 import { expectationLiteral, joinedLiteralPath, literalSourceInput, packageContext, processArgument, remoteUrlPart, resolveRenamed, twinListed, viteEntryRoot } from "./converted-paths.mjs"
 import { compileRegex, disagreeingLiterals, enumeratesFiles, onlySelectionUses, packageBase, regexIdentity, widenableRegexes, widenExtensionRegex } from "./regex-selectors.mjs"
@@ -336,6 +337,7 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
   }
   const configGlob = /(?:^|\/)(?:(?:tsconfig|jsconfig)(?:\.[^/]*)?|vibe\.config)\.jsonc?$/.test(file)
   const { globOwner, globCall } = globScope(ts, source)
+  const synthetic = syntheticPathOperands(ts, source, file)
   const literalOnly = node => expectationLiteral(ts, source, node)
   // A fragment of path.join(__dirname, "..", "src", "x.ts") names what the whole call names.
   const fragmentTarget = node => {
@@ -345,7 +347,7 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
   }
   const visit = node => {
     // A child process inherits no loader for .vibe, so verify refuses its path instead.
-    if (literal(node) && !literalOnly(node) && !moduleMap(node) && !processArgument(ts, node) && !remoteUrlPart(ts, node) && !twinListed(ts, node)) {
+    if (literal(node) && !synthetic(node) && !literalOnly(node) && !moduleMap(node) && !processArgument(ts, node) && !remoteUrlPart(ts, node) && !twinListed(ts, node)) {
       const move = fragmentTarget(node) ?? targetOf(node, ts.isPropertyAssignment(node.parent) && node.parent.name === node)
       if (move && (!exactContexts || exactContexts.has(literalContext(ts,node)))) {
         const discovery = globOwner(node)

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migrating an entry could rewrite a temporary build fixture with the same relative filename. Paths proven to belong to a fresh temporary directory now keep the fixture’s original source kind.
+
 - Calling `decode` on a `TextDecoder` made without `fatal: true`, such as `new TextDecoder().decode(bytes)` in a plain function, reported `EK0401` ("may throw `TypeError`"), although such a decoder replaces malformed input instead of throwing. It now throws nothing when the receiver is `new TextDecoder(…)`, or a `const` initialized by one, whose options do not set `fatal: true`. A parameter, a `let`, or options held in a variable still throw `TypeError`. As a result, `Effect.try(() => decoder.decode(bytes))` around such a decoder no longer has `TypeError` in its error channel.
 
 - API verification could report a missing project type package after saving sources outside the project directory. It now resolves those type packages from their recorded project configuration.
