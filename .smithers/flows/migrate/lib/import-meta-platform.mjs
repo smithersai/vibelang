@@ -71,7 +71,7 @@ function accessTop(node, ts) {
   return at
 }
 
-export function splitImportMeta(text, file, sibling, ts) {
+export function splitImportMeta(text, file, sibling, ts, { companionBindings = [], urlNamespace } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const sites = [], taken = new Set()
   let refused
@@ -99,11 +99,11 @@ export function splitImportMeta(text, file, sibling, ts) {
   if (refused) return { refused }
   if (!sites.length) return null
   if (source.parseDiagnostics.length) return { refused: file + ": cannot safely parse the import.meta use" }
-  const fresh = base => { let name = base; for (let n = 2; taken.has(name); n++) name = base + n; taken.add(name); return name }
+  const fresh = (base, scope = taken) => { let name = base; for (let n = 2; scope.has(name); n++) name = base + n; scope.add(name); return name }
   const kinds = new Set(sites.map(site => site.kind))
   const helpers = {}
   for (const kind of ["resolve", "filename", "dirname", "env"]) if (kinds.has(kind)) helpers[kind] = fresh(helperBases[kind])
-  const fileUrlToPath = kinds.has("filename") || kinds.has("dirname") ? fresh("$NodeURL") : null
+  const fileUrlToPath = kinds.has("filename") || kinds.has("dirname") ? urlNamespace ?? fresh("NodeURL", new Set(companionBindings)) : null
   const names = Object.values(helpers)
   const importText = "import { " + [...names].sort().join(", ") + " } from \"./" + posix.basename(sibling) + "\""
   // Only the member read changes: inputs, callbacks and catch stay where they ran.
@@ -120,7 +120,7 @@ export function splitImportMeta(text, file, sibling, ts) {
   const at = source.statements[0]?.getStart(source) ?? text.length
   module = module.slice(0, at) + importText + "\n" + module.slice(at)
   const lines = []
-  if (fileUrlToPath) lines.push("import * as " + fileUrlToPath + " from \"node:url\"")
+  if (fileUrlToPath && !urlNamespace) lines.push("import * as " + fileUrlToPath + " from \"node:url\"")
   // A parent argument passes through as written; a call without one still
   // passes none, so the host's own default applies.
   if (helpers.resolve) lines.push(sites.some(site => site.parent)

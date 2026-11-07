@@ -157,11 +157,29 @@ export const platformPath = (file) => file.replace(/\.(m?ts|tsx|vibex)$/, (_, ex
  * (platformGlobalsOf).
  */
 export function splitPlatform(text, file, ts, { globals = [], returnsAvoid } = {}) {
-  const meta = splitImportMeta(text, file, platformPath(file), ts)
+  let meta = splitImportMeta(text, file, platformPath(file), ts)
   if (!meta) return splitDeclarationsPlatform(text, file, ts, { globals, returnsAvoid })
   if (meta.refused) return meta
   const declarations = splitDeclarationsPlatform(meta.module, file, ts, { globals, returnsAvoid })
   if (declarations?.refused) return declarations
+  // Only names copied into the companion compete with its metadata namespace.
+  // Bindings retained in the caller or a native module body have another scope.
+  if (declarations) {
+    const source = ts.createSourceFile(platformPath(file), declarations.platform, ts.ScriptTarget.Latest, true,
+      /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
+    const bindings = source.statements.flatMap(statement => ts.isImportDeclaration(statement)
+      ? bindingsOf(statement, ts).map(binding => binding.name)
+      : ts.isImportEqualsDeclaration(statement) ? [statement.name.text] : [...declaredNames(statement, ts)])
+    if (bindings.includes("NodeURL")) {
+      // A value namespace from the same builtin is already the binding the
+      // helpers need. Keep that import and its comments in their original place.
+      const namespace = source.statements.find(statement => ts.isImportDeclaration(statement) &&
+        ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "node:url" &&
+        !statement.importClause?.isTypeOnly && statement.importClause?.namedBindings &&
+        ts.isNamespaceImport(statement.importClause.namedBindings) && statement.importClause.namedBindings.name.text === "NodeURL")
+      meta = splitImportMeta(text, file, platformPath(file), ts, { companionBindings: bindings, urlNamespace: namespace ? "NodeURL" : undefined })
+    }
+  }
   const directives = fileDirectives(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), ts)
   meta.platform = [...directives, meta.platform].join("\n")
   if (!declarations) return meta

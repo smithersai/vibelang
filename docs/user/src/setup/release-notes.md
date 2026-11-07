@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Generated metadata imports could fail a repository's required namespace spelling. They now select the conventional `NodeURL` name using the companion's own scope.
+
 - The migration's API identity check refused a package with "Ambient declaration closures differ" when a declaration that augments a module, such as a router's TanStack Router `Register`, reached an inferred `import("./work").WorkFilter` that the converted side spelled `import("./work.ts")`. Such a respelling of the same module now leaves the closure the same; a changed type or a different module still refuses.
 
 - `new Response(…)`, `new Headers(…)` or `x instanceof Response` inside an `Effect.try` or `Effect.tryPromise` thunk reported `TS2351` or `TS2359` with no note, so a migration kept the module in TypeScript instead of moving the host constructor to a `.ts` companion. The error now carries the note it gets anywhere else in the module: the name is Effect's module, and the global is platform code that lives in a `.ts` file.
