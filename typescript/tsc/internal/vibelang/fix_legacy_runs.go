@@ -62,7 +62,7 @@ func newLegacyModel(a *analyzer, unmatched map[int]bool) *legacyModel {
 // runOf reports what the pre-flip compiler did with call, a call written in
 // the source without try, and, for legacyUnknown, why the model can't tell.
 func (m *legacyModel) runOf(call *ast.Node) (legacyRun, string) {
-	if inHatch(call) || inCatchLeft(call) {
+	if inHatch(call) || inCatchLeft(call) || m.effectDatumWrapper(call) {
 		return legacyNoRun, ""
 	}
 	if !m.effectResult(call) {
@@ -645,28 +645,74 @@ func legacyDeclaredSuccess(a *analyzer, owner *ast.Node) *checker.Type {
 // known legacy plain-variant wrapper: f is a function declaration or a class
 // method without a return type, which the old compiler made an Effect
 // function (D500) and which the migration leaves plain because its body runs
-// nothing, and its result is not an Effect. The old try ran the wrapper to get
-// that result as its success datum; the plain call gives it directly, so the
-// try goes, even when the datum is an error instance, which try would now
-// fail with (decided detail 274). A call that returns an Effect under its
-// contract keeps its try.
+// nothing. The old try ran the wrapper to get its result as its success
+// datum; the plain call gives it directly, so the try goes, even when the
+// datum is an error instance, which try would now fail with (decided detail
+// 274), or an Effect: a returned Effect value never ran (D379), so the
+// wrapper succeeded with it. Only a returned call the old compiler ran
+// (resultRuns), as in return Effect.succeed(7), made the wrapper's program
+// that call's; that try runs what the plain function now returns, and stays.
 func (m *legacyModel) wrapperTry(call *ast.Node) bool {
 	if call.Flags&ast.NodeFlagsVibeLangTry == 0 || !ast.IsCallExpression(call) || !inEffectCode(call) || inHatch(call) {
 		return false
 	}
+	fn, effect := m.legacyWrapper(call)
+	return fn != nil && (!effect || !m.resultRuns(fn))
+}
+
+// effectDatumWrapper reports whether call, a call in effect code, calls a
+// known legacy wrapper whose success datum is an Effect value (wrapperTry).
+// The old call ran the wrapper and gave that Effect; the plain call gives it
+// directly, so the migration writes no try before it.
+func (m *legacyModel) effectDatumWrapper(call *ast.Node) bool {
+	if !ast.IsCallExpression(call) || !inEffectCode(call) || inHatch(call) {
+		return false
+	}
+	fn, effect := m.legacyWrapper(call)
+	return fn != nil && effect && !m.resultRuns(fn)
+}
+
+// legacyWrapper returns the function call calls when it is a known legacy
+// plain-variant wrapper (wrapperTry), and whether its result is an Effect.
+func (m *legacyModel) legacyWrapper(call *ast.Node) (*ast.Node, bool) {
 	c := m.a.checker
 	signature := c.GetResolvedSignature(call)
 	if signature == nil || signature.Declaration() == nil {
-		return false
+		return nil, false
 	}
 	fn := implementationOf(signature.Declaration())
 	if fn == nil || fn.Kind != ast.KindFunctionDeclaration && fn.Kind != ast.KindMethodDeclaration || !m.formIsEffect(fn) {
-		return false
+		return nil, false
 	}
 	if isMarkedEffect(fn) || !isLowerable(fn) || isProducer(fn) || fn.Type() != nil || m.marked(fn) {
-		return false
+		return nil, false
 	}
-	return !isEffectType(c, c.GetReturnTypeOfSignature(signature))
+	return fn, isEffectType(c, c.GetReturnTypeOfSignature(signature))
+}
+
+// resultRuns reports whether a call in fn's result, an Effect the old
+// compiler ran there (legacyEffectPosition), or one it can't decide, made
+// fn's program that call's, as return Effect.succeed(7) did: the wrapper's
+// success was the call's success. A function with no such call returned its
+// Effect values as data (D379).
+func (m *legacyModel) resultRuns(fn *ast.Node) bool {
+	body := fn.Body()
+	if body == nil {
+		return true
+	}
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if isFunctionBoundary(node) && !isCalledInPlace(node) {
+			return false
+		}
+		if ast.IsCallExpression(node) && m.effectResult(node) && legacyResultFlow(node, fn) {
+			if run, _ := legacyEffectPosition(m.a, node, fn); run != legacyNoRun {
+				return true
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	return visit(body)
 }
 
 // byNameBlock reports whether the migration writes n, an expression the old

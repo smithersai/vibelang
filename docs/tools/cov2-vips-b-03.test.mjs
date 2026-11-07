@@ -16,16 +16,6 @@ test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision
 // Activation: Run --fix-vip-only on function-kind and legacy try candidates plus prelude/import controls; assert only the VIP migration passes apply.
 test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision | cov2-vips-b VIP only scope | present | `--fix-vip-only` selects the VIP migration passes, including the VIP-1/VIP-2 function-kind and `try` migration, excluding prelude/import cleanup.")
 
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#1201c82921527c11
-// VIP-34: VIP migration preserves success data phase.
-// Activation: Cross error, schema error, Effect and asEffect-shaped success data through known legacy wrappers; --fix-vip-only removes legacy try while preserving construction/run traces.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-words | cov2-vips-b VIP migration preserves success data phase | present | **Amended 2026-11-01: migration preserves run phase.** The explicitly selected `--fix-vip-only` pass removes a known legacy wrapper's `try`, even when its success data is an error, a schema error, another Effect or an object with an `asEffect` member.")
-
-// rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#fa20a2c5ef7c6da6
-// VIP-34: ordinary fix preserves current try.
-// Activation: Run ordinary --fix and --fix-migration-only over valid current try with unannotated success data of each legacy-looking shape; assert unchanged source and behavior.
-test.todo("rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#wills-words | cov2-vips-b ordinary fix preserves current try | present | Ordinary `--fix` and `--fix-migration-only` never reinterpret a valid current `try` based on its final result type or lack of annotation.")
-
 // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#788fb321493e1069
 // VIP-34: config traversal repository boundary.
 // Activation: Use isolated nested config fixtures, external extends and node_modules; external configs must be reported and their bytes preserved.
