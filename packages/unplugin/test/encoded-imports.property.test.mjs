@@ -95,3 +95,40 @@ for (const tool of ["webpack", "rspack", "rollup", "esbuild", "vite", "vite7"]) 
     })
   })
 }
+
+test("esbuild source maps preserve the exact source filename like TypeScript", async () => {
+  const { build } = viteRequire("esbuild")
+  const { pathToFileURL } = await import("node:url")
+  const plugin = (await import(pathToFileURL(viteRequire.resolve("../src/esbuild.js")).href)).default
+  async function check(name) {
+    const directory = join(repo, "packages/unplugin/test/.fixtures")
+    await mkdir(directory, { recursive: true })
+    const root = await mkdtemp(join(directory, "source-map-name-"))
+    try {
+      await mkdir(join(root, "node_modules"))
+      await symlink(join(repo, "packages/compiler"), join(root, "node_modules/vibelang"))
+      await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+      await writeFile(join(root, "package.json"), '{"type":"module"}')
+      await writeFile(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [] }, include: ["*.vibe"] }))
+      const source = "export function explode() {\n  return (null as unknown as string).toUpperCase()\n}\n"
+      for (const extension of ["ts", "vibe"]) {
+        const filename = name + "." + extension, output = join(root, extension + ".mjs")
+        await writeFile(join(root, filename), source)
+        await writeFile(join(root, "entry.mjs"), `import {explode} from ${JSON.stringify("./" + filename)};explode()\n`)
+        await build({ entryPoints: [join(root, "entry.mjs")], bundle: true, platform: "node", format: "esm", outfile: output, sourcemap: true, logLevel: "silent", plugins: extension === "ts" ? [] : [plugin({ root, compiler: binary })] })
+        const run = spawnSync(process.execPath, ["--enable-source-maps", output], { encoding: "utf8" })
+        assert.notEqual(run.status, 0)
+        assert.ok(run.stderr.includes(filename + ":2:" + (source.split("\n")[1].indexOf("toUpperCase") + 1)), run.stderr)
+        const map = JSON.parse(await readFile(output + ".map", "utf8"))
+        assert.ok(map.sourcesContent.includes(source), "the map embeds the original source")
+      }
+    } finally { await rm(root, { recursive: true, force: true }) }
+  }
+  for (const name of ["créé %20", "日本", "space name", "percent%2520"]) await check(name)
+  await checkProperty(fc, {
+    name: "esbuild-source-map-filename",
+    rule: "Source-map filenames and positions match the native TypeScript control without interpreting literal percent escapes.",
+    arbitrary, numRuns: 20, check,
+    command: "node --test test/encoded-imports.property.test.mjs"
+  })
+})

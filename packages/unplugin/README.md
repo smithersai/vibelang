@@ -8,6 +8,9 @@ diagnostics. The plugin serves its JavaScript and source maps, reports its
 diagnostics as build errors with file, line, and column, and recompiles in
 watch mode. Source and type-only edits remain active after error recovery. For Vite and Vitest, use [vibelang-vite](../vite/README.md).
 Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning.
+In esbuild bundles, Node source-map stacks retain original source filenames,
+including Unicode, spaces and literal `%` sequences.
+
 The shared load hook also compiles explicit `.vibex` JSX sources, including
 module IDs with query strings, using the project's `jsx` compiler option.
 The native esbuild adapter also loads these sources and their rewritten
