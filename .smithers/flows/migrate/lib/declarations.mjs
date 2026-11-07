@@ -10,7 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { compareApiIdentityInWorker as compareApiIdentity, publishedEntrypoints } from "./api-identity.mjs"
 import { apiProjection } from "./api-projection.mjs"
 import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
-import { sidecarSettings } from "./sidecar-config.mjs"
+import { sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, rel, run } from "./util.mjs"
 import { dependencyEmitPathSubstitution } from "./dependency-emit-paths.mjs"
@@ -508,6 +508,10 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
   const absentSources = emitDiagnostics || !existsSync(recorded) ? {}
     : JSON.parse(readFileSync(recorded, "utf8")).apiMetadata?.absentSources ?? {}
   if (emitDiagnostics) rmSync(join(dir, absentSourceDir), { recursive: true, force: true })
+  const nativeDir = ".migrate-native-declarations"
+  const nativeDeclarations = emitDiagnostics || !existsSync(recorded) ? {}
+    : JSON.parse(readFileSync(recorded, "utf8")).apiMetadata?.nativeDeclarations ?? {}
+  if (emitDiagnostics) rmSync(join(dir, nativeDir), { recursive: true, force: true })
   const shippedDir = ".migrate-shipped"
   rmSync(join(dir, shippedDir), { recursive: true, force: true })
   for (const { tsconfig, prefix } of projects) {
@@ -566,6 +570,30 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
       if (!reasons.length && output && !resolve(output).startsWith(resolve(dir, prefix) + sep))
         reasons = errors.filter(d => layoutErrors.has(d.code))
       const logical = originals.find(file => /\.d\.[cm]?ts$/.test(file))
+      // Native syntax cannot be read as TypeScript source. A layout-only
+      // failure still leaves the compiler's compatibility declaration; freeze
+      // it with its original location and resolution context instead.
+      const native = /\.vibex?$/.test(source)
+      const savedNative = !emitDiagnostics && logical && nativeDeclarations[rel(packageDir, logical)]
+      if (native && logical && (savedNative || reasons.length && reasons.every(d => layoutErrors.has(d.code)))) {
+        const compatibility = savedNative ? resolve(packageDir, savedNative.source) : sidecarPath(source, sidecarSettings(path, ts))
+        if (savedNative || existsSync(compatibility)) {
+          const name = rel(packageDir, compatibility)
+          const stored = savedNative?.stored ?? posix.join(nativeDir, encodeURIComponent(rel(packageDir, source)) + ".d.ts")
+          if (!savedNative) {
+            mkdirSync(join(dir, nativeDir), { recursive: true })
+            writeFileSync(join(dir, stored), readFileSync(compatibility))
+            nativeDeclarations[rel(packageDir, logical)] = { source: name, stored }
+          }
+          logicalPaths[stored] = name
+          for (const alias of [source, logical, compatibility])
+            aliases[rel(packageDir, alias)] = stored
+          aliases[rel(packageDir, logical).replace(/\.d\.ts$/, ".js")] = stored
+          context.files.push(stored)
+          delete absentDeclarations[rel(packageDir, logical)]
+          continue
+        }
+      }
       if (reasons.length && logical) absentDeclarations[rel(packageDir, logical)] =
         reasons.map(({ code, file, line, column }) => ({ code, file, line, column }))
       const absent = logical && rel(packageDir, logical)
@@ -676,7 +704,8 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
   }
   const surface = { ...declarationSurface(ts, dir, manifest, aliases, logicalPaths), snapshotVersion: 3, apiMetadata: { manifest, aliases, logicalPaths, layouts, projectContexts, packageDir: resolve(packageDir),
     ...(Object.keys(absentDeclarations).length ? { absentDeclarations } : {}),
-    ...(Object.keys(absentSources).length ? { absentSources } : {}), ...(companions.size ? { companions: [...companions].sort() } : {}) } }
+    ...(Object.keys(absentSources).length ? { absentSources } : {}),
+    ...(Object.keys(nativeDeclarations).length ? { nativeDeclarations } : {}), ...(companions.size ? { companions: [...companions].sort() } : {}) } }
   writeFileSync(join(dir, "public-surface.json"), JSON.stringify(surface, null, 2) + "\n")
   return surface
 }

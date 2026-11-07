@@ -1,0 +1,8 @@
+{
+  "key": "t3code-saved-source-native-sibling",
+  "quote": "each export's type identical to `tsc`'s in both directions",
+  "native": "export interface Box<T> { readonly value: T }\n",
+  "declaration": "export interface Box<T> { readonly value: T }\n",
+  "files": ["apps/server/vite.config.ts", "scripts/lib/helper.ts", "scripts/lib/model.vibe"],
+  "pattern": "A saved TypeScript source outside the inferred declaration root imports an already-native sibling."
+}

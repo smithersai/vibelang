@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
+
 - Migration test measurement could not read a `node --test` run whose skipped or todo tests give a reason, such as `it("x", { skip: "needs a host" })`: the reason and the run's duration became part of the test's name, so identical runs reported missing and extra skipped tests, and a todo with a reason counted as passed. Test names now stop before the duration, and every skip or todo counts as skipped.
 
 - A base constructor's `@rethrows` callback could throw through `super(...)` without a diagnostic. These calls now report `EK0401` when the callback is known to throw, just as `new` does.

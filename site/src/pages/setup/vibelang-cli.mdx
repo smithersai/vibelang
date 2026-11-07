@@ -660,6 +660,8 @@ A value initialized by a moved concrete factory keeps its inferred member docume
 
 Migration into a TypeScript module body keeps merged declarations in one lexical scope. A class, function or enum moved into the body takes its type-only namespace companions, including reopened and nested namespaces. Namespace-local types keep their scope. A companion with runtime initialization prevents the split, preserving the original statement order.
 
+Migration API snapshots retain native compatibility declarations when a project layout error leaves ordinary declarations outside the snapshot. Saved TypeScript sources resolve those native siblings through their original paths, including `vibe.sidecarDir` and `rootDirs`. The comparison reads frozen declarations; missing sidecars, unresolved dependencies and changed exported types still prevent qualification.
+
 JavaScript emission preserves the project's declaration source root when `vibe.sidecarDir` is configured. Package `types` targets keep pointing to the emitted declarations, including projects with a source root inside or outside the package. Runtime JavaScript remains under `.vibelang/js/` at its package-relative path.
 
 Migration setup installs the selected dependencies before formatting the files it writes, so newly selected formatter plugins are available. The same order applies when adding workspace packages to an existing setup. If installation fails, setup stops before formatting; formatter failures after a successful install remain recorded warnings.
