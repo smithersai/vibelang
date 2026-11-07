@@ -350,11 +350,27 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   // class or enum, so the module's declarations name it there.
   const inferredWrappers = wrappers.filter((w) => w.inferred && !returnsOnlyElements(w.d.statement, ts))
   if (inferredWrappers.length) {
+    for (const d of [...copied]) if (typeOnly(d) && d.exported) { copied.delete(d); for (const name of d.names) typesFromModule.add(name) }
+    // An imported type brings its own reads: `type View = { leaf: Leaf }`
+    // needs no Leaf in the sibling once View is imported, and an unread
+    // import or copy there reports TS6196 under noUnusedLocals. Keep only what
+    // the moved code reads, directly or through a copy it still needs.
+    const needed = new Set(), read = new Set()
+    const reach = (d) => {
+      for (const name of new Set([...d.reads, ...d.valueReads])) {
+        const declaration = declarationRead(d, name)
+        if (declaration && copied.has(declaration)) {
+          if (!needed.has(declaration)) { needed.add(declaration); reach(declaration) }
+        } else if (typesFromModule.has(name)) read.add(name)
+      }
+    }
+    for (const d of moved) reach(d)
+    for (const d of [...copied]) if (!needed.has(d)) copied.delete(d)
+    for (const name of [...typesFromModule]) if (!read.has(name)) typesFromModule.delete(name)
     const unnamed = [...[...copied].filter((d) => typeOnly(d) && !d.exported),
       ...[...moved].filter((d) => !d.exported && (ts.isClassDeclaration(d.statement) || ts.isEnumDeclaration(d.statement)))]
     const unnamedNames = unnamed.flatMap((d) => [...d.names])
     if (unnamed.length && inferredWrappers.some((w) => !returnsAvoid?.(w.name, unnamedNames))) for (const d of unnamed) { namedInSibling.add(d); exportedForInference.push(...d.names) }
-    for (const d of [...copied]) if (typeOnly(d) && d.exported) { copied.delete(d); for (const name of d.names) typesFromModule.add(name) }
   }
   if (moved.size === declarations.length && !wrappers.length) return { refused: `${file} is platform code only` }
   // A private type the module kept for the moved code alone is the sibling's

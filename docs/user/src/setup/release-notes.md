@@ -39,6 +39,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Copying either homepage greeting example printed nothing. Both examples now start their Effect and print `Hello, Ada`.
 
+- When the migrate flow moved a function with an inferred return type into a `.platform.ts` sibling, the sibling also imported host types that only another imported type used, such as `Leaf` beside `View` for `type View = { leaf: Leaf }`. Under `noUnusedLocals` that reported `TS6196`. The sibling now imports only the types its moved code reads.
+
 - File-system replacement hints could construct an operation without running it. They now show the outer `try` for reads, writes and other operations that return Effects.
 
 - Converting an `async` method with a computed numeric, template-literal or union key could violate its indexed `Promise` contract. The editor now withholds that conversion until the contract is migrated too.
