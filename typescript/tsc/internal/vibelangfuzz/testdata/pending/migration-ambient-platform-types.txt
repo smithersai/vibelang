@@ -1,0 +1,2 @@
+FuzzMigrationAmbientPlatformTypes closure:platform-type-alias compiler Chapter 1: an unchanged ambient contract becomes unavailable when its inline type moves into a generated platform alias; lane migfix-t3code
+FuzzMigrationAmbientPlatformTypes corpus:t3code-ambient-platform-type-alias compiler Chapter 1: minimized Register.router closure retains its public structural type across a platform split; lane migfix-t3code

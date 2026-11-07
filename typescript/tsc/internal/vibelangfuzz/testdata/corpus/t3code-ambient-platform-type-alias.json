@@ -1,0 +1,6 @@
+{
+  "auth.ts": "type State = { status: \"ready\" } | { status: \"waiting\"; reason?: string };\nexport function read(): State { return { status: \"ready\" }; }\n",
+  "registry.ts": "export interface Register {}\n",
+  "router.ts": "import { read } from \"./auth.ts\";\nimport type {} from \"./registry.ts\";\nexport const router = { state: read() };\ndeclare module \"./registry.ts\" { interface Register { router: typeof router } }\n",
+  "auth.vibe": "module platform {\n export type State = { status: \"ready\" } | { status: \"waiting\"; reason?: string };\n export function read(): State { return { status: \"ready\" }; }\n}\nexport { read } from platform;\n"
+}
