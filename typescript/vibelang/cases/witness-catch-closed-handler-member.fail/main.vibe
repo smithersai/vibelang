@@ -1,0 +1,31 @@
+// expect: EK0512
+// rule-evidence: docs/design/src/002-running.md#syntax | After a parenthesized handler, a function expression handler or a block-bodied arrow handler, another `catch` or a lower-precedence operator may follow, but a member access or call can't attach to the handler, so `a catch function () { }.call(o)` is a syntax error (`EK0512`).
+// rule-evidence: docs/design/src/002-running.md#static-rules | | `catch` mixed with `??`, `\|\|` or `&&` without parentheses (parenthesize the mixed operands), or a member access or call after any closed handler (a parenthesized handler, a function-expression handler or a block-bodied arrow handler); parenthesize the whole catch expression | `EK0512` |
+declare const a: Effect.Effect<number, string>
+declare const b: number | undefined
+declare const o: object
+export effect function attached() {
+  const functionCall = a catch function () { }.call(o)
+  const parenthesizedMember = a catch (() => 1).length
+  const parenthesizedCall = a catch (() => 1)()
+  const blockMember = a catch () => { return 1 }.length
+  const blockElement = a catch () => { return [1] }[0]
+  return [functionCall, parenthesizedMember, parenthesizedCall, blockMember, blockElement]
+}
+export effect function mixed() {
+  const coalesceBefore = b ?? a catch () => 1
+  const orBefore = b || a catch () => 1
+  const andBefore = b && a catch () => 1
+  const coalesceAfter = a catch (() => 1) ?? 2
+  const orAfter = a catch function () { return 1 } || 2
+  const andAfter = a catch () => { return 1 } && 2
+  return [coalesceBefore, orBefore, andBefore, coalesceAfter, orAfter, andAfter]
+}
+// Parenthesizing the whole catch expression, or the mixed operands, is valid.
+export effect function repaired() {
+  const called = (a catch function () { return 1 }).toFixed(0)
+  const element = (a catch () => { return [1] })[0]
+  const added = (b ?? 0) + (a catch () => 1)
+  const grouped = b ?? (a catch () => 1)
+  return [called, element, added, grouped]
+}
