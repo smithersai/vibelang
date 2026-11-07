@@ -1,17 +1,5 @@
 import { test } from "bun:test"
 
-// Chapter 2: EK2104 nonproducer Effect yield-star quick fix.
-test.todo("rule-evidence: docs/design/src/002-running.md#4e7c582145499764 | Chapter 2: EK2104 nonproducer Effect yield-star quick fix - The assigned behavior has no existing test witness.")
-
-// Chapter 2: simplify yield-star try when it produces a value.
-test.todo("rule-evidence: docs/design/src/002-running.md#1c914b7d52e1944b | Chapter 2: simplify yield-star try when it produces a value - The assigned behavior has no existing test witness.")
-
-// Chapter 2: preserve nested Effect runs in the yield-star fix.
-test.todo("rule-evidence: docs/design/src/002-running.md#776b34d942c2543e | Chapter 2: preserve nested Effect runs in the yield-star fix - The assigned behavior has no existing test witness.")
-
-// Chapter 2: keep bare yield, producer delegation and parameter yield unchanged.
-test.todo("rule-evidence: docs/design/src/002-running.md#24b514e5cdf40a89 | Chapter 2: yield-star quick-fix boundaries - The assigned behavior has no existing test witness.")
-
 
 // Chapter 900: EK4601 legacy await-on-Effect diagnostic.
 test.todo("rule-evidence: docs/design/src/900-appendices.md#92880f15baa127b9 | Chapter 900: EK4601 legacy await-on-Effect diagnostic - No executable case or fuzz witness is present for this compatibility diagnostic.")
@@ -45,7 +33,6 @@ test.todo("rule-evidence: docs/design/src/900-appendices.md#27cb4815189792bb | C
 
 // Chapter 900: EK4817 Schema instanceof warning.
 test.todo("rule-evidence: docs/design/src/900-appendices.md#5fea487a123560c6 | Chapter 900: EK4817 Schema instanceof warning - The existing linked case currently has an aggregate diagnostic mismatch; keep this witness pending until the assertion is isolated.")
-
 
 // Chapter 900: EK4604 await in legacy non-async hatch diagnostic.
 test.todo("rule-evidence: docs/design/src/900-appendices.md#04961d07f271f19d | Chapter 900: EK4604 await in legacy non-async hatch diagnostic - The existing linked case currently has an aggregate diagnostic mismatch; keep this witness pending until the assertion is isolated.")

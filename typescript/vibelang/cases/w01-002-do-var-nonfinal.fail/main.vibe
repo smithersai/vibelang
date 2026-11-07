@@ -1,0 +1,6 @@
+// expect: EK0107 EK0107 EK0107
+// rule-evidence: docs/design/src/002-running.md#do-expressions | A nonfinal `var` outside a parameter list remains `EK0107`.
+// Neither `EK0201` nor `EK0203` applies to these declarations, so each keeps `EK0107`.
+export function nonfinalBodyVar() { return do { var y = 1; y } }
+export function nonfinalNestedVar() { return do { { var y = 2 } 3 } }
+export effect function nonfinalEffectVar() { return do { var y = 3; y } }

@@ -1,0 +1,48 @@
+// rule-evidence: docs/design/src/002-running.md#do-expressions | A computed key in an assignment target keeps the assignment operator's own conversion timing: `o[k] = do { … }` runs the `do` before converting `k`, and `o[k] += do { … }` converts `k` first.
+// expect-result: {"simple":["do","key"],"simpleNative":["rhs","key"],"compound":["key","do","key"],"compoundNative":["key","rhs","key"],"simpleRun":["do","key"],"compoundRun":["key","do","key"],"values":[2,2,5,2,7,10]}
+// Each `do` trace equals the trace of the same assignment with an ordinary
+// right-hand side, which is ECMA-262's order on the host: a simple assignment
+// converts its key after evaluating the right-hand side, and a compound one
+// converts it before reading the old value. The `Run` variants run an Effect
+// inside the `do`, so the compiler cannot leave it as a native expression.
+import { Effect } from "effect"
+
+const log: string[] = []
+const key = { toString() { log.push("key"); return "p" } }
+const k = key as unknown as string
+const o: Record<string, number> = { p: 0 }
+const values: number[] = []
+
+function trace(f: () => void): string[] {
+  log.length = 0
+  f()
+  values.push(o.p)
+  return [...log]
+}
+
+effect function simpleRun() {
+  log.length = 0
+  o[k] = do { const v = try Effect.sync(() => (log.push("do"), 7)); v }
+  values.push(o.p)
+  return [...log]
+}
+
+effect function compoundRun() {
+  log.length = 0
+  o[k] += do { const v = try Effect.sync(() => (log.push("do"), 3)); v }
+  values.push(o.p)
+  return [...log]
+}
+
+export effect function main() {
+  const simple = trace(() => { o[k] = do { log.push("do"); 2 } })
+  const simpleNative = trace(() => { o[k] = (log.push("rhs"), 2) })
+  const compound = trace(() => { o[k] += do { log.push("do"); 3 } })
+  const compoundNative = trace(() => { o[k] -= (log.push("rhs"), 3) })
+  return {
+    simple, simpleNative, compound, compoundNative,
+    simpleRun: try simpleRun(),
+    compoundRun: try compoundRun(),
+    values,
+  }
+}
