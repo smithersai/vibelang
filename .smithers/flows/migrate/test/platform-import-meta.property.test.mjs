@@ -176,7 +176,7 @@ test("stock TypeScript keeps the public declaration signature", () => {
   try {
     writeFileSync(join(root, "ambient.d.ts"), "interface ImportMeta { resolve(specifier: string): string }\n")
     const split = splitPlatform(corpus.minimal, "provider.ts", ts)
-    const options = { strict: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
+    const options = { strict: true, noUncheckedIndexedAccess: true, target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
       moduleResolution: ts.ModuleResolutionKind.Bundler, types: [], skipLibCheck: true, declaration: true,
       emitDeclarationOnly: true, allowImportingTsExtensions: true }
     const emit = (source, name) => {
@@ -272,7 +272,7 @@ test("stock TypeScript declares the same types for every served member", () => {
       ""].join("\n")
     const split = splitPlatform(source, "provider.ts", ts)
     assert.ok(split && !split.refused, JSON.stringify(split))
-    const options = { strict: true, target: ts.ScriptTarget.ES2022, lib: ["lib.es2022.d.ts"], module: ts.ModuleKind.ESNext,
+    const options = { strict: true, noUncheckedIndexedAccess: true, target: ts.ScriptTarget.ES2022, lib: ["lib.es2022.d.ts"], module: ts.ModuleKind.ESNext,
       moduleResolution: ts.ModuleResolutionKind.Bundler, types: [], skipLibCheck: true, declaration: true,
       emitDeclarationOnly: true, allowImportingTsExtensions: true }
     const emit = (text, name) => {
