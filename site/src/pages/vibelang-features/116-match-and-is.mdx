@@ -113,7 +113,7 @@ function shape(value: ReadonlyArray<number> | { kind: string; size?: number }) {
 // Output: ["empty","one: 2","2 then 2 more","box of 5","point with 1 more keys","other"]
 ```
 
-An object pattern matches only an object or a function, never a primitive, and reads no property of a primitive: `{ length: let n }` does not match a string. It checks only the properties it names, and `...let rest` collects the others. A property that is not a valid name needs quotes, `{ "content-type": let type }`, and a computed key can be a name, `{ [key]: let value }`. A computed key is evaluated and converted to a property key once per property clause, after the subject is known to be an object. Its presence check, value read and rest exclusion use that saved key. Later properties run only after earlier properties match.
+An object pattern matches only an object or a function, never a primitive, and reads no property of a primitive: `{ length: let n }` does not match a string. It checks only the properties it names, and `...let rest` collects the others. A property that is not a valid name needs quotes, `{ "content-type": let type }`, and a computed key can be an expression, such as `{ [key]: let value }` or `{ [chooseKey()]: let value }`. Its expression keeps its TypeScript key type, including a unique symbol or a literal returned by an overloaded call. A computed key is evaluated and converted to a property key once per property clause, after the subject is known to be an object. Its presence check, value read and rest exclusion use that saved key. Later properties run only after earlier properties match.
 
 ## Option, Exit, Result, and primitives
 
@@ -443,13 +443,6 @@ function load() {
 ```
 
 A thrown exception, including the no-match `TypeError`, rejects the Promise. A `return` belonging to the match, or a `break` or `continue` targeting a statement outside it, reports `EK0706`. Nested functions keep their own `return`; loops inside the match keep their own jumps. In effect code, run the Promise through a bridge such as `try Effect.promise(() => load())`.
-
-## Not yet supported
-
-
-- A computed key other than a name or a literal (`EK4704`).
-
-Support for the new forms arrives with the compiler's VIP implementation. VIP-7 accepts the full TC39 proposal, including regular-expression patterns, relational patterns, and `async match`.
 
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.
 

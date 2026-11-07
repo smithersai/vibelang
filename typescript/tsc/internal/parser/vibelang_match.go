@@ -668,7 +668,6 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			}
 			result.clauses = append(result.clauses, clause)
 		case p.token == ast.KindOpenBracketToken:
-			keyAnchor := p.tokenRange()
 			p.nextToken()
 			key := p.parseAssignmentExpressionOrHigher()
 			p.parseExpected(ast.KindCloseBracketToken)
@@ -676,10 +675,6 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			var sub *pattern
 			if p.parseOptional(ast.KindColonToken) {
 				sub = p.parseMatchPattern()
-			}
-			if p.cloneIdentExpression(key) == nil && key.Kind != ast.KindStringLiteral && key.Kind != ast.KindNumericLiteral {
-				result.items = append(result.items, &pattern{kind: patternInvalid, anchor: keyAnchor, code: 4704, detail: "A computed key other than a name or a literal"})
-				continue
 			}
 			// A literal key reads the same as a written one, ["a"] as "a".
 			result.clauses = append(result.clauses, objectClause{key: key, computed: !isLiteralKey(key), optional: optional, pattern: sub})
@@ -847,6 +842,12 @@ func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
 	// Keep it when an if/while is turns their declarations into assignments.
 	hoistedDeclaration := hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
 	hoistedDeclaration.AsVariableDeclaration().Type = declaration.Type()
+	if source := p.vibelangMatchKeyTypes[declaration]; source != nil {
+		// An is test can hoist an already-captured key again into its home.
+		// Keep the source type attached to the declaration that binding sees.
+		delete(p.vibelangMatchKeyTypes, declaration)
+		p.recordMatchKeyType(hoistedDeclaration, source)
+	}
 	p.overrideParentInImmediateChildren(hoistedDeclaration)
 	hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangPatternHoist
 	if name.Flags&ast.NodeFlagsReparsed == 0 {
@@ -1490,13 +1491,13 @@ func (p *Parser) patternKeyType(expr *ast.Node) *ast.Node {
 		index := p.vibelangSynthesized(p.factory.NewLiteralTypeNode(literal), at)
 		return p.vibelangSynthesized(p.factory.NewIndexedAccessTypeNode(p.patternKeyType(expr.Expression()), index), at)
 	}
-	return nil // computed clauses admit only cloneIdentExpression's name shapes
+	return nil // general expressions retain their checker type through source metadata
 }
 
 // capturePatternKey evaluates a computed name and ToPropertyKey once, before
 // the presence test, value read and rest exclusion use it (chapter 004).
-// An explicit type on both a const and its inline hoist prevents unique-symbol
-// widening. The assertion preserves the source key's static indexing checks;
+// An explicit type or the original expression type prevents unique-symbol
+// widening, including after inline hoisting. The source type retains indexing checks;
 // only its runtime representation changes to a string or symbol.
 func (p *Parser) capturePatternKey(clause objectClause, steps *[]matchStep, ctx *matchCompile) objectClause {
 	if !clause.computed {
@@ -1505,12 +1506,36 @@ func (p *Parser) capturePatternKey(clause objectClause, steps *[]matchStep, ctx 
 	at := clause.key.Loc
 	p.vibelangMatchTemps++
 	key := "$matchKey" + strconv.Itoa(p.vibelangMatchTemps)
+	original := clause.key
+	complex := p.cloneIdentExpression(original) == nil
+	if complex {
+		// A readonly tuple retains a call's unique-symbol or literal result.
+		// Its type query also gives the converted scalar a real declaration type,
+		// which TypeScript uses when narrowing discriminated payloads.
+		rawName := key + "Source"
+		array := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(at, []*ast.Node{original}), false), at)
+		constType := p.vibelangSynthesized(p.factory.NewTypeReferenceNode(p.mIdent("const", at), nil), at)
+		tuple := p.vibelangSpanning(p.factory.NewAsExpression(array, constType), at)
+		// Keep inference of a hoisted tuple independent of its assignment target.
+		unknown := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindUnknownKeyword), at)
+		initializer := p.vibelangSpanning(p.factory.NewSatisfiesExpression(tuple, unknown), at)
+		raw := p.mConst(p.mTemp(rawName, at), ast.NodeFlagsConst, initializer, at)
+		typedRaw := raw
+		if ctx.inline {
+			*steps = append(*steps, matchStep{test: p.hoistDeclaration(raw, at)})
+			typedRaw = p.reparseList[len(p.reparseList)-1]
+		} else {
+			*steps = append(*steps, matchStep{decl: raw})
+		}
+		rawDeclaration := typedRaw.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+		p.recordMatchKeyType(rawDeclaration, tuple)
+		clause.key = p.vibelangSpanning(p.factory.NewElementAccessExpression(p.mTemp(rawName, at), nil, p.mNumber(0, at), ast.NodeFlagsNone), at)
+	}
+	sourceType := p.patternKeyType(clause.key)
 	converted := p.mCall(p.vibelangIntrinsic("$propertyKey", at), []*ast.Node{clause.key}, at)
-	// Keep invalid source key types on their native in/index diagnostics, without
-	// adding a TS2352 for the compiler's representation conversion.
 	unknown := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindUnknownKeyword), at)
 	converted = p.vibelangSpanning(p.factory.NewAsExpression(converted, unknown), at)
-	value := p.vibelangSpanning(p.factory.NewAsExpression(converted, p.patternKeyType(clause.key)), at)
+	value := p.vibelangSpanning(p.factory.NewAsExpression(converted, sourceType), at)
 	decl := p.mConst(p.mTemp(key, at), ast.NodeFlagsConst, value, at)
 	typed := decl
 	if ctx.inline {
@@ -1521,8 +1546,9 @@ func (p *Parser) capturePatternKey(clause objectClause, steps *[]matchStep, ctx 
 	}
 	declaration := typed.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
 	declaration.AsVariableDeclaration().Type = p.patternKeyType(clause.key)
-	// mConst attached its original children before this annotation existed.
-	// Attach the new type too, so its names resolve through the lexical home.
+	if complex {
+		p.recordMatchKeyType(declaration, original)
+	}
 	p.overrideParentInImmediateChildren(declaration)
 	clause.key = p.mTemp(key, at)
 	return clause

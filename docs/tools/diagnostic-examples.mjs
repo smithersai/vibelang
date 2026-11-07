@@ -145,7 +145,6 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4616` | error: legacy compiler compatibility — the retired `try(…)` hatch form is used.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Wrap native code with `Effect.try` or `tryPromise`, then run its Effect with `try`.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:9:13](../../../typescript/vibelang/cases/ek4616-try-hatch.fail/main.vibe).
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4704` | error: legacy compiler compatibility — the current lowering does not support a pattern form.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4801` | error: legacy compiler compatibility — an Effect value is discarded as a statement.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4803` | warning: legacy compiler compatibility — multiple versions of an Effect package are loaded.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4804` | warning: legacy compiler compatibility — an Effect failure is a global `Error` without a distinguishing tag.
@@ -333,3 +332,4 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
 // rule-evidence: docs/design/src/900-appendices.md | The old `EK9210` is retired and will never be reassigned: the first-release continuation retirement reports `EK3501` before provider or operation-contract analysis; VIP-35 remains open.
 
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK0909` | retired `service class Name { … }`; run `vibelang --fix` to remove `class` while preserving the service key and contract. Example: `service class Users { get(): string }` Replay [example: main.vibe:2:1](../../../typescript/vibelang/cases/retired-service-class.fail/main.vibe). | 9 | [Services](005-services.md#syntax) |
+// rule-evidence: docs/design/src/900-appendices.md | The old `EK4704` is retired and will never be reassigned: VIP-7 admits computed property-key expressions under the pinned pattern grammar.

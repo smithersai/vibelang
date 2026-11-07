@@ -23,8 +23,6 @@ var (
 	// no home yet: a for head whose initializer is a var or using list, a
 	// for…in or for…of head, or a computed member key.
 	EK4703 = message(4703, errorCategory, "Bindings in an is pattern have no home here yet: they work in a statement of a block, in an if, while or do…while condition, in a for (init; test; update) head unless init is var or using, in a match arm, in a concise arrow body and in a class field initializer.")
-	// EK4704: a pattern form VibeLang does not support yet. {0} names it.
-	EK4704 = message(4704, errorCategory, "{0} patterns are not supported yet.")
 	// EK0707: and, or, and not combined at one level without parentheses.
 	mixedPatternDiagnostic = message(707, errorCategory, "Patterns joined by and, or, or not cannot share a level; add parentheses.")
 	// EK0702: a class pattern whose expression names a VibeLang value that is not a class (D67b). {0} is the expression.
@@ -37,7 +35,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK4701, EK4703, EK4704, EK0702} {
+	for _, m := range []*Message{EK4701, EK4703, EK0702} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkPatterns)
@@ -358,12 +356,6 @@ func reportPatternError(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 		} else {
 			note(reportAt(c, file, at, EK4703), "Move the test into a statement of the enclosing block or an if condition, or match the value with match.")
 		}
-	case 4704:
-		detail := "These"
-		if len(args) > 1 && args[1].Kind == ast.KindStringLiteral {
-			detail = args[1].Text()
-		}
-		note(reportAt(c, file, at, EK4704, detail), "Bind the value and test it in a guard: when let v and if (…): …")
 	case 4705:
 		note(reportAt(c, file, at, mixedPatternDiagnostic), "Write (a and b) or c, or a and (b or c).")
 	}

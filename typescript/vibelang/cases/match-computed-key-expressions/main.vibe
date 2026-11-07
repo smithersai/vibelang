@@ -1,0 +1,23 @@
+// expect-result: [[[7,["key","has:value","get:value","key"]],[0,[]]],[[7,["key","has:value","get:value","key"]],[0,[]]],[[7,["key","convert:string","has:value","get:value"]],["key-error",["key"]],["convert-error",["key","convert:string"]]],[[7,["key","convert:string","has:value","get:value"]],["key-error",["key"]],["convert-error",["key","convert:string"]]]]
+import { makeSubject, nativeLabels, makeKey, nativeAbruptLabels } from "./native.js"
+function labels(){
+ const log:string[]=[]
+ function key():"value"{log.push("key");return "value"}
+ const value=match(makeSubject(log)){when {[key()]:1}:0;when {[key()]:let value}:value;default:-1;}
+ const skipped:string[]=[]
+ function skipKey():"value"{skipped.push("key");return "value"}
+ const miss=match(1 as unknown){when {[skipKey()]:let value}:1;default:0;}
+ return [[value,log],[miss,skipped]]
+}
+function abruptLabels(){
+ return ["value","key-throw","convert-throw"].map(mode=>{
+  const log:string[]=[]
+  const subject=makeSubject(log)
+  const key=makeKey(log,mode)
+  try{
+   const value=match(subject){when {[key()]:let value}:value;default:0;}
+   return [value,log]
+  }catch(error){return [error,log]}
+ })
+}
+export effect function main(){return [labels(),nativeLabels(),abruptLabels(),nativeAbruptLabels()]}
