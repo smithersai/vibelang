@@ -1710,11 +1710,11 @@ function namesModule(node, ts, requires) {
       if (ts.isCallExpression(parent) && parent.arguments.length === 1 && parent.arguments[0] === use && directories.get(calleeName(parent.expression, ts)) === "dirname") return false
     }
     if (!ts.isNewExpression(use) || use.arguments?.length !== 2 || use.arguments[1] !== url || !ts.isIdentifier(use.expression) || use.expression.text !== "URL") return true
-    // Against a base, a path that is not empty and starts with neither `?`
-    // nor `#` drops the base's file name (or the whole base when absolute),
-    // so it names the same URL from the sibling beside the module. The URL
-    // parser strips leading whitespace, so a path that starts with it proves
-    // nothing.
+    // After excluding leading whitespace and C0 controls, a nonempty path
+    // starting with neither `?` nor `#` drops the base's file name (or the
+    // whole base when absolute), so it names the same URL from the sibling.
+    // Raw input can become empty, query-only or fragment-only after parsing
+    // removes initial controls and spaces; such input proves nothing.
     const first = use.arguments[0]
     const head = ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first) ? first.text : ts.isTemplateExpression(first) ? first.head.text : null
     return head === null || !/^[^\s\x00-\x1f?#]/.test(head)

@@ -1,8 +1,8 @@
 // A declaration the platform split moves may read import.meta.url only where
 // the result names the module's directory, which the sibling shares. As the
-// base of `new URL(path, import.meta.url)`, any path that does not start with
-// `?` or `#` and is not empty drops the base's file name (WHATWG URL relative
-// resolution), so `new URL("results/", import.meta.url)` names the same
+// base of `new URL(path, import.meta.url)`, a path with no leading whitespace
+// or C0 controls that does not start with `?` or `#` and is not empty drops
+// the base's file name (WHATWG URL relative resolution), so `new URL("results/", import.meta.url)` names the same
 // directory from the sibling as `new URL("./results/", import.meta.url)`
 // does. The split accepted only paths written with `./` or `../`, so Smithers'
 // apps/mvp evals suite stayed TypeScript.
