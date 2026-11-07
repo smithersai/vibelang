@@ -243,7 +243,7 @@ func checkDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive stri
 	cost.stage("stock")
 
 	preflight, cancelPreflight := context.WithTimeout(t.Context(), 2*HangLimit)
-	reason, preflightErr := declarationIdentitySuppressedStockAPI(preflight, api, dir, stock)
+	reason, preflightErr := declarationIdentitySuppressedStockAPIWith(preflight, api, dir, stock, declarationIdentityPreflightFor(t, api))
 	cancelPreflight()
 	cost.stage("preflight")
 	if preflightErr != nil {
