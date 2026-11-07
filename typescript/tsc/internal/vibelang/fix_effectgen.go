@@ -526,10 +526,19 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		program = "(effect (): " + g.returns + " => " + body + ")()"
 	}
 	// Effect.gen(…).pipe(stages) changes with its .pipe, whose stages read the
-	// block's type: effect { … } |> stages.
+	// block's type: effect { … } |> stages. A captured pipe replaces its whole
+	// call, this receiver included, so the block is written inside the capture.
 	if pipe := pipeOfReceiver(outer); pipe != nil {
 		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() {
-			return &formRewrite{edits: joinEditsAt(append(rewrite.edits, sourceEdit{start, end, program})), description: "an effect block"}
+			block := sourceEdit{start, end, program}
+			if len(rewrite.edits) == 1 && rewrite.edits[0].start == nodeStart(file, pipe) && rewrite.edits[0].end == pipe.End() {
+				captured := capturedEffectPipeWithEdits(file, pipe, []sourceEdit{block})
+				if !captured.fixable() {
+					return refuse("nested pipeline changes cannot retain their original source positions")
+				}
+				return &formRewrite{edits: captured.edits, description: "an effect block"}
+			}
+			return &formRewrite{edits: joinEditsAt(append(rewrite.edits, block)), description: "an effect block"}
 		}
 	}
 	return &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, program)}}, description: "an effect block"}
