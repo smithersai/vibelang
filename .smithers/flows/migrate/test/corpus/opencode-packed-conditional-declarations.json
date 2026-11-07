@@ -1,0 +1,12 @@
+{
+  "source": "packages/core/src/session/stats.ts",
+  "imports": {
+    "#host": {
+      "default": "./dist/host.js"
+    }
+  },
+  "declarationDir": "dist/types",
+  "host": "export declare const value: 1;\n",
+  "entry": "import { value } from \"#host\";\nexport declare const read: () => typeof value;\n",
+  "rule": "Public declarations reachable from `exports` or `types` must remain API-identical; unreachable new declarations pass as `addedPrivate`."
+}
