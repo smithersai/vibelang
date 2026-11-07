@@ -91,11 +91,6 @@ test.todo("rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-
 // Activation: Import an exported effect main and observe zero body executions until the consumer explicitly runs its Effect.
 test.todo("rule-evidence: docs/design/vips/0026-top-level-and-main.md#amendment-source-file-kind | cov2-vips-b no implicit runner | present | This adds no implicit runner or special `main`.")
 
-// rule-evidence: docs/design/vips/0027-declaration-output.md#0e5c71d26e4133c6
-// VIP-27: declaration semantic comparison discretion.
-// Activation: Run declaration comparison with quote, whitespace, extension, import order and member order changes, and negative type/name/doc controls.
-test.todo("rule-evidence: docs/design/vips/0027-declaration-output.md#decision | cov2-vips-b declaration semantic comparison discretion | present | Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count (\"Byte identical seems a bit extreme shouldn't it have some level of discretion?\").")
-
 // rule-evidence: docs/design/vips/0027-declaration-output.md#a9bfea09ebda13fb
 // VIP-27: public plain callable throws never.
 // Activation: Inspect emitted declarations for every public non-effect call signature and verify a separate consumer sees thrown type never.

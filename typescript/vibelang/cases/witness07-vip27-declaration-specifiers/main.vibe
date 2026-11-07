@@ -1,0 +1,11 @@
+// Witness for VIP-27 declaration import spelling; run.mjs compiles a fixture
+// under the TypeScript extension flags and compares it with stock tsc.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#dfb078b3e764e1eb
+// VIP-27: ordinary declarations use the native twin's relative specifiers.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#83b28e1d15dc1f66
+// VIP-27: compatibility sidecars keep VibeLang source references.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#1a67a43edea75cde
+// VIP-27: extension flags do not rewrite declaration specifiers; JavaScript rewriting is separate.
+// rule-evidence: docs/design/vips/0027-declaration-output.md#421e344cdcabbeeb
+// VIP-27: a package declaration names no VibeLang source extension.
+export const witness = 1
