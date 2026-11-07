@@ -16008,10 +16008,13 @@ func (c *Checker) getSuggestedImportSource(moduleReference string, tsExtension s
 }
 
 func (c *Checker) getSuggestedImportExtension(extensionlessImportPath tspath.RootedFilePath) string {
+	// .vibe and .vibex sit beside .ts and .tsx and share their runtime names
+	// (007-tooling.md#diagnostic-settings).
 	switch true {
 	case c.program.FileExists(extensionlessImportPath.AppendSuffix(".mts")):
 		return ".mjs"
-	case c.program.FileExists(extensionlessImportPath.AppendSuffix(".ts")):
+	case c.program.FileExists(extensionlessImportPath.AppendSuffix(".ts")),
+		c.program.FileExists(extensionlessImportPath.AppendSuffix(tspath.ExtensionVibe)):
 		return ".js"
 	case c.program.FileExists(extensionlessImportPath.AppendSuffix(".cts")):
 		return ".cjs"
@@ -16021,7 +16024,8 @@ func (c *Checker) getSuggestedImportExtension(extensionlessImportPath tspath.Roo
 		return ".js"
 	case c.program.FileExists(extensionlessImportPath.AppendSuffix(".cjs")):
 		return ".cjs"
-	case c.program.FileExists(extensionlessImportPath.AppendSuffix(".tsx")):
+	case c.program.FileExists(extensionlessImportPath.AppendSuffix(".tsx")),
+		c.program.FileExists(extensionlessImportPath.AppendSuffix(tspath.ExtensionVibex)):
 		return core.IfElse(c.compilerOptions.Jsx == core.JsxEmitPreserve, ".jsx", ".js")
 	case c.program.FileExists(extensionlessImportPath.AppendSuffix(".jsx")):
 		return ".jsx"
