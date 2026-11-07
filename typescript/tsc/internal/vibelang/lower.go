@@ -311,8 +311,8 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		saved := tx.inEffect
 		tx.inEffect = inEffectCode(node)
 		defer func() { tx.inEffect = saved }()
-	case node.Parent != nil && classMemberNameChild(node.Parent, node):
-		// A computed member name runs where its class is defined.
+	case node.Parent != nil && (classMemberNameChild(node.Parent, node) || classDecoratorChild(node.Parent, node)):
+		// A computed member name or a decorator runs where its class is defined.
 		saved := tx.inEffect
 		tx.inEffect = inEffectCode(node)
 		defer func() { tx.inEffect = saved }()

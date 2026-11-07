@@ -35,3 +35,43 @@ func init() {
 		})
 	}
 }
+
+// A decorator expression also runs where its class is defined, in decorator,
+// heritage and member order, so in effect code a try there runs in the
+// enclosing Effect, as await does in an async function (chapter 2: @(try d)
+// is allowed where @(await d) is). The reference is plain JavaScript, which
+// has no decorators, and its decorator, mark, returns what it decorates, so
+// each reference evaluates the same decorator expression at the same point and
+// leaves out the identity application: a class decorator before its class,
+// whose decorators run first, and a member decorator in a computed name at its
+// member's position.
+var classDecoratorCitation = Citation{VIP: 5, Template: "yield* ‹x›",
+	Quote:   classMemberKeyCitation.Quote,
+	Reading: "A decorator expression is not among those positions: await is allowed there, so the reference evaluates each decorator with yield* where the class is defined, class decorators first, then the extends expression, then each member's decorators before its name."}
+
+func init() {
+	const vibeMark = "const mark = <V>(value: V, _context: unknown): V => value; const B = class { }; "
+	const refMark = "const mark = (value, _context) => value; const B = class { }; "
+	for _, p := range []struct{ key, vibe, ref string }{
+		{"vip05.class-decorator-order",
+			vibeMark + "@(ev(\"cd\"), try Effect.succeed(mark)) class C extends (ev(\"base\"), B) { [(ev(\"k\"), \"m\")]() { return 1 } }; return try Effect.sync(() => (new C() as any).m())",
+			refMark + "const $cd = (ev(\"cd\"), yield* Effect.succeed(mark)); void $cd; class C extends (ev(\"base\"), B) { [(ev(\"k\"), \"m\")]() { return 1 } }; return yield* Effect.sync(() => new C().m())"},
+		{"vip05.member-decorator-order",
+			vibeMark + "class C extends (ev(\"base\"), B) { [(ev(\"k\"), \"a\")]() { return 1 } @(ev(\"d\"), try Effect.succeed(mark)) m() { return 2 } static n() { return 3 } }; return try Effect.sync(() => (new C() as any).m() + (C as any).n())",
+			refMark + "class C extends (ev(\"base\"), B) { [(ev(\"k\"), \"a\")]() { return 1 } [(ev(\"d\"), yield* Effect.succeed(mark), \"m\")]() { return 2 } static n() { return 3 } }; return yield* Effect.sync(() => new C().m() + C.n())"},
+		{"vip05.member-decorator-failure",
+			vibeMark + "class C extends (ev(\"base\"), B) { @(ev(\"d\"), try Effect.fail(3).pipe(Effect.as(mark))) m() { return 2 } }; ev(\"after\"); return 0",
+			refMark + "class C extends (ev(\"base\"), B) { [(ev(\"d\"), yield* Effect.fail(3).pipe(Effect.as(mark)), \"m\")]() { return 2 } }; ev(\"after\"); return 0"},
+	} {
+		p := p
+		Register(&Construct{
+			Key: p.key, VIP: 5,
+			Requires:  []string{"vip01.effect-function", "vip05.try"},
+			Citations: []Citation{classDecoratorCitation},
+			Focus: func(g *Gen, s *Scope) []Stmt {
+				g.UseEffect()
+				return []Stmt{&catchEdge{vibe: p.vibe, ref: p.ref}}
+			},
+		})
+	}
+}

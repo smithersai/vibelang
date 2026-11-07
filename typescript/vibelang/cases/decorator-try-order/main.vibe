@@ -1,0 +1,53 @@
+// expect-result: ["same","same","o"]
+import { Effect } from "effect"
+import { plain } from "./plain.js"
+effect function viaTry() {
+  const log: string[] = []
+  const v = <T>(tag: string, x: T): T => { log.push(tag); return x }
+  const dec = (tag: string) => <V>(value: V, _context: unknown): V => { log.push("apply " + tag); return value }
+  class B { constructor() { log.push("B") } }
+  @(try Effect.sync(() => v("cd", dec("cd"))))
+  class C extends (try Effect.sync(() => v("ext", B))) {
+    @(try Effect.sync(() => v("d1", dec("d1")))) [v("k1", "a")]() { return 1 }
+    [try Effect.sync(() => v("k2", "b"))]() { return 2 }
+    @(v("d3", dec("d3"))) static [try Effect.sync(() => v("k3", "c"))]() { return 3 }
+    @(try Effect.sync(() => v("d4", dec("d4")))) last() { return 4 }
+    tail() { return 5 }
+  }
+  log.push("defined")
+  new C()
+  return log
+}
+async function viaAwait() {
+  const log: string[] = []
+  const v = <T>(tag: string, x: T): T => { log.push(tag); return x }
+  const dec = (tag: string) => <V>(value: V, _context: unknown): V => { log.push("apply " + tag); return value }
+  class B { constructor() { log.push("B") } }
+  @(await Promise.resolve(v("cd", dec("cd"))))
+  class C extends (await Promise.resolve(v("ext", B))) {
+    @(await Promise.resolve(v("d1", dec("d1")))) [v("k1", "a")]() { return 1 }
+    [await Promise.resolve(v("k2", "b"))]() { return 2 }
+    @(v("d3", dec("d3"))) static [await Promise.resolve(v("k3", "c"))]() { return 3 }
+    @(await Promise.resolve(v("d4", dec("d4")))) last() { return 4 }
+    tail() { return 5 }
+  }
+  log.push("defined")
+  new C()
+  return log
+}
+class Owner {
+  tag = "o"
+  mark<V>(value: V, _context: unknown): V { return value }
+  effect describe() {
+    let seen = ""
+    @(try Effect.sync(() => { seen = this.tag; return this.mark })) class Inner {}
+    void Inner
+    return seen
+  }
+}
+export effect function main() {
+  const expected = JSON.stringify(try Effect.sync(() => plain()))
+  const a = JSON.stringify(try viaTry())
+  const b = JSON.stringify(try Effect.promise(() => viaAwait()))
+  return [a === expected ? "same" : a, b === expected ? "same" : b, try new Owner().describe()]
+}

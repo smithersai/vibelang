@@ -93,44 +93,46 @@ func classExtendsChild(class, child *ast.Node) bool {
 // classMemberNameChild reports whether child is the computed name of a member
 // of class parent, which the class evaluates where it is defined, in its
 // enclosing context, as await in it suspends an enclosing async function
-// (chapter 2). A class with a decorator keeps its names in TypeScript's
-// decorator transform, outside the enclosing generator, so its names stay
-// plain code.
+// (chapter 2). A decorated class keeps this context: the decorator transform
+// suspends its caller for a .vibe file (estransforms/esdecorator_vibelang.go).
 func classMemberNameChild(member, child *ast.Node) bool {
 	return ast.IsComputedPropertyName(child) && ast.IsClassElement(member) && member.Name() == child &&
-		member.Parent != nil && ast.IsClassLike(member.Parent) && !classHasDecorators(member.Parent)
+		member.Parent != nil && ast.IsClassLike(member.Parent)
 }
 
-// classHasDecorators reports whether class or one of its members or their
-// parameters is decorated.
-func classHasDecorators(class *ast.Node) bool {
-	if ast.HasDecorators(class) {
-		return true
-	}
-	for _, member := range class.Members() {
-		if ast.HasDecorators(member) {
-			return true
-		}
-		if ast.IsFunctionLike(member) {
-			for _, parameter := range member.Parameters() {
-				if ast.HasDecorators(parameter) {
-					return true
-				}
+// classDecoratorChild reports whether child is a decorator of class-like n or
+// of n, a member of a class. A decorator expression runs where its class is
+// defined, in its enclosing context, as await in it suspends an enclosing
+// async function (chapter 2: @(try d) is allowed where @(await d) is).
+func classDecoratorChild(n, child *ast.Node) bool {
+	return ast.IsDecorator(child) && (ast.IsClassLike(n) || ast.IsClassElement(n) && n.Parent != nil && ast.IsClassLike(n.Parent))
+}
+
+// decoratorExpressions returns the expressions of node's decorators, in
+// source order.
+func decoratorExpressions(node *ast.Node) []*ast.Node {
+	var out []*ast.Node
+	if modifiers := node.Modifiers(); modifiers != nil {
+		for _, modifier := range modifiers.Nodes {
+			if ast.IsDecorator(modifier) {
+				out = append(out, modifier.Expression())
 			}
 		}
 	}
-	return false
+	return out
 }
 
 // classDefinitionExpressions returns what class evaluates where it is
-// defined, in ECMAScript's ClassDefinitionEvaluation order: its extends
-// expression, then its members' computed names (classMemberNameChild).
+// defined, in ECMAScript's ClassDefinitionEvaluation order: its decorators,
+// its extends expression, then each member's decorators and computed name
+// (classDecoratorChild, classMemberNameChild).
 func classDefinitionExpressions(class *ast.Node) []*ast.Node {
-	var out []*ast.Node
+	out := decoratorExpressions(class)
 	if base := ast.GetClassExtendsHeritageElement(class); base != nil {
 		out = append(out, base.Expression())
 	}
 	for _, member := range class.Members() {
+		out = append(out, decoratorExpressions(member)...)
 		if name := member.Name(); name != nil && classMemberNameChild(member, name) {
 			out = append(out, name)
 		}

@@ -98,6 +98,7 @@ type classInfo struct {
 }
 
 type esDecoratorTransformer struct {
+	vibeLang bool // a .vibe file: esdecorator_vibelang.go
 	transformers.Transformer
 	compilerOptions                            *core.CompilerOptions
 	top                                        *lexicalEntry
@@ -270,6 +271,7 @@ func (tx *esDecoratorTransformer) exitOther() {
 
 func (tx *esDecoratorTransformer) visitSourceFile(node *ast.SourceFile) *ast.Node {
 	tx.top = nil
+	tx.vibeLang = node.IsVibeLang()
 	tx.shouldTransformPrivateStaticElementsInFile = false
 	visited := tx.Visitor().VisitEachChild(node.AsNode())
 	tx.EmitContext().AddEmitHelper(visited, tx.EmitContext().ReadEmitHelpers()...)
@@ -986,6 +988,11 @@ func (tx *esDecoratorTransformer) transformClassLike(node *ast.Node) *ast.Expres
 	}
 
 	mergedStatements := ec.MergeEnvironment(classDefinitionStatements, lexicalEnvironment)
+	if tx.vibeLang { // VibeLang: esdecorator_vibelang.go
+		if suspension := classEvaluationSuspension(mergedStatements); suspension != ast.KindUnknown {
+			return tx.newSuspendingClassIIFE(mergedStatements, suspension)
+		}
+	}
 	return f.NewImmediatelyInvokedArrowFunction(mergedStatements)
 }
 
@@ -1432,6 +1439,7 @@ func (tx *esDecoratorTransformer) partialTransformClassElement(member *ast.Node,
 		result.name = tx.visitPropertyName(member.Name())
 		tx.exitName()
 	}
+	result.name = tx.carryPendingSuspension(result.name) // VibeLang: esdecorator_vibelang.go
 
 	if (modifiers == nil || len(modifiers.Nodes) == 0) && (ast.IsMethodDeclaration(member) || ast.IsPropertyDeclaration(member)) {
 		// Don't emit leading comments on the name for methods and properties without modifiers, otherwise we

@@ -1,0 +1,10 @@
+// expect: TS2322
+import { Effect } from "effect"
+const mark = <V>(value: V, _context: unknown): V => value
+effect function failing() {
+  @(try Effect.fail("bad").pipe(Effect.as(mark))) class X {}
+  void X
+  return 1
+}
+// A decorator's failure is the function's: its Effect can fail with string.
+export const typed: Effect.Effect<number, never> = failing()
