@@ -1,0 +1,10 @@
+// expect: EK0104 EK0105 TS2322 EK1301 EK0104
+// A Functions modifier error leaves the member it rejects intact, so the
+// file's other checker diagnostics still appear, as tsc reports TS1042 beside
+// TS2322. An error-body member rejected by Functions gets no extra category.
+class Getter { effect get x() { return 1 } }
+function f() { async effect function g() { return 1 } }
+const n: number = "x"
+error E8 { constructor() {} }
+error E16 { effect set v(x: number) {} }
+export {}

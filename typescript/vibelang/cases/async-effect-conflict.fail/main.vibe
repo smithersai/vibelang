@@ -1,4 +1,4 @@
-// expect: EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105
+// expect: EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 TS7006
 // VIP-1/VIP-2: both orders parse and diagnose their conflicting function kinds.
 effect async function f() {}
 async effect function g() {}
@@ -23,3 +23,5 @@ effect async x => x;
 async effect x => x;
 effect async <T>(x: T) => x;
 async effect <T>(x: T) => x;
+
+// An untyped bare parameter also gets TS7006, as `async x => x` does in TypeScript.

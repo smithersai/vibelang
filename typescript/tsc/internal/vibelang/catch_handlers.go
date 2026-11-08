@@ -39,6 +39,19 @@ import (
 // EK0509: a catch handler that is no function literal.
 var EK0509 = message(509, errorCategory, parser.VibeLangCatchHandlerMessage)
 
+// recoverableSyntaxCodes are parser diagnostics whose recovery leaves an
+// intact AST, so the checker still reports the file's independent semantic
+// diagnostics, as tsc does for its modifier grammar errors. Catch arrows and
+// provider separators keep their recovered bodies. A rejected effect
+// accessor, constructor or effect/async pair keeps its native member, and the
+// error-body rules skip it (restrictedEffectMember).
+var recoverableSyntaxCodes = map[int32]bool{
+	EK0509.Code: true,
+	EK1202.Code: true,
+	EK0104.Code: true,
+	EK0105.Code: true,
+}
+
 func init() {
 	checker.RegisterCallArgumentDiagnosticsFilterHook(func(c *checker.Checker, call *ast.Node, ds []*ast.Diagnostic) []*ast.Diagnostic {
 		if len(ds) == 0 || catchExpressionOf(call) == nil || !isVibeLangFile(ast.GetSourceFileOfNode(call)) {
@@ -58,9 +71,7 @@ func init() {
 		})
 	})
 	compiler.RegisterRecoverableSyntacticDiagnosticCallback(func(d *ast.Diagnostic) bool {
-		// Catch arrows and provider separators retain intact recovered bodies,
-		// so independent semantic diagnostics still apply.
-		return d.Source() == diagnosticSource && (d.Code() == EK0509.Code || d.Code() == EK1202.Code)
+		return d.Source() == diagnosticSource && recoverableSyntaxCodes[d.Code()]
 	})
 	registry[EK0509.Code] = EK0509
 	tsFormFixCodes = append(tsFormFixCodes, EK0509.Code)
