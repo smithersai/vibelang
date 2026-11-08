@@ -111,8 +111,11 @@ func trustedEmptyLegacyDeclarations(t *testing.T, dir string) map[string]string 
 			count++
 		}
 	}
-	if count != 2 {
-		t.Fatalf("legacy wrapper must reject both unknown callbacks, got %d errors", count)
+	// The impl parameter retains its own callable type, which admits an untagged
+	// foreign function (chapter 3, Assignability); the retired wrapper is
+	// EK0407 alone.
+	if count != 0 {
+		t.Fatalf("a retired wrapper reports EK0407, not EK0402 too; got %d EK0402 errors", count)
 	}
 	if retired != 2 {
 		t.Fatalf("each retired wrapper must report EK0407, got %d", retired)

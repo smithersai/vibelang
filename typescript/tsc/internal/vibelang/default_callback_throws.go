@@ -26,7 +26,7 @@ func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsClassLike(node) && classKindOf(node) == ordinaryClass {
 			checkDefaultForeignCallbackClass(c, node)
 		}
-		if defaultForeignValueContext(node) && !defaultForeignIntrinsicMatcher(c, node) && !defaultForeignBindingTagged(c, node, map[*ast.Symbol]bool{}) {
+		if defaultForeignValueContext(node) && !(ast.IsCallExpression(node) && isTrustedEmptyCall(c, node)) && !defaultForeignIntrinsicMatcher(c, node) && !defaultForeignBindingTagged(c, node, map[*ast.Symbol]bool{}) {
 			target := c.GetContextualType(node, checker.ContextFlagsNone)
 			forwarded := defaultForeignForwardedTarget(c, node)
 			if forwarded != nil {
@@ -189,13 +189,14 @@ func defaultForeignCallbackFitsOwn(c *checker.Checker, source, target *checker.T
 
 // The runtime's listed trusted(impl, [Errors]) wrapper requires impl's written
 // contract: its generic impl parameter is impl's own type, which would
-// otherwise admit an untagged foreign function.
+// otherwise admit an untagged foreign function. The retired empty
+// trusted(impl, []) checks impl at its own type; EK0407 owns its retirement.
 func defaultForeignTrustedImpl(c *checker.Checker, node *ast.Node) bool {
 	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
 		node = node.Parent
 	}
 	call := node.Parent
-	return call != nil && ast.IsCallExpression(call) && len(call.Arguments()) > 0 && call.Arguments()[0] == node && runtimeExportOf(c, call.Expression()) == "trusted"
+	return call != nil && ast.IsCallExpression(call) && len(call.Arguments()) > 0 && call.Arguments()[0] == node && runtimeExportOf(c, call.Expression()) == "trusted" && !isTrustedEmptyCall(c, call)
 }
 
 // A variadic forwarding call checks each supplied value against the

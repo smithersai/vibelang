@@ -27,6 +27,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A misspelled host-global name in an erased `typeof` type query lost TypeScript’s spelling suggestion. The compiler now suggests the valid type reference while keeping host globals out of value-expression suggestions.
 - Inside `namespace` blocks, unresolved experimental names could suggest banned host globals or omit service guidance. Diagnostics now follow the surrounding VibeLang rules.
+- An empty-list `trusted` wrapper around a foreign predicate or assertion could report a false `EK0402` callback error. It now preserves TypeScript's narrowing and declaration types while reporting only the wrapper's `EK0407` retirement error.
+
 - A class definition inside an `effect` block could report an implementation restriction for an escaping `break` or `continue`. Decorators, computed names and `extends` expressions now report the block’s `EK0202` error.
 
 - Outward jumps in class definition expressions inside an `async match` could report `EK0204` and suggest moving the `do`. They now report `EK0706` once and explain the Promise boundary.

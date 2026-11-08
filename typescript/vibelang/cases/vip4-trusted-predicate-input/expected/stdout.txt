@@ -1,0 +1,7 @@
+minimal: EK0407 alone; native adapter, declarations and runtime match TypeScript
+generic: EK0407 alone; native adapter, declarations and runtime match TypeScript
+genericInstantiated: EK0407 alone; native adapter, declarations and runtime match TypeScript
+assertion: EK0407 alone; native adapter, declarations and runtime match TypeScript
+method: EK0407 alone; native adapter, declarations and runtime match TypeScript
+declaredThrows: EK0407 alone; native adapter, declarations and runtime match TypeScript
+unannotated assertion: TypeScript diagnostics preserved
