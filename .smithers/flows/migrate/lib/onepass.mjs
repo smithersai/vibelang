@@ -462,7 +462,24 @@ async function fix(config, p, cm, options) {
               tsconfig = posix.basename(temporary)
             }
             try {
-              const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(config.target, dir), root: config.target, only: keep, timeoutMs, maxRounds, log: join(p.batch("01"), "logs", `fix-${slug(project.file)}-${sweep}-${i}`) })
+              const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(config.target, dir), root: config.target, only: keep, timeoutMs, maxRounds,
+                privateCompanions: config.platformModuleBodies === true,
+                privateCompanionReceipts: cm.platform?.companions,
+                onPrivateCompanion: record => {
+                  const rename = cm.renames.find(r => r.to === record.file)
+                  if (!rename) throw new Error("private compiler companion outside the selected batch: " + record.file)
+                  cm.platform ??= { splits: [], refused: [] }
+                  cm.platform.companions ??= []
+                  if (!cm.platform.companions.some(c => c.companion === record.companion))
+                    cm.platform.companions.push({ file: rename.from, companion: record.companion, privateExports: record.privateExports })
+                  cm.exportEdits ??= []
+                  for (const edit of record.exportEdits) if (!cm.exportEdits.some(e => e.privateCompanion === edit.privateCompanion && e.key === edit.key && e.manifest === edit.manifest))
+                    cm.exportEdits.push(edit)
+                  durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
+                  appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "private-compiler-companion-plan", file: rename.from, companion: record.companion, ...record.privateExports })
+                },
+                writePrivateManifest: (file, text, mode) => durableWrite(join(config.target, file), text, mode),
+                log: join(p.batch("01"), "logs", `fix-${slug(project.file)}-${sweep}-${i}`) })
               sweepFixes += fixed.rounds.reduce((n, r) => n + r.fixes, 0)
               cm.fix.rounds.push(...fixed.rounds.map(r => ({ ...project, sweep, shard: i, ...r })))
               mergeFixes(cm.fix.byFile, fixed.byFile)

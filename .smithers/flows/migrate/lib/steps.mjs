@@ -1747,7 +1747,8 @@ export async function codemod(options) {
   const refused = []
   const restored = []
   const rounds = []
-  const companions = []
+  const companions = config.platformModuleBodies === true ? (platform.companions ??= []) : []
+  if (config.platformModuleBodies === true) state.platform = platform
   let settled = true
   for (const pkg of config.packages.filter((pkg) => files.some((f) => packageOf(config, f) === pkg))) {
     const projects = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
@@ -1755,7 +1756,21 @@ export async function codemod(options) {
       const progress = { package: pkg.dir, project: tsconfig, startedAt: new Date().toISOString() }
       state.attempts.at(-1).projects.push(progress)
       saveState(p.codemodState(b), state)
-      const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(t, pkg.dir), root: t, only: renames.map((r) => r.to), log: join(p.batch(b), "logs", `fix-attempt-${attempt}-${slug(pkg.dir)}${projects.length > 1 ? `-${slug(tsconfig)}` : ""}`) })
+      const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(t, pkg.dir), root: t, only: renames.map((r) => r.to),
+        privateCompanions: config.platformModuleBodies === true,
+        privateCompanionReceipts: companions,
+        onPrivateCompanion: record => {
+          const rename = renames.find(r => r.to === record.file)
+          if (!rename) throw new Error("private compiler companion outside the selected batch: " + record.file)
+          if (!companions.some(c => c.companion === record.companion))
+            companions.push({ file: rename.from, companion: record.companion, privateExports: record.privateExports })
+          state.exportEdits ??= []
+          for (const edit of record.exportEdits) if (!state.exportEdits.some(e => e.privateCompanion === edit.privateCompanion && e.key === edit.key && e.manifest === edit.manifest))
+            state.exportEdits.push(edit)
+          saveState(p.codemodState(b), state)
+        },
+        writePrivateManifest: (file, text, mode) => durableWrite(join(t, file), text, mode),
+        log: join(p.batch(b), "logs", `fix-attempt-${attempt}-${slug(pkg.dir)}${projects.length > 1 ? `-${slug(tsconfig)}` : ""}`) })
       for (const [file, kinds] of Object.entries(fixed.byFile)) byFile[file] = kinds
       refused.push(...fixed.refused)
       restored.push(...fixed.restored)
@@ -2030,7 +2045,13 @@ export async function revertMany(options) {
     const recordedBuildEntries = cm.buildEntries?.edits ?? []
     const buildEntryEdits = recordedBuildEntries.some(edit => edit.source === ts)
       ? restoreBuildEntrypoints(config.target, recordedBuildEntries, ts, typeScriptOf(config)) : []
-    const exportEdits = restoreExports(config.target, cm.exportEdits ?? [], ts)
+    // A private helper plan can be durable before the step's result exists.
+    const pending = readJsonIf(p.codemodState(source.batch))?.exportEdits ?? []
+    const recordedExports = [...(cm.exportEdits ?? [])]
+    for (const edit of pending) if (edit.privateCompanion && !recordedExports.some(e =>
+      e.module === edit.module && e.manifest === edit.manifest && e.key === edit.key && e.privateCompanion === edit.privateCompanion))
+      recordedExports.push(edit)
+    const exportEdits = restoreExports(config.target, recordedExports, ts)
     const scriptEdits = restoreViteScripts(config.target, cm.scriptEdits ?? [], ts)
     const packageScriptEdits = restoreScripts(config.target, cm.packageScriptEdits ?? [], ts)
     // Every consumer gets back the specifier the repository wrote, a

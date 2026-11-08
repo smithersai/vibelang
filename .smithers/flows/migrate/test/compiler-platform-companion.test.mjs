@@ -29,6 +29,12 @@ const ts = require.resolve("typescript/package.json").replace(/\/package.json$/,
 // companion, as the native platform repair does, unless a file claims the name.
 const fakeCompiler = `#!/usr/bin/env node
 const fs = require("node:fs"), path = require("node:path")
+if (process.argv.includes("--showConfig")) {
+  const config = JSON.parse(fs.readFileSync(process.argv[process.argv.indexOf("-p") + 1], "utf8"))
+  const files = config.files ?? fs.readdirSync("src").filter(f => /[.](ts|tsx|vibe|vibex)$/.test(f) && !f.includes(".d.")).map(f => "./src/" + f)
+  console.log(JSON.stringify({ files, compilerOptions: config.compilerOptions ?? {} }))
+  process.exit(0)
+}
 if (process.argv.includes("--fix")) {
   const at = process.argv.indexOf("--only")
   const listed = at < 0 ? [] : fs.readFileSync(process.argv[at + 1].replace(/^@/, ""), "utf8").split("\\n").filter(Boolean)
@@ -109,14 +115,14 @@ test("a recorded companion is in the batch's scope; an unrecorded one is foreign
   assert.deepEqual(foreignChanges(added, { files, codemod: { platform: { splits: [], refused: [] } } }), added)
 })
 
-test("codemod records the compiler's companion and revert removes it, recorded or left by a stopped fix", { timeout: 60000 }, async () => {
+for (const mode of ["step", "one-pass"]) for (const privateCompanions of [false, true]) test("codemod records and reverts compiler companions, " + mode + ", private exports " + privateCompanions, { timeout: 60000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-compiler-companion-run-"))
   const target = join(root, "repo"), run = join(root, "run")
   const put = (file, text) => { mkdirSync(join(target, file, ".."), { recursive: true }); writeFileSync(join(target, file), text) }
   try {
     put("src/value.ts", wrapped)
     put("src/plain.ts", "export const k = 1\n")
-    put("package.json", JSON.stringify({ type: "module" }))
+    put("package.json", JSON.stringify({ type: "module", ...(privateCompanions ? { exports: { "./*": "./src/*.ts" } } : {}) }))
     put(".gitignore", "node_modules/\n")
     put("tsconfig.json", '{"compilerOptions":{"noEmit":true,"allowImportingTsExtensions":true},"include":["src/**/*"]}')
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
@@ -124,11 +130,18 @@ test("codemod records the compiler's companion and revert removes it, recorded o
     mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
     symlinkSync(ts, join(target, "node_modules/typescript"))
     writeProbeAwareCompiler(join(target, "node_modules/.bin/vibelang"), fakeCompiler, { mode: 0o755 })
-    writeJson(paths(run).config, makeConfig({ target, test: "true", vibelangVersion: "0.0.11" }))
+    writeJson(paths(run).config, { ...makeConfig({ target, test: "true", vibelangVersion: "0.0.11" }), platformModuleBodies: privateCompanions })
     writeJson(paths(run).setup, {})
-    writeJson(paths(run).plan, { batches: [{ files: ["src/value.ts", "src/plain.ts"] }] })
+    writeJson(paths(run).plan, { ...(mode === "one-pass" ? { mode } : {}), batches: [{ files: ["src/value.ts", "src/plain.ts"] }] })
     const result = await codemod({ run })
-    assert.deepEqual(result.platform.companions, [{ file: "src/value.ts", companion: "src/value.platform.ts" }])
+    const privateExports = { manifest: "package.json", keys: ["./value.platform"] }
+    assert.deepEqual(result.platform.companions, [{ file: "src/value.ts", companion: "src/value.platform.ts",
+      ...(privateCompanions ? { privateExports } : {}) }])
+    if (privateCompanions) {
+      assert.equal(JSON.parse(readFileSync(join(target, "package.json"), "utf8")).exports["./value.platform"], null)
+      const journal = JSON.parse(readFileSync(mode === "one-pass" ? paths(run).codemod("01") : paths(run).codemodState("01"), "utf8"))
+      assert.ok(journal.exportEdits.some(edit => edit.privateCompanion === "src/value.platform.ts"))
+    }
     assert.ok(readFileSync(join(target, "src/value.platform.ts"), "utf8").startsWith(compilerCompanionMarker))
     const changed = await Jj.changedPaths(target)
     assert.deepEqual(foreignChanges(changed, { files: result.files.map(path => ({ path, planned: path.replace(/\.ts$/, ".vibe") })), codemod: result }), [])
@@ -138,6 +151,7 @@ test("codemod records the compiler's companion and revert removes it, recorded o
     await revert({ run, batch: "01", file: "src/value.vibe", reason: "recorded companion" })
     assert.equal(readFileSync(join(target, "src/value.ts"), "utf8"), wrapped)
     assert.equal(existsSync(join(target, "src/value.platform.ts")), false)
+    if (privateCompanions) assert.equal(Object.hasOwn(JSON.parse(readFileSync(join(target, "package.json"), "utf8")).exports, "./value.platform"), false)
     await revert({ run, batch: "01", file: "src/plain.vibe", reason: "stray companion" })
     assert.equal(readFileSync(join(target, "src/plain.ts"), "utf8"), "export const k = 1\n")
     assert.equal(existsSync(join(target, "src/plain.platform.ts")), false)

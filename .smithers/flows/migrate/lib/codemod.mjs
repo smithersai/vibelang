@@ -4,11 +4,12 @@ import { captureTrackedSourceSnippets, refreshSourceSnippets } from "./source-sn
 // that name them by VibeLang's rules, then run `vibelang --fix` until it finds
 // nothing more to fix, recording each rewrite it applied and each it refused.
 import { spawnSync } from "node:child_process"
-import { appendFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join, posix, relative, resolve, sep } from "node:path"
 import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
+import { privateResolverExports } from "./import-meta-platform.mjs"
 import { sidecarConfigIn, sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
 import { applyEdits, editableImports, resolveAliased, resolveRelative, splitSpecifier } from "./imports.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
@@ -462,6 +463,15 @@ export function restoreExports(root, edits, module) {
     const path = join(root, edit.manifest)
     if (!existsSync(path)) continue
     const pkg = JSON.parse(readFileSync(path, "utf8"))
+    if (edit.privateCompanion !== undefined) {
+      if (edit.field !== "exports" || compilerCompanionOf(edit.module) !== edit.privateCompanion)
+        throw new Error("invalid private compiler companion export receipt")
+      if (!pkg.exports || !Object.hasOwn(pkg.exports, edit.key)) continue
+      if (pkg.exports[edit.key] !== null) throw new Error(edit.manifest + ": private companion export changed during migration")
+      delete pkg.exports[edit.key]
+      writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
+      continue
+    }
     const source = posix.relative(posix.dirname(edit.manifest), vibe)
     const sidecar = sidecarOf(root, posix.dirname(edit.manifest))
     // Routing can remove generated maps before a recorded source is returned.
@@ -820,6 +830,9 @@ export const isCompilerCompanion = (root, file) => {
  * file and kind, the refusals, the diagnostics of the last run, and the
  * companions the compiler created for selected modules. With only, ordinary
  * repairs use --only for the batch's files (relative to root).
+ * With privateCompanions, exact exclusions keep proven fresh helpers private;
+ * onPrivateCompanion journals the export edits before writePrivateManifest;
+ * privateCompanionReceipts replays that owned plan after an interruption.
  * A defensive snapshot still restores nonselected sources if a compiler writes
  * outside its selection, including on interruption. An earlier batch's file,
  * hand repairs included, stays as committed. An empty selection starts no fix.
@@ -832,7 +845,54 @@ export async function fixToFixedPoint(options) {
   const fresh = [...new Set((options.only ?? []).map(compilerCompanionOf).filter(Boolean))]
     .filter(companion => !claimsCompanion(companionRoot, companion))
   const fixed = await fixToFixedPointUnscoped(options)
-  return { ...fixed, companions: fresh.filter(companion => isCompilerCompanion(companionRoot, companion)).sort() }
+  const owned = new Set(fresh.filter(companion => isCompilerCompanion(companionRoot, companion)))
+  // The durable plan proves absence before the earlier repair. A marker alone
+  // still cannot adopt a companion that existed before migration.
+  if (options.privateCompanions) for (const receipt of options.privateCompanionReceipts ?? []) {
+    if (!receipt.privateExports || !(options.only ?? []).some(file => compilerCompanionOf(file) === receipt.companion)) continue
+    if (isCompilerCompanion(companionRoot, receipt.companion)) owned.add(receipt.companion)
+  }
+  const companions = [...owned].sort()
+  const companionExports = options.privateCompanions ? await privateCompilerCompanionExports(companionRoot, companions, options) : []
+  return { ...fixed, companions, ...(companionExports.length ? { companionExports } : {}) }
+}
+
+// A fresh-file receipt proves this helper had no original counterpart. Apply
+// the same exact wildcard exclusions as other private generated helpers,
+// without reclassifying an authored module or altering the compiler's code.
+async function privateCompilerCompanionExports(root, companions, { onPrivateCompanion, writePrivateManifest, log }) {
+  const edits = []
+  for (const companion of companions) {
+    if (!isCompilerCompanion(root, companion)) continue
+    const file = companion.replace(/\.platform\.ts$/, ".vibe")
+    const documents = new Map()
+    const privateExports = privateResolverExports(root, file, companion, {
+      exists: path => posix.normalize(path) !== posix.normalize(companion) && existsSync(join(root, path)),
+      read: path => { const text = readFileSync(join(root, path), "utf8"); documents.set(path, text); return text },
+    })
+    if (!privateExports) continue
+    const before = documents.get(privateExports.manifest), pkg = JSON.parse(before)
+    const exportEdits = privateExports.keys.map(key => ({
+      manifest: privateExports.manifest, field: "exports", key, module: file, privateCompanion: companion,
+    }))
+    const record = { file, companion, privateExports, exportEdits }
+    for (const key of privateExports.keys) pkg.exports[key] = null
+    // Persist the plan before its atomic manifest write. An interrupted plan
+    // can be undone even when its key was never installed.
+    if (log) appendFileSync(log + ".scope.log", JSON.stringify({ stage: "private-compiler-companion-plan", ...record }) + "\n")
+    const recorded = onPrivateCompanion?.(record)
+    if (recorded && typeof recorded.then === "function") await recorded
+    const path = join(root, privateExports.manifest)
+    if (readFileSync(path, "utf8") !== before) throw new Error(privateExports.manifest + ": changed during private companion preparation")
+    const after = JSON.stringify(pkg, null, 2) + "\n", mode = statSync(path).mode & 0o777
+    if (writePrivateManifest) {
+      const written = writePrivateManifest(privateExports.manifest, after, mode)
+      if (written && typeof written.then === "function") await written
+    } else writeFileSync(path, after)
+    edits.push(record)
+    if (log) appendFileSync(log + ".scope.log", JSON.stringify({ stage: "private-compiler-companion", ...record }) + "\n")
+  }
+  return edits
 }
 
 async function fixToFixedPointUnscoped(options) {
