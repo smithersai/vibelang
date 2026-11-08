@@ -9,6 +9,7 @@
 // The script fails unless every package version equals the compiler's own
 // version (typescript/tsc/internal/vibelang/identity.go) and every pin agrees.
 import { releaseDocsProblems, typescriptShimPatch } from "../../docs/tools/release-docs.mjs"
+import { zipFixedTimes } from "./zip-times.mjs"
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
@@ -181,7 +182,8 @@ const stagedCompiler = JSON.parse(readFileSync(join(vibelangDir, "package.json")
 stagedCompiler.files.push("tree-sitter")
 writeFileSync(join(vibelangDir, "package.json"), JSON.stringify(stagedCompiler, null, 2) + "\n")
 mkdirSync(join(vibelangDir, "editor"))
-copyFileSync(vsix, join(vibelangDir, "editor", "vibelang.vsix"))
+// vsce stamps each entry with the packaging time; a fixed time keeps vibelang reproducible.
+writeFileSync(join(vibelangDir, "editor", "vibelang.vsix"), zipFixedTimes(readFileSync(vsix)))
 order.push({
   name: "vibelang",
   dir: vibelangDir,
