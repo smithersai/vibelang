@@ -60,9 +60,11 @@ A concurrency limit bounds running work, not iterable pulling. In pinned Effect,
 
 A `return` cannot leave a `for concurrent` item, including its head binding initialization, computed member names and class heritage. These positions report `EK1904`. A nested method or function keeps its own returns. Use `continue` to finish one item. The same jump restrictions apply at every concurrency limit, including `1`. A labeled `continue` naming the concurrent loop itself, including any label in a chain, also finishes that item, including from a `do` expression; nested loops keep their own jump targets.
 
+A `break` or labeled `continue` cannot jump from an item to an enclosing statement (`EK1903` and `EK1905`). Class decorators, computed member names and heritage expressions keep the item's jump rules; member bodies keep their own context.
+
 A label cannot be repeated inside the statement it labels. Reusing an enclosing label in a `for concurrent` body reports `TS1114`; a nested function has its own label scope.
 
-A label named by `continue` in a `for concurrent` body counts as used for `allowUnusedLabels`. In a chain, each label is checked separately.
+A label named by `break` or `continue` in a `for concurrent` item counts as used for `allowUnusedLabels`, including references in class decorators, computed names and heritage expressions. In a chain, each label is checked separately.
 
 A written `for concurrent(limit())` limit is evaluated once, before the iterable expression, in both the native compiler and TypeScript mapper. The traversal calls the project's `Effect.forEach`, so item fibers and surrounding `fork` operations share the same Effect instance even when the runtime has a separate installation.
 

@@ -756,7 +756,7 @@ func (p *Parser) checkDoBoundary(d *doExpression, boundary *ast.Node, what strin
 			keyword = "yield"
 		}
 		if keyword != "" {
-			if p.doForTryHeadJump(boundary, n) || p.doConcurrentItemReturn(boundary, n) {
+			if p.doForTryHeadJump(boundary, n) || p.doConcurrentItemJump(boundary, n) {
 				return // The per-item checker owns its language diagnostic, once.
 			}
 			p.doError(p.skipRangeTrivia(n.Loc), DoBoundaryCode, DoBoundaryMessage, keyword, what)

@@ -1,0 +1,9 @@
+// expect: EK1903 EK1905
+effect function f00(){outer:for(const n of [1]){for concurrent(const m of [1]){class C { [do { break outer; "m" }](){} }}}}
+effect function f01(){outer:for(const n of [1]){for concurrent(const m of [1]){class C { [do { continue outer; "m" }](){} }}}}
+effect function f10(){outer:for(const n of [1]){for concurrent(1)(const m of [1]){class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}
+effect function f11(){outer:for(const n of [1]){for concurrent(1)(const m of [1]){class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}
+effect function f20(){outer:for(const n of [1]){for concurrent(const m of [1]){@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}
+effect function f21(){outer:for(const n of [1]){for concurrent(const m of [1]){@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}
+effect function f30(){outer:for(const n of [1]){for concurrent(1)(const m of [1]){class C extends do { break outer; (class {}) } {}}}}
+effect function f31(){outer:for(const n of [1]){for concurrent(1)(const m of [1]){class C extends do { continue outer; (class {}) } {}}}}

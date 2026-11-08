@@ -629,7 +629,7 @@ func concurrentBreakEscapes(node, body *ast.Node) bool {
 	}
 	file := ast.GetSourceFileOfNode(body)
 	outside := false
-	for parent := node.Parent; parent != nil; parent = parent.Parent {
+	for child, parent := node, node.Parent; parent != nil; child, parent = parent, parent.Parent {
 		if parent == body {
 			outside = true
 		}
@@ -638,6 +638,9 @@ func concurrentBreakEscapes(node, body *ast.Node) bool {
 			return false
 		}
 		if ast.IsFunctionLikeOrClassStaticBlockDeclaration(parent) {
+			if classDecoratorChild(parent, child) || parent.Name() == child && ast.IsComputedPropertyName(child) {
+				continue
+			}
 			// A do expression's arrow is not a source function. A nested
 			// item's closure, met before leaving this body, makes the break
 			// that item's to report.
@@ -662,12 +665,18 @@ func concurrentContinueEscapes(node, body *ast.Node) bool {
 		return false
 	}
 	outside := false
-	for parent := node.Parent; parent != nil; parent = parent.Parent {
+	for child, parent := node, node.Parent; parent != nil; child, parent = parent, parent.Parent {
 		if parent == body {
 			outside = true
 		}
+		if !outside && isForTry(parent) {
+			return false
+		}
 		if ast.IsFunctionLikeOrClassStaticBlockDeclaration(parent) {
-			if ast.IsArrowFunction(parent) && fiberHelper(parent.Parent) == "$forConcurrent" {
+			if classDecoratorChild(parent, child) || parent.Name() == child && ast.IsComputedPropertyName(child) {
+				continue
+			}
+			if isDoArrow(ast.GetSourceFileOfNode(body), parent) || ast.IsArrowFunction(parent) && fiberHelper(parent.Parent) == "$forConcurrent" {
 				continue
 			}
 			return false
