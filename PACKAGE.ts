@@ -109,6 +109,8 @@ const specTests = [
   "TestGrammarAdmissionEffectIdentifierBeforeIs",
   "TestGrammarAdmissionFiberPatternKeys",
   "TestGrammarAdmissionFiberPatternRegression",
+  "TestGrammarAdmissionComputedKeyContext",
+  "TestGrammarAdmissionServiceRejectedMembers",
   "TestGrammarAdmissionArithmeticGrouping",
   "TestGrammarAdmissionAssertedIs",
   "TestGrammarAdmissionAssertedIsRegression",

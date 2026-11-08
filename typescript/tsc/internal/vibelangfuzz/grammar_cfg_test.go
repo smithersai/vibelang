@@ -652,7 +652,7 @@ IndexSignature = "[" IdentifierName TypeAnnotation "]" TypeAnnotation | "readonl
 GetAccessorSignature = "get" PropertyName "(" ")" ReturnAnnotation?
 SetAccessorSignature = "set" PropertyName "(" FormalParameter ")"
 CallSignature = TypeParameters? "(" FormalParameters ")" ReturnAnnotation?
-RejectedMemberShape = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? | CallSignature
+RejectedMemberShape = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? | CallSignature | ClassMemberModifiers? PropertyName [no LineTerminator here] "!" TypeAnnotation? Initializer? | IndexSignature | "new" CallSignature
 PropertySignature = PropertyName "?"? TypeAnnotation? | "readonly" [no LineTerminator here] PropertyName "?"? TypeAnnotation?
 MethodSignature = PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation?
 ClassElementName = PropertyName | "#" IdentifierName
@@ -1336,9 +1336,20 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 					if s.kind == grammarSymNT {
 						s.eff = child
 						symbolAwait := childAwait
-						// Computed names precede their callable/initializer context.
+						// Computed names precede their callable/initializer context:
+						// ECMAScript's ClassElementName carries the enclosing Yield
+						// and Await, and Appendix A's Effect follows them, so
+						// `[try k()]() { }` in an effect function keeps `try`.
 						if s.text == "PropertyName" || s.text == "ClassElementName" {
 							symbolAwait = await
+							s.eff = effect
+						}
+						// A callable nested as a whole alternative (a method's
+						// accessor) resets its own body; it is named in the
+						// enclosing context.
+						if grammarEffectBodies[s.text] {
+							symbolAwait = await
+							s.eff = effect
 						}
 						if rawOwner == "ClassElement" && len(r.rhs) == 2 && r.rhs[0].text == "static" && s.text == "Block" {
 							symbolAwait = grammarAwaitAsync

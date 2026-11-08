@@ -813,3 +813,19 @@ head still reads `fork` or `join` as a pattern identifier
 (`effect function f(p) { return p is join }`, also as the operand of
 `fork.in(s) p is join`), so those witnesses are the pending key
 `admission:fiber-pattern-reference`.
+
+A computed member name is evaluated where its class or object literal is
+written. The lab parameterized every symbol of a callable production as plain
+code, computed names included, although its Await scoping already gave
+`PropertyName` and `ClassElementName` the enclosing context; the Effect
+parameter now follows the same rule, so `[try k()]() { }` in an effect
+function derives while the member's own body stays plain.
+`RejectedMember` is "a ClassElement or a TypeScript TypeMember … that parses,
+then a static rule rejects it"; the subset's shape for it now includes an index
+signature, a construct signature and a definitely assigned field, so the
+service cases that write `[name: string]: unknown` or `key!: string` derive and
+their rejection is the static rule's.
+The lexer reads `\uXXXX` and `\u{…}` escapes as part of an identifier, so the
+escaped-identifier cases derive. With these, 3,359 of 3,871 case programs
+derive; the lexer's `>` joined with `=`, `!!=`, and decorators remain the
+known lab limits, next to the pending admission keys the cases write.

@@ -44,6 +44,7 @@ func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 		"type W = new (x: number) => Date; type X = abstract new () => object;",
 		"class Y { me(): this { return this; } }",
 		"const ü = 1; const café = ü;",
+		"const \\u0069d = 1; const x = \\u{69}d; type T = { readonly __pro\\u0074o__: number };",
 		"const f = (release: (r: number) => string) => release(1);",
 	}
 	invalid := []string{

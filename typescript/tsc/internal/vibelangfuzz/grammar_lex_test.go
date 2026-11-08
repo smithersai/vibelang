@@ -67,10 +67,20 @@ func grammarLexSource(src string) []grammarToken {
 				j++
 			}
 			t.kind = 'n'
-		case grammarIsWordRune(r) || r == '$' || r == '#':
-			for j < len(rs) && (grammarIsWordRune(rs[j]) || rs[j] == '$') {
-				j++
+		case grammarIsWordRune(r) || r == '$' || r == '#' || grammarIsUnicodeEscapeAt(rs, i):
+			// A `\uXXXX` or `\u{…}` escape is part of an identifier, as in
+			// ECMAScript's IdentifierName; the word keeps its written form.
+			for j = i; j < len(rs); {
+				switch {
+				case grammarIsWordRune(rs[j]) || rs[j] == '$' || j == i && rs[j] == '#':
+					j++
+				case grammarIsUnicodeEscapeAt(rs, j):
+					j += grammarUnicodeEscapeLen(rs, j)
+				default:
+					goto word
+				}
 			}
+		word:
 			t.kind = 'w'
 		default:
 			t.kind = 'p'
@@ -87,6 +97,33 @@ func grammarLexSource(src string) []grammarToken {
 		i = j
 	}
 	return out
+}
+
+// grammarIsUnicodeEscapeAt reports a `\uXXXX` or `\u{…}` escape at i.
+func grammarIsUnicodeEscapeAt(rs []rune, i int) bool {
+	return grammarUnicodeEscapeLen(rs, i) > 0
+}
+
+// grammarUnicodeEscapeLen is the length of the escape at i, or 0.
+func grammarUnicodeEscapeLen(rs []rune, i int) int {
+	if i+1 >= len(rs) || rs[i] != '\\' || rs[i+1] != 'u' {
+		return 0
+	}
+	hex := func(r rune) bool { return r >= '0' && r <= '9' || r >= 'a' && r <= 'f' || r >= 'A' && r <= 'F' }
+	if i+2 < len(rs) && rs[i+2] == '{' {
+		j := i + 3
+		for j < len(rs) && hex(rs[j]) {
+			j++
+		}
+		if j > i+3 && j < len(rs) && rs[j] == '}' {
+			return j + 1 - i
+		}
+		return 0
+	}
+	if i+6 <= len(rs) && hex(rs[i+2]) && hex(rs[i+3]) && hex(rs[i+4]) && hex(rs[i+5]) {
+		return 6
+	}
+	return 0
 }
 
 // grammarPunctuators, longest first.
