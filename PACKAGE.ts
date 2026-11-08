@@ -114,6 +114,8 @@ const specTests = [
   "TestGrammarAdmissionTryInHatchKeys",
   "TestGrammarAdmissionTryInHatchRegression",
   "TestGrammarAdmissionCoalesceMixing",
+  "TestGrammarAdmissionDataEmptyTypeParametersKeys",
+  "TestGrammarAdmissionDataEmptyTypeParametersRegression",
   "TestGrammarAdmissionComputedKeyContext",
   "TestGrammarAdmissionServiceRejectedMembers",
   "TestGrammarAdmissionArithmeticGrouping",

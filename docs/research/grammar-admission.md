@@ -884,3 +884,9 @@ checker reports `TS1098` only on a function or a class. The lab's
 TypeScript subset now admits `<>` on those two declarations and nowhere
 else, so `function f<>() {}` and `class C<> {}` still have no derivation and
 the compiler still rejects them with `TS1098`.
+
+A data declaration is not one of those two. `DataDeclaration` takes
+TypeScript's `TypeParameters`, whose list needs a `TypeParameter`, and a
+class, an error or a service with `<>` reports `TS1098`. A data declaration
+with `<>` compiles with no diagnostic, so `data D<> { Value { value: number } }`
+remains pending under `admission:data-empty-type-parameters`.

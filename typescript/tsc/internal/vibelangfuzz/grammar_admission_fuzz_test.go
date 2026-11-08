@@ -312,6 +312,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"pattern-rest-ellipsis-binding", grammarPatternRestEllipsisGaps[1]},
 	{"try-in-hatch", grammarTryInHatchWitness},
 	{"try-in-hatch-promise-shapes", grammarTryInHatchCaseWitness},
+	{"data-empty-type-parameters", grammarDataEmptyTypeParametersWitness},
+	{"data-empty-type-parameters-campaign", grammarDataEmptyTypeParametersCampaign},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1199,6 +1201,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarTryInHatch(declarationTokens) {
 		return "admission:try-in-hatch"
+	}
+	if grammarDataEmptyTypeParameters(declarationTokens) {
+		return "admission:data-empty-type-parameters"
 	}
 	for i, tok := range ts {
 		// EffectFunction = EffectModifier [no LineTerminator here] "function":

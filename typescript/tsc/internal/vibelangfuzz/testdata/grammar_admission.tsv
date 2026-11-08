@@ -71,6 +71,7 @@ parser/vibelang_catch.go:Parser.parseVibeLangCatchHandler	admission:catch	900-ap
 parser/vibelang_catch.go:Parser.nextTokenIsEqualsGreaterThanToken	admission:catch	900-appendices.md#CatchExpression	admitted	VIP-5 literal handler production; value handler recovery audited separately
 parser/vibelang_data.go:Parser.scanDataName	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
 parser/vibelang_data.go:Parser.parseDataDeclaration	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
+parser/vibelang_data.go:Parser.parseDataDeclaration@empty-type-parameters	admission:data-empty-type-parameters	-	pending	Appendix A: `DataDeclaration` takes TypeScript's `TypeParameters`, which needs one `TypeParameter`; `data D<> { }` reports no `TS1098` where a class, error or service does
 parser/vibelang_data.go:Parser.parseDataVariant	admission:data	900-appendices.md#Variant	support	Appendix A: Variant; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_data.go:Parser.parseVibeLangFields	admission:schema-data-fields	900-appendices.md#SchemaDeclaration,900-appendices.md#DataDeclaration	support	VIP-15 and VIP-16/28 shared field parsing; `schema` and `data` field separators keep their declaration-specific diagnostics
 parser/vibelang_data.go:schemaFieldSeparatorDiagnostic	admission:schema	900-appendices.md#SchemaDeclaration	recovery	VIP-15: `EK1504` reports a missing schema field separator

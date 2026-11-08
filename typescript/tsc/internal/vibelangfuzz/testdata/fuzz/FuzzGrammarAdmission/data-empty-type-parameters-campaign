@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:data-empty-type-parameters-campaign\nimport { Data } from \"effect\" ;\nexport data as < > { Value { value : A } }")
