@@ -927,3 +927,13 @@ restriction after `get` or `set`, and TypeScript's parser accepts the getter
 (`canFollowGetOrSetKeyword` has no same-line test), as stock TypeScript 5.9.3
 confirms for object literals and classes. The lab had written a
 no-line-terminator restriction there; it is gone.
+
+A case-seeded campaign put `join ?? 7` in a service's `defaultValue`
+initializer inside an effect function. Appendix A resets the source Effect
+context in class field and enum member initializers, and explicitly gives
+`DefaultMember` the same rule. The lab now carries that reset, so ordinary
+`fork` and `join` identifiers derive there. Computed names retain their
+enclosing context, static blocks retain keyword reservation, and a nested
+explicit Effect callable or block establishes its own context. The regression
+test exercises both names across instance and static fields, enum members and
+service defaults, with plain and nested Effect controls.

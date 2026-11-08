@@ -121,6 +121,7 @@ const specTests = [
   "TestGrammarAdmissionTryMatchStatementKeys",
   "TestGrammarAdmissionTryMatchStatementRegression",
   "TestGrammarAdmissionComputedKeyContext",
+  "TestGrammarAdmissionInitializerContext",
   "TestGrammarAdmissionServiceRejectedMembers",
   "TestGrammarAdmissionArithmeticGrouping",
   "TestGrammarAdmissionAssertedIs",

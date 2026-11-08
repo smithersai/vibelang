@@ -1315,11 +1315,15 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 		// Group/optional helpers inherit their callable's already-selected
 		// context; they must not reset an async body a second time.
 		callable := plain && rawOwner == owner
-		resetAwait := callable || !r.vibe && rawOwner == "FieldDefinition"
+		// Appendix A gives class fields (the service default included) and
+		// enum initializers a plain source context. Optional/group helpers
+		// retain the reset; computed names below retain the enclosing context.
+		initializer := owner == "FieldDefinition" || owner == "EnumMember" || owner == "DefaultMember"
+		resetAwait := callable || initializer
 		for _, effect := range []bool{false, true} {
 			for _, await := range []grammarAwaitContext{grammarAwaitNone, grammarAwaitModule, grammarAwaitAsync} {
 				rhs := slices.Clone(r.rhs)
-				child := effect && !plain
+				child := effect && !plain && !initializer
 				childAwait := await
 				if resetAwait {
 					childAwait = grammarAwaitNone
@@ -1350,6 +1354,13 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 						// ECMAScript's ClassElementName carries the enclosing Yield
 						// and Await, and Appendix A's Effect follows them, so
 						// `[try k()]() { }` in an effect function keeps `try`.
+						// RejectedMemberShape restates the class-field alternatives
+						// for service recovery. Its initializer has the same reset
+						// even when it also matches an admitted DefaultMember.
+						if owner == "RejectedMemberShape" && (s.text == "Initializer" || s.text == "Initializer?") {
+							s.eff = false
+							symbolAwait = grammarAwaitNone
+						}
 						if s.text == "PropertyName" || s.text == "ClassElementName" {
 							symbolAwait = await
 							s.eff = effect

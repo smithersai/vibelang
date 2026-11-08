@@ -318,6 +318,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"producer-cover-grammar-campaign", grammarProducerCoverCampaign},
 	{"try-match-statement", grammarTryMatchStatementWitness},
 	{"try-match-statement-campaign", grammarTryMatchStatementCampaign},
+	{"initializer-context", "effect function f() { class C { value = join ?? 7; } enum E { A = fork(1) } service S { static readonly defaultValue = join ?? 7; value: number } }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
