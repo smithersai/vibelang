@@ -5,11 +5,9 @@ import (
 	"testing"
 )
 
-// Appendix A reserves `fork` and `join` wherever an IdentifierReference could
-// stand in Effect code. A `new` callee and a heritage expression now report
-// EK1702 there; an is pattern's head is read by the pattern parser, which
-// takes either word as a pattern identifier and leaves only checker errors
-// such as EK4410, so the form is still accepted without a defining rule.
+// Appendix A reserves fork and join wherever an IdentifierReference could
+// stand in Effect code, including a pattern head. Ordinary callable bodies
+// and property names retain their original contexts.
 var grammarFiberPatternGaps = []string{
 	"effect function f(p) { return p is join }",
 	"effect function f(p) { return p is not fork }",
@@ -39,9 +37,9 @@ func TestGrammarAdmissionFiberPatternRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarFiberPatternGaps {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			if grammarAdmissionVerdict(t, w, source) {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("reserved pattern reference still exposes an admission gap: %v", r.Diagnostics)
 			}
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})

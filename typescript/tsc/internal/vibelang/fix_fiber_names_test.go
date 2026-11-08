@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
@@ -46,6 +47,15 @@ func TestReservedFiberNames(t *testing.T) {
 			{"nested class name", `export effect function f() { class W { } return 1 }`, 1},
 			{"plain expression name in effect code", `export effect function f() { return function W() { return 1 } }`, 0},
 			{"renamed destructuring", `export effect function f(o: { W: number }) { const { W: v } = o; return v }`, 0},
+			{"is pattern", "export effect function f(p: unknown) { return p is W }", 1},
+			{"negated pattern", "export effect function f(p: unknown) { return p is not W.C }", 1},
+			{"match pattern", "export effect function f(p: unknown) { return match (p) { when W: 1; default: 0; } }", 1},
+			{"relational pattern", "export effect function f(p: unknown) { return p is instanceof W.C }", 1},
+			{"signed pattern", "export effect function f(p: unknown) { return p is -W }", 1},
+			{"signed relational pattern", "export effect function f(p: unknown) { return p is < -W }", 1},
+			{"plain pattern", "export function f(p: unknown) { return p is W }", 0},
+			{"pattern member name", "export effect function f(p: unknown, o: { W: number }) { return p is o.W }", 0},
+			{"nested plain pattern", "export effect function f(p: unknown) { return () => p is W }", 0},
 			{"new callee", `export effect function f() { return new W }`, 1},
 			{"new call", `export effect function f() { return new W(1) }`, 1},
 			{"new member", `export effect function f() { return new W.C }`, 1},
@@ -202,6 +212,52 @@ export { join }
 	for _, want := range []string{`import { join as join2 } from "effect/Array"`, `return join2(["a"], ",")`, `export { join2 as join }`} {
 		if !strings.Contains(fixed, want) {
 			t.Fatalf("--fix writes\n%s\nwithout %s", fixed, want)
+		}
+	}
+}
+
+// A pattern's reference does not authorize changing a valid outer class's name.
+func TestFiberPatternFixPreservesOuterClass(t *testing.T) {
+	for _, word := range []string{"fork", "join"} {
+		source := "class " + word + " {}\nexport effect function f(p: unknown) { return p is " + word + " }\n"
+		program, file, _, _ := editorProgram(t, source)
+		c, done := program.GetTypeCheckerForFile(t.Context(), file)
+		renamed := fiberNameRenames(c, file)
+		done()
+		if len(renamed) != 1 || len(renamed[0].edits) != 0 || !strings.Contains(renamed[0].why, "outer callable") {
+			t.Fatalf("unsafe outer rename: %+v", renamed)
+		}
+	}
+}
+
+func TestFiberPatternFixImportAlias(t *testing.T) {
+	result := fixProjectOf(t, map[string]string{
+		"model.ts":  "export class join {}\n",
+		"main.vibe": "import { join } from \"./model.js\"\nexport effect function f(p: unknown) { const child = fork Effect.succeed(0); const n = join child; return [p is join, n] }\n",
+	})
+	got := fixedText(result, "main.vibe")
+	if result.Err != nil || len(result.Refused) != 0 || !strings.Contains(got, "join as join2") || !strings.Contains(got, "p is join2") || !strings.Contains(got, "fork Effect.succeed(0)") || !strings.Contains(got, "join child") {
+		t.Fatalf("pattern import repair: %+v\n%s", result, got)
+	}
+}
+
+// A registered diagnostic repair reports its code, including renames and
+// preserving reference repairs, so retirement witnesses can verify its use.
+func TestFiberNameReportByCode(t *testing.T) {
+	for _, source := range []string{
+		"export effect function f(join: number) { return join }\n",
+		"class join {}\nexport effect function f() { return new join() }\n",
+	} {
+		program, file, _, _ := editorProgram(t, source)
+		result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), FixOptions{})
+		fixed := result.Files[file.FileName()]
+		if result.Err != nil || fixed == nil || fixed.Counts[1702] != 1 || len(fixed.Rewrites) != 0 {
+			t.Fatalf("reserved-name repair is not counted by diagnostic: %+v, file %+v", result, fixed)
+		}
+		var report strings.Builder
+		result.Report(&report, func(tspath.RootedFilePath) string { return "main.vibe" })
+		if !strings.Contains(report.String(), "EK1702 ×1") {
+			t.Fatalf("missing diagnostic repair count: %s", report.String())
 		}
 	}
 }

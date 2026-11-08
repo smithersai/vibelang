@@ -563,6 +563,11 @@ func (p *Parser) parseMatchRelationOperand(operator ast.Kind) *ast.Node {
 // or extractor pattern: a name, then .name and [expression] accesses.
 func (p *Parser) parseMatchValueExpression() *ast.Node {
 	pos := p.nodePos()
+	// Pattern heads and relational operands read an IdentifierReference,
+	// including after a sign. Property names after the head stay unrestricted.
+	if p.isReservedFiberName() {
+		p.rejectReservedFiberName(p.tokenRange())
+	}
 	var expr *ast.Node
 	switch {
 	case p.token == ast.KindThisKeyword || p.token == ast.KindSuperKeyword:

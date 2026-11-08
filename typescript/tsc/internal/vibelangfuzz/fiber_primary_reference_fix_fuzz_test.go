@@ -29,7 +29,7 @@ func TestFiberPrimaryReferenceFixQuoted(t *testing.T) {
 // Vary the primary reference, its trivia, and the enclosing Effect form.
 func FuzzFiberPrimaryReferenceFix(f *testing.F) {
 	startShortBudget(f)
-	shapes := []string{"new-class", "heritage-class", "new-member", "new-computed", "heritage-member", "heritage-call"}
+	shapes := []string{"new-class", "heritage-class", "new-member", "new-computed", "heritage-member", "heritage-call", "pattern-import"}
 	for _, word := range []string{"fork", "join"} {
 		for _, shape := range shapes {
 			f.Add(word+":"+shape, byte(0))
@@ -71,8 +71,16 @@ func FuzzFiberPrimaryReferenceFix(f *testing.F) {
 		case 2:
 			head = "export const sample = effect { return " + expression + " }\n"
 		}
+		if shape == "pattern-import" {
+			prefix = "import { " + word + " } from \"./model.js\"\n"
+			head = "export effect function sample(p: unknown) { const child = fork Effect.succeed(0); const n = join child; return [p is " + word + ", n] }\n"
+		}
 		source := prefix + head
-		before, err := w.Compile(t.Context(), Single(source))
+		input := Single(source)
+		if shape == "pattern-import" {
+			input.Files["model.ts"] = "export class " + word + " {}\n"
+		}
+		before, err := w.Compile(t.Context(), input)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,11 +92,16 @@ func FuzzFiberPrimaryReferenceFix(f *testing.F) {
 				text = file.Text
 			}
 		}
-		if fixed.Err != nil || len(fixed.Refused) != 0 || text == source || !strings.HasPrefix(text, prefix) {
+		if fixed.Err != nil || len(fixed.Refused) != 0 || text == source || shape != "pattern-import" && !strings.HasPrefix(text, prefix) {
 			Gap(t, "FuzzFiberPrimaryReferenceFix", key, "%s: reference repair changed its outer declaration or was refused: %v %+v\n%s\nafter:\n%s", fiberPrimaryFixQuote, fixed.Err, fixed.Refused, source, text)
 			return
 		}
-		after, err := w.Compile(t.Context(), Single(text))
+		if shape == "pattern-import" && (!strings.Contains(text, "fork Effect.succeed(0)") || !strings.Contains(text, "join child")) {
+			Gap(t, "FuzzFiberPrimaryReferenceFix", key, "%s: import alias changed a written fiber operation:\n%s", fiberPrimaryFixQuote, text)
+			return
+		}
+		input.Files["main.vibe"] = text
+		after, err := w.Compile(t.Context(), input)
 		if err != nil {
 			t.Fatal(err)
 		}

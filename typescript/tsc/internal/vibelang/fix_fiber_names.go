@@ -31,9 +31,6 @@ import (
 // stays ({ fork: fork2 }), an import keeps its source name, and an exported
 // binding keeps its exported name through export { fork2 as fork }.
 
-// fiberNameRenameLabel is the rewrite kind --fix reports for the renames.
-const fiberNameRenameLabel = "fork and join binding renames"
-
 // reservedFiberName is EK1702 as the parser reports it for a binding in effect
 // code, including an Effect expression's own name (VIP-17; Appendix A).
 var reservedFiberName = message(parser.ReservedFiberNameDiagnosticCode, errorCategory, parser.ReservedFiberNameDiagnosticText)
@@ -195,7 +192,27 @@ func fiberNameRenames(c *checker.Checker, file *ast.SourceFile) []fiberRename {
 		}
 		seen[symbol] = true
 		r := fiberRename{name: id, newName: fresh(id.Text())}
-		r.edits, r.why = fiberRenameEdits(c, file, identifiers, symbol, id.Text(), r.newName)
+		// A pattern reference cannot use the plain-arrow repair: parentheses
+		// there group patterns, not arbitrary expressions. Renaming a valid
+		// outer callable would change its observable name. Imports can instead
+		// take an alias without changing the imported value.
+		preserveOperations := false
+		decl := symbol.ValueDeclaration()
+		if decl == nil && len(symbol.Declarations()) != 0 {
+			decl = symbol.Declarations()[0] // import aliases have no value declaration
+		}
+		if decl != nil {
+			name := decl.Name()
+			preserveOperations = name != nil && !slices.ContainsFunc(file.Diagnostics(), func(d *ast.Diagnostic) bool {
+				return d.Code() == reservedFiberName.Code && d.Loc().Pos() == nodeStart(file, name)
+			})
+			if preserveOperations && (ast.IsClassDeclaration(decl) || ast.IsFunctionDeclaration(decl)) {
+				r.why = "rename this pattern reference by hand, preserving the outer callable's name"
+				renames = append(renames, r)
+				return
+			}
+		}
+		r.edits, r.why = fiberRenameEdits(c, file, identifiers, symbol, id.Text(), r.newName, preserveOperations)
 		renames = append(renames, r)
 	}
 	for _, d := range file.Diagnostics() {
@@ -294,11 +311,16 @@ func fiberExpressionNameFix(c *checker.Checker, file *ast.SourceFile, name *ast.
 
 // fiberRenameEdits writes the rename of symbol to newName at each identifier
 // that refers to it, or says why the binding cannot move.
-func fiberRenameEdits(c *checker.Checker, file *ast.SourceFile, identifiers []*ast.Node, symbol *ast.Symbol, name, newName string) ([]sourceEdit, string) {
+func fiberRenameEdits(c *checker.Checker, file *ast.SourceFile, identifiers []*ast.Node, symbol *ast.Symbol, name, newName string, preserveOperations bool) ([]sourceEdit, string) {
 	text := file.Text()
 	var edits []sourceEdit
 	exportedEnd := -1
 	for _, id := range identifiers {
+		// Aliasing an already valid outer binding must retain written fiber
+		// operations. Only an illegal binding's migration reinterprets them.
+		if preserveOperations && id.Flags&ast.NodeFlagsVibeLangIntrinsic != 0 {
+			continue
+		}
 		if id.Text() != name || isFiberMemberName(id) || fiberNameSymbol(c, id) != symbol {
 			continue
 		}
@@ -436,15 +458,13 @@ func fiberNameMigrationFixes(ctx context.Context, program *compiler.Program, fil
 	for _, r := range fiberNameRenames(c, file) {
 		line, _ := scannerLineOf(file, nodeStart(file, r.name))
 		key := "fiberNameRename:" + r.name.Text() + ":" + strconv.Itoa(line+1)
-		label := fiberNameRenameLabel
 		if r.reference {
 			key = "fiberNameReference:" + strconv.Itoa(nodeStart(file, r.name))
-			label = "fork and join reference repairs"
 		}
 		if len(r.edits) == 0 || refused[key] || slices.ContainsFunc(r.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
 			continue
 		}
-		p.fixes = append(p.fixes, fileFix{code: reservedFiberName.Code, edits: r.edits, key: key, label: label, scattered: true})
+		p.fixes = append(p.fixes, fileFix{code: reservedFiberName.Code, edits: r.edits, key: key, scattered: true})
 		taken = append(taken, r.edits...)
 	}
 	return p

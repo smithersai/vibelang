@@ -1,0 +1,4 @@
+FuzzFiberPatternReference fork:not-line-break compiler VIP-7: pinned prefix not permits a line break before its pattern; the same-line lookahead instead ends the pattern before the reserved reference
+FuzzFiberPatternReference corpus:fork-not-line-break compiler VIP-7: pinned prefix not permits a line break before its pattern; the same-line lookahead instead ends the pattern before the reserved reference
+FuzzFiberPatternReference join:not-line-break compiler VIP-7: pinned prefix not permits a line break before its pattern; the same-line lookahead instead ends the pattern before the reserved reference
+FuzzFiberPatternReference corpus:join-not-line-break compiler VIP-7: pinned prefix not permits a line break before its pattern; the same-line lookahead instead ends the pattern before the reserved reference

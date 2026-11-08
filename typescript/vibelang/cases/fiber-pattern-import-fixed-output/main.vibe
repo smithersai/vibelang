@@ -1,0 +1,11 @@
+// expect: EK1702
+// expect-result: [true,1,"join",0]
+import { join as join2 } from "./model.js"
+function make() { return new join2() }
+function readName() { return join2.name }
+export effect function main() {
+  const child = fork Effect.succeed(0)
+  const zero = join child
+  const value = make()
+  return [value is join2, match (value) { when instanceof join2: 1; default: 0; }, readName(), zero]
+}

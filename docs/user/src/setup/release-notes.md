@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A migrated package's emitted JavaScript under `.vibelang/js` kept relative imports without an extension, such as `import { Api } from "../api"`, so plain Node, which that tree exists for, failed with `ERR_MODULE_NOT_FOUND` when a packed package routed a consumer there. The migration flow now writes such an import of a module inside the package as that module's emitted file, `"../api.js"` or `"../location/index.js"`; imports of packages, assets, tests and modules outside the package stay as written.
 
+- An `is` or `match` pattern head, or a relational pattern operand, could use the reserved names `fork` and `join` inside effect code. They now report `EK1702`, like a `new` callee.
 - With the Effect plugin entry setting the severity of a rule that a VibeLang check answers, such as `overriddenSchemaConstructor`, `vibelang --fix` deleted that rule's unused `@effect-diagnostics-next-line` comment and left the check's error on the next line. It now rewrites the comment to `@vibelang-diagnostics-next-line` with the check's code, such as `EK4814:off`, as it does without the plugin setting.
 - The specification walkthrough showed retired recovery syntax such as `catch "guest"`. It now demonstrates current syntax with actual compiler and program output.
 - With `semicolons: "asi"`, formatting a parenthesized `do` statement after another statement still failed with `formatting changed the program`; `vibelang --fix` writes `Option.match` in that form. The formatter now writes `;(do { … })` there, restoring the semicolon it removed before the parentheses.
@@ -774,6 +775,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 | `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it, or `vibelang --fix` to retain the unrun Effect and native suspension. |
 | An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |
 | `new join.C()` or `class extends fork.C {}` inside effect code | `EK1702`: rename the reserved binding, or run `vibelang --fix` to preserve the reference without renaming the binding. Member names such as `tools.join` remain allowed. |
+| `value is join` or `when fork.C:` inside effect code | `EK1702`: use another binding name. `vibelang --fix` aliases imports; a valid outer class or function is left for manual repair to preserve its observable `name`. |
 
 ## 0.0.12
 

@@ -1,0 +1,10 @@
+// expect: EK1702
+// expect-result: [true,0,"fork"]
+import { fork as fork2 } from "./model.js"
+function make() { return new fork2() }
+function readName() { return fork2.name }
+export effect function main() {
+  const child = fork Effect.succeed(0)
+  const zero = join child
+  return [make() is fork2, zero, readName()]
+}

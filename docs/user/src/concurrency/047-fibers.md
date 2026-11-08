@@ -8,6 +8,8 @@ An `effect` function or producer expression cannot name itself `fork` or `join` 
 
 The reservation also covers constructor and base-class references: `new join.C()` or `class extends fork.C {}` inside effect code reports `EK1702`. Rename the binding, or run `vibelang --fix` to preserve the reference through a plain function without changing the binding or its name. Property names such as `new tools.join()` remain ordinary names; plain nested functions and class field initializers keep their own context.
 
+Pattern references follow the same rule: `value is join`, `when fork.C:` and `value is instanceof join.C` report `EK1702` in effect code. Use an import alias or another binding name; property names such as `value is tools.join` remain valid. `vibelang --fix` can alias imports, but leaves a valid outer class or function unchanged when renaming it would change its observable `name`. Applied reserved-name repairs are reported under `EK1702`.
+
 ## Forking and awaiting
 
 ```vibe

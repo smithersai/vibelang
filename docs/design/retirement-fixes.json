@@ -301,6 +301,14 @@
       {
         "input": "typescript/vibelang/cases/fiber-primary-reference.fail",
         "output": "typescript/vibelang/cases/fiber-primary-reference-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/fiber-pattern-import.fail",
+        "output": "typescript/vibelang/cases/fiber-pattern-import-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/fiber-fork-pattern-import.fail",
+        "output": "typescript/vibelang/cases/fiber-fork-pattern-import-fixed-output"
       }
     ]
   },

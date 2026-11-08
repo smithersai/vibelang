@@ -1,0 +1,14 @@
+// expect: EK1702
+// rule-evidence: docs/design/src/002-running.md#fork-and-join
+// VIP-17 (amended): fork and join are reserved wherever an IdentifierReference
+// could stand in Effect code, including an is or match pattern head and a
+// relational pattern operand; a member name after a dot stays a name.
+class join { value = 7 }
+const fork = { C: class { value = 11 } }
+export effect function patterns(p: unknown, s: { join: typeof join }) {
+  const a = p is join
+  const b = p is not fork.C
+  const c = match (p) { when join: 1; when instanceof fork.C: 2; default: 0; }
+  const d = p is s.join
+  return [a, b, c, d]
+}

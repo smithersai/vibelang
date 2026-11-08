@@ -30,7 +30,7 @@ func TestRefusedRenameHoldsItsUsesAndNothingBetween(t *testing.T) {
 		t.Fatalf("the fix between two uses was blocked: %v %+v\n%s", result.Err, result.Sites, got)
 	}
 	for _, refusal := range result.Refused {
-		if refusal.Label != fiberNameRenameLabel {
+		if refusal.Code != reservedFiberName.Code {
 			continue
 		}
 		if !refusal.Spanned || refusal.End-refusal.Start > len("join") {
