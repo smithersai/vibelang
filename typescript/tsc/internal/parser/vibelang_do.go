@@ -2002,6 +2002,9 @@ func (l *doLowering) binary(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		l.p.overrideParentInImmediateChildren(e)
 		return e
 	}
+	if operator == ast.KindBarToken && e.Flags&ast.NodeFlagsVibeLang != 0 {
+		return l.pipe(e, pre)
+	}
 	at := l.p.skipRangeTrivia(e.Loc)
 	switch {
 	case operator == ast.KindCommaToken:
@@ -2090,6 +2093,50 @@ func (l *doLowering) binary(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 	}
 	l.p.overrideParentInImmediateChildren(e)
 	return e
+}
+
+// pipe lowers left |> body when a do expression in body runs as statements
+// (VIP-2, VIP-23). The lifted block would leave the pipe whose topic it
+// reads, so the left side is read once into a constant first, as the pipe
+// evaluates it before its body, and each of this pipe's topics reads that
+// constant; the pipe is then its body. A nested pipe's body keeps its own
+// topic. A body without a topic stays a pipe, for EK2301.
+func (l *doLowering) pipe(e *ast.Node, pre *[]*ast.Node) *ast.Node {
+	b := e.AsBinaryExpression()
+	var topics []*ast.Node
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		switch {
+		case n.Kind == ast.KindIdentifier && n.Flags&ast.NodeFlagsVibeLang != 0 && n.Text() == "%":
+			topics = append(topics, n)
+		case n.Kind == ast.KindBinaryExpression && n.Flags&ast.NodeFlagsVibeLang != 0 && n.AsBinaryExpression().OperatorToken.Kind == ast.KindBarToken:
+			visit(n.AsBinaryExpression().Left)
+		default:
+			n.ForEachChild(visit)
+		}
+		return false
+	}
+	visit(b.Right)
+	if len(topics) == 0 {
+		parts := l.ordered(pre, b.Left, b.Right)
+		b.Left, b.Right = parts[0], parts[1]
+		l.p.overrideParentInImmediateChildren(e)
+		return e
+	}
+	at := l.p.sourceRange(b.Left)
+	name := l.temp("$do_t", at)
+	left := l.expr(b.Left, pre)
+	*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, l.valueOnly(left), at))
+	for _, topic := range topics {
+		// The topic becomes a reference to the constant, where % was written.
+		// It prints the constant (ReparserTransformedLiteral) but stays a source
+		// node, so the editor still finds the % it stands at.
+		topic.AsIdentifier().Text = name.Text()
+		topic.Flags = topic.Flags&^ast.NodeFlagsVibeLang | ast.NodeFlagsVibeLangTemporary | ast.NodeFlagsReparserTransformedLiteral
+		topic.Loc = l.p.skipRangeTrivia(topic.Loc)
+		l.p.vibelangTemps = append(l.p.vibelangTemps, topic)
+	}
+	return l.expr(b.Right, pre)
 }
 
 // shortCircuit returns the test under which operator evaluates its right

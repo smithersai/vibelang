@@ -723,6 +723,11 @@ try {
     assert(shown.includes("(topic) %: string") && shown.includes("runs once, before the pipe's body"), `got ${JSON.stringify(shown)}`)
   })
 
+  await check("hover: a topic in a do expression in the pipe's body shows its type and left side", async () => {
+    const shown = await hover("src/main.vibe", "%.length}")
+    assert(shown.includes("(topic) %: string") && shown.includes("The value of `word`"), `got ${JSON.stringify(shown)}`)
+  })
+
   await check("formatting: a pipe keeps |> together", async () => {
     const edits = await connection.request("textDocument/formatting", { textDocument: { uri: fileUri("src/main.vibe") }, options: { tabSize: 2, insertSpaces: true } })
     const lines = text("src/main.vibe").split("\n")

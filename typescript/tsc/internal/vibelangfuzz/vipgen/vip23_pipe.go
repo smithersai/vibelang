@@ -54,6 +54,9 @@ func init() {
 				p.Temps = append(p.Temps, t)
 				var stage Expr
 				stage, effect = g.pipeStage(s, t, effect)
+				if !effect && g.Chance(5) {
+					stage = &pipeDo{Label: g.Label(), Value: stage}
+				}
 				if g.Chance(4) {
 					stage = &Logged{Label: g.Label(), Value: stage}
 				}
@@ -109,6 +112,9 @@ func init() {
 				t := g.Name("t")
 				p.Temps = append(p.Temps, t)
 				stage := g.plainPipeStage(s, t)
+				if g.Chance(5) {
+					stage = &pipeDo{Label: g.Label(), Value: stage}
+				}
 				if g.Chance(4) {
 					stage = &Logged{Label: g.Label(), Value: stage}
 				}
@@ -232,6 +238,31 @@ func (p *Pipe) Effect(w *Writer) {
 }
 
 func (p *Pipe) Ends() bool { return false }
+
+// A pipeDo is a stage written as a do expression whose block reads the
+// topic: `do { ev("e4"); Math.max(%, 2) }`. VIP-23: "`%` is the topic: the
+// left side's value, evaluated once", wherever the body holds it; VIP-2: "A
+// `do` or `match` inside a larger expression runs where JavaScript evaluates
+// that expression". So the reference is an immediately invoked arrow that
+// logs, then reads the stage's temporary, as vip02.do-operands writes a do.
+// Its Value gives a number and holds no yield, so the arrow changes nothing
+// else.
+type pipeDo struct {
+	Label string
+	Value Expr
+}
+
+func (d *pipeDo) Vibe(w *Writer) {
+	w.Write(fmt.Sprintf("do { ev(%q); ", d.Label))
+	w.Node(d.Value)
+	w.Write(" }")
+}
+
+func (d *pipeDo) Effect(w *Writer) {
+	w.Write(fmt.Sprintf("(() => { ev(%q); return ", d.Label))
+	w.Node(d.Value)
+	w.Write(" })()")
+}
 
 // A Topic is `%`, read as the temporary that holds it.
 type Topic struct{ Temp string }

@@ -771,6 +771,7 @@ parser/vibelang_do.go:doLowering.letStatement	admission:do	900-appendices.md,002
 parser/vibelang_do.go:doLowering.lift	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:doLowering.lowerIn	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:doLowering.ordered	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:doLowering.pipe	admission:do	900-appendices.md,002-running.md	support	VIP-2 and VIP-23: a lifted do expression in a pipe body reads the topic from the left side, evaluated once first; introduces no additional syntax
 parser/vibelang_do.go:doLowering.properties	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:doLowering.ref	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:doLowering.reset	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax

@@ -1,0 +1,7 @@
+// expect: EK2301
+// The outer body's only % belongs to the pipe nested in its do block, so the
+// outer pipe still uses no topic of its own (VIP-23's missing-topic error).
+export function outer(x: number) {
+  const v = x |> do { 1 |> % + 1 }
+  return v
+}

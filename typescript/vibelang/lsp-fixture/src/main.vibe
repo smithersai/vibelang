@@ -56,3 +56,9 @@ export effect function spanned() {
     return try greeting()
   }, "load")
 }
+
+// A do expression in a pipe body reads the topic (VIP-2, VIP-23).
+export effect function measured() {
+  const word = try greeting()
+  return word |> do { const loud = %.toUpperCase(); `${loud}:${%.length}` }
+}

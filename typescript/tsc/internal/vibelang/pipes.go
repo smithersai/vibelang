@@ -149,15 +149,45 @@ func checkPipes(c *checker.Checker, file *ast.SourceFile) {
 // topicQuickInfo tells a hover on % what it stands for: the value of the
 // pipe's left side.
 func topicQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
-	if !isTopic(node) {
-		return "", ""
-	}
-	pipe := pipeOfTopic(node)
-	if pipe == nil {
-		return "", ""
-	}
 	file := ast.GetSourceFileOfNode(node)
-	left := nodeText(file, pipe.AsBinaryExpression().Left)
+	var left *ast.Node
+	if isTopic(node) {
+		if pipe := pipeOfTopic(node); pipe != nil {
+			left = pipe.AsBinaryExpression().Left
+		}
+	} else {
+		left = liftedTopicLeft(c, file, node)
+	}
+	if left == nil {
+		return "", ""
+	}
 	t := c.TypeToStringEx(c.GetTypeAtLocation(node), node, hoverTypeFlags, nil)
-	return "(topic) %: " + t, "The value of `" + left + "`, which runs once, before the pipe's body."
+	return "(topic) %: " + t, "The value of `" + nodeText(file, left) + "`, which runs once, before the pipe's body."
+}
+
+// liftedTopicLeft returns the left side that node, a % the parser rewrote,
+// stands for, or nil. When a do expression in a pipe's body runs as
+// statements, the parser reads the left side into a constant and each topic
+// reads that constant where % is written (parser/vibelang_do.go).
+func liftedTopicLeft(c *checker.Checker, file *ast.SourceFile, node *ast.Node) *ast.Node {
+	if file == nil || !ast.IsIdentifier(node) || node.Flags&ast.NodeFlagsVibeLangTemporary == 0 ||
+		node.Pos() < 0 || node.End() > len(file.Text()) || file.Text()[node.Pos():node.End()] != "%" {
+		return nil
+	}
+	symbol := c.GetSymbolAtLocation(node)
+	if symbol == nil {
+		return nil
+	}
+	declaration := symbol.ValueDeclaration()
+	if declaration == nil || !ast.IsVariableDeclaration(declaration) || declaration.Initializer() == nil {
+		return nil
+	}
+	left := declaration.Initializer()
+	// The parser keeps an anonymous function or class value-only as (void 0, x).
+	if inner := ast.SkipParentheses(left); inner.Kind == ast.KindBinaryExpression {
+		if b := inner.AsBinaryExpression(); b.OperatorToken.Kind == ast.KindCommaToken && b.Left.Kind == ast.KindVoidExpression {
+			left = b.Right
+		}
+	}
+	return left
 }

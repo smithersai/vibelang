@@ -1,0 +1,84 @@
+// expect-result: {"early":[9,0],"skip":[10,30],"order":[5,["left","body"]],"once":[[1,1],1],"nested":22,"closures":[1,2],"guarded":[6,false],"arrowDo":4,"chained":[8,["a","b"]],"effectful":6,"effectReturn":["early","late"]}
+// A do expression in a pipe body reads the pipe's topic, %, as any part of
+// the body does: the left side's value, evaluated once, before the body
+// (VIP-23). The do's block runs where the do stands (VIP-2), so a return or
+// continue in it leaves the enclosing function or loop.
+function early(flag: boolean) {
+  const v = flag |> do { if (%) return 9; 0 }
+  return v
+}
+
+function skip() {
+  const out: number[] = []
+  for (const i of [1, 2, 3]) {
+    const v = i |> do { if (% === 2) continue; % * 10 }
+    out.push(v)
+  }
+  return out
+}
+
+function order() {
+  const trace: string[] = []
+  const source = () => { trace.push("left"); return 4 }
+  const v = source() |> do { trace.push("body"); % + 1 }
+  return [v, trace]
+}
+
+function once() {
+  let n = 0
+  const next = () => ++n
+  const v = next() |> [%, do { % }]
+  return [v, n]
+}
+
+function nested() {
+  return 2 |> do { const inner = % |> do { % * 10 }; inner + % }
+}
+
+function closures() {
+  const fs: Array<() => number> = []
+  for (const i of [1, 2]) {
+    i |> do { fs.push(() => %) }
+  }
+  return fs.map(f => f())
+}
+
+function guarded(c: boolean) {
+  return c && (5 |> do { % + 1 })
+}
+
+function arrowDo() {
+  return 3 |> (() => do { % + 1 })()
+}
+
+function chained() {
+  const trace: string[] = []
+  const v = 3 |> do { trace.push("a"); % + 1 } |> do { trace.push("b"); % * 2 }
+  return [v, trace]
+}
+
+effect function effectful() {
+  const v = Effect.succeed(5) |> do { const x = try %; x + 1 }
+  return v
+}
+
+effect function effectReturn(flag: boolean) {
+  const v = flag |> do { if (%) return "early"; "late" }
+  return v
+}
+
+export effect function main() {
+  return {
+    early: [early(true), early(false)],
+    skip: skip(),
+    order: order(),
+    once: once(),
+    nested: nested(),
+    closures: closures(),
+    guarded: [guarded(true), guarded(false)],
+    arrowDo: arrowDo(),
+    chained: chained(),
+    effectful: try effectful(),
+    effectReturn: [try effectReturn(true), try effectReturn(false)],
+  }
+}
