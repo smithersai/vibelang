@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Repeated computed property declarations with matching types could be rejected as duplicate identifiers. They now follow TypeScript, while incompatible property types remain errors.
+
 - A `break` or `continue` leaving a `do` expression in a `for` loop's test or update, or in a `do…while` test, reported both `EK0205` and the compiler-gap code `EK0204`. It now reports `EK0205` alone.
 
 - The `EK4806` lint warned on the preserving defect bridge that the `EK0403` fix writes, `Effect.catch(Effect.try({ try, catch: (error) => error }), (error) => error instanceof C ? Effect.fail(error) : Effect.die(error))`, as if its `catch` mapping leaked `unknown`. A bridge whose handler dies with unmatched failures is now exempt, as `Effect.orDie` already was.

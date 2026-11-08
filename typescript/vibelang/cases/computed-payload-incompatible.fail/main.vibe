@@ -1,0 +1,3 @@
+// expect: TS2717
+const slot = "x" as const
+data Repeated { Row { [slot]: number; ["x"]: string } }

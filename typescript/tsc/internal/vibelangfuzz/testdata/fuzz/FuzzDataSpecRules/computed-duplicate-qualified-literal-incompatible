@@ -1,0 +1,3 @@
+go test fuzz v1
+string("computed-duplicate-qualified-literal-incompatible")
+byte(0)
