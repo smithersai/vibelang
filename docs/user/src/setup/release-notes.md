@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
+
 - A class definition inside an `effect` block could report an implementation restriction for an escaping `break` or `continue`. Decorators, computed names and `extends` expressions now report the block’s `EK0202` error.
 
 - Outward jumps in class definition expressions inside an `async match` could report `EK0204` and suggest moving the `do`. They now report `EK0706` once and explain the Promise boundary.

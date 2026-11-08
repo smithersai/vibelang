@@ -201,7 +201,7 @@ test("private declaration routes preserve one unique-symbol identity and reject 
   assert.ok(diagnose().some(d=>d.code===2322),"a copied unique symbol must remain distinct")
  }finally{f.dispose()}
 })
-test("source-route publication uses the native build without changing emitted bundler routes",()=>{
+test("source and emitted routes share the native publication build",()=>{
  const native=JSON.parse(readFileSync(new URL("./corpus/opencode-sdk-conditional-imports.json",import.meta.url),"utf8")).source
  for(const binding of ["conditions","key","target","__vibelangKey"]) {
   const script=native.replace("map(([key, conditions]) => [\n        key,","map(([__vibelangTarget, conditions]) => [\n        __vibelangTarget,").replaceAll("conditions",binding)
@@ -212,7 +212,7 @@ test("source-route publication uses the native build without changing emitted bu
   const packed=output.packImports({imports:{"#vibelang/source/src/schema/options":structuredClone(target),"#vibelang/emitted/src/schema/options":structuredClone(target)}},"schema")
   assert.equal(packed.imports["#vibelang/source/src/schema/options"].types,"./dist/schema/options.d.ts")
   assert.equal(packed.imports["#vibelang/source/src/schema/options"].default,"./dist/schema/options.js")
-  assert.equal(packed.imports["#vibelang/emitted/src/schema/options"].default,target.default)
+  assert.equal(packed.imports["#vibelang/emitted/src/schema/options"].default,"./dist/schema/options.js")
   assert.equal(rewritePublishingScript(rewritten.text,ts,"pack.ts").text,rewritten.text)
  }
 })

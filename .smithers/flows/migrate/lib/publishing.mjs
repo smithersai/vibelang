@@ -49,7 +49,7 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     return node
   }
   const isJS = /\.[cm]?jsx?$/.test(fileName)
-  const normalization = (expression, imports = false, entry, beforeVibex = false) => {
+  const normalization = (expression, imports = false, entry, beforeVibex = false, beforeRuntime = false) => {
     const reserved = new Set((expression + " " + (entry ?? "")).match(/[A-Za-z_$][\w$]*/g) ?? [])
     const fresh = base => { let name=base; for(let i=2;reserved.has(name);i++)name=base+i;reserved.add(name);return name }
     const key = entry ? fresh("__vibelangKey") : imports && expression === "key" ? "__vibelangKey" : "key"
@@ -63,10 +63,13 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     // conditions retain the repository's own publication mapping policy.
     if (imports) {
       // Source-only bridges use the native build for packed runtime code too.
-      // Emitted bundler bridges retain their existing JavaScript target.
-      const selected = entry
+      // Publication maps emitted bridges through the same build as exports.
+      const sourceOnly = entry
         ? "(" + key + ' === "types" || (' + key + ' === "default" && typeof ' + entry + ' === "string" && ' + entry + '.startsWith("#vibelang/source/")))'
         : key + ' === "types"'
+      const selected = entry && !beforeRuntime
+        ? "(" + sourceOnly + ' || (typeof ' + target + ' === "string" && ' + target + '.startsWith("./.vibelang/js/")))'
+        : sourceOnly
       value = selected + ' && typeof ' + expression + '["vibelang-source"] === "string" ? ' + expression + '["vibelang-source"] : ' + value
     }
     return "Object.fromEntries(Object.entries(" + expression + ").map((" + parameter + ") => [" + key + ", " + value + "]))"
@@ -98,8 +101,9 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     // An import map's endsWith wrapper from before VIP-39 still upgrades.
     // Export wiring from then stays byte-identical, so only entries match it.
     const candidates = [normalization(expression,false),normalization(expression,true),...(entry?[
-      normalization(expression,true,entry),
-      normalization(expression,false,undefined,true),normalization(expression,true,undefined,true),normalization(expression,true,entry,true)
+      normalization(expression,true,entry),normalization(expression,false,undefined,true),
+      normalization(expression,true,undefined,true),normalization(expression,true,entry,true),
+      normalization(expression,true,entry,false,true),normalization(expression,true,entry,true,true)
     ]:[])]
     return candidates.some(candidate=>actual===JSON.stringify(shape(expressionNode(candidate)))) ? original : argument
   }

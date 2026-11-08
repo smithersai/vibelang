@@ -1,0 +1,11 @@
+{
+  "name": "published-runtime-singleton",
+  "input": {
+    "stem": "effect/layer-node",
+    "extension": "ts",
+    "kind": "symbol",
+    "outdir": "dist",
+    "helper": "sdk",
+    "nested": false
+  }
+}

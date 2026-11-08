@@ -74,6 +74,10 @@ Test result titles that enumerate a renamed source path retain that source's bas
 
 #Migration compile and revert steps refresh project references after source changes. They follow the reverse reference closure, clear each affected project's effective `outDir`, `declarationDir` and build-info artifacts, then rebuild the reference roots before checking dependents. A progress receipt beside `reference-refresh-compile.log` or `reference-refresh-revert.log` records planned projects, cleared outputs and rebuild success or failure. It writes `state: "planning"` before discovering outputs, and records `planningMs` when planning succeeds or fails. Indexed path containment avoids rescanning every source and output for each artifact. Output paths that overlap tracked files, configurations or the sources of a project being rebuilt, or that leave the repository, are refused before deletion. JavaScript and declaration files the repository does not track count as outputs even when an unrelated configuration lists them, such as a root `tsconfig.base.json` with `allowJs` and no `include`. Unrelated tooling configurations that extend generated framework files do not block this refresh. A configuration in the affected reference graph or one of its build dependencies still fails before deletion, and its error names the configuration and TypeScript diagnostic code.
 
+## Publication routes
+
+Publication adapters map public exports and private runtime imports through the same repository build. When `vibelang-source` records the source of an emitted import, the helper uses that source to choose its built path, just as it does for exports. This preserves private symbols, class identity and shared state without changing declaration directories, source-only modes, package file lists or unmarked conditions. Setup upgrades its older generated adapters in place.
+
 ## Test and fixture identity
 
 Source-path inspection masks comments and quoted examples in one pass, retaining character offsets for its diagnostics. Generated modules with many documentation comments keep the same runtime module enumeration and test bundle protections.
