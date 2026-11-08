@@ -1,0 +1,5 @@
+go test fuzz v1
+string("getter")
+byte(0)
+byte(2)
+byte(0)

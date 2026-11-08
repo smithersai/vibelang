@@ -1,0 +1,15 @@
+// expect: TS1107
+function methodBoundary() {
+  outer: while (true) {
+    class C {
+      method() {
+        const pending = async match (1) { default: do { break outer; 1 }; }
+      }
+    }
+  }
+}
+function arrowBoundary() {
+  outer: while (true) {
+    const pending = (() => async match (1) { default: do { continue outer; 1 }; })()
+  }
+}

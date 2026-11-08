@@ -2809,8 +2809,12 @@ func (p *Parser) checkVibeLangAsyncMatchJumps(file *ast.SourceFile) {
 // A jump with no source target keeps TypeScript's own diagnostic.
 func asyncMatchHasOuterTarget(jump, boundary *ast.Node) bool {
 	label := jump.Label()
-	for n := boundary.Parent; n != nil; n = n.Parent {
+	for child, n := boundary, boundary.Parent; n != nil; child, n = n, n.Parent {
 		if ast.IsFunctionLike(n) && !isSynthesizedArrow(n) {
+			// A computed name or decorator runs where the method is defined.
+			if name := n.Name(); child == name && ast.IsComputedPropertyName(name) || ast.IsDecorator(child) {
+				continue
+			}
 			return false
 		}
 		if label != nil {

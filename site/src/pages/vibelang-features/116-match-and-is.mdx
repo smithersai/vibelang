@@ -448,6 +448,8 @@ function load() {
 
 A thrown exception, including the no-match `TypeError`, rejects the Promise. A `return` belonging to the match, or a `break` or `continue` targeting a statement outside it, reports `EK0706`. Nested functions keep their own `return`; loops inside the match keep their own jumps. In effect code, run the Promise through a bridge such as `try Effect.promise(() => load())`. This includes class and member decorators, `extends` expressions, and computed member names evaluated inside the match. Returns in nested methods keep their own callable boundary.
 
+An `async match` in a computed method name or member decorator also reports `EK0706` for a jump to an enclosing loop. A match inside a written method body keeps that method’s scope.
+
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.
 
 `Date` patterns test `subject instanceof Date`, as other built-in constructor patterns do, so `Object.create(Date.prototype)` matches and a date from another realm may not. Replacing a date’s prototype can make it stop matching. Errors from prototype lookup propagate normally.

@@ -1,0 +1,23 @@
+import { Effect } from "effect"
+
+function choose() {
+  const trace: string[] = []
+  let pending: Promise<number> = Promise.resolve(0)
+  class C {
+    [do {
+      pending = async match ((trace.push("subject"), 1)) {
+        default: do {
+          local: while (true) { break local }
+          trace.push("arm")
+          7
+        };
+      }
+      trace.push("key")
+      "m"
+    }]() { return 11 }
+  }
+  return pending.then(value => [value, trace] as const)
+}
+
+// expect-result: [7,["subject","arm","key"]]
+export effect function main() { return try Effect.promise(choose) }

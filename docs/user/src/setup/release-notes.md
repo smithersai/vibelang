@@ -35,6 +35,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migration guide gave the old diagnostic number for an unwrapped foreign call. It now names `EK0403`, matching the failures chapter and compiler.
 
+- An `async match` inside a computed method name or member decorator could report a generic jump error for a `break` or `continue` to an outer loop. It now reports `EK0706` for the Promise boundary.
+
 
 - A `catch` whose head was a parenthesized `try` of a block or pipeline that only fails, such as `(try effect { … return throw new Pending() }) catch h`, or whose head's value was `any`, stopped recovering the head's failures after head evaluation moved before the catch, and `vibelang --fix` left it unchanged with only an `EK9204` warning. `--fix` now removes that `try`, or wraps another such head in an `effect` block, so the handler receives those failures again; a head whose value is an Effect keeps its `try`.
 

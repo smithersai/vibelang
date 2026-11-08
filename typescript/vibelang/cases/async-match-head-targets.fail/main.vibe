@@ -1,0 +1,17 @@
+// expect: EK0706
+
+function bad0(){outer:while(true){class C { [do{const pending=async match(do{break outer;1}){default:1;};"m"}](){} }}}
+
+function bad1(){outer:while(true){class C { static [do{const pending=async match(1){default:do{continue outer;1};};"m"}](){} }}}
+
+function bad2(){outer:while(true){class C { get [do{const pending=async match(1){when let n and if(do{break outer;true}):1;default:0;};"m"}](){return 1} }}}
+
+function bad3(){outer:while(true){class C { set [do{const pending=async match(do{continue outer;1}){default:1;};"m"}](n:number){} }}}
+
+function bad4(){outer:while(true){class C { @(do{const pending=async match(1){default:do{break outer;1};};((v:unknown,c:unknown)=>{})}) m(){} }}}
+
+function bad5(){outer:while(true){const object={ [do{const pending=async match(1){when let n and if(do{continue outer;true}):1;default:0;};"m"}](){} }}}
+
+function bad6(){outer:while(true){const object={ get [do{const pending=async match(do{break outer;1}){default:1;};"m"}](){return 1} }}}
+
+function bad7(){outer:while(true){const object={ set [do{const pending=async match(1){default:do{continue outer;1};};"m"}](n:number){} }}}
