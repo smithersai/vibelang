@@ -54,7 +54,11 @@ func schemaGenericKind(c *checker.Checker, ref *ast.SchemaGenericReference) int 
 		return 0
 	}
 	if ref.Arity == 0 {
-		if ref.Library != nil && ast.IsIdentifier(ref.Name) && symbol.Name() == ref.Name.Text() {
+		last := ref.Name
+		if ast.IsQualifiedName(last) {
+			last = last.AsQualifiedName().Right
+		}
+		if ref.Library != nil && ast.IsIdentifier(last) && symbol.Name() == last.Text() {
 			return schemaLibraryValue
 		}
 		return 0
@@ -92,7 +96,7 @@ func schemaGenericKind(c *checker.Checker, ref *ast.SchemaGenericReference) int 
 }
 
 func schemaGenericReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
-	if ast.IsIdentifier(node) {
+	if ast.IsIdentifier(node) || ast.IsPropertyAccessExpression(node) {
 		return schemaLibraryNameReplacement(c, node)
 	}
 	if !ast.IsCallExpression(node) || node.Expression().Flags&ast.NodeFlagsReparsed == 0 {
@@ -160,7 +164,7 @@ func schemaLibraryNameReplacement(c *checker.Checker, node *ast.Node) *ast.Node 
 // schemaLibraryNameType gives a selected library name its Schema's type, as
 // schemaGenericCallType does for a generic call's replacement.
 func schemaLibraryNameType(c *checker.Checker, node *ast.Node, t *checker.Type) *checker.Type {
-	if !ast.IsIdentifier(node) {
+	if !ast.IsIdentifier(node) && !ast.IsPropertyAccessExpression(node) {
 		return t
 	}
 	if replacement := schemaLibraryNameReplacement(c, node); replacement != nil {

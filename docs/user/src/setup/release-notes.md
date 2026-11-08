@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Schema fields using qualified library types such as `globalThis.Date` were rejected as nonschema values. They now use the same codecs as their unqualified library names.
+
 - The matching guide described generated errors as matching only by tag. It now also explains the instance check that recognizes subclasses with different tags.
 
 - The migration's API identity check could not finish comparing a package whose `.ts` source exports a class with a private, protected or `#private` member, even when nothing changed: its own rewriting of the class reported `TS2564` and `TS1361`. It now compares such a class, and still reports a member whose visibility changes.

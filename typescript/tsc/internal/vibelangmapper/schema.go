@@ -181,7 +181,11 @@ func schemaKeyEffectFrame(node *ast.Node, lexical bool) *ast.Node {
 func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 	for _, reference := range p.file.VibeLangSchemaGenerics {
 		if reference.Expression == node && reference.Library != nil && p.libraryReference(reference) {
-			if reference.Arity == 0 && reference.Name.Text() == "Error" {
+			name := reference.Name
+			if ast.IsQualifiedName(name) {
+				name = name.AsQualifiedName().Right
+			}
+			if reference.Arity == 0 && name.Text() == "Error" {
 				return schema + ".Defect().pipe(" + schema + ".refine(" + helperRef("$isError") + "))"
 			}
 			return p.schemaExpression(reference.Library, schema)
@@ -248,10 +252,23 @@ func (p *projector) checkSchemaName(node *ast.Node) {
 // libraryReference reports whether reference spells a VIP-44 library type
 // that no lexical declaration shadows; the projector has no type bindings.
 func (p *projector) libraryReference(reference ast.SchemaGenericReference) bool {
-	if !ast.IsIdentifier(reference.Name) {
+	nameNode := reference.Name
+	lookup := ""
+	if ast.IsQualifiedName(nameNode) {
+		qualified := nameNode.AsQualifiedName()
+		if !ast.IsIdentifier(qualified.Left) || qualified.Left.Text() != "globalThis" {
+			return false
+		}
+		lookup = "globalThis"
+		nameNode = qualified.Right
+	}
+	if !ast.IsIdentifier(nameNode) {
 		return false
 	}
-	name := reference.Name.Text()
+	name := nameNode.Text()
+	if lookup == "" {
+		lookup = name
+	}
 	switch {
 	case reference.Arity == 0:
 	case reference.Arity == 1 && name == "ReadonlySet":
@@ -259,7 +276,7 @@ func (p *projector) libraryReference(reference ast.SchemaGenericReference) bool 
 	default:
 		return false
 	}
-	_, found := p.schemaNameBinding(reference.Expression, name)
+	_, found := p.schemaNameBinding(reference.Expression, lookup)
 	return !found
 }
 

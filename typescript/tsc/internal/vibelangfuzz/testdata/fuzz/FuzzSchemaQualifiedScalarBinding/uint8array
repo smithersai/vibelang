@@ -1,0 +1,2 @@
+go test fuzz v1
+string("Uint8Array/4/1")

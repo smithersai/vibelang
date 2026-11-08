@@ -97,20 +97,25 @@ func (p *Parser) vibelangRecordSchemaReference(name, value *ast.Node, legacy boo
 // codec the checker selects when the name's type binding is the TypeScript
 // library's (VIP-44). A shadowing declaration keeps the written value.
 func (p *Parser) vibelangLibrarySchemaReference(name *ast.Node) *ast.Node {
+	last := name
+	if ast.IsQualifiedName(last) {
+		last = last.AsQualifiedName().Right
+	}
+	visible := p.vibelangEntityExpression(name)
 	anchor := p.vibelangCalleeAnchor(name.Loc)
-	library := p.vibelangSchemaMember(nil, name.Text(), anchor)
-	if name.Text() == "Error" {
+	library := p.vibelangSchemaMember(nil, last.Text(), anchor)
+	if last.Text() == "Error" {
 		// Schema.Defect().pipe(Schema.refine($isError)), as VIP-44 writes it.
 		refine := p.vibelangSchemaCall("refine", name.Loc, p.vibelangIntrinsic("$isError", anchor))
 		library = p.mCall(p.mProperty(p.vibelangSchemaCall("Defect", name.Loc), "pipe", anchor), []*ast.Node{refine}, name.Loc)
 	}
 	ast.SetParentInChildren(library)
 	clonedName := p.vibelangSchemaGenericName(name)
-	clonedName.Parent.Parent = name
+	clonedName.Parent.Parent = visible
 	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
-		Arity: 0, Name: clonedName, Expression: name, Library: library,
+		Arity: 0, Name: clonedName, Expression: visible, Library: library,
 	})
-	return name
+	return visible
 }
 
 // A detached name still has ordinary type-reference context for editor

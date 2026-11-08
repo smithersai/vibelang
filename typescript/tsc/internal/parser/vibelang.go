@@ -1509,7 +1509,11 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 		}
 		switch {
 		case len(arguments) == 0:
-			if ast.IsIdentifier(name) && vibelangSchemaLibraryTypes[name.Text()] {
+			last := name
+			if ast.IsQualifiedName(last) {
+				last = last.AsQualifiedName().Right
+			}
+			if ast.IsIdentifier(last) && vibelangSchemaLibraryTypes[last.Text()] {
 				return p.vibelangLibrarySchemaReference(name)
 			}
 			return p.vibelangEntityExpression(name)
