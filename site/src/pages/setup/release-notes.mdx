@@ -58,6 +58,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A migrated module's generated platform companion asserted its call helpers to the callee's type with no justification, so a repository lint that requires a `SAFETY:` comment on every type assertion rejected the companion. Each asserted helper now carries that comment.
 
+- A `.ts` file that imported a `module` body's declaration, such as `import { token } from "./A.vibe.platform.js"`, failed a `--noEmit` check with `TS5055` once that declaration had been written, and with `TS2307` before. The import now resolves to the body itself, as TypeScript resolves a `.ts` file before its `.d.ts`, so repeated checks pass.
+
 - A constructor repair treated a parenthesized direct `eval`, such as `(eval)(code)`, as an ordinary call and could move it into a defect bridge, which changes the scope it reads. It is now refused as direct `eval`.
 
 - The diagnostic code map and the guides described `EK0406` as a `@throws` or `@rethrows` tag, so an `@exception` report had no entry. They now name the `@exception` alias beside `@throws`.

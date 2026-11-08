@@ -141,3 +141,65 @@ func TestModuleBodyImportRespectsNodeNextExtension(t *testing.T) {
 		t.Fatal("NodeNext ESM accepted an extensionless body import")
 	}
 }
+
+// A .ts or .vibe file that imports a body's tracked declaration output, as a
+// Smithers test does through a package's companion, resolves to the body's
+// source as TypeScript resolves a .ts file before its .d.ts. Under noEmit the
+// companion must not become an input that its own output overwrites (TS5055).
+func TestModuleBodyImportFromSourceImporter(t *testing.T) {
+	for _, importer := range []string{"use.ts", "use.mts", "use.tsx", "use.vibe"} {
+		for _, mode := range []string{"nodenext-cjs", "nodenext-esm", "bundler"} {
+			for _, suffix := range []string{".js", ".ts"} {
+				for _, tracked := range []bool{true, false} {
+					key := fmt.Sprintf("%s/%s/%s/tracked=%t", importer, mode, suffix, tracked)
+					t.Run(key, func(t *testing.T) {
+						module, resolution := "NodeNext", "NodeNext"
+						if mode == "bundler" {
+							module, resolution = "ESNext", "Bundler"
+						}
+						specifier := "./A.vibe.platform" + suffix
+						if importer == "use.mts" && suffix == ".js" {
+							specifier = "./A.vibe.platform.js"
+						}
+						files := map[string]any{
+							"/src/tsconfig.json":   "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"" + module + "\",\"moduleResolution\":\"" + resolution + "\",\"strict\":true,\"noEmit\":true,\"declaration\":false,\"allowImportingTsExtensions\":true,\"jsx\":\"preserve\",\"types\":[]},\"vibe\":{\"effectGlobals\":false,\"effectModules\":false},\"include\":[\"src/**/*\"]}",
+							"/src/src/A.vibe":      "module platform {\n  export const token = (name: string): string => name\n}\n\nexport { token } from platform\n",
+							"/src/src/" + importer: "import { token } from \"" + specifier + "\"\nexport const t: string = token(\"x\")\n",
+						}
+						if mode == "nodenext-esm" {
+							files["/src/package.json"] = "{\"type\":\"module\"}"
+						}
+						if tracked {
+							files["/src/src/A.vibe.platform.d.ts"] = "export declare const token: (name: string) => string;\n"
+						}
+						for round := range 3 {
+							fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseSensitive))
+							config, ds := tsoptions.GetParsedCommandLineOfConfigFile("/src/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
+							if len(ds) != 0 || len(config.Errors) != 0 {
+								t.Fatalf("config: %v %v", ds, config.Errors)
+							}
+							p := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
+							for _, d := range p.GetProgramDiagnostics() {
+								t.Errorf("round %d: %s", round, d.String())
+							}
+							for _, d := range p.GetSemanticDiagnostics(t.Context(), nil) {
+								t.Errorf("round %d: %s", round, d.String())
+							}
+							if t.Failed() {
+								return
+							}
+							emitted := map[string]string{}
+							result := p.EmitDeclarationSidecars(t.Context(), func(name, text string) error { emitted[name] = text; return nil })
+							if result == nil || result.EmitSkipped || len(result.Diagnostics) != 0 {
+								t.Fatalf("round %d emit: %+v", round, result)
+							}
+							for name, text := range emitted {
+								files[name] = text
+							}
+						}
+					})
+				}
+			}
+		}
+	}
+}

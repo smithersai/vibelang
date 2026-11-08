@@ -18,7 +18,9 @@ import (
 
 const bodyImportRepeatTarget = "FuzzModuleBodyImportRepeat"
 
-var bodyImportRepeatKeys = []string{"source-import", "runtime-import", "extensionless", "explicit-declaration"}
+// The ts- keys import the body from a .ts file instead of a declaration, as a
+// Smithers test reaches a package's tracked companion.
+var bodyImportRepeatKeys = []string{"source-import", "runtime-import", "extensionless", "explicit-declaration", "ts-source-import", "ts-runtime-import"}
 
 func TestModuleBodyImportRepeatQuoted(t *testing.T) { bodyImportRepeatQuoted(t) }
 func bodyImportRepeatQuoted(t testing.TB) {
@@ -44,12 +46,16 @@ func bodyImportRepeatObserve(t *testing.T, key string, variant uint8, twin bool)
 	prefix := []string{"/case/", "/case/deep/", "/case/pkg.vibe/"}[int(variant>>3)%3]
 	part := strings.TrimSuffix(parser.ModuleDeclarationFileSuffix(name), ".ts")
 	stem := "main." + ext + part
-	suffix := map[string]string{"source-import": "." + tsExt, "runtime-import": ".js", "extensionless": "", "explicit-declaration": ".d.ts"}[key]
+	suffix := map[string]string{"source-import": "." + tsExt, "runtime-import": ".js", "extensionless": "", "explicit-declaration": ".d.ts", "ts-source-import": "." + tsExt, "ts-runtime-import": ".js"}[key]
+	importer, importText := "a.d.ts", "export declare const row: import(\"./"+stem+suffix+"\").Row;\n"
+	if strings.HasPrefix(key, "ts-") {
+		importer, importText = "use.ts", "import type { Row } from \"./"+stem+suffix+"\"\nexport const row: Row = { value: 7 }\n"
+	}
 	source := "module " + name + " { export interface Row {readonly value: 7} }\nexport type {Row} from " + name + "\n"
 	main := "main." + ext
 	files := map[string]any{
 		prefix + "package.json": "{\"type\":\"module\"}",
-		prefix + "a.d.ts":       "export declare const row: import(\"./" + stem + suffix + "\").Row;\n",
+		prefix + importer:       importText,
 	}
 	if twin {
 		main = "main." + tsExt
@@ -60,11 +66,11 @@ func bodyImportRepeatObserve(t *testing.T, key string, variant uint8, twin bool)
 	if key == "explicit-declaration" {
 		files[prefix+stem+".d.ts"] = "export interface Row {readonly value: 7}\n"
 	}
-	options := map[string]any{"noLib": true, "types": []string{}, "target": "ESNext", "module": "ESNext", "moduleResolution": "Bundler", "noEmit": true, "jsx": "preserve"}
+	options := map[string]any{"noLib": true, "types": []string{}, "target": "ESNext", "module": "ESNext", "moduleResolution": "Bundler", "noEmit": true, "jsx": "preserve", "allowImportingTsExtensions": true}
 	if variant&64 != 0 {
 		options["moduleSuffixes"] = []string{"", ".d.vibe"}
 	}
-	configJSON, _ := json.Marshal(map[string]any{"compilerOptions": options, "vibe": map[string]any{"effectGlobals": false, "effectModules": false}, "files": []string{main, "a.d.ts"}})
+	configJSON, _ := json.Marshal(map[string]any{"compilerOptions": options, "vibe": map[string]any{"effectGlobals": false, "effectModules": false}, "files": []string{main, importer}})
 	files[prefix+"tsconfig.json"] = string(configJSON)
 	blocked := []bool{}
 	for round := range 3 {

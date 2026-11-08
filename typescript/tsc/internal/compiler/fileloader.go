@@ -913,11 +913,13 @@ func (p *fileLoader) resolveImportsAndModuleAugmentations(t *parseTask) {
 			var trace []module.DiagAndArgs
 			var err error
 			resolvedModule, trace, err = p.resolver.ResolveModuleName(moduleName, fileName, mode, redirect)
-			// A declaration can name a module body's virtual source through an
-			// inferred import type. Load the owning source, not its previous
-			// declaration output, so a second check has the same input graph.
+			// A module body's virtual source is a TypeScript file beside its
+			// declaration output, and TypeScript resolves a .ts file before a
+			// .d.ts one. Load the owning source, not a previous declaration
+			// output, so every importer (a declaration's inferred import type
+			// or a .ts file's import) gives a second check the same input graph.
 			var bodyOwner tspath.RootedFilePath
-			if file.IsDeclarationFile && err == nil {
+			if err == nil {
 				resolvedModule, bodyOwner = p.resolveModuleBodyImport(moduleName, fileName, resolvedModule, optionsForFile, mode)
 			}
 			// A referenced declaration uses the native twin's relative spelling.
