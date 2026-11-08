@@ -297,6 +297,35 @@ function resolveImports(path, contents, loader, inNamespace = false) {
 // Its output has no comments and leaves a shadowing binding alone, so a string
 // that spells a name only costs the map.
 const transpiler = new Bun.Transpiler({ loader: "js", target: "bun" })
+
+// Bun replaces each name that --define (-d) or a bunfig.toml [define] table
+// gives it while it transpiles a module, so a module that mentions one stays
+// unmarked and reads the definition, as its TypeScript twin does. A string
+// that spells the name only costs the map.
+const definedNames = (() => {
+  const definitions = []
+  let config
+  const args = process.execArgv
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i]
+    if (arg === "--define" || arg === "-d") definitions.push(args[++i])
+    else if (arg.startsWith("--define=")) definitions.push(arg.slice("--define=".length))
+    else if (arg === "--config" || arg === "-c") config = args[++i]
+    else if (arg.startsWith("--config=")) config = arg.slice("--config=".length)
+  }
+  const home = process.env.XDG_CONFIG_HOME || process.env.HOME
+  for (const file of [resolve(config ?? "bunfig.toml"), home && join(home, ".bunfig.toml")]) {
+    try {
+      definitions.push(...Object.keys(Bun.TOML.parse(readFileSync(file, "utf8")).define ?? {}))
+    } catch { /* No such file, or one Bun reports itself. */ }
+  }
+  return definitions.flatMap((definition) => {
+    const name = /^[^:=]*/.exec(definition ?? "")[0].trim()
+    if (name === "") return []
+    const path = name.split(".").map((part) => escapeRegExp(part.trim())).join("\\s*\\.\\s*")
+    return [new RegExp("(?<![\\w$.])" + path + "(?![\\w$])")]
+  })
+})()
 function needsTranspiler(code) {
   if (code.startsWith("#!") || /[^\x00-\x7f]/.test(code)) return true
   try {
@@ -327,7 +356,7 @@ function withSourceMap({ contents, loader }, map, source) {
     mappings[line] = "A"
     map = { ...map, mappings: mappings.join(";") }
   }
-  if (map === undefined || needsTranspiler(contents)) return { contents, loader }
+  if (map === undefined || needsTranspiler(contents) || definedNames.some((name) => name.test(contents))) return { contents, loader }
   // The mark is a line above the code the map describes.
   return { contents: `// @bun\n${contents}\n${inlineSourceMap({ ...map, mappings: ";" + map.mappings })}\n`, loader: "js" }
 }

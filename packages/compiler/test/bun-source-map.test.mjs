@@ -111,6 +111,42 @@ for (const [name, [source, value]] of Object.entries(needing)) {
   })
 }
 
+// Bun applies --define (-d) and a bunfig.toml [define] table while it
+// transpiles, so a .vibe module reads a defined name as its TypeScript twin
+// does: the whole map, never the definition.
+const defines = {
+  "--define": (key, value) => ({ args: ["--define", `${key}=${JSON.stringify(value)}`] }),
+  "-d": (key, value) => ({ args: ["-d", `${key}:${JSON.stringify(value)}`] }),
+  "--define=": (key, value) => ({ args: [`--define=${key}:${JSON.stringify(value)}`] }),
+  "bunfig.toml": (key, value) => ({ files: { "bunfig.toml": `[define]\n${JSON.stringify(key)} = ${JSON.stringify(JSON.stringify(value))}\n` } })
+}
+const definedReads = {
+  "opencode version typeof guard": ["BUILD_VERSION", 'declare const BUILD_VERSION: string\nexport const value = typeof BUILD_VERSION === "string" ? BUILD_VERSION : "local"\n'],
+  member: ["APP.mode", "declare const APP: { mode: string }\nexport const value = APP.mode\n"],
+  "in a function": ["BUILD_VERSION", "declare const BUILD_VERSION: string\nfunction read(): string {\n  return `v${BUILD_VERSION}`.slice(1)\n}\nexport const value = read()\n"]
+}
+for (const [via, define] of Object.entries(defines)) {
+  for (const [shape, [key, source]] of Object.entries(definedReads)) {
+    test(`a name ${via} defines reads as in the TypeScript twin: ${shape}`, { skip }, (t) => {
+      const { args = [], files = {} } = define(key, "injected")
+      const result = run(t, {
+        ...files,
+        "src/main.vibe": source,
+        "src/twin.ts": source,
+        "src/entry.mjs": 'import { value } from "./main.vibe"\nimport { value as twin } from "./twin.ts"\nconsole.log(JSON.stringify([value, twin]))\n'
+      }, [...args, "--preload", "vibelang/bun", "src/entry.mjs"])
+      assert.equal(result.status, 0, result.stderr)
+      assert.deepEqual(JSON.parse(result.stdout), ["injected", "injected"])
+    })
+  }
+}
+
+test("a definition of another name leaves an ASCII module its map", { skip }, (t) => {
+  const result = run(t, { "src/main.vibe": traced, "src/entry.mjs": entry }, ["--define", 'BUILD_VERSION="x"', "--preload", "vibelang/bun", "src/entry.mjs"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, new RegExp(`main\\.vibe:${line}\\b`), result.stdout)
+})
+
 test("a module with a hashbang keeps it first and runs", { skip }, (t) => {
   const result = run(t, {
     "src/main.vibe": '#!/usr/bin/env bun\nexport const text = "ran"\n',
