@@ -461,6 +461,10 @@ func grammarSplitLookahead(set string) []string {
 // TypeScript's checker reports an empty type parameter list (TS1098) only on
 // a function or a class (checkGrammarTypeParameterList), so a type alias or
 // an interface may write `<>`; DeclarationTypeParameters admits it there.
+// The lexer never joins `<` or `>` pairs, so the shift operators and their
+// compound assignments are token sequences (`"<" "<"`, `">" ">" ">="`); unlike
+// TypeScript's rescanning of an adjacent `>`, they also read a spaced `> >`,
+// which only widens what derives.
 // "{ p = 1 }" is ECMAScript's CoverInitializedName, written only as an assignment
 // target so an object literal still has no initializer. TypeScript's parser keeps its binary
 // loop going after "as T" or "satisfies T", so any operator may follow one:
@@ -559,7 +563,7 @@ ExportSpecifier = ModuleExportName | ModuleExportName "as" ModuleExportName | "t
 ModuleExportName = IdentifierName | StringLiteral
 Expression = AssignmentExpression | Expression "," AssignmentExpression
 AssignmentExpression = ConditionalExpression | ArrowFunction | AsyncArrowFunction | YieldExpression | LeftHandSideExpression "=" AssignmentExpression | ObjectAssignmentPattern "=" AssignmentExpression | LeftHandSideExpression AssignmentOperator AssignmentExpression
-AssignmentOperator = "*=" | "/=" | "%=" | "+=" | "-=" | "&=" | "^=" | "|=" | "**=" | "&&=" | "||=" | "??="
+AssignmentOperator = "*=" | "/=" | "%=" | "+=" | "-=" | "&=" | "^=" | "|=" | "**=" | "&&=" | "||=" | "??=" | "<" "<=" | ">" ">=" | ">" ">" ">="
 ConditionalExpression = ShortCircuitExpression | ShortCircuitExpression "?" AssignmentExpression ":" AssignmentExpression
 ShortCircuitExpression = LogicalORExpression | CoalesceExpression
 CoalesceExpression = CoalesceExpressionHead "??" BitwiseORExpression
@@ -571,8 +575,10 @@ BitwiseXORExpression = BitwiseANDExpression | BitwiseXORExpression "^" BitwiseAN
 BitwiseANDExpression = EqualityExpression | BitwiseANDExpression "&" EqualityExpression
 EqualityExpression = RelationalExpression | EqualityExpression EqualityOperator RelationalExpression
 EqualityOperator = "===" | "!==" | "==" | "!="
-RelationalExpression = AdditiveExpression | RelationalExpression RelationalOperator AdditiveExpression
+RelationalExpression = ShiftExpression | RelationalExpression RelationalOperator ShiftExpression
 RelationalOperator = "<" | ">" | "<=" | ">=" | "instanceof" | "in"
+ShiftExpression = AdditiveExpression | ShiftExpression ShiftOperator AdditiveExpression
+ShiftOperator = "<" "<" | ">" ">" | ">" ">" ">"
 AdditiveExpression = MultiplicativeExpression | AdditiveExpression "+" MultiplicativeExpression | AdditiveExpression "-" MultiplicativeExpression
 MultiplicativeExpression = ExponentiationExpression | MultiplicativeExpression MultiplicativeOperator ExponentiationExpression
 MultiplicativeOperator = "*" | "/" | "%"

@@ -8,8 +8,8 @@ import "testing"
 // heritage, conditional, constructor, query and import types, type
 // predicates, `this` parameters, index signatures, catch patterns, do-while,
 // ambient and abstract declarations, namespaces and enums, `using` as an
-// identifier, an empty type parameter list on a type alias or interface, and
-// numbers that start with a dot.
+// identifier, an empty type parameter list on a type alias or interface,
+// numbers that start with a dot, and shift operators.
 func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 	lab, err := admissionLab()
 	if err != nil {
@@ -51,6 +51,9 @@ func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 		".00",
 		"const a = .5, b = .00, c = .5e3, d = [.1, .2];",
 		"declare const x: boolean; const v = x?.5:1;",
+		"0>>0",
+		"const a = 1 << 2, b = 8 >> 1, c = -8 >>> 1; let d = 1; d <<= 1; d >>= 1; d >>>= 1;",
+		"declare const p: number, q: number, r: number; const e = p < q << r, f = p >> q > r;",
 		"class K { constructor(public readonly n: number, private m?: string) {} }",
 		"const g = (): (() => string) => () => \"a\"; const h = async (): (() => string) => () => \"b\";",
 		"type W = new (x: number) => Date; type X = abstract new () => object;",
@@ -82,6 +85,8 @@ func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 		"class C<> {}",
 		"type T<,> = 1;",
 		"declare const x: { 0: number }; const v = x.0;",
+		"const a = 1 <<;",
+		"const a = << 1;",
 	}
 	vl := grammarParseMode{prose: true, names: true}
 	derives := func(source string) (bool, bool) {

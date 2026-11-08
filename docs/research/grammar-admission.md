@@ -905,3 +905,10 @@ with `.` before a digit. The lab lexer started numbers only at a digit. It
 now reads `.5` as one number, and reads `?.` before a digit as `?`, since
 `OptionalChainingPunctuator` excludes a following digit and `x?.5:1` is a
 conditional expression.
+
+The next campaign reduced a case to `0>>0`. The lab's TypeScript subset had
+no `ShiftExpression`, so `<<`, `>>`, `>>>` and their compound assignments
+never derived. It now has ECMAScript's `ShiftExpression` between the
+relational and additive levels. The lexer keeps `<` and `>` as single tokens
+so type arguments still close as TypeScript rescans them, and the operators
+are written as token sequences.
