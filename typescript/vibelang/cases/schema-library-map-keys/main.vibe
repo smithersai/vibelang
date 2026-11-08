@@ -1,0 +1,22 @@
+// expect-result: [true,false,true,2,true,false,true,false]
+// VIP-44: ReadonlyMap<K, V> maps to Schema.ReadonlyMap(K, V), whose key is
+// any schema. A Date, tuple or set key is admitted and decodes as the Effect
+// twin does; the checker checks the selected ReadonlyMap call, not the
+// Record candidate whose key must be a Record key.
+import { Schema } from "effect"
+schema Keyed {
+  readonly byDate: ReadonlyMap<Date, number>
+  readonly byPair: ReadonlyMap<readonly [string, number], string>
+  readonly bySet: ReadonlyMap<ReadonlySet<string>, boolean>
+}
+export effect function main() {
+  const is = Schema.is(Keyed)
+  const good = { byDate: new Map([[new Date(0), 1]]), byPair: new Map([[["a", 1] as const, "x"]]), bySet: new Map([[new Set(["k"]), true]]) }
+  const decoded = try Schema.decodeUnknownEffect(Keyed)({ byDate: new Map([[new Date(0), 1], [new Date(1), 2]]), byPair: new Map(), bySet: new Map() })
+  const encoded = Schema.encodeSync(Keyed)(good)
+  return [
+    is(good), is({ ...good, byDate: new Map([["1970", 1]]) }), decoded.byDate instanceof Map, decoded.byDate.size,
+    is({ ...good, byPair: new Map([[["a", 1], "x"]]) }), is({ ...good, bySet: new Map([[["k"], true]]) }),
+    encoded.byDate instanceof Map, is({ ...good, byDate: new Map([[new Date(NaN), 1]]) }),
+  ]
+}

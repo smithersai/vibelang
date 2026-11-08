@@ -42,6 +42,35 @@ func (c *Checker) applyCallExpressionTypeHooks(call *ast.Node, t *Type) *Type {
 	return t
 }
 
+// CallExpressionReplacementHook can name another call expression the checker
+// checks and resolves in place of call: the same argument nodes against the
+// signature of the codec a schema reference selects by its type binding
+// (internal/vibelang/schema_generic_binding.go), so a ReadonlyMap key is any
+// schema where a Record key must be a Record key. checkCallExpression and
+// getResolvedSignature consult it, so every resolver of the visible call,
+// VibeLang's own file checks included, sees the selected signature. It runs
+// on every call the checker checks, so it must be cheap, and it returns nil
+// when it has nothing to say.
+type CallExpressionReplacementHook func(c *Checker, call *ast.Node) *ast.Node
+
+var callExpressionReplacementHooks []CallExpressionReplacementHook
+
+// RegisterCallExpressionReplacementHook adds hook to every checker. Call it
+// only from the init function of an in-tree package that tsc/cmd/tsc imports;
+// registration is not synchronized.
+func RegisterCallExpressionReplacementHook(hook CallExpressionReplacementHook) {
+	callExpressionReplacementHooks = append(callExpressionReplacementHooks, hook)
+}
+
+func (c *Checker) applyCallExpressionReplacementHooks(call *ast.Node) *ast.Node {
+	for _, hook := range callExpressionReplacementHooks {
+		if replacement := hook(c, call); replacement != nil && replacement != call {
+			return replacement
+		}
+	}
+	return nil
+}
+
 // InferredReturnTypeHook can replace t, the return type the checker inferred
 // from the body of fn, a function without a return type annotation.
 type InferredReturnTypeHook func(c *Checker, fn *ast.Node, t *Type) *Type

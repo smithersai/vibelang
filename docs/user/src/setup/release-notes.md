@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `schema` field typed `ReadonlyMap<K, V>` with a `Date`, collection, tuple or struct key reported `TS2345` against `Schema.Record`'s key constraint. The checker now checks the selected `Schema.ReadonlyMap` call, so any key schema is admitted.
+
 - Nested collection types in `schema` fields could report `EK2109` even when each part was supported. They now compose their Schema mappings recursively.
 
 - A throwing call in a computed member name or decorator could get the wrong error or be rejected despite a surrounding handler. These expressions now use the context defining the class or object, while member bodies keep their own checks.

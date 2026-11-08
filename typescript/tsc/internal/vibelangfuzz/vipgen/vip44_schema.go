@@ -43,6 +43,27 @@ function witness() {
 }`,
 		Cite: Citation{VIP: 44, Template: "Schema.ReadonlySet(", Quote: "These names mean the TypeScript-library bindings, selected by ordinary type lookup, as VIP-15's mapped generics do."},
 	})
+	// A ReadonlyMap key is any schema: the checker checks the selected
+	// Schema.ReadonlyMap call, not the Record candidate's key constraint.
+	registerWitness(44, ChapterWitness{
+		Key:     "vip44.schema-library-map-keys-plain",
+		Chapter: "006-data.md",
+		Quote:   "In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax.",
+		Modules: []string{"Schema"},
+		Vibe: `schema witnessMapKeys { byDate: ReadonlyMap<Date, number>; bySet: ReadonlyMap<ReadonlySet<string>, boolean>; byPair: ReadonlyMap<readonly [string, number], string> }
+function witness() {
+  const good = { byDate: new Map([[new Date(0), 1]]), bySet: new Map([[new Set(["k"]), true]]), byPair: new Map([[["a", 1] as const, "x"]]) }
+  const probes: unknown[] = [good, { ...good, byDate: new Map([["1970", 1]]) }, { ...good, byDate: new Map([[new Date(NaN), 1]]) }, { ...good, bySet: new Map([[["k"], true]]) }, { ...good, byPair: new Map([[["a", "1"], "x"]]) }, { ...good, byPair: {} }]
+  return probes.map((v) => Schema.is(witnessMapKeys)(v))
+}`,
+		Effect: `const witnessMapKeys = Schema.Struct({ byDate: Schema.mutableKey(Schema.ReadonlyMap(Schema.Date, Schema.Number)), bySet: Schema.mutableKey(Schema.ReadonlyMap(Schema.ReadonlySet(Schema.String), Schema.Boolean)), byPair: Schema.mutableKey(Schema.ReadonlyMap(Schema.Tuple([Schema.String, Schema.Number]), Schema.String)) })
+function witness() {
+  const good = { byDate: new Map([[new Date(0), 1]]), bySet: new Map([[new Set(["k"]), true]]), byPair: new Map([[["a", 1], "x"]]) }
+  const probes = [good, { ...good, byDate: new Map([["1970", 1]]) }, { ...good, byDate: new Map([[new Date(NaN), 1]]) }, { ...good, bySet: new Map([[["k"], true]]) }, { ...good, byPair: new Map([[["a", "1"], "x"]]) }, { ...good, byPair: {} }]
+  return probes.map((v) => Schema.is(witnessMapKeys)(v))
+}`,
+		Cite: Citation{VIP: 44, Template: "Schema.ReadonlyMap(", Quote: "These names mean the TypeScript-library bindings, selected by ordinary type lookup, as VIP-15's mapped generics do."},
+	})
 }
 
 // The Error row: a refined Schema.Defect that accepts only Error instances.

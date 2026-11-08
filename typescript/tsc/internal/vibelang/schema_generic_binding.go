@@ -14,6 +14,7 @@ type schemaGenericState struct {
 
 func init() {
 	checker.RegisterCallExpressionTypeHook(schemaGenericCallType)
+	checker.RegisterCallExpressionReplacementHook(schemaGenericCallReplacement)
 	checker.RegisterExpressionTypeHook(schemaLibraryNameType)
 	fileChecks = append(fileChecks, checkSchemaGenericReferences)
 }
@@ -166,6 +167,21 @@ func schemaLibraryNameType(c *checker.Checker, node *ast.Node, t *checker.Type) 
 		return c.GetTypeAtLocation(replacement)
 	}
 	return t
+}
+
+// schemaGenericCallReplacement has the checker check the selected codec's call
+// in place of the visible one, so the shared arguments meet the selected
+// signature: Schema.ReadonlyMap takes any key schema, where the visible
+// Schema.Record candidate would report TS2345 for a Date, collection, tuple
+// or struct key. The emitter selects the same call (plan.go).
+func schemaGenericCallReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
+	if !ast.IsCallExpression(node) {
+		return nil
+	}
+	if replacement := schemaGenericReplacement(c, node); replacement != nil && ast.IsCallExpression(replacement) {
+		return replacement
+	}
+	return nil
 }
 
 func schemaGenericCallType(c *checker.Checker, node *ast.Node, t *checker.Type) *checker.Type {

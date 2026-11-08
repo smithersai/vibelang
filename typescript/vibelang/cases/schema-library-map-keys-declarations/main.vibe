@@ -1,0 +1,10 @@
+// VIP-44: a ReadonlyMap key is any schema. The exported schema declares what
+// TypeScript declares for its Effect TypeScript counterpart (typescript/main.ts).
+import { Schema } from "effect"
+
+export schema Keyed {
+  readonly byDate: ReadonlyMap<Date, number>
+  readonly byPair: ReadonlyMap<readonly [string, number], string>
+  readonly bySet: ReadonlyMap<ReadonlySet<string>, boolean>
+  readonly nested: ReadonlyArray<ReadonlyMap<URL, ReadonlySet<Date>>>
+}

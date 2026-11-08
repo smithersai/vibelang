@@ -8605,6 +8605,9 @@ func (c *Checker) checkImportCallExpression(node *ast.Node) *Type {
  * @returns On success, the expression's signature's return type. On failure, anyType.
  */
 func (c *Checker) checkCallExpression(node *ast.Node, checkMode CheckMode) *Type {
+	if replacement := c.applyCallExpressionReplacementHooks(node); replacement != nil {
+		return c.checkExpressionEx(replacement, checkMode) // VibeLang (extensions.go)
+	}
 	if c.compilerOptions.RewriteRelativeImportExtensions.IsTrue() &&
 		ast.IsInJSFile(node) && ast.IsRequireCall(node, false /*requireStringLiteralLikeArgument*/) &&
 		!ast.IsStringLiteralLike(node.Arguments()[0]) {
@@ -8698,6 +8701,9 @@ func (c *Checker) isSymbolOrSymbolForCall(node *ast.Node) bool {
  * @return a signature of the call-like expression or undefined if one can't be found
  */
 func (c *Checker) getResolvedSignature(node *ast.Node, candidatesOutArray *[]*Signature, checkMode CheckMode) *Signature {
+	if replacement := c.applyCallExpressionReplacementHooks(node); replacement != nil {
+		return c.getResolvedSignature(replacement, candidatesOutArray, checkMode) // VibeLang (extensions.go)
+	}
 	links := c.signatureLinks.Get(node)
 	// If getResolvedSignature has already been called, we will have cached the resolvedSignature.
 	// However, it is possible that either candidatesOutArray was not passed in the first time,
