@@ -39,6 +39,23 @@ export function declarationBaselineDir(p, pkg, packages) {
   return legacy
 }
 
+/** Each referenced declaration project owns its outputs, even when legacy slugs alias. */
+export function declarationProjects(projects) {
+  return projects.map(tsconfig => ({ tsconfig,
+    prefix: projects.length === 1 ? "." : "projects-v2/" + packageKey(tsconfig) }))
+}
+
+/** Preserve readable legacy layouts, but never certify overwritten project evidence. */
+export function baselineDeclarationProjects(projects, dir, surface) {
+  const current = declarationProjects(projects)
+  if (projects.length === 1 || readJsonIf(join(dir, "projects-v2", "layout.json"))?.version === 2 ||
+    surface?.apiMetadata?.layouts?.some(layout => layout.prefix.startsWith("projects-v2/"))) return current
+  const aliases = projects.filter(project => projects.some(other => project !== other && slug(project) === slug(other)))
+  if (aliases.length) throw new Error("unverified declaration baseline: legacy declaration directory aliases projects: " +
+    aliases.join(", ") + "; rerun setup in a new run")
+  return projects.map(tsconfig => ({ tsconfig, prefix: slug(tsconfig) }))
+}
+
 export function recordSetupCompile(p, pkg, checked) {
   const key = setupCompileKey(pkg)
   writeJson(join(p.baseline, key + ".json"), checked.diagnostics)

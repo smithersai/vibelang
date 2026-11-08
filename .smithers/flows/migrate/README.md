@@ -1167,3 +1167,5 @@ Public declarations reachable from exports or types must remain API-identical; i
 A bare filename held as data is not a source reference; rewriting it requires a source-input context. Output descriptors such as `{ path: "index.ts" }` retain their generated filename. Imports, source URLs, filesystem reads, joined source paths and input configuration still follow renamed modules. Unqualified filename data remains visible as a `bare-name` audit report.
 
 API comparison batches retain the nominal identities established by every published export path. A private declaration reached through a generated helper keeps the same identity when its public re-export falls in another batch. Batching still checks member mutations and distinct public aliases.
+
+Referenced declaration projects use separate bounded output and log identities, so `config/build.json` and `config__build.json` cannot overwrite each other's evidence. Verification rejects ambiguous legacy project snapshots with all conflicting config paths named and asks for a fresh setup. Single-project and unambiguous legacy snapshots remain readable.

@@ -1,0 +1,29 @@
+{
+  "key": "baseline:declaration-project-slug-collision",
+  "projects": [
+    "config/build.json",
+    "config__build.json"
+  ],
+  "sources": [
+    "export const value: number = 1;\n",
+    "export const value: string = \"second\";\n"
+  ],
+  "neighbours": [
+    [
+      "a/b.json",
+      "a__b.json"
+    ],
+    [
+      "root",
+      "."
+    ],
+    [
+      "a%2Fb.json",
+      "a/b.json"
+    ],
+    [
+      "δ/build.json",
+      "δ__build.json"
+    ]
+  ]
+}

@@ -18,9 +18,9 @@ import { generatedTree, ownedPathSources, ownedToolConfigs } from "./tool-config
 import { wireTestProjects } from "./test-projects.mjs"
 import { wireDeclarationRedirects } from "./declaration-redirects.mjs"
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { dirname, join, posix, relative, resolve } from "node:path"
+import { basename, dirname, join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { assertBaselineSafe, declarationBaselineDir, declarationKey, readSetupCompile, recordSetupCompile, setupCompileKey } from "./baseline.mjs"
+import { assertBaselineSafe, baselineDeclarationProjects, declarationBaselineDir, declarationKey, declarationProjects, readSetupCompile, recordSetupCompile, setupCompileKey } from "./baseline.mjs"
 import { assertNoTestBundleRename } from "./test-bundles.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import * as Enumerations from "./enumerations.mjs"
@@ -73,7 +73,7 @@ import { wireNodeTests } from "./node-tests.mjs"
 import { bindCompilerArtifact, compilerArtifactOf, readToolchain } from "./toolchain.mjs"
 import { probeVip1, probeTargetVip1 } from "./vip-flip.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
-import { appendJsonl, batchName, isDeclarationFile, must, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
+import { appendJsonl, batchName, isDeclarationFile, must, packageKey, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
 import { importerPaths } from "./importer-files.mjs"
 
 export const flowDir = fileURLToPath(new URL("../", import.meta.url))
@@ -412,8 +412,9 @@ export async function setUpAgents(t, packageDir, logs) {
   return { ...agents, formatted: await formatWritten(t, agents.files, join(logs, "agents-format.log")) }
 }
 
-/** A log path for one project of several: compile-x.log becomes compile-x-tsconfig.node.log. */
-const projectLog = (log, tsconfig, projects) => (projects.length > 1 ? log.replace(/(\.log)?$/, `-${slug(tsconfig)}$1`) : log)
+/** Project identities keep each compiler log separate with bounded path components. */
+const projectLog = (log, tsconfig, projects) => (projects.length > 1
+  ? join(dirname(log), "projects-v2", packageKey(tsconfig), basename(log)) : log)
 
 /** Checks each project of pkg's tsconfig (Wire.projectsOf) and joins their diagnostics. */
 async function checkPackage({ compiler, ts, t, pkg, log }) {
@@ -492,14 +493,15 @@ async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
   let files = 0
   const diagnostics = []
   const moduleReferences = []
-  for (const tsconfig of projects) {
-    const emitted = await emitDeclarations({ compiler, tsconfig, cwd, outDir: join(outDir, slug(tsconfig)), log: projectLog(log, tsconfig, projects), root: t, typescript: ts })
+  writeJson(join(outDir, "projects-v2", "layout.json"), { version: 2 })
+  for (const { tsconfig, prefix } of declarationProjects(projects)) {
+    const emitted = await emitDeclarations({ compiler, tsconfig, cwd, outDir: join(outDir, prefix), log: projectLog(log, tsconfig, projects), root: t, typescript: ts })
     code ||= emitted.code
     files += emitted.files
     diagnostics.push(...emitted.diagnostics)
     moduleReferences.push(...emitted.moduleReferences)
   }
-  recordDeclarationSurface(ts, outDir, cwd, projects.map(tsconfig => ({ tsconfig, prefix: slug(tsconfig) })), undefined, { emitDiagnostics: diagnostics, emitRoot: t })
+  recordDeclarationSurface(ts, outDir, cwd, declarationProjects(projects), undefined, { emitDiagnostics: diagnostics, emitRoot: t })
   return { code, files, diagnostics, moduleReferences }
 }
 
@@ -2265,6 +2267,8 @@ export async function verify(options) {
     const baselineDir = declarationBaselineDir(p, pkg.dir, config.packages.map(pkg => pkg.dir))
     const surfacePath = join(baselineDir, "public-surface.json")
     const oldSurface = existsSync(surfacePath) ? readJson(surfacePath) : null
+    const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)
+    const baselineProjects = baselineDeclarationProjects(projects, baselineDir, oldSurface)
     if (!oldSurface?.apiMetadata || oldSurface.snapshotVersion < 3 || oldSurface.unresolved?.includes(NO_ENTRY_POINTS)) {
       // A legacy run must snapshot the setup commit's shipped declarations,
       // never the candidate's current package files.
@@ -2279,9 +2283,8 @@ export async function verify(options) {
           const text = await Jj.fileAt(t, revision, file)
           if (text !== null) handwritten.set(file.slice(prefix.length), text)
         }
-        const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)
         recordDeclarationSurface(ts, baselineDir, join(t, pkg.dir),
-          projects.map(tsconfig => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })), JSON.parse(original), { handwritten })
+          baselineProjects, JSON.parse(original), { handwritten })
       }
     }
     declarations[pkg.dir] = compareDeclarations(ts, baselineDir, outDir, {
@@ -2297,8 +2300,7 @@ export async function verify(options) {
       diagnostics: emitted.diagnostics, baselineDiagnostics: originalEmit?.diagnostics?.length ?? null,
       errors: errors.length, dependencyPathSubstitutions, modulePathSubstitutions, log: emitLog }
     const stock = oracle?.[pkg.dir]
-    const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)
-    const names = declarationNames(ts, join(t, pkg.dir), projects.map((tsconfig) => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })))
+    const names = declarationNames(ts, join(t, pkg.dir), baselineProjects)
     unproven.push(...unprovenMigrations({ migrated, pkgDir: pkg.dir, names, oracle: stock }))
   }
   const after = await foreignBatchChanges(t, await Jj.changedPaths(t), { files, codemod, testDiff, sidecar: batchSidecarLocator(config) })
