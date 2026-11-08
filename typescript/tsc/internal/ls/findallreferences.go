@@ -676,6 +676,11 @@ func (l *LanguageService) provideSymbolsAndEntries(ctx context.Context, uri lspr
 
 func (l *LanguageService) provideSymbolsAndEntriesAtPosition(ctx context.Context, program *compiler.Program, sourceFile *ast.SourceFile, position int, isRename bool, implementations bool) (SymbolAndEntriesData, bool) {
 	node := astnav.GetTouchingPropertyName(sourceFile, position)
+	{
+		checker, done := program.GetTypeChecker(ctx)
+		node = schemaSourceTypeLocation(checker, node)
+		done()
+	}
 	if isRename {
 		// Adjust modifier/keyword nodes to the declaration name, matching Strada's findRenameLocations.
 		node = getAdjustedLocation(node, true /*forRename*/, sourceFile)
@@ -1299,6 +1304,7 @@ func (l *LanguageService) getReferencedSymbolsForNode(ctx context.Context, posit
 
 	checker, done := program.GetTypeChecker(ctx)
 	defer done()
+	node = schemaSourceTypeLocation(checker, node)
 
 	if node.Kind == ast.KindSourceFile {
 		resolvedRef := getReferenceAtPosition(node.AsSourceFile(), position, program)
@@ -2240,6 +2246,7 @@ func (state *refState) markSearchedSymbols(sourceFile *ast.SourceFile, symbols [
 
 func (state *refState) getReferencesAtLocation(sourceFile *ast.SourceFile, position int, search *refSearch, addReferencesHere bool) {
 	referenceLocation := astnav.GetTouchingPropertyName(sourceFile, position)
+	referenceLocation = schemaSourceTypeLocation(state.checker, referenceLocation)
 
 	if !isValidReferencePosition(referenceLocation, search.text) {
 		// This wasn't the start of a token.  Check to see if it might be a

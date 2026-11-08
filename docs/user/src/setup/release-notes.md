@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Renaming an imported scalar type could leave its schema uses unchanged. Reference search and rename now follow the written type binding in schema fields and aliases.
+
 - Directly run `Effect.provideService` calls with explicit type arguments missed the form advisory. They now report `EK4836` while keeping their written type contract and service scope.
 
 - Explicit type arguments and renamed imports could hide form advisories on directly run Effect catch calls. They now report `EK4835` and keep native calls when a rewrite would lose their written contract.

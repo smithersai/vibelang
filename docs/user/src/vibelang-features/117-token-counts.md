@@ -128,11 +128,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Vue](../setup/vue.md) | 2,900 |
 | [Svelte](../setup/svelte.md) | 2,600 |
 | [Foldkit](../setup/foldkit.md) | 3,400 |
-| **Editors** | **5,100** |
+| **Editors** | **5,200** |
 | [VS Code and Cursor](../setup/vscode.md) | 1,400 |
 | [Neovim](../setup/neovim.md) | 1,200 |
 | [Zed](../setup/zed.md) | 520 |
-| [Other editors](../setup/other-editors.md) | 840 |
+| [Other editors](../setup/other-editors.md) | 870 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Keep .ts file names** | **1,400** |
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |

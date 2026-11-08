@@ -5,3 +5,8 @@ export import Dictionary = globalThis.Record
 export declare function ValueRecord(): number
 export default class Default<K,V> { k:K; v:V }
 export import Freeze = globalThis.Readonly
+export import LibraryDate = globalThis.Date
+export import LibraryURL = globalThis.URL
+export import LibraryRegExp = globalThis.RegExp
+export import LibraryUint8Array = globalThis.Uint8Array
+export import LibraryError = globalThis.Error

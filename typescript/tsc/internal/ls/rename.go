@@ -199,6 +199,7 @@ func (l *LanguageService) renameEditRange(entry *ReferenceEntry) (lsproto.Range,
 func (l *LanguageService) getRenameInfoForNode(ctx context.Context, newName string, node *ast.Node, sourceFile *ast.SourceFile, program *compiler.Program) (RenameInfo, bool) {
 	ch, done := program.GetTypeChecker(ctx)
 	defer done()
+	node = schemaSourceTypeLocation(ch, node)
 
 	symbol := ch.GetSymbolAtLocation(node)
 	if symbol == nil {
