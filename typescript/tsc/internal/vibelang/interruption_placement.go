@@ -2,8 +2,8 @@ package vibelang
 
 import "github.com/microsoft/TypeScript/tsc/internal/ast"
 
-// Interruption follows source execution ownership (VIP-22). Computed names
-// and heritage expressions run in the surrounding code; field/enum initializers
+// Interruption follows source execution ownership (VIP-22). Decorators,
+// computed names and heritage expressions run in the surrounding code; field/enum initializers
 // and callable parameter defaults do not. The generated concurrent parameter
 // list is source item initialization, rather than a callable's default.
 func inInterruptionEffectCode(node *ast.Node) bool {
@@ -28,7 +28,7 @@ func inInterruptionEffectCode(node *ast.Node) bool {
 		if !ast.IsFunctionLike(n) || isCalledInPlace(n) || isCatchLeftFunction(n) {
 			continue
 		}
-		if n.Name() == child && child.Kind == ast.KindComputedPropertyName {
+		if classDecoratorChild(n, child) || n.Name() == child && child.Kind == ast.KindComputedPropertyName {
 			continue
 		}
 		if n.Body() != child {

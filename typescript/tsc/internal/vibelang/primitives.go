@@ -291,12 +291,12 @@ func checkPrimitives(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsClassLike(n) {
 			// Class definition expressions run now. Member bodies, field
 			// initialization and static blocks keep their independent context;
-			// computed names and heritage expressions use the enclosing mask.
+			// decorators, computed names and heritage expressions use the enclosing mask.
 			inner := maskContext{inFunction: true, outerMasked: ctx.masked || ctx.outerMasked}
 			n.ForEachChild(func(child *ast.Node) bool {
 				if ast.IsClassElement(child) {
 					child.ForEachChild(func(part *ast.Node) bool {
-						if part == child.Name() && part.Kind == ast.KindComputedPropertyName {
+						if classMemberNameChild(child, part) || classDecoratorChild(child, part) {
 							return visit(part, ctx)
 						}
 						return visit(part, inner)

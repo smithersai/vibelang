@@ -9,10 +9,12 @@ import (
 )
 
 const interruptionPlacementTarget = "FuzzInterruptionPlacement"
+const interruptionDecoratorQuote = "a decorator expression such as `@(try d)`"
 const interruptionPlacementQuote = "`uninterruptible { }`, `interruptible { }` or `restore { }` outside effect code, `function f() { uninterruptible { } }`; `EK2201` fires, not `EK2111`"
 
 func TestInterruptionPlacementQuoted(t *testing.T) {
 	chapterSays(t, "002-running.md", interruptionPlacementQuote)
+	chapterSays(t, "002-running.md", interruptionDecoratorQuote)
 	chapterSays(t, "002-running.md", "A computed class key and an `extends` clause are effect code, as `await` is allowed there")
 }
 
@@ -21,6 +23,7 @@ func TestInterruptionPlacementQuoted(t *testing.T) {
 func FuzzInterruptionPlacement(f *testing.F) {
 	startShortBudget(f)
 	chapterSays(f, "002-running.md", interruptionPlacementQuote)
+	chapterSays(f, "002-running.md", interruptionDecoratorQuote)
 	sites := []struct{ key, source string }{
 		{"plain", "function f() { % }"},
 		{"async", "async function f() { % }"},
@@ -32,6 +35,18 @@ func FuzzInterruptionPlacement(f *testing.F) {
 		{"parameter", "effect function f(n = do { %; 1 }) {}"},
 		{"top", "%"},
 		{"enum", "effect function f() { enum E { A = do { %; 1 } } }"},
+	}
+
+	decoratorHeads := []struct{ key, source string }{
+		{"class-decorator", "@(do { %; ((value: unknown, context: unknown) => {}) }) class C {}"},
+		{"method-decorator", "class C { @(do { %; ((value: unknown, context: unknown) => {}) }) m(){} }"},
+		{"field-decorator", "class C { @(do { %; ((value: unknown, context: unknown) => {}) }) field=1 }"},
+		{"getter-decorator", "class C { @(do { %; ((value: unknown, context: unknown) => {}) }) get value(){return 1} }"},
+		{"setter-decorator", "class C { @(do { %; ((value: unknown, context: unknown) => {}) }) set value(v:number){} }"},
+		{"static-decorator", "class C { @(do { %; ((value: unknown, context: unknown) => {}) }) static m(){} }"},
+	}
+	for _, head := range decoratorHeads {
+		sites = append(sites, struct{ key, source string }{head.key, "function f(){" + head.source + "}"})
 	}
 	keys := make([]string, len(sites))
 	for i, site := range sites {
@@ -59,6 +74,10 @@ func FuzzInterruptionPlacement(f *testing.F) {
 			"effect function result() { uninterruptible { restore { return 7 } } }",
 			"effect function nestedResult() { const nested = effect { uninterruptible { restore { return 3 } } }; return try nested }",
 			"function names() { const " + word + " = 1; " + word + "\n{ }; return " + word + " }",
+		}
+
+		for _, head := range decoratorHeads {
+			controls = append(controls, "effect function decorated(){uninterruptible {"+strings.Replace(head.source, "%", body, 1)+"}}")
 		}
 		for j, input := range append([]string{source}, controls...) {
 			r, err := w.Compile(t.Context(), Single(input))

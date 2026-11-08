@@ -1,0 +1,18 @@
+export effect function main() {
+  const events: string[] = []
+  const decorator = (value: unknown, context: unknown) => {}
+  uninterruptible {
+    @(do { restore { events.push("class") }; decorator })
+    class C {
+      @(do { restore { events.push("method") }; decorator })
+      method() {}
+      @(do { restore { events.push("field") }; decorator })
+      field = 1
+      @(do { restore { events.push("getter") }; decorator })
+      get value() { return 1 }
+      @(do { restore { events.push("setter") }; decorator })
+      set value(value: number) {}
+    }
+  }
+  return events
+}

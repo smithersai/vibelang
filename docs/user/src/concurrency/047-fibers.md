@@ -132,6 +132,8 @@ effect function pollStatus(cancelled: boolean) {
 - `interruptible` (`Effect.interruptible`) makes its code interruptible even inside an uninterruptible region.
 - `try interrupt` (`Effect.interrupt`) interrupts the running fiber. `try yieldNow` (`Effect.yieldNow`) yields to the scheduler. Both names are native Effect values, so omit parentheses; for a chosen priority, use `try Effect.yieldNowWith(priority)`.
 
+Decorator expressions on a class or its members run where the class is defined. Interruption blocks there use the enclosing Effect context and mask; a nested function or member body keeps its own context.
+
 The opening `{` must be on the same line as `uninterruptible`, `restore` or `interruptible`. With a line break before `{`, the word is an ordinary identifier and the following block is a separate statement.
 
 An `uninterruptible` block protects a child after it enters the block. If another fiber must wait for that point before interrupting it, signal with a `Deferred` from inside the block; a sleep does not prove the child has started.

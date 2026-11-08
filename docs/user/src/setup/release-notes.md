@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Unused private fixtures with computed imports could redirect unrelated native package exports to generated JavaScript. Migration now preserves those native paths while keeping reachable opaque imports on a shared emitted graph.
 
+- Class member decorators incorrectly rejected interruption blocks or claimed they captured an outer mask; the blocks now use the enclosing Effect context and mask.
 - A migration could mistake a returned record of Effect callbacks for a returned Effect and reject equivalent branches. Such callback records now keep their existing preservation rules.
 
 - A migrated function that always returned an Effect could gain a plain-value result when extra branches or local assignments hid the change. Verification now reports that loss even when the number of Effect-valued results stays the same.
