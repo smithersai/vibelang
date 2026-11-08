@@ -1,0 +1,17 @@
+// expect: EK0205
+// rule-evidence: docs/design/src/002-running.md#do-expressions
+// A break or continue leaving a loop head's do unlabeled, or targeting that
+// loop, is EK0205 and nothing else, even where the compiler still compiles
+// that do to a function (a for test or update, a do-while test).
+export function forTest(flag: boolean): void {
+  for (let i = 0; do { if (flag) break; i < 1 }; i++) {}
+}
+export function forUpdate(): void {
+  for (let i = 0; i < 2; i = do { if (i) continue; i + 1 }) {}
+}
+export function doWhile(): void {
+  do {} while (do { break; true })
+}
+export function labeledChain(): void {
+  outer: inner: for (let i = 0; do { if (i) break outer; true }; i++) {}
+}

@@ -1,6 +1,7 @@
-// expect: EK0205 EK0205 EK0205 EK0205 EK0205 EK0205 EK0204 EK0204
+// expect: EK0205 EK0205 EK0205 EK0205 EK0205 EK0205 EK0204
 // VIP-2 / Appendix B: every consecutive label denotes the same loop.
-// do-while also retains its existing EK0204 lowering limitation.
+// A do-while head still compiles its do to a function: a return there is
+// EK0204, while a jump it rejects is EK0205 alone.
 export function doubleBreak(): void {
   outer: inner: while (do { break outer; true }) {}
 }
@@ -18,6 +19,9 @@ export function doWhileBreak(): void {
 }
 export function doWhileContinue(): void {
   outer: inner: do {} while (do { continue outer; true });
+}
+export function doWhileReturn(): void {
+  do {} while (do { return; true });
 }
 // A different enclosing loop remains a permitted destination.
 export function enclosingBreak(): void {

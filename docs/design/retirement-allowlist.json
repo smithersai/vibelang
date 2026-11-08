@@ -2510,6 +2510,16 @@
     "reason": "The nested plain function returns an empty object under a two-property written contract, preserving its existing native TS2739 error. The unmodified compiler already reports that error and EK0509. The fix removes generated Promise-versus-Effect cascades while retaining this authored error; no rejection is added."
   },
   {
+    "code": "EK0205",
+    "case": "typescript/vibelang/cases/do-loop-head-labels.fail",
+    "vip": "VIP-2",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/src/002-running.md#do-expressions: a break or continue in a loop head's do that leaves it unlabeled or targets that loop is EK0205; docs/design/vips/0034-compiler-and-tooling.md: use the already assigned specific diagnostic for a rejection"
+    },
+    "reason": "No new rejection: the case keeps rejecting the same six loop-head jumps with EK0205. Its header and expected diagnostics drop the EK0204 the compiler no longer prints beside EK0205 for the two do-while jumps."
+  },
+  {
     "code": "EK2601",
     "case": "typescript/vibelang/cases/ek3205-layers.fail",
     "vip": "VIP-26",

@@ -1,8 +1,6 @@
-main.vibe(5,29): error EK0205
-main.vibe(8,29): error EK0205
-main.vibe(11,37): error EK0205
-main.vibe(14,37): error EK0205
-main.vibe(17,43): error EK0204
-main.vibe(17,43): error EK0205
-main.vibe(20,35): error EK0204
-main.vibe(20,35): error EK0205
+main.vibe(6,29): error EK0205
+main.vibe(9,29): error EK0205
+main.vibe(12,37): error EK0205
+main.vibe(15,37): error EK0205
+main.vibe(18,43): error EK0205
+main.vibe(21,35): error EK0205

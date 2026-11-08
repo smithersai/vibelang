@@ -682,6 +682,10 @@ func (p *Parser) checkDoLoopHead(d *doExpression) {
 		})
 		if label == nil || targetsLoop {
 			p.doError(p.skipRangeTrivia(n.Loc), DoLoopHeadCode, DoLoopHeadMessage, keywordOf(n))
+			if p.vibelangDoLoopHeadJumps == nil {
+				p.vibelangDoLoopHeadJumps = map[*ast.Node]bool{}
+			}
+			p.vibelangDoLoopHeadJumps[n] = true
 		}
 	}, p.isDoArrow)
 }
@@ -738,7 +742,9 @@ func (p *Parser) checkDoBoundary(d *doExpression, boundary *ast.Node, what strin
 				keyword = "var"
 			}
 		case ast.KindBreakStatement, ast.KindContinueStatement:
-			if !jumpTargetWithin(n, boundary) {
+			if !jumpTargetWithin(n, boundary) && !p.vibelangDoLoopHeadJumps[n] {
+				// EK0205 already owns a jump that leaves a loop head's do
+				// unlabeled or targets that loop (VIP-34: one diagnostic).
 				keyword = keywordOf(n)
 			}
 		case ast.KindAwaitExpression:
