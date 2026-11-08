@@ -863,3 +863,57 @@ test("status output retains a passing runner deadline warning and summary", (t) 
     assert.match(result.stdout, /1 passed past half a deadline: deadline-margin/)
   }
 })
+
+
+// Supply deterministic elapsed records after real commands finish: testing the
+// renderer must not wait for half of a compiler's two-minute hang guard.
+for (const [phase, limit] of [
+  ["compile", 120], ["compile typescript", 120],
+  ["compare declarations", 120], ["compare", 10], ["run", 60],
+  ["future phase", 90],
+]) {
+  test("deadline advice names the controlling limit for " + phase, (t) => {
+    const { root, harness, compiler } = fixture(t)
+    fs.writeFileSync(compiler, `#!/usr/bin/env node
+import fs from "node:fs"
+fs.mkdirSync("out", { recursive: true })
+fs.writeFileSync("out/main.js", 'console.log("expected")')
+`, { mode: 0o755 })
+    const cases = ["custom-margin", "ordinary-margin"]
+    for (const name of cases) {
+      const at = path.join(root, "vibelang/cases", name)
+      fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+      fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+      fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
+      if (name === "custom-margin") fs.writeFileSync(path.join(at, "run.mjs"), 'console.log("expected")\n')
+    }
+    fs.appendFileSync(path.join(root, "vibelang/harness-command.mjs"), `
+const nativeRun = CaseCommands.prototype.run
+CaseCommands.prototype.run = async function (...args) {
+  const result = await nativeRun.apply(this, args)
+  Object.assign(this.records.at(-1), {
+    phase: ${JSON.stringify(phase)}, timeoutMs: ${limit * 1000}, wallMs: ${limit * 750},
+  })
+  return result
+}
+`)
+    const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+    for (const flags of [[], ["--status"], ["--verbose"], ["--status", "--verbose"]]) {
+      const result = spawnSync(process.execPath, [harness, ...flags, ...cases], { env, encoding: "utf8", timeout: 30_000 })
+      assert.equal(result.status, 0, result.stdout + result.stderr)
+      const warnings = result.stdout.split("\n").filter(line => /^\s+deadline: /.test(line))
+      assert.equal(warnings.length, 2, result.stdout)
+      for (const [index, warning] of warnings.entries()) {
+        assert.ok(warning.includes("deadline: " + phase + " took " + (limit * 0.75).toFixed(1) + " s of " + limit + " s"), warning)
+        if (phase === "run" && index === 0) {
+          assert.match(warning, /run\.mjs:.*`\/\/ run-seconds: N`/, warning)
+        } else {
+          assert.doesNotMatch(warning, /run-seconds|run\.mjs:/, "a custom runner line cannot change this limit: " + warning)
+          assert.ok(warning.includes("harness.mjs: review the " + phase + " phase and its fixed deadline"), warning)
+        }
+      }
+      assert.match(result.stdout, /2 passed past half a deadline: custom-margin, ordinary-margin/)
+      assert.match(result.stdout, /2 cases: 2 ok, 0 FAIL, 0 pending, 0 XPASS/)
+    }
+  })
+}

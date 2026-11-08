@@ -984,7 +984,11 @@ names its targets, keeps the rule too.
 A passing case that used over half of any phase's deadline prints a
 `deadline:` line under its result naming the phase and the two times, including
 with `--status`. The summary counts such cases, so a case drifting toward a
-kill shows in post-merge while it passes.
+kill shows in post-merge while it passes. Advice for a custom runner's `run`
+phase points to its work and `// run-seconds: N`. Compilation, comparisons
+and execution without a custom runner use fixed deadlines in `harness.mjs`;
+a runner's line cannot change those limits. Investigate the named phase's work
+and host load before changing its deadline.
 
 The Chapter 15 failure case uses `TestClock.layer()` and advances virtual time
 with `TestClock.adjust` before joining its scenario. This checks timeout,

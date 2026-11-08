@@ -630,7 +630,7 @@ function report(r) {
   const owner = r.pending?.owner ?? "-"
   if (statusOnly) {
     console.log(`${r.name.padEnd(36)} ${owner.padEnd(5)} ${r.status}${r.logFile ? ` (log: ${r.logFile})` : ""}`)
-    reportDeadline(r.deadline)
+    reportDeadline(r)
     return
   }
   if (r.logFile) console.log(`log:    ${r.logFile}`)
@@ -648,16 +648,22 @@ function report(r) {
     default:
       console.log(`FAIL    ${r.name}: ${r.detail}${time}`)
   }
-  reportDeadline(r.deadline)
+  reportDeadline(r)
   if (r.status === "FAIL" || (verbose && r.log)) {
     for (const line of r.log.trimEnd().split("\n").slice(0, verbose ? 200 : 40)) console.log(`        ${line}`)
   }
 }
 
-function reportDeadline(deadline) {
+function reportDeadline({ name, deadline }) {
   if (deadline) {
     const { phase, seconds, limit } = deadline
-    console.log(`        deadline: ${phase} took ${seconds.toFixed(1)} s of ${limit} s; a loaded host kills it (run.mjs: write \`// run-seconds: N\`)`)
+    // Only a custom runner reads run-seconds; compiler, comparison and default
+    // execution limits belong to the harness.
+    const customRunner = phase === "run" && fs.existsSync(path.join(casesDir, name, "run.mjs"))
+    const advice = customRunner
+      ? "run.mjs: review its work and `// run-seconds: N`"
+      : `harness.mjs: review the ${phase} phase and its fixed deadline`
+    console.log(`        deadline: ${phase} took ${seconds.toFixed(1)} s of ${limit} s; a loaded host may hit this limit (${advice})`)
   }
 }
 
