@@ -7,7 +7,7 @@
 // conditions keep reading the source.
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
-import { runtimeEdges } from "./emitted-imports.mjs"
+import { runtimeEdges, sourceTypeEdges } from "./emitted-imports.mjs"
 import { applyEdits, resolveRelative } from "./imports.mjs"
 import { isFixtureFile, isTestFile, listSources } from "./inventory.mjs"
 import { testBundleDeferrals } from "./test-bundles.mjs"
@@ -33,10 +33,12 @@ const relativeTo = (file, target) => {
 /**
  * Routes each value edge from a package's TypeScript module to a `.vibe` module
  * a test bundles (testBundleDeferrals) through `#vibelang/emitted/*`, for
- * modules with committed emitted JavaScript. restore puts every routed edge
- * back and drops the entry. With native, every owned native value edge is
- * eligible: an opaque entry argument in an unchanged test cannot establish a
- * complete bundle graph, and bare Node children have no inherited loader.
+ * modules with committed emitted JavaScript. A route stays while any edge,
+ * including a type query, names it. restore puts every routed edge back, type
+ * references included, and drops the entry. With native, every owned native
+ * value edge is eligible: an opaque entry argument in an unchanged test cannot
+ * establish a complete bundle graph, and bare Node children have no inherited
+ * loader.
  * outputs, when supplied, is the actual compiler output map, repository-relative.
  * Returns changed files, routed modules and unresolved-output warnings.
  */
@@ -113,7 +115,13 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
       const text = readFileSync(join(root, file), "utf8"), edits = []
       // A Vibe source only needs parsing to retain or restore an existing route.
       if (/\.vibex?$/.test(file) && !text.includes(routePrefix)) continue
-      for (const edge of runtimeEdges(text, file, ts, compiler, root)) {
+      // Only value edges gain a route, but a type query or type-only import can
+      // name an existing one: restore it with the route, and keep the route
+      // while a type still names it, or the checker reports TS2307.
+      const edges = /\.vibex?$/.test(file) ? [] : runtimeEdges(text, file, ts, compiler, root).filter(edge => !edge.specifier.startsWith(routePrefix))
+      if (text.includes(routePrefix))
+        edges.push(...sourceTypeEdges(text, file, ts, compiler, root).filter(edge => edge.specifier.startsWith(routePrefix)))
+      for (const edge of edges) {
         if (edge.specifier.startsWith(routePrefix)) {
           if (restore) {
             const prior = json.imports?.[edge.specifier]

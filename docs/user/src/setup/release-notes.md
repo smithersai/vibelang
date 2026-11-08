@@ -16,6 +16,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An unannotated TypeScript function passed straight to `Effect.promise` or `Effect.sync`, such as `Effect.promise(loadCatalog)`, reports `EK0402`, and `vibelang --fix` left it for a hand repair. The fix now writes the defect bridge `Effect.orDie(Effect.tryPromise({ try: () => loadCatalog(), catch: (e) => e }))` (or `Effect.try` for `sync`), which keeps a thrown or rejected value as the same defect.
 
+- Migration's revert and rebuild ignored a `#vibelang/emitted/…` route that a module named only in a type, such as `typeof import("#vibelang/emitted/src/actions")` in an inferred annotation. Reverting a batch dropped the route but left the reference, so the module reported `TS2307`. Restore now puts type references back with their route, and a rebuild keeps a route while a type still names it.
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.

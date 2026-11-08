@@ -170,3 +170,51 @@ test("a native importer migrated later keeps its exact route through native Vibe
     assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).imports["#sqlite"], "./src/sqlite.js")
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+
+// dp-t3code-03 GitHubPullRequestApi: a module reaches a route only through a
+// type, `typeof import("#vibelang/emitted/...")` in an inferred annotation.
+// Restore must put that reference back with the route, and a rebuild must
+// keep the route while a type still names it, or the checker reports TS2307.
+const typeRoute = (form, spec) => ({
+  query: `export type Result = ReturnType<typeof import("${spec}").make>\n`,
+  member: `export type Shape = import("${spec}").Shape\n`,
+  importType: `import type { Shape } from "${spec}"\nexport type Local = Shape\n`,
+  exportType: `export type { Shape } from "${spec}"\n`
+})[form]
+const typeRouteCase = fc.array(fc.record({
+  form: fc.constantFrom("query", "member", "importType", "exportType"),
+  vibe: fc.boolean()
+}), { minLength: 1, maxLength: 4 })
+
+test("managed type routes: restore puts type references back and rebuild keeps their route", async () => {
+  const compiler = process.env.VIBELANG_NATIVE_COMPILER || join(repo, "packages/compiler/native/vibelang")
+  assert.ok(existsSync(compiler), "native compiler required for Vibe import routing")
+  await checkProperty(fc, {
+    name: "flow-gap-revert-drops-type-only-managed-routes",
+    rule: "A route named only in type positions survives a rebuild, and restore rewrites every type reference to it.",
+    command: "node --test --test-name-pattern='managed type routes' .smithers/flows/migrate/test/bundled-imports.property.test.mjs",
+    arbitrary: typeRouteCase,
+    numRuns: 24,
+    check: importers => {
+      const root = mkdtempSync(join(tmpdir(), "managed-type-routes-"))
+      try {
+        const key = "#vibelang/emitted/src/actions"
+        const entry = { types: "./src/actions.d.vibe.ts", "vibelang-source": "./src/actions.vibe", default: "./.vibelang/js/src/actions.js" }
+        put(root, "package.json", JSON.stringify({ name: "@demo/x", type: "module", private: true, imports: { [key]: entry } }, null, 2) + "\n")
+        put(root, "src/actions.vibe", "export type Shape = { readonly id: number }\nexport function make(): number { return 1 }\n")
+        put(root, "src/actions.d.vibe.ts", "export type Shape = { readonly id: number }\nexport declare function make(): number\n")
+        put(root, ".vibelang/js/src/actions.js", "export function make() { return 1 }\n")
+        const files = importers.map((item, i) => [`src/m${i}.${item.vibe ? "vibe" : "ts"}`, item.form])
+        for (const [file, form] of files) put(root, file, typeRoute(form, key))
+        const manifest = readFileSync(join(root, "package.json"), "utf8")
+        const rebuilt = routeBundledImports({ root, packages, ts, compiler, native: true, outputs: { "src/actions.vibe": ".vibelang/js/src/actions.js" } })
+        assert.deepEqual(rebuilt.changed, [], "a route a type still names is kept")
+        assert.deepEqual(rebuilt.modules, ["src/actions.vibe"])
+        assert.equal(readFileSync(join(root, "package.json"), "utf8"), manifest)
+        routeBundledImports({ root, packages, ts, compiler, restore: true })
+        for (const [file, form] of files) assert.equal(readFileSync(join(root, file), "utf8"), typeRoute(form, "./actions.vibe"), file)
+        assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).imports, undefined)
+      } finally { rmSync(root, { recursive: true, force: true }) }
+    }
+  })
+})
