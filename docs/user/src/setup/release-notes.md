@@ -17,6 +17,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A CommonJS function annotated at an `exports` or `module.exports` assignment could lose its throws contract, rejecting non-throwing calls or missing a throwing call. These assignments now retain their written `@throws` contract.
 
 - An `effect` function whose written return type was a union of different Effect types, such as `effect function f(): Effect.Effect<number> | Effect.Effect<string, Refused>`, compiled and declared that union, although an `effect` function returns one Effect, as an `async` function returns one `Promise` (TypeScript reports `TS1064` for a union of Promises). It now reports `EK0106`, and its quick fix and `vibelang --fix` write the one Effect of the joined channels, here `(string | number)!Refused`.
+- Converting an `Effect.gen` whose TypeScript call read a just-checked property through a method, as `foreignId(request.id.trim())` after `if (!request.id) return`, failed with `TS18049` and kept the generator. The conversion now moves `request.id.trim()` to a `const` before the call, as the direct `EK0403` repair already did; a call that may throw still stays inside the bridge.
 
 - A `schema` field typed `ReadonlyMap<K, V>` with a `Date`, collection, tuple or struct key reported `TS2345` against `Schema.Record`'s key constraint. The checker now checks the selected `Schema.ReadonlyMap` call, so any key schema is admitted.
 

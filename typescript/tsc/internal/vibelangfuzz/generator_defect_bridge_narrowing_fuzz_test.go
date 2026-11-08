@@ -43,6 +43,9 @@ var narrowedBridgeCalls = map[string]string{
 	"function": "size({p})",
 	"method":   "log.size({p})",
 	"two":      "log.join({p}, {p})",
+	// a lib call over the proved property moves to the const with it
+	// (t3code's foreign(request.elicitationId.trim()))
+	"trimmed": "size({p}.trim())",
 }
 
 var narrowedBridgePaths = map[string]string{"property": "o.p", "nested": "o.inner.p"}
@@ -60,6 +63,7 @@ func FuzzGeneratorDefectBridgeNarrowing(f *testing.F) {
 		}
 		f.Add(shape+"/defined/two/nested", uint8(2))
 		f.Add(shape+"/truthy/function/property", uint8(1))
+		f.Add(shape+"/truthy/trimmed/property", uint8(2))
 	}
 	w := NewWorkspace(f)
 	node, err := NewNode(w.Dir)

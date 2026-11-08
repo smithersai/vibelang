@@ -20,15 +20,19 @@ func TestEffectGenDefectBridgeKeepsNarrowing(t *testing.T) {
 	}
 	const open, close = "try Effect.orDie(Effect.try({ try: () => ", ", catch: (e) => e }))"
 	for name, tc := range map[string]struct{ body, want string }{
-		"ternary":         {"return o.p ? double(o.p) : 0", "return " + open + "o.p ? double(o.p) : 0" + close},
-		"ternary inside":  {"const r = o.p !== undefined ? double(o.p) : 0\n  return r", "const r = " + open + "o.p !== undefined ? double(o.p) : 0" + close},
-		"both branches":   {"const r = o.p !== undefined ? double(o.p) : label(\"n\", n).length\n  return r", "const r = " + open + "o.p !== undefined ? double(o.p) : label(\"n\", n).length" + close},
-		"and":             {"return o.p !== undefined && double(o.p) > 0", open + "o.p !== undefined && double(o.p) > 0" + close},
-		"if block":        {"if (o.p) {\n    const r = double(o.p)\n    return r\n  }\n  return 0", "if (o.p) {\n    const n2 = o.p\n    const r = " + open + "double(n2)" + close},
-		"early return":    {"if (!o.p) return 0\n  return double(o.p)", "if (!o.p) return 0\n  const n2 = o.p\n  return " + open + "double(n2)" + close},
-		"unbraced branch": {"let r = 0\n  if (o.p) r = double(o.p)\n  return r", "if (o.p) {\n    const n2 = o.p\n    r = (" + open + "double(n2)" + close + ")\n  }"},
-		"else branch":     {"let r = 0\n  if (!o.p) r = 1\n  else r = double(o.p)\n  return r", "else {\n    const n2 = o.p\n    r = (" + open + "double(n2)" + close + ")\n  }"},
-		"two statements":  {"if (!o.p || !o.q) return 0\n  const a = double(o.p)\n  return a + double(o.q)", "const n2 = o.p\n  const a = " + open + "double(n2)" + close + "\n  const n3 = o.q\n  return a + (" + open + "double(n3)" + close + ")"},
+		"ternary":        {"return o.p ? double(o.p) : 0", "return " + open + "o.p ? double(o.p) : 0" + close},
+		"ternary inside": {"const r = o.p !== undefined ? double(o.p) : 0\n  return r", "const r = " + open + "o.p !== undefined ? double(o.p) : 0" + close},
+		"both branches":  {"const r = o.p !== undefined ? double(o.p) : label(\"n\", n).length\n  return r", "const r = " + open + "o.p !== undefined ? double(o.p) : label(\"n\", n).length" + close},
+		"and":            {"return o.p !== undefined && double(o.p) > 0", open + "o.p !== undefined && double(o.p) > 0" + close},
+		"if block":       {"if (o.p) {\n    const r = double(o.p)\n    return r\n  }\n  return 0", "if (o.p) {\n    const n2 = o.p\n    const r = " + open + "double(n2)" + close},
+		"early return":   {"if (!o.p) return 0\n  return double(o.p)", "if (!o.p) return 0\n  const n2 = o.p\n  return " + open + "double(n2)" + close},
+		// A lib call over the proved property moves with it (t3code's
+		// foreign(request.elicitationId.trim())).
+		"method on it":     {"if (!o.p) return 0\n  return double(o.p.valueOf())", "if (!o.p) return 0\n  const n2 = o.p.valueOf()\n  return " + open + "double(n2)" + close},
+		"lib call over it": {"if (!o.p) return 0\n  return double(Math.abs(o.p))", "if (!o.p) return 0\n  const n2 = Math.abs(o.p)\n  return " + open + "double(n2)" + close},
+		"unbraced branch":  {"let r = 0\n  if (o.p) r = double(o.p)\n  return r", "if (o.p) {\n    const n2 = o.p\n    r = (" + open + "double(n2)" + close + ")\n  }"},
+		"else branch":      {"let r = 0\n  if (!o.p) r = 1\n  else r = double(o.p)\n  return r", "else {\n    const n2 = o.p\n    r = (" + open + "double(n2)" + close + ")\n  }"},
+		"two statements":   {"if (!o.p || !o.q) return 0\n  const a = double(o.p)\n  return a + double(o.q)", "const n2 = o.p\n  const a = " + open + "double(n2)" + close + "\n  const n3 = o.q\n  return a + (" + open + "double(n3)" + close + ")"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/ek4401-fix.fail"), root)
@@ -61,6 +65,8 @@ func TestEffectGenDefectBridgeNarrowingFallsBack(t *testing.T) {
 		{"a yield in the guard", "export const g = (o: { readonly p?: number }, e: Effect.Effect<boolean>) => Effect.gen(function* () {\n  return (yield* e) && o.p !== undefined ? JSON.parse(String(o.p)) : 0\n})\n", "try: () => JSON.parse(String(o.p)), catch", "= o.p\n"},
 		{"a call before the read", "const touch = (): number => 1\nexport const g = (o: { readonly p?: string }) => Effect.gen(function* () {\n  if (!o.p) return 0\n  return touch() + JSON.parse(o.p)\n})\n", "try: () => JSON.parse(o.p), catch", "= o.p\n"},
 		{"two calls in one statement", "export const g = (o: { readonly p?: string; readonly q?: string }) => Effect.gen(function* () {\n  if (!o.p || !o.q) return 0\n  return JSON.parse(o.p) + JSON.parse(o.q)\n})\n", "try: () => JSON.parse(o.q), catch", "= o.q\n"},
+		// a call that may throw stays in the wrapper with the call it feeds
+		{"a throwing call over the read", "export const g = (o: { readonly p?: string }) => Effect.gen(function* () {\n  if (!o.p) return 0\n  return JSON.parse(JSON.parse(o.p))\n})\n", "try: () => JSON.parse(JSON.parse(o.p))", "= JSON.parse(o.p)"},
 		{"a loop head", "export const g = (o: { readonly p?: string }) => Effect.gen(function* () {\n  if (!o.p) return 0\n  for (let i = JSON.parse(o.p); i > 0; i--) yield* Effect.void\n  return 1\n})\n", "let i = try Effect.orDie(Effect.try({ try: () => JSON.parse(o.p), catch", "= o.p\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

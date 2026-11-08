@@ -117,8 +117,9 @@ type narrowedHoist struct {
 
 // hoistNarrowedOperands moves each operand of call that reads a narrowed
 // property to a const before call's statement, named apart from taken. It
-// reports false where the const would run code, read the property at another
-// time, or have no statement of a block to precede.
+// reports false where the const would run code that could throw, run
+// VibeLang or write, read the property at another time, or have no statement
+// of a block to precede.
 func hoistNarrowedOperands(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.Node, taken map[string]bool) (narrowedHoist, bool) {
 	statement, branch := enclosingStatement(call), branchStatement(call)
 	if branch != nil {
@@ -147,7 +148,7 @@ func hoistNarrowedOperands(c *checker.Checker, a *analyzer, file *ast.SourceFile
 		if !readsNarrowedProperty(c, op.node) {
 			continue
 		}
-		if !runsNoCode(op.node) {
+		if !runsNoCode(op.node) && !callsOnlySafe(c, a, file, op.node) {
 			return narrowedHoist{}, false
 		}
 		inputs = append(inputs, boundaryInput{node: op.node, pos: nodeStart(file, op.node), end: op.node.End(), param: op.name, text: nodeText(file, op.node)})
@@ -240,4 +241,37 @@ func runsNoCode(node *ast.Node) bool {
 	}
 	visit(node)
 	return clean
+}
+
+// callsOnlySafe reports whether node's only code is calls that can neither
+// throw nor run VibeLang, as o.p.trim() or Math.abs(o.p) on a narrowed
+// property: a const that holds it before its statement makes the same calls
+// in the same order, and no exception leaves the wrapper that held them.
+// EK0403's own bridge hoists such an operand (boundaryInputs); a generator's
+// did not, so t3code's foreign(request.elicitationId.trim()) kept its generator.
+func callsOnlySafe(c *checker.Checker, a *analyzer, file *ast.SourceFile, node *ast.Node) bool {
+	if a.runsVibeLang(node) {
+		return false
+	}
+	safe := true
+	var visit func(n *ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		switch {
+		case !safe || isFunctionBoundary(n):
+			return false
+		case ast.IsCallExpression(n):
+			if needsBoundary(c, file, n) {
+				safe = false
+				return true
+			}
+		case ast.IsTaggedTemplateExpression(n), ast.IsNewExpression(n), ast.IsYieldExpression(n), ast.IsAwaitExpression(n), ast.IsDeleteExpression(n), ast.IsPostfixUnaryExpression(n),
+			ast.IsPrefixUnaryExpression(n) && (n.AsPrefixUnaryExpression().Operator == ast.KindPlusPlusToken || n.AsPrefixUnaryExpression().Operator == ast.KindMinusMinusToken),
+			ast.IsBinaryExpression(n) && ast.IsAssignmentOperator(n.AsBinaryExpression().OperatorToken.Kind):
+			safe = false
+			return true
+		}
+		return n.ForEachChild(visit)
+	}
+	visit(node)
+	return safe
 }
