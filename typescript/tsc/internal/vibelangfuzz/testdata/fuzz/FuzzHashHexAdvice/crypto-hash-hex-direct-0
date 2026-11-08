@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("crypto:hash-hex:direct\x00\x00")

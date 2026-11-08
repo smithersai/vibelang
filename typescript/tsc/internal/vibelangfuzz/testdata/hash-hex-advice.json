@@ -1,0 +1,32 @@
+[
+  {
+    "key": "crypto:hash-hex:direct",
+    "source": "import { hash } from \"crypto\"; export const value=hash",
+    "host": true
+  },
+  {
+    "key": "crypto:hash-hex:alias",
+    "source": "import { hash as Native } from \"crypto\"; export const value=Native",
+    "host": true
+  },
+  {
+    "key": "node:crypto:hash-hex:direct",
+    "source": "import { hash } from \"node:crypto\"; export const value=hash",
+    "host": true
+  },
+  {
+    "key": "node:crypto:hash-hex:alias",
+    "source": "import { hash as Native } from \"node:crypto\"; export const value=Native",
+    "host": true
+  },
+  {
+    "key": "hash-hex:local",
+    "source": "const hash=()=>\"00ff\";export const value=hash",
+    "host": false
+  },
+  {
+    "key": "hash-hex:parameter",
+    "source": "export const value=(hash:()=>string)=>hash",
+    "host": false
+  }
+]

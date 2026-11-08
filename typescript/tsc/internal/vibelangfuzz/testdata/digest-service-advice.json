@@ -12,12 +12,12 @@
   {
     "key": "node:crypto:hash:direct",
     "source": "import { hash } from \"node:crypto\";export const value=hash",
-    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+    "advice": "try (try Digest.Digest).digestHex(Digest.sha256, bytes)"
   },
   {
     "key": "node:crypto:hash:alias",
     "source": "import { hash as Native } from \"node:crypto\";export const value=Native",
-    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+    "advice": "try (try Digest.Digest).digestHex(Digest.sha256, bytes)"
   },
   {
     "key": "crypto:createHash:direct",
@@ -32,12 +32,12 @@
   {
     "key": "crypto:hash:direct",
     "source": "import { hash } from \"crypto\";export const value=hash",
-    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+    "advice": "try (try Digest.Digest).digestHex(Digest.sha256, bytes)"
   },
   {
     "key": "crypto:hash:alias",
     "source": "import { hash as Native } from \"crypto\";export const value=Native",
-    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+    "advice": "try (try Digest.Digest).digestHex(Digest.sha256, bytes)"
   },
   {
     "key": "crypto:subtle.digest",

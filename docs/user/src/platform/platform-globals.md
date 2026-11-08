@@ -89,7 +89,7 @@ WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provid
 | `crypto.createVerify` | `try (try Signature.Signature).verify(publicKey, signature, data)` |
 | `crypto.generateKeyPair` | `try (try Signature.Signature).generateKeyPair(Signature.ed25519)` |
 | `crypto.getRandomValues` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
-| `crypto.hash` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` |
+| `crypto.hash` | `try (try Digest.Digest).digestHex(Digest.sha256, bytes)` |
 | `crypto.randomBytes` | `try (try SecureRandom.SecureRandom).randomBytes(size)` |
 | `crypto.randomInt` | `try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })` |
 | `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` |
@@ -174,6 +174,8 @@ WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provid
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 
 `process.hrtime()` returns a `[seconds, nanoseconds]` tuple; `process.hrtime.bigint()` returns a `bigint`. To measure elapsed time, capture `const startNanos = try Clock.monotonicTimeNanos`, then use `Duration.toHrTime((try Clock.monotonicTimeNanos) - startNanos)` for a tuple or subtract the readings directly for a `bigint`. Use readings from the same injected clock: its arbitrary origin need not match native `hrtime`, so do not subtract a saved native tuple from it.
+
+Node's `crypto.hash(algorithm, bytes)` returns lowercase hex by default, so its replacement uses `digestHex`. For `"buffer"` output, use `digest` to keep bytes. Select the matching digest algorithm and encode text input with `TextEncoder` before hashing.
 
 The `EK4402` replacement examples obtain `SecureRandom.SecureRandom` with `try` before calling its methods. The `randomBytes` method returns new bytes; it does not fill an existing array.
 
