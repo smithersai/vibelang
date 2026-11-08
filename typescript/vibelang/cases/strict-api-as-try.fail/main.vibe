@@ -1,0 +1,18 @@
+// expect: EK0401
+import { Effect as Original } from "effect"
+import { risky } from "./foreign.js"
+const Effect = { try: Original.sync, tryPromise: Original.promise }
+export const first = Effect.try(() => risky())
+export const second = Effect.tryPromise(() => Promise.resolve(risky()))
+export function parameter(Effect: { try: typeof Original.sync }) {
+  return Effect.try(function () { return risky() })
+}
+
+export function mixedSync(flag: boolean) {
+  const Effect = { try: flag ? Original.sync<number> : Original.try<number> }
+  return Effect.try(() => risky())
+}
+export function mixedPromise(flag: boolean) {
+  const Effect = { tryPromise: flag ? Original.promise<number> : Original.tryPromise<number> }
+  return Effect.tryPromise(() => Promise.resolve(risky()))
+}

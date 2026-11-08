@@ -172,9 +172,6 @@ func isAdmittedWrappedCode(c *checker.Checker, fn *ast.Node) bool {
 	if !isWrappedCode(fn) {
 		return false
 	}
-	if isBoundaryCallback(c, fn) {
-		return true
-	}
 	contextual := c.GetContextualType(fn, checker.ContextFlagsNone)
 	if contextual == nil {
 		return false

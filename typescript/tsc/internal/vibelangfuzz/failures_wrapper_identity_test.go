@@ -14,6 +14,8 @@ var wrapperIdentityQuotes = []string{
 	"A call, `new` expression, tagged template or class evaluation *known to throw* is `EK0401`",
 	"A function literal passed where the parameter's function type admits throws",
 	"`Effect.try` and `Effect.tryPromise` declare their thunk `@throws {unknown}` in both overloads",
+	"So `sync(() => parse(s))` is an error.",
+	"Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.",
 }
 
 func assertWrapperIdentityRules(t testing.TB) {
@@ -27,7 +29,7 @@ func TestWrapperSignatureIdentityQuoted(t *testing.T) { assertWrapperIdentityRul
 
 func wrapperIdentityKeys() []string {
 	var keys []string
-	for _, binding := range []string{"implicit", "named", "namespace", "alias", "constant", "parameter", "imported", "admitting", "forbidding"} {
+	for _, binding := range []string{"implicit", "named", "namespace", "alias", "constant", "parameter", "imported", "admitting", "forbidding", "sync-alias", "promise-alias", "mixed-sync-alias", "mixed-promise-alias"} {
 		for _, api := range []string{"try", "tryPromise"} {
 			for _, contract := range []string{"RangeError", "never", "builtin"} {
 				keys = append(keys, binding+":"+api+":"+contract)
@@ -71,6 +73,24 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 	case "alias":
 		imports += "import {Effect as Original} from \"effect\"\n"
 		declaration = "const Effect=Original\n"
+	case "sync-alias", "promise-alias":
+		imports += "import {Effect as Original} from \"effect\"\n"
+		actual := "sync"
+		if binding == "promise-alias" || binding == "mixed-promise-alias" {
+			actual = "promise"
+		}
+		declaration = "const Effect={try:Original." + actual + ",tryPromise:Original." + actual + "}\n"
+	case "mixed-sync-alias", "mixed-promise-alias":
+		imports += "import {Effect as Original} from \"effect\"\nimport {choice} from \"./foreign.js\"\n"
+		library += "export declare const choice:boolean\n"
+		denied, allowed := "Original.sync<number>", "Original.try<number>"
+		if api == "tryPromise" {
+			denied, allowed = "Original.sync<Promise<number>>", "Original.try<Promise<number>>"
+		}
+		if binding == "mixed-promise-alias" {
+			denied, allowed = "Original.promise<number>", "Original.tryPromise<number>"
+		}
+		declaration = "const Effect={" + api + ":choice?" + denied + ":" + allowed + "}\n"
 	case "constant":
 		declaration = "const Effect=Fake\n"
 	case "imported":
@@ -84,7 +104,7 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 	if contract == "builtin" {
 		expr = "JSON.parse(\"1\") as number"
 	}
-	if api == "tryPromise" {
+	if api == "tryPromise" || (binding == "promise-alias" || binding == "mixed-promise-alias") {
 		expr = "Promise.resolve(" + expr + ")"
 	}
 	callback := "() => " + expr
@@ -94,7 +114,7 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 	if choice&2 != 0 {
 		callback = "(" + callback + ")"
 	}
-	if choice&4 != 0 {
+	if choice&4 != 0 && binding != "sync-alias" && binding != "promise-alias" && binding != "mixed-sync-alias" && binding != "mixed-promise-alias" {
 		callback = "{try:" + callback + ",catch:(error)=>error}"
 	}
 	call := "Effect." + api + "(" + callback + ")"
@@ -108,7 +128,7 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 	}
 	defer result.Remove()
 	want := 0
-	if (binding == "constant" || binding == "parameter" || binding == "imported" || binding == "forbidding") && contract != "never" {
+	if (binding == "constant" || binding == "parameter" || binding == "imported" || binding == "forbidding" || binding == "sync-alias" || binding == "promise-alias" || binding == "mixed-sync-alias" || binding == "mixed-promise-alias") && contract != "never" {
 		want = 1
 	}
 	var errors []string
