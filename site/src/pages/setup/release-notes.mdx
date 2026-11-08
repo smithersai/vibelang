@@ -13,6 +13,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Calls through supplied `Performance` and `Crypto` values incorrectly reported platform-access errors. They now use the supplied receiver; host-global access remains diagnosed.
+
+- An explicit `effect` function or block inside a wrapper callback could run as plain JavaScript or lose its Effect type. It now keeps its cold Effect behavior and runs its body only when that Effect is run.
+
 - Unicode escapes were accepted in a `provide` keyword. They now report `TS1260`, matching TypeScript keyword rules; escaped ordinary identifiers remain usable.
 
 - A foreign call inside an `effect` function or block created in an `Effect.sync` or `Effect.promise` thunk could bypass its throw check. These nested callables now keep their own checks, and `--fix` adds a bridge inside the nested program.
@@ -32,6 +36,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Under `bun --preload vibelang/bun`, a `.vibe` module ignored `--define` and a `bunfig.toml` `[define]` table: `declare const BUILD_VERSION: string` read as undefined where the same `.ts` module read the defined value. A `.vibe` module that names a defined value now reads it as its TypeScript twin does.
 
 - Under `vibelang/bun`, importing a package whose `default` export names a `.vibelang/js` file with no single source, because `x.ts` and `x.vibe` both exist or its header names a deleted `.vibe`, failed with Bun's `TypeError: onLoad() expects an object returned`. The emitted module now loads in place, as documented.
+
+- `effect` on a getter, setter or constructor (`EK0104`), or `effect` with `async` (`EK0105`), hid the file's other errors, such as type errors. The compiler now reports them too, as TypeScript does beside its own modifier errors.
 
 - The errors for a `try` statement in effect code, `catch` outside effect code, `try x catch h`, a `catch` operand that is not an Effect, and a plain `catch` handler that returns a Promise or an Effect (`EK0503` to `EK0508`) ended with an unrelated hint about function-literal handlers. Each now says what to write instead, and `EK0506` names the operand's type.
 - The browser hardware-count diagnostic named a process export that does not exist. It now identifies the process service’s `availableParallelism` member and keeps the TypeScript adapter advice for browser counts.
