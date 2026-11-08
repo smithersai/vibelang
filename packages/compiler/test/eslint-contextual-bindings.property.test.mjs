@@ -15,6 +15,7 @@ const keys = {
   ForOfStatement: ["left", "right", "body"], ArrayExpression: ["elements"],
   CallExpression: ["callee", "arguments"], ArrowFunctionExpression: ["params", "body"],
   BinaryExpression: ["left", "right"], IfStatement: ["test", "consequent", "alternate"],
+  ObjectExpression: ["properties"], Property: ["key", "value"],
   ReturnStatement: ["argument"], LogicalExpression: ["left", "right"],
   AssignmentExpression: ["left", "right"], UpdateExpression: ["argument"],
 }
@@ -86,6 +87,8 @@ test("lowered match temporaries retain syntax-word exemptions", () => {
 })
 
 const loopForms = [
+  (name) => "function read(value) { for (let " + name + " = (() => { const local = 0; return local })(); value is let bound;) { return bound } }",
+  (name) => "function read(value) { for (let " + name + " = { nested: [0, 1] }, other = 0; value is let bound; other++) { return bound } }",
   (name) => "function read(value) { for (const " + name + " = 0; value is let bound;) { return bound } }",
   (name) => "function read(value) { for (let " + name + " = 0; value is let bound; " + name + "++) { return bound } }",
   (name) => "function read(value) { for (let " + name + " = 0; false; value is let bound) {} }",

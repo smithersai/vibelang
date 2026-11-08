@@ -50,6 +50,7 @@ export function problems(code, ast, visitorKeys) {
   const named = new Set()
   const effectPrefixes = []
   const bindingStarts = new Set()
+  const declarationEnds = new Map()
   const tokenIndexAt = new Map(ast.tokens.map((token, index) => [token.range[0], index]))
   const declarationHeadAt = new Map(ast.tokens.map((token, index) =>
     [token.range[0], token.value === "declare" ? ast.tokens[index + 1]?.value : token.value]))
@@ -69,15 +70,19 @@ export function problems(code, ast, visitorKeys) {
     if (["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "TSDeclareFunction"].includes(node.type)) {
       for (const position of functionBindings(node, ast.tokens, tokenIndexAt, visitorKeys)) bindingStarts.add(position)
     }
+    if (node.type === "ForStatement" && node.init?.type === "VariableDeclaration") {
+      declarationEnds.set(node.init, forInitializerEnd(node.init, ast.tokens, tokenIndexAt))
+    }
     // Contextual words are ordinary names at the start of a written variable
     // declarator. Derive that position from its container, not its id: a
     // renamed or absent Identifier is exactly what this oracle must catch.
     // Lowered match temporaries also use VariableDeclarator, but their source
     // declaration does not start with const/let/var.
     // Hoisted loop-test/update temporaries share the init declaration but
-    // point outside its written span. They are operators, not binding names.
+    // can extend its native range beyond the written initializer. Stop at
+    // the header semicolon: those later operators are not binding names.
     if (node.type === "VariableDeclarator" && parent?.type === "VariableDeclaration" &&
-        start >= parent.range[0] && start < parent.range[1] &&
+        start >= parent.range[0] && start < (declarationEnds.get(parent) ?? parent.range[1]) &&
         ["const", "let", "var"].includes(declarationHeadAt.get(parent.range[0]))) {
       bindingStarts.add(start)
     }
@@ -97,6 +102,23 @@ export function problems(code, ast, visitorKeys) {
     if (!named.has(`${token.range[0]}:${identifierName(word)}`) && !exempt) found.push(`name ${word} at ${token.range[0]} has no node`)
   })
   return found
+}
+
+// Navigation ranges can include pattern bindings from the test or update.
+// Read the initializer boundary from source tokens, keeping semicolons inside
+// nested callbacks, object literals and parenthesized expressions inside it.
+function forInitializerEnd(initializer, tokens, tokenIndexAt) {
+  let depth = 0
+  for (let i = tokenIndexAt.get(initializer.range[0]); i < tokens.length; i++) {
+    const token = tokens[i]
+    if (depth === 0 && token.value === ";") return token.range[0]
+    if (["(", "[", "{"].includes(token.value)) depth++
+    else if ([")", "]", "}"].includes(token.value)) {
+      if (depth === 0) break
+      depth--
+    }
+  }
+  return initializer.range[1]
 }
 
 // Read the written header independently of id/params: losing the sole name or
