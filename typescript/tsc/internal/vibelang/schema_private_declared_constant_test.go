@@ -98,7 +98,7 @@ func TestSchemaConstantPrivateDeclaredConstantWithoutDeclarations(t *testing.T) 
 	_, file, _, _ := editorProgram(t, source)
 	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
 	fixed := result.Files[file.FileName()]
-	if fixed == nil || !strings.Contains(fixed.Text, "schema Options { readonly minP?: number }") {
+	if fixed == nil || !strings.Contains(fixed.Text, "schema Options { readonly minP?: number | undefined }") {
 		t.Fatalf("--fix without declarations wrote %+v", fixed)
 	}
 }

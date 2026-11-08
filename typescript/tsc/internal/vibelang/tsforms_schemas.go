@@ -12,7 +12,7 @@ import (
 // declaration (D133) writes with its type:
 //
 //	const User = Schema.Struct({ id: Schema.String, nickname: Schema.optional(Schema.String) })
-//	schema User { id: string; nickname?: string }
+//	schema User { readonly id: string; readonly nickname?: string | undefined }
 //
 // The parser writes a schema declaration's fields back into the same
 // Schema.Struct call, so the rewrite is exact when every field maps back:
@@ -22,6 +22,10 @@ import (
 // Schema.Tuple, Schema.Record, a nested Schema.Struct, Schema.optional and
 // Schema.mutableKey around a field in the order the parser writes them, and a
 // name or a dotted name of any other schema, which a field names as a value.
+// An optional field is written name?: T | undefined, which maps to
+// Schema.optional(S) under either exactOptionalPropertyTypes setting, so the
+// fix keeps the schema's meaning in every project that compiles the file
+// (structFieldType).
 // The declaration also declares the interface User, the struct's Type, so
 // the rewrite applies only when no other type of that name is in scope, or
 // when the only one is the struct's own type written beside it, as
@@ -335,9 +339,6 @@ func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Nod
 		mutable, value = true, value.Arguments()[0]
 	}
 	if isSchemaCall(c, value, "optional", 1) {
-		if c.CompilerOptions().ExactOptionalPropertyTypes.IsTrue() {
-			return "", false
-		}
 		optional, value = true, value.Arguments()[0]
 	}
 	if !optional {
@@ -354,22 +355,23 @@ func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Nod
 	if !ok {
 		return "", false
 	}
-	// Optional sugar supplies explicit undefined arms itself. A written
-	// Union must stay native when that normalization would change its codec
-	// type; a value alias is preserved as a reference, not normalized.
-	if optional && isSchemaCall(c, value, "Union", 1) && ast.IsArrayLiteralExpression(value.Arguments()[0]) {
-		undefined, other := false, false
-		for _, member := range value.Arguments()[0].Elements() {
-			module, name := effectMember(c, member)
-			if ast.IsPropertyAccessExpression(member) && module == "Schema" && name == "Undefined" {
-				undefined = true
-			} else {
-				other = true
-			}
-		}
-		if undefined && other {
+	// An optional field is written name?: T | undefined, the one spelling
+	// that maps to Schema.optional(S) whether or not the project sets
+	// exactOptionalPropertyTypes, under which name?: T maps to
+	// Schema.optionalKey(S) instead. Another project may compile the same
+	// file under the other setting, and a fix keeps the schema's meaning,
+	// its decoding and its public type, under both. The parser supplies an
+	// optional field's top-level undefined arms through Schema.optional
+	// rather than an inner Union, so a codec whose own type has one,
+	// Schema.optional(Schema.Undefined) or Schema.optional(Schema.Union([S,
+	// Schema.Undefined])), has no spelling that keeps its public type, and
+	// keeps the constant; a value alias of Schema.Undefined is a reference,
+	// which the parser keeps as written.
+	if optional {
+		if hasTopLevelUndefined(typeText) {
 			return "", false
 		}
+		typeText += " | undefined"
 	}
 	field := key
 	if !mutable {
@@ -383,6 +385,39 @@ func structFieldType(c *checker.Checker, file *ast.SourceFile, property *ast.Nod
 		field += "?"
 	}
 	return field + ": " + typeText, true
+}
+
+// hasTopLevelUndefined reports whether text, a type, has undefined as one of
+// its top-level union members.
+func hasTopLevelUndefined(text string) bool {
+	for _, member := range splitTopLevel(text, "|") {
+		if strings.TrimSpace(member) == "undefined" {
+			return true
+		}
+	}
+	return false
+}
+
+// splitTopLevel splits text, a type, at each token outside brackets and
+// string literals.
+func splitTopLevel(text string, token string) []string {
+	var parts []string
+	depth, start := 0, 0
+	for i := 0; i < len(text); i++ {
+		switch ch := text[i]; {
+		case ch == '"' || ch == '\'' || ch == '`':
+			i = skipString(text, i)
+		case ch == '(' || ch == '[' || ch == '{' || ch == '<':
+			depth++
+		case ch == ')' || ch == ']' || ch == '}' || ch == '>':
+			depth--
+		case depth == 0 && strings.HasPrefix(text[i:], token):
+			parts = append(parts, text[start:i])
+			i += len(token) - 1
+			start = i + 1
+		}
+	}
+	return append(parts, text[start:])
 }
 
 // isSchemaCall reports whether node calls Schema's function name with count

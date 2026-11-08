@@ -447,9 +447,6 @@ func schemaErrorField(c *checker.Checker, file *ast.SourceFile, property *ast.No
 	}
 	key, value := property.Name().Text(), property.Initializer()
 	optional := isSchemaCall(c, value, "optional", 1)
-	if optional && c.CompilerOptions().ExactOptionalPropertyTypes.IsTrue() {
-		return "", "", "the optional codec accepts undefined; keep the explicit Effect class to preserve its schema API."
-	}
 	if optional {
 		value = value.Arguments()[0]
 	}
@@ -469,7 +466,9 @@ func schemaErrorField(c *checker.Checker, file *ast.SourceFile, property *ast.No
 	}
 	constant = "const " + name + annotation + " = " + expressionText(file, value)
 	if optional {
-		return key + "?: " + name, constant, ""
+		// key?: Name | undefined maps to Schema.optional(Name) under either
+		// exactOptionalPropertyTypes setting (structFieldType).
+		return key + "?: " + name + " | undefined", constant, ""
 	}
 	return key + ": " + name, constant, ""
 }

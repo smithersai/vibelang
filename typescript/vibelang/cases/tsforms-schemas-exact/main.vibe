@@ -1,0 +1,20 @@
+// expect-result: {"omitted":false,"explicit":false,"exactOmitted":false,"exactExplicit":true}
+// With exactOptionalPropertyTypes, a constant that holds a Schema.Struct of
+// Schema.optional fields draws EK4832 (D286) as it does without: the fix
+// writes each optional field as name?: T | undefined, the spelling that maps
+// back to Schema.optional under either setting, so the struct keeps accepting
+// an omitted key and an explicit undefined wherever the file is compiled. A
+// Schema.optionalKey field has no such spelling and keeps its constant.
+// tsforms-schemas-exact-fixed is what vibelang --fix writes.
+export const ThinkingStart = Schema.Struct({ type: Schema.Literal("thinking-start"), signature: Schema.optional(Schema.String) })
+export type ThinkingStart = typeof ThinkingStart.Type
+
+const Exact = Schema.Struct({ id: Schema.optionalKey(Schema.String) })
+
+export effect function main() {
+  const omitted = (try exit(Schema.decodeUnknownEffect(ThinkingStart)({ type: "thinking-start" }))) is Exit.Failure
+  const explicit = (try exit(Schema.decodeUnknownEffect(ThinkingStart)({ type: "thinking-start", signature: undefined }))) is Exit.Failure
+  const exactOmitted = (try exit(Schema.decodeUnknownEffect(Exact)({}))) is Exit.Failure
+  const exactExplicit = (try exit(Schema.decodeUnknownEffect(Exact)({ id: undefined }))) is Exit.Failure
+  return { omitted, explicit, exactOmitted, exactExplicit }
+}

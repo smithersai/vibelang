@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Automatic fixes left throwing calls in effectful parameter defaults for manual migration. Supported calls now use a TypeScript adapter that keeps their call-time work, return types and original exceptions, including callback defaults.
 - The platform guide's `navigator.hardwareConcurrency` row named `Experimental.Process.availableParallelism`, which does not exist. It now names the `availableParallelism` member of the `Experimental.Process.Process` service.
+- The quick fix that turns a `Schema.Struct` constant or a `Schema.TaggedError` class into a `schema` declaration wrote a `Schema.optional(S)` field as `name?: T`, which a project with `exactOptionalPropertyTypes` compiles as `Schema.optionalKey(S)`: after `vibelang --fix` ran from a project without that option, a file shared with one that has it rejected an explicit `undefined` and changed its declared type. The fix now writes `name?: T | undefined`, which is `Schema.optional(S)` under either setting, and applies under `exactOptionalPropertyTypes` too; a `Schema.optional(Schema.Undefined)` field keeps its constant.
 
 - `vibelang --fix` could keep a `.pipe` call before `satisfies` or a following property or arithmetic expression. These calls now migrate with the surrounding expression intact.
 

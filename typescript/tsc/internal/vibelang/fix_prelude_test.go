@@ -157,7 +157,7 @@ export schema error Plain {
 const FailedCauseField: Schema.Defect = Schema.Defect()
 export schema error Failed {
   readonly reason: string
-  cause?: FailedCauseField
+  cause?: FailedCauseField | undefined
   override get message(): string {
     return this.reason
   }

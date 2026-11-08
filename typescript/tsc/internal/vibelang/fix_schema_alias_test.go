@@ -73,7 +73,7 @@ func TestSchemaStructAliasQuickFix(t *testing.T) {
 	for _, test := range []struct{ name, fields, want string }{
 		{"primitive", "name: Schema.String", "readonly name: string"},
 		{"empty", "", ""},
-		{"optional", "name: Schema.optional(Schema.String)", "readonly name?: string"},
+		{"optional", "name: Schema.optional(Schema.String)", "readonly name?: string | undefined"},
 		{"mutable", "name: Schema.mutableKey(Schema.String)", "name: string"},
 		{"nested", "child: Schema.Struct({ age: Schema.Number })", "readonly child: { readonly age: number }"},
 	} {

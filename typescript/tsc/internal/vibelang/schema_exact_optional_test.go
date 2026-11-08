@@ -8,7 +8,9 @@ import (
 )
 
 // The inverse preserves optionality and actual readonly modifiers under
-// either option. A property named mutable remains an ordinary field.
+// either option: Schema.optional(S) is written name?: T | undefined, which
+// maps back to Schema.optional under both settings, and Schema.optionalKey has
+// no spelling that does. A property named mutable remains an ordinary field.
 func TestSchemaExactOptionalInverse(t *testing.T) {
 	for _, key := range []string{"value", "mutable"} {
 		for _, exact := range []bool{false, true} {
@@ -32,7 +34,7 @@ func TestSchemaExactOptionalInverse(t *testing.T) {
 							if ast.IsPropertyAssignment(node) && node.Name().Text() == key {
 								found = true
 								text, ok := structFieldType(c, file, node, "  ")
-								want := wrapper == "optional" && !exact
+								want := wrapper == "optional"
 								if ok != want {
 									t.Fatalf("exact=%t wrapper=%s: convertible=%t want=%t (%s)", exact, wrapper, ok, want, text)
 								}
@@ -61,18 +63,20 @@ func TestSchemaExactOptionalInverse(t *testing.T) {
 }
 
 // Optional sugar removes explicit undefined union arms. A repair must retain
-// an already-written Union codec whose declaration would otherwise change.
+// an already-written Union codec whose declaration would otherwise change,
+// and a codec of undefined alone, which name?: undefined | undefined would
+// not map back to.
 func TestSchemaOptionalExplicitUnionInverse(t *testing.T) {
 	for _, row := range []struct {
 		name, prefix, codec string
 		convertible         bool
 	}{
 		{"string", "", "Schema.optional(Schema.String)", true},
-		{"undefined-only", "", "Schema.optional(Schema.Undefined)", true},
+		{"undefined-only", "", "Schema.optional(Schema.Undefined)", false},
 		{"explicit-undefined-union", "", "Schema.optional(Schema.Union([Schema.String, Schema.Undefined]))", false},
 		{"undefined-first", "", "Schema.optional(Schema.Union([Schema.Undefined, Schema.String]))", false},
 		{"mutable-undefined-union", "", "Schema.mutableKey(Schema.optional(Schema.Union([Schema.String, Schema.Undefined])))", false},
-		{"undefined-only-union", "", "Schema.optional(Schema.Union([Schema.Undefined, Schema.Undefined]))", true},
+		{"undefined-only-union", "", "Schema.optional(Schema.Union([Schema.Undefined, Schema.Undefined]))", false},
 		{"required-union", "", "Schema.Union([Schema.String, Schema.Undefined])", true},
 		{"nullable-union", "", "Schema.optional(Schema.Union([Schema.String, Schema.Null]))", true},
 		{"reference-union", "const U = Schema.Undefined; ", "Schema.optional(Schema.Union([Schema.String, U]))", true},
