@@ -679,6 +679,7 @@ export function splitBatchPlatform(root, files, ts, {
     return { ...body, platform: [...directives, meta.platform].join("\n"), privateExports, moved: [...meta.moved, ...body.moved] }
   }
   const writeBody = (file, sibling, body) => {
+    if (body.platform && exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); return }
     write(file, body.module)
     if (body.platform) write(sibling, body.platform)
     if (body.privateExports) {
@@ -691,7 +692,7 @@ export function splitBatchPlatform(root, files, ts, {
   for (const file of files) {
     if (!/\.(?:m?ts|tsx|vibex)$/.test(file) || /\.d\.(?:m?ts|tsx|vibex)$/.test(file)) continue
     const sibling = platformPath(file)
-    if (exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
+    if (!moduleBodies && exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
     let result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
     // A split whose sibling exports private types only because an inferred
     // return type might name them is retried with a type checker that proves
@@ -740,6 +741,9 @@ export function splitBatchPlatform(root, files, ts, {
       writeBody(file, sibling, body)
       continue
     }
+    // Body-only routes do not write this path. The sibling fallback still
+    // refuses before touching either the source or its authored companion.
+    if (exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
     const body = throwing(result.module)
     if (body?.refused) refused.push(body.refused)
     const kept = body && !body.refused ? body : null

@@ -11,7 +11,8 @@ const file = (mode & 1 ? "src/nested/space δ/" : "src/") + "host." + (mode & 2 
 const sibling = file.replace(/\.(m?ts)$/, ".platform.$1")
 let source = corpus.native
 if (mode & 8) source = source.replace("process.cwd()", "process.platform")
-if (key === "metadata-existing") source += "export const origin = import.meta.url;\n"
+// import.meta.dirname needs the companion helper, so this route needs the physical sibling; import.meta.url needs no companion.
+if (key === "metadata-existing") source += "export const directory = import.meta.dirname;\n"
 if (mode & 4) source = source.replaceAll("\n", "\r\n")
 // VIP-40 permits copied declarations or extracted host-operation helpers.
 // Compare the original statements after undoing those mechanical boundaries;
