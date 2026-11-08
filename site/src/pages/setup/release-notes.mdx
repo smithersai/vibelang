@@ -15,6 +15,18 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `vibelang --fix` could keep a `.pipe` call before `satisfies` or a following property or arithmetic expression. These calls now migrate with the surrounding expression intact.
 
+- A migrated module's generated platform companion asserted its call helpers to the callee's type with no justification, so a repository lint that requires a `SAFETY:` comment on every type assertion rejected the companion. Each asserted helper now carries that comment.
+
+- A constructor repair treated a parenthesized direct `eval`, such as `(eval)(code)`, as an ordinary call and could move it into a defect bridge, which changes the scope it reads. It is now refused as direct `eval`.
+
+- The diagnostic code map and the guides described `EK0406` as a `@throws` or `@rethrows` tag, so an `@exception` report had no entry. They now name the `@exception` alias beside `@throws`.
+
+- The replacement hint for `process.hrtime()` returned a `bigint` where callers expected a seconds-and-nanoseconds tuple. It now converts to the tuple, keeps separate `hrtime.bigint()` advice, and explains how to measure elapsed time with one clock.
+
+- The replacement hint for `crypto.hash()` returned bytes where callers expected hex text. It now uses `digestHex` for the default string output and explains how to retain byte output.
+
+- The hint for `navigator.hardwareConcurrency` selected a process service that browser layers cannot provide. It now points to a TypeScript adapter that preserves the browser value.
+
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 
 - Wide documentation tables could not be scrolled with the keyboard on phones. Table containers now accept keyboard focus, show a focus outline and scroll with the arrow keys.
@@ -45,6 +57,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Changing `Map` methods in a `match` guard could make iterable patterns throw or miss cleanup. Their private caches now keep the native operations.
 
 - A caught rethrowing call could still reject an inline callback supplied through a tuple spread. Direct tuple-literal callbacks now retain the enclosing call’s catch or wrapper, including fixed prefix and nested spreads.
+
+- In effect code, `try` in a decorator, such as `@(try loadDecorator()) class Repo { }`, reported `EK0501`, and a decorated class with `try` in its `extends` clause or a computed member name compiled to JavaScript that failed to load with a `SyntaxError`. These now run in the enclosing Effect in class definition order, as `await` does in an `async` function. A decorated class with `await` in those places in an `async` function also loads now.
 
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
