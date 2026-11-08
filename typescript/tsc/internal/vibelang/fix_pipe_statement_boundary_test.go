@@ -55,3 +55,45 @@ func TestCapturedPipeStatementBoundaries(t *testing.T) {
 		}
 	}
 }
+
+func TestCapturedPipeContinuationBoundary(t *testing.T) {
+	numeric := "program.pipe(Effect.map((value: number) => value + 1), Effect.runSync)"
+	for _, shape := range []struct{ name, expression string }{
+		{"satisfies", "program.pipe(Effect.asVoid, Effect.runSync) satisfies void"},
+		{"assertion", numeric + " as number"},
+		{"property", numeric + ".toFixed"},
+		{"element", numeric + "[\"toFixed\"]"},
+		{"binary", numeric + " + 1"},
+		{"conditional", numeric + " ? 1 : 2"},
+	} {
+		for _, semicolon := range []bool{false, true} {
+			t.Run(shape.name+map[bool]string{false: "/asi", true: "/semicolon"}[semicolon], func(t *testing.T) {
+				source := "import * as Effect from 'effect/Effect'\nconst program = Effect.succeed(1)\n" + shape.expression + "\nexport const marker = 1\n"
+				if semicolon {
+					source = strings.ReplaceAll(source, "Effect.succeed(1)\n", "Effect.succeed(1);\n")
+				}
+				before, file, _, _ := editorProgram(t, source)
+				for _, d := range append(before.GetSyntacticDiagnostics(t.Context(), file), before.GetSemanticDiagnostics(t.Context(), file)...) {
+					if d.Category() == diagnostics.CategoryError {
+						t.Fatalf("invalid original source: %s", d.String())
+					}
+				}
+				result := fixCase(t, filepath.Dir(file.FileName().AsString()))
+				fixed := result.Files[file.FileName()]
+				if result.Err != nil || fixed == nil || strings.Contains(fixed.Text, ".pipe(") {
+					t.Fatalf("continuation pipeline not repaired: err=%v refused=%+v fixed=%v", result.Err, result.Refused, fixed)
+				}
+				after, checked, _, _ := editorProgram(t, fixed.Text)
+				for _, d := range append(after.GetSyntacticDiagnostics(t.Context(), checked), after.GetSemanticDiagnostics(t.Context(), checked)...) {
+					if d.Category() == diagnostics.CategoryError {
+						t.Fatalf("fixed source reports %s\n%s", d.String(), fixed.Text)
+					}
+				}
+				again := fixCase(t, filepath.Dir(checked.FileName().AsString()))
+				if again.Err != nil || len(again.Files) != 0 {
+					t.Fatalf("continuation repair is not fixed point: %+v", again)
+				}
+			})
+		}
+	}
+}

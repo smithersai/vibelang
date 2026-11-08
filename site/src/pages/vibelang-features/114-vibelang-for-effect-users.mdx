@@ -236,6 +236,8 @@ When a `.pipe(...)` has custom stages, `--fix` preserves the construction order 
 
 Captured repairs keep a preceding semicolon-free statement separate, and preserve unbraced conditional and loop bodies.
 
+Captures at the start of a larger expression also preserve the statement boundary, including `satisfies` and `as`, property or element access, and arithmetic or conditional expressions. Enclosing arguments and parentheses retain their original structure.
+
 For a legacy `fork(program, options)` call inside `effect` code, `--fix` writes `try Effect.forkChild(program, options)`. This preserves the options and evaluates both arguments on the caller before starting the child.
 
 Effect declarations and combinator calls ported from TypeScript compile in a `.vibe` file, with warnings `EK4830`–`EK4837` where VibeLang has its own form. A plain `function*` keeps JavaScript generator semantics, including when passed to `Effect.gen`. Run `npx vibelang -p tsconfig.json --fix --noEmit` to rewrite supported forms whose VibeLang form keeps what the program does. Forms without a preserving repair stay unchanged; read any remaining diagnostics before continuing. See [TypeScript-style Effect code](/getting-started/012-devtools#typescript-style-effect-code).

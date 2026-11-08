@@ -1,0 +1,55 @@
+import * as Effect from "effect/Effect"
+import { record, build, finish } from "./foreign.js"
+function consume(_value: unknown): void {}
+{
+const program = Effect.sync(() => record("satisfies"))
+program.pipe(Effect.map(build("satisfies")), Effect.runSync) satisfies number
+}
+{
+const program = Effect.sync(() => record("assertion"))
+program.pipe(Effect.map(build("assertion")), Effect.runSync) as number
+}
+{
+const program = Effect.sync(() => record("property"))
+program.pipe(Effect.map(build("property")), Effect.runSync).toFixed
+}
+{
+const program = Effect.sync(() => record("element"))
+program.pipe(Effect.map(build("element")), Effect.runSync)["toFixed"]
+}
+{
+const program = Effect.sync(() => record("binary"))
+program.pipe(Effect.map(build("binary")), Effect.runSync) + 1 === 3 ? record("binary-ok") : record("binary-bad")
+}
+{
+const program = Effect.sync(() => record("conditional"))
+program.pipe(Effect.map(build("conditional")), Effect.runSync) ? record("conditional-ok") : record("conditional-bad")
+}
+{
+const program = Effect.sync(() => record("unary"))
+void (program.pipe(Effect.map(build("unary")), Effect.runSync) satisfies number)
+}
+{
+const program = Effect.sync(() => record("argument"))
+consume(program.pipe(Effect.map(build("argument")), Effect.runSync) satisfies number)
+}
+{
+const program = Effect.sync(() => record("parenthesized"));
+(program.pipe(Effect.map(build("parenthesized")), Effect.runSync) satisfies number)
+}
+function returning() {
+const program = Effect.sync(() => record("return"))
+return program.pipe(Effect.map(build("return")), Effect.runSync) satisfies number
+}
+returning()
+{
+const program = Effect.sync(() => record("rhs"))
+const value = program.pipe(Effect.map(build("rhs")), Effect.runSync) satisfies number
+void value
+}
+{
+const program = Effect.sync(() => record("cold"))
+if (false) program.pipe(Effect.map(build("cold")), Effect.runSync) satisfies number
+}
+finish()
+export const marker = 1

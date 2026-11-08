@@ -469,7 +469,14 @@ func capturedEffectPipeChecked(c *checker.Checker, file *ast.SourceFile, call *a
 	var text strings.Builder
 	// A capture starts with a parenthesis; keep a preceding semicolon-free
 	// statement separate without adding an empty body to an unbraced control.
-	if statement := call.Parent; statement != nil && ast.IsExpressionStatement(statement) && statement.Parent != nil {
+	// A leftmost call still starts the statement through an assertion, access,
+	// or other expression that continues after it.
+	statementStart := nodeStart(file, call)
+	statement := call.Parent
+	for statement != nil && !ast.IsExpressionStatement(statement) && nodeStart(file, statement) == statementStart {
+		statement = statement.Parent
+	}
+	if statement != nil && ast.IsExpressionStatement(statement) && nodeStart(file, statement) == statementStart && statement.Parent != nil {
 		parent := statement.Parent
 		if ast.IsSourceFile(parent) || ast.IsBlock(parent) || ast.IsModuleBlock(parent) || ast.IsCaseClause(parent) || ast.IsDefaultClause(parent) {
 			text.WriteByte(';')
