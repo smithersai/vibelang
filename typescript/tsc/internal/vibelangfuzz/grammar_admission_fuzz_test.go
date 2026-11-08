@@ -308,6 +308,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"fiber-pattern-reference-fork-owner", "effect function f(s, p) { return fork.in(s) p is join }"},
 	{"abstract-error", "abstract error Root {}"},
 	{"error-no-end-heritage", "export error Gone extends Error Error ?? { since: number, by: string }"},
+	{"pattern-rest-ellipsis-for", grammarPatternRestEllipsisWitness},
+	{"pattern-rest-ellipsis-binding", grammarPatternRestEllipsisGaps[1]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1334,6 +1336,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarForOfAsyncModule(file, source) {
 		return "admission:for-of-async-module"
+	}
+	if grammarPatternRestEllipsis(source, forms) {
+		return "admission:pattern-rest-ellipsis"
 	}
 	if grammarPatternMemberLineBreak(source, forms) {
 		return "admission:pattern-member-line-break"

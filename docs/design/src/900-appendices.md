@@ -1002,7 +1002,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1027 records)</summary>
+<summary>Parser and lowering hooks (1028 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1177,6 +1177,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.isMatchMetaProperty ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: a pattern member expression may start with import.meta or new.target |
 | ` parser/vibelang_match.go:Parser.parseMatchMetaProperty ` | ` admission:match ` | ` 004-match.md ` | ` support ` | VIP-7: parse the MetaProperty that starts a pattern member expression |
 | ` parser/vibelang_match.go:Parser.parseMatchListPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
+| ` parser/vibelang_match.go:Parser.parseMatchListPattern@pattern-rest-ellipsis ` | ` admission:pattern-rest-ellipsis ` | ` - ` | ` pending ` | VIP-7 pinned `MatchRestElement` admits one ellipsis and an optional `MatchPattern`; a repeated ellipsis with a binding in a `var` loop condition reports only checker errors |
 | ` parser/vibelang_match.go:Parser.parseMatchObjectPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.isVibeLangIs ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:VibeLangIsRecoveryBindingDeclaration ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 004-match.md ` | ` recovery ` | VIP-7: identifies a rejected duplicate is binding so the binder gives it a recovery symbol; introduces no syntax (6a741ef0) |

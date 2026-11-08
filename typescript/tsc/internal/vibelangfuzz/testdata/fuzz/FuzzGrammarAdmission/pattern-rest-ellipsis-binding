@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:pattern-rest-ellipsis-binding\nfor (var i = 0; xs is [let first, ... ...let rest]; i++) {}")

@@ -829,3 +829,14 @@ The lexer reads `\uXXXX` and `\u{…}` escapes as part of an identifier, so the
 escaped-identifier cases derive. With these, 3,359 of 3,871 case programs
 derive; the lexer's `>` joined with `=`, `!!=`, and decorators remain the
 known lab limits, next to the pending admission keys the cases write.
+
+A case-seeded campaign found a duplicated rest marker in a pattern in a
+`for` condition: `xs is [let first, ... ...]`. The pinned
+`MatchRestElement` has one `...`, optionally followed by a
+`MatchPattern`; `MatchPattern` has no ellipsis alternative. The compiler
+reports only checker errors when the condition binds a name and the loop
+initializer uses `var`; the same pattern in an ordinary binding or a loop
+with a `let` initializer receives `EK0707`. The witness remains pending under
+`admission:pattern-rest-ellipsis`. The classifier examines recorded
+`is` patterns and `match` arm heads; ordinary spread expressions,
+comments, strings and regular-expression literals do not acquire that key.
