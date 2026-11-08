@@ -23,10 +23,22 @@ const prettierStyle = (config, width) => ({
   quoteStyle: config.singleQuote === true ? "preferSingle" : "preferDouble",
   lineWidth: typeof config.printWidth === "number" ? config.printWidth : width,
 })
-const dprintStyle = (config) => ({
-  quoteStyle: config.typescript?.quoteStyle ?? defaultStyle.quoteStyle,
-  lineWidth: config.typescript?.lineWidth ?? config.lineWidth ?? defaultStyle.lineWidth,
-})
+// A dprint configuration formats .vibe files with the options it gives .ts
+// files: its global indentWidth, useTabs and newLineKind and every option of
+// its typescript section, as dprint itself would with the VibeLang plugin.
+const dprintGlobals = ["indentWidth", "useTabs", "newLineKind"]
+const dprintStyle = (config) => {
+  const typescript = config.typescript && typeof config.typescript === "object" && !Array.isArray(config.typescript) ? config.typescript : {}
+  const style = {
+    quoteStyle: typescript.quoteStyle ?? defaultStyle.quoteStyle,
+    lineWidth: typescript.lineWidth ?? config.lineWidth ?? defaultStyle.lineWidth,
+  }
+  const globals = Object.fromEntries(dprintGlobals.filter(name => config[name] !== undefined).map(name => [name, config[name]]))
+  const options = Object.fromEntries(Object.entries(typescript).filter(([name]) => name !== "quoteStyle" && name !== "lineWidth"))
+  if (Object.keys(globals).length) style.globals = globals
+  if (Object.keys(options).length) style.typescript = options
+  return style
+}
 // The configurations each formatter reads, in the order a directory's are
 // tried. Each returns the style, or undefined when the file has none, as a
 // package.json without a prettier key.
@@ -89,10 +101,14 @@ function withConfig(style, filePath, action) {
     symlinkSync(fileURLToPath(new URL(".", import.meta.url)), join(dir, "node_modules", "vibelang"), process.platform === "win32" ? "junction" : "dir")
     const config = join(dir, "dprint.json")
     const tsx = /\.(?:vibex|tsx)$/i.test(filePath)
+    // The two pinned plugins spell the semicolon option differently; a
+    // configuration may use either. Without one, VibeLang writes "asi".
+    const { semicolons, semiColons, ...typescript } = style.typescript ?? {}
     writeFileSync(config, JSON.stringify({
+      ...style.globals,
       lineWidth: style.lineWidth,
       plugins: [tsx ? tsxTypescriptPlugin : typescriptPlugin, "npm:vibelang/dprint-plugin.json@" + createHash("sha256").update(readFileSync(new URL("./dprint-plugin.json", import.meta.url))).digest("hex")],
-      typescript: { [tsx ? "semiColons" : "semicolons"]: "asi", quoteStyle: style.quoteStyle }
+      typescript: { ...typescript, [tsx ? "semiColons" : "semicolons"]: semicolons ?? semiColons ?? "asi", quoteStyle: style.quoteStyle }
     }))
     return action(config)
   } finally { rmSync(dir, { recursive: true, force: true }) }

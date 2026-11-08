@@ -1,0 +1,1 @@
+dprint options preserved; formatted output is stable

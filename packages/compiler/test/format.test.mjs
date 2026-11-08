@@ -59,6 +59,14 @@ for (const { name, files, file, expected } of [
     expected: "import { a } from './a.js'\nexport const greeting = 'it\\'s' + a\n" + sizes,
   },
   { name: "no configuration: double quotes, width 120", files: {}, file: "m.vibe", expected: input },
+  {
+    // The project's own dprint options for .ts files, such as Smithers'
+    // trailingCommas "never"; vibelang-format used to drop all but two.
+    name: "dprint's global indentWidth and its typescript trailingCommas and semicolons",
+    files: { "dprint.json": '{"lineWidth":80,"indentWidth":4,"typescript":{"trailingCommas":"never","semiColons":"always"}}' },
+    file: "m.vibe",
+    expected: 'import { a } from "./a.js";\nexport const greeting = "it\'s" + a;\n' + wrapped.replaceAll("\n  ", "\n    ").replace(",\n]", "\n];"),
+  },
 ]) {
   test(`vibelang-format follows the repository: ${name}`, () => {
     const dir = repository({ ...files, [file]: input })

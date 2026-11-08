@@ -150,7 +150,11 @@ configuration, so `.vibe` files follow the style of its `.ts` files. It uses
 the nearest configuration from the file's directory up to the repository's
 root: `.oxfmtrc.json` or `.oxfmtrc.jsonc` (Oxfmt), `.prettierrc`,
 `.prettierrc.json` or the `prettier` key of `package.json` (Prettier), or
-`dprint.json` (its `typescript` `quoteStyle` and `lineWidth`). A setting the
+`dprint.json` (its `typescript` `quoteStyle` and `lineWidth`). A `dprint.json`
+also supplies its other options, as dprint applies them to `.ts` files: the
+global `indentWidth`, `useTabs` and `newLineKind` and every option of its
+`typescript` section, such as `trailingCommas`; without a `semicolons` (or
+`semiColons`) option, `.vibe` files get `"asi"`. A setting the
 configuration leaves out takes that formatter's default: width 100 for Oxfmt,
 80 for Prettier, 120 for dprint, and double quotes. With no configuration,
 files get double quotes and width 120. A Prettier configuration in another
