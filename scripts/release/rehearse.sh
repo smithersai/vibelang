@@ -106,7 +106,7 @@ console.log(createHash("sha256").update(execFileSync("tar", ["-xOf", join(dir, f
 JS
 )
 export VIBELANG_REHEARSAL_FORMAT_SHA256
-sh "$root/scripts/release/check-app.sh" "$registry" "$version" npm bun pnpm
+sh "$root/scripts/release/check-app.sh" "$registry" "$version" npm bun pnpm bun-isolated
 shim=$(node -p 'require(process.argv[1]).packages.find((p) => p.name === "vibelang-typescript").version' "$tarballs/manifest.json")
 sh "$root/scripts/release/check-typescript-shim.sh" "$registry" "$version" "$shim"
 echo "rehearse: PASS"

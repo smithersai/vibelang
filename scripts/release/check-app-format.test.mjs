@@ -11,7 +11,7 @@ const fc = createRequire(new URL("../../packages/compiler/package.json", import.
 const script = readFileSync(new URL("./check-app.sh", import.meta.url), "utf8")
 const rehearsal = readFileSync(new URL("./rehearse.sh", import.meta.url), "utf8")
 
-function probe(t, manager, failure = "", exit = 23) {
+function probe(t, manager, failure = "", exit = 23, extraEnv = {}) {
   const dir = mkdtempSync(join(tmpdir(), "release-format-check-"))
   t.after(() => rmSync(dir, { recursive: true, force: true }))
   mkdirSync(join(dir, "bin"))
@@ -24,13 +24,25 @@ function probe(t, manager, failure = "", exit = 23) {
   writeFileSync(fake, `#!${process.execPath}
 const fs = require("node:fs"), path = require("node:path")
 const name = path.basename(process.argv[1]), args = process.argv.slice(2)
-fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({ name, args, cwd: process.cwd(), registry: process.env.pnpm_config_registry }) + "\\n")
+const bunfig = fs.existsSync("bunfig.toml") ? fs.readFileSync("bunfig.toml", "utf8") : null
+fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({ name, args, cwd: process.cwd(), registry: process.env.pnpm_config_registry, bunfig, isolated: fs.existsSync("node_modules/.bun") }) + "\\n")
+const bins = app => {
+  fs.mkdirSync(path.join(app, "node_modules/.bin"), { recursive: true })
+  for (const bin of ["vibelang", "vibelang-format", "dprint"]) fs.symlinkSync(process.env.PROBE_TOOL, path.join(app, "node_modules/.bin", bin))
+}
 if (["npm", "bun", "pnpm"].includes(name) && args[0] === "create") {
   const app = path.resolve(args[2])
-  fs.mkdirSync(path.join(app, "node_modules/.bin"), { recursive: true })
+  bins(app)
   fs.mkdirSync(path.join(app, "src"))
   fs.writeFileSync(path.join(app, "src/main.vibe"), "export const value = 42\\n")
-  for (const bin of ["vibelang", "vibelang-format", "dprint"]) fs.symlinkSync(process.env.PROBE_TOOL, path.join(app, "node_modules/.bin", bin))
+}
+// bun install --linker isolated: packages live under node_modules/.bun and
+// node_modules/<name> is a link; PROBE_FLAT installs a hoisted tree instead.
+if (name === "bun" && args[0] === "install") {
+  bins(process.cwd())
+  const slot = path.resolve("node_modules/.bun/vibelang@0.0.12/node_modules/vibelang")
+  if (process.env.PROBE_FLAT) fs.mkdirSync("node_modules/vibelang", { recursive: true })
+  else { fs.mkdirSync(slot, { recursive: true }); fs.symlinkSync(slot, "node_modules/vibelang") }
 }
 if (name === "node") process.stdin.resume()
 if (name === "vibelang") console.log("VibeLang 0.0.12 (fixture)")
@@ -47,12 +59,14 @@ if (name === process.env.PROBE_FAILURE) process.exit(Number(process.env.PROBE_EX
   const result = spawnSync("sh", [check, "https://registry.invalid/", "0.0.12", manager], {
     encoding: "utf8", timeout: 15000,
     env: { ...process.env, PATH: join(dir, "bin") + ":" + process.env.PATH,
-      TMPDIR: dir, PROBE_LOG: log, PROBE_TOOL: fake, PROBE_FAILURE: failure, PROBE_EXIT: String(exit) }
+      TMPDIR: dir, PROBE_LOG: log, PROBE_TOOL: fake, PROBE_FAILURE: failure, PROBE_EXIT: String(exit), ...extraEnv }
   })
   return { result, calls: readFileSync(log, "utf8").trim().split("\n").map(JSON.parse) }
 }
 
-for (const manager of ["npm", "bun", "pnpm"]) {
+const managers = ["npm", "bun", "pnpm", "bun-isolated"]
+
+for (const manager of managers) {
   test(`${manager} checks both installed formatter entry points`, t => {
     const { result, calls } = probe(t, manager)
     assert.equal(result.status, 0, result.stdout + result.stderr)
@@ -80,8 +94,38 @@ test("the full release rehearsal includes pnpm", () => {
   assert.match(rehearsal, /check-app\.sh" "\$registry" "\$version" npm (?:bun pnpm|pnpm bun)/)
 })
 
+test("the full release rehearsal includes Bun's isolated linker", () => {
+  assert.match(rehearsal, /check-app\.sh" "\$registry" "\$version" [a-z -]*\bbun-isolated\b/)
+})
+
+test("bun-isolated reinstalls with the isolated linker before formatting, and keeps it for bun add", t => {
+  const { result, calls } = probe(t, "bun-isolated")
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  assert.ok(!calls.some(c => c.name === "bun-isolated"), "bun-isolated is a layout, not a command")
+  const index = predicate => calls.findIndex(predicate)
+  const create = index(c => c.name === "bun" && c.args[0] === "create")
+  const install = index(c => c.name === "bun" && c.args[0] === "install")
+  const format = index(c => c.name === "vibelang-format")
+  const dprint = index(c => c.name === "dprint")
+  assert.ok(create >= 0 && create < install && install < format && format < dprint, JSON.stringify(calls))
+  assert.deepEqual(calls[install].args, ["install", "--linker", "isolated"])
+  assert.equal(calls[install].isolated, false, "the hoisted tree bun create made is removed first")
+  const add = calls.find(c => c.name === "bun" && c.args[0] === "add")
+  assert.ok(add, "dprint is added with bun")
+  assert.match(add.bunfig, /^\[install\]\nlinker = "isolated"$/m)
+  assert.equal(add.isolated, true)
+  assert.equal(calls[format].isolated, true)
+})
+
+test("bun-isolated fails when the install is hoisted", t => {
+  const { result, calls } = probe(t, "bun-isolated", "", 23, { PROBE_FLAT: "1" })
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /isolated layout/)
+  assert.ok(!calls.some(c => c.name === "vibelang-format"), "formatting never runs on the wrong layout")
+})
+
 test("formatter failures preserve arbitrary nonzero exits across package managers", t => {
-  fc.assert(fc.property(fc.constantFrom("npm", "bun", "pnpm"),
+  fc.assert(fc.property(fc.constantFrom(...managers),
     fc.constantFrom("vibelang-format", "dprint"), fc.integer({ min: 1, max: 125 }),
     (manager, command, exit) => {
       const { result } = probe(t, manager, command, exit)

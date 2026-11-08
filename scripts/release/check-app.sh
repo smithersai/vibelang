@@ -2,9 +2,11 @@
 # Scaffolds a new VibeLang app from a registry with each named package manager,
 # then installs, checks both formatters, builds, starts, and tests it.
 # Checks the compiler version and resolves optional packages without hoisting.
-# npm also reinstalls from its generated lockfile with npm ci.
+# npm also reinstalls from its generated lockfile with npm ci. bun-isolated
+# scaffolds with Bun, then reinstalls with Bun's isolated linker, the layout
+# Bun workspaces use, where each package sees only its declared dependencies.
 #
-#   sh scripts/release/check-app.sh <registry-url> <version> npm bun pnpm
+#   sh scripts/release/check-app.sh <registry-url> <version> npm bun pnpm bun-isolated
 #
 # The npm user config and package-manager caches point into a temporary
 # directory, so the check uses fresh registry installs. KEEP=1
@@ -46,13 +48,26 @@ for manager in "$@"; do
   export DPRINT_CACHE_DIR="$scratch/$manager-dprint-cache" VIBELANG_DISABLE_CACHE=1
   step() { echo "check-app: $manager: $*"; }
   cd "$scratch"
+  # The command that installs, adds and runs scripts for this manager.
+  tool=$manager
   case $manager in
     npm) step "npm create vibelang@$version"; npm create "vibelang@$version" "$manager-app" ;;
     pnpm) step "pnpm create vibelang@$version"; pnpm create "vibelang@$version" "$manager-app" --no-install ;;
     bun) step "bun create vibelang@latest"; bun create vibelang@latest "$manager-app" ;;
+    bun-isolated) tool=bun; step "bun create vibelang@latest"; bun create vibelang@latest "$manager-app" ;;
     *) echo "check-app: unknown package manager $manager" >&2; exit 1 ;;
   esac
   cd "$app"
+  if [ "$manager" = bun-isolated ]; then
+    # bun create installs with the hoisted linker. Reinstall isolated, and keep
+    # the linker in bunfig.toml so the later bun add stays isolated too.
+    printf '[install]\nlinker = "isolated"\n' >bunfig.toml
+    rm -rf node_modules
+    step "bun install --linker isolated"
+    bun install --linker isolated
+    [ -d node_modules/.bun ] && [ -L node_modules/vibelang ] || {
+      echo "check-app: $manager: bun install did not produce the isolated layout" >&2; exit 1; }
+  fi
   if [ "$manager" = pnpm ]; then
     # pnpm requires explicit approval for dprint's binary-install script.
     # Keep isolated dependency linking and a fresh content-addressable store.
@@ -62,7 +77,7 @@ allowBuilds:
 storeDir: $scratch/pnpm-store
 EOF
   fi
-  [ -d node_modules ] || { step "install"; "$manager" install; }
+  [ -d node_modules ] || { step "install"; "$tool" install; }
   if [ "$manager" = npm ]; then
     step "npm ci"
     npm ci
@@ -123,20 +138,20 @@ JSON
   step "install dprint"
   case $manager in
     npm) npm install --save-dev --save-exact dprint@0.64.3 ;;
-    *) "$manager" add --save-dev --save-exact dprint@0.64.3 ;;
+    *) "$tool" add --save-dev --save-exact dprint@0.64.3 ;;
   esac
   step "dprint check"
   node_modules/.bin/dprint check
 
   step "run build"
-  "$manager" run build
+  "$tool" run build
   step "run start"
-  "$manager" run start >"$scratch/$manager-start.txt" 2>&1 || { cat "$scratch/$manager-start.txt"; exit 1; }
+  "$tool" run start >"$scratch/$manager-start.txt" 2>&1 || { cat "$scratch/$manager-start.txt"; exit 1; }
   cat "$scratch/$manager-start.txt"
   /usr/bin/grep -Fq 'Hello, VibeLang!' "$scratch/$manager-start.txt"
   /usr/bin/grep -Fq 'Recovered from EmptyName' "$scratch/$manager-start.txt"
   step "run test"
-  "$manager" run test
+  "$tool" run test
   # A warning used to exit 0 while suppressing emit under noEmitOnError.
   # Import that module through Vite, which always enables noEmitOnError.
   step "Vite warning-only .vibe import"
