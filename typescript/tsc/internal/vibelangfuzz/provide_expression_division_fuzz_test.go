@@ -10,6 +10,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 const provideExpressionDivisionQuote = "Calls without that body and expressions after `return` keep their TypeScript readings."
@@ -59,7 +60,11 @@ func FuzzProvideExpressionDivision(f *testing.F) {
 		op := []string{"/", "/="}[choose(1)%2]
 		space := []string{" ", " /* comment */ ", "\n", "\r\n"}[choose(2)%4]
 		property := []string{"value", "n", "amount"}[choose(3)%3]
-		expr := "provide" + space + op + " a / { " + property + ": 2 }." + property
+		postfix := []string{"", "++", "--", "!", "<number>"}[choose(4)%5]
+		if postfix != "" {
+			op = "/"
+		}
+		expr := "provide" + postfix + space + op + " a / { " + property + ": 2 }." + property
 		switch key {
 		case "array":
 			expr = "[" + expr + "]"
@@ -75,8 +80,12 @@ func FuzzProvideExpressionDivision(f *testing.F) {
 			expr = "out = " + expr
 		}
 		source := "function f(provide: number, a: number) { return " + expr + " }"
-		vibe := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source, core.ScriptKindTS)
-		twin := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/main.ts", PathKey: "/main.ts"}, source, core.ScriptKindTS)
+		vibeName, nativeName, kind := "/main.vibe", "/main.ts", core.ScriptKindTS
+		if choose(5)%2 != 0 {
+			vibeName, nativeName, kind = "/main.vibex", "/main.tsx", core.ScriptKindTSX
+		}
+		vibe := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePath(vibeName), PathKey: tspath.PathKey(vibeName)}, source, kind)
+		twin := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePath(nativeName), PathKey: tspath.PathKey(nativeName)}, source, kind)
 		shape := func(file *ast.SourceFile) []string {
 			var nodes []string
 			var visit func(*ast.Node) bool

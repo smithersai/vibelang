@@ -40,6 +40,8 @@ A `provide` statement requires effect code. At module scope, `EK1201` points to 
 
 In an expression, a variable named `provide` keeps its TypeScript meaning. For example, `return provide / scale / { value: 2 }.value` is division. At a statement start, `provide /pattern/ { … }` still reads as a provider block.
 
+A variable named `provide` also keeps native postfix operations in expressions: `provide++ / scale`, `provide-- / scale` and `provide! / scale` have their TypeScript meaning. Generic instantiations, such as `provide<number>`, also keep their native parse before division.
+
 Do not break immediately before or after a provider-separating comma (`EK1202`). Line breaks inside a provider expression remain allowed; use `Layer.mergeAll(...)` for multiline composition. The compiler still checks the recovered body, including `EK1201` for a block outside effect code and independent type errors.
 
 A `provide` block takes layers and `Key = value` entries, separated by commas, and Effect's own `provide` types them. A provider typed as `any` follows Effect's overloads too: its error and requirement types remain `unknown`. A concrete `never` provider adds no error or requirement types, and keeps any service requirements its body still needs. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once.

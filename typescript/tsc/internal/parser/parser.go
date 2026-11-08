@@ -6124,12 +6124,15 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
 	if p.isStartOfVibeLangModuleExpression() {
 		return p.rejectVibeLangModule(4003, ModuleExpressionMessage)
 	}
-	// Calls and slash operators can use an ordinary binding named provide.
-	// A regex provider wins at a statement start, not inside an expression.
+	// Calls, slash operators and postfix operators can use a binding named
+	// provide. A regex provider wins at a statement start, not in an expression.
 	if p.isStartOfVibeLangProvide() && !p.lookAhead(func(p *Parser) bool {
 		switch p.nextToken() {
-		case ast.KindOpenParenToken, ast.KindSlashToken, ast.KindSlashEqualsToken:
+		case ast.KindOpenParenToken, ast.KindSlashToken, ast.KindSlashEqualsToken,
+			ast.KindPlusPlusToken, ast.KindMinusMinusToken, ast.KindExclamationToken:
 			return true
+		case ast.KindLessThanToken:
+			return p.tryParseTypeArgumentsInExpression() != nil
 		}
 		return false
 	}) {

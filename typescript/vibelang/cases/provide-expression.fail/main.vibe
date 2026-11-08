@@ -1,4 +1,4 @@
-// expect: EK1017 EK1017 EK1017 EK1017
+// expect: EK1017 EK1017 EK1017 EK1017 EK1017 EK1017
 export function f() {
   const n = provide Layer.empty { return 1 }
   return provide Layer.empty { return n }
@@ -6,3 +6,5 @@ export function f() {
 export function g() { return [provide Layer.empty { return 1 }] }
 export function h() { return String(provide Layer.empty { return 1 }) }
 // Chapter 900: EK1017 diagnostic - spec-rule: docs/design/src/900-appendices.md#1e69814b58cbe7ef
+export function i() { return provide <any> Layer.empty { return 1 } }
+export function j() { return provide <typeof Layer.empty> Layer.empty { return 1 } }
