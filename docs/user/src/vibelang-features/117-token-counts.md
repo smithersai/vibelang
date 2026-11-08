@@ -20,8 +20,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,191 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,565 |
 | The skill and the user guide (145 pages) | 570,000 |
-| The user guide alone | 560,000 |
-| The specification (11 chapters) | 260,000 |
+| The user guide alone | 570,000 |
+| The specification (11 chapters) | 270,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
 ## Effect TypeScript beside VibeLang
@@ -91,13 +91,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Welcome](../001-onboarding.md) | 2,000 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 2,000 |
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,700 |
-| **Learning Path** | **15,000** |
+| **Learning Path** | **16,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 3,100 |
 | [Installation](../getting-started/004-installation.md) | 3,200 |
-| [Creating Effects](../getting-started/005-creating-effects.md) | 4,700 |
+| [Creating Effects](../getting-started/005-creating-effects.md) | 4,900 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,800 |
-| **Core Concepts** | **32,000** |
+| **Core Concepts** | **33,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,600 |
 | [Running Effects](../getting-started/009-running-effects.md) | 2,100 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 2,100 |
@@ -116,7 +116,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 670 |
 | [Existing project](../setup/existing-project.md) | 4,600 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,400 |
-| **Build and test** | **25,000** |
+| **Build and test** | **26,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 21,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,500 |
 | **Format and lint** | **14,000** |
@@ -138,7 +138,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |
 | **Upgrade** | **180,000** |
 | [Release notes](../setup/release-notes.md) | 180,000 |
-| **All 22 pages** | **250,000** |
+| **All 22 pages** | **260,000** |
 
 ### Guides
 
@@ -146,7 +146,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,300 |
 | **Error Management** | **24,000** |
-| [Expected Errors](../error-management/014-expected-errors.md) | 12,000 |
+| [Expected Errors](../error-management/014-expected-errors.md) | 13,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,600 |
 | [Fallback](../error-management/016-fallback.md) | 3,000 |
 | [Matching](../error-management/017-matching.md) | 790 |
@@ -277,13 +277,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Diagnostic code map](diagnostic-code-map.md) | 5,400 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
-| **All 9 pages** | **71,000** |
+| **All 9 pages** | **72,000** |
 
 ### Specification
 
 | Page | Tokens |
 | --- | ---: |
-| [Introduction](../../../design/src/000-intro.md) | 3,000 |
+| [Introduction](../../../design/src/000-intro.md) | 3,100 |
 | **The language** | **130,000** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 14,000 |
 | [2. Running Effects](../../../design/src/002-running.md) | 30,000 |
@@ -292,10 +292,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,300 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 20,000 |
-| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
-| **Appendices** | **130,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 99,000 |
+| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |
+| **Appendices** | **140,000** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 120,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
-| **All 11 pages** | **260,000** |
+| **All 11 pages** | **270,000** |
 
 <!-- token-counts: end -->

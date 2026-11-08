@@ -484,4 +484,6 @@ A native `Effect.gen(function* () { ... })` with JavaScript `try/catch` keeps th
 
 Option migration preserves comments and writes the qualified `Option.Option` type. A second `--fix` pass leaves the repaired source unchanged.
 
+The error-per-await editor conversion keeps generated error types at module scope. An exported factory can then expose a converted class, object or function without an unnameable local error type (`TS4058`). The insertion preserves the file header, directive prologue and declaration comments, including attached documentation across blank lines.
+
 Async-to-Effect editor conversions retain containing property contracts. A computed method key, including a numeric, template-literal or union key, still selects its applicable index signatures; the editor withholds conversion when those signatures require a `Promise` result. Indexes inferred from computed members also retain their compatibility checks. A generic computed key keeps these checks through its resolved constraint, including a union constraint. Migrate the method and its contracts together.
