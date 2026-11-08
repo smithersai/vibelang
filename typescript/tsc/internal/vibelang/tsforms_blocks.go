@@ -65,7 +65,7 @@ func blockFormOf(c *checker.Checker, call *ast.Node) string {
 		return ""
 	}
 	_, name := effectMember(c, call.Expression())
-	if call.TypeArguments() != nil && name != "provide" {
+	if call.TypeArguments() != nil && name != "provide" && name != "provideService" {
 		return ""
 	}
 	switch {
@@ -113,7 +113,7 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 	if name == "" {
 		return nil
 	}
-	if name == "provide" && call.TypeArguments() != nil {
+	if name != "withSpan" && call.TypeArguments() != nil {
 		return &formRewrite{message: provideTypeArgumentsForm, why: provideTypeArgumentsNote}
 	}
 	if name != "withSpan" && directTryFormSite(call) != call {
