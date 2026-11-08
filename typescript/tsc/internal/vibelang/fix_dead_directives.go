@@ -84,7 +84,13 @@ func removeDeadEffectDirectives(g *fixGate, fs vfs.FS, program *compiler.Program
 		port := func(pos int, rule string) string {
 			code := lint.VibeLangPort(rule)
 			// A comment changes only an adjustable code (D241); EK4402 stays an error.
-			if code != "" && slices.Contains(core.VibeLangAdjustableCodes, code) && reported[scanner.ComputeLineOfPosition(file.ECMALineMap(), pos)+1][code] {
+			if code == "" || !slices.Contains(core.VibeLangAdjustableCodes, code) {
+				return ""
+			}
+			// A port whose severity the plugin entry or vibe.severities sets
+			// reports under its rule's lint code, such as EK3883 for EK4814.
+			next := reported[scanner.ComputeLineOfPosition(file.ECMALineMap(), pos)+1]
+			if next[code] || slices.ContainsFunc(core.VibeLintPorts[code], func(lintCode string) bool { return next[lintCode] }) {
 				return code
 			}
 			return ""

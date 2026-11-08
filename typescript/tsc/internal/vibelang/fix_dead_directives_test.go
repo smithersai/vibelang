@@ -9,6 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -156,6 +157,44 @@ func TestFixPortsDeadEffectDirective(t *testing.T) {
 	fixDeadDirectives(t, source, want)
 }
 
+// With the plugin entry raising overriddenSchemaConstructor, as t3code's base
+// configuration does, EK4814 reports under the rule's lint code. The author's
+// off still stays under EK4814, which silences that report.
+func TestFixPortsDeadEffectDirectiveAtThePluginSeverity(t *testing.T) {
+	source := strings.Join([]string{
+		"export class BrowseError extends Schema.TaggedError<BrowseError>()(\"BrowseError\", {",
+		"  message: Schema.String,",
+		"}) {",
+		"  // @effect-diagnostics-next-line overriddenSchemaConstructor:off",
+		"  constructor(props: { readonly path: string }) {",
+		"    super({ message: `Failed to browse ${props.path}` } as any)",
+		"  }",
+		"}",
+		"",
+	}, "\n")
+	want := strings.Replace(source, "@effect-diagnostics-next-line overriddenSchemaConstructor:off", "@vibelang-diagnostics-next-line EK4814:off", 1)
+	result, name, dir := fixEffectPluginSourceWith(t, source, `{"overriddenSchemaConstructor":"error"}`)
+	if result.Err != nil {
+		t.Fatal(result.Err)
+	}
+	if fixed := result.Files[name]; fixed == nil || fixed.Text != want {
+		got := "(no fix)"
+		if fixed != nil {
+			got = fixed.Text
+		}
+		t.Fatalf("fixed text:\n%s\nwant:\n%s", got, want)
+	}
+	if err := os.WriteFile(name.AsString(), []byte(want), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	program := fixProgram(bundled.WrapFS(osvfs.FS()), bundled.LibPath(), effectPluginConfig(t, dir), &fixParsedFiles{}, nil)
+	for _, d := range program.GetSemanticDiagnostics(t.Context(), program.GetSourceFile(name)) {
+		if d.Code() == effectDirectiveUnusedCode || d.Category() == diagnostics.CategoryError {
+			t.Errorf("the fixed program reports %s%d: %s", d.Source(), d.Code(), d.String())
+		}
+	}
+}
+
 // fixDeadDirectives runs --fix on main.vibe holding source, wants its text
 // to be want, and wants the fixed program to report no TS377000 and no
 // VibeLang warning, and a second --fix to change nothing.
@@ -202,9 +241,16 @@ func fixDeadDirectives(t *testing.T, source, want string) *FixedFile {
 // with Effect's language service on and two rules raised to warnings.
 func fixEffectPluginSource(t *testing.T, source string) (*FixResult, tspath.RootedFilePath, string) {
 	t.Helper()
+	return fixEffectPluginSourceWith(t, source, `{"globalDate":"warning","effectSleepZeroToYieldNow":"warning"}`)
+}
+
+// fixEffectPluginSourceWith is fixEffectPluginSource with the plugin entry's
+// diagnosticSeverity object.
+func fixEffectPluginSourceWith(t *testing.T, source, severities string) (*FixResult, tspath.RootedFilePath, string) {
+	t.Helper()
 	_, file, _, _ := editorProgram(t, source)
 	dir := filepath.Dir(file.FileName().AsString())
-	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"plugins":[{"name":"@effect/language-service","diagnosticSeverity":{"globalDate":"warning","effectSleepZeroToYieldNow":"warning"}}]},"files":["main.vibe"]}`), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"plugins":[{"name":"@effect/language-service","diagnosticSeverity":`+severities+`}]},"files":["main.vibe"]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	return FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), effectPluginConfig(t, dir), FixOptions{}), file.FileName(), dir
