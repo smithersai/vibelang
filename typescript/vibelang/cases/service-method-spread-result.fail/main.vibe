@@ -1,0 +1,3 @@
+// expect: TS2322
+service Operations { first(): string!!; second(): string!! }
+const wrong = Layer.succeed(Operations, { first: () => succeed(42), second: () => succeed("b") })

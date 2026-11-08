@@ -1,0 +1,3 @@
+// expect: TS2741
+class PrototypeMethods { second(): string { return "b" } }
+const invalid: { second: () => string } = { ...new PrototypeMethods() }

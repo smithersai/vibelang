@@ -43,6 +43,24 @@ func isVibeLangServiceDeclaredMember(class *ast.Node, member *ast.Symbol) bool {
 	return name == "key" || name == "defaultValue"
 }
 
+// isVibeLangServiceShapeMember distinguishes a service's type-only members
+// from ordinary class prototype members. The parser represents body-shaped
+// services as classes with a synthetic abstract modifier and no heritage.
+// Implementations come from Context objects; these signatures describe those
+// objects, rather than methods installed on a class prototype.
+func isVibeLangServiceShapeMember(member *ast.Node) bool {
+	class := member.Parent
+	if class == nil || !ast.IsClassDeclaration(class) || !ast.GetSourceFileOfNode(class).IsVibeLang() || class.ClassLikeData().HeritageClauses != nil {
+		return false
+	}
+	for _, modifier := range class.ModifierNodes() {
+		if modifier.Kind == ast.KindAbstractKeyword && modifier.Flags&ast.NodeFlagsReparsed != 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // isVibeLangClassPattern reports whether call is the test the parser writes
 // for a class pattern of a .vibe file, `when NotFound:` or `e is NotFound`
 // (parser/vibelang_match.go): a call of the runtime's $is whose matcher is a

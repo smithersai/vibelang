@@ -13993,7 +13993,9 @@ func (c *Checker) tryMergeUnionOfObjectTypeAndEmptyObject(t *Type, readonly bool
 // We approximate own properties as non-methods plus methods that are inside the object literal
 func (c *Checker) isSpreadableProperty(prop *ast.Symbol) bool {
 	return !core.Some(prop.Declarations(), ast.IsPrivateIdentifierClassElementDeclaration) && prop.Flags()&(ast.SymbolFlagsMethod|ast.SymbolFlagsGetAccessor|ast.SymbolFlagsSetAccessor) == 0 ||
-		!core.Some(prop.Declarations(), func(d *ast.Node) bool { return d.Parent != nil && ast.IsClassLike(d.Parent) })
+		!core.Some(prop.Declarations(), func(d *ast.Node) bool {
+			return d.Parent != nil && ast.IsClassLike(d.Parent) && !isVibeLangServiceShapeMember(d)
+		})
 }
 
 func (c *Checker) getSpreadSymbol(prop *ast.Symbol, readonly bool) *ast.Symbol {

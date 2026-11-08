@@ -1,0 +1,18 @@
+// expect-result: ["changed","b","a","last"]
+service Operations { first(): string!!; second(): string!! }
+const original = Layer.succeed(Operations, { first: () => succeed("a"), second: () => succeed("b") })
+const changed = Layer.effect(Operations, effect {
+  const base = try Operations
+  return { ...base, first: () => succeed("changed") }
+}).pipe(Layer.provide(original))
+function decorate(source: Operations.Shape): Operations.Shape {
+  return { ...source, second: () => succeed("last") }
+}
+export effect function main() {
+  const result = try Effect.provide(effect {
+    const service = try Operations
+    return [try service.first(), try service.second()]
+  }, changed)
+  const plain = decorate({ first: () => succeed("a"), second: () => succeed("b") })
+  return [...result, try plain.first(), try plain.second()]
+}
