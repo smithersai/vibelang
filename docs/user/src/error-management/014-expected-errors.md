@@ -589,3 +589,5 @@ For `abstract schema error` roots, the native-class migration retains the origin
 Inside an `Effect.try` thunk, a callback supplied to a rethrowing array method may call a function known to throw. A function returned from that callback is a separate plain function and still needs its own boundary.
 
 An optional call returning `any` still follows its callee's thrown contract. A callable declared in `.vibe` outside a `module` body throws `never`, including when its result is `any`; calling a value itself typed `any` needs an explicit failure boundary in effect code.
+
+An `effect` callback's parameter defaults keep their strict no-throw contract inside `Effect.try`, including an options object's `try` callback. A tracked throwing default is `EK0401`; the wrapper does not relax initialization before the callback's Effect or Stream exists. The preserving `--fix` repair retains call-time evaluation and delivers the same defect when the resulting program runs.

@@ -1,0 +1,23 @@
+// expect: EK0401
+import { read } from "./foreign.js"
+export function functionFactory(text: string) {
+  return Effect.try(effect function nested(value = read(text)) { return value })
+}
+export function arrowFactory(text: string) {
+  return Effect.try(effect (value = read(text)) => value)
+}
+export function optionsFunctionFactory(text: string) {
+  return Effect.try({ try: effect function nested(value = read(text)) { return value }, catch: (error) => error })
+}
+export function optionsArrowFactory(text: string) {
+  return Effect.try({ try: effect (value = read(text)) => value, catch: (error) => error })
+}
+export function producerFactory(text: string) {
+  return Effect.try(effect function* nested(value = read(text)) { yield value })
+}
+export function optionsProducerFactory(text: string) {
+  return Effect.try({ try: effect function* nested(value = read(text)) { yield value }, catch: (error) => error })
+}
+export function plainFactory(text: string) {
+  return Effect.try({ try: function nested(value = read(text)) { return value }, catch: (error) => error })
+}

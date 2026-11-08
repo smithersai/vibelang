@@ -263,6 +263,10 @@
       {
         "input": "typescript/vibelang/cases/shadowed-effect-wrapper.fail",
         "output": "typescript/vibelang/cases/shadowed-effect-wrapper-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/wrapped-effect-parameter.fail",
+        "output": "typescript/vibelang/cases/wrapped-effect-parameter-fixed-output"
       }
     ]
   },

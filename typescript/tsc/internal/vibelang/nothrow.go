@@ -143,6 +143,12 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 // callback runs after Effect.try has finished. A throw statement in such a
 // literal is still EK0401.
 func (a *analyzer) throwsBelongToCall(home, site *ast.Node) bool {
+	// An effectful callback's defaults run before its program exists and keep
+	// their strict parameter contract even when a wrapper invokes the callback.
+	if ast.IsFunctionLike(home) && (isMarkedEffect(home) || isProducer(home)) && inParameterListOf(site, home) {
+		return false
+	}
+
 	// Calling a generator creates an iterator; its body runs later, outside
 	// the wrapper's activation. Parameter initialization still runs at call time.
 	if ast.GetFunctionFlags(home)&ast.FunctionFlagsGenerator != 0 && !inParameterListOf(site, home) {
