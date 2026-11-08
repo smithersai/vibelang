@@ -8014,6 +8014,9 @@ func getUniqueTypeParameterName(typeParameters []*Type, baseName string) string 
 }
 
 func (c *Checker) checkExpressionWorker(node *ast.Node, checkMode CheckMode) *Type {
+	if replacement := c.applyExpressionReplacementHooks(node); replacement != nil {
+		return c.checkExpressionEx(replacement, checkMode)
+	}
 	switch node.Kind {
 	case ast.KindIdentifier:
 		return c.checkIdentifier(node, checkMode)
@@ -32612,8 +32615,18 @@ func (c *Checker) GetSymbolAtLocation(node *ast.Node) *ast.Symbol {
 	// !!!
 	// const node = getParseTreeNode(nodeIn);
 
+	// Value analyses must see the expression selected for checking and emit.
+	// Source type-name queries retain their separate type-context nodes.
+	parsed := ast.GetReparsedNodeForNode(node)
+	expression := parsed
+	if ast.IsIdentifier(parsed) && ast.IsPropertyAccessExpression(parsed.Parent) && parsed.Parent.Name() == parsed {
+		expression = parsed.Parent
+	}
+	if replacement := c.applyExpressionReplacementHooks(expression); replacement != nil {
+		return c.getSymbolAtLocation(replacement, true /*ignoreErrors*/)
+	}
 	// set ignoreErrors: true because any lookups invoked by the API shouldn't cause any new errors
-	return c.getSymbolAtLocation(ast.GetReparsedNodeForNode(node), true /*ignoreErrors*/)
+	return c.getSymbolAtLocation(parsed, true /*ignoreErrors*/)
 }
 
 // Returns the symbol associated with a given AST node. Do *not* use this function in the checker itself! It should

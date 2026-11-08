@@ -283,6 +283,9 @@ func narrowTypeByTag(c *checker.Checker, t *checker.Type, tag string, value *che
 func checkData(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if replacement := schemaGenericReplacement(c, node); replacement != nil {
+			return visit(replacement)
+		}
 		switch {
 		case parser.IsDataDeclaration(node):
 			checkDataDeclaration(c, file, node)

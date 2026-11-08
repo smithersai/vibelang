@@ -1,0 +1,15 @@
+import type { Date as NativeDate, RegExp as NativeRegExp, Uint8Array as NativeBytes } from "./types.js"
+import { type URL as NativeURL, Error as NativeError } from "./types.js"
+import type * as Types from "./types.js"
+
+export schema Example {
+ readonly at: NativeDate
+ readonly site: NativeURL
+ readonly pattern: NativeRegExp
+ readonly bytes: NativeBytes
+ readonly cause: NativeError
+}
+export schema Single = NativeDate
+export schema FromNamespace = Types.Date
+export schema BeforeValue = Date
+const Date = 0

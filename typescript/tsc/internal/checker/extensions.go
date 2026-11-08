@@ -71,6 +71,29 @@ func (c *Checker) applyCallExpressionReplacementHooks(call *ast.Node) *ast.Node 
 	return nil
 }
 
+// ExpressionReplacementHook selects the expression the compiler will emit
+// before value-use checks run on its source representation. A schema's type
+// reference can select a library codec without reading a source constructor,
+// including when that type was imported with import type.
+type ExpressionReplacementHook func(c *Checker, expression *ast.Node) *ast.Node
+
+var expressionReplacementHooks []ExpressionReplacementHook
+
+// RegisterExpressionReplacementHook adds an in-tree hook during init.
+// Registration is not synchronized; hooks return nil for ordinary expressions.
+func RegisterExpressionReplacementHook(hook ExpressionReplacementHook) {
+	expressionReplacementHooks = append(expressionReplacementHooks, hook)
+}
+
+func (c *Checker) applyExpressionReplacementHooks(expression *ast.Node) *ast.Node {
+	for _, hook := range expressionReplacementHooks {
+		if replacement := hook(c, expression); replacement != nil && replacement != expression {
+			return replacement
+		}
+	}
+	return nil
+}
+
 // InferredReturnTypeHook can replace t, the return type the checker inferred
 // from the body of fn, a function without a return type annotation.
 type InferredReturnTypeHook func(c *Checker, fn *ast.Node, t *Type) *Type

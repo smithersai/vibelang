@@ -20,6 +20,9 @@ func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
 		if isTypeScriptModule(node) || isHatchArgument(node) {
 			return false
 		}
+		if replacement := schemaGenericReplacement(c, node); replacement != nil {
+			return visit(replacement)
+		}
 		if ast.IsClassLike(node) && classKindOf(node) == ordinaryClass {
 			checkDefaultForeignCallbackClass(c, node)
 		}

@@ -15,7 +15,7 @@ type schemaGenericState struct {
 func init() {
 	checker.RegisterCallExpressionTypeHook(schemaGenericCallType)
 	checker.RegisterCallExpressionReplacementHook(schemaGenericCallReplacement)
-	checker.RegisterExpressionTypeHook(schemaLibraryNameType)
+	checker.RegisterExpressionReplacementHook(schemaLibraryNameReplacement)
 	fileChecks = append(fileChecks, checkSchemaGenericReferences)
 }
 
@@ -142,6 +142,9 @@ func schemaGenericReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
 // whose type binding is the TypeScript library's, and nil for any other name.
 // Only a field codec's own position can hold one, so other names return fast.
 func schemaLibraryNameReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
+	if !ast.IsIdentifier(node) && !ast.IsPropertyAccessExpression(node) {
+		return nil
+	}
 	parent := node.Parent
 	if parent == nil || !(ast.IsPropertyAssignment(parent) || ast.IsCallExpression(parent) || ast.IsArrayLiteralExpression(parent) || ast.IsVariableDeclaration(parent)) {
 		return nil
@@ -155,18 +158,6 @@ func schemaLibraryNameReplacement(c *checker.Checker, node *ast.Node) *ast.Node 
 		return nil
 	}
 	return ref.LibraryScalars[c.ResolveEntityName(ref.Name, ast.SymbolFlagsType).Name()]
-}
-
-// schemaLibraryNameType gives a selected library name its Schema's type, as
-// schemaGenericCallType does for a generic call's replacement.
-func schemaLibraryNameType(c *checker.Checker, node *ast.Node, t *checker.Type) *checker.Type {
-	if !ast.IsIdentifier(node) && !ast.IsPropertyAccessExpression(node) {
-		return t
-	}
-	if replacement := schemaLibraryNameReplacement(c, node); replacement != nil {
-		return c.GetTypeAtLocation(replacement)
-	}
-	return t
 }
 
 // schemaGenericCallReplacement has the checker check the selected codec's call

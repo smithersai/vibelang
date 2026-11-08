@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A schema could reject a library type imported only as a type, or report a value-use error for a later value with the same name. It now checks the library codec selected by the type binding.
+
 - Calls through supplied `Performance` and `Crypto` values incorrectly reported platform-access errors. They now use the supplied receiver; host-global access remains diagnosed.
 
 - An explicit `effect` function or block inside a wrapper callback could run as plain JavaScript or lose its Effect type. It now keeps its cold Effect behavior and runs its body only when that Effect is run.

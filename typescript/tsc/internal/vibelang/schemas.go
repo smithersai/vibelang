@@ -159,6 +159,9 @@ func checkSchemaFields(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 // checkSchemaValue checks value, the schema the parser wrote for one field
 // type or a part of one.
 func checkSchemaValue(c *checker.Checker, file *ast.SourceFile, value *ast.Node, declaration *ast.Node) {
+	if replacement := schemaGenericReplacement(c, value); replacement != nil {
+		value = replacement
+	}
 	switch {
 	case isNonFieldSchema(value):
 		// A member of the body that is not a field (D247): a method, a

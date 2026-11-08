@@ -47,6 +47,12 @@ func checkCallbackThrows(c *checker.Checker, file *ast.SourceFile) {
 		if isTypeScriptModule(node) || isHatchArgument(node) {
 			return false
 		}
+		// A mapped type name is not a runtime callback value. Inspect the
+		// selected codec, including its children, rather than reading a
+		// type-only namespace from the source representation.
+		if replacement := schemaGenericReplacement(c, node); replacement != nil {
+			return visit(replacement)
+		}
 		if ast.IsSatisfiesExpression(node) {
 			checkSatisfiesCallbackOperands(c, node.Expression())
 			checkCallbackValue(c, node)
