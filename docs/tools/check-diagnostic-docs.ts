@@ -124,9 +124,59 @@ export function checkEditorMigrationDiagnostics(root = repo): string[] {
     editorMigrationDiagnosticProblems(readFileSync(join(root, file), "utf8"), file))
 }
 
+// Chapter 003 distinguishes unknown throwing in plain code from EK0403 in effect code.
+export function foreignCallDiagnosticProblems(text: string, file = "document"): string[] {
+  // Older release sections describe their contemporary diagnostics.
+  if (/(?:^|\/)release-notes\.md$/.test(file)) {
+    const releases = [...text.matchAll(/^## \d+\.\d+\.\d+\b/gm)]
+    if (releases.length > 1) text = text.slice(0, releases[1].index)
+  }
+  const problems: string[] = []
+  let fence = "", paragraph: string[] = [], start = 1
+  const check = () => {
+    const prose = paragraph.join(" ").replaceAll("\x60", "").replace(/\s+/g, " ")
+    const negated = /\b(?:not|never|no longer)\b.{0,45}\bEK4401\b|\bEK4401\b.{0,30}\b(?:not|never|no longer)\b/i.test(prose)
+    if (/\beffect (?:code|function)\b/i.test(prose) &&
+        /\bcall(?:s|ing)?\b/i.test(prose) && /(?:\bforeign\b|\.ts\b|\bpackage\b)/i.test(prose) &&
+        /\bEK4401\b/.test(prose) && !/\bEK0403\b/.test(prose) && !negated) {
+      problems.push(file + ":" + start + ": unwrapped foreign calls in effect code use EK0403, not legacy EK4401")
+    }
+    paragraph = []
+  }
+  for (const [index, line] of text.split("\n").entries()) {
+    const marker = line.match(/^\s*(\x60{3,}|~{3,})/)
+    if (marker) {
+      check()
+      if (!fence) fence = marker[1]
+      else if (fence[0] === marker[1][0] && marker[1].length >= fence.length) fence = ""
+      continue
+    }
+    if (fence) continue
+    if (!line.trim()) { check(); continue }
+    // Independent list items and table rows must not lend each other a code.
+    if (/^\s*(?:[-*+]\s|\|)/.test(line)) check()
+    if (!paragraph.length) start = index + 1
+    paragraph.push(line)
+    if (/^\s*\|/.test(line)) check()
+  }
+  check()
+  return problems
+}
+
+export function checkForeignCallDiagnostics(root = repo): string[] {
+  const chapter = readFileSync(join(root, "docs/design/src/003-failures.md"), "utf8")
+  if (!chapter.includes("in effect code the same call has thrown type \x60unknown\x60 and needs its wrapper (\x60EK0403\x60)")) {
+    throw new Error("review foreign-call diagnostic policy against the failures chapter")
+  }
+  return [...files(join(root, "docs/user/src"), ".md"),
+    ...["packages/compiler/skills/vibelang/SKILL.md", ".smithers/flows/migrate/rules.md",
+      ".smithers/flows/migrate/context.md"].map(file => join(root, file))]
+    .flatMap(file => foreignCallDiagnosticProblems(readFileSync(file, "utf8"), relative(root, file)))
+}
+
 if (import.meta.main) {
   const missing = checkDiagnosticDocs()
-  const claims = checkEditorMigrationDiagnostics()
+  const claims = [...checkEditorMigrationDiagnostics(), ...checkForeignCallDiagnostics()]
   for (const problem of claims) console.error(problem)
   if (claims.length) process.exitCode = 1
   if (missing.length) {

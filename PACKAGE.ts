@@ -1572,6 +1572,12 @@ const targets = {
     [],
     [bun]
   ),
+  "docs-foreign-call-diagnostics": check(
+    "Foreign-call guidance keeps the failures chapter's current diagnostic distinct from legacy listed-class errors.",
+    "bun test --timeout 60000 docs/tools/foreign-call-diagnostics.test.ts",
+    [],
+    [bun]
+  ),
   "docs-fix-progress-guide": check(
     "Progress advice distinguishes native standard error from the migration runner's optional log files.",
     "node docs/tools/fix-progress-guide.mjs && bun test --timeout 60000 docs/tools/fix-progress-guide.test.ts",
