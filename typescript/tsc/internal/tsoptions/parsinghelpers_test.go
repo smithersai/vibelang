@@ -1,6 +1,7 @@
 package tsoptions
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -154,6 +155,35 @@ func TestMergeVibeSettingsSidecarPathAndMapIsolation(t *testing.T) {
 			}
 			if base.SidecarDir != "/base/declarations" || child.SidecarDir != tt.childPath {
 				t.Fatal("merging a sidecar path must not mutate an extended config")
+			}
+		})
+	}
+}
+
+// A legacy reset has the same modern result whether native option containers
+// alias or are distinct, and does not clear the source of a separate merge.
+func TestMergeVibeLegacyResetAliasing(t *testing.T) {
+	for _, same := range []bool{false, true} {
+		t.Run(fmt.Sprint(same), func(t *testing.T) {
+			modern := &core.VibeLangOptions{
+				EffectGlobals: core.TSTrue,
+				EffectModules: core.TSFalse,
+				Severities:    map[string]string{"EK0801": "error"},
+				Diagnostics:   map[string]string{"EK4801": "off"},
+			}
+			source := &core.CompilerOptions{VibeLang: modern}
+			target := &core.CompilerOptions{VibeLang: modern}
+			if same {
+				target = source
+			}
+			raw := &collections.OrderedMap[string, any]{}
+			raw.Set("vibelang", nil)
+			result := mergeCompilerOptions(target, source, raw, "", "").VibeLang
+			if result == nil || result.EffectGlobals != core.TSTrue || result.EffectModules != core.TSFalse || result.Severities["EK0801"] != "error" || len(result.Diagnostics) != 0 {
+				t.Fatalf("legacy reset changed modern settings: %+v", result)
+			}
+			if modern.Diagnostics["EK4801"] != "off" || modern.Severities["EK0801"] != "error" {
+				t.Fatal("reset mutated a shared source value")
 			}
 		})
 	}

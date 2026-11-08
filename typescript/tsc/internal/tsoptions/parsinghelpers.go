@@ -396,18 +396,22 @@ func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, ra
 	}
 
 	previousVibe := targetOptions.VibeLang
+	sourceVibe := sourceOptions.VibeLang
 	mergeCompilerOptionFields(targetOptions, sourceOptions, explicitNullFields)
-	if previousVibe != nil {
-		if explicitNullFields.Has("vibelang") {
-			// A legacy reset clears legacy fields, independently of inherited vibe.
-			modern := core.MergeVibeSettings(previousVibe, &core.VibeLangOptions{})
-			if modern.Severities != nil || modern.EffectGlobals != core.TSUnknown || modern.EffectModules != core.TSUnknown || modern.SidecarDir != "" {
-				modern.VibeOnly = true
-				targetOptions.VibeLang = modern
-			}
-		} else {
-			targetOptions.VibeLang = core.MergeVibeSettings(previousVibe, targetOptions.VibeLang)
+	if explicitNullFields.Has("vibelang") {
+		// A legacy reset clears only legacy fields. The generated native-option
+		// merge reset the shared pointer, so merge the modern child from its
+		// source options before clearing legacy fields on a private copy.
+		modern := core.MergeVibeSettings(previousVibe, sourceVibe)
+		if modern != nil && (modern.VibeOnly || modern.Severities != nil || len(modern.InvalidSeverities) != 0 || modern.EffectGlobals != core.TSUnknown || modern.EffectModules != core.TSUnknown || modern.SidecarDir != "") {
+			reset := *modern
+			reset.VibeOnly = true
+			reset.Diagnostics = nil
+			reset.TrustedPackages = nil
+			targetOptions.VibeLang = &reset
 		}
+	} else if previousVibe != nil {
+		targetOptions.VibeLang = core.MergeVibeSettings(previousVibe, targetOptions.VibeLang)
 	}
 	if MergeCompilerOptionsCallback != nil {
 		MergeCompilerOptionsCallback(targetOptions, sourceOptions, rawSource, sourceConfigPath, basePath)

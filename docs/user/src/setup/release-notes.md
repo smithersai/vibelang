@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The specification walkthrough showed retired recovery syntax such as `catch "guest"`. It now demonstrates current syntax with actual compiler and program output.
 - With `semicolons: "asi"`, formatting a parenthesized `do` statement after another statement still failed with `formatting changed the program`; `vibelang --fix` writes `Option.match` in that form. The formatter now writes `;(do { … })` there, restoring the semicolon it removed before the parentheses.
 - Division expressions using a variable named `provide` could be mistaken for provider blocks and rejected. They now parse and run as in TypeScript, including `/=` assignments.
+- Clearing inherited legacy settings with `vibelang: null` could discard the same config’s `vibe` settings. Modern options and diagnostic severities now keep their independent overrides.
 
 - A `.ts` class whose constructor has no `@throws` tag was accepted where a construct signature without `@throws` was expected, such as `const make: new (n: number) => Box = Box` or `register(Box)`, although constructing it in effect code reports `EK0403` and the same unannotated function value reports `EK0402`. The class now reports `EK0402` there too; a class that declares no constructor stays untracked.
 

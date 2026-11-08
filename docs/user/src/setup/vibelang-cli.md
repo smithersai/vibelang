@@ -82,6 +82,8 @@ The values are `"error"`, `"warning"`, `"suggestion"` and `"off"`. Keep leading 
 
 `extends` merges the `vibe` section by key and `severities` by diagnostic code; child entries win. An `extends` array applies bases left to right. Severity entries are validated after this merge: a valid child or later-base entry replaces an invalid ancestor entry without reporting the ancestor's `EK3006`. Invalid effective entries still report `EK3006` at their declaring config; unrelated configuration errors remain errors. `--showConfig` prints the effective `vibe` section. The compiler API preserves these effective settings when parsed options are passed to `createProgram` or used to reconfigure a program. A code setting overrides the Effect language-service rule configuration.
 
+Resetting inherited legacy options with `vibelang: null` leaves the same config’s modern `vibe` settings effective, including its prelude switches, `sidecarDir` and diagnostic severity overrides.
+
 Invalid effective entries report `EK3006` individually and are ignored as overrides; other valid entries and independent options still apply. An invalid child entry does not restore the displaced base entry for the same code: its lower-precedence Effect language-service setting, when applicable, then its default applies. Other inherited codes remain. These are still configuration errors, with their normal exit and emit consequences.
 
 VibeLang's own warnings print without failing the build or blocking `noEmitOnError`; set an own warning to `"error"` to fail CI. Own `"suggestion"` diagnostics appear only in the language server, and `"off"` suppresses a diagnostic. Imported Effect rules use the upstream compiler policy described below.
