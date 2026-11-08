@@ -13,10 +13,18 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Unicode escapes were accepted in a `provide` keyword. They now report `TS1260`, matching TypeScript keyword rules; escaped ordinary identifiers remain usable.
+
+- A foreign call inside an `effect` function or block created in an `Effect.sync` or `Effect.promise` thunk could bypass its throw check. These nested callables now keep their own checks, and `--fix` adds a bridge inside the nested program.
+
 - Schemas rejected library types imported under another name; imported aliases now select the codec of the resolved library type.
 
-- Schema fields using qualified library types such as `globalThis.Date` were rejected as nonschema values. They now use the same codecs as their unqualified library names.
+- Adding a base configuration could erase a legacy diagnostic map when the same file’s other legacy location was `null`. The selected map now survives inheritance, including an empty base.
 
+- Schema fields using qualified library types such as `globalThis.Date` were rejected as nonschema values. They now use the same codecs as their unqualified library names.
+- Matching a TypeScript class or passing its inferred constructor value could report `EK0402`. Those uses now retain the constructor's own signature; written constructor types still require a compatible throw contract.
+
+- A label inside a `do` expression that the compiler still writes as a function, such as a `for concurrent` head default or an optional call's argument, could repeat a label around it without an error. It now reports `TS1114`, as for any other `do` expression.
 - The matching guide described generated errors as matching only by tag. It now also explains the instance check that recognizes subclasses with different tags.
 
 - The migration's API identity check could not finish comparing a package whose `.ts` source exports a class with a private, protected or `#private` member, even when nothing changed: its own rewriting of the class reported `TS2564` and `TS1361`. It now compares such a class, and still reports a member whose visibility changes.
@@ -25,6 +33,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Under `vibelang/bun`, importing a package whose `default` export names a `.vibelang/js` file with no single source, because `x.ts` and `x.vibe` both exist or its header names a deleted `.vibe`, failed with Bun's `TypeError: onLoad() expects an object returned`. The emitted module now loads in place, as documented.
 
+- The errors for a `try` statement in effect code, `catch` outside effect code, `try x catch h`, a `catch` operand that is not an Effect, and a plain `catch` handler that returns a Promise or an Effect (`EK0503` to `EK0508`) ended with an unrelated hint about function-literal handlers. Each now says what to write instead, and `EK0506` names the operand's type.
 - The browser hardware-count diagnostic named a process export that does not exist. It now identifies the process service’s `availableParallelism` member and keeps the TypeScript adapter advice for browser counts.
 
 - The optional-call delegation example used untyped callees that require a failure boundary. It now declares the callable signatures while preserving unchecked results, native `TypeError` defects and optional-call evaluation order.
