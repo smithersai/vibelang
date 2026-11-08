@@ -259,6 +259,7 @@ effect function replacements(
   const id = try (try SecureRandom.SecureRandom).uuidV4()
   const roll = try (try SecureRandom.SecureRandom).intBetween(min, max, { halfOpen: true })
   const digest = try (try Digest.Digest).digest(Digest.sha256, bytes)
+  const hex = try (try Digest.Digest).digestHex(Digest.sha256, bytes)
   const encoded = new TextEncoder().encode(text)
   const byteLength = new TextEncoder().encode(text).length
   const empty = new Uint8Array(size)
@@ -269,11 +270,12 @@ effect function replacements(
   const events = Stream.fromEventListener(target, "message")
   const millis = try Clock.currentTimeMillis
   const nanos = try Clock.monotonicTimeNanos
+  const hrtime = Duration.toHrTime(try Clock.monotonicTimeNanos)
   try sleep("1 second")
   try yieldNow
   const fiber = fork effect { try repeat(program, Schedule.spaced("1 second")) }
   try Fiber.interrupt(fiber)
-  return { name, args, directory, here, file, line, random, id, roll, digest, encoded, byteLength, empty, joined, response, socket, stored, events, millis, nanos }
+  return { name, args, directory, here, file, line, random, id, roll, digest, hex, encoded, byteLength, empty, joined, response, socket, stored, events, millis, nanos, hrtime }
 }
 ```
 
