@@ -30,6 +30,20 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A migration could overwrite one package's saved declarations with another package's and then compare the wrong API. Each package now keeps separate declaration snapshots; ambiguous older snapshots require a fresh setup.
 
+- Migrating an empty trusted wrapper could refuse a narrowed argument when the wrapped function declared its throws. The repair now captures the argument before creating its preserving defect bridge.
+
+- Passing a foreign function through a variadic forwarding helper could lose the receiving callback's throws restriction. The written callback parameter is now checked.
+
+- Repeated computed property declarations could escape duplicate-member errors. They now receive the same diagnostics as TypeScript.
+
+- A method read from a `const` that `try` gave, such as `const users = try Users` and then `users.getByName(id)`, skipped `EK0403` when a declaration file declared the method without `@throws`, as a referenced project's output or an npm package does, while the Bun and Node loaders, which read the referenced project's TypeScript source, reported it and refused to load the module. Both now report `EK0403` for that call, as for any untagged foreign callable; bridge it with `Effect.try` or declare its `@throws` contract.
+
+- The migration guide gave the old diagnostic number for an unwrapped foreign call. It now names `EK0403`, matching the failures chapter and compiler.
+
+- An `async match` inside a computed method name or member decorator could report a generic jump error for a `break` or `continue` to an outer loop. It now reports `EK0706` for the Promise boundary.
+
+- A class definition inside a `for try` item could hide a forbidden `return` or labeled jump behind an implementation restriction. Decorators, computed names and `extends` expressions now report `EK2002` or `EK2003`, keeping independent TypeScript errors.
+
 
 - A `catch` whose head was a parenthesized `try` of a block or pipeline that only fails, such as `(try effect { … return throw new Pending() }) catch h`, or whose head's value was `any`, stopped recovering the head's failures after head evaluation moved before the catch, and `vibelang --fix` left it unchanged with only an `EK9204` warning. `--fix` now removes that `try`, or wraps another such head in an `effect` block, so the handler receives those failures again; a head whose value is an Effect keeps its `try`.
 
@@ -173,8 +187,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A child config that set `vibelang.diagnostics` to `null` to clear an inherited legacy severity map was rejected with TS5024. An explicit `null`, like `{}`, now replaces the inherited map with no entries.
 
 - The proposal overview displayed internal review metadata. It now states the retirement rule without those details.
-
-- Repeated computed property declarations with matching types could be rejected as duplicate identifiers. They now follow TypeScript, while incompatible property types remain errors.
 
 - A `break` or `continue` leaving a `do` expression in a `for` loop's test or update, or in a `do…while` test, reported both `EK0205` and the compiler-gap code `EK0204`. It now reports `EK0205` alone.
 
