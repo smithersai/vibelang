@@ -96,6 +96,8 @@ export function run(args) {
   }
   const started = performance.now(), observer = progressState(), decoder = new StringDecoder("utf8")
   let child, spawnError, interrupted, outputError
+  let diagnosticFailed = false
+  const diagnostic = text => { if (!diagnosticFailed) process.stderr.write(text) }
   const record = (event, extra = "") => {
     const kinds = child?.pid ? processKinds(child.pid) : null
     const state = observer.state
@@ -103,7 +105,7 @@ export function run(args) {
     const phase = failedBuild ? "build-failed" : state.packagesStarted > state.packagesFinished || kinds?.test ? "tests" :
       kinds?.compile || kinds?.link ? "build" : kinds?.go ? "go-setup-or-build" :
       kinds?.launcher ? "launcher" : "starting"
-    process.stderr.write("go-progress run=" + process.pid + " event=" + event +
+    diagnostic("go-progress run=" + process.pid + " event=" + event +
       " elapsed_ms=" + Math.round(performance.now() - started) + " phase=" + phase +
       " packages_started=" + state.packagesStarted + " packages_finished=" + state.packagesFinished +
       " tests_started=" + state.testsStarted + " tests_finished=" + state.testsFinished +
@@ -142,6 +144,15 @@ export function run(args) {
     record("output-error", "cause=output code=" + outputError)
     forward("SIGTERM")
   })
+  process.stderr.on("error", () => {
+    if (diagnosticFailed) return
+    diagnosticFailed = true
+    process.exitCode = 1
+    // The diagnostic reader is gone. Cancel the owned group without writing
+    // more diagnostics to the failed stream or injecting them into stdout.
+    child.stdout.destroy()
+    forward("SIGTERM")
+  })
   child.stdout.on("data", chunk => {
     if (!process.stdout.write(chunk)) {
       child.stdout.pause()
@@ -156,11 +167,11 @@ export function run(args) {
     observer.consume(decoder.end(), event => record(event))
     const failures = observer.failureSummary()
     for (const root of failures.roots) {
-      process.stderr.write("--- FAIL: " + root.test + " (go-failure run=" + process.pid +
+      diagnostic("--- FAIL: " + root.test + " (go-failure run=" + process.pid +
         " package_id=" + root.packageId + " failed_events=" + root.failedEvents + ")\n")
     }
     if (failures.failedEvents) {
-      process.stderr.write("go-failure-summary run=" + process.pid + " failed_events=" + failures.failedEvents +
+      diagnostic("go-failure-summary run=" + process.pid + " failed_events=" + failures.failedEvents +
         " listed_roots=" + failures.roots.length + " omitted_events=" + failures.omittedEvents + "\n")
     }
     record("finish", outputError ? "cause=output code=" + outputError : spawnError ? "cause=spawn code=" + spawnError :
@@ -168,6 +179,7 @@ export function run(args) {
       (signal || interrupted ? " signal=" + (signal || interrupted) : ""))
     process.exitCode = outputError || spawnError ? 1 : signal || interrupted ?
       128 + (constants.signals[signal || interrupted] || 1) : code ?? 1
+    if (diagnosticFailed) process.exitCode = 1
   })
 }
 

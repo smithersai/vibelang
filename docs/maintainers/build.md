@@ -720,6 +720,8 @@ can contain input data. The summary reports omitted events when more roots
 fail or a name cannot be represented safely; it does not imply the omitted
 failures passed. The original JSON stream and exit status remain unchanged.
 
+If diagnostic output fails, the Go progress reporter stops diagnostic writes, cancels the command and returns status `1`. On POSIX hosts this cancellation reaches the entire owned process group. Standard output keeps Go's original bytes. `scripts/go-test-progress-stderr-error.test.mjs` exercises package events, generated process trees and a quiet command through its real heartbeat.
+
 The target uses the shared graph check deadline. Its regression reads that
 default from the actual check factory and verifies the target retains it;
 changing the default does not leave a stale deadline assertion. Missing,
