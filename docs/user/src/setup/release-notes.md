@@ -20,6 +20,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The replacement hint for `crypto.hash()` returned bytes where callers expected hex text. It now uses `digestHex` for the default string output and explains how to retain byte output.
 
+- The hint for `navigator.hardwareConcurrency` selected a process service that browser layers cannot provide. It now points to a TypeScript adapter that preserves the browser value.
+
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 
 - Wide documentation tables could not be scrolled with the keyboard on phones. Table containers now accept keyboard focus, show a focus outline and scroll with the arrow keys.

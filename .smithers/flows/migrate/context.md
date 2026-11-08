@@ -828,7 +828,7 @@ WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provid
 | `navigator` | escape to TypeScript for now: Effect has no service for the browser's navigator; navigator.clipboard, geolocation, permissions, and locks have services. |
 | `navigator.clipboard` | `try (try Clipboard.Clipboard).readString` |
 | `navigator.geolocation` | `try (try Geolocation.Geolocation).getCurrentPosition()` |
-| `navigator.hardwareConcurrency` | `try (try Experimental.Process.Process).availableParallelism` |
+| `navigator.hardwareConcurrency` | escape to TypeScript for now: Effect has no browser hardware-concurrency service; read `navigator.hardwareConcurrency` in a `.ts` adapter. `Experimental.Process.availableParallelism` reports a Node or Bun process and is not provided by the browser layer. |
 | `navigator.locks` | `try (try Experimental.Locks.Locks).hold(name)` |
 | `navigator.permissions` | `try (try Permissions.Permissions).query("geolocation")` |
 | `navigator.userAgent` | `try (try Experimental.BrowserInfo.BrowserInfo).userAgent` |

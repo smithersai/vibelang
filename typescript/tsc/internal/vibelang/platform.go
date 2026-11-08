@@ -297,7 +297,7 @@ var platformAPIs = map[string]platformAPI{
 	"navigator.clipboard":           {"Clipboard", "", ""},
 	"navigator.geolocation":         {"Geolocation", "", ""},
 	"navigator.permissions":         {"Permissions", "", ""},
-	"navigator.hardwareConcurrency": {"ExperimentalProcess", "try (try Experimental.Process.Process).availableParallelism", ""},
+	"navigator.hardwareConcurrency": {note: "Effect has no browser hardware-concurrency service; read navigator.hardwareConcurrency in a .ts adapter. Experimental.Process.availableParallelism reports a Node or Bun process and is not provided by the browser layer."},
 	"navigator":                     {note: "Effect has no service for the browser's navigator; navigator.clipboard, geolocation, permissions, and locks have services."},
 	"navigator.*":                   {note: "Effect has no service for the browser's other navigator properties; read them in a .ts file."},
 	"document":                      {note: documentGap},

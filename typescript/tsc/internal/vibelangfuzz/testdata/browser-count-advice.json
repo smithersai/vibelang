@@ -1,0 +1,42 @@
+[
+  {
+    "key": "browser:property",
+    "source": "export const read=()=>navigator.hardwareConcurrency",
+    "host": true
+  },
+  {
+    "key": "browser:literal",
+    "source": "export const read=()=>navigator[\"hardwareConcurrency\"]",
+    "host": true
+  },
+  {
+    "key": "browser:global",
+    "source": "export const read=()=>globalThis.navigator.hardwareConcurrency",
+    "host": true
+  },
+  {
+    "key": "browser:global-literal",
+    "source": "export const read=()=>globalThis[\"navigator\"][\"hardwareConcurrency\"]",
+    "host": true
+  },
+  {
+    "key": "browser:held",
+    "source": "export const read=navigator.hardwareConcurrency",
+    "host": true
+  },
+  {
+    "key": "browser:optional",
+    "source": "export const read=()=>navigator?.hardwareConcurrency",
+    "host": true
+  },
+  {
+    "key": "local:browser",
+    "source": "const navigator={hardwareConcurrency:7};export const read=()=>navigator.hardwareConcurrency",
+    "host": false
+  },
+  {
+    "key": "parameter:browser",
+    "source": "export const read=(navigator:{hardwareConcurrency:number})=>navigator.hardwareConcurrency",
+    "host": false
+  }
+]
