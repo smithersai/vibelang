@@ -77,6 +77,11 @@ func validateVibeLangOptions(value any, valueExpression *ast.Expression, sourceF
 		property := jsonProperty(valueExpression, key)
 		switch key {
 		case "diagnostics":
+			if v == nil {
+				// An explicit null, like an empty object, replaces the
+				// inherited legacy map with no entries (chapter 007).
+				continue
+			}
 			codes, ok := v.(*collections.OrderedMap[string, any])
 			if !ok {
 				report(jsonInitializer(property), diagnostics.Compiler_option_0_requires_a_value_of_type_1, "vibelang.diagnostics", "object")

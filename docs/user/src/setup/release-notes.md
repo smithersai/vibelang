@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A child config that set `vibelang.diagnostics` to `null` to clear an inherited legacy severity map was rejected with TS5024. An explicit `null`, like `{}`, now replaces the inherited map with no entries.
+
 - The proposal overview displayed internal review metadata. It now states the retirement rule without those details.
 
 - Repeated computed property declarations with matching types could be rejected as duplicate identifiers. They now follow TypeScript, while incompatible property types remain errors.

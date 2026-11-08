@@ -80,7 +80,6 @@ func TestVibeLangConfigDiagnosticLocations(t *testing.T) {
 		{"category spelling", `{"diagnostics":{"EK9204":"Warning"}}`, `"Warning"`, "'error', 'warning', 'off'", 6046},
 		{"category type", `{"diagnostics":{"EK4406":false}}`, `false`, "vibelang.diagnostics.EK4406", 6046},
 		{"diagnostics type", `{"diagnostics":[]}`, `[]`, "vibelang.diagnostics", 5024},
-		{"diagnostics null", `{"diagnostics":null}`, `null`, "vibelang.diagnostics", 5024},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			// The emoji before the options also exercises byte-based AST spans.

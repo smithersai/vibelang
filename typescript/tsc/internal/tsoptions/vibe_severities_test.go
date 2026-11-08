@@ -238,3 +238,34 @@ func TestVibeSeveritiesLegacyCoexistence(t *testing.T) {
 		})
 	}
 }
+
+// Chapter 007 / legacy severity maps: an explicit child legacy section, even `{}` or `null`, replaces the inherited section as a whole.
+func TestVibeLegacyDiagnosticsNullClears(t *testing.T) {
+	base := `{"vibelang":{"diagnostics":{"EK4801":"off"}}}`
+	for _, test := range []struct {
+		override string
+		inherits bool
+	}{
+		{``, true},
+		{`"vibelang":{"diagnostics":{}},`, false},
+		{`"vibelang":{"diagnostics":null},`, false},
+		{`"compilerOptions":{"vibelang":{"diagnostics":null}},`, false},
+	} {
+		t.Run(test.override, func(t *testing.T) {
+			config := vibeConfig(t, `{"extends":"./base.json",`+test.override+`"files":["main.vibe"]}`, base)
+			for _, d := range config.Errors {
+				if d.Source() != "EK" {
+					t.Fatalf("legacy section rejected: %s", d.String())
+				}
+			}
+			options := config.CompilerOptions().VibeLang
+			got := ""
+			if options != nil {
+				got = options.Diagnostics["EK4801"]
+			}
+			if want := map[bool]string{true: "off", false: ""}[test.inherits]; got != want {
+				t.Fatalf("EK4801 legacy severity: got %q, want %q", got, want)
+			}
+		})
+	}
+}
