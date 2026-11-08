@@ -1,7 +1,0 @@
-FuzzMigrationMetadataShebang shebang:dirname:bare compiler Chapter 5 and VIP-40: metadata companion places the entry shebang after generated imports; lane migfix-t3code
-FuzzMigrationMetadataShebang shebang:dirname:documented-crlf compiler Chapter 5 and VIP-40: metadata companion places the entry shebang after generated imports; lane migfix-t3code
-FuzzMigrationMetadataShebang shebang:resolve:bare compiler Chapter 5 and VIP-40: metadata companion places the entry shebang after generated imports; lane migfix-t3code
-FuzzMigrationMetadataShebang shebang:resolve:documented-crlf compiler Chapter 5 and VIP-40: metadata companion places the entry shebang after generated imports; lane migfix-t3code
-FuzzMigrationMetadataShebang shebang:env:bare compiler Chapter 5 and VIP-40: metadata companion places the entry shebang after generated imports; lane migfix-t3code
-FuzzMigrationMetadataShebang shebang:env:documented-crlf compiler Chapter 5 and VIP-40: metadata companion places the entry shebang after generated imports; lane migfix-t3code
-FuzzMigrationMetadataShebang corpus:t3code-import-meta-companion-shebang compiler Chapter 5 and VIP-40: minimized metadata split loses the entry shebang and creates an invalid companion; lane migfix-t3code
