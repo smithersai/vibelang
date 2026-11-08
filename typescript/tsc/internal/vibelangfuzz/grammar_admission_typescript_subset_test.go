@@ -7,7 +7,8 @@ import "testing"
 // cases write: update and compound assignment operators, generic calls and
 // heritage, conditional, constructor, query and import types, type
 // predicates, `this` parameters, index signatures, catch patterns, do-while,
-// ambient and abstract declarations, namespaces and enums.
+// ambient and abstract declarations, namespaces and enums, and `using` as
+// an identifier.
 func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 	lab, err := admissionLab()
 	if err != nil {
@@ -39,6 +40,12 @@ func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 		"type RO<T> = { readonly [K in keyof T]?: T[K] }; type RW<T> = { -readonly [K in keyof T]-?: T[K] }; type KM<T> = { [K in keyof T as string]: T[K] };",
 		"type RT = ReturnType<typeof f<string>>;",
 		"for (using x of xs) {} for await (using y of ys) {} for (await using z of zs) {}",
+		// `using` is a contextual keyword: a statement that starts with it is an
+		// expression unless a BindingIdentifier follows on the same line.
+		"using; using(x); using.x = 1; using = 1; using[0];",
+		"using",
+		"using\nx = 1;",
+		"using x = f(), y = g();",
 		"class K { constructor(public readonly n: number, private m?: string) {} }",
 		"const g = (): (() => string) => () => \"a\"; const h = async (): (() => string) => () => \"b\";",
 		"type W = new (x: number) => Date; type X = abstract new () => object;",
@@ -65,6 +72,7 @@ func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 		"namespace { }",
 		"type U<T> = T extends ? 1 : 2;",
 		"type W = new => Date;",
+		"using = ;",
 	}
 	vl := grammarParseMode{prose: true, names: true}
 	derives := func(source string) (bool, bool) {

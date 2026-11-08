@@ -858,3 +858,12 @@ witnesses remain pending under `admission:try-in-hatch`. The classifier reads
 only the first argument of an unqualified `sync` call; inputs after it,
 member calls, `new sync(...)` and programs that declare `sync` keep their
 `EK0501` and do not acquire the key.
+
+A later case-seeded campaign reduced a case to the one-word program
+`using`. The compiler reports only `TS2304`, as stock TypeScript 5.9.3 does
+for `using;`, `using(x);`, `using.x = 1;`, `using = 1;` and `using[0];`.
+ECMAScript's `ExpressionStatement` lookahead does not exclude `using`, and
+neither does Appendix A's; a `using` declaration needs a `BindingIdentifier`
+on the same line. The lab's TypeScript subset had excluded every statement
+that starts with `using`. It now keeps only the declaration's line-break
+restriction, and the TypeScript-subset test holds these identifier forms.
