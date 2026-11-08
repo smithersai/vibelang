@@ -1,0 +1,6 @@
+{
+  "seed": 82761,
+  "exports": ["trusted", "TaggedError", "$try", "$Context", "$registerErrorMatcher", "customMatcher", "Experimental"],
+  "observers": ["original CommonJS exports", "completed require result"],
+  "loadOrder": ["internal entry", "public entry", "native consumer"]
+}

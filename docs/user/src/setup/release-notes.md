@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
 
 - Migration API checks could lose one referenced project's declarations when config paths shared an output name. Each project now keeps separate declarations and compiler logs, and ambiguous older snapshots require fresh setup.
+- Loading a native test suite under Bun could leave runtime helpers undefined. The package entries now preserve their CommonJS exports while loading the runtime.
 
 - A class definition inside an `effect` block could report an implementation restriction for an escaping `break` or `continue`. Decorators, computed names and `extends` expressions now report the block’s `EK0202` error.
 

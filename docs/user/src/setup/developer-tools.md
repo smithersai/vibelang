@@ -409,6 +409,8 @@ load registered languages directly. Existing pinned versions are retained.
 Migration recognizes TypeScript/TSX aliases without case sensitivity. With a JSX grammar installed, `.ts` selectors and ignores map to `.vibe`, and `.tsx` maps to `.vibex`, preserving directory scope.
 
 
+The public and internal runtime entries retain their helper values when Bun captures a CommonJS bridge before its ES module graph has finished loading. Importing native modules after an earlier module fails does not leave runtime helpers undefined.
+
 The Bun preload resolves a missing `.ts` import to its sibling `.vibe` source
 when the import is relative, absolute or mapped by `paths` in `tsconfig.json`.
 A native launcher or test can retain a literal import after migration. Existing native files keep their priority.
