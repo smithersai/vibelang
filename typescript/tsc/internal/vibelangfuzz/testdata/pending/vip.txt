@@ -19,7 +19,6 @@ FuzzVIPDifferential  feature:vip05.catch-function   compiler  VIP-5: `x catch (e
 # exit:called/<construct>, checked after the Exit and events, so these lines
 # never hide another disagreement.
 FuzzVIPDifferential  exit:called/vip13.error-plain  compiler  VIP-1: a function with neither keyword is plain JavaScript ("neither keyword: plain JavaScript"), but `export function main() { … }` compiles to `Effect.fnUntraced(function* main() { … })`, so calling main() runs nothing of its body; lane vip-core2 implements it
-FuzzVIPDifferential  exit:called/vip23.pipe-plain  compiler  VIP-1: a function with neither keyword is plain JavaScript ("neither keyword: plain JavaScript"), but `export function main() { … }` compiles to `Effect.fnUntraced(function* main() { … })`, so calling main() runs nothing of its body; lane vip-core2 implements it
 FuzzVIPDifferential  exit:called/vip28.generic-data-plain  compiler  VIP-1: a function with neither keyword is plain JavaScript ("neither keyword: plain JavaScript"), but `export function main() { … }` compiles to `Effect.fnUntraced(function* main() { … })`, so calling main() runs nothing of its body; lane vip-core2 implements it
 #
 # Accepted VIPs no construct covers (TestVIPCoverage reads these). A
@@ -33,7 +32,5 @@ FuzzVIPDifferential  not-runtime:vip32              vip       VIP-32: one pinned
 FuzzVIPDifferential  not-runtime:vip34              vip       VIP-34: compiler and tooling requirements change no Exit
 FuzzVIPDifferential  feature:vip26.top-level        vip       not generated: VIP-26's top-level await of a runner needs its construct file; runMain exits the worker
 FuzzVIPDifferential  feature:vip33.platform         vip       not generated: VIP-33's platform standard library needs its construct file
-FuzzVIPDifferential exit:called/vip05.async-forms-plain compiler VIP-1: a plain main must execute its call-time event before returning the Promise-backed Effect; lane vip-core2
 FuzzVIPDifferential exit:called/vip31.for-of-label-chain-plain compiler VIP-1: the generated unannotated plain main defers its call-time event, the same implicit-function classification gap as vip23.pipe-plain; lane vip-core2
 
-FuzzVIPDifferential exit:called/vip02.do-finally-completion-plain compiler VIP-1: a function with neither keyword is plain JavaScript ("neither keyword: plain JavaScript"), but the generated unannotated plain main defers its call-time event, the existing plain-function classification gap; completion values and events are compared before this timing gap; lane vip-core2
