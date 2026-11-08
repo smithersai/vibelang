@@ -1,0 +1,7 @@
+// expect: EK0509 TS2322
+export effect function generator() { return Effect.fail("x") catch function* (e) { return e.length } }
+export effect function asyncFunction() { return Effect.fail("x") catch async function (e) { return e.length } }
+export effect function asyncGenerator() { return Effect.fail("x") catch async function* (e) { yield e.length } }
+export effect function named() { return Effect.fail("x") catch async function recover(e) { return e.length } }
+export effect function noParameter() { return Effect.fail("x") catch async function () { return 7 } }
+export effect function bodyError() { return Effect.fail("x") catch function* (e) { const bad: string = e.length; return bad } }

@@ -2558,5 +2558,25 @@
       "reference": "docs/design/vips/0026-top-level-and-main.md#amendment-legacy-entry-markers: accepted VIP-26 amendment, 'The retired side-effect imports vibelang/platform/node, vibelang/platform/bun and vibelang/platform/browser report EK2601'; 'a rewrite that can't preserve types, behavior and declaration output refuses at that site. A refused marker remains an error'. docs/design/src/007-tooling.md#legacy-entry-dispatch-migration specifies the refusal. This records existing published authority, not a new language decision."
     },
     "reason": "This failing case already used a retired platform marker to test legacy entry diagnostics; the marker now also reports EK2601. Its marked main is an eligible legacy startup, which vibelang --fix refuses because no admitted source can start main only when the host starts the module, so no fixed-output witness can exist for this case. The case keeps every earlier expected diagnostic and adds only the EK2601 line at each marker. The inert-marker repair is witnessed by ek2601-inert-marker.fail."
+  },
+  {
+    "code": "EK0509",
+    "case": "typescript/vibelang/cases/catch-rejected-function-handler-parameter.fail",
+    "vip": "VIP-5",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md: a catch handler is an arrow function, a function expression or an effect form of either; generator and async handlers are syntax errors; docs/design/vips/0034-compiler-and-tooling.md: use the already assigned specific diagnostic for a rejection and preserve independent native errors"
+    },
+    "reason": "Diagnostic-identity change with no new rejection: these generator and async function-expression handlers were already rejected with EK0509. The parser now keeps them in the handler position so their parameters take the failure's type, and the spurious TS7006 on an untyped parameter disappears; EK0509 stays the owning diagnostic and no --fix is needed for a program that was never accepted."
+  },
+  {
+    "code": "TS2322",
+    "case": "typescript/vibelang/cases/catch-rejected-function-handler-parameter.fail",
+    "vip": "VIP-34",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md: a catch handler is an arrow function, a function expression or an effect form of either; generator and async handlers are syntax errors; docs/design/vips/0034-compiler-and-tooling.md: use the already assigned specific diagnostic for a rejection and preserve independent native errors"
+    },
+    "reason": "An independent native error inside the rejected handler's body (a string annotated constant initialized from the typed parameter's length) keeps its TypeScript code, as VIP-34 requires; the control proves the parameter now carries the failure's type. It is not a new rejection of accepted code."
   }
 ]

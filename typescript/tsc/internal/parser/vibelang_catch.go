@@ -100,15 +100,12 @@ func (p *Parser) parseVibeLangCatchHandler() *ast.Node {
 
 func (p *Parser) parseVibeLangCatchHandlerWorker() *ast.Node {
 	if p.token == ast.KindFunctionKeyword {
-		if p.lookAhead(func(p *Parser) bool { p.nextToken(); return p.token == ast.KindAsteriskToken }) {
-			return nil // Invalid generators keep value recovery without a synthetic callback type error.
-		}
+		// A generator function expression is the handler itself, so its
+		// parameters keep the handler's contextual types; the checker reports
+		// EK0509 and owns the generated callback's applicability error.
 		return p.parseFunctionExpression(false /*effect*/)
 	}
 	if p.isStartOfVibeLangEffectExpression() {
-		if p.lookAhead(func(p *Parser) bool { p.nextToken(); p.nextToken(); return p.token == ast.KindAsteriskToken }) {
-			return nil
-		}
 		return p.parseVibeLangEffectExpression()
 	}
 	if arrow := p.tryParseVibeLangEffectArrow(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
@@ -137,7 +134,11 @@ func (p *Parser) parseVibeLangCatchHandlerWorker() *ast.Node {
 	if p.token == ast.KindAsyncKeyword {
 		// catch async (e) => … and catch async e => … parse as the arrows
 		// they are, so the checker reports EK0509 and its fix removes async,
-		// rather than a call of async followed by a stray =>.
+		// rather than a call of async followed by a stray =>. An async
+		// function expression is the handler itself for the same reason.
+		if p.lookAhead(func(p *Parser) bool { p.nextToken(); return p.token == ast.KindFunctionKeyword && !p.hasPrecedingLineBreak() }) {
+			return p.parseFunctionExpression(false /*effect*/)
+		}
 		if arrow := p.tryParseParenthesizedArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
 			return arrow
 		}
