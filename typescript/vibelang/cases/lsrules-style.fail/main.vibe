@@ -1,7 +1,7 @@
 // expect: EK4821 EK4822 EK4823 EK4824 EK4825
 // The style rules of Effect's language service (D240), off by default and
 // turned on here by tsconfig.json.
-
+export type Opened = typeof Opened.Type
 // EK4821: a Schema.Struct with a literal _tag; a schema declaration's own
 // struct is the compiler's and draws nothing.
 export const Opened = Schema.Struct({ _tag: Schema.Literal("Opened"), at: Schema.Number })
