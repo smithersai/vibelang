@@ -405,6 +405,10 @@ Bun.plugin({
     if (debug) process.once("exit", () => console.error(`vibelang/bun: ${resolutions} resolution${resolutions === 1 ? "" : "s"} reached discovery`))
     build.onResolve({ filter: pathSpecifier }, ({ path, importer }) => {
       if (debug) resolutions++
+      // A module declaration's output named by its absolute path: bun test
+      // --isolate resolves an import again by the path an earlier load
+      // resolved it to, and the output is not on disk.
+      if (isAbsolute(path) && isModuleOutput(path)) return { path, namespace: moduleNamespace }
       if (discovering || inDependency(importer ?? "")) return undefined
       discovering = true
       try {

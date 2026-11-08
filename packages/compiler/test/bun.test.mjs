@@ -123,6 +123,37 @@ test("bun runs a .vibe module's module declaration as a module of its own (D403)
   assert.equal(compilations(), 1, "the module comes from its file's compile")
 })
 
+// bun test --isolate loads each file into a fresh module registry and
+// resolves a module declaration's output again by the absolute path an
+// earlier load resolved it to. The plugin served that output only for the
+// relative .js name, so an import by absolute path failed with "Cannot find
+// module .../x.vibe.tools.js" (opencode's app plugin module test, whose
+// module.vibe holds a --fix bridge, module $throw$ts).
+test("bun serves a module declaration's output imported by its absolute path", { skip }, (t) => {
+  const { root, bun } = project(t, {
+    ...greeting,
+    "src/text.vibe": [
+      "export function check(n: number): number { return n >= 0 ? n : raise(new RangeError(\"negative\")) }",
+      "module tools {",
+      "  export function raise(value: unknown): never { throw value }",
+      "}",
+      "import { raise } from tools",
+      ""
+    ].join("\n")
+  })
+  writeFileSync(join(root, "main.ts"), [
+    "import { check } from \"./src/text.vibe\"",
+    `const tools = await import(${JSON.stringify(join(root, "src/text.vibe.tools.js"))})`,
+    "let thrown = \"\"",
+    "try { tools.raise(new Error(\"from tools\")) } catch (error) { thrown = (error as Error).message }",
+    "console.log(JSON.stringify({ checked: check(2), thrown }))",
+    ""
+  ].join("\n"))
+  const result = bun(["--preload", preload, "main.ts"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), { checked: 2, thrown: "from tools" })
+})
+
 // Chapter 007 / a real test runner discovers and runs Vibe implementations: docs/design/src/007-tooling.md#b351eadf7aa7995c
 
 test("bun test loads .vibe modules through a bunfig.toml preload of vibelang/bun", { skip }, async (t) => {
