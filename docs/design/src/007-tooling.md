@@ -261,7 +261,7 @@ The stock-TypeScript mapper reports `EK9001` when it cannot represent a source f
 vibelang --fix -p tsconfig.json
 ```
 
-Every breaking change ships a codemod. One `vibelang --fix` run applies fixes until none applies; running it again changes nothing. A run that has not converged within its pass limit reports the remaining fixes as an error. Quick fixes and codemods use the formatter to preserve the parse under Appendix A.
+One `vibelang --fix` run applies fixes until none applies; running it again changes nothing. A run that has not converged within its pass limit reports the remaining fixes as an error. Quick fixes and codemods use the formatter to preserve the parse under Appendix A.
 
 Generator repairs preserve nested pipeline edits when an outer pipeline captures its receiver and stages. Set `VIBELANG_FIX_EDIT_TRACE=1` to report captured-pipeline ranges and nested edit counts, or a refused generator plan’s range and edit count. These records include no source text.
 
@@ -352,7 +352,7 @@ Written imports, local or ambient types, type parameters, already qualified expo
 | `EK0503` | A `try` statement in effect code | Explicit Effects, `catch effect` and native cleanup combinators (VIP-5). |
 | `EK2401` | The resolved retired `wire` intrinsic | Explicit `Layer.provideMerge` composition replaces the rejected form; an unrelated local `wire` keeps its TypeScript meaning (VIP-24). |
 
-For these retirements and the mutable-marker, receiver-method and prelude-shorthand retirements above, enforcement waits until preserving codemods ship and every migration repository has zero remaining uses. This states the target, not completion of implementation or consumer migration. Every repair obeys the [preservation and refusal rules](#fix-ownership-and-preservation).
+For these retirements and the mutable-marker, receiver-method and prelude-shorthand retirements above, enforcement waits until every migration repository has zero remaining uses. This states the target, not completion of implementation or consumer migration. Every repair obeys the [preservation and refusal rules](#fix-ownership-and-preservation).
 
 ### Empty legacy trust wrappers
 
