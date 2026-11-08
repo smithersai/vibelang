@@ -189,3 +189,7 @@ channels from the returned program. A retired placeholder does not become a
 requirement of a generic call or its handler. The repair keeps real errors and
 service requirements introduced by callbacks, and keeps the function's own type
 parameters when they describe those channels.
+
+## Retaining validation evidence
+
+Keep the migration run directory until the migration finishes. A completed setup must retain its compiler diagnostics and exit receipts for every checked package. If both files are missing, resuming the run stops with the package named, even when an earlier admission record said it was accepted. Retain the remaining evidence and start a fresh setup from the original source.

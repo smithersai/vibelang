@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Tuple-spread arguments hid form advisories on directly run Effect calls. They now report the advisory and keep argument iteration and evaluation unchanged without an automatic rewrite.
 - A labeled `break` or `continue` in a concurrent item's decorator, computed name or `extends` clause could suggest moving its `do` expression instead of explaining the forbidden jump. The compiler now reports `EK1903` or `EK1905` once.
 
+- A resumed migration could report a clean setup after its saved compiler checks were deleted. Resuming a completed setup now stops when those checks are missing.
+
 - Optional Effect calls directly run with `try` skipped form advisories. They now report the advisory and retain optional chaining without an automatic rewrite.
 
 - A throwing default in an `effect` callback passed to `Effect.try` could escape the parameter checks. These defaults now report `EK0401`, and automatic repair keeps their evaluation time and defect value.

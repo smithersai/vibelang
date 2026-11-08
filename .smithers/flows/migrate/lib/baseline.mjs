@@ -76,6 +76,7 @@ export function assertBaselineSafe(p, { includeSetup = true } = {}) {
   const refused = new Map(finishes.flatMap(finish => finish?.failed ?? []).map(failed => [JSON.stringify([failed.project, failed.code]), failed]))
   for (const failed of refused.values()) compile.push({ stage: "vip-finish", ...failed, ok: false })
   const original = read("upstream-checks.json") ?? {}, current = read("upgraded-checks.json") ?? {}
+  const completedSetup = includeSetup && readJsonIf(p.setup)
   for (const [pkg, before] of Object.entries(original)) {
     if (current[pkg]) compile.push({ stage: "upgrade", package: pkg, ...compilerAdmission(before, current[pkg]) })
     const candidate = includeSetup && readSetupCompile(p, pkg, Object.keys(original))
@@ -93,6 +94,9 @@ export function assertBaselineSafe(p, { includeSetup = true } = {}) {
         compile.push({ stage: "setup", package: pkg,
           ...compilerAdmission(before_, { compiler: "setup", code, diagnostics: candidate.diagnostics }) })
       }
+    } else if (completedSetup) {
+      compile.push({ stage: "setup", package: pkg, state: "unverified", receipt: "setup.json",
+        reason: "completed setup compiler diagnostics and exit receipts are missing", ok: false })
     }
   }
   const result = { state: [...tests, ...compile].every(check => check.ok) ? "accepted" : "rejected", tests, compile }

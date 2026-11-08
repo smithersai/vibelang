@@ -1,0 +1,14 @@
+{
+  "key": "completed-setup-outcomes:lost-compile-pair",
+  "quote": "A missing validation outcome is unverified: a later stage never inherits an earlier stage's exit.",
+  "variants": [
+    {
+      "diagnostics": false,
+      "exit": false
+    },
+    {
+      "diagnostics": true,
+      "exit": true
+    }
+  ]
+}
