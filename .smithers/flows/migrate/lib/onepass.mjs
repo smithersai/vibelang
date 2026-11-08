@@ -4,7 +4,7 @@ import { conversionIdentity } from "./conversion-context.mjs"
 // Repository-independent whole-scope conversion. The run directory owns every receipt.
 import { applyState, prepareState, saveState, durableWrite } from "./codemod-state.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
-import { platformCausesOf } from "./platform.mjs"
+import { platformCausesOf, throwingCausesOf } from "./platform.mjs"
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
@@ -596,7 +596,7 @@ export async function onePassStep(step, options) {
       const baseline = await checkProjects(config, p, options)
       if (baseline.some(p => p.crash)) throw new Error("baseline compiler did not finish: " + baseline.filter(p => p.crash).map(p => p.file + ": " + p.crash).join("; "))
       writeJson(join(p.run, "onepass-baseline.json"), baseline)
-      state = prepareState(config.target, files, await importers(config.target), { ...pinnedInputs(config), ts, moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
+      state = prepareState(config.target, files, await importers(config.target), { ...pinnedInputs(config), ts, moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), throwsOf: throwingCausesOf(config, p.run), aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
       state.compilerArtifact = config.compilerArtifact ?? null
       saveState(p.codemodState("01"), state)
     }

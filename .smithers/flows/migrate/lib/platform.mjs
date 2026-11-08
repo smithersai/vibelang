@@ -19,6 +19,19 @@ import { splitImportMeta, privateResolverExports, isWritten } from "./import-met
 // A run names the earlier passes' receipts in its config.json,
 // "platformCauses": [paths to settle-causes.json or reverted.json], and
 // platformGlobalsFromCauses turns them into the split's globalsOf.
+//
+// The same receipts carry EK0401 for a call the compiler cannot prove safe in
+// a plain function whose return type is wholly effectful (spec 003, "Effectful
+// callables"): "'nativeTheme.on' may throw, and a function that returns an
+// Effect, a Stream or a Layer never throws". vibelang --fix bridges such a call
+// only inside a callback Effect runs in the fiber; an eager factory or an
+// Error-valued mapper keeps the diagnostic, since JavaScript can tell a throw
+// from a returned Effect there, and the module went back to TypeScript. The
+// call's declaration has a TypeScript form inside the .vibe file:
+// throwingCallsFromCauses names the reported callees for the next pass, and
+// the throwing body (splitPlatformToModule, throws) takes the declarations
+// that call them in plain code with those that throw, re-exporting what they
+// export.
 import { builtinModules } from "node:module"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, resolve } from "node:path"
@@ -102,7 +115,10 @@ export function platformGlobalsOf(messages) {
  * globalThis platform escape count, as do exact platform notes attached to
  * TypeScript diagnostics. Unrelated type errors and legacy JavaScript do not.
  */
-export function platformGlobalsFromCauses(receipts) {
+// The messages of the receipts' diagnostics that accept(code, message) admits,
+// by the TypeScript path of the module they name. codes is the alternation of
+// the codes a reverted.json reason may carry.
+function causeMessages(receipts, codes, accept) {
   const messages = new Map()
   const add = (file, message) => {
     if (typeof file !== "string" || typeof message !== "string") return
@@ -110,25 +126,68 @@ export function platformGlobalsFromCauses(receipts) {
       messages.set(key, [...(messages.get(key) ?? []), message])
     }
   }
+  const reason = new RegExp(String.raw`\b(${codes}):?\s+(.*)$`, "s")
   for (const receipt of receipts) {
     if (Array.isArray(receipt)) {
       for (const r of receipt) {
-        const m = /\b(EK4402|EK0107|TS\d+):?\s+(.*)$/s.exec(String(r?.reason ?? ""))
+        const m = reason.exec(String(r?.reason ?? ""))
         if (m) for (const message of [m[2], ...diagnosticNotes(r.notes)]) {
-          if (platformGlobalCause(m[1], message)) add(r.file, message)
+          if (accept(m[1], message)) add(r.file, message)
         }
       }
     } else if (receipt && typeof receipt === "object") {
       for (const [file, cause] of Object.entries(receipt)) {
         for (const d of cause?.diagnostics ?? []) {
           for (const message of [d?.message, ...diagnosticNotes(d?.notes)]) {
-            if (platformGlobalCause(d?.code, message)) add(file, message)
+            if (accept(d?.code, message)) add(file, message)
           }
         }
       }
     }
   }
+  return messages
+}
+
+export function platformGlobalsFromCauses(receipts) {
+  const messages = causeMessages(receipts, String.raw`EK4402|EK0107|TS\d+`, platformGlobalCause)
   return (file) => platformGlobalsOf(messages.get(file) ?? [])
+}
+
+// The callees EK0401 names for a call whose throwing the compiler cannot rule
+// out, as the caller wrote them: "'nativeTheme.on' may throw, and a function
+// that returns an Effect, a Stream or a Layer never throws" names
+// nativeTheme.on, and "'parse' may throw 'SyntaxError', and synchronous
+// VibeLang code never throws" names parse. A throw statement's EK0401 names no
+// callee: the split finds the throw itself (throwsPlainly).
+const throwingCallMessage = /^'(.+)' may throw\b/
+export function throwingCalleesOf(messages) {
+  const names = new Set()
+  for (const message of messages) {
+    const m = throwingCallMessage.exec(String(message).replace(/^\s*(?:error\s+)?EK0401:\s*/, ""))
+    if (m) names.add(m[1])
+  }
+  return [...names].sort()
+}
+
+/**
+ * throwsOf(file) for splitBatchPlatform, from the same receipts as
+ * platformGlobalsFromCauses: the callees each module's EK0401 messages name.
+ */
+export function throwingCallsFromCauses(receipts) {
+  const messages = causeMessages(receipts, "EK0401", (code) => code === "EK0401")
+  return (file) => throwingCalleesOf(messages.get(file) ?? [])
+}
+
+// The receipts the run's "platformCauses" (config.json) lists, read relative
+// to the run directory. A listed receipt that is missing is an error.
+function causeReceipts(config, runDir) {
+  const listed = config.platformCauses ?? []
+  if (!Array.isArray(listed) || listed.some((p) => typeof p !== "string")) throw new Error("platformCauses must be a list of receipt paths")
+  return listed.map((p) => {
+    const file = resolve(runDir, p)
+    if (!existsSync(file)) throw new Error("platformCauses receipt missing: " + file)
+    return JSON.parse(readFileSync(file, "utf8"))
+  })
 }
 
 /**
@@ -137,13 +196,12 @@ export function platformGlobalsFromCauses(receipts) {
  * missing is an error, not an empty hand-off.
  */
 export function platformCausesOf(config, runDir) {
-  const listed = config.platformCauses ?? []
-  if (!Array.isArray(listed) || listed.some((p) => typeof p !== "string")) throw new Error("platformCauses must be a list of receipt paths")
-  return platformGlobalsFromCauses(listed.map((p) => {
-    const file = resolve(runDir, p)
-    if (!existsSync(file)) throw new Error("platformCauses receipt missing: " + file)
-    return JSON.parse(readFileSync(file, "utf8"))
-  }))
+  return platformGlobalsFromCauses(causeReceipts(config, runDir))
+}
+
+/** The run's "platformCauses" receipts as throwsOf for splitBatchPlatform. */
+export function throwingCausesOf(config, runDir) {
+  return throwingCallsFromCauses(causeReceipts(config, runDir))
 }
 
 /** The sibling module a split writes for file, src/Open.ts: src/Open.platform.ts. */
@@ -590,9 +648,13 @@ export function checkedReturns(root, file, ts) {
  * throw in plain code move into `module throwing { }`, or into the module's
  * platform body when it takes one; a split with such a body lists them in
  * throwing. Without moduleBodies such a body may hold no export of the module.
+ * throwsOf(file) names the callees an earlier pass's EK0401 receipts report for
+ * the module (throwingCausesOf): the declarations that call them in plain code
+ * move with the declarations that throw.
  */
 export function splitBatchPlatform(root, files, ts, {
   globalsOf = () => [],
+  throwsOf = () => [],
   moduleBodies = false,
   throwBodies = true,
   exists = file => existsSync(join(root, file)),
@@ -608,7 +670,7 @@ export function splitBatchPlatform(root, files, ts, {
     const text = read(file)
     const meta = splitImportMeta(text, file, sibling, ts)
     if (meta?.refused) return meta
-    const body = splitPlatformToModule(meta ? meta.module : text, file, ts, { globals: globalsOf(file), throws: throwBodies })
+    const body = splitPlatformToModule(meta ? meta.module : text, file, ts, { globals: globalsOf(file), throws: throwBodies, throwing: throwsOf(file) })
     if (!body || body.refused || !meta) return body
     const risk = publishedSiblingRisk(root, file, { exists, read })
     const privateExports = risk && meta.importMeta ? privateResolverExports(root, file, sibling, { exists, read }) : null
@@ -643,7 +705,7 @@ export function splitBatchPlatform(root, files, ts, {
     // An export the body holds is re-exported: its `x.vibe.throwing.d.ts`
     // ships with the package and joins no `exports` entry, and the module's
     // declarations keep its names, types and documentation.
-    const throwing = (text) => throwBodies ? splitPlatformToModule(text, file, ts, { throws: true, platform: moduleBodies, reexports: true }) : null
+    const throwing = (text) => throwBodies ? splitPlatformToModule(text, file, ts, { throws: true, throwing: throwsOf(file), platform: moduleBodies, reexports: true }) : null
     if (!result) {
       const body = throwing(read(file))
       if (body?.refused) refused.push(body.refused)
@@ -664,7 +726,7 @@ export function splitBatchPlatform(root, files, ts, {
     // A body cannot hold import.meta (EK4009), so a module whose import.meta
     // reads need the companion's helpers keeps the sibling.
     if (!refusal && moduleBodies && !result.importText && (result.reexported?.length || owningManifest(root, file, { exists, read })?.private === true)) {
-      const body = splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies, wrap: true })
+      const body = splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies, throwing: throwsOf(file), wrap: true })
       if (body && !body.refused) {
         write(file, body.module)
         splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: body.wrapped, ...(body.throwing.length ? { throwing: body.throwing } : {}) })
@@ -1110,7 +1172,7 @@ function firstLine(source, statement) {
  * Returns { module, moved, kept, name, wrapped }, or { refused } saying why the module
  * keeps its platform code, or null when it reaches no platform code.
  */
-export function splitPlatformToModule(text, file, ts, { globals = [], throws = false, platform: platformCode = true, reexports = true, wrap = false } = {}) {
+export function splitPlatformToModule(text, file, ts, { globals = [], throws = false, throwing = [], platform: platformCode = true, reexports = true, wrap = false } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
@@ -1129,7 +1191,8 @@ export function splitPlatformToModule(text, file, ts, { globals = [], throws = f
   for (const d of declarations) for (const name of d.names) declared.set(name, [...(declared.get(name) ?? []), d])
   for (const name of globalNames(globals, source, ts)) if (!imported.has(name) && !declared.has(name)) platform.add(name)
   const platformSeed = !platformCode ? [] : declarations.filter((d) => !reexport_(d, ts) && ([...d.reads].some((n) => platform.has(n) && !declared.has(n)) || importsPlatform(d.statement, ts)))
-  const throwSeed = throws ? declarations.filter((d) => !reexport_(d, ts) && !platformSeed.includes(d) && throwsPlainly(d.statement, ts)) : []
+  const callees = new Set(throwing.map((n) => String(n).replace(/\s+/g, "")))
+  const throwSeed = throws ? declarations.filter((d) => !reexport_(d, ts) && !platformSeed.includes(d) && (throwsPlainly(d.statement, ts) || callsPlainly(d.statement, ts, callees))) : []
   if (!platformSeed.length && !throwSeed.length) return null
   if (source.statements.some((s) => ts.isExportAssignment(s) && s.isExportEquals)) return { refused: `${file}: export = has no place beside a module body (EK4008)` }
   const typeOnly = (d) => ts.isInterfaceDeclaration(d.statement) || ts.isTypeAliasDeclaration(d.statement) || typeNamespace(d.statement, ts)
@@ -1663,6 +1726,19 @@ function throwsPlainly(node, ts, plain = true) {
   let inner = plain
   if (ts.isFunctionLike(node) && node.body) inner = !node.asteriskToken && !(node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)
   return !!ts.forEachChild(node, (child) => throwsPlainly(child, ts, inner) || undefined)
+}
+
+// Whether statement calls one of callees, written as the compiler's EK0401
+// names it ("foreign", "nativeTheme.on"), in the plain code throwsPlainly
+// describes. The receipts name a module's callees without their sites, so
+// every plain call of a named callee moves: a body is TypeScript, where each
+// keeps its meaning.
+function callsPlainly(node, ts, callees, plain = true) {
+  if (!callees.size) return false
+  if (plain && (ts.isCallExpression(node) || ts.isNewExpression(node)) && callees.has(node.expression.getText().replace(/\s+/g, ""))) return true
+  let inner = plain
+  if (ts.isFunctionLike(node) && node.body) inner = !node.asteriskToken && !(node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)
+  return !!ts.forEachChild(node, (child) => callsPlainly(child, ts, callees, inner) || undefined)
 }
 
 // The local names of createRequire imported from node:module.

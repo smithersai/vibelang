@@ -1,0 +1,27 @@
+{
+  "key": "codemod-gap:effectful-factory-foreign-bridge",
+  "quote": "A plain function whose return type is wholly effectful, and an effectful function's parameter list, are stricter: any thrown type other than `never` is `EK0401`",
+  "file": "src/sessionState.ts",
+  "vibe": "src/sessionState.vibe",
+  "foreign": "export declare function foreign(): string;\nexport declare const nativeTheme: { on(event: string, listener: () => void): void };\n",
+  "source": "import * as Effect from \"effect/Effect\"\nimport * as Data from \"effect/Data\"\nimport { foreign, nativeTheme } from \"./foreign.js\"\n\n/** The session the host reports, read when the program is built. */\nexport const program = () => Effect.succeed(foreign())\n\nexport const watch = (listener: () => void) => {\n  nativeTheme.on(\"updated\", listener)\n  return Effect.void\n}\n\nexport class Mapped extends Data.TaggedError(\"Mapped\")<{ readonly message: string }> {}\n\nexport function mapper() {\n  return (cause: unknown) => new Mapped({ message: foreign() + String(cause) })\n}\n\nexport async function later() {\n  return foreign()\n}\n\nexport const label = \"session\"\n",
+  "settleCauses": {
+    "src/sessionState.vibe": {
+      "cause": "Effect contract or language diagnostic",
+      "families": ["Effect contract or language diagnostic"],
+      "round": 1,
+      "codes": ["EK0401"],
+      "diagnostics": [
+        { "file": "src/sessionState.vibe", "code": "EK0401", "category": "error", "line": 6, "column": 45, "message": "'foreign' may throw, and a function that returns an Effect, a Stream or a Layer never throws: its failures belong in that value. Make the function 'effect' and run the call with 'try Effect.try(() => \u2026)', declare the callee's '@throws', or move the code to a '.ts' file.", "notes": [] },
+        { "file": "src/sessionState.vibe", "code": "EK0401", "category": "error", "line": 9, "column": 3, "message": "'nativeTheme.on' may throw, and a function that returns an Effect, a Stream or a Layer never throws: its failures belong in that value. Make the function 'effect' and run the call with 'try Effect.try(() => \u2026)', declare the callee's '@throws', or move the code to a '.ts' file.", "notes": [] },
+        { "file": "src/sessionState.vibe", "code": "EK0401", "category": "error", "line": 16, "column": 50, "message": "'foreign' may throw, and a function that returns an Effect, a Stream or a Layer never throws: its failures belong in that value. Make the function 'effect' and run the call with 'try Effect.try(() => \u2026)', declare the callee's '@throws', or move the code to a '.ts' file.", "notes": [] }
+      ]
+    }
+  },
+  "reverted": [
+    { "file": "src/sessionState.vibe", "reason": "Effect contract or language diagnostic: EK0401 'foreign' may throw, and a function that returns an Effect, a Stream or a Layer never throws: its failures belong in that value. Make the function 'effect' and run the call with 'try Effect.try(() => \u2026)', declare the callee's '@throws', or move the code to a '.ts' file." }
+  ],
+  "names": ["foreign", "nativeTheme.on"],
+  "moved": ["Mapped", "mapper", "program", "watch"],
+  "throwing": ["mapper", "program", "watch"]
+}

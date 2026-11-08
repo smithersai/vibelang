@@ -37,7 +37,7 @@ export function durableWrite(path, data, mode = 0o600) {
 export const saveState = (path, state) => durableWrite(path, JSON.stringify(state, null, 2) + "\n")
 
 /** Plan all edits without changing the target; original source bytes live in the journal. */
-export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], pathSources = [], catalog = scope, pinned, bareEntries = false, moduleBodies = false, globalsOf = () => [], plainGroups = [], tracked } = {}) {
+export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], pathSources = [], catalog = scope, pinned, bareEntries = false, moduleBodies = false, globalsOf = () => [], throwsOf = () => [], plainGroups = [], tracked } = {}) {
   for (const from of files) assertModuleBoundary(target, from)
   const deferred = pathReadDeferrals(target, files, referenceFiles, { pinned })
   if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
@@ -63,7 +63,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   // Resolve renamed peers before extraction copies imports into a TypeScript
   // module body. Authored module bodies retain their own import policy.
   const importEdits = rewriteImports(target, scope.map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write })
-  const platform = ts ? splitBatchPlatform(target, files, ts, { read, write, moduleBodies, globalsOf }) : { splits: [], refused: [] }
+  const platform = ts ? splitBatchPlatform(target, files, ts, { read, write, moduleBodies, globalsOf, throwsOf }) : { splits: [], refused: [] }
   const sourceChildModules = ts ? prepareSourceChildModules(files, ts, { read, write }) : { converted: [], refused: [] }
   // Read the TypeScript after platform splitting and before renaming. Detail
   // 269: a post-VIP-1 compiler needs no legacy plain return annotation.
