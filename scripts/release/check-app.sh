@@ -1,9 +1,10 @@
 #!/bin/sh
 # Scaffolds a new VibeLang app from a registry with each named package manager,
-# then installs, builds, starts, and tests it, and checks the compiler version.
+# then installs, checks both formatters, builds, starts, and tests it.
+# Checks the compiler version and resolves optional packages without hoisting.
 # npm also reinstalls from its generated lockfile with npm ci.
 #
-#   sh scripts/release/check-app.sh <registry-url> <version> npm bun
+#   sh scripts/release/check-app.sh <registry-url> <version> npm bun pnpm
 #
 # The npm user config and package-manager caches point into a temporary
 # directory, so the check uses fresh registry installs. KEEP=1
@@ -12,6 +13,7 @@ set -eu
 registry=$1
 version=$2
 shift 2
+[ "$#" -gt 0 ] || set -- npm bun pnpm
 # A registry rehearsal must run the compiler and runtime installed in its app.
 unset VIBELANG_BINARY VIBELANG_RUNTIME VIBELANG_RUNTIME_DIR EFFECT_NODE_MODULES
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/vibelang-check.XXXXXX")
@@ -20,6 +22,8 @@ trap '[ -n "${KEEP:-}" ] && echo "check-app: kept $scratch" || rm -rf "$scratch"
 mkdir -p "$scratch/home"
 export npm_config_userconfig="$scratch/home/.npmrc" NPM_CONFIG_USERCONFIG="$scratch/home/.npmrc"
 export npm_config_registry="$registry" NPM_CONFIG_REGISTRY="$registry" BUN_CONFIG_REGISTRY="$registry"
+# pnpm 11 and later use their own configuration environment namespace.
+export pnpm_config_registry="$registry" PNPM_CONFIG_REGISTRY="$registry"
 export npm_config_cache="$scratch/npm-cache" BUN_INSTALL_CACHE_DIR="$scratch/bun-cache"
 # bun create runs bunx, which keeps create-vibelang@latest under $TMPDIR across
 # runs and reuses it even when the registry has a newer tarball, so an earlier
@@ -39,14 +43,25 @@ esac
 
 for manager in "$@"; do
   app="$scratch/$manager-app"
+  export DPRINT_CACHE_DIR="$scratch/$manager-dprint-cache" VIBELANG_DISABLE_CACHE=1
   step() { echo "check-app: $manager: $*"; }
   cd "$scratch"
   case $manager in
     npm) step "npm create vibelang@$version"; npm create "vibelang@$version" "$manager-app" ;;
+    pnpm) step "pnpm create vibelang@$version"; pnpm create "vibelang@$version" "$manager-app" --no-install ;;
     bun) step "bun create vibelang@latest"; bun create vibelang@latest "$manager-app" ;;
     *) echo "check-app: unknown package manager $manager" >&2; exit 1 ;;
   esac
   cd "$app"
+  if [ "$manager" = pnpm ]; then
+    # pnpm requires explicit approval for dprint's binary-install script.
+    # Keep isolated dependency linking and a fresh content-addressable store.
+    cat >pnpm-workspace.yaml <<EOF
+allowBuilds:
+  dprint: true
+storeDir: $scratch/pnpm-store
+EOF
+  fi
   [ -d node_modules ] || { step "install"; "$manager" install; }
   if [ "$manager" = npm ]; then
     step "npm ci"
@@ -56,12 +71,24 @@ for manager in "$@"; do
   step "installed packages"
   node --input-type=module - "$version" "$platform" <<'JS'
 import { existsSync, readFileSync, realpathSync } from "node:fs"
+import { createHash } from "node:crypto"
 import { createRequire } from "node:module"
 const [version, platform] = process.argv.slice(2)
 const manifest = (name) => JSON.parse(readFileSync(`node_modules/${name}/package.json`, "utf8"))
-for (const name of ["vibelang", "vibelang-runtime", "vibelang-vite", `vibelang-${platform}`]) {
+for (const name of ["vibelang", "vibelang-runtime", "vibelang-vite"]) {
   if (manifest(name).version !== version) throw new Error(`${name} is ${manifest(name).version}, expected ${version}`)
 }
+// pnpm keeps optional dependencies beside the compiler in its virtual store.
+const expectedFormat = process.env.VIBELANG_REHEARSAL_FORMAT_SHA256
+if (expectedFormat) {
+  const actualFormat = createHash("sha256").update(readFileSync("node_modules/vibelang/format.mjs")).digest("hex")
+  if (actualFormat !== expectedFormat) throw new Error(`vibelang formatter checksum ${actualFormat}, expected candidate ${expectedFormat}; check the install registry`)
+  console.log(`check-app: candidate formatter SHA-256 ${actualFormat}`)
+}
+const compiler = createRequire(realpathSync("node_modules/vibelang/package.json"))
+const platformName = `vibelang-${platform}`
+const platformManifest = JSON.parse(readFileSync(compiler.resolve(`${platformName}/package.json`), "utf8"))
+if (platformManifest.version !== version) throw new Error(`${platformName} is ${platformManifest.version}, expected ${version}`)
 if (existsSync("node_modules/vibelang/native")) throw new Error("vibelang ships a native/ directory")
 if (!existsSync("node_modules/vibelang/editor/vibelang.vsix")) throw new Error("vibelang lacks editor/vibelang.vsix")
 // Node resolves imports from a module's real path: the runtime and the app must load one effect.
@@ -77,6 +104,29 @@ JS
     "VibeLang $version ("*) echo "check-app: $printed" ;;
     *) echo "check-app: vibelang --version printed '$printed'" >&2; exit 1 ;;
   esac
+
+  # Exercise the installed companion before any formatter cache can hide a
+  # plugin-resolution failure.
+  step "vibelang-format --check src"
+  node_modules/.bin/vibelang-format --check 'src/**/*.{vibe,vibex}'
+  # This is the documented npm plugin entry, resolved from the app itself.
+  cat >dprint.json <<'JSON'
+{
+  "includes": ["src/**/*.{vibe,vibex}"],
+  "typescript": { "semiColons": "asi" },
+  "plugins": [
+    "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a",
+    "npm:vibelang/dprint-plugin.json"
+  ]
+}
+JSON
+  step "install dprint"
+  case $manager in
+    npm) npm install --save-dev --save-exact dprint@0.64.3 ;;
+    *) "$manager" add --save-dev --save-exact dprint@0.64.3 ;;
+  esac
+  step "dprint check"
+  node_modules/.bin/dprint check
 
   step "run build"
   "$manager" run build

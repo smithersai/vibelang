@@ -15,6 +15,7 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/vibelang-shim-check.XXXXXX")
 trap 'chmod -R u+w "$scratch" 2>/dev/null || true; rm -rf "$scratch"' EXIT HUP INT TERM
 export npm_config_registry="$registry"
+export pnpm_config_registry="$registry" PNPM_CONFIG_REGISTRY="$registry"
 export npm_config_audit=false npm_config_fund=false npm_config_update_notifier=false
 effect=$(npm view "vibelang-runtime@$version" peerDependencies.effect)
 step() { echo "check-typescript-shim: $1"; }
@@ -155,6 +156,7 @@ cat >tsconfig.json <<'J'
 {"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"noEmit":true,"skipLibCheck":true,"types":[]},"include":["src"]}
 J
 hello src
+printf 'allowBuilds:\n  dprint: true\n' >pnpm-workspace.yaml
 npx --yes pnpm@12.18.0 install --ignore-scripts --registry "$registry" >/dev/null
 npx --yes pnpm@12.18.0 exec tsc
 npx --yes pnpm@12.18.0 exec tsc --version | /usr/bin/grep -Fq "VibeLang $version"
@@ -162,7 +164,7 @@ npx --yes pnpm@12.18.0 exec tsc --version | /usr/bin/grep -Fq "VibeLang $version
 step "a pnpm workspace override replaces every typescript"
 mkdir "$scratch/pnpm-mono" "$scratch/pnpm-mono/a"
 cd "$scratch/pnpm-mono"
-printf 'packages:\n  - a\noverrides:\n  typescript: npm:vibelang-typescript@%s\n' "$shim" >pnpm-workspace.yaml
+printf 'packages:\n  - a\nallowBuilds:\n  dprint: true\noverrides:\n  typescript: npm:vibelang-typescript@%s\n' "$shim" >pnpm-workspace.yaml
 printf '{"name":"pm","private":true}\n' >package.json
 cat >a/package.json <<J
 {"name":"a","private":true,"type":"module","devDependencies":{"typescript":"^7.0.0"},"dependencies":{"effect":"$effect","vibelang-runtime":"$version"}}

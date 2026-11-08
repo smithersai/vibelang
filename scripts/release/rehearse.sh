@@ -1,7 +1,7 @@
 #!/bin/sh
 # Rehearses the npm release: publishes dist-npm/tarballs/ to a throwaway local
 # Verdaccio registry, then scaffolds, builds, starts, and tests an app with npm
-# and with Bun against it. VibeLang's own packages come only from the local
+# and with Bun and pnpm against it. VibeLang's own packages come only from the local
 # registry; everything else is proxied from registry.npmjs.org.
 #
 #   sh scripts/release/rehearse.sh
@@ -92,7 +92,21 @@ node -e 'for (const p of require(process.argv[1]).packages) console.log(p.name, 
     echo "rehearse: published $name@$package_version"
   done
 
-sh "$root/scripts/release/check-app.sh" "$registry" "$version" npm bun
+# Versions can match public npm during a rehearsal; verify the installed
+# formatter bytes too, so a package manager cannot silently use that registry.
+VIBELANG_REHEARSAL_FORMAT_SHA256=$(node --input-type=module - "$tarballs" <<'JS'
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import { execFileSync } from "node:child_process"
+import { createHash } from "node:crypto"
+const dir = process.argv[2]
+const manifest = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"))
+const file = manifest.packages.find(p => p.name === "vibelang").file
+console.log(createHash("sha256").update(execFileSync("tar", ["-xOf", join(dir, file), "package/format.mjs"])).digest("hex"))
+JS
+)
+export VIBELANG_REHEARSAL_FORMAT_SHA256
+sh "$root/scripts/release/check-app.sh" "$registry" "$version" npm bun pnpm
 shim=$(node -p 'require(process.argv[1]).packages.find((p) => p.name === "vibelang-typescript").version' "$tarballs/manifest.json")
 sh "$root/scripts/release/check-typescript-shim.sh" "$registry" "$version" "$shim"
 echo "rehearse: PASS"

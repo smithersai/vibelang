@@ -20,6 +20,23 @@ Release rehearsals report each package’s manifest version. The
 version differs from the compiler’s. The isolated registry check includes both
 Windows packages and the shim before the packed-install rehearsal.
 
+Run `sh scripts/release/rehearse.sh` after packaging. It installs the tarballs
+from an isolated registry with npm, Bun and pnpm, then checks the installed
+compiler version, both formatter entry points, builds, startup and tests.
+`check-app.sh <registry-url> <version>` defaults to all three managers;
+pass manager names after the version to select a subset.
+
+Each app runs `vibelang-format --check` on its scaffolded VibeLang sources and
+`dprint check` with the README's `npm:vibelang/dprint-plugin.json`
+configuration and pinned TypeScript plugin. A formatter failure stops the
+rehearsal. pnpm keeps its isolated dependency layout and a fresh store, with
+explicit build approval for `dprint` in app and TypeScript alias fixtures; no hoisting is required. Optional
+platform packages are verified from the compiler's package scope. Registry
+configuration includes pnpm's `pnpm_config_registry` namespace. The rehearsal
+also verifies the installed formatter's SHA-256 against its tarball, identifying
+a wrong registry even when the public and candidate versions match. Each
+manager uses a separate dprint cache and disables the formatter's clean cache.
+
 Windows package names and package verification are described in
 [Windows release additions](windows-release.md).
 
