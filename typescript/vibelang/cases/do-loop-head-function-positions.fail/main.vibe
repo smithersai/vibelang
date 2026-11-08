@@ -1,0 +1,11 @@
+// expect: EK0204
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics
+// Appendix F: a `for` loop's test and update still compile a `do` to a function,
+// so an outward `return` or `var` there is EK0204; a `while` test lowers to
+// statements and reports nothing.
+export effect function loopHeads(flag: boolean) {
+  for (let i = 0; do { if (flag) return "test"; i < 1 }; i++) { }
+  for (let i = 0; i < 1; i = do { var seen = i; i + 1 }) { }
+  while (do { if (flag) return "while"; false }) { }
+  return "late"
+}
