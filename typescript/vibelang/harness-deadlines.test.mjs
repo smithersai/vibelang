@@ -242,10 +242,26 @@ test("helper quote matching keeps missing, output, and mismatched imports exclud
   assert.equal(runnerSeconds(runner), 60)
 })
 
+function helperQuotePathCases(platform) {
+  return [['"', "single'quote.mjs"], ["'", 'double"quote.mjs']]
+    .filter(([, name]) => platform !== "win32" || !name.includes('"'))
+}
+
+test("quoted helper filename fixtures respect each platform's filename contract", () => {
+  for (const platform of ["win32", "linux", "darwin"]) {
+    const cases = helperQuotePathCases(platform)
+    assert.ok(cases.length > 0, "retain a native filesystem control on " + platform)
+    for (const [quote, name] of cases) {
+      assert.ok(!name.includes(quote), "the filename needs no escaped import delimiter")
+      if (platform === "win32") assert.doesNotMatch(name, /[<>:"/\\|?*\u0000-\u001f]/)
+    }
+  }
+})
+
 test("helper paths can contain the other quote character", (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-helper-path-quotes-"))
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
-  for (const [quote, name] of [['"', "single'quote.mjs"], ["'", 'double"quote.mjs']]) {
+  for (const [quote, name] of helperQuotePathCases(process.platform)) {
     const leaf = path.join(dir, name)
     fs.writeFileSync(leaf, "// run-seconds: 180\nexport const value = 1\n")
     const runner = path.join(dir, "run.mjs")
