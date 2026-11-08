@@ -1163,3 +1163,11 @@ The native module companion oracle isolates only the bundler framework wrapper. 
 Generated projects use runtime `.js` specifiers for ordinary imports. A property that deliberately varies source extensions sets `rewriteRelativeImportExtensions` when emitting, or `allowImportingTsExtensions` with `noEmit` when checking only. These options belong to that fixture; the shared default and native extension-rejection properties remain strict.
 
 External callable migration witnesses cover imported function types, value exports, Vite declarations, type and documentation drift, and unresolved types in their genuine project context. Relative and absolute `rootDir`, nested archive paths, and line endings remain mutation axes. Supported shapes now compare completely; changed types and documentation stay unequal, unresolved inputs stay incomplete, and source files remain unchanged.
+
+The VIP-5 optional-delegation probes give their callees an explicit
+`Effect.Effect<unknown>` factory signature and use type-only non-null
+assertions at optional-chain roots. The foreign TypeScript fixture still
+supplies absent callees and unchecked runtime results. This satisfies the
+static Effect and throwing-call checks before comparing `try e` with
+`yield* e`; the assertions erase, so receiver, key and argument evaluation
+and the native delegation outcome remain the oracle's observations.

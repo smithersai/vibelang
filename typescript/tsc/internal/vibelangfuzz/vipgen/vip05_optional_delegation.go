@@ -28,15 +28,18 @@ func init() {
 				case 2:
 					argument, refArgument = "do { ev(\"argument\"); 1 }", "(() => { ev(\"argument\"); return 1 })()"
 				}
-				forms := []string{
-					"input.callable?.(%s)",
-					"input.object?.run(%s)",
-					"input.method.run?.(%s)",
-					"input.object?.run?.(%s)",
-					"input.method[(ev(\"key\"), \"run\")]?.(%s)",
+				// Type-only assertions leave each native optional chain intact.
+				// The fixture may still supply an absent callable or an invalid
+				// runtime result after the static Effect-factory check.
+				forms := [][2]string{
+					{"(input.callable!)?.(%s)", "input.callable?.(%s)"},
+					{"(input.object!)?.run(%s)", "input.object?.run(%s)"},
+					{"(input.method.run!)?.(%s)", "input.method.run?.(%s)"},
+					{"(input.object!)?.run?.(%s)", "input.object?.run?.(%s)"},
+					{"(input.method[(ev(\"key\"), \"run\")]!)?.(%s)", "input.method[(ev(\"key\"), \"run\")]?.(%s)"},
 				}
 				form := forms[g.Intn(len(forms))]
-				operand, refOperand := "try "+fmt.Sprintf(form, argument), "yield* "+fmt.Sprintf(form, refArgument)
+				operand, refOperand := "try "+fmt.Sprintf(form[0], argument), "yield* "+fmt.Sprintf(form[1], refArgument)
 				body, refBody := "return "+operand, "return "+refOperand
 				switch g.Intn(4) {
 				case 1:
@@ -44,12 +47,13 @@ func init() {
 				case 2:
 					body, refBody = "return true ? "+operand+" : 0", "return true ? ("+refOperand+") : 0"
 				case 3:
-					body, refBody = "return try ("+fmt.Sprintf(form, argument)+")", "return yield* ("+fmt.Sprintf(form, refArgument)+")"
+					body, refBody = "return try ("+fmt.Sprintf(form[0], argument)+")", "return yield* ("+fmt.Sprintf(form[1], refArgument)+")"
 				}
-				declaration := fmt.Sprintf("effect function %s(input: any) { %s }", name, body)
+				inputType := "{ callable?: ((n: number) => Effect.Effect<unknown>) | null; object?: { run(n: number): Effect.Effect<unknown> } | null; method: { run?: ((n: number) => Effect.Effect<unknown>) | null } }"
+				declaration := fmt.Sprintf("effect function %s(input: %s) { %s }", name, inputType, body)
 				reference := fmt.Sprintf("function %s(input) { return Effect.gen(function* () { %s }) }", name, refBody)
 				if g.Intn(2) != 0 {
-					declaration = fmt.Sprintf("const %s = effect (input: any) => { %s }", name, body)
+					declaration = fmt.Sprintf("const %s = effect (input: %s) => { %s }", name, inputType, body)
 					reference = fmt.Sprintf("const %s = (input) => Effect.gen(function* () { %s })", name, refBody)
 				}
 				setup := fmt.Sprintf("const %s = makeOptional(%q, (s: string) => ev(s));", value, mode)
