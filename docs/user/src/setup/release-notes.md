@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A migration could accept a setup compile with no recorded exit by borrowing the earlier compiler's result. Missing or invalid setup exits now remain unverified and block admission.
 - The migration's API identity check reported an unchanged generic export that uses `infer`, such as `<C>(c: C) => C extends (infer I)[] ? I : never`, as changed when another declaration in its file changed only from `ReadonlyArray<string>` to `readonly string[]`. Those spellings name one type, so the export is now identical; a real element or `readonly` change still differs.
+- Tuple-spread arguments hid form advisories on directly run Effect calls. They now report the advisory and keep argument iteration and evaluation unchanged without an automatic rewrite.
 
 - Optional Effect calls directly run with `try` skipped form advisories. They now report the advisory and retain optional chaining without an automatic rewrite.
 

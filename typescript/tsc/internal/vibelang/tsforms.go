@@ -625,6 +625,11 @@ func expressionText(file *ast.SourceFile, node *ast.Node) string {
 	return nodeText(file, node) // "" for a node the parser left out, which a file with syntax errors has
 }
 
+// hasSpreadFormArguments identifies argument expansion that a form rewrite must preserve.
+func hasSpreadFormArguments(call *ast.Node) bool {
+	return slices.ContainsFunc(call.Arguments(), ast.IsSpreadElement)
+}
+
 // effectMember returns the module and the name of the effect export that
 // expression names, such as Schema and Array for Schema.Array. A member of a
 // module is named as written, since a module may export a declaration under

@@ -36,6 +36,10 @@ var directOptionalCallForm = EK4834.With("{0} uses optional chaining; keep the n
 
 const optionalCallFormNote = "No quick fix: keep the native call to preserve optional chaining and conditional argument evaluation."
 
+var directSpreadCallForm = EK4834.With("{0} uses spread arguments; keep the native call.")
+
+const spreadCallFormNote = "No quick fix: keep the native call to preserve spread iteration and argument evaluation."
+
 // directFailMessage is EK4834's text for Effect.fail.
 var directFailMessage = EK4834.With("{0} runs here, so it fails the function as a throw does: {1}.")
 
@@ -51,10 +55,13 @@ func init() {
 // directFormCall reports whether call is Effect.succeed or Effect.fail of
 // one argument that runs in a VibeLang function body, and returns which.
 func directFormCall(c *checker.Checker, call *ast.Node) string {
-	if !ast.IsCallExpression(call) || len(call.Arguments()) != 1 || ast.IsSpreadElement(call.Arguments()[0]) {
+	if !ast.IsCallExpression(call) || !hasSpreadFormArguments(call) && len(call.Arguments()) != 1 {
 		return ""
 	}
 	if !isEffectFunction(c, call.Expression(), "Effect", "succeed", "fail") || !inLowerableBody(call) || inHatch(call) || directTryFormSite(call) == nil {
+		return ""
+	}
+	if hasSpreadFormArguments(call) && !isEffectType(c, effectOperandType(c, call)) {
 		return ""
 	}
 	_, name := effectMember(c, call.Expression())
@@ -133,6 +140,9 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	name := directFormCall(c, call)
 	if name == "" {
 		return nil
+	}
+	if hasSpreadFormArguments(call) {
+		return &formRewrite{message: directSpreadCallForm, why: spreadCallFormNote}
 	}
 	if ast.IsOptionalChain(call) {
 		return &formRewrite{message: directOptionalCallForm, why: optionalCallFormNote}

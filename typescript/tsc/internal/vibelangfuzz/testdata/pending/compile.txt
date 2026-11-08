@@ -27,3 +27,8 @@ FuzzCompile corpus:default-EK9204 compiler Appendix B: reproduction of ek:EK9204
 
 
 
+
+FuzzSpreadDirectFormAdvisories provide-empty-leading compiler VIP-12: native provide validation mistakes physical spread slots for logical arguments; the empty tuple does not replace the layer
+FuzzSpreadDirectFormAdvisories corpus:provide-empty-leading compiler VIP-12: native provide validation mistakes physical spread slots for logical arguments; the empty tuple does not replace the layer
+FuzzSpreadDirectFormAdvisories provide-empty-trailing compiler VIP-12: native provide validation mistakes physical spread slots for logical arguments; the empty tuple does not replace the layer
+FuzzSpreadDirectFormAdvisories corpus:provide-empty-trailing compiler VIP-12: native provide validation mistakes physical spread slots for logical arguments; the empty tuple does not replace the layer

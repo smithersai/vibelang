@@ -38,6 +38,8 @@ const provideTypeArgumentsNote = "No quick fix: keep the native call to preserve
 
 var blockOptionalCallForm = EK4836.With("{0} uses optional chaining; keep the native call.")
 
+var blockSpreadCallForm = EK4836.With("{0} uses spread arguments; keep the native call.")
+
 // VIP-12 builds a Layer for Key = value; the native provideService does not.
 // VIP-34 permits a quick fix only when it preserves that observable behavior.
 var provideServiceNativeForm = EK4836.With("{0} installs a service without building a Layer; keep the native call.")
@@ -58,19 +60,21 @@ func blockFormOf(c *checker.Checker, call *ast.Node) string {
 	if !ast.IsCallExpression(call) || !inLowerableBody(call) || inHatch(call) {
 		return ""
 	}
-	for _, argument := range call.Arguments() {
-		if ast.IsSpreadElement(argument) {
-			return ""
-		}
-	}
+	spread := hasSpreadFormArguments(call)
 	if !isEffectFunction(c, call.Expression(), "Effect", "withSpan", "provide", "provideService") {
 		return ""
 	}
 	_, name := effectMember(c, call.Expression())
-	if ast.IsOptionalChain(call) && name == "withSpan" {
+	if (ast.IsOptionalChain(call) || spread) && name == "withSpan" {
 		return ""
 	}
 	if call.TypeArguments() != nil && name != "provide" && name != "provideService" {
+		return ""
+	}
+	if spread {
+		if name != "withSpan" && directTryFormSite(call) != nil && isEffectType(c, effectOperandType(c, call)) {
+			return name
+		}
 		return ""
 	}
 	switch {
@@ -117,6 +121,9 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 	name := blockFormOf(c, call)
 	if name == "" {
 		return nil
+	}
+	if hasSpreadFormArguments(call) {
+		return &formRewrite{message: blockSpreadCallForm, why: spreadCallFormNote}
 	}
 	if ast.IsOptionalChain(call) {
 		return &formRewrite{message: blockOptionalCallForm, why: optionalCallFormNote}

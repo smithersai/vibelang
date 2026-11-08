@@ -52,6 +52,8 @@ const catchTypeArgumentsNote = "No quick fix: keep the native call to preserve i
 
 var catchOptionalCallForm = EK4835.With("{0} uses optional chaining; keep the native call.")
 
+var catchSpreadCallForm = EK4835.With("{0} uses spread arguments; keep the native call.")
+
 // catchHandlerMessage is EK4835's text for Effect.catch, whose handler the
 // catch expression keeps.
 var catchHandlerMessage = EK4835.With("{0} takes a handler; write a catch expression: x catch (e) => handler.")
@@ -104,10 +106,9 @@ func catchCombinatorName(c *checker.Checker, call *ast.Node) string {
 	if self, inner := methodCatchParts(c, call); self != nil {
 		operator, count = inner, len(inner.Arguments())+1
 	}
-	for _, argument := range operator.Arguments() {
-		if ast.IsSpreadElement(argument) {
-			return ""
-		}
+	spread := hasSpreadFormArguments(operator)
+	if spread && (operator != call || !isEffectType(c, effectOperandType(c, call))) {
+		return ""
 	}
 	if !isEffectFunction(c, operator.Expression(), "Effect", "catchTag", "catchTags", "catch", "catch_") {
 		return ""
@@ -116,6 +117,9 @@ func catchCombinatorName(c *checker.Checker, call *ast.Node) string {
 	// The catch export aliases its reserved-word-safe declaration.
 	if name == "catch_" {
 		name = "catch"
+	}
+	if spread {
+		return name
 	}
 	switch {
 	case name == "catchTag" && count == 3, name == "catchTags" && count == 2, name == "catch" && count == 2:
@@ -190,6 +194,9 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	if name == "" {
 		return nil
 	}
+	if hasSpreadFormArguments(call) {
+		return &formRewrite{message: catchSpreadCallForm, why: spreadCallFormNote}
+	}
 	if ast.IsOptionalChain(call) {
 		return &formRewrite{message: catchOptionalCallForm, why: optionalCallFormNote}
 	}
@@ -206,7 +213,7 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 // a catch combinator, under the try that runs it, or nil.
 func catchStageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *formRewrite {
 	call := pipe.AsBinaryExpression().Right
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || catchProgramPipe(call) != pipe {
+	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || hasSpreadFormArguments(call) || catchProgramPipe(call) != pipe {
 		return nil
 	}
 	name := catchCombinatorName(c, call)
