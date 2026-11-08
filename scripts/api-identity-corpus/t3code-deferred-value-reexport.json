@@ -1,0 +1,10 @@
+{
+  "rule": "An exported binding whose declared type uses infer stays identical when another export of its file moves behind a re-export, because its own declared type is compared in a form without infer.",
+  "repository": "t3code",
+  "pattern": "a native adapter header moves a function declaration behind a platform re-export while an unchanged deferred generic const stays in the entry file",
+  "before": { "index.d.ts": "export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never;\nexport declare function g(x: number): number;\n" },
+  "after": {
+    "index.d.ts": "export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never;\nexport { g } from \"./helper.js\";\n",
+    "helper.d.ts": "export declare function g(x: number): number;\n"
+  }
+}

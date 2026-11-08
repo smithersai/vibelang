@@ -85,7 +85,7 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
   // without them, where a signature's own type parameters compare by position.
   // The strict probe of those forms is the proof; the after side then forwards
   // to the before side, so one alias serves both.
-  const inferProofs = [], forwarded = new Map(), appended = new Map()
+  const inferProofs = [], forwarded = new Map(), forwardedBindings = new Map(), appended = new Map()
   const usesInfer = node => ts.isInferTypeNode(node) || ts.isMappedTypeNode(node) && Boolean(node.nameType) ||
     Boolean(ts.forEachChild(node, usesInfer))
   const typeParameters = ({ statement, source }) => statement.typeParameters.map(parameter => printer.printNode(ts.EmitHint.Unspecified,
@@ -130,19 +130,40 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     transformed.dispose()
     return text
   }
-  const inferAliases = base => {
-    const found = new Map()
+  const ownModules = function* (base) {
     for (const source of program.getSourceFiles()) {
       if (!ownsFile(base, source.fileName) || source.fileName.includes("/node_modules/") || !ts.isExternalModule(source)) continue
       if (snapshots.find(([, root]) => ownsFile(root, source.fileName))[1] !== base) continue
       if (source.statements.some(node => ts.isExportAssignment(node) && node.isExportEquals)) continue
-      const path = relative(base, source.fileName).replace(/\.d\.vibex?\.ts$/, ".d.ts")
+      yield [source, relative(base, source.fileName).replace(/\.d\.vibex?\.ts$/, ".d.ts")]
+    }
+  }
+  const inferAliases = base => {
+    const found = new Map()
+    for (const [source, path] of ownModules(base))
       for (const statement of source.statements)
         if (ts.isTypeAliasDeclaration(statement) && statement.typeParameters && usesInfer(statement.type))
           // The public binding survives a move into a private companion or a
           // local rename; the strict form proof still checks its entire type.
           found.set(publicOrigins.get(checker.getSymbolAtLocation(statement.name)) ?? path + ":" + statement.name.text, { path, statement, source })
-    }
+    return found
+  }
+  // A binding whose declared type uses them is the same case: an unchanged
+  // `declare const f: <C>(c: C) => C extends (infer I)[] ? I : never` fails
+  // strict identity whenever another change in its file stops the module
+  // proof. Each side states the declared type without them; the after
+  // binding then takes the before binding's type. A binding with an
+  // initializer keeps the ordinary probe, so no initializer is checked
+  // against a forwarded type.
+  const inferBindings = base => {
+    const found = new Map()
+    for (const [source, path] of ownModules(base))
+      for (const statement of source.statements) {
+        if (!ts.isVariableStatement(statement)) continue
+        for (const declaration of statement.declarationList.declarations)
+          if (ts.isIdentifier(declaration.name) && declaration.type && !declaration.initializer && usesInfer(declaration.type))
+            found.set(publicOrigins.get(checker.getSymbolAtLocation(declaration.name)) ?? path + ":" + declaration.name.text, { path, statement: declaration, source })
+      }
     return found
   }
   const append = (source, text) => appended.set(source.fileName, (appended.get(source.fileName) ?? "") + text)
@@ -157,6 +178,17 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     append(b.source, `export type ${id}_form = <${parameters}>() => ${withoutInfer(b)};\n`)
     forwarded.set(b.statement, { file: a.source.fileName, id })
     inferProofs.push({ entrypoint: a.path, export: name, a: `import(${JSON.stringify(a.source.fileName)}).${id}_form`,
+      b: `import(${JSON.stringify(b.source.fileName)}).${id}_form` })
+  }
+  const afterBindings = inferBindings(after)
+  for (const [key, a] of inferBindings(before)) {
+    const b = afterBindings.get(key)
+    if (!b || b.source === a.source) continue
+    const id = "__api_infer_" + inferProofs.length, name = a.statement.name.text
+    append(a.source, `export declare const ${id}: typeof ${name};\nexport type ${id}_form = () => ${withoutInfer(a)};\n`)
+    append(b.source, `export type ${id}_form = () => ${withoutInfer(b)};\n`)
+    forwardedBindings.set(b.statement, { file: a.source.fileName, id })
+    inferProofs.push({ entrypoint: a.path, export: name, aspect: "value", a: `import(${JSON.stringify(a.source.fileName)}).${id}_form`,
       b: `import(${JSON.stringify(b.source.fileName)}).${id}_form` })
   }
   const brandKey = id => factory.createComputedPropertyName(factory.createPropertyAccessExpression(factory.createIdentifier("__api_nominal"), id))
@@ -183,6 +215,12 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
             changed = true
             return resolved
           }
+        }
+        if (forwardedBindings.has(node)) {
+          const { file, id } = forwardedBindings.get(node)
+          changed = true
+          return factory.updateVariableDeclaration(node, node.name, node.exclamationToken,
+            factory.createImportTypeNode(factory.createLiteralTypeNode(literal(file)), undefined, factory.createIdentifier(id), undefined, true), node.initializer)
         }
         if (ts.isVariableDeclaration(node) && node.type && ts.isTypeOperatorNode(node.type) && node.type.operator === ts.SyntaxKind.UniqueKeyword) {
           changed = true

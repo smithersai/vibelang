@@ -375,8 +375,17 @@ A signature's own type parameters compare by position, so the strict probe of
 these forms is the proof, reported as a type difference on the alias. The after
 side's alias then forwards to the before side's, so instantiations and generic
 exports over it see one alias. An alias whose type parameters differ keeps the
-ordinary strict probe. `infer` written directly in an exported function's
-signature is not covered and fails strict identity.
+ordinary strict probe.
+
+An exported binding declared with such a type and no initializer, as in
+`export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never`, is
+proved the same way: each side states the declared type without `infer`, the
+strict probe of those forms decides, and the after binding takes the before
+binding's type. Another change in the same file, such as moving a function
+behind a re-export, therefore leaves it identical. `infer` written directly in
+a function declaration's signature, or in the type of a binding with an
+initializer, is not covered and fails strict identity unless the whole file is
+proved equal.
 
 ## Error types in an export's closure
 

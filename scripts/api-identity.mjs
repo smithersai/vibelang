@@ -1963,7 +1963,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     }
   }
   progress("export-surface")
-  for (const proof of nominal.inferProofs ?? []) recordCheck(proof.entrypoint, proof.export, proof.a, proof.b, "type")
+  for (const proof of nominal.inferProofs ?? []) recordCheck(proof.entrypoint, proof.export, proof.a, proof.b, proof.aspect ?? "type")
   for (const key of keys) {
     if (absentEntries.has(key)) continue
     if (!left[key] || !right[key]) {
