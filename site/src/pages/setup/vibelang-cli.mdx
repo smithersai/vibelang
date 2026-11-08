@@ -452,6 +452,7 @@ node --import vibelang/register src/start.ts
 ```
 
 The first `.vibe` import compiles the project in the nearest `tsconfig.json`.
+For calls into a referenced project, loaders use the same foreign-call classification as a project compile, even when a loader reads TypeScript sources instead of built declarations. Written `@throws` contracts apply in both modes.
 `require()` and `createRequire()` calls through a migrated package’s emitted exports load the same source module as an `import`.
 The loaders leave an absent application `TMPDIR` untouched: compilation and the default cache use its nearest existing parent directory. An explicit `VIBELANG_CACHE_DIR` still names the exact cache directory to create.
 

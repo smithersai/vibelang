@@ -117,7 +117,11 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 	candidates = append(candidates, decl)
 
 	t := tagged(c, call, candidates, &trust{kind: trustForeign, promise: returnsPromise(c, call)})
-	if t.kind == trustForeign && reachedThroughTrustedPackage(c, call, file.IsDeclarationFile) {
+	// A module loader's compile reads a referenced project's sources where the
+	// project compile reads its declaration output, so it classifies them as
+	// that output: both compiles report the same calls.
+	asDeclaration := file.IsDeclarationFile || c.Program().GetRedirectForResolution(file) != nil
+	if t.kind == trustForeign && reachedThroughTrustedPackage(c, call, asDeclaration) {
 		return &trust{kind: trustEffect}
 	}
 	return t
@@ -248,12 +252,6 @@ func reachedThroughTrustedPackage(c *checker.Checker, call *ast.Node, followRetu
 			return followReturned && callTrust(c, callee).kind == trustEffect
 		case ast.IsIdentifier(callee):
 			if initializer := constCallInitializer(c, callee); initializer != nil {
-				// try x holds the success of x, not something the runtime
-				// helper the parser writes for try returned (VIP-4).
-				if operand := tryOperand(initializer); operand != nil {
-					callee = ast.SkipParentheses(operand)
-					continue
-				}
 				// A const holds what its trusted call returned; a let may not.
 				return followReturned && callTrust(c, initializer).kind == trustEffect
 			}

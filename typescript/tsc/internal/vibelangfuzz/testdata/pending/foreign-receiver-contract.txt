@@ -1,3 +1,7 @@
-# A value an Effect API returns keeps trusted-package receiver trust for a method a .d.ts declares, though VIP-4 as amended gives an untagged foreign method unknown; the same method in a .ts source is EK0403.
-FuzzForeignReceiverContract receiver:const-succeed:d.ts:getByName compiler VIP-4: a method of the value try Effect.succeed(obj) gives keeps Effect receiver trust when a .d.ts declares it; lane migfix-alchemy-b
-FuzzForeignReceiverContract corpus:const-succeed-declaration-receiver compiler VIP-4: receiver:const-succeed:d.ts:getByName; lane migfix-alchemy-b
+# Package trust is held unenforced (VIP-4 as amended; settled-vip4): a value try or an Effect API gives keeps trusted-package receiver trust for a method a .d.ts declares, though chapter 3 gives an untagged foreign method unknown; the same method in a .ts source is EK0403.
+FuzzForeignReceiverContract receiver:const-try-name:d.ts:getByName compiler VIP-4: a method of the value const n = try ns gives keeps vibelang-runtime receiver trust when a .d.ts declares it; package trust held; lane settled-vip4
+FuzzForeignReceiverContract receiver:const-try-member:d.ts:getByName compiler VIP-4: a method of the value const n = try holder.ns gives keeps vibelang-runtime receiver trust when a .d.ts declares it; package trust held; lane settled-vip4
+FuzzForeignReceiverContract receiver:const-try-parenthesized:d.ts:getByName compiler VIP-4: a method of the value const n = try (ns) gives keeps vibelang-runtime receiver trust when a .d.ts declares it; package trust held; lane settled-vip4
+FuzzForeignReceiverContract receiver:const-succeed:d.ts:getByName compiler VIP-4: a method of the value try Effect.succeed(obj) gives keeps Effect receiver trust when a .d.ts declares it; package trust held; lane settled-vip4
+FuzzForeignReceiverContract corpus:alchemy-durable-object-sql-users-get-by-name compiler VIP-4: receiver:const-try-name:d.ts:getByName; package trust held; lane settled-vip4
+FuzzForeignReceiverContract corpus:const-succeed-declaration-receiver compiler VIP-4: receiver:const-succeed:d.ts:getByName; package trust held; lane settled-vip4

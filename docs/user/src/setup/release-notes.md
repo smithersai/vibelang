@@ -17,6 +17,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - One-pass migration could return a healthy dependency to TypeScript because it read an outdated declaration path. It now uses each package's saved declarations to retain unchanged dependencies while returning the changed one.
 
+- The Bun and Node loaders could refuse a module the project compile accepts: a call into a referenced project, such as `users.getByName(id)` after `const users = try Users`, reported `EK0403` because a loader reads the referenced project's TypeScript sources where the project compile reads its declaration output. The loaders now classify those sources as that output, so both compiles report the same calls.
+
 - A class definition inside an `effect` block could report an implementation restriction for an escaping `break` or `continue`. Decorators, computed names and `extends` expressions now report the block’s `EK0202` error.
 
 - Outward jumps in class definition expressions inside an `async match` could report `EK0204` and suggest moving the `do`. They now report `EK0706` once and explain the Promise boundary.
@@ -39,8 +41,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Passing a foreign function through a variadic forwarding helper could lose the receiving callback's throws restriction. The written callback parameter is now checked.
 
 - Repeated computed property declarations could escape duplicate-member errors. They now receive the same diagnostics as TypeScript.
-
-- A method read from a `const` that `try` gave, such as `const users = try Users` and then `users.getByName(id)`, skipped `EK0403` when a declaration file declared the method without `@throws`, as a referenced project's output or an npm package does, while the Bun and Node loaders, which read the referenced project's TypeScript source, reported it and refused to load the module. Both now report `EK0403` for that call, as for any untagged foreign callable; bridge it with `Effect.try` or declare its `@throws` contract.
 
 - The migration guide gave the old diagnostic number for an unwrapped foreign call. It now names `EK0403`, matching the failures chapter and compiler.
 

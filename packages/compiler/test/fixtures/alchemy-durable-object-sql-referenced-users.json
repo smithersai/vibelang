@@ -1,0 +1,5 @@
+{
+  "receivers": ["throughTry", "throughTryMember", "throughTryParenthesized", "throughTryAlias", "throughLet", "throughSucceed", "direct", "throughConst"],
+  "outDir": "dist",
+  "declarationDir": "declarations"
+}
