@@ -1,0 +1,14 @@
+error MissingUser { id: string }
+
+effect function find(id: string) {
+  if (id === "missing") throw new MissingUser({ id })
+  return `Hello, ${id}!`
+}
+
+effect function main() {
+  try Console.log(try find("Ada"))
+  const guest = find("missing") catch () => "Hello, guest!"
+  try Console.log(guest)
+}
+
+await runPromise(main())

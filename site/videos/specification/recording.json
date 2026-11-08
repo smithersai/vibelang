@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "compilerVersion": "0.0.12",
+  "effectVersion": "4.1.1",
+  "videoSha256": "7929c6cd99c7ce3cdfc508ae0c370753822c15c043bf111c30be30696c5d1bd8",
+  "posterSha256": "b89ce7089339acfe4eb9f029f72f477b906cf7b9ca223fa9a529590a8a558c1d",
+  "scenes": [
+    {
+      "name": "effects",
+      "title": "Effects and typed recovery",
+      "output": "Hello, Ada!\nHello, guest!",
+      "source": "error MissingUser { id: string }\n\neffect function find(id: string) {\n  if (id === \"missing\") throw new MissingUser({ id })\n  return `Hello, ${id}!`\n}\n\neffect function main() {\n  try Console.log(try find(\"Ada\"))\n  const guest = find(\"missing\") catch () => \"Hello, guest!\"\n  try Console.log(guest)\n}\n\nawait runPromise(main())\n",
+      "sourceSha256": "adf75f0d4a81d56be94bd399e0a5826c5122b670f4196038040e030781cffb2b",
+      "commands": [
+        {
+          "command": "npx vibelang -p tsconfig.json",
+          "exitCode": 0,
+          "output": ""
+        },
+        {
+          "command": "node dist/main.js",
+          "exitCode": 0,
+          "output": "Hello, Ada!\nHello, guest!"
+        }
+      ]
+    },
+    {
+      "name": "services",
+      "title": "Services and explicit providers",
+      "output": "Hello, Ada!",
+      "source": "service Greeting { prefix: string }\nconst GreetingLive = Layer.succeed(Greeting, { prefix: \"Hello\" })\n\neffect function main() {\n  provide GreetingLive {\n    const greeting = try Greeting\n    try Console.log(`${greeting.prefix}, Ada!`)\n  }\n}\n\nawait runPromise(main())\n",
+      "sourceSha256": "73b0bffcdabc3ae9a41ea1e3300742aaa5494ffd7f2064c00a734d21cc3089f1",
+      "commands": [
+        {
+          "command": "npx vibelang -p tsconfig.json",
+          "exitCode": 0,
+          "output": ""
+        },
+        {
+          "command": "node dist/main.js",
+          "exitCode": 0,
+          "output": "Hello, Ada!"
+        }
+      ]
+    },
+    {
+      "name": "data",
+      "title": "Tagged data and exhaustive matching",
+      "output": "waiting\nsent:parcel-7",
+      "source": "data Delivery { Waiting; Sent { tracking: string } }\n\nfunction describe(delivery: Delivery) {\n  return match (delivery) {\n    when { _tag: \"Waiting\" }: \"waiting\";\n    when { _tag: \"Sent\", let tracking }: `sent:${tracking}`;\n  }\n}\n\neffect function main() {\n  try Console.log(describe(Delivery.Waiting()))\n  try Console.log(describe(Delivery.Sent({ tracking: \"parcel-7\" })))\n}\n\nawait runPromise(main())\n",
+      "sourceSha256": "5a30a346c5c37effbf9b0869dcf2980fdbc64f1a5ebab14e0fd8570c953abf9f",
+      "commands": [
+        {
+          "command": "npx vibelang -p tsconfig.json",
+          "exitCode": 0,
+          "output": ""
+        },
+        {
+          "command": "node dist/main.js",
+          "exitCode": 0,
+          "output": "waiting\nsent:parcel-7"
+        }
+      ]
+    }
+  ]
+}

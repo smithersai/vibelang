@@ -2,7 +2,7 @@
 
 This specification defines VibeLang as the accepted VibeLang Improvement Proposals (VIPs) and their public amendments define it, and nothing more. Each VIP lives in [`docs/design/vips/`](../vips/README.md), with the reasons for the decision and its history. Where this text and an accepted VIP or its public amendment disagree, the VIP wins and this text is the bug. Authorized clarifications are recorded in public amendments to the relevant VIP and its affected chapter, with the applicable pinned references and explicit reconciliation notes. Where a VIP is silent, its TypeScript or pinned TC39 counterpart applies.
 
-![The specification, in the order its ideas build](/videos/spec-walkthrough.mp4)
+![Compiler demonstrations of Effects, typed recovery, services and data](/videos/spec-walkthrough.mp4)
 
 Declaration serialization has one explicit exception for [cyclic inferred types](001-functions.md#declaration-output); ordinary TypeScript recursion checking still applies.
 

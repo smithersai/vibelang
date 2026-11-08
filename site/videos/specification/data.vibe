@@ -1,0 +1,15 @@
+data Delivery { Waiting; Sent { tracking: string } }
+
+function describe(delivery: Delivery) {
+  return match (delivery) {
+    when { _tag: "Waiting" }: "waiting";
+    when { _tag: "Sent", let tracking }: `sent:${tracking}`;
+  }
+}
+
+effect function main() {
+  try Console.log(describe(Delivery.Waiting()))
+  try Console.log(describe(Delivery.Sent({ tracking: "parcel-7" })))
+}
+
+await runPromise(main())

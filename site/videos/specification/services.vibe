@@ -1,0 +1,11 @@
+service Greeting { prefix: string }
+const GreetingLive = Layer.succeed(Greeting, { prefix: "Hello" })
+
+effect function main() {
+  provide GreetingLive {
+    const greeting = try Greeting
+    try Console.log(`${greeting.prefix}, Ada!`)
+  }
+}
+
+await runPromise(main())
