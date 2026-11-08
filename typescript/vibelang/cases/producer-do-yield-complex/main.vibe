@@ -1,0 +1,20 @@
+// expect-result: [[9,7],[9,7],[9,7],[9,7],[9,7,"0,2"]]
+import {Stream} from "effect"
+// declaration
+effect function* p0(){const{n=do{const a=1;yield 9;a+6}}={} as {n?:number};yield n}
+// branch
+effect function* p1(){const{n=do{if(true){yield 9};7}}={} as {n?:number};yield n}
+// loop
+effect function* p2(){const{n=do{for(const k of [9]){yield k};7}}={} as {n?:number};yield n}
+// yield-value
+effect function* p3(){const{n=do{const a=yield 9;a===undefined?7:99}}={} as {n?:number};yield n}
+// native-iterator-close
+effect function* p4(){const log:number[]=[];function* source(){try{yield undefined}finally{log.push(2)}};const[n=do{log.push(0);yield 9;7}]=source();yield n;yield log.join(",")}
+export effect function main(){
+const a0=try Stream.runCollect(p0())
+const a1=try Stream.runCollect(p1())
+const a2=try Stream.runCollect(p2())
+const a3=try Stream.runCollect(p3())
+const a4=try Stream.runCollect(p4())
+return [a0,a1,a2,a3,a4]
+}

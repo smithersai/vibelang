@@ -756,8 +756,8 @@ func (p *Parser) checkDoBoundary(d *doExpression, boundary *ast.Node, what strin
 		case ast.KindAwaitExpression:
 			keyword = "await"
 		case ast.KindYieldExpression:
-			if VibeLangYieldOutsideProducer(n) {
-				return // VIP-21 owns EK2104 even in an unlifted parameter do.
+			if VibeLangYieldOutsideProducer(n) || (!p.opts.VibeLangDoAsFunction && vibeLangYieldInsideProducer(n)) {
+				return // VIP-21 owns placement errors; producer offers lower through native do callbacks.
 			}
 			keyword = "yield"
 		}

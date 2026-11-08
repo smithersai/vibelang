@@ -1,0 +1,21 @@
+// expect-result: [[9,7,8,9],[9,7],[0],[9,7],[9,7,9],[7,9],[9,7]]
+import {Stream} from "effect"
+class Base { value=0;set n(value:number){this.value=value};get n(){return this.value} }
+class Derived extends Base {
+ effect *values(){super.n=do{yield 9;7};yield super.n;super.n+=do{yield 8;2};yield super.n}
+}
+effect function* caseTest(){switch(0){case do{yield 9;0}:yield 7;break}}
+effect function* optional(o:{m(n:number):number}|null){yield (o?.m(do{yield 9;7})??0)}
+effect function* loopTest(){for(let i=0;do{yield 9;i<1};i++){yield 7}}
+effect function* loopUpdate(){for(let i=0;i<1;do{yield 9;i++}){yield 7}}
+effect function* computedAssignment(){const obj:{[key:string]:number|undefined}={};let n=0;({[do{yield 9;"n"}]:n=7}=obj);yield n}
+export effect function main(){
+ const a=try Stream.runCollect(new Derived().values())
+ const b=try Stream.runCollect(caseTest())
+ const c=try Stream.runCollect(optional(null))
+ const d=try Stream.runCollect(optional({m(n:number){return n}}))
+ const e=try Stream.runCollect(loopTest())
+ const f=try Stream.runCollect(loopUpdate())
+ const g=try Stream.runCollect(computedAssignment())
+ return [a,b,c,d,e,f,g]
+}

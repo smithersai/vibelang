@@ -30,3 +30,33 @@ func VibeLangYieldOutsideProducer(node *ast.Node) bool {
 	}
 	return false
 }
+
+// vibeLangYieldInsideProducer recognizes the source producer body through
+// transparent generated callbacks. Written activations and formal
+// initialization keep their own yield permissions.
+func vibeLangYieldInsideProducer(node *ast.Node) bool {
+	for n, child := node.Parent, node; n != nil; child, n = n, n.Parent {
+		switch n.Kind {
+		case ast.KindParameter:
+			if n.Parent != nil && ast.IsFunctionLike(n.Parent) {
+				return false
+			}
+		case ast.KindPropertyDeclaration:
+			if child == n.Initializer() {
+				return false
+			}
+		case ast.KindClassStaticBlockDeclaration, ast.KindEnumDeclaration:
+			return false
+		}
+		if !ast.IsFunctionLike(n) || child != n.Body() {
+			continue
+		}
+		flags := ast.GetFunctionFlags(n)
+		if n.Kind == ast.KindArrowFunction && n.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0 &&
+			n.Flags&ast.NodeFlagsVibeLangEffect == 0 && flags&ast.FunctionFlagsAsync == 0 {
+			continue
+		}
+		return n.Flags&ast.NodeFlagsVibeLangEffect != 0 && flags&ast.FunctionFlagsGenerator != 0 && flags&ast.FunctionFlagsAsync == 0
+	}
+	return false
+}

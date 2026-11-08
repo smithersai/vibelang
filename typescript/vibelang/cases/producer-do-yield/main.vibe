@@ -1,0 +1,59 @@
+// expect-result: [[9,7],[9,7],[9,7],[9,7],[9,7],[9,8,7,6],[3],[9,0],[9,0],[9,0],[9,0],[9,0],[9,0],[9,0],[9,0],[9,0],[9,7],[9,7]]
+import {Stream} from "effect"
+// object-default
+effect function* p0(){const {n=do {yield 9;7}}={} as {n?:number};yield n}
+// object-let
+effect function* p1(){let {n=do {yield 9;7}}={} as {n?:number};yield n}
+// array-default
+effect function* p2(){const [n=do {yield 9;7}]=[] as number[];yield n}
+// nested-object
+effect function* p3(){const {box:{n=do {yield 9;7}}}={box:{}} as {box:{n?:number}};yield n}
+// assignment-default
+effect function* p4(){let n:number|undefined;({n=do {yield 9;7}}={} as {n?:number});yield n}
+// multiple-defaults
+effect function* p5(){const [a=do {yield 9;7},b=do {yield 8;6}]=[] as number[];yield a;yield b}
+// present-value
+effect function* p6(){const {n=do {yield 9;7}}={n:3};yield n}
+// computed-method
+effect function* p7(){class C {[do {yield 9;"m"}]() {}};yield 0}
+// member-decorator
+effect function* p8(){class C {@(do {yield 9;((v:unknown,c:unknown)=>{})}) m(){}};yield 0}
+// field-decorator
+effect function* p9(){class C {@(do {yield 9;((v:unknown,c:unknown)=>{})}) m=1};yield 0}
+// class-decorator
+effect function* p10(){@(do {yield 9;((v:unknown,c:unknown)=>{})}) class C{};yield 0}
+// heritage
+effect function* p11(){class C extends do {yield 9;(class {})}{};yield 0}
+// object-method
+effect function* p12(){const o={[do {yield 9;"m"}](){}};yield 0}
+// getter
+effect function* p13(){class C {get [do {yield 9;"m"}](){return 0}};yield 0}
+// setter
+effect function* p14(){class C {set [do {yield 9;"m"}](x:number){}};yield 0}
+// static-method
+effect function* p15(){class C {static [do {yield 9;"m"}](){}};yield 0}
+// stream-item
+effect function* p16(){for try(const item of Stream.make(0)){const{n=do{yield 9;7}}={} as {n?:number};yield n}}
+// concurrent-item
+effect function* p17(){for concurrent(1)(const item of [0]){const{n=do{yield 9;7}}={} as {n?:number};yield n}}
+export effect function main(){
+const a0=try Stream.runCollect(p0())
+const a1=try Stream.runCollect(p1())
+const a2=try Stream.runCollect(p2())
+const a3=try Stream.runCollect(p3())
+const a4=try Stream.runCollect(p4())
+const a5=try Stream.runCollect(p5())
+const a6=try Stream.runCollect(p6())
+const a7=try Stream.runCollect(p7())
+const a8=try Stream.runCollect(p8())
+const a9=try Stream.runCollect(p9())
+const a10=try Stream.runCollect(p10())
+const a11=try Stream.runCollect(p11())
+const a12=try Stream.runCollect(p12())
+const a13=try Stream.runCollect(p13())
+const a14=try Stream.runCollect(p14())
+const a15=try Stream.runCollect(p15())
+const a16=try Stream.runCollect(p16())
+const a17=try Stream.runCollect(p17())
+return [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17]
+}
