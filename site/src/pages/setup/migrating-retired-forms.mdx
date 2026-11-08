@@ -15,6 +15,8 @@ description: "vibelang --fix rewrites each retired or legacy form to its VIP for
 
 The API check supports `exports` that point at generated declaration sidecars through `rootDirs`. A sidecar must match the selected project's emitted declaration and have one source owner; changed or ambiguous mirrors keep the batch under review.
 
+An exported value-only `Schema.Struct` constant keeps its constant form: converting it to `schema X { … }` would also export a type named `X`. A matching value/type pair can still become a schema declaration. Declaration-preserving fixes apply with `noEmit` and `declaration: false` too, since every `.vibe` module has a declaration sidecar. Written empty error payload arguments, schema-error base names and exported Effect type slots receive the same protection.
+
 ## Provider construction order
 
 When converting `Effect.provide` with an inline cold block, the repair captures that program before constructing its provider. The resulting `provide` block preserves construction and execution order. A redundant `try` and `catch` around a nested program keeps the entire operand inside the recovery boundary.

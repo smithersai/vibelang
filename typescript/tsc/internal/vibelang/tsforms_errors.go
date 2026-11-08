@@ -244,9 +244,10 @@ func errorClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node
 		return &formRewrite{why: "No quick fix: an error declaration's tag is its name, so the tag would become \"" + name + "\" instead of \"" + tag + "\"." + silence}
 	case parts.fields != nil && !ast.IsTypeLiteralNode(parts.fields):
 		return &formRewrite{why: "No quick fix: the fields come from " + expressionText(file, parts.fields) + "; write them in the declaration."}
-	case parts.fields != nil && len(parts.fields.Members()) == 0 && c.CompilerOptions().GetEmitDeclarations():
+	case parts.fields != nil && len(parts.fields.Members()) == 0:
 		// Detail 273: a fieldless error has no payload type argument.
-		// Erasing a written <{}> would change the declaration bytes.
+		// Erasing a written <{}> would change the declaration bytes,
+		// including the sidecar under noEmit (Chapter 7).
 		return &formRewrite{why: "No quick fix: an error declaration drops the explicit empty payload type argument from the declaration file; keep the class to preserve its declaration output."}
 	}
 	text := file.Text()
@@ -310,9 +311,9 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 	}
 	name := class.Name().Text()
 	arguments := ast.GetClassExtendsHeritageElement(class).Expression().Arguments()
-	declarations := c.CompilerOptions().GetEmitDeclarations()
 	switch {
-	case declarations && base != "Schema.TaggedError":
+	// The sidecar prints the base too, whatever the emit options (Chapter 7).
+	case base != "Schema.TaggedError":
 		return no("the declaration file would print Schema.TaggedError, not " + base + ".")
 	case class.TypeParameters() != nil:
 		return no("a schema error has no type parameters.")
@@ -401,11 +402,9 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 	// are inserted. Apply that insertion and replacement as one edit;
 	// otherwise the insertion shifts the replacement's original offsets.
 	edits = joinEditsAt(edits)
-	rewrite := &formRewrite{edits: edits, description: "schema error " + name + " { … }"}
-	if declarations {
-		return rewrite
-	}
-	return withImportRemovals(c, file, rewrite)
+	// Imports stay for the declaration-aware cleanup (keepDeclaredImports):
+	// the sidecar may still print a name the rewrite no longer reads.
+	return &formRewrite{edits: edits, description: "schema error " + name + " { … }"}
 }
 
 // A moved JSDoc must document the same node. In particular a comment on

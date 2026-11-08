@@ -142,7 +142,9 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 	for i, argument := range arguments {
 		grouped = grouped || effectSlotNeedsParentheses(argument, i > 0)
 	}
-	keepNever := grouped || c.CompilerOptions().GetEmitDeclarations() && isExportedStatementPart(reference)
+	// An exported signature's sidecar prints the written never slots, whatever
+	// the project's emit options (Chapter 7, D501).
+	keepNever := grouped || isExportedStatementPart(reference)
 	slot := func(i int) string {
 		if i >= len(arguments) || arguments[i].Kind == ast.KindNeverKeyword && !keepNever {
 			return ""

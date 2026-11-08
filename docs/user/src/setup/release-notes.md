@@ -36,6 +36,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Browser-service guidance mentioning `Experimental.Window` twice could be reported as a duplicate service. The check now reads the service list separately from usage examples.
 - A `provide` provider starting with an object literal was mistaken for a trailing block. Object-member expressions now work directly, with the same evaluation order as their parenthesized form.
 
+- In projects with `noEmit` or `declaration: false`, `vibelang --fix` could add public type names or change declaration spelling. It now preserves the same sidecar declarations as projects that emit declaration files.
+
 - Unicode escapes were accepted in a `provide` keyword. They now report `TS1260`, matching TypeScript keyword rules; escaped ordinary identifiers remain usable.
 
 - A foreign call inside an `effect` function or block created in an `Effect.sync` or `Effect.promise` thunk could bypass its throw check. These nested callables now keep their own checks, and `--fix` adds a bridge inside the nested program.

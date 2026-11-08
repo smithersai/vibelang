@@ -271,10 +271,10 @@ func TestTypeScriptFormDirectives(t *testing.T) {
 // The fixed twin of each tsforms-* case is what vibelang --fix writes for it
 // (D291), and fixing the twin changes nothing. The smoke harness runs both
 // and checks that they return the same result.
-// In a project that emits declarations, EK4832 leaves an exported struct
-// constant that declares no type of its name: a schema declaration would add
-// the type to the declaration file, which the TypeScript did not export
-// (D501). With the struct's own type beside it, the pair becomes the
+// EK4832 leaves an exported struct constant that declares no type of its
+// name: a schema declaration would add the type to the declaration file,
+// which the TypeScript did not export (D501). The sidecar is that file even
+// under noEmit (Chapter 7). With the struct's own type beside it, the pair becomes the
 // declaration, which declares the same two names.
 // Chapter 007 / schema teaching retains the original declaration surface: docs/design/src/007-tooling.md#6c87e5c10fe11c76
 func TestSchemaConstantKeepsDeclarations(t *testing.T) {
@@ -304,12 +304,9 @@ export const decode = Schema.decodeUnknownSync(Local)
 		if fixed := result.Files[file.FileName()]; fixed != nil {
 			got = fixed.Text
 		}
-		expected := want
-		if options == `"noEmit":true` {
-			expected = strings.Replace(want, "export const Snapshot = Schema.Struct({ value: Schema.String })", "export schema Snapshot { readonly value: string }", 1)
-		}
-		if got != expected || len(result.Refused) != 0 {
-			t.Errorf("%s: --fix wrote\n%s\nwant\n%s\nrefused %+v", options, got, expected, result.Refused)
+		// noEmit included: the sidecar is the module's declaration (Chapter 7).
+		if got != want || len(result.Refused) != 0 {
+			t.Errorf("%s: --fix wrote\n%s\nwant\n%s\nrefused %+v", options, got, want, result.Refused)
 		}
 	}
 }

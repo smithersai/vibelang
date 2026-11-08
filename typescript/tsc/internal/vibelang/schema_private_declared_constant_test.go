@@ -19,7 +19,7 @@ import (
 // coldness, types, comments, and declaration output". A schema declaration
 // declares its constant and typeof X.Type under one name (D501), and a
 // declaration file prints every declaration of a name it prints. So in a
-// project that emits declarations, a private Schema.Struct constant with no
+// project with declaration sidecars, a private Schema.Struct constant with no
 // type of its name keeps its form when the declaration file names it, through
 // a type query, an export list or export default: otherwise the declaration
 // file gains type X = typeof X.Type, and an export list exports it. opencode's
@@ -91,14 +91,24 @@ func TestSchemaConstantKeepsPrivateDeclaredConstant(t *testing.T) {
 	}
 }
 
-// Without declaration output nothing prints the constant, so the fix applies,
-// as it does to an exported constant with no type of its name.
+// Chapter 7 gives every module a declaration sidecar, so disabling ordinary
+// declaration emit cannot authorize adding a type beside a printed constant.
 func TestSchemaConstantPrivateDeclaredConstantWithoutDeclarations(t *testing.T) {
 	source := "const Options = Schema.Struct({ minP: Schema.optional(Schema.Number) })\nexport type OptionsInput = typeof Options.Type\n"
-	_, file, _, _ := editorProgram(t, source)
-	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-	fixed := result.Files[file.FileName()]
-	if fixed == nil || !strings.Contains(fixed.Text, "schema Options { readonly minP?: number | undefined }") {
-		t.Fatalf("--fix without declarations wrote %+v", fixed)
+	for _, options := range []string{`"noEmit":true`, `"declaration":false`} {
+		_, file, _, _ := editorProgram(t, source)
+		dir := filepath.Dir(file.FileName().AsString())
+		config := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,` + options + `},"files":["main.vibe"]}`
+		if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(config), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		result := fixCase(t, dir)
+		got := source
+		if fixed := result.Files[file.FileName()]; fixed != nil {
+			got = fixed.Text
+		}
+		if result.Err != nil || len(result.Refused) != 0 || got != source {
+			t.Fatalf("%s: --fix changed the private declaration: %s; error=%v refused=%v", options, got, result.Err, result.Refused)
+		}
 	}
 }

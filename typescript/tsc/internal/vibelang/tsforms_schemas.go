@@ -39,9 +39,10 @@ import (
 // Schema.optionalKey, a spread, a computed key, a comment, or a declaration
 // with a type annotation or more than one binding, keeps the constant and
 // draws no warning, preserving its codec API. So does an exported
-// constant with no type of its name in a project that emits declarations:
-// the declaration would add the type to the declaration file, which the
-// TypeScript did not export (D501). So does a module or namespace constant
+// constant with no type of its name: the declaration would add the type to
+// the declaration file, which the TypeScript did not export (D501). Every
+// .vibe module has a declaration, its sidecar, so noEmit and declaration:
+// false do not exempt a project (Chapter 7). So does a module or namespace constant
 // with no type of its name that the declaration file names, through a type
 // query (typeof X, typeof X.Type, Schema.Schema.Type<typeof X>), an export
 // list or export default: a declaration file prints every declaration of a
@@ -131,7 +132,7 @@ func schemaConstantRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.N
 	if !ok {
 		return nil
 	}
-	if len(edits) == 0 && !kept && c.CompilerOptions().GetEmitDeclarations() && (exported || declarationNamesConstant(c, file, statement, name)) {
+	if len(edits) == 0 && !kept && (exported || declarationNamesConstant(c, file, statement, name)) {
 		return nil
 	}
 	start := nodeStart(file, statement)
@@ -192,8 +193,9 @@ func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.No
 		return nil, false, true
 	}
 	// A private alias can be printed through an exported signature too.
-	// Preserve its written spelling whenever this project emits declarations.
-	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(c, file, declarations[0], name, c.CompilerOptions().GetEmitDeclarations()) ||
+	// Preserve its written spelling: every .vibe module's sidecar is a
+	// declaration file, whatever the project's emit options (Chapter 7).
+	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(c, file, declarations[0], name, true) ||
 		ast.HasSyntacticModifier(declarations[0], ast.ModifierFlagsExport) != exported {
 		return nil, false, false
 	}
