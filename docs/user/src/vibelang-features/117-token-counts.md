@@ -115,7 +115,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **11,000** |
 | [New project](../setup/new-project.md) | 690 |
 | [Existing project](../setup/existing-project.md) | 4,600 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,700 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,800 |
 | **Build and test** | **26,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 22,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,600 |
@@ -148,7 +148,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Error Management** | **25,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 13,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,600 |
-| [Fallback](../error-management/016-fallback.md) | 3,000 |
+| [Fallback](../error-management/016-fallback.md) | 3,100 |
 | [Matching](../error-management/017-matching.md) | 790 |
 | [Retrying](../error-management/018-retrying.md) | 780 |
 | [Timing Out](../error-management/019-timing-out.md) | 830 |
