@@ -353,5 +353,14 @@
         "output": "typescript/vibelang/cases/effect-return-type-union-fixed-output"
       }
     ]
+  },
+  {
+    "code": "TS2588",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/is-home-for-const-destructure.fail",
+        "output": "typescript/vibelang/cases/is-home-for-const-destructure-fixed-output"
+      }
+    ]
   }
 ]

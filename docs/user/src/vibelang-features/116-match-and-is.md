@@ -486,6 +486,12 @@ An `is` binding in an `if` head belongs to the block that holds the `if`, as a `
 
 The TypeScript mapper supports binding `is` tests in `for` heads, including parenthesized subjects and separate initializer and update expressions. Each condition evaluation reads its subject once, and projected source locations continue to refer to the written loop.
 
+A `const` destructuring declaration in a `for` initializer keeps TypeScript’s
+constant-assignment checks when the loop head contains an `is` binding. An
+assignment to one of its names reports `TS2588`. For source accepted before
+this check, the quick fix and `vibelang --fix` write `let` in that initializer,
+preserving the earlier emitted behavior and closure captures.
+
 Binding `is` tests also work inside a call argument and its literal containers, such as `consume(subject is let value)`. The bindings belong to the caller's lexical block, and the mapper preserves the subject's single evaluation and the written source locations.
 
 

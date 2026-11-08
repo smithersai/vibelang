@@ -30,12 +30,13 @@ func checkConstBindingAssignments(c *checker.Checker, file *ast.SourceFile) {
 }
 
 // isConstBinding reports whether name resolves to a binding an is pattern
-// wrote with const (the hoisted let the parser marks).
+// wrote with const, or a source const loop initializer retained in a let list.
+// A destructured name is declared by a BindingElement below that declaration.
 func isConstBinding(c *checker.Checker, name *ast.Node) bool {
 	symbol := c.GetSymbolAtLocation(name)
 	if symbol == nil || symbol.ValueDeclaration() == nil {
 		return false
 	}
-	declaration := symbol.ValueDeclaration()
+	declaration := ast.GetRootDeclaration(symbol.ValueDeclaration())
 	return ast.IsVariableDeclaration(declaration) && declaration.Flags&ast.NodeFlagsVibeLangConst != 0
 }

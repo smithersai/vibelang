@@ -5077,6 +5077,12 @@ typescript/vibelang/cases/is-home-fall-through/main.vibe:10:36 lambda plain fall
 typescript/vibelang/cases/is-home-fall-through/main.vibe:16:36 lambda plain fallback
 typescript/vibelang/cases/is-home-fall-through/main.vibe:19:79 lambda plain fallback
 typescript/vibelang/cases/is-home-fall-through/main.vibe:24:68 lambda plain fallback
+typescript/vibelang/cases/is-home-for-const-destructure-fixed-output/main.vibe:25:70 lambda plain fallback
+typescript/vibelang/cases/is-home-for-const-destructure-fixed-output/main.vibe:26:18 lambda plain table
+typescript/vibelang/cases/is-home-for-const-destructure.fail/main.vibe:25:72 lambda plain fallback
+typescript/vibelang/cases/is-home-for-const-destructure.fail/main.vibe:26:18 lambda plain table
+typescript/vibelang/cases/is-home-for-const-destructure/main.vibe:25:70 lambda plain fallback
+typescript/vibelang/cases/is-home-for-const-destructure/main.vibe:26:18 lambda plain table
 typescript/vibelang/cases/is-home-for-each/main.vibe:11:33 lambda plain fallback
 typescript/vibelang/cases/is-home-for-each/main.vibe:12:15 lambda plain fallback
 typescript/vibelang/cases/is-home-for-each/main.vibe:15:19 lambda plain table

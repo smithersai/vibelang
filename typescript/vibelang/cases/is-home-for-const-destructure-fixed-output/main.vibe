@@ -1,0 +1,31 @@
+// expect: TS2588
+// Const loop initializers retain native TypeScript assignment checks.
+export function f0(): number | undefined {
+  for (let {n} = {n:1}; 1 is let cell;) { n = 2; return n }
+}
+
+export function f1(): number | undefined {
+  for (let [n] = [1]; 1 is let cell;) { n = 2; return n }
+}
+
+export function f2(): number | undefined {
+  for (let {a:n} = {a:1}; 1 is let cell;) { n = 2; return n }
+}
+
+export function f3(): number | undefined {
+  for (let {a:{n}} = {a:{n:1}}; 1 is let cell;) { n = 2; return n }
+}
+
+export function f4(): { n: number } | undefined {
+  for (let {...rest} = {n:1}; 1 is let cell;) { rest = { n: 2 }; return rest }
+}
+
+export function closures(): number[] {
+  const out: (() => number)[] = []
+  for (let { n } = { n: 0 }; n < 3 && (1 is let cell); n++) out.push(() => n)
+  return out.map(f => f())
+}
+
+export effect function main() {
+  return [f0(), f1(), f2(), f3(), f4(), closures()]
+}
