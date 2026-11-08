@@ -2,7 +2,6 @@
 # scripts/go-test-shards.sh, which spreads the slowest across its processes. Names not listed count 1 s; a stale
 # line only unbalances the processes. Refresh: node scripts/go-shard-seconds.mjs <package dir> <go test -v log>...
 654 TestMigrationManagedTypeRoutesNeighborhood
-470 TestFuzzPackageBuildWithoutTestFiles
 357 TestCaseCorpusCompilerTemporaryDiagnostics
 239 FuzzMigrationForeignCallPositions
 211 TestDeclarationUnnameableBaseline
