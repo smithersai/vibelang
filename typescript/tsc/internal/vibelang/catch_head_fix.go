@@ -37,6 +37,35 @@ func catchHeadBoundaryRewrite(c *checker.Checker, file *ast.SourceFile, call *as
 	return &formRewrite{edits: []sourceEdit{{nodeStart(file, fn), fn.End(), text}}, description: "an effect block around the catch head"}
 }
 
+// catchUnrunHeadBoundaryRewrite keeps the recovery boundary of a head whose
+// value is never or any, which passes the operand test, so nothing reports
+// that the head's own failures now escape (EK9204 says the catch has no
+// expected errors): (parse((try read).body)) catch h becomes
+// (effect { return parse((try read).body) }) catch h. A head that cannot fail
+// keeps its form; a direct try head is triedLeftRewrite's.
+func catchUnrunHeadBoundaryRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
+	if catchExpressionOf(call) == nil || !inEffectCode(call) || !inlineCatchLeft(call.Arguments()[0]) {
+		return nil
+	}
+	fn := call.Arguments()[0]
+	value := inlineCatchOperandType(c, call)
+	if value == nil || value.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsNever) == 0 {
+		return nil
+	}
+	head := fn.Body()
+	for ast.IsParenthesizedExpression(head) && head.Flags&ast.NodeFlagsVibeLangTry == 0 {
+		head = head.Expression()
+	}
+	if head.Flags&ast.NodeFlagsVibeLangTry != 0 || isTryCall(head) {
+		return nil
+	}
+	if len(analyzerFor(c).flowOf(fn.Body()).errors) == 0 || catchHeadBoundaryChangesOwner(c, file, fn.Body()) {
+		return nil
+	}
+	text := "(effect { return " + nodeText(file, fn) + " })"
+	return &formRewrite{edits: []sourceEdit{{nodeStart(file, fn), fn.End(), text}}, description: "an effect block around the catch head"}
+}
+
 func catchHeadBoundaryActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 	if fix.Program == nil || fix.SourceFile == nil {
 		return nil, nil

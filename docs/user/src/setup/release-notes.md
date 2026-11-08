@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `return` in a `do` expression in a parameter default of a plain or `async` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run, keeping the parameter order, the function's `length` and its declaration output; generators, `effect` functions and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.
 
+- A `catch` whose head was a parenthesized `try` of a block or pipeline that only fails, such as `(try effect { … return throw new Pending() }) catch h`, or whose head's value was `any`, stopped recovering the head's failures after head evaluation moved before the catch, and `vibelang --fix` left it unchanged with only an `EK9204` warning. `--fix` now removes that `try`, or wraps another such head in an `effect` block, so the handler receives those failures again; a head whose value is an Effect keeps its `try`.
+
 - A migration could accept a setup compile with no recorded exit by borrowing the earlier compiler's result. Missing or invalid setup exits now remain unverified and block admission.
 - The migration's API identity check reported an unchanged generic export that uses `infer`, such as `<C>(c: C) => C extends (infer I)[] ? I : never`, as changed when another declaration in its file changed only from `ReadonlyArray<string>` to `readonly string[]`. Those spellings name one type, so the export is now identical; a real element or `readonly` change still differs.
 - Tuple-spread arguments hid form advisories on directly run Effect calls. They now report the advisory and keep argument iteration and evaluation unchanged without an automatic rewrite.

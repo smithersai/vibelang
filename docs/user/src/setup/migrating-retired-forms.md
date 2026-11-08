@@ -44,6 +44,9 @@ their binding behavior and public parameter labels.
 can recover failures from the earlier handler's fallback. Capturing the program
 before its recovery block preserves construction timing. If a grouped `try`
 contains another `try`, the repair keeps the whole operand inside recovery.
+A grouped `try` of an operand that is not a call, such as `(try effect { … })`
+or `(try (program |> Effect.retry(%, options)))`, gets the same repair when
+the head can only fail: the catch runs the operand again, as it did before.
 
 ## Synchronous throws
 

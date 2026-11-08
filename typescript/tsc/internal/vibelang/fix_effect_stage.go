@@ -251,7 +251,12 @@ func triedCatchRewrite(c *checker.Checker, file *ast.SourceFile, site *ast.Node)
 }
 
 // triedLeftRewrite plans the removal of the try before the left side of a
-// catch, which runs that side, or nil.
+// catch, which runs that side, or nil. A head runs before its catch is
+// installed (VIP-5), so the try's own failures escape the catch; removing it
+// keeps the recovery an older head had. That holds only while the head's
+// value is not an Effect the catch runs (chapter 2's result test): a head
+// that may give one already catches what it says, and without its try the
+// catch would recover the run instead and return the unrun Effect.
 func triedLeftRewrite(c *checker.Checker, file *ast.SourceFile, catch *ast.Node) *formRewrite {
 	left := ast.SkipParentheses(catch.Arguments()[0])
 	if !ast.IsArrowFunction(left) {
@@ -261,8 +266,16 @@ func triedLeftRewrite(c *checker.Checker, file *ast.SourceFile, catch *ast.Node)
 	for ast.IsParenthesizedExpression(tried) && tried.Flags&ast.NodeFlagsVibeLangTry == 0 {
 		tried = tried.Expression()
 	}
-	if tried.Flags&ast.NodeFlagsVibeLangTry == 0 {
+	// try of an operand that is not a call parses as $try(operand).
+	runsOperand := isTryCall(tried)
+	if tried.Flags&ast.NodeFlagsVibeLangTry == 0 && !runsOperand {
 		return nil
+	}
+	if mayBeEffectResult(c, inlineCatchOperandType(c, catch)) {
+		return nil
+	}
+	if len(analyzerFor(c).flowOf(left.Body()).errors) == 0 {
+		return nil // nothing in the head can fail, so no recovery moves
 	}
 	// A nested execution in the operand must be inside the recovery too.
 	// Removing just the outer try would evaluate that execution before the
@@ -277,7 +290,11 @@ func triedLeftRewrite(c *checker.Checker, file *ast.SourceFile, catch *ast.Node)
 		}
 		return node.ForEachChild(nestedExecution)
 	}
-	if tried.ForEachChild(nestedExecution) {
+	nested := tried.ForEachChild(nestedExecution)
+	if runsOperand {
+		nested = nestedExecution(tryOperand(tried))
+	}
+	if nested {
 		if catchHeadBoundaryChangesOwner(c, file, tried) {
 			return nil
 		}
@@ -496,6 +513,7 @@ func effectStageFixes(ctx context.Context, program *compiler.Program, file *ast.
 			propose(EK4835.Code, node, triedCatchRewrite(c, file, node))
 		case catchExpressionOf(node) != nil:
 			propose(EK4835.Code, node, triedLeftRewrite(c, file, node))
+			propose(EK9204.Code, node, catchUnrunHeadBoundaryRewrite(c, file, node))
 		case ast.IsCallExpression(node):
 			propose(EK4834.Code, node, thunkRewrite(c, file, node))
 		case ast.IsPropertyAccessExpression(node):
