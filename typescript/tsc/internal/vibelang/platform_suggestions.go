@@ -28,7 +28,7 @@ func suggestsNoPlatformGlobal(c *checker.Checker, location *ast.Node, candidate 
 	if _, ok := platformGlobals[name]; !ok {
 		return true
 	}
-	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || inHatch(location) {
+	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || inHatch(location) || ast.IsPartOfTypeQuery(location) {
 		return true
 	}
 	return !isPlatformGlobalBinding(c, candidate)
