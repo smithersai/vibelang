@@ -515,6 +515,11 @@ typescript/vibelang/cases/callback-contracts/main.vibe:46:4 lambda effectFn keyw
 typescript/vibelang/cases/callback-parameter-loop/main.vibe:13:31 lambda effectFn annotation
 typescript/vibelang/cases/callback-parameter-plain-type/main.vibe:17:32 lambda plain fallback
 typescript/vibelang/cases/callback-parameter-plain-type/main.vibe:17:65 lambda plain fallback
+typescript/vibelang/cases/callback-union-throws-contract/main.vibe:10:20 lambda choice fallback
+typescript/vibelang/cases/callback-union-throws-contract/main.vibe:13:32 lambda choice fallback
+typescript/vibelang/cases/callback-union-throws-contract/main.vibe:16:23 lambda choice fallback
+typescript/vibelang/cases/callback-union-throws-contract/main.vibe:4:21 lambda choice fallback
+typescript/vibelang/cases/callback-union-throws-contract/main.vibe:7:23 lambda choice fallback
 typescript/vibelang/cases/callbacks-pausing.fail/main.vibe:14:25 lambda plain table
 typescript/vibelang/cases/callbacks-pausing.fail/main.vibe:15:15 lambda plain table
 typescript/vibelang/cases/callbacks-result-unions/main.vibe:15:69 lambda effectFn keyword

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A callback with a written throw contract could still reject a throwing call when its parameter also accepted `undefined` or a non-function object. These callbacks now retain their written contract, including in tuple-rest parameters.
+
 - An unrelated object named `Effect` could hide a throwing call inside its `try` or `tryPromise` callback. Such callbacks now keep their declared throw contract and report `EK0401` when that contract admits no throws.
 
 - `vibelang --fix` could refuse a throwing call nested inside a caught Effect call, leaving `EK0403`. It now wraps the nested call while preserving the outer call and its `catch` handler.

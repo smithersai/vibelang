@@ -252,18 +252,20 @@ func admitsCallbackPosition(c *checker.Checker, fn, call *ast.Node, index int, r
 	// The argument's effective parameter type: a fixed parameter's, a rest
 	// array's element, or the tuple-rest member at the argument's position
 	// (PREVIEW-10). A position no parameter covers is any, with no signature.
-	for _, target := range c.GetSignaturesOfType(c.GetTypeAtPosition(signature, index), checker.SignatureKindCall) {
-		decl := target.Declaration()
-		if decl == nil {
-			continue
-		}
-		for _, host := range jsdocHosts(decl) {
-			if !hasThrowsTag(host) {
+	for _, member := range unionMembers(c.GetTypeAtPosition(signature, index)) {
+		for _, target := range c.GetSignaturesOfType(member, checker.SignatureKindCall) {
+			decl := target.Declaration()
+			if decl == nil {
 				continue
 			}
-			failures, _, unknown := throwsOf(c, host)
-			if unknown || len(failures) != 0 {
-				return true
+			for _, host := range jsdocHosts(decl) {
+				if !hasThrowsTag(host) {
+					continue
+				}
+				failures, _, unknown := throwsOf(c, host)
+				if unknown || len(failures) != 0 {
+					return true
+				}
 			}
 		}
 	}

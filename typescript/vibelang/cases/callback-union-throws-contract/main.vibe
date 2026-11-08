@@ -1,0 +1,26 @@
+// expect-result: [2,-1,2,-1,2,-1,2,-1,2,-1]
+import { objectCall, optionalCall, tupleCall, callableCall, optionalParameterCall, read } from "./foreign.js"
+export function objectResult(value: string): number {
+  return objectCall(() => read(value))
+}
+export function optionalResult(value: string): number {
+  return optionalCall(function () { return read(value) })
+}
+export function tupleResult(value: string): number {
+  return tupleCall(() => read(value))
+}
+export function optionalParameterResult(value: string): number {
+  return optionalParameterCall(() => read(value))
+}
+export function callableResult(value: string): number {
+  return callableCall(() => read(value))
+}
+export effect function main() {
+  return [
+    objectResult("2"), objectResult(""),
+    optionalResult("2"), optionalResult(""),
+    tupleResult("2"), tupleResult(""),
+    callableResult("2"), callableResult(""),
+    optionalParameterResult("2"), optionalParameterResult("")
+  ]
+}
