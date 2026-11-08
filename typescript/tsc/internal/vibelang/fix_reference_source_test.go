@@ -3,6 +3,7 @@ package vibelang
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -43,6 +44,10 @@ export const resolve = Effect.fn(function* () {
 	return dir, &fixSys{fs: bundled.WrapFS(osvfs.FS()), cwd: dir}
 }
 
+// anyBridge matches an Effect.try or Effect.tryPromise whose callback calls a
+// member of the service the unbuilt reference declares.
+var anyBridge = regexp.MustCompile(`Effect\.try(?:Promise)?\(\{\s*try:\s*(?:async\s*)?\(\)\s*=>[^}]*\bshell\.`)
+
 // --fix builds no referenced project, so a reference's declaration output may
 // not exist yet (TS6305), and an import resolved to it reads as any. The fix
 // reads the reference's sources, as the editor does: the rewrite of a call into
@@ -60,7 +65,9 @@ func TestFixReadsUnbuiltReferenceSources(t *testing.T) {
 					t.Errorf("missing %q:\n%s", want, got)
 				}
 			}
-			if strings.Contains(got, "Effect.try") {
+			// The any boundary bridges the call into core; a defect bridge
+			// around the handler's own new Error(...) is not about the reference.
+			if anyBridge.MatchString(got) {
 				t.Errorf("a call into the unbuilt reference was bridged as any:\n%s", got)
 			}
 			if _, err := os.Stat(filepath.Join(dir, "core", "out")); err == nil {
