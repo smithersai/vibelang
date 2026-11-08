@@ -208,6 +208,22 @@ function sourceImportPath(importer, specifier) {
       (entry.importer === source || realpathSync(entry.importer) === original))) return specifier
   return decodedImport(specifier)
 }
+// The source a TypeScript importer names by the missing JavaScript name of a
+// module that became .vibe (./x.js after x.ts became x.vibe), as the .js
+// resolver below picks it. Such an importer is rewritten in onLoad rather
+// than redirected in onResolve: Bun's runtime transpiler cache keys a module
+// by its own text and stores the path a plugin resolved its import to, so a
+// redirected import outlives the module it named (Bun 1.4.2: after x.vibe
+// returns to x.ts, a later process still imports the deleted x.vibe). A
+// rewritten importer's text names its target, so its cache entry does too.
+function migratedJsImport(importer, specifier) {
+  if (!relativeJs.test(specifier) || /\.vibex?$/.test(importer) || inDependency(importer)) return undefined
+  const target = resolve(dirname(importer), specifier)
+  if (existsSync(target) || isModuleOutput(target)) return undefined
+  const stem = target.replace(/\.jsx?$/, "")
+  if ([".ts", ".tsx"].some((extension) => existsSync(stem + extension))) return undefined
+  return (specifier.endsWith(".jsx") ? [".vibex", ".vibe"] : [".vibe", ".vibex"]).map((extension) => stem + extension).find(existsSync)
+}
 const escapeRegExp = (value) => value.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&")
 // What a module declaration's output imports, from its .vibe file's directory.
 // A relative .js name is the emitted name of a .vibe or .ts file beside it.
@@ -236,7 +252,7 @@ function resolveImports(path, contents, loader, inNamespace = false) {
   const replacements = new Map()
   const entries = esImports(contents, loader)
   function resolveSpecifier(specifier) {
-    let source = registeredImport(dirname(path), specifier) ?? vibeImport(dirname(path), specifier)
+    let source = registeredImport(dirname(path), specifier) ?? vibeImport(dirname(path), specifier) ?? migratedJsImport(path, specifier)
     // Bun 1.3 cannot resolve the missing JavaScript name of a TypeScript
     // sibling from a pretranspiled module. Pick the same existing-file and
     // source-sibling order as the relative-name resolver before adding @bun.
@@ -407,7 +423,8 @@ Bun.plugin({
         imports = [...importPaths(new Bun.Transpiler({ loader }).scanImports(code)), ...rewritten]
       } catch { return }
       const needsRewrite = rewritten.some((entry) =>
-        registeredImport(dirname(file), entry.path) !== undefined || vibeImport(dirname(file), entry.path) !== undefined)
+        registeredImport(dirname(file), entry.path) !== undefined || vibeImport(dirname(file), entry.path) !== undefined ||
+        migratedJsImport(file, entry.path) !== undefined)
       if (needsRewrite && !emittedSource && !commonJS(file, code)) {
         build.onLoad({ filter: exactly(file, physical) },
           ({ path }) => resolveImports(path, readFileSync(path, "utf8"), loaderOf(path)))

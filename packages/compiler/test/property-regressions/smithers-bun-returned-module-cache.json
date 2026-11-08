@@ -1,0 +1,19 @@
+{
+  "key": "smithers:bun-transpiler-cache:returned-module",
+  "repo": "smithers",
+  "spec": "docs/design/src/007-tooling.md",
+  "quote": "NodeNext `./user.js` can resolve to `user.vibe`.",
+  "input": {
+    "specifier": "./b.js",
+    "dynamic": false,
+    "runner": "test",
+    "stages": ["vibe", "ts"],
+    "value": 1
+  },
+  "pattern": {
+    "importer": "a bun test file over 50 KB imports { who } from './b.js'",
+    "module": "b.vibe returns to b.ts between two runs",
+    "cache": "both runs share BUN_RUNTIME_TRANSPILER_CACHE_PATH",
+    "before": "the second run fails: Cannot find module '<dir>/b.vibe'"
+  }
+}

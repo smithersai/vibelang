@@ -62,6 +62,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Under `bun --preload vibelang/bun`, a `.vibe` module ignored `--define` and a `bunfig.toml` `[define]` table: `declare const BUILD_VERSION: string` read as undefined where the same `.ts` module read the defined value. A `.vibe` module that names a defined value now reads it as its TypeScript twin does.
 
 - Under `vibelang/bun`, importing a package whose `default` export names a `.vibelang/js` file with no single source, because `x.ts` and `x.vibe` both exist or its header names a deleted `.vibe`, failed with Bun's `TypeError: onLoad() expects an object returned`. The emitted module now loads in place, as documented.
+- Under `vibelang/bun`, a TypeScript file that imports a module by its `.js` name, such as `./b.js` for `b.vibe`, could fail with `Cannot find module '.../b.vibe'` after `b.vibe` went back to `b.ts`, because Bun reused that import from its transpiler cache. The import now loads the module that exists on each run, with the cache in use.
 
 - `effect` on a getter, setter or constructor (`EK0104`), or `effect` with `async` (`EK0105`), hid the file's other errors, such as type errors. The compiler now reports them too, as TypeScript does beside its own modifier errors.
 
