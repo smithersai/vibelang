@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("jsx-text:t3code-detached-head:0")

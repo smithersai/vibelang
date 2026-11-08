@@ -157,4 +157,4 @@ The compiler also ships `vibelang/prettier` and `vibelang-format`. See [Develope
 
 The Prettier plugin formats the supplied buffer even when its path matches an ignore rule, and reports syntax errors in unsaved input. File-scanning commands select files using their ignore rules.
 
-JSX lives in `.vibex` files. The shared formatter sends their encoded source to the host's TSX formatter, preserving JSX text, entities and comments in containers. Use `x as T` for an assertion and `<T,>(x: T) => x` for an unconstrained generic arrow, as in `.tsx`. The formatter keeps the comma that distinguishes the arrow from JSX.
+JSX lives in `.vibex` files. The shared formatter sends their encoded source to the host's TSX formatter, preserving JSX text, entities and comments in containers. JSX text keeps its written form, including a `{" "}` space, when the host formatter writes that space as text or wraps a line with one. Use `x as T` for an assertion and `<T,>(x: T) => x` for an unconstrained generic arrow, as in `.tsx`. The formatter keeps the comma that distinguishes the arrow from JSX.

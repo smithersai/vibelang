@@ -11,11 +11,26 @@ import (
 
 // JSX text is data, not layout (VIP-39). Leave it verbatim in the TSX
 // projection, then restore its whitespace if the host reflows it. In
-// particular, dprint collapses repeated spaces that JSX would render.
-// Each element's non-text children delimit stable text slots.
+// particular, dprint collapses repeated spaces that JSX would render, and
+// folds a {" "} child into a space when it joins lines. Each element's
+// children other than text and such spaces delimit stable text slots.
 type jsxTextSlot struct {
 	span core.TextRange
 	text string
+	// words is the slot's text without whitespace, so a reflow and a space
+	// written either way compare equal.
+	words string
+}
+
+// jsxSpace reports whether child is a whitespace string such as {" "},
+// which a host formatter writes or removes where it wraps JSX text.
+func jsxSpace(child *ast.Node) bool {
+	if child.Kind != ast.KindJsxExpression {
+		return false
+	}
+	container := child.AsJsxExpression()
+	return container.DotDotDotToken == nil && container.Expression != nil &&
+		container.Expression.Kind == ast.KindStringLiteral && strings.TrimSpace(container.Expression.Text()) == ""
 }
 
 type jsxTextLayout struct {
@@ -41,15 +56,21 @@ func jsxTextLayouts(file *ast.SourceFile, text string) []jsxTextLayout {
 			return node.ForEachChild(visit)
 		}
 		layout := jsxTextLayout{kind: node.Kind}
+		var words strings.Builder
 		for _, child := range nodes {
 			if child.Kind == ast.KindJsxText {
+				words.WriteString(strings.Join(strings.Fields(text[child.Pos():child.End()]), ""))
 				continue
 			}
-			layout.slots = append(layout.slots, jsxTextSlot{core.NewTextRange(start, child.Pos()), text[start:child.Pos()]})
+			if jsxSpace(child) {
+				continue
+			}
+			layout.slots = append(layout.slots, jsxTextSlot{core.NewTextRange(start, child.Pos()), text[start:child.Pos()], words.String()})
+			words.Reset()
 			layout.children = append(layout.children, child.Kind)
 			start = child.End()
 		}
-		layout.slots = append(layout.slots, jsxTextSlot{core.NewTextRange(start, end), text[start:end]})
+		layout.slots = append(layout.slots, jsxTextSlot{core.NewTextRange(start, end), text[start:end], words.String()})
 		layouts = append(layouts, layout)
 		return node.ForEachChild(visit)
 	}
@@ -75,7 +96,7 @@ func (d *decoder) restoreJSXText() error {
 			if slot.text == original {
 				continue
 			}
-			if strings.Join(strings.Fields(slot.text), "") != strings.Join(strings.Fields(original), "") {
+			if slot.words != before.slots[j].words {
 				return fmt.Errorf("vibelang format: the TypeScript formatter changed JSX text")
 			}
 			d.edits = append(d.edits, edit{pos: slot.span.Pos(), end: slot.span.End(), text: original, opaque: true})

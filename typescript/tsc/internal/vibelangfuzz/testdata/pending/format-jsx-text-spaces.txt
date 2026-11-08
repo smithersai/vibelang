@@ -1,0 +1,3 @@
+# Formatting JSX text in .vibex files (t3code GitActionsControl).
+# <target> <key> <owner> <what is missing>
+FuzzFormatJSXTextSpaces refused:language-server:one-line compiler Chapter 7: the language server's TSX formatter writes <p>Hello {x} and <b>you</b>.</p> in a form that does not parse (Identifier expected), so formatting refuses a parsable .vibex file
