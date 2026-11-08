@@ -45,6 +45,11 @@ import (
 // stages after it, type arguments, a tag that is not a string literal, and
 // anything outside a function body.
 
+// Catch conversion cannot retain a written generic instantiation.
+var catchTypeArgumentsForm = EK4835.With("{0} has an explicit type-argument contract; keep the native call.")
+
+const catchTypeArgumentsNote = "No quick fix: keep the native call to preserve its explicit type arguments and written contract."
+
 // catchHandlerMessage is EK4835's text for Effect.catch, whose handler the
 // catch expression keeps.
 var catchHandlerMessage = EK4835.With("{0} takes a handler; write a catch expression: x catch (e) => handler.")
@@ -89,7 +94,7 @@ func catchCombinatorOf(c *checker.Checker, call *ast.Node) string {
 // reports only the direct operand of bare try (detail 254); catchStageRewrite
 // also reads a pipeline's last stage, which --fix rewrites and nothing reports.
 func catchCombinatorName(c *checker.Checker, call *ast.Node) string {
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) {
+	if !ast.IsCallExpression(call) || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) {
 		return ""
 	}
 	operator := call
@@ -102,10 +107,14 @@ func catchCombinatorName(c *checker.Checker, call *ast.Node) string {
 			return ""
 		}
 	}
-	if !isEffectFunction(c, operator.Expression(), "Effect", "catchTag", "catchTags", "catch") {
+	if !isEffectFunction(c, operator.Expression(), "Effect", "catchTag", "catchTags", "catch", "catch_") {
 		return ""
 	}
 	_, name := effectMember(c, operator.Expression())
+	// The catch export aliases its reserved-word-safe declaration.
+	if name == "catch_" {
+		name = "catch"
+	}
 	switch {
 	case name == "catchTag" && count == 3, name == "catchTags" && count == 2, name == "catch" && count == 2:
 		return name
@@ -123,7 +132,7 @@ func findCatchCombinators(c *checker.Checker, file *ast.SourceFile, report func(
 			if rewrite == nil {
 				rewrite = &formRewrite{why: directTrySafetyNote}
 			}
-			if name == "catch" && !rewrite.fixable() {
+			if name == "catch" && !rewrite.fixable() && rewrite.message == nil {
 				rewrite.message = catchHandlerMessage
 			}
 			report(node, rewrite, "Effect."+name)
@@ -179,6 +188,9 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	if name == "" {
 		return nil
 	}
+	if call.TypeArguments() != nil {
+		return &formRewrite{message: catchTypeArgumentsForm, why: catchTypeArgumentsNote}
+	}
 	if directTryFormSite(call) != call {
 		return &formRewrite{why: directTryWrapperNote}
 	}
@@ -189,7 +201,7 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 // a catch combinator, under the try that runs it, or nil.
 func catchStageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *formRewrite {
 	call := pipe.AsBinaryExpression().Right
-	if !ast.IsCallExpression(call) || catchProgramPipe(call) != pipe {
+	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || catchProgramPipe(call) != pipe {
 		return nil
 	}
 	name := catchCombinatorName(c, call)
