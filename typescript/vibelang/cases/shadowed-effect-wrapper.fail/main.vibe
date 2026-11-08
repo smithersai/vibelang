@@ -1,0 +1,14 @@
+// expect: EK0401
+import { Fake as Effect, risky } from "./foreign.js"
+export function direct(value: string): number {
+  return Effect.try(() => risky(value))
+}
+export function promised(value: string): Promise<number> {
+  return Effect.tryPromise(() => Promise.resolve(risky(value)))
+}
+export function parameter(Effect: {try(callback: () => number): number}, value: string): number {
+  return Effect.try(function () { return risky(value) })
+}
+export function parsed(value: string): number {
+  return Effect.try(() => JSON.parse(value) as number)
+}

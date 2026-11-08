@@ -8314,6 +8314,15 @@ typescript/vibelang/cases/service-value-lambdas/main.vibe:23:21 lambda effectFn 
 typescript/vibelang/cases/service-value-lambdas/main.vibe:25:21 lambda effectFn keyword
 typescript/vibelang/cases/service-value-lambdas/main.vibe:4:17 lambda plain table
 typescript/vibelang/cases/service-value-lambdas/main.vibe:4:23 lambda effectFn keyword
+typescript/vibelang/cases/shadowed-effect-wrapper-fixed-output/main.vibe:10:21 lambda choice fallback
+typescript/vibelang/cases/shadowed-effect-wrapper-fixed-output/main.vibe:13:21 lambda choice fallback
+typescript/vibelang/cases/shadowed-effect-wrapper-fixed-output/main.vibe:13:41 lambda choice fallback
+typescript/vibelang/cases/shadowed-effect-wrapper-fixed-output/main.vibe:4:21 lambda choice fallback
+typescript/vibelang/cases/shadowed-effect-wrapper-fixed-output/main.vibe:7:28 lambda choice fallback
+typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:10:21 lambda choice fallback
+typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:13:21 lambda choice fallback
+typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:4:21 lambda choice fallback
+typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:7:28 lambda choice fallback
 typescript/vibelang/cases/sidecar-literal-directives/main.vibe:3:26 lambda plain annotation
 typescript/vibelang/cases/spec-900a-catch-concise-body/main.vibe:6:18 lambda effectFn table
 typescript/vibelang/cases/spec-900a-catch-concise-body/main.vibe:6:45 lambda effectFn keyword

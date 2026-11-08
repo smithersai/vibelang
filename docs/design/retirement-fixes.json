@@ -259,6 +259,10 @@
       {
         "input": "typescript/vibelang/cases/nested-wrapper-contract.fail",
         "output": "typescript/vibelang/cases/nested-wrapper-contract-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/shadowed-effect-wrapper.fail",
+        "output": "typescript/vibelang/cases/shadowed-effect-wrapper-fixed-output"
       }
     ]
   },

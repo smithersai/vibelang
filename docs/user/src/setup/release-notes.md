@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- An unrelated object named `Effect` could hide a throwing call inside its `try` or `tryPromise` callback. Such callbacks now keep their declared throw contract and report `EK0401` when that contract admits no throws.
+
 - A migration could mistake a returned record of Effect callbacks for a returned Effect and reject equivalent branches. Such callback records now keep their existing preservation rules.
 
 - A migrated function that always returned an Effect could gain a plain-value result when extra branches or local assignments hid the change. Verification now reports that loss even when the number of Effect-valued results stays the same.

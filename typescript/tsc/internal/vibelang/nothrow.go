@@ -148,7 +148,39 @@ func (a *analyzer) throwsBelongToCall(home, site *ast.Node) bool {
 	if ast.GetFunctionFlags(home)&ast.FunctionFlagsGenerator != 0 && !inParameterListOf(site, home) {
 		return false
 	}
-	return ast.IsFunctionExpressionOrArrowFunction(home) && (isWrappedCode(home) || isRetiredHatchFunction(a.checker, home) || admitsThrows(a.checker, home))
+	return ast.IsFunctionExpressionOrArrowFunction(home) && (isAdmittedWrappedCode(a.checker, home) || isRetiredHatchFunction(a.checker, home) || admitsThrows(a.checker, home))
+}
+
+// isAdmittedWrappedCode checks a wrapper's selected signature or written
+// callback contract, including callable alternatives and options properties.
+// The name Effect alone supplies no contract.
+func isAdmittedWrappedCode(c *checker.Checker, fn *ast.Node) bool {
+	if !isWrappedCode(fn) {
+		return false
+	}
+	if isBoundaryCallback(c, fn) {
+		return true
+	}
+	contextual := c.GetContextualType(fn, checker.ContextFlagsNone)
+	if contextual == nil {
+		return false
+	}
+	for _, member := range unionMembers(contextual) {
+		for _, signature := range c.GetSignaturesOfType(member, checker.SignatureKindCall) {
+			if decl := signature.Declaration(); decl != nil {
+				for _, host := range jsdocHosts(decl) {
+					if !hasThrowsTag(host) {
+						continue
+					}
+					failures, _, unknown := throwsOf(c, host)
+					if unknown || len(failures) != 0 {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
 }
 
 // isRetiredHatchFunction reports whether fn is the function of a retired
