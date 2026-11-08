@@ -13,6 +13,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The matching guide described generated errors as matching only by tag. It now also explains the instance check that recognizes subclasses with different tags.
+
+- The migration's API identity check could not finish comparing a package whose `.ts` source exports a class with a private, protected or `#private` member, even when nothing changed: its own rewriting of the class reported `TS2564` and `TS1361`. It now compares such a class, and still reports a member whose visibility changes.
+
+- Under `bun --preload vibelang/bun`, a `.vibe` module ignored `--define` and a `bunfig.toml` `[define]` table: `declare const BUILD_VERSION: string` read as undefined where the same `.ts` module read the defined value. A `.vibe` module that names a defined value now reads it as its TypeScript twin does.
+
 - Under `vibelang/bun`, importing a package whose `default` export names a `.vibelang/js` file with no single source, because `x.ts` and `x.vibe` both exist or its header names a deleted `.vibe`, failed with Bun's `TypeError: onLoad() expects an object returned`. The emitted module now loads in place, as documented.
 
 - The browser hardware-count diagnostic named a process export that does not exist. It now identifies the process service’s `availableParallelism` member and keeps the TypeScript adapter advice for browser counts.
@@ -22,6 +28,10 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A CommonJS function annotated at an `exports` or `module.exports` assignment could lose its throws contract, rejecting non-throwing calls or missing a throwing call. These assignments now retain their written `@throws` contract.
 
 - An `effect` function whose written return type was a union of different Effect types, such as `effect function f(): Effect.Effect<number> | Effect.Effect<string, Refused>`, compiled and declared that union, although an `effect` function returns one Effect, as an `async` function returns one `Promise` (TypeScript reports `TS1064` for a union of Promises). It now reports `EK0106`, and its quick fix and `vibelang --fix` write the one Effect of the joined channels, here `(string | number)!Refused`.
+- Converting an `Effect.gen` whose TypeScript call read a just-checked property through a method, as `foreignId(request.id.trim())` after `if (!request.id) return`, failed with `TS18049` and kept the generator. The conversion now moves `request.id.trim()` to a `const` before the call, as the direct `EK0403` repair already did; a call that may throw still stays inside the bridge.
+- The mixed-platform import example omitted the error for a retired platform import. It now lists both errors at that import.
+- Postfix increments, decrements, non-null assertions and generic instantiations on a variable named `provide` could be rejected before a division expression. These expressions now keep TypeScript’s values and updates.
+- A standalone `schema` alias for a library type such as `Date` could be rejected unless another declaration loaded its codec. These aliases now load their required Schema modules.
 
 - A `schema` field typed `ReadonlyMap<K, V>` with a `Date`, collection, tuple or struct key reported `TS2345` against `Schema.Record`'s key constraint. The checker now checks the selected `Schema.ReadonlyMap` call, so any key schema is admitted.
 
