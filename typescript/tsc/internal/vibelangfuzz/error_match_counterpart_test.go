@@ -8,7 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const errorMatchCounterpartQuote = "A generated error matcher tests the tag of the subject, including a foreign plain object with that tag:"
+const errorMatchCounterpartQuote = "A generated error matcher tests the tag of the subject, including a foreign plain object with that tag, then whether the subject is an instance of its class:"
 
 func TestErrorMatchCounterpartQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("004-match.md"), errorMatchCounterpartQuote) {

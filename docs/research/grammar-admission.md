@@ -840,3 +840,9 @@ with a `let` initializer receives `EK0707`. The witness remains pending under
 `admission:pattern-rest-ellipsis`. The classifier examines recorded
 `is` patterns and `match` arm heads; ordinary spread expressions,
 comments, strings and regular-expression literals do not acquire that key.
+
+The generated-error migration counterpart continues to test the guarantee
+that a foreign plain object with the recognized tag is covered. Its quote
+includes the chapter's additional `instanceof` fallback; the existing
+shadowed-helper and mismatching-tag fuzz controls keep the tag guarantee
+separate from an ordinary custom matcher.
