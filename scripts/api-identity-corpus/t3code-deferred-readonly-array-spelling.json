@@ -1,0 +1,7 @@
+{
+  "rule": "A standard-library array respelled between ReadonlyArray<T> and readonly T[] (or Array<T> and T[]) names the same type, so an unchanged deferred infer export beside it stays identical.",
+  "repository": "t3code",
+  "pattern": "a migrated declaration prints a sibling alias's ReadonlyArray<string> as readonly string[] while an exported generic function with infer is unchanged",
+  "before": "export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never;\nexport type Used = ReadonlyArray<string>;\n",
+  "after": "export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never;\nexport type Used = readonly string[];\n"
+}

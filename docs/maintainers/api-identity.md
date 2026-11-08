@@ -76,7 +76,7 @@ Adding, removing or renaming a private member still changes nominal
 identity. Their member types, visibility and enum values remain part of the
 generated type checks. Identical deferred
 `infer` and mapped types share a virtual module only after proving their complete
-resolved dependency closures equivalent, including cycles and `import = require(...)` edges. The proof ignores declaration import/member order and equivalent type-import spelling; overload order and distinct external nominal origins remain significant. Only the module argument of an `import()` type is a dependency edge; literal
+resolved dependency closures equivalent, including cycles and `import = require(...)` edges. The proof ignores declaration import/member order, equivalent type-import spelling and the standard library's array spellings (`ReadonlyArray<T>` is `readonly T[]` and `Array<T>` is `T[]`, unless a local declaration shadows the name); overload order and distinct external nominal origins remain significant. Only the module argument of an `import()` type is a dependency edge; literal
 generic arguments keep their type meaning, even when they resemble module paths.
 This preserves identity for copied generic functions such as `makeEventGroup`.
 Imports of ambient modules such as `node:stream` follow the declaration sources

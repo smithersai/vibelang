@@ -533,8 +533,25 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
       let index = 0
       return factory.createNodeArray(members.map(member => eligible(member) ? sorted[index++] : member))
     }
+    // tsc reads the standard library's ReadonlyArray<T> as readonly T[] and
+    // Array<T> as T[]. Print those references as the array syntax, so a
+    // respelling keeps the proof; a local declaration of either name shadows
+    // the library and keeps its own spelling.
+    const libraryArray = node => {
+      if (!ts.isTypeReferenceNode(node) || !ts.isIdentifier(node.typeName) || node.typeArguments?.length !== 1) return undefined
+      const name = node.typeName.text
+      if (name !== "Array" && name !== "ReadonlyArray") return undefined
+      const original = ts.getOriginalNode(node.typeName)
+      const declarations = original.parent ? checker.getSymbolAtLocation(original)?.declarations : undefined
+      return declarations?.some(declaration => program.isSourceFileDefaultLibrary(declaration.getSourceFile())) ? name : undefined
+    }
     const transform = context => {
       const visit = node => {
+        const array = libraryArray(node)
+        if (array) {
+          const list = factory.createArrayTypeNode(ts.visitNode(node.typeArguments[0], visit))
+          return array === "ReadonlyArray" ? factory.createTypeOperatorNode(ts.SyntaxKind.ReadonlyKeyword, list) : list
+        }
         if (ts.isTypeLiteralNode(node)) node = factory.updateTypeLiteralNode(node, orderedMembers(node.members))
         else if (ts.isInterfaceDeclaration(node)) node = factory.updateInterfaceDeclaration(node, node.modifiers, node.name, node.typeParameters, node.heritageClauses, orderedMembers(node.members))
         else if (ts.isClassDeclaration(node)) node = factory.updateClassDeclaration(node, node.modifiers, node.name, node.typeParameters, node.heritageClauses, orderedMembers(node.members))
