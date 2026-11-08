@@ -1513,6 +1513,8 @@ typescript/vibelang/cases/constrained-destinations.fail/main.vibe:13:22 lambda c
 typescript/vibelang/cases/constrained-destinations/main.vibe:12:21 lambda choice fallback
 typescript/vibelang/cases/constrained-destinations/main.vibe:17:21 lambda choice fallback
 typescript/vibelang/cases/constrained-destinations/main.vibe:23:26 lambda choice fallback
+typescript/vibelang/cases/constructor-own-signature-target/main.vibe:10:34 lambda dual fallback
+typescript/vibelang/cases/constructor-own-signature-target/main.vibe:4:18 lambda plain annotation
 typescript/vibelang/cases/contextual-effect-fields/main.vibe:11:37 byname program annotation
 typescript/vibelang/cases/contextual-effect-fields/main.vibe:11:49 lambda plain table
 typescript/vibelang/cases/contextual-effect-fields/main.vibe:16:31 byname program annotation

@@ -1,0 +1,13 @@
+import { Plain, Throwing, sample } from "./foreign.js"
+const self: typeof Plain = Plain
+const tagged: typeof Throwing = Throwing
+const identity = <T>(value: T): T => value
+const inferred = identity(Plain)
+const statics = Object.assign({}, { make: Plain })
+// rule-evidence: docs/design/src/003-failures.md#assignability | A destination typed by the source's own signature carries the source's thrown type, so it admits it
+// rule-evidence: docs/design/src/004-match.md#class-patterns | a construct signature selects `instanceof`
+export function probe(subject: unknown): readonly boolean[] {
+ return [subject is Plain, match (subject) { when Plain: true; default: false; }, self === Plain, tagged === Throwing, inferred === Plain, statics.make === Plain]
+}
+// expect-result: [true,true,true,true,true,true]
+export effect function main() { return probe(sample) }

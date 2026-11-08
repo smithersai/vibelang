@@ -95,7 +95,9 @@ func checkConstructorCallbackValue(c *checker.Checker, expr *ast.Node) {
 					if !c.IsTypeAssignableTo(sourceType, targetType) {
 						continue
 					}
-					if bound.admits(c, contracts[i]) {
+					// A destination instantiated from this constructor's own
+					// declaration carries that declaration's thrown contract.
+					if sameRootSignatureDeclaration(signatures[i], signature) || bound.admits(c, contracts[i]) {
 						matched = true
 						break
 					}
