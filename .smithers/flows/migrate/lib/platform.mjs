@@ -423,8 +423,11 @@ function splitDeclarationsPlatform(text, file, ts, { globals = [], returnsAvoid 
   // own name where it stood. Its explicit type retains unique-symbol identity
   // as well as the imported value type and local-const narrowing.
   // A name with a moved type too keeps both meanings through a plain import.
+  // A function or class value has nothing to narrow, and its typed binding in
+  // the .vibe module would be EK0402 (an unannotated TypeScript function may
+  // throw), so it comes back as a plain import, as the body split does.
   const movedTypeNames = new Set([...moved].filter((d) => typeOnly(d)).flatMap((d) => [...d.names]))
-  const movedConsts = new Set([...moved].filter((d) => !d.exported && ts.isVariableStatement(d.statement) && (d.statement.declarationList.flags & ts.NodeFlags.Const)).flatMap((d) => [...d.names]).filter((n) => !movedTypeNames.has(n)))
+  const movedConsts = new Set([...moved].filter((d) => !d.exported && narrowableConst(d.statement, ts)).flatMap((d) => [...d.names]).filter((n) => !movedTypeNames.has(n)))
   const taken = new Set([...byName.keys(), ...imports.flatMap((i) => bindingsOf(i, ts).map((b) => b.name)), namespace])
   const alias = new Map()
   for (const name of fromSibling) if (movedConsts.has(name)) { const a = uniqueName(name + "$platform", taken); taken.add(a); alias.set(name, a) }

@@ -78,7 +78,10 @@ test("a kept type that reads a moved value with no wrapper reads it from the sib
   const ambient = 'declare module "node:fs" { export function readFileSync(path: string, encoding: "utf8"): string }\n'
   const text = 'import { readFileSync } from "node:fs"\nconst read = (path: string) => readFileSync(path, "utf8")\nexport type Read = typeof read\nexport const size = 1\n'
   const split = assertSplitPreserves("src/Read.ts", text, ambient)
-  assert.match(split.module, /^import \{ read as read\$platform \} from "\.\/Read\.platform\.ts"$/m)
+  // A function value has nothing to narrow, and a typed local binding of the
+  // TypeScript function would be EK0402 in the .vibe module: a plain import.
+  assert.match(split.module, /^import \{ read \} from "\.\/Read\.platform\.ts"$/m)
+  assert.doesNotMatch(split.module, /typeof read\$platform/)
 })
 
 // Neighbourhood: a moved export as a function declaration or a const arrow,

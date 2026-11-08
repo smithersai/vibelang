@@ -21,6 +21,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The replacement hint for `crypto.hash()` returned bytes where callers expected hex text. It now uses `digestHex` for the default string output and explains how to retain byte output.
 
 - The hint for `navigator.hardwareConcurrency` selected a process service that browser layers cannot provide. It now points to a TypeScript adapter that preserves the browser value.
+- When the migration flow split platform code into a `.platform.ts` sibling, a moved private function such as `const applyCredentials = (request) => …` came back in the `.vibe` module as `const applyCredentials: typeof applyCredentials$platform = applyCredentials$platform`, which the compiler rejects with `EK0402`. A moved function or class now comes back as a plain import; a moved data value keeps its typed local binding, which preserves narrowing inside closures.
 
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 
