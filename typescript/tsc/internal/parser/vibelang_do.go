@@ -736,6 +736,9 @@ func (p *Parser) checkDoParameterVar(d *doExpression) bool {
 // target is outside boundary, await and yield.
 func (p *Parser) checkDoBoundary(d *doExpression, boundary *ast.Node, what string, inParameter bool) {
 	forEachDoStatement(d.block, func(n *ast.Node) {
+		if p.vibelangAsyncMatchJumps[n] {
+			return // The source async-match boundary already owns EK0706.
+		}
 		keyword := ""
 		switch n.Kind {
 		case ast.KindReturnStatement:

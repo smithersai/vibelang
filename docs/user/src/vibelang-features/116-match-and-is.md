@@ -451,7 +451,7 @@ function load() {
 }
 ```
 
-A thrown exception, including the no-match `TypeError`, rejects the Promise. A `return` belonging to the match, or a `break` or `continue` targeting a statement outside it, reports `EK0706`. Nested functions keep their own `return`; loops inside the match keep their own jumps. In effect code, run the Promise through a bridge such as `try Effect.promise(() => load())`.
+A thrown exception, including the no-match `TypeError`, rejects the Promise. A `return` belonging to the match, or a `break` or `continue` targeting a statement outside it, reports `EK0706`. Nested functions keep their own `return`; loops inside the match keep their own jumps. In effect code, run the Promise through a bridge such as `try Effect.promise(() => load())`. This includes class and member decorators, `extends` expressions, and computed member names evaluated inside the match. Returns in nested methods keep their own callable boundary.
 
 A `match` can end a `do` block: `do { match (0) { default: 2; } }` has the selected arm’s value, `2`.
 

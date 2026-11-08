@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Outward jumps in class definition expressions inside an `async match` could report `EK0204` and suggest moving the `do`. They now report `EK0706` once and explain the Promise boundary.
+
 - The migration's API identity check reported an unchanged exported constant whose type uses `infer`, such as `export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never`, as changed whenever another export in its file changed, for example a function moved behind `export { g } from "./helper.js"`. The constant's own type now decides, so it stays identical; a real change to that type still differs.
 
 - A `return` in a `do` expression in a parameter default of a plain or `async` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run, keeping the parameter order, the function's `length` and its declaration output; generators, `effect` functions and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.

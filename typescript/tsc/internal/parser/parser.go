@@ -124,6 +124,7 @@ type Parser struct {
 	vibelangTemps            []*ast.Node                    // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
 	vibelangSourceReturns    map[*ast.Node]bool             // source return statements or match blocks before do lowering
 	vibelangAsyncMatches     []*ast.Node                    // async match source boundaries
+	vibelangAsyncMatchJumps  map[*ast.Node]bool             // source jumps already diagnosed as EK0706
 	vibelangMatches          map[*ast.Node]*matchInfo       // match expressions as written, by their call or statement (vibelang_match.go)
 	vibelangMatchMemberArms  map[*ast.Node][]MatchMemberArm // normalized tagged-member coverage
 	vibelangMatchKeyTypes    map[*ast.Node]*ast.Node        // original computed key expressions by generated declaration

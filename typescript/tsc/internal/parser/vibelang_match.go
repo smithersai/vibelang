@@ -2759,23 +2759,37 @@ func (p *Parser) keywordRangeAt(pos int, keyword string) core.TextRange {
 // and source returns still exist. Synchronous expression wrappers are transparent;
 // nested source callables and nested async matches own their jumps.
 func (p *Parser) checkVibeLangAsyncMatchJumps(file *ast.SourceFile) {
+	if len(p.vibelangAsyncMatches) != 0 {
+		p.vibelangAsyncMatchJumps = map[*ast.Node]bool{}
+	}
 	for _, boundary := range p.vibelangAsyncMatches {
 		var visit func(*ast.Node) bool
 		visit = func(n *ast.Node) bool {
-			if ast.IsFunctionLike(n) && !isSynthesizedArrow(n) || ast.IsClassLike(n) {
+			if ast.IsFunctionLike(n) && !isSynthesizedArrow(n) || ast.IsClassElement(n) {
+				// Names and decorators run where the member is defined; its body
+				// and field initializer keep their own source execution boundary.
+				for _, decorator := range n.Decorators() {
+					visit(decorator)
+				}
+				if name := n.Name(); name != nil && ast.IsComputedPropertyName(name) {
+					visit(name)
+				}
 				return false
 			}
 			switch n.Kind {
 			case ast.KindBlock:
 				if p.vibelangSourceReturns[n] {
+					p.vibelangAsyncMatchJumps[n] = true
 					p.doError(p.skipRangeTrivia(n.Loc), 706, "return cannot leave an async match. Return a value from the arm instead.")
 				}
 			case ast.KindReturnStatement:
 				if p.vibelangSourceReturns[n] {
+					p.vibelangAsyncMatchJumps[n] = true
 					p.doError(p.skipRangeTrivia(n.Loc), 706, "return cannot leave an async match. Return a value from the arm instead.")
 				}
 			case ast.KindBreakStatement, ast.KindContinueStatement:
 				if !jumpTargetWithin(n, boundary) && asyncMatchHasOuterTarget(n, boundary) {
+					p.vibelangAsyncMatchJumps[n] = true
 					p.doError(p.skipRangeTrivia(n.Loc), 706, "{0} cannot leave an async match. Keep its target inside the async match.", keywordOf(n))
 				}
 			}

@@ -1,0 +1,15 @@
+// expect: EK0706
+
+function bad0(){outer:while(true){return async match(do{class C { [do { return 9; "m" }](){} };1}){default:1;}}}
+
+function bad1(){outer:while(true){return async match(1){default:do{class C { [do { break outer; "m" }]=1 };1};}}}
+
+function bad2(){outer:while(true){return async match(1){when let n and if (do{class C { get [do { continue outer; "m" }](){return 1} };1}):1;default:0;}}}
+
+function bad3(){outer:while(true){return async match(do{class C { set [do { return 9; "m" }](n:number){} };1}){default:1;}}}
+
+function bad4(){outer:while(true){return async match(1){default:do{class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} };1};}}}
+
+function bad5(){outer:while(true){return async match(1){when let n and if (do{@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {};1}):1;default:0;}}}
+
+function bad6(){outer:while(true){return async match(do{class C extends do { return 9; (class {}) } {};1}){default:1;}}}
