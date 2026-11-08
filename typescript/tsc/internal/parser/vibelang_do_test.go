@@ -29,7 +29,11 @@ func TestVibeLangDoEarlyErrors(t *testing.T) {
 		{"function f() { for (const x of do { break; [] }) {} }", "break;", parser.DoLoopHeadCode},
 		{"function f() { l: for (const x of do { continue l; [] }) {} }", "continue l;", parser.DoLoopHeadCode},
 		{"function f(a = do { var y = 1; y }) {}", "var y = 1", parser.DoParameterVarCode},
-		{"function f(a = do { return 1 }) {}", "return 1", parser.DoBoundaryCode},
+		{"function* g(a = do { return 1 }) {}", "return 1", parser.DoBoundaryCode},
+		{"effect function e(a = do { return 1 }) {}", "return 1", parser.DoBoundaryCode},
+		{"function f(a = do { return 1 }, { b } = {}) {}", "return 1", parser.DoBoundaryCode},
+		{"function f(a = do { return 1 }, ...rest) {}", "return 1", parser.DoBoundaryCode},
+		{"class C { constructor(a = do { return 1 }) {} }", "return 1", parser.DoBoundaryCode},
 		{"class C { x = do { var y = 1; y } }", "var y = 1", parser.DoBoundaryCode},
 	} {
 		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/test.vibe", PathKey: "/test.vibe"}, c.text, core.ScriptKindTS)
@@ -58,6 +62,13 @@ func TestVibeLangDoEarlyErrors(t *testing.T) {
 		"function f() { return g(do { return 7; 0 }) }",
 		"function f() { g(do { var n = 3; n }); return n }",
 		"function f() { return x.map((y) => do { if (y) { return 1 } 2 }) }",
+		"function f(a = do { return 1 }) {}",
+		"function f(a: number = do { return 1 }, b = (a, 2), c) { return a + b + c }",
+		"const f = (a = do { return 1 }, b = 2) => a + b",
+		"const o = { m(a = do { return 1 }) { return a } }",
+		"class C { m(a: number = do { return 1 }) { return a } }",
+		"async function f(a = do { return 1 }) { return a }",
+		"function f(a = do { const inner = do { if (x) return 9; 0 }; inner }) { return a }",
 	} {
 		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/test.vibe", PathKey: "/test.vibe"}, text, core.ScriptKindTS)
 		if len(file.Diagnostics()) != 0 {

@@ -1,0 +1,240 @@
+package parser
+
+import (
+	"slices"
+	"strconv"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+)
+
+// A return in a do expression in a parameter default acts as return at the
+// top of the body (VIP-2): a plain function returns the value and an async
+// function fulfills with it, before later defaults or the body run. Chapter
+// 002, "Destructuring and parameter defaults", keeps the parameter list's
+// own semantics: defaults run in order, a default reads a later parameter in
+// its temporal dead zone, and a closure in a default shares the body's
+// binding.
+//
+// The parameter list stays the function's signature, so its length and its
+// declaration output do not change, and the defaults from the first one that
+// returns move into the body, one let declaration per parameter, whose do
+// expressions the statement lowering lifts:
+//
+//	function f(a: number = do { return 9 }, b = g()) { body }
+//
+//	function f(a: number = (void 0)!, b = (void 0)!) {
+//	  const $parameter1 = a, $parameter2 = b
+//	  {
+//	    let a: typeof $parameter1 = $parameter1 !== void 0 ? $parameter1 : do { return 9 }
+//	    let b = $parameter2 !== void 0 ? $parameter2 : g()
+//	    { body }
+//	  }
+//	}
+//
+// The declarations bind the names in order into fresh let bindings, so a
+// later parameter is in its temporal dead zone while an earlier default runs,
+// and the body, in its own block, cannot shadow a name a default reads. A
+// parameter without a type takes the type of its moved default
+// (VibeLangMovedParameterDefault). Generators, effect functions and
+// constructors, and a parameter list with a binding pattern or a rest
+// parameter from the returning default on, keep the do expression as a
+// function and its EK0204.
+var movedParameterDefaultsKey = ast.NewSourceFileDataKey[map[*ast.Node]*ast.Node]()
+
+// VibeLangMovedParameterDefault returns the expression whose type parameter
+// takes when its default moved into the body: the lowered default, or nil.
+func VibeLangMovedParameterDefault(parameter *ast.Node) *ast.Node {
+	if parameter == nil || parameter.Kind != ast.KindParameter {
+		return nil
+	}
+	file := ast.GetSourceFileOfNode(parameter)
+	if file == nil {
+		return nil
+	}
+	return file.GetOrComputeData(movedParameterDefaultsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return nil })[parameter]
+}
+
+// moveParameterDefaults rewrites every function whose parameter default holds
+// a do expression that returns, and returns each moved parameter's default.
+func (p *Parser) moveParameterDefaults() map[*ast.Node]*ast.Node {
+	if p.opts.VibeLangDoAsFunction {
+		return nil
+	}
+	first := map[*ast.Node]int{}
+	var functions []*ast.Node
+	for _, d := range p.vibelangDoOrder {
+		parameter := p.doParameterOf(d)
+		if parameter == nil || !p.doReturns(d) {
+			continue
+		}
+		fn := parameter.Parent
+		index := slices.Index(fn.Parameters(), parameter)
+		if index < 0 {
+			continue
+		}
+		if at, seen := first[fn]; !seen {
+			functions = append(functions, fn)
+			first[fn] = index
+		} else if index < at {
+			first[fn] = index
+		}
+	}
+	moved := map[*ast.Node]*ast.Node{}
+	for _, fn := range functions {
+		if movableDefaults(fn, first[fn]) {
+			p.moveDefaults(fn, first[fn], moved)
+		}
+	}
+	return moved
+}
+
+// doParameterOf returns the parameter whose default holds d, with no source
+// function between them, or nil.
+func (p *Parser) doParameterOf(d *doExpression) *ast.Node {
+	child := d.call
+	for n := child.Parent; n != nil; child, n = n, n.Parent {
+		if ast.IsClassLike(n) || ast.IsFunctionLike(n) && !p.isDoArrow(n) {
+			return nil
+		}
+		if n.Kind == ast.KindParameter {
+			if child == n.Initializer() {
+				return n
+			}
+			return nil
+		}
+	}
+	return nil
+}
+
+// doReturns reports a return statement in the block of d, nested do blocks
+// included.
+func (p *Parser) doReturns(d *doExpression) bool {
+	returns := false
+	forEachDoStatementThrough(d.block, func(n *ast.Node) {
+		if n.Kind == ast.KindReturnStatement {
+			returns = true
+		}
+	}, p.isDoArrow)
+	return returns
+}
+
+// movableDefaults reports whether the defaults of fn from index from on can
+// move into its body.
+func movableDefaults(fn *ast.Node, from int) bool {
+	switch fn.Kind {
+	case ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindArrowFunction, ast.KindMethodDeclaration:
+	default:
+		return false
+	}
+	if fn.Body() == nil || fn.Flags&ast.NodeFlagsVibeLangEffect != 0 || isGeneratorFunction(fn) {
+		return false
+	}
+	for _, parameter := range fn.Parameters()[from:] {
+		if parameter.AsParameterDeclaration().DotDotDotToken != nil || !ast.IsIdentifier(parameter.Name()) {
+			return false
+		}
+	}
+	return true
+}
+
+func isGeneratorFunction(fn *ast.Node) bool {
+	switch fn.Kind {
+	case ast.KindFunctionDeclaration:
+		return fn.AsFunctionDeclaration().AsteriskToken != nil
+	case ast.KindFunctionExpression:
+		return fn.AsFunctionExpression().AsteriskToken != nil
+	case ast.KindMethodDeclaration:
+		return fn.AsMethodDeclaration().AsteriskToken != nil
+	}
+	return false
+}
+
+// moveDefaults moves the defaults of fn from index from on into its body and
+// records each default in moved under its parameter. Every generated node
+// stands at the body's start, after the parameters, so no generated read
+// precedes its declaration.
+func (p *Parser) moveDefaults(fn *ast.Node, from int, moved map[*ast.Node]*ast.Node) {
+	body := fn.Body()
+	at := p.skipRangeTrivia(body.Loc)
+	undefined := func(at core.TextRange) *ast.Node {
+		return p.vibelangSpanning(p.factory.NewVoidExpression(p.mNumber(0, at)), at)
+	}
+	var temps, shadows []*ast.Node
+	for _, parameter := range fn.Parameters()[from:] {
+		name := parameter.Name()
+		p.vibelangParameterTemps++
+		temp := "$parameter" + strconv.Itoa(p.vibelangParameterTemps)
+		temps = append(temps, p.mConst(p.mTemp(temp, at), ast.NodeFlagsConst, p.mIdent(name.Text(), at), at))
+		value := p.mTemp(temp, at)
+		if init := parameter.Initializer(); init != nil {
+			moved[parameter] = init
+			loc := init.Loc
+			parameter.AsParameterDeclaration().Initializer = p.vibelangSpanning(p.factory.NewNonNullExpression(undefined(loc), ast.NodeFlagsNone), loc)
+			p.overrideParentInImmediateChildren(parameter)
+			test := p.mBinary(p.mTemp(temp, at), ast.KindExclamationEqualsEqualsToken, undefined(at), at)
+			value = p.vibelangSpanning(p.factory.NewConditionalExpression(test, p.mToken(ast.KindQuestionToken, at), p.mTemp(temp, at), p.mToken(ast.KindColonToken, at), init), loc)
+		}
+		shadow := p.mConst(p.mIdent(name.Text(), name.Loc), ast.NodeFlagsLet, value, at)
+		if parameter.Type() != nil {
+			// A written type constrains the moved default as it did in the
+			// parameter list. An untyped parameter's type comes from the
+			// default (VibeLangMovedParameterDefault), so an annotation here
+			// would make the default its own contextual type.
+			declaration := shadow.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+			declaration.AsVariableDeclaration().Type = p.vibelangSynthesized(p.factory.NewTypeQueryNode(p.mTemp(temp, at), nil), at)
+			p.overrideParentInImmediateChildren(declaration)
+		}
+		shadows = append(shadows, shadow)
+	}
+	inner := body
+	if body.Kind != ast.KindBlock {
+		inner = p.mBlock([]*ast.Node{p.vibelangSpanning(p.factory.NewReturnStatement(body), body.Loc)}, body.Loc)
+	}
+	middle := p.mBlock(append(shadows, inner), body.Loc)
+	replacement := p.mBlock(append(temps, middle), body.Loc)
+	switch fn.Kind {
+	case ast.KindFunctionDeclaration:
+		fn.AsFunctionDeclaration().Body = replacement
+	case ast.KindFunctionExpression:
+		fn.AsFunctionExpression().Body = replacement
+	case ast.KindArrowFunction:
+		fn.AsArrowFunction().Body = replacement
+	case ast.KindMethodDeclaration:
+		fn.AsMethodDeclaration().Body = replacement
+	}
+	p.overrideParentInImmediateChildren(fn)
+}
+
+// registerMovedDefaults asks the conditional lowering to record what each
+// moved default becomes (doLowering.conditional keeps a registered default's
+// lowered value).
+func (l *doLowering) registerMovedDefaults(moved map[*ast.Node]*ast.Node) {
+	if len(moved) == 0 {
+		return
+	}
+	if l.bindingDefaultValues == nil {
+		l.bindingDefaultValues = map[*ast.Node]*ast.Node{}
+	}
+	for _, init := range moved {
+		l.bindingDefaultValues[init] = nil
+	}
+}
+
+// recordMovedParameterDefaults gives the checker each moved default as
+// lowered: the value a lifted default takes, or the default itself where it
+// stayed an expression.
+func (p *Parser) recordMovedParameterDefaults(file *ast.SourceFile, l *doLowering, moved map[*ast.Node]*ast.Node) {
+	if len(moved) == 0 {
+		return
+	}
+	values := map[*ast.Node]*ast.Node{}
+	for parameter, init := range moved {
+		value := l.bindingDefaultValues[init]
+		if value == nil {
+			value = init
+		}
+		values[parameter] = value
+	}
+	file.GetOrComputeData(movedParameterDefaultsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return values })
+}

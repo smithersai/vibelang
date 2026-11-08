@@ -130,6 +130,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 		}
 	}
 	p.prepareDoMatches()
+	moved := p.moveParameterDefaults()
 	marked := map[*ast.Node]bool{}
 	sites := map[*doExpression]*ast.Node{}
 	for _, d := range p.vibelangDoOrder {
@@ -165,6 +166,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 		}
 	}
 	l := &doLowering{p: p, marked: marked, headCells: headCells, origins: map[*ast.Node]*DoNarrowingOrigin{}}
+	l.registerMovedDefaults(moved)
 	for i, d := range p.vibelangDoOrder {
 		statements := d.block.AsBlock().Statements
 		if p.opts.VibeLangDoAsFunction {
@@ -213,6 +215,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 	file.GetOrComputeData(doBindingReadsKey, func(*ast.SourceFile) map[*ast.Node]*DoBindingRead { return l.bindingReads })
 	file.GetOrComputeData(doBindingContextsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return l.bindingContexts })
 	file.GetOrComputeData(doBindingNormalContextsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return l.bindingNormalContexts })
+	p.recordMovedParameterDefaults(file, l, moved)
 	file.SetDiagnostics(attachFileToDiagnostics(p.diagnostics, file))
 }
 

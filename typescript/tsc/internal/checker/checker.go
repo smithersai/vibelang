@@ -17355,6 +17355,14 @@ func (c *Checker) getTypeForVariableLikeDeclaration(declaration *ast.Node, inclu
 			return c.addOptionalityEx(t, false /*isProperty*/, isOptional)
 		}
 	}
+	if ast.IsParameterDeclaration(declaration) {
+		if moved := parser.VibeLangMovedParameterDefault(declaration); moved != nil {
+			// VIP-2: a default that moved into the body types its parameter, as
+			// the written default would (vibelang_do_parameters.go).
+			t := c.widenTypeInferredFromInitializer(declaration, c.checkExpressionCachedEx(moved, checkMode))
+			return c.addOptionalityEx(t, isProperty, isOptional)
+		}
+	}
 	// Use the type of the initializer expression if one is present and the declaration is
 	// not a parameter of a contextually typed function
 	if declaration.Initializer() != nil {

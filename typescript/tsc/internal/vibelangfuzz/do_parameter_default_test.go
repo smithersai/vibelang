@@ -1,0 +1,120 @@
+package vibelangfuzz
+
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strings"
+	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+)
+
+// VIP-2 on a return in a parameter default. The quotes are the oracle; the
+// compiler's lowering is its own choice.
+const (
+	doParameterReturnQuote = "A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body: a plain function returns the value, an `async` function fulfills with it"
+	doParameterLengthQuote = "so the `return` returns from the function; `length` is unchanged"
+	doParameterTDZQuote    = "including its temporal-dead-zone exception: JavaScript has none, so VibeLang has none."
+)
+
+func TestDoParameterDefaultQuoted(t *testing.T) {
+	chapter, err := os.ReadFile(SpecPath("../vips/0002-effect-blocks-and-do.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, quote := range []string{doParameterReturnQuote, doParameterLengthQuote, doParameterTDZQuote} {
+		if !strings.Contains(string(chapter), quote) {
+			t.Errorf("VIP-2 no longer says %q", quote)
+		}
+	}
+}
+
+// TestDoParameterDefaultReturn holds the lowering of a returning parameter
+// default to JavaScript's parameter semantics, which the VIP differential
+// witnesses cannot express in Effect TypeScript: the function's length, a
+// later parameter's temporal dead zone, a closure sharing the body's binding,
+// the order of the later defaults, this in a method, an async function's
+// fulfilment, and the declaration output of an untyped parameter.
+func TestDoParameterDefaultReturn(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Skip("node is not installed")
+	}
+	w := NewWorkspace(t)
+	for _, test := range []struct {
+		name, source, want string
+		allowed            []string // TypeScript error codes the native program also has
+		declaration        string   // text out/main.d.ts must hold
+	}{
+		{
+			name:        "length and declaration output",
+			source:      "export function first(a: number = do { return 1 }, b = 2) { return a + b }\nexport function second(x: number, a = do { return x }) { return a }\nexport function run() { return [first.length, second.length, first(), first(1), second(3)] }",
+			want:        "[0,1,1,3,3]",
+			declaration: "first(a?: number, b?: number): number",
+		},
+		{
+			name:        "untyped parameter takes its default's type",
+			source:      "let early = true\nexport const arrow = (a = do { if (early) return \"early\"; 1 }, b = 2) => [a, b]\nexport function run() { early = false; const later = arrow(); early = true; return [arrow(), later, arrow(1)] }",
+			want:        "[\"early\",[1,2],[1,2]]",
+			declaration: "(a?: number, b?: number) => ",
+		},
+		{
+			name:    "temporal dead zone of a later parameter",
+			source:  "export function run() { function f(a: number = do { return typeof read }, read = () => 1) { return a + read() }\ntry { return f() } catch (e) { return (e as Error).constructor.name } }",
+			want:    "\"ReferenceError\"",
+			allowed: []string{"2448", "2454"},
+		},
+		{
+			name:   "closure shares the body's binding",
+			source: "export function run() { function f(a: number = do { return 0 }, g = () => a) { a = 2; return g() }\nreturn f(1) }",
+			want:   "2",
+		},
+		{
+			name:   "later defaults run after the return",
+			source: "export function run() { const log: string[] = []\nfunction f(a: number = do { log.push(\"a\"); return -1 }, b: number = (log.push(\"b\"), 2), c = (log.push(\"c\"), 3)) { log.push(\"body\"); return a + b + c }\nreturn [f(), log.slice(), f(1), log.slice(), f(1, 1), log.slice()] }",
+			want:   "[-1,[\"a\"],6,[\"a\",\"b\",\"c\",\"body\"],5,[\"a\",\"b\",\"c\",\"body\",\"c\",\"body\"]]",
+		},
+		{
+			name:   "this in a method's default",
+			source: "export function run() { class Box { constructor(readonly base: number) {} read(a: number = do { return this.base }) { return a + 1 } }\nreturn [new Box(5).read(), new Box(5).read(1)] }",
+			want:   "[5,2]",
+		},
+		{
+			name:   "async function fulfills with the value",
+			source: "export async function later(a: number = do { return 7 }) { return a + 1 }\nexport async function run() { return [await later(), await later(1)] }",
+			want:   "[7,2]",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			r, err := w.Compile(t.Context(), Single(test.source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Remove()
+			for _, d := range r.Diagnostics {
+				if code := strings.TrimPrefix(diagnosticCodeName(d.Source(), d.Code()), "TS"); d.Category() == diagnostics.CategoryError && !slices.Contains(test.allowed, code) {
+					t.Errorf("unexpected %s: %s", code, d.MessageText())
+				}
+			}
+			if test.declaration != "" && !strings.Contains(r.Outputs["out/main.d.ts"], test.declaration) {
+				t.Errorf("declaration output lacks %q:\n%s", test.declaration, r.Outputs["out/main.d.ts"])
+			}
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "main.js"), []byte(r.Outputs["out/main.js"]), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			runner := "import { run } from \"./main.js\"\nlet out\ntry { let value = run(); if (value instanceof Promise) value = await value; out = JSON.stringify(value) } catch (e) { out = \"threw \" + e.constructor.name }\nprocess.stdout.write(out)\n"
+			if err := os.WriteFile(filepath.Join(dir, "runner.mjs"), []byte(runner), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			out, err := exec.CommandContext(t.Context(), "node", filepath.Join(dir, "runner.mjs")).CombinedOutput()
+			if err != nil {
+				t.Fatalf("node: %v\n%s\n%s", err, out, r.Outputs["out/main.js"])
+			}
+			if string(out) != test.want {
+				t.Errorf("%s\nprinted %s, want %s\n%s", doParameterReturnQuote, out, test.want, r.Outputs["out/main.js"])
+			}
+		})
+	}
+}

@@ -563,23 +563,39 @@ func (p *doNarrowingProbe) Ends() bool       { return true }
 // Keep direct do and nested-do neighbours separate from VIP-7's existing
 // match-in-default witness, so a pending match lowering cannot hide these.
 func init() {
+	// The untyped form infers each moved parameter from its default, and the
+	// trailing form keeps a later parameter that has no default.
 	for _, home := range []string{"function", "arrow", "method"} {
-		for _, form := range []string{"direct", "nested"} {
+		for _, form := range []string{"direct", "nested", "untyped", "trailing"} {
 			value := "do { log.push(\"first\"); return 9 }"
 			if form == "nested" {
 				value = "do { log.push(\"first\"); const inner = do { if (true) return 9; 0 }; inner }"
 			}
 			params := "a: number = " + value + ", b: number = (log.push(\"later\"), 0)"
+			returns := ": number "
 			body := "{ log.push(\"body\"); return a + b }"
-			declaration := "function f(" + params + "): number " + body
 			nativeBody := "{ if (a === undefined) { log.push(\"first\"); return 9 }; if (b === undefined) { log.push(\"later\"); b=0 }; log.push(\"body\"); return a+b }"
+			switch form {
+			case "untyped":
+				// A default that always returns has the completion type never;
+				// this one completes with 0 on an unreachable path, so a is a
+				// number for the callers below.
+				params = "a = do { log.push(\"first\"); if (log.length) return 9; 0 }, b = (log.push(\"later\"), 0)"
+				returns = " "
+				nativeBody = "{ if (a === undefined) { log.push(\"first\"); if (log.length) return 9; a = 0 }; if (b === undefined) { log.push(\"later\"); b=0 }; log.push(\"body\"); return a+b }"
+			case "trailing":
+				params = "a: number = " + value + ", b?: number"
+				body = "{ log.push(\"body\"); return a + (b ?? 0) }"
+				nativeBody = "{ if (a === undefined) { log.push(\"first\"); return 9 }; log.push(\"body\"); return a + (b ?? 0) }"
+			}
+			declaration := "function f(" + params + ")" + returns + body
 			reference := "function f(a,b) " + nativeBody
 			if home == "arrow" {
-				declaration = "const f = (" + params + "): number => " + body
+				declaration = "const f = (" + params + ")" + returns + "=> " + body
 				reference = "const f = (a,b) => " + nativeBody
 			}
 			if home == "method" {
-				declaration = "class Box { read(" + params + "): number " + body + " }; const box = new Box(); const f = (a?: number,b?: number): number => box.read(a,b)"
+				declaration = "class Box { read(" + params + ")" + returns + body + " }; const box = new Box(); const f = (a?: number,b?: number): number => box.read(a,b)"
 				reference = "class Box { read(a,b) " + nativeBody + " }; const box = new Box(); const f = (a,b) => box.read(a,b)"
 			}
 			tail := "; return [[f(),f(undefined,3),f(2),f(2,3)],log] }"

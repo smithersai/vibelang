@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `return` in a `do` expression in a parameter default of a plain or `async` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run, keeping the parameter order, the function's `length` and its declaration output; generators, `effect` functions and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.
+
 - A migration could accept a setup compile with no recorded exit by borrowing the earlier compiler's result. Missing or invalid setup exits now remain unverified and block admission.
 - The migration's API identity check reported an unchanged generic export that uses `infer`, such as `<C>(c: C) => C extends (infer I)[] ? I : never`, as changed when another declaration in its file changed only from `ReadonlyArray<string>` to `readonly string[]`. Those spellings name one type, so the export is now identical; a real element or `readonly` change still differs.
 - Tuple-spread arguments hid form advisories on directly run Effect calls. They now report the advisory and keep argument iteration and evaluation unchanged without an automatic rewrite.
@@ -475,8 +477,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The cheat-sheet example for wrapped platform calls was still marked unavailable even though it compiled. It is now checked as a runnable example, including its documented output.
 
-
-
 - Native TypeScript importers could lose exported types after migration when compatibility declarations were emitted from a monorepo ancestor. Bundler routes now select the existing declaration file for that layout.
 
 - An `is` binding in a call argument could make the TypeScript mapper report overlapping edits and emit no JavaScript. It now projects the argument and its bindings with valid source locations.
@@ -785,7 +785,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration could keep files in TypeScript even when Bun already used the published native-module preload. It now recognizes that preload and distinguishes ordinary Bun programs from test-only configuration.
 
-
 - The `using` resource quick fix could erase an existing `Scope` requirement by introducing a new scope. It now withholds the edit when the moved code still needs that scope.
 - Object-rest bindings such as `const { ...timeout } = AbortSignal` could be rejected as platform calls. They now compile as ordinary object copies.
 
@@ -817,7 +816,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A throwing call used to compute a class's base could be rejected inside `try`/`catch`; the surrounding handler now covers the `extends` expression.
 - Inline type re-exports and empty re-exports of Node builtins could retain unreported runtime loads. They now report `EK4402`, and `vibelang --fix` preserves those loads behind a native module boundary.
 
-
 - In effect code, a call of a `.ts` function that returns an `Exit`, a `Config`, an `error` instance or another kind of Effect was rejected when the function had a `@throws` tag, and the tagged classes were added to the caller's error type. Such a function is now effectful, as one returning `Effect` is: effect code calls it directly, its tag adds no failure, and a throw before it returns is a defect.
 - Nested destructuring could read a host method without a platform error. It now reports `EK4402`, and `vibelang --fix` preserves eligible leading constant bindings behind a native module boundary.
 
@@ -826,7 +824,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A type query of a platform-method alias could receive a platform error even though it runs nothing. Erased `typeof` queries now keep their TypeScript meaning.
 
 - Editors could reject ordinary calls such as `Box.key()` as service access when a local object's name began with a capital letter. The TypeScript view now recognizes the ordinary binding, including a parameter that shadows a service.
-
 
 - A plain function that returns an Effect, an `Exit`, a `Stream` or a `Layer` could call a `.ts` function with no `@throws` tag, although such a function must never throw. The call now reports `EK0401`: make the function `effect` and run the call with `try Effect.try(() => …)`, declare the callee's `@throws`, or move the code to a `.ts` file. The same holds for the function's parameter defaults.
 

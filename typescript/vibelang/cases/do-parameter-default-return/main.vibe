@@ -1,0 +1,29 @@
+// expect-result: [[9,"first"],[9,"first"],[7,"later","body"],[5,"body"],0,1,4,"early",[1,2],3,3,5,5,2,9,7,2]
+// A return in a do expression in a parameter default acts as return at the
+// top of the body (VIP-2): it returns before later defaults and the body run,
+// the parameter list keeps its length, and the moved defaults keep their
+// order, their closures and their types. A default's `return 3` returns 3 from
+// the method itself: the body never runs.
+const log: string[] = []
+function typed(a: number = do { log.push("first"); return 9 }, b: number = (log.push("later"), 5)): number { log.push("body"); return a + b }
+function call(...args: (number | undefined)[]): unknown[] { log.length = 0; const value = typed(...args); return [value, ...log] }
+function counted(x: number, a: number = do { return x }): number { return a }
+const arrow = (a = do { if (log.length >= 0) return "early"; 1 }, b = 2) => [a, b]
+class Box {
+  constructor(readonly base: number) {}
+  read(a: number = do { return 3 }): number { return a + this.base }
+}
+const literal = { base: 4, read(a: number = do { return 5 }): number { return a + this.base } }
+function captured(a: number = do { return 0 }, g = () => a): number { a = 2; return g() }
+function nested(a: number = do { const inner = do { if (log.length >= 0) return 9; 0 }; inner }): number { return a }
+async function later(a: number = do { return 7 }): Promise<number> { return a + 1 }
+export effect function main() {
+  const results: unknown[] = []
+  results.push(call(), call(undefined, 3), call(2), call(2, 3))
+  results.push(typed.length, counted.length, counted(4))
+  results.push(arrow(), arrow(1))
+  results.push(new Box(1).read(), new Box(1).read(2), literal.read(), literal.read(1))
+  results.push(captured(1), nested())
+  results.push(try Effect.promise(() => later()), try Effect.promise(() => later(1)))
+  return results
+}

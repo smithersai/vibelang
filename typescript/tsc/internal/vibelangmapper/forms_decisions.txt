@@ -2238,17 +2238,13 @@ typescript/vibelang/cases/cov2-002b-owner-syntax/main.vibe:7:17 byname program t
 typescript/vibelang/cases/cov2-002b-owner-syntax/main.vibe:7:45 byname program table
 typescript/vibelang/cases/cov2-002b-parameter-nested-contexts/main.vibe:2:33 lambda choice fallback
 typescript/vibelang/cases/cov2-002b-parameter-nested-contexts/main.vibe:2:75 lambda plain fallback
-typescript/vibelang/cases/cov2-002b-parameter-return-async/main.vibe:2:29 lambda plain fallback
 typescript/vibelang/cases/cov2-002b-parameter-return-async/main.vibe:3:59 lambda plain table
 typescript/vibelang/cases/cov2-002b-parameter-return-effect/main.vibe:2:30 lambda plain fallback
 typescript/vibelang/cases/cov2-002b-parameter-return-generators/main.vibe:3:25 lambda dual fallback
 typescript/vibelang/cases/cov2-002b-parameter-return-generators/main.vibe:4:36 lambda dual fallback
 typescript/vibelang/cases/cov2-002b-parameter-return-generators/main.vibe:9:36 lambda plain table
-typescript/vibelang/cases/cov2-002b-parameter-return-plain/main.vibe:4:26 lambda dual fallback
-typescript/vibelang/cases/cov2-002b-parameter-return-plain/main.vibe:5:24 lambda plain fallback
 typescript/vibelang/cases/cov2-002b-parameter-return-plain/main.vibe:5:42 lambda plain fallback
 typescript/vibelang/cases/cov2-002b-parameter-return-plain/main.vibe:6:17 lambda plain fallback
-typescript/vibelang/cases/cov2-002b-parameter-return-plain/main.vibe:6:25 lambda plain fallback
 typescript/vibelang/cases/cov2-002b-parameter-return-producer-value.fail/main.vibe:2:32 lambda plain fallback
 typescript/vibelang/cases/cov2-002b-parameter-return-producer/main.vibe:2:31 lambda plain fallback
 typescript/vibelang/cases/cov2-002b-parameter-throw/main.vibe:7:28 byname program table
@@ -2335,7 +2331,6 @@ typescript/vibelang/cases/cov2-900b-cite-throw-operator-precedence.fail/main.vib
 typescript/vibelang/cases/cov2-900b-cite-throw-operator-precedence.fail/main.vibe:9:37 lambda dual fallback
 typescript/vibelang/cases/cov2-900b-cite-throw-tc39-comma.fail/main.vibe:4:15 lambda dual fallback
 typescript/vibelang/cases/cov2-900b-cite-trailing-block-denied.fail/main.vibe:11:65 lambda plain fallback
-typescript/vibelang/cases/cov2-900b-do-parameter-return/main.vibe:3:27 lambda plain fallback
 typescript/vibelang/cases/cov2-900b-ek0401-catch-handler.fail/main.vibe:4:40 lambda effectFn table
 typescript/vibelang/cases/cov2-900b-ek0401-catch-handler.fail/main.vibe:4:53 lambda effectFn table
 typescript/vibelang/cases/cov2-900b-ek0401-plain-throw.fail/main.vibe:4:22 lambda plain annotation
@@ -3108,6 +3103,11 @@ typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:30:56 lambda p
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:50:73 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:70:55 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:90:61 lambda plain annotation
+typescript/vibelang/cases/do-parameter-default-return/main.vibe:11:15 lambda plain fallback
+typescript/vibelang/cases/do-parameter-default-return/main.vibe:16:28 lambda plain annotation
+typescript/vibelang/cases/do-parameter-default-return/main.vibe:17:52 lambda plain fallback
+typescript/vibelang/cases/do-parameter-default-return/main.vibe:27:35 lambda plain table
+typescript/vibelang/cases/do-parameter-default-return/main.vibe:27:70 lambda plain table
 typescript/vibelang/cases/do-region-source-names/main.vibe:2:53 lambda plain fallback
 typescript/vibelang/cases/do-region-source-names/main.vibe:3:48 lambda plain fallback
 typescript/vibelang/cases/do-region-source-names/main.vibe:5:55 lambda plain fallback

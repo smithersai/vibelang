@@ -1,3 +1,1 @@
 # Chapter-backed match/data/schema gaps. Delete feature and corpus lines when XPASS.
-FuzzVIPDifferential compile:EK0204/vip07.parameter-default-return-plain compiler VIP-2: a do return inside a match in a parameter default is EK0204, because that match still compiles to a function (was TS1108 before the do lowering); lane core-block
-FuzzVIPDifferential corpus:data-vip07-parameter-default-return-plain compiler VIP-7: minimized vip07.parameter-default-return-plain completion witness; lane vip-match
