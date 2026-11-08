@@ -2,14 +2,10 @@ package vibelang
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 func TestProvideServiceTypeArgumentAdvisory(t *testing.T) {
@@ -55,43 +51,5 @@ func TestProvideServiceTypeArgumentAdvisory(t *testing.T) {
 				})
 			}
 		}
-	}
-}
-
-func TestProvideServiceTypeArgumentAdvisoryPreservesContract(t *testing.T) {
-	source := "service S{value:number};export effect function f(e:number!!S){return try Effect.provideService<unknown,never,S,S,S.Shape>(e,S,{value:1})}"
-	program, file, service, converters := editorProgram(t, source)
-	var found *ast.Diagnostic
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Source() == diagnosticSource && d.Code() == 4836 {
-			found = d
-		}
-	}
-	if found == nil {
-		t.Fatal("missing EK4836")
-	}
-	if !strings.Contains(diagnosticWithNotes(found), "No quick fix") {
-		t.Fatalf("missing refusal: %s", diagnosticWithNotes(found))
-	}
-	diagnostic := lsconv.DiagnosticToLSPPush(t.Context(), converters, found)
-	only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-	response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-		TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-		Range:        diagnostic.Range,
-		Context:      &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{diagnostic}, Only: &only},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if response.CommandOrCodeActionArray != nil {
-		for _, a := range *response.CommandOrCodeActionArray {
-			if a.CodeAction != nil && a.CodeAction.Edit != nil {
-				t.Fatalf("type contract rewrite offered: %s", a.CodeAction.Title)
-			}
-		}
-	}
-	fixed := fixCase(t, filepath.Dir(file.FileName().AsString()))
-	if fixed.Err != nil || len(fixed.Files) != 0 {
-		t.Fatalf("explicit contract rewritten: %+v", fixed)
 	}
 }

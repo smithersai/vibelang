@@ -66,22 +66,3 @@ func applyExecutionPowerFix(t *testing.T, source string, code int32, category di
 	}
 	return applyEditorEdits(t, file, converters, changes[lsconv.FileNameToDocumentURI(file.FileName())])
 }
-
-// The CLI uses fileFixes; an editor action alone does not prove --fix sees a
-// parser-owned diagnostic. Typed operands keep the corrected program valid.
-func TestExecutionPowerCLIFix(t *testing.T) {
-	for _, test := range []struct{ op, parameter, operand string }{
-		{"try", "value: Effect.Effect<number>", "value"},
-		{"join", "fiber: Fiber.Fiber<number>", "fiber"},
-	} {
-		t.Run(test.op, func(t *testing.T) {
-			source := "export effect function run(" + test.parameter + ") { return " + test.op + " " + test.operand + " ** 2 }"
-			program, file, _, _ := editorProgram(t, source)
-			proposal := fileFixes(t.Context(), program, file, map[string]bool{}, []int32{EK0510.Code})
-			want := "export effect function run(" + test.parameter + ") { return (" + test.op + " " + test.operand + ") ** 2 }"
-			if got := proposal.text(); got != want {
-				t.Fatalf("CLI proposal got %q, want %q", got, want)
-			}
-		})
-	}
-}

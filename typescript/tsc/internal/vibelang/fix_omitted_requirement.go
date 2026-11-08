@@ -1,13 +1,10 @@
 package vibelang
 
 import (
-	"context"
-	"fmt"
 	"slices"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/nodebuilder"
 )
@@ -126,24 +123,6 @@ func inScope(t *checker.Type, node *ast.Node) bool {
 		}
 	}
 	return false
-}
-
-// These meaning-preserving upgrades also run in documentation migration mode.
-func vipTypeMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	p := proposal{file: file}
-	for _, code := range []int32{EK4853.Code, EK4854.Code, EK4855.Code, EK4856.Code, EK4857.Code} {
-		rule := tsFormRules[code]
-		rule.find(c, file, func(at *ast.Node, r *formRewrite, _ ...any) {
-			key := fmt.Sprintf("vip-types:%d:%d:%s", code, at.Pos(), expressionText(file, at))
-			if r.fixable() && !refused[key] {
-				p = p.withFixes(proposal{file: file, fixes: []fileFix{{code: code, edits: r.edits, key: key}}})
-			}
-		})
-	}
-
-	return p
 }
 
 // Check every reference in the serialized type, including nested generic

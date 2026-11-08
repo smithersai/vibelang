@@ -1,5 +1,0 @@
-import { isResolved, havePropsChanged, type Input } from "./helpers.ts"
-export effect function diff(news: Input<object>, olds: object): (string | undefined)!! {
-  if (!isResolved(news)) return undefined
-  return havePropsChanged(olds, news) ? "update" : "noop"
-}

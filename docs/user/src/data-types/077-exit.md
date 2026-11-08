@@ -108,4 +108,4 @@ effect function replay<A, E>(outcome: Exit.Exit<A, E>) {
 
 `const outcome = Exit.succeed(value)` still builds an exit object; `try outcome` propagates it, and `try exit(work())` captures a program's outcome. Exit extends Effect, and its constructors return data.
 
-Run `vibelang --fix` for an old `finally (exit) { ... }` clause in effect code. The `try statements` codemod uses native `Effect.onExit`, preserving the successful cleanup input `Exit.void` and a failure’s original cause. It refuses outward finalizer jumps and changed declaration output.
+For an old `finally (exit) { ... }` clause in effect code, use native `Effect.onExit`, which passes the successful cleanup input `Exit.void` and a failure’s original cause.

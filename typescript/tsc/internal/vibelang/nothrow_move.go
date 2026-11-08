@@ -327,36 +327,3 @@ func publishedNothrowDeclaration(fix *ls.CodeFixContext, c *checker.Checker, sit
 		dir = parent
 	}
 }
-
-// The preferred effect edit is automatic only for handlers or unused local declarations. Calls and captured
-// function values need an explicit migration plan; error-count gating alone cannot detect an unrun Effect.
-func automaticNothrowFix(c *checker.Checker, file *ast.SourceFile, site *ast.Node) bool {
-	home := analyzerFor(c).plainHomeOf(site)
-	if home == nil {
-		return false
-	}
-	if isCatchHandlerOf(home) {
-		return true
-	}
-	if !ast.IsFunctionDeclaration(home) || home.Name() == nil || nothrowExported(c, file, home) {
-		return false
-	}
-	symbol := c.GetSymbolAtLocation(home.Name())
-	used := false
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if ast.IsIdentifier(n) {
-			reference := c.GetSymbolAtLocation(n)
-			if n.Parent != nil && n.Parent.Kind == ast.KindShorthandPropertyAssignment {
-				reference = c.GetShorthandAssignmentValueSymbol(n.Parent)
-			}
-			if n.Text() == "eval" || n != home.Name() && reference == symbol {
-				used = true
-				return true
-			}
-		}
-		return n.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return !used
-}

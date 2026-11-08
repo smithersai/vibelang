@@ -1,3 +1,0 @@
-go test fuzz v1
-string("default-producer")
-int8(7)

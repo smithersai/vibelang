@@ -10,10 +10,9 @@ test("chapter 4 and VIP-7 limit the duplicate rule to one top-level pattern", ()
   assert.ok(match.includes("Two top-level patterns that bind one name in the same lexical home are a redeclaration"))
   assert.ok(match.includes("`TS2451` beside another lexical declaration, `TS2300` beside a parameter ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations))"))
   assert.ok(match.includes("// @ts-expect-error: TS2451, id is already declared in this block"))
-  assert.ok(match.includes("The diagnostic offers to rename the later binding and its uses, and `vibelang --fix` applies that rename."))
+  assert.ok(match.includes("The diagnostic offers to rename the later binding and its uses."))
   const vip = read("docs/design/vips/0007-match.md")
   assert.ok(vip.includes("**Amended 2026-10-31: one name per home.**"))
-  assert.ok(vip.includes("so the codemod ships with the rule"))
 })
 
 test("a native let reports the codes the rule names", async () => {

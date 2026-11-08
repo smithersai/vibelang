@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -92,74 +91,6 @@ func TestPlatformInlineTypeImports(t *testing.T) {
 			}
 			if count != test.want {
 				t.Fatalf("want %d EK4402, got %d", test.want, count)
-			}
-		})
-	}
-}
-
-func TestPlatformInlineTypeImportQuickFix(t *testing.T) {
-	for _, test := range []struct{ name, source, want string }{
-		{"aliases", `import { type Stats, type Dirent as Entry } from "node:fs"
-export type Both = Stats | Entry
-`, `import type { Stats, Dirent as Entry } from "node:fs"
-export type Both = Stats | Entry
-`},
-		{"comments and keyword name", `const café = "😀";
-import /* module */ { type /* keep */ type as T } from "node:fs"
-export type Both = T
-`, `const café = "😀";
-import type /* module */ { /* keep */ type as T } from "node:fs"
-export type Both = T
-`},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			p, file, service, converters := platformImportProgram(t, test.source, true)
-			var found *ast.Diagnostic
-			for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Source() == diagnosticSource && d.Code() == 4402 {
-					found = d
-					break
-				}
-			}
-			if found == nil {
-				t.Fatal("missing EK4402")
-			}
-			d := lsconv.DiagnosticToLSPPush(t.Context(), converters, found)
-			only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-			response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-				TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-				Range:        d.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{d}, Only: &only},
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			var chosen *lsproto.CodeAction
-			if response.CommandOrCodeActionArray != nil {
-				for _, action := range *response.CommandOrCodeActionArray {
-					if action.CodeAction != nil && strings.HasPrefix(action.CodeAction.Title, "Write import type") {
-						chosen = action.CodeAction
-					}
-				}
-			}
-			if chosen == nil || chosen.Edit == nil || chosen.Edit.Changes == nil {
-				t.Fatal("missing import type action")
-			}
-			changes := *chosen.Edit.Changes
-			fixed := applyEditorEdits(t, file, converters, changes[lsconv.FileNameToDocumentURI(file.FileName())])
-			if fixed != test.want {
-				t.Fatalf("got:\n%s\nwant:\n%s", fixed, test.want)
-			}
-			checked, next, _, _ := platformImportProgram(t, fixed, true)
-			if got := checked.GetSemanticDiagnostics(t.Context(), next); len(got) != 0 {
-				t.Fatalf("fixed source: %v", got)
-			}
-			result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{})
-			if got, ok := result.Files[file.FileName()]; !ok || got.Text != test.want {
-				t.Fatalf("--fix: %+v", result)
-			}
-			again := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), checked.CommandLine(), FixOptions{})
-			if len(again.Files) != 0 {
-				t.Fatalf("second --fix: %+v", again)
 			}
 		})
 	}

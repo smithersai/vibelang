@@ -43,12 +43,6 @@ func trailingBlocksQuoted(t testing.TB) {
 
 func TestTrailingBlocksQuoted(t *testing.T) {
 	trailingBlocksQuoted(t)
-	for _, code := range toolsFixCodes() {
-		if code == 1101 {
-			return
-		}
-	}
-	t.Fatal("the Chapter 7 trailing-block codemod is missing from FuzzFix")
 }
 
 // Appendix B assigns EK1101 to a same-line trailing block. Generate call,

@@ -23,7 +23,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
@@ -38,7 +37,7 @@ func init() {
 
 // dualBlockMigrationNote marks every dual-block site for the docs migration
 // tool.
-const dualBlockMigrationNote = "Through VibeLang 0.0.10, a block after an Effect dual took the place of its program. vibelang --fix writes it as an effect block there."
+const dualBlockMigrationNote = "Through VibeLang 0.0.10, a block after an Effect dual took the place of its program. Write it as an effect block there."
 
 // legacyDualBlockForm is where D188 placed a block param through 0.0.10.
 type legacyDualBlockForm uint8
@@ -303,40 +302,6 @@ func dualBlockActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAc
 		}
 	}
 	return nil, nil
-}
-
-// dualBlockMigrationFixes proposes each dual block site's rewrite, the
-// innermost first; a site whose edits overlap one taken waits for a round
-// that rechecks the edited source.
-func dualBlockMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool, refuse func(FixRefusal, string)) proposal {
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	var candidates []fileFix
-	for _, call := range dualBlockCalls(c, file) {
-		key := "dualBlock:" + expressionText(file, call)
-		if refused[key] {
-			continue
-		}
-		r := dualBlockRewrite(c, file, call)
-		if !r.fixable() {
-			line, _ := scannerLineOf(file, nodeStart(file, call))
-			refuse(FixRefusal{File: file.FileName(), Line: line + 1, Code: EK1023.Code, Error: r.why}, key)
-			continue
-		}
-		candidates = append(candidates, fileFix{code: EK1023.Code, edits: r.edits, key: key})
-	}
-	slices.SortStableFunc(candidates, func(x, y fileFix) int {
-		return x.edits[1].start - x.edits[0].start - (y.edits[1].start - y.edits[0].start)
-	})
-	p := proposal{file: file}
-	var taken []sourceEdit
-	for _, candidate := range candidates {
-		if !slices.ContainsFunc(candidate.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
-			p.fixes = append(p.fixes, candidate)
-			taken = append(taken, candidate.edits...)
-		}
-	}
-	return p
 }
 
 // withFixes adds to p the fixes of more whose edits overlap none of p's.

@@ -8,9 +8,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 // fixGateRule is the sentence of D291 that FuzzFixGate checks the gate of
@@ -27,63 +24,6 @@ func TestFixGateQuoted(t *testing.T) {
 	if !strings.Contains(string(data), fixGateRule) {
 		t.Fatalf("docs/design/history/DECISIONS.md no longer says, in D291: %q", fixGateRule)
 	}
-}
-
-// FuzzFixGate compares the gate of vibelang --fix, which checks a round of
-// fixes together and finds the ones that add errors from where the errors
-// are (fix_gate.go), with a check of each fix on its own: fixGateRule read
-// one fix at a time, each tried on top of the fixes kept before it
-// (vibelang.FixOptions.CheckEachFix). The gate must keep the same fixes and
-// report the same refusals. This compares the compiler with itself, as
-// RULES.md allows.
-//
-// The input names the project's files by key, comma-separated
-// (fixGateFiles); an unknown key picks one by its first byte, so a saved
-// input keeps its meaning when keys are added.
-func FuzzFixGate(f *testing.F) {
-	startShortBudget(f)
-	for _, seed := range []string{
-		"cross",
-		"hidden",
-		"good,cross,hidden",
-		"match,good,cross",
-		"good,match,match,good,match",
-		"cross,cross,good",
-		"twice,syntax,good",
-		"moved,match,cross",
-		"cross,match,cross,cross,good",
-		"hidden,match,hidden,good",
-		"hidden,cross,twice,hidden",
-		"rounds,good,rounds",
-		"rounds,match,hidden",
-	} {
-		f.Add(seed)
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, input string) {
-		files := fixGateProject(input)
-		if files == nil {
-			return
-		}
-		toolsGuard(t, "FuzzFixGate", func() {
-			r := toolsCompile(t, w, "FuzzFixGate", files)
-			defer r.Remove()
-			config := toolsConfig(w, r.Dir)
-			if r.Program == nil || config == nil || len(config.Errors) > 0 {
-				return
-			}
-			var gate, each *vibelang.FixResult
-			toolsRun(t, "FuzzFixGate", "fix", input, nil, func() {
-				gate = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
-			})
-			toolsRun(t, "FuzzFixGate", "fix-each", input, nil, func() {
-				each = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{CheckEachFix: true})
-			})
-			if diff := fixGateDiff(gate, each); diff != "" {
-				Gap(t, "FuzzFixGate", "fix:gate-oracle", "the fix gate and a check of each fix disagree on %q: %s\n%s", input, diff, Archive(files))
-			}
-		})
-	})
 }
 
 // fixGateFiles are the files FuzzFixGate builds projects of, by key. Each
@@ -178,38 +118,4 @@ func fixGateProject(input string) map[string]string {
 		return nil
 	}
 	return files
-}
-
-// fixGateDiff describes how two --fix results differ in the files they
-// write, the fixes they count, and the refusals they report, in any order.
-func fixGateDiff(a, b *vibelang.FixResult) string {
-	if (a.Err == nil) != (b.Err == nil) {
-		return fmt.Sprintf("errors %v and %v", a.Err, b.Err)
-	}
-	for name, fa := range a.Files {
-		fb := b.Files[name]
-		if fb == nil {
-			return fmt.Sprintf("only the gate changes %s", name)
-		}
-		if fa.Text != fb.Text || !maps.Equal(fa.Counts, fb.Counts) || !maps.Equal(fa.Rewrites, fb.Rewrites) {
-			return fmt.Sprintf("%s differs:\n%s\nchecked one at a time:\n%s", name, fa.Text, fb.Text)
-		}
-	}
-	for name := range b.Files {
-		if a.Files[name] == nil {
-			return fmt.Sprintf("only the check of each fix changes %s", name)
-		}
-	}
-	sorted := func(rs []vibelang.FixRefusal) []string {
-		var lines []string
-		for _, r := range rs {
-			lines = append(lines, fmt.Sprintf("%s:%d: EK%04d: %s", r.File, r.Line, r.Code, r.Error))
-		}
-		slices.Sort(lines)
-		return lines
-	}
-	if ra, rb := sorted(a.Refused), sorted(b.Refused); !slices.Equal(ra, rb) {
-		return fmt.Sprintf("refusals\n%s\nchecked one at a time:\n%s", strings.Join(ra, "\n"), strings.Join(rb, "\n"))
-	}
-	return ""
 }

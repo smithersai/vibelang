@@ -1,17 +1,10 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 func TestErrorStaticMembers(t *testing.T) {
@@ -73,28 +66,6 @@ func TestErrorStaticMemberFixKeepsImplements(t *testing.T) {
 	}
 }
 
-func TestErrorStaticMemberMigrationScopes(t *testing.T) {
-	for _, source := range []string{
-		"export error E { id: string; static x = 1; static helper() { return 2 } }\n",
-		"export schema error E { id: string; static x = 1; static helper() { return 2 } }\n",
-	} {
-		for _, options := range []FixOptions{{}, {MigrationOnly: true}, {VIPOnly: true}} {
-			_, file, _, _ := editorProgram(t, source)
-			fs := bundled.WrapFS(osvfs.FS())
-			configPath := filepath.Join(filepath.Dir(file.FileName().AsString()), "tsconfig.json")
-			config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(configPath)), &core.CompilerOptions{}, nil, fs, nil)
-			if len(errors) != 0 {
-				t.Fatal(errors)
-			}
-			result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, options)
-			fixed := result.Files[file.FileName()]
-			if result.Err != nil || len(result.Refused) != 0 || fixed == nil || fixed.Counts[1302] == 0 || !strings.Contains(fixed.Text, "class E extends") || (!strings.Contains(fixed.Text, "static helper()") && !strings.Contains(fixed.Text, "static effect helper()")) {
-				t.Fatalf("source %s, options %+v: fixed %+v, refusals %v, error %v", source, options, fixed, result.Refused, result.Err)
-			}
-		}
-	}
-}
-
 func TestErrorStaticMemberFixPreservesShadowedModules(t *testing.T) {
 	for _, source := range []string{
 		"const Data = 0; const $ErrorData = 1; export error E { id: string; static x = 1 }\n",
@@ -114,57 +85,5 @@ func TestErrorStaticMemberFixPreservesShadowedModules(t *testing.T) {
 				t.Fatalf("lost user schema reference: %s", fixed)
 			}
 		})
-	}
-}
-
-// A valid class repair must not be taught back into the rejected declaration.
-func TestErrorReservedStaticMemberMigrationConverges(t *testing.T) {
-	for _, source := range []string{
-		"export error E { id: string; _tag: \"E\" = \"E\" }\n",
-		"export schema error E { id: string; _tag: \"E\" = \"E\" }\n",
-		"export schema error E { id: string; get _tag(): \"E\" { return \"E\" } }\n",
-		"export schema error E { id: string; set _tag(value: \"E\") {} }\n",
-		"export error E { id: string; static _tag = \"metadata\" }\n",
-		"export schema error E { id: string; static get _tag() { return \"metadata\" } }\n",
-		"export abstract schema error E { id: string; static _tag = \"metadata\" }\n",
-	} {
-		for _, options := range []FixOptions{{}, {MigrationOnly: true}, {VIPOnly: true}} {
-			_, file, _, _ := editorProgram(t, source)
-			fs := bundled.WrapFS(osvfs.FS())
-			configPath := filepath.Join(filepath.Dir(file.FileName().AsString()), "tsconfig.json")
-			config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(configPath)), &core.CompilerOptions{}, nil, fs, nil)
-			if len(errors) != 0 {
-				t.Fatal(errors)
-			}
-			result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, options)
-			fixed := result.Files[file.FileName()]
-			// A native-resolved accessor would replace EK2117 with TS2611.
-			// Keep these rows as no-action checks in every migration mode.
-			if strings.Contains(source, "; get _tag") || strings.Contains(source, "; set _tag") {
-				if result.Err != nil || len(result.Files) != 0 {
-					t.Fatalf("invalid accessor class was offered: source %s, options %+v, files %v, error %v", source, options, result.Files, result.Err)
-				}
-				if got, err := os.ReadFile(file.FileName().AsString()); err != nil || string(got) != source {
-					t.Fatalf("unrepairable accessor changed: %q, %v", got, err)
-				}
-				continue
-			}
-			if result.Err != nil || fixed == nil || fixed.Counts[2117] == 0 || !strings.Contains(fixed.Text, "class E extends") {
-				t.Fatalf("migration did not converge: source %s, options %+v, fixed %+v, error %v", source, options, fixed, result.Err)
-			}
-			checked, checkedFile, _, _ := editorProgram(t, fixed.Text)
-			for _, d := range append(checked.GetSyntacticDiagnostics(t.Context(), checkedFile), checked.GetSemanticDiagnostics(t.Context(), checkedFile)...) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Fatalf("converged repair does not typecheck: %s\n%s", d.String(), fixed.Text)
-				}
-			}
-			if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0o644); err != nil {
-				t.Fatal(err)
-			}
-			second := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), config, options)
-			if second.Err != nil || len(second.Files) != 0 {
-				t.Fatalf("second migration changed a fixed source: options %+v, files %v, error %v", options, second.Files, second.Err)
-			}
-		}
 	}
 }

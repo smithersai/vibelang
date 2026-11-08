@@ -68,34 +68,6 @@ try {
     assert.equal(r.status, 0, r.output)
     assert.doesNotMatch(r.output, /error/, r.output)
   }
-  // Ordinary --fix checks the whole project, so more.vibe's error refuses it.
-  {
-    const root = project(files, config)
-    const r = run(root, "--fix", "-p", "tsconfig.json", "--pretty", "false")
-    assert.equal(r.status, 0, r.output)
-    assert.match(r.output, /a\.vibe:2: EK4834 not fixed: .*more\.vibe: TS2345/, r.output)
-    assert.deepEqual(sources(snapshot(root)), files)
-  }
-  // With only a.vibe listed, the fix is kept, more.vibe keeps its bytes, and
-  // the compilation after --fix reports more.vibe's error and fails.
-  {
-    const root = project(files, config)
-    const r = run(root, "--fix", "--only", "a.vibe", "-p", "tsconfig.json", "--pretty", "false")
-    assert.equal(r.status, 2, r.output)
-    const after = snapshot(root)
-    assert.equal(after["a.vibe"], repaired, r.output)
-    assert.equal(after["more.vibe"], files["more.vibe"])
-    assert.match(r.output, /^more\.vibe\(4,12\): error TS2345: Argument of type '"slow"' is not assignable to parameter of type '"fast"'\.$/m, r.output)
-    assert.doesNotMatch(r.output, /^a\.vibe\(\d+,\d+\): error/m, r.output)
-  }
-  // With more.vibe listed too, its error refuses the fix.
-  {
-    const root = project(files, config)
-    const r = run(root, "--fix", "--only", "a.vibe,more.vibe", "-p", "tsconfig.json", "--pretty", "false")
-    assert.equal(r.status, 0, r.output)
-    assert.match(r.output, /a\.vibe:2: EK4834 not fixed: .*more\.vibe: TS2345/, r.output)
-    assert.deepEqual(sources(snapshot(root)), files)
-  }
   console.log("a fix that breaks only an unlisted module is kept and the compilation reports it")
 } finally {
   cleanup()

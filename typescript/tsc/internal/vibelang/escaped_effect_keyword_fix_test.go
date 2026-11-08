@@ -1,18 +1,11 @@
 package vibelang
 
 import (
-	"bytes"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 var escapedEffectRepairForms = []string{
@@ -66,41 +59,6 @@ func TestEscapedEffectKeywordEditorRepair(t *testing.T) {
 				}
 				t.Fatal("no escaped effect keyword repair")
 			})
-		}
-	}
-}
-
-func TestEscapedEffectKeywordMigration(t *testing.T) {
-	for _, scope := range []FixOptions{{}, {MigrationOnly: true}, {VIPOnly: true}} {
-		for _, word := range []string{`\u0065ffect`, `eff\u0065ct`, `\u{65}ffect`} {
-			for _, form := range escapedEffectRepairForms {
-				t.Run(word+"/"+form, func(t *testing.T) {
-					source := strings.Replace(form, "WORD", word, 1)
-					want := strings.Replace(form, "WORD", "effect", 1)
-					_, file, _, _ := editorProgram(t, source)
-					fs := bundled.WrapFS(osvfs.FS())
-					config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(filepath.Dir(file.FileName().AsString()), "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
-					if len(errors) != 0 {
-						t.Fatal(errors)
-					}
-					result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, scope)
-					if result.Err != nil || len(result.Refused) != 0 {
-						t.Fatalf("migration refused: %v %+v", result.Err, result.Refused)
-					}
-					fixed := result.Files[file.FileName()]
-					if fixed == nil || fixed.Text != want {
-						t.Fatalf("migration did not write the canonical keyword: %+v; want %s", fixed, want)
-					}
-					if got := fixesApplied(result); got != 1 {
-						t.Fatalf("native keyword repair progress counted %d fixes, want 1", got)
-					}
-					var report bytes.Buffer
-					result.Report(&report, func(tspath.RootedFilePath) string { return "main.vibe" })
-					if !strings.Contains(report.String(), "TS1260 ×1") || strings.Contains(report.String(), "EK1260") {
-						t.Fatalf("native diagnostic reported incorrectly: %s", report.String())
-					}
-				})
-			}
 		}
 	}
 }

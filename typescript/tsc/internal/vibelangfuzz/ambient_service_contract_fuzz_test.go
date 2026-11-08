@@ -1,15 +1,9 @@
 package vibelangfuzz
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 // FuzzAmbientServiceContract checks a contract's requirement slot against
@@ -108,104 +102,4 @@ func ambientServiceDecode(data []byte) ambientServiceInput {
 		return 0
 	}
 	return ambientServiceInput{ambientServices[at(0, len(ambientServices))], ambientContracts[at(1, len(ambientContracts))].key, ambientLibs[at(2, len(ambientLibs))].key}
-}
-
-func FuzzAmbientServiceContract(f *testing.F) {
-	// Spec rule: docs/design/src/005-services.md#8e1b1a649ab97797
-	// Chapter 005: type and value meanings are resolved separately for ambient host names (FuzzAmbientServiceContract).
-
-	// Spec rule: docs/design/src/005-services.md#76d7f21528b250bc
-	// Chapter 005: type and value meanings are resolved separately for ambient host names (FuzzAmbientServiceContract).
-
-	startShortBudget(f)
-	ambientServiceChapters(f)
-	for _, seed := range []string{"FileSystem/generic/dom", "FileSystem/bang/dom", "FileSystem/union/dom", "FileSystem/generic/es", "Path/generic/dom", "Console/generic/dom"} {
-		f.Add([]byte(seed))
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		in := ambientServiceDecode(data)
-		var format, libs string
-		for _, c := range ambientContracts {
-			if c.key == in.contract {
-				format = c.format
-			}
-		}
-		for _, l := range ambientLibs {
-			if l.key == in.lib {
-				libs = l.libs
-			}
-		}
-		config := strings.Replace(DefaultConfig, "\"strict\": true,", "\"strict\": true,\n    \"lib\": "+libs+",\n    \"types\": [],", 1)
-		config = strings.TrimSuffix(config, "\n}") + ",\n  \"files\": [\"main.vibe\"]\n}"
-		s := in.service
-		program := func(requirement string) string {
-			return "export effect function read(): " + fmt.Sprintf(format, requirement) + " {\n  const service = try " + s + "." + s + "\n  return String(typeof service)\n}\n"
-		}
-		type compiled struct {
-			errors []string
-			codes  map[int32]bool
-			dir    string
-		}
-		compile := func(source string) compiled {
-			r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}, Config: config})
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(r.Remove)
-			c := compiled{codes: map[int32]bool{}, dir: r.Dir}
-			for _, d := range r.Diagnostics {
-				if d.Category() == diagnostics.CategoryError {
-					c.errors = append(c.errors, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))
-					if IsEK(d) {
-						c.codes[d.Code()] = true
-					}
-				}
-			}
-			return c
-		}
-		qualified := program(s + "." + s)
-		if q := compile(qualified); len(q.errors) > 0 {
-			Gap(t, "FuzzAmbientServiceContract", "qualified:"+in.key(), "chapter 5: %q; a contract naming %s.%s does not compile:\n%s\n%s", ambientServiceQuotes[1].quote, s, s, qualified, strings.Join(q.errors, "\n"))
-			return
-		}
-		ambient := in.lib == "dom" && (s == "FileSystem" || s == "Console" || s == "Scheduler")
-		bare := program(s)
-		b := compile(bare)
-		if !ambient {
-			return // chapter 5 leaves a bare name with no ambient type to the module's table
-		}
-		needs := compile(program("never")).codes[9202]
-		if !needs {
-			return // a service with a default adds no requirement to escape
-		}
-		if !b.codes[9202] {
-			Gap(t, "FuzzAmbientServiceContract", "escape:"+in.key(), "chapter 5: %q, and %q is EK9202; got:\n%s\n%s", ambientServiceQuotes[0].quote, ambientServiceQuotes[2].quote, bare, strings.Join(b.errors, "\n"))
-			return
-		}
-		// --fix writes other rewrites too (the prelude writes Clock.Clock as
-		// Clock), so the bare program's fixed text is compared with the
-		// qualified program's fixed text: the compiler with itself.
-		fixedText := func(source string, options vibelang.FixOptions) string {
-			r := compile(source)
-			parsed := toolsConfig(w, r.dir)
-			if parsed == nil {
-				t.Fatal("no configuration")
-			}
-			result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), parsed, options)
-			for name, file := range result.Files {
-				if filepath.Base(name.AsString()) == "main.vibe" {
-					return file.Text
-				}
-			}
-			return source
-		}
-		for _, options := range []vibelang.FixOptions{{}, {VIPOnly: true}} {
-			fixed, want := fixedText(bare, options), fixedText(qualified, options)
-			if fixed != want {
-				Gap(t, "FuzzAmbientServiceContract", "fix:"+in.key(), "chapter 7: %q; --fix %+v on the bare contract (EK9202) should write what it writes for the qualified program, which compiles; wrote:\n%s\nwant:\n%s", ambientServiceQuotes[3].quote, options, fixed, want)
-				return
-			}
-		}
-	})
 }

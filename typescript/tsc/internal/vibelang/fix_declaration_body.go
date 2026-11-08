@@ -13,7 +13,6 @@ import (
 )
 
 const declarationBodyLabel = "declaration syntax"
-const declarationBodyKey = "declaration-body:"
 
 func init() {
 	tsFormFixCodes = append(tsFormFixCodes, EK1503.Code, EK1604.Code)

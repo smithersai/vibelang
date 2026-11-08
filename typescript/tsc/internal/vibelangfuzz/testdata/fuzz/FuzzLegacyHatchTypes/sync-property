@@ -1,4 +1,0 @@
-go test fuzz v1
-string("sync/property")
-byte(7)
-byte(1)

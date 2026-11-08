@@ -1,2 +1,0 @@
-go test fuzz v1
-string("key:error-member-fix\nschema-constructor:protected:empty:shadow")

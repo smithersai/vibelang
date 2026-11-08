@@ -1,2 +1,0 @@
-module Types { export type A = string }
-export const value: Types.A = 'a'

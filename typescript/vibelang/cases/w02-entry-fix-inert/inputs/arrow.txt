@@ -1,4 +1,0 @@
-import "vibelang/platform/node"
-
-// A main bound by const is not a function declaration, so not a legacy startup.
-export const main = () => 1

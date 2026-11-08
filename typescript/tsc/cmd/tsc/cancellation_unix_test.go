@@ -45,7 +45,6 @@ func compilerCancellation(t *testing.T, mode byte, interrupt bool) {
 	modes := [][]string{
 		{"-p", config, "--noEmit"},
 		{"-p", config},
-		{"-p", config, "--fix", "--noEmit"},
 		{"-b", config},
 	}
 	args := append([]string{"-test.run=^TestCompilerCancellationHelper$", "--"}, modes[int(mode)%len(modes)]...)
@@ -88,7 +87,7 @@ func compilerCancellation(t *testing.T, mode byte, interrupt bool) {
 			t.Fatal(err)
 		}
 	}
-	// Later reads see an ordinary file, including --fix's second compile.
+	// Later reads see an ordinary file.
 	if err := os.WriteFile(config+".next", []byte(text), 0600); err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,7 @@
+// expect: EK1010
+// rule-evidence: docs/design/src/003-failures.md#meaning
+// rule-evidence: docs/design/src/900-appendices.md#throwexpression
+error Missing
+export effect function invalidComma() {
+  return [throw new Missing(), 2]
+}

@@ -1,0 +1,5 @@
+// expect-result: 42
+// @vibelang-diagnostics EK4804:off
+// VIP-53: retain the old directive spelling while a rename remains a proposal.
+export effect function failure() { throw new Error("typed failure") }
+export effect function main() { return 42 }

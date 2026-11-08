@@ -2,71 +2,10 @@ package vibelangfuzz
 
 import (
 	"maps"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
-
-// FuzzVIPLegacyForkOptions checks --fix-vip-only on pre-VIP-1 functions that
-// call the prelude's fork with options, fork(program, options). fork is
-// reserved in effect code (VIP-17: "reserved in effect code"), so once the
-// function is marked the same text would read as fork over a comma expression.
-// The oracle: no refusal, no fork call with two operands left, and the migrated
-// program compiles (Smithers agent/fs CommandSurface.test.vibe,
-// FileRouter.test.vibe).
-//
-// An input is "<owner>:<position>:<options>"; other bytes pick by index.
-func FuzzVIPLegacyForkOptions(f *testing.F) {
-	startShortBudget(f)
-	legacyForkOptionsQuoted(f)
-	for _, owner := range slices.Sorted(maps.Keys(legacyForkOwners)) {
-		for _, position := range slices.Sorted(maps.Keys(legacyForkPositions)) {
-			for _, options := range slices.Sorted(maps.Keys(legacyForkOptions)) {
-				f.Add([]byte(owner + ":" + position + ":" + options))
-			}
-		}
-	}
-	env := newVIPEnv(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		key, source := legacyForkInput(data)
-		if source == "" {
-			t.Skip("the input names no form")
-		}
-		files := map[string]string{"main.vibe": source}
-		old := legacyCompile(t, env, files)
-		defer old.Remove()
-		config := toolsConfig(env.w, old.Dir)
-		if config == nil || len(config.Errors) > 0 {
-			t.Fatalf("config of the legacy program: %v", config)
-		}
-		var result *vibelang.FixResult
-		Within("fix", func() {
-			result = vibelang.FixProjectWithOptions(t.Context(), env.w.fs, bundled.LibPath(), config, vibelang.FixOptions{VIPOnly: true})
-		})
-		var report strings.Builder
-		result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-		if result.Err != nil || len(result.Refused) > 0 {
-			Gap(t, "FuzzVIPLegacyForkOptions", "refused/"+key, "--fix-vip-only refused or did not converge (%v):\n%s\nlegacy:\n%s", result.Err, report.String(), source)
-		}
-		fixed := maps.Clone(files)
-		for _, file := range result.Files {
-			fixed["main.vibe"] = file.Text
-		}
-		if strings.Contains(fixed["main.vibe"], "fork(work(") {
-			Gap(t, "FuzzVIPLegacyForkOptions", "left/"+key, "a fork with options was left as written:\n%s", fixed["main.vibe"])
-		}
-		after := legacyCompile(t, env, fixed)
-		defer after.Remove()
-		if errors := legacyErrors(after); len(errors) > 0 {
-			Gap(t, "FuzzVIPLegacyForkOptions", "compile/"+key, "the migrated program does not compile: %s\nmigrated:\n%s\nlegacy:\n%s", strings.Join(errors, "\n"), fixed["main.vibe"], source)
-		}
-	})
-}
 
 // legacyForkOwners hold BODY: each is a function the old compiler made an
 // Effect function from its return type.

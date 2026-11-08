@@ -5,7 +5,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -111,25 +110,5 @@ func TestExplicitServiceKeyQuickFix(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestExplicitServiceKeyMigration(t *testing.T) {
-	const source = "function f(): number { class Legacy extends Context.Service<Legacy, { value: Effect.Effect<number> }>()(\"key-tests/main#Legacy\") {}; return 1 }"
-	program, file, _, _ := editorProgramWithPackage(t, source, `{"name":"key-tests","type":"module"}`)
-	_ = program
-	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-	if len(result.Refused) != 0 {
-		t.Fatalf("migration refused: %v", result.Refused)
-	}
-	fixed := result.Files[file.FileName()]
-	if fixed == nil || !strings.Contains(fixed.Text, `static readonly key = "key-tests/main#Legacy"`) {
-		t.Fatalf("migration must keep the local key explicit: %+v", result.Files)
-	}
-	checked, edited, _, _ := editorProgramWithPackage(t, fixed.Text, `{"name":"key-tests","type":"module"}`)
-	for _, d := range checked.GetSemanticDiagnostics(t.Context(), edited) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Fatalf("migrated source has an error: %s", d.String())
-		}
 	}
 }

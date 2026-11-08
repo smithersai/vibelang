@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("reexport\x00\x00")

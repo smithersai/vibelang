@@ -8,15 +8,12 @@ import (
 	"maps"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const legacyAliasQuote = "`EK4856` selects the resolved legacy symbol: local and imported types named `Effect` retain their TypeScript meaning."
@@ -105,9 +102,6 @@ func FuzzLegacyEffectAlias(f *testing.F) {
 			if got := legacyHeritageErrors(control); !slices.Equal(got, wantErrors) {
 				t.Fatalf("qualified heritage errors=%v want=%v", got, wantErrors)
 			}
-		}
-		if heritage {
-			checkLegacyHeritageFix(t, w, key, shape, r)
 		}
 		ExpectPending(t, "FuzzLegacyEffectAlias", key)
 		ExpectPending(t, "FuzzLegacyEffectAlias", specCorpusKey(t))
@@ -335,51 +329,6 @@ func legacyHeritageNativeControls(tb testing.TB, w *Workspace, tsc string) {
 		tb.Fatalf("heritage stock TypeScript controls did not compile: %v %v\n%s", ctx.Err(), err, output)
 	}
 	tb.Log("72 stock TypeScript heritage controls compile: six symbol/context families, four A types and three arities")
-}
-
-func checkLegacyHeritageFix(t *testing.T, w *Workspace, key string, shape uint8, r *Result) {
-	t.Helper()
-	files, wanted := legacyHeritageProject(key, shape, false)
-	config := toolsConfig(w, r.Dir)
-	if config == nil || len(config.Errors) != 0 {
-		t.Fatal("missing valid heritage fix configuration")
-	}
-	var fixed *vibelang.FixResult
-	toolsRun(t, "FuzzLegacyEffectAlias", "heritage-fix", Archive(files), nil, func() {
-		fixed = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
-	})
-	if fixed.Err != nil {
-		t.Fatalf("heritage fix failed: %v", fixed.Err)
-	}
-	after := maps.Clone(files)
-	for path, file := range fixed.Files {
-		rel, err := filepath.Rel(r.Dir, path.AsString())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if rel != "main.vibe" {
-			t.Fatalf("heritage fix changed an unowned/dependency file: %s", rel)
-		}
-		after[rel] = file.Text
-	}
-	compact := func(text string) string { return strings.Join(strings.Fields(text), "") }
-	if !strings.Contains(compact(after["main.vibe"]), compact(wanted)) {
-		Gap(t, "FuzzLegacyEffectAlias", "fix:"+key, "chapter 007 %q: retain argument/default slots and use the grammar's heritage spelling %q; got:\n%s", legacyHeritageQuote, wanted, after["main.vibe"])
-	}
-	compiled, err := w.Compile(t.Context(), Project{Files: after})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer compiled.Remove()
-	if got := legacyHeritageErrors(compiled); !slices.Equal(got, legacyHeritageExpectedErrors(key)) {
-		t.Fatalf("heritage repair changed independent errors: %v want %v", got, legacyHeritageExpectedErrors(key))
-	}
-
-	for _, d := range compiled.Diagnostics {
-		if d.Source() == "EK" && d.Code() == 4856 {
-			Gap(t, "FuzzLegacyEffectAlias", "fixed:"+key, "the heritage fix must retire its legacy-alias warning: %s\n%s", d.String(), after["main.vibe"])
-		}
-	}
 }
 
 // Inherited Effect members are checked against their own declarations.

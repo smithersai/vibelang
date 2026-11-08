@@ -1,12 +1,12 @@
 # Data
 
-Write the `data` keyword without Unicode escapes (`TS1260`). `vibelang --fix` restores its literal spelling; escaped data names and ordinary identifiers keep working.
+Write the `data` keyword without Unicode escapes (`TS1260`). Escaped data names and ordinary identifiers keep working.
 
 A `data` declaration declares a tagged union: Effect's own `Data.TaggedEnum` type and the `Data.taggedEnum` constructors, under one name, which `match` takes apart. The rest of `Data` works in VibeLang exactly as in Effect: use it for classes and errors with Effect's equality and hashing. Generated `data` builders and type references always use Effect's `Data`; a local value or type parameter named `Data` keeps its ordinary source meaning without capturing them.
 
 ## Declaring tagged unions with data
 
-A `data` declaration always needs a variant body. A same-line name starts the declaration, including `as`, `satisfies`, and `is`, so a bare `data as T;`, `data satisfies T;`, or `data is Number;` reports `EK1604`. Write `(data as T);`, `(data satisfies T);`, or `(data is Number);` for an expression statement; `vibelang --fix` adds these parentheses while preserving the expression. Assertions and pattern tests in initializers and after `return` work as usual. Type parameters and the body may follow the name on later lines. A line break after `as` or `satisfies` does not change this declaration precedence; parenthesize the complete assertion, including its continued type.
+A `data` declaration always needs a variant body. A same-line name starts the declaration, including `as`, `satisfies`, and `is`, so a bare `data as T;`, `data satisfies T;`, or `data is Number;` reports `EK1604`. Write `(data as T);`, `(data satisfies T);`, or `(data is Number);` for an expression statement. Assertions and pattern tests in initializers and after `return` work as usual. Type parameters and the body may follow the name on later lines. A line break after `as` or `satisfies` does not change this declaration precedence; parenthesize the complete assertion, including its continued type.
 
 A `data` declaration creates runtime constructors. It is `EK1607` in an ambient context, including an explicit `declare` or an enclosing ambient namespace, module, or global declaration. Use native TypeScript ambient declarations to describe existing constructors and types.
 
@@ -82,9 +82,9 @@ function count(state: LoadState<ReadonlyArray<string>, string>) {
 
 Keep `data` and its name on the same line. The type parameters and opening brace may start on later lines.
 
-At a statement's start, an assertion on a binding named `data` needs parentheses when `as` or `satisfies` is followed by a generic function type on a later line. Run `vibelang --fix` to parenthesize the original expression and preserve its behavior.
+At a statement's start, an assertion on a binding named `data` needs parentheses when `as` or `satisfies` is followed by a generic function type on a later line. Parenthesize the original expression to preserve its behavior.
 
-A data type takes up to four unconstrained type parameters without defaults, which the constructors infer from their arguments. A default such as `data Box<A = string>` reports `EK2803`; put defaults on a separate type alias. `vibelang --fix` expands the declaration to equivalent Effect TypeScript while preserving its defaults. A recursive data type, such as `data Tree<A> { Leaf { value: A }; Node { left: Tree<A>; right: Tree<A> } }`, works too.
+A data type takes up to four unconstrained type parameters without defaults, which the constructors infer from their arguments. A default such as `data Box<A = string>` reports `EK2803`; put defaults on a separate type alias. A recursive data type, such as `data Tree<A> { Leaf { value: A }; Node { left: Tree<A>; right: Tree<A> } }`, works too.
 
 ## What data declares
 
@@ -101,7 +101,7 @@ type Delivery = Data.TaggedEnum<{
 const Delivery = Data.taggedEnum<Delivery>()
 ```
 
-A declaration file declares what TypeScript declares for that counterpart: the type first, each variant's fields as written (`Data.TaggedEnum` makes every field `readonly` in the type either way), then the constant with the type TypeScript infers for it, `Data.TaggedEnum.Constructor<{ readonly _tag: "Waiting" } | …>`. Write `readonly` on a field where your TypeScript wrote it, or wrapped the payload in `Readonly<{ … }>`. Generic declarations use `Data.TaggedEnum.GenericConstructor`, keeping the same callable contract when imported from their declaration files: generic variants, including aliases and destructured constructors, can be called directly in effect code. A generic data type passes its type parameters through the interface `Data.TaggedEnum.WithGenerics` describes, named `$LoadState$Definition`, or `$LoadState$Definition$2` and so on when the module already declares that name, which `export data` exports with the type and the constructors. Object and class member names, such as a field named `$LoadState$Definition`, do not force a helper suffix. A user declaration such as `LoadStateDefinition` remains independent; the generated helper chooses another name. If you imported an older generated helper such as `LoadStateDefinition`, run `vibelang --fix` to update the imported type while keeping your local alias and re-exported name. Qualified namespace references and `import(...)` type references are updated too; this migration also runs with `vibelang --fix --fix-migration-only`.
+A declaration file declares what TypeScript declares for that counterpart: the type first, each variant's fields as written (`Data.TaggedEnum` makes every field `readonly` in the type either way), then the constant with the type TypeScript infers for it, `Data.TaggedEnum.Constructor<{ readonly _tag: "Waiting" } | …>`. Write `readonly` on a field where your TypeScript wrote it, or wrapped the payload in `Readonly<{ … }>`. Generic declarations use `Data.TaggedEnum.GenericConstructor`, keeping the same callable contract when imported from their declaration files: generic variants, including aliases and destructured constructors, can be called directly in effect code. A generic data type passes its type parameters through the interface `Data.TaggedEnum.WithGenerics` describes, named `$LoadState$Definition`, or `$LoadState$Definition$2` and so on when the module already declares that name, which `export data` exports with the type and the constructors. Object and class member names, such as a field named `$LoadState$Definition`, do not force a helper suffix. A user declaration such as `LoadStateDefinition` remains independent; the generated helper chooses another name. If you imported an older generated helper such as `LoadStateDefinition`, update the imported type to `$LoadState$Definition` while keeping your local alias and re-exported name, including in qualified namespace references and `import(...)` type references.
 
 ```ts effect
 import { Data } from "effect"
@@ -235,7 +235,7 @@ const idle = LoadState.Idle()
 | `EK1602` | A variant named `$is` or `$match` | Rename the variant and its references: the constructors object has its own `$is` and `$match` |
 | `EK2801` | More than four type parameters | Use at most four type parameters |
 | `EK2126` | A constrained type parameter | Remove the constraint |
-| `EK2803` | A default on a generic `data` parameter | Put the default on a type alias, or run `vibelang --fix` |
+| `EK2803` | A default on a generic `data` parameter | Put the default on a type alias |
 | `EK2127` | `Delivery.Snet`, a name that is not one of the data type's variants | Use one of the variants the message lists |
 
 ## Defining ordinary and tagged errors

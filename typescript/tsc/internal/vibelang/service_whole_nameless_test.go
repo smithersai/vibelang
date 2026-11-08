@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -46,14 +45,5 @@ func TestWholeServiceNamelessControls(t *testing.T) {
 	const source = "export service S: number { static readonly key = \"whole/S\" }\nexport class Ordinary { [key: string]: unknown; constructor(public readonly n: number) {} }\n"
 	for _, d := range errorsOf(t, source) {
 		t.Errorf("native/whole-shape control: %s", d.String())
-	}
-}
-
-func TestWholeServiceNamelessRepairRefusal(t *testing.T) {
-	source := "export service S: number { static readonly key = \"whole/S\"; constructor() { super() } }"
-	_, file, _, _ := editorProgram(t, source)
-	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-	if result.Files[file.FileName()] != nil {
-		t.Fatal("a constructor must not be silently removed or relocated")
 	}
 }

@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nimport { Schema } from \"effect\"\n\nexport const Shape = Schema.Union([Schema.String, Schema.Number])\nexport type Shape = typeof Shape.Type\n-- other.vibe --\nimport { Schema } from \"effect\"\nimport { Shape } from \"./main.vibe\"\n\nexport const Kind = Schema.Literals([\"a\", \"b\"])\nexport type Kind = typeof Kind.Type\nexport const both = [Shape, Kind]\n")

@@ -2,24 +2,13 @@ package vibelang
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"slices"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 const effectGenUsers = "export class Users extends Context.Service<Users, { readonly find: (id: string) => Effect.Effect<string> }>()(\"app/Users\") {}\n"
@@ -484,74 +473,6 @@ func TestEffectGenKeepsAProgramAsAValue(t *testing.T) {
 	}
 }
 
-// VIP-21: a native Effect.fn pipeline accepts its ordinary generator, and
-// no producer-return repair may drop that generator's return (drive-t3code).
-func TestEffectGenLeavesEffectFnPipeline(t *testing.T) {
-	source := `export const load = Effect.fn("load")(
-  function* (n: number) {
-    yield* Effect.void
-    return n ? Option.some(n) : Option.none<number>()
-  },
-  Effect.orElseSucceed(() => Option.none<number>()),
-)
-`
-	program, file, _, _ := editorProgram(t, source)
-	var codes []int32
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		codes = append(codes, d.Code())
-	}
-	if slices.Contains(codes, EK1002.Code) || slices.Contains(codes, EK2128.Code) {
-		t.Fatalf("codes %v; native generators must have neither EK1002 nor EK2128", codes)
-	}
-	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-	if fixed := result.Files[file.FileName()]; fixed != nil && (fixed.Counts[EK2128.Code] != 0 || !strings.Contains(fixed.Text, "return n ? Option.some(n)")) {
-		t.Fatalf("--fix changed the native generator return:\n%s\ncounts %v", fixed.Text, fixed.Counts)
-	}
-}
-
-// vibelang --fix fixes an inner Effect.gen first and its outer one in the
-// next round, though a fix of another Effect.gen was refused before it: each
-// call is its own fix (fixKey).
-func TestEffectGenFixRounds(t *testing.T) {
-	source := `export const outer = (xs: ReadonlyArray<number>) =>
-  Effect.gen(function* () {
-    return yield* Effect.forEach(xs, (x) =>
-      Effect.gen(function* () {
-        return yield* Effect.succeed(x + 1)
-      }))
-  })
-export const refused = () =>
-  Effect.gen(function* () {
-    const n = yield* Effect.succeed(1)
-    const s: string = n
-    return s
-  })
-`
-	source = strings.ReplaceAll(source, "function*", "effect function*")
-	_, file, _, _ := editorProgram(t, source)
-	dir := filepath.Dir(file.FileName().AsString())
-	result := fixCase(t, dir)
-	fixed := result.Files[file.FileName()]
-	if fixed == nil {
-		t.Fatalf("nothing fixed; refused %+v", result.Refused)
-	}
-	want := `export const outer = effect (xs: ReadonlyArray<number>) => {
-  return try Effect.forEach(xs, effect (x) => {
-    return x + 1
-  })
-}
-`
-	if !strings.HasPrefix(fixed.Text, want) {
-		t.Fatalf("--fix writes\n%s\nwant it to start with\n%s", fixed.Text, want)
-	}
-	if fixed.Counts[EK1002.Code] != 2 || len(result.Refused) != 1 || result.Refused[0].Code != EK1002.Code {
-		t.Fatalf("counts %v, refused %+v; want two EK1002 fixes and one refused", fixed.Counts, result.Refused)
-	}
-	if original, _ := os.ReadFile(file.FileName().AsString()); string(original) != source {
-		t.Fatal("FixProject wrote the file")
-	}
-}
-
 // effectGenDiagnostic returns source's first EK1002, which is an error.
 func effectGenDiagnostic(t *testing.T, source string) (*ast.Diagnostic, func() (string, bool)) {
 	t.Helper()
@@ -615,163 +536,6 @@ func effectGenNotes(t *testing.T, source string) string {
 		notes += chained.String() + "\n"
 	}
 	return notes
-}
-
-// Each migrate-* case is Effect TypeScript that a migration renames to .vibe:
-// each of its .ts files whose name the case's -fixed twin holds as a .vibe
-// file. Its twin is what vibelang --fix then writes, and fixing the twin
-// changes nothing. The smoke harness runs both and checks that they return
-// the same result. The case's expected/ declarations are the TypeScript's;
-// applying the migration rules' own fixes, before --fix's other rules and its
-// prelude rewrites, preserves their API with VIP-27’s generated-contract
-// allowance. Keep the unannotated stock-twin goldens unchanged.
-func TestMigrationCasesFix(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	fixtures, err := filepath.Glob(filepath.Join(root, "typescript/vibelang/cases/migrate-*"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	count := 0
-	for _, fixture := range fixtures {
-		if strings.HasSuffix(fixture, "-fixed") {
-			continue
-		}
-		twin := fixture + "-fixed"
-		renamed, _ := filepath.Glob(filepath.Join(twin, "*.vibe"))
-		if len(renamed) == 0 {
-			t.Errorf("%s has no fixed twin with .vibe files", filepath.Base(fixture))
-			continue
-		}
-		count++
-		t.Run(filepath.Base(fixture), func(t *testing.T) {
-			migrated := func() string {
-				dir := copyCompilerFixture(t, fixture, root)
-				for _, name := range renamed {
-					base := strings.TrimSuffix(filepath.Base(name), ".vibe")
-					if err := os.Rename(filepath.Join(dir, base+".ts"), filepath.Join(dir, base+".vibe")); err != nil {
-						t.Fatal(err)
-					}
-				}
-				return dir
-			}
-			result := fixCase(t, migrated())
-			for _, name := range renamed {
-				want, err := os.ReadFile(name)
-				if err != nil {
-					t.Fatal(err)
-				}
-				got := ""
-				for file, fixed := range result.Files {
-					if filepath.Base(file.AsString()) == filepath.Base(name) {
-						got = fixed.Text
-					}
-				}
-				if got != string(want) {
-					t.Errorf("%s: --fix writes\n%s\nwant\n%s", filepath.Base(name), got, want)
-				}
-			}
-			if len(result.Refused) != 0 {
-				t.Errorf("refused: %v", result.Refused)
-			}
-			if again := fixCase(t, copyCompilerFixture(t, twin, root)); len(again.Files) != 0 {
-				t.Errorf("fixing the twin again changes %v", again.Order)
-			}
-			goldens, _ := filepath.Glob(filepath.Join(fixture, "expected", "*.d.ts"))
-			if len(goldens) == 0 {
-				return
-			}
-			directory := migrated()
-			declarations := migrationRuleDeclarations(t, directory, []int32{EK1002.Code, EK4841.Code, EK4842.Code})
-			before, after := filepath.Join(directory, "api-before"), filepath.Join(directory, "api-after")
-			for _, dir := range []string{before, after} {
-				if err := os.MkdirAll(dir, 0o755); err != nil {
-					t.Fatal(err)
-				}
-			}
-			// Emit the complete unchanged TypeScript twin, including supporting
-			// modules (services.ts has no separate golden in migrate-effect-gen).
-			// Keep checking its goldens before applying API identity to the candidate.
-			stock := migrationRuleDeclarations(t, copyCompilerFixture(t, fixture, root), nil)
-			for _, golden := range goldens {
-				want, err := os.ReadFile(golden)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if got := stock[filepath.Base(golden)]; got != string(want) {
-					t.Errorf("TypeScript twin %s is\n%s\nwant its golden\n%s", filepath.Base(golden), got, want)
-				}
-			}
-			for _, output := range []struct {
-				directory    string
-				declarations map[string]string
-			}{{before, stock}, {after, declarations}} {
-				for name, text := range output.declarations {
-					if err := os.WriteFile(filepath.Join(output.directory, name), []byte(text), 0o644); err != nil {
-						t.Fatal(err)
-					}
-				}
-			}
-			// Exercise the same exported-name/type/JSDoc gate migration uses, including
-			// its narrow added-tag allowance and authored-contract negative controls.
-			command := exec.CommandContext(t.Context(), "node", filepath.Join(root, "scripts/api-identity.mjs"), "--before", before, "--after", after, "--json")
-			command.Dir = directory
-			if output, err := command.CombinedOutput(); err != nil {
-				t.Errorf("migration declaration API identity: %v\n%s", err, output)
-			}
-		})
-	}
-	if count == 0 {
-		t.Fatal("no migrate cases")
-	}
-}
-
-// migrationRuleDeclarations applies, in rounds as vibelang --fix does, only
-// the fixes of codes to the project in dir, and returns the declaration files
-// it then emits, by base name.
-func migrationRuleDeclarations(t *testing.T, dir string, codes []int32) map[string]string {
-	t.Helper()
-	fs := bundled.WrapFS(osvfs.FS())
-	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
-	if len(errors) != 0 {
-		t.Fatalf("config: %v", errors)
-	}
-	texts := map[tspath.RootedFilePath]string{}
-	parsed := &fixParsedFiles{}
-	program := fixProgram(fs, bundled.LibPath(), config, parsed, texts)
-	for range 32 { // each round applies a fix; a construct draws no fix of its own kind again
-		changed := false
-		for _, file := range fixableFiles(program) {
-			p := fileFixes(t.Context(), program, file, map[string]bool{}, tsFormFixCodes)
-			p.fixes = slices.DeleteFunc(p.fixes, func(f fileFix) bool { return !slices.Contains(codes, f.code) })
-			if len(p.fixes) > 0 {
-				texts[file.FileName()] = p.text()
-				changed = true
-			}
-		}
-		if !changed {
-			break
-		}
-		program = fixProgram(fs, bundled.LibPath(), config, parsed, texts)
-	}
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), nil) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Fatalf("after the migration rules: %s", d.String())
-		}
-	}
-	out := map[string]string{}
-	var mutex sync.Mutex // a program's files emit in parallel
-	program.Emit(t.Context(), compiler.EmitOptions{WriteFile: func(name tspath.RootedFilePath, text string, _ *compiler.WriteFileData) error {
-		if strings.HasSuffix(name.AsString(), ".d.ts") {
-			mutex.Lock()
-			defer mutex.Unlock()
-			out[filepath.Base(name.AsString())] = text
-		}
-		return nil
-	}})
-	return out
 }
 
 // D24: a VibeLang function returning an Effect subtype constructs data.

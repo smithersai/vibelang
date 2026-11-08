@@ -1,6 +1,0 @@
-import "vibelang/platform/node"
-
-// A main with a parameter is not a legacy startup.
-export effect function main(name: string) {
-  try Console.log(`parameter main ran ${name}`)
-}

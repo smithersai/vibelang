@@ -2,14 +2,10 @@ package vibelang
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 func typedCatchAdvisorySource(api, success, style string, alias bool) string {
@@ -71,64 +67,6 @@ func TestCatchTypeArgumentsAdvisory(t *testing.T) {
 				}
 			}
 		}
-	}
-}
-
-func TestCatchTypeArgumentsAdvisoryPreservesContract(t *testing.T) {
-	for _, api := range []string{"catch", "catchTag", "catchTags"} {
-		t.Run(api, func(t *testing.T) {
-			program, file, service, converters := editorProgram(t, typedCatchAdvisorySource(api, "unknown", "direct", false))
-			var found *ast.Diagnostic
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Source() == diagnosticSource && d.Code() == 4835 {
-					found = d
-				}
-			}
-			if found == nil {
-				t.Fatal("missing EK4835")
-			}
-			if !strings.Contains(diagnosticWithNotes(found), "No quick fix") {
-				t.Fatalf("missing refusal: %s", diagnosticWithNotes(found))
-			}
-			diagnostic := lsconv.DiagnosticToLSPPush(t.Context(), converters, found)
-			only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-			response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-				TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-				Range:        diagnostic.Range,
-				Context:      &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{diagnostic}, Only: &only},
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if response.CommandOrCodeActionArray != nil {
-				for _, a := range *response.CommandOrCodeActionArray {
-					if a.CodeAction != nil && a.CodeAction.Edit != nil {
-						t.Fatalf("contract rewrite offered: %s", a.CodeAction.Title)
-					}
-				}
-			}
-			fixed := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			if fixed.Err != nil || len(fixed.Files) != 0 {
-				t.Fatalf("contract rewritten: %+v", fixed)
-			}
-		})
-	}
-}
-
-func TestCatchTypeArgumentsPipelinePreservesContract(t *testing.T) {
-	for _, api := range []string{"catch", "catchTag", "catchTags"} {
-		t.Run(api, func(t *testing.T) {
-			program, file, _, _ := editorProgram(t, typedCatchAdvisorySource(api, "unknown", "pipeline", false))
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Category() == diagnostics.CategoryError || d.Source() == diagnosticSource && d.Code() == 4835 {
-					t.Fatalf("pipeline control: %s", d.String())
-				}
-			}
-			fixed := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			if fixed.Err != nil || len(fixed.Files) != 0 {
-				t.Fatalf("pipeline contract rewritten: %+v", fixed)
-			}
-		})
 	}
 }
 

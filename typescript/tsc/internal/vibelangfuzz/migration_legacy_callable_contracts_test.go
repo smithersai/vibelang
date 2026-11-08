@@ -3,7 +3,6 @@ package vibelangfuzz
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -62,39 +61,6 @@ func legacyCallableSource(tb testing.TB, key string, mode int) string {
 	return source
 }
 
-func checkLegacyCallableContract(t *testing.T, w *Workspace, api, source string) {
-	t.Helper()
-	var child *testing.T
-	t.Run("preservation", func(t *testing.T) {
-		child = t
-		checkMigrationDeclarationFix(t, w, api, Archive(map[string]string{"main.vibe": source}))
-	})
-	if child.Skipped() {
-		t.Fatal("valid legacy callable was not admitted")
-	}
-}
-
-func TestMigrationLegacyCallableContractsCorpus(t *testing.T) {
-	TestMigrationLegacyCallableContractsQuoted(t)
-	w := NewWorkspace(t)
-	api := declarationIdentityAPI(t)
-	stock := StockTypeScript(t)
-	for _, pattern := range legacyCallablePatterns {
-		t.Run(pattern.key, func(t *testing.T) {
-			source := legacyCallableSource(t, pattern.key, 0)
-			var twin *testing.T
-			t.Run("stock-twin", func(t *testing.T) {
-				twin = t
-				CheckDeclarationIdentity(t, w, stock, api, Archive(map[string]string{"main.ts": source}))
-			})
-			if twin.Skipped() {
-				t.Fatal("original callable stock twin was not admitted")
-			}
-			checkLegacyCallableContract(t, w, api, source)
-		})
-	}
-}
-
 func TestMigrationLegacyCallableContractOracleControls(t *testing.T) {
 	original := "export interface Shape {\n/** branch doc */\nbranch: { id: string };\n}\nexport declare const read: (scope: Shape) => Shape;\n"
 	for _, changed := range []string{
@@ -106,39 +72,4 @@ func TestMigrationLegacyCallableContractOracleControls(t *testing.T) {
 			t.Fatalf("API oracle accepted a changed callable contract: %s", changed)
 		}
 	}
-}
-
-func FuzzMigrationLegacyCallableContracts(f *testing.F) {
-	startShortBudget(f)
-	for _, key := range []string{
-		"contract:promise-client:5",
-		"contract:foreign-generator:10",
-		"contract:parameter-docs:15",
-	} {
-		f.Add([]byte(key))
-	}
-	w := NewWorkspace(f)
-	api := declarationIdentityAPI(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		TestMigrationLegacyCallableContractsQuoted(t)
-		parts := strings.Split(string(data), ":")
-		key, mode := legacyCallablePatterns[0].key, 0
-		if len(parts) == 3 && parts[0] == "contract" {
-			for _, pattern := range legacyCallablePatterns {
-				if parts[1] == pattern.key {
-					key = pattern.key
-				}
-			}
-			value, err := strconv.ParseUint(parts[2], 10, 8)
-			if err == nil {
-				mode = int(value) % 16
-			}
-		} else if len(data) > 0 {
-			key = legacyCallablePatterns[int(data[0])%len(legacyCallablePatterns)].key
-			if len(data) > 1 {
-				mode = int(data[1]) % 16
-			}
-		}
-		checkLegacyCallableContract(t, w, api, legacyCallableSource(t, key, mode))
-	})
 }

@@ -1,7 +1,0 @@
-// A legacy marked entry starts its exported main when executed directly.
-// Importing the module keeps main unrun.
-export effect function main() {
-  try Console.log("entry ran")
-}
-
-import "vibelang/platform/node"

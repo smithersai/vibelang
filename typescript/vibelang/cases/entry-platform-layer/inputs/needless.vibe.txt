@@ -1,7 +1,0 @@
-// A main that needs no service runs as D135 runs it, with no layer, and the
-// platform import, which loads nothing, leaves no trace in the JavaScript.
-import "vibelang/platform/node"
-
-export effect function main() {
-  try Console.log("needs no service")
-}

@@ -4,7 +4,7 @@
 import assert from "node:assert/strict"
 import { project, baseOptions } from "../_tooling-witness.mjs"
 
-const message = "legacy platform entry marker: run vibelang --fix and write an explicit runner"
+const message = "legacy platform entry marker: write an explicit runner"
 const files = {}
 for (const platform of ["node", "bun", "browser"]) {
   files[platform + "-bare.vibe"] = `import "vibelang/platform/${platform}"\nexport const value = 1\n`

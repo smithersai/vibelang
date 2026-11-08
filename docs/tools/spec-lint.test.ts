@@ -444,7 +444,7 @@ test("chapter-codes preserves generator repair ordering without an unassigned co
   const current = loadSpec()
   expect(lint(current, rule("chapter-codes"))).toEqual([])
   const row = current.get("src/007-tooling.md")!.split("\n").find(line => line.startsWith("| `EK4839` |"))!
-  expect(row).toContain("is reported after that generator is rewritten by `vibelang --fix`")
+  expect(row).toContain("is reported after that generator is rewritten")
   expect(row).toContain("`Effect.gen`")
   expect(row).toContain("`Effect.fn`")
 })

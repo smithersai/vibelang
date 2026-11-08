@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -69,35 +67,6 @@ func TestSchemaGenericTypeBindingQuickFix(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestFixProjectSchemaGenericTypeBinding(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	fixture := filepath.Join(root, "typescript/vibelang/cases/schema-generic-type-shadow-upgrade")
-	before, err := os.ReadFile(filepath.Join(fixture, "main.before.vibe.txt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := copyCompilerFixture(t, fixture, root)
-	main := filepath.Join(dir, "main.vibe")
-	if err := os.WriteFile(main, before, 0600); err != nil {
-		t.Fatal(err)
-	}
-	result := fixCase(t, dir)
-	if len(result.Files) != 1 || len(result.Refused) != 0 {
-		t.Fatalf("fixed %d files, refused %+v", len(result.Files), result.Refused)
-	}
-	for _, fixed := range result.Files {
-		if err := os.WriteFile(main, []byte(fixed.Text), 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if again := fixCase(t, dir); len(again.Files) != 0 {
-		t.Fatalf("second --fix changes %v", again.Order)
 	}
 }
 

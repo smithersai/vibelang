@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nimport * as Context from \"effect/Context\"\nimport * as Effect from \"effect/Effect\"\nexport interface Kit { readonly name: string }\nexport class Platform extends Context.Service<\n  Platform,\n  {\n    readonly aggregate: (name: string, kit: Kit) => Effect.Effect<number>\n    readonly view: (name: string) => Effect.Effect<string>\n  }\n>()(\"alchemy/Domain/Platform\") {}\n")

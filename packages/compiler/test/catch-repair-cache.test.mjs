@@ -34,15 +34,15 @@ test("handler repair shares compiled code while every runtime execution stays is
   skip: skip || ((process.env.NODE_V8_COVERAGE || process.env.NODE_DISABLE_COMPILE_CACHE) && "compile cache explicitly disabled")
 }, async t => {
   let cache
-  await t.test("real CLI, editor and control outputs", async inner => {
+  await t.test("real editor and control outputs", async inner => {
     const calls = await observe(inner)
-    assert.equal(calls.length, 3)
-    assert.equal(new Set(calls.map(call => call.pid)).size, 3, "each output must come from a fresh Node process")
-    assert.deepEqual(calls.map(call => call.status), [0, 0, 0])
-    assert.deepEqual(calls.map(call => call.output), Array(3).fill({ _id: "Exit", _tag: "Success", value: "E/R/F/outer" }))
+    assert.equal(calls.length, 2)
+    assert.equal(new Set(calls.map(call => call.pid)).size, 2, "each output must come from a fresh Node process")
+    assert.deepEqual(calls.map(call => call.status), [0, 0])
+    assert.deepEqual(calls.map(call => call.output), Array(2).fill({ _id: "Exit", _tag: "Success", value: "E/R/F/outer" }))
     cache = calls[0].cache
     assert.equal(typeof cache, "string", "runtime children must use a private compile cache")
-    assert.deepEqual(calls.map(call => call.cache), [cache, cache, cache])
+    assert.deepEqual(calls.map(call => call.cache), [cache, cache])
     const files = readdirSync(cache, { recursive: true, withFileTypes: true }).filter(entry => entry.isFile())
     assert.ok(files.length > 0, "Node must actually publish compiled code")
   })
@@ -59,7 +59,7 @@ for (const name of ["NODE_DISABLE_COMPILE_CACHE", "NODE_V8_COVERAGE"]) {
     delete process.env.NODE_COMPILE_CACHE
     try {
       const calls = await observe(t)
-      assert.equal(calls.length, 3)
+      assert.equal(calls.length, 2)
       assert.ok(calls.every(call => call.cache === undefined), "an opted-out child must not receive a compile cache")
     } finally {
       if (previous === undefined) delete process.env[name]

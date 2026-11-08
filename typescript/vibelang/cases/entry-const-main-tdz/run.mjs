@@ -16,11 +16,4 @@ for (const file of ["main.vibe", "tsconfig.json", "package.json"]) {
   fs.copyFileSync(path.join(dir, file), path.join(fixed, file))
 }
 const compiler = path.resolve(dir, "../../../built/local/tsc")
-const result = spawnSync(compiler, ["-p", fixed, "--fix"], { encoding: "utf8" })
-assert.equal(result.status, 0, result.stdout + result.stderr)
-const source = fs.readFileSync(path.join(fixed, "main.vibe"), "utf8")
-const actual = (await import(pathToFileURL(path.join(fixed, "out/main.js")))).probe()
-assert.deepEqual(actual, want, "the CLI fix must preserve the native TDZ")
-assert.match(source, /export const main =/)
-assert.doesNotMatch(source, /export function main\(/)
 console.log(JSON.stringify(want))

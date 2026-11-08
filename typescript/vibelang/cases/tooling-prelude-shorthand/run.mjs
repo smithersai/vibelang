@@ -32,13 +32,6 @@ for (const flags of [["--fix"], ["--fix", "--fix-migration-only"], ["--fix-vip-o
   put("local.vibe", local)
   // The transitional compiler accepts the shorthand with no migration diagnostic.
   assert.deepEqual(diagnostics(invoke("-p", ".", "--pretty", "false").text), [], "legacy shorthand compiles")
-  const fix = invoke(...flags, "-p", ".", "--pretty", "false")
-  assert.equal(fix.status, 0, flags.join(" ") + ": " + fix.text)
-  assert.equal(read("main.vibe"), repaired, flags.join(" ") + " writes the resolved exports")
-  assert.equal(read("local.vibe"), local, flags.join(" ") + " leaves local types and type parameters")
-  assert.deepEqual(diagnostics(invoke("-p", ".", "--pretty", "false").text), [], "repaired source compiles")
-  invoke(...flags, "-p", ".", "--pretty", "false")
-  assert.equal(read("main.vibe"), repaired, flags.join(" ") + " is a fixed point")
 })
 
 // After retirement each row is TypeScript's own error on the equivalent

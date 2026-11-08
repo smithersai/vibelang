@@ -1,2 +1,0 @@
-go test fuzz v1
-string("key:legacy-data-import-phase\n\x01\x02\x01\x03")

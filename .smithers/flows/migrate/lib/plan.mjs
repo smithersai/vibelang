@@ -178,7 +178,7 @@ export function planPrompt({ inventory, draft, limits = defaultLimits, output, n
   ]
   return `# Plan an incremental migration to VibeLang
 
-You order the migration of ${inventory.packages.join(", ")} from Effect TypeScript to VibeLang. A later step migrates one batch at a time, mechanically first (rename to .vibe, then vibelang --fix), then with an agent, and gates each batch on the package's tests and its emitted declarations. You plan; you change no file.
+You order the migration of ${inventory.packages.join(", ")} from Effect TypeScript to VibeLang. A later step migrates one batch at a time, mechanically first (rename to .vibe and rewrite the imports that name each file), then with an agent, and gates each batch on the package's tests and its emitted declarations. You plan; you change no file.
 
 ## Rules
 

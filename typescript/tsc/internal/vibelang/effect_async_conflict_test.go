@@ -56,26 +56,3 @@ func TestEffectAsyncConflictQuickFix(t *testing.T) {
 		}
 	}
 }
-
-func TestEffectAsyncConflictMigration(t *testing.T) {
-	for _, prefix := range []string{"effect async", "async effect", "effect /* keep 😀 */ async", "async /* keep */ effect"} {
-		for _, form := range []string{"export %s function f() { return 1 }", "export const f = %s () => 1", "export class C { static %s m() { return 1 } }", "export const f = { %s m() { return 1 } }", "export const f = %s { return 1 }"} {
-			source := fmt.Sprintf(form, prefix)
-			t.Run(source, func(t *testing.T) {
-				got, result := fixedPipe(t, source)
-				modifier := "effect"
-				if strings.Contains(form, "return 1 }") && strings.Contains(form, "= %s {") {
-					modifier = "async"
-				}
-				want := strings.Replace(source, modifier, "", 1)
-				if result.Err != nil || len(result.Refused) != 0 || got != want {
-					t.Fatalf("preserving migration: got %q want %q; error=%v refused=%+v", got, want, result.Err, result.Refused)
-				}
-				again, next := fixedPipe(t, got)
-				if again != got || next.Err != nil || len(next.Refused) != 0 {
-					t.Fatalf("migration is not a fixed point: %q; %+v", again, next)
-				}
-			})
-		}
-	}
-}

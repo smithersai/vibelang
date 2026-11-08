@@ -1,5 +1,0 @@
-{
-  "key": "foldkit-intermediate-refusal",
-  "source": "export effect function* p(n: number) {\n  yield n\n  return 42\n}\nexport effect function* g(n: number) {\n  try {\n    yield n\n  } finally {\n  }\n}\n",
-  "code": "EK0503"
-}

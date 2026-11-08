@@ -17,7 +17,7 @@ func catchNativeHandlerRepairQuotes(t testing.TB) {
 		{"002-running.md", "removes " + b + "async" + b + " or " + b + "*" + b + " from a function"},
 		{"002-running.md", "a plain handler whose result type is a Promise or thenable"},
 		{"002-running.md", "It is not a function: as TC39 specifies, " + b + "await" + b + " inside " + b + "do" + b + " belongs to the enclosing function"},
-		{"007-tooling.md", "Quick fixes and codemods use the formatter to preserve the parse under Appendix A."},
+		{"007-tooling.md", "Quick fixes use the formatter to preserve the parse under Appendix A."},
 		{"007-tooling.md", "preserves evaluation order, coldness, types, comments, and declaration output"},
 	} {
 		if !strings.Contains(SpecText(rule.chapter), rule.quote) {

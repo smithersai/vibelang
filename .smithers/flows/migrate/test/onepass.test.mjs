@@ -11,7 +11,7 @@ import { packRepository } from "../lib/pack-policy.mjs"
 import { rewriteReferences, restoreReferences } from "../lib/references.mjs"
 import { warningExceptions } from "../lib/diagnostics.mjs"
 import { renameBatch } from "../lib/codemod.mjs"
-import { planScope, blameCandidates, dependencyRoots, shardModules, fixShards, onePassStep } from "../lib/onepass.mjs"
+import { planScope, blameCandidates, dependencyRoots, onePassStep } from "../lib/onepass.mjs"
 import { revertMany, paths, flowStep, nextStep, verify, record } from "../lib/steps.mjs"
 import { must, quote, run, writeJson, readJson } from "../lib/util.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -54,7 +54,6 @@ if (args.includes("--showConfig")) {
   const files = config.files ?? fs.readdirSync("src").filter(f => /\\.(ts|tsx|vibe|vibex)$/.test(f) && !f.includes(".d.")).map(f => "./src/" + f)
   console.log(JSON.stringify({ files })); process.exit(0)
 }
-if (args.includes("--fix")) { console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0) }
 const core = fs.existsSync(path.join(root, "core/src/index.vibe"))
 if (pkg === "core" && core) { console.log("src/index.vibe(1,1): error EK1002: unsupported producer"); process.exitCode = 1 }
 if (pkg === "app" && core && fs.existsSync("src/index.vibe")) { console.log("src/index.vibe(2,1): error TS2322: dependency fallout"); process.exitCode = 1 }
@@ -93,22 +92,6 @@ test("dependency roots retain a failing importer's conversion until the root has
   assert.deepEqual(new Set(dependencyRoots(new Map([["a", ["b"]], ["b", ["a"]], ["c", ["a"]]]))), new Set(["a", "b"]))
 })
 
-test("directory shards are import-closed and capped, including dependency cycles", () => {
-  const graph = new Map(Array.from({ length: 500 }, (_, i) => [`src/dir${Math.floor(i / 50)}/f${i}.vibe`, []]))
-  const names = [...graph.keys()]
-  graph.set(names[1], [names[0]])
-  graph.set(names[0], [names[1]])
-  const groups = shardModules(names, graph)
-  assert.ok(groups.length > 1)
-  assert.deepEqual(new Set(groups.flat()), new Set(names))
-  for (const group of groups) {
-    assert.ok(group.length <= 240)
-    for (const f of group) for (const d of graph.get(f)) assert.ok(group.includes(d))
-  }
-  const chain = new Map(names.slice(0, 241).map((f, i, all) => [f, i ? [all[i - 1]] : []]))
-  assert.deepEqual(shardModules([...chain.keys()], chain), [[...chain.keys()]])
-})
-
 test("three-package one-pass checks every project, reverts the root cause, and keeps its importer", async () => {
   const f = await fixture()
   try {
@@ -119,7 +102,6 @@ test("three-package one-pass checks every project, reverts the root cause, and k
     assert.ok(renamed.packageScriptEdits.some(edit => edit.manifest === "core/package.json" && edit.script === "start"))
     assert.match(text(f.target, "run.sh"), /core\/src\/index.vibe/)
     assert.match(text(f.target, "core/package.json"), /src\/index.vibe/)
-    await onePassStep("fix", { run: f.run, jobs: 2, timeout: 10 })
     const settled = await onePassStep("settle", { run: f.run, jobs: 2 })
     assert.equal(settled.settled, true)
     assert.equal(existsSync(join(f.target, "core/src/index.vibe")), false)
@@ -134,8 +116,6 @@ test("three-package one-pass checks every project, reverts the root cause, and k
     assert.deepEqual(Object.keys(settled.causes), ["core/src/index.vibe"])
     const checks = text(f.target, "checks.log").trim().split("\n").map(JSON.parse)
     for (const pkg of ["core", "app", "consumer"]) for (const project of ["tsconfig.json", "tsconfig.tests.json"]) assert.ok(checks.some(c => c.pkg === pkg && c.project === project))
-    const fixes = checks.filter(c => c.args.includes("--fix")).map(c => c.pkg)
-    assert.ok(fixes.indexOf("core") < fixes.indexOf("app"))
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 
@@ -197,37 +177,6 @@ test("bulk reverts restore arbitrary subsets, exports, path references, sources 
   }), { seed: 1101, numRuns: 20 })
 })
 
-
-test("fix timeouts fail loudly with receipts, even after ordinary diagnostics", async () => {
-  const f = await fixture()
-  try {
-    await onePassStep("plan", { run: f.run, scope: f.scope })
-    await onePassStep("rename", { run: f.run })
-    const before = text(f.root, "tool/compiler.cjs")
-    writeProbeAwareCompiler(f.compiler, before.replace('if (args.includes("--fix")) {', 'if (args.includes("--fix")) { console.log("src/index.vibe(1,1): error EK1002: still fixing"); setInterval(() => {}, 1000); return;'), { mode: 0o755 })
-    await assert.rejects(onePassStep("fix", { run: f.run, timeout: 1, jobs: 2 }), /fix failed.*did not finish/s)
-    const receipt = readJson(paths(f.run).codemod("01"))
-    assert.equal(receipt.fix.settled, false)
-    assert.ok(receipt.fix.projects.some(p => /did not finish/.test(p.error)))
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-test("shard closure invariants hold for generated DAGs, aliases and cycles", () => {
-  fc.assert(fc.property(fc.array(fc.array(fc.nat(39), { maxLength: 3 }), { minLength: 1, maxLength: 40 }), edges => {
-    const files = edges.map((_, i) => `src/d${i % 5}/m${i}.vibe`)
-    const graph = new Map(files.map((f, i) => [f, edges[i].map(n => files[n % files.length])]))
-    const groups = shardModules(files, graph, 40)
-    assert.deepEqual(new Set(groups.flat()), new Set(files))
-    for (const group of groups) {
-      assert.ok(group.length <= 40)
-      for (const f of group) for (const dep of graph.get(f)) assert.ok(group.includes(dep))
-    }
-    const roots = dependencyRoots(graph)
-    assert.ok(roots.length > 0)
-    for (const f of roots) assert.ok(graph.has(f))
-  }), { seed: 1102, numRuns: 150 })
-})
-
 test("actual step CLI accepts a scope and repeated revert files, with a nonzero unsettled exit", async () => {
   const f = await fixture()
   try {
@@ -242,48 +191,6 @@ test("actual step CLI accepts a scope and repeated revert files, with a nonzero 
     const clean = await run(`node ${quote(cli)} settle --run ${quote(f.run)}`)
     assert.equal(clean.code, 0)
     assert.match(clean.stderr, /^SETTLED$/m)
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-
-test("fix executes capped temporary projects and removes them, rather than just limiting its kept output", async () => {
-  const f = await fixture()
-  try {
-    const scope = []
-    for (let i = 0; i < 245; i++) {
-      const file = `core/src/part${Math.floor(i / 50)}/m${i}.ts`
-      put(f.target, file, `export const value${i} = ${i}\n`)
-      scope.push(file)
-    }
-    put(f.run, "large-scope.txt", scope.join("\n"))
-    await Jj.commit(f.target, "large project")
-    await onePassStep("plan", { run: f.run, scope: join(f.run, "large-scope.txt") })
-    await onePassStep("rename", { run: f.run })
-    // The compiler oracle enumerates nested project roots, then asserts the
-    // actual temporary project's roots passed to --fix, not just a keep list.
-    const original = text(f.root, "tool/compiler.cjs")
-    const discovery = 'fs.readdirSync("src", { recursive: true }).filter(f => /\\.(ts|tsx|vibe|vibex)$/.test(f) && !f.includes(".d.")).map(f => "./src/" + f)'
-    let next = original.replace('fs.readdirSync("src").filter(f => /\\.(ts|tsx|vibe|vibex)$/.test(f) && !f.includes(".d.")).map(f => "./src/" + f)', discovery)
-    next = next.replace('if (args.includes("--fix")) { console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0) }', `
-if (args.includes("--fix")) {
-  const config = JSON.parse(fs.readFileSync(project, "utf8"))
-  if (!config.files || config.files.length > 240 || !config.extends) throw new Error("uncapped or optionless shard")
-  let total = 0
-  for (const file of config.files.filter(f => f.endsWith(".vibe"))) {
-    const source = fs.readFileSync(file, "utf8")
-    if (source.includes("// fixed")) continue
-    fs.writeFileSync(file, source + "// fixed\\n")
-    console.log("vibelang --fix: " + file + ": 1 fix (EK4801 ×1)"); total++
-  }
-  console.log("vibelang --fix: " + total + " fixes"); process.exit(0)
-}`)
-    writeProbeAwareCompiler(f.compiler, next, { mode: 0o755 })
-    const fixed = await onePassStep("fix", { run: f.run, jobs: 2 })
-    assert.equal(fixed.settled, true)
-    assert.equal(Object.keys(fixed.byFile).length, 245)
-    assert.ok(fixed.projects.every(p => p.shards.length > 1 && p.shards.every(g => g.modules <= 240)))
-    for (const file of scope) assert.match(text(f.target, file.replace(/\.ts$/, ".vibe")), /fixed/)
-    assert.ok(!readdirSync(join(f.target, "core")).some(p => p.startsWith("tsconfig.vibelang-fix-")))
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 
@@ -370,82 +277,6 @@ test("one-pass rename, root attribution and bulk revert preserve main's paths-al
     assert.deepEqual(Object.keys(result.causes), ["core/src/index.vibe"])
     assert.match(text(f.target, "app/src/index.vibe"), /@core\/index.js/)
   } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-
-
-test("large unselected roots do not prevent a small scope from using one capped temporary project", async () => {
-  const f = await fixture()
-  try {
-    const corpus = readJson(fileURLToPath(new URL("./corpus/opencode-small-scope-large-project.json", import.meta.url)))
-    for (let i = 0; i < corpus.plainModules; i++) put(f.target, `core/src/unused${i}.ts`, `export const value${i} = ${i}\n`)
-    put(f.target, "core/src/unselected.ts", Array.from({ length: corpus.plainModules }, (_, i) => `import { value${i} } from "./unused${i}.ts"`).join("\n"))
-    await Jj.commit(f.target, "large outside-scope roots")
-    await onePassStep("plan", { run: f.run, scope: f.scope })
-    await onePassStep("rename", { run: f.run })
-    const result = await onePassStep("fix", { run: f.run, jobs: 2 })
-    assert.equal(result.settled, true)
-    const project = result.projects.find(p => p.package === "core")
-    assert.deepEqual(project.shards.map(s => s.files), [["core/src/index.vibe"]])
-    const calls = text(f.target, "checks.log").trim().split("\n").map(JSON.parse).filter(c => c.pkg === "core" && c.args.includes("--fix"))
-    assert.ok(calls.length && calls.every(c => c.project.startsWith("tsconfig.vibelang-fix-")))
-    assert.match(text(f.target, "core/src/unselected.ts"), /unused244.ts/)
-    assert.ok(existsSync(join(f.target, "core/src/unused244.ts")))
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-
-test("unselected import graphs cannot enlarge selected fix shards", () => {
-  const contract = readFileSync(new URL("../README.md", import.meta.url), "utf8")
-  assert.ok(contract.includes("Unselected roots remain in the full-project checks."))
-  fc.assert(fc.property(
-    fc.array(fc.array(fc.nat(29), { maxLength: 3 }), { minLength: 1, maxLength: 30 }),
-    fc.integer({ min: 241, max: 280 }),
-    (edges, outsideCount) => {
-      const selected = edges.map((_, i) => `src/selected/m${i}.vibe`)
-      const outside = Array.from({ length: outsideCount }, (_, i) => `tests/unselected/m${i}.ts`)
-      const graph = new Map(selected.map((f, i) => [f, edges[i].map(n => selected[n % selected.length])]))
-      for (const file of outside) graph.set(file, outside.filter(f => f !== file))
-      const result = fixShards([...selected, ...outside], graph, new Set(selected))
-      assert.equal(result.sharded, true)
-      assert.deepEqual(new Set(result.groups.flat()), new Set(selected))
-      assert.ok(result.groups.every(group => group.length <= 240))
-      for (const group of result.groups) for (const file of group) for (const dependency of graph.get(file)) assert.ok(group.includes(dependency))
-    }
-  ), { seed: 1146, numRuns: 100 })
-})
-
-
-test("restart skips banked packages, but a changed source invalidates its bank", async () => {
-  const f = await fixture()
-  try {
-    await onePassStep("plan",{run:f.run,scope:f.scope})
-    await onePassStep("rename",{run:f.run})
-    await onePassStep("fix",{run:f.run,jobs:1})
-    const fixes = () => text(f.target,"checks.log").trim().split("\n").map(JSON.parse).filter(c=>c.args.includes("--fix"))
-    const count = fixes().length
-    await onePassStep("fix",{run:f.run,jobs:1})
-    assert.equal(fixes().length,count)
-    put(f.target,"app/src/index.vibe",text(f.target,"app/src/index.vibe")+"// changed\n")
-    await onePassStep("fix",{run:f.run,jobs:1})
-    assert.equal(fixes().filter(c=>c.pkg==="core").length,2)
-    assert.equal(fixes().filter(c=>c.pkg==="app").length,4)
-  } finally {rmSync(f.root,{recursive:true,force:true})}
-})
-
-test("a timed-out config is not retried after restarting the same pass", async () => {
-  const f=await fixture()
-  try {
-    await onePassStep("plan",{run:f.run,scope:f.scope})
-    await onePassStep("rename",{run:f.run})
-    put(f.root,"tool/compiler.cjs",text(f.root,"tool/compiler.cjs").replace('console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0)','setTimeout(()=>{},10000); return'))
-    await assert.rejects(onePassStep("fix",{run:f.run,jobs:1,timeout:1}),/fix failed/)
-    const first=text(f.target,"checks.log").trim().split("\n").map(JSON.parse).filter(c=>c.args.includes("--fix")).length
-    assert.ok(first>0)
-    await assert.rejects(onePassStep("fix",{run:f.run,jobs:1,timeout:1}),/no retry/)
-    const second=text(f.target,"checks.log").trim().split("\n").map(JSON.parse).filter(c=>c.args.includes("--fix")).length
-    assert.equal(second,first)
-  } finally {rmSync(f.root,{recursive:true,force:true})}
 })
 
 test("settle refreshes the routes a revert dropped before it blames a kept module", async () => {
@@ -587,28 +418,6 @@ test("record rechecks final generated bytes against main and refuses force on a 
   } finally {rmSync(f.root,{recursive:true,force:true})}
 })
 
-test("restart property preserves both completed work and timed-out config admission",async()=>{
-  await fc.assert(fc.asyncProperty(fc.constantFrom("core","app"),fc.boolean(),fc.boolean(),async(pkg,timeout,changed)=>{
-    const f=await fixture()
-    try {
-      put(f.run,"scope.txt",pkg+"/src/index.ts\n")
-      await onePassStep("plan",{run:f.run,scope:f.scope})
-      await onePassStep("rename",{run:f.run})
-      if(timeout) put(f.root,"tool/compiler.cjs",text(f.root,"tool/compiler.cjs").replace('console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0)','setTimeout(()=>{},10000); return'))
-      const action=()=>onePassStep("fix",{run:f.run,jobs:1,timeout:1})
-      if(timeout) await assert.rejects(action(),/fix failed/)
-      else await action()
-      const count=()=>text(f.target,"checks.log").trim().split("\n").map(JSON.parse).filter(c=>c.args.includes("--fix")).length
-      const first=count()
-      if(changed) put(f.target,pkg+"/src/index.vibe",text(f.target,pkg+"/src/index.vibe")+"// source changed\n")
-      if(timeout) await assert.rejects(action(),/no retry/)
-      else await action()
-      if(changed&&!timeout) assert.ok(count()>first)
-      else assert.equal(count(),first)
-    }finally{rmSync(f.root,{recursive:true,force:true})}
-  }),{seed:110716,numRuns:6})
-})
-
 test("opencode-57: scope retains a package when unrelated migration moves asserted native bundle inputs",async()=>{
   const f=await fixture()
   try{
@@ -642,98 +451,6 @@ test("opencode-57: an entirely protected scope reports the module, source and re
     assert.ok(existsSync(join(f.target,"core/src/index.ts")))
     assert.ok(!existsSync(paths(f.run).plan))
   }finally{rmSync(f.root,{recursive:true,force:true})}
-})
-
-
-test("t3code oversized selected closure falls back to every project root, including observers", () => {
-  const c = readJson(fileURLToPath(new URL("./corpus/t3code-oversized-import-closure.json", import.meta.url)))
-  const dependencies = Array.from({ length: c.closureModules - 2 }, (_, i) => `apps/mobile/src/lib/m${i}.ts`)
-  const files = [c.selected, c.tsx, ...dependencies, c.observer, c.unrelated]
-  const graph = new Map(files.map(f => [f, []]))
-  graph.set(c.selected, [c.tsx])
-  graph.set(c.tsx, [c.selected, ...dependencies])
-  graph.set(c.observer, [c.selected])
-  const result = fixShards(files, graph, new Set([c.selected]), c.cap)
-  assert.equal(result.sharded, false)
-  assert.deepEqual(result.groups, [files])
-  assert.ok([c.selected, c.tsx].includes(result.fallback.file))
-  assert.equal(result.fallback.modules, c.closureModules)
-  assert.equal(result.fallback.cap, c.cap)
-})
-
-test("generated oversized closures use the original project while bounded closures keep capped shards", () => {
-  const contract = readFileSync(new URL("../README.md", import.meta.url), "utf8")
-  // Flow contract, rather than a language-semantic oracle.
-  assert.ok(contract.includes("A selected import closure larger than the cap uses the original project."))
-  fc.assert(fc.property(
-    fc.integer({ min: 1, max: 30 }),
-    fc.integer({ min: 1, max: 45 }),
-    fc.boolean(), fc.boolean(),
-    (cap, count, cycle, reverse) => {
-      const selected = "src/selected.vibe"
-      const deps = Array.from({ length: count - 1 }, (_, i) => `src/dep${i}.ts`)
-      const observer = "src/observer.ts", unrelated = "src/unrelated.ts"
-      const files = [selected, ...deps, observer, unrelated]
-      if (reverse) files.reverse()
-      const graph = new Map(files.map(f => [f, []]))
-      graph.set(selected, deps)
-      graph.set(observer, [selected])
-      if (cycle && deps.length) graph.set(deps.at(-1), [selected])
-      const result = fixShards(files, graph, new Set([selected]), cap)
-      if (files.length <= cap) {
-        assert.equal(result.sharded, false)
-        assert.deepEqual(result.groups, [files])
-        assert.equal(result.fallback, undefined)
-      } else if (count > cap) {
-        assert.equal(result.sharded, false)
-        assert.deepEqual(result.groups, [files])
-        assert.equal(result.fallback.modules, count)
-      } else {
-        assert.equal(result.sharded, true)
-        assert.ok(result.groups.every(g => g.length <= cap))
-        assert.deepEqual(new Set(result.groups.flat()), new Set([selected, ...deps]))
-      }
-    }
-  ), { seed: 1147, numRuns: 200 })
-})
-
-test("oversized fallback invokes the original tsconfig and restores nonselected fixes", async () => {
-  const f = await fixture()
-  try {
-    const names = Array.from({ length: 241 }, (_, i) => `dep${i}.ts`)
-    for (const [i, name] of names.entries()) put(f.target, "core/src/" + name, `export const value${i} = ${i}\n`)
-    put(f.target, "core/src/observer.vibe", 'import { value } from "./index.ts"\nexport const check: number = value\n')
-    const imports = names.map((name, i) => `import { value${i} } from "./${name}"`).join("\n")
-    put(f.target, "core/src/index.ts", imports + "\nexport const value = 1\n")
-    await Jj.commit(f.target, "oversized project with an observer")
-    put(f.run, "scope.txt", "core/src/index.ts\n")
-    await onePassStep("plan", { run: f.run, scope: f.scope })
-    await onePassStep("rename", { run: f.run })
-    const before = text(f.target, "core/src/observer.vibe")
-    const original = text(f.root, "tool/compiler.cjs")
-    const next = original.replace('if (args.includes("--fix")) { console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0) }', `
-if (args.includes("--fix")) {
-  if (project !== "tsconfig.json" && project !== "tsconfig.tests.json") throw new Error("observer omitted from fix gate")
-  const file = "src/index.vibe", observer = "src/observer.vibe"
-  const source = fs.readFileSync(file, "utf8")
-  fs.appendFileSync(observer, "// nonselected rewrite\\n")
-  if (!source.includes("// fixed")) {
-    fs.appendFileSync(file, "// fixed\\n")
-    console.log("vibelang --fix: " + file + ": 1 fix (EK4801 ×1)")
-  }
-  console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0)
-}`)
-    writeProbeAwareCompiler(f.compiler, next, { mode: 0o755 })
-    const result = await onePassStep("fix", { run: f.run, jobs: 1 })
-    assert.equal(result.settled, true)
-    assert.equal(result.projects[0].mode, "whole-project")
-    assert.equal(result.projects[0].fallback.modules, 242)
-    assert.equal(result.projects[0].fallback.cap, 240)
-    assert.equal(result.projects[0].shards[0].modules, 243)
-    assert.match(text(f.target, "core/src/index.vibe"), /fixed/)
-    assert.equal(text(f.target, "core/src/observer.vibe"), before)
-    assert.ok(!readdirSync(join(f.target, "core")).some(p => p.startsWith("tsconfig.vibelang-fix-")))
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 
 const settleCorpus = readJson(fileURLToPath(new URL("./corpus/t3code-settle-innocent-importers.json", import.meta.url)))
@@ -807,9 +524,9 @@ test("t3code settle: cycles include diagnostic owners, never a healthy SCC membe
 })
 
 
-// These use the real plan/rename/fix/settle path. The compiler is deliberately
-// stubbed: the ruling is about flow policy after a safe fix refuses, regardless
-// of which compiler version emits the warning.
+// These use the real plan/rename/settle path. The compiler is deliberately
+// stubbed: the ruling is about flow policy for a warning a module keeps,
+// regardless of which compiler version emits the warning.
 for (const withError of [false, true]) test("warning refusal provenance survives settle" + (withError ? " alongside an own error" : ""), async () => {
   const f = await fixture()
   const corpus = readJson(fileURLToPath(new URL("./corpus/flow-warning-exceptions.json", import.meta.url)))
@@ -824,12 +541,7 @@ if (args.includes("--showConfig")) {
   process.exit(0)
 }
 if (!fs.existsSync("src/index.vibe") || pkg === "consumer") {
-  if (args.includes("--fix")) console.log("vibelang --fix: 0 fixes in 0 files.")
   process.exit(0)
-}
-if (args.includes("--fix")) {
-  console.log("vibelang --fix: src/index.vibe:4: EK4802 not fixed: the fixed program would report " + ${JSON.stringify(corpus.refusalError)})
-  console.log("vibelang --fix: 0 fixes in 0 files.")
 }
 const ds = ${JSON.stringify(corpus.diagnostics)}
 for (const d of ds) {
@@ -846,7 +558,6 @@ if (${withError} && pkg === "app") {
     await Jj.commit(f.target, "t3code warning witnesses")
     await onePassStep("plan", { run: f.run, scope: f.scope })
     await onePassStep("rename", { run: f.run })
-    await onePassStep("fix", { run: f.run, jobs: 2 })
     const out = await onePassStep("settle", { run: f.run, jobs: 2 })
     assert.equal(out.settled, true)
     assert.ok(existsSync(join(f.target, "core/src/index.vibe")))
@@ -854,14 +565,11 @@ if (${withError} && pkg === "app") {
     assert.equal(existsSync(join(f.target, "app/src/index.ts")), withError)
     assert.deepEqual(Object.keys(out.causes), withError ? ["app/src/index.vibe"] : [])
     const kept = withError ? ["core/src/index.vibe"] : ["app/src/index.vibe", "core/src/index.vibe"]
-    const refused = readJson(paths(f.run).codemod("01")).fix.refused
     for (const file of kept) {
-      const expected = warningExceptions(corpus.diagnostics.map(d => ({ ...d, file })), [file], refused)
+      const expected = warningExceptions(corpus.diagnostics.map(d => ({ ...d, file })), [file])
       const actual = out.warningExceptions.filter(e => e.file === file)
       assert.equal(actual.length, 4)
-      assert.ok(actual.every(e => e.name === "warning-fix-refused"))
       assert.deepEqual(actual, expected)
-      assert.equal(actual.find(e => e.code === "EK4802").reason, "The fixed program would report " + corpus.refusalError)
       assert.equal(text(f.target, file), corpus.witnesses[file.startsWith("core") ? 0 : 1].source)
     }
     assert.ok(out.warningExceptions.every(e => kept.includes(e.file)))
@@ -881,7 +589,6 @@ test("property: generated warning/error mixes retain exactly the error-free modu
     code: fc.oneof(fc.constantFrom("EK4833", "EK4839", "EK4802", "TS2322"),
       fc.integer({ min: 1, max: 999999 }).map(n => "GENERATED" + n)),
     line: fc.integer({ min: 1, max: 20 }),
-    receipt: fc.boolean()
   })
   await fc.assert(fc.asyncProperty(fc.array(entry, { maxLength: 12 }), async entries => {
     const f = await fixture()
@@ -902,17 +609,13 @@ if (!fs.existsSync("src/index.vibe")) process.exit(0)
 for (const d of ${JSON.stringify(entries)}) {
   if (d.pkg !== pkg) continue
   console.log("src/index.vibe(" + d.line + ",1): " + d.category + " " + d.code + ": generated finding")
-  if (d.receipt) {
-    if (args.includes("--fix")) console.log("vibelang --fix: src/index.vibe:" + d.line + ": " + d.code + " not fixed: the fixed program would report TS2322: changed API.")
-  } else console.log("  No quick fix: preserve this signature.")
+  console.log("  No quick fix: preserve this signature.")
   if (d.category === "error") process.exitCode = 1
 }
-if (args.includes("--fix")) console.log("vibelang --fix: 0 fixes in 0 files.")
 `, { mode: 0o755 })
       await Jj.commit(f.target, "generated diagnostic mix")
       await onePassStep("plan", { run: f.run, scope: f.scope })
       await onePassStep("rename", { run: f.run })
-      await onePassStep("fix", { run: f.run })
       const settled = await onePassStep("settle", { run: f.run })
       assert.equal(settled.settled, true)
       const done = readJson(join(f.run, "done.json"))
@@ -931,80 +634,13 @@ if (args.includes("--fix")) console.log("vibelang --fix: 0 fixes in 0 files.")
     } finally { rmSync(f.root, { recursive: true, force: true }) }
   }), { seed: 48394803, numRuns: 16, examples: [
     [[]],
-    [[{ pkg: "core", category: "warning", code: "GENERATED65001", line: 1, receipt: true },
-      { pkg: "app", category: "error", code: "GENERATED65001", line: 1, receipt: false }]]
+    [[{ pkg: "core", category: "warning", code: "GENERATED65001", line: 1 },
+      { pkg: "app", category: "error", code: "GENERATED65001", line: 1 }]]
   ] })
 })
 
-const staleProducerCorpus = readJson(fileURLToPath(new URL("./corpus/smithers-stale-conversion-producer.json", import.meta.url)))
-async function changedConversionContext(kind, failed) {
-  const f = await fixture()
-  try {
-    const config = readJson(paths(f.run).config)
-    config.base = staleProducerCorpus.oldBaseline
-    writeJson(paths(f.run).config, config)
-    const tool = join(f.root, "tool/toolchain.json")
-    writeJson(tool, { ...readJson(tool), commit: staleProducerCorpus.oldProducer })
-    await onePassStep("plan", { run: f.run, scope: f.scope })
-    await onePassStep("rename", { run: f.run })
-    const workingCompiler = text(f.root, "tool/compiler.cjs")
-    if (failed) {
-      put(f.root, "tool/compiler.cjs", workingCompiler.replace('console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0)', 'setTimeout(()=>{},10000); return'))
-      await assert.rejects(onePassStep("fix", { run: f.run, jobs: 1, timeout: 1 }), /fix failed/)
-    } else await onePassStep("fix", { run: f.run, jobs: 1 })
-    const fixes = () => text(f.target, "checks.log").trim().split("\n").map(JSON.parse).filter(c => c.args.includes("--fix")).length
-    const previous = fixes()
-    if (kind === "producer") {
-      config.toolchain.version = "0.0.12"
-      writeJson(paths(f.run).config, config)
-    }
-    if (kind === "baseline") {
-      config.base = staleProducerCorpus.newBaseline
-      writeJson(paths(f.run).config, config)
-    }
-    if (failed) put(f.root, "tool/compiler.cjs", workingCompiler)
-    if (kind === "compiler") put(f.root, "tool/compiler.cjs", workingCompiler + "\n// new compiler build\n")
-    assert.equal(nextStep(f.run).step, "codemod", "next must reopen a stale conversion")
-    await onePassStep("fix", { run: f.run, jobs: 1, timeout: 5 })
-    assert.ok(fixes() > previous, kind + " must reopen the previous " + (failed ? "failure" : "success"))
-    const bank = readJson(join(f.run, "fix-bank.json"))
-    assert.deepEqual(bank.timedOut, [])
-    assert.equal(typeof bank.identity, "string")
-    const next = fixes()
-    await onePassStep("fix", { run: f.run, jobs: 1, timeout: 5 })
-    assert.equal(fixes(), next, "an unchanged context retains its completed bank")
-    assert.match(text(f.run, "batches/01/progress.jsonl"), /fix-context-changed/)
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-}
-test("a new producer reopens a previous one-pass timeout", () => changedConversionContext("producer", true))
-test("a new baseline rechecks an unchanged successful conversion", () => changedConversionContext("baseline", false))
-test("conversion banks follow baseline, producer and compiler identity for either outcome", async () => {
-  await fc.assert(fc.asyncProperty(fc.constantFrom("baseline", "producer", "compiler"), fc.boolean(), changedConversionContext),
-    { seed: 392, numRuns: 6 })
-})
-test("settled success receipts cannot certify a different producer", async () => {
-  const f = await fixture()
-  try {
-    put(f.root, "tool/compiler.cjs", text(f.root, "tool/compiler.cjs").replace(/^if \(pkg === "(?:core|app)".*$/gm, ""))
-    await onePassStep("plan", { run: f.run, scope: f.scope })
-    await onePassStep("rename", { run: f.run })
-    await onePassStep("fix", { run: f.run, jobs: 1 })
-    assert.equal((await onePassStep("settle", { run: f.run })).settled, true)
-    const done = readJson(join(f.run, "done.json"))
-    assert.ok(Object.values(done).every(item => typeof item.identity === "string"))
-    writeJson(join(f.run, "fix-bank.json"), { identity: done.app.identity, packages: {}, timedOut: [] })
-    const config = readJson(paths(f.run).config)
-    config.toolchain.version = "0.0.12"
-    writeJson(paths(f.run).config, config)
-    const fixes = () => text(f.target, "checks.log").trim().split("\n").map(JSON.parse).filter(c => c.args.includes("--fix")).length
-    const before = fixes()
-    await onePassStep("fix", { run: f.run, jobs: 1 })
-    assert.ok(fixes() > before, "done.json must be rechecked under the new producer")
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
 // Keep this producer stable across conversion and repair. Changing the compiler
-// after fix exercises conversion freshness instead of declaration recovery.
+// after rename exercises conversion freshness instead of declaration recovery.
 function cleanOracleCompiler(f) {
   put(f.root, "tool/compiler.cjs", text(f.root, "tool/compiler.cjs")
     .replace(/^if \(pkg === "(?:core|app|consumer)".*$/gm, ""))
@@ -1017,7 +653,6 @@ test("one-pass repair restores a module with an unproven stock declaration basel
     cleanOracleCompiler(f)
     await onePassStep("plan", { run: f.run, scope: f.scope })
     await onePassStep("rename", { run: f.run })
-    await onePassStep("fix", { run: f.run, jobs: 1 })
     const p = paths(f.run)
     const unproven = corpus.unproven
     writeJson(p.compile("01"), { batch: "01" })
@@ -1053,7 +688,6 @@ test("property: one-pass oracle recovery restores only live batch modules and ne
       cleanOracleCompiler(f)
       await onePassStep("plan", { run: f.run, scope: f.scope })
       await onePassStep("rename", { run: f.run })
-      await onePassStep("fix", { run: f.run, jobs: 1 })
       const p = paths(f.run)
       const entries = files.map(file => ({ ...corpus.unproven, file }))
       writeJson(p.verify("01"), {
@@ -1079,264 +713,5 @@ test("property: one-pass oracle recovery restores only live batch modules and ne
       [{ files: corpus.modules, duplicate: true, passed: false }],
       [{ files: corpus.modules, duplicate: false, passed: true }]
     ]
-  })
-})
-
-
-// The flow fixes every selected module, or names the modules no configured
-// project reaches. Project success must not certify an unvisited script.
-async function uncoveredFixture({ script = "script/generate.ts", imported = false, outside = false } = {}) {
-  const f = await fixture()
-  const selected = outside ? script : "core/" + script
-  put(f.target, selected, "export const answer = 42\n")
-  if (imported && !outside) put(f.target, "core/src/index.ts", `export { answer } from "../${script}"\n`)
-  put(f.run, "scope.txt", ["core/src/index.ts", selected].join("\n") + "\n")
-  await onePassStep("plan", { run: f.run, scope: f.scope })
-  await onePassStep("rename", { run: f.run })
-  return { ...f, selected: selected.replace(/\.ts$/, ".vibe") }
-}
-
-test("uncovered selected script refuses a settled fix and records its path", async () => {
-  const f = await uncoveredFixture()
-  try {
-    await assert.rejects(onePassStep("fix", { run: f.run, jobs: 2 }), /selected modules outside configured projects/)
-    const receipt = readJson(paths(f.run).codemod("01"))
-    assert.equal(receipt.fix.settled, false)
-    assert.deepEqual(receipt.fix.uncovered, [f.selected])
-    assert.equal(readJson(join(f.run, "fix-bank.json")).packages.core, undefined)
-    assert.ok(existsSync(join(f.target, f.selected)), "refusal must preserve the source")
-    put(f.target, "core/src/index.vibe", 'export { answer } from "../script/generate.vibe"\n')
-    const retried = await onePassStep("fix", { run: f.run, jobs: 2 })
-    assert.equal(retried.settled, true)
-    assert.deepEqual(retried.uncovered, [])
-
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-test("uncovered selected module with no configured package is reported", async () => {
-  const f = await uncoveredFixture({ script: "tools/generate.ts", outside: true })
-  try {
-    await assert.rejects(onePassStep("fix", { run: f.run, jobs: 2 }), /selected modules outside configured projects/)
-    assert.deepEqual(readJson(paths(f.run).codemod("01")).fix.uncovered, [f.selected])
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-test("property: selected scripts are covered through imports or reported uncovered", async () => {
-  const contract = readFileSync(new URL("../README.md", import.meta.url), "utf8")
-  assert.ok(contract.includes("Every selected module must be reached by a configured project."))
-  const corpus = readJson(fileURLToPath(new URL("./corpus/opencode-uncovered-script.json", import.meta.url)))
-  await fc.assert(fc.asyncProperty(fc.constantFrom(...corpus.directories), fc.nat(100), fc.boolean(), async (directory, suffix, imported) => {
-    const f = await uncoveredFixture({ script: `${directory}/generate${suffix}.ts`, imported })
-    try {
-      const operation = onePassStep("fix", { run: f.run, jobs: 2 })
-      if (imported) {
-        const result = await operation
-        assert.equal(result.settled, true)
-        assert.deepEqual(result.uncovered, [])
-      } else {
-        await assert.rejects(operation, /selected modules outside configured projects/)
-        assert.deepEqual(readJson(paths(f.run).codemod("01")).fix.uncovered, [f.selected])
-      }
-    } finally { rmSync(f.root, { recursive: true, force: true }) }
-  }), { seed: 1066, numRuns: 12 })
-})
-
-
-test("uncovered script is not certified by successful checks of other modules", async () => {
-  const f = await uncoveredFixture()
-  try {
-    cleanOracleCompiler(f)
-    assert.equal((await onePassStep("settle", { run: f.run })).settled, true)
-    await assert.rejects(onePassStep("fix", { run: f.run, jobs: 2 }), /selected modules outside configured projects/)
-    assert.deepEqual(readJson(paths(f.run).codemod("01")).fix.uncovered, [f.selected])
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-// A package's verification script can resolve an export through declarations,
-// while the migration graph follows the source. The compiler owns membership.
-async function foreignProjectFixture() {
-  const f = await fixture()
-  const corpus = readJson(fileURLToPath(new URL("./corpus/opencode-foreign-project-modules.json", import.meta.url)))
-  put(f.target, "core/" + corpus.script, corpus.source)
-  writeJson(join(f.target, "core/tsconfig.tests.json"), { files: [corpus.script] })
-  put(f.run, "scope.txt", ["core/src/index.ts", "core/" + corpus.script].join("\n") + "\n")
-  await onePassStep("plan", { run: f.run, scope: f.scope })
-  await onePassStep("rename", { run: f.run })
-  writeJson(join(f.target, "core/tsconfig.tests.json"), { files: [corpus.script.replace(/\.ts$/, ".vibe")] })
-  const compiler = readFileSync(f.compiler, "utf8"), firstLine = compiler.indexOf("\n") + 1
-  const guard = String.raw`
-{
-  const fs = require("node:fs"), path = require("node:path")
-  const args = process.argv.slice(2), project = args[args.indexOf("-p") + 1]
-  if (path.basename(process.cwd()) === "core" && project === "tsconfig.tests.json") {
-    const member = path.resolve("script/verify-package.vibe")
-    if (args.includes("--listFilesOnly")) { console.log(member); process.exit(0) }
-    if (args.includes("--fix")) {
-      const selected = fs.readFileSync(args[args.indexOf("--only") + 1].slice(1), "utf8").trim().split("\n")
-      if (selected.some(file => file !== member)) {
-        console.error("vibelang --fix: --only names a foreign project module"); process.exit(3)
-      }
-    }
-  }
-}
-`
-  writeFileSync(f.compiler, compiler.slice(0, firstLine) + guard + compiler.slice(firstLine))
-  return f
-}
-
-test("foreign project source is excluded from another project's fix selection", async () => {
-  const f = await foreignProjectFixture()
-  try {
-    const result = await onePassStep("fix", { run: f.run, jobs: 2 })
-    assert.equal(result.settled, true)
-    const script = result.projects.find(p => p.package === "core" && p.project === "tsconfig.tests.json")
-    assert.deepEqual(script.shards.flatMap(s => s.files).filter(f => f.endsWith(".vibe")), ["core/script/verify-package.vibe"])
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-test("foreign project selection uses physical membership through a linked workspace", async () => {
-  const f = await foreignProjectFixture()
-  try {
-    const config = readJson(paths(f.run).config)
-    const alias = join(f.root, "linked-repo")
-    symlinkSync(f.target, alias, "dir")
-    config.target = alias
-    writeJson(paths(f.run).config, config)
-    assert.equal((await onePassStep("fix", { run: f.run, jobs: 2 })).settled, true)
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-test("foreign project source remains uncovered without its owning project", async () => {
-  const f = await foreignProjectFixture()
-  try {
-    const config = readJson(paths(f.run).config)
-    config.packages = config.packages.map(pkg => pkg.dir === "core" ? { ...pkg, tsconfig: "tsconfig.tests.json", sources: ["src", "script"] } : pkg)
-    writeJson(paths(f.run).config, config)
-    const manifest = readJson(join(f.target, "core/package.json"))
-    manifest.scripts = {}
-    writeJson(join(f.target, "core/package.json"), manifest)
-    await assert.rejects(onePassStep("fix", { run: f.run, jobs: 2 }), /selected modules outside configured projects/)
-    assert.deepEqual(readJson(paths(f.run).codemod("01")).fix.uncovered, ["core/src/index.vibe"])
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-test("property: foreign project dependencies never enter a temporary fix shard", () => {
-  fc.assert(fc.property(fc.integer({ min: 1, max: 20 }), fc.integer({ min: 1, max: 20 }), fc.boolean(), (count, foreignCount, cycle) => {
-    const selected = "src/entry.vibe"
-    const own = [selected, ...Array.from({ length: count }, (_, i) => "src/own" + i + ".ts")]
-    const foreign = Array.from({ length: foreignCount }, (_, i) => "other/foreign" + i + ".vibe")
-    const graph = new Map([...own, ...foreign].map(file => [file, []]))
-    graph.set(selected, foreign)
-    if (cycle) for (const file of foreign) graph.set(file, [selected])
-    const result = fixShards(own, graph, new Set([selected]), 1)
-    assert.deepEqual(result.groups.flat(), [selected])
-    assert.equal(result.sharded, true)
-  }), { seed: 110506, numRuns: 80 })
-})
-
-const importedRootsCorpus = readJson(fileURLToPath(new URL("./corpus/opencode-imported-shard-roots.json", import.meta.url)))
-test("imported project roots: VIP34Quoted", () => {
-  const spec = readFileSync(new URL("../../../../" + importedRootsCorpus.spec, import.meta.url), "utf8")
-  assert.ok(spec.includes(importedRootsCorpus.quote))
-})
-
-// Type resolution can select declarations while the migration import graph
-// still sees a native source export in the same package.
-async function foreignNativeProjectFixture() {
-  const f = await fixture()
-  for (let i = 0; i < 245; i++) put(f.target, "core/src/local" + i + ".ts", "export const value = 1\n")
-  put(f.target, importedRootsCorpus.foreign, importedRootsCorpus.source)
-  put(f.run, "scope.txt", "core/src/index.ts\n")
-  writeJson(paths(f.run).inventory, { files: [{
-    path: "core/src/index.ts", imports: [importedRootsCorpus.local, importedRootsCorpus.foreign]
-  }] })
-  await onePassStep("plan", { run: f.run, scope: f.scope })
-  await onePassStep("rename", { run: f.run })
-  const config = readJson(join(f.target, "core/tsconfig.json"))
-  config.compilerOptions.rootDir = "./src"
-  writeJson(join(f.target, "core/tsconfig.json"), config)
-  const compiler = readFileSync(f.compiler, "utf8"), firstLine = compiler.indexOf("\n") + 1
-  const guard = String.raw`
-{
-  const fs = require("node:fs"), path = require("node:path")
-  const args = process.argv.slice(2), project = args[args.indexOf("-p") + 1]
-  if (path.basename(process.cwd()) === "core") {
-    const config = JSON.parse(fs.readFileSync(project, "utf8"))
-    const files = config.files ?? fs.readdirSync("src").filter(f => /\.(ts|vibe)$/.test(f) && !f.includes(".d.")).map(f => "./src/" + f)
-    if (args.includes("--listFilesOnly")) {
-      for (const file of files) console.log(path.resolve(file))
-      if (files.some(file => path.relative(path.resolve("src"), path.resolve(file)).startsWith(".."))) {
-        console.error("error TS6059: A temporary project added a source outside rootDir.")
-        process.exit(1)
-      }
-      process.exit(0)
-    }
-    if (args.includes("--fix")) { console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0) }
-  }
-}
-`
-  writeFileSync(f.compiler, compiler.slice(0, firstLine) + guard + compiler.slice(firstLine))
-  return f
-}
-
-test("foreign native source never becomes a temporary project root through the import graph", async () => {
-  const f = await foreignNativeProjectFixture()
-  try {
-    const result = await onePassStep("fix", { run: f.run, jobs: 2 })
-    assert.equal(result.settled, true)
-    const project = result.projects.find(p => p.package === "core" && p.project === "tsconfig.json")
-    assert.equal(project.mode, "sharded")
-    assert.deepEqual(new Set(project.shards.flatMap(s => s.roots)), new Set(["core/src/index.vibe", "core/src/local0.ts"]))
-  } finally { rmSync(f.root, { recursive: true, force: true }) }
-})
-
-test("foreign native source: stock TypeScript rejects an added root outside rootDir", () => {
-  const root = mkdtempSync(join(tmpdir(), "migrate-native-roots-"))
-  try {
-    put(root, "app/src/own.ts", "export const value = 1\n")
-    put(root, "other/src/native.ts", "export const value = 2\n")
-    const ts = require("typescript")
-    const options = { rootDir: join(root, "app/src"), noLib: true, declaration: true }
-    const check = files => ts.getPreEmitDiagnostics(ts.createProgram(files.map(f => join(root, f)), options)).filter(d => d.code === 6059)
-    assert.equal(check(["app/src/own.ts"]).length, 0)
-    const errors = check(["app/src/own.ts", "other/src/native.ts"])
-    assert.equal(errors.length, 1)
-    assert.match(ts.flattenDiagnosticMessageText(errors[0].messageText, "\n"), /rootDir/)
-  } finally { rmSync(root, { recursive: true, force: true }) }
-})
-
-test("foreign native source: imported selections keep their original root observer", () => {
-  const root = "src/observer.ts", selected = "lib/value.vibe"
-  const graph = new Map([[root, [selected]], [selected, []]])
-  const result = fixShards([root, selected], graph, new Set([selected]), 1, [root])
-  assert.equal(result.sharded, false)
-  assert.match(result.fallback.reason, /project roots/)
-})
-
-test("property: temporary roots preserve source membership across native and Vibe imports", async () => {
-  await checkProperty(fc, {
-    name: "opencode-imported-project-roots",
-    rule: importedRootsCorpus.quote + " " + importedRootsCorpus.rule,
-    command: "node --test --test-name-pattern='temporary roots preserve' .smithers/flows/migrate/test/onepass.test.mjs",
-    arbitrary: fc.record({
-      count: fc.integer({ min: 1, max: 15 }),
-      extension: fc.constantFrom(".ts", ".mts", ".vibe"),
-      cycle: fc.boolean()
-    }),
-    numRuns: 80,
-    check: ({ count, extension, cycle }) => {
-      const entry = importedRootsCorpus.entry, local = importedRootsCorpus.local
-      const imported = Array.from({ length: count }, (_, i) => "other/value" + i + extension)
-      const spare = Array.from({ length: 20 }, (_, i) => importedRootsCorpus.rootDir + "/spare" + i + ".ts")
-      const roots = [entry, local, ...spare]
-      const files = [...roots, ...imported]
-      const graph = new Map(files.map(file => [file, []]))
-      graph.set(entry, [local, ...imported])
-      if (cycle) for (const file of imported) graph.set(file, [entry])
-      const result = fixShards(files, graph, new Set([entry]), 20, roots)
-      assert.equal(result.sharded, true)
-      assert.deepEqual(result.rootGroups.flat().sort(), [entry, local].sort())
-      assert.deepEqual(new Set(result.groups.flat()), new Set([entry, local, ...imported]))
-    }
   })
 })

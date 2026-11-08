@@ -32,9 +32,9 @@ effect function receive(input: unknown) {
 
 Each field describes its own representation and checks; the struct combines them into one codec, so `pieces` arrives as text and becomes a number. Declaring `Shipment` builds a description and decodes nothing.
 
-A required `schema` field must reference a codec with required decoded key flags (`EK2109`). Use an unmodified value codec and write optionality on the field. To retain an existing optional-key codec, `vibelang --fix` writes the explicit `Schema.Struct` value.
+A required `schema` field must reference a codec with required decoded key flags (`EK2109`). Use an unmodified value codec and write optionality on the field. To retain an existing optional-key codec, write the explicit `Schema.Struct` value.
 
-An empty type argument list on a schema reference, such as `Address<>`, reports `EK2109`. `vibelang --fix` removes the empty list and keeps its comments.
+An empty type argument list on a schema reference, such as `Address<>`, reports `EK2109`.
 
 A `schema` body holds only typed fields, written `name: Type` or `name?: Type`. Methods, index signatures, call and construct signatures, accessors, and untyped members report `EK1505`, including inside a field’s nested object type. A schema alias with an unsupported object-type member keeps `EK2109`.
 
@@ -67,17 +67,17 @@ schema Batch {
 {"shipments":[{"tracking":"box-76","pieces":2}]}
 ```
 
-`schema Batch { ... }` declares both the struct `Batch` and its decoded type, the type `Batch`. A field names its type; a schema such as `Shipment` stands for its own decoded type. A field's type maps to a schema when it is a primitive (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined` or `null`), a literal, a union, an array, a tuple, a `Record`, an object type, or another schema's name, and an optional field `name?: T` accepts a missing key or `undefined`, through `Schema.optional`. Any other type is `EK2109`. `unknown`, `any`, `never`, `object` and `void` are not primitives: name their schema, as in `payload: Schema.Unknown`, which `vibelang --fix` writes. A field is writable unless written `readonly`. Array, tuple, and `Record` mappings preserve collection mutability: `T[]`, `Array<T>`, and `[A, B]` use `Schema.mutable`; `Record<K, V>` uses `Schema.mutableKey` on its value schema. The `readonly T[]`, `ReadonlyArray<T>`, `readonly [A, B]`, and `Readonly<Record<K, V>>` forms remain readonly. `vibelang --fix` preserves these distinctions when converting explicit schema combinators to declarations. JavaScript objects are not frozen.
+`schema Batch { ... }` declares both the struct `Batch` and its decoded type, the type `Batch`. A field names its type; a schema such as `Shipment` stands for its own decoded type. A field's type maps to a schema when it is a primitive (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined` or `null`), a literal, a union, an array, a tuple, a `Record`, an object type, or another schema's name, and an optional field `name?: T` accepts a missing key or `undefined`, through `Schema.optional`. Any other type is `EK2109`. `unknown`, `any`, `never`, `object` and `void` are not primitives: name their schema, as in `payload: Schema.Unknown`. A field is writable unless written `readonly`. Array, tuple, and `Record` mappings preserve collection mutability: `T[]`, `Array<T>`, and `[A, B]` use `Schema.mutable`; `Record<K, V>` uses `Schema.mutableKey` on its value schema. The `readonly T[]`, `ReadonlyArray<T>`, `readonly [A, B]`, and `Readonly<Record<K, V>>` forms remain readonly. JavaScript objects are not frozen.
 
 `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` use their resolved TypeScript-library type bindings. A local or imported type with the same spelling does not receive that mapping; without a suitable Schema value it reports `EK2109`. A value-only name does not replace the separate library type. For example, a local `type Record<K, V> = { k: K; v: V }` supplies no decoder for `schema S { a: Record<string, number> }`. Write `schema Entry { k: string; v: number }` and use `a: Entry` instead.
 
-An explicitly `readonly` field requires a referenced codec whose decoded key is readonly. Aliased, mutable or uncertain key flags report `EK2109`; `vibelang --fix` preserves the existing codec with explicit `Schema.Struct` values. The required-key and readonly-key checks are independent. A reference widened to `Schema.Top` can report both `EK2109` messages at the same field because neither decoded flag is proven. This promise is shallow: a readonly field can still contain a mutable array.
+An explicitly `readonly` field requires a referenced codec whose decoded key is readonly. Aliased, mutable or uncertain key flags report `EK2109`; to preserve the existing codec, write explicit `Schema.Struct` values. The required-key and readonly-key checks are independent. A reference widened to `Schema.Top` can report both `EK2109` messages at the same field because neither decoded flag is proven. This promise is shallow: a readonly field can still contain a mutable array.
 
-Write `readonly` once per field. Repeating it reports TypeScript’s `TS1030`; `vibelang --fix` removes the duplicate and keeps the field’s codec and readonly behavior.
+Write `readonly` once per field. Repeating it reports TypeScript’s `TS1030`.
 
-Schema fields use TypeScript type-member modifiers. Class-only modifiers such as `public`, `private`, `static` or `override` report `TS1070`; `vibelang --fix` removes ignored modifiers while retaining comments, readonly behavior and the codec. Keywords used as field names remain valid.
+Schema fields use TypeScript type-member modifiers. Class-only modifiers such as `public`, `private`, `static` or `override` report `TS1070`. Keywords used as field names remain valid.
 
-Schema fields describe codecs and do not have JavaScript initializers. An initializer such as `value: number = 42` reports `TS1247`; `vibelang --fix` removes the previously ignored expression. Use an explicit Effect schema default combinator when a default is intended.
+Schema fields describe codecs and do not have JavaScript initializers. An initializer such as `value: number = 42` reports `TS1247`. Use an explicit Effect schema default combinator when a default is intended.
 Schema references keep TypeScript’s declaration order and temporal dead zone. Forward and cyclic schema initializers receive TypeScript’s own initialization diagnostics; the compiler does not reorder them or insert `Schema.suspend`.
 
 A member of a `schema` body that is not a field, such as a method `m(): string`, an index signature `[k: string]: number` or a name without a type, reports `EK1505`. Write `name: Type` or `name?: Type`; a method belongs on a `schema error`, and a set of keys is a `Record<K, V>` field.
@@ -231,7 +231,7 @@ Guards and assertions check the decoded type: a numeric `pieces` is valid, a str
 A value named `string`, `number` or another type keyword keeps its library form when its bare name would select a different schema. Qualified references such as `holder.string` remain eligible for a preserving repair.
 
 
-For older programs that relied on an implicit readonly schema key, run `vibelang -p tsconfig.json --fix --fix-migration-only`. The upgrade makes the old readonly keys explicit. A referenced codec whose decoded-key flags cannot be represented by that modifier stays an explicit Effect codec, preserving its public type and identity.
+For older programs that relied on an implicit readonly schema key, write the old readonly keys explicitly. A referenced codec whose decoded-key flags cannot be represented by that modifier stays an explicit Effect codec, preserving its public type and identity.
 
 An eligible `Schema.Struct` constant immediately followed by its matching `typeof Name.Type` alias also receives the configurable `EK4841` warning. Its quick fix combines the pair as a `schema Name = …` declaration while preserving its fields, exports, and written imports.
 

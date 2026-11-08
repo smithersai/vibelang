@@ -20,7 +20,7 @@ func checkYieldActivations(c *checker.Checker, file *ast.SourceFile) {
 			if parser.VibeLangYieldOutsideProducer(node) {
 				d := report(c, node, EK2104)
 				if yieldActivationFixable(node) {
-					note(d, "For Effect delegation write try e, or remove yield* before an existing try; vibelang --fix applies the preserving rewrite.")
+					note(d, "For Effect delegation write try e, or remove yield* before an existing try.")
 				}
 				coverCodes(c, node, 1163, 2523, 7057)
 			}

@@ -1,9 +1,0 @@
-// A main that needs a service whose type extends Effect's FileSystem, under a
-// key of its own, gets the bundle that provides that key: the entry matches
-// a service by its identity, not by assignability (D313).
-import "vibelang/platform/node"
-import { Extended } from "vibelang-runtime/experimental/Extended"
-
-export effect function main() {
-  try Console.log(try (try Extended).readFileString("extended.txt"))
-}

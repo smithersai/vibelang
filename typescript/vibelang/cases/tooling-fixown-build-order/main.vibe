@@ -1,2 +1,0 @@
-// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation | With `-b`, each project fixes its own files in build order.
-export const witness = 1

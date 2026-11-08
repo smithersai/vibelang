@@ -1,5 +1,0 @@
-// docs/design/vips/0034-compiler-and-tooling.md#4f5596f6f7f2a3e4
-// VIP-34: build mode fixes each project in dependency order.
-// docs/design/vips/0034-compiler-and-tooling.md#4daf23dc03a4b20f
-// VIP-34: build mode fixes each project in dependency order.
-export const witness = 1;

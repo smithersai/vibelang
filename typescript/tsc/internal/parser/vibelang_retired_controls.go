@@ -6,8 +6,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const RetiredControlMessage = "Handlers are outside the first release; vibelang --fix migrates supported local service patterns and refuses continuation-dependent rewrites."
-const RetiredSelectMessage = "select is outside the first release; vibelang --fix refuses an unproved selection rewrite. Choose explicit Effect selection for the intended behavior."
+const RetiredControlMessage = "Handlers are outside the first release."
+const RetiredSelectMessage = "select is outside the first release. Choose explicit Effect selection for the intended behavior."
 
 // Recover old nodes for migration and tooling, while rejecting the source
 // grammar even when semantic checking is disabled.

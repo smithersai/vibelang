@@ -1,1 +1,0 @@
---only creates a listed module's fresh platform companion and never writes a file that claims its name

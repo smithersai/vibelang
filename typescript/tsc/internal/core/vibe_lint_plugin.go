@@ -1,7 +1,7 @@
 package core
 
 const VibeLintPluginCode int32 = 3012
-const VibeLintPluginMessage = "an imported lint severity needs an explicit Effect plugin entry; run vibelang --fix"
+const VibeLintPluginMessage = "an imported lint severity needs an explicit Effect plugin entry"
 
 func init() { VibeConfigDiagnostics[VibeLintPluginCode] = VibeLintPluginMessage }
 

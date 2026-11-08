@@ -27,9 +27,5 @@ try {
     assert.equal(r.status, 0, JSON.stringify(args) + "\n" + r.stdout + r.stderr)
     assert.equal(readdirSync(dir).some(name => name.endsWith(".d.vibe.ts") || name.endsWith(".js")), false)
   }
-  const refused=invoke(["lint","--fix"])
-  assert.notEqual(refused.status,0)
-  assert.match(refused.stdout+refused.stderr,/TS5023/)
-  assert.equal(readFileSync(join(dir,"main.vibe"),"utf8"),source)
 } finally { rmSync(dir, { recursive: true, force: true }) }
 console.log("lint command and codemod entry")

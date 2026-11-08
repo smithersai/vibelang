@@ -1,3 +1,0 @@
-go test fuzz v1
-[]byte("return:ordinary")
-byte(0)

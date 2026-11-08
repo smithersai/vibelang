@@ -40,23 +40,6 @@ for (const severity of ["error","warning","suggestion","off"]) {
   else assert.doesNotMatch(result.stdout,/EK4609/)
  })
 }
-test("--fix migrates inherited legacy settings and remains idempotent",{skip},t=>{
- const dir=project(t,{extends:"./base.json"},source)
- writeFileSync(join(dir,"base.json"),`{ // preserve this comment\n"vibelang":{"diagnostics":{"EK4609":"off"}}}`)
- const before=run(dir)
- assert.match(before.stdout,/warning EK3009:/)
- const first=run(dir,"--fix")
- assert.equal(first.status,0,first.stdout+first.stderr)
- const fixed=readFileSync(join(dir,"base.json"),"utf8")
- assert.match(fixed,/preserve this comment/)
- assert.match(fixed,/"severities"/)
- assert.doesNotMatch(fixed,/"diagnostics"/)
- const second=run(dir,"--fix")
- assert.equal(second.status,0,second.stdout+second.stderr)
- assert.equal(readFileSync(join(dir,"base.json"),"utf8"),fixed)
- assert.doesNotMatch(second.stdout,/EK3009/)
-})
-
 for (const severity of ["error","warning","suggestion","off"]) {
  test(`imported EK3833 ${severity} overrides the language-service plugin`,{skip},t=>{
   const dir=project(t,{vibe:{severities:{EK3833:severity}}},`import { Effect } from "effect"
@@ -181,54 +164,6 @@ export effect function pause() { try Effect.sleep(0); return 1 }
   assert.doesNotMatch(result.stdout, /error EK3833:/)
  }
 })
-
-const legacyCommentShapes = {
- wrapper: '{ /* KEEP_WRAPPER */ "diagnostics":{"EK4830":"off"}}',
- tail: '{"diagnostics":{"EK4830":"off" /* KEEP_TAIL */}}',
- empty: '{"diagnostics":{/* KEEP_EMPTY */}}',
- superseded: '{"diagnostics":{/* KEEP_SUPERSEDED */ "EK4831":"error"}}',
- trailing: '{"diagnostics":{"EK4830":"off", // KEEP_TRAILING\n}}',
- retained: '{"trustedPackages":["keep"], /* KEEP_PROPERTY */ "diagnostics":{"EK4830":"off" /* KEEP_MAP_TAIL */} // KEEP_WRAPPER_TAIL\n}',
-}
-for (const [shape, legacy] of Object.entries(legacyCommentShapes)) {
- for (const nested of [false, true]) {
-  for (const inherited of [false, true]) {
-   test(`--fix retains legacy comments ${shape}, nested=${nested}, extends=${inherited}`, { skip }, t => {
-    const dir = project(t, inherited ? { extends: "./base.json" } : {}, "export const value=1")
-    const file = join(dir, inherited ? "base.json" : "tsconfig.json")
-    const original = inherited ? {} : JSON.parse(readFileSync(file, "utf8"))
-    // Keep the valid project options when testing the compilerOptions path.
-    const options = JSON.stringify(original.compilerOptions || {}).slice(0, -1)
-    delete original.compilerOptions
-    const prefix = JSON.stringify(original).slice(0, -1)
-    const text = prefix + (prefix.length > 1 ? "," : "") +
-     (nested ? `"compilerOptions":${options}${options.length > 1 ? "," : ""}"vibelang":${legacy}}` :
-      `"compilerOptions":${options}},"vibelang":${legacy}`) +
-     ',"vibe":{"effectModules":false,"severities":{"EK4831":"off"}}}'
-    writeFileSync(file, text)
-    const shownBefore = run(dir, "--showConfig")
-    assert.equal(shownBefore.status, 0, shownBefore.stdout + shownBefore.stderr)
-    const first = run(dir, "--fix")
-    assert.equal(first.status, 0, first.stdout + first.stderr)
-    const fixed = readFileSync(file, "utf8")
-    for (const marker of text.match(/\/\* KEEP_[A-Z_]+ \*\/|\/\/ KEEP_[A-Z_]+/g)) {
-     assert.equal(fixed.split(marker).length, text.split(marker).length, fixed)
-    }
-    assert.doesNotMatch(fixed, /"diagnostics"/)
-    const shown = run(dir, "--showConfig")
-    assert.equal(shown.status, 0, shown.stdout + shown.stderr)
-    const modern = JSON.parse(shown.stdout).vibe
-    assert.equal(modern.effectModules, false)
-    assert.equal(modern.severities.EK4831, "off")
-    if (shape !== "empty" && shape !== "superseded") assert.equal(modern.severities.EK4830, "off")
-    const second = run(dir, "--fix")
-    assert.equal(second.status, 0, second.stdout + second.stderr)
-    assert.equal(readFileSync(file, "utf8"), fixed)
-    assert.equal(readFileSync(join(dir, "main.vibe"), "utf8"), "export const value=1")
-   })
-  }
- }
-}
 
 // Chapter 007 / invalid severity container retains error and emit consequences: docs/design/src/007-tooling.md#0df7b52faa5489ea
 for (const mode of ["child", "later-base", "invalid-child", "independent", "container"]) {

@@ -31,16 +31,10 @@ export effect function main() {
 `
  fs.writeFileSync(path.join(dir,"main.vibe"),source)
  const diagnostic=run(compiler,["-p",".","--pretty","false"],dir,2)
- assert.match(diagnostic,/error EK0909:.*vibelang --fix/)
+ assert.match(diagnostic,/error EK0909:.*write service without class/)
  const beforeDts=fs.readFileSync(path.join(dir,"out/main.d.ts"),"utf8")
  const exit=()=>run(process.execPath,["--input-type=module","-e",'import {Effect} from "effect";import {main} from "./out/main.js"; console.log(JSON.stringify(Effect.runSyncExit(main())))'],dir)
  const beforeExit=exit()
- run(compiler,["-p",".","--fix","--pretty","false"],dir)
- const fixed=fs.readFileSync(path.join(dir,"main.vibe"),"utf8")
- assert.ok(!fixed.includes("class Users"),"service class survived "+name)
- for(const comment of separator.match(/\/\*[^]*?\*\//g) ?? [])assert.ok(fixed.includes(comment),"comment lost")
- assert.equal(fs.readFileSync(path.join(dir,"out/main.d.ts"),"utf8"),beforeDts,"API changed")
- assert.equal(exit(),beforeExit,"Exit/key changed")
  console.log(name,"API_EQUAL true EXIT_EQUAL true")
 }
 

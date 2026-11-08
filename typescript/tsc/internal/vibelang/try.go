@@ -98,7 +98,7 @@ func checkTry(c *checker.Checker, file *ast.SourceFile, call, operand *ast.Node)
 		wrapper := "Effect.try or Effect.tryPromise"
 		d := reportAt(c, file, tsFormSpan(file, call), EK4616, wrapper)
 		if rewrite.fixable() {
-			note(d, "Its quick fix writes {0}; vibelang --fix applies every such fix in the project.", rewrite.description)
+			note(d, "Its quick fix writes {0}.", rewrite.description)
 		} else if rewrite.why != "" {
 			note(d, "{0}", rewrite.why)
 		}

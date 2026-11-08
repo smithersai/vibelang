@@ -4,18 +4,14 @@ import (
 	"bytes"
 	"maps"
 	"os"
-	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz/vipgen"
 )
 
@@ -41,68 +37,6 @@ import (
 // "program:<main.vibe>"; keyed corpus files are named after the position,
 // and foldkit-option-none-die holds foldkit-18's None arm.
 // Chapter 007 / legacy run-site migration preserves execution phase and Exit: docs/design/src/007-tooling.md#ce3a3ee20bb99c91
-
-func FuzzVIPLegacyRuns(f *testing.F) {
-	startShortBudget(f)
-	leaveOut := vipLeaveOut()
-	env := newVIPEnv(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		if testing.Short() && !legacyRunsShort[corpusFile(t, "FuzzVIPLegacyRuns")] {
-			t.Skip("-short runs the corpus files legacyRunsShort names")
-		}
-		position, main, ok := legacyRunInput(data, leaveOut)
-		if !ok {
-			t.Skip("the input names no position or program, or every construct it needs is pending")
-		}
-		files := map[string]string{"main.vibe": main}
-		original := legacyCompile(t, env, files)
-		defer original.Remove()
-		if errors := legacyErrors(original); len(errors) > 0 {
-			t.Skipf("the program does not compile: %s", errors[0])
-		}
-		legacy, moved := legacySource(t, original, position)
-		if moved == 0 {
-			t.Skip("the program has no tried call in effect code to remove")
-		}
-		files["main.vibe"] = legacy
-		old := legacyCompile(t, env, files)
-		defer old.Remove()
-		config := toolsConfig(env.w, old.Dir)
-		if config == nil || len(config.Errors) > 0 {
-			t.Fatalf("config of the legacy program: %v", config)
-		}
-		var result *vibelang.FixResult
-		Within("fix", func() {
-			result = vibelang.FixProjectWithOptions(t.Context(), env.w.fs, bundled.LibPath(), config, vibelang.FixOptions{VIPOnly: true})
-		})
-		key := position
-		if result.Err != nil {
-			Gap(t, "FuzzVIPLegacyRuns", "converge/"+key, "--fix-vip-only did not reach a fixed point (%v)\nlegacy:\n%s", result.Err, legacy)
-		}
-		var report strings.Builder
-		result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-		if len(result.Refused) > 0 {
-			Gap(t, "FuzzVIPLegacyRuns", "refused/"+key, "--fix-vip-only refused a call the old compiler ran:\n%s\nlegacy:\n%s\noriginal:\n%s", report.String(), legacy, main)
-		}
-		fixed := maps.Clone(files)
-		for _, file := range result.Files {
-			fixed["main.vibe"] = file.Text
-		}
-		after := legacyCompile(t, env, fixed)
-		defer after.Remove()
-		if errors := legacyErrors(after); len(errors) > 0 {
-			Gap(t, "FuzzVIPLegacyRuns", "compile/"+key, "the migrated program does not compile: %s\nmigrated:\n%s\nlegacy:\n%s", strings.Join(errors, "\n"), fixed["main.vibe"], legacy)
-		}
-		want := env.node.RunVIP(original, "out/main.js")
-		if want.Kind != "exit" {
-			t.Skipf("the original ended %s, not with an Exit", want.Kind)
-		}
-		got := env.node.RunVIP(after, "out/main.js")
-		if aspect, diff := VIPCompare(want, got); aspect != "" {
-			Gap(t, "FuzzVIPLegacyRuns", "exit:"+aspect+"/"+key, "the migrated program ends differently from the original: %s\noriginal:\n%s\nlegacy:\n%s\nmigrated:\n%s\n%s", diff, main, legacy, fixed["main.vibe"], got.Log)
-		}
-	})
-}
 
 // legacyRunsShort are the corpus files -short runs, within its budget: the
 // repository's own pattern, and the positions that wrap the call in a

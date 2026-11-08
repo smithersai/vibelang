@@ -1,4 +1,0 @@
-go test fuzz v1
-string("brand-alias")
-byte(1)
-bool(false)

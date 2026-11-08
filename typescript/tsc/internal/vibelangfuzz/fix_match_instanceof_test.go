@@ -165,14 +165,3 @@ func TestMatchInstanceOfEditorResults(t *testing.T) {
 		})
 	}
 }
-
-// Separate constructor families retain the complete converter oracle while
-// keeping the general migration corpus and each short target within budget.
-func FuzzMatchInstanceOfBuiltins(f *testing.F) {
-	startShortBudget(f)
-	fuzzFixProjects(f, "FuzzMatchInstanceOfBuiltins")
-}
-func FuzzMatchInstanceOfClasses(f *testing.F) {
-	startShortBudget(f)
-	fuzzFixProjects(f, "FuzzMatchInstanceOfClasses")
-}

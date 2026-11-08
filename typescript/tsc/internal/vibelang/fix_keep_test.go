@@ -3,13 +3,9 @@ package vibelang
 import (
 	"bytes"
 	"io"
-	stdmaps "maps"
 	"os"
-	"os/signal"
 	"path/filepath"
-	"slices"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -96,149 +92,6 @@ func keepConfig(t *testing.T, dir string) *tsoptions.ParsedCommandLine {
 	return config
 }
 
-// A --fix run stopped by SIGTERM or SIGINT in the middle of its gate keeps
-// the fixes it verified, as the files the gate last verified together, and
-// a second run then writes what a run never stopped writes. Stopped while
-// the gate looked for the fix an error traces to, it also panicked.
-func TestFixKeepsVerifiedFixesWhenSignaled(t *testing.T) {
-	// The texts the gate verifies in a run never stopped, in order.
-	whole := keepProject(t)
-	original := vibeFiles(t, whole)
-	var states []map[string]string
-	result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), keepConfig(t, whole), FixOptions{Verified: func(texts map[tspath.RootedFilePath]string) {
-		state := stdmaps.Clone(original)
-		for name, text := range texts {
-			state[filepath.Base(name.AsString())] = text
-		}
-		states = append(states, state)
-	}})
-	if len(result.Refused) != 1 || result.Refused[0].Code != 4834 {
-		t.Fatalf("refused %+v; want the EK4834 fix refused", result.Refused)
-	}
-	final := stdmaps.Clone(original)
-	for name, file := range result.Files {
-		final[filepath.Base(name.AsString())] = file.Text
-	}
-	if len(states) < 4 || !stdmaps.Equal(states[len(states)-1], final) {
-		t.Fatalf("verified %d states, the last %v; want several, ending in the result %v", len(states), states[len(states)-1:], final)
-	}
-
-	for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGINT} {
-		t.Run(sig.String(), func(t *testing.T) {
-			dir := keepProject(t)
-			ctx, stop := signal.NotifyContext(t.Context(), sig)
-			defer stop()
-			// Signal the process as the gate builds its first program after
-			// it wrote a set of fixes, in the first round's peeling, and
-			// let the build go on once the signal has arrived.
-			signaled := false
-			builds, fs := countingFS(dir, func(n int) {
-				if !signaled && !stdmaps.Equal(vibeFiles(t, dir), original) {
-					signaled = true
-					if err := syscall.Kill(os.Getpid(), sig); err != nil {
-						t.Error(err)
-					}
-					select {
-					case <-ctx.Done():
-					case <-time.After(10 * time.Second):
-						t.Error("the signal did not arrive")
-					}
-				}
-			})
-			sys := &fixSys{fs: fs, cwd: dir}
-			status := FixWithOptions(ctx, sys, []string{"-p", dir}, FixOptions{})
-			stop()
-			fixRuns.Wait()
-			if status == 0 || !strings.Contains(sys.stderr.String(), "interrupted; kept the fixes it verified") || sys.stdout.Len() != 0 {
-				t.Fatalf("status %d, stdout %q, stderr %q; want the run stopped, keeping its fixes", status, sys.stdout.String(), sys.stderr.String())
-			}
-			kept := vibeFiles(t, dir)
-			if stdmaps.Equal(kept, original) || stdmaps.Equal(kept, final) {
-				t.Fatalf("after %d programs the files are %v; want some fixes kept and some not made", *builds, kept)
-			}
-			// Exactly a set of fixes the gate verified: no file holds a
-			// fix it had not verified, or part of one.
-			if !slices.ContainsFunc(states, func(s map[string]string) bool { return stdmaps.Equal(s, kept) }) {
-				t.Fatalf("the files hold %v, which the gate never verified", kept)
-			}
-			// And independently of the gate, the kept program adds no error.
-			disk := bundled.WrapFS(osvfs.FS())
-			baseline := baselineOf(t.Context(), fixProgram(disk, bundled.LibPath(), keepConfig(t, dir), &fixParsedFiles{}, originalsIn(dir, original)))
-			if added := addedErrors(t.Context(), fixProgram(disk, bundled.LibPath(), keepConfig(t, dir), &fixParsedFiles{}, nil), baseline); len(added) > 0 {
-				t.Fatalf("the kept files add %v", added)
-			}
-			if matches, _ := filepath.Glob(filepath.Join(dir, ".*.fix-*")); len(matches) > 0 {
-				t.Fatalf("left %v", matches)
-			}
-			rerun := &fixSys{fs: bundled.WrapFS(osvfs.FS()), cwd: dir}
-			if status := FixWithOptions(t.Context(), rerun, []string{"-p", dir}, FixOptions{}); status != 0 {
-				t.Fatalf("the second run: status %d, %s", status, rerun.stderr.String())
-			}
-			if again := vibeFiles(t, dir); !stdmaps.Equal(again, final) {
-				t.Fatalf("the second run wrote %v; a run never stopped writes %v", again, final)
-			}
-		})
-	}
-}
-
-// A run signaled during a check returns at once, not when the check
-// ends: a check of t3code's server took an hour, so SIGTERM looked like a
-// hang and its driver killed the run (2026-11-01). It keeps the fixes it
-// verified, and the gate it leaves writes no file and no progress after.
-func TestFixStopsDuringACheck(t *testing.T) {
-	dir := keepProject(t)
-	original := vibeFiles(t, dir)
-	ctx, stop := signal.NotifyContext(t.Context(), syscall.SIGTERM)
-	defer stop()
-	// The first program built after a set was written signals the process,
-	// then blocks until released: a check that outlasts any grace period.
-	release := make(chan struct{})
-	signaled := false
-	_, fs := countingFS(dir, func(int) {
-		if signaled || stdmaps.Equal(vibeFiles(t, dir), original) {
-			return
-		}
-		signaled = true
-		if err := syscall.Kill(os.Getpid(), syscall.SIGTERM); err != nil {
-			t.Error(err)
-		}
-		<-release
-	})
-	sys := &fixSys{fs: fs, cwd: dir}
-	returned := make(chan int, 1)
-	go func() {
-		returned <- FixWithOptions(ctx, sys, []string{"-p", dir}, FixOptions{ProgressEvery: time.Millisecond})
-	}()
-	var status int
-	select {
-	case status = <-returned:
-	case <-time.After(30 * time.Second):
-		close(release)
-		fixRuns.Wait()
-		t.Fatalf("the run waited for its check after SIGTERM; stderr %q", sys.stderr.String())
-	}
-	stderr := sys.stderr.String()
-	kept := vibeFiles(t, dir)
-	close(release)
-	fixRuns.Wait()
-	stop()
-	if status == 0 || !strings.Contains(stderr, "interrupted; kept the fixes it verified, in ") || sys.stdout.Len() != 0 {
-		t.Fatalf("status %d, stdout %q, stderr %q; want the run stopped, keeping its fixes", status, sys.stdout.String(), stderr)
-	}
-	if stdmaps.Equal(kept, original) {
-		t.Fatal("the run kept no fix")
-	}
-	if after := vibeFiles(t, dir); !stdmaps.Equal(after, kept) {
-		t.Fatalf("the files changed after the run stopped: %v, then %v", kept, after)
-	}
-	if sys.stderr.String() != stderr {
-		t.Fatalf("the gate printed after the run stopped: %q", strings.TrimPrefix(sys.stderr.String(), stderr))
-	}
-	if matches, _ := filepath.Glob(filepath.Join(dir, ".*.fix-*")); len(matches) > 0 {
-		t.Fatalf("left %v", matches)
-	}
-}
-
 // originalsIn returns texts, by base name, as an overlay of dir's files.
 func originalsIn(dir string, texts map[string]string) map[tspath.RootedFilePath]string {
 	overlay := map[tspath.RootedFilePath]string{}
@@ -246,38 +99,4 @@ func originalsIn(dir string, texts map[string]string) map[tspath.RootedFilePath]
 		overlay[tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, base)))] = text
 	}
 	return overlay
-}
-
-// A run that finishes writes its files with their permissions and prints
-// its report, and nothing else, as before it kept its work as it went.
-func TestFixRunThatFinishesReports(t *testing.T) {
-	dir := keepProject(t)
-	sys := &fixSys{fs: bundled.WrapFS(osvfs.FS()), cwd: dir}
-	if status := FixWithOptions(t.Context(), sys, []string{"-p", dir}, FixOptions{ProgressEvery: time.Hour}); status != 0 {
-		t.Fatalf("status %d, %s", status, sys.stderr.String())
-	}
-	if !strings.HasPrefix(sys.stdout.String(), "vibelang --fix: f00.vibe: ") || !strings.HasSuffix(sys.stdout.String(), "1 fix refused.\n") || sys.stderr.Len() != 0 {
-		t.Fatalf("stdout %q, stderr %q", sys.stdout.String(), sys.stderr.String())
-	}
-	info, err := os.Stat(filepath.Join(dir, "main.vibe"))
-	if err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("main.vibe: %v, %v; want its permissions kept", info, err)
-	}
-	if _, err := os.Stat(filepath.Join(dir, "plain.ts")); err != nil {
-		t.Fatal(err)
-	}
-	// Retain the original directly nested Effect witness. Detail260 may keep
-	// a qualified inner type rather than introduce new parentheses; completion
-	// means the next ordinary --fix is a fixed point, not forced spelling.
-	before := vibeFiles(t, dir)
-	if !strings.Contains(before["main.vibe"], "export type B = number!!") {
-		t.Fatalf("main.vibe did not finish its safe fixes: %q", before["main.vibe"])
-	}
-	again := &fixSys{fs: bundled.WrapFS(osvfs.FS()), cwd: dir}
-	if status := FixWithOptions(t.Context(), again, []string{"-p", dir}, FixOptions{ProgressEvery: time.Hour}); status != 0 {
-		t.Fatalf("second --fix: status %d, %s", status, again.stderr.String())
-	}
-	if after := vibeFiles(t, dir); !stdmaps.Equal(before, after) {
-		t.Fatalf("completed run was not idempotent: before %v, after %v", before, after)
-	}
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -130,10 +129,6 @@ func TestSpreadDirectFormAdvisoriesPreserveCalls(t *testing.T) {
 					}
 				}
 			}
-			fixed := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			if fixed.Err != nil || len(fixed.Files) != 0 {
-				t.Fatalf("spread call rewritten: %+v", fixed)
-			}
 		})
 	}
 }
@@ -149,10 +144,6 @@ func TestSpreadCatchPipelinePreservesCalls(t *testing.T) {
 				if d.Category() == diagnostics.CategoryError || d.Source() == diagnosticSource && d.Code() == 4835 {
 					t.Fatalf("pipeline control: %s", d.String())
 				}
-			}
-			fixed := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			if fixed.Err != nil || len(fixed.Files) != 0 {
-				t.Fatalf("pipeline spread call rewritten: %+v", fixed)
 			}
 		})
 	}

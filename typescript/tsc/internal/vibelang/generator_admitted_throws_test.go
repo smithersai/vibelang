@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -71,33 +69,5 @@ func TestGeneratorAdmittedThrowBoundary(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-func TestGeneratorAdmittedThrowRepair(t *testing.T) {
-	for _, body := range []string{
-		"Effect.try(function* () { yield risky() })",
-		"accept(function* () { yield risky() })",
-		"Effect.try({ try: function* () { yield risky() }, catch: (e) => e })",
-		"new Promise(function* (resolve) { yield risky() })",
-	} {
-		t.Run(body, func(t *testing.T) {
-			source := "import { accept, risky } from \"./lib.js\"\nexport const value = " + body
-			_, file, _, _ := requirementIdentityProgram(t, source, map[string]string{"lib.d.ts": generatorAdmittedLibrary})
-			result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			if result.Err != nil {
-				t.Fatal(result.Err)
-			}
-			fixed := result.Files[file.FileName()]
-			if fixed == nil || len(result.Sites) != 0 || !strings.Contains(fixed.Text, "$invoke(risky)") || !strings.Contains(fixed.Text, "function*") {
-				t.Fatalf("missing preserving repair: %+v", result)
-			}
-			p, f, _, _ := requirementIdentityProgram(t, fixed.Text, map[string]string{"lib.d.ts": generatorAdmittedLibrary})
-			for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), f), p.GetSemanticDiagnostics(t.Context(), f)...) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("fixed: %s", d.String())
-				}
-			}
-		})
 	}
 }

@@ -2,15 +2,10 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"maps"
-	"path/filepath"
 	"slices"
 	"strings"
-	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 // PREVIEW-3 (rev-preview pass 9): EK4616's fix rewrites a retired try hatch,
@@ -73,84 +68,6 @@ func hatchCellShape(data []byte) (use, second int, typed bool) {
 		data = append(data, 0)
 	}
 	return int(data[0]) % len(hatchCellUses), int(data[1]) % len(hatchCellSeconds), data[2]%2 == 1
-}
-
-func FuzzHatchParameterCell(f *testing.F) {
-	startShortBudget(f)
-	for _, u := range hatchCellUses {
-		f.Add([]byte(u.key + "/none/untyped"))
-	}
-	for _, seed := range []string{"read/getter-after/untyped", "capture/getter-before/untyped", "assign/getter-before/typed", "read/getter-before/untyped", "assign/same-name/untyped", "capture/literal/typed", "read/same-name/typed", "capture-assign/same-name/typed", "shadow/literal/untyped"} {
-		f.Add([]byte(seed))
-	}
-	w := NewWorkspace(f)
-	node, err := NewNode(w.Dir)
-	if err != nil {
-		Missing(f, "%v", err)
-	}
-	f.Cleanup(node.Close)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		use, second, typed := hatchCellShape(data)
-		u, s := hatchCellUses[use], hatchCellSeconds[second]
-		shape := u.key + "/" + s.key + "/" + map[bool]string{true: "typed", false: "untyped"}[typed]
-		params, inputs := "p", "p"
-		if typed {
-			params = "p: string"
-		}
-		if s.param != "" && s.first {
-			params, inputs = s.param+", "+params, s.input+", "+inputs
-		} else if s.param != "" {
-			params += ", " + s.param
-			inputs += ", " + s.input
-		}
-		arrow := "(" + params + ") => " + u.body
-		program := func(hatch string) string {
-			// between is the caller's p right after the hatch: a write to the
-			// parameter must not reach it; seen is read after p changes, so a
-			// closure must not see the caller's later p either
-			return "export effect function main() {\n  let p = \"a\"\n  let q = \"b\"\n  const box = { get value() { p = \"g\"; return p } }\n  const out = " + hatch + "\n  const between = [p, q]\n  p = \"z\"\n  q = \"y\"\n  const seen = " + u.observe + "\n  return [seen, between, p, q]\n}\n"
-		}
-		original := map[string]string{"main.vibe": program("try(" + arrow + ", " + inputs + ")")}
-		reference := map[string]string{"main.vibe": program("try Effect.try(() => (" + arrow + ")(" + inputs + "))")}
-		ref := toolsCompile(t, w, "FuzzHatchParameterCell", reference)
-		defer ref.Remove()
-		if errs := hatchCellErrors(ref); len(errs) > 0 {
-			Gap(t, "FuzzHatchParameterCell", "reference:"+shape, "the reference does not compile:\n%s\n%s", reference["main.vibe"], strings.Join(errs, "\n"))
-			return
-		}
-		r := toolsCompile(t, w, "FuzzHatchParameterCell", original)
-		defer r.Remove()
-		config := toolsConfig(w, r.Dir)
-		if r.Program == nil || config == nil || len(config.Errors) > 0 {
-			t.Fatalf("no program for %s", shape)
-		}
-		result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{VIPOnly: true})
-		fixed := maps.Clone(original)
-		for name, file := range result.Files {
-			fixed[strings.TrimPrefix(name.AsString(), filepath.ToSlash(r.Dir)+"/")] = file.Text
-		}
-		if len(result.Refused) > 0 || fixed["main.vibe"] == original["main.vibe"] {
-			Gap(t, "FuzzHatchParameterCell", "refused:"+shape, "--fix-vip-only did not rewrite the hatch (refused %+v):\n%s", result.Refused, original["main.vibe"])
-			return
-		}
-		after := toolsCompile(t, w, "FuzzHatchParameterCell", fixed)
-		defer after.Remove()
-		if errs := hatchCellErrors(after); len(errs) > 0 {
-			Gap(t, "FuzzHatchParameterCell", "compile:"+shape, "the fixed program does not compile:\n%s\n%s", fixed["main.vibe"], strings.Join(errs, "\n"))
-			return
-		}
-		want := node.Run(ref, "out/main.js", "main")
-		got := node.Run(after, "out/main.js", "main")
-		if toolsInvalidOutcome(want) {
-			Gap(t, "FuzzHatchParameterCell", "reference-run:"+shape, "the reference did not run: %s %s\n%s", want.Kind, want.Log, reference["main.vibe"])
-			return
-		}
-		if !toolsSameOutcome(want, got) {
-			Gap(t, "FuzzHatchParameterCell", "outcome:"+shape, "Chapter 28: \"Each fix keeps the program's meaning\"; the reference %s %s, the fixed program %s %s:\n%s\nfixed:\n%s", want.Kind, want.Value, got.Kind, got.Value, original["main.vibe"], fixed["main.vibe"])
-			return
-		}
-		ExpectPending(t, "FuzzHatchParameterCell", "outcome:"+shape)
-	})
 }
 
 func hatchCellErrors(r *Result) []string {

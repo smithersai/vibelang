@@ -1,2 +1,0 @@
-go test fuzz v1
-string("match-handler-destructure:exhaustive:tag:block-result")

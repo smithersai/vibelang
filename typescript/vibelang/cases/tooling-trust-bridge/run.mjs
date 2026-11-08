@@ -64,27 +64,5 @@ project(({ put, read, invoke, run }) => {
   assert.equal(before.status, 0, before.text)
   assert.deepEqual(JSON.parse(before.stdout), expected, "legacy behavior")
 
-  // A refused wrapper keeps its EK0407 error at its own declaration, with a
-  // note that says why --fix left it; the migrated file has no error.
-  const fix = invoke("--fix", "-p", ".", "--pretty", "false")
-  assert.notEqual(fix.status, 0, fix.text)
-  assert.deepEqual(errors(fix.text).sort(), Object.keys(refused).map(f => f + " EK0407").sort(), fix.text)
-  for (const file of Object.keys(refused)) assert.match(fix.text, new RegExp("^" + file.replace(".", "\\.") + "\\(2,\\d+\\): error EK0407: [^\\n]*vibelang --fix[^\\n]*\\n +vibelang --fix cannot rewrite this wrapper", "m"), fix.text)
-  const fixed = read("lib.vibe")
-  assert.ok(!/trusted\(Dialect\.integer, \[\]\)/.test(fixed), "the empty wrapper is retired:\n" + fixed)
-  // Each call becomes the identity-mapped bridge over the captured f.
-  const bridge = name => new RegExp(String.raw`try (?:Effect\.)?orDie\(Effect\.try\(\{ try: \(\) => ${name}\(n\), catch: \(e\) => e \}\)\)`, "g")
-  assert.equal(fixed.match(bridge("doubled"))?.length, 3, "three doubled calls bridged:\n" + fixed)
-  assert.equal(fixed.match(bridge("tripled"))?.length, 1, "the local call bridged:\n" + fixed)
-  // f is read where the wrapper was declared, once per declaration.
-  assert.match(fixed, /^const doubled_impl = \(void trusted, Dialect\.integer\), doubled: typeof doubled_impl = /m)
-  assert.match(fixed, /^  const tripled_impl = \(void trusted, Dialect\.integer\), tripled: typeof tripled_impl = /m)
-  for (const [file, text] of Object.entries(refused)) assert.equal(read(file), text, file + " is refused")
-
-  assert.deepEqual(errors(invoke("-p", ".", "--pretty", "false").text).filter(e => e.startsWith("lib.vibe")), [], "the bridge compiles")
-  assert.equal(read("out/lib.d.ts"), declarations, "declarations unchanged")
-  const after = run(process.execPath, ["out/run.mjs"])
-  assert.equal(after.status, 0, after.text)
-  assert.deepEqual(JSON.parse(after.stdout), expected, "migrated behavior")
 })
 console.log("empty legacy trust wrappers: bridge preserves results, defects, captures and declarations")

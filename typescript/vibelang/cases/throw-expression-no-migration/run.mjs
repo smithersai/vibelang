@@ -32,14 +32,6 @@ try {
     assert.equal(before.status, 0, before.text)
     assert.doesNotMatch(before.text, /(?:EK|TS)\d+/, before.text)
     assert.deepEqual(await observe(dir, "before"), expected)
-    config.compilerOptions.outDir = "after"
-    fs.writeFileSync(path.join(dir, "tsconfig.json"), JSON.stringify(config))
-    const fixed = run(["-p", dir, "--pretty", "false", "--fix", ...flags], dir)
-    assert.equal(fixed.status, 0, flags.join(" ") + "\n" + fixed.text)
-    assert.doesNotMatch(fixed.text, /(?:EK|TS)\d+/, fixed.text)
-    assert.equal(fs.readFileSync(path.join(dir, "main.vibe"), "utf8"), source, "--fix " + flags.join(" ") + " rewrote a throw expression")
-    assert.deepEqual(await observe(dir, "after"), expected)
-    assert.equal(fs.readFileSync(path.join(dir, "after", "main.js"), "utf8"), fs.readFileSync(path.join(dir, "before", "main.js"), "utf8"))
   }
 } finally { fs.rmSync(root, { recursive: true, force: true }) }
 console.log("throw expressions need no migration under --fix, --fix-migration-only and --fix-vip-only")

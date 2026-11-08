@@ -20,7 +20,7 @@ import (
 // diagnostic and source edits as before retirement, without adding callback
 // nodes to the ordinary AST or emit.
 // EK1101: a trailing block (VIP-11). {0} is the call written with the block as its last argument.
-var EK1101 = message(1101, errorCategory, "VibeLang has no trailing blocks (VIP-11): write the block as an argument, {0}; vibelang --fix rewrites it.")
+var EK1101 = message(1101, errorCategory, "VibeLang has no trailing blocks (VIP-11): write the block as an argument, {0}.")
 
 func init() {
 	registry[EK1101.Code] = EK1101

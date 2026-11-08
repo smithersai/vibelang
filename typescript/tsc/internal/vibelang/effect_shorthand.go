@@ -39,7 +39,7 @@ func checkShorthands(c *checker.Checker, file *ast.SourceFile) {
 		if name := shorthandName(file, node); name != nil {
 			rewrite := shorthandRewrite(c, file, name)
 			d := reportAt(c, file, tsFormSpan(file, name), EK0101, shorthandModifier(node), name.Text())
-			note(d, "Its quick fix writes {0}; vibelang --fix applies every such fix in the project.", rewrite.description)
+			note(d, "Its quick fix writes {0}.", rewrite.description)
 		}
 		return node.ForEachChild(visit)
 	}

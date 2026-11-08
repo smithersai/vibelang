@@ -1,4 +1,0 @@
-go test fuzz v1
-string("root")
-string("retained")
-bool(true)

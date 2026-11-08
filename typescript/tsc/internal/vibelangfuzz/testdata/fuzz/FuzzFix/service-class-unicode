@@ -1,2 +1,0 @@
-go test fuzz v1
-string("key:service-class-fix\n\x03\x01\x01\x80\x01")

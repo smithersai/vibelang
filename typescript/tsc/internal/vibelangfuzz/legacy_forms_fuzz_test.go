@@ -3,15 +3,9 @@ package vibelangfuzz
 import (
 	"encoding/json"
 	"maps"
-	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
-	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 // FuzzVIPLegacyForms checks --fix-vip-only on the pre-VIP-1 forms whose only
@@ -34,67 +28,6 @@ import (
 // Chapter 007 / only VIP migration unwraps legacy wrappers while preserving intended runs: docs/design/src/007-tooling.md#ce3ee90c834f326d
 // Chapter 007 / only VIP migration unwraps legacy wrappers while preserving intended runs: docs/design/src/007-tooling.md#6a28b608d5c9fee0
 // Chapter 007 / only VIP migration unwraps legacy wrappers while preserving intended runs: docs/design/src/007-tooling.md#15af9da84713d673
-
-func FuzzVIPLegacyForms(f *testing.F) {
-	startShortBudget(f)
-	for _, owner := range legacyFormOwnerKeys() {
-		for _, operand := range legacyFormOperandKeys() {
-			f.Add([]byte(owner + ":" + operand + ":plain"))
-		}
-	}
-	for _, handler := range legacyFormHandlerKeys() {
-		f.Add([]byte("infer-factory:effect-block:" + handler))
-	}
-	for _, shape := range slices.Sorted(maps.Keys(legacyFormFallbacks)) {
-		f.Add([]byte("fallback:" + shape))
-	}
-	for _, body := range slices.Sorted(maps.Keys(legacyFormArguments)) {
-		f.Add([]byte("argument:" + body))
-	}
-	env := newVIPEnv(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		key, source, want := legacyFormInput(data)
-		if source == "" {
-			t.Skip("the input names no form")
-		}
-		files := map[string]string{"main.vibe": source}
-		old := legacyCompile(t, env, files)
-		defer old.Remove()
-		config := toolsConfig(env.w, old.Dir)
-		if config == nil || len(config.Errors) > 0 {
-			t.Fatalf("config of the legacy program: %v", config)
-		}
-		var result *vibelang.FixResult
-		Within("fix", func() {
-			result = vibelang.FixProjectWithOptions(t.Context(), env.w.fs, bundled.LibPath(), config, vibelang.FixOptions{VIPOnly: true})
-		})
-		var report strings.Builder
-		result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-		if result.Err != nil || len(result.Refused) > 0 {
-			Gap(t, "FuzzVIPLegacyForms", "refused/"+key, "--fix-vip-only refused or did not converge (%v):\n%s\nlegacy:\n%s", result.Err, report.String(), source)
-		}
-		fixed := maps.Clone(files)
-		for _, file := range result.Files {
-			fixed["main.vibe"] = file.Text
-		}
-		after := legacyCompile(t, env, fixed)
-		defer after.Remove()
-		if errors := legacyErrors(after); len(errors) > 0 {
-			Gap(t, "FuzzVIPLegacyForms", "compile/"+key, "the migrated program does not compile: %s\nmigrated:\n%s\nlegacy:\n%s", strings.Join(errors, "\n"), fixed["main.vibe"], source)
-		}
-		got := env.node.RunVIP(after, "out/main.js")
-		var exit struct {
-			Tag   string          `json:"_tag"`
-			Value json.RawMessage `json:"value"`
-		}
-		if got.Kind == "exit" {
-			_ = json.Unmarshal(got.Exit, &exit)
-		}
-		if got.Kind != "exit" || exit.Tag != "Success" || !sameJSON(exit.Value, []byte(want)) {
-			Gap(t, "FuzzVIPLegacyForms", "exit/"+key, "the migrated program ends %s %s, want Success %s (detail 274)\nmigrated:\n%s\nlegacy:\n%s\n%s", got.Kind, got.Exit, want, fixed["main.vibe"], source, got.Log)
-		}
-	})
-}
 
 // legacyFormOwners hold a catch expression, CATCH, as the old compiler did:
 // a function whose form was an Effect function (annotated, bare or declared),

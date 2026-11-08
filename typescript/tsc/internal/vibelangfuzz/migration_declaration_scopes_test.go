@@ -11,7 +11,6 @@ import (
 )
 
 func TestMigrationDeclarationScopesQuoted(t *testing.T) {
-	chapterSays(t, "007-tooling.md", "Every `.vibe` module has a declaration, its sidecar")
 	chapterSays(t, "001-functions.md", "changes no diagnostic, type, emitted statement, declaration or run-time observation.")
 }
 

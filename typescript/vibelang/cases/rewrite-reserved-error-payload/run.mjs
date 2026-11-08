@@ -52,13 +52,6 @@ process.stdout.write(JSON.stringify(await Effect.runPromiseExit(main())));
     // An error's matcher tests its tag, then instanceof its class, so every
     // legacy family root, concrete or abstract, matches its child (D278).
     assert.deepEqual(originalExit.value, [family ? "Child" : "E", id, "family", true])
-    command("fix", compiler, [...compileArgs, "--fix"])
-    const fixed = fs.readFileSync(source, "utf8")
-    assert.ok(fixed.includes("class E extends"), "the reserved field was not migrated to its class")
-    assert.equal(fs.readFileSync(path.join(work, "out/main.d.ts"), "utf8"), declaration, "migration changed exported declarations")
-    assert.deepEqual(JSON.parse(command("run-after", process.execPath, runArgs)), originalExit, "migration changed the runtime Exit")
-    command("fix-again", compiler, [...compileArgs, "--fix"])
-    assert.equal(fs.readFileSync(source, "utf8"), fixed, "the second fix changed the source")
 }
 for (const form of ["error", "schema error"]) {
   for (const variant of ["literal", "family", "abstract-family", "trivia"]) probe(form, variant)

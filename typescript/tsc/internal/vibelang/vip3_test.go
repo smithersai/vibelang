@@ -1,17 +1,9 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 func TestVIP3OmittedRequirementIsNever(t *testing.T) {
@@ -111,53 +103,6 @@ func TestVIP3InferSlotWritesOwnTypeParameter(t *testing.T) {
 	if got := applyQuickFixOf(t, source, EK4857.Code, diagnostics.CategoryError); got != want {
 		t.Errorf("got  %s\nwant %s", got, want)
 	}
-}
-
-// vibelang --fix --fix-vip-only writes vip3-infer-slot-fixed for
-// vip3-infer-slot.fail,
-// apart from the header comment, and fixing the twin changes nothing. The
-// harness checks that both cases declare the same API.
-func TestVIP3InferSlotCase(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cases := filepath.Join(root, "typescript/vibelang/cases")
-	result := fixCaseVIPOnly(t, copyCompilerFixture(t, filepath.Join(cases, "vip3-infer-slot.fail"), root))
-	if len(result.Refused) != 0 || len(result.Files) != 1 {
-		t.Fatalf("fix: %+v", result)
-	}
-	var got string
-	for _, fixed := range result.Files {
-		got = fixed.Text
-	}
-	want, err := os.ReadFile(filepath.Join(cases, "vip3-infer-slot-fixed/main.vibe"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := func(text string) string {
-		_, rest, _ := strings.Cut(text, "\nerror Gone")
-		return rest
-	}
-	if body(got) == "" || body(got) != body(string(want)) {
-		t.Fatalf("--fix writes\n%s\nwant\n%s", got, want)
-	}
-	if again := fixCaseVIPOnly(t, copyCompilerFixture(t, filepath.Join(cases, "vip3-infer-slot-fixed"), root)); len(again.Files) != 0 {
-		t.Fatalf("fixing the twin again changes %v", again.Order)
-	}
-}
-
-// fixCaseVIPOnly is fixCase for --fix --fix-vip-only, which applies the VIP
-// migrations and leaves the TypeScript-style spellings, such as
-// Effect.Effect<A, E, R>, for ordinary --fix.
-func fixCaseVIPOnly(t *testing.T, dir string) *FixResult {
-	t.Helper()
-	fs := bundled.WrapFS(osvfs.FS())
-	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
-	if len(errors) != 0 {
-		t.Fatalf("config: %v", errors)
-	}
-	return FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
 }
 
 // VIP-3 retires written infer slots: a required migration error is not lint.

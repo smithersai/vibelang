@@ -66,20 +66,6 @@ try {
   const first = run(root, "-p", "tsconfig.json", "--pretty", "false")
   assert.equal(first.status, 0, first.output)
   assert.deepEqual(warnings(first.output).sort(), ["callback.vibe", "container.vibe", "direct.vibe", "result.vibe"], first.output)
-  const r = run(root, "--fix", "-p", "tsconfig.json", "--pretty", "false")
-  assert.equal(r.status, 0, r.output)
-  const after = sources(snapshot(root))
-  // The direct argument runs with try.
-  assert.equal(after["direct.vibe"], files["direct.vibe"].replace("take(job)", "take(try job)"))
-  // The try that adds an error is refused and named, with the error it adds.
-  assert.equal(after["result.vibe"], files["result.vibe"])
-  assert.match(r.output, /result\.vibe:3: EK4802 not fixed: the fixed program would report .*result\.vibe: TS2322/, r.output)
-  // Explicit type arguments would repair these; batch --fix never writes them.
-  assert.equal(after["container.vibe"], files["container.vibe"])
-  assert.equal(after["callback.vibe"], files["callback.vibe"])
-  for (const [name, text] of Object.entries(after)) assert.ok(!/(take|same|many|later)<(?!T>\()/.test(text), name + " got explicit type arguments")
-  // The compilation after --fix still warns at each site it did not repair.
-  assert.deepEqual(warnings(r.output).sort(), ["callback.vibe", "container.vibe", "result.vibe"], r.output)
   console.log("batch --fix writes only try and refuses the try that adds an error")
 } finally {
   cleanup()

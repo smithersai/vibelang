@@ -1,15 +1,14 @@
 import { assertComputedBuildEntrypoints } from "./computed-build-entrypoints.mjs"
-import { fixProgramFiles } from "./fix-scope.mjs"
 import { conversionIdentity } from "./conversion-context.mjs"
 // Repository-independent whole-scope conversion. The run directory owns every receipt.
 import { applyState, prepareState, saveState, durableWrite } from "./codemod-state.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { platformCausesOf, throwingCausesOf } from "./platform.mjs"
 import { createHash } from "node:crypto"
-import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { compilerCompanionOf, fixToFixedPoint, mergeFixes, renameBatch, rewriteExports, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { renameBatch, rewriteExports, rewriteImports, vibePath } from "./codemod.mjs"
 import { assertFinished, newErrors, parseDiagnostics, styleProblems, warningExceptions } from "./diagnostics.mjs"
 import { parseImports, resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
@@ -75,56 +74,6 @@ function reachable(graph, start) {
 export function dependencyRoots(graph, bad = new Set(graph.keys())) {
   const reach = new Map([...bad].map(f => [f, reachable(graph, f)]))
   return [...bad].filter(f => [...bad].every(d => d === f || !reach.get(f).has(d) || reach.get(d).has(f)))
-}
-
-/** Pack complete import closures, or report why the whole project is needed. */
-function planShards(files, graph, cap) {
-  positive(cap, 240, "shard cap", 240)
-  const members = new Set(files), result = [], covered = new Set()
-  let group = new Set()
-  const order = [...members].sort((a, b) => posix.dirname(a).localeCompare(posix.dirname(b)) || a.localeCompare(b))
-  for (const file of order) {
-    if (covered.has(file)) continue
-    const closure = new Set([file, ...reachable(graph, file)].filter(f => members.has(f)))
-    if (closure.size > cap) return {
-      groups: [[...members]],
-      fallback: { file, modules: closure.size, cap, reason: "import closure exceeds shard cap" }
-    }
-    if (new Set([...group, ...closure]).size > cap) { result.push([...group]); group = new Set() }
-    for (const f of closure) { group.add(f); covered.add(f) }
-  }
-  if (group.size) result.push([...group])
-  return { groups: result }
-}
-
-/** Directory-packed import closures; an indivisible closure keeps all input modules. */
-export function shardModules(files, graph, cap = 240) {
-  return planShards(files, graph, cap).groups
-}
-
-/** A large program fixes selected roots and their dependencies; unrelated roots stay for the wide check. */
-export function fixShards(files, graph, selected, cap = 240, roots) {
-  positive(cap, 240, "shard cap", 240)
-  if (files.length <= cap) return { sharded: false, groups: [files] }
-  const members = new Set(files)
-  const work = [...new Set(files.filter(f => selected.has(f)).flatMap(f => [f, ...reachable(graph, f)]))].filter(f => members.has(f))
-  const plan = planShards(work, graph, cap)
-  // A temporary project omits reverse observers. An oversized closure must
-  // use the original tsconfig, not just an oversized selected-root project.
-  if (plan.fallback) return { sharded: false, groups: [files], fallback: plan.fallback }
-  if (!roots) return { sharded: true, groups: plan.groups }
-  const originalRoots = new Set(roots)
-  const rootGroups = plan.groups.map(group => group.filter(file => originalRoots.has(file)))
-  for (let i = 0; i < plan.groups.length; i++) {
-    const reachableFromRoots = new Set(rootGroups[i].flatMap(file => [file, ...reachable(graph, file)]))
-    const missing = plan.groups[i].find(file => selected.has(file) && !reachableFromRoots.has(file))
-    if (missing) return { sharded: false, groups: [files], fallback: {
-      file: missing, reason: "selected source is not reachable from retained project roots"
-    } }
-  }
-  // Imported dependencies remain imports: promoting them to roots can change
-  // rootDir checks and the compiler's declaration-backed source view.
-  return { sharded: true, groups: plan.groups, rootGroups }
 }
 
 async function mapLimit(items, jobs, fn) {
@@ -335,7 +284,7 @@ async function settle(config, p, cm, options) {
     history.push(receipt)
     appendJsonl(join(p.batch("01"), "progress.jsonl"), { at: new Date().toISOString(), stage: "settle", ...receipt })
     if (!added.length || !roots.length || round === maxRounds) {
-      const exceptions = warningExceptions(checks.flatMap(c => c.diagnostics), [...live], cm.fix?.refused)
+      const exceptions = warningExceptions(checks.flatMap(c => c.diagnostics), [...live])
       const result = { settled: !added.length, rounds: history, causes, remaining: added, warningExceptions: exceptions }
       writeJson(join(p.batch("01"), "settle.json"), result)
       if (result.settled) writeJson(join(p.run,"done.json"), Object.fromEntries(config.packages.map(pkg => [pkg.dir,{
@@ -363,203 +312,13 @@ async function settle(config, p, cm, options) {
   }
 }
 
-async function fix(config, p, cm, options) {
-  const jobs = positive(options.jobs, 8, "jobs", 8)
-  const timeoutMs = positive(options.timeout, 3600, "timeout") * 1000
-  const maxRounds = positive(options.rounds, 4, "rounds")
-  const compiler = compilerOf(config), projects = projectList(config), graph = await moduleGraph(config, p)
-  const packages = config.packages.map(pkg => pkg.dir)
-  const byName = new Map(config.packages.map(pkg => [readJsonIf(join(config.target, pkg.dir, "package.json"), {}).name, pkg.dir]))
-  const deps = new Map(packages.map(dir => [dir, new Set()]))
-  for (const dir of packages) {
-    const manifest = readJsonIf(join(config.target, dir, "package.json"), {})
-    for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies, ...manifest.peerDependencies, ...manifest.optionalDependencies })) {
-      const dep = byName.get(name)
-      if (dep && dep !== dir) deps.get(dir).add(dep)
-    }
-  }
-  for (const [file, imports] of graph) for (const dep of imports) {
-    const a = owner(config, file), b = owner(config, dep)
-    if (a && b && a !== b) deps.get(a).add(b)
-  }
-  const closure = new Map(packages.map(dir => [dir, reachable(deps, dir)]))
-  const related = (a, b) => closure.get(a).has(b) || closure.get(b).has(a)
-  const identity = conversionIdentity(config, p)
-  const bankFile = join(p.run,"fix-bank.json")
-  let bank = readJsonIf(bankFile,{ packages: {}, timedOut: [] })
-  if (bank.identity !== identity) {
-    const stalePackages = Object.keys(bank.packages ?? {}).length
-    const staleFailures = (bank.timedOut ?? []).length
-    if (stalePackages || staleFailures) appendJsonl(join(p.run, "fix-bank-history.jsonl"), bank)
-    appendJsonl(join(p.batch("01"), "progress.jsonl"), {
-      stage: "fix-context-changed", previous: bank.identity ?? null, identity, stalePackages, staleFailures
-    })
-    bank = { identity, packages: {}, timedOut: [] }
-    writeJson(bankFile, bank)
-  }
-  const pending = new Set(packages.sort((a,b) => cm.renames.filter(r=>owner(config,r.to)===a).length - cm.renames.filter(r=>owner(config,r.to)===b).length))
-  const done = new Set(), running = new Map(), failures = []
-  const timedOut = new Set(bank.timedOut)
-  const saveBank = () => { bank.timedOut = [...timedOut]; writeJson(bankFile,bank) }
-  if (cm.fix?.identity !== identity) {
-    if (cm.fix) appendJsonl(join(p.run, "fix-result-history.jsonl"), cm.fix)
-    cm.fix = { identity, rounds: [], byFile: {}, totals: {}, refused: [] }
-  }
-  cm.fix.projects = (cm.fix.projects ?? []).filter(project => packages.includes(project.package))
-  cm.fix.uncovered = []
-  cm.fix.settled = false
-  writeJson(p.codemod("01"), cm)
-  const save = () => { cm.fix.totals = rewriteTotals(cm.fix.byFile); writeJson(p.codemod("01"), cm) }
-  async function fixPackage(dir) {
-    const only = new Set(cm.renames.filter(r => owner(config, r.to) === dir && existsSync(join(config.target, r.to))).map(r => r.to))
-    const digest = packageDigest(config,dir,cm.renames.map(r=>r.to))
-    if (!only.size || bank.packages[dir]?.digest === digest) {
-      appendJsonl(join(p.batch("01"),"progress.jsonl"),{stage:"fix-skip-banked",package:dir})
-      return
-    }
-    cm.fix.projects = cm.fix.projects.filter(p => p.package !== dir)
-    const covered = new Set()
-    for (const project of projects.filter(p => p.package === dir)) {
-      const started = Date.now()
-      const receipt = { ...project, startedAt: new Date().toISOString(), settled: false }
-      cm.fix.projects.push(receipt)
-      appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-start", ...receipt })
-      let temporary
-      try {
-        if (timedOut.has(project.file)) throw new Error("timeout earlier in this pass; no retry: " + project.file)
-        const shown = await run(`${quote(compiler)} --showConfig -p ${quote(project.project)}`, { cwd: join(config.target, dir), timeoutMs })
-        if (shown.timedOut) { timedOut.add(project.file); saveBank() }
-        if (shown.code !== 0) throw new Error("showConfig failed: " + shown.stdout + shown.stderr)
-        const membership = JSON.parse(shown.stdout).files
-        if (!Array.isArray(membership)) throw new Error("showConfig did not return project files")
-        const roots = membership.map(f => posix.normalize(posix.join(dir, f))).filter(sourceModule)
-        const scopeLog = join(p.batch("01"), "logs", "membership-" + slug(project.file))
-        const program = new Set((await fixProgramFiles({
-          compiler, tsconfig: project.project, cwd: join(config.target, dir),
-          timeoutMs, log: scopeLog
-        })).map(file => realpathSync(file)))
-        // Export conditions and declarations can make the migration graph
-        // broader than the compiler program. Only that program owns fixes.
-        const files = [...new Set(roots.flatMap(f => [f, ...reachable(graph, f)]))]
-          .filter(file => !/\.vibex?$/.test(file) || (existsSync(join(config.target, file)) && program.has(realpathSync(join(config.target, file)))))
-        receipt.membership = { source: "compiler", modules: program.size, log: scopeLog + ".scope.log" }
-        for (const file of files) if (only.has(file)) covered.add(file)
-        const { sharded, groups, rootGroups, fallback } = fixShards(files, graph, only, 240, roots)
-        receipt.mode = sharded ? "sharded" : "whole-project"
-        if (fallback) receipt.fallback = fallback
-        receipt.shards = groups.map((g, i) => ({ modules: g.length, files: g, roots: sharded ? rootGroups[i] : roots }))
-        appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-plan", package: dir, project: project.project, mode: receipt.mode, modules: files.length, selected: only.size, shards: groups.map(g => g.length), ...(fallback ? { fallback } : {}) })
-        for (let sweep = 1; sweep <= maxRounds; sweep++) {
-          let sweepFixes = 0
-          for (let i = 0; i < groups.length; i++) {
-            const group = groups[i]
-            const keep = group.filter(f => only.has(f))
-            if (!keep.length) continue
-            let tsconfig = project.project
-            if (sharded) {
-              temporary = join(config.target, dir, `tsconfig.vibelang-fix-${process.pid}-${i}.json`)
-              if (existsSync(temporary)) throw new Error("temporary project already exists: " + temporary)
-              writeJson(temporary, { extends: "./" + project.project, files: rootGroups[i].map(f => "./" + posix.relative(dir, f)), include: [], exclude: [] })
-              tsconfig = posix.basename(temporary)
-            }
-            try {
-              const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(config.target, dir), root: config.target, only: keep, timeoutMs, maxRounds,
-                privateCompanions: config.platformModuleBodies === true,
-                privateCompanionReceipts: cm.platform?.companions,
-                onPrivateCompanion: record => {
-                  const rename = cm.renames.find(r => r.to === record.file)
-                  if (!rename) throw new Error("private compiler companion outside the selected batch: " + record.file)
-                  cm.platform ??= { splits: [], refused: [] }
-                  cm.platform.companions ??= []
-                  if (!cm.platform.companions.some(c => c.companion === record.companion))
-                    cm.platform.companions.push({ file: rename.from, companion: record.companion, privateExports: record.privateExports })
-                  cm.exportEdits ??= []
-                  for (const edit of record.exportEdits) if (!cm.exportEdits.some(e => e.privateCompanion === edit.privateCompanion && e.key === edit.key && e.manifest === edit.manifest))
-                    cm.exportEdits.push(edit)
-                  durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
-                  appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "private-compiler-companion-plan", file: rename.from, companion: record.companion, ...record.privateExports })
-                },
-                writePrivateManifest: (file, text, mode) => durableWrite(join(config.target, file), text, mode),
-                log: join(p.batch("01"), "logs", `fix-${slug(project.file)}-${sweep}-${i}`) })
-              sweepFixes += fixed.rounds.reduce((n, r) => n + r.fixes, 0)
-              cm.fix.rounds.push(...fixed.rounds.map(r => ({ ...project, sweep, shard: i, ...r })))
-              mergeFixes(cm.fix.byFile, fixed.byFile)
-              cm.fix.refused.push(...fixed.refused)
-              // A platform companion the compiler created belongs to its module.
-              for (const companion of fixed.companions ?? []) {
-                const rename = cm.renames.find(r => compilerCompanionOf(r.to) === companion)
-                cm.platform ??= { splits: [], refused: [] }
-                cm.platform.companions ??= []
-                if (rename && !cm.platform.companions.some(c => c.companion === companion)) cm.platform.companions.push({ file: rename.from, companion })
-              }
-              if (!fixed.settled) throw new Error("fix did not reach a fixed point within " + maxRounds + " rounds")
-            } finally { if (temporary) { rmSync(temporary, { force: true }); temporary = undefined } }
-          }
-          if (!sweepFixes) break
-          if (sweep === maxRounds) throw new Error("project shards did not reach a fixed point within " + maxRounds + " sweeps")
-        }
-        receipt.settled = true
-      } catch (error) {
-        receipt.error = error.message
-        if (/timed out|exit(?:ed)? 124|interrupted|timeout earlier/.test(error.message)) { timedOut.add(project.file); saveBank() }
-        failures.push(receipt)
-      } finally {
-        receipt.ms = Date.now() - started
-        appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-end", ...receipt })
-        save()
-      }
-    }
-    const uncovered = [...only].filter(file => !covered.has(file)).sort()
-    if (uncovered.length) {
-      const receipt = { package: dir, file: dir, settled: false, uncovered,
-        error: "selected modules outside configured projects: " + uncovered.join(", ") }
-      cm.fix.uncovered.push(...uncovered)
-      cm.fix.projects.push(receipt)
-      failures.push(receipt)
-      appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-uncovered", ...receipt })
-      delete bank.packages[dir]
-      saveBank()
-      save()
-    }
-    if (!failures.some(f => f.package === dir)) {
-      bank.packages[dir] = { identity, at: new Date().toISOString(), files: [...only], digest: packageDigest(config,dir,cm.renames.map(r=>r.to)) }
-      saveBank()
-    }
-  }
-  while (pending.size || running.size) {
-    for (const dir of pending) {
-      if (running.size >= jobs) break
-      if ([...deps.get(dir)].some(d => !done.has(d) && !closure.get(d).has(dir))) continue
-      if ([...running.keys()].some(d => related(dir, d))) continue
-      pending.delete(dir)
-      running.set(dir, fixPackage(dir).then(() => { done.add(dir); running.delete(dir) }))
-    }
-    if (running.size) await Promise.race(running.values())
-    else if (pending.size) throw new Error("fix dependency scheduler made no progress: " + [...pending].join(", "))
-  }
-  const unowned = cm.renames.map(r => r.to).filter(file => existsSync(join(config.target, file)) && !owner(config, file)).sort()
-  if (unowned.length) {
-    const receipt = { file: "unconfigured package", settled: false, uncovered: unowned,
-      error: "selected modules outside configured projects: " + unowned.join(", ") }
-    cm.fix.uncovered.push(...unowned)
-    cm.fix.projects.push(receipt)
-    failures.push(receipt)
-    appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-uncovered", ...receipt })
-  }
-  cm.fix.uncovered.sort()
-  cm.fix.settled = !failures.length && cm.fix.projects.every(p => p.settled)
-  save()
-  if (failures.length) throw new Error("fix failed; see codemod.json and progress.jsonl: " + failures.map(f => f.file + ": " + f.error).join("; "))
-  return cm.fix
-}
-
 /** The CLI and library share commands, with no repository-specific paths or environment. */
 const pinnedInputs = config => config.routeBundledImports ? { pinned: pinnedBundleInputs(config.target) } : {}
 
 export async function onePassStep(step, options) {
   const p = paths(options.run), config = readJson(p.config), batch = String(options.batch ?? "01").padStart(2, "0")
   if (batch !== "01") throw new Error("one-pass conversion uses batch 01")
-  if (["plan", "rename", "fix"].includes(step)) assertBaselineSafe(p)
+  if (["plan", "rename"].includes(step)) assertBaselineSafe(p)
   if (step === "plan") {
     const setup = readJsonIf(p.setup, {})
     const nativeConfigs = setup.wired?.nativeViteConfigs ?? setup.nativeViteConfigs ?? []
@@ -609,13 +368,12 @@ export async function onePassStep(step, options) {
     }
     await Jj.trackFiles(config.target, state.renames.map(r => r.to).filter(file => existsSync(join(config.target, file))))
     const { renames, exportEdits, importEdits, refEdits = [], platform } = state
-    const cm = { sourceSnippets: state.sourceSnippets, packingFiles: state.packingFiles ?? [], compilerArtifact: config.compilerArtifact ?? null, batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
+    const cm = { sourceSnippets: state.sourceSnippets, packingFiles: state.packingFiles ?? [], compilerArtifact: config.compilerArtifact ?? null, batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true }
     durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
     return cm
   }
   bindCompilerArtifact(config, p, { resume: true })
   const cm = readJson(p.codemod("01"))
-  if (step === "fix") return fix(config, p, cm, options)
   if (step === "check") {
     const checks = await checkProjects(config, p, options)
     writeJson(join(p.batch("01"), "check.json"), checks)

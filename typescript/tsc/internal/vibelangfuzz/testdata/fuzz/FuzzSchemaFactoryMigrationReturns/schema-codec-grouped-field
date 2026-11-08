@@ -1,3 +1,0 @@
-go test fuzz v1
-string("grouped-field")
-byte(0)

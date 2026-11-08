@@ -86,15 +86,3 @@ func callbackSatisfiesFixRunnable(r *Result) bool {
 	}
 	return found
 }
-
-func FuzzCallbackSatisfiesFix(f *testing.F) {
-	startShortBudget(f)
-	for _, source := range []string{"identifier", "property", "element", "generic", "alias"} {
-		for _, layout := range []string{"direct", "parenthesized"} {
-			for _, names := range []string{"plain", "shadow"} {
-				f.Add(callbackSatisfiesFixKey + source + ":" + layout + ":" + names)
-			}
-		}
-	}
-	fuzzFixProjects(f, "FuzzCallbackSatisfiesFix")
-}

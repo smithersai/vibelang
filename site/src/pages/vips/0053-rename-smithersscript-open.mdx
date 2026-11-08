@@ -38,7 +38,7 @@ Counts are occurrences / files on `main`. "Silent" means no error tells the user
 | Package subpaths: `vibelang/register`, `/eslint`, `/oxlint`, `/knip`, `/bun`, `/metro`, `/babel`, `/prettier` | 933 / 183 | User build config, `node --import vibelang/register` | Rename | Rename |
 | `VIBELANG_` variables | 158 names, 8 documented for users | **Silent:** an old name is ignored | Rename, read the 8 old names | Same |
 | Directives: `@vibelang-diagnostics`, `@vibelang trusted`, `@vibelang leakable` | 121 / 54; 101 / 62 | **Silent:** the old directive is ignored | Rename, read old | Same |
-| Runtime import `vibelang-runtime`, emitted `__vibelang*` | 2,824 / 1,468; 211 / 31 | `TS2307`, exit 2. Published libraries import the old name forever | Rename, `--fix` rewrites | Same |
+| Runtime import `vibelang-runtime`, emitted `__vibelang*` | 2,824 / 1,468; 211 / 31 | `TS2307`, exit 2. Published libraries import the old name forever | Rename | Same |
 | Go packages, 5 under `internal/`, 3 under `cmd/` | 2,383 clauses, 311 imports | `init()` order, see R1 | Rename | Rename |
 | Repository directories | 18, holding 79% of tracked paths | Every unlanded patch | Rename | Rename |
 | `.vibe`, `.vibex` | 3,736 files; 301 sites in 33 Go files; 30 shipped JavaScript files | Everything | Keep | Rename |
@@ -61,18 +61,18 @@ Counts are occurrences / files on `main`. "Silent" means no error tells the user
 
 ## Compatibility
 
-Each old spelling stays readable, and `vibelang --fix` rewrites it. Probes on a plainly renamed compiler show which ones break today:
+Each old spelling stays readable. Probes on a plainly renamed compiler show which ones break today:
 
 | Old spelling | Plain rename | Required |
 | --- | --- | --- |
-| `// @vibelang-diagnostics EK4804:off` | **Ignored, the warning returns** | Read beside the new spelling; `--fix` rewrites (593 files in the example repositories) |
-| `import … from "vibelang-runtime"` | `TS2307`, exit 2 | `--fix` rewrites (37 language files in the example repositories) |
+| `// @vibelang-diagnostics EK4804:off` | **Ignored, the warning returns** | Read beside the new spelling (593 files in the example repositories) |
+| `import … from "vibelang-runtime"` | `TS2307`, exit 2 | Rewrite (37 language files in the example repositories) |
 | `compilerOptions.vibelang` | Still works, `EK3009` | Keep spelling |
 | 8 documented `VIBELANG_` names | Ignored | Read beside the new names |
-| Package names in `package.json` | Install fails | `--fix` rewrites |
+| Package names in `package.json` | Install fails | Rewrite |
 | `.vibe`, `.vibex`, `"vibe"` (B only) | Not sources, not config | Loaders, editors, Knip, ESLint and Prettier read both until the last repository moves |
 
-Under B, a repository pinned to a `0.0.11` toolchain cannot read `.smts`, so each repository's rename lands with its toolchain switch. In both variants `--fix` is the user's upgrade path and changes how existing code compiles, so it needs Will's approval before it lands. Only probes written in the old spelling found these breaks, so the compatibility tests must keep the old spelling.
+Under B, a repository pinned to a `0.0.11` toolchain cannot read `.smts`, so each repository's rename lands with its toolchain switch. Only probes written in the old spelling found these breaks, so the compatibility tests must keep the old spelling.
 
 ## What must not be rewritten
 
@@ -122,7 +122,7 @@ Each lands through the queue and keeps `main` green.
 | --- | --- | --- | --- |
 | P1 | One explicit hook registration list in `internal/vibelang`, with a test that pins the order | R1 | No |
 | P2 | Every legacy spelling named: constants or `brand-gate: allow` on the 326 retired-key sites | R2, R3 | No |
-| P3 | New directive spellings beside the old; the 8 old variable names read; `--fix` rewrites old spellings, imports and package names | Silent breaks | **Yes** |
+| P3 | New directive spellings beside the old; the 8 old variable names read | Silent breaks | **Yes** |
 | P4 | Oracles accept both names in frozen text; a re-pin script for digests; one constant for the last published package name | R4, R5, R6 | No |
 | P5 | `scripts/rename-to-smithersscript.mjs` with its test and brand gate, replacing `scripts/rename-to-vibelang.mjs` | | No |
 
@@ -179,7 +179,7 @@ jj does not follow renames. An edit to `typescript/vibelang/cases/x/main.vibe` r
 ## Open questions
 
 - A or B, the casing `SmithersScript`, and the domain. `.sh`, `.com`, `.org` and `.ai` returned not found on whois; `.dev` is unknown.
-- Whether P3 is approved: old spellings readable, and `--fix` rewriting them.
+- Whether P3 is approved: old spellings readable.
 - How long old spellings stay readable, and whether reading one warns.
 - Whether npm accepts `smithersscript-<os>-<cpu>`.
 - Two runtimes in one graph: an app on the new runtime with a library that imports `vibelang-runtime`. Not tested against `match-package-copies.fail`.

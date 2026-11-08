@@ -6,11 +6,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/astnav"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
-
-const localServiceShapeLabel = "local service shape"
 
 // A body-only service has a public Shape namespace only at module scope.
 // A written whole-shape annotation has no implicit namespace (VIP-9 amended).
@@ -114,25 +111,4 @@ func init() {
 			return []*ls.CodeAction{{Description: description, Changes: replaceRange(fix, edit.start, edit.end, edit.text)}}, nil
 		},
 	})
-}
-
-func localServiceShapeMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	p := proposal{file: file}
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if ast.IsTypeReferenceNode(node) {
-			name := node.AsTypeReferenceNode().TypeName
-			if localServiceShapeName(c, name) {
-				key := localServiceShapeLabel + ":" + nodeText(file, name)
-				if !refused[key] {
-					p.fixes = append(p.fixes, fileFix{code: 2702, label: localServiceShapeLabel, key: key, edits: []sourceEdit{localServiceShapeEdit(file, name)}})
-				}
-			}
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return p
 }

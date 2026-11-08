@@ -1,1 +1,0 @@
-handler flag repair leaves an admitted plain function literal

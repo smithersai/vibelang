@@ -1,3 +1,0 @@
-go test fuzz v1
-string("if-body-if-head")
-uint8(2)

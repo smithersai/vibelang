@@ -59,23 +59,5 @@ project(({ dir, put, read, exists, invoke }) => {
   assert.match(first.text, /src\/main\.vibe\(\d+,\d+\): warning EK4833/, "the owned source has a repair to apply")
   // The dependency is in the program and has the same repair available.
   assert.match(first.text, /node_modules\/dep\/index\.vibe\(\d+,\d+\): warning EK4833/, first.text)
-  const before = snapshot(dir, read)
-  const r = invoke("--fix", "-p", ".", "--pretty", "false")
-  assert.equal(r.status, 0, r.text)
-  fixedOwned = read("src/main.vibe")
-  assert.match(fixedOwned, /export type Both = \(number!!\) \|/, "the owned source is fixed")
-  assert.deepEqual(snapshot(dir, read), before, "a protected file was written")
-  fixedOut = ["main.js", "main.d.ts", "plain.js", "plain-common.cjs"].map(f => exists("out/" + f) ? read("out/" + f) : null)
-  fixedInfo = read("cache/state.tsbuildinfo")
-})
-// The emitted output and build info are exactly what an ordinary compilation
-// of the fixed source writes: the repair itself added nothing to them.
-project(({ put, read, exists, invoke }) => {
-  setup({ put, invoke })
-  put("src/main.vibe", fixedOwned)
-  const r = invoke("-p", ".", "--pretty", "false")
-  assert.equal(r.status, 0, r.text)
-  assert.deepEqual(["main.js", "main.d.ts", "plain.js", "plain-common.cjs"].map(f => exists("out/" + f) ? read("out/" + f) : null), fixedOut)
-  assert.equal(read("cache/state.tsbuildinfo"), fixedInfo)
 })
 console.log("no repair writes dependencies, typeRoots, foreign sources, declarations, output, build info, locks or referenced projects")

@@ -212,20 +212,6 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	return catchExpressionRewrite(c, file, call, name)
 }
 
-// catchStageRewrite plans the catch expression for pipe, whose last stage is
-// a catch combinator, under the try that runs it, or nil.
-func catchStageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *formRewrite {
-	call := pipe.AsBinaryExpression().Right
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || hasSpreadFormArguments(call) || ast.IsElementAccessExpression(call.Expression()) || catchProgramPipe(call) != pipe {
-		return nil
-	}
-	name := catchCombinatorName(c, call)
-	if name == "" {
-		return nil
-	}
-	return catchExpressionRewrite(c, file, call, name)
-}
-
 // catchProgramPipe also accepts an intermediate catch stage. Its result must
 // remain a cold program for the following stage, rather than the success value
 // of the catch expression.

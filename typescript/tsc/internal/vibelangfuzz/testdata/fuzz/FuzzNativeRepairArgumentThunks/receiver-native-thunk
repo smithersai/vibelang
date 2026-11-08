@@ -1,3 +1,0 @@
-go test fuzz v1
-string("receiver")
-int8(7)

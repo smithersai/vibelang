@@ -22,7 +22,7 @@ const ts = loadTypeScript([runtime])
 const fc = createRequire(join(runtime, "package.json"))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-platform-split-type-reads-wrapper.json", import.meta.url), "utf8"))
 const quote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
-const moveQuote = "The quick fix and the codemod move the code into a sibling"
+const moveQuote = "The quick fix moves the code into a sibling"
 
 // Stock TypeScript over the files, with declarations: the errors, and each
 // export of entry as a fully qualified type.

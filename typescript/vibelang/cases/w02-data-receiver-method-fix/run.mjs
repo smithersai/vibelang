@@ -72,38 +72,18 @@ const unsupported = {
   ].join("\n")
 }
 try {
-  for (const flags of [["--fix"], ["--fix", "--fix-migration-only"]]) {
+  {
     const root = project("w02-receiver-", sources)
     const before = tsc(root, [])
     assert.equal(before.status, 0, before.output)
     assert.equal(before.output, "", "the transitional compiler reports no interim diagnostic")
     const old = { mapped: (await load(root, "imported.js")).mapped, doubled: (await load(root, "prelude.js")).doubled }
 
-    const fixed = tsc(root, flags)
-    assert.equal(fixed.status, 0, fixed.output)
-    const why = flags.join(" ") + "\n" + fixed.output
-    assert.match(read(root, "imported.vibe"), /^export const mapped = Option\.map\(Option\.some\(1\), f\)$/m, why + read(root, "imported.vibe"))
-    assert.match(read(root, "prelude.vibe"), /^export const doubled = Option\.map\(Option\.some\(4\), g\)$/m, why + read(root, "prelude.vibe"))
-    assert.equal(read(root, "outside.vibe"), sources["outside.vibe"], "own, array and namespace calls are outside the form")
-
-    // A fresh directory, so the rewritten modules are not the cached ones.
-    const again = project("w02-receiver-fixed-", Object.fromEntries(Object.keys(sources).map(name => [name, read(root, name)])))
-    const after = tsc(again, [])
-    assert.equal(after.status, 0, after.output)
-    assert.equal(after.output, "", after.output)
-    const mapped = (await load(again, "imported.js")).mapped
-    const doubled = (await load(again, "prelude.js")).doubled
-    assert.deepEqual([Option.getOrThrow(mapped), Option.getOrThrow(doubled)], [Option.getOrThrow(old.mapped), Option.getOrThrow(old.doubled)])
-    assert.deepEqual([Option.getOrThrow(mapped), Option.getOrThrow(doubled)], [2, 8])
-    const outside = await load(again, "outside.js")
-    assert.deepEqual([outside.ownCall, outside.arrayCall, Option.getOrThrow(outside.namespaceCall)], [11, [2, 3], 3])
 
     const native = project("w02-receiver-native-", unsupported)
     const checked = tsc(native, ["--noEmit"])
     assert.match(checked.output, /main\.vibe\(3,25\): error TS7053:/, checked.output)
     assert.match(checked.output, /main\.vibe\(4,41\): error TS2339: Property 'map' does not exist on type 'Option<number>'/, checked.output)
-    tsc(native, flags)
-    assert.match(read(native, "main.vibe"), /^export const computed = Option\.some\(4\)\["map"\]\(f\)\nexport const optional = Option\.some\(3\)\?\.map\(f\)$/m, read(native, "main.vibe"))
   }
   console.log("receiver methods migrated")
 } finally {

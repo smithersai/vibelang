@@ -1,4 +1,0 @@
-go test fuzz v1
-string("try-block")
-uint8(1)
-uint8(0)

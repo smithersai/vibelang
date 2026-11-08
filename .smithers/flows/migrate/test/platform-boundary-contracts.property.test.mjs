@@ -14,7 +14,7 @@ const fc = require("fast-check"), ts = require("typescript")
 const native = process.env.VIBELANG_BINARY ?? fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url))
 const effect = fileURLToPath(new URL("../../../../experiments/node_modules/effect", import.meta.url))
 const quote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
-const moveQuote = "The quick fix and the codemod move the code into a sibling"
+const moveQuote = "The quick fix moves the code into a sibling"
 const pragma = "// @effect-diagnostics nodeBuiltinImport:off -- approved existing TypeScript platform boundary"
 const corpora = ["t3code-platform-split-file-pragmas.json", "t3code-platform-split-schema-value-import.json"]
   .map(name => JSON.parse(readFileSync(new URL("./corpus/" + name, import.meta.url), "utf8")))

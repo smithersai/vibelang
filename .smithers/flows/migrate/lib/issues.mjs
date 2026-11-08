@@ -1,6 +1,6 @@
 // issues.jsonl: what a run teaches the next one. The repair agent appends one
 // JSON object per line; the report groups them; the README says where each
-// kind goes next (a --fix rule, a line of rules.md, a VibeLang issue).
+// kind goes next (a line of rules.md or a VibeLang issue).
 import { readJsonl } from "./util.mjs"
 
 export const kinds = {

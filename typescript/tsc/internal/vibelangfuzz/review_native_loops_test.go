@@ -2,14 +2,11 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const nativeLoopTarget = "FuzzReviewNativeLoops"
@@ -90,77 +87,4 @@ func reviewNativeLoopErrors(t *testing.T, w *Workspace, source string, vibe bool
 	}
 	slices.Sort(codes)
 	return r, codes
-}
-
-func FuzzReviewNativeLoops(f *testing.F) {
-	startShortBudget(f)
-	rows := reviewNativeLoops()
-	short := []int{0, 3, 4, 8, 9, 12, 14, 17, 21, 24, 26, 28, 32, 36, 37, 38, 39}
-	for i, row := range rows {
-		if !testing.Short() || toolsFuzzing() || slices.Contains(short, i) {
-			for _, mode := range []string{"diagnostic", "fix"} {
-				f.Add(row.key + "/" + mode)
-			}
-		}
-	}
-	w := NewWorkspace(f)
-	forTry := regexp.MustCompile("\\bfor\\s+try\\b")
-	effectFunction := regexp.MustCompile("\\beffect\\s+function\\s+f\\b")
-	f.Fuzz(func(t *testing.T, key string) {
-		TestReviewNativeLoopsQuoted(t)
-		row := rows[0]
-		mode := "diagnostic"
-		found := false
-		for _, candidate := range rows {
-			for _, m := range []string{"diagnostic", "fix"} {
-				if key == candidate.key+"/"+m {
-					row = candidate
-					mode = m
-					found = true
-				}
-			}
-		}
-		if !found {
-			if key == "" {
-				return
-			}
-			row = rows[int(key[0])%len(rows)]
-			if key[len(key)-1]&1 != 0 {
-				mode = "fix"
-			}
-		}
-		precise := row.key + "/" + mode
-		native, nativeCodes := reviewNativeLoopErrors(t, w, reviewNativeLoopSource(row, false), false)
-		defer native.Remove()
-		source := reviewNativeLoopSource(row, true)
-		result, codes := reviewNativeLoopErrors(t, w, source, true)
-		defer result.Remove()
-		if mode == "diagnostic" {
-			good := slices.Equal(codes, nativeCodes)
-			if row.home == "effect-await" {
-				good = slices.Contains(codes, "EK0102") && !slices.Contains(codes, "EK2007")
-			}
-			if !good {
-				Gap(t, nativeLoopTarget, "native:"+precise, "VIP-20/detail293: %q; native=%v, Vibe=%v\n%s", nativeLoopQuote, nativeCodes, codes, source)
-			}
-		} else if len(nativeCodes) == 0 && row.home != "effect-await" {
-			config := toolsConfig(w, result.Dir)
-			if result.Program == nil || config == nil || len(config.Errors) > 0 {
-				t.Fatal("valid native control has no fixable project")
-			}
-			var fixed *vibelang.FixResult
-			toolsRun(t, nativeLoopTarget, "fix", source, nil, func() {
-				fixed = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
-			})
-			if fixed.Err != nil {
-				Gap(t, nativeLoopTarget, "fix:"+precise, "native loop fix failed: %v\n%s", fixed.Err, source)
-			}
-			for _, file := range fixed.Files {
-				if forTry.MatchString(file.Text) || row.home != "effect" && effectFunction.MatchString(file.Text) {
-					Gap(t, nativeLoopTarget, "fix:"+precise, "VIP-20/detail293: native iteration cannot become Stream execution or a new Effect function\noriginal:\n%s\nfixed:\n%s", source, file.Text)
-				}
-			}
-		}
-		ExpectPending(t, nativeLoopTarget, specCorpusKey(t))
-	})
 }

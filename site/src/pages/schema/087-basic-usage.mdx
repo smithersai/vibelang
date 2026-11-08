@@ -1,21 +1,21 @@
 ---
 title: "Basic Usage"
-description: "Write the schema keyword without Unicode escapes (TS1260). vibelang --fix restores its literal spelling; escaped schema names and ordinary identifiers keep working."
+description: "Write the schema keyword without Unicode escapes (TS1260). Escaped schema names and ordinary identifiers keep working."
 ---
 
 # Basic Usage
 
-Write the `schema` keyword without Unicode escapes (`TS1260`). `vibelang --fix` restores its literal spelling; escaped schema names and ordinary identifiers keep working.
+Write the `schema` keyword without Unicode escapes (`TS1260`). Escaped schema names and ordinary identifiers keep working.
 
 Schema constructors work as in Effect. Combine small descriptions into arrays, objects, and alternatives, then run a parser inside a function. Plain builders follow the [call rules](/schema/085-introduction#configuring-compiler-prerequisites).
 
 In a schema declaration, a field named `__proto__` is an own data field. The generated schema uses `["__proto__"]` as its key, including quoted or escaped source names and fields in nested structs. Decoding validates and preserves that field like any other field; encoding includes it.
 
-A native `Schema.Struct({ __proto__: codec })` uses JavaScript's prototype-setter syntax. `vibelang --fix` keeps that expression, since replacing it with an own schema field would change decoding. Shorthand `{ __proto__ }` and computed `{ ["__proto__"]: codec }` properties are ordinary own properties.
+A native `Schema.Struct({ __proto__: codec })` uses JavaScript's prototype-setter syntax. Shorthand `{ __proto__ }` and computed `{ ["__proto__"]: codec }` properties are ordinary own properties.
 
 Encoding produces the selected codecs' encoded representation. For JSON boundaries, choose JSON-compatible codecs and property keys; raw bigints, symbols, undefined values, nonfinite numbers and cyclic values do not all survive ordinary JSON serialization. `Schema.BigIntFromString` gives a bigint a string representation.
 
-A direct default `schema` declaration, including the alias form, reports `EK1501`. `schema` type parameters report `EK1502`, for both field bodies and aliases. Declare a name and use `export { Name as default }`; use an ordinary generic TypeScript factory for parameterized Schema construction. Previously accepted headers with type parameters created an empty schema and then evaluated a separate TypeScript expression. For those headers, `vibelang --fix` makes the empty body explicit and keeps that expression; it preserves the old decoder and public type.
+A direct default `schema` declaration, including the alias form, reports `EK1501`. `schema` type parameters report `EK1502`, for both field bodies and aliases. Declare a name and use `export { Name as default }`; use an ordinary generic TypeScript factory for parameterized Schema construction. Previously accepted headers with type parameters created an empty schema and then evaluated a separate TypeScript expression. For those headers, make the empty body explicit and keep that expression to preserve the old decoder and public type.
 
 Optional fields in `schema` and `schema error` follow the project's `exactOptionalPropertyTypes` setting. With it off, `name?: T` uses `Schema.optional(S)` and accepts omission or explicit `undefined`. With it on, `name?: T` uses `Schema.optionalKey(S)` and accepts omission; write `name?: T | undefined` to accept a present `undefined` too. The optional wrapper supplies the explicit `undefined` arm: `name?: string | undefined` maps to `Schema.optional(Schema.String)`, preserving its public codec type. Required fields keep their `undefined` unions. A repair writes a `Schema.optional(S)` field as `name?: T | undefined`, which keeps `Schema.optional(S)` under either setting, so a file that several projects compile keeps its schema. A repair keeps an existing `Schema.optional(Schema.Union([S, Schema.Undefined]))` or `Schema.optional(Schema.Undefined)` constant when rewriting it would change the public codec type. The existing `Schema.mutableKey` wrapping is unchanged. A repair from `Schema.mutableKey` writes a plain writable field; a readonly key writes `readonly`. Declarations match the Effect TypeScript twin under the same setting. Without exact optionals, a program needing `Schema.optionalKey` writes Effect's schema or class directly.
 
@@ -72,7 +72,7 @@ effect function locateBin(input: unknown) {
 
 `TemplateLiteral` validates a string pattern of literal, string, finite-number, union, or branded spans. `TemplateLiteralParser` also splits it into a tuple and applies the spans' conversions; encoding the tuple rebuilds the string.
 
-A reference in a `schema` declaration must satisfy Effect's `Schema.Top` contract; copying the schema marker onto an ordinary object is insufficient and reports `EK2109`. For an existing non-schema alias with a public `Type` member, `vibelang --fix` writes the original `const` and `type` pair, preserving its value and public type.
+A reference in a `schema` declaration must satisfy Effect's `Schema.Top` contract; copying the schema marker onto an ordinary object is insufficient and reports `EK2109`. For an existing non-schema alias with a public `Type` member, write the original `const` and `type` pair, preserving its value and public type.
 
 ## Building unions and tagged alternatives
 
@@ -100,7 +100,7 @@ A union accepts one of its members, exposed as `.members`. When alternatives ove
 
 For a tag absent from the wire representation, add a field with `Schema.tagDefaultOmit("Warehouse")`: decoding supplies the tag and encoding omits it. `NullOr`, `UndefinedOr`, and `NullishOr` accept values in addition to the wrapped schema; they do not make an object key optional.
 
-In a `schema` declaration, a `Record<K, V>` value schema must have required decoded keys. A `Readonly<Record<K, V>>` value schema must also keep those keys readonly. Conflicting or uncertain inferred flags, including aliased schema values built with `Schema.optionalKey` or `Schema.mutableKey`, report `EK2109`. Use an unmodified value schema and write the modifiers on the `Record` type. A required value union with `undefined` keeps finite keys present; readonly keys can still hold mutable arrays. Run `vibelang --fix` to preserve existing decoding with explicit Effect codecs and the same declaration types. In a `schema error`, it names the field codecs and keeps the constructor, methods and matcher. The migration also runs with `--fix-migration-only`.
+In a `schema` declaration, a `Record<K, V>` value schema must have required decoded keys. A `Readonly<Record<K, V>>` value schema must also keep those keys readonly. Conflicting or uncertain inferred flags, including aliased schema values built with `Schema.optionalKey` or `Schema.mutableKey`, report `EK2109`. Use an unmodified value schema and write the modifiers on the `Record` type. A required value union with `undefined` keeps finite keys present; readonly keys can still hold mutable arrays. To preserve existing decoding, write explicit Effect codecs with the same declaration types.
 
 ## Defining tuples with optional and rest elements
 
@@ -133,7 +133,7 @@ Tuples are readonly and position-sensitive. Optional elements use `optionalKey`;
 
 Tuple types in `schema` declarations are mutable unless written `readonly`; mutable tuples wrap the mapped tuple in `Schema.mutable`. With TypeScript's default optional-property setting, a `schema` declaration can also write named and optional tuple elements: `schema Position = readonly [name: string, count?: number]` maps to `Schema.Tuple([Schema.String, Schema.optional(Schema.Number)])`. Rest positions such as `readonly [string, ...number[], boolean]` use `Schema.TupleWithRest`, retaining the fixed prefix, repeating element and required trailing positions. TypeScript's tuple syntax checks still apply: required elements cannot follow optional elements, optional elements cannot follow a rest element, and a tuple cannot have two rest elements. Labels do not affect decoding. With `exactOptionalPropertyTypes` on, an optional element uses `Schema.optionalKey` and a present value must match its codec; an explicit `undefined` union keeps `Schema.optional`. Rest arrays may use `T[]`, `readonly T[]`, `Array<T>` or `ReadonlyArray<T>`, including qualified names and import aliases of the library types; the outer tuple's `readonly` modifier controls the tuple's mutability.
 
-A required position in a `schema` tuple must reference a schema whose decoded key is required. A reference to `Schema.optionalKey(Schema.Number)`, including an alias or an uncertain union of flags, reports `EK2109` in that position. Use the unmodified value schema for a required slot. If a present `undefined` is intended, `schema Slot = readonly [number | undefined]` accepts `[undefined]` but rejects `[]`. Keep an explicit `Schema.Tuple` constant when its optional-key behavior is intended. Run `vibelang --fix` to preserve an existing tuple's decoding: it expands the enclosing schema to explicit codecs and its type alias. In a `schema error`, it retains the error declaration and names the field codecs, preserving the constructor, methods and matcher. The migration also runs with `--fix-migration-only`. Generated helper names avoid existing bindings, including names written with Unicode escapes.
+A required position in a `schema` tuple must reference a schema whose decoded key is required. A reference to `Schema.optionalKey(Schema.Number)`, including an alias or an uncertain union of flags, reports `EK2109` in that position. Use the unmodified value schema for a required slot. If a present `undefined` is intended, `schema Slot = readonly [number | undefined]` accepts `[undefined]` but rejects `[]`. Keep an explicit `Schema.Tuple` constant when its optional-key behavior is intended. To preserve an existing tuple's decoding, expand the enclosing schema to explicit codecs and its type alias.
 
 Fixed elements are `.elements`, or `.schema.elements` on a tuple with rest, whose `.rest` describes the repeating and trailing schemas. Element annotations describe single positions.
 
@@ -265,7 +265,7 @@ false true false
 
 A `schema` declaration retains the runtime `Schema` dependency used by its generated initializer, including when an explicit `Schema` import has no other value use.
 
-For an older function-local or namespace `schema` alias, unsupported named, optional or rest tuples used to become `Schema.Unknown`. The explicit compatibility upgrade `vibelang --fix --fix-migration-only` writes that old codec at the affected tuple position, retaining enclosing array or union mappings. Ordinary `--fix` keeps valid new tuple schemas. Module-level aliases and struct fields keep their existing tuple behavior.
+For an older function-local or namespace `schema` alias, unsupported named, optional or rest tuples used to become `Schema.Unknown`. To keep that codec, write `Schema.Unknown` at the affected tuple position, retaining enclosing array or union mappings. Module-level aliases and struct fields keep their existing tuple behavior.
 
 ## Dates, URLs, bytes and read-only collections
 
@@ -279,15 +279,15 @@ These mappings compose: `ReadonlyArray<ReadonlyMap<string, number>>` maps to `Sc
 
 Hover and definition queries for mapped generic types use the written TypeScript binding, including type-only imports. The same queries work in schema aliases, functions and namespaces.
 
-Older compiler versions lowered unsupported keyword types in function-local or namespace `schema` aliases to `Schema.Unknown`. These aliases now report `EK2109`. Their first quick fix, also used by `vibelang --fix`, writes `Schema.Unknown` to preserve the codec and decoded type. The keyword’s explicit schema remains a separate editor action; module-level aliases and struct fields keep their existing suggestions.
+Older compiler versions lowered unsupported keyword types in function-local or namespace `schema` aliases to `Schema.Unknown`. These aliases now report `EK2109`. Their first quick fix writes `Schema.Unknown` to preserve the codec and decoded type. The keyword’s explicit schema remains a separate editor action; module-level aliases and struct fields keep their existing suggestions.
 
-Tuple-rest generic names use the same type-binding lookup as other schema generics. A local type named `Array` or `ReadonlyArray` does not select a library mapping. For a previously accepted shadowed spelling, `vibelang --fix` writes the explicit tuple codec to preserve its decoder.
+Tuple-rest generic names use the same type-binding lookup as other schema generics. A local type named `Array` or `ReadonlyArray` does not select a library mapping. For a previously accepted shadowed spelling, write the explicit tuple codec to preserve its decoder.
 
 ## Preserving optional schema decoding during an upgrade
 
-For projects with `exactOptionalPropertyTypes: true`, the explicit compatibility command `vibelang --fix --fix-migration-only` expands existing optional schemas to explicit Effect codecs. It keeps the original `Schema.optional(S)` codec, including its published declaration type and acceptance of a present `undefined`. An explicit `undefined` arm on an optional field or tuple element also maps to `Schema.optional(S)`; the wrapper supplies that arm without an inner `Schema.Union`. The upgrade covers nested mappings and optional tuple elements; a `schema error` becomes a native class with its constructor, user members and cross-copy matcher preserved. Required explicit `undefined` unions keep their codecs, and native `data` payload types stay unchanged. Ordinary `--fix` preserves newly written optional fields. Projects using TypeScript's default optional-property setting need no such upgrade.
+For projects with `exactOptionalPropertyTypes: true`, expand existing optional schemas to explicit Effect codecs. Keep the original `Schema.optional(S)` codec, including its published declaration type and acceptance of a present `undefined`. An explicit `undefined` arm on an optional field or tuple element also maps to `Schema.optional(S)`; the wrapper supplies that arm without an inner `Schema.Union`. Required explicit `undefined` unions keep their codecs, and native `data` payload types stay unchanged. Projects using TypeScript's default optional-property setting need no such upgrade.
 
-When upgrading a schema that relied on the old grouping of codecs, run `vibelang -p tsconfig.json --fix --fix-migration-only`. The migration writes explicit Effect schemas that retain the old `.members` or `.literals` layout, declaration types, decoding failures and evaluation order. Ordinary schema declarations use transparent parentheses.
+When upgrading a schema that relied on the old grouping of codecs, write explicit Effect schemas that retain the old `.members` or `.literals` layout, declaration types, decoding failures and evaluation order. Ordinary schema declarations use transparent parentheses.
 
 ---
 

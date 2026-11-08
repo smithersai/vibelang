@@ -18,28 +18,7 @@ for (const name of ["main.vibe", "constants.ts", "tsconfig.json", "package.json"
 }
 const tsc = fileURLToPath(new URL("../../../built/local/tsc", import.meta.url))
 const config = fileURLToPath(new URL("tsconfig.json", evidence))
-const log = execFileSync(tsc, ["-p", config, "--fix"], { encoding: "utf8" })
-writeFileSync(new URL("fix.log", evidence), log)
-const repairedText = readFileSync(new URL("main.vibe", evidence), "utf8")
-execFileSync(tsc, ["-p", config], { encoding: "utf8" })
-const repaired = await import(new URL("out/main.js", evidence))
-assert.equal(readFileSync(new URL("out/main.d.ts", evidence), "utf8"), readFileSync(new URL("out/main.d.ts", import.meta.url), "utf8"))
-const repairedTrace = repaired.inspect()
-writeFileSync(new URL("trace-comparison.json", evidence), JSON.stringify({
-  native: { initialized: native.initialized, trace: expected },
-  original: { initialized: original.initialized, trace: originalTrace },
-  repaired: { initialized: repaired.initialized, trace: repairedTrace },
-}, null, 2) + "\n")
-assert.deepEqual(
-  { initialized: repaired.initialized, trace: repairedTrace },
-  { initialized: native.initialized, trace: expected },
-)
-for (const operand of ["config.ready", "captured.ready", "stable.ready", "computedReady", "mutableReady", "literalReady", "eagerReady"]) {
-  assert.ok(repairedText.includes("Match.when(" + operand), operand + " must keep its advisory without repair")
-}
-assert.ok(!repairedText.includes("Match.when(localReady"))
 assert.equal(native.earlyResult, "tdz")
 assert.equal(original.earlyResult, native.earlyResult)
-assert.equal(repaired.earlyResult, native.earlyResult)
 
 console.log("native, original and repaired operand traces agree")

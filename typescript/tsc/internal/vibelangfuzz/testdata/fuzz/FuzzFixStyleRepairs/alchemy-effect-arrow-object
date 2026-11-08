@@ -1,3 +1,0 @@
-go test fuzz v1
-string("alchemy-effect-arrow-object")
-byte('\x03')

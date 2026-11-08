@@ -2,15 +2,12 @@ package vibelang
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 func TestMatchCombinatorCoverage(t *testing.T) {
@@ -64,30 +61,6 @@ func TestMatchCombinatorCoverageControls(t *testing.T) {
 				t.Fatal(ds)
 			}
 		})
-	}
-}
-
-func TestMatchCombinatorCoverageCLI(t *testing.T) {
-	for _, options := range []FixOptions{{}, {MigrationOnly: true}} {
-		for _, modifier := range []string{"", "effect "} {
-			source := "export " + modifier + "function f(x:boolean){const TypeError=0;const Effect=0;return match(x){when true and true:1;when false:0;}}"
-			program, file, _, _ := editorProgram(t, source)
-			result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), options)
-			if len(result.Refused) != 0 || len(result.Files) != 1 {
-				t.Fatalf("options=%+v modifier=%q fix result: %+v", options, modifier, result)
-			}
-			fixed := result.Files[file.FileName()]
-			if fixed.Counts[EK4701.Code] != 1 {
-				t.Fatalf("missing repair count: %+v", fixed)
-			}
-			if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-				t.Fatal(err)
-			}
-			second := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), options)
-			if len(second.Files) != 0 || len(second.Refused) != 0 {
-				t.Fatalf("not idempotent: %+v", second)
-			}
-		}
 	}
 }
 

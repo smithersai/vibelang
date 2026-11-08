@@ -96,8 +96,6 @@ project(({ put, read, invoke, run }) => {
   put("main.vibe", source)
   const first = invoke("-p", ".", "--pretty", "false")
   assert.equal(first.status, 0, first.text)
-  assert.doesNotMatch(invoke("--fix", "-p", ".", "--pretty", "false").text, /EK1101/)
-  assert.equal(read("main.vibe"), source)
   put("run.mjs", `import { Effect } from "effect"\nimport * as m from "./out/main.js"\n` +
     `console.log(JSON.stringify([m.n1(), m.n2(), new m.C().k, await Effect.runPromise(m.p1()), await Effect.runPromise(m.p2())]))\n`)
   assert.equal(run(process.execPath, ["run.mjs"]).stdout.trim(), "[2,2,1,41,42]")

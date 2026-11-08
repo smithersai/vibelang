@@ -342,7 +342,7 @@ function depthE(n: number): Effect.Effect<number> {
 }
 ```
 
-`infer` has no meaning in a return annotation: `--fix` deletes a bare `: infer _`, and an `Effect<A, infer E, R>` slot retires through the legacy path. Write the slot, or leave the whole annotation out.
+`infer` has no meaning in a return annotation: delete a bare `: infer _`, and an `Effect<A, infer E, R>` slot retires through the legacy path. Write the slot, or leave the whole annotation out.
 
 ### Crossing between Promises and Effects
 
@@ -425,7 +425,7 @@ The set includes an **unmarked** function, expression, arrow or method whose exp
 
 Function types, interface or bodyless call signatures, standalone type aliases, ordinary non-Effect annotations, constructors, accessors, `async` functions, ordinary generators and `.ts`/`.js` code are outside this migration. Existing producer migrations are separate. Invalid native `infer` outside the set keeps `TS1338`; valid conditional inference keeps TypeScript's meaning everywhere. Independent native errors remain, including on an eligible return annotation. After this migration retires, `TS1338` alone remains wherever TypeScript rejects the occurrence.
 
-`--fix` writes checker-proved inferred channel types, preserving declaration types and runtime behavior, or refuses with an explanation if it cannot name those types safely. It may remove the whole return annotation only on an explicitly `effect`-marked callable when every channel is `infer` and preservation is proved. It does not offer that removal merely because an unmarked callable's annotation belongs to the set. These are VIP-34's preserving-fix checks, not permission for partial inference in new source.
+The repair writes checker-proved inferred channel types, preserving declaration types and runtime behavior, or refuses with an explanation if it cannot name those types safely. It may remove the whole return annotation only on an explicitly `effect`-marked callable when every channel is `infer` and preservation is proved. It does not offer that removal merely because an unmarked callable's annotation belongs to the set. These are VIP-34's preserving-fix checks, not permission for partial inference in new source.
 
 ```vibe
 // compiler-gap: pending VIP-3
@@ -589,7 +589,7 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it, and for each `x.
 
 `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution.
 
-<a id="api-identity"></a>**API identity.** Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin: the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export, with one exception: the emitted declaration may add VIP-27’s generated `@throws {never}` contract where the twin has no authored throw contract. No other JSDoc difference is allowed, and an authored `@throws` must remain unchanged. Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count. Every rule that requires declarations to match, the codemods and migration included, means this.
+<a id="api-identity"></a>**API identity.** Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin: the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export, with one exception: the emitted declaration may add VIP-27’s generated `@throws {never}` contract where the twin has no authored throw contract. No other JSDoc difference is allowed, and an authored `@throws` must remain unchanged. Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count. Every rule that requires declarations to match, migration included, means this.
 
 Compare the ordinary stock-`tsc` twin without adding generated tags to it. Preserve its source documentation; only the generated contract described above is an allowed addition in the emitted declaration. Authored throw tags must remain unchanged. The output tag stays out of `.vibe` source, where it is `EK0406`. Effectful signatures and re-exported foreign callables retain their own declaration rules.
 

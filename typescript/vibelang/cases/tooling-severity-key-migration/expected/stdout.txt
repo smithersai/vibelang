@@ -1,1 +1,1 @@
-severity-key activation migration: 70 checks passed
+severity-key activation migration: 26 checks passed

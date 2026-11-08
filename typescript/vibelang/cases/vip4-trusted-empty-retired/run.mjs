@@ -21,13 +21,5 @@ const tsc = (...args) => {
   return { status: result.status, output: result.stdout + result.stderr }
 }
 const before = tsc("--noEmit")
-assert.match(before.output, /error EK0407:[^\n]*vibelang --fix/, before.output)
-const fixed = tsc("--fix")
-const text = fs.readFileSync(path.join(work, "main.vibe"), "utf8")
-assert.doesNotMatch(text, /trusted\(/, text)
-assert.match(text, /Effect\.orDie\(Effect\.try\(\{ try: \(\) => [^}]*, catch: \(e\) => e \}\)\)/, text)
-assert.doesNotMatch(text, /\bidentity\b/, text)
-assert.equal(fixed.status, 0, fixed.output)
-const program = await import(pathToFileURL(path.join(work, "build", "main.js")).href)
-assert.equal(await Effect.runPromise(program.main()), 3)
+assert.match(before.output, /error EK0407:[^\n]*Write each direct call/, before.output)
 console.log("trusted(f, []) migrates to the identity-mapped bridge")

@@ -21,7 +21,7 @@ func awaitOperationHelper(node *ast.Node) string {
 
 func (p *projector) retiredAwaitDiagnostic(call *ast.Node) {
 	start := p.tokenStart(call)
-	p.diagnostics = append(p.diagnostics, Diagnostic{Start: start, Length: max(0, call.End()-start), Code: 1802, Message: "await operations were removed by VIP-18: write try.all, try.race, try.any or try.allSettled over an array of Effects, or try all({ … }, { concurrency: \"unbounded\" }) for an object; vibelang --fix rewrites them."})
+	p.diagnostics = append(p.diagnostics, Diagnostic{Start: start, Length: max(0, call.End()-start), Code: 1802, Message: "await operations were removed by VIP-18: write try.all, try.race, try.any or try.allSettled over an array of Effects, or try all({ … }, { concurrency: \"unbounded\" }) for an object."})
 }
 func (p *projector) retiredAwaitOperation(call *ast.Node) {
 	p.retiredAwaitDiagnostic(call)

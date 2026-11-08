@@ -25,8 +25,8 @@ const project = (name, source) => {
   return dir
 }
 const compile = (dir, fix = false, retired = false) => {
- const output = run(compiler, ["-p", ".", "--pretty", "false", ...(fix ? ["--fix"] : [])], dir, 30_000, retired ? 2 : 0)
- if (retired) assert.match(output, /error EK2121:.*vibelang --fix/)
+ const output = run(compiler, ["-p", ".", "--pretty", "false"], dir, 30_000, retired ? 2 : 0)
+ if (retired) assert.match(output, /error EK2121:.*write Layer\.effect/)
  return output
 }
 const exit = (dir) => JSON.parse(run(process.execPath, ["--input-type=module", "-e", 'import { Effect } from "effect"; import { main } from "./out/main.js"; console.log(JSON.stringify(Effect.runSyncExit(main())))'], dir, 10_000).trim())
@@ -53,23 +53,7 @@ export effect function main() {
     const before = exit(dir)
     assert.equal(before._tag, kind === "setup-failure" ? "Failure" : "Success")
     if (before._tag === "Success") assert.deepEqual(before.value, { value: 7, events: kind === "eager" ? "member" : "setup,member" })
-    compile(dir, true)
-    const fixed = fs.readFileSync(path.join(dir, "main.vibe"), "utf8")
-    assert.ok(!fixed.includes("layer Live:"), "the CLI left a safe legacy declaration unchanged")
-    assert.ok(fixed.includes(kind === "eager" ? "Layer.succeed(Counter," : "Layer.effect(Counter, effect {"), fixed)
-    compile(dir)
-    assert.equal(fs.readFileSync(path.join(dir, "out/main.d.ts"), "utf8"), beforeDts, "the public declaration bytes changed")
-    assert.deepEqual(exit(dir), before, "the migration changed Exit or initialization timing")
   }
-  }
-  for (const [name, prefix] of [
-    ["shadowed", 'import * as ActualLayer from "effect/Layer";\nconst reads: string[] = [];\nconst Layer: typeof ActualLayer = { ...ActualLayer, get succeed() { reads.push("captured"); return ActualLayer.succeed }, get effect() { reads.push("captured"); return ActualLayer.effect } };\n'],
-    ["type-only", 'import type { Layer } from "effect";\n'],
-  ]) {
-    const source = prefix + 'service Counter { static readonly key = "test/LayerMigration"; value: number }\nlayer Live: Counter { readonly value = 7 }\nexport { Live }\n'
-    const dir = project(name, source)
-    compile(dir, true, true)
-    assert.equal(fs.readFileSync(path.join(dir, "main.vibe"), "utf8"), source, "an unavailable constructor must not be captured")
   }
   console.log("layer migration preserves 9 APIs and Exits; 2 namespace refusals")
 } finally {

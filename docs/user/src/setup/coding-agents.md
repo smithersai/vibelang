@@ -2,7 +2,7 @@
 
 Run the setup command in an existing project directory containing `package.json`. A missing target path reports an error without creating the directory.
 
-`npx vibelang agents init` sets up a repository's coding agents for `.vibe` files. Each agent gets the VibeLang skill, instructions in `AGENTS.md`, the language server where it has an LSP client, and a check after each edit that applies `vibelang --fix` and returns the errors left to the agent. Each part uses the agent's own configuration files.
+`npx vibelang agents init` sets up a repository's coding agents for `.vibe` files. Each agent gets the VibeLang skill, instructions in `AGENTS.md`, the language server where it has an LSP client, and a check after each edit that returns the errors to the agent. Each part uses the agent's own configuration files.
 
 ![The compiler tells the agent what to write instead](/videos/agent-loop.mp4)
 
@@ -45,17 +45,16 @@ The hooks and the opencode plugin run `npx vibelang agents check` on the `.vibe`
 npx vibelang agents check src/profile.vibe
 ```
 
-It applies `vibelang --fix` to the project in the nearest `tsconfig.json` above each file, then prints what is left in those files:
+It compiles the project in the nearest `tsconfig.json` above each file, then prints the errors in those files:
 
 ```out
-vibelang --fix rewrote src/profile.vibe: 1 fix (EK4834 ×1). Read it again before you edit it.
 src/profile.vibe(6,10): error TS2322: Type 'string' is not assignable to type 'number'.
 vibelang: 1 error left in the files you edited. Fix it before you finish.
 ```
 
 It exits with status `1` when the project has an error, including errors outside the files you named. Errors in the project's other files are counted on one line. If the compiler exits unsuccessfully, is terminated by a signal or cannot start, the check also fails: it reports that the check is incomplete, names the exit status, signal or spawn error, and includes the compiler's standard error output. It never reports `no errors` for a failed compiler check. In a directory with several `tsconfig*.json` files, such as `tsconfig.json` and `tsconfig.test.json`, it checks a file with the first project that includes it.
 
-A hook returns a project error or an incomplete compiler check to the agent with exit status `2`, and a rewrite or a warning as context the agent reads with the tool's result.
+A hook returns a project error or an incomplete compiler check to the agent with exit status `2`, and a warning as context the agent reads with the tool's result.
 
 ## In a workspace
 

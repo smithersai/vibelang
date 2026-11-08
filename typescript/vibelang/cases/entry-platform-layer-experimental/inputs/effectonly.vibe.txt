@@ -1,7 +1,0 @@
-// A main that needs only Effect's services gets only Effect's bundle.
-import "vibelang/platform/node"
-import { FileSystem } from "effect/FileSystem"
-
-export effect function main() {
-  try Console.log(try (try FileSystem).readFileString("effect.txt"))
-}

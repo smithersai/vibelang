@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nimport * as Schema from \"effect/Schema\"\nexport class Failed extends Schema.TaggedError<Failed>()(\"Failed\", { reason: Schema.String }) {\n // IPC preserves only the message.\n override get message(): string { return this.reason }\n}\n")

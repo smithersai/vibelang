@@ -1,176 +1,18 @@
 package vibelangfuzz
 
 import (
-	"context"
-	"flag"
 	"fmt"
 	"maps"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vfs"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/wrapvfs"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
-
-// FuzzFixGateBounds checks the gate of vibelang --fix in large rounds,
-// where it writes what it has verified as it goes (gateRound.checkpoint)
-// and stops telling apart the fixes that add errors after a number of
-// checks (fixIsolationChecks). The input describes a project shaped like
-// opencode's core, where a round of 361 fixes, 35 of them refused, halved
-// for an hour and wrote no file (opencode-60, 2026-11-02): a chain of
-// modules with good fixes each, and a fix in some modules that adds an
-// error to a later module that reads it through a string in an import
-// type, so that no error traces to the fix and the gate halves. It runs
-// --fix with the input's checkpoint and isolation thresholds and, when the
-// input says so, stops the run as it builds a given program. With hub=k, a
-// hub module imports the refused fixes' functions of k modules and reports
-// an error when any one of them is applied: the shape of t3code's server,
-// where the gate refused one of some 50 such fixes each 5 checks, reached
-// the bound and kept none of 237 fixes (wk-srv-a444-35, 2026-11-03). Its
-// oracle is fixGateRule's: every set of fixes the run verifies, which a
-// stopped run leaves on disk (fix_keep.go), adds no error to the original;
-// a fix the bound refuses is named by the bound's reason; a run that
-// reaches the bound applies every good fix of a module that no error
-// reaches (gateRound.salvage); and a run that finishes without reaching
-// the bound writes and refuses exactly what a run without checkpoints or a
-// bound does.
-//
-// The input is comma-separated key=value pairs (fixGateBoundsProject); a
-// missing or malformed value takes its default, and every value is
-// clamped, so a mutated input keeps a meaning.
-func FuzzFixGateBounds(f *testing.F) {
-	startShortBudget(f)
-	for _, seed := range []string{
-		"m=12,g=2,every=5,at=0,d=1,cp=16,iso=256",
-		"m=24,g=1,every=3,at=1,d=1,cp=16,iso=32",
-		"m=20,g=2,every=4,at=0,d=2,cp=32,iso=16",
-		"m=16,g=3,every=6,at=2,d=3,cp=64,iso=64",
-		"m=30,g=1,every=5,at=0,d=1,cp=16,iso=256,stop=20",
-		"m=80,g=2,every=5,at=0,d=1,cp=16,iso=32",
-		"m=30,g=2,every=2,at=0,d=1,cp=16,iso=16,hub=12",
-		"m=24,g=1,every=3,at=1,d=2,cp=32,iso=24,hub=8",
-	} {
-		f.Add(seed)
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, input string) {
-		p := fixGateBoundsParse(input)
-		if fuzz := flag.Lookup("test.fuzz"); fuzz != nil && fuzz.Value.String() != "" && p.m > fixGateBoundsFuzzModules {
-			return
-		}
-		files := fixGateBoundsProject(p)
-		toolsGuard(t, "FuzzFixGateBounds", func() {
-			r := toolsCompile(t, w, "FuzzFixGateBounds", files)
-			defer r.Remove()
-			config := toolsConfig(w, r.Dir)
-			if r.Program == nil || config == nil || len(config.Errors) > 0 {
-				return
-			}
-			// The run is stopped as it builds its stop-th program: each
-			// build reads plain.ts once.
-			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-			plain := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(r.Dir, "plain.ts")))
-			var builds atomic.Int64
-			fs := fixGateBoundsFS{wrapvfs.Wrap(w.fs, wrapvfs.Replacements{ReadFile: func(name tspath.RootedFilePath) (string, bool) {
-				if name == plain && builds.Add(1) == int64(p.stop) {
-					cancel()
-				}
-				return w.fs.ReadFile(name)
-			}}), w.fs}
-			var sets []map[string]string
-			var bounded *vibelang.FixResult
-			toolsRun(t, "FuzzFixGateBounds", "fix", input, nil, func() {
-				bounded = vibelang.FixProjectWithOptions(ctx, fs, bundled.LibPath(), config, vibelang.FixOptions{
-					IsolationChecks: p.iso,
-					CheckpointFirst: p.cp,
-					Verified: func(texts map[tspath.RootedFilePath]string) {
-						sets = append(sets, fixGateBoundsTexts(r.Dir, texts))
-					},
-				})
-			})
-			if bounded == nil {
-				return
-			}
-			// Every set the run verified, as a stopped run would leave it on
-			// disk, adds no error.
-			seen := map[string]bool{}
-			for i, set := range sets {
-				key := Archive(set)
-				if seen[key] {
-					continue
-				}
-				seen[key] = true
-				fixed := maps.Clone(files)
-				maps.Copy(fixed, set)
-				after := toolsCompile(t, w, "FuzzFixGateBounds", fixed)
-				added := toolsAddedErrors(r, after)
-				after.Remove()
-				if len(added) > 0 {
-					Gap(t, "FuzzFixGateBounds", "fix:verified-set-adds-error", "set %d of %d that --fix verified for %q adds %v\n%s", i+1, len(sets), input, added, Archive(fixed))
-					return
-				}
-			}
-			if ctx.Err() != nil {
-				t.Logf("%q: stopped at program %d after %d verified sets", input, builds.Load(), len(sets))
-				return
-			}
-			if bounded.Err != nil {
-				return
-			}
-			// A reader of a refused fix makes the gate refuse one: when none
-			// is refused, the project no longer has the shape this target
-			// checks, as when VIP-1 ended the fix of an unmarked modes().
-			if len(bounded.Refused) == 0 && slices.ContainsFunc(slices.Collect(maps.Values(files)), func(text string) bool { return strings.Contains(text, "[\"modes") }) {
-				t.Fatalf("--fix refused no fix of %q, which has a reader of a refused fix; the generator no longer builds opencode's shape", input)
-			}
-			why := fmt.Sprintf(" the gate stopped telling apart after %d checks of its round; run vibelang --fix again to try them", p.iso)
-			untold := 0
-			for _, refusal := range bounded.Refused {
-				if strings.Contains(refusal.Error, " the gate stopped telling apart after ") {
-					untold++
-					if !strings.HasSuffix(refusal.Error, why) || !strings.Contains(refusal.Error, ", one of the errors of ") {
-						Gap(t, "FuzzFixGateBounds", "fix:bound-reason", "a fix refused at the bound for %q is named %q; want an error and %q", input, refusal.Error, why)
-						return
-					}
-				}
-			}
-			if untold > 0 {
-				// The fixes of a module that no error reaches: not a reader,
-				// not the hub, not a module either imports, and not one that
-				// holds a refused fix.
-				for _, name := range fixGateBoundsInnocent(p) {
-					for path, file := range bounded.Files {
-						if filepath.Base(path.AsString()) == name && strings.Contains(file.Text, "Effect.Effect<number>") {
-							Gap(t, "FuzzFixGateBounds", "fix:bound-keeps-nothing", "a run of %q that reached the bound of %d checks left the good fixes of %s, which no error reaches, unapplied\n%s", input, p.iso, name, Archive(files))
-							return
-						}
-					}
-				}
-				t.Logf("%q: %d fixes refused at the bound of %d checks", input, untold, p.iso)
-				return
-			}
-			var unbounded *vibelang.FixResult
-			toolsRun(t, "FuzzFixGateBounds", "fix-unbounded", input, nil, func() {
-				unbounded = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{IsolationChecks: 1 << 30, CheckpointFirst: 1 << 30})
-			})
-			if unbounded == nil {
-				return
-			}
-			if diff := fixGateDiff(bounded, unbounded); diff != "" {
-				Gap(t, "FuzzFixGateBounds", "fix:bounds-change-outcome", "--fix with checkpoints from %d checks and a bound of %d changes the outcome of %q: %s\n%s", p.cp, p.iso, input, diff, Archive(files))
-			}
-		})
-	})
-}
 
 // fixGateBoundsFuzzModules is the most modules a campaign tries. Within
 // ends a fuzzing worker after HangLimit, 10 s, in one stage, and with

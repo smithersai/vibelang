@@ -127,11 +127,11 @@ test("parseTokenCounts reads the token tool's --files lines", () => {
 test("the repair prompt carries the context, the diagnostics, the checks and the record formats", () => {
   const prompt = repairPrompt({
     context: "# Context\n", run: "/run", batch: "01", target: "/repo", packages: ["pkg"], test: "pnpm test", files: ["pkg/src/a.vibe"], step: "node step.mjs",
-    codemod: { fix: { byFile: { "pkg/src/a.vibe": { EK4830: 1 } }, refused: [{ file: "pkg/src/a.vibe", line: 3, code: "EK4835", error: "TS2322: x" }] } },
+    codemod: {},
     compile: { diagnostics: [{ file: "pkg/src/a.vibe", line: 8, column: 2, category: "error", code: "EK1002", message: "Effect.gen expects", notes: ["Write the body"] }], newErrors: [{ file: "pkg/src/b.ts", line: 1, column: 1, category: "error", code: "TS2305", message: "no export", notes: [] }] }
   })
   assert.ok(prompt.startsWith("# Context\n"))
-  for (const part of ["- pkg/src/a.vibe: EK4830 ×1", "EK4835 not fixed", "- pkg/src/a.vibe:8:2 error EK1002: Effect.gen expects\n  Write the body", "pkg/src/b.ts:1:1 error TS2305", '"kind":"codemod-gap","batch":"01"', "node step.mjs revert --run /run", "node step.mjs repair --run /run --batch 01 --done"]) {
+  for (const part of ["- pkg/src/a.vibe:8:2 error EK1002: Effect.gen expects\n  Write the body", "pkg/src/b.ts:1:1 error TS2305", '"kind":"codemod-gap","batch":"01"', "node step.mjs revert --run /run", "node step.mjs repair --run /run --batch 01 --done"]) {
     assert.ok(prompt.includes(part), `the prompt lacks ${part}`)
   }
 })

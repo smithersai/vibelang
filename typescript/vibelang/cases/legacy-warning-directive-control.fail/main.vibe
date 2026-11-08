@@ -1,0 +1,4 @@
+// expect: EK4804
+// VIP-53: retain the old directive spelling while a rename remains a proposal.
+export effect function failure() { throw new Error("typed failure") }
+export effect function main() { return 42 }

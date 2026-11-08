@@ -59,9 +59,4 @@ for (const [name, compilerOptions, want] of [
 ]) {
   const p = project(import.meta.url, name, stale, { compilerOptions })
   assert.deepEqual(codes(check(p).output), ["TS2307"], name + " before --fix")
-  check(p, ["--fix"])
-  const specifiers = [...p.read("main.vibe").matchAll(/from "([^"]+)"/g)].map(m => m[1])
-  assert.deepEqual(specifiers, want, name + "\n" + p.read("main.vibe"))
-  assert.equal(p.read("native.ts"), stale["native.ts"], name + ": the native importer changed")
-  console.log(name.padEnd(24), JSON.stringify(specifiers))
 }

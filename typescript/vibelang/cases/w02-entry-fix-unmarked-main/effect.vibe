@@ -1,5 +1,0 @@
-// An exported, zero-parameter effect function named main, with no marker, is
-// not migration input: vibelang --fix leaves it as written.
-export effect function main() {
-  try Console.log("effect main ran")
-}

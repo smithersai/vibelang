@@ -1,4 +1,0 @@
-go test fuzz v1
-string("satisfies")
-string("source")
-byte(0)

@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("export service AgentJobs { start: () => void; readonly stop: () => void }\n")

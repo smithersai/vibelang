@@ -34,11 +34,6 @@ for (const scope of [["--fix", "--fix-migration-only"], ["--fix"]]) {
     assert.deepEqual(at(before.text), positions.map((_, i) => `main(${i + 1},${positions[i][0].indexOf("Effect<") + 1}) warning EK4856`))
     const declarations = read("out/main.d.ts")
     assert.equal((declarations.match(/Effect\.Effect</g) ?? []).length, positions.length)
-    const fixed = invoke(...scope, "-p", ".", "--pretty", "false")
-    assert.equal(fixed.status, 0, fixed.text)
-    assert.ok(!diagnostics(fixed.text).some(d => d.endsWith("EK4856")), fixed.text)
-    assert.equal(read("out/main.d.ts"), declarations)
-    if (scope.length === 2) assert.equal(read("main.vibe"), positions.map(([, repaired]) => repaired).join("\n") + "\n")
   })
 }
 
@@ -65,9 +60,6 @@ for (const scope of [["--fix", "--fix-migration-only"], ["--fix"]]) {
     put("types.ts", types)
     for (const [name, text] of Object.entries(selection)) put(name + ".vibe", text)
     assert.deepEqual(at(invoke("-p", ".", "--pretty", "false").text), expected)
-    const fixed = invoke(...scope, "-p", ".", "--pretty", "false")
-    assert.deepEqual(at(fixed.text), expected)
-    for (const [name, text] of Object.entries(selection)) assert.equal(read(name + ".vibe"), text, name)
   })
 }
 
@@ -86,14 +78,6 @@ for (const scope of [["--fix", "--fix-migration-only"], ["--fix"]]) {
     const before = invoke("-p", ".", "--pretty", "false")
     assert.deepEqual(at(before.text), ["main(3,17) warning EK4856", "main(5,19) warning EK4856"])
     assert.match(before.text, /main\.vibe\(3,17\): warning EK4856: [^\n]*\n  The Effect namespace is shadowed here/)
-    const fixed = invoke(...scope, "-p", ".", "--pretty", "false")
-    assert.equal(fixed.status, 0, fixed.text)
-    assert.deepEqual(at(fixed.text).filter(d => d.endsWith("EK4856")), ["main(3,17) warning EK4856"])
-    const lines = read("main.vibe").split("\n")
-    // The shadowed site is untouched; the unshadowed one is repaired (ordinary
-    // --fix then also applies the EK4833 style advisory to it).
-    assert.deepEqual(lines.slice(0, 4), shadowed.split("\n").slice(0, 4))
-    assert.equal(lines[4], scope.length === 2 ? "export let outer: Effect.Effect<number> | undefined" : "export let outer: (number!!) | undefined")
   })
 }
 console.log("EK4856 repairs the resolved legacy alias only, and refuses under a shadowed namespace")

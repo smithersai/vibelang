@@ -1,3 +1,0 @@
-go test fuzz v1
-string("grouped-error")
-byte(0)

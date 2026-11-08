@@ -3,8 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"strings"
 	"testing"
 )
 
@@ -30,21 +28,4 @@ func TestAppendixAwaitEffectCode(t *testing.T) {
 		}
 	}
 	t.Fatal("await on an Effect did not report Appendix B code EK0103")
-}
-
-// --fix summaries and refusals use the same public code spelling as diagnostics.
-func TestAppendixFixReportCodes(t *testing.T) {
-	const file tspath.RootedFilePath = "/main.vibe"
-	result := FixResult{
-		Files:   map[tspath.RootedFilePath]*FixedFile{file: {Counts: map[int32]int{103: 1}}},
-		Order:   []tspath.RootedFilePath{file},
-		Refused: []FixRefusal{{File: file, Line: 1, Code: 502, Error: "bad"}},
-	}
-	var out strings.Builder
-	result.Report(&out, func(path tspath.RootedFilePath) string { return path.AsString() })
-	for _, want := range []string{"EK0103 ×1", "EK0502 not fixed:"} {
-		if !strings.Contains(out.String(), want) {
-			t.Fatalf("%q does not contain %q", out.String(), want)
-		}
-	}
 }

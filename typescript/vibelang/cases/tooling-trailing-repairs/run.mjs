@@ -43,18 +43,8 @@ project(({ put, read, invoke, run }) => {
     const line = prelude.length + i + 1
     const brace = written.indexOf("{") + 1 // the first brace is the trailing block's
     assert.ok(ek[i].startsWith(`main.vibe(${line},${brace}): error EK1101: `), ek[i])
-    assert.ok(ek[i].includes("write the block as an argument, " + spelling + ";"), ek[i])
+    assert.ok(ek[i].includes("write the block as an argument, " + spelling + "."), ek[i])
   })
-  const fixed = invoke("--fix", "-p", ".", "--pretty", "false")
-  assert.equal(fixed.status, 0, fixed.text)
-  assert.match(fixed.text, new RegExp(`EK1101 ×${sites.length}`))
-  const lines = read("main.vibe").split("\n")
-  sites.forEach(([, want], i) => assert.equal(lines[prelude.length + i], want))
-  const after = invoke("-p", ".", "--pretty", "false")
-  assert.equal(after.status, 0, after.text)
-  put("run.mjs", runner(["a", "b", "c", "d", "e", "f", "g", "viaLayer"]))
-  assert.equal(run(process.execPath, ["run.mjs"]).stdout.trim(),
-    JSON.stringify({ a: 1, b: 2, c: 3, d: 14, e: 15, f: ["g", 6], g: 7, viaLayer: 8 }))
 })
 
 // Rule cdb4b7f33f90: a legacy Effect-dual block keeps TypeScript's error
@@ -75,7 +65,7 @@ const duals = [
   ["export function s4() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1) { return try work() } }", "export function s4() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1)(effect { return try work() }) }", "TS2554"],
   ["export function s5() { return tagged(\"x\") { return try work() } }", "export function s5() { return tagged(effect { return try work() }, \"x\") }", "EK1023"],
 ]
-const note = "Through VibeLang 0.0.10, a block after an Effect dual took the place of its program. vibelang --fix writes it as an effect block there."
+const note = "Through VibeLang 0.0.10, a block after an Effect dual took the place of its program. Write it as an effect block there."
 project(({ put, read, invoke, run }) => {
   put("tsconfig.json", options)
   put("main.vibe", [...dualPrelude, ...duals.map(d => d[0]), ""].join("\n"))
@@ -87,17 +77,6 @@ project(({ put, read, invoke, run }) => {
   assert.deepEqual(sites.map(d => [Number(d.match(/^main\.vibe\((\d+),/)[1]), diagnostics(d)[0]]),
     duals.map((d, i) => [dualPrelude.length + i + 1, "error " + d[2]]), before.text)
   for (const d of sites) assert.ok(d.includes(note), d)
-  const fixed = invoke("--fix", "-p", ".", "--pretty", "false")
-  assert.equal(fixed.status, 0, fixed.text)
-  assert.doesNotMatch(fixed.text, /EK1101/)
-  const lines = read("main.vibe").split("\n")
-  duals.forEach(([, want], i) => assert.equal(lines[dualPrelude.length + i], want))
-  const after = invoke("-p", ".", "--pretty", "false")
-  assert.equal(after.status, 0, after.text)
-  put("run.mjs", runner(["s1", "s2", "s3", "s4", "s5"]))
-  // s5 is "done:x" only when the block is tagged's program and "x" its label.
-  assert.equal(run(process.execPath, ["run.mjs"]).stdout.trim(),
-    JSON.stringify({ s1: "done", s2: "done", s3: "done", s4: "done", s5: "done:x" }))
 })
 
 console.log("trailing-block repairs and dual migration rewrite each block once")

@@ -33,7 +33,7 @@ func preludeCompletions(c *checker.Checker, location *ast.Node, meaning ast.Symb
 			}
 			if symbol := c.TryGetMemberInModuleExports(name, module); symbol != nil && hasMeaning(c, symbol, meaning) {
 				if relicContinuationExport(c, name, symbol) {
-					continue // retained only for retirement diagnostics and --fix recovery
+					continue // retained only for retirement diagnostics
 				}
 				symbols = append(symbols, symbol)
 			}

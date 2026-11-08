@@ -99,10 +99,6 @@ test("foldkit-104: compiler errors fail the switch even when every test stays gr
     const admission = JSON.parse(readFileSync(join(p.baseline, "admission.json")))
     assert.equal(admission.tests.every(check => check.ok), true)
     assert.equal(admission.compile[0].newErrors[0].code, corpus.diagnostic)
-    const probes = JSON.parse(readFileSync(p.upgrade)).vipFixes.probes
-    assert.equal(probes.target.side, "pre", JSON.stringify(probes))
-    assert.deepEqual(probes.target.dependencies, { effect: "4.1.0", "vibelang-runtime": "0.0.11" })
-    assert.equal(probes.installed[0].side, "pre", JSON.stringify(probes))
     const before = JSON.parse(readFileSync(join(p.baseline, "upstream-checks.json")))["."]
     const after = JSON.parse(readFileSync(join(p.baseline, "upgraded-checks.json")))["."]
     assert.equal(before.compiler.version, "previous")

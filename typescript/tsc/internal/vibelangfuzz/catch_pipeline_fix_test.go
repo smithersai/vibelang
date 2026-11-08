@@ -83,12 +83,3 @@ func TestCatchPipelineNativeControls(t *testing.T) {
 		})
 	}
 }
-
-func FuzzCatchPipelineFix(f *testing.F) {
-	startShortBudget(f)
-	catchPipelineFixQuoted(f)
-	for _, source := range catchPipelineFixSources() {
-		f.Add(nativeFixReferenceKey + Archive(map[string]string{"main.vibe": source}))
-	}
-	fuzzFixProjects(f, "FuzzCatchPipelineFix")
-}

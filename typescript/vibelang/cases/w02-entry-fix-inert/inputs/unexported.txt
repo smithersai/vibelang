@@ -1,8 +1,0 @@
-import "vibelang/platform/node"
-
-// A main that is not exported is not a legacy startup.
-effect function main() {
-  try Console.log("unexported main ran")
-}
-
-export const program = main

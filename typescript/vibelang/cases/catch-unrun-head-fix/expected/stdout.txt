@@ -1,1 +1,0 @@
-catch heads keep their recovery and reach a fixed point

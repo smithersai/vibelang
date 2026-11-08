@@ -1,3 +1,0 @@
-go test fuzz v1
-string("indexed-annotated-number")
-byte(0)

@@ -2,28 +2,7 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"testing"
 )
-
-// Reuse FuzzFix's runtime event, contract, comment and fixed-point oracles.
-// Chapter 007's preservation quote is checked by TestOptionMatchFixQuoted.
-func FuzzOptionMatchProgramFix(f *testing.F) {
-	startShortBudget(f)
-	for _, key := range []string{"\x00\x00\x00\x00\x00\x00\x00\x00\x01", "\x01\x07\x01\x00\x01\x00\x00\x00\x01", "\x02\xff\x00\x01\x01\x00\x00\x00\x01", "\x00\x03\x00\x00\x00\x01\x00\x00\x01", "\x01\x05\x01\x00\x01\x02\x00\x00\x01", "\x02\x09\x00\x00\x00\x02\x00\x00\x01"} {
-		f.Add(optionMatchFixKey + key)
-	}
-	for mode := byte(0); mode < 3; mode++ {
-		for variant := byte(0); variant < 2; variant++ {
-			f.Add(optionMatchFixKey + "program-constructor:" + string([]byte{mode, 7, variant, 0, variant, mode}))
-		}
-	}
-	for mode := byte(0); mode < 3; mode++ {
-		data := make([]byte, 15)
-		data[5], data[8], data[14] = mode, 1, 1
-		f.Add(optionMatchFixKey + string(data))
-	}
-	fuzzFixProjects(f, "FuzzOptionMatchProgramFix")
-}
 
 func optionMatchProgramFixArchive(data []byte) string {
 	pick := func(i int) byte {

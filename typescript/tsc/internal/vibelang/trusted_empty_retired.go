@@ -13,7 +13,7 @@ import (
 // bridge. A wrapper the migration cannot rewrite keeps the error with a note
 // that says so, the located refusal. A local function named trusted and a
 // wrapper with listed failure classes are outside this retirement.
-var EK0407 = message(407, errorCategory, "The empty legacy trust wrapper trusted(f, []) is retired. Run vibelang --fix, which rewrites each direct call in effect code to Effect.orDie(Effect.try({ try: () => f(…), catch: (e) => e })), or call a reviewed .ts helper declared @throws {never}.")
+var EK0407 = message(407, errorCategory, "The empty legacy trust wrapper trusted(f, []) is retired. Write each direct call in effect code as Effect.orDie(Effect.try({ try: () => f(…), catch: (e) => e })), or call a reviewed .ts helper declared @throws {never}.")
 
 func init() { fileChecks = append(fileChecks, checkTrustedEmpty) }
 
@@ -21,10 +21,7 @@ func checkTrustedEmpty(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if ast.IsCallExpression(n) && isTrustedEmptyCall(c, n) {
-			d := report(c, n, EK0407)
-			if !trustedEmptyMigratable(c, file, n) {
-				note(d, "vibelang --fix cannot rewrite this wrapper: it is migrated only when, with no comments inside, it initializes a private, untyped const that is used, at least once, only by direct calls in effect function bodies. Replace it by hand with the bridge or a reviewed .ts helper.")
-			}
+			report(c, n, EK0407)
 		}
 		return n.ForEachChild(visit)
 	}
@@ -43,11 +40,4 @@ func isTrustedEmptyCall(c *checker.Checker, call *ast.Node) bool {
 		return false
 	}
 	return runtimeExportOf(c, ast.SkipParentheses(call.Expression())) == "trusted"
-}
-
-// trustedEmptyMigratable reports whether vibelang --fix rewrites the wrapper
-// call initializes.
-func trustedEmptyMigratable(c *checker.Checker, file *ast.SourceFile, call *ast.Node) bool {
-	parent := call.Parent
-	return parent != nil && ast.IsVariableDeclaration(parent) && parent.Initializer() == call && trustedEmptyRewrite(c, file, parent).fixable()
 }

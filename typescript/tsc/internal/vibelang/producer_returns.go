@@ -83,10 +83,10 @@ func checkProducerReturns(c *checker.Checker, file *ast.SourceFile) {
 	producerReturns(c, file, func(producer, ret *ast.Node) {
 		d := report(c, ret.Expression(), EK2128, nodeText(file, ret.Expression()))
 		if !isMarkedEffect(producer) {
-			note(d, "A JavaScript caller can read a plain function*'s return value, so vibelang --fix leaves it; mark the function effect if it is a producer.")
+			note(d, "A JavaScript caller can read a plain function*'s return value; mark the function effect if it is a producer.")
 			return
 		}
-		note(d, "Its quick fix writes {0}; vibelang --fix applies every such fix in the project.", producerReturnRewrite(c, file, ret))
+		note(d, "Its quick fix writes {0}.", producerReturnRewrite(c, file, ret))
 	})
 }
 

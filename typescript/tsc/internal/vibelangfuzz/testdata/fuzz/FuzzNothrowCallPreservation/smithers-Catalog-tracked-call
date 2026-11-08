@@ -1,3 +1,0 @@
-go test fuzz v1
-string("smithers-Catalog-tracked-call")
-int8(7)

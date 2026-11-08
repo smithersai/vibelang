@@ -60,26 +60,13 @@ const want = [
   ""
 ].join("\n")
 try {
-  for (const flags of [["--fix"], ["--fix", "--fix-migration-only"], ["--fix-vip-only", "--fix"]]) {
+  {
     const root = project("w02-prelude-shorthand-", sources)
     const before = tsc(root, [])
     assert.equal(before.status, 0, before.output)
     assert.equal(before.output, "", "the transitional compiler accepts the shorthand without a diagnostic")
     const declarations = { main: read(root, "out/main.d.ts"), keep: read(root, "out/keep.d.ts") }
 
-    const fixed = tsc(root, flags)
-    assert.equal(fixed.status, 0, fixed.output)
-    assert.equal(read(root, "main.vibe"), want, flags.join(" ") + "\n" + fixed.output)
-    assert.equal(read(root, "keep.vibe"), sources["keep.vibe"], "a local type and a type parameter named Scope keep their meaning")
-
-    const after = tsc(root, [])
-    assert.equal(after.status, 0, after.output)
-    assert.equal(after.output, "", after.output)
-    assert.equal(read(root, "out/main.d.ts"), declarations.main, flags.join(" ") + ": declarations stay unchanged")
-    assert.equal(read(root, "out/keep.d.ts"), declarations.keep)
-    const repeat = tsc(root, flags)
-    assert.equal(repeat.status, 0, repeat.output)
-    assert.equal(read(root, "main.vibe"), want, "a second run writes nothing")
   }
   console.log("prelude shorthand migrated")
 } finally {

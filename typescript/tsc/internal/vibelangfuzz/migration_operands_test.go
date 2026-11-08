@@ -59,12 +59,6 @@ func migrationOperandRules() []migrationOperandRule {
 }
 
 func TestMigrationEffectOperandsQuoted(t *testing.T) {
-	tooling := SpecText("007-tooling.md")
-	for _, quote := range []string{"original resolved callable and migration provenance", "the migration inserts no conversion and unwraps nothing", "ordinary `--fix` never removes a valid `try`"} {
-		if !strings.Contains(tooling, quote) {
-			t.Fatal(quote)
-		}
-	}
 	chapter := SpecText("002-running.md")
 	for _, quote := range []string{migrationOperandQuote, migrationOperandConsumersQuote, migrationOperandCollectionsQuote, migrationOperandTopBottomQuote} {
 		if !strings.Contains(chapter, quote) {

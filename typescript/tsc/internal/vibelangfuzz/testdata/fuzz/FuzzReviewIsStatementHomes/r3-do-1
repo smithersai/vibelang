@@ -1,3 +1,0 @@
-go test fuzz v1
-string("do")
-uint8(1)

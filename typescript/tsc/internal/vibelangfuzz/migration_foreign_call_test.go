@@ -1,16 +1,13 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"fmt"
 	"maps"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
@@ -142,109 +139,4 @@ func migrationForeignCallErrors(all []*ast.Diagnostic) (left []string, refused b
 		}
 	}
 	return left, refused
-}
-
-// checkMigrationForeignCall compares a module's stock TypeScript declarations
-// with its declarations after a migration: rename to .vibe, then --fix.
-func checkMigrationForeignCall(t *testing.T, w *Workspace, api, input string) {
-	t.Helper()
-	TestMigrationForeignCallQuoted(t)
-	mode := ""
-	if prefix, witness, ok := strings.Cut(input, ":"); ok && (prefix == "migration" || prefix == "vip") {
-		mode, input = prefix, witness
-	}
-	position, call := parseMigrationForeignCall(input)
-	key := "position:" + position + ":" + call
-	if mode != "" {
-		key = "mode:" + mode + ":" + key
-	}
-	source, vibe := migrationForeignCallSource(position, call)
-	helpers := map[string]string{"helpers.ts": migrationForeignCallHelpers}
-	with := func(name, text string) map[string]string {
-		files := maps.Clone(helpers)
-		files[name] = text
-		return files
-	}
-	toolsGuard(t, migrationForeignCallTarget, func() {
-		before := toolsCompile(t, w, migrationForeignCallTarget, with("main.ts", source))
-		defer before.Remove()
-		if !toolsErrorFree(before) {
-			left, _ := migrationForeignCallErrors(before.Diagnostics)
-			t.Skipf("not a well-typed TypeScript module: %v", left)
-		}
-		renamed := toolsCompile(t, w, migrationForeignCallTarget, with("main.vibe", vibe))
-		defer renamed.Remove()
-		config := toolsConfig(w, renamed.Dir)
-		var result *vibelang.FixResult
-		toolsRun(t, migrationForeignCallTarget, "fix", vibe, nil, func() {
-			result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{MigrationOnly: mode == "migration", VIPOnly: mode == "vip"})
-		})
-		if result.Err != nil {
-			Gap(t, migrationForeignCallTarget, key, "Chapter 3: --fix failed: %v\n%s", result.Err, vibe)
-		}
-		fixed := with("main.vibe", vibe)
-		for name, file := range result.Files {
-			fixed[strings.TrimPrefix(name.AsString(), filepath.ToSlash(renamed.Dir)+"/")] = file.Text
-		}
-		after := toolsCompile(t, w, migrationForeignCallTarget, fixed)
-		defer after.Remove()
-		left, refused := migrationForeignCallErrors(after.Diagnostics)
-		if len(left) > 0 {
-			Gap(t, migrationForeignCallTarget, key, "Chapter 3: %q; after --fix: %v\nfixed:\n%s", migrationForeignCallQuote, left, fixed["main.vibe"])
-			return
-		}
-		if refused && call == "narrowed" {
-			Gap(t, migrationForeignCallTarget, key, "Chapter 3: %q; --fix refused a call whose property a guard narrowed\nfixed:\n%s", migrationForeignCallQuote, fixed["main.vibe"])
-			return
-		}
-		if refused {
-			return // no declarations to compare: the module stays .ts
-		}
-		baseline, current := t.TempDir(), t.TempDir()
-		for _, side := range []struct {
-			dir    string
-			result *Result
-		}{{baseline, before}, {current, after}} {
-			for name, text := range side.result.Outputs {
-				if strings.HasPrefix(name, "out/") && isDeclaration(name) {
-					if err := writeInside(side.dir, strings.TrimPrefix(name, "out/"), text); err != nil {
-						t.Fatal(err)
-					}
-				}
-			}
-		}
-		ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
-		defer cancel()
-		diff, err := declarationIdentityProbeFor(t, api)(ctx, api, baseline, current)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if diff != "" {
-			Gap(t, migrationForeignCallTarget, key, "Chapter 7: %q\n%s\nsource:\n%s\nfixed:\n%s", migrationDeclarationFixQuote, diff, source, fixed["main.vibe"])
-			return
-		}
-		ExpectPending(t, migrationForeignCallTarget, key)
-	})
-}
-
-func FuzzMigrationForeignCallPositions(f *testing.F) {
-	startShortBudget(f)
-	positions, calls := slices.Sorted(maps.Keys(migrationForeignCallPositions())), slices.Sorted(maps.Keys(migrationForeignCallCalls()))
-	for i, position := range positions {
-		// Under -short each position meets one call; a campaign meets all.
-		f.Add(position + "/" + calls[i%len(calls)])
-		if strings.HasPrefix(position, "guard-") {
-			f.Add(position + "/narrowed")
-		}
-		if !testing.Short() {
-			for _, call := range calls {
-				f.Add(position + "/" + call)
-			}
-		}
-	}
-	w := NewWorkspace(f)
-	api := declarationIdentityAPI(f)
-	f.Fuzz(func(t *testing.T, input string) {
-		checkMigrationForeignCall(t, w, api, input)
-	})
 }

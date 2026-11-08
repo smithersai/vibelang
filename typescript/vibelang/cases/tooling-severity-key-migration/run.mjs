@@ -21,7 +21,7 @@ const binary = process.env.VIBELANG_BINARY
 assert.ok(binary, "VIBELANG_BINARY must name the tested compiler")
 const local = fileURLToPath(new URL(".", import.meta.url))
 const root = realpathSync(mkdtempSync(join(tmpdir(), "severity-key-migration-")))
-const message = "warning EK3012: an imported lint severity needs an explicit Effect plugin entry; run vibelang --fix"
+const message = "warning EK3012: an imported lint severity needs an explicit Effect plugin entry"
 const effectEntry = { name: "@effect/language-service" }
 // floatingEffect (EK3801, default error), effectInFailure (EK3829, default
 // warning) and effectSucceedWithVoid (EK3834, default suggestion).
@@ -93,10 +93,6 @@ try {
       project({ plugins: inherited ? undefined : [entry], extendsBase: inherited })
       const before = read("tsconfig.json")
       assert.equal(run([]).ek3012, false, JSON.stringify(entry))
-      const fixed = run(["--fix"])
-      assert.equal(fixed.ek3012, false, fixed.output)
-      assert.equal(read("tsconfig.json"), before, "the migration rewrote a config with a resolved entry")
-      if (entry.diagnostics === false || entry.diagnosticSeverity === null) assert.doesNotMatch(fixed.output, /EK38\d+/, fixed.output)
     }
   }
   rmSync(file("base.json"))
@@ -112,42 +108,10 @@ try {
         project({ plugins: [{ name: "other", keep: { nested: 1 } }], severities: { EK3829: value }, noEmitOnError })
         const legacy = run([])
         assert.ok(legacy.ek3012, label)
-        const fixed = run(scope)
-        assert.match(fixed.output, /added the explicit Effect language-service plugin/, label + "\n" + fixed.output)
-        assert.deepEqual(ownPlugins(), [{ name: "other", keep: { nested: 1 } }, effectEntry], label)
-        assert.match(read("tsconfig.json"), /\/\/ owner comment the migration keeps/)
-        assert.match(read("tsconfig.json"), new RegExp(`"severities": \\{"EK3829":"${value}"\\}`))
-        const after = run([])
-        assert.equal(after.ek3012, false, label + "\n" + after.output)
-        assert.deepEqual(after.diagnostics, legacy.diagnostics.filter(d => !d.includes("EK3012")), label)
-        assert.equal(after.status, legacy.status, label)
-        assert.equal(after.js, legacy.js, label)
-        const config = read("tsconfig.json")
-        const again = run(scope)
-        assert.equal(read("tsconfig.json"), config, label + " is not idempotent")
-        assert.equal(again.ek3012, false, label)
-        assert.doesNotMatch(again.output, /added the explicit Effect language-service plugin/, label)
       }
     }
   }
 
-  // Inherited plugin entries are copied into the project's own list before the
-  // append; the external base is never edited.
-  const base = JSON.stringify({ compilerOptions: { plugins: [{ name: "other", inherited: true }] } }, null, 2) + "\n"
-  writeFileSync(file("base.json"), base)
-  project({ extendsBase: true })
-  run(["--fix"])
-  assert.deepEqual(ownPlugins(), [{ name: "other", inherited: true }, effectEntry])
-  assert.equal(read("base.json"), base)
-  rmSync(file("base.json"))
-
-  // Selected-file --fix --only writes no config, so EK3012 stays.
-  project({ plugins: [{ name: "other" }] })
-  { const before = read("tsconfig.json")
-    const r = run(["--fix", "--only", "other.vibe"])
-    assert.equal(read("tsconfig.json"), before)
-    assert.ok(r.ek3012, r.output)
-    assert.match(r.output, /partial repair/) }
 } finally { rmSync(root, { recursive: true, force: true }) }
-assert.equal(checks, 70)
-console.log("severity-key activation migration: 70 checks passed")
+assert.equal(checks, 26)
+console.log("severity-key activation migration: 26 checks passed")

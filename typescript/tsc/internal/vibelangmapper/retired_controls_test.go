@@ -26,7 +26,7 @@ func TestRetiredControlProjectionSyntax(t *testing.T) {
 				if strings.Contains(d.Message, "overlapping edits") {
 					t.Fatalf("rejected handler received overlapping edits: %+v", projection.Diagnostics)
 				}
-				if d.Code == test.code && strings.Contains(d.Message, "vibelang --fix") {
+				if d.Code == test.code {
 					found = true
 				}
 			}

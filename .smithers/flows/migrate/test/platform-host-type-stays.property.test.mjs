@@ -19,7 +19,7 @@ const runtime = fileURLToPath(new URL("../../../../packages/runtime/", import.me
 const ts = loadTypeScript([runtime])
 const fc = createRequire(join(runtime, "package.json"))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-platform-split-host-type-stays.json", import.meta.url), "utf8"))
-const moveQuote = "The quick fix and the codemod move the code into a sibling"
+const moveQuote = "The quick fix moves the code into a sibling"
 const ambient = 'declare function setTimeout(handler: () => void, ms?: number): number\ndeclare class AbortSignal { readonly aborted: boolean }\ndeclare const performance: { now(): number }\ndeclare module "node:fs" { export interface Stats { readonly size: number } export function statSync(path: string): Stats }\n'
 
 // Stock TypeScript over the files, with declarations: the errors, and each

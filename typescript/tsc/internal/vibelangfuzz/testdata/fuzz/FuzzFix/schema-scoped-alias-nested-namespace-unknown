@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nnamespace Outer.Inner { schema Local = unknown; }\nexport {}\n")

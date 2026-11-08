@@ -1,7 +1,5 @@
 package vibelangfuzz
 
-import "testing"
-
 // Pin19's frozen Smithers conversions moved plain factory construction into
 // generators. Fresh full --fix already preserves these witnesses. Chapter 7's
 // quoted preservation rule is the oracle; the unconverted TypeScript observer
@@ -119,15 +117,4 @@ const first = yield* observed
 const second = yield* observed
 return first === second
 `
-}
-
-func TestMigrationFactoryBindingSmithers(t *testing.T) {
-	w := NewWorkspace(t)
-	node, err := NewNode(w.Dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, p := range smithersFactoryPrograms {
-		t.Run(p.key, func(t *testing.T) { checkMigrationFactoryBinding(t, w, node, p.key) })
-	}
 }

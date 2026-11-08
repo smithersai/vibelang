@@ -16,7 +16,7 @@ func checkPlatformTypeExports(c *checker.Checker, file *ast.SourceFile) {
 	findPlatformTypeExports(c, file, func(at *ast.Node, rewrite *formRewrite, args ...any) {
 		d := report(c, at, platformTypeExportDiagnostic, args...)
 		if rewrite.fixable() {
-			note(d, "Its quick fix keeps the runtime dependency in a native module and retains the type exports; vibelang --fix applies it.")
+			note(d, "Its quick fix keeps the runtime dependency in a native module and retains the type exports.")
 		} else if rewrite != nil && rewrite.why != "" {
 			note(d, rewrite.why)
 		}

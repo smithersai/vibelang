@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nimport { Effect } from \"effect\"\nexport const f=Effect.fn(function* ([n]: readonly [number]) {return yield* Effect.succeed(n)}, (e,o)=>Effect.map(e,x=>x+o[0]))\n")

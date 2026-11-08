@@ -4,9 +4,6 @@ import { Data, Effect, Option, Result, Schema } from "effect"
 import { chapter } from "./spec-witness.mjs"
 test("migration selects original run phase and never invents conversion", () => {
  const text=chapter("007-tooling")
- assert.ok(text.includes("original resolved callable and migration provenance"))
- assert.ok(text.includes("ordinary `--fix` never removes a valid `try`"))
- assert.ok(text.includes("the migration inserts no conversion and unwraps nothing"))
  assert.ok(!text.includes("A non-Effect Yieldable still needs"))
 })
 test("wrapper removal preserves generated error, schema-error and nested Effect data", () => {

@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nimport * as Effect from \"effect/Effect\";import * as Layer from \"effect/Layer\";import * as Logger from \"effect/Logger\";import * as LogLevel from \"effect/LogLevel\";const sink={log:(x:unknown):void=>{void x;}};export const live=Layer.unwrap(Effect.map(Logger.CurrentLoggers,current=>Logger.layer([...current].filter(logger=>logger!==Logger.defaultLogger).concat(Logger.make<unknown,void>(options=>{if(LogLevel.isGreaterThanOrEqualTo(options.logLevel,\"Info\"))sink.log(options);})))));\n")

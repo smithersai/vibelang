@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nconst Tag = Context.Reference<number>(\"Tag\", { defaultValue: () => 0 })\ntype Wrap = (body: Effect.Effect<number>) => Effect.Effect<number>\nexport const bare = (wrap: Wrap | undefined): Effect.Effect<unknown> => {\n const body: Effect.Effect<number> = () => 41 + Tag()\n return Effect.provideService(wrap === undefined ? body : wrap(body), Tag, 1)\n}\n")

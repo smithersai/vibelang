@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -19,7 +18,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 // trailingBlockPrelude declares what the shapes below call: a service for
@@ -48,129 +46,9 @@ func emittedJS(t *testing.T, program *compiler.Program) map[string]string {
 	return out
 }
 
-// VIP-11: every trailing block is EK1101 at its opening brace, and --fix
-// writes it as the call's last argument in the spelling of what the block
-// compiled to before VIP-1: an effect block where the destination takes an
-// Effect, an effect arrow where it takes a function returning one, and the
-// parser's plain arrow otherwise. The rewritten program reports nothing and a
-// second --fix finds nothing. Under VIP-1 the parser's block is a program
-// (VIP-2), so where the destination takes one it is all the block reports
-// and both programs emit the same JavaScript; where it takes a function,
-// TypeScript also rejects the program (TS2345) until --fix writes the
-// function. The sources run Effects with try (VIP-5) and mark their Effect
-// methods (VIP-1).
-func TestTrailingBlockFixKeepsTheEmit(t *testing.T) {
-	for _, test := range []struct {
-		name, source, want string
-		program            bool // the destination takes an Effect
-	}{
-		{"Layer.effect(S) program", "export const live = Layer.effect(Users) { return { effect find(id: string) { return id } } }",
-			"export const live = Layer.effect(Users, effect { return { effect find(id: string) { return id } } })", true},
-		{"Effect.scoped bare name", "export function f() { return Effect.scoped { const r = try Ref.make(1); return try Ref.get(r) } }",
-			"export function f() { return Effect.scoped(effect { const r = try Ref.make(1); return try Ref.get(r) }) }", true},
-		{"it.effect-like Effect function", "export function f() { return test(\"one\") { const r = try Ref.make(1); return try Ref.get(r) } }",
-			"export function f() { return test(\"one\", effect () => { const r = try Ref.make(1); return try Ref.get(r) }) }", false},
-		{"plain callback", "export function f() { return twice() { return 2 } }",
-			"export function f() { return twice(() => { return 2 }) }", false},
-		{"lexical this", "export class C { value = 2; calculate() { return twice() { return this.value } } }",
-			"export class C { value = 2; calculate() { return twice(() => { return this.value }) } }", false},
-		{"lexical rest tuple", "export function f(...args: [number]) { return twice() { return args[0] } }",
-			"export function f(...args: [number]) { return twice(() => { return args[0] }) }", false},
-		{"body comments", "export function f() { return twice() { /* keep */ return 2 /* end */ } }",
-			"export function f() { return twice(() => { /* keep */ return 2 /* end */ }) }", false},
-		{"trailing comma", "export function f() { return test(\"one\",) { return try Effect.succeed(1) } }",
-			"export function f() { return test(\"one\", effect () => { return try Effect.succeed(1) }) }", false},
-		{"type arguments", "export function f() { return generic<number>(1) { return 2 } }",
-			"export function f() { return generic<number>(1, () => { return 2 }) }", false},
-		{"multiline", "export const live = Layer.effect(Users)   {\n  return {\n    effect find(id: string) { return id }\n  }\n}",
-			"export const live = Layer.effect(Users, effect {\n  return {\n    effect find(id: string) { return id }\n  }\n})", true},
-		{"nested, one round", "export function f() { return test(\"outer\") { return try Effect.scoped { return twice() { return 3 } } } }",
-			"export function f() { return test(\"outer\", effect () => { return try Effect.scoped(effect { return twice(() => { return 3 }) }) }) }", false},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			for _, options := range []FixOptions{{MigrationOnly: true}, {}} {
-				t.Run(fmt.Sprintf("migrationOnly=%t", options.MigrationOnly), func(t *testing.T) {
-					source := trailingBlockPrelude + test.source
-					p, file, _, _ := editorProgram(t, source)
-					errors := trailingBlockErrorsOf(t, source)
-					var ek1101 []*ast.Diagnostic
-
-					for _, d := range errors {
-						if d.Source() == diagnosticSource && d.Code() == EK1101.Code {
-							ek1101 = append(ek1101, d)
-						}
-					}
-					legacy := trailingBlockMigrationProgram(p)
-					legacyFile := legacy.GetSourceFile(file.FileName())
-					var old []*ast.Diagnostic
-					for _, d := range legacy.GetSemanticDiagnostics(t.Context(), legacyFile) {
-						if d.Source() == diagnosticSource && d.Code() == EK1101.Code {
-							old = append(old, d)
-						}
-					}
-					if len(ek1101) == 0 || len(ek1101) != len(old) {
-						t.Fatalf("EK1101 changed: normal %v; legacy %v", ek1101, old)
-					}
-					for i, d := range ek1101 {
-						want := old[i]
-						if d.String() != want.String() || d.Loc() != want.Loc() || d.Category() != want.Category() ||
-							source[d.Pos():d.End()] != "{" {
-							t.Fatalf("EK1101 changed: %v at %v; legacy %v at %v", d, d.Loc(), want, want.Loc())
-						}
-					}
-					before := emittedJS(t, legacy)
-					result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), options)
-					if len(result.Refused) != 0 || len(result.Files) != 1 {
-						t.Fatalf("migration: %+v", result)
-					}
-					fixed := result.Files[file.FileName()]
-					if options.MigrationOnly && fixed.Text != trailingBlockPrelude+test.want {
-						t.Fatalf("--fix writes\n%s\nwant\n%s", fixed.Text, trailingBlockPrelude+test.want)
-					}
-					if errors := errorsOf(t, fixed.Text); len(errors) != 0 {
-						t.Fatalf("fixed source reports %v", errors)
-					}
-					if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-						t.Fatal(err)
-					}
-					again := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), options)
-					if len(again.Files) != 0 || len(again.Refused) != 0 {
-						t.Fatalf("second fix changed the project: %+v", again)
-					}
-					if !options.MigrationOnly || !test.program {
-						return
-					}
-					// The unnamed package's directory is part of a derived service
-					// key (D1). Recheck at the original path, as --fix actually does.
-					after := compiler.NewProgram(compiler.ProgramOptions{
-						Config: p.CommandLine(),
-						Host:   compiler.NewCompilerHost(bundled.WrapFS(osvfs.FS()), bundled.LibPath(), nil, nil, nil),
-					})
-					if b, a := before["main.js"], emittedJS(t, after)["main.js"]; b == "" || trailingBlockEmitShape(t, a) != trailingBlockEmitShape(t, b) {
-						t.Fatalf("the rewrite changes the emit\nbefore:\n%s\nafter:\n%s", b, a)
-					}
-				})
-			}
-		})
-	}
-}
-
 // A comment between the call and its block has no place in the rewrite, so
 // EK1101 stays and --fix refuses it rather than drop the comment.
 // Chapter 007 / interargument comment refusal and dual compatibility: docs/design/src/007-tooling.md#c3c81017075e1310
-
-func TestTrailingBlockFixRefusesAComment(t *testing.T) {
-	for _, source := range []string{
-		"export const n = twice() /* two */ { return 2 }",
-		"export const n = generic(1 /* one */) { return 2 }",
-	} {
-		p, _, _, _ := editorProgram(t, trailingBlockPrelude+source)
-		result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{MigrationOnly: true})
-		if len(result.Files) != 0 {
-			t.Errorf("%s: --fix wrote %+v", source, result.Files)
-		}
-	}
-}
 
 // A dual block that D188 placed elsewhere keeps its own error and fix
 // (dual_block_migration.go), with no EK1101 beside it.

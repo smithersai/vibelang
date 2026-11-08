@@ -2,14 +2,8 @@ package vibelangfuzz
 
 import (
 	"maps"
-	"path/filepath"
 	"slices"
 	"strings"
-	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 // FuzzVIPLegacyServiceReceivers checks --fix-vip-only on pre-VIP-1 functions
@@ -25,47 +19,6 @@ import (
 //
 // An input is "<owner>:<position>"; other bytes pick by index.
 // Chapter 007 / legacy active outer arrows keep effect kind and direct catch execution: docs/design/src/007-tooling.md#a2e4f6e04325faa7
-
-func FuzzVIPLegacyServiceReceivers(f *testing.F) {
-	startShortBudget(f)
-	for _, owner := range slices.Sorted(maps.Keys(legacyReceiverOwners)) {
-		for _, position := range slices.Sorted(maps.Keys(legacyReceiverPositions)) {
-			f.Add([]byte(owner + ":" + position))
-		}
-	}
-	env := newVIPEnv(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		key, source := legacyReceiverInput(data)
-		if source == "" {
-			t.Skip("the input names no form")
-		}
-		files := map[string]string{"main.vibe": source}
-		old := legacyCompile(t, env, files)
-		defer old.Remove()
-		config := toolsConfig(env.w, old.Dir)
-		if config == nil || len(config.Errors) > 0 {
-			t.Fatalf("config of the legacy program: %v", config)
-		}
-		var result *vibelang.FixResult
-		Within("fix", func() {
-			result = vibelang.FixProjectWithOptions(t.Context(), env.w.fs, bundled.LibPath(), config, vibelang.FixOptions{VIPOnly: true})
-		})
-		var report strings.Builder
-		result.Report(&report, func(name tspath.RootedFilePath) string { return filepath.Base(name.AsString()) })
-		if result.Err != nil || len(result.Refused) > 0 {
-			Gap(t, "FuzzVIPLegacyServiceReceivers", "refused/"+key, "--fix-vip-only refused or did not converge (%v):\n%s\nlegacy:\n%s", result.Err, report.String(), source)
-		}
-		fixed := maps.Clone(files)
-		for _, file := range result.Files {
-			fixed["main.vibe"] = file.Text
-		}
-		after := legacyCompile(t, env, fixed)
-		defer after.Remove()
-		if errors := legacyErrors(after); len(errors) > 0 {
-			Gap(t, "FuzzVIPLegacyServiceReceivers", "compile/"+key, "the migrated program does not compile: %s\nmigrated:\n%s\nlegacy:\n%s", strings.Join(errors, "\n"), fixed["main.vibe"], source)
-		}
-	})
-}
 
 // legacyReceiverOwners hold BODY with return type RET: an annotated arrow, a
 // declaration and an object method, each written as an Effect function whose

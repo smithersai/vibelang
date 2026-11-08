@@ -1,53 +1,11 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
-
-// Chapter 003: the predicate's narrowed value, sentinel safety, and defect
-// channel survive the EK0403 repair. Every fixed output is a compiling case.
-// rule-evidence: docs/design/src/007-tooling.md#4aeb8089114b40e0 | For EK0403 type predicates in an if condition, the bridge returns isResolved(news) ? news : undefined from its try thunk and replaces narrowed-scope references with an unshadowed const, provided the tested identifier is an unreassigned const or parameter and the checker's predicate type excludes undefined; otherwise it offers the boolean bridge with the refusal reason in the fix title, and predicate throws remain defects with the same Exit as the Effect.gen twin.
-func TestForeignPredicateFixTwins(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range []string{"early", "positive", "reassigned", "short-circuit", "undefined"} {
-		t.Run(name, func(t *testing.T) {
-			stem := "ek0403-predicate-" + name
-			fixture := filepath.Join(root, "typescript/vibelang/cases", stem+".fail")
-			dir := copyCompilerFixture(t, fixture, root)
-			result := fixCase(t, dir)
-			if result.Err != nil || len(result.Refused) != 0 {
-				t.Fatalf("fix: %v; refused: %+v", result.Err, result.Refused)
-			}
-			want, err := os.ReadFile(filepath.Join(root, "typescript/vibelang/cases", stem+"-fixed-output/main.vibe"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			got := ""
-			for file, fixed := range result.Files {
-				if filepath.Base(file.AsString()) == "main.vibe" {
-					got = fixed.Text
-				}
-				if err := os.WriteFile(file.AsString(), []byte(fixed.Text), 0600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			if got != string(want) {
-				t.Fatalf("--fix writes:\n%s\nwant:\n%s", got, want)
-			}
-			if again := fixCase(t, dir); again.Err != nil || len(again.Files) != 0 {
-				t.Fatalf("not idempotent: %v; %v", again.Err, again.Order)
-			}
-		})
-	}
-}
 
 func TestForeignPredicateFixScopes(t *testing.T) {
 	helper := "export function isResolved(x: unknown): x is string { return typeof x === 'string' }"

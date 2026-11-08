@@ -25,14 +25,6 @@ const ek4839 = (output) => warnings(output).filter((w) => w.code === "EK4839")
   const p = project(import.meta.url, "generators", { "main.vibe": source })
   const before = check(p)
   assert.deepEqual(ek4839(before.output), [], "no EK4839 while a handler holds a generator:\n" + before.output)
-  check(p, ["--fix"])
-  const fixed = p.read("main.vibe")
-  assert.doesNotMatch(fixed, /Effect\.(?:gen|fn)\(/, "--fix rewrites both generators:\n" + fixed)
-  // The same full run continues from the rewritten generators to EK4839's own fix.
-  assert.doesNotMatch(fixed, /Option\.match\(/, "--fix then rewrites both calls:\n" + fixed)
-  assert.equal((fixed.match(/match \(\$optionSubject\)/g) ?? []).length, 2, fixed)
-  const after = check(p)
-  assert.equal(after.status, 0, after.output)
   // With the generators already rewritten, both calls are reported.
   const rewritten = project(import.meta.url, "generators-rewritten", { "main.vibe": source.replace("Effect.gen(function* () { return 0 })", "effect { return 0 }").replace("Effect.fn(function* (n: number) { return n + 1 })", "effect (n: number) => n + 1") })
   assert.deepEqual(ek4839(check(rewritten).output).map((w) => w.line), [2, 6], "EK4839 on both rewritten calls")
@@ -67,13 +59,6 @@ const ek4839 = (output) => warnings(output).filter((w) => w.code === "EK4839")
   assert.match(notes[6], /^No quick fix: the pattern .* has no match pattern/)
   assert.match(notes[8], /^No quick fix: the handler one is not an arrow function/)
   assert.match(notes[10], /^No quick fix: the match's type would be its arms'/)
-  check(p, ["--fix"])
-  const fixed = p.read("main.vibe").split("\n")
-  assert.doesNotMatch(fixed.join("\n"), /control = [^\n]*Option\.match/, "the control is rewritten:\n" + fixed.join("\n"))
-  for (const n of [3, 4, 5, 6, 8, 10]) {
-    const kept = fixed.find((line) => line.startsWith(lines[n - 1].slice(0, lines[n - 1].indexOf("=") + 1)))
-    assert.equal(kept, lines[n - 1], "line " + n + " is refused and kept")
-  }
   console.log("refusals: six calls keep their source and EK4839's note")
 }
 // Stable rule ids: docs/design/src/007-tooling.md#c4f94b604fb5354e docs/design/src/007-tooling.md#06431d389ee13ce8

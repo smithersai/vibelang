@@ -1,2 +1,0 @@
-// The project run.mjs copies into each output-name probe.
-export const value = 1

@@ -9,7 +9,7 @@ import (
 )
 
 var EK4854 = message(4854, warningCategory, "Abstract classes no longer declare services; write a service declaration to preserve this service.")
-var EK4855 = message(4855, warningCategory, "Legacy static default: run vibelang --fix to preserve its cached value and service key; use defaultValue: () => Shape only to choose a Reference fallback.")
+var EK4855 = message(4855, warningCategory, "Legacy static default: rewrite it to preserve its cached value and service key; use defaultValue: () => Shape only to choose a Reference fallback.")
 
 func init() {
 	for _, m := range []*Message{EK4854, EK4855} {

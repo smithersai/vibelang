@@ -21,11 +21,6 @@ try {
   run();
   const before = await import(pathToFileURL(path.join(dir, "out/main.js")).href + "?before");
   assert.equal(before.X, Schema.String);
-  run("--fix");
-  run();
-  const after = await import(pathToFileURL(path.join(dir, "out/main.js")).href + "?after");
-  assert.equal(after.X, before.X);
-  assert.equal(Schema.decodeUnknownSync(after.X)("ok"), "ok");
   console.log("ok");
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });

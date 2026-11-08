@@ -1,4 +1,0 @@
-go test fuzz v1
-string("all-leaves")
-byte(2)
-byte(1)

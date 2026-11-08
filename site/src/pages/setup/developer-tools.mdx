@@ -210,7 +210,7 @@ For `for concurrent`, the lint tree retains the written limit expression and ite
 
 TypeScript module bodies retain the stock lint parser's JSDoc type nodes and source ranges.
 
-The lint parser reports `EK1010` for an unparenthesized throw expression before a comma. Write `[(throw error), value]` or apply `vibelang --fix`; the grouped form remains visible to lint rules.
+The lint parser reports `EK1010` for an unparenthesized throw expression before a comma. Write `[(throw error), value]`; the grouped form remains visible to lint rules.
 
 Plain `error` payloads keep their fields and written methods and getters in the lint tree, including a payload field named `constructor`. Their source names, parameters and references still receive the ordinary rule checks.
 
@@ -634,11 +634,6 @@ without them installs nothing extra.
 A staged migration toolchain can remain local while a public package's production dependencies name registry releases. Setup records that split in `.vibelang/toolchain-publication.json`: npm gets development `file:` pins, while pnpm, Bun and Yarn get local overrides or resolutions. Public source-child loader dependencies are included. Check `releaseRequired` and publish those exact versions before distributing the package; setup does not publish them. Switching to `--vibelang-version` removes the managed local pins.
 
 ## Failed toolchain migrations
-
-The migrate flow records the candidate's finishing pass in
-`baseline/logs/vip-finish.json`. A `failed`, `checking` or `fixing` receipt
-cannot become a new baseline. The upgrade stops before the candidate build
-after a refused migration, even if its partial edits make ordinary checks pass.
 
 The `EK1101` trailing-block repair accepts JavaScript whitespace between the call and block, including nonbreaking spaces, thin spaces and byte-order marks. An intervening comment still requires a manual edit.
 

@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nimport { Option } from \"effect\"\nfunction fromHeaders(): Option.Option<{span: string}> { return Option.some({span:\"trace\"}) }\nexport const value = fromHeaders().map((span) => ({span, attributes:{}}))\nexport effect function main() { return Option.getOrElse(value, () => ({span:{span:\"none\"},attributes:{}})) }\n")

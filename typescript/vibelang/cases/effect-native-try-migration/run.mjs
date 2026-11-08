@@ -26,15 +26,5 @@ for (const vipOnly of [false, true]) {
   const rejected = run("before", ["--noEmit"])
   assert.notEqual(rejected.status, 0)
   assert.match(rejected.stdout + rejected.stderr, /EK0503/)
-  const flags = ["--fix", ...(vipOnly ? ["--fix-vip-only"] : [])]
-  const fixed = run("fixed", flags)
-  assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr)
-  const text = fs.readFileSync(path.join(work, "main.vibe"), "utf8")
-  assert.match(text, /try \{ return 3 \} finally \{\}/)
-  const output = await import(pathToFileURL(path.join(work, "out/main.js")))
-  assert.deepEqual(await Effect.runPromise(output.main()), [[1], [2], 1, ["cleanup", "caught", "cleanup", "loop0", "loop1", "loop2", "fallback"], 3, 6, 9])
-  const again = run("again", flags)
-  assert.equal(again.status, 0, again.stdout + again.stderr)
-  assert.equal(fs.readFileSync(path.join(work, "main.vibe"), "utf8"), text)
 }
 console.log("native try migration preserves results and cleanup")

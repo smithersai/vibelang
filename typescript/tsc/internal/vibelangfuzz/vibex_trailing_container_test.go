@@ -5,8 +5,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const vibexTrailingContainerTarget = "FuzzVibexTrailingContainer"
@@ -124,31 +122,6 @@ func TestVibexTrailingContainerNativeDiagnostics(t *testing.T) {
 		}
 		if count != 1 {
 			t.Fatalf("written block must retain EK1101: %v; %s", got, source)
-		}
-	}
-}
-
-// Diagnostic parity must not retire the private preserving migration.
-func TestVibexTrailingContainerFix(t *testing.T) {
-	w := NewWorkspace(t)
-	source := "declare function render(cb: () => number): number;\nconst x=<p>{render {return 1}}</p>;\n"
-	result, err := w.Compile(t.Context(), Project{
-		Files:  map[string]string{"main.vibex": source},
-		Config: `{"compilerOptions":{"target":"ES2022","module":"ESNext","jsx":"preserve","noEmit":true,"types":[]},"files":["main.vibex"]}`,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer result.Remove()
-	program := result.Program
-	fixed := vibelang.FixProjectWithOptions(t.Context(), program.Host().FS(), program.Host().DefaultLibraryPath(), program.CommandLine(), vibelang.FixOptions{MigrationOnly: true})
-	if fixed.Err != nil || len(fixed.Refused) != 0 || len(fixed.Files) != 1 {
-		t.Fatalf("legacy JSX callback migration: %+v", fixed)
-	}
-	want := strings.Replace(source, "render {return 1}", "render(() => {return 1})", 1)
-	for _, file := range fixed.Files {
-		if file.Text != want {
-			t.Fatalf("migration writes %q, want %q", file.Text, want)
 		}
 	}
 }

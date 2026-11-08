@@ -4,7 +4,6 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { fixToFixedPoint } from "../lib/codemod.mjs"
 import { emitDeclarations } from "../lib/declarations.mjs"
 import { assertFinished, check, newErrors, parseDiagnostics, styleProblems, summarize } from "../lib/diagnostics.mjs"
 
@@ -45,7 +44,7 @@ test("newErrors keeps a file's identity across the rename and counts repeats", (
   assert.deepEqual(newErrors(after, before), [])
 })
 
-test("a compiler that dies is no clean run: check, the fix loop and the declaration step throw", async () => {
+test("a compiler that dies is no clean run: check and the declaration step throw", async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-crash-"))
   try {
     const fake = (name, body) => {
@@ -57,7 +56,6 @@ test("a compiler that dies is no clean run: check, the fix loop and the declarat
     const goCrash = fake("crash", "echo 'fatal error: concurrent map read and map write' >&2\necho >&2\necho 'goroutine 1 [running]:' >&2\nexit 2")
     const options = { tsconfig: "tsconfig.json", cwd: root, root }
     await assert.rejects(check({ compiler: goCrash, ...options }), dies)
-    await assert.rejects(fixToFixedPoint({ compiler: goCrash, ...options }), dies)
     await assert.rejects(emitDeclarations({ compiler: goCrash, ...options, outDir: join(root, "out") }), dies)
     await assert.rejects(check({ compiler: fake("silent", "exit 2"), ...options }), dies)
     // A crash after a diagnostic is still a crash, and names itself.
@@ -68,8 +66,6 @@ test("a compiler that dies is no clean run: check, the fix loop and the declarat
     const reports = fake("reports", "echo 'a.ts(1,1): error TS2304: Cannot find name x.'\nexit 2")
     assert.equal((await check({ compiler: reports, ...options })).diagnostics.length, 1)
     assert.deepEqual((await check({ compiler: fake("clean", "exit 0"), ...options })).diagnostics, [])
-    const fixes = fake("fixes", "echo 'vibelang --fix: 0 fixes in 0 files.'")
-    assert.equal((await fixToFixedPoint({ compiler: fixes, ...options })).settled, true)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

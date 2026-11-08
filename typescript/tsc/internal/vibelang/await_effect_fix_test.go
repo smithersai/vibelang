@@ -2,7 +2,6 @@ package vibelang
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -54,25 +53,5 @@ func TestAwaitEffectValueQuickFix(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-func TestAwaitEffectValueCLIFix(t *testing.T) {
-	source := "import {Effect} from \"effect\"; export async function* values():AsyncGenerator<Effect.Effect<number>,void,unknown> { yield await Effect.succeed(7) }"
-	_, file, _, _ := editorProgram(t, source)
-	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-	fixed := result.Files[file.FileName()]
-	if result.Err != nil || fixed == nil || !strings.Contains(fixed.Text, "await (Effect.succeed(7) as unknown)") {
-		t.Fatalf("missing preserving fix: %+v", result)
-	}
-	checked, edited, _, _ := editorProgram(t, fixed.Text)
-	for _, d := range checked.GetSemanticDiagnostics(t.Context(), edited) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Errorf("%s\n%s", d.String(), fixed.Text)
-		}
-	}
-	again := fixCase(t, filepath.Dir(edited.FileName().AsString()))
-	if again.Err != nil || len(again.Files) != 0 {
-		t.Fatalf("repair not idempotent: %+v", again)
 	}
 }

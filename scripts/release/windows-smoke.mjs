@@ -3,7 +3,7 @@
 // This deliberately invokes Node with an argv array, never a shell command string.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { resolve, join } from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -51,13 +51,6 @@ assert.equal(result.errors.length, 0)
 const output = result.outputs.get(join(root, "src/main.vibe"))
 assert.ok(output)
 assert.ok(output.map.sources.includes(join(root, "src/main.vibe").replaceAll("\\", "/")))
-// --fix must actually edit a CRLF file and stay idempotent.
-writeFileSync(join(root, "src/fix.vibe"), 'export function fixed(): number!! {\r\n  return Effect.succeed(7)\r\n}\r\n')
-compile("--project", join(root, "tsconfig.json"), "--fix", "--pretty", "false")
-const fixed = readFileSync(join(root, "src/fix.vibe"), "utf8")
-assert.ok(!fixed.includes("Effect.succeed"), fixed)
-compile("--project", join(root, "tsconfig.json"), "--fix", "--pretty", "false")
-assert.equal(readFileSync(join(root, "src/fix.vibe"), "utf8"), fixed)
 if (process.argv.includes("--vitest")) {
   writeFileSync(join(root, "src/main.test.vibe"), 'import { assert, it } from "@effect/vitest"\r\nimport { answer } from "./main.vibe"\r\nit.effect("VibeLang Effect under Vitest on Windows") {\r\n  assert.strictEqual(answer(), 42)\r\n}\r\n')
   writeFileSync(join(root, "vitest.config.mjs"), 'import vibelang from "vibelang-vite"; export default { plugins: [vibelang({ project: "tsconfig.json" })], test: { include: ["src/**/*.test.vibe"] } }')

@@ -1,12 +1,9 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
@@ -60,45 +57,6 @@ func TestYieldActivationFixBoundaries(t *testing.T) {
 			return n.ForEachChild(visit)
 		}
 		file.AsNode().ForEachChild(visit)
-	}
-}
-
-func TestYieldActivationFixWitness(t *testing.T) {
-	root := filepath.Join("..", "..", "..", "vibelang", "cases")
-	source, err := os.ReadFile(filepath.Join(root, "diag-yield-star.fail", "main.vibe"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want, err := os.ReadFile(filepath.Join(root, "diag-yield-star-fixed-output", "main.vibe"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	// Prove the error before exercising the real project --fix pipeline.
-	program, file, _, _ := editorProgram(t, string(source))
-	found := false
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		found = found || d.Code() == EK2104.Code && d.Category() == diagnostics.CategoryError
-	}
-	if !found {
-		t.Fatal("witness does not reproduce EK2104")
-	}
-	result, name, fs := fixOnce(t, string(source))
-	fixed := result.Files[name]
-	if result.Err != nil || fixed == nil || fixed.Text != string(want) || len(result.Refused) != 0 || len(result.Remaining) != 0 {
-		t.Fatalf("--fix failed: %+v; file %+v; want %s", result, fixed, want)
-	}
-	if err := os.WriteFile(name.AsString(), []byte(fixed.Text), 0600); err != nil {
-		t.Fatal(err)
-	}
-	second := FixProject(t.Context(), fs, bundled.LibPath(), fixConfigOf(t, fs, name))
-	if second.Err != nil || len(second.Files) != 0 || len(second.Refused) != 0 || len(second.Remaining) != 0 {
-		t.Fatalf("second --fix failed: %+v", second)
-	}
-	clean, cleanFile, _, _ := editorProgram(t, string(want))
-	for _, d := range clean.GetSemanticDiagnostics(t.Context(), cleanFile) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Fatalf("fixed witness: %s", d.String())
-		}
 	}
 }
 

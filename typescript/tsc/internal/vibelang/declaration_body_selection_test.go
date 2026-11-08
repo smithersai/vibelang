@@ -78,21 +78,3 @@ func TestDeclarationBodyQuickFixSelectsDiagnostic(t *testing.T) {
 		})
 	}
 }
-
-func TestDeclarationBodyFixRespectsCodes(t *testing.T) {
-	source := "const data=1;type T=number;\nschema A\ndata as T;\n"
-	for _, code := range []int32{1503, 1604} {
-		p, f, _, _ := editorProgram(t, source)
-		proposed := fileFixes(t.Context(), p, f, map[string]bool{}, []int32{code})
-		if len(proposed.fixes) != 1 || proposed.fixes[0].code != code {
-			t.Fatalf("requestedEK%d: fixes %+v", code, proposed.fixes)
-		}
-		fixed := proposed.text()
-		if code == 1503 && (!strings.Contains(fixed, "schema A {}") || !strings.Contains(fixed, "\ndata as T;")) {
-			t.Errorf("schema fix changed data: %s", fixed)
-		}
-		if code == 1604 && (!strings.Contains(fixed, "(data as T)") || strings.Contains(fixed, "schema A {}")) {
-			t.Errorf("data fix changed schema: %s", fixed)
-		}
-	}
-}

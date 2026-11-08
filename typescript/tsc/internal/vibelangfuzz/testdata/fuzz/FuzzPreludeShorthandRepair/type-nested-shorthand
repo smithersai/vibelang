@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("type-nested-shorthand\u0000\u0000")

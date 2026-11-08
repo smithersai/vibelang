@@ -1,61 +1,9 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
-
-// The wrapper that keeps a generator's call exception a defect loses what
-// control flow proved about a property the call reads, so EK1002's fix keeps
-// the proof as EK0403's does: the guard joins the call in the function, or the
-// read moves to a const under the guard. opencode's ai protocols kept their
-// generators over this (cohere-chat: content.thinking !== undefined ?
-// Lifecycle.reasoningDelta(…, content.thinking) : …, TS2345).
-func TestEffectGenDefectBridgeKeepsNarrowing(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	const open, close = "try Effect.orDie(Effect.try({ try: () => ", ", catch: (e) => e }))"
-	for name, tc := range map[string]struct{ body, want string }{
-		"ternary":        {"return o.p ? double(o.p) : 0", "return " + open + "o.p ? double(o.p) : 0" + close},
-		"ternary inside": {"const r = o.p !== undefined ? double(o.p) : 0\n  return r", "const r = " + open + "o.p !== undefined ? double(o.p) : 0" + close},
-		"both branches":  {"const r = o.p !== undefined ? double(o.p) : label(\"n\", n).length\n  return r", "const r = " + open + "o.p !== undefined ? double(o.p) : label(\"n\", n).length" + close},
-		"and":            {"return o.p !== undefined && double(o.p) > 0", open + "o.p !== undefined && double(o.p) > 0" + close},
-		"if block":       {"if (o.p) {\n    const r = double(o.p)\n    return r\n  }\n  return 0", "if (o.p) {\n    const n2 = o.p\n    const r = " + open + "double(n2)" + close},
-		"early return":   {"if (!o.p) return 0\n  return double(o.p)", "if (!o.p) return 0\n  const n2 = o.p\n  return " + open + "double(n2)" + close},
-		// A lib call over the proved property moves with it (t3code's
-		// foreign(request.elicitationId.trim())).
-		"method on it":     {"if (!o.p) return 0\n  return double(o.p.valueOf())", "if (!o.p) return 0\n  const n2 = o.p.valueOf()\n  return " + open + "double(n2)" + close},
-		"lib call over it": {"if (!o.p) return 0\n  return double(Math.abs(o.p))", "if (!o.p) return 0\n  const n2 = Math.abs(o.p)\n  return " + open + "double(n2)" + close},
-		"unbraced branch":  {"let r = 0\n  if (o.p) r = double(o.p)\n  return r", "if (o.p) {\n    const n2 = o.p\n    r = (" + open + "double(n2)" + close + ")\n  }"},
-		"else branch":      {"let r = 0\n  if (!o.p) r = 1\n  else r = double(o.p)\n  return r", "else {\n    const n2 = o.p\n    r = (" + open + "double(n2)" + close + ")\n  }"},
-		"two statements":   {"if (!o.p || !o.q) return 0\n  const a = double(o.p)\n  return a + double(o.q)", "const n2 = o.p\n  const a = " + open + "double(n2)" + close + "\n  const n3 = o.q\n  return a + (" + open + "double(n3)" + close + ")"},
-	} {
-		t.Run(name, func(t *testing.T) {
-			dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/ek4401-fix.fail"), root)
-			source := "import { double, label } from \"./plain.ts\"\nexport const value = Effect.fnUntraced(function* (n: number, o: { readonly p?: number; readonly q?: number }) {\n  " + tc.body + "\n})\n"
-			if err := os.WriteFile(filepath.Join(dir, "lib.vibe"), []byte(source), 0o644); err != nil {
-				t.Fatal(err)
-			}
-			result := fixCase(t, dir)
-			if len(result.Refused) != 0 {
-				t.Errorf("refused: %v", result.Refused)
-			}
-			got := ""
-			for file, fixed := range result.Files {
-				if filepath.Base(file.AsString()) == "lib.vibe" {
-					got = fixed.Text
-				}
-			}
-			if !strings.Contains(got, "effect (n: number") || !strings.Contains(got, tc.want) {
-				t.Errorf("--fix writes\n%s\nwant it to hold\n%s", got, tc.want)
-			}
-		})
-	}
-}
 
 // Where no form keeps the proof, the call alone goes through the wrapper, as
 // before, and the fix gate decides: String(o.p) accepts what the guard ruled

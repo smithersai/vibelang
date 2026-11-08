@@ -1,2 +1,2 @@
 'readonly' modifier already seen.
-An abstract error root is a legacy declaration form. Run vibelang --fix to retain it as its Effect TypeScript class.
+An abstract error root is a legacy declaration form. Write it as its Effect TypeScript class to retain it.

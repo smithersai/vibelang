@@ -17,21 +17,6 @@ func TestMatchOperandReadsQuoted(t *testing.T) {
 	}
 }
 
-// FuzzMatchOperandReads uses the complete shared FuzzFix converter oracle.
-// Its keyed corpus owns a separate short-run budget instead of charging the
-// growing general migration corpus for every focused tooling regression.
-func FuzzMatchOperandReads(f *testing.F) {
-	startShortBudget(f)
-	fuzzFixProjects(f, "FuzzMatchOperandReads")
-}
-
-// Captured operands exercise Match.type's one-time construction reads separately
-// from Match.value's per-call reads; both use the complete converter oracle.
-func FuzzMatchCapturedOperandReads(f *testing.F) {
-	startShortBudget(f)
-	fuzzFixProjects(f, "FuzzMatchCapturedOperandReads")
-}
-
 // Keyed inputs drive the existing FuzzFix converter oracle. Operand getters
 // record every observable read, including initialization before main is called.
 // Local let, computed const, and imported bindings vary capture lifetime too.

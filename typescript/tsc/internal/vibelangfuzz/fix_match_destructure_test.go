@@ -132,14 +132,3 @@ func TestMatchHandlerDestructureProjects(t *testing.T) {
 		}
 	}
 }
-
-// Both focused targets run the complete converter oracle; separate workers and
-// budgets keep each predicate family below the short-target seed budget.
-func FuzzMatchWhenDestructure(f *testing.F) {
-	startShortBudget(f)
-	fuzzFixProjects(f, "FuzzMatchWhenDestructure")
-}
-func FuzzMatchTagDestructure(f *testing.F) {
-	startShortBudget(f)
-	fuzzFixProjects(f, "FuzzMatchTagDestructure")
-}

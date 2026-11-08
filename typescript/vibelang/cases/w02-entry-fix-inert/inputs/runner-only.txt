@@ -1,9 +1,0 @@
-import "vibelang/platform/node"
-import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
-
-// No main: the marker is inert, and the explicit runner stays as written.
-effect function program() {
-  try Console.log("runner-only program ran")
-}
-
-NodeRuntime.runMain(program())

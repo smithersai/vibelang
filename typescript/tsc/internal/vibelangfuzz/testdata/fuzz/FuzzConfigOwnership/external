@@ -1,3 +1,0 @@
-go test fuzz v1
-string("external")
-byte(0)

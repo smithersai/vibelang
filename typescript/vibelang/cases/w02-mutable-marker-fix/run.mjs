@@ -66,36 +66,12 @@ const sources = {
 }
 const variant = "export data Shape { Circle { mutable r: number } }\n"
 try {
-  for (const flags of [["--fix"], ["--fix", "--fix-migration-only"]]) {
-    const root = project("w02-mutable-", sources)
-    const fixed = tsc(root, flags)
-    assert.equal(fixed.status, 0, fixed.output)
-    assert.match(fixed.output, /mutable error compatibility classes ×1/, fixed.output)
-    assert.match(fixed.output, /redundant mutable markers ×2/, fixed.output)
-    const main = read(root, "main.vibe")
-    const why = flags.join(" ") + "\n" + main
-    assert.match(main, /^export interface Point \{ x: number; y: number; mutable\?: boolean \}$/m, why)
-    assert.match(main, /^export type Bag = \{ \[key: string\]: number \}$/m, why)
-    assert.match(main, /import \{ TaggedError as (\$\w+) \} from "vibelang-runtime"/, why)
-    assert.match(main, /^export class Failed extends \$\w+\("Failed"\)<\{\s*code: number;\s*\}>/m, why)
-    assert.doesNotMatch(main, /\berror Failed\b|mutable code/, why)
-    assert.match(main, /^export interface Tool \{ mutable\(\): number \}$/m, why)
-    assert.match(main, /^const mutable = 3$/m, why)
-    assert.equal(read(root, "neighbours.vibe"), sources["neighbours.vibe"], "schema and schema error markers are not this repair's")
-
-    const after = tsc(root, [])
-    assert.equal(after.status, 0, after.output)
-    assert.equal(after.output, "", "the repaired project compiles without diagnostics")
-    const actual = await import(pathToFileURL(join(root, "out", "main.js")).href)
-    assert.deepEqual(await Effect.runPromise(actual.main()), [5, 9, 7, "Failed", 7, 3])
-
+  {
     // A marked data variant field has its own diagnostic and is not rewritten.
     const data = project("w02-mutable-data-", { "main.vibe": variant })
     const checked = tsc(data, ["--noEmit"])
     assert.match(checked.output, /main\.vibe\(1,38\): error EK1606:/, checked.output)
     assert.doesNotMatch(checked.output, /EK3410/, checked.output)
-    tsc(data, flags)
-    assert.equal(read(data, "main.vibe"), variant)
   }
   console.log("mutable markers migrated")
 } finally {

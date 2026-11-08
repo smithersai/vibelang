@@ -2,11 +2,9 @@ package vibelang
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
@@ -37,32 +35,6 @@ func init() {
 			return []*ls.CodeAction{{Description: calleeChannelContractFixTitle, Changes: changes}}, nil
 		},
 	})
-}
-
-// This dedicated proposal does not opt arbitrary TS2345 code actions into
-// --fix. Its insertion goes through the normal project-wide safety gate.
-func calleeChannelContractFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
-	p := proposal{file: file}
-	ds := program.GetSemanticDiagnostics(ctx, file)
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	seen := map[*ast.Node]bool{}
-	for _, d := range ds {
-		if d.Source() != "" || d.Code() != 2339 && d.Code() != 2345 && d.Code() != 2769 {
-			continue
-		}
-		fn, rewrite := calleeChannelContractAt(c, file, d.Pos(), d.End())
-		if !rewrite.fixable() || seen[fn] {
-			continue
-		}
-		key := "callee-channel-contract:" + strconv.Itoa(nodeStart(file, fn))
-		if refused[key] {
-			continue
-		}
-		seen[fn] = true
-		p.fixes = append(p.fixes, fileFix{code: d.Code(), edits: rewrite.edits, key: key, label: "error-channel contracts"})
-	}
-	return p
 }
 
 // Find a data-first catch or an Effect's pipe.

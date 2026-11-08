@@ -8,7 +8,7 @@ import (
 
 // VIP-13 and the relic ruling: retain the old abstract root as the native
 // class it already declared before rejecting the source spelling.
-var EK1308 = message(1308, warningCategory, "An abstract error root is a legacy declaration form. Run vibelang --fix to retain it as its Effect TypeScript class.")
+var EK1308 = message(1308, warningCategory, "An abstract error root is a legacy declaration form. Write it as its Effect TypeScript class to retain it.")
 
 func init() {
 	registry[EK1308.Code] = EK1308

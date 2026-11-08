@@ -12,7 +12,7 @@ import { spawnSync } from "node:child_process"
 
 const binary = process.env.VIBELANG_BINARY
 assert.ok(binary, "the harness supplies its built compiler")
-const message = "legacy platform entry marker: run vibelang --fix and write an explicit runner"
+const message = "legacy platform entry marker: write an explicit runner"
 const files = ["node", "bun", "browser", "ordinary"]
 const root = mkdtempSync(join(tmpdir(), "entry-marker-"))
 try {

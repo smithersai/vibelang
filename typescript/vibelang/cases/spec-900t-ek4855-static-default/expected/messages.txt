@@ -1,1 +1,1 @@
-main.vibe(9,3): warning EK4855: Legacy static default: run vibelang --fix to preserve its cached value and service key
+main.vibe(9,3): warning EK4855: Legacy static default: rewrite it to preserve its cached value and service key

@@ -40,7 +40,7 @@ Store or pass the native interruption functions as `Effect.interruptible` and `E
 
 The compiler reads this list from the installed `effect` when it is built, so it follows the pinned Effect version's exports. The prelude's own names win over an export of the same name: `sync`, `interrupt`, and `yieldNow` are the prelude's. `callback` is Effect's native function, including in a direct call. To turn these globals off and write every one as `Effect.x`, set `"vibe": { "effectGlobals": false }` in `tsconfig.json` ([options](012-devtools.md)).
 
-`interrupt` and `yieldNow` are native Effect values: write `try interrupt` or `try yieldNow`. To select a numeric yield priority, write `try Effect.yieldNowWith(priority)`. When upgrading legacy bare `yieldNow(priority)`, `yieldNow()` or `interrupt()` factory calls in a `.vibe` file, `vibelang --fix` keeps held and returned Effects cold, including in plain functions and at the top level. It evaluates a priority argument once and selects `yieldNow` when it is `undefined`, or `Effect.yieldNowWith` when it is a number. An existing `try` still runs the Effect; a discarded Effect statement, already rejected with `EK4801`, gains an explicit `try`. An imported or local `yieldNow` keeps its binding.
+`interrupt` and `yieldNow` are native Effect values: write `try interrupt` or `try yieldNow`. To select a numeric yield priority, write `try Effect.yieldNowWith(priority)`. An imported or local `yieldNow` keeps its binding.
 
 JavaScript's own globals keep their names: `Array`, `String`, `Number`, `Boolean`, `Symbol`, `BigInt`, `Function`, and `RegExp` mean JavaScript's, so import Effect's modules of those names under another name:
 
@@ -54,7 +54,7 @@ function firstTwo(values: ReadonlyArray<number>) {
 // Output: [1,2]
 ```
 
-`vibelang --fix` writes this form where code imports one of these modules under its own name (EK4842).
+Write this form where code imports one of these modules under its own name (EK4842).
 
 JavaScript globals that are not platform-specific and TypeScript's own globals keep their meaning. Effect modules with those names are available as `Effect.Array`, `Effect.String`, `Effect.Record`, or through an aliased import. In a type, `typeof Effect.Array` is that module's type, and `Effect.Array.NonEmptyReadonlyArray<number>` one of its types. Platform-specific names use Effect's module: `Request`, `Option`, `Cache`, `FileSystem`, `Scheduler`, and `Console`. `Crypto` is the DOM's, because Effect has no root `Crypto` module; import `effect/crypto` to use Effect's. An import or local declaration named like a module shadows it in the meanings that declaration supplies, as `import * as Duration from "effect/Duration"` would. Importing `Effect` itself also replaces the implicit binding: `import { Effect } from "effect"` is Effect’s own module, which has no `Array` member (`TS2339`), so import `Array` from `effect` or drop the import. Value constructors such as `Duration.millis` build data; `try Clock.currentTimeMillis` and `try sleep(...)` run computations. A plain function known not to throw can be called directly; wrap a call that may throw with `Effect.try`.
 
@@ -72,7 +72,7 @@ function hexOf(text: string) {
 // Output: 6869
 ```
 
-Four rules settle a name that two globals share, in order: a JavaScript global that is not platform-specific wins in its meaning; a name exported by both the root and a subpath needs an explicit import; when two subpath packages have a module of the same name, neither is in scope, so import the one you mean; and an import or local declaration shadows any of them in the meanings it supplies. Ambient types and local type aliases or interfaces keep their type meanings independently. `EK1401` names every exporter of an ambiguous name and offers an import for each. For a previously bare `Utils`, `vibelang --fix` adds `import { Utils } from "effect"` to preserve the root module. In value and namespace positions, `Headers` is `effect/http/Headers`, `Response` is `effect/ai/Response`, `Event` is `effect/eventlog/Event` and `Worker` is `effect/workers/Worker`. So `Response.json(body)` is `TS2339`, and its note names the Fetch API's `globalThis.Response.json`. These are the names they settle for `effect@4.1.1`:
+Four rules settle a name that two globals share, in order: a JavaScript global that is not platform-specific wins in its meaning; a name exported by both the root and a subpath needs an explicit import; when two subpath packages have a module of the same name, neither is in scope, so import the one you mean; and an import or local declaration shadows any of them in the meanings it supplies. Ambient types and local type aliases or interfaces keep their type meanings independently. `EK1401` names every exporter of an ambiguous name and offers an import for each. For a previously bare `Utils`, add `import { Utils } from "effect"` to preserve the root module. In value and namespace positions, `Headers` is `effect/http/Headers`, `Response` is `effect/ai/Response`, `Event` is `effect/eventlog/Event` and `Worker` is `effect/workers/Worker`. So `Response.json(body)` is `TS2339`, and its note names the Fetch API's `globalThis.Response.json`. These are the names they settle for `effect@4.1.1`:
 
 <!-- D310 collisions: TestEffectNameCollisionsDocumented checks this table -->
 | Name | Modules | Without an import |
@@ -138,7 +138,7 @@ These names have both an Effect namespace and an ambient global type. Value and 
 `Cache`, `Console`, `Event`, `FileSystem`, `Headers`, `Iterable`, `KeyFormat`, `Record`, `Request`, `Response`, `Scheduler`, `Transferable`, `Worker`.
 <!-- end D311 DOM types -->
 
-These meanings apply in value and namespace positions. In a type position, a name the DOM declares as a type keeps the DOM's meaning, as in `type HostConsole = Console`. A local type alias or interface also shadows only the type meaning: `type KeyFormat = { readonly local: true }` keeps that local type while `KeyFormat.jwk` still reads Effect's namespace. A local value binding keeps its own members. Use a qualified member such as `FileSystem.FileSystem` for Effect's type. A contract that writes the DOM's `FileSystem` where its body reads Effect's service reports `EK9202`, and `vibelang --fix` writes `FileSystem.FileSystem` there.
+These meanings apply in value and namespace positions. In a type position, a name the DOM declares as a type keeps the DOM's meaning, as in `type HostConsole = Console`. A local type alias or interface also shadows only the type meaning: `type KeyFormat = { readonly local: true }` keeps that local type while `KeyFormat.jwk` still reads Effect's namespace. A local value binding keeps its own members. Use a qualified member such as `FileSystem.FileSystem` for Effect's type. A contract that writes the DOM's `FileSystem` where its body reads Effect's service reports `EK9202`; write `FileSystem.FileSystem` there.
 
 
 

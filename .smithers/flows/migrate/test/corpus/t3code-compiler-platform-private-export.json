@@ -1,6 +1,0 @@
-{
-  "key": "t3code-compiler-platform-private-export",
-  "quote": "A rewrite that can't preserve types, behavior and declaration output refuses at that site.",
-  "manifest": { "name": "compiler-platform-fixture", "private": true, "type": "module", "exports": { "./*": "./*.ts" } },
-  "source": "import * as Effect from \"effect/Effect\";\ndeclare const key: CryptoKey;\n/** A suspended host operation. */\nexport const program = Effect.tryPromise({ try: () => crypto.subtle.exportKey(\"jwk\", key), catch: (cause) => cause });\n"
-}

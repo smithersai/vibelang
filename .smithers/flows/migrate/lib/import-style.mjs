@@ -1,9 +1,9 @@
-// EK4842's fix renames an Effect module imported under a JavaScript global's
+// EK4842 asks to rename an Effect module imported under a JavaScript global's
 // name: `import { Array } from "effect"` becomes `import { Array as Arr }
 // from "effect"`, and each use `Array.take(...)` becomes `Arr.take(...)`.
 // That alias is the language's default, but a repository's own lint may
-// forbid aliased value imports, and some also forbid star imports. After
-// `--fix`, the migration writes the form the repository's rules accept:
+// forbid aliased value imports, and some also forbid star imports. The
+// migration writes the form the repository's rules accept:
 //
 //   aliases allowed              import { Array as Arr } from "effect"   (unchanged)
 //   aliases forbidden            import * as Arr from "effect/Array"     (uses unchanged)
@@ -152,10 +152,10 @@ export function applyImportStyle(text, ast, policy) {
 }
 
 /**
- * Applies the repository's import style to the batch's converted modules
- * after `--fix`. parse(text, file) returns a module's ESTree. Returns the
+ * Applies the repository's import style to the batch's converted modules.
+ * parse(text, file) returns a module's ESTree. Returns the
  * policy and each rewrite and refusal by file; refused modules keep the
- * fix's alias, which the repository's lint then reports.
+ * alias, which the repository's lint then reports.
  */
 export function applyRepositoryImportStyle(root, files, tracked, parse) {
   const { aliases, stars, rules } = importStylePolicy(root, tracked)

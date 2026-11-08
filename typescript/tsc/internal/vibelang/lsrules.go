@@ -240,64 +240,6 @@ func isEffectSubtype(c *checker.Checker, t *checker.Type) bool {
 	return effectInterfaceSymbol(c, t) != nil
 }
 
-// successNamesNoValue returns the success type of fn's Effect when it names
-// no value: void, unknown, any, or an unconstrained type parameter that fn's
-// call infers,
-// from fn's written contract, the uninstantiated parameter of fn's call
-// (D44; the call's own type arguments when it writes them), or fn's
-// contextual type. Any value is then a success value, and a returned Effect
-// value or program literal returns as data where Effect code runs it:
-// `Sink.forEach((n) => announce)` and `withSpan(() => { return refresh }, "refresh")`
-// succeed with the program. It returns nil otherwise.
-func (a *analyzer) successNamesNoValue(fn *ast.Node) *checker.Type {
-	var expected []*checker.Type
-	switch call, path := ownerCall(fn); {
-	case fn.Type() != nil:
-		expected = []*checker.Type{a.checker.GetTypeFromTypeNode(fn.Type())}
-	case call != nil:
-		signature := a.checker.GetResolvedSignature(call)
-		if signature == nil {
-			return nil
-		}
-		if len(call.TypeArguments()) == 0 {
-			signature = a.declaredSignature(signature)
-		}
-		if t := a.checker.GetTypeAtPosition(signature, path[0].argument); t != nil {
-			expected = []*checker.Type{t}
-			for _, step := range path[1:] {
-				expected = a.stepInto(expected, step)
-			}
-		}
-	default:
-		expected = a.contextualTypes(fn)
-	}
-	for _, t := range expected {
-		if !isEffectType(a.checker, t) {
-			if signatures := a.checker.GetSignaturesOfType(t, checker.SignatureKindCall); len(signatures) == 1 {
-				t = a.checker.GetReturnTypeOfSignature(signatures[0])
-			}
-		}
-		if success := successType(a.checker, t); success != nil && a.namesNoValue(success) {
-			return success
-		}
-	}
-	return nil
-}
-
-// namesNoValue reports whether t, a success type, is void, unknown, any, or a
-// type parameter without a constraint that names a value: T extends Exit
-// names an Exit.
-func (a *analyzer) namesNoValue(t *checker.Type) bool {
-	if t.Flags()&(checker.TypeFlagsVoid|checker.TypeFlagsUnknown|checker.TypeFlagsAny) != 0 {
-		return true
-	}
-	if t.Flags()&checker.TypeFlagsTypeParameter == 0 {
-		return false
-	}
-	constraint := a.checker.GetBaseConstraintOfType(t)
-	return constraint == nil || constraint == t || constraint.Flags()&(checker.TypeFlagsUnknown|checker.TypeFlagsAny) != 0
-}
-
 // returnedParts returns the parts of value, a returned expression, whose
 // value can be the one returned: a conditional's arms, the operands of ?? and
 // ||, and the right side of &&, whose left side is returned only when it is

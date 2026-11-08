@@ -1,9 +1,0 @@
-// D312: a file that names the browser runs main with the browser's runner,
-// @effect/platform-browser's BrowserRuntime.runMain, and imports nothing of
-// Node's, though @effect/platform-node is installed here too. A host that
-// says it started the module runs it, as Bun does.
-import "vibelang/platform/browser"
-
-export effect function main() {
-  try Console.log("browser main ran")
-}

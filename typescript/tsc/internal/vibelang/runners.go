@@ -2,7 +2,6 @@ package vibelang
 
 import (
 	"slices"
-	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -239,16 +238,6 @@ func holdsField(c *checker.Checker, node, decl *ast.Node) bool {
 	return isEffectType(c, c.GetContextualTypeForObjectLiteralElement(decl, checker.ContextFlagsSignature))
 }
 
-// isInvokedForm reports whether call is an expression form that the parser
-// writes as an invoked arrow function: throw x is (() => { throw x })() and
-// do { … } is (() => { … })() (D186, D187). Its source text starts with its
-// keyword, where a written call of an arrow function starts with (.
-func isInvokedForm(file *ast.SourceFile, call *ast.Node) bool {
-	callee := call.Expression()
-	return len(call.Arguments()) == 0 && ast.IsParenthesizedExpression(callee) && ast.IsArrowFunction(callee.Expression()) &&
-		!strings.HasPrefix(nodeText(file, call), "(")
-}
-
 // isRunnerCallee reports whether call is the callee of a runner call, as
 // Effect.runPromiseWith(context) is in Effect.runPromiseWith(context)(program):
 // the outer call is the one to report.
@@ -283,18 +272,6 @@ func runningFunctionName(fn *ast.Node) string {
 		return name
 	}
 	return "the enclosing function"
-}
-
-// invokedArrow returns the arrow that call invokes in place, (() => { … })(),
-// the form a throw expression or a do block parses into, or nil.
-func invokedArrow(call *ast.Node) *ast.Node {
-	if call == nil || !ast.IsCallExpression(call) || len(call.Arguments()) != 0 {
-		return nil
-	}
-	if callee := ast.SkipParentheses(call.Expression()); callee.Kind == ast.KindArrowFunction && callee.Body() != nil {
-		return callee
-	}
-	return nil
 }
 
 // moduleThrowNote names the escape for code that must throw a JavaScript

@@ -330,93 +330,7 @@ func quickfixBehaviorCheck(t *testing.T, w *Workspace, binary, api, key string, 
 	if !native && !found && !editorSeen[code] {
 		Gap(t, quickfixBehaviorTarget, key+":trigger", "registered fix has no CLI or editor diagnostic on its keyed generator:\n%s\n%v", Archive(files), SortedKeys(Keys(before.Dir, before.Diagnostics)))
 	}
-	// A deliberately old, non-rounded timestamp detects writes even on a fast
-	// filesystem, without depending on a wall-clock sleep.
-	for name := range files {
-		path := filepath.Join(before.Dir, filepath.FromSlash(name))
-		stamp := time.Unix(123456789, 0)
-		if err := os.Chtimes(path, stamp, stamp); err != nil {
-			t.Fatal(err)
-		}
-	}
-	snapshot := quickfixSnapshot(t, before.Dir, files)
-	args := []string{"-p", "tsconfig.json", "--fix", "--noEmit", "--pretty", "false"}
-	run := cliExec(binary, before.Dir, args, "", Project{})
-	if run.Hung != "" || cliCrashed(run) {
-		t.Fatalf("CLI failed: %+v", run)
-	}
-	fixed := maps.Clone(files)
-	afterFiles := quickfixProjectFiles(t, before.Dir, files)
-	afterState := quickfixSnapshot(t, before.Dir, afterFiles)
-	changed := false
-	for name, state := range afterState {
-		fixed[name] = state.text
-		changed = changed || state.text != snapshot[name].text
-	}
-	output := run.Stdout + "\n" + run.Stderr
-	refused := strings.Contains(output, "not fixed:") || strings.Contains(strings.ToLower(output), "refus")
-	// Generator-owned spans additionally protect deliberately refused sites.
-	// Comparing these unique spans permits unrelated edits before and after them.
-	if !quickfixSubcheck(t, "cli-refused-spans", func(t *testing.T) {
-		quickfixCLIRefusals(t, before.Dir, output, files, fixed)
-		for name, text := range files {
-			if span, ok := quickfixMarkedRefusal(text); ok && (refused || strings.Contains(text, "/* quickfix:refused:start */")) {
-				lines := newToolsLines(text)
-				start, end := lines.position(span.start), lines.position(span.end)
-				refusedCode := code
-				if key == "mixed-refused-file" {
-					refusedCode = 4839
-				}
-				if key == "assertion-refused-overlap" {
-					refusedCode = 4810
-				}
-				t.Logf("refused-site %s:%d:%d-%d:%d EK%04d (generator-owned original span)", name, start.Line+1, start.Character+1, end.Line+1, end.Character+1, refusedCode)
-				if !strings.Contains(afterState[name].text, text[span.start:span.end]) {
-					Gap(t, quickfixBehaviorTarget, key+":refused-span", "refused span %s:%d-%d changed\nbefore:\n%s\nafter:\n%s", name, span.start, span.end, text, afterState[name].text)
-				}
-			}
-		}
-	}) {
-		pending = true
-	}
-	if !quickfixSubcheck(t, "cli-noop-mtime", func(t *testing.T) {
-		for name, state := range afterState {
-			if state.text == snapshot[name].text {
-				if !state.modified.Equal(snapshot[name].modified) {
-					Gap(t, quickfixBehaviorTarget, key+":noop-mtime", "unchanged file %s was rewritten", name)
-				}
-			}
-		}
-	}) {
-		pending = true
-	}
-	if changed {
-		if !quickfixSubcheck(t, "cli", func(t *testing.T) { quickfixCompare(t, w, api, key+":cli", baseline, before, fixed) }) {
-			pending = true
-		}
-	}
-	second := cliExec(binary, before.Dir, args, "", Project{})
-	stableFiles := quickfixProjectFiles(t, before.Dir, afterFiles)
-	stable := quickfixSnapshot(t, before.Dir, stableFiles)
-	if second.Hung != "" || cliCrashed(second) {
-		t.Fatalf("second CLI run failed: %+v", second)
-	}
-	if !quickfixSubcheck(t, "cli-fixed-point", func(t *testing.T) {
-		stableText := maps.Clone(fixed)
-		for name, state := range stable {
-			stableText[name] = state.text
-		}
-		quickfixCLIRefusals(t, before.Dir, second.Stdout+"\n"+second.Stderr, fixed, stableText)
-		for name, state := range stable {
-			if state.text != afterState[name].text || !state.modified.Equal(afterState[name].modified) {
-				Gap(t, quickfixBehaviorTarget, key+":fixed-point", "second --fix changed %s (bytes or mtime)", name)
-			}
-		}
-	}) {
-		pending = true
-	}
-
-	// Every plan was requested from the original source before the CLI ran.
+	// Every plan was requested from the original source.
 	// Apply each independently; a refused diagnostic's range is protected
 	// against edits offered for any other site in this snapshot.
 	for i, plan := range plans {
@@ -452,7 +366,7 @@ func quickfixBehaviorCheck(t *testing.T, w *Workspace, binary, api, key string, 
 	}
 	actions := len(plans)
 
-	t.Logf("coverage %s code=EK%04d cli_changed=%t refused=%t editor_actions=%d baseline_errors=%t reference=%s", key, code, changed, refused, actions, !toolsErrorFree(baseline), referenceKind)
+	t.Logf("coverage %s code=EK%04d editor_actions=%d baseline_errors=%t reference=%s", key, code, actions, !toolsErrorFree(baseline), referenceKind)
 }
 
 func quickfixCompare(t *testing.T, w *Workspace, api, key string, before, original *Result, files map[string]string) {

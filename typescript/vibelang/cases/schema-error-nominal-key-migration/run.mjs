@@ -51,13 +51,6 @@ for (const [variant, prefix, suffix, raw] of [
     const declaration = fs.readFileSync(path.join(work, "out/main.d.ts"), "utf8")
     const originalExit = JSON.parse(command("run-before", process.execPath, ["--input-type=module", "-e", runScript]))
     assert.deepEqual(originalExit, { tag: "Failure", reasons: [{ tag: "Die", name: "TypeError" }] })
-    command("fix", compiler, [...args, ...flags])
-    const fixed = fs.readFileSync(source, "utf8")
-    assert.ok(fixed.includes("class E extends"), "missing explicit-class repair")
-    assert.equal(fs.readFileSync(path.join(work, "out/main.d.ts"), "utf8"), declaration, "declaration changed")
-    assert.deepEqual(JSON.parse(command("run-after", process.execPath, ["--input-type=module", "-e", runScript])), originalExit, "Exit changed")
-    command("fix-again", compiler, [...args, ...flags])
-    assert.equal(fs.readFileSync(source, "utf8"), fixed, "second repair changed source")
   }
 }
 console.log("nominal schema-error key migrations preserve Exits and declarations")

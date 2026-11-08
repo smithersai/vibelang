@@ -4,7 +4,6 @@ import (
 	"fmt"
 	stdmaps "maps"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -207,43 +206,6 @@ func FuzzForeignThrowsNeverFix(f *testing.F) {
 	})
 }
 
-func TestForeignThrowsNeverCLITwinPrefersNarrowingBridge(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cases := filepath.Join(root, "typescript/vibelang/cases")
-	dir := copyCompilerFixture(t, filepath.Join(cases, "ek0403-throws-never.fail"), root)
-	result := fixCase(t, dir)
-	if result.Err != nil {
-		t.Fatal(result.Err)
-	}
-	if len(result.Refused) != 0 {
-		t.Fatalf("refused: %+v", result.Refused)
-	}
-	if len(result.Files) != 1 {
-		t.Fatalf("want only the caller changed: %v", result.Order)
-	}
-	for name, fixed := range result.Files {
-		if filepath.Base(name.AsString()) != "main.vibe" || fixed.Counts[EK0403.Code] != 1 {
-			t.Fatalf("unexpected fix: %s %+v", name, fixed)
-		}
-		want, err := os.ReadFile(filepath.Join(cases, "ek0403-throws-never-fixed-output/main.vibe"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if fixed.Text != string(want) {
-			t.Fatalf("fixed helper:\n%s\nwant:\n%s", fixed.Text, want)
-		}
-		if err := os.WriteFile(name.AsString(), []byte(fixed.Text), 0600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if again := fixCase(t, dir); again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
-		t.Fatalf("second fix differs: %+v", again)
-	}
-}
-
 func TestForeignThrowsNeverAlchemySources(t *testing.T) {
 	helper, err := os.ReadFile("testdata/ek0403-alchemy.ts")
 	if err != nil {
@@ -259,26 +221,5 @@ func TestForeignThrowsNeverAlchemySources(t *testing.T) {
 			files[neverFixRoot+"main.vibe"] = "import { " + name + " } from \"./helper.js\"\nexport effect function main(news: object) { if (!" + call + ") return; return true }"
 			neverFixTwin(t, files, false)
 		})
-	}
-}
-
-func TestForeignThrowsNeverCLIPrefersBridge(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/ek0403-throws-never.fail"), root)
-	source := "import { Effect } from \"effect\"\nimport { isResolved } from \"./helpers.ts\"\nexport effect function read(news: string | undefined): string!! { if (!isResolved(news)) return \"absent\"; return \"present\" }"
-	if err := os.WriteFile(filepath.Join(dir, "main.vibe"), []byte(source), 0600); err != nil {
-		t.Fatal(err)
-	}
-	result := fixCase(t, dir)
-	if result.Err != nil || len(result.Refused) != 0 || len(result.Files) != 1 {
-		t.Fatalf("fix: %v; refused: %v; files: %v", result.Err, result.Refused, result.Order)
-	}
-	for name, fixed := range result.Files {
-		if filepath.Base(name.AsString()) != "main.vibe" || !strings.Contains(fixed.Text, "catch: (e) => e") {
-			t.Fatalf("default must be the bridge, even for a proven predicate: %s\n%s", name, fixed.Text)
-		}
 	}
 }

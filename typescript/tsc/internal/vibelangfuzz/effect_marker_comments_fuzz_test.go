@@ -26,7 +26,7 @@ func effectMarkerCommentQuotes(t testing.TB) {
 		{"001-functions.md", "an ordinary async callable or native generator keeps its own \x60await\x60 or \x60yield\x60 rules"},
 		{"001-functions.md", "\x60effect\x60 goes exactly where TypeScript allows \x60async\x60, and nowhere else (VIP-1)"},
 		{"002-running.md", "\x60try\x60 outside effect code; the same rule applies to \x60try.all\x60, \x60try.race\x60, \x60try.any\x60 or \x60try.allSettled\x60 | \x60EK0501\x60"},
-		{"007-tooling.md", "Quick fixes and codemods use the formatter to preserve the parse under Appendix A."},
+		{"007-tooling.md", "Quick fixes use the formatter to preserve the parse under Appendix A."},
 		{"007-tooling.md", "preserves evaluation order, coldness, types, comments, and declaration output"},
 	} {
 		if !strings.Contains(SpecText(rule.chapter), rule.quote) {

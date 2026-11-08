@@ -1,1 +1,0 @@
-malformed handler fix preserves binding and removes invalid try head

@@ -2,21 +2,12 @@ package vibelang
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
 	"strings"
-	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/effectglobals"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 // adviceTypingPending names the advice examples whose repair is in the merge
@@ -120,109 +111,4 @@ func isECMAScriptGlobalName(name string) bool {
 		return true
 	}
 	return false
-}
-
-// Chapter 005: "Platform access is only through injected Effect services",
-// and "There is no `Path.join(…)` shorthand for a service member; write
-// `(try Path.Path).join(…)`". Every example a platform diagnostic gives must
-// therefore typecheck as the Effect TypeScript it stands for, against the
-// pinned declarations. The transitional compiler still accepts the D311
-// shorthand, so the check runs on the TypeScript twin, where a namespace
-// member that does not exist is TS2339 and a value called as a function is
-// TS2349.
-func TestPlatformAdviceExamplesTypecheck(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	type row struct{ where, example, imports string }
-	var rows []row
-	for name, s := range platformServices {
-		// An example that is a declaration (import, export) is not an expression to run.
-		if s.example != "" && !strings.HasPrefix(s.example, "import ") && !strings.HasPrefix(s.example, "export ") {
-			rows = append(rows, row{"platformServices[" + name + "]", s.example, s.imports})
-		}
-	}
-	for api, entry := range platformAPIs {
-		if s := platformServices[entry.service]; s != nil && entry.example != "" {
-			rows = append(rows, row{"platformAPIs[" + api + "]", entry.example, s.imports})
-		}
-	}
-	for read, entry := range clockReads {
-		// A clock read's use leads with the replacement expression; prose follows ": " or ", which".
-		example := entry.use
-		for _, stop := range []string{": ", ", which"} {
-			if i := strings.Index(example, stop); i >= 0 {
-				example = example[:i]
-			}
-		}
-		imports := ""
-		if s := platformServices[entry.service]; s != nil {
-			imports = s.imports
-		}
-		rows = append(rows, row{"clockReads[" + read + "]", example, imports})
-	}
-	// Check the displayed introduction examples too. Some intentionally differ
-	// from diagnostic shorthand (bytes, inherited stdio and elapsed clocks);
-	// exact table comparisons alone cannot prove their APIs still exist.
-	docRows, problems := platformIntroductionRows(platformIntroductionPage(t))
-	for _, problem := range problems {
-		t.Error(problem)
-	}
-	for _, doc := range docRows {
-		example, _, ok := platformDocCode(doc.effect)
-		if !ok {
-			t.Errorf("%s: replacement is not inline code", doc.call)
-			continue
-		}
-		rows = append(rows, row{"platform introduction " + doc.call, example, ""})
-	}
-	sort.Slice(rows, func(i, j int) bool { return rows[i].where < rows[j].where })
-	fixture := t.TempDir()
-	for name, text := range map[string]string{
-		"package.json":  `{"name":"advice","type":"module","dependencies":{"@effect/platform-browser":"*"}}`,
-		"tsconfig.json": `{"compilerOptions":{"target":"ES2022","lib":["ESNext","DOM"],"module":"NodeNext","moduleResolution":"NodeNext","strict":true,"types":[],"skipLibCheck":true,"noEmit":true},"include":["*.ts"]}`,
-	} {
-		if err := os.WriteFile(filepath.Join(fixture, name), []byte(text), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	dir := copyCompilerFixture(t, fixture, root)
-	for i, r := range rows {
-		source, err := adviceCounterpart(r.example, r.imports)
-		if err != nil {
-			t.Errorf("%s: %v", r.where, err)
-			continue
-		}
-		if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("advice%d.ts", i)), []byte(source), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	fs := bundled.WrapFS(osvfs.FS())
-	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
-	if len(errors) != 0 {
-		t.Fatalf("config: %v", errors)
-	}
-	program := fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, map[tspath.RootedFilePath]string{})
-	failed := map[int][]string{}
-	for _, d := range commandLineDiagnostics(t, nil, program) {
-		if d.Category() != diagnostics.CategoryError || d.File() == nil {
-			continue
-		}
-		var i int
-		if _, err := fmt.Sscanf(filepath.Base(d.File().FileName().AsString()), "advice%d.ts", &i); err != nil {
-			t.Errorf("outside the examples: %s", d.String())
-			continue
-		}
-		failed[i] = append(failed[i], d.String())
-	}
-	for i, r := range rows {
-		reason, pending := adviceTypingPending[r.where]
-		switch {
-		case len(failed[i]) != 0 && !pending:
-			t.Errorf("%s: %s does not typecheck as Effect TypeScript:\n  %s", r.where, r.example, strings.Join(failed[i], "\n  "))
-		case len(failed[i]) == 0 && pending:
-			t.Errorf("%s typechecks now; drop it from adviceTypingPending (%s)", r.where, reason)
-		}
-	}
 }

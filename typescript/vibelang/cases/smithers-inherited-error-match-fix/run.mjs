@@ -40,16 +40,6 @@ for(const form of ["error","schema error"]) {
   const baseline=await probe("before")
   assert.deepEqual(baseline,["own","foreign","own","foreign"])
   const declaration=fs.readFileSync(path.join(dir,"before/main.d.ts"),"utf8")
-  config.compilerOptions.outDir="after"
-  fs.writeFileSync(path.join(dir,"tsconfig.json"),JSON.stringify(config))
-  const fixed=run(compiler,["-p",dir,"--pretty","false","--fix",...flags],dir)
-  assert.equal(fixed.status,0,fixed.text)
-  assert.deepEqual(await probe("after"),baseline)
-  assert.equal(fs.readFileSync(path.join(dir,"after/main.d.ts"),"utf8"),declaration)
-  const bytes=fs.readFileSync(path.join(dir,"main.vibe"),"utf8")
-  assert.match(bytes,/import \{ \$schemaErrorMatcher/)
-  assert.equal(run(compiler,["-p",dir,"--pretty","false","--fix",...flags],dir).status,0)
-  assert.equal(fs.readFileSync(path.join(dir,"main.vibe"),"utf8"),bytes)
   if(form==="error" && flags.length===0) {
    const twin='import { Data } from "effect"; import { $errorSubclass, $schemaErrorMatcher } from "vibelang-runtime";\n'+base+'\n'+
     'class Child extends $errorSubclass(Base,"Child") { declare readonly _tag:"Child"; static {$schemaErrorMatcher(this,"Child",true)} }\n'+

@@ -140,23 +140,9 @@ export function nativeContract(mode) {
     put("control.ts",client);const control=ts.createProgram([join(dir,"control.ts")],{noEmit:true,strict:true,types:[],module:ts.ModuleKind.NodeNext,target:ts.ScriptTarget.ES2022})
     assert.deepEqual(ts.getPreEmitDiagnostics(control).map(d=>d.code),[])
     })
-  } else if (mode === "build-fix") { fixture(({dir,put,invoke,options})=>{
-    put("tsconfig.json",{files:[],references:[{path:"./a"},{path:"./b"}]})
-    for(const project of ["a","b"]){
-      put(project+"/src/main.vibe",'import type { Effect } from "effect"; export type Run = Effect.Effect<number>;')
-      put(project+"/tsconfig.json",{compilerOptions:{...options,composite:true,declaration:true,rootDir:"src",outDir:"build"},include:["src"],vibe:{effectGlobals:false,effectModules:false},...(project==="b"?{references:[{path:"../a"}]}:{})})
-    }
-    const r=invoke("--fix","-b","tsconfig.json","--pretty","false");assert.equal(r.status,0,r.text)
-    for(const project of ["a","b"]) assert.doesNotMatch(readFileSync(join(dir,project,"src/main.vibe"),"utf8"),/Effect\.Effect/,"both projects fix their own files")
-    const before=["a","b"].map(p=>readFileSync(join(dir,p,"src/main.vibe"),"utf8"))
-    const again=invoke("--fix","-b","tsconfig.json","--pretty","false");assert.equal(again.status,0,again.text)
-    assert.deepEqual(["a","b"].map(p=>readFileSync(join(dir,p,"src/main.vibe"),"utf8")),before)
-    })
   } else if (mode === "only-option") fixture(({put,invoke,config,options})=>{
     Object.assign(options,{noEmit:true});put("main.vibe","export const value = 1;");config({files:["main.vibe"]})
     // VIP-34, amended (fab37b46453e): --fix --only limits repairs to the listed modules; --only requires --fix.
-    const r=invoke("--fix","--only","main.vibe","-p",".","--pretty","false")
-    assert.equal(r.status,0,r.text)
     const bare=invoke("--only","main.vibe","-p",".","--pretty","false")
     assert.notEqual(bare.status,0);assert.match(bare.text,/TS5023.*only/)
   })

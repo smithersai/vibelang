@@ -31,20 +31,6 @@ for (const scope of [["--fix"], ["--fix", "--fix-migration-only"]]) {
     // Omitting the whole annotation infers the contract, requirements included.
     assert.match(read("out/main.d.ts"), /function omitted\(\): Effect\.Effect<number, never, Users>;/)
 
-    const fixed = invoke(...scope, "-p", ".", "--pretty", "false")
-    assert.equal(fixed.status, 0, fixed.text)
-    const after = read("main.vibe")
-    assert.match(after, /function written\(\): number!never!Users \{/)
-    assert.match(after, /function omitted\(\) \{/)
-    assert.match(after, /function empty\(\): number!never! \{/)
-    assert.equal(after.replace("number!never!Users", "number!never"), source)
-    assert.deepEqual(diagnostics(fixed.text).filter(d => d.startsWith("error") || d.endsWith("EK4853")), [], fixed.text)
-    const dts = read("out/main.d.ts")
-    assert.match(dts, /function written\(\): Effect\.Effect<number, never, Users>;/)
-    assert.match(dts, /function omitted\(\): Effect\.Effect<number, never, Users>;/)
-    const result = run(process.execPath, ["observe.mjs"])
-    assert.equal(result.status, 0, result.text)
-    assert.equal(result.stdout.trim(), "83")
   })
 }
 console.log("EK4853 warns and its repair writes the inferred requirements")

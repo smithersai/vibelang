@@ -23,14 +23,6 @@ try {
     assert.ifError(r.error)
     assert.equal(r.status, 0, r.stdout + r.stderr)
   }
-  compile(["--fix"])
-  const fixed = readFileSync(join(dir, "main.vibe"), "utf8")
-  assert.notEqual(fixed, legacy, "applied a preserving rewrite")
-  assert.equal(readFileSync(join(dir, "out/main.d.ts"), "utf8"), readFileSync(new URL("./out/main.d.ts", import.meta.url), "utf8"), "preserved declaration types")
-  const repaired = await import(pathToFileURL(join(dir, "out/main.js")))
-  assert.deepEqual(await Effect.runPromise(repaired.collect()), expected)
-  compile(["--fix"])
-  assert.equal(readFileSync(join(dir, "main.vibe"), "utf8"), fixed)
   console.log("preserved undefined and item order")
 } finally {
   rmSync(dir, { recursive: true, force: true })

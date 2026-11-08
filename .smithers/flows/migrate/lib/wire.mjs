@@ -970,7 +970,7 @@ export function aliasSourceNameOptions(text, ts) {
  * Removes a retired VibeLang setting from a tsconfig (JSON with comments):
  * key in its top-level `vibelang` or `vibe` object or in
  * `compilerOptions.vibelang` or `compilerOptions.vibe`, the places
- * `vibelang --fix` removes it from, and the object itself when key was all it
+ * an earlier `vibelang --fix` removed it from, and the object itself when key was all it
  * held. Earlier setups wrote `"vibelang": { "declarationSidecars": true }`,
  * which the compiler now rejects (TS5023). Comments and the rest of the file
  * are left as they are. ts is TypeScript's compiler API.

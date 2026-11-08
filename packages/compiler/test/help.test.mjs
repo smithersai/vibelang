@@ -18,7 +18,6 @@ function checkHelp(args) {
   assert.equal(result.stderr, "")
   const sections = result.stdout.split(/\n\s*\n/)
   for (const [flag, description] of [
-    ["fix", /Apply safe quick fixes before compiling, or to each project in --build order; incompatible with --watch\./],
     ["lsp", /Start the language server/],
     ["stdio", /Use standard input and output/],
     ["estree", /Parse.*stdin.*ESTree JSON/],
@@ -41,10 +40,10 @@ for (const args of [["--help"], ["--help", "--all"]]) {
   test(`vibelang ${args.join(" ")} describes VibeLang's flags and configuration`, { skip }, () => checkHelp(args))
 }
 
-test("help aliases and option order describe project repair boundaries", { skip }, async () => {
+test("help aliases and option order describe supported options", { skip }, async () => {
   await checkProperty(fc, {
-    name: "help-repair-boundaries",
-    rule: "docs/design/src/007-tooling.md: With `-b`, each project fixes its own files in build order.",
+    name: "help-supported-options",
+    rule: "docs/design/src/007-tooling.md: VibeLang does not ship its own automatic fixes before 1.0.",
     command: "node --test packages/compiler/test/help.test.mjs",
     arbitrary: fc.record({
       help: fc.constantFrom("--help", "-h"),

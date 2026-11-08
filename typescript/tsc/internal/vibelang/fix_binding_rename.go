@@ -3,12 +3,10 @@ package vibelang
 import (
 	"context"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
@@ -32,9 +30,6 @@ import (
 // keeps its key: it becomes { id: let id2 }. The new name is the name with the
 // smallest number that no identifier of the file uses.
 
-// isBindingRenameLabel names historical rewrite-kind report records.
-const isBindingRenameLabel = "is-binding renames"
-
 func init() {
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{ErrorCodes: []int32{2451, 2300}, GetCodeActions: bindingRenameActions})
 	checker.RegisterBindDiagnosticsFilterHook(explainBindingRename)
@@ -43,7 +38,7 @@ func init() {
 // bindingRenameNote is the line under TypeScript's redeclaration report at an
 // is binding: the report points at the quick fix (chapter 004, decided detail
 // 245). {0} is the name.
-const bindingRenameNote = "Two is patterns bind {0} in one block: the quick fix renames the later binding and its uses, and vibelang --fix applies it; or use distinct names or separate blocks."
+const bindingRenameNote = "Two is patterns bind {0} in one block: the quick fix renames the later binding and its uses; or use distinct names or separate blocks."
 
 // explainBindingRename adds bindingRenameNote under each TS2451 or TS2300 at
 // a later is binding's name or at the declaration it repeats. The binder's
@@ -362,27 +357,4 @@ func bindingRenameActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.Co
 		return []*ls.CodeAction{{Description: r.description(), Changes: changes}}, nil
 	}
 	return nil, nil
-}
-
-// bindingRenameMigrationFixes proposes each later binding's rename; one whose
-// edits overlap a rename taken waits for a round that rechecks the edited
-// source.
-func bindingRenameMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
-	p := proposal{file: file}
-	if !file.IsVibeLang() {
-		return p
-	}
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	var taken []sourceEdit
-	for _, r := range bindingRenames(c, file) {
-		line, _ := scannerLineOf(file, nodeStart(file, r.name))
-		key := "isBindingRename:" + r.name.Text() + ":" + strconv.Itoa(line+1)
-		if refused[key] || slices.ContainsFunc(r.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
-			continue
-		}
-		p.fixes = append(p.fixes, fileFix{code: r.code, edits: r.edits, key: key, native: true})
-		taken = append(taken, r.edits...)
-	}
-	return p
 }

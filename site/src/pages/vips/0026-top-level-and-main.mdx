@@ -26,7 +26,7 @@ Every source `.vibe` compilation unit is an external module before binding and c
 
 ## Amendment: legacy entry markers
 
-The retired side-effect imports `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser` report `EK2601`, naming `vibelang --fix`. The [entry migration](https://github.com/smithersai/vibelang/blob/main/docs/design/src/007-tooling.md#legacy-entry-dispatch-migration) rewrites the startup to an explicit runner; a rewrite that can't preserve types, behavior and declaration output refuses at that site. A refused marker remains an error; no implicit startup is retained and no ordinary `main` binding is rejected.
+The retired side-effect imports `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser` report `EK2601`. The [entry migration](https://github.com/smithersai/vibelang/blob/main/docs/design/src/007-tooling.md#legacy-entry-dispatch-migration) rewrites the startup to an explicit runner; a rewrite that can't preserve types, behavior and declaration output refuses at that site. A refused marker remains an error; no implicit startup is retained and no ordinary `main` binding is rejected.
 
 ## What was not adopted
 

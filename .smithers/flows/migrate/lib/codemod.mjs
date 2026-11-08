@@ -1,23 +1,15 @@
-import { captureTrackedSourceSnippets, refreshSourceSnippets } from "./source-snippets.mjs"
 // The codemod: keep the batch's writable members writable, rename its
-// modules to .vibe, point their packages' exports at them, rewrite the imports
-// that name them by VibeLang's rules, then run `vibelang --fix` until it finds
-// nothing more to fix, recording each rewrite it applied and each it refused.
+// modules to .vibe, point their packages' exports at them, and rewrite the
+// imports that name them by VibeLang's rules. The repair agent does the rest.
 import { spawnSync } from "node:child_process"
-import { appendFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { join, posix, relative, resolve, sep } from "node:path"
-import { tmpdir } from "node:os"
+import { existsSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs"
+import { join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
-import { privateResolverExports } from "./import-meta-platform.mjs"
 import { sidecarConfigIn, sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
 import { applyEdits, editableImports, resolveAliased, resolveRelative, splitSpecifier } from "./imports.mjs"
-import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { isFixtureFile, isTestFile } from "./inventory.mjs"
-import { isDeclarationFile, quote, run } from "./util.mjs"
-import { fixProgramFiles, withFixFiles } from "./fix-scope.mjs"
-import { effectFnDefaultSites } from "./default-argument-timing.mjs"
-import { fixProgressStream } from "./fix-progress.mjs"
+import { isDeclarationFile, run } from "./util.mjs"
 import { Minimatch } from "./vendor/minimatch.mjs"
 
 /**
@@ -764,281 +756,15 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
   return edits
 }
 
-const fixLine = /^vibelang --fix: (.+?): (\d+) (?:fix|fixes) \((.*)\)$/
-const refusalSiteLine = /^vibelang --fix: refused site: (.+?):(\d+):(\d+)-(\d+):(\d+) \[(\d+),(\d+)\) ([A-Z]+\d+)( new)?: (.*)$/
-const refusalLine = /^vibelang --fix: (.+?):(\d+): ([A-Z]+\d+) not fixed: the fixed program would report (.*)$/
-
-/** Reads one `vibelang --fix` run: the rewrites applied per file, by kind, and the refusals. */
-export function parseFixOutput(output, { cwd, root } = {}) {
-  const relative = (file) => (cwd && root ? posix.relative(root, posix.join(cwd, file)) : file)
-  const files = {}
-  const refused = []
-  let total = 0
-  for (const line of output.split(/\r?\n/)) {
-    const fixed = fixLine.exec(line)
-    if (fixed) {
-      const kinds = {}
-      for (const part of fixed[3].split(", ")) {
-        const m = /^(.+) ×(\d+)$/.exec(part)
-        if (m) kinds[m[1]] = Number(m[2])
-      }
-      files[relative(fixed[1])] = kinds
-      total += Number(fixed[2])
-      continue
-    }
-    const site = refusalSiteLine.exec(line)
-    if (site) {
-      refused.push({ file: relative(site[1]), line: Number(site[2]), column: Number(site[3]),
-        endLine: Number(site[4]), endColumn: Number(site[5]), start: Number(site[6]), end: Number(site[7]),
-        code: site[8], ...(site[9] ? { newSite: true } : {}), error: site[10] })
-      continue
-    }
-    const refusal = refusalLine.exec(line)
-    if (refusal) refused.push({ file: relative(refusal[1]), line: Number(refusal[2]), code: refusal[3], error: refusal[4] })
-  }
-  return { total, files, refused }
-}
-
-/** Adds one fix run's per-kind counts into a running total, by file. */
-export function mergeFixes(into, files) {
-  for (const [file, kinds] of Object.entries(files)) {
-    into[file] ??= {}
-    for (const [kind, n] of Object.entries(kinds)) into[file][kind] = (into[file][kind] ?? 0) + n
-  }
-  return into
-}
-
-// The compiler's platform repair moves a host read into a new companion beside
-// its module, x.vibe's x.platform.ts, headed by this line. Under --only it may
-// create the companion of a listed module that no file claims yet (chapter 7,
-// Selecting ordinary fix files); the batch owns that file.
+// An earlier toolchain's `vibelang --fix` moved a host read into a new
+// companion beside its module, x.vibe's x.platform.ts, headed by this line.
+// Revert still removes such a companion with its module.
 export const compilerCompanionMarker = "// Generated platform helpers for this VibeLang module.\n"
 
 /** The companion the compiler's platform repair names for module, or null. */
 export const compilerCompanionOf = module => /\.vibe$/.test(module) ? module.replace(/\.vibe$/, ".platform.ts") : null
 
-const claimsCompanion = (root, companion) =>
-  [".ts", ".tsx", ".js", ".d.ts"].some(extension => existsSync(join(root, companion.replace(/\.ts$/, extension))))
-
 /** Whether file, relative to root, is a companion the compiler wrote. */
 export const isCompilerCompanion = (root, file) => {
   try { return readFileSync(join(root, file), "utf8").startsWith(compilerCompanionMarker) } catch { return false }
-}
-
-/**
- * Runs `vibelang -p tsconfig --fix --noEmit --declaration` until a run fixes nothing, at
- * most maxRounds times. Returns every round's report, the merged rewrites by
- * file and kind, the refusals, the diagnostics of the last run, and the
- * companions the compiler created for selected modules. With only, ordinary
- * repairs use --only for the batch's files (relative to root).
- * With privateCompanions, exact exclusions keep proven fresh helpers private;
- * onPrivateCompanion journals the export edits before writePrivateManifest;
- * privateCompanionReceipts replays that owned plan after an interruption.
- * A defensive snapshot still restores nonselected sources if a compiler writes
- * outside its selection, including on interruption. An earlier batch's file,
- * hand repairs included, stays as committed. An empty selection starts no fix.
- */
-export async function fixToFixedPoint(options) {
-  if (options.only?.length === 0) {
-    return { settled: true, rounds: [], byFile: {}, refused: [], restored: [], diagnostics: [], companions: [] }
-  }
-  const companionRoot = resolve(options.root ?? options.cwd ?? ".")
-  const fresh = [...new Set((options.only ?? []).map(compilerCompanionOf).filter(Boolean))]
-    .filter(companion => !claimsCompanion(companionRoot, companion))
-  const fixed = await fixToFixedPointUnscoped(options)
-  const owned = new Set(fresh.filter(companion => isCompilerCompanion(companionRoot, companion)))
-  // The durable plan proves absence before the earlier repair. A marker alone
-  // still cannot adopt a companion that existed before migration.
-  if (options.privateCompanions) for (const receipt of options.privateCompanionReceipts ?? []) {
-    if (!receipt.privateExports || !(options.only ?? []).some(file => compilerCompanionOf(file) === receipt.companion)) continue
-    if (isCompilerCompanion(companionRoot, receipt.companion)) owned.add(receipt.companion)
-  }
-  const companions = [...owned].sort()
-  const companionExports = options.privateCompanions ? await privateCompilerCompanionExports(companionRoot, companions, options) : []
-  return { ...fixed, companions, ...(companionExports.length ? { companionExports } : {}) }
-}
-
-// A fresh-file receipt proves this helper had no original counterpart. Apply
-// the same exact wildcard exclusions as other private generated helpers,
-// without reclassifying an authored module or altering the compiler's code.
-async function privateCompilerCompanionExports(root, companions, { onPrivateCompanion, writePrivateManifest, log }) {
-  const edits = []
-  for (const companion of companions) {
-    if (!isCompilerCompanion(root, companion)) continue
-    const file = companion.replace(/\.platform\.ts$/, ".vibe")
-    const documents = new Map()
-    const privateExports = privateResolverExports(root, file, companion, {
-      exists: path => posix.normalize(path) !== posix.normalize(companion) && existsSync(join(root, path)),
-      read: path => { const text = readFileSync(join(root, path), "utf8"); documents.set(path, text); return text },
-    })
-    if (!privateExports) continue
-    const before = documents.get(privateExports.manifest), pkg = JSON.parse(before)
-    const exportEdits = privateExports.keys.map(key => ({
-      manifest: privateExports.manifest, field: "exports", key, module: file, privateCompanion: companion,
-    }))
-    const record = { file, companion, privateExports, exportEdits }
-    for (const key of privateExports.keys) pkg.exports[key] = null
-    // Persist the plan before its atomic manifest write. An interrupted plan
-    // can be undone even when its key was never installed.
-    if (log) appendFileSync(log + ".scope.log", JSON.stringify({ stage: "private-compiler-companion-plan", ...record }) + "\n")
-    const recorded = onPrivateCompanion?.(record)
-    if (recorded && typeof recorded.then === "function") await recorded
-    const path = join(root, privateExports.manifest)
-    if (readFileSync(path, "utf8") !== before) throw new Error(privateExports.manifest + ": changed during private companion preparation")
-    const after = JSON.stringify(pkg, null, 2) + "\n", mode = statSync(path).mode & 0o777
-    if (writePrivateManifest) {
-      const written = writePrivateManifest(privateExports.manifest, after, mode)
-      if (written && typeof written.then === "function") await written
-    } else writeFileSync(path, after)
-    edits.push(record)
-    if (log) appendFileSync(log + ".scope.log", JSON.stringify({ stage: "private-compiler-companion", ...record }) + "\n")
-  }
-  return edits
-}
-
-async function fixToFixedPointUnscoped(options) {
-  const files = await fixProgramFiles(options)
-  const snippetRoot = resolve(options.root ?? options.cwd ?? ".")
-  const snippetTs = () => loadTypeScript([snippetRoot, resolve(options.compiler ?? ".", "..")])
-  const snippets = await captureTrackedSourceSnippets(snippetRoot, { ts: snippetTs })
-  const directory = options.only ? mkdtempSync(join(tmpdir(), "vibelang-fix-selection-")) : undefined
-  try {
-    const selectionFile = directory && join(directory, "files.txt")
-    if (selectionFile) {
-      const root = resolve(options.root ?? options.cwd ?? ".")
-      // A list file keeps spaces and commas in a source path literal. Resolve
-      // physical identities just as the scope snapshot does for linked roots.
-      writeFileSync(selectionFile, [...new Set(options.only.map(file => realpathSync(resolve(root, file))))].join("\n") + "\n")
-      if (options.log) appendFileSync(`${options.log}.scope.log`, `# fix scope ${JSON.stringify({ stage: "selected", files: options.only.length, selected: options.only })}\n`)
-    }
-    return await withFixFiles(files, () => {
-      const selected = options.only && new Set(options.only.map(file => realpathSync(resolve(snippetRoot, file))))
-      const candidates = files.filter(file => !selected || selected.has(realpathSync(file)))
-      // No parser dependency is needed for a program without legacy wrappers.
-      const sources = candidates.map(file => ({ file, text: readFileSync(file, "utf8") }))
-        .filter(({ text }) => /fn|effect/.test(text))
-      if (sources.length) {
-        const ts = loadTypeScript([snippetRoot, resolve(options.compiler ?? ".", ".."), fileURLToPath(new URL("../../../", import.meta.url)), fileURLToPath(new URL("../../../../docs/tools/", import.meta.url))])
-        const sites = sources.flatMap(({ file, text }) => effectFnDefaultSites(ts, text, relative(snippetRoot, file)))
-        if (sites.length) {
-          if (options.log) appendFileSync(options.log + ".scope.log", JSON.stringify({ stage: "default-argument-timing-refused", sites }) + "\n")
-          throw new Error(sites.map(site => site.file + ":" + site.line + ":" + site.column + ": Effect.fn parameter default must stay inside each program execution; retain the TypeScript module or move the binding inside an effect block before migration").join("\n"))
-        }
-      }
-      return fixToFixedPointInScope({ ...options, selectionFile }, files)
-    }, options.log)
-  } finally {
-    if (directory) rmSync(directory, { recursive: true, force: true })
-    refreshSourceSnippets(snippetRoot, snippets, { ts: snippetTs })
-  }
-}
-
-async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only, timeoutMs, selectionFile, onProgress = event => process.stderr.write("MIGRATE_FIX_PROGRESS " + JSON.stringify(event) + "\n") }, scopeFiles) {
-  const rounds = []
-  const byFile = {}
-  const refused = []
-  const kept = only && new Set(only)
-  const others = new Map()
-  const selected = new Map()
-  const identities = new Map()
-  const identity = path => {
-    const absolute = resolve(path)
-    if (!identities.has(absolute)) {
-      try { identities.set(absolute, realpathSync(absolute)) }
-      catch { identities.set(absolute, absolute) }
-    }
-    return identities.get(absolute)
-  }
-  const sourceRoot = resolve(root ?? cwd ?? ".")
-  if (kept) {
-    for (const file of kept) {
-      const id = identity(resolve(sourceRoot, file))
-      if (!selected.has(id)) selected.set(id, file)
-    }
-    // A compiler can print physical paths while the caller uses a symlinked
-    // checkout. Select by file identity and retain the caller's report names.
-    for (const path of scopeFiles) {
-      const id = identity(path)
-      if (!selected.has(id)) others.set(path, { file: relative(identity(sourceRoot), id).split(sep).join("/"), original: readFileSync(path) })
-    }
-  }
-  // `restored` lists the modules whose committed bytes the rounds put back.
-  const restored = []
-  let last
-  // A compiler older than --only (VibeLang 0.0.11) rejects it with TS5023 and
-  // fixes nothing. The round reruns without it: the snapshot above puts back
-  // every nonselected source after each round, and the report keeps the
-  // selected files only, so the batch still changes only its own files.
-  let onlySupported = true
-  for (let round = 1; round <= maxRounds; round++) {
-    // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
-    let result, pid
-    const audit = log && resolve(`${log}.${round}.audit`)
-    const progressLog = log && `${log}.${round}.progress.jsonl`
-    if (progressLog) writeFileSync(progressLog, "")
-    const invoke = async selection => {
-      const progress = fixProgressStream(event => {
-        const record = { event: "compiler-fix-progress", invocation: round, pid, ...event }
-        if (progressLog) appendFileSync(progressLog, JSON.stringify(record) + "\n")
-        onProgress?.(record)
-      })
-      try {
-        return await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix${selection} --noEmit --declaration --pretty false --singleThreaded`, {
-          cwd, log: log && `${log}.${round}.log`, timeoutMs,
-          ...(audit ? { env: { VIBELANG_FIX_AUDIT_DIR: audit } } : {}),
-          onStderr: (chunk, process) => { pid = process.pid; progress.write(chunk) }
-        })
-      } finally { progress.end() }
-    }
-    try {
-      const selected = selectionFile && onlySupported
-      result = await invoke(selected ? ` --only ${quote("@" + selectionFile)}` : "")
-      if (selected && result.code !== 0 && /TS5023: Unknown compiler option ['"]--only['"]/i.test(result.stdout + result.stderr)) {
-        onlySupported = false
-        if (log) {
-          writeFileSync(`${log}.${round}.only-unsupported.log`, readFileSync(`${log}.${round}.log`))
-          appendFileSync(`${log}.scope.log`, `# fix scope ${JSON.stringify({ stage: "only-unsupported", round, restoring: others.size })}\n`)
-        }
-        result = await invoke("")
-      }
-    } finally {
-      // An interrupted compiler may keep verified writes without printing
-      // per-file statistics. Restore the whole nonselected byte snapshot.
-      for (const [path, { file, original }] of others) {
-        if (existsSync(path) && readFileSync(path).equals(original)) continue
-        writeFileSync(path, original)
-        restored.push(file)
-      }
-    }
-    const parsed = parseFixOutput(result.stdout, { cwd, root })
-    if (kept) {
-      const owned = {}
-      for (const [file, kinds] of Object.entries(parsed.files)) {
-        const name = selected.get(identity(resolve(sourceRoot, file)))
-        if (name !== undefined) mergeFixes(owned, { [name]: kinds })
-      }
-      parsed.files = owned
-      parsed.total = Object.values(owned).reduce((n, kinds) => n + Object.values(kinds).reduce((a, b) => a + b, 0), 0)
-      parsed.refused = parsed.refused.flatMap(r => {
-        const file = selected.get(identity(resolve(sourceRoot, r.file)))
-        return file === undefined ? [] : [{ ...r, file }]
-      })
-    }
-    assertFinished(result, log && `${log}.${round}.log`)
-    rounds.push({ round, code: result.code, fixes: parsed.total, files: parsed.files, refused: parsed.refused, ...(audit ? { audit } : {}) })
-    mergeFixes(byFile, parsed.files)
-    refused.push(...parsed.refused)
-    last = result
-    if (parsed.total === 0) break
-  }
-  const settled = rounds.at(-1).fixes === 0
-  return { settled, rounds, byFile, refused, restored: [...new Set(restored)].sort(), diagnostics: parseDiagnostics(last.stdout + last.stderr, { cwd, root }),
-    ...(selectionFile && !onlySupported ? { onlyUnsupported: true } : {}) }
-}
-
-/** Totals of the rewrites that fired, by kind, over every file. */
-export function rewriteTotals(byFile) {
-  const totals = {}
-  for (const kinds of Object.values(byFile)) for (const [kind, n] of Object.entries(kinds)) totals[kind] = (totals[kind] ?? 0) + n
-  return totals
 }

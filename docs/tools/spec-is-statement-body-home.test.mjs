@@ -7,7 +7,7 @@ import { chapter, read } from "./spec-witness.mjs"
 const bodyRule = "when it is not a Block, cannot be the lexical home"
 const clauses = [
   bodyRule, "report `EK0705`", "TypeScript's `TS1156`",
-  "wrap that statement body in braces",
+  "wraps that statement body in braces",
   "An `if` head belongs to the home that contains the `if` statement",
   "an `else if` head therefore needs braces",
   "an explicit `do` block, match arm, callable body or loop head keeps its own home",
@@ -22,7 +22,7 @@ test("chapter 4, VIP-7, reconciliation and guide require explicit unbraced repai
   checkBodyRule(chapter("004-match"))
   checkBodyRule(read("docs/design/vips/0007-match.md"))
   const table = read("docs/design/vips/tc39-pattern-matching/README.md")
-  assert.match(table, /Lexical `is` in unbraced statement bodies.*`TS1156`.*`EK0705`.*add braces/)
+  assert.match(table, /Lexical `is` in unbraced statement bodies.*`TS1156`.*`EK0705`.*adds? braces/)
   const guide = read("docs/user/src/vibelang-features/116-match-and-is.md")
   assert.match(guide, /unbraced.*`EK0705`.*braces/)
   assert.doesNotMatch(guide, /unbraced[^.]*own block|adding braces never changes/)

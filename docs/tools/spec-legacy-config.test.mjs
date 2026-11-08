@@ -81,7 +81,6 @@ test("VIP, catalog and both user references identify both supported legacy paths
     assert.ok(text.includes(tick + "vibelang.diagnostics" + tick), path)
     assert.ok(text.includes(tick + "compilerOptions.vibelang.diagnostics" + tick), path)
   }
-  assert.match(read("docs/design/vips/0030-config-files.md"), /preserving JSONC comments/)
   assert.match(read("docs/user/src/setup/vibelang-cli.md"), /supported legacy settings keep applying/)
 })
 

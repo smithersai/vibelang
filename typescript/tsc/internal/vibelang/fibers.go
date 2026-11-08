@@ -38,7 +38,7 @@ var (
 	// EK1904: a return in the body of a for concurrent loop.
 	EK1904 = message(1904, errorCategory, "return cannot leave a for concurrent loop.")
 	// EK4607: a select statement, replaced by try.race (D197, VIP-18).
-	EK4607 = message(4607, errorCategory, "select is outside the first release; vibelang --fix refuses an unproved selection rewrite. Choose explicit Effect selection for the intended behavior.")
+	EK4607 = message(4607, errorCategory, "select is outside the first release. Choose explicit Effect selection for the intended behavior.")
 	// EK4609: native await on a Fiber (VIP-5). {0} is the operand.
 	EK4609 = message(4609, warningCategory, "await does not wait for this Fiber; use await runPromise(Fiber.join({0})).")
 	// EK4610: await on a Deferred (D226). {0} is the operand.

@@ -1,1 +1,1 @@
-VIP-38 plugin migration: 38 checks passed
+VIP-38 plugin migration: 10 checks passed

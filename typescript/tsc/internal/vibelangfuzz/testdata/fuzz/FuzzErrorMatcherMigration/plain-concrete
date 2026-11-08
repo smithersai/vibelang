@@ -1,3 +1,0 @@
-go test fuzz v1
-string("plain-concrete")
-byte(7)

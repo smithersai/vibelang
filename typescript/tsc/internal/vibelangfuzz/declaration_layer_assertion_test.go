@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -52,44 +51,6 @@ func layerAssertionSource(key string, mode uint8) string {
 		source = strings.ReplaceAll(source, "\n", "\r\n")
 	}
 	return source
-}
-
-// FuzzLayerAssertionDeclarations checks each program through the shared
-// declaration-identity gate after the .ts to .vibe rename and through the
-// Chapter 7 --fix preservation gate. The original minimum is kept as
-// testdata/fuzz/FuzzDeclarationIdentity/alchemy-layer-assertion-never.
-func FuzzLayerAssertionDeclarations(f *testing.F) {
-	startShortBudget(f)
-	tsc, api := StockTypeScript(f), declarationIdentityAPI(f)
-	w := NewWorkspace(f)
-	f.Add("fail-never", uint8(0))
-	f.Add("typed-assertion", uint8(13))
-	f.Fuzz(func(t *testing.T, key string, mode uint8) {
-		TestLayerAssertionDeclarationsQuoted(t)
-		if !slices.Contains(layerAssertionKeys, key) {
-			if key == "" {
-				key = layerAssertionKeys[0]
-			} else {
-				key = layerAssertionKeys[int(key[0])%len(layerAssertionKeys)]
-			}
-		}
-		source := layerAssertionSource(key, mode&15)
-		t.Run("rename", func(t *testing.T) {
-			checkLayerAssertionIdentity(t, w, tsc, api, Archive(map[string]string{
-				"main.ts":       source,
-				"package.json":  "{\"type\":\"module\"}\n",
-				"tsconfig.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"strict\":true,\"skipLibCheck\":true,\"declaration\":true,\"outDir\":\"out\",\"singleThreaded\":true},\"files\":[\"main.ts\"]}\n",
-			}))
-		})
-		t.Run("fix", func(t *testing.T) {
-			t.Cleanup(func() {
-				if t.Skipped() {
-					t.Error("a layer assertion module must reach the --fix declaration comparison")
-				}
-			})
-			checkMigrationDeclarationFix(t, w, api, Archive(map[string]string{"main.vibe": source}))
-		})
-	})
 }
 
 // The keyed Alchemy minimum must pass the rename gate, not be admitted away.

@@ -1,2 +1,0 @@
-go test fuzz v1
-string("key:error-member-fix\n\x01\xfe\x03\x01")

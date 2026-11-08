@@ -1,3 +1,0 @@
-go test fuzz v1
-string("yield-operand")
-byte('\x01')

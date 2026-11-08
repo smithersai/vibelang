@@ -8,7 +8,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
@@ -386,7 +385,7 @@ func fiberExportedDeclaration(file *ast.SourceFile, id *ast.Node) (exported bool
 			return false, 0, sourceEdit{}, ""
 		}
 		if ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport) && len(parent.Parent.AsVariableDeclarationList().Declarations.Nodes) != 1 {
-			return false, 0, sourceEdit{}, "an exported declaration list holds " + id.Text() + " beside other names: split the list, then run --fix again"
+			return false, 0, sourceEdit{}, "an exported declaration list holds " + id.Text() + " beside other names: split the list, then apply the quick fix again"
 		}
 	case ast.IsBindingElement(parent) && parent.Name() == id:
 		holder := parent
@@ -442,32 +441,7 @@ func generatorFiberNameRefusal(c *checker.Checker, call *ast.Node) string {
 	if len(names) == 0 {
 		return ""
 	}
-	return names[0].Text() + " is reserved in effect code, and this generator reaches a binding of that name; vibelang --fix renames it first"
-}
-
-// fiberNameMigrationFixes proposes each rename. One whose edits overlap a
-// rename taken waits for a round that rechecks the edited source.
-func fiberNameMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
-	p := proposal{file: file}
-	if !file.IsVibeLang() {
-		return p
-	}
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	var taken []sourceEdit
-	for _, r := range fiberNameRenames(c, file) {
-		line, _ := scannerLineOf(file, nodeStart(file, r.name))
-		key := "fiberNameRename:" + r.name.Text() + ":" + strconv.Itoa(line+1)
-		if r.reference {
-			key = "fiberNameReference:" + strconv.Itoa(nodeStart(file, r.name))
-		}
-		if len(r.edits) == 0 || refused[key] || slices.ContainsFunc(r.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
-			continue
-		}
-		p.fixes = append(p.fixes, fileFix{code: reservedFiberName.Code, edits: r.edits, key: key, scattered: true})
-		taken = append(taken, r.edits...)
-	}
-	return p
+	return names[0].Text() + " is reserved in effect code, and this generator reaches a binding of that name; rename that binding first"
 }
 
 // fiberNameActions is EK1702's quick fix.

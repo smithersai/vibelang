@@ -101,13 +101,13 @@ Comments and JSDoc stay associated with their code, including compiler, linter a
 
 A standalone `;` with JSDoc keeps its semicolon, so `@internal`, `@throws` and other tags retain their original target.
 
-Under the same compiler/options, formatting preserves parsed program meaning, evaluation order, receivers, ordinary runtime values/effects and public types/declarations/throws contracts. Diagnostic codes, categories and occurrences stay the same; locations and quoted source follow the formatted file. Semantic migrations and diagnostic repairs belong to `vibelang --fix` or editor actions.
+Under the same compiler/options, formatting preserves parsed program meaning, evaluation order, receivers, ordinary runtime values/effects and public types/declarations/throws contracts. Diagnostic codes, categories and occurrences stay the same; locations and quoted source follow the formatted file. Semantic migrations and diagnostic repairs belong to editor actions.
 
 Normal quote, grouping, comma and layout styling may change emitted JavaScript bytes. `Function.prototype.toString`, generated source text, offsets and stack presentation may reflect the formatted text. Ordinary strings/data, tagged-template raw/cooked values, regex meaning, function names/lengths, property names and directive semantics must stay the same: an escaped string must not become an actual `use strict` directive. Compiler-generated source-map and declaration-map provenance, including `sourcesContent`, is refreshed for the formatted file.
 
 A recovered module declaration with no name, such as `module { export const value = 1 }`, formats its TypeScript body and keeps the missing-name diagnostic `EK4003`. Formatting never supplies the missing name. This recovery applies at the top level; a nested module declaration or an unparsable module body is still reported without formatting.
 
-Formatting keeps diagnostics, including `EK0101` for `async f()` and `effect f()` declarations without `function`. Run `vibelang --fix` to insert the missing keyword.
+Formatting keeps diagnostics, including `EK0101` for `async f()` and `effect f()` declarations without `function`. Write the missing keyword: `async function f()` or `effect function f()`.
 
 Commas between fields in `error` and `schema error` declarations remain commas after formatting, including beside methods and getters. Commas in tuple types and expressions follow the TypeScript formatter.
 

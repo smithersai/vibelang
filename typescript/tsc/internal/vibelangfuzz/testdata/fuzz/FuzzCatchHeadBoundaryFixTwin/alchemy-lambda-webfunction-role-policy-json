@@ -1,4 +1,0 @@
-go test fuzz v1
-string("any-head")
-uint8(1)
-uint8(3)

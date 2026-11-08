@@ -6,7 +6,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -127,10 +126,6 @@ func TestComputedDirectFormAdvisoriesPreserveCalls(t *testing.T) {
 					}
 				}
 			}
-			fixed := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			if fixed.Err != nil || len(fixed.Files) != 0 {
-				t.Fatalf("computed call rewritten: %+v", fixed)
-			}
 		})
 	}
 }
@@ -162,10 +157,6 @@ func TestComputedCatchPipelinePreservesCalls(t *testing.T) {
 				if d.Category() == diagnostics.CategoryError || d.Source() == diagnosticSource && d.Code() == 4835 {
 					t.Fatalf("pipeline control: %s", d.String())
 				}
-			}
-			fixed := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			if fixed.Err != nil || len(fixed.Files) != 0 {
-				t.Fatalf("computed pipeline rewritten: %+v", fixed)
 			}
 		})
 	}

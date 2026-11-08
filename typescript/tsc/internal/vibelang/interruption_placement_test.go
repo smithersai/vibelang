@@ -29,28 +29,6 @@ func TestInterruptionPlacement(t *testing.T) {
 	}
 }
 
-func TestInterruptionPlacementFix(t *testing.T) {
-	for _, test := range []struct{ source, want string }{
-		{"function f() { uninterruptible { return 1 } }", "function f() {  { return 1 } }"},
-		{"async function f() { interruptible /* comment */ { return 1 } }", "async function f() {  /* comment */ { return 1 } }"},
-		{"const f = () => { uninterruptible { restore { return 1 } } }", "const f = () => {  {  { return 1 } } }"},
-		{"effect function f() { uninterruptible { const g = () => { interruptible { return 1 } }; return 2 } }", "effect function f() { uninterruptible { const g = () => {  { return 1 } }; return 2 } }"},
-	} {
-		t.Run(test.source, func(t *testing.T) {
-			got, result := fixedPipe(t, test.source)
-			if got != test.want {
-				t.Fatalf("--fix wrote %q; want %q; refused %+v", got, test.want, result.Refused)
-			}
-			if errors := errorsOf(t, got); len(errors) != 0 {
-				t.Fatalf("fixed source: %v", errors)
-			}
-			if again, _ := fixedPipe(t, got); again != got {
-				t.Fatalf("not idempotent: %q", again)
-			}
-		})
-	}
-}
-
 // VIP-22: the parser stores concurrent head initialization in a generated
 // arrow parameter. Its source runs in the item Effect; restore retains EK2202.
 func TestInterruptionPlacementConcurrentHead(t *testing.T) {

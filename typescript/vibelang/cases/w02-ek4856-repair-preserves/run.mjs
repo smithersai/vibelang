@@ -54,7 +54,7 @@ const sources = {
   ].join("\n")
 }
 try {
-  for (const flags of [["--fix", "--fix-migration-only"], ["--fix"]]) {
+  {
     const root = project("w02-ek4856-", sources)
     const before = tsc(root, [])
     assert.equal(before.status, 0, before.output)
@@ -66,22 +66,6 @@ try {
     assert.match(declarations.main, /slots: Effect\.Effect<number, never, never>;/)
     assert.match(declarations.shadow, /union: Effect\.Effect<number \| string>;/)
 
-    const fixed = tsc(root, flags)
-    assert.equal(fixed.status, 0, fixed.output)
-    if (flags.length === 1) assert.match(fixed.output, /refused site: shadow\.vibe:4:21[^\n]*EK4856[^\n]*The Effect namespace is shadowed here/, fixed.output)
-    assert.equal(read(root, "shadow.vibe"), sources["shadow.vibe"], "the shadowed site is refused, not rewritten")
-    const main = read(root, "main.vibe")
-    assert.match(main, /^export let paren: \(Effect\.Effect<number>\)\[\]$/m, "existing parentheses stay\n" + main)
-    assert.match(main, /^export let slots: number!never!never$/m, "written default slots stay\n" + main)
-    assert.match(main, /^export let plain: string!Error$/m, main)
-    if (flags.length === 2) assert.match(main, /^export let union: Effect\.Effect<number \| string>$/m, "a union would need new parentheses, so the repair qualifies it\n" + main)
-
-    const after = tsc(root, [])
-    assert.equal(after.status, 0, after.output)
-    assert.equal((after.output.match(/warning EK4856:/g) || []).length, 1, "only the refused site still warns\n" + after.output)
-    assert.match(after.output, /shadow\.vibe\(4,21\): warning EK4856:[^\n]*\n\s*The Effect namespace is shadowed here/, after.output)
-    assert.equal(read(root, "out/main.d.ts"), declarations.main, flags.join(" ") + ": declarations stay unchanged")
-    assert.equal(read(root, "out/shadow.d.ts"), declarations.shadow)
   }
   console.log("legacy alias repair preserves")
 } finally {

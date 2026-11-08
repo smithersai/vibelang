@@ -67,7 +67,7 @@ test("all flow phases reject a replaced compiler before running any target opera
   for (const phase of [codemod, compile, verify, record]) {
     await assert.rejects(phase({ run: f.p.run, batch: "01", force: "cannot waive provenance" }), /compiler artifact changed/, phase.name)
   }
-  for (const phase of ["rename", "fix", "check", "settle"]) {
+  for (const phase of ["rename", "check", "settle"]) {
     await assert.rejects(onePassStep(phase, { run: f.p.run }), /compiler artifact changed/, phase)
   }
 })
@@ -81,7 +81,7 @@ test("a pinned staged conversion cannot resume with an untracked installed compi
   for (const phase of [codemod, compile, verify, record]) {
     await assert.rejects(phase({ run: f.p.run, batch: "01", force: "cannot waive provenance" }), /compiler artifact changed/, phase.name)
   }
-  for (const phase of ["rename", "fix", "check", "settle"]) {
+  for (const phase of ["rename", "check", "settle"]) {
     await assert.rejects(onePassStep(phase, { run: f.p.run }), /compiler artifact changed/, phase)
   }
 })

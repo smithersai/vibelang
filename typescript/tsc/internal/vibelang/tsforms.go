@@ -131,7 +131,7 @@ func checkFormRules(c *checker.Checker, file *ast.SourceFile, messages []*Messag
 			}
 			d := reportAt(c, file, tsFormSpan(file, at), m, args...)
 			if rewrite.fixable() {
-				note(d, "Its quick fix writes {0}; vibelang --fix applies every such fix in the project.", rewrite.description)
+				note(d, "Its quick fix writes {0}.", rewrite.description)
 			}
 			if rewrite != nil && rewrite.why != "" {
 				note(d, "{0}", rewrite.why)
@@ -373,17 +373,6 @@ func identifierIndexOf(c *checker.Checker, file *ast.SourceFile) identifierIndex
 	index := indexIdentifiers(file)
 	indexes[file] = index
 	return index
-}
-
-// unusedImportEdits returns the edits that remove each import binding of file
-// that has uses in replaced and none elsewhere, or, when used is not nil, each
-// binding that used counts and file no longer uses at all. A declaration that
-// loses every binding keeps its module initialization unless it was type-only
-// or names Effect itself, whose modules the prelude already supplies.
-func unusedImportEdits(file *ast.SourceFile, replaced []core.TextRange, used map[string]int, written ...string) []sourceEdit {
-	// The final cleanup uses this only for Effect's prelude modules.
-	edits, _ := importRemovalEdits(nil, file, replaced, used, written...)
-	return edits
 }
 
 // importRemovalEdits preserves whether each dependency was initialized before

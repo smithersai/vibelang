@@ -1,1 +1,0 @@
-legacy receiver calls become data-first module calls in both fix scopes

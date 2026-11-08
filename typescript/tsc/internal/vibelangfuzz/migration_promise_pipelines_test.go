@@ -1,8 +1,6 @@
 package vibelangfuzz
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -80,39 +78,6 @@ func (m promisePipelineModel) source() string {
 	return source
 }
 
-func checkPromisePipeline(t *testing.T, w *Workspace, api, source string) {
-	t.Helper()
-	var child *testing.T
-	t.Run("declaration-preservation", func(t *testing.T) {
-		child = t
-		checkMigrationDeclarationFix(t, w, api, Archive(map[string]string{"main.vibe": source}))
-	})
-	// Unlike arbitrary archive mutations, all model inputs are valid sources.
-	// A missing declaration or rejected original cannot silently shrink coverage.
-	if child.Skipped() {
-		t.Fatal("valid Promise pipeline was not admitted")
-	}
-}
-
-func TestMigrationPromisePipelineCorpus(t *testing.T) {
-	TestMigrationPromisePipelinesQuoted(t)
-	data, err := os.ReadFile(filepath.Join("testdata", "corpus", "alchemy-promise-scoped-generator.ts"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	w := NewWorkspace(t)
-	api := declarationIdentityAPI(t)
-	var stock *testing.T
-	t.Run("stock-twin", func(t *testing.T) {
-		stock = t
-		CheckDeclarationIdentity(t, w, StockTypeScript(t), api, Archive(map[string]string{"main.ts": string(data)}))
-	})
-	if stock.Skipped() {
-		t.Fatal("original Promise-returning stock twin was not admitted")
-	}
-	checkPromisePipeline(t, w, api, string(data))
-}
-
 // Knock out the Promise boundary independently of source printing and fixing.
 // Both a changed result and a changed export must fail the canonical API gate.
 func TestMigrationPromisePipelineOracleControls(t *testing.T) {
@@ -126,22 +91,4 @@ func TestMigrationPromisePipelineOracleControls(t *testing.T) {
 			t.Fatalf("API oracle accepted a changed Promise contract: %s", source)
 		}
 	}
-}
-
-func FuzzMigrationPromisePipelines(f *testing.F) {
-	startShortBudget(f)
-	for _, key := range []string{
-		"promise-pipeline:written:arrow:scoped:namespace:lf",
-		"promise-pipeline:inferred:function:mapped:named:crlf",
-		"promise-pipeline:written:held:plain:named:lf",
-		"promise-pipeline:inferred:held:scoped:namespace:crlf",
-	} {
-		f.Add([]byte(key))
-	}
-	w := NewWorkspace(f)
-	api := declarationIdentityAPI(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		TestMigrationPromisePipelinesQuoted(t)
-		checkPromisePipeline(t, w, api, parsePromisePipeline(data).source())
-	})
 }

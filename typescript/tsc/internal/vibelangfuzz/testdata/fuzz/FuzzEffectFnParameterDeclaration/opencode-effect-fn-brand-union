@@ -1,4 +1,0 @@
-go test fuzz v1
-string("brand-union")
-byte(1)
-bool(false)

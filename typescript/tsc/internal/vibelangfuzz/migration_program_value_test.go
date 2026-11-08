@@ -1,14 +1,8 @@
 package vibelangfuzz
 
 import (
-	"maps"
-	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const migrationProgramValueTarget = "FuzzMigrationProgramValue"
@@ -46,69 +40,4 @@ func TestMigrationProgramValueQuoted(t *testing.T) {
 	if chapter := SpecText("002-running.md"); !strings.Contains(chapter, migrationProgramValueQuote) {
 		t.Fatalf("Chapter 2 no longer says %q", migrationProgramValueQuote)
 	}
-}
-
-func FuzzMigrationProgramValue(f *testing.F) {
-	startShortBudget(f)
-	for _, program := range migrationProgramValuePrograms {
-		f.Add(program.key)
-	}
-	w := NewWorkspace(f)
-	node, err := NewNode(w.Dir)
-	if err != nil {
-		f.Fatal(err)
-	}
-	f.Fuzz(func(t *testing.T, key string) {
-		TestMigrationProgramValueQuoted(t)
-		i := slices.IndexFunc(migrationProgramValuePrograms, func(p struct{ key, source string }) bool { return p.key == key })
-		if i < 0 {
-			if key == "" {
-				return
-			}
-			i = int(key[0]) % len(migrationProgramValuePrograms)
-		}
-		program := migrationProgramValuePrograms[i]
-		source := migrationProgramValuePrelude + program.source
-		toolsGuard(t, migrationProgramValueTarget, func() {
-			stock := toolsCompile(t, w, migrationProgramValueTarget, map[string]string{"main.ts": source})
-			defer stock.Remove()
-			if !toolsErrorFree(stock) {
-				t.Fatalf("invalid .ts control: %v\n%s", SortedKeys(Keys(stock.Dir, stock.Diagnostics)), source)
-			}
-			files := map[string]string{"main.vibe": source}
-			before := toolsCompile(t, w, migrationProgramValueTarget, files)
-			defer before.Remove()
-			config := toolsConfig(w, before.Dir)
-			if before.Program == nil || config == nil || len(config.Errors) > 0 {
-				t.Fatalf("not a project: %s", source)
-			}
-			var result *vibelang.FixResult
-			toolsRun(t, migrationProgramValueTarget, "fix", source, nil, func() {
-				result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
-			})
-			if result.Err != nil {
-				Gap(t, migrationProgramValueTarget, "fix:converge", "Chapter 2: %q; --fix failed: %v\n%s", migrationProgramValueQuote, result.Err, source)
-			}
-			fixed := maps.Clone(files)
-			for name, file := range result.Files {
-				fixed[strings.TrimPrefix(name.AsString(), filepath.ToSlash(before.Dir)+"/")] = file.Text
-			}
-			after := toolsCompile(t, w, migrationProgramValueTarget, fixed)
-			defer after.Remove()
-			key := "program:" + program.key
-			if !toolsErrorFree(after) {
-				Gap(t, migrationProgramValueTarget, key, "Chapter 2: %q; --fix leaves errors %v\n%s", migrationProgramValueQuote, SortedKeys(Keys(after.Dir, after.Diagnostics)), fixed["main.vibe"])
-			} else {
-				was, is := node.Run(stock, "out/main.js", "main"), node.Run(after, "out/main.js", "main")
-				if toolsInvalidOutcome(was) {
-					t.Fatalf("invalid .ts outcome: %+v\n%s", was, source)
-				}
-				if was.Kind != is.Kind || string(was.Value) != string(is.Value) {
-					Gap(t, migrationProgramValueTarget, key, "Chapter 2: %q; the .ts gives %s %s, the fixed .vibe %s %s\n%s", migrationProgramValueQuote, was.Kind, was.Value, is.Kind, is.Value, fixed["main.vibe"])
-				}
-			}
-			ExpectPending(t, migrationProgramValueTarget, key)
-			ExpectPending(t, migrationProgramValueTarget, specCorpusKey(t))
-		})
-	})
 }

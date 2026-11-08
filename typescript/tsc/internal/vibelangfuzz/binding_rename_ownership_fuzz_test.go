@@ -5,9 +5,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 func TestBindingRenameOwnershipQuoted(t *testing.T) {
@@ -17,51 +14,6 @@ func TestBindingRenameOwnershipQuoted(t *testing.T) {
 			t.Fatalf("chapter 007 no longer says %q", quote)
 		}
 	}
-}
-
-// This editor/codemod oracle checks which source references a rename edits,
-// not a second runtime/Exit model. The templates explicitly distinguish the
-// old positive branch's binding from the parameter/local used on failure.
-// RC-7: current duplicate-symbol resolution alone cannot tell them apart.
-func FuzzBindingRenameOwnership(f *testing.F) {
-	startShortBudget(f)
-	keys := []string{"parameter", "local", "closure", "else"}
-	for _, key := range keys {
-		f.Add(key, uint8(0))
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, key string, mutation uint8) {
-		index := slices.Index(keys, key)
-		if index < 0 {
-			if key == "" {
-				return
-			}
-			index = int(key[0]) % len(keys)
-			key = keys[index]
-		}
-		source, want := bindingRenameOwnershipSource(key, mutation)
-		toolsGuard(t, "FuzzBindingRenameOwnership", func() {
-			r := toolsCompile(t, w, "FuzzBindingRenameOwnership", map[string]string{"main.vibe": source})
-			defer r.Remove()
-			config := toolsConfig(w, r.Dir)
-			if config == nil || len(config.Errors) > 0 {
-				t.Fatal("invalid generated project")
-			}
-			var result *vibelang.FixResult
-			toolsRun(t, "FuzzBindingRenameOwnership", "fix", source, nil, func() {
-				result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{MigrationOnly: mutation&32 != 0})
-			})
-			if result.Err != nil || len(result.Refused) != 0 || len(result.Files) != 1 {
-				Gap(t, "FuzzBindingRenameOwnership", "rename:old-positive-ownership", "migration did not apply: %+v\n%s", result, source)
-				return
-			}
-			for _, fixed := range result.Files {
-				if !bindingRenameOwnedTokens(fixed.Text, want) {
-					Gap(t, "FuzzBindingRenameOwnership", "rename:old-positive-ownership", "rename captured an outer read or missed an owned read\nsource:\n%s\ngot:\n%s\nwant:\n%s", source, fixed.Text, want)
-				}
-			}
-		})
-	})
 }
 
 func bindingRenameOwnershipSource(key string, mutation uint8) (string, string) {

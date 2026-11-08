@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("import-order/declaration/plain/.vibe")

@@ -18,7 +18,7 @@ import { sourceDigests, sourceManifest, steps, nextStep } from "./lib/steps.mjs"
 import { stageToolchain } from "./lib/toolchain.mjs"
 
 const usage = `usage: node .smithers/flows/migrate/step.mjs <step> --run <dir> [options]
-steps: toolchain, upgrade-effect, setup, plan, rename, fix, check, settle, codemod, compile, repair, revert, verify, record, report, next, source-digests, source-manifest
+steps: toolchain, upgrade-effect, setup, plan, rename, check, settle, codemod, compile, repair, revert, verify, record, report, next, source-digests, source-manifest
 upgrade-effect options, which setup reads from the run: --target <repo> --package <dir>... --source <dir>... --test "<command>" [--test-cwd <dir>]
                (--toolchain <dir> | --vibelang-version <v>) [--tsconfig <file>] [--dts-tsconfig <file>] [--stock-compiler <path>]
                [--install "<command>"] [--no-wire] [--max-files N] [--max-lines N] [--allow-dirty]

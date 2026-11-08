@@ -1,12 +1,9 @@
 package vibelang
 
 import (
-	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 func TestServiceKeyResultInference(t *testing.T) {
@@ -26,24 +23,6 @@ export { exact }
 				}
 			}
 		})
-	}
-}
-
-func TestServiceKeyInferenceFix(t *testing.T) {
-	source := `service Key { static readonly key = "app/Key"; value: number }
-export function read() { let value = Key.key; value = "other"; return value }
-`
-	p, file, _, _ := editorProgram(t, source)
-	result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{VIPOnly: true})
-	if result.Err != nil || len(result.Refused) != 0 {
-		t.Fatalf("--fix failed: %+v", result)
-	}
-	fixed := result.Files[file.FileName()]
-	if fixed == nil || !strings.Contains(fixed.Text, "let value: string = Key.key") {
-		t.Fatalf("--fix did not preserve the mutable binding: %+v", fixed)
-	}
-	if errors := errorsOf(t, fixed.Text); len(errors) != 0 {
-		t.Fatalf("fixed source reports %v", errors)
 	}
 }
 

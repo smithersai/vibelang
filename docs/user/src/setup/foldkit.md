@@ -177,7 +177,7 @@ $ vibelang -p tsconfig.json --noEmit && vitest run && vite build
 
 ## Migrating Foldkit code
 
-The [migration pairs](https://github.com/smithersai/vibelang/tree/main/examples/foldkit-app/pairs) are three files from VibeLang's migration of Foldkit itself, each of which passed Foldkit's 3,022 tests with identical public declarations. [Add VibeLang to an existing project](existing-project.md) covers porting an Effect file with `vibelang --fix`.
+The [migration pairs](https://github.com/smithersai/vibelang/tree/main/examples/foldkit-app/pairs) are three files from VibeLang's migration of Foldkit itself, each of which passed Foldkit's 3,022 tests with identical public declarations. [Add VibeLang to an existing project](existing-project.md) covers porting an Effect file.
 
 ## foldkit's own code, migrated
 

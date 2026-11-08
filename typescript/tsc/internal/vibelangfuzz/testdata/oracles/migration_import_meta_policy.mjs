@@ -83,7 +83,7 @@ try {
     if(pkg.exports)pkg.exports["."]="./"+native
     candidate["package.json"]=JSON.stringify(pkg)+"\n"
     if(!key.endsWith("-pragma"))for(const [name,text] of Object.entries(candidate))assert.ok(!/@effect-diagnostics[^\n]*nodeBuiltinImport:off/.test(text),"the generated candidate must not introduce a policy suppression: "+name)
-    const after=compile(candidate,key==="dirname-fix"?["--fix"]:[])
+    const after=compile(candidate)
     console.log(JSON.stringify({key,mode,original,candidate,refused:[],unchanged,stockCodes:[],guard,before,after}))
   }
 } finally { rmSync(root, {recursive: true, force: true}) }

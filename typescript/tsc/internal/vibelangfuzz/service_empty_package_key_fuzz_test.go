@@ -8,27 +8,19 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
 const emptyPackageKeyTarget = "FuzzServiceEmptyPackageKey"
 const emptyPackageKeyQuote = "the `name` in the package's `package.json`, `/`, the file's package-relative path without its extension, `#`, the service name."
 const emptyPackageNearestQuote = "The package is the file's Node package scope, the nearest ancestor directory with a `package.json`"
-const emptyPackageFixPointQuote = "One `vibelang --fix` run applies fixes until none applies; running it again changes nothing."
 const emptyPackageFixPreservationQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
-const emptyPackageWritableQuote = "This opt-in modifier leaves writable shapes writable and does not select former readonly defaults."
 
 func TestServiceEmptyPackageKeyQuoted(t *testing.T) {
 	chapterSays(t, "005-services.md", emptyPackageKeyQuote)
 	chapterSays(t, "005-services.md", emptyPackageNearestQuote)
-	chapterSays(t, "007-tooling.md", emptyPackageFixPointQuote)
 	chapterSays(t, "007-tooling.md", emptyPackageFixPreservationQuote)
-	chapterSays(t, "007-tooling.md", emptyPackageWritableQuote)
 }
 
 func FuzzServiceEmptyPackageKey(f *testing.F) {
@@ -126,81 +118,6 @@ func FuzzServiceEmptyPackageKey(f *testing.F) {
 			return
 		}
 		ExpectPending(t, emptyPackageKeyTarget, specCorpusKey(t))
-	})
-}
-
-func FuzzServiceEmptyPackageKeyMigration(f *testing.F) {
-	startShortBudget(f)
-	chapterSays(f, "007-tooling.md", emptyPackageFixPointQuote)
-	chapterSays(f, "007-tooling.md", emptyPackageFixPreservationQuote)
-	chapterSays(f, "007-tooling.md", emptyPackageWritableQuote)
-	chapterSays(f, "005-services.md", emptyPackageKeyQuote)
-	for _, key := range []string{"body", "writable", "whole-shape", "reference", "namespace", "modern-control", "explicit-control"} {
-		f.Add(key, byte(0))
-		f.Add(key, byte(1))
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, key string, mode byte) {
-		declaration := "service Named { readonly value: number }"
-		switch key {
-		case "writable":
-			declaration = "service Named { value: number }"
-		case "whole-shape":
-			declaration = "service Named: number {}"
-		case "reference":
-			declaration = "service Named: number { static readonly defaultValue = () => 1 }"
-		case "namespace":
-			declaration = "namespace Keys { export " + declaration + " }"
-		case "modern-control":
-		case "explicit-control":
-			declaration = `service Named { static readonly key = "explicit"; readonly value: number }`
-		default:
-			key = "body"
-		}
-		source := declaration + "\nexport {}\n"
-		if key == "writable" {
-			source += "export function update(value: Named.Shape) { value.value = 2 }\n"
-		}
-		if mode&1 != 0 {
-			source = "// preserve 😀\r\n" + strings.ReplaceAll(source, "\n", "\r\n")
-		}
-		before := toolsCompile(t, w, emptyPackageKeyTarget, map[string]string{"main.vibe": source, "package.json": `{"name":"","type":"module"}`})
-		defer before.Remove()
-		config := toolsConfig(w, before.Dir)
-		if config == nil || len(config.Errors) != 0 {
-			t.Fatal("invalid migration config")
-		}
-		options := vibelang.FixOptions{}
-		var remainingFlags []string
-		if key != "modern-control" {
-			remainingFlags, options = vibelang.FixOptionsArguments([]string{"--fix-legacy-service-keys"})
-		}
-		var progress strings.Builder
-		options.Progress = &progress
-		options.ProgressEvery = time.Nanosecond
-		migrated := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, options)
-		if migrated.Err != nil || len(migrated.Refused) != 0 {
-			Gap(t, "FuzzServiceEmptyPackageKeyMigration", key, "migration refused: %+v", migrated)
-			return
-		}
-		fixed := migrated.Files[tspath.RootedFilePath(filepath.ToSlash(before.Dir)+"/main.vibe")]
-		if strings.HasSuffix(key, "control") {
-			if fixed != nil {
-				Gap(t, "FuzzServiceEmptyPackageKeyMigration", key, "control changed: %s", fixed.Text)
-			}
-			return
-		}
-		oldKey := filepath.Base(before.Dir) + "/main#Named"
-		if fixed == nil || !strings.Contains(fixed.Text, "static readonly key = "+strconv.Quote(oldKey)) {
-			Gap(t, "FuzzServiceEmptyPackageKeyMigration", key, "historical key %q not made explicit; directory=%q context=%v remaining-flags=%q changed=%v result-error=%v refusals=%v progress=%s", oldKey, before.Dir, t.Context().Err(), remainingFlags, migrated.Order, migrated.Err, migrated.Refused, progress.String())
-			return
-		}
-		after := toolsCompile(t, w, emptyPackageKeyTarget, map[string]string{"main.vibe": fixed.Text, "package.json": `{"name":"","type":"module"}`})
-		defer after.Remove()
-		if !toolsErrorFree(after) {
-			Gap(t, "FuzzServiceEmptyPackageKeyMigration", key, "fixed source errors: %v", SortedKeys(Keys(after.Dir, after.Diagnostics)))
-		}
-		ExpectPending(t, "FuzzServiceEmptyPackageKeyMigration", specCorpusKey(t))
 	})
 }
 

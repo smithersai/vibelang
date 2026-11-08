@@ -1,7 +1,0 @@
-export effect function main() {
-  try Console.log("lib main ran")
-}
-
-export const helper = "helper"
-
-import "vibelang/platform/node"

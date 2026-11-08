@@ -10,7 +10,7 @@ import (
 // a binding or label under [+Effect], including an expression's own name
 // (VIP-17; Appendix A).
 const ReservedFiberNameDiagnosticCode int32 = 1702
-const ReservedFiberNameDiagnosticText = "fork and join are reserved in effect code, including an effect expression's own name. Use another binding or label name; vibelang --fix preserves its uses."
+const ReservedFiberNameDiagnosticText = "fork and join are reserved in effect code, including an effect expression's own name. Use another binding or label name, and rename its uses."
 
 // setVibeLangFiberContext follows Appendix A's source Effect parameter.
 // Returning the restore function makes every early return and speculative

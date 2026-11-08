@@ -335,7 +335,7 @@ func checkPrimitives(c *checker.Checker, file *ast.SourceFile) {
 		}
 		// VIP-22: check source Effect-code ownership before mask nesting.
 		if maskWord(n) != "" && !inInterruptionEffectCode(n) {
-			note(report(c, n.AsBlock().Statements.Nodes[0], EK2201), "Use an effect function or effect block for masking. The --fix migration removes only this keyword, preserving the ordinary JavaScript block the old compiler emitted here.")
+			note(report(c, n.AsBlock().Statements.Nodes[0], EK2201), "Use an effect function or effect block for masking. Removing only this keyword preserves the ordinary JavaScript block the old compiler emitted here.")
 			n.ForEachChild(func(child *ast.Node) bool { return visit(child, ctx) })
 			return false
 		}

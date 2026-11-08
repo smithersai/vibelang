@@ -1,1 +1,0 @@
-catch execution fixes retain values and reach a fixed point

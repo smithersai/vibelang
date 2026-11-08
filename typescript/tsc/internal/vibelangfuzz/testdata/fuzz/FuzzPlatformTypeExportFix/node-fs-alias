@@ -1,3 +1,0 @@
-go test fuzz v1
-string("node-fs-alias")
-byte(23)

@@ -10,17 +10,6 @@ type sourceFileMigration func(context.Context, *compiler.Program, *ast.SourceFil
 
 var sourceFileMigrations []sourceFileMigration
 
-// Finish a source upgrade before planning the next one. A later codec
-// expansion must see source modifiers inserted by an earlier upgrade.
-func sourceFileMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
-	for _, migrate := range sourceFileMigrations {
-		if p := migrate(ctx, program, file, refused); len(p.fixes) > 0 {
-			return p
-		}
-	}
-	return proposal{file: file}
-}
-
 // A complete codec expansion must preserve every active source upgrade before
 // replacing the declaration. Otherwise a later migration loses its source.
 type sourceCodecMigration func(*ast.SourceFile, *ast.Node, string) (*ast.Node, map[string]string)

@@ -8,7 +8,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 // Fuzz coverage for spec loop round 3 (lane sl3-apply). Each target reads its
@@ -126,47 +125,6 @@ func FuzzFixedPatternCoverage(f *testing.F) {
 		reported := slices.Contains(r3Errors(r.Diagnostics), "EK4701")
 		if left != reported {
 			Gap(t, "FuzzFixedPatternCoverage", "coverage:"+form.name, "004-match: %s; %s: want EK4701=%v, got %v:\n%s", fixedCoverageQuote, names[i], left, r3Errors(r.Diagnostics), source)
-		}
-	})
-}
-
-// ---------------------------------------------------------------------------
-// OPUS-9 (decided detail 186): a scope flag needs --fix somewhere in the list.
-
-const fixScopeQuote = "Either flag requires `--fix` somewhere in the argument list, before or after it; alone, each is an unknown compiler option (`TS5023`)."
-
-func TestFixScopeFlagsQuoted(t *testing.T) {
-	r3Quoted(t, "../vips/0034-compiler-and-tooling.md", fixScopeQuote)
-}
-
-func FuzzFixScopeFlags(f *testing.F) {
-	startShortBudget(f)
-	r3Quoted(f, "../vips/0034-compiler-and-tooling.md", fixScopeQuote)
-	pool := []string{"--fix", "--fix-migration-only", "--fix-vip-only", "--noEmit", "--strict", "--FIX", "--FIX-VIP-ONLY"}
-	for _, seed := range [][]byte{{1}, {2}, {1, 0}, {0, 2}, {1, 2}, {1, 2, 0}, {3, 1}, {3, 1, 4, 0}, {6}, {6, 5}, {3, 4}} {
-		f.Add(seed)
-	}
-	w := &Workspace{fs: osvfs.FS()}
-	dir := f.TempDir()
-	f.Fuzz(func(t *testing.T, data []byte) {
-		var args []string
-		for _, b := range data[:min(len(data), 6)] {
-			args = append(args, pool[int(b)%len(pool)])
-		}
-		if len(args) == 0 {
-			return
-		}
-		options := cliOptions(w, dir, args)
-		if options == nil {
-			return
-		}
-		scope := slices.ContainsFunc(args, func(a string) bool { return strings.HasPrefix(strings.ToLower(a), "--fix-") })
-		unknown := false
-		for _, e := range options.Errors {
-			unknown = unknown || e.Code() == 5023
-		}
-		if want := scope && !cliHasFix(args); want != unknown {
-			Gap(t, "FuzzFixScopeFlags", "scope", "VIP-34: %s; %v: want TS5023=%v, got %v", fixScopeQuote, args, want, options.Errors)
 		}
 	})
 }

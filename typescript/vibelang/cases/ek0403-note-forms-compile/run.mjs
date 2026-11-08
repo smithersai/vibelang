@@ -57,10 +57,6 @@ try {
     assert.equal(compile(dir), "", `${name} ${form} must compile with zero diagnostics`)
     console.log(`${name}: zero diagnostics; ${await outcomes(dir)}`)
   }
-  compile(witness, "--fix")
-  assert.equal(readFileSync(join(witness, "main.vibe"), "utf8"), fixed, "the quick fix writes the note's defect bridge")
-  assert.equal(compile(witness), "", "the quick fix's output must compile with zero diagnostics")
-  console.log(`the quick fix: zero diagnostics; ${await outcomes(witness)}`)
 } finally {
   for (const dir of dirs) rmSync(dir, { recursive: true, force: true })
 }

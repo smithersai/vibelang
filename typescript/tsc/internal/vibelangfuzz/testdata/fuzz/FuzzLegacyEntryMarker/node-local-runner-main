@@ -1,3 +1,0 @@
-go test fuzz v1
-string("node:local-runner-main")
-byte(3)

@@ -120,7 +120,7 @@ Saved issue
 
 `catch` has the precedence of `??` and associates to the left. As with `??`, mixing it with `??`, `||` or `&&` needs parentheses. A handler's concise body extends as far as an arrow body does, so in `loadTitle() catch () => savedTitle || "Untitled issue"` the `||` is inside the handler. To try one more alternative after a fallback fails, nest it in an effect handler, which recovers it in turn: `latestTitle() catch effect () => cachedTitle() catch () => "Untitled issue"`.
 
-Mixing `catch` with `??`, `||` or `&&` without parentheses reports `EK0512`. Write `(saved ?? loadTitle()) catch () => "Untitled issue"` to catch the selected operand, or `saved ?? (loadTitle() catch () => "Untitled issue")` to catch only the load. A call, member access or index cannot attach to a closed handler: parenthesize the complete catch expression before using its result. `vibelang --fix` groups an existing mixed operand and writes a function literal around an existing value fallback, preserving the earlier parse.
+Mixing `catch` with `??`, `||` or `&&` without parentheses reports `EK0512`. Write `(saved ?? loadTitle()) catch () => "Untitled issue"` to catch the selected operand, or `saved ?? (loadTitle() catch () => "Untitled issue")` to catch only the load. A call, member access or index cannot attach to a closed handler: parenthesize the complete catch expression before using its result.
 
 A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect () => try cachedTitle() } catch () => "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
 
@@ -138,9 +138,9 @@ Pass Effect values directly: `try firstSuccessOf([latestTitle(), cachedTitle()])
 
 A plain handler's default parameters, destructuring and computed binding keys follow the same known-throwing-call check as its body (`EK0401`). Use an effect handler with nonthrowing parameters, then perform throwing initialization inside its body through `Effect.try`; `try` cannot run in a parameter default. Merely creating a nested function does not execute it.
 
-Write `try x` or `x catch h`. An unparenthesized `try`, `fork` or `join` reached through unary or binary operators reports `EK0505`, even through erased TypeScript wrappers such as `as`, `satisfies`, `!` or an angle-bracket assertion. This syntax check runs before operand typing: a scalar result or a `Fiber` still receives `EK0505`. Generated catch-call type errors are suppressed, including those anchored on `satisfies`; independent type errors in the wrapper remain. Source parentheses stop the search: `(try nested) catch () => fallback` catches the Effect returned by `nested`. Calls, literals and function bodies also stop it. The editor offers repairs for the intended operation; `vibelang --fix` keeps the running left side in an explicit `effect` block. A direct `join` becomes `Fiber.join` so it keeps the fiber in its existing owner. For a direct `fork`, it moves the handler onto the forked Effect and keeps operand evaluation on the caller. It leaves source jumps and wrapped forks for an explicit choice because changing a function boundary could change jump targets or fiber ownership.
+Write `try x` or `x catch h`. An unparenthesized `try`, `fork` or `join` reached through unary or binary operators reports `EK0505`, even through erased TypeScript wrappers such as `as`, `satisfies`, `!` or an angle-bracket assertion. This syntax check runs before operand typing: a scalar result or a `Fiber` still receives `EK0505`. Generated catch-call type errors are suppressed, including those anchored on `satisfies`; independent type errors in the wrapper remain. Source parentheses stop the search: `(try nested) catch () => fallback` catches the Effect returned by `nested`. Calls, literals and function bodies also stop it. The editor offers repairs for the intended operation.
 
-A `catch` protects the Effect its head produces. In `decode(try parse(input)) catch (e) => fallback(e)`, a failure from `parse` escapes before the catch is installed; only a failure from the returned `decode` Effect reaches the handler. To protect both executions, write `(effect { return try decode(try parse(input)) }) catch (e) => fallback(e)`. If an older catch head executes code and returns a plain value, `--fix` wraps the head in an `effect` block to preserve its previous recovery boundary. A head that can only fail, such as `(try effect { try describe; return throw new Pending() }) catch h`, or whose value is `any`, compiles with only the `EK9204` warning, but its failures escape the catch too; `--fix` removes its `try`, or wraps a head that is not a `try` in an `effect` block. A head whose value is an Effect keeps its `try`. Heads with jumps, owned resources or narrowed property reads can need a manual rewrite.
+A `catch` protects the Effect its head produces. In `decode(try parse(input)) catch (e) => fallback(e)`, a failure from `parse` escapes before the catch is installed; only a failure from the returned `decode` Effect reaches the handler. To protect both executions, write `(effect { return try decode(try parse(input)) }) catch (e) => fallback(e)`. If an older catch head executes code and returns a plain value, wrap the head in an `effect` block to preserve its previous recovery boundary.
 
 For `(try x) catch (e) => fallback(e)`, `x` must succeed with an Effect. The handler receives that returned Effect's error type; an error from executing `x` still escapes before recovery. For example, `(try Effect.succeed(Effect.fail("inner"))) catch (e) => e.length` returns `5`.
 
@@ -165,16 +165,6 @@ effect function clean() {
 }
 ```
 
-`vibelang --fix` and `--fix-vip-only` migrate supported legacy statements
-to explicit Effect operations. The rewrite preserves fallthrough, returns,
-and jumps to enclosing loops, and keeps cleanup outside recovery.
-Nested statements migrate from the inside out. A statement with `var`
-hoisting, `super`, `arguments`, a `do` expression completion, inferred literal returns,
-a `switch` without `default`, producer yields, a jump leaving its
-finalizer, or a retired typed or `Cause` clause needs an explicit migration;
-the diagnostic explains why no automatic edit is offered.
-The fix gate also refuses a rewrite that introduces another error, such as
-capturing an owned fiber in a stored effect block.
 Plain and `async` functions, including those nested in effect code, keep
 JavaScript's native `try` statements.
 

@@ -1,1 +1,1 @@
-select is outside the first release; vibelang --fix refuses an unproved selection rewrite. Choose explicit Effect selection for the intended behavior.
+select is outside the first release. Choose explicit Effect selection for the intended behavior.

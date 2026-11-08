@@ -1,3 +1,0 @@
-go test fuzz v1
-string("fork:new-computed")
-byte(0)

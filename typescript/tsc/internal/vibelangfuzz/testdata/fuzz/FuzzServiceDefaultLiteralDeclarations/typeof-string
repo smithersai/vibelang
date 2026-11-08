@@ -1,3 +1,0 @@
-go test fuzz v1
-string("typeof-string")
-byte(0)

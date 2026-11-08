@@ -34,7 +34,7 @@ Constructing another Effect and rerunning one saved Effect are separate operatio
 
 Running the same Effect again starts a fresh execution of its body. Objects passed by the caller keep their identity; changing their contents remains visible to later executions. A factory that explicitly returns an Effect keeps the outer state it captured when called.
 
-`try` also accepts a union of Effects and keeps every alternative's success, error and requirement types. Its operand must be assignable to `Effect.Effect<any, any, any>`, as must a `catch` or `fork` operand and each element of a `try.all`, `try.race`, `try.any` or `try.allSettled` array. This admits `never` and `any`; narrow an `unknown` value or a possibly `undefined` Effect before running it. Merely having Effect's variance property is insufficient. An invalid `catch` operand, including a possibly `null` or `undefined` Effect, reports `EK0506` once while retaining independent TypeScript errors inside its arguments and handler. Older code that ran an `unknown` operand can use `vibelang --fix` to keep its previous unchecked behavior explicitly; prefer narrowing the value in new code. A computed `catch` head that runs other Effects first uses an explicit block, such as `effect { return (try load()).name } catch () => "guest"`; `--fix` adds that block to older code. It also removes a redundant `try` around a `catch` expression whose result is a plain value.
+`try` also accepts a union of Effects and keeps every alternative's success, error and requirement types. Its operand must be assignable to `Effect.Effect<any, any, any>`, as must a `catch` or `fork` operand and each element of a `try.all`, `try.race`, `try.any` or `try.allSettled` array. This admits `never` and `any`; narrow an `unknown` value or a possibly `undefined` Effect before running it. Merely having Effect's variance property is insufficient. An invalid `catch` operand, including a possibly `null` or `undefined` Effect, reports `EK0506` once while retaining independent TypeScript errors inside its arguments and handler. A computed `catch` head that runs other Effects first uses an explicit block, such as `effect { return (try load()).name } catch () => "guest"`.
 
 ## Build and run a local project
 
@@ -147,7 +147,7 @@ The three contract channels do not say whether work runs synchronously. Prefer a
 In `.vibe` and TypeScript files, pass the runner an Effect directly, as in `runPromise(main())`. Calling an exported effect function returns that Effect without running it.
 
 
-Before exponentiation, parenthesize the whole execution expression: `(try program) ** 2`. The unparenthesized form reports `EK0510`. Use the editor action or `vibelang --fix` to add the parentheses.
+Before exponentiation, parenthesize the whole execution expression: `(try program) ** 2`. The unparenthesized form reports `EK0510`. Use the editor action to add the parentheses.
 
 
 A running call keeps a generic parameter's default unless an argument infers another type. A result variable's annotation does not create an omitted recovery branch or choose a different default by itself. Supply an explicit type argument when a producer with no inference input needs another instantiation.

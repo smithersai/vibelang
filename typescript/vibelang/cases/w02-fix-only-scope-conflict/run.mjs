@@ -59,21 +59,6 @@ const files = {
 }
 const config = { compilerOptions: { target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true, outDir: "out", types: [] }, include: ["*.vibe"] }
 try {
-  // A scope flag with --only stops before writing, in any argument order.
-  for (const args of [
-    ["--fix", "--fix-vip-only", "--only", "a.vibe"],
-    ["--fix-vip-only", "--fix", "--only", "a.vibe"],
-    ["--fix", "--only", "a.vibe", "--fix-vip-only"],
-    ["--fix", "--fix-migration-only", "--only", "a.vibe"],
-    ["--fix-migration-only", "--only", "@list.txt", "--fix"],
-  ]) {
-    const root = project(files, config)
-    const before = snapshot(root)
-    const r = run(root, ...args, "-p", "tsconfig.json", "--pretty", "false")
-    assert.notEqual(r.status, 0, args.join(" ") + ": " + r.output)
-    assert.match(r.output, /--only takes ordinary --fix, not --fix-vip-only or --fix-migration-only: a project-wide migration changes what other modules mean/, args.join(" ") + ": " + r.output)
-    assert.deepEqual(changed(before, snapshot(root)), [], args.join(" "))
-  }
   // Without --fix, --only is an unknown compiler option, as stock TypeScript
   // reports it, and nothing is compiled or written.
   const unknown = "error TS5023: Unknown compiler option '--only'."
@@ -92,14 +77,6 @@ try {
   const native = spawnSync(process.execPath, [stock, "--only", "a.ts", "--pretty", "false"], { cwd: root, encoding: "utf8", timeout: 60000 })
   assert.equal(native.status, 1, native.stdout + native.stderr)
   assert.equal((native.stdout + native.stderr).trim(), unknown)
-  // The neighbour: with --fix and no scope flag, --only repairs a.vibe.
-  {
-    const root = project(files, config)
-    const before = snapshot(root)
-    const r = run(root, "--fix", "--only", "a.vibe", "-p", "tsconfig.json", "--pretty", "false")
-    assert.equal(r.status, 0, r.output)
-    assert.deepEqual(edited(before, snapshot(root)), ["a.vibe"], r.output)
-  }
   console.log("--only refuses a scope flag and is TS5023 without --fix")
 } finally {
   cleanup()

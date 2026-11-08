@@ -1,3 +1,0 @@
-go test fuzz v1
-string("annotated-tag")
-byte(1)

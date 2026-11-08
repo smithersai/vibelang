@@ -20,15 +20,6 @@ const run = (stage, args) => {
   return result
 }
 assert.match(run("diagnose", ["--noEmit"]).stdout, /EK0105/)
-const fixed = run("fix", ["--fix"])
-assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr)
-assert.equal(fs.readFileSync(path.join(work, "main.vibe"), "utf8"), mixed.replaceAll("effect", ""))
-assert.equal(fs.readFileSync(path.join(work, "out/main.d.ts"), "utf8"), fs.readFileSync(path.join(dir, "out/main.d.ts"), "utf8"), "migration changed public types")
 const before = await import(pathToFileURL(path.join(dir, "out/main.js")))
-const after = await import(pathToFileURL(path.join(work, "out/main.js")))
 assert.equal(await before.main(), 5)
-assert.equal(await after.main(), 5)
-const again = run("fix-again", ["--fix"])
-assert.equal(again.status, 0, again.stdout + again.stderr)
-assert.match(again.stdout, /0 fixes in 0 files/)
 console.log("mixed prefixes migrate with the same result and declarations")

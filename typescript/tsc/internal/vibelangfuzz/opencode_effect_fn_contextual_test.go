@@ -1,15 +1,9 @@
 package vibelangfuzz
 
 import (
-	"context"
 	"os"
-	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const effectFnContextualTarget = "FuzzEffectFnContextualChannels"
@@ -75,70 +69,4 @@ export interface Strategy { readonly create: (ctx: string) => Effect.Effect<Info
 	default:
 		return prelude + "export const P: (ctx: string) => Effect.Effect<void, Missing | Denied, A | B> = " + fn + "\n"
 	}
-}
-
-func FuzzEffectFnContextualChannels(f *testing.F) {
-	startShortBudget(f)
-	// Keyed corpus files cover each shape; keys are holder:body.
-	w := NewWorkspace(f)
-	api := declarationIdentityAPI(f)
-	f.Fuzz(func(t *testing.T, key string, n byte) {
-		holder, body, ok := strings.Cut(key, ":")
-		if !ok || !slices.Contains(effectFnContextualHolders, holder) || !slices.Contains(effectFnContextualBodies, body) {
-			holder = effectFnContextualHolders[int(n)%len(effectFnContextualHolders)]
-			body = effectFnContextualBodies[int(n/4)%len(effectFnContextualBodies)]
-			key = holder + ":" + body
-		}
-		TestEffectFnContextualChannelsQuoted(t)
-		source := effectFnContextualSource(holder, body)
-		twin := toolsCompile(t, w, effectFnContextualTarget, map[string]string{"main.ts": source})
-		defer twin.Remove()
-		if !toolsErrorFree(twin) {
-			t.Fatalf("invalid .ts twin: %v\n%s", SortedKeys(Keys(twin.Dir, twin.Diagnostics)), source)
-		}
-		before := toolsCompile(t, w, effectFnContextualTarget, map[string]string{"main.vibe": source})
-		defer before.Remove()
-		result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{})
-		fixed := source
-		for name, file := range result.Files {
-			if filepath.Base(name.AsString()) == "main.vibe" {
-				fixed = file.Text
-			}
-		}
-		if strings.Contains(fixed, "function*") {
-			Gap(t, effectFnContextualTarget, key, "chapter 7: Effect.fn rewrite refused: %+v\n%s", result.Refused, source)
-		}
-		after := toolsCompile(t, w, effectFnContextualTarget, map[string]string{"main.vibe": fixed})
-		defer after.Remove()
-		if !toolsErrorFree(after) {
-			Gap(t, effectFnContextualTarget, key, "chapter 7: fixed program has errors: %v\n%s", SortedKeys(Keys(after.Dir, after.Diagnostics)), fixed)
-		}
-		baseline, current := t.TempDir(), t.TempDir()
-		for _, side := range []struct {
-			dir    string
-			result *Result
-		}{{baseline, twin}, {current, after}} {
-			count := 0
-			for name, text := range side.result.Outputs {
-				if strings.HasPrefix(name, "out/") && isDeclaration(name) {
-					if err := writeInside(side.dir, strings.TrimPrefix(name, "out/"), text); err != nil {
-						t.Fatal(err)
-					}
-					count++
-				}
-			}
-			if count == 0 {
-				t.Fatal("no declaration output")
-			}
-		}
-		ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
-		defer cancel()
-		diff, err := compareIdentityDeclarations(ctx, api, baseline, current)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if diff != "" {
-			Gap(t, effectFnContextualTarget, key, "chapter 7: declaration identity changed:\n%s\n%s", diff, fixed)
-		}
-	})
 }

@@ -1,18 +1,13 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 const dualBlockWork = "effect function work() { try sleep(\"1 millis\"); return \"done\" }\n"
@@ -96,88 +91,6 @@ func TestDualBlockRecorderLeavesAppendedForms(t *testing.T) {
 			t.Errorf("%s: recorded %d dual blocks", source, len(calls))
 		}
 		done()
-	}
-}
-
-func TestDualBlockMigrationFixAndIdempotence(t *testing.T) {
-	for _, test := range []struct{ source, want string }{
-		{"export function f() { return withSpan(\"load\") { return work() } }", "export function f() { return withSpan(effect { return work() }, \"load\") }"},
-		{"export function f() {\n  return withSpan(\"x\", { attributes: { a: 1 } }) {\n    return work()\n  }\n}", "export function f() {\n  return withSpan(effect {\n    return work()\n  }, \"x\", { attributes: { a: 1 } })\n}"},
-		{"export function f() {\n  return retry({\n    times: 3,\n  }) {\n    return work()\n  }\n}", "export function f() {\n  return retry(effect {\n    return work()\n  }, {\n    times: 3,\n  })\n}"},
-		{"export function f() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1) { return work() } }", "export function f() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1)(effect { return work() }) }"},
-		{"export function f() { return withSpan(\"k\") { return { attributes: {} } } }", "export function f() { return withSpan(effect { return { attributes: {} } }, \"k\") }"},
-		// Nested blocks move in one round: their edits do not overlap.
-		{"export function f() { return withSpan(\"outer\") { return timeout(\"1 second\") { return work() } } }", "export function f() { return withSpan(effect { return timeout(effect { return work() }, \"1 second\") }, \"outer\") }"},
-	} {
-		t.Run(test.source, func(t *testing.T) {
-			p, file, _, _ := editorProgram(t, dualBlockWork+test.source)
-			result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{MigrationOnly: true})
-			if len(result.Refused) != 0 || len(result.Files) != 1 {
-				t.Fatalf("migration: %+v", result)
-			}
-			fixed := result.Files[file.FileName()]
-			if fixed.Text != dualBlockWork+test.want {
-				t.Fatalf("--fix writes\n%s\nwant\n%s", fixed.Text, dualBlockWork+test.want)
-			}
-			if errors := errorsOf(t, fixed.Text); len(errors) != 0 {
-				t.Fatalf("fixed source reports %v", errors)
-			}
-			if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-				t.Fatal(err)
-			}
-			again := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{MigrationOnly: true})
-			if len(again.Files) != 0 || len(again.Refused) != 0 {
-				t.Fatalf("second fix changed the project: %+v", again)
-			}
-		})
-	}
-}
-
-// A call with explicit type arguments has no exact rewrite: the data-first
-// signature takes other type parameters. --fix refuses it and the error says
-// why, so the site never changes silently.
-func TestDualBlockMigrationRefusesTypeArguments(t *testing.T) {
-	source := dualBlockWork + "export function f() { return withSpan<[]>(\"load\") { return work() } }"
-	errors := legacyTrailingBlockErrorsOf(t, source)
-	if !slices.ContainsFunc(errors, func(d *ast.Diagnostic) bool {
-		return strings.Contains(notesOf(d), "This block cannot be moved automatically: explicit type arguments")
-	}) {
-		t.Fatalf("errors %v lack the refusal", errors)
-	}
-	p, _, _, _ := editorProgram(t, source)
-	result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{MigrationOnly: true})
-	if len(result.Files) != 0 || len(result.Refused) != 1 || result.Refused[0].Code != EK1023.Code {
-		t.Fatalf("migration: %+v", result)
-	}
-}
-
-// dual-block-legacy-fixed is what vibelang --fix writes for
-// dual-block-legacy.fail, apart from the case's expectation line.
-func TestDualBlockLegacyCaseFix(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	cases := filepath.Join(root, "typescript/vibelang/cases")
-	dir := copyCompilerFixture(t, filepath.Join(cases, "dual-block-legacy.fail"), root)
-	result := fixCase(t, dir)
-	if len(result.Refused) != 0 || len(result.Files) != 1 {
-		t.Fatalf("migration: %+v", result)
-	}
-	var got string
-	for _, fixed := range result.Files {
-		got = fixed.Text
-	}
-	want, err := os.ReadFile(filepath.Join(cases, "dual-block-legacy-fixed/main.vibe"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := func(text string) string {
-		_, rest, _ := strings.Cut(text, "\n")
-		return rest
-	}
-	if body(got) != body(string(want)) {
-		t.Fatalf("--fix writes\n%s\nwant\n%s", got, want)
 	}
 }
 

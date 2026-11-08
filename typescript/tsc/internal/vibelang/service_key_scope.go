@@ -72,7 +72,7 @@ func checkExplicitServiceKeys(c *checker.Checker, file *ast.SourceFile) {
 		if serviceNeedsExplicitKey(c, node) {
 			d := report(c, node.Name(), serviceExplicitKeyDiagnostic)
 			if rewrite := explicitServiceKeyRewrite(c, file, node.Name()); rewrite.fixable() {
-				note(d, "Its quick fix writes {0}; vibelang --fix applies every such fix in the project.", rewrite.description)
+				note(d, "Its quick fix writes {0}.", rewrite.description)
 			}
 		}
 		return node.ForEachChild(visit)

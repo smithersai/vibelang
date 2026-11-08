@@ -1,2 +1,0 @@
-go test fuzz v1
-string("key:mutable-relic:error\n\x07\x00\x00\x00\x00")

@@ -1,6 +1,0 @@
-// The same holds for a plain function named main.
-import { say } from "./say.ts"
-
-export function main(): void {
-  say("plain main ran")
-}

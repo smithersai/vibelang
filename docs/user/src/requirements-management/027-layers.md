@@ -42,7 +42,7 @@ In an expression, a variable named `provide` keeps its TypeScript meaning. For e
 
 A variable named `provide` also keeps native postfix operations in expressions: `provide++ / scale`, `provide-- / scale` and `provide! / scale` have their TypeScript meaning. Generic instantiations, such as `provide<number>`, also keep their native parse before division.
 
-Write the keyword `provide` without Unicode escapes. An escaped spelling used as the keyword reports `TS1260`, as for TypeScript’s `async` keyword. Its quick fix, also applied by `vibelang --fix`, writes the keyword without escapes. Escaped ordinary identifiers still work in bindings, calls and expressions such as `return pr\u006fvide / scale`.
+Write the keyword `provide` without Unicode escapes. An escaped spelling used as the keyword reports `TS1260`, as for TypeScript’s `async` keyword. Its quick fix writes the keyword without escapes. Escaped ordinary identifiers still work in bindings, calls and expressions such as `return pr\u006fvide / scale`.
 
 An object literal can start a provider: `provide { layer: Layer.empty }.layer { … }`. Member reads, getter calls, nested objects and `Key = value` entries follow the ordinary provider expression grammar. Provider expressions are evaluated once, from left to right.
 
@@ -98,7 +98,7 @@ const ReportsLive = Layer.effect(Reports, effect {
 
 Use `Layer.succeed` for an existing implementation or constant factory, `Layer.effect` for a factory that performs Effect operations, and `Layer.sync` for a plain synchronous constructor, such as `(): Users.Shape => …`, that needs no Effect work. Constructing a layer value doesn't run its initialization program.
 
-Legacy layer declarations report `EK2121` as an error. Run `vibelang --fix -p <config>`; the repair rewrites `layer Live: Service { … }` to `Layer.succeed(Service, { … })` when it has no setup statements, or `Layer.effect(Service, effect { … })` when it does. Setup stays inside the Effect and runs when the layer builds. The editor offers the same rewrite on `EK2121`. If a local `Layer` binding would capture the generated call, the automatic repair leaves the declaration unchanged; use an explicit Effect namespace for a manual rewrite.
+Legacy layer declarations report `EK2121` as an error. Rewrite `layer Live: Service { … }` to `Layer.succeed(Service, { … })` when it has no setup statements, or `Layer.effect(Service, effect { … })` when it does. Setup stays inside the Effect and runs when the layer builds. The editor offers the same rewrite on `EK2121`. If a local `Layer` binding would capture the generated call, the automatic repair leaves the declaration unchanged; use an explicit Effect namespace for a manual rewrite.
 
 A factory can register `try addFinalizer(...)` or acquire with `try acquireRelease(...)`; `Layer.effect` supplies the construction scope and removes `Scope` from the layer's input requirements. Acquire a returned service's resources with `try acquireRelease(...)`; a lexical `using` releases a TypeScript disposable when the factory returns.
 
@@ -270,14 +270,8 @@ A `provide` block keeps ordinary source completion values inside `do`: `do { 19;
 
 `service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide(…)` draws `EK4836` only as the direct operand of bare `try`, including erased expression wrappers; a stored Effect, `fork` operand or batch element keeps its call without a warning. A safe statement or return has a quick fix to write a `provide` block; a wrapped operand keeps its written type effects and explains why it has no automatic fix. Explicit type arguments on `Effect.provide` also retain the call and explain why the written contract has no automatic block rewrite. `Effect.provideService` retains its native call: `provide Key = value` builds a `Layer`, changing `Scope` and `Layer.CurrentMemoMap`. `EK4836` explains why the service call has no automatic block rewrite.
 
-A line break before or after a provider-separating comma keeps the `provide` reading and reports `EK1202`. Keep the providers on one line, or compose them inside `Layer.mergeAll(…)`, where line breaks remain allowed. `vibelang --fix` joins separator whitespace only when it can keep comments unchanged. A line break inside a block comment has no automatic fix; move the comment or compose the providers inside `Layer.mergeAll(…)`.
+A line break before or after a provider-separating comma keeps the `provide` reading and reports `EK1202`. Keep the providers on one line, or compose them inside `Layer.mergeAll(…)`, where line breaks remain allowed. A line break inside a block comment has no automatic fix; move the comment or compose the providers inside `Layer.mergeAll(…)`.
 
-For an old compiler-intrinsic `wire(A, B)` call, run `vibelang --fix`. The `wire compositions` codemod captures arguments once in source order and writes the resolved `Layer.provideMerge` composition explicitly. It leaves ordinary functions named `wire` alone and refuses unresolved graphs, spreads and calls whose receiver evaluation cannot be preserved.
-
-The codemod uses aliased native imports when introducing a namespace would change declaration text. It checks the emitted declaration bytes and leaves a migration unchanged if they would differ.
-
-The codemod passes a captured tuple to an immediately called arrow that composes the layers. Argument expressions stay in their original scope, including inside a `provide wire(...) { ... }` header.
-
-The migration leaves a candidate unchanged if it adds a compiler error, even when its declaration text would match.
+For an old compiler-intrinsic `wire(A, B)` call, write the resolved `Layer.provideMerge` composition explicitly.
 
 To update an old `with Live { … }` provider block, replace `with` with `provide` in effect code. The old header reports ordinary syntax errors, including when the provider is conditional (`with cond ? A : B { … }`) or a binding (`with Service = value { … }`).

@@ -34,7 +34,7 @@ test("program combinators receive Effects while callback positions keep function
 test("a plain TypeScript call keeps its defect and trusts nothing it did not read", () => {
   const context = buildContext()
   for (const part of ["try Effect.orDie(Effect.try({ try: () => f(x), catch: (error) => error }))",
-    "never to silence the error", "`--fix` writes `: infer _` to keep it plain"]) {
+    "never to silence the error"]) {
     assert.ok(context.includes(part), `the context lacks ${part}`)
   }
   assert.ok(!context.includes("needs a hatch, `trusted(...)`, or the package"), "the context still offers trust as the way to silence EK4401")

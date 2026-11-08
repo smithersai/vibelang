@@ -7,13 +7,13 @@ description: "A fiber is a running computation with a result and a lifetime. Eff
 
 A fiber is a running computation with a result and a lifetime. Effect's lightweight fibers overlap waiting work, inspect completion, and cancel safely. They give concurrency on the runtime's scheduler, not parallel CPU execution of JavaScript.
 
-A parsed `fork` or `join` runs only inside an `effect` function or `effect { ... }` block. A plain nested function, a class field, a static block or a parameter default is outside that code and reports `EK1701`. A discarded operator statement receives that placement error alone, including in a static block nested in effect code. Ordinary discarded Effect calls retain their lint diagnostic. Ordinary helper calls such as `join(parts)` in plain code keep their TypeScript meaning. For previously accepted operators in plain code, `vibelang --fix` writes a cold API call and preserves the enclosing function's plain behavior; mark the function `effect` yourself when you intend to run the operation there.
+A parsed `fork` or `join` runs only inside an `effect` function or `effect { ... }` block. A plain nested function, a class field, a static block or a parameter default is outside that code and reports `EK1701`. A discarded operator statement receives that placement error alone, including in a static block nested in effect code. Ordinary discarded Effect calls retain their lint diagnostic. Ordinary helper calls such as `join(parts)` in plain code keep their TypeScript meaning. For previously accepted operators in plain code, write a cold API call to preserve the enclosing function's plain behavior; mark the function `effect` when you intend to run the operation there.
 
 An `effect` function or producer expression cannot name itself `fork` or `join` (`EK1702`). A declaration uses its enclosing context: `export effect function fork() { return 1 }` is allowed in plain code, while a declaration named `fork` or `join` inside effect code is rejected. Method and property names remain ordinary names, so `{ effect join() { return 1 } }` is allowed.
 
-The reservation also covers constructor and base-class references: `new join.C()` or `class extends fork.C {}` inside effect code reports `EK1702`. Rename the binding, or run `vibelang --fix` to preserve the reference through a plain function without changing the binding or its name. Property names such as `new tools.join()` remain ordinary names; plain nested functions and class field initializers keep their own context.
+The reservation also covers constructor and base-class references: `new join.C()` or `class extends fork.C {}` inside effect code reports `EK1702`. Rename the binding, or preserve the reference through a plain function without changing the binding or its name. Property names such as `new tools.join()` remain ordinary names; plain nested functions and class field initializers keep their own context.
 
-Pattern references follow the same rule: `value is join`, `when fork.C:` and `value is instanceof join.C` report `EK1702` in effect code. Use an import alias or another binding name; property names such as `value is tools.join` remain valid. `vibelang --fix` can alias imports, but leaves a valid outer class or function unchanged when renaming it would change its observable `name`. Applied reserved-name repairs are reported under `EK1702`.
+Pattern references follow the same rule: `value is join`, `when fork.C:` and `value is instanceof join.C` report `EK1702` in effect code. Use an import alias or another binding name; property names such as `value is tools.join` remain valid.
 
 ## Forking and awaiting
 
@@ -43,7 +43,7 @@ An operand that is not assignable to `Fiber.Fiber<any, any>` reports `EK1704`. A
 
 When `join` receives a `Deferred`, `Promise` or `Effect`, its diagnostic shows an executable alternative: `try Deferred.await(value)`, `try Effect.tryPromise(() => value)` or `try value`. Calling an Effect factory constructs its program; `try` runs it. An incomplete marker does not establish a valid `Effect` or `Deferred` operation.
 
-A collection of fibers is not itself a fiber: `join [first, second]` and `join { first, second }` report `EK1704`. For previously accepted collection joins, `vibelang --fix` writes an explicit compatibility helper that preserves operand evaluation, collection reads, result shape and interruption of the remaining fibers after a failure. It does not replace that cleanup policy with a different collection operation.
+A collection of fibers is not itself a fiber: `join [first, second]` and `join { first, second }` report `EK1704`.
 
 With `strictNullChecks` disabled, `null` and `undefined` pass the operand's TypeScript assignability check; `void` remains invalid.
 
@@ -53,7 +53,7 @@ A misplaced `fork` or `join` operator reports `EK1701`. Independent TypeScript e
 
 `fork` and `join` follow the unary precedence of `await`. Their operands can use any unary form, including type assertions and parenthesized expressions, and may start on the following line. This also applies after `fork.in(scope)`, `fork.scoped` and `fork.detached`, including when a comment separates the owner from its operand. A following member or call belongs to the operand; group the completed operation first when reading its result, as in `(join child).length`. Inside Effect code and its parameter lists, these words begin operators regardless of the next token. Outside Effect code they remain ordinary identifiers; give an ordinary helper another name when calling it from Effect code. Parenthesize either operator on the left of exponentiation: `(join child) ** 2`. They may appear directly on its right: `2 ** join child`.
 
-An `effect` function or producer expression cannot be named `fork` or `join` (`EK1702`): its own name uses its body's Effect context. For example, `const item = effect function fork() { return 1 }` is rejected. `vibelang --fix` moves the name into a local constant in a plain arrow, as in `const item = (() => { const fork = effect function() { return 1 }; return fork })()`, preserving the callable name and self-references. Use `--fix` for self-references or contextual types; the editor offers the simpler repairs. The fixer leaves edits that add type errors unapplied. Top-level declarations such as `effect function fork() { return 1 }` and method names such as `effect join() { return 1 }` remain valid.
+An `effect` function or producer expression cannot be named `fork` or `join` (`EK1702`): its own name uses its body's Effect context. For example, `const item = effect function fork() { return 1 }` is rejected. Move the name into a local constant in a plain arrow, as in `const item = (() => { const fork = effect function() { return 1 }; return fork })()`, preserving the callable name and self-references. Top-level declarations such as `effect function fork() { return 1 }` and method names such as `effect join() { return 1 }` remain valid.
 
 The native `await` warnings apply to values typed as a single `Fiber` or `Deferred`. Arrays, tuples and objects containing handles remain ordinary JavaScript values; awaiting a container does not run its contents. A marker property alone does not make an object a handle. The editor's native `await` quick fixes insert the Promise bridge with imports that remain valid when local names shadow `Fiber`, `Deferred` or `runPromise`. The operand is evaluated once. A handle union that cannot be passed to one generic bridge call keeps its warning without an automatic edit. This includes a generic parameter constrained to such a union.
 
@@ -104,7 +104,7 @@ To continue during cleanup, fork the interruption (`const stopping = fork Fiber.
 
 ## Protecting work from interruption
 
-Interruption blocks require an `effect` function or `effect { }` block. Plain and `async` functions, `class` field and `enum` member initializers, `static` blocks and parameter defaults report `EK2201`; a plain callback nested in effect code is still plain. `vibelang --fix` removes the ignored keyword and preserves the ordinary JavaScript block the old compiler emitted.
+Interruption blocks require an `effect` function or `effect { }` block. Plain and `async` functions, `class` field and `enum` member initializers, `static` blocks and parameter defaults report `EK2201`; a plain callback nested in effect code is still plain. Remove the ignored keyword to keep the ordinary JavaScript block the old compiler emitted.
 
 ```vibe
 effect function saveReport() {
@@ -291,9 +291,9 @@ effect function waitForReady() {
 
 Forking schedules a child; it doesn't prove the child reached a particular statement. `try yieldNow` lets other work run but guarantees no readiness, and sleeping for an estimated startup time leaves a race. When ordering matters, use a `Deferred`: `try Deferred.await(ready)` waits until the child completes it.
 
-Parenthesize an execution expression before exponentiation: `(join fiber) ** 2`. A bare `join fiber ** 2` or `fork program ** 2` reports `EK0510`. For a numeric `join` result, the editor action and `vibelang --fix` write `(join fiber) ** 2`.
+Parenthesize an execution expression before exponentiation: `(join fiber) ** 2`. A bare `join fiber ** 2` or `fork program ** 2` reports `EK0510`. For a numeric `join` result, the editor action writes `(join fiber) ** 2`.
 
-For an old bare `fork { ... }` body, run `vibelang --fix` to write `fork effect { ... }`. The `fork blocks` codemod also handles adjacent `fork{}` and a line break after `fork`, preserving the cold body, captures and return value.
+For an old bare `fork { ... }` body, write `fork effect { ... }`.
 
 ---
 

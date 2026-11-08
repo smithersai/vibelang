@@ -10,7 +10,7 @@ export { skip, fc }
 
 // Chapter 002: "The quick fix wraps a value in a function literal, so the
 // handler's kind stays visible in the source, and removes async or * from a
-// function". Compare both actual repair paths with an explicit wrapper.
+// function". Compare the editor repair with an explicit wrapper.
 export function project(t, source) {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "catch-repair-")))
   t.after(() => rmSync(dir, {recursive:true, force:true}))
@@ -111,11 +111,8 @@ export async function checkRepair(t, source, manual, {refuse=false,sole=false}={
   const codes=[...new Set([...original.stdout.matchAll(/\berror ([A-Z]+\d+):/g)].map(m=>m[1]))]
   if(sole) assert.deepEqual(codes,["EK0509"],"fixture has unrelated errors: "+original.stdout)
 
-  const repaired=compile(cli,"--fix")
-  const cliText=readFileSync(join(cli,"main.vibe"),"utf8")
   const editorText=await editor(lsp,source)
   if(refuse) {
-    assert.equal(cliText,source,"CLI should withhold unsafe repair")
     assert.equal(editorText,null,"editor should withhold unsafe repair")
     assert.match(original.stdout,/explicit.*conversion/i)
     const r=compile(control)
@@ -123,7 +120,6 @@ export async function checkRepair(t, source, manual, {refuse=false,sole=false}={
     assert.deepEqual(exit(t,control),{_id:"Exit",_tag:"Success",value:7})
     return
   }
-  assert.equal(repaired.status,0,repaired.stdout+repaired.stderr)
   assert.ok(editorText,"missing editor repair")
   writeFileSync(join(lsp,"main.vibe"),editorText)
   for(const dir of [lsp,control]) {
@@ -131,14 +127,10 @@ export async function checkRepair(t, source, manual, {refuse=false,sole=false}={
     assert.equal(r.status,0,r.stdout+r.stderr)
   }
   const comments=text=>text.match(/\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g)||[]
-  assert.deepEqual(comments(cliText),comments(source),"CLI lost comments")
   assert.deepEqual(comments(editorText),comments(source),"editor lost comments")
   const expected=exit(t,control)
-  assert.deepEqual(exit(t,cli),expected,"CLI changed Exit")
   assert.deepEqual(exit(t,lsp),expected,"editor changed Exit")
-  const withoutPreludeImport=text=>text.replace('import * as Effect from "effect/Effect"\n', "")
-  assert.deepEqual(withoutPreludeImport(cliText),withoutPreludeImport(editorText),"handler repair paths disagree")
-  return cliText
+  return editorText
 }
 export function callableSource(handler, declarations='const e="E", error="R", failure="F", $e="outer"') {
   return declarations+'\nfunction make(a:string,b:string,c:string,d:string): (caught:string)=>string { return () => [a,b,c,d].join("/") }\nexport effect function main() { return Effect.fail("bad") catch '+handler+' }\n'

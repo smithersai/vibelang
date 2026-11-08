@@ -1,1 +1,0 @@
-with -b each project fixes its own files in build order

@@ -1,4 +1,0 @@
-go test fuzz v1
-byte('\x01')
-byte('\x01')
-bool(true)

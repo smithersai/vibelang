@@ -11,7 +11,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { spawnSync } from "node:child_process"
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync } from "node:fs"
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -20,7 +20,7 @@ import { formatSource } from "../format.mjs"
 const root = fileURLToPath(new URL("../../..", import.meta.url))
 const binary = process.env.VIBELANG_BINARY || join(root, "packages/compiler/native/vibelang")
 
-test("format preserves shorthand diagnostics; --fix alone migrates declarations", t => {
+test("format preserves shorthand diagnostics", t => {
   const dir = mkdtempSync(join(tmpdir(), "vibe-format-shorthand-"))
   t.after(() => rmSync(dir, { recursive: true, force: true }))
   mkdirSync(join(dir, "node_modules"))
@@ -50,11 +50,6 @@ test("format preserves shorthand diagnostics; --fix alone migrates declarations"
   const after = compile()
   assert.equal(after.status, 2, after.text)
   assert.equal((after.text.match(/error EK0101:/g) ?? []).length, 2, after.text)
-  const fixed = compile("--fix", "--fix-vip-only")
-  assert.equal(fixed.status, 0, fixed.text)
-  assert.doesNotMatch(fixed.text, /(?:error|warning) EK0101:/)
-  assert.match(readFileSync(path, "utf8"), /\beffect function work\b/)
-  assert.match(readFileSync(path, "utf8"), /\basync function wait\b/)
 })
 
 // docs/design/vips/0034-compiler-and-tooling.md#5121e51bfb0b5dc6

@@ -56,7 +56,7 @@ func TestQualifiedRetiredControlProjection(t *testing.T) {
 	for _, projection := range []Projection{Project(source, testContext), Executable(source, testContext)} {
 		found := false
 		for _, diagnostic := range projection.Diagnostics {
-			if diagnostic.Code == 3501 && strings.Contains(diagnostic.Message, "vibelang --fix") {
+			if diagnostic.Code == 3501 {
 				found = true
 			}
 		}

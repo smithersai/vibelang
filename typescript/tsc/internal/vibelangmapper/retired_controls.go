@@ -6,8 +6,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
-const retiredControlMessage = "Handlers are outside the first release; vibelang --fix migrates supported local service patterns and refuses continuation-dependent rewrites."
-const retiredSelectMessage = "select is outside the first release; vibelang --fix refuses an unproved selection rewrite. Choose explicit Effect selection for the intended behavior."
+const retiredControlMessage = "Handlers are outside the first release."
+const retiredSelectMessage = "select is outside the first release. Choose explicit Effect selection for the intended behavior."
 
 // Recovery keeps the old source available to the CLI migration. Neither
 // projection rendering may turn a rejected form into continuation code.

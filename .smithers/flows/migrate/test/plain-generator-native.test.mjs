@@ -42,7 +42,7 @@ test("t3code Effect.fn generator: migration retains the TypeScript declaration",
     assert.deepEqual(markPlainFunctions(ts, after, ["input.ts"], ["tsconfig.json"], { flipped: true }), {})
     assert.equal(readFileSync(join(after, "input.ts"), "utf8"), source)
     renameSync(join(after, "input.ts"), join(after, "input.vibe"))
-    const compiled = spawnSync(native, ["-p", "tsconfig.json", "--singleThreaded", "--pretty", "false", "--fix"], { cwd: after, encoding: "utf8", timeout: 120000 })
+    const compiled = spawnSync(native, ["-p", "tsconfig.json", "--singleThreaded", "--pretty", "false"], { cwd: after, encoding: "utf8", timeout: 120000 })
     assert.equal(compiled.status, 0, compiled.stdout + compiled.stderr)
     const api = compareApiIdentity(ts, before, after, {
       beforeEntrypoints: { ".": "out/input.d.ts" }, afterEntrypoints: { ".": "out/input.d.ts" }

@@ -99,13 +99,6 @@ export function assertBaselineSafe(p, { includeSetup = true } = {}) {
       tests.push({ stage, ...r, ok: false })
     }
   }
-  // A partial VIP repair can leave normal builds green despite refusing
-  // another site. Its failure (or interrupted phase) remains authoritative.
-  const finishLog = read("logs/vip-finish.json")
-  const finishes = [finishLog, readJsonIf(p.upgrade)?.vipFinish]
-  if (finishLog && finishLog.state !== "complete") compile.push({ stage: "vip-finish", project: finishLog.project, state: finishLog.state, ok: false })
-  const refused = new Map(finishes.flatMap(finish => finish?.failed ?? []).map(failed => [JSON.stringify([failed.project, failed.code]), failed]))
-  for (const failed of refused.values()) compile.push({ stage: "vip-finish", ...failed, ok: false })
   const original = read("upstream-checks.json") ?? {}, current = read("upgraded-checks.json") ?? {}
   const completedSetup = includeSetup && readJsonIf(p.setup)
   const packages = new Set([...Object.keys(original), ...Object.keys(current), ...Object.keys(completedSetup?.compile ?? {})])

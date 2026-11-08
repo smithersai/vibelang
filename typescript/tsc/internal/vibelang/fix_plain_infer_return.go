@@ -2,14 +2,10 @@ package vibelang
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 const plainInferReturnTitle = "Remove the legacy plain inference return annotation"
@@ -54,47 +50,6 @@ func plainInferReturnActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls
 		return nil, nil
 	}
 	return []*ls.CodeAction{{Description: plainInferReturnTitle, Changes: replaceRange(fix, edit.start, edit.end, edit.text)}}, nil
-}
-
-// Outside a TypeScript boundary, the compatibility checker can already
-// infer this return type and suppress TS1338. The CLI still retires the
-// written marker; it cannot depend on that native diagnostic being present.
-func plainInferReturnFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
-	p := proposal{file: file}
-	if !isVibeLangFile(file) {
-		return p
-	}
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if parser.IsVibeLangModuleDeclaration(node) {
-			return false
-		}
-		if ast.IsFunctionLikeDeclaration(node) && node.Type() != nil && nativeCallbackRegistration(c, node) {
-			annotation := node.Type()
-			key := fmt.Sprintf("plain-infer-return:%d", annotation.Pos())
-			if !refused[key] {
-				if edit := plainInferReturnEdit(file, annotation); edit != nil {
-					p.fixes = append(p.fixes, fileFix{code: 1338, key: key, edits: []sourceEdit{*edit}})
-				}
-			}
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return p
-}
-
-// Native callback registration code is ordinary plain code, even when its
-// compatibility annotation causes the checker to infer its return type.
-func nativeCallbackRegistration(c *checker.Checker, node *ast.Node) bool {
-	for ast.IsParenthesizedExpression(node.Parent) {
-		node = node.Parent
-	}
-	call := node.Parent
-	return call != nil && ast.IsCallExpression(call) && len(call.Arguments()) > 0 &&
-		call.Arguments()[0] == node && isEffectFunction(c, call.Expression(), "Effect", "callback")
 }
 
 func plainInferReturnEdit(file *ast.SourceFile, annotation *ast.Node) *sourceEdit {

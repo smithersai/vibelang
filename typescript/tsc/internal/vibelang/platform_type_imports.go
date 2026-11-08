@@ -26,7 +26,7 @@ func checkPlatformTypeImports(c *checker.Checker, file *ast.SourceFile) {
 	findPlatformTypeImports(c, file, func(at *ast.Node, rewrite *formRewrite, args ...any) {
 		d := reportAt(c, file, tsFormSpan(file, at), platformTypeImportDiagnostic, args...)
 		if rewrite.fixable() {
-			note(d, "Its quick fix writes import type; vibelang --fix applies it.")
+			note(d, "Its quick fix writes import type.")
 		} else if rewrite != nil && rewrite.why != "" {
 			note(d, rewrite.why)
 		}

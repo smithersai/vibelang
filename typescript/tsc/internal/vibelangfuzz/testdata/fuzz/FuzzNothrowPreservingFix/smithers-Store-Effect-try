@@ -1,3 +1,0 @@
-go test fuzz v1
-string("smithers-Store-Effect-try")
-int8(7)

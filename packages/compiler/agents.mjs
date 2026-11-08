@@ -2,7 +2,7 @@
 // through its own extension points, and runs the post-edit check they call.
 //
 //   vibelang agents init [dir]    write the skill, instructions, LSP and hooks
-//   vibelang agents check <file>  apply `vibelang --fix`, print what is left
+//   vibelang agents check <file>  print the diagnostics of each file's project
 //   vibelang agents hook          the same check as a PostToolUse hook
 //
 // docs/maintainers/coding-agents.md cites each agent's documentation.
@@ -37,7 +37,7 @@ export async function main(args, findBinary) {
 
 const usage = `Usage:
   vibelang agents init [dir]    Set up Claude Code, Codex, opencode, Cursor and VS Code for .vibe files
-  vibelang agents check <file>  Apply vibelang --fix to each file's project, then print its diagnostics
+  vibelang agents check <file>  Print the diagnostics of each file's project
   vibelang agents hook          Run check for the files a PostToolUse hook event names (stdin JSON)`
 
 // ---- init
@@ -130,7 +130,7 @@ function section(command) {
 
 \`.vibe\` files are VibeLang: Effect programs in TypeScript syntax. Load the \`vibelang\` skill (\`.agents/skills/vibelang/SKILL.md\`) before you write or review one.
 
-- After you edit \`.vibe\` files, run \`${run} agents check <file>...\`. It applies \`vibelang --fix\` and prints each diagnostic left; fix every error before you finish. Claude Code, Codex and opencode run it for you after each edit and show you the result.
+- After you edit \`.vibe\` files, run \`${run} agents check <file>...\`. It prints each diagnostic left; fix every error before you finish. Claude Code, Codex and opencode run it for you after each edit and show you the result.
 - \`${run} --noEmit\` checks the whole project. Each \`EKxxxx\` diagnostic says how to fix it.
 - \`${run} lint\` runs the built-in Effect type-aware rules on \`.vibe\` files using the repository’s Oxlint configuration; pass \`-c <config>\` for a non-default config. Run it before finishing a change.
 ${sectionEnd}`
@@ -171,7 +171,7 @@ function opencodeLsp(run) {
 
 function opencodePlugin(run) {
   return `// ${header}
-// After opencode edits a .vibe file, applies \`vibelang --fix\` to its project and
+// After opencode edits a .vibe file, checks its project and
 // appends the diagnostics left to the tool's result, which the agent reads.
 import { execFile } from "node:child_process"
 
@@ -197,7 +197,7 @@ export const VibeLang = async ({ directory }) => ({
 
 // ---- check
 
-// check applies --fix to each file's project and prints the result; it exits
+// check compiles each file's project and prints the result; it exits
 // 1 when a project has errors or its compiler check did not complete.
 function check(files, findBinary) {
   if (files.length === 0) {
@@ -251,10 +251,10 @@ export function editedFiles(event, cwd) {
   return [...new Set(paths.filter((path) => typeof path === "string" && path !== "").map((path) => resolve(cwd, path)))]
 }
 
-// checkFiles runs `vibelang -p <project> --fix --noEmit` once for each
+// checkFiles runs `vibelang -p <project> --noEmit` once for each
 // project the files belong to and sorts what it prints.
 export function checkFiles(files, binary, cwd) {
-  const result = { fixes: [], errors: [], warnings: [], otherErrors: 0, missing: [], failures: [] }
+  const result = { errors: [], warnings: [], otherErrors: 0, missing: [], failures: [] }
   const projects = new Map()
   for (const file of files.map((file) => realpathSync(file))) {
     const project = projectOf(file, binary)
@@ -266,16 +266,13 @@ export function checkFiles(files, binary, cwd) {
   }
   for (const [project, members] of projects) {
     const directory = realpathSync(dirname(project))
-    const run = spawnSync(binary, ["-p", project, "--fix", "--noEmit", "--pretty", "false"], {
+    const run = spawnSync(binary, ["-p", project, "--noEmit", "--pretty", "false"], {
       cwd: directory, encoding: "utf8", maxBuffer: 1 << 26
     })
     if (run.error || run.signal || run.status !== 0) {
       result.failures.push({ project, status: run.status, signal: run.signal, error: run.error?.message, stderr: run.stderr ?? "" })
     }
     const output = `${run.stdout ?? ""}${run.stderr ?? ""}`
-    for (const fix of output.matchAll(/^vibelang --fix: (.+?): (\d+ fix(?:es)? \(.*\))$/gm)) {
-      result.fixes.push({ file: resolve(directory, fix[1]), summary: fix[2] })
-    }
     for (const diagnostic of parseDiagnostics(output, directory)) {
       if (!members.includes(diagnostic.file)) {
         if (diagnostic.severity === "error") result.otherErrors++
@@ -325,7 +322,6 @@ function failed(result) {
 function report(result, cwd, clean) {
   const name = (file) => relative(cwd, file) || file
   const lines = []
-  for (const fix of result.fixes) lines.push(`vibelang --fix rewrote ${name(fix.file)}: ${fix.summary}. Read it again before you edit it.`)
   for (const d of [...result.errors, ...result.warnings]) {
     lines.push(`${name(d.file)}(${d.line},${d.column}): ${d.severity} ${d.code}: ${d.message}`)
   }

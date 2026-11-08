@@ -112,26 +112,6 @@ export function nativeContract(mode) {
       assert.notEqual(rejected.status,0,rejected.text)
       assert.match(rejected.text,/EK0403/)
       assert.doesNotMatch(rejected.text,/list its package.*trustedPackages/,"foreign-call advice must not recommend a retired setting")
-      const fixed=invoke("-p",".","--fix","--pretty","false")
-      assert.equal(fixed.status,0,fixed.text)
-      put("api.ts", 'import { main } from "./out/main.js"; import { Effect } from "effect"; type Native = (fail: boolean) => Effect.Effect<number>; const native: Native = main; const vibe: typeof main = (fail: boolean) => Effect.succeed(42);')
-      const contract=ts.createProgram([join(dir,"api.ts")], { noEmit:true, strict:true, types:[], skipLibCheck:true, target:ts.ScriptTarget.ES2022, module:ts.ModuleKind.NodeNext, moduleResolution:ts.ModuleResolutionKind.NodeNext })
-      assert.deepEqual(ts.getPreEmitDiagnostics(contract).map(d=>ts.flattenDiagnosticMessageText(d.messageText,"\n")),[],"repair must preserve the native twin's Effect type in both directions")
-      const source=readFileSync(join(dir,"main.vibe"),"utf8")
-      const again=invoke("-p",".","--fix","--pretty","false")
-      assert.equal(again.status,0,again.text)
-      assert.equal(readFileSync(join(dir,"main.vibe"),"utf8"),source,"repair must converge")
-      const probe=spawnSync(process.execPath,["--input-type=module","-e",`
-        import assert from "node:assert/strict";
-        import { Effect, Exit, Cause } from "effect";
-        import { marker } from "retired-config-fixture";
-        import { main } from "./out/main.js";
-        const success=Effect.runSyncExit(main(false));
-        assert.ok(Exit.isSuccess(success)); assert.equal(success.value,42);
-        const failure=Effect.runSyncExit(main(true));
-        assert.ok(Exit.isFailure(failure)); assert.equal(Cause.squash(failure.cause),marker);
-      `],{cwd:dir,encoding:"utf8",timeout:30000})
-      assert.ifError(probe.error);assert.equal(probe.status,0,probe.stdout+probe.stderr)
     })
   } else if (mode === "sidecar-config") {
     for (const value of [false,true,null,[],["types"],42,{}]) fixture(({put,invoke,config,options})=>{
@@ -191,26 +171,7 @@ export function nativeContract(mode) {
     put("control.ts",client);const control=ts.createProgram([join(dir,"control.ts")],{noEmit:true,strict:true,types:[],module:ts.ModuleKind.NodeNext,target:ts.ScriptTarget.ES2022})
     assert.deepEqual(ts.getPreEmitDiagnostics(control).map(d=>d.code),[])
     })
-  } else if (mode === "build-fix") { fixture(({dir,put,invoke,options})=>{
-    put("tsconfig.json",{files:[],references:[{path:"./a"},{path:"./b"}]})
-    for(const project of ["a","b"]){
-      put(project+"/src/main.vibe",'import type { Effect } from "effect"; export type Run = Effect.Effect<number>;')
-      put(project+"/tsconfig.json",{compilerOptions:{...options,composite:true,declaration:true,rootDir:"src",outDir:"build"},include:["src"],vibe:{effectGlobals:false,effectModules:false},...(project==="b"?{references:[{path:"../a"}]}:{})})
-    }
-    const r=invoke("--fix","-b","tsconfig.json","--pretty","false");assert.equal(r.status,0,r.text)
-    for(const project of ["a","b"]) assert.doesNotMatch(readFileSync(join(dir,project,"src/main.vibe"),"utf8"),/Effect\.Effect/,"both projects fix their own files")
-    const before=["a","b"].map(p=>readFileSync(join(dir,p,"src/main.vibe"),"utf8"))
-    const again=invoke("--fix","-b","tsconfig.json","--pretty","false");assert.equal(again.status,0,again.text)
-    assert.deepEqual(["a","b"].map(p=>readFileSync(join(dir,p,"src/main.vibe"),"utf8")),before)
-    })
-  } else if (mode === "only-option") fixture(({put,invoke,config,options})=>{
-    Object.assign(options,{noEmit:true});put("main.vibe","export const value = 1;");config({files:["main.vibe"]})
-    // VIP-34, amended (fab37b46453e): --fix --only limits repairs to the listed modules; --only requires --fix.
-    const r=invoke("--fix","--only","main.vibe","-p",".","--pretty","false")
-    assert.equal(r.status,0,r.text)
-    const bare=invoke("--only","main.vibe","-p",".","--pretty","false")
-    assert.notEqual(bare.status,0);assert.match(bare.text,/TS5023.*only/)
-  })
+  }
   else throw new Error("unknown coverage oracle "+mode)
   assert.deepEqual(failures, [], mode)
 }

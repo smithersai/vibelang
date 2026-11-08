@@ -96,33 +96,3 @@ func rootFunctionJavaScript(t *testing.T, p *compiler.Program) string {
 	}
 	return js
 }
-
-// A namespace imported under a function's spelling is the whole module.
-// Automatic import cleanup must not replace it with the bare function.
-func TestPreludeRootFunctionNamespaceRepair(t *testing.T) {
-	for _, name := range []string{"pipe", "flow", "identity"} {
-		t.Run(name, func(t *testing.T) {
-			source := "import * as " + name + " from 'effect/Function'; const selected=" + name + ".identity; export const result=typeof selected"
-			p := rootFunctionProgram(t, source, true)
-			var path string
-			for _, file := range p.GetSourceFiles() {
-				if strings.HasSuffix(file.FileName().AsString(), "/main.vibe") {
-					path = filepath.Join(filepath.Dir(file.FileName().AsString()), "tsconfig.json")
-					break
-				}
-			}
-			if path == "" {
-				t.Fatal("missing source project")
-			}
-			fs := bundled.WrapFS(osvfs.FS())
-			config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(path)), &core.CompilerOptions{}, nil, fs, nil)
-			if len(errors) != 0 || len(config.Errors) != 0 {
-				t.Fatalf("config: %v %v", errors, config.Errors)
-			}
-			result := FixProject(t.Context(), fs, bundled.LibPath(), config)
-			if len(result.Order) != 0 || len(result.Refused) != 0 {
-				t.Fatalf("namespace import was treated as the bare function: changed=%v refused=%+v", result.Order, result.Refused)
-			}
-		})
-	}
-}

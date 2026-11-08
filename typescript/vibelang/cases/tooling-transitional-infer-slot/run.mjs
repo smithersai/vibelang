@@ -52,31 +52,6 @@ for (const scope of [["--fix", "--fix-migration-only"], ["--fix"]]) {
     const exits = run(process.execPath, ["observe.mjs"])
     assert.equal(exits.status, 0, exits.text)
 
-    const fixed = invoke(...scope, "-p", ".", "--pretty", "false")
-    assert.ok(!at(fixed.text).some(d => d.endsWith("EK4857")), fixed.text)
-    assert.deepEqual(at(fixed.text).filter(d => d.endsWith("TS1338")), ["main:2 error TS1338", "main:4 error TS1338"])
-    const lines = read("main.vibe").split("\n"), original = source.split("\n")
-    for (let i = 0; i < original.length; i++) {
-      const written = repaired[i + 1]
-      if (i + 1 === 8) continue
-      if (written === undefined) assert.equal(lines[i], original[i], "line " + (i + 1))
-      else if (scope.length === 2) assert.equal(lines[i], written, "line " + (i + 1))
-      else assert.notEqual(lines[i], original[i], "line " + (i + 1))
-    }
-    // Every channel infer, but unmarked: the repair writes types and keeps the annotation.
-    assert.match(lines[7], /^export function unmarked\(\): \S.* \{ return Effect\.succeed\(2\) \}$/)
-    assert.doesNotMatch(lines[7], /infer/)
-    // Ordinary --fix may restyle Effect.Effect as the shorthand, never the meaning.
-    assert.doesNotMatch(lines[5], /\): /)
-    assert.match(lines[6], /^export effect function partial\(id: string\): (number!"empty"|Effect\.Effect<number, "empty">) \{/)
-
-    put("check/tsconfig.json", { compilerOptions: { strict: true, noEmit: true, types: [], skipLibCheck: true, module: "NodeNext", target: "ES2022" }, files: ["../same.ts"] })
-    put("same.ts", sameTypes)
-    const same = stock("-p", "check/tsconfig.json", "--pretty", "false")
-    assert.equal(same.status, 0, same.text)
-    const after = run(process.execPath, ["observe.mjs"])
-    assert.equal(after.status, 0, after.text)
-    assert.equal(after.stdout, exits.stdout)
   })
 }
 console.log("EK4857 is an error whose repair writes checker-proved channel types")

@@ -1,3 +1,0 @@
-go test fuzz v1
-byte(12)
-bool(false)

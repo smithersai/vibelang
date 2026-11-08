@@ -167,7 +167,7 @@ var (
 	// EK3205: an entry module's main needs a service that nothing provides when the host starts the module (D135, D122). {0} is the service.
 	EK3205 = message(3205, warningCategory, "main needs {0}, which nothing provides when the host starts this module.")
 	// EK2601: a retired legacy platform entry marker, `import "vibelang/platform/node"`, `bun` or `browser`, with or without main (VIP-26, chapter 7).
-	EK2601 = message(2601, errorCategory, "legacy platform entry marker: run vibelang --fix and write an explicit runner")
+	EK2601 = message(2601, errorCategory, "legacy platform entry marker: write an explicit runner")
 	// EK3206: a file names a second, different platform with a platform import (D312). {0} is the platform it names first, {1} the second.
 	EK3206 = message(3206, errorCategory, "This file already names the {0} platform, so it cannot also name {1}.")
 

@@ -341,13 +341,13 @@ func reportPatternError(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	case 701:
 		note(reportAt(c, file, at, EK0701), "A new line or a comma does not separate arms.")
 	case 705:
-		note(reportAt(c, file, at, EK0705), "Wrap the statement body in braces. The quick fix and vibelang --fix apply this repair.")
+		note(reportAt(c, file, at, EK0705), "Wrap the statement body in braces. The quick fix applies this repair.")
 	case 707:
 		if len(args) > 1 && args[1].Kind == ast.KindStringLiteral {
 			reportAt(c, file, at, EK0707, args[1].Text())
 		}
 	case 107:
-		note(reportAt(c, file, at, EK0107), "A pattern binds a name with let or const: write when let x: or when const x:. The quick fix and vibelang --fix replace this var with let.")
+		note(reportAt(c, file, at, EK0107), "A pattern binds a name with let or const: write when let x: or when const x:. The quick fix replaces this var with let.")
 	case 1017:
 		reportAt(c, file, at, EK1017)
 	case 4703:

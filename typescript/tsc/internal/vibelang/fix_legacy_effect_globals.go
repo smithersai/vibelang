@@ -20,23 +20,6 @@ func init() {
 	})
 }
 
-// These run beside legacy hatch type repairs in every CLI fix mode.
-func legacyPreludeCompatibilityFixes(ctx context.Context, program *compiler.Program, refused map[string]bool, legacy, preVIP bool) map[*ast.SourceFile]proposal {
-	plans := legacyHatchTypeMigrationFixes(ctx, program, refused)
-	for _, file := range fixableFiles(program) {
-		p := legacyEffectGlobalFixes(ctx, program, file, refused, legacy, preVIP, nil)
-		p = p.withFixes(plainInferReturnFixes(ctx, program, file, refused))
-		if len(p.fixes) == 0 {
-			continue
-		}
-		if previous, ok := plans[file]; ok {
-			p = previous.withFixes(p)
-		}
-		plans[file] = p
-	}
-	return plans
-}
-
 // A scope-first call previously reached the runtime wrapper. Snapshot its
 // arguments in source order, then use the native program-first function.
 // Keep the old runtime initialization; it ran before authored module imports.
@@ -229,18 +212,4 @@ func legacyEffectGlobalActions(ctx context.Context, fix *ls.CodeFixContext) ([]*
 		return nil, nil
 	}
 	return []*ls.CodeAction{action}, nil
-}
-
-// This recognizes the historical protocol only while planning a migration.
-// It never changes checking or the native function's current signature.
-func legacyForkInScopeFirst(c *checker.Checker, call *ast.Node) bool {
-	if !ast.IsCallExpression(call) || len(call.Arguments()) != 2 || !ast.IsIdentifier(call.Expression()) || call.Expression().Text() != "forkIn" || shadowedByValue(call.Expression(), "forkIn") {
-		return false
-	}
-	symbol := servicesFor(c).effectExport("Scope", "Scope")
-	if symbol == nil {
-		return false
-	}
-	first := c.GetTypeAtLocation(call.Arguments()[0])
-	return first != nil && first.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown|checker.TypeFlagsNever) == 0 && c.IsTypeAssignableTo(first, c.GetDeclaredTypeOfSymbol(resolvedAlias(c, symbol)))
 }

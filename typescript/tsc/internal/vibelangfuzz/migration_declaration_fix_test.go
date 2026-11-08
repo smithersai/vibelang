@@ -1,16 +1,9 @@
 package vibelangfuzz
 
 import (
-	"context"
-	"crypto/sha256"
 	"fmt"
-	"maps"
-	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const migrationDeclarationFixTarget = "FuzzMigrationDeclarationFix"
@@ -113,116 +106,4 @@ func TestMigrationDeclarationFixQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), migrationDeclarationFixQuote) {
 		t.Fatalf("Chapter 7 no longer says %q; update the oracle", migrationDeclarationFixQuote)
 	}
-}
-
-func checkMigrationDeclarationFix(t *testing.T, w *Workspace, api, archive string) {
-	t.Helper()
-	TestMigrationDeclarationFixQuoted(t)
-	toolsGuard(t, migrationDeclarationFixTarget, func() {
-		files := toolsUnarchive(archive)
-		if toolsMainFile(files) == "" || toolsTooLarge(files) {
-			t.Skip("not an admissible source project")
-		}
-		before := toolsCompile(t, w, migrationDeclarationFixTarget, files)
-		defer before.Remove()
-		config := toolsConfig(w, before.Dir)
-		if before.Program == nil || config == nil || len(config.Errors) > 0 || !toolsErrorFree(before) {
-			t.Skipf("not a well-typed original project: %v", SortedKeys(Keys(before.Dir, before.Diagnostics)))
-		}
-		var result *vibelang.FixResult
-		toolsRun(t, migrationDeclarationFixTarget, "fix", archive, nil, func() {
-			result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{})
-		})
-		if result.Err != nil {
-			Gap(t, migrationDeclarationFixTarget, "fix:converge", "Chapter 7: --fix failed: %v\n%s", result.Err, archive)
-		}
-		fixed := maps.Clone(files)
-		for name, file := range result.Files {
-			rel := strings.TrimPrefix(name.AsString(), filepath.ToSlash(before.Dir)+"/")
-			if _, own := files[rel]; !own || !strings.HasSuffix(rel, ".vibe") {
-				Gap(t, migrationDeclarationFixTarget, "fix:scope", "Chapter 7: --fix changed non-source %s\n%s", rel, archive)
-			}
-			fixed[rel] = file.Text
-		}
-		after := before
-		if len(result.Files) > 0 {
-			after = toolsCompile(t, w, migrationDeclarationFixTarget, fixed)
-			defer after.Remove()
-			if !toolsErrorFree(after) {
-				Gap(t, migrationDeclarationFixTarget, "fix:new-error", "Chapter 7: --fix broke a well-typed source: %v\n%s\nfixed:\n%s", SortedKeys(Keys(after.Dir, after.Diagnostics)), archive, Archive(fixed))
-			}
-		}
-		baseline, current := t.TempDir(), t.TempDir()
-		for _, side := range []struct {
-			dir    string
-			result *Result
-		}{{baseline, before}, {current, after}} {
-			count := 0
-			for name, text := range side.result.Outputs {
-				if !strings.HasPrefix(name, "out/") || !isDeclaration(name) {
-					continue
-				}
-				if err := writeInside(side.dir, strings.TrimPrefix(name, "out/"), text); err != nil {
-					t.Fatal(err)
-				}
-				count++
-			}
-			if count == 0 {
-				t.Skip("project emits no public declarations")
-			}
-		}
-		ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
-		defer cancel()
-		diff, err := declarationIdentityProbeFor(t, api)(ctx, api, baseline, current)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if diff != "" {
-			// Each minimized source has its own key: one known import defect
-			// cannot suppress a different failure discovered by mutation.
-			Gap(t, migrationDeclarationFixTarget, fmt.Sprintf("declaration:%x", sha256.Sum256([]byte(archive))),
-				"Chapter 7: %q\n%s\nsource:\n%s\nfixed:\n%s", migrationDeclarationFixQuote, diff, archive, Archive(fixed))
-		}
-		ExpectPending(t, migrationDeclarationFixTarget, specCorpusKey(t))
-	})
-}
-
-func TestMigrationDeclarationFixWitnesses(t *testing.T) {
-	w := NewWorkspace(t)
-	api := declarationIdentityAPI(t)
-	for name, source := range migrationDeclarationWitnesses() {
-		var child *testing.T
-		t.Run(name, func(t *testing.T) {
-			child = t
-			checkMigrationDeclarationFix(t, w, api, Archive(map[string]string{"main.vibe": source}))
-		})
-		if child.Skipped() {
-			if _, pending := Pending(migrationDeclarationFixTarget, "corpus:"+name); !pending {
-				t.Errorf("%s: minimized migration witness was not admitted", name)
-			}
-		}
-	}
-}
-
-func FuzzMigrationDeclarationFix(f *testing.F) {
-	startShortBudget(f)
-	variants := migrationDeclarationVariants()
-	if testing.Short() && !toolsFuzzing() {
-		// Corpus files retain every witness. Four additional
-		// combinations, and three of the 16 service-class ones, bound short-run
-		// cost; campaigns explore all of them.
-		variants = []string{variants[1], variants[5], variants[10], variants[21]}
-		services := migrationServiceClassVariants()
-		variants = append(variants, services[2], services[7], services[13])
-	} else {
-		variants = append(variants, migrationServiceClassVariants()...)
-	}
-	for _, source := range variants {
-		f.Add(Archive(map[string]string{"main.vibe": source}))
-	}
-	w := NewWorkspace(f)
-	api := declarationIdentityAPI(f)
-	f.Fuzz(func(t *testing.T, archive string) {
-		checkMigrationDeclarationFix(t, w, api, archive)
-	})
 }

@@ -2,7 +2,6 @@ import { captureSourceSnippets, captureTrackedSourceSnippets, refreshSourceSnipp
 import { refreshProjectReferences } from "./reference-outputs.mjs"
 import { assertComputedBuildEntrypoints } from "./computed-build-entrypoints.mjs"
 import { moduleDeclarationFiles } from "./module-declaration-files.mjs"
-import { conversionIdentity } from "./conversion-context.mjs"
 import { restorePrivateResolverExports } from "./import-meta-platform.mjs"
 import { formatResult as formatApiIdentity } from "./api-identity.mjs"
 import { prepareToolchainPublication, stagedToolchainSpecs } from "./toolchain-publication.mjs"
@@ -26,7 +25,7 @@ import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inve
 import * as Enumerations from "./enumerations.mjs"
 import { sidecarPath, sidecarProjectLayout } from "./sidecar-config.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { packageDirOf, refreshSidecarExports, sidecarOf, bareVibeExports, compilerCompanionOf, fixToFixedPoint, isCompilerCompanion, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { packageDirOf, refreshSidecarExports, sidecarOf, bareVibeExports, compilerCompanionOf, isCompilerCompanion, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
@@ -71,7 +70,6 @@ import { routeSourceDeclarationImports, sourceDeclarationPrefix } from "./source
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { wireNodeTests } from "./node-tests.mjs"
 import { bindCompilerArtifact, compilerArtifactOf, readToolchain } from "./toolchain.mjs"
-import { probeVip1, probeTargetVip1 } from "./vip-flip.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
 import { appendJsonl, batchName, isDeclarationFile, must, packageKey, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
 import { importerPaths } from "./importer-files.mjs"
@@ -125,10 +123,6 @@ export function nextStep(runDir) {
     const b = batchName(i)
     if (existsSync(p.record(b))) continue
     if (!existsSync(p.codemod(b))) return { step: "codemod", batch: b }
-    if (plan.mode === "one-pass") {
-      const fixed = readJson(p.codemod(b)).fix
-      if (!fixed?.settled || fixed.identity !== conversionIdentity(readJson(p.config), p)) return { step: "codemod", batch: b }
-    }
     if (!existsSync(p.compile(b))) return { step: "compile", batch: b }
     if (!existsSync(p.repair(b))) return { step: "repair", batch: b }
     const verify = readJsonIf(p.verify(b))
@@ -307,7 +301,7 @@ export function vibeDprintConfig(t, file) {
 
 /**
  * Formats the .vibe files a batch wrote with the formatter the target's
- * format check runs on them, which `vibelang --fix` does not: the
+ * format check runs on them: the
  * repository's dprint where the nearest dprint configuration loads VibeLang's
  * plugin (smithers: dprint check failed on 258 files vibelang-format had
  * written without its trailingCommas and arrowFunction settings), and
@@ -602,8 +596,6 @@ export async function upgradeEffect(options) {
   const before = await testRun("upstream")
   if (before.code !== 0 && !before.tests) throw new Error(`the target's tests do not run (exit ${before.code}); see ${join(logs, "upstream-tests.log")}`)
   writeJson(join(p.baseline, "upstream-tests.json"), { code: before.code, tests: before.tests })
-  // The installed compiler migrates its own .vibe modules before the new one replaces it.
-  const vip = await applyEarlierVipFixes(config, logs)
 
   const to = await runtimeEffect(config)
   const workspaceFile = join(t, "pnpm-workspace.yaml")
@@ -620,18 +612,15 @@ export async function upgradeEffect(options) {
   }
   const vibelang = repinVibeLang(config, manifests)
   const written = [...new Set([...upgrade.files.map((f) => f.path), ...vibelang.manifests, ...vibelang.written])]
-  const changed = [...written, ...upgrade.patches.flatMap((patch) => [patch.from, patch.to]), ...vibelang.patchFiles, ...vip.changed]
+  const changed = [...written, ...upgrade.patches.flatMap((patch) => [patch.from, patch.to]), ...vibelang.patchFiles]
   const formatted = await formatWritten(t, written, join(logs, "upgrade-format.log"))
 
   let after = before
   let upgradedBuild = upstreamBuild
   let comparison = null
   let commit = null
-  let vipFinish = null
   if (changed.length) {
     await install("upgraded")
-    vipFinish = await finishVipFixes(config, logs, vip)
-    for (const file of vipFinish.changed) if (!changed.includes(file)) changed.push(file)
     assertBaselineSafe(p, { includeSetup: false })
     upgradedBuild = await prepareBuilds(config, logs, "upgraded")
     after = await testRun("upgraded")
@@ -643,7 +632,7 @@ export async function upgradeEffect(options) {
     if (issue) appendJsonl(p.issues, issue)
     await assertPortable(t, machineRoots(t, p.run, config.toolchain.dir))
     const moved = upgrade.files.length || upgrade.patches.length
-    commit = await Jj.commit(t, moved ? `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.manifests.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""}${vip.changed.length || vipFinish.changed.length ? vipSentence(vip) + vipFinishSentence(vipFinish) : " No source file changes;\nVibeLang comes next."}` : switchMessage(config, vip, vipFinish))
+    commit = await Jj.commit(t, moved ? `migrate(vibelang): upgrade Effect to ${to}\n\nThe VibeLang runtime requires exactly effect ${to}. Moves effect and every\n@effect/* package on its major line from ${upgrade.from} to ${to}, with overrides\nthat keep one copy installed.${vibelang.manifests.length ? " The VibeLang packages it already uses move\nto this run's release, which requires that Effect." : ""} No source file changes;\nVibeLang comes next.` : switchMessage(config))
   }
   writeJson(join(p.baseline, "upgraded-tests.json"), { code: after.code, tests: after.tests })
   writeJson(join(p.baseline, "upgraded-checks.json"), await upgradedCompilerChecks(config, logs, priorChecks))
@@ -660,8 +649,6 @@ export async function upgradeEffect(options) {
     patches: upgrade.patches.map(({ from, to }) => ({ from, to })),
     vibelang: vibelang.manifests,
     vibelangPatches: vibelang.patches,
-    vipFixes: vip,
-    ...(vipFinish && { vipFinish }),
     changed,
     formatted,
     upstreamTests: testsOf(before),
@@ -673,136 +660,10 @@ export async function upgradeEffect(options) {
   return result
 }
 
-/**
- * Applies the installed compiler's VIP migrations to the .vibe modules an
- * earlier run migrated, only across the VIP-1 flip, before repinning VibeLang:
- * `vibelang -p <tsconfig> --fix --fix-vip-only` with the `vibelang` installed
- * nearest each project that holds a tracked .vibe file. Only that compiler can
- * still make them: once VIP-1's rules apply, a later one cannot tell which
- * unmarked helpers were Effect functions (opencode: 187 errors in ai's 15
- * modules, none after the earlier compiler's 165 fixes). Returns the .vibe
- * files it changed, projects run, failures, probe declarations and skip reasons.
- */
-async function applyEarlierVipFixes(config, logs) {
-  const t = config.target
-  const vibe = (await Jj.trackedFiles(t)).filter((f) => /\.vibex?$/.test(f) && !f.split("/").includes("node_modules"))
-  const empty = { changed: [], projects: [], failed: [] }
-  if (!vibe.length) return empty
-  const plan = earlierVipProjects(t, vibe)
-  let ts
-  try { ts = typeScriptOf(config) }
-  catch (error) { return { ...empty, skipped: `VIP-1 probe failed: ${error.message}` } }
-  const first = plan.find(entry => entry.compiler)
-  const target = await probeTargetVip1({ toolchain: config.toolchain, readToolchain,
-    nodeModules: first && dirname(dirname(join(t, first.compiler))), directory: logs,
-    log: join(logs, "vip-probe-target.log"), ts })
-  const probes = { target, installed: [] }
-  if (target.fatal) {
-    const receipt = join(logs, "vip-probe-result.json")
-    writeJson(receipt, probes)
-    throw new Error(`${target.error}${target.diagnosticCodes?.length ? ": " + target.diagnosticCodes.join(", ") : ""}; see ${target.log ?? receipt} (probe receipt: ${receipt})`)
-  }
-  if (target.error) return { ...empty, skipped: target.error, probes }
-  const before = new Map(vibe.map((f) => [f, readFileSync(join(t, f), "utf8")]))
-  const failed = [], projects = [], skippedProjects = [], installed = new Map()
-  for (const { project, compiler } of plan) {
-    if (!compiler) {
-      skippedProjects.push({ project, reason: "no installed vibelang" })
-      continue
-    }
-    if (!installed.has(compiler)) {
-      const result = await probeVip1({ compiler: join(t, compiler),
-        nodeModules: dirname(dirname(join(t, compiler))), directory: logs,
-        log: join(logs, `vip-probe-installed-${slug(compiler)}.log`), ts })
-      installed.set(compiler, result)
-      probes.installed.push({ compiler, ...result })
-    }
-    const previous = installed.get(compiler)
-    const reason = previous.error ?? (previous.side === target.side ? "same side of the flip"
-      : previous.side !== "pre" || target.side !== "post" ? "switch does not cross from pre-flip to post-flip" : null)
-    if (reason) {
-      skippedProjects.push({ project, reason })
-      continue
-    }
-    projects.push(project)
-    const result = await sh(`${quote(join(t, compiler))} -p ${quote(join(t, project))} --fix --fix-vip-only --noEmit --pretty false`,
-      { cwd: join(t, posix.dirname(project)), log: join(logs, `vip-fix-${slug(posix.dirname(project))}.log`) })
-    if (result.code !== 0) failed.push({ project, code: result.code })
-  }
-  return { changed: vibe.filter((f) => readFileSync(join(t, f), "utf8") !== before.get(f)), projects, failed, probes,
-    ...(skippedProjects.length ? { skippedProjects } : {}),
-    ...(!projects.length ? { skipped: [...new Set(skippedProjects.map(p => p.reason))].join("; ") || "no project with a tracked .vibe file" } : {}) }
-}
-
-// The predecessor can mark inferred Effect functions, while only the new
-// compiler knows the retired value-call syntax it now rejects. Finish those
-// projects after install and before their builds, only when their new check
-// still fails. A post-flip release can also reject what its post-flip
-// predecessor accepted and ship the fix (t3code's git.vibe, EK2109), so a
-// post-to-post switch enters too. A pre-flip compiler's fixer never runs on a
-// same-era switch (alchemy-56).
-async function finishVipFixes(config, logs, previous) {
-  const result = {
-    changed: [],
-    projects: [],
-    failed: [],
-    checks: {},
-  }
-  const sameEraPost = previous.probes?.target?.side !== "post" ? [] : (previous.skippedProjects ?? [])
-    .filter(({ reason }) => reason === "same side of the flip").map(({ project }) => project)
-  const projects = [...(previous.projects ?? []), ...sameEraPost]
-  if (!projects.length) return result
-  const t = config.target, compiler = compilerOf(config)
-  const native = (await Jj.trackedFiles(t)).filter(file => /\.vibex?$/.test(file) && !file.split("/").includes("node_modules"))
-  const before = new Map(native.map(file => [file, readFileSync(join(t, file), "utf8")]))
-  const receipt = join(logs, "vip-finish.json")
-  for (const project of projects) {
-    writeJson(receipt, { ...result, state: "checking", project })
-    const checked = await check({ compiler, tsconfig: join(t, project), cwd: t, root: t,
-      log: join(logs, "vip-finish-check-" + slug(project) + ".log") })
-    result.checks[project] = { code: checked.code, diagnostics: summarize(checked.diagnostics) }
-    if (checked.code === 0) continue
-    result.projects.push(project)
-    writeJson(receipt, { ...result, state: "fixing", project })
-    const fixed = await sh([compiler, "-p", join(t, project), "--fix", "--fix-vip-only", "--noEmit", "--pretty", "false"].map(quote).join(" "),
-      { cwd: join(t, posix.dirname(project)), log: join(logs, "vip-finish-" + slug(project) + ".log") })
-    if (fixed.code !== 0) result.failed.push({ project, code: fixed.code })
-  }
-  result.changed = native.filter(file => readFileSync(join(t, file), "utf8") !== before.get(file))
-  writeJson(receipt, { ...result, state: result.failed.length ? "failed" : "complete" })
-  return result
-}
-
-/**
- * The projects applyEarlierVipFixes runs on, sorted: the nearest tsconfig.json
- * at or above each of vibe (repository-relative .vibe files in t), once each,
- * with the vibelang installed nearest that project, or undefined.
- */
-export function earlierVipProjects(t, vibe) {
-  // The nearest name at or above file's directory, repository-relative.
-  const upward = (file, name) => {
-    for (let dir = posix.dirname(file); ; dir = posix.dirname(dir)) {
-      if (existsSync(join(t, dir, name))) return posix.join(dir, name)
-      if (dir === ".") return undefined
-    }
-  }
-  return [...new Set(vibe.map((f) => upward(f, "tsconfig.json")).filter(Boolean))].sort()
-    .map((project) => ({ project, compiler: upward(project, "node_modules/.bin/vibelang") }))
-}
-
-// The sentence a commit adds for the VIP migrations applyEarlierVipFixes made.
-const vipSentence = (vip) => vip.changed.length
-  ? `\n\nFirst applies the earlier toolchain's VIP migrations\n(vibelang --fix --fix-vip-only) to ${vip.changed.length} .vibe file${vip.changed.length === 1 ? "" : "s"}.`
-  : ""
-
-const vipFinishSentence = (finish) => finish?.changed.length
-  ? "\n\nThe new compiler completes the VIP migration of " + finish.changed.length + " .vibe module" + (finish.changed.length === 1 ? "" : "s") + " before the upgraded build."
-  : ""
-
 /** The commit of an upgrade step that moved no Effect package: only VibeLang's pins changed. */
-function switchMessage(config, vip, finish) {
+function switchMessage(config) {
   const name = config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir).commit?.slice(0, 12) ?? config.toolchain.dir : config.toolchain.version
-  return `migrate(vibelang): switch to the toolchain of VibeLang ${name}\n\nEffect stays where it is. Repins vibelang and its packages.${vipSentence(vip)}${vipFinishSentence(finish)}`
+  return `migrate(vibelang): switch to the toolchain of VibeLang ${name}\n\nEffect stays where it is. Repins vibelang and its packages.`
 }
 
 /**
@@ -1623,7 +1484,7 @@ function rememberPackingFiles(p, batch, emitted) {
   return next
 }
 
-/** codemod: rename the batch to .vibe, rewrite imports, and run vibelang --fix to a fixed point. */
+/** codemod: rename the batch to .vibe and rewrite what names it; the repair agent does the rest. */
 export async function codemod(options) {
   assertBaselineSafe(paths(options.run))
   const { p, config, plan: thePlan, inventory } = loadRun(options.run)
@@ -1631,7 +1492,6 @@ export async function codemod(options) {
   if (thePlan.mode === "one-pass") {
     const { onePassStep } = await import("./onepass.mjs")
     await onePassStep("rename", options)
-    await onePassStep("fix", options)
     return readJson(p.codemod("01"))
   }
   const b = currentBatch(options.run, options.batch)
@@ -1748,48 +1608,8 @@ export async function codemod(options) {
   state.attempts.push({ attempt, compilerArtifact: config.compilerArtifact ?? null, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
   saveState(p.codemodState(b), state)
   const compiler = compilerOf(config)
-  const byFile = {}
-  const refused = []
-  const restored = []
-  const rounds = []
   const companions = config.platformModuleBodies === true ? (platform.companions ??= []) : []
   if (config.platformModuleBodies === true) state.platform = platform
-  let settled = true
-  for (const pkg of config.packages.filter((pkg) => files.some((f) => packageOf(config, f) === pkg))) {
-    const projects = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
-    for (const tsconfig of projects) {
-      const progress = { package: pkg.dir, project: tsconfig, startedAt: new Date().toISOString() }
-      state.attempts.at(-1).projects.push(progress)
-      saveState(p.codemodState(b), state)
-      const fixed = await fixToFixedPoint({ compiler, tsconfig, cwd: join(t, pkg.dir), root: t, only: renames.map((r) => r.to),
-        privateCompanions: config.platformModuleBodies === true,
-        privateCompanionReceipts: companions,
-        onPrivateCompanion: record => {
-          const rename = renames.find(r => r.to === record.file)
-          if (!rename) throw new Error("private compiler companion outside the selected batch: " + record.file)
-          if (!companions.some(c => c.companion === record.companion))
-            companions.push({ file: rename.from, companion: record.companion, privateExports: record.privateExports })
-          state.exportEdits ??= []
-          for (const edit of record.exportEdits) if (!state.exportEdits.some(e => e.privateCompanion === edit.privateCompanion && e.key === edit.key && e.manifest === edit.manifest))
-            state.exportEdits.push(edit)
-          saveState(p.codemodState(b), state)
-        },
-        writePrivateManifest: (file, text, mode) => durableWrite(join(t, file), text, mode),
-        log: join(p.batch(b), "logs", `fix-attempt-${attempt}-${slug(pkg.dir)}${projects.length > 1 ? `-${slug(tsconfig)}` : ""}`) })
-      for (const [file, kinds] of Object.entries(fixed.byFile)) byFile[file] = kinds
-      refused.push(...fixed.refused)
-      restored.push(...fixed.restored)
-      // A platform companion the compiler created belongs to its module's batch.
-      for (const companion of fixed.companions ?? []) {
-        const rename = renames.find(r => compilerCompanionOf(r.to) === companion)
-        if (rename && !companions.some(c => c.companion === companion)) companions.push({ file: rename.from, companion })
-      }
-      rounds.push(...fixed.rounds.map((r) => ({ package: pkg.dir, ...(projects.length > 1 ? { project: tsconfig } : {}), ...r })))
-      settled &&= fixed.settled
-      Object.assign(progress, { finishedAt: new Date().toISOString(), settled: fixed.settled, rounds: fixed.rounds.length })
-      saveState(p.codemodState(b), state)
-    }
-  }
   // EK4842's `Array as Arr` is the default. A repository whose lint forbids
   // aliased value imports, or star imports too, gets the form its rules
   // accept (lib/import-style.mjs).
@@ -1837,8 +1657,7 @@ export async function codemod(options) {
     referenceEdits,
     referenceWarnings,
     referenceScan,
-    selectorChecks,
-    fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() }
+    selectorChecks
   }
   if (config.compilerArtifact) bindCompilerArtifact(config)
   result.emittedJs = emittedJs
@@ -1887,8 +1706,7 @@ export async function compile(options) {
     compilerArtifact: config.compilerArtifact ?? null,
     summary: summarize(diagnostics, files),
     style: styleProblems(diagnostics, files),
-    warningExceptions: warningExceptions(diagnostics, files.filter(f => /\.vibex?$/.test(f)),
-      readJsonIf(p.codemod(b))?.fix?.refused),
+    warningExceptions: warningExceptions(diagnostics, files.filter(f => /\.vibex?$/.test(f))),
     styleExemptions: preserved.decisions,
     newErrors: added,
     diagnostics: diagnostics.filter((d) => files.includes(d.file) || added.includes(d))
@@ -2045,8 +1863,8 @@ export async function revertMany(options) {
     const split = cm.platform?.splits?.find(s => s.file === ts)
     restorePrivateResolverExports(config.target, split)
     if (split?.platform) rmSync(join(config.target, split.platform), { force: true })
-    // The compiler's companion of the module, recorded or left by a fix that
-    // stopped, goes with the .vibe file it served.
+    // The compiler's companion of the module, which an earlier toolchain's
+    // `vibelang --fix` wrote, goes with the .vibe file it served.
     const companion = compilerCompanionOf(vibePath(ts))
     if (companion && isCompilerCompanion(config.target, companion)) rmSync(join(config.target, companion), { force: true })
     const recordedBuildEntries = cm.buildEntries?.edits ?? []
@@ -2534,7 +2352,6 @@ export async function report(options) {
     codemodGaps: issues.filter((i) => i.kind === "codemod-gap"),
     idioms: issues.filter((i) => i.kind === "idiom"),
     testDiffs: batches.map(b => ({ batch: b.batch, result: b.record?.testDiff ?? b.verify?.testDiff })).filter(b => b.result),
-    fixRefusals: batches.flatMap((b) => b.codemod?.fix.refused ?? []),
     warningExceptions: batches.flatMap(b => (b.record?.files ?? b.verify?.files ?? [])
       .flatMap(f => (f.warningExceptions ?? []).map(e => ({ batch: b.batch, ...e })))),
     // Paths the check could not prove either way; a refusal fails its batch and never reaches a record.
@@ -2544,8 +2361,6 @@ export async function report(options) {
     // Likewise the pack check: the packages it compared, what it refused, and what it could only report.
     packLoad: batches.filter(b => b.verify?.packLoad).map(b => ({ batch: b.batch, state: b.verify.packLoad.state, reason: b.verify.packLoad.reason, counts: b.verify.packLoad.counts ?? {}, packages: Object.keys(b.verify.packLoad.packages ?? {}), notInBatch: b.verify.packLoad.notInBatch ?? [], unverified: b.verify.packLoad.unverified?.length ?? 0, namesGained: b.verify.packLoad.namesGained?.length ?? 0, releaseRequired: b.verify.packLoad.releaseRequired ?? [], ms: b.verify.packLoad.ms }))
   }
-  const rewrites = {}
-  for (const b of batches) for (const [k, n] of Object.entries(b.codemod?.fix.totals ?? {})) rewrites[k] = (rewrites[k] ?? 0) + n
   const md = [
     `# Migration report: ${config.packages.map((pkg) => pkg.dir).join(", ")}`,
     "",
@@ -2585,10 +2400,6 @@ export async function report(options) {
     "",
     ...(data.warningExceptions.length ? data.warningExceptions.map(e => `- Batch ${e.batch}: ${e.name}, ${e.code}, ${e.file}:${e.line}:${e.column}: ${e.reason.replaceAll("\n", " ")}`) : ["- none"]),
     "",
-    "## Rewrites vibelang --fix applied",
-    "",
-    ...(Object.keys(rewrites).length ? Object.entries(rewrites).map(([k, n]) => `- ${k}: ${n}`) : ["- none"]),
-    "",
     "## Codemod gaps",
     "",
     ...(data.codemodGaps.length ? data.codemodGaps.map((g) => `- **${g.pattern}** (batch ${g.batch}${g.count ? `, ×${g.count}` : ""}): \`${g.before.replaceAll("\n", " ")}\` -> \`${g.after.replaceAll("\n", " ")}\``) : ["- none"]),
@@ -2610,14 +2421,14 @@ export async function report(options) {
 }
 
 export const steps = { "upgrade-effect": upgradeEffect, setup, plan, codemod, compile, repair, revert, revertMany, verify, record, report,
-  ...Object.fromEntries(["rename", "fix", "check", "settle"].map(name => [name, async options => (await import("./onepass.mjs")).onePassStep(name, options)]))
+  ...Object.fromEntries(["rename", "check", "settle"].map(name => [name, async options => (await import("./onepass.mjs")).onePassStep(name, options)]))
 }
 
 const summaries = {
   "upgrade-effect": (r) => (r.skipped ? `skipped: ${r.skipped}` : `Effect ${r.effect.from} -> ${r.effect.to} in ${r.changed.length} files; ${r.regressions && (r.regressions.newFailures.length || r.regressions.missing.length) ? "tests regressed (a setup issue)" : testsPassed(r.tests) ? "tests pass as before" : r.tests?.code === undefined ? "test command status not recorded" : "tests still FAIL (exit " + r.tests.code + ", " + failedCount(r.tests) + " failing tests)"}`),
   setup: (r) => `baseline: ${r.tests.passed ?? "?"} tests pass, ${r.tests.failed.length} fail; ${r.inventory.effectValueFiles} Effect files`,
   plan: (r) => (r.accepted ? `${r.plan.batches.length} batches` : `waiting for a plan at ${r.output}`),
-  codemod: (r) => `${r.renames.length} renamed, ${r.importEdits.length} imports rewritten, ${Object.values(r.fix.totals).reduce((a, b) => a + b, 0)} fixes, ${r.fix.refused.length} refused${r.buildEntries?.edits.length || r.buildEntries?.warnings.length ? `, ${r.buildEntries.edits.length} build entries updated, ${r.buildEntries.warnings.length} build warnings` : ""}`,
+  codemod: (r) => `${r.renames.length} renamed, ${r.importEdits.length} imports rewritten${r.buildEntries?.edits.length || r.buildEntries?.warnings.length ? `, ${r.buildEntries.edits.length} build entries updated, ${r.buildEntries.warnings.length} build warnings` : ""}`,
   compile: (r) => `${r.summary.batch.errors} errors, ${r.summary.batch.warnings} warnings in the batch; ${r.newErrors.length} new errors`,
   repair: (r) => (r.done === false ? `waiting for the repair agent: ${r.prompt}` : `repaired; recorded ${JSON.stringify(r.recorded)}`),
   verify: (r) => (r.ok ? (testsPassed(r.tests) ? "pass" : r.tests?.code === undefined ? "baseline matched; test status unknown" : "baseline matched; tests FAIL") : "FAIL") + ": " + JSON.stringify(r.checks),

@@ -1,1 +1,0 @@
-inert markers are removed alone; explicit runners are kept

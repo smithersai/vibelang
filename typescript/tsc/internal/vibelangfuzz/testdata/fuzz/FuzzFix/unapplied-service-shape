@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\ninterface Shape { value: string }\nclass Named extends Context.Service<Named, Shape>()(\"Named\") {}\n")

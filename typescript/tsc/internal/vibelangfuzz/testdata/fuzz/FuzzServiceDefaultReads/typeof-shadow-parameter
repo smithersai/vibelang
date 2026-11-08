@@ -1,3 +1,0 @@
-go test fuzz v1
-string("typeof-shadow-parameter")
-byte(0)

@@ -1,3 +1,0 @@
-go test fuzz v1
-string("unbraced/truthy/method/property")
-byte(1)

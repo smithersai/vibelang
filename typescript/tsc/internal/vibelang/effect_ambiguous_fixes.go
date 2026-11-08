@@ -7,7 +7,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/astnav"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
@@ -52,27 +51,4 @@ func ambiguousImportEdit(file *ast.SourceFile, name, pkg string) sourceEdit {
 		prefix = "\n"
 	}
 	return sourceEdit{pos, pos, prefix + fmt.Sprintf("import { %s } from %q\n", name, pkg)}
-}
-
-func ambiguousRootMigrationFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
-	p := proposal{file: file}
-	for _, d := range program.GetSemanticDiagnostics(ctx, file) {
-		if d.Source() != diagnosticSource || d.Code() != EK1401.Code {
-			continue
-		}
-		name := astnav.GetTokenAtPosition(file, d.Pos())
-		if name == nil || !ast.IsIdentifier(name) {
-			continue
-		}
-		if _, root := effectRootNames[name.Text()]; !root {
-			continue
-		}
-		key := fixKey(file, d)
-		if refused[key] {
-			continue
-		}
-		p.fixes = append(p.fixes, fileFix{code: EK1401.Code, key: key, edits: []sourceEdit{ambiguousImportEdit(file, name.Text(), "effect")}})
-		break // one insertion at a time; the next round checks the new binding
-	}
-	return p
 }

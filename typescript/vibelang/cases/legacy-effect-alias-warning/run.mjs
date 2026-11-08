@@ -43,10 +43,4 @@ function command(stage, fix = false) {
 }
 command("before")
 const declaration = fs.readFileSync(path.join(work, "out/main.d.ts"))
-command("fix", true)
-assert.equal(fs.readFileSync(path.join(work, "main.vibe"), "utf8"), expected)
-assert.deepEqual(fs.readFileSync(path.join(work, "out/main.d.ts")), declaration)
-assert.match(command("again", true), /0 fixes in 0 files/)
-assert.equal(fs.readFileSync(path.join(work, "main.vibe"), "utf8"), expected)
-assert.deepEqual(fs.readFileSync(path.join(work, "out/main.d.ts")), declaration)
 console.log("ok")

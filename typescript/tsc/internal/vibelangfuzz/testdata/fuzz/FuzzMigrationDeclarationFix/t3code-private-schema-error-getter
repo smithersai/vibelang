@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nimport * as Schema from \"effect/Schema\"\nclass Failed extends Schema.TaggedError<Failed>()(\"Failed\", { cause: Schema.Defect() }) {\n override get message(): string { return \"Unavailable.\" }\n}\nexport const failed = new Failed({ cause: \"offline\" })\n")

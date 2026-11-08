@@ -12,7 +12,7 @@ const ts = require("typescript")
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-global-this-cast-platform-handoff.json", import.meta.url), "utf8"))
 const native = process.env.VIBELANG_BINARY
-const platformQuote = "The quick fix and the codemod move the code into a sibling `.ts` module that does not exist yet"
+const platformQuote = "The quick fix moves the code into a sibling `.ts` module that does not exist yet"
 const moduleQuote = "A named top-level `module` body is TypeScript"
 
 test("platform handoff follows the quoted platform and module-body rules", () => {

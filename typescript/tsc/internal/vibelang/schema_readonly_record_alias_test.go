@@ -2,13 +2,10 @@ package vibelang
 
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
-	"os"
 	"strings"
 	"testing"
 )
@@ -137,45 +134,5 @@ func TestSchemaReadonlyRecordVisibleParents(t *testing.T) {
 			})
 		}
 		visit(file.AsNode())
-	}
-}
-
-func TestSchemaReadonlyRecordLegacyCodec(t *testing.T) {
-	for _, tc := range []struct {
-		name, source, want string
-		compatibility      bool
-	}{
-		{"shadow outer", "type Readonly<T>={n:T};export schema S=Readonly<Record<string,number>>", "Schema.Record(Schema.String, Schema.Number)", false},
-		{"shadow inner", "type Record<K,V>={k:K;v:V};export schema S=Readonly<Record<string,number>>", "Schema.Record(Schema.String, Schema.Number)", false},
-		{"outer now array", "namespace N {export import Readonly=globalThis.Array;export schema S=Readonly<Record<string,number>>}", "Schema.Record(Schema.String, Schema.Number)", true},
-		{"outer now readonly array", "namespace N {export import Readonly=globalThis.ReadonlyArray;export schema S=Readonly<Record<string,number>>}", "Schema.Record(Schema.String, Schema.Number)", true},
-		{"outer now readonly map", "namespace N {export import Array=globalThis.Readonly;export schema S=Array<Record<string,number>>}", "Schema.mutable(Schema.Array(Schema.Record(Schema.String, Schema.mutableKey(Schema.Number))))", true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			program, file, _, _ := editorProgram(t, tc.source)
-			fs := bundled.WrapFS(osvfs.FS())
-			options := FixOptions{MigrationOnly: tc.compatibility}
-			result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), program.CommandLine(), options)
-			if result.Err != nil || len(result.Refused) != 0 {
-				t.Fatalf("migration failed: %+v", result)
-			}
-			fixed := result.Files[file.FileName()]
-			if fixed == nil || !strings.Contains(fixed.Text, tc.want) {
-				t.Fatalf("missing previous codec %q: %+v", tc.want, fixed)
-			}
-			checked, next, _, _ := editorProgram(t, fixed.Text)
-			for _, d := range append(checked.GetSyntacticDiagnostics(t.Context(), next), checked.GetSemanticDiagnostics(t.Context(), next)...) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("migration: %s\n%s", d.String(), fixed.Text)
-				}
-			}
-			if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-				t.Fatal(err)
-			}
-			again := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), program.CommandLine(), options)
-			if again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
-				t.Fatalf("not idempotent: %+v", again)
-			}
-		})
 	}
 }

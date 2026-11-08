@@ -1,7 +1,0 @@
-// The page's script: a page does not say which module it started, so it
-// starts main itself, with the layer main needs.
-import { BrowserRuntime } from "@effect/platform-browser"
-import { ExperimentalBrowserCrypto } from "vibelang-runtime/experimental/platform-browser"
-import { main } from "./app.vibe"
-
-BrowserRuntime.runMain(Effect.provide(main(), ExperimentalBrowserCrypto.layer))

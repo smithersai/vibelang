@@ -35,8 +35,6 @@ test("the current compiler keeps the minimized Alchemy class and its published t
   writeFileSync(join(dir,"package.json"),'{"type":"module"}')
   writeFileSync(join(dir,"main.vibe"),corpus.vibe)
   writeFileSync(join(dir,"tsconfig.json"),JSON.stringify({compilerOptions:{target:"ES2022",module:"NodeNext",strict:true,skipLibCheck:true,noEmit:true,types:[]},files:["main.vibe"]}))
-  const r=spawnSync(binary,["-p",".","--fix","--noEmit","--pretty","false"],{cwd:dir,encoding:"utf8",timeout:120000})
-  assert.equal(r.status,0,r.stdout+r.stderr)
   const result=spawnSync(binary,["-p",".","--noEmit","--pretty","false"],{cwd:dir,encoding:"utf8",timeout:120000})
   assert.equal(result.status,0,result.stdout+result.stderr)
   const ds=parseDiagnostics(result.stdout+result.stderr)

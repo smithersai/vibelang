@@ -1,3 +1,0 @@
-go test fuzz v1
-string("alchemy-service-declaration-false-import")
-byte('\x00')

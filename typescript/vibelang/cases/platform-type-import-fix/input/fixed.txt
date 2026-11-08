@@ -1,4 +1,0 @@
-const café = "😀";
-import type /* module */ { /* keep */ Stats as S } from "node:fs"
-export type Stat = S
-export const n = 42

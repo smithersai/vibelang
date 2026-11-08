@@ -19,20 +19,4 @@ for (const name of ["effect", "plain"]) {
   assert.equal(started.stdout, "", `starting ${name}.js ran main`)
 }
 
-const binary = process.env.VIBELANG_BINARY
-assert.ok(binary, "the harness supplies its built compiler")
-const sources = ["effect.vibe", "plain.vibe", "say.ts"]
-const root = mkdtempSync(join(tmpdir(), "entry-main-ordinary-"))
-try {
-  symlinkSync(join(here, "node_modules"), join(root, "node_modules"), "dir")
-  writeFileSync(join(root, "package.json"), '{"type":"module"}\n')
-  for (const name of sources) writeFileSync(join(root, name), readFileSync(join(here, name)))
-  writeFileSync(join(root, "tsconfig.json"), readFileSync(join(here, "tsconfig.json")))
-  const fixed = spawnSync(process.env.VIBELANG_BINARY, ["--fix", "-p", "tsconfig.json", "--pretty", "false", "--singleThreaded"], { cwd: root, encoding: "utf8", timeout: 120000 })
-  assert.equal(fixed.status, 0, fixed.stdout + fixed.stderr)
-  assert.doesNotMatch(fixed.stdout, /\w+\.vibe\(\d+,\d+\): /, "an unmarked main gets no diagnostic")
-  for (const name of sources) assert.equal(readFileSync(join(root, name), "utf8"), readFileSync(join(here, name), "utf8"), `--fix rewrote ${name}, which has no marker`)
   console.log("an unmarked main is ordinary: no startup, no diagnostic, no migration")
-} finally {
-  rmSync(root, { recursive: true, force: true })
-}

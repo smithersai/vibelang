@@ -1,6 +1,0 @@
-{
-  "consumerEffect": "4.1.0",
-  "targetEffect": "4.1.1",
-  "symptom": "The target capability probe rejects the predecessor's Effect pin with EK3201 and skips the required explicit-effects migration.",
-  "expected": "Probe the target with its own runtime and Effect dependencies while retaining the predecessor installation until its migrations finish."
-}

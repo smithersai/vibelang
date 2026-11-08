@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { fixToFixedPoint, mergeFixes, parseFixOutput, renameBatch, restoreExports, rewriteExports, rewriteImports, rewriteSpecifier, rewriteTotals, vibePath } from "../lib/codemod.mjs"
+import { renameBatch, restoreExports, rewriteExports, rewriteImports, rewriteSpecifier, vibePath } from "../lib/codemod.mjs"
 import { loadTypeScript } from "../lib/declarations.mjs"
 
 test("vibePath preserves source kinds and refuses declarations", () => {
@@ -190,108 +190,6 @@ test("renameBatch and rewriteImports update a small package", () => {
     assert.equal(readFileSync(join(root, "src/c.ts"), "utf8"), "import { a } from './a.vibe'\nexport const c = 2\n")
     assert.equal(existsSync(join(root, "src/a.ts")), false)
     assert.deepEqual(rewriteImports(root, ["src/a.vibe", "src/b.ts", "src/c.ts", "src/d.vibe"]), [])
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
-test("parseFixOutput reads applied rewrites, refusals and the total", () => {
-  const output = [
-    "vibelang --fix: src/users.vibe: 4 fixes (EK4830 ×1, EK4831 ×1, EK4833 ×1, prelude import ×1)",
-    "vibelang --fix: src/one.vibe: 1 fix (EK4834 ×1)",
-    "vibelang --fix: src/users.vibe:12: EK4835 not fixed: the fixed program would report TS2322: Type 'unknown' is not assignable",
-    "vibelang --fix: 5 fixes in 2 files; 1 fix refused.",
-    "src/users.vibe(8,60): error EK1002: Effect.gen expects a JavaScript generator"
-  ].join("\n")
-  const parsed = parseFixOutput(output, { cwd: "/repo/packages/p", root: "/repo" })
-  assert.equal(parsed.total, 5)
-  assert.deepEqual(parsed.files, {
-    "packages/p/src/users.vibe": { EK4830: 1, EK4831: 1, EK4833: 1, "prelude import": 1 },
-    "packages/p/src/one.vibe": { EK4834: 1 }
-  })
-  assert.deepEqual(parsed.refused, [{ file: "packages/p/src/users.vibe", line: 12, code: "EK4835", error: "TS2322: Type 'unknown' is not assignable" }])
-  assert.deepEqual(parseFixOutput("vibelang --fix: 0 fixes in 0 files.\n"), { total: 0, files: {}, refused: [] })
-})
-
-test("mergeFixes and rewriteTotals add rounds and files", () => {
-  const merged = mergeFixes(mergeFixes({}, { a: { EK4830: 1 } }), { a: { EK4830: 2, "prelude import": 1 }, b: { EK4833: 1 } })
-  assert.deepEqual(merged, { a: { EK4830: 3, "prelude import": 1 }, b: { EK4833: 1 } })
-  assert.deepEqual(rewriteTotals(merged), { EK4830: 3, "prelude import": 1, EK4833: 1 })
-})
-
-test("fixToFixedPoint keeps the rewrites of the batch's files only, and an earlier batch's file stays as committed", async () => {
-  const root = mkdtempSync(join(tmpdir(), "migrate-fix-scope-"))
-  try {
-    mkdirSync(join(root, "pkg/src"), { recursive: true })
-    writeFileSync(join(root, "pkg/src/batch.vibe"), "export const a = 1\n")
-    writeFileSync(join(root, "pkg/src/earlier.vibe"), "import * as DateTime from \"effect/DateTime\"\n")
-    // A compiler whose --fix rewrites every .vibe file of the project it has not rewritten yet, as vibelang does.
-    const compiler = join(root, "fake-vibelang")
-    writeFileSync(compiler, `#!/usr/bin/env node
-${fakeProjectFiles(root)}const fs = require("node:fs")
-let n = 0
-for (const file of ["src/batch.vibe", "src/earlier.vibe"]) {
-  const text = fs.readFileSync(file, "utf8")
-  if (text.includes("// fixed")) continue
-  fs.writeFileSync(file, text + "// fixed\\n")
-  console.log("vibelang --fix: " + file + ": 1 fix (prelude import ×1)")
-  n++
-}
-console.log("vibelang --fix: " + n + " fixes in " + n + " files.")
-`)
-    chmodSync(compiler, 0o755)
-    const result = await fixToFixedPoint({ compiler, tsconfig: "tsconfig.json", cwd: join(root, "pkg"), root, only: ["pkg/src/batch.vibe"] })
-    assert.equal(readFileSync(join(root, "pkg/src/earlier.vibe"), "utf8"), "import * as DateTime from \"effect/DateTime\"\n")
-    assert.equal(readFileSync(join(root, "pkg/src/batch.vibe"), "utf8"), "export const a = 1\n// fixed\n")
-    assert.deepEqual(Object.keys(result.byFile), ["pkg/src/batch.vibe"])
-    assert.equal(result.settled, true)
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
-// drive-t3code-server 19:16Z: the 534-file server batch imports 184 modules
-// migrated earlier in other packages; --fix in apps/server rewrote
-// ../lib/error.vibe (EK4837), and the flow reported no fix and kept it.
-test("fixToFixedPoint puts back an earlier batch's file in another package that --fix rewrote", async () => {
-  const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-fix-scope-outside-package.json", import.meta.url), "utf8"))
-  const root = mkdtempSync(join(tmpdir(), "migrate-fix-scope-outside-"))
-  try {
-    for (const [file, text] of Object.entries(corpus.files)) {
-      mkdirSync(join(root, file, ".."), { recursive: true })
-      writeFileSync(join(root, file), text)
-    }
-    // vibelang --fix rewrites the project's every .vibe file, the dependency outside cwd included.
-    const compiler = join(root, "fake-vibelang")
-    writeFileSync(compiler, `#!/usr/bin/env node
-${fakeProjectFiles(root)}const fs = require("node:fs"), path = require("node:path")
-let n = 0
-for (const [file, text] of Object.entries(${JSON.stringify(corpus.fixed)})) {
-  const abs = path.join(${JSON.stringify(root)}, file)
-  if (fs.readFileSync(abs, "utf8") === text) continue
-  fs.writeFileSync(abs, text)
-  console.log("vibelang --fix: " + path.relative(process.cwd(), abs) + ": 1 fix (EK4837 ×1)")
-  n++
-}
-console.log("vibelang --fix: " + n + " fixes in " + n + " files.")
-`)
-    chmodSync(compiler, 0o755)
-    const result = await fixToFixedPoint({ compiler, tsconfig: "tsconfig.json", cwd: join(root, "pkg"), root, only: corpus.batch })
-    for (const [file, text] of Object.entries(corpus.files)) assert.equal(readFileSync(join(root, file), "utf8"), text, `${corpus.key}: ${file}`)
-    assert.deepEqual(result.byFile, {})
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-})
-
-test("the fix loop asks for declarations, so --fix keeps what they print under a noEmit tsconfig", async () => {
-  const root = mkdtempSync(join(tmpdir(), "migrate-fix-"))
-  try {
-    const seen = join(root, "args.txt")
-    const compiler = join(root, "vibelang")
-    writeFileSync(compiler, `#!/bin/sh\n${fakeProjectFiles(root, { shell: true })}echo "$@" > ${seen}\necho 'vibelang --fix: 0 fixes in 0 files.'\n`, { mode: 0o755 })
-    await fixToFixedPoint({ compiler, tsconfig: "tsconfig.json", cwd: root, root })
-    assert.match(readFileSync(seen, "utf8"), /--fix --noEmit --declaration/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

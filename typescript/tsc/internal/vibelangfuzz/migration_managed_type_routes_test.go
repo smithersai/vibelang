@@ -19,7 +19,7 @@ var managedTypeRouteKeys = []string{
 
 func TestMigrationManagedTypeRoutesQuoted(t *testing.T) {
 	r4Quoted(t, "../vips/0034-compiler-and-tooling.md", "Existing tools work.")
-	r4Quoted(t, "001-functions.md", "Every rule that requires declarations to match, the codemods and migration included, means this.")
+	r4Quoted(t, "001-functions.md", "Every rule that requires declarations to match, migration included, means this.")
 	text, err := os.ReadFile(filepath.Join(Root(), ".smithers/flows/migrate/README.md"))
 	if err != nil {
 		t.Fatal(err)

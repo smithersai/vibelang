@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import { editedFiles, init, invocation, withHook, withSection } from "../agents.mjs"
 
 // `vibelang agents`: init writes each coding agent's own configuration, and
-// check and hook run `vibelang --fix` and report what is left, end to end
+// check and hook compile each project and report what is left, end to end
 // through the native compiler.
 const packageDirectory = fileURLToPath(new URL("..", import.meta.url))
 const launcher = join(packageDirectory, "bin/vibelang")

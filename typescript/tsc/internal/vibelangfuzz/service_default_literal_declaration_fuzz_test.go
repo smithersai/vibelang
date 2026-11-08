@@ -2,15 +2,9 @@ package vibelangfuzz
 
 import (
 	"maps"
-	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const defaultLiteralDeclarationsTarget = "FuzzServiceDefaultLiteralDeclarations"
@@ -132,128 +126,4 @@ func defaultLiteralPublishedType(t *testing.T, w *Workspace, emitted *Result, ke
 		return "", false
 	}
 	return serviceDefaultReadType(t, published), true
-}
-
-func checkDefaultLiteralDeclaration(t *testing.T, w *Workspace, key string, choice uint8) {
-	t.Helper()
-	TestServiceDefaultLiteralDeclarationsQuoted(t)
-	toolsGuard(t, defaultLiteralDeclarationsTarget, func() {
-		files := defaultLiteralProject(key, choice)
-		before := toolsCompile(t, w, defaultLiteralDeclarationsTarget, files)
-		defer before.Remove()
-		// Admit only the retired member diagnostic, never unrelated source
-		// errors, and require the migration warning to remain observable.
-		for _, d := range before.Diagnostics {
-			if d.Category() == diagnostics.CategoryError && (!IsEK(d) || d.Code() != 902) {
-				Gap(t, defaultLiteralDeclarationsTarget, "original:"+key, "unexpected migration input errors: %v\n%s", SortedKeys(Keys(before.Dir, before.Diagnostics)), Archive(files))
-				return
-			}
-		}
-		if serviceDefaultReadCodes(before, 902) > 1 || serviceDefaultReadCodes(before, 4855) != 1 {
-			Gap(t, defaultLiteralDeclarationsTarget, "warning:"+key, "expected one cached-default warning and at most its retired-member error: %v", SortedKeys(Keys(before.Dir, before.Diagnostics)))
-			return
-		}
-		reference := toolsCompile(t, w, defaultLiteralDeclarationsTarget, defaultLiteralNativeProject(t, files))
-		defer reference.Remove()
-		if !toolsErrorFree(reference) {
-			Gap(t, defaultLiteralDeclarationsTarget, "reference:"+key, "invalid native class reference: %v\n%s", SortedKeys(Keys(reference.Dir, reference.Diagnostics)), Archive(defaultLiteralNativeProject(t, files)))
-			return
-		}
-		want := serviceDefaultReadType(t, reference)
-		publishedBefore, ok := defaultLiteralPublishedType(t, w, reference, key)
-		if !ok {
-			return
-		}
-		if publishedBefore != want {
-			Gap(t, defaultLiteralDeclarationsTarget, "original-declaration:"+key, "native reference type %s differs from its declaration %s\n%s", want, publishedBefore, Archive(files))
-			return
-		}
-		options := vibelang.FixOptions{MigrationOnly: choice&32 != 0, CheckEachFix: choice&64 != 0}
-		fix := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), options)
-		if _, exported := files["flags.vibe"]; exported {
-			// VIP-9 permits an explained refusal when a public key's
-			// native class cannot be rewritten with the same public API.
-			explained := false
-			for _, site := range fix.Sites {
-				if site.Code == "EK4855" && site.Reason != "" {
-					explained = true
-				}
-			}
-			if fix.Err != nil || len(fix.Files) != 0 || !explained {
-				Gap(t, defaultLiteralDeclarationsTarget, "exported:"+key, "exported key requires an unchanged, explained refusal: error=%v files=%v sites=%+v", fix.Err, fix.Order, fix.Sites)
-			}
-			return
-		}
-		if fix.Err != nil || len(fix.Refused) != 0 || len(fix.Files) == 0 {
-			Gap(t, defaultLiteralDeclarationsTarget, "fix:"+key, "migration failed: %v refused %v\n%s", fix.Err, fix.Refused, Archive(files))
-			return
-		}
-		fixed := maps.Clone(files)
-		for name, file := range fix.Files {
-			relative := strings.TrimPrefix(name.AsString(), filepath.ToSlash(before.Dir)+"/")
-			if _, own := fixed[relative]; !own {
-				t.Fatalf("foreign migration write %s", relative)
-			}
-			fixed[relative] = file.Text
-		}
-		after := toolsCompile(t, w, defaultLiteralDeclarationsTarget, fixed)
-		defer after.Remove()
-		if !toolsErrorFree(after) || serviceDefaultReadCodes(after, 4855) != 0 {
-			Gap(t, defaultLiteralDeclarationsTarget, "compile:"+key, "migration diagnostics: %v\n%s", SortedKeys(Keys(after.Dir, after.Diagnostics)), Archive(fixed))
-			return
-		}
-		if got := serviceDefaultReadType(t, after); got != want {
-			Gap(t, defaultLiteralDeclarationsTarget, "source-type:"+key, "type changed from %s to %s\n%s", want, got, Archive(fixed))
-			return
-		}
-		publishedAfter, ok := defaultLiteralPublishedType(t, w, after, key)
-		if !ok {
-			return
-		}
-		if publishedAfter != publishedBefore {
-			Gap(t, defaultLiteralDeclarationsTarget, "declaration:"+key, "%s\npublic Read changed from %s to %s\n%s\n%s", defaultLiteralDeclarationsQuote, publishedBefore, publishedAfter, Archive(files), Archive(fixed))
-			return
-		}
-		again := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, after.Dir), options)
-		if again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
-			Gap(t, defaultLiteralDeclarationsTarget, "fixed-point:"+key, "second migration changed %v, error %v", again.Order, again.Err)
-			return
-		}
-		ExpectPending(t, defaultLiteralDeclarationsTarget, key)
-	})
-}
-
-func TestServiceDefaultLiteralDeclarations(t *testing.T) {
-	w := NewWorkspace(t)
-	for _, key := range defaultLiteralKeys() {
-		t.Run(key, func(t *testing.T) { checkDefaultLiteralDeclaration(t, w, key, 0) })
-	}
-	for _, input := range []struct {
-		key    string
-		choice uint8
-	}{{"indexed-number", 3}, {"typeof-string", 36}, {"indexed-null", 64}} {
-		t.Run(input.key+"/placement", func(t *testing.T) { checkDefaultLiteralDeclaration(t, w, input.key, input.choice) })
-	}
-}
-
-func FuzzServiceDefaultLiteralDeclarations(f *testing.F) {
-	startShortBudget(f)
-	keys := defaultLiteralKeys()
-	for _, key := range keys {
-		f.Add(key, uint8(0))
-	}
-	f.Add("indexed-number", uint8(3))
-	f.Add("typeof-string", uint8(36))
-	f.Add("indexed-null", uint8(64))
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, key string, choice uint8) {
-		index := slices.Index(keys, key)
-		if index < 0 {
-			if key == "" {
-				return
-			}
-			index = int(key[0]) % len(keys)
-		}
-		checkDefaultLiteralDeclaration(t, w, keys[index], choice)
-	})
 }

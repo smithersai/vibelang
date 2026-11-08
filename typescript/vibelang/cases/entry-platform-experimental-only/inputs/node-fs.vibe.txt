@@ -1,7 +1,0 @@
-// A main that needs only the experimental FileSystem (D313).
-import "vibelang/platform/node"
-
-export effect function main() {
-  try (try Experimental.FileSystem.FileSystem).access("package.json", { executable: false })
-  try Console.log("node fs accessible")
-}

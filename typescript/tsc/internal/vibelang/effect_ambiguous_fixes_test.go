@@ -2,19 +2,11 @@ package vibelang
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 func TestAmbiguousEffectImportQuickFixes(t *testing.T) {
@@ -72,27 +64,5 @@ func TestAmbiguousEffectImportQuickFixes(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-func TestFixAmbiguousRootPreservesMeaning(t *testing.T) {
-	source := "#!/usr/bin/env node\nexport const value = Utils\n"
-	_, file, _, _ := editorProgram(t, source)
-	fs := bundled.WrapFS(osvfs.FS())
-	config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(filepath.Dir(file.FileName().AsString()), "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
-	if len(errors) != 0 {
-		t.Fatal(errors)
-	}
-	result := FixProject(t.Context(), fs, bundled.LibPath(), config)
-	fixed := result.Files[file.FileName()]
-	want := strings.Replace(source, "\n", "\nimport { Utils } from \"effect\"\n", 1)
-	if fixed == nil || fixed.Text != want || len(result.Refused) != 0 {
-		t.Fatalf("fixed=%+v refused=%+v", fixed, result.Refused)
-	}
-	if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if again := FixProject(t.Context(), fs, bundled.LibPath(), config); len(again.Order) != 0 {
-		t.Fatalf("second --fix changed %v", again.Order)
 	}
 }

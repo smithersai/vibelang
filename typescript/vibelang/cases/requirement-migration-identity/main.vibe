@@ -1,7 +1,0 @@
-import { Input as Renamed } from "./dep.js";
-import * as D from "./namespaced.js";
-import { Input as Other } from "./other.js";
-type Input = any;
-export effect function f(): number!never!Renamed { return (try Renamed).value }
-export effect function g(): number!never!D.Input { return (try D.Input).value }
-export effect function h(): number!never!(Renamed | Other) { return (try Renamed).value + (try Other).value }

@@ -8,10 +8,6 @@ import { codes, marked, probe } from "../../tests/entry-migration.mjs"
 const refused = probe(import.meta.url, "refused", {
   "main.vibe": 'import "vibelang/platform/browser"\n\nexport effect function main() {\n  try Console.log("browser main ran")\n}\n',
 })
-const fix = refused.compile("--fix")
-assert.notEqual(fix.status, 0, fix.output)
-assert.match(fix.output, /main\.vibe\D*1\b/, `the refusal names the marker's file and line\n${fix.output}`)
-assert.ok(marked(refused.read("main.vibe")))
 assert.deepEqual(codes(refused.compile().output), ["EK2601"])
 
 // main without a marker is an ordinary export: no diagnostic, no startup.

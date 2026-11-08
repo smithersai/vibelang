@@ -1,0 +1,5 @@
+// expect: EK1802
+// rule-evidence: docs/design/src/002-running.md#static-rules
+export effect function batch() { return await.all [Effect.succeed(2)] }
+export effect function race() { return await.race [Effect.succeed(3)] }
+export effect function settled() { return await.allSettled [Effect.succeed(4)] }

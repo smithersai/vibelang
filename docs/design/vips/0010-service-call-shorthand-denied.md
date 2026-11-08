@@ -36,4 +36,4 @@ It is ambiguous. Class statics collide with member names: for a service with a m
 Old VibeLang is a reference only; nothing in it is part of the language unless a VIP adds it. For implementers, this VIP replaces:
 
 
-D552's service shorthand and EK4503. Implementation: the shorthand is removed, and `vibelang --fix` rewrites `S.m(args)` to `(try S).m(args)`.
+D552's service shorthand and EK4503. Implementation: the shorthand is removed.

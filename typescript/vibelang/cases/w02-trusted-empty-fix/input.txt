@@ -1,7 +1,0 @@
-import { trusted } from "vibelang-runtime"
-import { Dialect } from "./plain.ts"
-
-const parse = trusted(Dialect.parse, [])
-export effect function parsed(text: string): number!! {
-  return parse(text) + 1
-}

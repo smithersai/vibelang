@@ -1,2 +1,0 @@
-go test fuzz v1
-string("key:mutable-relic:index\n\u0001\u0004\u0000\u0000")

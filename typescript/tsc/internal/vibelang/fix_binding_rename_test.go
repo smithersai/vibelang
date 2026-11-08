@@ -1,16 +1,12 @@
 package vibelang
 
 import (
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 // Chapter 004, decided detail 245: two top-level patterns that bind one name
@@ -170,64 +166,6 @@ func TestBindingRenameQuickFix(t *testing.T) {
 				t.Fatalf("the fixed source reports %v", errors)
 			}
 		})
-	}
-}
-
-// --fix applies the rename in both modes, reports it as a rewrite kind, and a
-// second run changes nothing. A third pattern of the name is renamed in the
-// same round, with the reads after it.
-func TestBindingRenameFix(t *testing.T) {
-	tests := append(bindingRenameTests, struct{ name, source, want string }{"three patterns", `export function pick(a: unknown, b: unknown, c: unknown) {
-  if (a is { id: let id }) return id
-  if (b is { id: let id }) return id
-  if (c is { let id }) return id
-  return 0
-}
-`, `export function pick(a: unknown, b: unknown, c: unknown) {
-  if (a is { id: let id }) return id
-  if (b is { id: let id2 }) return id2
-  if (c is { id: let id3 }) return id3
-  return 0
-}
-`})
-	for _, options := range []FixOptions{{}, {MigrationOnly: true}} {
-		for _, test := range tests {
-			t.Run(test.name, func(t *testing.T) {
-				p, file, _, _ := editorProgram(t, test.source)
-				result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), options)
-				if test.want == "" {
-					if len(result.Files) != 0 || len(result.Refused) != 0 {
-						t.Fatalf("separate homes: --fix changed the project: %+v", result)
-					}
-					return
-				}
-				if len(result.Refused) != 0 || len(result.Files) != 1 {
-					t.Fatalf("--fix: %+v", result)
-				}
-				fixed := result.Files[file.FileName()]
-				if fixed.Text != test.want {
-					t.Fatalf("--fix writes\n%s\nwant\n%s", fixed.Text, test.want)
-				}
-				if fixed.NativeCounts[2451]+fixed.NativeCounts[2300] == 0 || len(fixed.Counts) != 0 {
-					t.Fatalf("the renames count as %v, %v", fixed.NativeCounts, fixed.Counts)
-				}
-				var report strings.Builder
-				result.Report(&report, func(name tspath.RootedFilePath) string { return "main.vibe" })
-				if !strings.Contains(report.String(), "TS2451 ×") && !strings.Contains(report.String(), "TS2300 ×") {
-					t.Fatalf("the report does not name the renames: %s", report.String())
-				}
-				if errors := errorsOf(t, fixed.Text); len(errors) != 0 {
-					t.Fatalf("fixed source reports %v", errors)
-				}
-				if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-					t.Fatal(err)
-				}
-				again := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), options)
-				if len(again.Files) != 0 || len(again.Refused) != 0 {
-					t.Fatalf("second fix changed the project: %+v", again)
-				}
-			})
-		}
 	}
 }
 

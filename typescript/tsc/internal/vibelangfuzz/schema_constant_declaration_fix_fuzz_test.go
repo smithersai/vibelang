@@ -3,38 +3,7 @@ package vibelangfuzz
 import (
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
-
-// FuzzSchemaConstantDeclarationFix enforces Chapter 7: "A quick fix is
-// offered only when it preserves evaluation order, coldness, types, comments,
-// and declaration output; otherwise the diagnostic explains why it has no
-// automatic fix." with Chapter 6's "Without one, the same bare alias is
-// synthesized": a schema declaration declares typeof X.Type under its name
-// unless a written alias stands beside it. The input picks how a module
-// declares a Schema.Struct constant (private, exported, through an export
-// list or a renamed one, or export default), whether its own type is written
-// beside it, how the module refers to it (not at all, as a value, in a type
-// query, through Schema.Schema.Type, in an inferred type, or inside a
-// function) and whether it stands in a namespace. The compiler is compared
-// with itself on two inputs the chapter says must agree: in a project that
-// emits declarations, the module and what vibelang --fix writes for it emit
-// the same declaration bytes. opencode's xai-responses protocol gained
-// type Options = typeof Options.Type when --fix rewrote a private constant
-// its exported OptionsInput type queried.
-func FuzzSchemaConstantDeclarationFix(f *testing.F) {
-	startShortBudget(f)
-	schemaConstantDeclarationQuotes(f)
-	for _, seed := range schemaConstantDeclarationSeeds {
-		f.Add([]byte("schema-decl:" + seed))
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		CheckSchemaConstantDeclarationFix(t, w, parseSchemaConstantDeclaration(data))
-	})
-}
 
 // TestSchemaConstantDeclarationFixQuoted fails when a chapter rewords a
 // sentence the oracle quotes (RULES.md 9).
@@ -159,43 +128,3 @@ func (s schemaConstantDeclaration) module() string {
 }
 
 const schemaConstantDeclarationConfig = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out"},"files":["main.vibe"]}`
-
-// CheckSchemaConstantDeclarationFix compares the declarations of a module and
-// of what --fix writes for it.
-func CheckSchemaConstantDeclarationFix(t *testing.T, w *Workspace, s schemaConstantDeclaration) {
-	const target = "FuzzSchemaConstantDeclarationFix"
-	defer recoverCompilerPanic(t, target)
-	source := s.module()
-	files := map[string]string{"main.vibe": source, "package.json": `{"type":"module"}`}
-	before, err := w.Compile(t.Context(), Project{Files: files, Config: schemaConstantDeclarationConfig})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer before.Remove()
-	if !toolsErrorFree(before) {
-		t.Fatalf("invalid fixture %s: %v\n%s", s.key(), before.Diagnostics, source)
-	}
-	fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{})
-	if fixed.Err != nil {
-		t.Fatal(fixed.Err)
-	}
-	written := source
-	for name, file := range fixed.Files {
-		if strings.HasSuffix(name.AsString(), "/main.vibe") {
-			written = file.Text
-		}
-	}
-	after, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": written, "package.json": `{"type":"module"}`}, Config: schemaConstantDeclarationConfig})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer after.Remove()
-	if !toolsErrorFree(after) {
-		Gap(t, target, "feature:"+s.key()+":compiles", "Chapter 7: a quick fix preserves types; --fix wrote a module with errors %v:\n%s\nfrom:\n%s", after.Diagnostics, written, source)
-		return
-	}
-	if was, now := before.Outputs["out/main.d.ts"], after.Outputs["out/main.d.ts"]; was != now {
-		Gap(t, target, "feature:"+s.key(), "Chapter 7: \"A quick fix is offered only when it preserves … declaration output\". --fix changed the declaration:\nbefore:\n%s\nafter:\n%s\nmodule:\n%s\nfixed:\n%s", was, now, source, written)
-	}
-	ExpectPending(t, target, "feature:"+s.key())
-}

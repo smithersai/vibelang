@@ -1,3 +1,0 @@
-go test fuzz v1
-string("opencode-session-suspend")
-int8(7)

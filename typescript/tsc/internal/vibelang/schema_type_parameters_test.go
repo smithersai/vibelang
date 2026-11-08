@@ -53,23 +53,6 @@ func TestSchemaTypeParameterPreservingQuickFix(t *testing.T) {
 	}
 }
 
-func TestSchemaTypeParameterPreservingProjectFix(t *testing.T) {
-	source := "type T = {name:number}; const string = 1; export schema User<T> {name:string}; export const empty:User = {}"
-	result, name, _ := fixOnce(t, source)
-	fixed := result.Files[name]
-	if len(result.Refused) != 0 || fixed == nil {
-		t.Fatalf("missing preserving --fix: files=%v refused=%v", result.Files, result.Refused)
-	}
-	want := strings.Replace(source, "<", " {}; <", 1)
-	if fixed.Text != want {
-		t.Fatalf("want %q, got %q", want, fixed.Text)
-	}
-	again, _, _ := fixOnce(t, fixed.Text)
-	if len(again.Files) != 0 || len(again.Refused) != 0 {
-		t.Fatalf("not idempotent: files=%v refused=%v", again.Files, again.Refused)
-	}
-}
-
 // This diagnostic is syntactic; the general ts-form helper reads semantic warnings.
 func schemaTypeParameterQuickFix(t *testing.T, source string) string {
 	t.Helper()

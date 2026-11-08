@@ -22,14 +22,6 @@ try {
     assert.ifError(result.error)
     assert.equal(result.status, 0, result.stdout + result.stderr)
   }
-  cli("--fix")
-  const fixed = readFileSync(join(dir, "main.vibe"), "utf8")
-  const after = await import(pathToFileURL(join(dir, "out/main.js")))
-  assert.deepEqual(after.snapshot(), expected, "migration must preserve cached identity and eager work")
-  assert.match(fixed, /class Flags extends /)
-  assert.doesNotMatch(fixed, /defaultValue/)
-  cli("--fix")
-  assert.equal(readFileSync(join(dir, "main.vibe"), "utf8"), fixed, "migration must be idempotent")
 
   writeFileSync(join(dir, "twin.ts"), `import { Context } from "effect"
 import { initialize, state } from "./events.js"

@@ -2,10 +2,8 @@ package vibelang
 
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,40 +75,4 @@ func TestDeclarationBodyCorpusIdentity(t *testing.T) {
 		t.Fatal("compiler/app corpus was not read")
 	}
 	t.Logf("preserved %d compiler/app programs byte for byte", count)
-}
-
-// Run through the project gate, not only the source-edit helper: syntax fixes
-// must retain native diagnostic labels and be available in both CLI modes.
-func TestFixProjectDeclarationBodies(t *testing.T) {
-	for _, migration := range []bool{false, true} {
-		t.Run(map[bool]string{false: "ordinary", true: "migration-only"}[migration], func(t *testing.T) {
-			source := "\"use client\";\nconst data=1;type T=number;\ndata as T;\ndata satisfies T;\nexport schema Empty\n"
-			p, f, _, _ := editorProgram(t, source)
-			fs := bundled.WrapFS(osvfs.FS())
-			options := FixOptions{MigrationOnly: migration}
-			result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), p.CommandLine(), options)
-			fixed := result.Files[f.FileName()]
-			if result.Err != nil || len(result.Refused) != 0 || fixed == nil {
-				t.Fatalf("migration failed: %+v", result)
-			}
-			for _, want := range []string{"(data as T)", "(data satisfies T)", "schema Empty {}"} {
-				if !strings.Contains(fixed.Text, want) {
-					t.Errorf("missing %q in %s", want, fixed.Text)
-				}
-			}
-			if !strings.HasPrefix(fixed.Text, "\"use client\";") {
-				t.Fatalf("directive changed: %s", fixed.Text)
-			}
-			if fixed.Counts[1005] != 0 || fixed.Counts[1503]+fixed.Counts[1604] != 3 {
-				t.Fatalf("syntax rewrites miscounted: %+v", fixed)
-			}
-			if err := os.WriteFile(f.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-				t.Fatal(err)
-			}
-			again := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), p.CommandLine(), options)
-			if again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
-				t.Fatalf("non-idempotent: %+v", again)
-			}
-		})
-	}
 }

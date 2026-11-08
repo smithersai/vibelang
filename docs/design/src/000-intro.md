@@ -6,7 +6,7 @@ This specification defines VibeLang as the accepted VibeLang Improvement Proposa
 
 Declaration serialization has one explicit exception for [cyclic inferred types](001-functions.md#declaration-output); ordinary TypeScript recursion checking still applies.
 
-The previous specification and its decision log (`D1` to `D558`) are in `docs/design/history/`. They are historical and not normative: nothing in them is part of the language unless a VIP adds it. Every pre-VIP form no VIP adds is retired: a `--fix` codemod rewrites it to the VIP form or the Effect API it means, the compiler then rejects it with a clear error, and the release notes list it. `vibelang-forms -legacy` is the census. Data-type methods such as `x.map` on `Option` and `Stream` are among them. The migration sections of [Tooling](007-tooling.md), whose titles name a migration or a legacy form, and [Appendix B's transitional diagnostics](900-appendices.md#transitional-compiler-diagnostics) specify those codemods and interim diagnostics. They are requirements on the toolchain during the upgrade, not forms of the language.
+The previous specification and its decision log (`D1` to `D558`) are in `docs/design/history/`. They are historical and not normative: nothing in them is part of the language unless a VIP adds it. Every pre-VIP form no VIP adds is retired: the compiler rejects it with a clear error, and the release notes list it. `vibelang-forms -legacy` is the census. Data-type methods such as `x.map` on `Option` and `Stream` are among them. The migration sections of [Tooling](007-tooling.md), whose titles name a migration or a legacy form, and [Appendix B's transitional diagnostics](900-appendices.md#transitional-compiler-diagnostics) specify those migrations and interim diagnostics. They are requirements on the toolchain during the upgrade, not forms of the language.
 
 ## Principles
 
@@ -81,4 +81,4 @@ The compiler is being changed to match the VIPs. Until it does, a VibeLang examp
 
 The first-release retirement diagnostics are `EK3501` for `control` and `handle` syntax or resolved continuation-runtime `Control`, `resume`, `resumeWith`, `abandon` and `handle`, and `EK4607` for a retired `select` block. They do not accept VIP-35, which remains open. Ordinary TypeScript bindings, callback parameters and members with these names keep their native meaning. Parser recovery only diagnoses and migrates old source.
 
-`vibelang --fix` rewrites only local service-shaped uses; a rewrite that can't preserve types, behavior, `Exit` and declaration output refuses at that site. As for every relic, ship the preserving migration and migrate consumers before enforcing rejection.
+As for every relic, migrate consumers before enforcing rejection.

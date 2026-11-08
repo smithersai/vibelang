@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
@@ -86,45 +84,6 @@ var effectGenFix = &ls.CodeFixProvider{
 	},
 }
 
-// fixKey names d's fix across the rounds of vibelang --fix (fix.go): its code
-// and the text it stands at, which edits elsewhere leave as they are. EK1002
-// stands at Effect.gen, which every site shares, so its key holds the call.
-func fixKey(file *ast.SourceFile, d *ast.Diagnostic) string {
-	span := file.Text()[d.Pos():d.End()]
-	if d.Code() == EK1002.Code {
-		if callee := tsFormNodeAt(file, core.NewTextRange(d.Pos(), d.End()), isCallee); callee != nil {
-			span = nodeText(file, generatorCallOf(callee))
-		}
-	}
-	return diagnosticSource + strconv.Itoa(int(d.Code())) + ":" + span
-}
-
-// nativePipesKeySuffix marks the key of EK1002's second fix, which keeps the
-// body's .pipe calls (effectGenNativePipesFix).
-const nativePipesKeySuffix = " (.pipe kept)"
-
-// effectGenNativePipesFix returns EK1002's second fix for d, once the gate has
-// refused its first: the same rewrite with the body's .pipe calls kept. While
-// the generator stands, the gate does not check its body as effect code, so a
-// |> that changes a stage's type shows only when the generator goes (opencode's
-// server fetch handler). It returns false when the body has no .pipe to keep.
-func effectGenNativePipesFix(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic, key string, refused map[string]bool) (fileFix, bool) {
-	key += nativePipesKeySuffix
-	if refused[key] {
-		return fileFix{}, false
-	}
-	callee := tsFormNodeAt(file, core.NewTextRange(d.Pos(), d.End()), isCallee)
-	if callee == nil {
-		return fileFix{}, false
-	}
-	call := generatorCallOf(callee)
-	kept := planEffectGenWith(c, file, call, true)
-	if !kept.fixable() || applyEdits(file.Text(), kept.edits) == applyEdits(file.Text(), planEffectGen(c, file, call).edits) {
-		return fileFix{}, false
-	}
-	return fileFix{code: d.Code(), edits: kept.edits, key: key}, true
-}
-
 // generatorCallOf returns the call that callee, the API EK1002 names, leads
 // to and that passes the generator: Effect.fn("n")(function* …) for the
 // Effect.fn of that text.
@@ -155,7 +114,7 @@ func noteEffectGenFix(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnosti
 	rewrite := planEffectGen(c, file, call)
 	switch {
 	case rewrite.fixable():
-		note(d, "Its quick fix writes {0}; vibelang --fix applies every such fix in the project.", rewrite.description)
+		note(d, "Its quick fix writes {0}.", rewrite.description)
 	case rewrite != nil && rewrite.why != "":
 		note(d, "{0}", rewrite.why)
 	}
@@ -1787,48 +1746,4 @@ func effectFnTypeHasImport(text string) bool {
 		return ast.IsImportTypeNode(node) || node.ForEachChild(visit)
 	}
 	return visit(file.AsNode())
-}
-
-// effectGenTeachingFixes retains the ordinary --fix teaching rewrite after
-// VIP-21 makes native generators valid. Compilation reports no error for them;
-// the existing planner and safe-fix gate still decide whether to rewrite.
-func effectGenTeachingFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	p := proposal{file: file}
-	var taken []sourceEdit
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if ast.IsCallExpression(node) {
-			rewrite := planEffectGen(c, file, node)
-			// Share the diagnostic provider key so a refused fix stays refused.
-			key := diagnosticSource + strconv.Itoa(int(EK1002.Code)) + ":" + nodeText(file, node)
-			// Both fixes are sited on the call, so the second resolves the
-			// site the gate refused for the first (fix_sites.go).
-			site := fileFix{code: EK1002.Code, key: key, siteStart: node.Pos(), siteEnd: node.End(), sited: true}
-			fix, ok := fileFix{}, false
-			switch {
-			case !rewrite.fixable():
-			case !refused[key]:
-				fix, ok = site, true
-				fix.edits = rewrite.edits
-			default:
-				// The second fix keeps the body's .pipe calls once the gate
-				// refused the first, as effectGenNativePipesFix does for EK1002.
-				kept, keptKey := planEffectGenWith(c, file, node, true), key+nativePipesKeySuffix
-				if kept.fixable() && !refused[keptKey] && applyEdits(file.Text(), kept.edits) != applyEdits(file.Text(), rewrite.edits) {
-					fix, ok = site, true
-					fix.edits, fix.key = kept.edits, keptKey
-				}
-			}
-			if ok && editsPreserveComments(file.Text(), fix.edits) &&
-				!slices.ContainsFunc(fix.edits, func(edit sourceEdit) bool { return overlapsAny(edit, taken) }) {
-				taken = append(taken, fix.edits...)
-				p.fixes = append(p.fixes, fix)
-			}
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return p
 }

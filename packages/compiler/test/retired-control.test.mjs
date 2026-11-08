@@ -43,11 +43,11 @@ for (const [name, source, code] of samples) test("first release rejects " + name
   const output=r.stdout+r.stderr
   assert.notEqual(r.status, 0, "retired source compiled successfully")
   assert.match(output, new RegExp(code), output)
-  assert.match(output, /vibelang --fix/, output)
+  assert.match(output, /outside the first release/, output)
 })
 
 for (const [name,source] of samples.filter(([name])=>["control syntax","handle syntax","select syntax"].includes(name))) {
-  test("ESLint rejects "+name+" with migration guidance",()=>assert.throws(()=>parseESTree(source,"retired.vibe"),/vibelang --fix/))
+  test("ESLint rejects "+name+" as outside the first release",()=>assert.throws(()=>parseESTree(source,"retired.vibe"),/outside the first release/))
 }
 test("ESLint keeps native control/handle/resume/abandon/select parameter names",()=>{
  const names=["control","handle","resume","abandon","select"]

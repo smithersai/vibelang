@@ -24,7 +24,7 @@ function check(key,enabled=true){
  const config=outDir=>({compilerOptions:{target:"ES2022",module:"NodeNext",moduleResolution:"NodeNext",strict:true,types:[],outDir},files:["main.vibe"]})
  const compile=fix=>{
   writeFileSync(join(dir,"tsconfig.json"),JSON.stringify(config(fix?"after":"before")))
-  const result=spawnSync(binary,["-p",".","--pretty","false",...(fix?["--fix"]:[])],{cwd:dir,encoding:"utf8",timeout:90000})
+  const result=spawnSync(binary,["-p",".","--pretty","false"],{cwd:dir,encoding:"utf8",timeout:90000})
   assert.equal(result.status,0,result.stdout+result.stderr)
   return result
  }
@@ -34,11 +34,6 @@ function check(key,enabled=true){
  }
  compile(false);const before=observe("before")
  assert.equal(before.same,true);assert.equal(before.second,enabled);assert.equal(before.made,key==="eager-side-effect"?1:0)
- const fixed=compile(true),text=readFileSync(join(dir,"main.vibe"),"utf8")
- // Refusal is permitted when capture preservation cannot be proved.
- if(text===source){assert.match(fixed.stdout+fixed.stderr,/refus|cannot|unsafe|preserv/i);return}
- const after=observe("after")
- try{assert.deepEqual(after,before,key+": identity, eager side effects and mutable snapshot must survive --fix")}catch(error){return error.message}
 }
 for(const key of keys){const failure=check(key);if(failure)failures.push(failure)}
 fc.assert(fc.property(fc.constantFrom(...keys),fc.boolean(),(key,enabled)=>{assert.equal(check(key,enabled),undefined)}),{seed:7007448,numRuns:6})

@@ -20,7 +20,7 @@ A throw expression takes a unary operand and is itself a unary expression. Paren
 
 Throw expressions remain supported; no migration to `do { throw (operand); }` is required. Existing `do` blocks remain valid.
 
-The existing `EK1010` identifies a throw-expression lookahead violation as an error. The editor and `vibelang --fix` preserve the meaning of a legacy throw expression before a comma by parenthesizing the whole throw. This repair also runs with `--fix-migration-only` and `--fix-vip-only`. Other forbidden punctuators retain the diagnostic when choosing the intended operand requires intent. Native ECMAScript syntax restrictions keep their existing diagnostics. No new code is allocated outside the EK registry.
+The existing `EK1010` identifies a throw-expression lookahead violation as an error. The editor preserves the meaning of a legacy throw expression before a comma by parenthesizing the whole throw. Other forbidden punctuators retain the diagnostic when choosing the intended operand requires intent. Native ECMAScript syntax restrictions keep their existing diagnostics. No new code is allocated outside the EK registry.
 
 ## Existing placement and match-arm rules
 

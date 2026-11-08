@@ -4,10 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 const tagCallHead = `import * as Context from "effect/Context"
@@ -65,27 +63,6 @@ func TestServiceTagCallQuickFix(t *testing.T) {
 			}
 			if errors := errorsOf(t, got); len(errors) != 0 {
 				t.Fatalf("the fixed source reports %v", errors)
-			}
-		})
-	}
-}
-
-// A function's call keeps its parentheses, and an untried read of a tag is
-// not this fix's: --fix leaves the call and its TS2349 standing.
-func TestServiceTagCallFixLeaves(t *testing.T) {
-	for _, test := range []struct{ name, body, keep string }{
-		{"function returning an Effect", "export effect function g() {\n  return try make()\n}\n", "try make()"},
-		{"untried read", "export effect function g() {\n  const s = Plat()\n  return String(s !== undefined)\n}\n", "= Plat()"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			p, file, _, _ := editorProgram(t, tagCallHead+test.body)
-			result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{})
-			text := file.Text()
-			if fixed := result.Files[file.FileName()]; fixed != nil {
-				text = fixed.Text
-			}
-			if !strings.Contains(text, test.keep) {
-				t.Fatalf("--fix removed %q:\n%s", test.keep, text)
 			}
 		})
 	}

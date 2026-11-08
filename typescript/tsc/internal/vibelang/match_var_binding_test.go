@@ -3,10 +3,7 @@ package vibelang
 import (
 	"context"
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
-	"os"
 	"strings"
 	"testing"
 )
@@ -74,41 +71,6 @@ func TestMatchVarBindingQuickFix(t *testing.T) {
 		if ds := errorsOf(t, got); len(ds) != 0 {
 			t.Fatalf("fixed source: %v", ds)
 		}
-	}
-}
-
-func TestMatchVarBindingFixProject(t *testing.T) {
-	for _, options := range []FixOptions{{}, {MigrationOnly: true}, {VIPOnly: true}} {
-		source := "export function f(): unknown { if (({value:7}) is { /*keep*/ var value }) return value; return 0 }"
-		program, file, _, _ := editorProgram(t, source)
-		result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), options)
-		if len(result.Refused) != 0 || len(result.Files) != 1 {
-			t.Fatalf("fix result: %+v", result)
-		}
-		fixed := result.Files[file.FileName()]
-		want := strings.Replace(source, "var value", "let value", 1)
-		if fixed.Text != want || fixed.Counts[107] != 1 {
-			t.Fatalf("fix: %+v, want %s", fixed, want)
-		}
-		if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-			t.Fatal(err)
-		}
-		second := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), options)
-		if len(second.Files) != 0 || len(second.Refused) != 0 {
-			t.Fatalf("second fix changed the project: %+v", second)
-		}
-	}
-}
-
-func TestMatchVarBindingFixPreservesOrdinaryVarScope(t *testing.T) {
-	// Read outside its block, this var needs its function scope; a var that
-	// block scoping cannot change gets let or const (legacy_var_fix.go).
-	source := "export function f(c: boolean): number { if (c) { var value=7 } else { value=1 } return value }"
-	program, file, _, _ := editorProgram(t, source)
-	result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), FixOptions{})
-	fixed := result.Files[file.FileName()]
-	if result.Err != nil || fixed == nil || !strings.Contains(fixed.Text, "\n"+source+"\n}") {
-		t.Fatalf("ordinary var must retain its native function scope: %+v", result)
 	}
 }
 

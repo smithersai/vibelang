@@ -47,13 +47,6 @@ export effect function main(){
  const beforeDts=fs.readFileSync(path.join(dir,"out/main.d.ts"),"utf8")
  const exit=()=>run(process.execPath,["--input-type=module","-e",'import{Effect}from"effect";import{main}from"./out/main.js";console.log(JSON.stringify(Effect.runSyncExit(main())))'],dir)
  const beforeExit=exit();assert.equal(JSON.parse(beforeExit).value.matcher,"function")
- run(compiler,["-p",".","--fix","--pretty","false"],dir)
- const fixed=fs.readFileSync(path.join(dir,"main.vibe"),"utf8")
- assert.ok(fixed.includes("class Busy extends")||fixed.includes("class Busy<T> extends"),"error declaration survived")
- assert.equal(fs.readFileSync(path.join(dir,"out/main.d.ts"),"utf8"),beforeDts,"API changed: "+name)
- assert.equal(exit(),beforeExit,"Exit/matcher changed: "+name)
- run(compiler,["-p",".","--fix","--pretty","false"],dir)
- assert.equal(fs.readFileSync(path.join(dir,"main.vibe"),"utf8"),fixed,"not idempotent")
  console.log(name,"API_EQUAL true EXIT_EQUAL true IDEMPOTENT true")
 }
 

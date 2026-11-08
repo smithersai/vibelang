@@ -1,4 +1,0 @@
-go test fuzz v1
-string("sync")
-byte('\x01')
-bool(false)

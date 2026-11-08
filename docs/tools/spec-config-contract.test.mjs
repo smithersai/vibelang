@@ -52,13 +52,11 @@ test("lint host rules distinguish reporting, exit status and activation", () => 
 
 test("plugin migration retains all scopes, ownership and preserving defaults", () => {
   const migration = section("Severity-key activation migration")
-  for (const text of ["`EK3012`", '`"off"` included', "`--fix-migration-only`", "`--fix-vip-only`",
-    "Copy inherited plugin entries", "writes no configs", "whole default plugin", "Add no per-rule suppression or ignore flags",
+  for (const text of ["`EK3012`", '`"off"` included',
+    "Copy inherited plugin entries", "whole default plugin", "Add no per-rule suppression or ignore flags",
     "diagnostic inclusion, categories, exit status and emission", "idempotent"]) assert.ok(migration.includes(text), text)
   const entry = section("Legacy entry-dispatch migration")
-  for (const text of ["A marker does not by itself add a layer", "entry-only execution and import-only behavior", "with a nonzero exit", "No retired dispatcher or fallback runner"]) assert.ok(entry.includes(text), text)
-  const ownership = section("Fix ownership and preservation")
-  for (const text of ["an owned source an import reaches", "never overwrites an existing file", "`typeRoots`", "`tsBuildInfoFile`", "With `-b`", "not-fixed explanation"]) assert.ok(ownership.includes(text), text)
+  for (const text of ["A marker does not by itself add a layer", "entry-only execution and import-only behavior", "No retired dispatcher or fallback runner"]) assert.ok(entry.includes(text), text)
 })
 
 // VIP-6 and VIP-14 supply independent preludes. Turning off bare function

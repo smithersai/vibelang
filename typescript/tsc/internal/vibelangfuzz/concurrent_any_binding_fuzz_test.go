@@ -2,9 +2,6 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -151,78 +148,4 @@ func TestConcurrentUnusedHeadQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("002-running.md"), concurrentAnyQuote) {
 		t.Fatal("stale native head quote")
 	}
-}
-
-func FuzzConcurrentUnusedHeadFix(f *testing.F) {
-	startShortBudget(f)
-	keys := []string{"const", "let", "collision", "rhs-capture", "shadow", "body-local"}
-	for _, key := range keys {
-		f.Add(key)
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, key string) {
-		if !strings.Contains(SpecText("002-running.md"), concurrentAnyQuote) {
-			t.Fatal("stale native head quote")
-		}
-		i := slices.Index(keys, key)
-		if i < 0 {
-			if key == "" {
-				return
-			}
-			i = int(key[0]) % len(keys)
-		}
-		source := "export effect function main(rows:number[]){for concurrent(const item of rows){}}"
-		want := strings.Replace(source, "const item", "const _item", 1)
-		switch i {
-		case 1:
-			source = strings.Replace(source, "const item", "let item", 1)
-			want = strings.Replace(source, "let item", "let _item", 1)
-		case 2:
-			source = "export effect function main(rows:number[]){const _item=1;for concurrent(let item of rows){void _item}}"
-			want = strings.Replace(source, "let item", "let _item2", 1)
-		case 3:
-			source = "export effect function main(rows:number[]){let read:()=>unknown=()=>0;for concurrent(const item of (read=()=>item,rows)){};return read}"
-			want = source
-		case 4:
-			source = "export effect function main(rows:number[]){for concurrent(const item of rows){const item=1;void item}}"
-			want = source
-		case 5:
-			source = "export effect function main(rows:number[]){for concurrent(const item of rows){void item;const _local=1}}"
-			want = source
-		}
-		config := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noUnusedLocals":true,"types":[]},"files":["main.vibe"]}`
-		files := map[string]string{"main.vibe": source, "package.json": `{"type":"module"}`}
-		before, err := w.Compile(t.Context(), Project{Files: files, Config: config})
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer before.Remove()
-		result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{})
-		if result.Err != nil {
-			t.Fatal(result.Err)
-		}
-		got := source
-		for name, file := range result.Files {
-			if filepath.Base(name.AsString()) == "main.vibe" {
-				got = file.Text
-			}
-		}
-		if got != want {
-			Gap(t, "FuzzConcurrentUnusedHeadFix", keys[i], "%s; unsafe or missing unused-head repair\nwant %s\ngot %s", concurrentAnyQuote, want, got)
-		}
-		if i < 3 {
-			files["main.vibe"] = got
-			after, err := w.Compile(t.Context(), Project{Files: files, Config: config})
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer after.Remove()
-			for _, d := range after.Diagnostics {
-				if d.Category() == diagnostics.CategoryError {
-					Gap(t, "FuzzConcurrentUnusedHeadFix", keys[i], "%s; repaired source rejected: %s", concurrentAnyQuote, d.String())
-				}
-			}
-		}
-		ExpectPending(t, "FuzzConcurrentUnusedHeadFix", keys[i])
-	})
 }

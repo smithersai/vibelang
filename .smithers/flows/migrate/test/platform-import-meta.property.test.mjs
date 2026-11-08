@@ -15,7 +15,7 @@ const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-provider-impor
 const alchemy = JSON.parse(readFileSync(new URL("./corpus/alchemy-import-meta-selectors.json", import.meta.url), "utf8"))
 const js = text => ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.Preserve } }).outputText
 const quotes = [
-  "The quick fix and the codemod move the code into a sibling",
+  "The quick fix moves the code into a sibling",
   "refuse with the not-fixed explanation if the move cannot preserve run phase, captures, receiver and public types",
   "\u0060import.meta\u0060 may appear only as the object of \u0060.url\u0060.",
 ]

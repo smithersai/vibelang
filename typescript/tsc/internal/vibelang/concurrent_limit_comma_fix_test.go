@@ -5,10 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 func TestConcurrentLimitCommaQuickFix(t *testing.T) {
@@ -59,30 +57,6 @@ func TestConcurrentLimitCommaQuickFix(t *testing.T) {
 				t.Fatalf("fixed source reports %v", ds)
 			}
 		})
-	}
-}
-
-func TestFixConcurrentLimitComma(t *testing.T) {
-	for _, source := range []string{
-		"function mark(n: number) { return n }\nexport effect function f() { for concurrent(mark(1), 1) (const n of [1]) {}; return 0 }\n",
-		"function mark(n: number) { return n }\nexport effect function f() { for concurrent(mark(1), 1) (const n of [1]) {}; for concurrent(mark(2), 2) (const n of [1]) {}; return 0 }\n",
-	} {
-		program, file, _, _ := editorProgram(t, source)
-		result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), FixOptions{})
-		fixed := result.Files[file.FileName()]
-		if fixed == nil {
-			t.Fatal("--fix left a bare comma limit unchanged")
-		}
-		want := strings.ReplaceAll(source, "concurrent(mark(1), 1)", "concurrent((mark(1), 1))")
-		want = strings.ReplaceAll(want, "concurrent(mark(2), 2)", "concurrent((mark(2), 2))")
-		if fixed.Text != want {
-			t.Fatalf("--fix wrote\n%s\nwant\n%s", fixed.Text, want)
-		}
-		again, againFile, _, _ := editorProgram(t, fixed.Text)
-		second := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), again.CommandLine(), FixOptions{})
-		if changed := second.Files[againFile.FileName()]; changed != nil && changed.Text != fixed.Text {
-			t.Fatalf("the second --fix changed an already grouped limit:\n%s", changed.Text)
-		}
 	}
 }
 

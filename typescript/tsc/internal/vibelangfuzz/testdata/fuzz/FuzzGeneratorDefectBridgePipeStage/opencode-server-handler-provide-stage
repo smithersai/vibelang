@@ -1,3 +1,0 @@
-go test fuzz v1
-string("between/method/arrow")
-byte(0)

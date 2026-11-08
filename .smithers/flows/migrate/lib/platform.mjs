@@ -11,9 +11,9 @@ import { splitImportMeta, privateResolverExports, isWritten } from "./import-met
 // its platform code, and EK4402 sends it back to TypeScript as before.
 //
 // A host global (process.env, globalThis.fetch) is moved only when the
-// caller names it: vibelang --fix first rewrites what an Effect service
-// covers (Config, Console, Clock), and the EK4402 sites it leaves send the
-// module back with their messages. platformGlobalsOf reads the globals from
+// caller names it: an Effect service covers some reads (Config, Console,
+// Clock), and the EK4402 sites a pass leaves send the module back with
+// their messages. platformGlobalsOf reads the globals from
 // those messages, and the next pass splits only the declarations that read
 // them (the hand-off agreed with migfix-t3code-2, inbox migfix-smithers.md).
 // A run names the earlier passes' receipts in its config.json,
@@ -23,7 +23,7 @@ import { splitImportMeta, privateResolverExports, isWritten } from "./import-met
 // The same receipts carry EK0401 for a call the compiler cannot prove safe in
 // a plain function whose return type is wholly effectful (spec 003, "Effectful
 // callables"): "'nativeTheme.on' may throw, and a function that returns an
-// Effect, a Stream or a Layer never throws". vibelang --fix bridges such a call
+// Effect, a Stream or a Layer never throws". Such a call is bridged
 // only inside a callback Effect runs in the fiber; an eager factory or an
 // Error-valued mapper keeps the diagnostic, since JavaScript can tell a throw
 // from a returned Effect there, and the module went back to TypeScript. The
@@ -96,9 +96,9 @@ export function platformGlobalsOf(messages) {
     if (cast) { names.add(cast[1]); continue }
     const m = globalMessage.exec(text)
     if (m && m[1] !== "import") names.add(m[1])
-    // vibelang --fix qualifies a constructor the prelude hides, so
-    // `new Response(…)` is checked as `new globalThis.Response(…)` and the
-    // message names globalThis. The qualified member is named too, for the
+    // An earlier toolchain's `vibelang --fix` qualified a constructor the
+    // prelude hides, so `new Response(…)` was checked as
+    // `new globalThis.Response(…)` and the message names globalThis. The qualified member is named too, for the
     // split to read against the TypeScript, which may spell it bare.
     const member = m?.[1] === "globalThis" && /^(?:new )?globalThis(?:\??\.([A-Za-z_$][\w$]*)|\??\.?\[(["'`])([A-Za-z_$][\w$]*)\2\])/.exec(text)
     if (member) names.add("globalThis." + (member[1] ?? member[3]))
@@ -254,7 +254,7 @@ export function splitPlatform(text, file, ts, { globals = [], returnsAvoid } = {
 // The identifiers a split moves the readers of, for the globals the messages
 // name. A "globalThis.X" entry is a qualified read the message reports: when
 // the source spells it so, globalThis already names its readers; when the
-// source never does, vibelang --fix qualified a bare X (a constructor the
+// source never does, an earlier `vibelang --fix` qualified a bare X (a constructor the
 // prelude hides), and the bare X is what the source reads.
 function globalNames(globals, source, ts) {
   const qualified = new Set()

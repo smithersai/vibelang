@@ -1,4 +1,0 @@
-go test fuzz v1
-string("independent-cover")
-byte(2)
-byte(1)

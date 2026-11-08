@@ -11,7 +11,7 @@ import (
 )
 
 func TestPipeStatementQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("007-tooling.md"), "Quick fixes and codemods use the formatter to preserve the parse under Appendix A.") {
+	if !strings.Contains(SpecText("007-tooling.md"), "Quick fixes use the formatter to preserve the parse under Appendix A.") {
 		t.Fatal("tooling contract changed")
 	}
 }

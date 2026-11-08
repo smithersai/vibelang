@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"slices"
-	"strconv"
 	"strings"
 	"testing"
 )
@@ -72,67 +70,6 @@ func serviceUseProgram(key string, mode uint8) string {
 		"package.json":  "{\"type\":\"module\"}\n",
 		"tsconfig.json": "{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"strict\":true,\"skipLibCheck\":true,\"declaration\":true,\"outDir\":\"out\",\"singleThreaded\":true},\"files\":[\"main.ts\"]}\n",
 	})
-}
-
-// FuzzDeclarationServiceUse widens the Alchemy Hetzner witness (also kept as
-// testdata/fuzz/FuzzDeclarationIdentity/alchemy-service-use-effect-value) into
-// its neighbourhood. Each program passes two gates: the renamed .vibe declares
-// what stock declares, and --fix on that .vibe keeps its declarations. The
-// reported defect was the second: a fix that wrapped the initializer as
-// effect { return try Service.use(...) } and nested the Effect.
-func FuzzDeclarationServiceUse(f *testing.F) {
-	startShortBudget(f)
-	tsc, api := StockTypeScript(f), declarationIdentityAPI(f)
-	w := NewWorkspace(f)
-	f.Add("identity", uint8(0))
-	f.Add("record", uint8(13))
-	f.Fuzz(func(t *testing.T, key string, mode uint8) {
-		TestDeclarationServiceUseQuoted(t)
-		if !slices.Contains(serviceUseKeys, key) {
-			if key == "" {
-				key = serviceUseKeys[0]
-			} else {
-				key = serviceUseKeys[int(key[0])%len(serviceUseKeys)]
-			}
-		}
-		t.Run("rename", func(t *testing.T) { checkServiceUseIdentity(t, w, tsc, api, serviceUseProgram(key, mode&15)) })
-		t.Run("fix", func(t *testing.T) { checkServiceUseFix(t, w, api, serviceUseSource(key, mode&15)) })
-	})
-}
-
-// The original minimum must pass the gate, not be admitted away by a skip.
-func TestDeclarationServiceUseWitness(t *testing.T) {
-	TestDeclarationServiceUseQuoted(t)
-	data, err := os.ReadFile(filepath.Join(Root(), "typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzDeclarationIdentity/alchemy-service-use-effect-value"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) != 2 || lines[0] != "go test fuzz v1" || !strings.HasPrefix(lines[1], "string(") {
-		t.Fatal("expected one keyed declaration-identity archive")
-	}
-	archive, err := strconv.Unquote(strings.TrimSuffix(strings.TrimPrefix(lines[1], "string("), ")"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if archive != serviceUseProgram("identity", 0) {
-		t.Fatal("the keyed Alchemy witness and the generator's identity program differ")
-	}
-	w, api := NewWorkspace(t), declarationIdentityAPI(t)
-	t.Run("rename", func(t *testing.T) { checkServiceUseIdentity(t, w, StockTypeScript(t), api, archive) })
-	t.Run("fix", func(t *testing.T) { checkServiceUseFix(t, w, api, serviceUseSource("identity", 0)) })
-}
-
-// checkServiceUseFix applies the shared Chapter 7 fix-preservation gate. Every
-// generated module is well typed, so an admission skip would hide the check.
-func checkServiceUseFix(t *testing.T, w *Workspace, api, source string) {
-	t.Helper()
-	t.Cleanup(func() {
-		if t.Skipped() {
-			t.Error("a Service.use module must reach the --fix declaration comparison")
-		}
-	})
-	checkMigrationDeclarationFix(t, w, api, Archive(map[string]string{"main.vibe": source}))
 }
 
 func checkServiceUseIdentity(t *testing.T, w *Workspace, tsc, api, archive string) {

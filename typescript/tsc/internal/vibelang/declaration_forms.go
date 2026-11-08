@@ -23,11 +23,11 @@ import (
 // so --fix can preserve declaration APIs and execution before removing syntax.
 
 var (
-	EK0909 = message(909, errorCategory, "service class declarations are retired: run vibelang --fix to write service without class.")
+	EK0909 = message(909, errorCategory, "service class declarations are retired: write service without class.")
 	// EK2120: the existing control class warning. {0} is the word.
 	EK2120 = message(2120, warningCategory, "{0} class is the older spelling: write {0} without class.")
 	// EK2121: a retired layer declaration. Its repair retains setup timing.
-	EK2121 = message(2121, errorCategory, "layer declarations are retired: run vibelang --fix to write Layer.effect(Service, effect { ... }) or Layer.succeed(Service, { ... }).")
+	EK2121 = message(2121, errorCategory, "layer declarations are retired: write Layer.effect(Service, effect { ... }) or Layer.succeed(Service, { ... }).")
 )
 
 func init() {

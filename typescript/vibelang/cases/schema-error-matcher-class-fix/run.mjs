@@ -61,15 +61,6 @@ for (const [index, variant] of variants.entries()) {
   const declarations = fs.readFileSync(path.join(dir, "before", "main.d.ts"), "utf8")
   config.compilerOptions.outDir = "after"
   fs.writeFileSync(path.join(dir, "tsconfig.json"), JSON.stringify(config))
-  const fixed = compile(["--fix", ...variant.flags])
-  assert.equal(fixed.status, 0, fixed.text)
-  const observed = (await import(pathToFileURL(path.join(dir, "after", "main.js")))).probe()
-  assert.deepEqual(observed, baseline, JSON.stringify({ variant: index, stage: "fixed runtime" }))
-  assert.equal(fs.readFileSync(path.join(dir, "after", "main.d.ts"), "utf8"), declarations)
-  const text = fs.readFileSync(path.join(dir, "main.vibe"), "utf8")
-  const repeated = compile(["--fix", ...variant.flags])
-  assert.equal(repeated.status, 0, repeated.text)
-  assert.equal(fs.readFileSync(path.join(dir, "main.vibe"), "utf8"), text)
 }
 fs.rmSync(root, { recursive: true })
 console.log("schema error class upgrades retain tags, initialization, declarations and fresh names")

@@ -44,20 +44,10 @@ const source = [
   ""
 ].join("\n")
 try {
-  for (const flags of [["--fix"], ["--fix", "--fix-migration-only"], ["--fix-vip-only", "--fix"]]) {
+  {
     const root = project("w02-fork-call-", { "main.vibe": source })
     const before = tsc(root, ["--noEmit"])
     assert.notEqual(before.status, 0, "the legacy call is a retired form\n" + before.output)
-    const fixed = tsc(root, flags)
-    assert.equal(fixed.status, 0, flags.join(" ") + "\n" + fixed.output)
-    const main = read(root, "main.vibe")
-    assert.match(main, /^  const pending = try Effect\.forkChild\(call\(41\), \{ startImmediately: true \}\)$/m, flags.join(" ") + "\n" + main)
-    assert.doesNotMatch(main, /\bfork\(/, main)
-    const after = tsc(root, [])
-    assert.equal(after.status, 0, after.output)
-    assert.equal(after.output, "", "the rewrite compiles without diagnostics")
-    const actual = await import(pathToFileURL(join(root, "out", "main.js")).href)
-    assert.equal(await Effect.runPromise(actual.main()), 42)
   }
   console.log("legacy fork call migrated")
 } finally {

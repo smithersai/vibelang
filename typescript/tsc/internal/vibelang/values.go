@@ -154,24 +154,6 @@ func esFunctionOf(c *checker.Checker, node *ast.Node) *ast.Node {
 	return nil
 }
 
-// firstFailureSource returns the throw operand or call in fn's body that adds
-// its first expected failure, or nil. A throw expression or a do block, which
-// the parser writes as an invoked arrow, gives the throw or call inside it.
-func (a *analyzer) firstFailureSource(fn *ast.Node) *ast.Node {
-	info := a.flowOf(fn.Body())
-	for i, t := range info.errors {
-		if source := info.errorSources[i]; t != nil && t.Flags()&checker.TypeFlagsNever == 0 && source != nil {
-			if arrow := invokedArrow(source); arrow != nil {
-				if inner := a.firstFailureSource(arrow); inner != nil {
-					return inner
-				}
-			}
-			return source
-		}
-	}
-	return nil
-}
-
 func factoryReturns(fn *ast.Node, cb func(*ast.Node)) {
 	if !ast.IsBlock(fn.Body()) {
 		cb(fn.Body())

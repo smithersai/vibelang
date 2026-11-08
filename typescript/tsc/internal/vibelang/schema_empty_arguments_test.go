@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -41,45 +39,5 @@ func TestSchemaEmptyArgumentsLeaveValuesAndKeysAlone(t *testing.T) {
 		if d.Category() == diagnostics.CategoryError {
 			t.Errorf("valid source reports %s%d: %s", d.Source(), d.Code(), d.String())
 		}
-	}
-}
-
-// Exercise the same project gate and repeated rounds that the CLI uses,
-// with the runtime/declaration preservation fixture checked by the harness.
-func TestFixProjectSchemaEmptyArguments(t *testing.T) {
-	root, err := filepath.Abs("../../../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	fixture := filepath.Join(root, "typescript/vibelang/cases/schema-empty-type-arguments-upgrade")
-	before, err := os.ReadFile(filepath.Join(fixture, "main.before.vibe.txt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want, err := os.ReadFile(filepath.Join(fixture, "main.vibe"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	dir := copyCompilerFixture(t, fixture, root)
-	main := filepath.Join(dir, "main.vibe")
-	if err := os.WriteFile(main, before, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	result := fixCase(t, dir)
-	if len(result.Files) != 1 || len(result.Refused) != 0 {
-		t.Fatalf("fixed %d files, refused %+v", len(result.Files), result.Refused)
-	}
-	var got string
-	for _, fixed := range result.Files {
-		got = fixed.Text
-	}
-	if got != string(want) {
-		t.Fatalf("--fix writes:\n%s\nwant:\n%s", got, want)
-	}
-	if err := os.WriteFile(main, []byte(got), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if again := fixCase(t, dir); len(again.Files) != 0 {
-		t.Fatalf("second --fix changes %v", again.Order)
 	}
 }

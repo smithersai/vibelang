@@ -1,8 +1,0 @@
-{
-  "name": "platform-runner-pipe-case",
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "@effect/platform-node": "4.1.1"
-  }
-}

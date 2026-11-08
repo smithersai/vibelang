@@ -165,25 +165,23 @@ VibeLang 0.0.13 (TypeScript 7.1.0-dev)
 
 ## 4. Port Effect TypeScript files
 
-Rename a `.ts` file that uses Effect to `.vibe`, then let the compiler rewrite it:
+Rename a `.ts` file that uses Effect to `.vibe`, then check it:
 
 ```sh
-npx vibelang -p tsconfig.json --fix --noEmit
+npx vibelang -p tsconfig.json --noEmit
 ```
 
 The migration flow also updates loader queries and fragments when it renames a source. For example, `export { default as counterRaw } from "./counter.ts?raw#snippet"` points at `"./counter.vibe?raw#snippet"` after conversion, keeping the exported name and suffix. Imports, re-exports and dynamic imports follow the same rule, including configured aliases. Reverting a module restores each original specifier. When platform extraction creates a `module` body, its peer imports follow the renamed dependencies too, including a dependency already migrated in an earlier batch. A dependency retained in TypeScript keeps its original name.
 
-If a previous migration left `./user.ts` pointing at a renamed `user.vibe`, `--fix` also repairs that stale relative name in VibeLang sources before native-extension fallback is retired. The replacement follows the project's `rewriteRelativeImportExtensions`, `allowImportingTsExtensions` and emit settings: a permitted source name, or the runtime `.js`/`.jsx` name. Existing native files keep their imports. See [CLI migration](vibelang-cli.md).
+If a previous migration left `./user.ts` pointing at a renamed `user.vibe`, replace that stale relative name in VibeLang sources before native-extension fallback is retired. The replacement follows the project's `rewriteRelativeImportExtensions`, `allowImportingTsExtensions` and emit settings: a permitted source name, or the runtime `.js`/`.jsx` name. Existing native files keep their imports. See [CLI migration](vibelang-cli.md).
 
-`--fix` applies each rewrite that keeps the program's meaning: Effect error and service classes become `error` and `service` declarations, `Effect.succeed` and `Effect.fail` become returned values and `throw`, catch combinators become `catch`, `Match` chains become `match`, Option pipes become module calls, unneeded prelude imports go, a later `is` binding that repeats a name of its block is renamed with its uses, and an `Effect.gen` that is a function's whole body becomes an effect function with `try` replacing `yield*` ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). Yielded `Effect.fail<E>` and `Effect.succeed<A>` calls keep their explicit type arguments under `try`, so their contextual types survive generator conversion. It refuses a rewrite that would change what other code receives, and prints why. An `Effect.gen` that the file pipes, such as `Effect.gen(...).pipe(Effect.provide(AppLive))`, stays EK1002 for now: write its body by hand inside `export effect function main() { provide AppLive { ... } }`, reading a service as `try Users`.
+Effect declarations and combinator calls written in TypeScript's style use the same library APIs in `.vibe` ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). An `Effect.gen` that the file pipes, such as `Effect.gen(...).pipe(Effect.provide(AppLive))`, reports `EK1002`: write its body by hand inside `export effect function main() { provide AppLive { ... } }`, reading a service as `try Users`.
 
 Imports used by bare type references stay, and qualified types keep their qualification when shortening would expose a bare name. This preserves a shared module’s types when its consumers use different `lib` or `types` settings.
 
-When converting an `Effect.gen` or `Effect.fn` body, `--fix` makes an intentionally discarded Effect explicit with `void`, including inside a plain callback. It keeps argument evaluation at the same point and leaves the discarded program unrun. For example, an unyielded `Effect.succeed(value)` statement becomes `void Effect.succeed(value)`.
+An `Effect.fn` parameter may retain its written type, such as `ReturnType<typeof make>`, when expanding it would import a generated declaration. Repeated builds keep that source type rather than treating a sidecar as an input.
 
-An `Effect.fn` parameter may retain its written type, such as `ReturnType<typeof make>`, when expanding it would import a generated declaration. Repeated builds and `--fix` runs keep that source type rather than treating a sidecar as an input.
-
-Code written for an earlier VibeLang release can use forms that are now retired, such as a trailing block or a legacy platform entry marker. `--fix` rewrites those too; [Migrating retired forms](migrating-retired-forms.md) describes how.
+Code written for an earlier VibeLang release can use forms that are now retired, such as a trailing block or a legacy platform entry marker. [Migrating retired forms](migrating-retired-forms.md) describes what to write instead.
 
 Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](vibelang-cli.md#let-typescript-tools-read-vibe-modules).
 
@@ -195,7 +193,7 @@ If you use a coding agent, run `npx vibelang agents init` to give it the VibeLan
 
 Set up the build: [React](react.md), [Vue](vue.md), or [Svelte](svelte.md) with Vite; [Vite and Vitest](vite.md) for other Vite or Vitest projects; [Build with the vibelang CLI](vibelang-cli.md) without a bundler. For another bundler, see step 3 of [Set up VibeLang](../setup.md).
 
-Migration never returns an error-free module to TypeScript because of a warning. This follows each diagnostic's warning category, for VibeLang and imported Effect diagnostics alike, including new codes. Safe fixes still run; when a warning's own fix refuses, the module stays `.vibe` and its provenance records a named `warning-fix-refused` exception with the code, file, line, column and the compiler's reason. For example, `EK4833` may keep a qualified `Effect.Effect<A, E, R>` type to preserve grouping and declaration output; `EK4839` and `EK4802` refusals follow the same rule. Other remaining warnings are named `warning-retained` when no refusal reason was reported. The arrays live on module rows as `files[].warningExceptions` in the run's `batches/NN/verify.json` and `record.json`, and appear in the migration report. An error still returns the module, even if its fix refuses.
+Migration never returns an error-free module to TypeScript because of a warning. This follows each diagnostic's warning category, for VibeLang and imported Effect diagnostics alike, including new codes. Remaining warnings are named `warning-retained`. The arrays live on module rows as `files[].warningExceptions` in the run's `batches/NN/verify.json` and `record.json`, and appear in the migration report. An error still returns the module.
 
 Platform extraction reads `.tsx` and `.vibex` with JSX enabled, including host calls inside JSX callbacks. A native companion uses `.platform.tsx`; an inline `module` body keeps the containing file's JSX mode. Export-signature and publication checks still apply.
 

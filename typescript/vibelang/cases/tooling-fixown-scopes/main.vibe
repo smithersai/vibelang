@@ -1,2 +1,0 @@
-// rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation | [Scope flags](#fix-scopes) select passes; [`--only`](#selecting-ordinary-fix-files) further limits ordinary repairs.
-export const witness = 1

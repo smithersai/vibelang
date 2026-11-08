@@ -2,11 +2,7 @@ package vibelang
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -91,60 +87,5 @@ func TestOptionalDirectFormAdvisories(t *testing.T) {
 				}
 			}
 		}
-	}
-}
-func TestOptionalDirectFormAdvisoriesPreserveCalls(t *testing.T) {
-	for _, api := range []string{"succeed", "fail", "catch", "catchTag", "catchTags", "provide", "provideService"} {
-		t.Run(api, func(t *testing.T) {
-			p, file, service, converters := editorProgram(t, optionalDirectFormSource(api, 0, "direct", false))
-			var found *ast.Diagnostic
-			for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Source() == diagnosticSource && d.Code() == optionalDirectFormCode(api) {
-					found = d
-				}
-			}
-			if found == nil {
-				t.Fatal("missing advisory")
-			}
-			if !strings.Contains(diagnosticWithNotes(found), "No quick fix") {
-				t.Fatalf("missing refusal: %s", diagnosticWithNotes(found))
-			}
-			diagnostic := lsconv.DiagnosticToLSPPush(t.Context(), converters, found)
-			only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-			response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())}, Range: diagnostic.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{diagnostic}, Only: &only}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if response.CommandOrCodeActionArray != nil {
-				for _, a := range *response.CommandOrCodeActionArray {
-					if a.CodeAction != nil && a.CodeAction.Edit != nil {
-						t.Fatalf("optional call rewrite offered: %s", a.CodeAction.Title)
-					}
-				}
-			}
-			fixed := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			if fixed.Err != nil || len(fixed.Files) != 0 {
-				t.Fatalf("optional call rewritten: %+v", fixed)
-			}
-		})
-	}
-}
-func TestOptionalCatchPipelinePreservesCalls(t *testing.T) {
-	for _, api := range []string{"catch", "catchTag", "catchTags"} {
-		t.Run(api, func(t *testing.T) {
-			source := optionalDirectFormSource(api, 0, "direct", false)
-			source = strings.Replace(source, "return try Effect."+api+"?.(e,", "return try (e |> Effect."+api+"?.(%,", 1)
-			source = strings.TrimSuffix(source, "}") + ")}"
-			p, file, _, _ := editorProgram(t, source)
-			for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Category() == diagnostics.CategoryError || d.Source() == diagnosticSource && d.Code() == 4835 {
-					t.Fatalf("pipeline control: %s", d.String())
-				}
-			}
-			fixed := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			if fixed.Err != nil || len(fixed.Files) != 0 {
-				t.Fatalf("pipeline optional call rewritten: %+v", fixed)
-			}
-		})
 	}
 }

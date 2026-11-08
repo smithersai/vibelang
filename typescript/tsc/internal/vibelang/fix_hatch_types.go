@@ -28,10 +28,6 @@ func init() {
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{ErrorCodes: legacyHatchTypeCodes, GetCodeActions: legacyHatchTypeActions})
 }
 
-func legacyHatchTypeMigrationFixes(ctx context.Context, program *compiler.Program, refused map[string]bool) map[*ast.SourceFile]proposal {
-	return legacyHatchTypePlans(ctx, program, refused, nil)
-}
-
 func legacyHatchTypePlans(ctx context.Context, program *compiler.Program, refused map[string]bool, only *ls.CodeFixContext) map[*ast.SourceFile]proposal {
 	own := map[*ast.SourceFile]bool{}
 	candidate := false

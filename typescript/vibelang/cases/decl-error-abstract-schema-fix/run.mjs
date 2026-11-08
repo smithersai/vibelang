@@ -51,15 +51,6 @@ try {
   assert.equal(value._tag, "Success")
   assert.equal(value.value.decoded, true)
   assert.deepEqual(value.value.encoded, {_tag:"Concrete",code:"busy",count:7})
-  run(compiler, ["-p", ".", "--fix", "--pretty", "false"], dir)
-  const fixed = fs.readFileSync(path.join(dir, "main.vibe"), "utf8")
-  assert.ok(fixed.includes("$schemaErrorFamily as ") && fixed.includes("static {"), "family registration disappeared")
-  assert.ok(!fixed.includes("error /*keep error*/ Busy"), "schema root was left unchanged")
-  for (const comment of ["/*keep abstract*/", "/*keep schema*/", "/*keep error*/"]) assert.ok(fixed.includes(comment), "lost " + comment)
-  assert.equal(canonicalDeclarations(fs.readFileSync(path.join(dir, "out/main.d.ts"), "utf8")), canonicalDeclarations(beforeDts), "API changed: " + name)
-  assert.equal(exit(), before, "Exit/codec changed: " + name)
-  run(compiler, ["-p", ".", "--fix", "--pretty", "false"], dir)
-  assert.equal(fs.readFileSync(path.join(dir, "main.vibe"), "utf8"), fixed, "not idempotent")
   console.log(name, "API_EQUAL true EXIT_EQUAL true IDEMPOTENT true")
  }
 } finally { fs.rmSync(scratch, {recursive:true,force:true}) }

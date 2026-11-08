@@ -64,38 +64,6 @@ func TestDataGenericAssertionFixRefusals(t *testing.T) {
 	}
 }
 
-func TestDataGenericAssertionProjectFix(t *testing.T) {
-	source := "const data = <T>(value:T)=>value;\ndata as\n<T>(value:T)=>T;\ndata satisfies /* keep\n*/ <T>(value:T)=>T;\nexport const result:number = data(7)\n"
-	result := fixProjectOf(t, map[string]string{"main.vibe": source})
-	if result.Err != nil || len(result.Refused) != 0 || len(result.Files) != 1 {
-		t.Fatalf("project repair failed: %+v", result)
-	}
-	var fixed string
-	for _, file := range result.Files {
-		fixed = file.Text
-	}
-	want := "const data = <T>(value:T)=>value;\n(data as\n<T>(value:T)=>T);\n(data satisfies /* keep\n*/ <T>(value:T)=>T);\nexport const result:number = data(7)\n"
-	if fixed != want {
-		t.Fatalf("got %q, want %q", fixed, want)
-	}
-	again := fixProjectOf(t, map[string]string{"main.vibe": fixed})
-	if again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
-		t.Fatalf("repair not idempotent: %+v", again)
-	}
-}
-
-func TestDataGenericAssertionProjectRefusals(t *testing.T) {
-	for _, source := range []string{
-		"const broken = { value 1 }; export {}",
-		"const broken: { value number } = { value: 1 }; export {}",
-	} {
-		result := fixProjectOf(t, map[string]string{"main.vibe": source})
-		if len(result.Files) != 0 {
-			t.Fatalf("unrelated TS1005 was repaired: %+v", result)
-		}
-	}
-}
-
 func TestDataGenericAssertionJSX(t *testing.T) {
 	expression := "data as\n<T>(value:T)=>T"
 	source := "const element = <span />;\nconst data = <T,>(value:T)=>value;\n" + expression + ";\nexport {}"

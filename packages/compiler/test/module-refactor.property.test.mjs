@@ -142,10 +142,6 @@ async function check(input) {
     assert.ok(readFileSync(join(root,target+".ts"),"utf8").includes("    second\n  `"))
     run(binary,["-p","tsconfig.json","--pretty","false"],root)
     assert.equal(observe(),before,"copy to a sibling TypeScript file must preserve live exports and template whitespace")
-    // The ordinary CLI fix path must leave a legal inline module in place.
-    writeFileSync(join(root,"main.vibe"),source)
-    run(binary,["-p","tsconfig.json","--fix","--noEmit","--pretty","false"],root)
-    assert.ok(readFileSync(join(root,"main.vibe"),"utf8").includes("module "+input.name))
   } finally {client?.kill();rmSync(root,{recursive:true,force:true})}
 }
 

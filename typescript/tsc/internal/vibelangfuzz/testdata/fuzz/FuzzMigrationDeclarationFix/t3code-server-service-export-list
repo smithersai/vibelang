@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nimport * as Context from \"effect/Context\"\nimport * as Effect from \"effect/Effect\"\nclass WorkspacePaths extends Context.Service<WorkspacePaths, { readonly root: string; resolve(path: string): Effect.Effect<string> }>()(\"t3/WorkspacePaths\") {}\nexport { WorkspacePaths }\n")

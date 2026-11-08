@@ -34,13 +34,5 @@ try {
  const cli=(args)=>{const r=spawnSync(compiler,["-p",dir,...args,"--pretty","false"],{encoding:"utf8",timeout:60000});assert.equal(r.error,undefined);assert.equal(r.status,0,r.stdout+r.stderr);return r.stdout+r.stderr}
  const warnings=cli(["--noEmit"])
  assert.equal((warnings.match(/EK4856/g)||[]).length,7,"every resolved legacy alias gets a transition warning")
- cli(["--fix"])
- assert.equal(readFileSync(join(dir,"local.vibe"),"utf8"),local,"local type keeps ordinary meaning")
- assert.equal(readFileSync(join(dir,"imported.vibe"),"utf8"),imported,"imported type keeps ordinary meaning")
- const fixed=readFileSync(join(dir,"main.vibe"),"utf8");const compact=fixed.replace(/\s/g,"")
- for(const expected of ["v:number!!","e:string!Error","n:string!never","u:Effect.Effect<number|string>","a:Effect.Effect<number,Error>[]","m:Effect.Effect<number>|undefined","IextendsEffect.Effect<number>"])assert.ok(compact.includes(expected),expected+"\n"+fixed)
- assert.ok(!cli(["--noEmit"]).includes("EK4856"),"repair retires all warnings")
- cli(["--fix"])
- assert.equal(readFileSync(join(dir,"main.vibe"),"utf8"),fixed,"second --fix is byte-idempotent")
  console.log("types and Exit agree")
 }finally{rmSync(dir,{recursive:true,force:true})}

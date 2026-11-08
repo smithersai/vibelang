@@ -13,7 +13,7 @@ func TestRetiredServiceClassIsError(t *testing.T) {
 			for _, d := range errorsOf(t, source) {
 				if d.Code() == 909 {
 					found = true
-					if !strings.Contains(d.String(), "vibelang --fix") {
+					if !strings.Contains(d.String(), "write service without class") {
 						t.Fatalf("no migration advice: %s", d.String())
 					}
 				} else {

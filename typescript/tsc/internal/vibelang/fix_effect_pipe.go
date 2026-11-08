@@ -8,7 +8,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -857,32 +856,4 @@ func separatorComma(text string, from, to int) int {
 		}
 	}
 	return -1
-}
-
-// effectPipeFixes proposes the rewrite of each .pipe of an Effect in file.
-// Edits of a nested pipe stand between its outer pipe's, so one round takes
-// them together, save where two would insert at one offset.
-func effectPipeFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool, refuse func(FixRefusal, string)) proposal {
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	p := proposal{file: file}
-	var taken []sourceEdit
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if isPipeCall(node) {
-			key := "effectPipe:" + expressionText(file, node)
-			if rewrite := planEffectPipe(c, file, node); rewrite != nil && !refused[key] {
-				if !rewrite.fixable() {
-					line, _ := scannerLineOf(file, nodeStart(file, node))
-					refuse(FixRefusal{File: file.FileName(), Line: line + 1, Code: EK4502.Code, Error: rewrite.why}, key)
-				} else if !slices.ContainsFunc(rewrite.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
-					taken = append(taken, rewrite.edits...)
-					p.fixes = append(p.fixes, fileFix{code: EK4502.Code, edits: rewrite.edits, key: key})
-				}
-			}
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return p
 }

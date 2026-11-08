@@ -394,7 +394,7 @@ func checkForkOperand(c *checker.Checker, file *ast.SourceFile, operand *ast.Nod
 	switch {
 	case ast.IsFunctionExpressionOrArrowFunction(inner):
 		note(d, "Fork an effect block instead: fork effect { ... }.")
-		note(d, "Through VibeLang 0.0.10, fork ran the function's body: vibelang --fix writes that body as the operand.")
+		note(d, "Through VibeLang 0.0.10, fork ran the function's body: write that body as the operand.")
 	case len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) > 0:
 		note(d, "Call it to fork the Effect it returns: fork {0}().", text)
 	default:

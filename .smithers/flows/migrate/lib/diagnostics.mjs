@@ -36,13 +36,10 @@ const crashLine = /^(?:panic: |fatal error: |SIG[A-Z]+: |goroutine \d+ \[)/m
  * Throws when a compiler run died rather than finished. A run that reports
  * errors exits nonzero too, so only the output tells them apart: a Go crash, a
  * signal, or a failing exit with no diagnostic to read. Read as a clean run,
- * any of these reports no errors and no fixes.
+ * any of these reports no errors.
  */
 export function assertFinished(result, log) {
   const output = result.stdout + result.stderr
-  if (/^vibelang --fix: refused site changed:/m.test(output)) {
-    throw new Error("the compiler changed a refused site" + (log ? "; see " + log : ""))
-  }
   const crash = crashLine.exec(output)
   if (!crash && !result.signal && !result.timedOut && (result.code === 0 || parseDiagnostics(output).length)) return
   const tail = crash ? output.slice(crash.index) : output
@@ -81,24 +78,15 @@ export function styleProblems(diagnostics, files) {
 }
 
 /**
- * Module provenance for warnings left after safe fixes. No diagnostic code
+ * Module provenance for the warnings a module keeps. No diagnostic code
  * allow-list: imported Effect and future warning codes have the same contract.
  * See README.md, "Warning exceptions", for the persisted record shape.
  */
-export function warningExceptions(diagnostics, files, refusals = []) {
-  const inFiles = new Set(files), records = new Map(), refusedSites = new Map()
-  const site = d => JSON.stringify([d.file, d.line, d.code])
-  for (const r of refusals) {
-    const key = site(r)
-    if (!refusedSites.has(key)) refusedSites.set(key, new Set())
-    refusedSites.get(key).add("The fixed program would report " + r.error)
-  }
+export function warningExceptions(diagnostics, files) {
+  const inFiles = new Set(files), records = new Map()
   for (const d of diagnostics) {
     if (d.category !== "warning" || !inFiles.has(d.file)) continue
-    const reasons = [
-      ...(d.notes ?? []).filter(note => /no quick fix/i.test(note)),
-      ...(refusedSites.get(site(d)) ?? [])
-    ]
+    const reasons = (d.notes ?? []).filter(note => /no quick fix/i.test(note))
     const reason = [...new Set(reasons)].sort().join("\n")
     const record = {
       name: reason ? "warning-fix-refused" : "warning-retained",

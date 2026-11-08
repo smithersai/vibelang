@@ -29,8 +29,6 @@ func TestCommandLineInitRefusal(t *testing.T) {
 	for _, args := range [][]string{
 		{"--init"},
 		{"--INIT", "--pretty", "false"},
-		{"--fix", "--init"},
-		{"--fix", "--fix-migration-only", "--only", "main.vibe", "--explainFiles", "false", "--init"},
 		{"--init", "--unknown-init-option"},
 	} {
 		t.Run(cliQuote(args), func(t *testing.T) {
@@ -41,7 +39,7 @@ func TestCommandLineInitRefusal(t *testing.T) {
 			}
 			run := cliExec(binary, r.Dir, args, "", project)
 			printed := cliParse(run.Stdout)
-			invalid := slices.Contains(args, "--unknown-init-option")
+			invalid := len(cliOptions(w, r.Dir, args).Errors) != 0
 			if invalid {
 				if run.Status == 0 || !slices.ContainsFunc(printed, func(d cliDiagnostic) bool { return d.Prefix == "TS" && d.Code == 5023 }) {
 					t.Fatalf("an invalid initializer option must fail with TS5023: %+v", run)

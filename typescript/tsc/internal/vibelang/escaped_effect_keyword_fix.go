@@ -48,19 +48,3 @@ func init() {
 		},
 	})
 }
-
-func escapedEffectKeywordFixes(file *ast.SourceFile, refused map[string]bool) proposal {
-	result := proposal{file: file}
-	for _, diagnostic := range file.Diagnostics() {
-		span := core.NewTextRange(diagnostic.Pos(), diagnostic.End())
-		if diagnostic.Code() != 1260 || !escapedEffectKeywordAt(file, span) {
-			continue
-		}
-		key := file.FileName().AsString() + ":TS1260:" + file.Text()[span.Pos():span.End()]
-		if refused[key] {
-			continue
-		}
-		result.fixes = append(result.fixes, fileFix{code: 1260, native: true, key: key, edits: []sourceEdit{{span.Pos(), span.End(), "effect"}}})
-	}
-	return result
-}

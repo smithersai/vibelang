@@ -14,7 +14,7 @@ func TestRetiredLayerDeclarationIsError(t *testing.T) {
 			for _, d := range errorsOf(t, source) {
 				if d.Code() == EK2121.Code {
 					found = true
-					if !strings.Contains(d.String(), "vibelang --fix") {
+					if !strings.Contains(d.String(), "write Layer.effect(Service, effect { ... })") {
 						t.Fatalf("no migration advice: %s", d.String())
 					}
 				}

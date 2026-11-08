@@ -18,17 +18,6 @@ function project(action) {
  }finally{rmSync(dir,{recursive:true,force:true})}
 }
 const methods={
- "migration-filter"(){
-  project(({dir,put,options,config,invoke})=>{
-   Object.assign(options,{noEmit:true})
-   const source='import type {Effect} from "effect"; export type Run = Effect.Effect<number>;'
-   put("main.vibe",source);config(["main.vibe"])
-   const cfg=JSON.parse(readFileSync(join(dir,"tsconfig.json"),"utf8"));cfg.vibelang={diagnostics:{EK4609:"off"}};put("tsconfig.json",cfg)
-   const r=invoke("--fix","--fix-migration-only","-p",".","--pretty","false");assert.equal(r.status,0,r.text)
-   assert.equal(readFileSync(join(dir,"main.vibe"),"utf8"),source,"teaching/import rewrites must be excluded")
-   const after=JSON.parse(readFileSync(join(dir,"tsconfig.json"),"utf8"));assert.equal(after.vibe.severities.EK4609,"off");assert.ok(!after.vibelang?.diagnostics)
-  })
- },
  "foreign-refusal"(){
   project(({dir,put,options,config,invoke})=>{
    Object.assign(options,{noEmit:true})
@@ -36,10 +25,6 @@ const methods={
    const source='import {Effect} from "effect"; import {invoke} from "./foreign.js"; export effect function main() { return invoke(() => try Effect.succeed(1)) }'
    put("foreign.ts",foreign);put("main.vibe",source);config(["main.vibe"])
    const before=invoke("-p",".","--pretty","false");assert.match(before.text,/error EK0501:/)
-   const fixed=invoke("--fix","-p",".","--pretty","false")
-   assert.equal(readFileSync(join(dir,"foreign.ts"),"utf8"),foreign,"foreign callback contract is outside the selected repair scope")
-   assert.equal(readFileSync(join(dir,"main.vibe"),"utf8"),source,"a repair that needs the foreign contract must be refused")
-   assert.match(fixed.text,/not fixed:|No quick fix:/i,"the refusal must explain the missing safe repair")
   })
  },
 
@@ -79,7 +64,6 @@ const methods={
    const source='import {Effect} from "effect"; export effect function main() { return Effect.fail("bad") catch (e) => Effect.succeed(7) }'
    put("main.vibe",source);config(["main.vibe"])
    const r=invoke("-p",".","--pretty","false");assert.equal(r.status,0,r.text);assert.match(r.text,/warning EK38\d+:.*catch/i)
-   const fixed=invoke("--fix","-p",".","--pretty","false");assert.equal(fixed.status,0,fixed.text)
    assert.match(readFileSync(join(dir,"main.vibe"),"utf8"),/catch effect\s*\([^)]*\)\s*=>\s*try/)
   })
  },
@@ -88,9 +72,6 @@ const methods={
    Object.assign(options,{noEmit:true})
    put("main.vibe",'import * as Option from "effect/Option"; export function f(o: Option.Option<number>): number { return match(o) { when Option.Some(): 1; default: 0; } }');config(["main.vibe"])
    const r=invoke("-p",".","--pretty","false");assert.equal(r.status,0,r.text);assert.match(r.text,/warning EK0703:/)
-   const fixed=invoke("--fix","-p",".","--pretty","false");assert.equal(fixed.status,0,fixed.text)
-   const text=readFileSync(join(dir,"main.vibe"),"utf8");assert.match(text,/when Option.Some(?:\s*:|\(let [^)]+\)\s*:)/)
-   const checked=invoke("-p",".","--pretty","false");assert.equal(checked.status,0,checked.text);assert.doesNotMatch(checked.text,/EK0703/)
   })
  },
  "unknown-foreign"(){

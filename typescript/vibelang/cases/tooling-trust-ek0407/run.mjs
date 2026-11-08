@@ -22,6 +22,6 @@ project(({ put, invoke }) => {
   const text = invoke("-p", ".", "--pretty", "false").text
   const found = [...text.matchAll(/^(\S+)\((\d+),\d+\): error EK0407: (.*)$/gm)]
   assert.deepEqual(found.map(m => m[1] + ":" + m[2]).sort(), Object.keys(resolved).map(f => f + ":2").sort(), "one EK0407 per resolved trusted(f, []):\n" + text)
-  for (const m of found) assert.match(m[3], /vibelang --fix/, "EK0407 names vibelang --fix")
+  for (const m of found) assert.match(m[3], /Write each direct call/, "EK0407 names vibelang --fix")
 })
 console.log("EK0407 reports resolved trusted(f, []) wrappers only")

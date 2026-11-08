@@ -79,29 +79,3 @@ func TestInferredEffectArgumentEditorTry(t *testing.T) {
 		})
 	}
 }
-
-// Batch --fix inserts try only where the recheck adds no error, and never
-// writes explicit type arguments: keeping a program is the author's choice.
-func TestInferredEffectArgumentBatchFix(t *testing.T) {
-	for _, test := range []struct{ name, before, after string }{
-		{"direct argument", "function take<T>(x: T, message?: string): number { return 1 }\nexport effect function probe(job: number!!) { return take(job) }\n", "function take<T>(x: T, message?: string): number { return 1 }\nexport effect function probe(job: number!!) { return take(try job) }\n"},
-		{"added error refused", "function take<T>(x: T): T { return x }\nexport effect function probe(job: number!!) { const kept: number!! = take(job); return 1 }\n", ""},
-		{"broken pipe callback refused", "export effect function probe(job: number!!) { const mapped = pipe(job, Effect.map((n: number) => n + 1)); return 1 }\n", ""},
-		{"container keeps the warning", "function take<T>(x: T[]): number { return 1 }\nexport effect function probe(job: number!!) { return take([job]) }\n", ""},
-		{"callback keeps the warning", "function take<T>(f: () => T): number { return 1 }\nexport effect function probe(job: number!!) { return take(() => job) }\n", ""},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			result, name := fixSourceOptions(t, test.before, FixOptions{})
-			fixed := result.Files[name]
-			if test.after == "" {
-				if fixed != nil {
-					t.Fatalf("--fix rewrote the source:\n%s", fixed.Text)
-				}
-				return
-			}
-			if fixed == nil || fixed.Text != test.after {
-				t.Fatalf("got %+v, refused %+v; want %s", fixed, result.Refused, test.after)
-			}
-		})
-	}
-}

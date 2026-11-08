@@ -1,13 +1,8 @@
 package vibelang
 
 import (
-	"os"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 // fiberNameErrors counts the EK1702 reports of source.
@@ -91,131 +86,6 @@ func TestReservedFiberNames(t *testing.T) {
 	}
 }
 
-// fixFiberText runs --fix to a fixed point and returns the fixed text and what
-// a second run does.
-func fixFiberText(t *testing.T, source string) string {
-	t.Helper()
-	p, file, _, _ := editorProgram(t, source)
-	result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{})
-	fixed, ok := result.Files[file.FileName()]
-	if !ok || len(result.Refused) != 0 {
-		t.Fatalf("--fix refused or left the file: %+v", result)
-	}
-	if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-		t.Fatal(err)
-	}
-	again := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{})
-	if len(again.Files) != 0 {
-		t.Fatalf("second fix changed the project: %+v", again)
-	}
-	return fixed.Text
-}
-
-// A binding named fork or join that a program calls stays that binding's call
-// through --fix: the .ts twin never meant the fiber operation. opencode's run
-// coordinator holds this shape, and rewriting it without the rename waited for
-// its cleanup instead of acknowledging it.
-func TestFiberNameFix(t *testing.T) {
-	for _, test := range []struct{ name, source, want string }{
-		{"opencode coordinator, already migrated", `import { Effect } from "effect"
-export const make = effect () => {
-  const fork = (e: Effect.Effect<void>) => 1
-  return effect (wait: Effect.Effect<void>): number!! => {
-    fork(wait)
-    return 1
-  }
-}
-`, `export const make = effect () => {
-  const fork2 = (e: void!!) => 1
-  return effect (wait: void!!): number!! => {
-    fork2(wait)
-    return 1
-  }
-}
-`},
-		{"constructor and heritage references", `class join { value = 7 }
-const fork = { C: class { value = 11 } }
-export effect function main() {
-  return [new join().value, new fork.C().value, new (class extends join {})().value, new (class extends fork.C {})().value]
-}
-`, `class join { value = 7 }
-const fork = { C: class { value = 11 } }
-export effect function main() {
-  return [new ((() => join)())().value, new ((() => fork)()).C().value, new (class extends ((() => join)()) {})().value, new (class extends ((() => fork)()).C {})().value]
-}
-`},
-		{"parameter and shorthand keep the key", `export effect function f(join: number) {
-  return { join }
-}
-`, `export effect function f(join2: number) {
-  return { join: join2 }
-}
-`},
-		{"destructuring keeps the key", `export effect function f(o: { fork: number }) {
-  const { fork } = o
-  return fork
-}
-`, ""},
-		{"label and its jumps", `export effect function f() {
-  fork: for (;;) { break fork }
-  return 1
-}
-`, `export effect function f() {
-  fork2: for (;;) { break fork2 }
-  return 1
-}
-`},
-		{"a generator's local", `import { Effect } from "effect"
-export const f = Effect.gen(function* () {
-  const fork = (n: number) => n
-  return fork(1)
-})
-`, `export const f = effect {
-  const fork2 = (n: number) => n
-  return fork2(1)
-}
-`},
-		{"an exported binding keeps its exported name", `import { Effect } from "effect"
-export const fork = (n: number) => n
-export const f = Effect.gen(function* () {
-  return fork(1)
-})
-`, `const fork2 = (n: number) => n
-export { fork2 as fork }
-export const f = effect {
-  return fork2(1)
-}
-`},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			fixed := fixFiberText(t, test.source)
-			if test.want != "" && fixed != test.want {
-				t.Fatalf("--fix writes\n%s\nwant\n%s", fixed, test.want)
-			}
-			if fiberNameErrors(t, fixed) != 0 {
-				t.Fatalf("fixed source still reports EK1702:\n%s", fixed)
-			}
-		})
-	}
-}
-
-// The rename reaches outside the generator: a binding another module sees
-// through an import or an export specifier keeps its source name.
-func TestFiberNameFixImports(t *testing.T) {
-	fixed := fixFiberText(t, `import { Effect } from "effect"
-import { join } from "effect/Array"
-export const f = Effect.gen(function* () {
-  return join(["a"], ",")
-})
-export { join }
-`)
-	for _, want := range []string{`import { join as join2 } from "effect/Array"`, `return join2(["a"], ",")`, `export { join2 as join }`} {
-		if !strings.Contains(fixed, want) {
-			t.Fatalf("--fix writes\n%s\nwithout %s", fixed, want)
-		}
-	}
-}
-
 // A pattern's reference does not authorize changing a valid outer class's name.
 func TestFiberPatternFixPreservesOuterClass(t *testing.T) {
 	for _, word := range []string{"fork", "join"} {
@@ -226,38 +96,6 @@ func TestFiberPatternFixPreservesOuterClass(t *testing.T) {
 		done()
 		if len(renamed) != 1 || len(renamed[0].edits) != 0 || !strings.Contains(renamed[0].why, "outer callable") {
 			t.Fatalf("unsafe outer rename: %+v", renamed)
-		}
-	}
-}
-
-func TestFiberPatternFixImportAlias(t *testing.T) {
-	result := fixProjectOf(t, map[string]string{
-		"model.ts":  "export class join {}\n",
-		"main.vibe": "import { join } from \"./model.js\"\nexport effect function f(p: unknown) { const child = fork Effect.succeed(0); const n = join child; return [p is join, n] }\n",
-	})
-	got := fixedText(result, "main.vibe")
-	if result.Err != nil || len(result.Refused) != 0 || !strings.Contains(got, "join as join2") || !strings.Contains(got, "p is join2") || !strings.Contains(got, "fork Effect.succeed(0)") || !strings.Contains(got, "join child") {
-		t.Fatalf("pattern import repair: %+v\n%s", result, got)
-	}
-}
-
-// A registered diagnostic repair reports its code, including renames and
-// preserving reference repairs, so retirement witnesses can verify its use.
-func TestFiberNameReportByCode(t *testing.T) {
-	for _, source := range []string{
-		"export effect function f(join: number) { return join }\n",
-		"class join {}\nexport effect function f() { return new join() }\n",
-	} {
-		program, file, _, _ := editorProgram(t, source)
-		result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), FixOptions{})
-		fixed := result.Files[file.FileName()]
-		if result.Err != nil || fixed == nil || fixed.Counts[1702] != 1 || len(fixed.Rewrites) != 0 {
-			t.Fatalf("reserved-name repair is not counted by diagnostic: %+v, file %+v", result, fixed)
-		}
-		var report strings.Builder
-		result.Report(&report, func(tspath.RootedFilePath) string { return "main.vibe" })
-		if !strings.Contains(report.String(), "EK1702 ×1") {
-			t.Fatalf("missing diagnostic repair count: %s", report.String())
 		}
 	}
 }

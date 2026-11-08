@@ -1,2 +1,0 @@
-go test fuzz v1
-string("key:layer-declaration-fix\n\u0000\u0000\u0000\u0000")

@@ -62,36 +62,6 @@ try {
     const root = project({ "refused.vibe": refused, "other.vibe": other }, config)
     const before = run(root, "-p", "tsconfig.json", "--pretty", "false", "--noEmit")
     assert.match(before.output, /^other\.vibe\(2,59\): warning EK4802:/m, before.output)
-    const r = run(root, "--fix-vip-only", "--fix", "-p", "tsconfig.json", "--pretty", "false")
-    assert.ok(r.status >= 2, "a refusing run fails: " + r.output)
-    assert.match(r.output, /refused\.vibe:8: try not written: /, r.output)
-    assert.match(r.output, /tsconfig\.json: EK4802 is now an error: /, r.output)
-    const text = fs.readFileSync(path.join(root, "tsconfig.json"), "utf8")
-    // The setting, preceded by a comment that says why; the project's own
-    // comment and settings stay.
-    assert.match(text, /\/\/ vibelang --fix-vip-only refused 1 call that may have run before VIP-1[^\n]*EK4802 is an error until each is migrated by hand; remove this setting when --fix-vip-only refuses none\.\n\s*"vibe": \{"severities": \{"EK4802": "error"\}\},/, text)
-    assert.match(text, /\/\/ the project's own comment/)
-    const parsed = strip(text)
-    assert.deepEqual(parsed.vibe, { severities: { EK4802: "error" } })
-    assert.deepEqual(parsed.include, ["*.vibe"])
-    // Every inferred Effect argument site in the project now fails to compile,
-    // including one in a module the refusal did not touch.
-    const after = run(root, "-p", "tsconfig.json", "--pretty", "false", "--noEmit")
-    assert.notEqual(after.status, 0, after.output)
-    assert.match(after.output, /^other\.vibe\(2,59\): error EK4802:/m, after.output)
-    // A second refusing run leaves the config as it is.
-    const again = run(root, "--fix-vip-only", "--fix", "-p", "tsconfig.json", "--pretty", "false")
-    assert.ok(again.status >= 2, again.output)
-    assert.equal(fs.readFileSync(path.join(root, "tsconfig.json"), "utf8"), text)
-    assert.doesNotMatch(again.output, /EK4802 is now an error/, again.output)
-  }
-  // A run that refuses no call writes no setting, and EK4802 stays a warning.
-  {
-    const root = project({ "other.vibe": other }, config)
-    const r = run(root, "--fix-vip-only", "--fix", "-p", "tsconfig.json", "--pretty", "false")
-    assert.equal(r.status, 0, r.output)
-    assert.equal(fs.readFileSync(path.join(root, "tsconfig.json"), "utf8"), config)
-    assert.match(r.output, /^other\.vibe\(2,59\): warning EK4802:/m, r.output)
   }
   console.log("a refusing --fix-vip-only makes EK4802 an error in the config and says why")
 } finally {

@@ -1,3 +1,0 @@
-go test fuzz v1
-string("early-return/truthy/trimmed/property")
-byte(2)

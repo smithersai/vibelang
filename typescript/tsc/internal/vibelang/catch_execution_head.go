@@ -88,7 +88,7 @@ func checkCatchExecutionHead(c *checker.Checker, file *ast.SourceFile, call, lef
 		d := reportAt(c, file, tsFormSpan(file, head), EK0505)
 		if rewrite := catchExecutionRewrite(c, file, head); rewrite != nil {
 			if rewrite.fixable() {
-				note(d, "vibelang --fix can {0}.", rewrite.description)
+				note(d, "Its quick fix can {0}.", rewrite.description)
 			} else if rewrite.why != "" {
 				note(d, "{0}", rewrite.why)
 			}

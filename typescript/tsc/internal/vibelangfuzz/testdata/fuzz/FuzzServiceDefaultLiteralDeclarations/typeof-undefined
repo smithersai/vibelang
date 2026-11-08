@@ -1,3 +1,0 @@
-go test fuzz v1
-string("typeof-undefined")
-byte(0)

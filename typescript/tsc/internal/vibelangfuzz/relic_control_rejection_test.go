@@ -180,8 +180,8 @@ export effect function probe() {provide Control = {value:7} {return (try Control
 				t.Fatal("retired operation-contract identity emitted after continuation retirement")
 			}
 			if d.Source() == "EK" && d.Code() == want && d.Category() == diagnostics.CategoryError {
-				if !strings.Contains(d.String(), "vibelang --fix") {
-					Gap(t, relicRejectionTarget, "diagnostic:"+key, "retirement diagnostic does not name migration: %v", d)
+				if !strings.Contains(d.String(), "outside the first release") {
+					Gap(t, relicRejectionTarget, "diagnostic:"+key, "retirement diagnostic does not describe the retired form: %v", d)
 				}
 				found = true
 			}

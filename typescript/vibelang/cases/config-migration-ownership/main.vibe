@@ -1,2 +1,0 @@
-// VIP-34: configuration migration respects repository ownership.
-export const n = 1

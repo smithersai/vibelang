@@ -1,3 +1,0 @@
-go test fuzz v1
-string("typeof:import-shadow")
-byte('\x00')

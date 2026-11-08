@@ -1,2 +1,0 @@
-go test fuzz v1
-string("-- main.vibe --\nexport const nestedMask = (): <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R> =>\n<A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => {\n  uninterruptible { return effect() }\n}\n")

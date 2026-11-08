@@ -46,11 +46,10 @@ import (
 //     are the compiler's for the same project, by code, file, position and
 //     category, an EK diagnostic printed as `error EK1003:`; `--pretty
 //     false` output parses line by line.
-//   - D291 and Chapter 28: --fix changes only the project's own .vibe files,
-//     writes a file only when the fixed program reports no error the original
-//     did not, and a second run changes nothing ("Idempotence", D372, D382).
-//     Without --fix a compilation never rewrites a source: TypeScript reports
-//     TS5055 instead of overwriting an input file.
+//   - A compilation never rewrites a source: TypeScript reports TS5055
+//     instead of overwriting an input file. VibeLang has no --fix option
+//     (ruling PROC-29), so TypeScript reports it and its old scope flags as
+//     unknown options (TS5023).
 //   - Chapter 28, "Linting" (D277): `vibelang --estree <file>` writes the
 //     JSON that the library conversion, vibelangestree.Parse, gives for the
 //     same text.
@@ -156,10 +155,10 @@ var cliFlags = sync.OnceValue(func() []cliFlag {
 	pid := strconv.Itoa(os.Getpid())
 	flags := []cliFlag{
 		{"", []string{"main.vibe", "main.ts", "missing.vibe", "tsconfig.json"}, "Chapter 27: files named on the command line"},
-		{"--fix", cliBareOnly, "Chapter 28, Diagnostics (D291)"},
-		{"--fix-migration-only", cliBareOnly, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
-		{"--fix-vip-only", cliBareOnly, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
-		{"--only", []string{"main.vibe", "missing.vibe"}, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
+		{"--fix", cliBareOnly, "not an option: VibeLang ships no --fix (PROC-29), so TypeScript reports TS5023"},
+		{"--fix-migration-only", cliBareOnly, "not an option: VibeLang ships no --fix (PROC-29), so TypeScript reports TS5023"},
+		{"--fix-vip-only", cliBareOnly, "not an option: VibeLang ships no --fix (PROC-29), so TypeScript reports TS5023"},
+		{"--only", []string{"main.vibe", "missing.vibe"}, "not an option: VibeLang ships no --fix (PROC-29), so TypeScript reports TS5023"},
 		{"--loader-root", []string{".", "sub", "missing"}, "internal/vibelang/loaderroot.go"},
 		{"--project-emit", cliBareOnly, "internal/vibelang/loaderroot.go"},
 		{"--lsp", cliBareOnly, "Chapter 28, The editor (D32)"},
@@ -192,7 +191,7 @@ var cliFlags = sync.OnceValue(func() []cliFlag {
 		}
 	}
 	// Append new flags so existing byte-indexed corpus entries keep their arguments.
-	flags = append(flags, cliFlag{"--fix-legacy-service-keys", cliBareOnly, "007-tooling.md, Legacy service-key upgrade; requires --fix"})
+	flags = append(flags, cliFlag{"--fix-legacy-service-keys", cliBareOnly, "not an option: VibeLang ships no --fix (PROC-29), so TypeScript reports TS5023"})
 	return flags
 })
 
@@ -297,10 +296,10 @@ type cliSeed struct {
 }
 
 // cliSeeds pairs a few acceptance cases with the command lines the
-// specification shows: Chapter 28's bare vibelang, --noEmit, -p
-// tsconfig.json --fix, --watch, -b, --lsp --stdio, --api, --version and
-// --estree, Chapter 27's --ignoreConfig with a file named, and the
-// --fix-migration-only run of docs/tools/fix-snippets.ts.
+// specification shows: Chapter 28's bare vibelang, --noEmit, --watch, -b,
+// --lsp --stdio, --api, --version and --estree, and Chapter 27's
+// --ignoreConfig with a file named. The --fix lines are options VibeLang no
+// longer has, which TypeScript reports as unknown (TS5023).
 func cliSeeds() []cliSeed {
 	lines := [][]string{
 		{},
@@ -589,9 +588,6 @@ var (
 func cliParse(stdout string) []cliDiagnostic {
 	var found []cliDiagnostic
 	for line := range strings.SplitSeq(cliANSI.ReplaceAllString(stdout, ""), "\n") {
-		if strings.HasPrefix(line, "vibelang --fix:") {
-			continue // --fix's report quotes the errors it refused to add
-		}
 		m := cliHeader.FindStringSubmatch(line)
 		if m == nil {
 			continue
@@ -656,28 +652,7 @@ func cliOptions(w *Workspace, dir string, args []string) *tsoptions.ParsedComman
 	if len(args) > 0 && cliDispatched(args[0]) || cliBuildMode(args) {
 		return nil
 	}
-	fix := cliHasFix(args)
-	rest := slices.DeleteFunc(cliWithoutOnly(cliWithoutLoaderRoot(args), fix), func(arg string) bool { return cliFixFlag(arg, fix) })
-	return tsoptions.ParseCommandLine(rest, w.fs, tspath.RootedDirectoryPathFromAbsolute(filepath.ToSlash(dir)))
-}
-
-// cliWithoutOnly returns args without each --only and the list after it, which
-// the CLI removes beside --fix (internal/vibelang/fix_only.go). An argument
-// starting with - is no list, so it stays. Without --fix, --only stays for
-// TypeScript to report as an unknown option (TS5023).
-func cliWithoutOnly(args []string, fix bool) []string {
-	if !fix {
-		return args
-	}
-	var rest []string
-	for i := 0; i < len(args); i++ {
-		if !strings.EqualFold(args[i], "--only") {
-			rest = append(rest, args[i])
-		} else if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
-			i++
-		}
-	}
-	return rest
+	return tsoptions.ParseCommandLine(cliWithoutLoaderRoot(args), w.fs, tspath.RootedDirectoryPathFromAbsolute(filepath.ToSlash(dir)))
 }
 
 // cliWithoutLoaderRoot returns args without the --loader-root flag and the
@@ -715,21 +690,6 @@ func cliBuildMode(args []string) bool {
 	return false
 }
 
-func cliHasFix(args []string) bool {
-	return slices.ContainsFunc(args, func(arg string) bool { return strings.EqualFold(arg, "--fix") })
-}
-
-// cliFixFlag reports whether the CLI removes arg before TypeScript parses the
-// command line, fix saying whether it holds --fix: --fix always, and its
-// scope flags and --fix-legacy-service-keys only beside --fix, as
-// docs/tools/README.md writes `vibelang --fix --fix-migration-only` and
-// internal/vibelang/fix.go removes "the optional scope flag after --fix was
-// found". A scope flag alone scopes nothing, so TypeScript reports it as an
-// unknown option (TS5023).
-func cliFixFlag(arg string, fix bool) bool {
-	return strings.EqualFold(arg, "--fix") || fix && (strings.EqualFold(arg, "--fix-migration-only") || strings.EqualFold(arg, "--fix-vip-only") || strings.EqualFold(arg, "--fix-legacy-service-keys"))
-}
-
 // cliNeutral reports whether a command line compiles the project as its
 // tsconfig.json says, so that its diagnostics are the library's: only -p
 // naming that file, --pretty false and --noEmit.
@@ -737,11 +697,7 @@ func cliNeutral(args []string, options *tsoptions.ParsedCommandLine) bool {
 	if options == nil || len(options.Errors) > 0 || len(options.FileNames()) > 0 || options.CompilerOptions().Pretty.IsTrue() {
 		return false
 	}
-	fix := cliHasFix(args)
 	for i := 0; i < len(args); i++ {
-		if cliFixFlag(args[i], fix) {
-			continue
-		}
 		switch args[i] {
 		case "--noEmit":
 			if i+1 < len(args) && (args[i+1] == "true" || args[i+1] == "false") {
@@ -895,15 +851,14 @@ func cliCheck(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, pro
 	// reports, the status is checked against it, whatever the run printed:
 	// the command line's own errors (options.Errors) always, and the
 	// program's errors for a neutral run that compiles the project as its
-	// tsconfig.json says without --fix, whose own reports the library
-	// compile does not make, and changed no file. --noEmit skips the declaration
+	// tsconfig.json says and changed no file. --noEmit skips the declaration
 	// emitter's errors, which Compile reports, so a --noEmit run is decided
 	// only when the library reports no error. Any other run is judged by
 	// what it printed. --quiet hides the errors it would report.
 	quiet := options != nil && options.CompilerOptions().Quiet.IsTrue()
 	after := cliSources(dir, project)
 	changed := cliChanged(before, after)
-	library, decided := cliLibraryStatus(r, options, cliNeutral(args, options) && len(changed) == 0 && !cliHasFix(args))
+	library, decided := cliLibraryStatus(r, options, cliNeutral(args, options) && len(changed) == 0)
 	// TypeScript's initializer is not a compilation: an existing configuration
 	// reports only TS5054 and returns success. Check that exact refusal and
 	// preserve its inputs; every other error keeps the compilation status oracle.
@@ -930,7 +885,7 @@ func cliCheck(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, pro
 	}
 	// TypeScript's --help and --version print and exit 0 with any project;
 	// Chapter 28 (D75) gives the form --version prints.
-	if options != nil && len(options.Errors) == 0 && !cliHasFix(args) && !options.CompilerOptions().Init.IsTrue() {
+	if options != nil && len(options.Errors) == 0 && !options.CompilerOptions().Init.IsTrue() {
 		switch {
 		case options.CompilerOptions().Version.IsTrue():
 			if run.Status != 0 || !cliVersion().MatchString(run.Stdout) {
@@ -951,22 +906,14 @@ func cliCheck(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, pro
 			g.Add("ignoreConfig", "with --ignoreConfig %v, TS5112 was reported: %v:\n%s", ignore, reported, report())
 		}
 	}
-	if !cliHasFix(args) {
-		// TypeScript reports TS5055 rather than overwrite an input file.
-		for _, name := range changed {
-			if isSource(name) && !strings.HasSuffix(name, ".d.ts") {
-				g.Add("compile:input", "the compilation rewrote the source %s:\n%s", name, report())
-			}
+	// TypeScript reports TS5055 rather than overwrite an input file.
+	for _, name := range changed {
+		if isSource(name) && !strings.HasSuffix(name, ".d.ts") {
+			g.Add("compile:input", "the compilation rewrote the source %s:\n%s", name, report())
 		}
 	}
-	neutral := cliNeutral(args, options)
-	// A --fix run that changed a file compiles the fixed program, whose
-	// diagnostics cliCheckFix compares instead.
-	if neutral && !run.Watching && len(changed) == 0 {
+	if cliNeutral(args, options) && !run.Watching && len(changed) == 0 {
 		cliCheckDiagnostics(t, g, r, printed, options.CompilerOptions().NoEmit.IsTrue(), report)
-	}
-	if cliHasFix(args) && !cliBuildMode(args) && !run.Watching {
-		cliCheckFix(t, g, w, binary, r, project, args, before, after, changed, neutral, report)
 	}
 }
 
@@ -1025,54 +972,6 @@ func cliCheckDiagnostics(t *testing.T, g *Gaps, r *Result, printed []cliDiagnost
 	}
 	if len(missing) > 0 {
 		g.Add("diagnostics:missing", "the command line did not print the compiler's diagnostics %s\n%s", strings.Join(missing, "; "), report())
-	}
-}
-
-// cliCheckFix checks D291 and Chapter 28's "Rewrites keep meaning" for a run
-// with --fix.
-func cliCheckFix(t *testing.T, g *Gaps, w *Workspace, binary string, r *Result, project Project, args []string, before, after map[string]string, changed []string, neutral bool, report func() string) {
-	if len(changed) == 0 {
-		return
-	}
-	// Chapter 28: --fix applies its fixes "to a project's own .vibe files".
-	for _, name := range changed {
-		if !strings.HasSuffix(name, ".vibe") {
-			g.Add("fix:scope", "--fix changed %s, which is not one of the project's own .vibe files:\n%s", name, report())
-		}
-	}
-	// D291: --fix writes a file only when the fixed program reports no error
-	// the original did not. The comparison holds when the command line adds
-	// no compiler option, so that the library compiles the same program.
-	if neutral {
-		var fixed *Result
-		Within("compile fixed", func() {
-			var err error
-			fixed, err = w.Compile(t.Context(), Project{Files: after, Config: project.Config})
-			if err != nil {
-				t.Fatal(err)
-			}
-		})
-		defer fixed.Remove()
-		baseline := cliErrorCounts(r)
-		var added []string
-		for key, n := range cliErrorCounts(fixed) {
-			if n > baseline[key] {
-				added = append(added, key)
-			}
-		}
-		if len(added) > 0 {
-			slices.Sort(added)
-			g.Add("fix:new-error", "--fix wrote files whose program reports errors the original did not: %s\nfixed:\n%s\n%s", strings.Join(added, "; "), Archive(after), report())
-		}
-	}
-	// "Idempotence": a second run changes nothing (D372, D382).
-	again := cliExec(binary, r.Dir, args, "", project)
-	if cliCrashed(again) || again.Hung != "" {
-		g.Add("fix:second-run", "the second --fix run crashed or hung (%q):\n%s\n%s", again.Hung, cliTail(again.Stdout), cliTail(again.Stderr))
-		return
-	}
-	if second := cliChanged(after, cliSources(r.Dir, project)); len(second) > 0 {
-		g.Add("fix:idempotence", "a second --fix changed %s:\nfixed:\n%s\nthen:\n%s", strings.Join(second, ", "), Archive(after), Archive(cliSources(r.Dir, project)))
 	}
 }
 

@@ -1,10 +1,10 @@
 // Plain functions stay plain (VIP-1). A plain-by-syntax compiler needs no
 // preservation annotations: keep unwritten return types unwritten, including
-// generators handed to Effect.fn, whose inference --fix must retain.
+// generators handed to Effect.fn, whose inference must survive the rename.
 //
 // Legacy-inference compilers instead need `: infer _` on value-only helpers
 // and a written Generator type on ordinary generators. Functions returning
-// Effects stay available for the compiler's TypeScript-form fixes.
+// Effects are left for the repair agent to convert.
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { quote, run } from "./util.mjs"

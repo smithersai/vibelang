@@ -234,15 +234,3 @@ test("a separator in a comment prints as a newline, and in a string it stays", a
   assert.ok(code.includes("/* one\ntwo */"), code)
   await rows(map, code, source, [["export const |after", "export const |after"], ["= |text;", "= |text\n"]])
 })
-
-test("--fix leaves no map of the old text", async (t) => {
-  const written = "export effect function run() {\n  const value = try fail(1) catch () => 2\n  return value\n}\nexport const after = 1\n"
-  const root = project(t, { "src/main.vibe": written })
-  await succeed(compiler, ["-p", "tsconfig.json", "--fix"], { cwd: root })
-  const fixed = readFileSync(join(root, "src/main.vibe"), "utf8")
-  assert.notEqual(fixed, written, "the fixture needs a fix")
-  await succeed(compiler, ["-p", "tsconfig.json"], { cwd: root })
-  const { code, map } = emitted(root, "main.js")
-  assert.deepEqual(map.sourcesContent, [fixed])
-  await rows(map, code, fixed, [["export const |after", "export const |after"]])
-})

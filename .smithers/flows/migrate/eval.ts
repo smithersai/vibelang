@@ -5,7 +5,7 @@
 // that keeps the package's pins (Effect 4.0.5, older than the runtime's).
 // fixture/README.md says what else changed. The flow's one-pass plan
 // (--scope) migrates every module of src/ in one batch:
-// upgrade-effect, setup, plan, codemod (rename and --fix), compile, repair
+// upgrade-effect, setup, plan, codemod (rename), compile, repair
 // (settle), verify, record and report.
 //
 // Scorers: migrated, the share of the scope's modules that end the run as

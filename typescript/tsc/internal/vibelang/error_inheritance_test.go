@@ -2,14 +2,8 @@ package vibelang
 
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -62,33 +56,6 @@ func TestErrorInheritanceQuickFix(t *testing.T) {
 					}
 				}
 			})
-		}
-	}
-}
-
-// --fix, --fix-migration-only and --fix-vip-only preserve the expansion.
-func TestErrorInheritanceProjectMigration(t *testing.T) {
-	for _, form := range []string{"error", "schema error"} {
-		for _, options := range []FixOptions{{}, {MigrationOnly: true}, {VIPOnly: true}} {
-			source := errorInheritanceSource(form, `"Base" as string`, "{ value: number; get label() { return this.id } }")
-			_, file, _, _ := editorProgram(t, source)
-			fs := bundled.WrapFS(osvfs.FS())
-			path := filepath.Join(filepath.Dir(file.FileName().AsString()), "tsconfig.json")
-			config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(path)), &core.CompilerOptions{}, nil, fs, nil)
-			if len(errors) != 0 {
-				t.Fatal(errors)
-			}
-			result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, options)
-			fixed := result.Files[file.FileName()]
-			if result.Err != nil || len(result.Refused) != 0 || fixed == nil || fixed.Counts[2117] != 1 {
-				t.Fatalf("%s %+v: error=%v refused=%v fixed=%+v", form, options, result.Err, result.Refused, fixed)
-			}
-			program, next, _, _ := editorProgram(t, fixed.Text)
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), next) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("%s\n%s", d.String(), fixed.Text)
-				}
-			}
 		}
 	}
 }
@@ -176,25 +143,32 @@ func TestErrorInheritanceQuickFixRefusesWrongBaseFlavor(t *testing.T) {
 	}
 }
 
-
 // An expanded native class keeps native source narrowing, but VIP-7's
 // conservative coverage rule requires an explicit fallback for constructors.
 func TestErrorInheritancePrintedFamilyCoverage(t *testing.T) {
- for _, fallback := range []bool{false,true} {
-  tail := ""
-  if fallback { tail = `default: "outside";` }
-  source := `import { TaggedError, $errorSubclass } from "vibelang-runtime"
+	for _, fallback := range []bool{false, true} {
+		tail := ""
+		if fallback {
+			tail = `default: "outside";`
+		}
+		source := `import { TaggedError, $errorSubclass } from "vibelang-runtime"
    class Base extends TaggedError("Base" as string)<{ readonly _tag: string; readonly code: string }> {}
    class Child extends $errorSubclass(Base, "Child") { declare readonly _tag: "Child" }
-   function family(e: Child) { return match(e) { when Base: e.code; `+tail+` } }
+   function family(e: Child) { return match(e) { when Base: e.code; ` + tail + ` } }
   `
-  p,file,_,_ := editorProgram(t,source)
-  errors := 0
-  for _,d := range append(p.GetSyntacticDiagnostics(t.Context(),file),p.GetSemanticDiagnostics(t.Context(),file)...) {
-   if d.Category()!=diagnostics.CategoryError { continue }
-   errors++
-   if fallback || d.Code()!=4701 { t.Errorf("printed family: %s",d.String()) }
-  }
-  if !fallback && errors!=1 || fallback && errors!=0 { t.Errorf("fallback=%t: got %d errors",fallback,errors) }
- }
+		p, file, _, _ := editorProgram(t, source)
+		errors := 0
+		for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), file), p.GetSemanticDiagnostics(t.Context(), file)...) {
+			if d.Category() != diagnostics.CategoryError {
+				continue
+			}
+			errors++
+			if fallback || d.Code() != 4701 {
+				t.Errorf("printed family: %s", d.String())
+			}
+		}
+		if !fallback && errors != 1 || fallback && errors != 0 {
+			t.Errorf("fallback=%t: got %d errors", fallback, errors)
+		}
+	}
 }

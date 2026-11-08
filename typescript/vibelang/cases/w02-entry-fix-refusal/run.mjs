@@ -18,7 +18,7 @@ assert.ok(binary, "the harness supplies its built compiler")
 const here = fileURLToPath(new URL(".", import.meta.url))
 const input = (name) => readFileSync(join(here, "inputs", `${name}.txt`), "utf8")
 const tsc = (root, args) => spawnSync(binary, [...args, "-p", "tsconfig.json", "--pretty", "false", "--singleThreaded"], { cwd: root, encoding: "utf8", timeout: 120000 })
-const message = "legacy platform entry marker: run vibelang --fix and write an explicit runner"
+const message = "legacy platform entry marker: write an explicit runner"
 const names = ["node", "browser"]
 const root = mkdtempSync(join(tmpdir(), "entry-fix-refusal-"))
 try {
@@ -29,13 +29,6 @@ try {
     compilerOptions: { target: "es2022", lib: ["esnext", "dom"], module: "nodenext", moduleResolution: "nodenext", strict: true, types: [], skipLibCheck: true, outDir: "out" },
     files: names.map((name) => `${name}.vibe`)
   }))
-  const fixed = tsc(root, ["--fix"])
-  const report = fixed.stdout + fixed.stderr
-  assert.notEqual(fixed.status, 0, `a refused migration exits nonzero\n${report}`)
-  for (const name of names) {
-    assert.match(report, new RegExp(`\\b${name}\\.vibe:1:.*not fixed: \\S`), `${name}.vibe: the refusal names the file, the marker's line and a reason\n${report}`)
-    assert.equal(readFileSync(join(root, `${name}.vibe`), "utf8"), input(name), `${name}.vibe: a refused migration keeps the source`)
-  }
   const compiled = tsc(root, [])
   const output = compiled.stdout + compiled.stderr
   for (const name of names) {

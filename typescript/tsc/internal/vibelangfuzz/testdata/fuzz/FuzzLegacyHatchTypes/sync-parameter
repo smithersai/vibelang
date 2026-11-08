@@ -1,4 +1,0 @@
-go test fuzz v1
-string("sync/parameter")
-byte(7)
-byte(0)

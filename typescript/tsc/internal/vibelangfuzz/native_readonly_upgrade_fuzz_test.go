@@ -1,16 +1,11 @@
 package vibelangfuzz
 
 import (
-	"maps"
 	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const nativeReadonlyUpgradeQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
@@ -81,68 +76,6 @@ func nativeReadonlyInput(data []byte) (nativeReadonlyPair, string) {
 		row.source = "/** Public API α. */\n" + row.source
 	}
 	return row, row.key + "/" + words[word] + "/" + strconv.Itoa(comment)
-}
-
-func FuzzNativeTypeReadonlyUpgrade(f *testing.F) {
-	startShortBudget(f)
-	nativeReadonlyUpgradeQuoted(f)
-	for _, row := range nativeReadonlyPairs {
-		for word := range 3 {
-			for comment := range 2 {
-				f.Add([]byte(row.key + ":" + strconv.Itoa(word) + ":" + strconv.Itoa(comment)))
-			}
-		}
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		const target = "FuzzNativeTypeReadonlyUpgrade"
-		row, key := nativeReadonlyInput(data)
-		if key == "" {
-			t.Skip("no source form selection")
-		}
-		files := map[string]string{"main.vibe": row.source}
-		before := toolsCompile(t, w, target, files)
-		defer before.Remove()
-		reference := toolsCompile(t, w, target, map[string]string{"main.vibe": row.source})
-		defer reference.Remove()
-		if !toolsErrorFree(before) || !toolsErrorFree(reference) {
-			t.Fatalf("invalid generator %s: %v / %v", key, SortedKeys(Keys(before.Dir, before.Diagnostics)), SortedKeys(Keys(reference.Dir, reference.Diagnostics)))
-		}
-		result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{MigrationOnly: true})
-		if result.Err != nil || len(result.Refused) != 0 {
-			Gap(t, target, "refused:"+key, "explicit upgrade refused %s: %+v", key, result)
-		}
-		fixed := maps.Clone(files)
-		for name, file := range result.Files {
-			rel := strings.TrimPrefix(name.AsString(), filepath.ToSlash(before.Dir)+"/")
-			if rel != "main.vibe" {
-				Gap(t, target, "scope:"+key, "upgrade wrote unowned file %s", rel)
-			}
-			fixed[rel] = file.Text
-		}
-		after := toolsCompile(t, w, target, fixed)
-		defer after.Remove()
-		if !toolsErrorFree(after) {
-			Gap(t, target, "compile:"+key, "upgrade introduced errors: %v\n%s", SortedKeys(Keys(after.Dir, after.Diagnostics)), fixed["main.vibe"])
-		}
-		declarations := func(r *Result) map[string]string {
-			out := map[string]string{}
-			for name, text := range r.Outputs {
-				if strings.HasSuffix(name, ".d.ts") {
-					out[name] = text
-				}
-			}
-			return out
-		}
-		got, want := declarations(after), declarations(reference)
-		if len(got) == 0 || !maps.Equal(got, want) {
-			Gap(t, target, "declarations:"+key, "written-member declaration bytes differ\nwant:%v\ngot:%v\nsource:\n%s\nfixed:\n%s", want, got, row.source, fixed["main.vibe"])
-		}
-		again := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, after.Dir), vibelang.FixOptions{MigrationOnly: true})
-		if again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
-			Gap(t, target, "fixed-point:"+key, "explicit upgrade did not reach a fixed point: %+v", again)
-		}
-	})
 }
 
 func TestNativeReadonlyUpgradeKeys(t *testing.T) {

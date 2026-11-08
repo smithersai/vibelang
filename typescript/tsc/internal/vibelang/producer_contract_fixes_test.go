@@ -1,46 +1,11 @@
 package vibelang
 
 import (
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
-
-func TestProducerWrittenContractFix(t *testing.T) {
-	for _, test := range []struct{ name, source, body string }{
-		{"declaration", "export effect function* values(): number[] { /* keep 😀 */ yield 7 }", "{ /* keep 😀 */ yield 7 }"},
-		{"object-error", "export const holder = { effect *values(): Stream.Stream<number> { yield 7; throw \"bad\" } }", "{ yield 7; throw \"bad\" }"},
-		{"class-error", "export class Holder { effect *values(): Stream.Stream<number> { yield 7; throw \"bad\" } }", "{ yield 7; throw \"bad\" }"},
-		{"object-property", "export const holder = { effect *values(): Stream.Stream<number> & {extra:number} { yield 7 } }", "{ yield 7 }"},
-		{"class-property", "export class Holder { effect *values(): Stream.Stream<number> & {extra:number} { yield 7 } }", "{ yield 7 }"},
-		{"declaration-property", "export effect function* values(): Stream.Stream<number> & {extra:number} { yield 7 }", "{ yield 7 }"},
-		{"object-readonly-property", "export const holder = { effect *values(): Stream.Stream<number> & {readonly extra:string} { yield 7 } }", "{ yield 7 }"},
-		{"class-union", "export class Holder { effect *values(): Stream.Stream<string> | undefined { yield 7 } }", "{ yield 7 }"},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			_, file, _, _ := editorProgram(t, test.source)
-			result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-			fixed := result.Files[file.FileName()]
-			if fixed == nil || !strings.Contains(fixed.Text, test.body) {
-				t.Fatalf("missing preserving rewrite: %+v", fixed)
-			}
-			program, edited, _, _ := editorProgram(t, fixed.Text)
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), edited) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("rewritten source: %s\n%s", d.String(), fixed.Text)
-				}
-			}
-			again := fixCase(t, filepath.Dir(edited.FileName().AsString()))
-			if after := again.Files[edited.FileName()]; after != nil && after.Text != fixed.Text {
-				t.Fatalf("rewrite is not idempotent:\n%s", after.Text)
-			}
-		})
-	}
-}
 
 func TestProducerContractFixKeepsUnrelatedMismatch(t *testing.T) {
 	for _, test := range []struct {
@@ -67,22 +32,6 @@ func TestProducerContractFixKeepsUnrelatedMismatch(t *testing.T) {
 		}
 		if !found {
 			t.Fatalf("missing diagnostic %d in %s", test.code, test.source)
-		}
-	}
-}
-
-// Enabling the producer's specific TS2322 action must not opt unrelated
-// assignment or return mismatches into project-wide automatic repair.
-func TestProducerContractCLIKeepsUnrelatedAssignments(t *testing.T) {
-	for _, source := range []string{
-		"export const value: number = 'wrong';",
-		"export function value(): number { return 'wrong' }",
-		"export effect function* values(): Stream.Stream<number> { const wrong: string = 1; yield 7 }",
-	} {
-		_, file, _, _ := editorProgram(t, source)
-		result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-		if result.Err != nil || len(result.Files) != 0 {
-			t.Fatalf("unrelated mismatch changed: %+v", result)
 		}
 	}
 }

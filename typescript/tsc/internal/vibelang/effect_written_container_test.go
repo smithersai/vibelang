@@ -4,9 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
 // VIP-1 requires a written Effect container, even when the written type
@@ -64,60 +62,6 @@ func TestEffectWrittenContainer(t *testing.T) {
 	}
 }
 
-func TestEffectWrittenContainerFix(t *testing.T) {
-	for _, annotation := range []string{"any", "unknown", "AnyAlias", "UnknownAlias", "(unknown)", "number | unknown", "number | any"} {
-		t.Run(annotation, func(t *testing.T) {
-			source := "type AnyAlias = any; type UnknownAlias = unknown;\nexport effect function f(): " + annotation + " { return try Effect.fail('bad') }"
-			original, file, _, _ := editorProgram(t, source)
-			result := FixProject(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), original.CommandLine())
-			fixed := result.Files[file.FileName()]
-			if result.Err != nil || len(result.Refused) != 0 || fixed == nil {
-				t.Fatalf("--fix did not repair the annotation: %+v", result)
-			}
-			if !strings.Contains(fixed.Text, "effect function f()") || strings.Contains(fixed.Text, "f():") {
-				t.Fatalf("want inferred Effect return, got %s", fixed.Text)
-			}
-			program, next, _, _ := editorProgram(t, fixed.Text+"\nconst checked: Effect.Effect<never, string> = f()")
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), next) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("fixed source reports %s %d: %s", d.Source(), d.Code(), d.String())
-				}
-			}
-			clean, _, _, _ := editorProgram(t, fixed.Text)
-			again := FixProject(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), clean.CommandLine())
-			if again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
-				t.Fatalf("--fix is not idempotent: %+v", again)
-			}
-		})
-	}
-}
-
-// vibelang --fix writes the one Effect of a union's joined channels, and the
-// repaired function keeps every channel the union declared.
-func TestEffectWrittenContainerUnionFix(t *testing.T) {
-	source := "class Refused { readonly _tag = \"Refused\" }\nexport effect function f(flag: boolean): Effect.Effect<string> | Effect.Effect<never, Refused> { if (flag) throw new Refused(); return \"ok\" }\n"
-	original, file, _, _ := editorProgram(t, source)
-	result := FixProject(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), original.CommandLine())
-	fixed := result.Files[file.FileName()]
-	if result.Err != nil || len(result.Refused) != 0 || fixed == nil {
-		t.Fatalf("--fix did not repair the union annotation: %+v", result)
-	}
-	if !strings.Contains(fixed.Text, "): string!Refused {") {
-		t.Fatalf("want the joined Effect string!Refused, got %s", fixed.Text)
-	}
-	program, next, _, _ := editorProgram(t, fixed.Text+"\nconst checked: Effect.Effect<string, Refused> = f(true)")
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), next) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Errorf("fixed source reports %s %d: %s", d.Source(), d.Code(), d.String())
-		}
-	}
-	clean, _, _, _ := editorProgram(t, fixed.Text)
-	again := FixProject(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), clean.CommandLine())
-	if again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
-		t.Fatalf("--fix is not idempotent: %+v", again)
-	}
-}
-
 func TestEffectWrittenContainerQuickFix(t *testing.T) {
 	for _, test := range []struct{ source, want string }{
 		{"export const f = effect (): any => 1", "export const f = effect () => 1"},
@@ -149,40 +93,6 @@ func TestEffectWrittenContainerQuickFix(t *testing.T) {
 	}
 }
 
-func TestEffectWrittenContainerFixRequirements(t *testing.T) {
-	source := "interface R { readonly brand: unique symbol }\ndeclare const input: number!string!R\nexport effect function f(): unknown { return try input }\n"
-	original, file, _, _ := editorProgram(t, source)
-	result := FixProject(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), original.CommandLine())
-	fixed := result.Files[file.FileName()]
-	if result.Err != nil || len(result.Refused) != 0 || fixed == nil {
-		t.Fatalf("missing preserving repair: %+v", result)
-	}
-	checked, next, _, _ := editorProgram(t, fixed.Text+"\nconst checked: number!string!R = f()")
-	for _, d := range checked.GetSemanticDiagnostics(t.Context(), next) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Errorf("inferred channels changed: %s %d: %s", d.Source(), d.Code(), d.String())
-		}
-	}
-}
-
-func TestEffectWrittenContainerRecursiveFixRefused(t *testing.T) {
-	source := "export effect function f(n: number): any { return n ? try f(n - 1) : 0 }"
-	original, file, _, _ := editorProgram(t, source)
-	result := FixProject(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), original.CommandLine())
-	if result.Err != nil {
-		t.Fatal(result.Err)
-	}
-	for _, refusal := range result.Refused {
-		if refusal.Code == EK0106.Code {
-			if fixed := result.Files[file.FileName()]; fixed != nil && !strings.Contains(fixed.Text, "): any") {
-				t.Fatalf("refused edit was applied: %s", fixed.Text)
-			}
-			return
-		}
-	}
-	t.Fatalf("recursive inference repair should be refused: %+v", result)
-}
-
 func TestEffectWrittenContainerBodylessFix(t *testing.T) {
 	source := "export effect function f(n: number): unknown;\nexport effect function f(n: number) { return n }"
 	want := strings.Replace(source, "): unknown;", "): unknown!!;", 1)
@@ -195,15 +105,6 @@ func TestEffectWrittenContainerBodylessFix(t *testing.T) {
 		if d.Category() == diagnostics.CategoryError {
 			t.Errorf("fixed overload reports %s %d: %s", d.Source(), d.Code(), d.String())
 		}
-	}
-}
-
-func TestEffectWrittenContainerLiteralCommentsDeclined(t *testing.T) {
-	source := "export const f = effect (): unknown | \"https://example.test\" => 1"
-	original, _, _, _ := editorProgram(t, source)
-	result := FixProject(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), original.CommandLine())
-	if result.Err != nil || len(result.Files) != 0 || len(result.Refused) != 0 {
-		t.Fatalf("ambiguous literal text should offer no destructive edit: %+v", result)
 	}
 }
 

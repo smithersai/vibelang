@@ -9,7 +9,7 @@ import (
 )
 
 // EK1802: a retired await operation (VIP-18). {0} is the operation.
-var EK1802 = message(1802, errorCategory, "{0} was removed by VIP-18: write try.all, try.race, try.any or try.allSettled over an array of Effects, or try all({ … }, { concurrency: \"unbounded\" }) for an object; vibelang --fix rewrites it.")
+var EK1802 = message(1802, errorCategory, "{0} was removed by VIP-18: write try.all, try.race, try.any or try.allSettled over an array of Effects, or try all({ … }, { concurrency: \"unbounded\" }) for an object.")
 
 func init() {
 	registry[EK1802.Code] = EK1802

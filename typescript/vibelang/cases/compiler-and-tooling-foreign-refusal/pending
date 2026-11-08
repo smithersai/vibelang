@@ -1,1 +1,0 @@
-cov-tooling VIP coverage: the unsafe callback repair is left untouched but the CLI advertises a quick fix instead of explaining its refusal.

@@ -3,17 +3,13 @@ package vibelangfuzz
 import (
 	"context"
 	"fmt"
-	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const effectAliasRepairTarget = "FuzzEffectAliasRepair"
@@ -157,22 +153,6 @@ func effectAliasEditor(t *testing.T, w *Workspace, r *Result) (string, int) {
 	return fixed, count
 }
 
-func effectAliasCLI(t *testing.T, w *Workspace, r *Result) (string, int) {
-	t.Helper()
-	result := vibelang.FixProject(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, r.Dir))
-	if result.Err != nil {
-		t.Fatal(result.Err)
-	}
-	source, count := r.Sources["main.vibe"], 0
-	for name, fixed := range result.Files {
-		if filepath.Base(name.AsString()) != "main.vibe" {
-			t.Fatalf("repair changed non-consumer %s", name)
-		}
-		source, count = fixed.Text, fixed.Counts[4833]
-	}
-	return source, count
-}
-
 // Stock tsc, rather than VibeLang's checker or declaration canonicalizer,
 // checks both directions of the emitted public contract. Also check generic
 // equality: it detects the loss of an alias's separate union branches.
@@ -218,77 +198,4 @@ func effectAliasContract(t *testing.T, w *Workspace, stock string, before, after
 	if err != nil {
 		Gap(t, effectAliasRepairTarget, key, "Chapter 7: %s\nstock tsc 5.9.3: %v\n%s\nbefore:\n%s\nafter:\n%s", effectAliasRepairQuote, err, out, before.Sources["main.vibe"], after.Sources["main.vibe"])
 	}
-}
-
-func checkEffectAliasRepair(t *testing.T, w *Workspace, stock string, index int, variant byte, route string) {
-	t.Helper()
-	shape := effectAliasRepairShapes[index]
-	p := effectAliasProject(index, variant)
-	before := effectAliasCompile(t, w, p)
-	var fixed string
-	var count int
-	if route == "cli" {
-		fixed, count = effectAliasCLI(t, w, before)
-	} else {
-		fixed, count = effectAliasEditor(t, w, before)
-	}
-	afterProject := Project{Files: maps.Clone(p.Files)}
-	afterProject.Files["main.vibe"] = fixed
-	after := effectAliasCompile(t, w, afterProject)
-	effectAliasContract(t, w, stock, before, after, shape.key+":"+route)
-	if (count > 0) != shape.repair {
-		t.Errorf("%s %s: repair count %d, want repair %t", shape.key, route, count, shape.repair)
-	}
-	if !shape.repair && fixed != p.Files["main.vibe"] {
-		t.Errorf("unsafe alias source changed: %s", fixed)
-	}
-}
-
-// Ten reviewer witnesses, through both public repair paths, with stock
-// declaration consumers. Each unsafe alias fails before the compiler fix.
-func TestEffectAliasRepairWitnesses(t *testing.T) {
-	TestEffectAliasRepairQuoted(t)
-	w, stock := NewWorkspace(t), effectAliasStock(t)
-	for i, shape := range effectAliasRepairShapes {
-		for _, route := range []string{"cli", "editor"} {
-			t.Run(shape.key+"/"+route, func(t *testing.T) { checkEffectAliasRepair(t, w, stock, i, 0, route) })
-		}
-	}
-}
-
-// The keyed corpus selects an alias shape; trailing bytes vary its value,
-// failure, required service, nesting, and repair route. This is a static
-// declaration oracle; runtime semantics remain in FuzzVIPDifferential.
-func FuzzEffectAliasRepair(f *testing.F) {
-	startShortBudget(f)
-	w, stock := NewWorkspace(f), effectAliasStock(f)
-	// Seed the five unsafe aliases and two safe controls; the named test
-	// above covers every shape through both routes. Mutation reaches every
-	// shape and route without repeating all stock-tsc consumers in -short.
-	f.Add([]byte("forwarding|\x01"))
-	f.Fuzz(func(t *testing.T, data []byte) {
-		TestEffectAliasRepairQuoted(t)
-		key, tail, keyed := strings.Cut(string(data), "|")
-		index := slices.IndexFunc(effectAliasRepairShapes, func(s struct {
-			key, declaration, arguments string
-			repair                      bool
-		}) bool {
-			return s.key == key
-		})
-		variant := byte(0)
-		if index < 0 {
-			index = 0
-			for _, b := range data {
-				index = (index*33 + int(b)) % len(effectAliasRepairShapes)
-				variant += b
-			}
-		} else if keyed && len(tail) > 0 {
-			variant = tail[0]
-		}
-		route := "cli"
-		if variant&128 != 0 {
-			route = "editor"
-		}
-		checkEffectAliasRepair(t, w, stock, index, variant, route)
-	})
 }

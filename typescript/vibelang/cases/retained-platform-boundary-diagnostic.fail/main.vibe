@@ -1,0 +1,6 @@
+// expect: EK4402
+// rule-evidence: docs/design/src/005-services.md#the-platform-standard-library
+export const forbiddenFetch = fetch
+module host {
+  export const nativeFetch = fetch
+}

@@ -1,3 +1,0 @@
-go test fuzz v1
-string("before-custom/method/curried")
-byte(1)

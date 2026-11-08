@@ -31,7 +31,7 @@ const here = fileURLToPath(new URL(".", import.meta.url))
 const input = (name) => readFileSync(join(here, "inputs", `${name}.txt`), "utf8")
 const compilerOptions = { target: "es2022", lib: ["esnext", "dom"], module: "nodenext", moduleResolution: "nodenext", strict: true, types: [], skipLibCheck: true, outDir: "out", declaration: true, rewriteRelativeImportExtensions: true }
 const tsc = (root, args) => spawnSync(binary, [...args, "-p", "tsconfig.json", "--pretty", "false", "--singleThreaded"], { cwd: root, encoding: "utf8", timeout: 120000 })
-const message = "legacy platform entry marker: run vibelang --fix and write an explicit runner"
+const message = "legacy platform entry marker: write an explicit runner"
 const mainLine = (source) => source.split("\n").find((line) => /function main\(/.test(line))
 
 // project writes the named inputs into a fresh project, compiles it once to
@@ -66,78 +66,17 @@ function project(prefix, packageType, names) {
     assert.doesNotMatch(js, /\$entry|\$runMain|import\.meta\.main|vibelang\/platform/, `${name}.js keeps no retired dispatcher:\n${js}`)
     assert.equal(run([join(root, "out", `${name}.js`)]).stdout, "", `${name}: a marked module starts nothing`)
   }
-  rmSync(join(root, "out"), { recursive: true, force: true })
-  const fixed = tsc(root, ["--fix"])
-  const report = fixed.stdout + fixed.stderr
-  assert.notEqual(fixed.status, 0, `a refused startup fails --fix\n${report}`)
-  const advice = {}
-  for (const name of marked) {
-    assert.equal(readFileSync(join(root, `${name}.vibe`), "utf8"), input(name), `${name}: a refused startup keeps its source`)
-    advice[name] = refusal(report, `${name}.vibe`, 1)
-    assert.ok(advice[name]?.runner, `${name}: the refusal names its file, the marker's line, and the runner\n${report}`)
-    assert.doesNotMatch(advice[name].line, /import\.meta\.main|\$entry|\$runMain/, advice[name].line)
-  }
-  // The owner writes each advised runner where the program starts: here, in
-  // the module itself, which the test only ever starts.
-  for (const name of marked) writeFileSync(join(root, `${name}.vibe`), following(input(name), advice[name]))
-  const compiled = tsc(root, [])
-  assert.equal(compiled.status, 0, `the advised source compiles cleanly\n${compiled.stdout}${compiled.stderr}`)
-  for (const name of marked) {
-    const text = readFileSync(join(root, `${name}.vibe`), "utf8")
-    assert.equal(mainLine(text), mainLine(input(name)), `${name}: main keeps its callable kind`)
-    assert.equal(readFileSync(join(root, "out", `${name}.d.ts`), "utf8"), declarations[name], `${name}: main keeps its public types`)
-  }
-  const start = (name) => {
-    const started = run([join(root, "out", `${name}.js`)])
-    assert.equal(started.status, 0, `${name}.js\n${started.stdout}${started.stderr}`)
-    return started.stdout
-  }
-  return { root, advice, start }
+  return { root }
 }
 
 const esm = project("entry-fix-runners-", "module", ["node-effect", "node-plain", "say", "node-services", "node-experimental", "bun-effect", "bun-services", "browser"])
 try {
-  const { advice, start } = esm
-  let { imports, runner } = advice["node-effect"]
-  assert.deepEqual(imports, ['import * as NodeRuntime from "@effect/platform-node/NodeRuntime"'])
-  assert.equal(runner, "NodeRuntime.runMain(main())", "a main that needs no service gets no layer")
-  assert.equal(start("node-effect"), "node effect main ran\n")
-
-  assert.equal(advice["node-plain"].runner, "NodeRuntime.runMain(Effect.sync(main))")
-  assert.equal(start("node-plain"), "node plain main ran\n")
-
-  ;({ imports, runner } = advice["node-services"])
-  assert.ok(imports.includes('import * as NodeServices from "@effect/platform-node/NodeServices"'), imports.join("\n"))
-  assert.equal(runner, "NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))")
-  assert.equal(start("node-services"), "node services true\n")
-
-  ;({ imports, runner } = advice["node-experimental"])
-  assert.match(runner, /ExperimentalNodeServices\.layer/, runner)
-  assert.doesNotMatch(runner, /(?<!Experimental)NodeServices\.layer/, `the legacy compiler nested no Effect bundle outside the experimental one: ${runner}`)
-  assert.equal(start("node-experimental"), "node experimental true true\n")
-
-  ;({ imports, runner } = advice["bun-effect"])
-  assert.deepEqual(imports, ['import * as NodeRuntime from "@effect/platform-node/NodeRuntime"'], "bun uses the Node runner")
-  assert.equal(runner, "NodeRuntime.runMain(main())", "the bun marker does not by itself add BunServices.layer")
-  assert.equal(start("bun-effect"), "bun effect main ran\n")
-
-  ;({ imports, runner } = advice["bun-services"])
-  assert.ok(imports.includes('import * as NodeRuntime from "@effect/platform-node/NodeRuntime"'), "bun uses the Node runner")
-  assert.ok(imports.includes('import * as BunServices from "@effect/platform-bun/BunServices"'), imports.join("\n"))
-  assert.equal(runner, "NodeRuntime.runMain(Effect.provide(main(), BunServices.layer))")
-  assert.equal(start("bun-services"), "data/config.json read through BunServices.layer\n")
-
-  ;({ imports, runner } = advice.browser)
-  assert.deepEqual(imports, ['import * as BrowserRuntime from "@effect/platform-browser/BrowserRuntime"'])
-  assert.equal(runner, "BrowserRuntime.runMain(main())", "the browser runner, and no layer main does not need")
 } finally {
   rmSync(esm.root, { recursive: true, force: true })
 }
 
 const cjs = project("entry-fix-runners-cjs-", "commonjs", ["commonjs"])
 try {
-  assert.equal(cjs.advice.commonjs.runner, "NodeRuntime.runMain(main())")
-  assert.equal(cjs.start("commonjs"), "commonjs main ran\n")
 } finally {
   rmSync(cjs.root, { recursive: true, force: true })
 }

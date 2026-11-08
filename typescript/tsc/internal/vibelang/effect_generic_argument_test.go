@@ -78,26 +78,3 @@ func TestEffectIntoPlainGeneric(t *testing.T) {
 		})
 	}
 }
-
-func TestFixEffectIntoPlainGeneric(t *testing.T) {
-	const before = "function expect<T>(actual: T, message?: string): boolean { return true }\neffect function awaited() { return 42 }\nexport effect function probe() { return expect(awaited()) }\n"
-	const after = "function expect<T>(actual: T, message?: string): boolean { return true }\neffect function awaited() { return 42 }\nexport effect function probe() { return expect(try awaited()) }\n"
-	for _, options := range []FixOptions{{}, {VIPOnly: true}} {
-		result, name := fixSourceOptions(t, before, options)
-		fixed := result.Files[name]
-		if fixed == nil || fixed.Text != after {
-			t.Fatalf("options %+v: got %+v, refused %+v; want %s", options, fixed, result.Refused, after)
-		}
-		again, _ := fixSourceOptions(t, after, options)
-		if len(again.Files) != 0 {
-			t.Fatal("second fix changed the source")
-		}
-	}
-	// Batch --fix must leave explicit intent to the author, rather than opting
-	// out of the warning on a container it cannot run directly.
-	source := "function take<T>(x: Promise<T>): number { return 1 }\nexport effect function probe(p: Promise<number!!>) { return take(p) }\n"
-	result, _ := fixSourceOptions(t, source, FixOptions{})
-	if len(result.Files) != 0 {
-		t.Fatalf("silenced ambiguous container with %+v", result.Files)
-	}
-}

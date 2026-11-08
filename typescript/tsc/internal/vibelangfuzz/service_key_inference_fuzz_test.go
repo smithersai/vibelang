@@ -2,64 +2,15 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/bundled"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const serviceKeyInferenceQuote = `class Users extends Context.Service<Users, $Users$Shape>()("@acme/app/src/users#Users") {}`
 
 func TestServiceKeyInferenceQuoted(t *testing.T) {
 	serviceKeyInferenceQuoted(t)
-}
-
-// The compatibility rewrite preserves the local's former string type without
-// widening the service key itself or changing initializer evaluation.
-func FuzzServiceKeyInferenceMigration(f *testing.F) {
-	startShortBudget(f)
-	serviceKeyInferenceQuoted(f)
-	for _, key := range []string{"direct", "bracket", "parenthesized"} {
-		f.Add([]byte(key))
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		key := string(data)
-		read := "Key.key"
-		switch key {
-		case "bracket":
-			read = `Key["key"]`
-		case "parenthesized":
-			read = "(Key.key)"
-		default:
-			key = "direct"
-		}
-		source := `service Key { static readonly key = "fuzz/Key"; value: number }
-export function read() { let value = ` + read + `; value = "other"; return value }
-`
-		files := map[string]string{"main.vibe": source}
-		before := toolsCompile(t, w, "FuzzServiceKeyInferenceMigration", files)
-		defer before.Remove()
-		config := toolsConfig(w, before.Dir)
-		if config == nil || len(config.Errors) != 0 {
-			t.Fatal("invalid migration fixture config")
-		}
-		result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{VIPOnly: true})
-		fixed := result.Files[tspath.RootedFilePath(filepath.ToSlash(before.Dir)+"/main.vibe")]
-		if result.Err != nil || fixed == nil || !strings.Contains(fixed.Text, "let value: string = "+read) {
-			Gap(t, "FuzzServiceKeyInferenceMigration", key, "VIP-9 key inference compatibility must preserve the mutable binding: %+v", result)
-			return
-		}
-		after := toolsCompile(t, w, "FuzzServiceKeyInferenceMigration", map[string]string{"main.vibe": fixed.Text})
-		defer after.Remove()
-		if !toolsErrorFree(after) {
-			Gap(t, "FuzzServiceKeyInferenceMigration", key, "rewritten binding must compile: %v", SortedKeys(Keys(after.Dir, after.Diagnostics)))
-		}
-	})
 }
 
 func serviceKeyInferenceQuoted(t testing.TB) {

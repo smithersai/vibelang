@@ -10,15 +10,12 @@ import (
 )
 
 const namespaceSchemaErrorImportTarget = "FuzzNamespaceSchemaErrorImports"
-const namespaceSchemaErrorImportQuote = "under \x60noUnusedLocals\x60, an import the fixes leave unused in the source is removed"
-const namespaceSchemaErrorSidecarQuote = "Every \x60.vibe\x60 module has a declaration, its sidecar, so \x60noEmit\x60 and \x60declaration: false\x60 change nothing here."
+const namespaceSchemaErrorDeclarationQuote = "Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin"
 
 func namespaceSchemaErrorImportQuotes(tb testing.TB) {
 	tb.Helper()
-	for _, quote := range []string{namespaceSchemaErrorImportQuote, namespaceSchemaErrorSidecarQuote} {
-		if !strings.Contains(SpecText("007-tooling.md"), quote) {
-			tb.Fatalf("import retention authority changed: %q", quote)
-		}
+	if !strings.Contains(SpecText("001-functions.md"), namespaceSchemaErrorDeclarationQuote) {
+		tb.Fatalf("import retention authority changed: %q", namespaceSchemaErrorDeclarationQuote)
 	}
 }
 
@@ -83,7 +80,7 @@ func FuzzNamespaceSchemaErrorImports(f *testing.F) {
 			return
 		}
 		if errors := compile(custom, "main.vibe"); len(errors) != 0 {
-			Gap(t, namespaceSchemaErrorImportTarget, "custom:"+key, "%s: the Schema import of a schema error is used, but: %v", namespaceSchemaErrorSidecarQuote, errors)
+			Gap(t, namespaceSchemaErrorImportTarget, "custom:"+key, "%s: the Schema import of a schema error is used, but: %v", namespaceSchemaErrorDeclarationQuote, errors)
 			return
 		}
 		ExpectPending(t, namespaceSchemaErrorImportTarget, "native:"+key)

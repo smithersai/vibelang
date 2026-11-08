@@ -1,13 +1,10 @@
 package vibelang
 
 import (
-	"context"
-	"fmt"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
@@ -256,42 +253,6 @@ func throwsNeverAction(c *checker.Checker, fix *ls.CodeFixContext, call *ast.Nod
 	return &ls.CodeAction{Description: "Add /** @throws {never} */ to " + name,
 		Changes:           []*lsproto.TextEdit{},
 		AdditionalChanges: []ls.FileTextChanges{{URI: lsconv.FileNameToDocumentURI(file.FileName()), Changes: edits}}}
-}
-
-// cliThrowsNeverFixes is a fallback after the default bridge was refused
-// (for example, because it loses predicate narrowing). A missing plan may
-// mean an enclosing bridge or generator conversion must run first.
-func cliThrowsNeverFixes(ctx context.Context, program *compiler.Program, scope *fixScope, refused map[string]bool) []proposal {
-	for _, file := range scope.fixable(program) {
-		ds := program.GetSemanticDiagnostics(ctx, file)
-		c, done := program.GetTypeCheckerForFile(ctx, file)
-		for _, d := range ds {
-			if d.Source() != diagnosticSource || d.Code() != EK0403.Code {
-				continue
-			}
-			callee := tsFormNodeAt(file, d.Loc(), isCallee)
-			if callee == nil || !ast.IsCallExpression(callee.Parent) {
-				continue
-			}
-			call := callee.Parent
-			if !refused[fixKey(file, d)] {
-				continue
-			}
-			decl, rewrite := throwsNeverDeclaration(c, file, call)
-			if !rewrite.fixable() {
-				continue
-			}
-			target := ast.GetSourceFileOfNode(decl)
-			key := fmt.Sprintf("throws-never:%s:%d", target.FileName(), decl.Pos())
-			if !scope.includes(target.FileName()) || refused[key] {
-				continue
-			}
-			done()
-			return []proposal{{file: target, fixes: []fileFix{{code: EK0403.Code, key: key, edits: rewrite.edits}}}}
-		}
-		done()
-	}
-	return nil
 }
 
 // proveNeverCallbacks includes unknown callback contracts, unlike the plain-code
