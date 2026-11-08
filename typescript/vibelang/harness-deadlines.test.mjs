@@ -126,7 +126,10 @@ test("generated helper graphs retain reachable budgets and stages without duplic
     }))
     for (let i = 0; i <= n; i++) {
       const node = nodes[i]
-      const imports = node.edges.map((edge, j) => 'import { x as x' + j + ' } from "./' + names[edge] + '"\n').join("")
+      const imports = node.edges.map((edge, j) => {
+        const quote = random(2) ? "'" : '"'
+        return "import { x as x" + j + " } from " + quote + "./" + names[edge] + quote + "\n"
+      }).join("")
       fs.writeFileSync(path.join(at, names[i]),
         (node.budget ? "// run-seconds: " + node.budget + "\n" : "") +
         imports + "export const x = () => spawn({ timeout: " + node.stage * 1000 + " })\n")
@@ -198,4 +201,56 @@ test("process import spelling and whitespace preserve census admission", () => {
     'import cp from "./node:child_process"',
     "const cp = require('prefix/child_process')",
   ]) assert.equal(startsProcess(source), false, source)
+})
+
+test("single-quoted helpers retain budgets through mixed-quote wrappers", (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-helper-quotes-"))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  const leaf = path.join(dir, "leaf.mjs")
+  fs.writeFileSync(leaf, "// run-seconds: 180\nexport const run = () => spawn({ timeout: 90_000 })\n")
+  for (const outer of ['"', "'"]) {
+    for (const inner of ['"', "'"]) {
+      const wrapper = path.join(dir, "wrapper.mjs")
+      fs.writeFileSync(wrapper, "export { run } from " + inner + "./leaf.mjs" + inner + "\n")
+      const runner = path.join(dir, "run.mjs")
+      fs.writeFileSync(runner, "import { run } from " + outer + "./wrapper.mjs" + outer + "\n")
+      assert.deepEqual(new Set(runnerHelpers(runner)), new Set([wrapper, leaf]), outer + inner)
+      assert.equal(runnerSeconds(runner), 180, outer + inner)
+      fs.writeFileSync(leaf, "export const run = () => spawn({ timeout: 90_000 })\n")
+      assert.equal(runnerSeconds(runner), 90, "stage floor survives " + outer + inner)
+      fs.writeFileSync(leaf, "// run-seconds: 180\nexport const run = () => spawn({ timeout: 90_000 })\n")
+      fs.appendFileSync(runner, "// run-seconds: 240\n")
+      assert.equal(runnerSeconds(runner), 240, "explicit runner line still wins")
+    }
+  }
+})
+
+test("helper quote matching keeps missing, output, and mismatched imports excluded", (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-helper-quote-controls-"))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  fs.mkdirSync(path.join(dir, "out"))
+  fs.writeFileSync(path.join(dir, "out/ignored.mjs"), "// run-seconds: 900\n")
+  fs.writeFileSync(path.join(dir, "leaf.mjs"), "// run-seconds: 900\n")
+  const runner = path.join(dir, "run.mjs")
+  fs.writeFileSync(runner, [
+    "import x from './out/ignored.mjs'",
+    "import x from './missing.mjs'",
+    "import x from './leaf.mjs\"",
+    "import x from \"./leaf.mjs'",
+  ].join("\n"))
+  assert.deepEqual(runnerHelpers(runner), [])
+  assert.equal(runnerSeconds(runner), 60)
+})
+
+test("helper paths can contain the other quote character", (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-helper-path-quotes-"))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  for (const [quote, name] of [['"', "single'quote.mjs"], ["'", 'double"quote.mjs']]) {
+    const leaf = path.join(dir, name)
+    fs.writeFileSync(leaf, "// run-seconds: 180\nexport const value = 1\n")
+    const runner = path.join(dir, "run.mjs")
+    fs.writeFileSync(runner, "import { value } from " + quote + "./" + name + quote + "\n")
+    assert.deepEqual(runnerHelpers(runner), [leaf])
+    assert.equal(runnerSeconds(runner), 180)
+  }
 })

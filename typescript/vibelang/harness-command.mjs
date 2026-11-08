@@ -12,8 +12,8 @@ export function runnerHelpers(file, text = fs.readFileSync(file, "utf8")) {
   const entry = fs.realpathSync(file)
   const seen = new Set([entry])
   const visit = (source, contents) => {
-    for (const match of contents.matchAll(/\bfrom\s+"(\.{1,2}\/[^"]+\.mjs)"/g)) {
-      const helper = path.resolve(path.dirname(source), match[1])
+    for (const match of contents.matchAll(/\bfrom\s+(?:"(\.{1,2}\/[^"\r\n]+\.mjs)"|'(\.{1,2}\/[^'\r\n]+\.mjs)')/g)) {
+      const helper = path.resolve(path.dirname(source), match[1] ?? match[2])
       if (!fs.existsSync(helper) || helper.split(path.sep).includes("out")) continue
       const identity = fs.realpathSync(helper)
       if (seen.has(identity)) continue

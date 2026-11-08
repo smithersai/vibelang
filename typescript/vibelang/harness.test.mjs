@@ -922,3 +922,33 @@ CaseCommands.prototype.run = async function (...args) {
     }
   })
 }
+
+test("helper import quote spelling preserves native runner deadline enforcement", (t) => {
+  const { root, harness } = fixture(t)
+  const cases = path.join(root, "vibelang/cases")
+  const names = []
+  for (const [style, quote] of [["single", "'"], ["double", '"']]) {
+    for (const seconds of [1, 5]) {
+      const name = "quoted-helper-" + style + "-" + seconds
+      names.push(name)
+      const at = path.join(cases, name)
+      fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+      fs.writeFileSync(path.join(at, "scenario"), "runtime")
+      fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+      fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
+      fs.writeFileSync(path.join(at, "leaf.mjs"),
+        "// run-seconds: " + seconds + "\nexport const wait = () => new Promise(resolve => setTimeout(resolve, 2500))\n")
+      fs.writeFileSync(path.join(at, "wrapper.mjs"), "export { wait } from " + quote + "./leaf.mjs" + quote + "\n")
+      fs.writeFileSync(path.join(at, "run.mjs"),
+        "import { wait } from " + quote + "./wrapper.mjs" + quote + "\nawait wait()\nconsole.log('expected')\n")
+    }
+  }
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const result = spawnSync(process.execPath, [harness, "--jobs", "4", ...names],
+    { env, encoding: "utf8", timeout: 30_000 })
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  for (const style of ["single", "double"]) {
+    assert.match(result.stdout, new RegExp("^FAIL\\s+quoted-helper-" + style + "-1:.*killed by SIGKILL", "m"))
+    assert.match(result.stdout, new RegExp("^ok\\s+quoted-helper-" + style + "-5", "m"))
+  }
+})
