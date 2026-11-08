@@ -20,7 +20,7 @@ import { wireDeclarationRedirects } from "./declaration-redirects.mjs"
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { assertBaselineSafe, readSetupCompile, recordSetupCompile, setupCompileKey } from "./baseline.mjs"
+import { assertBaselineSafe, declarationBaselineDir, declarationKey, readSetupCompile, recordSetupCompile, setupCompileKey } from "./baseline.mjs"
 import { assertNoTestBundleRename } from "./test-bundles.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import * as Enumerations from "./enumerations.mjs"
@@ -1279,7 +1279,7 @@ export async function returnToUpgrade(t, commit) {
  * The declaration oracle setup records before it wires VibeLang: each
  * published package's declarations as the repository's own compiler (tsc,
  * tsgo or tsrs; config.stockCompiler names another) emits them into
- * baseline/stock-dts. A missing or failing compiler records why no oracle
+ * baseline/stock-dts-v2. A missing or failing compiler records why no oracle
  * is available; verification cannot certify its migrated declarations.
  */
 async function emitStockOracle(config, p, logs) {
@@ -1295,7 +1295,7 @@ async function emitStockOracle(config, p, logs) {
       continue
     }
     try {
-      const emitted = await emitPackageDeclarations({ compiler: found.path, ts, t, pkg, outDir: join(p.baseline, "stock-dts", slug(pkg.dir)), log: join(logs, `stock-dts-${slug(pkg.dir)}.log`) })
+      const emitted = await emitPackageDeclarations({ compiler: found.path, ts, t, pkg, outDir: join(p.baseline, "stock-" + declarationKey(pkg.dir)), log: join(logs, "stock-" + declarationKey(pkg.dir) + ".log") })
       // TS5011 concerns declaration output layout, not the original API's
       // type validity. Keep its full receipt and require the canonical stock/
       // native comparison below to prove completeness and identity.
@@ -1324,14 +1324,14 @@ function compareStockOracle(ts, p, stock) {
       result[dir] = emitted
       continue
     }
-    const unproven = unprovenDeclarations(ts, join(p.baseline, "stock-dts", slug(dir)), join(p.baseline, "dts", slug(dir)))
+    const unproven = unprovenDeclarations(ts, join(p.baseline, "stock-" + declarationKey(dir)), join(p.baseline, declarationKey(dir)))
     result[dir] = { ...emitted, ...unproven }
     if (unproven.files.length) {
       appendJsonl(p.issues, {
         kind: "issue",
         batch: "setup",
         title: `vibelang's declarations of the unchanged ${dir} differ from ${emitted.compiler}'s`,
-        repro: `${emitted.compiler} and vibelang emit ${dir}'s declarations from the same sources: baseline/stock-dts/${slug(dir)} and baseline/dts/${slug(dir)}`,
+        repro: `${emitted.compiler} and vibelang emit ${dir}'s declarations from the same sources: baseline/stock-${declarationKey(dir)} and baseline/${declarationKey(dir)}`,
         actual: `${unproven.changed.length} differ, ${unproven.missing.length} only ${emitted.compiler} writes, ${unproven.extra.length} only vibelang writes; a batch cannot migrate their modules`,
         files: unproven.files
       })
@@ -1392,8 +1392,8 @@ export async function setup(options) {
     recordSetupCompile(p, pkg.dir, checked)
     compile[pkg.dir] = summarize(checked.diagnostics)
     assertBaselineSafe(p)
-    const outDir = join(p.baseline, "dts", slug(pkg.dir))
-    declarations[pkg.dir] = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
+    const outDir = join(p.baseline, declarationKey(pkg.dir))
+    declarations[pkg.dir] = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, declarationKey(pkg.dir) + ".log") })
     // The modules earlier runs migrated keep the declarations their compiler committed.
     const earlier = await earlierDeclarationChanges({ ts, t, revision: upgrade.jj.baseCommit, pkg, outDir })
     declarations[pkg.dir].earlier = { files: earlier.files, changed: earlier.changed.map((c) => c.file), missing: earlier.missing,
@@ -1433,6 +1433,7 @@ export async function setup(options) {
     wiringRegressions: wiring && { newFailures: wiring.newFailures, missing: wiring.missing, exit: { before: upstream.code, after: tests.code } },
     compile,
     declarations,
+    declarationBaselineVersion: 2,
     inventory: inventory.summary,
     bareRunners: inventory.bareRunners
   }
@@ -1870,7 +1871,7 @@ export async function compile(options) {
   }
   const preserved = await preservedErrorAdvisories({
     compiler, target: config.target, packages: config.packages,
-    baseline: pkg => join(p.baseline, "dts", slug(pkg.dir)), files, diagnostics,
+    baseline: pkg => declarationBaselineDir(p, pkg.dir, config.packages.map(pkg => pkg.dir)), files, diagnostics,
     original: file => originalSourceOf(p, thePlan, file)
   })
   const result = {
@@ -2259,9 +2260,9 @@ export async function verify(options) {
       declarations[pkg.dir] = "not published"
       continue
     }
-    const outDir = join(p.batch(b), "dts", slug(pkg.dir))
-    const emitted = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, `dts-${slug(pkg.dir)}.log`) })
-    const baselineDir = join(p.baseline, "dts", slug(pkg.dir))
+    const outDir = join(p.batch(b), declarationKey(pkg.dir))
+    const emitted = await emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log: join(logs, declarationKey(pkg.dir) + ".log") })
+    const baselineDir = declarationBaselineDir(p, pkg.dir, config.packages.map(pkg => pkg.dir))
     const surfacePath = join(baselineDir, "public-surface.json")
     const oldSurface = existsSync(surfacePath) ? readJson(surfacePath) : null
     if (!oldSurface?.apiMetadata || oldSurface.snapshotVersion < 3 || oldSurface.unresolved?.includes(NO_ENTRY_POINTS)) {
@@ -2287,7 +2288,7 @@ export async function verify(options) {
       includePrivate: config.declarations?.includePrivate === true && readJson(join(t, pkg.dir, "package.json")).private === true,
     })
     const originalEmit = originalEmits[pkg.dir]
-    const emitLog = join(logs, "dts-" + slug(pkg.dir) + ".log")
+    const emitLog = join(logs, declarationKey(pkg.dir) + ".log")
     const dependencyPathSubstitutions = []
     const modulePathSubstitutions = []
     const errors = emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: emitLog, baseline: originalEmit, cwd: join(t, pkg.dir), pathSubstitutions: dependencyPathSubstitutions, moduleReferences: emitted.moduleReferences, modulePathSubstitutions })

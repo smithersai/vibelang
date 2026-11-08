@@ -1,0 +1,6 @@
+{
+  "key": "baseline:declaration-output-slug-collision",
+  "packages": ["packages/core", "packages__core"],
+  "sources": ["export const value: number = 1\n", "export const value: string = \"other\"\n"],
+  "neighbours": [[".", "root"], ["a/b", "a__b"], ["a%b", "a/b"], ["δ/a", "δ__a"]]
+}

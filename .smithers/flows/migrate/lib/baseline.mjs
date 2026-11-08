@@ -1,9 +1,9 @@
 // Keep upgrade failures outside the migration baseline, including old run receipts.
-import { createHash } from "node:crypto"
+import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { newErrors } from "./diagnostics.mjs"
 import { compareTests } from "./tests.mjs"
-import { readJsonIf, slug, writeJson } from "./util.mjs"
+import { packageKey, readJsonIf, slug, writeJson } from "./util.mjs"
 
 export function testAdmission(before, after) {
   const compared = compareTests(before, after)
@@ -20,11 +20,23 @@ export function compilerAdmission(before, after) {
 }
 
 // Versioned names keep package paths separate from both each other and legacy slugs.
-export function setupCompileKey(pkg) {
-  const path = pkg || ".", encoded = encodeURIComponent(path)
-  // Keep a valid package segment from exceeding the receipt filename limit.
-  return "compile-v2/" + (encoded.length <= 180 ? "package-" + encoded
-    : "digest-" + createHash("sha256").update(path).digest("hex"))
+export const setupCompileKey = pkg => "compile-v2/" + packageKey(pkg)
+
+/** Separate declaration snapshots from ambiguous legacy package slugs. */
+export const declarationKey = pkg => "dts-v2/" + packageKey(pkg)
+
+export function declarationBaselineDir(p, pkg, packages) {
+  const current = join(p.baseline, declarationKey(pkg))
+  // A partial current snapshot must never borrow a legacy package's declarations.
+  if (existsSync(current) || existsSync(join(p.baseline, "dts-v2")) ||
+    readJsonIf(p.setup)?.declarationBaselineVersion === 2) return current
+  const legacy = join(p.baseline, "dts", slug(pkg))
+  if (!existsSync(legacy)) return current
+  const aliases = packages.filter(dir => slug(dir) === slug(pkg))
+  if (aliases.length > 1) throw new Error("unverified declaration baseline for " + pkg +
+    ": legacy declaration directory aliases packages: " + aliases.join(", ") +
+    "; rerun setup in a new run")
+  return legacy
 }
 
 export function recordSetupCompile(p, pkg, checked) {

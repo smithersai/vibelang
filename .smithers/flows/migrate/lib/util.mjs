@@ -2,6 +2,7 @@
 // JSON files, paths. Every step is a composition root on one machine, so these
 // use Node's own modules directly.
 import { spawn } from "node:child_process"
+import { createHash } from "node:crypto"
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, relative, sep } from "node:path"
 
@@ -101,6 +102,13 @@ export const isDeclarationFile = (path) => /\.d\.(?:[^./]+\.)?[cm]?ts$/.test(pat
 
 /** A path relative to root, with forward slashes. */
 export const rel = (root, path) => relative(root, path).split(sep).join("/")
+
+/** A bounded package identity that preserves nesting, punctuation and the root. */
+export function packageKey(pkg) {
+  const path = pkg || ".", encoded = encodeURIComponent(path)
+  return encoded.length <= 180 ? "package-" + encoded
+    : "digest-" + createHash("sha256").update(path).digest("hex")
+}
 
 /** A file system name for a package directory: packages/foldkit becomes packages__foldkit. */
 export const slug = (path) => (path === "." || path === "" ? "root" : path.replaceAll("/", "__"))
