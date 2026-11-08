@@ -1,9 +1,5 @@
 # Chapter 2 static-rule controls and rejections; each named corpus selects its rule.
 
-FuzzDoDeclarationBytes bytes:inferred-return:depth-1 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
-FuzzDoDeclarationBytes bytes:inferred-return:depth-2 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
-FuzzDoDeclarationBytes bytes:inferred-return:depth-3 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
-FuzzDoDeclarationBytes bytes:inferred-return:depth-4 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
 
 # Adjacent to unchecked-try-success-type: direct any calls already preserve success; E/R is a separate gap.
 
