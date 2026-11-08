@@ -34,6 +34,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Calls through supplied `Performance` and `Crypto` values incorrectly reported platform-access errors. They now use the supplied receiver; host-global access remains diagnosed.
 
 - An explicit `effect` function or block inside a wrapper callback could run as plain JavaScript or lose its Effect type. It now keeps its cold Effect behavior and runs its body only when that Effect is run.
+
+- Formatting JSX in the language server could silently leave a `.vibex` file or a `.tsx` buffer marked with `// @vibe` unchanged. Both now format as JSX and preserve their text.
+
 - `vibelang format` refused a `.vibex` file with `the TypeScript formatter changed JSX children` when JSX text wrapped a line with a `{" "}` space, such as `push and{" "}` followed by `{null} actions.` on the next line, because dprint folds that space into the text. The formatter now formats the file and keeps the JSX text as written.
 - Browser-service guidance mentioning `Experimental.Window` twice could be reported as a duplicate service. The check now reads the service list separately from usage examples.
 - A `provide` provider starting with an object literal was mistaken for a trailing block. Object-member expressions now work directly, with the same evaluation order as their parenthesized form.

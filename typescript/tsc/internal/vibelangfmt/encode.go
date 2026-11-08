@@ -192,7 +192,7 @@ var vibeOptions = ast.SourceFileParseOptions{FileName: "/vibelang-format.vibe", 
 // sourceOptions selects JSX independently of the VibeLang dialect (VIP-39).
 // Keep synthetic VibeLang names: callers historically supplied names for errors.
 func sourceOptions(fileName string) ast.SourceFileParseOptions {
-	if strings.HasSuffix(fileName, ".vibex") {
+	if strings.HasSuffix(fileName, ".vibex") || strings.HasSuffix(fileName, ".tsx") {
 		return ast.SourceFileParseOptions{FileName: "/vibelang-format.vibex", PathKey: "/vibelang-format.vibex"}
 	}
 	return vibeOptions

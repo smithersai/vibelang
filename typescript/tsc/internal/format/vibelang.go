@@ -14,12 +14,18 @@ import (
 // ranges (for example, match arms), which the TypeScript formatter cannot walk.
 func formatVibeLangDocument(ctx context.Context, file *ast.SourceFile) []core.TextChange {
 	source := file.Text()
+	// A .vibex file, or a marked .tsx file, projects to TSX: read as
+	// TypeScript, its JSX would format as comparisons and type assertions.
+	kind := core.ScriptKindTS
+	if file.ScriptKind == core.ScriptKindTSX || file.ScriptKind == core.ScriptKindJSX {
+		kind = core.ScriptKindTSX
+	}
 	result, err := vibelangfmt.Format(file.FileName().AsString(), source, func(text string) (string, error) {
 		projection := parser.ParseSourceFile(ast.SourceFileParseOptions{
 			// The projection is already TypeScript. A native extension would
 			// let its retained directive select VibeLang again.
 			FileName: "/vibelang-format.projection", PathKey: "/vibelang-format.projection",
-		}, text, core.ScriptKindTS)
+		}, text, kind)
 		return core.ApplyBulkEdits(text, FormatSpan(ctx, core.NewTextRange(0, projection.End()), projection, FormatRequestKindFormatDocument)), nil
 	})
 	if err != nil || result == source {

@@ -16,6 +16,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/format"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsutil"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangfmt"
 )
 
@@ -172,12 +173,22 @@ func FuzzFormat(f *testing.F) {
 
 // toolsFormatter returns the TypeScript formatter that the language server
 // gives vibelangfmt.Format (internal/format's formatVibeLangDocument), or
-// dprint when VIBELANG_DPRINT names one.
+// dprint when VIBELANG_DPRINT names one, for a .vibe file.
 func toolsFormatter(tb testing.TB) vibelangfmt.TypeScriptFormatter {
+	return toolsFormatterForFile(tb, "main.vibe")
+}
+
+// toolsFormatterForFile is toolsFormatter for the file name: a .vibex file
+// projects to TSX, which both hosts must read as TSX.
+func toolsFormatterForFile(tb testing.TB, name string) vibelangfmt.TypeScriptFormatter {
+	kind, stdin := core.ScriptKindTS, "file.ts"
+	if strings.HasSuffix(name, ".vibex") || strings.HasSuffix(name, ".tsx") {
+		kind, stdin = core.ScriptKindTSX, "file.tsx"
+	}
 	if binary := os.Getenv("VIBELANG_DPRINT"); binary != "" {
 		config := filepath.Join(Root(), "typescript/tsc/internal/vibelangfmt/testdata/dprint.json")
 		return func(text string) (string, error) {
-			command := exec.Command(binary, "fmt", "--config", config, "--stdin", "file.ts")
+			command := exec.Command(binary, "fmt", "--config", config, "--stdin", stdin)
 			command.Stdin = strings.NewReader(text)
 			var stdout, stderr bytes.Buffer
 			command.Stdout, command.Stderr = &stdout, &stderr
@@ -189,7 +200,7 @@ func toolsFormatter(tb testing.TB) vibelangfmt.TypeScriptFormatter {
 	}
 	ctx := format.WithFormatCodeSettings(context.Background(), lsutil.GetDefaultFormatCodeSettings(), "\n")
 	return func(text string) (string, error) {
-		projection := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/vibelang-format.ts", PathKey: "/vibelang-format.ts"}, text, core.ScriptKindTS)
+		projection := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/vibelang-format.ts", PathKey: "/vibelang-format.ts"}, text, kind)
 		return core.ApplyBulkEdits(text, format.FormatDocument(ctx, projection)), nil
 	}
 }
@@ -473,4 +484,13 @@ func TestFormatRecoveredMissingSeparators(t *testing.T) {
 			}
 		})
 	}
+}
+
+// toolsLanguageServerFormat formats the original buffer through the actual
+// language-server entry point, including its reversible projection.
+func toolsLanguageServerFormat(name, source string) string {
+	ctx := format.WithFormatCodeSettings(context.Background(), lsutil.GetDefaultFormatCodeSettings(), "\n")
+	path := tspath.RootedFilePath(name)
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: path, PathKey: tspath.PathKey(name)}, source, core.GetScriptKindFromFileName(path))
+	return core.ApplyBulkEdits(source, format.FormatDocument(ctx, file))
 }

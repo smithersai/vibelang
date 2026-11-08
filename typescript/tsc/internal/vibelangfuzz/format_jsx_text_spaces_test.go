@@ -96,7 +96,7 @@ func FuzzFormatJSXTextSpaces(f *testing.F) {
 			}
 		}
 	}
-	formatter := toolsFormatter(f)
+	formatter := toolsFormatterForFile(f, "main.vibex")
 	// Keys name the host formatter, so a gap one of them has never hides the other.
 	host := "language-server"
 	if os.Getenv("VIBELANG_DPRINT") != "" {
@@ -124,28 +124,44 @@ func FuzzFormatJSXTextSpaces(f *testing.F) {
 				mode = int(data[1]) % 4
 			}
 		}
-		source := formatJSXTextSpacesSource(form.body, mode)
-		if syntax := toolsSyntaxError("main.vibex", source); syntax != "" {
-			t.Fatalf("invalid model input: %s\n%s", syntax, source)
-		}
-		once, err := vibelangfmt.Format("main.vibex", source, formatter)
-		if err != nil {
-			Gap(t, "FuzzFormatJSXTextSpaces", "refused:"+host+":"+form.key, "Chapter 7: %q; a parsable .vibex file was refused: %v\n%s", formatJSXTextSpacesQuotes[0].quote, err, source)
-		}
-		for _, slot := range form.slots {
-			if mode&2 != 0 {
-				slot = strings.ReplaceAll(slot, "\n", "\r\n")
-			}
-			if !strings.Contains(once, slot) {
-				Gap(t, "FuzzFormatJSXTextSpaces", "text:"+host+":"+form.key, "Chapter 7: %q; VIP-39 JSX text changed: want %q in\n%s", formatJSXTextSpacesQuotes[1].quote, slot, once)
-			}
-		}
-		twice, err := vibelangfmt.Format("main.vibex", once, formatter)
-		if err != nil || once != twice {
-			Gap(t, "FuzzFormatJSXTextSpaces", "fixed-point:"+host+":"+form.key, "Chapter 7 formatting is idempotent: %v\n%s\nthen:\n%s", err, once, twice)
-		}
-		for _, kind := range []string{"refused", "text", "fixed-point"} {
-			ExpectPending(t, "FuzzFormatJSXTextSpaces", kind+":"+host+":"+form.key)
+
+		for _, name := range []string{"/main.vibex", "/main.tsx"} {
+			t.Run(name, func(t *testing.T) {
+				source := formatJSXTextSpacesSource(form.body, mode)
+				source = strings.Replace(source, "export ", "export   ", 1)
+				if strings.HasSuffix(name, ".tsx") {
+					source = "// @vibe\n" + source
+				}
+				if syntax := toolsSyntaxError(name, source); syntax != "" {
+					t.Fatalf("invalid model input: %s\n%s", syntax, source)
+				}
+				run := func(text string) (string, error) {
+					if host == "language-server" {
+						return toolsLanguageServerFormat(name, text), nil
+					}
+					return vibelangfmt.Format(name, text, formatter)
+				}
+				key := host + ":" + name + ":" + form.key
+				once, err := run(source)
+				if err != nil || strings.Contains(once, "export   ") {
+					Gap(t, "FuzzFormatJSXTextSpaces", "refused:"+key, "Chapter 7: %q; a parsable JSX buffer was not formatted: %v\n%s", formatJSXTextSpacesQuotes[0].quote, err, source)
+				}
+				for _, slot := range form.slots {
+					if mode&2 != 0 {
+						slot = strings.ReplaceAll(slot, "\n", "\r\n")
+					}
+					if !strings.Contains(once, slot) {
+						Gap(t, "FuzzFormatJSXTextSpaces", "text:"+key, "Chapter 7: %q; VIP-39 JSX text changed: want %q in\n%s", formatJSXTextSpacesQuotes[1].quote, slot, once)
+					}
+				}
+				twice, err := run(once)
+				if err != nil || once != twice {
+					Gap(t, "FuzzFormatJSXTextSpaces", "fixed-point:"+key, "Chapter 7 formatting is idempotent: %v\n%s\nthen:\n%s", err, once, twice)
+				}
+				for _, kind := range []string{"refused", "text", "fixed-point"} {
+					ExpectPending(t, "FuzzFormatJSXTextSpaces", kind+":"+key)
+				}
+			})
 		}
 	})
 }

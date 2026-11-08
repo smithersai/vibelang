@@ -47,3 +47,26 @@ func TestFormatVibeLangDirective(t *testing.T) {
 		})
 	}
 }
+
+// A .vibex file and a marked .tsx file project to TSX, so the language
+// server formats their JSX as JSX: closing tags and text stay as written.
+func TestFormatVibeLangJSX(t *testing.T) {
+	for _, tc := range []struct{ name, source, want string }{
+		{"/view.vibex", "export   const View = (x: string) => <p>Hello {x} and <b>you</b>.</p>\n", "export const View = (x: string) => <p>Hello {x} and <b>you</b>.</p>\n"},
+		{"/view.tsx", "// @vibe\nexport   const View = (x: string) => <p>Hello {x} and <b>you</b>.</p>\n", "// @vibe\nexport const View = (x: string) => <p>Hello {x} and <b>you</b>.</p>\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := WithFormatCodeSettings(context.Background(), lsutil.GetDefaultFormatCodeSettings(), "\n")
+			parse := func(text string) *ast.SourceFile {
+				return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePath(tc.name), PathKey: tspath.PathKey(tc.name)}, text, core.GetScriptKindFromFileName(tspath.RootedFilePath(tc.name)))
+			}
+			got := core.ApplyBulkEdits(tc.source, FormatDocument(ctx, parse(tc.source)))
+			if got != tc.want {
+				t.Fatalf("formatting differs\nwant:\n%s\ngot:\n%s", tc.want, got)
+			}
+			if changes := FormatDocument(ctx, parse(got)); len(changes) != 0 {
+				t.Fatalf("formatting is not idempotent: %v", changes)
+			}
+		})
+	}
+}
