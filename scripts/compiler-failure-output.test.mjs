@@ -30,6 +30,10 @@ test("outer", async t => {
   await t.test("passing child", () => {})
   await t.test("failing child", () => { throw new Error("NESTED_DETAIL") })
 })`
+    else if (mode === "deep-cause") body = `
+test("deep", () => {
+  throw new Error("WRAPPER " + "w".repeat(2000), { cause: new Error("MIDDLE", { cause: new Error("ROOT_CAUSE_DETAIL") }) })
+})`
     else if (mode === "cancelled") body = 'test("unfinished", { timeout: 25 }, () => new Promise(() => {}))'
     else if (mode === "mixed") body = `
 test("passing", () => {})
@@ -113,4 +117,17 @@ test("compiler reporter retains skip and todo semantics", () => {
   assert.equal(result.summary.success, true)
   assert.doesNotMatch(result.output, /SKIP_BODY_EXECUTED/)
   assert.ok(result.records.some(row => row.event === "failure" && row.todo === "todo control"))
+})
+
+// The graph's live output keeps the first 1,600 characters of each line; the
+// captured output keeps all of it. A wrapped failure must name its innermost
+// cause inside that live prefix.
+test("a failure record names its innermost cause within the live line limit", () => {
+  const result = run(1, "deep-cause")
+  assert.equal(result.status, 1)
+  const line = result.output.split("\n").find(l => l.startsWith("[node-test] ") && l.includes('"event":"failure"'))
+  assert.ok(line, "a failure record")
+  assert.ok(line.length > 1600, "the fixture's record exceeds the live limit")
+  assert.ok(line.slice(0, 1600).includes("ROOT_CAUSE_DETAIL"), line.slice(0, 1600))
+  assert.ok(line.includes("WRAPPER") && line.includes("MIDDLE"), "the whole error stays in the record")
 })

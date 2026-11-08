@@ -51,13 +51,20 @@ function inspect(input, literal) {
       // An emit may refresh compatibility sidecars: each engine reads the
       // same original files, including the declaration under test.
       write(root, files)
+      const started = performance.now()
       const result = spawnSync(compiler, ["-p", "app/tsconfig.json", "--pretty", "false", "--allowImportingTsExtensions", "true"], {
         cwd: root, encoding: "utf8", timeout: 120000, maxBuffer: 2 << 20,
         env: { ...process.env, GOMAXPROCS: "2" },
       })
+      const output = ((result.stdout || "") + (result.stderr || "")).replaceAll(root, "<project>").replaceAll("\\", "/")
+      // One line per compiler run, so a slow or stopped run names its input,
+      // engine and time even when the assertion below ends the property.
+      console.error("sidecar-identity " + JSON.stringify({
+        input, engine, elapsedMs: Math.round(performance.now() - started), status: result.status,
+        signal: result.signal, error: result.error?.code ?? null, outputChars: output.length,
+      }))
       assert.ifError(result.error)
       assert.equal(result.signal, null, engine + " compiler terminated")
-      const output = ((result.stdout || "") + (result.stderr || "")).replaceAll(root, "<project>").replaceAll("\\", "/")
       runs[engine] = { status: result.status, output, codes: [...output.matchAll(/error ((?:TS|EK)\d+)/g)].map(m => m[1]) }
     }
     return runs

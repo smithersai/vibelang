@@ -1,6 +1,20 @@
 import { relative } from "node:path"
 import { inspect } from "node:util"
 
+// The innermost error of a cause chain, as "Name: message". The graph's live
+// output keeps the first 1,600 characters of a line, and a wrapped failure's
+// inspected error can be longer than that before its cause appears.
+function innermostCause(error) {
+  const seen = new Set()
+  let inner = error
+  while (inner?.cause !== undefined && !seen.has(inner.cause)) {
+    seen.add(inner)
+    inner = inner.cause
+  }
+  if (inner === error) return undefined
+  return inner instanceof Error ? `${inner.name}: ${inner.message}` : inspect(inner, { colors: false })
+}
+
 // Consume every Node test event. Successful test names are quiet; failures,
 // test output and Node's original aggregate counts remain visible to the graph.
 export default async function* failures(events) {
@@ -20,6 +34,7 @@ export default async function* failures(events) {
       if (type === "test:fail") yield line("failure", {
         file, line: data.line, column: data.column, name: data.name,
         todo: data.todo, skip: data.skip,
+        cause: innermostCause(data.details?.error),
         error: inspect(data.details?.error, {
           depth: Infinity, maxArrayLength: Infinity, maxStringLength: Infinity,
           colors: false, customInspect: false
