@@ -161,6 +161,10 @@ func (a *analyzer) throwsBelongToCall(home, site *ast.Node) bool {
 // callback contract, including callable alternatives and options properties.
 // The name Effect alone supplies no contract.
 func isAdmittedWrappedCode(c *checker.Checker, fn *ast.Node) bool {
+	if call, path := ownerCall(fn); call != nil && isAdmittingTryForwarding(c, call, path) {
+		return true
+	}
+
 	// Resolve the invoked API before inspecting its spelling. Only its thunk
 	// position admits throws; a catch mapper keeps its plain-code contract.
 	if call, path := ownerCall(fn); call != nil && len(path) != 0 && path[0].argument == 0 &&
@@ -202,6 +206,45 @@ func isAdmittingTryCall(c *checker.Checker, call *ast.Node) bool {
 		return false
 	}
 	return isAdmittingTryValue(c, call.Expression(), nil, map[*ast.Node]bool{})
+}
+
+// isAdmittingTryForwarding follows the native Function methods without giving
+// similarly named methods or other callback positions a wrapper contract.
+func isAdmittingTryForwarding(c *checker.Checker, call *ast.Node, path []pathStep) bool {
+	if !ast.IsCallExpression(call) || len(path) == 0 || path[0].argument != 1 {
+		return false
+	}
+	callee := ast.SkipParentheses(call.Expression())
+	method := ""
+	if ast.IsPropertyAccessExpression(callee) {
+		method = callee.Name().Text()
+	} else if ast.IsElementAccessExpression(callee) {
+		key := c.GetTypeAtLocation(callee.AsElementAccessExpression().ArgumentExpression)
+		if key == nil || !checker.IsTypeUsableAsPropertyName(key) {
+			return false
+		}
+		method = checker.GetPropertyNameFromType(key)
+	} else {
+		return false
+	}
+	if method != "call" && method != "apply" {
+		return false
+	}
+	owner := ownerOf(signatureDeclaration(c, call))
+	if owner == nil || declarationName(owner) != method || !isLibFile(c, ast.GetSourceFileOfNode(owner)) ||
+		!isAdmittingTryValue(c, callee.Expression(), nil, map[*ast.Node]bool{}) {
+		return false
+	}
+	thunk := path[1:]
+	if method == "apply" {
+		array := ast.SkipParentheses(call.Arguments()[1])
+		if !ast.IsArrayLiteralExpression(array) || len(array.AsArrayLiteralExpression().Elements.Nodes) != 1 ||
+			len(thunk) == 0 || !thunk[0].element {
+			return false
+		}
+		thunk = thunk[1:]
+	}
+	return len(thunk) == 0 || len(thunk) == 1 && thunk[0].property == "try"
 }
 
 func isAdmittingTryValue(c *checker.Checker, expression *ast.Node, properties []string, seen map[*ast.Node]bool) bool {

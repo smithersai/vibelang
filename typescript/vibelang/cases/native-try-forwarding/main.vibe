@@ -1,0 +1,15 @@
+import { Effect as Original } from "effect"
+import { risky, later } from "./foreign.js"
+
+export function make(bad: boolean) {
+  return [
+    (Original.try<number>).call(undefined, () => risky("sync", bad)),
+    (Original.try<number>).apply(undefined, [() => risky("sync", bad)]),
+    Original.try.call(undefined, { try: () => risky("sync", bad), catch: (error: unknown) => error }),
+    Original.try.apply(undefined, [{ try: () => risky("sync", bad), catch: (error: unknown) => error }]),
+    (Original.tryPromise<number>).call(undefined, () => later("promise", bad)),
+    (Original.tryPromise<number>).apply(undefined, [() => later("promise", bad)]),
+    Original.tryPromise.call(undefined, { try: () => later("promise", bad), catch: (error: unknown) => error }),
+    Original.tryPromise.apply(undefined, [{ try: () => later("promise", bad), catch: (error: unknown) => error }])
+  ]
+}

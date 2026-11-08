@@ -1,0 +1,14 @@
+// expect: EK0401
+import { Effect as Original } from "effect"
+import { risky, later } from "./foreign.js"
+
+export const strictSync = (Original.sync<number>).call(undefined, () => risky("sync", false))
+export const strictPromise = (Original.promise<number>).apply(undefined, [() => later("promise", false)])
+export const catchMapper = Original.try.call(undefined, {
+  try: () => 1,
+  catch: (_error: unknown) => risky("sync", false)
+})
+export const nested = (Original.try<number>).apply(undefined, [() => (() => risky("sync", false))()])
+export const explicit = (Original.try<number>).call(undefined, () => { throw new RangeError() })
+const fake = { call(_this: undefined, thunk: () => number) { return thunk() } }
+export const unrelated = fake.call(undefined, () => risky("sync", false))

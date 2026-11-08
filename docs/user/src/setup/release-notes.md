@@ -25,6 +25,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration verification could accept an older successful compiler result after current setup receipts disappeared. Missing current evidence now remains unverified and requires fresh setup.
 
+- Calls known to throw inside genuine wrappers invoked through `call` or `apply` could report `EK0401`. Those forwarded thunks now keep the wrapper’s throw contract.
+
 - Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
 
 - Migration API checks could lose one referenced project's declarations when config paths shared an output name. Each project now keeps separate declarations and compiler logs, and ambiguous older snapshots require fresh setup.
