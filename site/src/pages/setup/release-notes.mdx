@@ -13,8 +13,27 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Optional Effect calls directly run with `try` skipped form advisories. They now report the advisory and retain optional chaining without an automatic rewrite.
+
+- A throwing default in an `effect` callback passed to `Effect.try` could escape the parameter checks. These defaults now report `EK0401`, and automatic repair keeps their evaluation time and defect value.
+
+- Renaming an imported scalar type could leave its schema uses unchanged. Reference search and rename now follow the written type binding in schema fields and aliases.
+
+- Directly run `Effect.provideService` calls with explicit type arguments missed the form advisory. They now report `EK4836` while keeping their written type contract and service scope.
+
+- Explicit type arguments and renamed imports could hide form advisories on directly run Effect catch calls. They now report `EK4835` and keep native calls when a rewrite would lose their written contract.
+
+- A callback with a written throw contract could still reject a throwing call when its parameter also accepted `undefined` or a non-function object. These callbacks now retain their written contract, including in tuple-rest parameters.
+
 - An unrelated object named `Effect` could hide a throwing call inside its `try` or `tryPromise` callback. Such callbacks now keep their declared throw contract and report `EK0401` when that contract admits no throws.
 
+- `vibelang --fix` could refuse a throwing call nested inside a caught Effect call, leaving `EK0403`. It now wraps the nested call while preserving the outer call and its `catch` handler.
+
+- A migration formatter example used an unsupported semicolon option and failed before formatting the file. It now uses `semicolons` with the pinned TypeScript plugin, and formatter failures retain their stage and explanation.
+
+- Unused private fixtures with computed imports could redirect unrelated native package exports to generated JavaScript. Migration now preserves those native paths while keeping reachable opaque imports on a shared emitted graph.
+
+- Class member decorators incorrectly rejected interruption blocks or claimed they captured an outer mask; the blocks now use the enclosing Effect context and mask.
 - A migration could mistake a returned record of Effect callbacks for a returned Effect and reject equivalent branches. Such callback records now keep their existing preservation rules.
 
 - A migrated function that always returned an Effect could gain a plain-value result when extra branches or local assignments hid the change. Verification now reports that loss even when the number of Effect-valued results stays the same.
