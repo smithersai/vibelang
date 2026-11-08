@@ -6124,9 +6124,15 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
 	if p.isStartOfVibeLangModuleExpression() {
 		return p.rejectVibeLangModule(4003, ModuleExpressionMessage)
 	}
-	// A parenthesized call may name a user's function with a block argument.
-	// Only the statement spelling here was previously invalid syntax.
-	if p.isStartOfVibeLangProvide() && !p.lookAhead((*Parser).nextTokenIsOpenParen) {
+	// Calls and slash operators can use an ordinary binding named provide.
+	// A regex provider wins at a statement start, not inside an expression.
+	if p.isStartOfVibeLangProvide() && !p.lookAhead(func(p *Parser) bool {
+		switch p.nextToken() {
+		case ast.KindOpenParenToken, ast.KindSlashToken, ast.KindSlashEqualsToken:
+			return true
+		}
+		return false
+	}) {
 		keyword := p.tokenRange()
 		p.parseVibeLangProvideStatement()
 		// Consume the whole invalid expression so the checker can explain the

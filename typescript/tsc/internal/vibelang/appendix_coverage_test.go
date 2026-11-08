@@ -27,7 +27,6 @@ func TestAppendixCodeRepairCoverage(t *testing.T) {
 
 // Appendix A: provide statement wins over division — spec-rule: docs/design/src/900-appendices.md#2d23b461ac301911
 func TestAppendixProvideStatementPlacementCoverage(t *testing.T) {
-	t.Skip("docs/design/src/900-appendices.md#2d23b461ac301911: return provide / a / {} is parsed as a retired provide expression (EK1017), instead of division (stock TS2363)")
 	source := "function f(provide: number, a: number) { provide / a / {} }"
 	program, file, _, _ := editorProgram(t, source)
 	found := false
