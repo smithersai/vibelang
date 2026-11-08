@@ -89,3 +89,42 @@ const MARK_NEVER = 1
     assert.ok(missed.length && missed.every((count) => count === 0), `an uncalled line counts none: ${missed}`)
   })
 }
+
+// A generated subject reference must not end a binding's source range at the
+// earlier match subject. Drive the real instrumenter/remapper through Vite.
+test("Istanbul coverage keeps match bindings inside their written arm", async (t) => {
+  const source = `export function settle(outcome: { _tag: "Answered"; text: string } | { _tag: "Failed"; reason: string }) {
+  const settled = match (outcome) {
+    when { _tag: "Answered", let text }: text;
+    when { _tag: "Failed", let reason }: reason;
+  }
+  return settled
+}
+`
+  const root = project(t, {
+    "src/main.vibe": source,
+    "vitest.config.ts": config({ include: ["test/*.test.mjs"], coverage: { enabled: true, provider: "istanbul", include: ["src/**"], reporter: ["json"] } }),
+    "test/passes.test.mjs": `import { expect, test } from "vitest"
+import { settle } from "../src/main.vibe"
+test("takes only the answered arm", () => {
+  expect(settle({ _tag: "Answered", text: "accepted" })).toBe("accepted")
+})
+`
+  })
+  const { code, output } = await run(process.execPath, [vitest, "run"], { cwd: root })
+  assert.equal(code, 0, output)
+  const coverage = JSON.parse(readFileSync(join(root, "coverage/coverage-final.json"), "utf8"))
+  const file = coverage[join(root, "src/main.vibe")]
+  assert.ok(file, "coverage names the original source")
+  for (const [name, expectedHit] of [["text", true], ["reason", false]]) {
+    const at = locate(source, `let ${name}`, "main.vibe")
+    const column = at.column + 4
+    const bindings = Object.entries(file.statementMap).filter(([, { start }]) => start.line === at.line && start.column === column)
+    assert.ok(bindings.length > 0, `${name} binding retains a statement`)
+    for (const [id, { start, end }] of bindings) {
+      assert.equal(end.line, start.line, `${name} binding ends on its arm`)
+      assert.ok(end.column >= start.column, `${name} range is ordered`)
+      assert.equal(file.s[id] > 0, expectedHit, `${name} binding reflects execution`)
+    }
+  }
+})

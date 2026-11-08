@@ -52,7 +52,7 @@ Rule names are stable. A test cites them.
 | `error` | `class E extends TaggedError("E")` | `E` maps to the name |
 | `data` | `const D = Data.taggedEnum()` | `D` maps to the name |
 | `a \|> f(%)` | nested calls | Operands map to where they are written |
-| `match` | an immediately invoked function or a block | Each arm's value maps to where it is written. The `$match` bindings have no written form |
+| `match` | an immediately invoked function or a block | Each arm's binding and value map to where they are written. Generated subject arguments of cached pattern reads have no source position; their checker anchors must not send an arm binding back to the subject |
 | `.vibex` JSX | elements, or `jsx` calls | Elements and names map to where they are written |
 | `module m { }` | its own file, `main.vibe.m.js` | Its map names the containing `.vibe` file |
 | `--fix` | a new `.vibe` text | No map survives a rewrite: the next compile writes it from the new text |

@@ -93,6 +93,22 @@ export effect function walk() {
     ["|count + 1", "|count + 1"],
     ["succeed)(|1", null, "skip"]
   ]],
+  "match binding reads": [`export function settle(outcome: { _tag: "Answered"; text: string } | { _tag: "Failed"; reason: string }) {
+  const settled = match (outcome) {
+    when { _tag: "Answered", let text }: text;
+    when { _tag: "Failed", let reason }: reason;
+  }
+  return settled
+}
+`, [
+    ["const $match1 = |outcome;", "match (|outcome)"],
+    ["let |text =", "let |text }"],
+    ["let |reason =", "let |reason }"],
+    ["get(|$match1, \"text\")", null],
+    ["get(|$match1, \"reason\")", null],
+    ["return |text;", "}: |text;"],
+    ["return |reason;", "}: |reason;"]
+  ]],
   "match": [`export function run(value: number): string {
   return match (value) { when 1: "one"; default: "other"; }
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/printer"
 )
 
 // A match without a default arm ends in $noMatch(subject) (match.go). When
@@ -129,7 +130,15 @@ func (tx *lowering) visitCachedPatternRead(node, cache *ast.Node) *ast.Node {
 		key = node.AsElementAccessExpression().ArgumentExpression
 	}
 	callee := f.NewPropertyAccessExpression(f.NewIdentifier(cache.Text()), nil, f.NewIdentifier(method), ast.NodeFlagsNone)
-	result := f.NewCallExpression(callee, nil, nil, f.NewNodeList([]*ast.Node{tx.visit(subject), tx.visit(key)}), ast.NodeFlagsNone)
+	read := tx.visit(subject)
+	if ast.IsIdentifier(subject) && subject.Flags&ast.NodeFlagsVibeLangTemporary != 0 {
+		// The parser anchors the generated subject at the match for checking.
+		// A later arm's cached read must not map back there: range consumers
+		// would end its binding before the binding begins. Only this generated
+		// cache argument is unmapped; the written subject and keys keep maps.
+		tx.EmitContext().AddEmitFlags(read, printer.EFNoSourcePosition|printer.EFNoTrailingSourceMap)
+	}
+	result := f.NewCallExpression(callee, nil, nil, f.NewNodeList([]*ast.Node{read, tx.visit(key)}), ast.NodeFlagsNone)
 	tx.EmitContext().SetOriginal(result, node)
 	result.Loc = node.Loc
 	return result
