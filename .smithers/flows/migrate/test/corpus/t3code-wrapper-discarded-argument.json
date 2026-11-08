@@ -1,0 +1,13 @@
+{
+  "property": "t3code-wrapper-passthrough-stage-discarded-argument",
+  "rule": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "input": {
+    "name": "p",
+    "kind": "assign",
+    "alias": false,
+    "depth": 1
+  },
+  "original": "const through = program => program; export const factory = () => Effect.succeed(1).pipe(program => through(program));",
+  "emitted": "const through = program => program; export const factory = () => ((p) => { p = 0; return through(p); })(Effect.succeed(1));",
+  "pattern": "An inline pipeline stage overwrites its Effect argument before returning a helper call."
+}

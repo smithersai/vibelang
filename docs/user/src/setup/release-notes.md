@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A migration could accept a function whose inline callback discarded its Effect argument. It now reports the lost wrapper while continuing to accept callbacks that return the original program.
+
 - A schema could reject a library type imported only as a type, or report a value-use error for a later value with the same name. It now checks the library codec selected by the type binding.
 
 - Calls through supplied `Performance` and `Crypto` values incorrectly reported platform-access errors. They now use the supplied receiver; host-global access remains diagnosed.

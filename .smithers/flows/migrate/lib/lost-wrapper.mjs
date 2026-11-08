@@ -240,12 +240,11 @@ function constantFunction(ts, name, from) {
 
 // The parameter a plain inline call returns directly, or through a proven
 // const identity function. Unknown callees and every other body stay opaque.
-function forwardedParameter(ts, fn) {
-  const returned = simpleReturn(ts, fn)
+function forwardedParameter(ts, fn, returned = simpleReturn(ts, fn)) {
   if (!returned) return undefined
   let value = unwrap(ts, returned)
   if (ts.isCallExpression(value) && !value.questionDotToken && ts.isIdentifier(unwrap(ts, value.expression))) {
-    const helper = constantFunction(ts, unwrap(ts, value.expression).text, fn)
+    const helper = constantFunction(ts, unwrap(ts, value.expression).text, value)
     const result = helper && unwrap(ts, simpleReturn(ts, helper))
     const index = result && ts.isIdentifier(result) ? helper.parameters.findIndex(p => p.name.text === result.text) : -1
     if (index < 0 || value.arguments.length !== helper.parameters.length || value.arguments.some(ts.isSpreadElement)) return undefined
@@ -274,25 +273,37 @@ function curriedOperator(ts, node, scope, bound) {
 }
 
 /**
- * The argument an inline call's result arm hands on, or undefined: the
- * compiler writes `program |> ((p) => through(p))(%)` as
- * `((p) => through(p))(program)`, and the original `program.pipe((p) =>
- * through(p))` shows that program in its arm. An arm that names a parameter
- * bound to an argument reading Effect reads that argument; an arm that
- * already reads Effect, runs a program or is a function keeps its own reading.
+ * A resolved result arm can forward a parameter through a const identity
+ * helper, including a local alias. Merely mentioning the parameter does not
+ * prove the result is that argument. Writes anywhere in the inline body
+ * prevent this proof, including writes captured by a nested callback.
  */
 function passedOperand(ts, arm, inline, call, bound) {
-  if (ts.isFunctionLike(arm) || readsEffect(ts, arm, bound) || runsProgram(ts, arm, bound)) return undefined
-  const named = new Set()
-  const visit = (node) => {
-    if (ts.isFunctionLike(node) || ts.isClassLike(node)) return
-    if (ts.isIdentifier(node)) named.add(node.text)
+  if (inline.parameters.some(p => !ts.isIdentifier(p.name) || p.initializer || p.dotDotDotToken) ||
+      call.arguments.length !== inline.parameters.length || call.arguments.some(ts.isSpreadElement) ||
+      ts.isFunctionLike(arm) || readsEffect(ts, arm, bound) || runsProgram(ts, arm, bound)) return undefined
+  const parameters = new Set(inline.parameters.map(p => p.name.text))
+  let changed = false
+  const writesParameter = node => {
+    if (ts.isIdentifier(node)) return parameters.has(node.text)
+    let found = false
+    ts.forEachChild(node, child => { if (writesParameter(child)) found = true })
+    return found
+  }
+  const visit = node => {
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment && writesParameter(node.left) ||
+        (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+        [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken].includes(node.operator) && writesParameter(node.operand))
+      changed = true
+    if ((ts.isForOfStatement(node) || ts.isForInStatement(node)) &&
+        !ts.isVariableDeclarationList(node.initializer) && writesParameter(node.initializer)) changed = true
     ts.forEachChild(node, visit)
   }
-  visit(arm)
-  const index = inline.parameters.findIndex((parameter, i) => ts.isIdentifier(parameter.name) && !parameter.dotDotDotToken &&
-    named.has(parameter.name.text) && call.arguments[i] && readsEffect(ts, call.arguments[i], bound))
-  return index < 0 ? undefined : call.arguments[index]
+  visit(inline.body)
+  if (changed) return undefined
+  const index = forwardedParameter(ts, inline, arm)
+  return index === undefined ? undefined : call.arguments[index]
 }
 
 /** A returned expression's arms: each result a `?:`, `??`, `||`, `&&`, an inline call, a local of `scope` or a local curried operator's application can hand back. */
