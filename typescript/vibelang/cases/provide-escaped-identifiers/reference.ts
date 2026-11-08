@@ -1,0 +1,7 @@
+export function division(pr\u006fvide: number, scale: number) {
+ return pr\u006fvide / scale / { value: 2 }.value
+}
+export function call(\u{70}rovide: (n: number) => number) {
+ return \u{70}rovide(3)
+}
+export const result = [division(8,2),call(n=>n+1)]

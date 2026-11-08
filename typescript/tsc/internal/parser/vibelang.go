@@ -708,6 +708,9 @@ func (p *Parser) scanVibeLangProvideArguments() bool {
 // recognize the flag. Only provide introduces a provider block.
 func (p *Parser) parseVibeLangProvideStatement() *ast.Node {
 	pos := p.nodePos()
+	if p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape() {
+		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
+	}
 	form := VibeSyntax{Kind: VibeSyntaxBlockStatement, Word: p.tokenRange()}
 	p.nextToken() // provide
 	var providers *ast.Node

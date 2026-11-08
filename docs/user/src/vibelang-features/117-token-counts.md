@@ -160,7 +160,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Requirements Management** | **13,000** |
 | [Managing Services](../requirements-management/025-services.md) | 6,400 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
-| [Managing Layers](../requirements-management/027-layers.md) | 3,800 |
+| [Managing Layers](../requirements-management/027-layers.md) | 3,900 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |
 | **Resource Management** | **4,800** |
 | [Introduction](../resource-management/029-introduction.md) | 2,100 |

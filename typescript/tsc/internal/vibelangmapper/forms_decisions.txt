@@ -7361,6 +7361,7 @@ typescript/vibelang/cases/provide-do-completion/main.vibe:2:108 lambda plain tab
 typescript/vibelang/cases/provide-do-completion/main.vibe:2:34 byname program table
 typescript/vibelang/cases/provide-do-completion/main.vibe:2:56 byname program table
 typescript/vibelang/cases/provide-do-completion/main.vibe:2:83 lambda effectFn table
+typescript/vibelang/cases/provide-escaped-identifiers/main.vibe:8:60 lambda effectFn annotation
 typescript/vibelang/cases/provide-generic-requirement/main.vibe:12:15 lambda effectFn keyword
 typescript/vibelang/cases/provide-generic-requirement/main.vibe:19:25 lambda effectFn keyword
 typescript/vibelang/cases/provide-generic-requirement/main.vibe:19:63 byname program annotation

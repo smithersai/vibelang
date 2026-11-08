@@ -1,0 +1,4 @@
+// expect: TS1260 TS1260 TS1260
+export effect function first() { \u0070rovide Layer.empty {} }
+export effect function middle() { pr\u006fvide Layer.empty {} }
+export effect function extended() { \u{70}rovide Layer.empty {} }
