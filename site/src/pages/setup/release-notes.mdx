@@ -13,6 +13,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- On Bun 1.3, loading a `.vibe` module that imports a sibling `.ts` or `.tsx` file could fail with `ENOENT` for a `file:` path or lose Unicode characters from the filename. These imports now load their source files, including when no emitted JavaScript file exists.
+
+- Explicit type arguments hid the form advisory on directly run `Effect.succeed` and `Effect.fail` calls. They now report `EK4834` and keep their written success or failure contract without an automatic rewrite.
+
+- Direct `try Effect.provide(...)` calls with explicit type arguments missed the form advisory. They now report `EK4836` and retain their written type contract without an automatic rewrite.
+
 - Spreading a service implementation could lose its methods and reject a valid replacement service. These spreads now preserve the service shape; missing methods and incompatible replacements still fail, and ordinary class prototype methods are still omitted.
 
 - A migration could accept a function whose inline callback discarded its Effect argument. It now reports the lost wrapper while continuing to accept callbacks that return the original program.

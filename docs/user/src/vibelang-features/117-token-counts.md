@@ -119,7 +119,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **26,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 22,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,600 |
-| **Format and lint** | **14,000** |
+| **Format and lint** | **15,000** |
 | [Format with dprint](../setup/formatting.md) | 3,600 |
 | [Developer tools](../setup/developer-tools.md) | 11,000 |
 | **Frameworks** | **11,000** |
