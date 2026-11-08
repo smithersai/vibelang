@@ -44,3 +44,7 @@ Bindings introduced by an `is` pattern in a `while`, `do…while` or `for` head 
 The `_` in a legacy `infer _` return annotation is an inference placeholder, so the server declines its rename. Ordinary generic parameters and conditional `infer` bindings remain renameable.
 
 Reference search and rename include imported scalar types in `schema` fields and aliases, including type-only and namespace imports. They follow the written type binding used to select the codec.
+
+For mapped library types in a schema, definition, type-definition and hover
+queries follow the written type binding, including a type-only import alias.
+An ordinary Schema value keeps its own definition and type information.

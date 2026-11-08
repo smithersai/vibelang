@@ -1,0 +1,4 @@
+go test fuzz v1
+string("URL")
+byte(1)
+byte(0)

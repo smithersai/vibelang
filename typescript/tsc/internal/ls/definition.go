@@ -62,6 +62,7 @@ func (l *LanguageService) provideDefinitionAtPosition(ctx context.Context, progr
 
 	c, done := program.GetTypeCheckerForFile(ctx, file)
 	defer done()
+	node = schemaSourceTypeLocation(c, node)
 
 	if node.Kind == ast.KindOverrideKeyword {
 		if sym := getSymbolForOverriddenMember(c, node); sym != nil {
@@ -142,6 +143,7 @@ func (l *LanguageService) provideTypeDefinitionAtPosition(ctx context.Context, p
 
 	c, done := program.GetTypeCheckerForFile(ctx, file)
 	defer done()
+	node = schemaSourceTypeLocation(c, node)
 
 	node = getDeclarationNameForKeyword(node)
 

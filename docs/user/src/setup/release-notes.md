@@ -18,6 +18,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Assignments to variables destructured from a constant loop initializer could pass checking when the loop also used a pattern binding. They now report the constant-assignment error, and the repair preserves the earlier mutable behavior.
 
+- Jumping to a definition or hovering over a library type in a schema could show the selected codec instead of the written type. These queries now follow the original type binding, including import aliases.
+
 - A migration could accept a setup compile with no recorded exit by borrowing the earlier compiler's result. Missing or invalid setup exits now remain unverified and block admission.
 - The migration's API identity check reported an unchanged generic export that uses `infer`, such as `<C>(c: C) => C extends (infer I)[] ? I : never`, as changed when another declaration in its file changed only from `ReadonlyArray<string>` to `readonly string[]`. Those spellings name one type, so the export is now identical; a real element or `readonly` change still differs.
 - Tuple-spread arguments hid form advisories on directly run Effect calls. They now report the advisory and keep argument iteration and evaluation unchanged without an automatic rewrite.

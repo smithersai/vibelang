@@ -49,7 +49,9 @@ func (l *LanguageService) ProvideHover(ctx context.Context, params *lsproto.Hove
 		}
 		c, done := program.GetTypeCheckerForFile(ctx, file)
 		rangeNode := getNodeForQuickInfo(node)
-		symbol := getSymbolAtLocationForQuickInfo(c, rangeNode)
+		// Symbol lookup uses the written type; value hooks keep the parsed expression.
+		sourceNode := schemaSourceTypeLocation(c, rangeNode)
+		symbol := getSymbolAtLocationForQuickInfo(c, sourceNode)
 
 		// Always create VerbosityContext for hover so that canExpandSymbol can signal
 		// canIncreaseVerbosity even at Level 0. The nodebuilder also detects expandable
@@ -64,7 +66,7 @@ func (l *LanguageService) ProvideHover(ctx context.Context, params *lsproto.Hove
 		}
 
 		vsCapability := caps.VSSupportsVisualStudioExtensions
-		quickInfo, documentation, vsDocumentation, quickInfoRuns := l.getQuickInfoAndDocumentationForSymbol(c, symbol, rangeNode, contentFormat, vc, vsCapability)
+		quickInfo, documentation, vsDocumentation, quickInfoRuns := l.getQuickInfoAndDocumentationForSymbol(c, symbol, sourceNode, contentFormat, vc, vsCapability)
 		// The hooks run first, so a hook can describe a keyword that has no symbol.
 		quickInfo, documentation = withQuickInfoHooks(c, rangeNode, quickInfo, documentation)
 		if quickInfo == "" {
