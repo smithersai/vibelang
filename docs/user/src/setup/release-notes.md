@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migration's API identity check reported a documented arrow, such as `/** Adds one. */ export const f = (n: number): number => n + 1`, as having lost its call signature's documentation when the other side held the declaration TypeScript emits for it. The comment is now compared on the binding, so the two are identical; a changed or removed comment still differs.
 
+- Effect calls through a literal member key, such as `Effect["succeed"](value)`, could miss the `try` advisory. They now report it while preserving the written lookup and argument evaluation.
+
 - A migration could accept a setup compile with no recorded exit by borrowing the earlier compiler's result. Missing or invalid setup exits now remain unverified and block admission.
 - The migration's API identity check reported an unchanged generic export that uses `infer`, such as `<C>(c: C) => C extends (infer I)[] ? I : never`, as changed when another declaration in its file changed only from `ReadonlyArray<string>` to `readonly string[]`. Those spellings name one type, so the export is now identical; a real element or `readonly` change still differs.
 - Tuple-spread arguments hid form advisories on directly run Effect calls. They now report the advisory and keep argument iteration and evaluation unchanged without an automatic rewrite.

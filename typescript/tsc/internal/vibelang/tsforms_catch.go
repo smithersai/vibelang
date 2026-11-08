@@ -110,10 +110,10 @@ func catchCombinatorName(c *checker.Checker, call *ast.Node) string {
 	if spread && (operator != call || !isEffectType(c, effectOperandType(c, call))) {
 		return ""
 	}
-	if !isEffectFunction(c, operator.Expression(), "Effect", "catchTag", "catchTags", "catch", "catch_") {
+	name := directEffectFormName(c, operator.Expression(), "catchTag", "catchTags", "catch", "catch_")
+	if name == "" || operator != call && ast.IsElementAccessExpression(operator.Expression()) {
 		return ""
 	}
-	_, name := effectMember(c, operator.Expression())
 	// The catch export aliases its reserved-word-safe declaration.
 	if name == "catch_" {
 		name = "catch"
@@ -194,6 +194,9 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	if name == "" {
 		return nil
 	}
+	if ast.IsElementAccessExpression(call.Expression()) {
+		return &formRewrite{why: computedCallFormNote}
+	}
 	if hasSpreadFormArguments(call) {
 		return &formRewrite{message: catchSpreadCallForm, why: spreadCallFormNote}
 	}
@@ -213,7 +216,7 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 // a catch combinator, under the try that runs it, or nil.
 func catchStageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *formRewrite {
 	call := pipe.AsBinaryExpression().Right
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || hasSpreadFormArguments(call) || catchProgramPipe(call) != pipe {
+	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || hasSpreadFormArguments(call) || ast.IsElementAccessExpression(call.Expression()) || catchProgramPipe(call) != pipe {
 		return nil
 	}
 	name := catchCombinatorName(c, call)

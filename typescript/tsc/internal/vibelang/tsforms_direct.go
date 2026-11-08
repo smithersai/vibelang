@@ -58,13 +58,13 @@ func directFormCall(c *checker.Checker, call *ast.Node) string {
 	if !ast.IsCallExpression(call) || !hasSpreadFormArguments(call) && len(call.Arguments()) != 1 {
 		return ""
 	}
-	if !isEffectFunction(c, call.Expression(), "Effect", "succeed", "fail") || !inLowerableBody(call) || inHatch(call) || directTryFormSite(call) == nil {
+	name := directEffectFormName(c, call.Expression(), "succeed", "fail")
+	if name == "" || !inLowerableBody(call) || inHatch(call) || directTryFormSite(call) == nil {
 		return ""
 	}
 	if hasSpreadFormArguments(call) && !isEffectType(c, effectOperandType(c, call)) {
 		return ""
 	}
-	_, name := effectMember(c, call.Expression())
 	return name
 }
 
@@ -140,6 +140,9 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	name := directFormCall(c, call)
 	if name == "" {
 		return nil
+	}
+	if ast.IsElementAccessExpression(call.Expression()) {
+		return &formRewrite{why: computedCallFormNote}
 	}
 	if hasSpreadFormArguments(call) {
 		return &formRewrite{message: directSpreadCallForm, why: spreadCallFormNote}

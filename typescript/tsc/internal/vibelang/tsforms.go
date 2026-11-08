@@ -654,6 +654,47 @@ func isEffectFunction(c *checker.Checker, callee *ast.Node, module string, names
 	return m == module && slices.Contains(names, name)
 }
 
+// directEffectFormName resolves the native Effect export used by a teaching
+// advisory. A computed key must select one property of the actual module;
+// a structurally compatible local receiver is not the module binding.
+func directEffectFormName(c *checker.Checker, callee *ast.Node, names ...string) string {
+	if !ast.IsElementAccessExpression(callee) {
+		if ast.IsPropertyAccessExpression(callee) && ast.IsIdentifier(callee.Name()) && !slices.Contains(names, callee.Name().Text()) {
+			return ""
+		}
+		module, name := effectMember(c, callee)
+		if module == "Effect" && slices.Contains(names, name) {
+			return name
+		}
+		return ""
+	}
+	if effectModuleOf(c, ast.SkipParentheses(callee.Expression())) != "Effect" {
+		return ""
+	}
+	argument := callee.AsElementAccessExpression().ArgumentExpression
+	if argument == nil || ast.NodeIsMissing(argument) {
+		return ""
+	}
+	key := c.GetTypeAtLocation(argument)
+	if key == nil || !key.IsStringLiteral() {
+		return ""
+	}
+	name := key.AsLiteralType().Value().(string)
+	if !slices.Contains(names, name) {
+		return ""
+	}
+	symbol := c.GetPropertyOfType(c.GetTypeAtLocation(callee.Expression()), name)
+	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		symbol = c.GetAliasedSymbol(symbol)
+	}
+	if symbol == nil || len(symbol.Declarations()) == 0 || effectModuleOfFile(ast.GetSourceFileOfNode(symbol.Declarations()[0])) != "Effect" {
+		return ""
+	}
+	return name
+}
+
+const computedCallFormNote = "No quick fix: keep the native call to preserve computed member lookup and argument evaluation."
+
 // tryText returns text, the source of node, an Effect, run with try.
 func tryText(node *ast.Node, text string) string {
 	if isTry(node) || needsOperandParentheses(node) {

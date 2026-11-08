@@ -61,10 +61,10 @@ func blockFormOf(c *checker.Checker, call *ast.Node) string {
 		return ""
 	}
 	spread := hasSpreadFormArguments(call)
-	if !isEffectFunction(c, call.Expression(), "Effect", "withSpan", "provide", "provideService") {
+	name := directEffectFormName(c, call.Expression(), "withSpan", "provide", "provideService")
+	if name == "" {
 		return ""
 	}
-	_, name := effectMember(c, call.Expression())
 	if (ast.IsOptionalChain(call) || spread) && name == "withSpan" {
 		return ""
 	}
@@ -121,6 +121,9 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 	name := blockFormOf(c, call)
 	if name == "" {
 		return nil
+	}
+	if ast.IsElementAccessExpression(call.Expression()) {
+		return &formRewrite{why: computedCallFormNote}
 	}
 	if hasSpreadFormArguments(call) {
 		return &formRewrite{message: blockSpreadCallForm, why: spreadCallFormNote}

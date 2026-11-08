@@ -194,6 +194,8 @@ For `EK4834`, `EK4835` and the `provide` calls in `EK4836`, only the direct oper
 
 These direct-call advisories also recognize optional calls such as `try Effect.succeed?.(value)`. The native call stays intact, preserving optional chaining and conditional argument evaluation without an automatic rewrite. Tuple spreads such as `try Effect.succeed(...args)` also retain their advisory and native call, preserving spread iteration and argument evaluation.
 
+Calls through a single literal member key, such as `try Effect["succeed"](value)` or `try Effect[key](value)` with `key` typed as `"succeed"`, receive the same advisory as the dotted call. Their automatic fix is withheld to preserve computed member lookup and argument evaluation. A local receiver that shadows `Effect` keeps its own meaning.
+
 | Code | TypeScript style | VibeLang form | Quick fix |
 | --- | --- | --- | --- |
 | EK4830 | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` | `error NotFound { id: string }` | When the tag is the class name and the base is `Data.TaggedError`; a different tag keeps the warning without one. A class extending untagged `Data.Error` draws no EK4830: keep its library form |
