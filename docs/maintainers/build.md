@@ -949,7 +949,11 @@ Direct harness runs require `VIBELANG_RUNTIME` to name an absolute directory con
 The release check runs `typescript/vibelang/harness.test.mjs`, including a
 barrier-controlled regression that executes both targets' actual shell commands
 concurrently. The aggregate starts after the per-case compiler emits and before
-its runner loads the result, so shared output directories fail deterministically.
+its runner loads the result, so shared output directories fail deterministically. The
+report-path and option-order property fixes its fixture's reported CPU capacity
+so host affinity changes do not fail this functional check. Production timing
+comparisons still reject mismatched environments; see the
+[performance report guide](compiler-case-performance.md).
 
 The harness sets `VIBELANG_BINARY` to the absolute compiler executable it used when launching every custom runner, including an isolated case. A runner's nested compiler calls therefore check the same build as the case.
 

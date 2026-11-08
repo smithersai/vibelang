@@ -779,6 +779,10 @@ test("generated report paths and option orders preserve case selection and round
   fs.writeFileSync(runtime, JSON.stringify(manifest))
   fs.writeFileSync(compiler, '#!/usr/bin/env node\nimport fs from "node:fs"\nfs.mkdirSync("out", { recursive: true })\nfs.writeFileSync("out/main.js", \'console.log("expected")\')\n')
   const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  // This checks arguments and serialization with a fixture compiler, not
+  // performance. Shared hosts can change CPU affinity between invocations.
+  const reportEnvironment = path.join(root, "report-environment.mjs")
+  fs.writeFileSync(reportEnvironment, 'import os from "node:os"\nos.availableParallelism = () => 4\n')
   const receipts = []
   fc.assert(fc.property(
     fc.record({
@@ -792,9 +796,10 @@ test("generated report paths and option orders preserve case selection and round
       const reportArgs = ["--report", output]
       const caseArgs = ["--isolated", "--jobs", "1", ...(status ? ["--status"] : []), ...(verbose ? ["-v"] : []), "runtime"]
       const args = first ? [...reportArgs, ...caseArgs] : [...caseArgs, ...reportArgs]
-      const result = spawnSync(process.execPath, [harness, ...args], { env, encoding: "utf8", timeout: 10_000 })
+      const result = spawnSync(process.execPath, ["--import", reportEnvironment, harness, ...args], { env, encoding: "utf8", timeout: 10_000 })
       assert.equal(result.status, 0, result.stdout + result.stderr)
       const receipt = JSON.parse(fs.readFileSync(output, "utf8"))
+      assert.equal(receipt.system.availableParallelism, 4)
       assert.deepEqual(receipt.selected, ["runtime"])
       assert.deepEqual(receipt.cases.map(c => c.name), ["runtime"])
       assert.equal(receipt.cases[0].status, "ok")

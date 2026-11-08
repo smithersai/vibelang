@@ -64,20 +64,29 @@ function measure(report) {
   return { samples, environment, phases: [...samples.keys()].sort() }
 }
 
+// Compare the validated, canonical metadata only. Field names explain a
+// rejection without echoing potentially large or private metadata values.
+function requireSameEnvironment(before, after, message) {
+  const changed = Object.keys(before).flatMap(key => key === "system"
+    ? Object.keys(before.system).filter(field => before.system[field] !== after.system[field]).map(field => "system." + field)
+    : before[key] !== after[key] ? [key] : [])
+  requireEvidence(changed.length === 0, message + " (" + changed.join(", ") + ")")
+}
+
 function summarize(reports, label) {
   requireEvidence(Array.isArray(reports) && reports.length >= 3, label + ": at least 3 trials required")
   let first
   const samples = new Map()
   const invocations = new Set()
   const compilerSha256 = reports[0]?.compiler?.sha256
-  for (const report of reports) {
+  for (const [index, report] of reports.entries()) {
     let measured
     try { measured = measure(report) } catch (error) { throw new Error(label + ": " + error.message) }
     requireEvidence(!invocations.has(report.startedAt), label + ": duplicate trial start time")
     invocations.add(report.startedAt)
     requireEvidence(report.compiler.sha256 === compilerSha256, label + ": mixed compiler builds")
     first ??= measured
-    requireEvidence(JSON.stringify(measured.environment) === JSON.stringify(first.environment), label + ": mixed environment")
+    requireSameEnvironment(first.environment, measured.environment, label + ": mixed environment at trial " + (index + 1))
     requireEvidence(JSON.stringify(measured.phases) === JSON.stringify(first.phases), label + ": case/command phases differ")
     for (const [key, value] of measured.samples) {
       if (!samples.has(key)) samples.set(key, [])
@@ -90,7 +99,7 @@ function summarize(reports, label) {
 export function compareTrials(baselineReports, currentReports) {
   const baseline = summarize(baselineReports, "baseline")
   const current = summarize(currentReports, "current")
-  requireEvidence(JSON.stringify(baseline.environment) === JSON.stringify(current.environment), "baseline/current environment differs")
+  requireSameEnvironment(baseline.environment, current.environment, "baseline/current environment differs")
   requireEvidence(JSON.stringify(baseline.phases) === JSON.stringify(current.phases), "baseline/current case/command phases differ")
   const rows = baseline.phases.map(key => {
     const [name, phase] = JSON.parse(key)

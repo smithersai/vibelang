@@ -295,3 +295,71 @@ test("bad input archives still retain an invalid-evidence receipt outside the tr
     assert.equal(report.currentPath, f.current)
   }
 })
+
+
+const environmentMutations = [
+  ["node", r => { r.node = "v24.0.0" }],
+  ["effectVersion", r => { r.effectVersion = "4.2.0" }],
+  ["runtimeVersion", r => { r.runtimeVersion = "0.0.12" }],
+  ["isolated", r => { r.isolated = false }],
+  ["lateStart", r => { r.lateStart = true }],
+  ...["platform", "arch", "release", "cpu"].map(key =>
+    ["system." + key, r => { r.system[key] = "different-value" }]),
+  ["system.availableParallelism", r => { r.system.availableParallelism = 2 }],
+]
+
+test("mixed timing environments identify the group, trial and changed fields", async () => {
+  const { compareTrials } = await load()
+  for (const group of ["baseline", "current"]) {
+    for (const [field, mutate] of environmentMutations) {
+      for (const index of [0, 1, 2]) {
+        const baseline = trials()
+        const current = trials()
+        mutate((group === "baseline" ? baseline : current)[index])
+        const trialNumber = index === 0 ? 2 : index + 1
+        assert.throws(() => compareTrials(baseline, current), error =>
+          error.message === group + ": mixed environment at trial " + trialNumber + " (" + field + ")")
+      }
+    }
+  }
+})
+
+test("cross-build timing environments identify every changed field", async () => {
+  const { compareTrials } = await load()
+  for (const [field, mutate] of environmentMutations) {
+    const current = trials()
+    current.forEach(mutate)
+    assert.throws(() => compareTrials(trials(), current), error =>
+      error.message === "baseline/current environment differs (" + field + ")")
+  }
+  const current = trials()
+  current.forEach(r => {
+    r.node = "v24.0.0"
+    r.system.cpu = "different-value"
+    r.system.availableParallelism = 2
+  })
+  assert.throws(() => compareTrials(trials(), current), error =>
+    error.message === "baseline/current environment differs (node, system.cpu, system.availableParallelism)")
+})
+
+test("timing CLI retains bounded mismatch context without echoing metadata values", t => {
+  const { baseline, current, out, invoke } = fixture(t)
+  const file = path.join(current, "1.json")
+  const report = JSON.parse(fs.readFileSync(file, "utf8"))
+  report.system.cpu = "synthetic-private-metadata-" + "x".repeat(200_000)
+  report.system.availableParallelism = 2
+  fs.writeFileSync(file, JSON.stringify(report))
+  const before = fs.readFileSync(file)
+  const result = invoke()
+  assert.equal(result.status, 2, result.stdout + result.stderr)
+  const expected = "current: mixed environment at trial 2 (system.cpu, system.availableParallelism)"
+  assert.ok(result.stderr.includes(expected), result.stderr)
+  assert.ok(result.stderr.length < 512, "a mismatch must not echo metadata values")
+  assert.doesNotMatch(result.stderr, /synthetic-private-metadata/)
+  const invalid = JSON.parse(fs.readFileSync(out, "utf8"))
+  assert.equal(invalid.valid, false)
+  assert.equal(invalid.error, expected)
+  assert.equal(invalid.rows, undefined)
+  assert.deepEqual(fs.readFileSync(file), before)
+  assert.equal(fs.readdirSync(baseline).length, 3)
+})
