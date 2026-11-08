@@ -1517,10 +1517,14 @@ function hostOperations(source, statements, platform, ts, taken, file) {
 // call resolves to (VIP-33; vibelang's clockReads): a helper with the host
 // method's type would still resolve there, so those reads get a function of
 // their own signature instead.
+// The forwarding arrow is asserted to the callee's type because an arrow
+// cannot carry the host function's overloads and properties. A repository
+// whose lint requires every type assertion to state its invariant reads the
+// comment before the statement, so the helper states why it is sound.
 function callHelper(h, chain, path) {
   const member = path.at(-1), owner = path.at(-2)
   const clock = path.length >= 2 && (owner === "crypto" && ["randomUUID", "getRandomValues"].includes(member) || owner === "performance" && member === "now")
-  if (!clock) return `export const ${h}: typeof ${chain} = ((...args: Parameters<typeof ${chain}>) => ${chain}(...args)) as typeof ${chain}`
+  if (!clock) return `// SAFETY: forwards every call to ${chain} unchanged, so the helper has ${chain}'s own type; its overloads and properties resolve as they did.\nexport const ${h}: typeof ${chain} = ((...args: Parameters<typeof ${chain}>) => ${chain}(...args)) as typeof ${chain}`
   // getRandomValues returns the array it fills, typed as the array passed.
   if (member === "getRandomValues") return `export function ${h}<T extends Parameters<typeof ${chain}>[0]>(array: T): T { return ${chain}(array) }`
   return `export function ${h}(...args: Parameters<typeof ${chain}>): ReturnType<typeof ${chain}> { return ${chain}(...args) }`
