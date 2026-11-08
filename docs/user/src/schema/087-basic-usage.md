@@ -282,6 +282,8 @@ Schema aliases use the same mappings inside functions and namespaces. An unsuppo
 
 These mappings compose: `ReadonlyArray<ReadonlyMap<string, number>>` maps to `Schema.Array(Schema.ReadonlyMap(Schema.String, Schema.Number))`, and `ReadonlySet<Record<K, V>>` maps to `Schema.ReadonlySet` of the `Record`'s Schema. `Readonly<T>` maps only a `Record`, so `Readonly<ReadonlyMap<K, V>>` reports `EK2109`; write `ReadonlyMap<K, V>`. A `ReadonlyMap` key is any schema, so `ReadonlyMap<Date, number>` maps to `Schema.ReadonlyMap(Schema.Date, Schema.Number)`; a `Record` key must satisfy Effect's `Schema.Record.Key`, so `Record<Date, number>` reports `TS2345`, as its Effect TypeScript twin does.
 
+Hover and definition queries for mapped generic types use the written TypeScript binding, including type-only imports. The same queries work in schema aliases, functions and namespaces.
+
 Older compiler versions lowered unsupported keyword types in function-local or namespace `schema` aliases to `Schema.Unknown`. These aliases now report `EK2109`. Their first quick fix, also used by `vibelang --fix`, writes `Schema.Unknown` to preserve the codec and decoded type. The keyword’s explicit schema remains a separate editor action; module-level aliases and struct fields keep their existing suggestions.
 
 Tuple-rest generic names use the same type-binding lookup as other schema generics. A local type named `Array` or `ReadonlyArray` does not select a library mapping. For a previously accepted shadowed spelling, `vibelang --fix` writes the explicit tuple codec to preserve its decoder.

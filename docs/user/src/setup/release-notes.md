@@ -27,6 +27,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Calls known to throw inside genuine wrappers invoked through `call` or `apply` could report `EK0401`. Those forwarded thunks now keep the wrapper’s throw contract.
 
+- Hovering over a generic schema type, such as `Array<number>`, could fail in the language server. It now shows the written type’s information, including in schema aliases and nested declarations.
+
 - Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
 
 - Migration API checks could lose one referenced project's declarations when config paths shared an output name. Each project now keeps separate declarations and compiler logs, and ambiguous older snapshots require fresh setup.

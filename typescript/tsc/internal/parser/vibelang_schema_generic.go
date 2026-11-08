@@ -50,9 +50,12 @@ func (p *Parser) attachVibeLangSchemaGenericScopes(file *ast.SourceFile) {
 		if scope == nil {
 			continue
 		} // a discarded speculative parse
-		ref.Name.Parent.Parent = scope
+		// Retained type names need the visible statement's parent chain as well
+		// as its lexical scope. Type-flow queries stop at a statement; attaching
+		// directly to a SourceFile otherwise walks past the root.
+		ref.Name.Parent.Parent = ref.Expression
 		if ref.InnerName != nil {
-			ref.InnerName.Parent.Parent = scope
+			ref.InnerName.Parent.Parent = ref.Expression
 		}
 		if ref.ReadonlyRecord != nil && ref.ReadonlyRecord != ref.Expression {
 			ref.ReadonlyRecord.Parent = scope
