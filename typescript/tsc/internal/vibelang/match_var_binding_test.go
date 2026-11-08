@@ -101,7 +101,9 @@ func TestMatchVarBindingFixProject(t *testing.T) {
 }
 
 func TestMatchVarBindingFixPreservesOrdinaryVarScope(t *testing.T) {
-	source := "export function f(): number { var value=7; return value }"
+	// Read outside its block, this var needs its function scope; a var that
+	// block scoping cannot change gets let or const (legacy_var_fix.go).
+	source := "export function f(c: boolean): number { if (c) { var value=7 } else { value=1 } return value }"
 	program, file, _, _ := editorProgram(t, source)
 	result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), FixOptions{})
 	fixed := result.Files[file.FileName()]

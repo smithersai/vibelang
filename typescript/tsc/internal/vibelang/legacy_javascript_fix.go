@@ -17,18 +17,24 @@ func init() {
 	})
 }
 
-// VIP-40 gives a closed native module its TypeScript semantics. Keep the entire
-// lexical scope together: replacing var or extracting a direct eval alone can
-// change hoisting, captured cells and the names visible to evaluated code.
+// A var whose block scoping cannot change what runs gets let or const first
+// (blockScopedVarAction). Otherwise VIP-40 gives a closed native module its
+// TypeScript semantics. Keep the entire lexical scope together: replacing var
+// or extracting a direct eval alone can change hoisting, captured cells and
+// the names visible to evaluated code.
 func legacyJavaScriptActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+	var actions []*ls.CodeAction
+	if action := blockScopedVarAction(ctx, fix); action != nil {
+		actions = append(actions, action)
+	}
 	file := fix.SourceFile
 	_, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: file.FileName(), PathKey: file.PathKey()}, file.Text())
 	if len(forms) != 0 || strings.HasPrefix(file.Text(), "#!") {
-		return nil, nil
+		return actions, nil
 	}
 	native := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "legacy.ts", PathKey: "legacy.ts"}, file.Text(), core.ScriptKindTS)
 	if len(native.Diagnostics()) != 0 {
-		return nil, nil
+		return actions, nil
 	}
 	c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
 	defer done()
@@ -109,7 +115,7 @@ func legacyJavaScriptActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls
 	}
 	file.AsNode().ForEachChild(visit)
 	if !safe {
-		return nil, nil
+		return actions, nil
 	}
 	if emptyWith != nil {
 		// There are no property reads or observable object construction here.
@@ -121,5 +127,5 @@ func legacyJavaScriptActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls
 	if hasDefault {
 		text += "export { default } from " + name + "\n"
 	}
-	return []*ls.CodeAction{{Description: "Write a TypeScript module for legacy JavaScript", Changes: replaceRange(fix, 0, len(file.Text()), text)}}, nil
+	return append(actions, &ls.CodeAction{Description: "Write a TypeScript module for legacy JavaScript", Changes: replaceRange(fix, 0, len(file.Text()), text)}), nil
 }
