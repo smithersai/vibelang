@@ -1,3 +1,0 @@
-go test fuzz v1
-string("computed-duplicate-unique-symbol-compatible")
-byte(0)

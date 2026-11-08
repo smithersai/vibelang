@@ -2493,3 +2493,5 @@ Compiler fixtures that emit relative source-extension imports set
 archive that exercises such imports carries its own `tsconfig.json`, so the
 original project and the project after a quick fix use the same extension
 policy. Keep static and dynamic imports of both `.vibe` and `.vibex` covered.
+
+Changes to the checker or computed-member regressions select `//scripts/fuzz-gate:computed-members`, which compares literal computed duplicate diagnostics and alias controls with the pinned TypeScript compiler.

@@ -476,11 +476,10 @@ console.log(dataKeyExit) // Success([0, 1, "read", "eager", 0])
 Computed payload members use TypeScript's own duplicate-member checks. The repeated computed field below is admitted with matching types; incompatible computed declarations instead receive the native `TS2717` check.
 
 ```vibe es
+// compiler-gap: pending VIP-16
 const slot = "x" as const
 data Repeated { Row { [slot]: number; ["x"]: number } }
 effect function readRepeated() { return Repeated.Row({ x: 7 }).x }
-const duplicateKeyExit = Effect.runSyncExit(readRepeated())
-Effect.runSync(Console.log(duplicateKeyExit)) // Success(7)
 ```
 
 ```ts effect

@@ -25,6 +25,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A migration could overwrite one package's saved declarations with another package's and then compare the wrong API. Each package now keeps separate declaration snapshots; ambiguous older snapshots require a fresh setup.
 
+- Repeated computed property declarations could escape duplicate-member errors. They now receive the same diagnostics as TypeScript.
+
 
 - A `catch` whose head was a parenthesized `try` of a block or pipeline that only fails, such as `(try effect { … return throw new Pending() }) catch h`, or whose head's value was `any`, stopped recovering the head's failures after head evaluation moved before the catch, and `vibelang --fix` left it unchanged with only an `EK9204` warning. `--fix` now removes that `try`, or wraps another such head in an `effect` block, so the handler receives those failures again; a head whose value is an Effect keeps its `try`.
 
@@ -168,8 +170,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A child config that set `vibelang.diagnostics` to `null` to clear an inherited legacy severity map was rejected with TS5024. An explicit `null`, like `{}`, now replaces the inherited map with no entries.
 
 - The proposal overview displayed internal review metadata. It now states the retirement rule without those details.
-
-- Repeated computed property declarations with matching types could be rejected as duplicate identifiers. They now follow TypeScript, while incompatible property types remain errors.
 
 - A `break` or `continue` leaving a `do` expression in a `for` loop's test or update, or in a `do…while` test, reported both `EK0205` and the compiler-gap code `EK0204`. It now reports `EK0205` alone.
 

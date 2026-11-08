@@ -1,3 +1,0 @@
-go test fuzz v1
-string("computed-duplicate-literal-literal-compatible")
-byte(0)

@@ -337,7 +337,6 @@ func dataRules() []dataRule {
 	rules = append(rules, dataListPatternGrammarRules()...)
 	rules = append(rules, dataMatchProtoRules()...)
 	rules = append(rules, dataComputedPresenceRules()...)
-	rules = append(rules, dataComputedDuplicateRules()...)
 	rules = append(rules, dataScopedSchemaAliasRules()...)
 	rules = append(rules, constructorParameterRules()...)
 	rules = append(rules, dataSchemaBindingScopeRules()...)

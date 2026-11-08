@@ -34,5 +34,6 @@
   "concurrent-heads": {
     "paths": ["^typescript/tsc/internal/parser/vibelang_(fibers|do|concurrent_returns)\\.go$", "^typescript/tsc/internal/parser/parser\\.go$", "^typescript/tsc/internal/vibelang/(fibers|do_head|fix_concurrent_head|fix_do_concurrent|concurrent_limit_comma_fix|checker|lower)\\.go$", "^typescript/tsc/internal/vibelangfuzz/concurrent_(rhs|head_do_return|used_label|duplicate_label)_fuzz_test\\.go$", "^typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzConcurrent(RHSBindings|HeadContinues|HeadDoReturn|UsedLabel|DuplicateLabel)/", "^typescript/vibelang/cases/concurrent-(head-environment[^/]*|source-block-labels|self-continue|do-continue|continue-outer\\.fail|used-labels|duplicate-label\\.fail)/"],
     "tests": ["TestConcurrentRHSBindingsQuoted", "TestConcurrentUsedLabelQuoted", "TestConcurrentDuplicateLabelQuoted", "FuzzConcurrentRHSBindings", "FuzzConcurrentHeadContinues", "FuzzConcurrentUsedLabel", "FuzzConcurrentDuplicateLabel", "TestConcurrentHeadDoReturnQuoted", "FuzzConcurrentHeadDoReturn"]
-  }
+  },
+  "computed-members": {"paths": ["^typescript/tsc/internal/checker/checker\\.go$", "^typescript/tsc/internal/vibelangfuzz/(computed_literal_duplicate_parity|data_computed_duplicate_rules)_test\\.go$"], "tests": ["TestComputedLiteralDuplicateParity"]}
 }

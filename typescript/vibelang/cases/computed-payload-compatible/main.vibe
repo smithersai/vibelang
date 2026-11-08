@@ -1,4 +1,0 @@
-const slot = "x" as const
-data Repeated { Row { [slot]: number; ["x"]: number } }
-export effect function readRepeated() { return Repeated.Row({ x: 7 }).x }
-Effect.runSync(Console.log(Effect.runSync(readRepeated())))

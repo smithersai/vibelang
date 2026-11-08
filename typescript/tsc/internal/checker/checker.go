@@ -3307,11 +3307,6 @@ func (c *Checker) checkObjectTypeForDuplicateDeclarations(node *ast.Node, checkP
 				}
 			}
 		} else {
-			// Computed signatures merge under TypeScript type-consistency checks;
-			// duplicate-name grammar checks concern direct property names.
-			if ast.IsPropertySignatureDeclaration(member) && ast.IsComputedPropertyName(member.Name()) {
-				continue
-			}
 			symbol := c.getSymbolOfDeclaration(member)
 			isStatic := ast.HasStaticModifier(member)
 			// In non-ambient contexts, check that static members are not named 'prototype'.
@@ -3345,9 +3340,6 @@ func (c *Checker) checkObjectTypeForDuplicateDeclarations(node *ast.Node, checkP
 
 func (c *Checker) reportDuplicateMemberErrors(node *ast.Node, name string, checkStatic bool, isStatic bool, message *diagnostics.Message) {
 	for _, member := range node.Members() {
-		if ast.IsPropertySignatureDeclaration(member) && ast.IsComputedPropertyName(member.Name()) {
-			continue
-		}
 		if ast.IsConstructorDeclaration(member) {
 			for _, param := range member.Parameters() {
 				if ast.IsParameterPropertyDeclaration(param, member) && !ast.IsBindingPattern(param.Name()) {

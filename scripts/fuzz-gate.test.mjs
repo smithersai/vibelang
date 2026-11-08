@@ -259,3 +259,9 @@ for (const version of ["fixture", "7.0.2"]) {
     assert.throws(() => f.args(), { code: "ENOENT" }, "a refused prerequisite must stop graph dispatch")
   })
 }
+
+
+test("computed checker paths select the pinned TypeScript comparison", () => {
+  assert.deepEqual(select(["typescript/tsc/internal/checker/checker.go"]), ["//scripts/fuzz-gate:computed-members"])
+  assert.deepEqual(select(["typescript/tsc/internal/checker/checker.go.backup"]), [])
+})
