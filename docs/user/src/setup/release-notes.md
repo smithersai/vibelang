@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- An `effect` function whose written return type was a union of different Effect types, such as `effect function f(): Effect.Effect<number> | Effect.Effect<string, Refused>`, compiled and declared that union, although an `effect` function returns one Effect, as an `async` function returns one `Promise` (TypeScript reports `TS1064` for a union of Promises). It now reports `EK0106`, and its quick fix and `vibelang --fix` write the one Effect of the joined channels, here `(string | number)!Refused`.
+
 - A `schema` field typed `ReadonlyMap<K, V>` with a `Date`, collection, tuple or struct key reported `TS2345` against `Schema.Record`'s key constraint. The checker now checks the selected `Schema.ReadonlyMap` call, so any key schema is admitted.
 
 - Nested collection types in `schema` fields could report `EK2109` even when each part was supported. They now compose their Schema mappings recursively.
@@ -771,6 +773,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 | Before | After and repair |
 | --- | --- |
 | `import "vibelang/platform/node"`, `bun` or `browser` | `EK2601`, and no implicit startup: run `vibelang --fix`, then write the `runMain` call it names, such as `NodeRuntime.runMain(main())`, in the file that starts your program. |
+| An `effect` function whose written return type is a union of different Effect types, such as `(number!!) \| (string!Refused)` | `EK0106`: run `vibelang --fix` to write the one Effect of the joined channels, `(string \| number)!Refused`. |
 | Implicit service keys in a package with `"name": ""` | Keys now begin with `/`. Run `vibelang --fix --fix-legacy-service-keys` on existing source to retain its earlier directory-prefixed keys explicitly. |
 | `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it, or `vibelang --fix` to retain the unrun Effect and native suspension. |
 | An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |

@@ -7,8 +7,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
 // FuzzVIP3AnnotationTwin enforces Chapter 1, Meaning: "An effect function's
@@ -16,13 +19,17 @@ import (
 // equivalent `Effect.fn` or `Effect.gen` TypeScript (VIP-3, amended
 // 2026-11-02)". The input picks an annotation shape (none, Effect.Effect<A>,
 // Effect.Effect<A, E>, Effect.Effect<A, E, R>, A!E, A!E!R, A!E!, A!!R, A!!,
-// and two that are not one Effect type, unknown and a union of Effects),
-// the type in each slot, and what the body returns, throws and needs. The
-// oracle is tsc 5.9.3, the version the pinned Effect version's install pins, on the
+// unknown, which is not an Effect type, and unions of Effects), the type in
+// each slot, and what the body returns, throws and needs. The oracle is tsc
+// 5.9.3, the version the pinned Effect version's install pins, on the
 // Effect.fn twin, written independently of the compiler: tsc accepts the twin
 // exactly when the compiler accepts the effect function, and then
 // ReturnType of the twin is identical to the effect function's declared
-// return type.
+// return type. A union of two different Effect types is not one Effect type,
+// so Chapter 1's Static rules decide it instead of the twin: the compiler
+// reports EK0106 (annotationUnionQuote), as tsc reports TS1064 for a union
+// of Promises on an async function. A union whose members are the same
+// Effect type is that one type and keeps the twin oracle.
 func FuzzVIP3AnnotationTwin(f *testing.F) {
 	startShortBudget(f)
 	annotationTwinChapters(f)
@@ -38,6 +45,9 @@ func FuzzVIP3AnnotationTwin(f *testing.F) {
 		"annot:bangEmpty:num:type:never:fails",
 		"annot:bangR:num:never:scope:needs",
 		"annot:bang0:lit:never:never:",
+		"annot:unionOfEffects:num:type:never:fails",
+		"annot:unionOfBangs:union:both:scope:fails;needs",
+		"annot:unionSame:lit:type:never:fails",
 	} {
 		f.Add([]byte(seed))
 	}
@@ -52,14 +62,20 @@ func TestVIP3AnnotationTwinQuoted(t *testing.T) { annotationTwinChapters(t) }
 
 const annotationTwinQuote = "An effect function's annotation means the same as the annotation on its Effect TypeScript twin."
 
+// annotationUnionQuote is Chapter 1's EK0106 row, which decides a return
+// annotation that is a union of different Effect types.
+const annotationUnionQuote = "A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`, an alias included, as TS1064 requires `Promise<T>` for `async`"
+
 func annotationTwinChapters(tb testing.TB) {
 	tb.Helper()
 	text, err := os.ReadFile(SpecPath("001-functions.md"))
 	if err != nil {
 		tb.Fatal(err)
 	}
-	if !strings.Contains(string(text), annotationTwinQuote) {
-		tb.Fatalf("001-functions.md no longer says %q", annotationTwinQuote)
+	for _, quote := range []string{annotationTwinQuote, annotationUnionQuote} {
+		if !strings.Contains(string(text), quote) {
+			tb.Fatalf("001-functions.md no longer says %q", quote)
+		}
 	}
 }
 
@@ -79,7 +95,7 @@ func annotationTwinTypeScript(tb testing.TB) string {
 }
 
 var (
-	annotationShapes = []string{"none", "effect1", "effect2", "effect3", "bang2", "bang3", "bangEmpty", "bangR", "bang0", "unknown", "unionOfEffects"}
+	annotationShapes = []string{"none", "effect1", "effect2", "effect3", "bang2", "bang3", "bangEmpty", "bangR", "bang0", "unknown", "unionOfEffects", "unionOfBangs", "unionSame"}
 	annotationAs     = []string{"num", "lit", "union"}
 	annotationEs     = []string{"never", "type", "both"}
 	annotationRs     = []string{"never", "scope"}
@@ -198,6 +214,10 @@ func (x annotationTwin) annotation() string {
 		return ": unknown"
 	case "unionOfEffects":
 		return ": Effect.Effect<" + a + ", " + e + ", " + r + "> | Effect.Effect<" + a + ">"
+	case "unionOfBangs":
+		return ": (" + parenthesized(a) + "!" + parenthesized(e) + "!" + r + ") | (" + parenthesized(a) + "!!)"
+	case "unionSame":
+		return ": Effect.Effect<" + a + ", " + e + ", " + r + "> | Effect.Effect<" + a + ", " + e + ", " + r + ">"
 	default:
 		return ": " + parenthesized(a) + "!!"
 	}
@@ -233,8 +253,10 @@ func (x annotationTwin) twin() string {
 	case "none":
 	case "unknown":
 		b.WriteString(": unknown")
-	case "unionOfEffects":
+	case "unionOfEffects", "unionOfBangs":
 		b.WriteString(": Effect.fn.Return<" + a + ", " + e + ", " + r + "> | Effect.fn.Return<" + a + ">")
+	case "unionSame":
+		b.WriteString(": Effect.fn.Return<" + a + ", " + e + ", " + r + "> | Effect.fn.Return<" + a + ", " + e + ", " + r + ">")
 	default:
 		b.WriteString(": Effect.fn.Return<" + a + ", " + e + ", " + r + ">")
 	}
@@ -277,6 +299,23 @@ func CheckVIP3AnnotationTwin(t *testing.T, w *Workspace, tsc string, x annotatio
 	}
 	defer c.Remove()
 	vibeAccepts := c.Program != nil && !HasError(c.Diagnostics)
+	if x.shape == "unionOfEffects" || x.shape == "unionOfBangs" {
+		// Its two members differ in E and R whenever either is not never; with
+		// both never the members are one type, which Chapter 1 accepts.
+		_, e, r := x.slots(true)
+		distinct := e != "never" || r != "never"
+		reported := slices.ContainsFunc(c.Diagnostics, func(d *ast.Diagnostic) bool { return d.Source() == "EK" && d.Code() == 106 })
+		switch {
+		case distinct && !reported:
+			g.Add("feature:annotation-union-EK0106:"+x.shape, "Chapter 1, Static rules: %q is EK0106; a union of different Effect types is not one. The compiler reports %v for:\n%s", annotationUnionQuote, SortedKeys(Keys(c.Dir, c.Diagnostics)), x.vibe())
+		case !distinct && reported:
+			g.Add("feature:annotation-union-same-EK0106:"+x.shape, "Chapter 1, Static rules: %q; a union of one Effect type is that type, but the compiler reports EK0106 for:\n%s", annotationUnionQuote, x.vibe())
+		}
+		if distinct {
+			g.FinishInput(t, key)
+			return
+		}
+	}
 	twinOut, twinAccepts := runAnnotationTwinTSC(t, w, tsc, map[string]string{"main.ts": x.twin()}, `"main.ts"`)
 	switch {
 	case twinAccepts && !vibeAccepts:

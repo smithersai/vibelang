@@ -74,7 +74,7 @@ func isEffectTypeName(c *checker.Checker, reference *ast.Node) bool {
 func findEffectTypes(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ast.IsTypeReferenceNode(node) && ast.IsQualifiedName(node.AsTypeReferenceNode().TypeName) && isEffectTypeName(c, node) {
+		if ast.IsTypeReferenceNode(node) && ast.IsQualifiedName(node.AsTypeReferenceNode().TypeName) && isEffectTypeName(c, node) && !inUnionEffectReturn(c, node) {
 			if rewrite := effectTypeRewrite(c, file, node); rewrite != nil {
 				report(node, rewrite, messageText(node, "This Effect type"), rewrite.description)
 			}
@@ -82,6 +82,23 @@ func findEffectTypes(c *checker.Checker, file *ast.SourceFile, report func(at *a
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// inUnionEffectReturn reports whether reference lies in an effect function's
+// written return type that is a union of Effects. EK0106 reports that
+// annotation, and its repair rewrites the whole of it as the one Effect of
+// the joined channels, so a member's own ! form would be a second, overlapping
+// repair.
+func inUnionEffectReturn(c *checker.Checker, reference *ast.Node) bool {
+	t := reference
+	for t.Parent != nil && ast.IsTypeNode(t.Parent) {
+		t = t.Parent
+	}
+	if !isWrittenReturnTypeOfEffectFunction(t) {
+		return false
+	}
+	written := c.GetTypeFromTypeNode(t)
+	return written.Flags()&checker.TypeFlagsUnion != 0 && isEffectType(c, written)
 }
 
 // isBodyReturnAnnotation reports whether node is the return annotation of a

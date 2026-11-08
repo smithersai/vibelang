@@ -60,7 +60,7 @@ func checkEffectReturnTypes(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if t := node.Type(); t != nil && ast.IsFunctionLike(node) && !ast.IsIndexSignatureDeclaration(node) && isWrittenReturnTypeOfEffectFunction(t) {
-			if written := c.GetTypeFromTypeNode(t); !isEffectType(c, written) && written != c.GetErrorType() {
+			if written := c.GetTypeFromTypeNode(t); !isOneEffectType(c, written) && written != c.GetErrorType() {
 				text := nodeText(file, t)
 				rewrite := effectReturnTypeRewrite(c, file, t)
 				omits := rewrite.description == inferredEffectReturn
@@ -83,6 +83,15 @@ func checkEffectReturnTypes(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// isOneEffectType reports whether t, an effect function's written return
+// type, is one Effect type. A union of different Effect types is not one,
+// even when each member is an Effect, as TS1064 rejects a union of Promises
+// as an async function's return type (Chapter 1, Static rules). Identical
+// members reduce to one type before this test.
+func isOneEffectType(c *checker.Checker, t *checker.Type) bool {
+	return t != nil && t.Flags()&checker.TypeFlagsUnion == 0 && isEffectType(c, t)
 }
 
 // effectReturnTypeRewrite plans the EK0106 fix at t, an effect function's
@@ -123,6 +132,15 @@ func effectReturnTypeRewrite(c *checker.Checker, file *ast.SourceFile, t *ast.No
 			}
 			return &formRewrite{edits: []sourceEdit{{colon, t.End(), text.String()}}, description: inferredEffectReturn}
 		}
+	}
+	if written := c.GetTypeFromTypeNode(t); written.Flags()&checker.TypeFlagsUnion != 0 && isEffectType(c, written) {
+		// A union of Effects becomes the one Effect of its joined channels, as
+		// TS1064 suggests Promise<string | number> for Promise<number> | Promise<string>.
+		joined := bangText(c.TypeToString(successType(c, written)), c.TypeToString(channelType(c, written, "_E")), c.TypeToString(channelType(c, written, "_R")))
+		if !strings.HasSuffix(joined, "!!") {
+			joined = strings.TrimSuffix(joined, "!") // A!E, as Chapter 1 writes User!NotFound
+		}
+		return &formRewrite{edits: []sourceEdit{{nodeStart(file, t), t.End(), joined}}, description: joined}
 	}
 	text := nodeText(file, t)
 	if ast.IsUnionTypeNode(t) || ast.IsIntersectionTypeNode(t) || ast.IsFunctionTypeNode(t) || ast.IsConditionalTypeNode(t) {

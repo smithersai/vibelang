@@ -1,16 +1,18 @@
 // expect-result: ["ok","failed",3,"curried",2]
 import { Effect, Exit } from "effect"
 error Refused { reason: string }
-// The twins' D-9 recipe: a union of Effects contract whose arms are decided
-// Exits. An effect function's returned value stays unrun (VIP-5, amended
-// 2026-10-30), so each arm runs its Exit with try, and a call runs the chosen
-// one. curried is a plain function that returns an effect arrow (VIP-1).
-const decide = effect (flag: boolean): Effect.Effect<string, never, never> | Effect.Effect<never, Refused, never> =>
+// A contract whose arms are decided Exits. An effect function's return type
+// is one Effect (Chapter 1, EK0106), so the contract joins both arms'
+// channels, string!Refused, rather than writing a union of Effects. An
+// effect function's returned value stays unrun (VIP-5), so each arm runs its
+// Exit with try, and a call runs the chosen one. curried is a plain function
+// that returns an effect arrow (VIP-1).
+const decide = effect (flag: boolean): string!Refused =>
   flag ? try Exit.succeed("ok") : try Exit.fail(new Refused({ reason: "no" }))
-const curried = <A>(value: A) => effect (flag: boolean): Effect.Effect<A, never, never> | Effect.Effect<never, Refused, never> =>
+const curried = <A>(value: A) => effect (flag: boolean): A!Refused =>
   flag ? try Exit.succeed(value) : try Exit.fail(new Refused({ reason: "curried" }))
 // A nested conditional's arms run the same way.
-const nested = effect (n: number): Effect.Effect<number, never, never> | Effect.Effect<never, Refused, never> =>
+const nested = effect (n: number): number!Refused =>
   n > 1 ? (n > 5 ? try Exit.succeed(n) : try Exit.succeed(2)) : try Exit.fail(new Refused({ reason: "small" }))
 export effect function main() {
   const a = try decide(true)

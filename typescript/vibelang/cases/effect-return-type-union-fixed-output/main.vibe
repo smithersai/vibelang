@@ -1,0 +1,23 @@
+// expect: EK0106
+// Functions, Static rules: a written return type of an effect function that
+// does not resolve to Effect.Effect<A, E, R> is EK0106, as TS1064 requires
+// the global Promise<T> on an async function. A union of Effects is not one
+// Effect type, even when each member is; tsc 5.9.3 likewise rejects
+// async function f(): Promise<number> | Promise<string> with TS1064.
+export effect function a(): (string | number)!! { return 1 }
+
+export const b = effect (): number!TypeError => 1
+
+export class C { effect m(): (string | number)!RangeError { return 1 } }
+
+type Either = (number!!) | (string!!)
+export effect function d(): (string | number)!! { return 1 }
+
+// Identical members reduce to one Effect type: no diagnostic.
+export effect function same(): (number!!) | (number!!) { return 1 }
+
+// The joined Effect is the repair the quick fix writes: no diagnostic.
+export effect function joined(): (string | number)!TypeError { return 1 }
+
+// Spec rule: docs/design/src/001-functions.md#c035782937808ba6
+// Chapter 001: a union of Effects is not one Effect return type.

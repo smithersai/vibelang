@@ -320,5 +320,14 @@
         "output": "typescript/vibelang/cases/ek2601-inert-marker-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK0106",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/effect-return-type-union.fail",
+        "output": "typescript/vibelang/cases/effect-return-type-union-fixed-output"
+      }
+    ]
   }
 ]
