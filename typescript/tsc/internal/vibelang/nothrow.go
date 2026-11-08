@@ -161,6 +161,14 @@ func (a *analyzer) throwsBelongToCall(home, site *ast.Node) bool {
 // callback contract, including callable alternatives and options properties.
 // The name Effect alone supplies no contract.
 func isAdmittedWrappedCode(c *checker.Checker, fn *ast.Node) bool {
+	// Resolve the invoked API before inspecting its spelling. Only its thunk
+	// position admits throws; a catch mapper keeps its plain-code contract.
+	if call, path := ownerCall(fn); call != nil && len(path) != 0 && path[0].argument == 0 &&
+		(len(path) == 1 || len(path) == 2 && path[1].property == "try") &&
+		ast.IsCallExpression(call) && isAdmittingTryCall(c, call) {
+		return true
+	}
+
 	if !isWrappedCode(fn) {
 		return false
 	}
@@ -187,6 +195,171 @@ func isAdmittedWrappedCode(c *checker.Checker, fn *ast.Node) bool {
 		}
 	}
 	return false
+}
+
+// isAdmittingTryCall retains source alternatives before TypeScript can reduce
+// structurally compatible functions to one type. Written callable types remain
+// authoritative; inferred constants retain each original value's contract.
+func isAdmittingTryCall(c *checker.Checker, call *ast.Node) bool {
+	if !isExportOf(c, call, "effect", "Effect", []string{"try_", "try", "tryPromise"}) {
+		return false
+	}
+	return isAdmittingTryValue(c, call.Expression(), nil, map[*ast.Node]bool{})
+}
+
+func isAdmittingTryValue(c *checker.Checker, expression *ast.Node, properties []string, seen map[*ast.Node]bool) bool {
+	expression = ast.SkipParentheses(expression)
+	if expression == nil || seen[expression] {
+		return false
+	}
+	seen[expression] = true
+	defer delete(seen, expression)
+	if ast.IsSatisfiesExpression(expression) || ast.IsExpressionWithTypeArguments(expression) {
+		return isAdmittingTryValue(c, expression.Expression(), properties, seen)
+	}
+	if ast.IsConditionalExpression(expression) {
+		value := expression.AsConditionalExpression()
+		return isAdmittingTryValue(c, value.WhenTrue, properties, seen) && isAdmittingTryValue(c, value.WhenFalse, properties, seen)
+	}
+	if ast.IsBinaryExpression(expression) {
+		binary := expression.AsBinaryExpression()
+		switch binary.OperatorToken.Kind {
+		case ast.KindCommaToken, ast.KindEqualsToken:
+			return isAdmittingTryValue(c, binary.Right, properties, seen)
+		case ast.KindBarBarToken, ast.KindAmpersandAmpersandToken, ast.KindQuestionQuestionToken:
+			return isAdmittingTryValue(c, binary.Left, properties, seen) && isAdmittingTryValue(c, binary.Right, properties, seen)
+		default:
+			return false
+		}
+	}
+	if ast.IsObjectLiteralExpression(expression) && len(properties) != 0 {
+		for _, property := range expression.AsObjectLiteralExpression().Properties.Nodes {
+			if ast.IsSpreadAssignment(property) {
+				return false
+			}
+		}
+	}
+	if ast.IsPropertyAccessExpression(expression) || ast.IsElementAccessExpression(expression) {
+		name := ""
+		if ast.IsPropertyAccessExpression(expression) {
+			name = expression.Name().Text()
+		} else {
+			key := c.GetTypeAtLocation(expression.AsElementAccessExpression().ArgumentExpression)
+			if key == nil || !checker.IsTypeUsableAsPropertyName(key) {
+				return false
+			}
+			name = checker.GetPropertyNameFromType(key)
+		}
+		return isAdmittingTryValue(c, expression.Expression(), append([]string{name}, properties...), seen)
+	}
+	if ast.IsCallExpression(expression) {
+		// Native bind with only thisArg retains the invoked function's contract.
+		callee := ast.SkipParentheses(expression.Expression())
+		declaration := signatureDeclaration(c, expression)
+		owner := ownerOf(declaration)
+		if len(expression.Arguments()) != 1 || !ast.IsPropertyAccessExpression(callee) ||
+			callee.Name().Text() != "bind" || owner == nil || declarationName(owner) != "bind" ||
+			!isLibFile(c, ast.GetSourceFileOfNode(owner)) {
+			return false
+		}
+		return isAdmittingTryValue(c, callee.Expression(), properties, seen)
+	}
+	if ast.IsIdentifier(expression) {
+		symbol := c.GetSymbolAtLocation(expression)
+		if parent := expression.Parent; parent != nil && ast.IsShorthandPropertyAssignment(parent) && parent.Name() == expression {
+			symbol = c.GetShorthandAssignmentValueSymbol(parent)
+		}
+
+		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		if symbol != nil {
+			for _, decl := range symbol.Declarations() {
+				if ast.IsVariableDeclaration(decl) && decl.Type() == nil && decl.Initializer() != nil {
+					if !ast.IsVarConst(decl) {
+						return false
+					}
+					return isAdmittingTryValue(c, decl.Initializer(), properties, seen)
+				}
+				if ast.IsBindingElement(decl) {
+					root := ast.GetRootDeclaration(decl)
+					if !ast.IsVariableDeclaration(root) || !ast.IsVarConst(root) || root.Type() != nil || root.Initializer() == nil || decl.Parent.Parent != root {
+						return false
+					}
+					name := decl.AsBindingElement().PropertyName
+					if name == nil {
+						name = decl.Name()
+					}
+					if !ast.IsIdentifier(name) && !ast.IsStringLiteral(name) {
+						return false
+					}
+					return isAdmittingTryValue(c, root.Initializer(), append([]string{name.Text()}, properties...), seen)
+				}
+			}
+		}
+	}
+	return isAdmittingTryType(c, c.GetTypeAtLocation(expression), properties, seen)
+}
+
+func isAdmittingTryType(c *checker.Checker, value *checker.Type, properties []string, seen map[*ast.Node]bool) bool {
+	if value == nil {
+		return false
+	}
+	for _, member := range unionMembers(value) {
+		// A nullish alternative cannot invoke the supplied thunk.
+		if member.Flags()&(checker.TypeFlagsNull|checker.TypeFlagsUndefined|checker.TypeFlagsVoid) != 0 {
+			continue
+		}
+		if len(properties) != 0 {
+			property := c.GetPropertyOfType(c.GetApparentType(member), properties[0])
+			if property == nil {
+				return false
+			}
+			followed := false
+			for _, decl := range property.Declarations() {
+				if ast.IsShorthandPropertyAssignment(decl) {
+					if !isAdmittingTryValue(c, decl.Name(), properties[1:], seen) {
+						return false
+					}
+					followed = true
+					break
+				}
+
+				if ast.IsPropertyAssignment(decl) || ast.IsPropertyDeclaration(decl) && decl.Type() == nil && decl.Initializer() != nil {
+					if !isAdmittingTryValue(c, decl.Initializer(), properties[1:], seen) {
+						return false
+					}
+					followed = true
+					break
+				}
+				if ast.IsGetAccessorDeclaration(decl) && decl.Type() == nil {
+					return false
+				}
+			}
+			if !followed && !isAdmittingTryType(c, c.GetTypeOfPropertyOfType(member, properties[0]), properties[1:], seen) {
+				return false
+			}
+			continue
+		}
+		signatures := c.GetSignaturesOfType(member, checker.SignatureKindCall)
+		if len(signatures) == 0 {
+			return false
+		}
+		for _, signature := range signatures {
+			for signature.Target() != nil {
+				signature = signature.Target()
+			}
+			owner := ownerOf(signature.Declaration())
+			if owner == nil || !slices.Contains([]string{"try_", "try", "tryPromise"}, declarationName(owner)) {
+				return false
+			}
+			file := ast.GetSourceFileOfNode(owner)
+			if moduleOf(file) != "Effect" || packageOf(c, file) != "effect" {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // isRetiredHatchFunction reports whether fn is the function of a retired

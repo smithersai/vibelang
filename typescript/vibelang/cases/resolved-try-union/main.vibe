@@ -1,0 +1,16 @@
+// expect-result: [0,0,0,2,4]
+import { Effect } from "effect"
+import { flag, events, risky } from "./foreign.js"
+const choose = flag ? Effect.try<0> : Effect.try<number>
+const choosePromise = flag ? Effect.tryPromise<0> : Effect.tryPromise<number>
+const first = choose(() => risky())
+const second = choosePromise(() => Promise.resolve(risky()))
+const construction = events.length
+export effect function main() {
+  const a = try first
+  const b = try second
+  const after = events.length
+  try first
+  try second
+  return [construction, a, b, after, events.length]
+}

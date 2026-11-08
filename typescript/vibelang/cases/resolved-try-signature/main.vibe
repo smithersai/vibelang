@@ -1,0 +1,32 @@
+// expect-result: [0,8,8,8,8,true,true,true,true,16]
+import { Effect } from "effect"
+import { events, risky, later, sentinel } from "./foreign.js"
+const E = Effect
+const bridge = Effect.try
+const bound = Effect.try.bind(undefined)
+const promise = Effect.tryPromise
+export const programs = [
+  E.try(() => risky("ok-alias", false)),
+  (Effect.try)(() => risky("ok-paren", false)),
+  Effect["try"]({ try: () => risky("bad-key", true), catch: (error) => error }),
+  bridge({ try: () => risky("bad-alias", true), catch: (error) => error }),
+  bound({ try: () => risky("bad-bound", true), catch: (error) => error }),
+  (Effect).tryPromise(() => later("ok-async", false)),
+  promise(() => later("ok-value", false)),
+  Effect["tryPromise"]({ try: () => later("bad-async", true), catch: (error) => error })
+]
+const construction = events.length
+export effect function main() {
+  const first = try exit(programs[0]!)
+  const second = try exit(programs[1]!)
+  const third = try exit(programs[2]!)
+  const fourth = try exit(programs[3]!)
+  const fifth = try exit(programs[4]!)
+  const sixth = try exit(programs[5]!)
+  const seventh = try exit(programs[6]!)
+  const eighth = try exit(programs[7]!)
+  const isFailure = (value: typeof third) => value._tag === "Failure" && value.cause.reasons[0]?._tag === "Fail"
+  const values = [construction, first._tag === "Success" ? first.value : null, second._tag === "Success" ? second.value : null, sixth._tag === "Success" ? sixth.value : null, seventh._tag === "Success" ? seventh.value : null, third._tag === "Failure" && third.cause.reasons[0]?._tag === "Fail" && third.cause.reasons[0].error === sentinel, isFailure(fourth), fifth._tag === "Failure" && fifth.cause.reasons[0]?._tag === "Fail" && fifth.cause.reasons[0].error === sentinel, eighth._tag === "Failure" && eighth.cause.reasons[0]?._tag === "Fail" && eighth.cause.reasons[0].error === sentinel]
+  for (const program of programs) { try exit(program) }
+  return [...values, events.length]
+}

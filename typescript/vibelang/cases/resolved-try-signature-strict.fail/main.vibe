@@ -1,0 +1,14 @@
+// expect: EK0401
+import { Effect } from "effect"
+import { risky, flag } from "./foreign.js"
+const bridge = Effect.try
+const promise = Effect.tryPromise
+export const mapper = bridge({ try: () => 1, catch: () => risky() })
+export const asyncMapper = promise({ try: () => Promise.resolve(1), catch: () => risky() })
+export const nested = (Effect.try)(() => { const later = () => risky(); return later() })
+export const sync = Effect.sync(() => risky())
+export const nativePromise = Effect.promise(() => Promise.resolve(risky()))
+const mixedSync = flag ? Effect.try<number> : Effect.sync<number>
+export const mixed = mixedSync(() => risky())
+const mixedPromise = flag ? Effect.tryPromise<number> : Effect.promise<number>
+export const mixedAsync = mixedPromise(() => Promise.resolve(risky()))
