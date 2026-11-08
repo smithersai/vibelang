@@ -280,7 +280,24 @@ func (d *decoder) groupDoStatement(call *ast.Node) {
 	} else if call.Parent != nil && call.Parent.Kind == ast.KindParenthesizedExpression {
 		return
 	}
-	d.replace(d.start(expression), d.start(expression), "(")
+	open := "("
+	if d.enc.placeholders[index].doAfterSemicolon {
+		// A formatter with an asi style drops the semicolon that ended the
+		// previous statement. Restore it, before the ( as such a formatter
+		// writes its own guards, or after that statement when documentation
+		// precedes the ( and a guard would take it.
+		if top := d.enc.doStatementExpression(call); top != nil {
+			statement := expressionStatement(top)
+			if tail := asiTail(previousStatement(statement), false); tail != nil && d.text[tail.End()-1] != ';' {
+				if d.start(statement) == d.start(expression) {
+					open = ";("
+				} else {
+					d.insert(tail.End(), ";")
+				}
+			}
+		}
+	}
+	d.replace(d.start(expression), d.start(expression), open)
 	d.replace(expression.End(), expression.End(), ")")
 }
 

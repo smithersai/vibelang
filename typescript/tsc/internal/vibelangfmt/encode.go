@@ -95,6 +95,10 @@ type placeholder struct {
 	doStatement bool
 	// doWholeStatement retains parentheses around the entire source expression.
 	doWholeStatement bool
+	// doAfterSemicolon marks a do statement whose previous statement ends with
+	// a semicolon. A formatter that drops it lets the restored ( continue that
+	// statement, so decoding writes it back.
+	doAfterSemicolon bool
 	// noBody marks an error declaration written without fields or, for one
 	// written as a class, without a body, and a service of any shape (D281)
 	// written without a body.
@@ -854,12 +858,75 @@ func (enc *encoding) recordDoStatements(file *ast.SourceFile) {
 				expression := enc.doStatementExpression(node)
 				enc.placeholders[index].doStatement = expression != nil
 				enc.placeholders[index].doWholeStatement = expression != nil && expression.Kind == ast.KindParenthesizedExpression
+				if expression != nil {
+					tail := asiTail(previousStatement(expressionStatement(expression)), true)
+					enc.placeholders[index].doAfterSemicolon = tail != nil && enc.text[tail.End()-1] == ';'
+				}
 			}
 		}
 		node.ForEachChild(visit)
 		return false
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// expressionStatement returns the expression statement that contains node,
+// across a documentation wrapper, or nil.
+func expressionStatement(node *ast.Node) *ast.Node {
+	for node != nil && node.Kind != ast.KindExpressionStatement {
+		node = node.Parent
+	}
+	return node
+}
+
+// previousStatement returns the statement before statement in its list, or nil.
+func previousStatement(statement *ast.Node) *ast.Node {
+	if statement == nil || statement.Parent == nil || !statement.Parent.CanHaveStatements() {
+		return nil
+	}
+	statements := statement.Parent.Statements()
+	for i, sibling := range statements {
+		if sibling == statement && i > 0 {
+			return statements[i-1]
+		}
+	}
+	return nil
+}
+
+// asiTail returns the statement that a semicolon at the end of statement
+// would end: the last branch of an if, or the body of a loop or label. It
+// returns nil when statement ends with a block or a declaration body, after
+// which ( starts a new statement. withBraces also follows a block's last
+// statement, because a formatter may drop the braces of a single statement.
+func asiTail(statement *ast.Node, withBraces bool) *ast.Node {
+	for statement != nil {
+		switch statement.Kind {
+		case ast.KindIfStatement:
+			if branch := statement.AsIfStatement().ElseStatement; branch != nil {
+				statement = branch
+			} else {
+				statement = statement.AsIfStatement().ThenStatement
+			}
+		case ast.KindForStatement, ast.KindForInStatement, ast.KindForOfStatement,
+			ast.KindWhileStatement, ast.KindWithStatement, ast.KindLabeledStatement:
+			statement = statement.Statement()
+		case ast.KindBlock:
+			statements := statement.Statements()
+			if !withBraces || len(statements) == 0 {
+				return nil
+			}
+			statement = statements[len(statements)-1]
+		case ast.KindExpressionStatement, ast.KindVariableStatement, ast.KindReturnStatement,
+			ast.KindThrowStatement, ast.KindBreakStatement, ast.KindContinueStatement,
+			ast.KindDebuggerStatement, ast.KindDoStatement, ast.KindImportDeclaration,
+			ast.KindImportEqualsDeclaration, ast.KindExportDeclaration, ast.KindExportAssignment,
+			ast.KindTypeAliasDeclaration:
+			return statement
+		default:
+			return nil
+		}
+	}
+	return nil
 }
 
 // doStatementExpression follows only expression edges whose first token

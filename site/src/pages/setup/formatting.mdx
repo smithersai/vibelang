@@ -84,7 +84,7 @@ The bundled formatter uses TypeScript plugin `0.97.1` for `.vibe` files. It keep
 
 Service members and class-form `error` fields accept comma separators. Formatting preserves these separators, nested type commas and comments on either side of a separator.
 
-A standalone `do` expression keeps the parentheses that distinguish it from a `do`/`while` statement: `(do { 1; });`. The same grouping is preserved in a function, a conditional body or a labeled statement.
+A standalone `do` expression keeps the parentheses that distinguish it from a `do`/`while` statement: `(do { 1; });`. The same grouping is preserved in a function, a conditional body or a labeled statement. After a statement whose semicolon the formatter removes, as with `semicolons: "asi"`, it is written `;(do { … })` so that the parentheses cannot continue that statement.
 
 A `provide` list never wraps at a comma between providers. Line breaks inside a provider expression are allowed; the opening `{` stays on the line where the final provider ends.
 

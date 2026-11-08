@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - With the Effect plugin entry setting the severity of a rule that a VibeLang check answers, such as `overriddenSchemaConstructor`, `vibelang --fix` deleted that rule's unused `@effect-diagnostics-next-line` comment and left the check's error on the next line. It now rewrites the comment to `@vibelang-diagnostics-next-line` with the check's code, such as `EK4814:off`, as it does without the plugin setting.
 - The specification walkthrough showed retired recovery syntax such as `catch "guest"`. It now demonstrates current syntax with actual compiler and program output.
+- With `semicolons: "asi"`, formatting a parenthesized `do` statement after another statement still failed with `formatting changed the program`; `vibelang --fix` writes `Option.match` in that form. The formatter now writes `;(do { … })` there, restoring the semicolon it removed before the parentheses.
 
 - A `.ts` class whose constructor has no `@throws` tag was accepted where a construct signature without `@throws` was expected, such as `const make: new (n: number) => Box = Box` or `register(Box)`, although constructing it in effect code reports `EK0403` and the same unannotated function value reports `EK0402`. The class now reports `EK0402` there too; a class that declares no constructor stays untracked.
 

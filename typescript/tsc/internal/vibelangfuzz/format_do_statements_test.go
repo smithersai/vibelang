@@ -1,6 +1,8 @@
 package vibelangfuzz
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -39,11 +41,78 @@ var formatDoStatementForms = []struct{ key, source string }{
 	{"nested-value", "(do { (do { 1; }); });\n"},
 	{"nested-deep-value", "(do { (do { (do { 1; }); }); });\n"},
 	{"postfix-member", "(do { ({ value: 1 }); }).value++;\n"},
+	// The same statement inside do, effect and arrow bodies: at a body's start
+	// and end, and after a declaration or another statement, whose semicolon
+	// a formatter with an asi style drops. --fix writes Option.match this way,
+	// as `do { const $optionInput = ...; (do { ... }); }`.
+	{"smithers-code-storage-minimal", "export const g = (x: number) => do { (do { x * 2 }); }\n"},
+	{"smithers-option-match-temporary", "export const g = (x: number) => do { const $optionInput = x + 1; (do { $optionInput * 2; }); };\n"},
+	{"do-arrow-start", "export const g = (x: number) => do { (do { x * 2; }); x + 1; };\n"},
+	{"do-initializer-start", "export const g = (x: number) => { const r = do { (do { x * 2; }); x; }; return r; };\n"},
+	{"do-initializer-end", "export const g = (x: number) => { const r = do { x; (do { x * 2; }); }; return r; };\n"},
+	{"do-initializer-after-declaration", "export const g = (x: number) => { const r = do { const y = x + 1; (do { y * 2; }); y; }; return r; };\n"},
+	{"effect-start", "export effect function g(x: number) {\n  (do { x * 2; });\n  return x;\n}\n"},
+	{"effect-end", "export effect function g(x: number) {\n  const y = x + 1;\n  (do { y * 2; });\n}\n"},
+	{"effect-after-declaration", "export effect function g(x: number) {\n  const y = x + 1;\n  (do { y * 2; });\n  return y;\n}\n"},
+	{"effect-arrow", "export const g = effect (x: number) => { (do { x * 2; }); return x; };\n"},
+	{"function-after-declaration", "export function g(x: number) {\n  const y = x + 1;\n  (do { y * 2; });\n  return y;\n}\n"},
+	{"jsdoc-after-declaration", "export function g(x: number) {\n  const y = x + 1;\n  /** keep */\n  (do { y * 2; });\n  return y;\n}\n"},
+	{"after-unbraced-if", "export function g(x: number) {\n  if (x) x = x + 1;\n  (do { x * 2; });\n}\n"},
+	{"after-braced-if", "export function g(x: number) {\n  if (x) { x = x + 1; }\n  (do { x * 2; });\n}\n"},
+	{"after-function-declaration", "function f() {}\n(do { 1; });\n"},
+}
+
+// formatDoStatementSmithers names the Smithers witnesses: the minimized
+// CodeStorage program and the --fix Option.match temporary it came from.
+var formatDoStatementSmithers = map[string]string{
+	"smithers-code-storage-minimal":   "export const g = (x: number) => do { (do { x * 2 }); }\n",
+	"smithers-option-match-temporary": "const $optionInput = x + 1; (do { $optionInput * 2; });",
 }
 
 func TestFormatDoStatementsQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), formatDoStatementsQuote) {
 		t.Fatalf("Chapter 7 no longer says %q", formatDoStatementsQuote)
+	}
+}
+
+// TestFormatDoStatementsCorpus checks that every saved input names a form
+// by key, so reordering the list never changes what a file tests, and that
+// the Smithers files still hold their minimized programs.
+func TestFormatDoStatementsCorpus(t *testing.T) {
+	forms := map[string]string{}
+	for _, form := range formatDoStatementForms {
+		if _, seen := forms[form.key]; seen {
+			t.Fatalf("form key %q appears twice", form.key)
+		}
+		forms[form.key] = form.source
+	}
+	dir := filepath.Join(repoTestdata(), "fuzz", "FuzzFormatDoStatements")
+	names, err := filepath.Glob(filepath.Join(dir, "*"))
+	if err != nil || len(names) == 0 {
+		t.Fatalf("no saved inputs in %s: %v", dir, err)
+	}
+	saved := map[string]bool{}
+	for _, name := range names {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		quoted, ok := strings.CutPrefix(lines[len(lines)-1], "[]byte(")
+		input, err := strconv.Unquote(strings.TrimSuffix(quoted, ")"))
+		parts := strings.Split(input, ":")
+		if !ok || err != nil || len(lines) != 2 || len(parts) != 3 || parts[0] != "do-statement" {
+			t.Fatalf("%s is not a keyed do-statement input", filepath.Base(name))
+		}
+		if _, known := forms[parts[1]]; !known {
+			t.Fatalf("%s names unknown form %q", filepath.Base(name), parts[1])
+		}
+		saved[parts[1]] = true
+	}
+	for key, pattern := range formatDoStatementSmithers {
+		if !saved[key] || !strings.Contains(forms[key], pattern) {
+			t.Fatalf("Smithers witness %q lost its saved input or its minimized program %q", key, pattern)
+		}
 	}
 }
 
