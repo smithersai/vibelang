@@ -256,7 +256,7 @@ For `Effect.fn` generators with a written `Effect.fn.Return<A, E, R>` annotation
 
 When converting an Effect generator, `--fix` preserves a native constructor hidden by an implicit Effect namespace: `new Headers(input)` becomes `new globalThis.Headers(input)`. Local and imported constructors keep their bindings. This qualification does not permit host APIs in VibeLang: a banned constructor still reports `EK4402` and belongs in a TypeScript adapter. If a local `globalThis` prevents safe qualification, the generator stays unchanged.
 
-When migrating a generator, `const inner = yield* make()` becomes `const inner = try make()` even when the result is another Effect. That inner program stays cold until a separate `try inner` runs it. A discarded program result becomes `void try make()`.
+When migrating a generator, `const inner = yield* make()` becomes `const inner = try make()` even when the result is another Effect. That inner program stays cold until a separate `try inner` runs it. To run both layers in one expression, write `try try make()` or `try (try (make()))`, corresponding to `yield* yield* make()`: each `try` runs its operand once, with or without parentheses. A discarded program result becomes `void try make()`.
 
 Async conversion withholds a `Promise` bridge when an awaited `do` expression would move a `return`, `break` or `continue` away from its source target. Move the outward control flow before the `await` first. Local jumps inside the operand and nested callable returns remain eligible. The same conversion is withheld for an explicit `throw` that would move from the `async` body into a plain `Effect.tryPromise` callback. Throws in a nested `async` or `effect` callable keep their own context.
 

@@ -31,6 +31,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration verification could treat a missing original compiler report as no packages to check. It now keeps the package list and refuses verification when the report or a package entry is missing.
 
+- Nested `try` expressions with parenthesized operands could leave an Effect unrun and infer an extra Effect layer. Each `try` now runs its operand once, with or without parentheses.
+
 - Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
 
 - Migration API checks could lose one referenced project's declarations when config paths shared an output name. Each project now keeps separate declarations and compiler logs, and ambiguous older snapshots require fresh setup.

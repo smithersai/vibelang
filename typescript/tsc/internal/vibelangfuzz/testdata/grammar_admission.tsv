@@ -320,6 +320,7 @@ parser/vibelang_try.go:triedChainOperand	admission:try	900-appendices.md#TryExpr
 parser/vibelang_try.go:Parser.isVibeLangTryOperation	admission:try	900-appendices.md#TryAll	support	Appendix A: TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_try.go:Parser.parseVibeLangTryOperation	admission:try	900-appendices.md#TryAll	support	Appendix A: TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_try.go:isVibeLangTry	admission:try	900-appendices.md#TryExpression	support	VIP-5: try (try e) runs both layers; the inner try stays the operand
+parser/vibelang_try.go:holdsVibeLangTry	admission:try	900-appendices.md#TryExpression	support	VIP-5: try (try (e)) runs both layers; parentheses around the inner try keep it the operand
 parser/vibelang_retired_controls.go:Parser.retiredControlForm	admission:retired-control-forms	000-intro.md	recovery	First-release handler retirement reports EK3501/EK4607 and names --fix; recovery supports diagnostics and migration, never admission of open VIP-35 forms.
 vibelang/catches.go:init	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately
 vibelang/catches.go:isFailureTest	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately

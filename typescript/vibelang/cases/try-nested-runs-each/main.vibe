@@ -1,0 +1,34 @@
+// expect-result: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+// Each try runs its operand once, with or without parentheses around it:
+// try (try (e)) is yield* (yield* e), as TypeScript's twin is.
+import * as Effect from "effect/Effect"
+import * as Stream from "effect/Stream"
+
+const nested = () => Effect.succeed(Effect.succeed(5))
+const record = () => Effect.succeed(Effect.succeed({ n: 12 }))
+const holder = () => Effect.succeed({ v: Effect.succeed({ n: 13 }) })
+
+export const bare = effect { return try try Effect.succeed(Effect.succeed(1)) }
+export const inner = effect { return try (try Effect.succeed(Effect.succeed(2))) }
+export const grouped = effect { return try (try (Effect.succeed(Effect.succeed(3)))) }
+export const three = effect { return try (try (try (Effect.succeed(Effect.succeed(Effect.succeed(4)))))) }
+export const call = effect { return try (try (nested())) }
+export effect function fn() { return try (try (Effect.succeed(Effect.succeed(6)))) }
+export const arrow = effect () => try (try (Effect.succeed(Effect.succeed(7))))
+export class Box {
+  effect run() { return try (try (Effect.succeed(Effect.succeed(8)))) }
+  effect *values() { yield try (try (Effect.succeed(Effect.succeed(14)))) }
+}
+export const api = {
+  effect run() { return try (try (Effect.succeed(Effect.succeed(9)))) },
+  effect *values() { yield try (try (Effect.succeed(Effect.succeed(15)))) },
+}
+export const threeBare = effect { return try try try Effect.succeed(Effect.succeed(Effect.succeed(10))) }
+export const mixed = effect { return try (try try (Effect.succeed(Effect.succeed(Effect.succeed(11))))) }
+
+export const member = effect { return (try (try (record()))).n }
+export const chain = effect { return (try (try (holder())).v).n }
+
+export effect function main() {
+  return [try bare, try inner, try grouped, try three, try call, try fn(), try arrow(), try new Box().run(), try api.run(), try threeBare, try mixed, try member, try chain, ...(try Stream.runCollect(new Box().values())), ...(try Stream.runCollect(api.values()))]
+}

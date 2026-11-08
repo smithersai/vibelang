@@ -50,7 +50,7 @@ func (p *Parser) parseVibeLangTry() *ast.Node {
 	operand := p.parseSimpleUnaryExpression()
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: anchor, Range: core.NewTextRange(anchor.Pos(), operand.End())})
 	// A call that holds a try already is that try's: the outer try runs its value.
-	if inner := ast.SkipParentheses(operand); (ast.IsCallExpression(inner) || ast.IsTaggedTemplateExpression(inner)) && !isVibeLangTry(inner) {
+	if inner := ast.SkipParentheses(operand); (ast.IsCallExpression(inner) || ast.IsTaggedTemplateExpression(inner)) && !holdsVibeLangTry(operand) {
 		operand.Flags |= ast.NodeFlagsVibeLangTry
 		operand.Loc = core.NewTextRange(pos, operand.End())
 		return operand
@@ -70,6 +70,20 @@ func isVibeLangTry(node *ast.Node) bool {
 	}
 	callee := node.Expression()
 	return callee.Kind == ast.KindIdentifier && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$try"
+}
+
+// holdsVibeLangTry reports whether operand, or parentheses it holds, is a
+// try expression. try (f()) flags the parentheses (f()), not the call, so
+// try (try (f())) finds the inner try there and runs its value in turn.
+func holdsVibeLangTry(operand *ast.Node) bool {
+	for n := operand; ; n = n.Expression() {
+		if isVibeLangTry(n) {
+			return true
+		}
+		if !ast.IsParenthesizedExpression(n) {
+			return false
+		}
+	}
 }
 
 // triedChainOperand returns expression, or, when it is parentheses that hold

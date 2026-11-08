@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -11,9 +12,9 @@ import (
 
 // try (try e) is yield* (yield* e): each try runs one Effect and gives its
 // success value, so depth d of try runs d nested Effects, and a try whose
-// operand is no Effect is EK0502. alchemy writes yield* yield* Service for a
-// service whose value is a program (1,891 sites); the parser once read the
-// outer try away and ran one layer.
+// operand is no Effect is EK0502. Parentheses around an inner try's operand,
+// as in try (try (e)), must preserve every execution layer. A compiled
+// program declares main as its TypeScript twin's yield* chain does.
 const tryNestedTarget = "FuzzTryNested"
 const tryNestedQuote = "`try e` is `yield* e`. It runs `e` and gives its success value."
 
@@ -28,32 +29,67 @@ func TestTryNestedQuoted(t *testing.T) {
 // written-forms probe: one try runs its one Effect layer, not two.
 var tryNestedOperands = []string{"value", "call", "member", "native-call", "native-arrow", "native-member"}
 
+// tryNestedForms say which operands parentheses hold: none (try try x),
+// each outer try's (try (try x)), every try's (try (try (x))), or the
+// innermost only (try try (x)).
+var tryNestedForms = []string{"bare", "paren", "grouped", "inner"}
+
 // tryNestedKey is the keyed corpus spelling: operand:depth:nesting:form.
-func tryNestedKey(operand string, depth, nesting int, bare bool) string {
-	return fmt.Sprintf("%s:%d:%d:%s", operand, depth, nesting, map[bool]string{true: "bare", false: "paren"}[bare])
+func tryNestedKey(operand string, depth, nesting int, form string) string {
+	return fmt.Sprintf("%s:%d:%d:%s", operand, depth, nesting, form)
 }
+
+// tryNestedChain writes depth words, try or yield*, over x in form.
+func tryNestedChain(word, x string, depth int, form string) string {
+	e := x
+	for i := range depth {
+		if form == "grouped" || form == "inner" && i == 0 || form == "paren" && i > 0 {
+			e = "(" + e + ")"
+		}
+		e = word + " " + e
+	}
+	return e
+}
+
+// mainDeclaration is main's declared type in a declaration file, with
+// import("…"). qualifiers dropped, so a .vibe and a .ts spelling compare.
+func mainDeclaration(text string) string {
+	_, after, ok := strings.Cut(text, "main(): ")
+	if !ok {
+		return ""
+	}
+	line, _, _ := strings.Cut(after, "\n")
+	return importQualifier.ReplaceAllString(line, "")
+}
+
+var importQualifier = regexp.MustCompile(`import\("[^"]*"\)\.`)
 
 func FuzzTryNested(f *testing.F) {
 	startShortBudget(f)
 	for _, operand := range tryNestedOperands {
 		for depth := 1; depth <= 3; depth++ {
 			for nesting := 0; nesting <= 3; nesting++ {
-				f.Add(tryNestedKey(operand, depth, nesting, false))
-				f.Add(tryNestedKey(operand, depth, nesting, true))
+				for _, form := range tryNestedForms {
+					f.Add(tryNestedKey(operand, depth, nesting, form))
+				}
 			}
 		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string) {
 		TestTryNestedQuoted(t)
-		operand, depth, nesting, bare, ok := parseTryNestedKey(key)
+		operand, depth, nesting, form, ok := parseTryNestedKey(key)
 		if !ok {
 			if key == "" {
 				return
 			}
 			b := []byte(key)
 			operand = tryNestedOperands[int(b[0])%len(tryNestedOperands)]
-			depth, nesting, bare = 1+int(b[len(b)-1])%3, int(b[len(b)/2])%4, b[0]&1 != 0
+			depth, nesting = 1+int(b[len(b)-1])%3, int(b[len(b)/2])%4
+			form = []string{"paren", "bare"}[b[0]&1]
+			if len(b) > 2 && b[1]&1 != 0 {
+				form = []string{"grouped", "inner"}[b[0]&1]
+			}
 		}
 		native := strings.HasPrefix(operand, "native-")
 		heldNesting := nesting
@@ -86,18 +122,22 @@ func FuzzTryNested(f *testing.F) {
 				x = "p()"
 			}
 		}
-		expression := strings.Repeat("try ", depth) + x
-		if !bare {
-			expression = "try " + x
-			for range depth - 1 {
-				expression = "try (" + expression + ")"
-			}
-		}
+		expression := tryNestedChain("try", x, depth, form)
 		source := "import { held, make, box } from \"./lib.js\"\n" + helper + "export effect function main() {\n" + setup + "  const v = " + expression + "\n  return v\n}\n"
+		// The twin holds all nesting layers itself and runs them with yield*.
+		twinType, twinValue := "number", "1"
+		for range nesting {
+			twinType, twinValue = "Effect.Effect<"+twinType+">", "Effect.succeed("+twinValue+")"
+		}
+		twin := fmt.Sprintf("import { Effect } from \"effect\"\nconst whole: %s = %s\nexport function main() {\n  return Effect.gen(function* () {\n    const v = %s\n    return v\n  })\n}\n", twinType, twinValue, tryNestedChain("yield*", "whole", depth, form))
+		files := map[string]string{"main.vibe": source, "lib.ts": lib}
+		if depth <= nesting {
+			files["twin.ts"] = twin
+		}
 		var result *Result
 		var err error
 		within(t, "compile", func() {
-			result, err = w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source, "lib.ts": lib}})
+			result, err = w.Compile(t.Context(), Project{Files: files})
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -117,19 +157,24 @@ func FuzzTryNested(f *testing.F) {
 		// d tries run d Effects: with d <= n the program compiles; with d > n
 		// the try past the last Effect has no program to run.
 		if want := depth > nesting; notEffect != want || !want && len(errors) > 0 {
-			Gap(t, tryNestedTarget, "feature:"+tryNestedKey(operand, depth, nesting, bare), "Chapter 2: %q; depth %d over nesting %d wants EK0502=%t, got errors %v\n%s\n-- lib.ts --\n%s", tryNestedQuote, depth, nesting, want, errors, source, lib)
+			Gap(t, tryNestedTarget, "feature:"+tryNestedKey(operand, depth, nesting, form), "Chapter 2: %q; depth %d over nesting %d wants EK0502=%t, got errors %v\n%s\n-- lib.ts --\n%s", tryNestedQuote, depth, nesting, want, errors, source, lib)
+		} else if depth <= nesting {
+			native, typescript := mainDeclaration(result.Outputs["out/main.d.ts"]), mainDeclaration(result.Outputs["out/twin.d.ts"])
+			if native == "" || native != typescript {
+				Gap(t, tryNestedTarget, "declaration:"+tryNestedKey(operand, depth, nesting, form), "Chapter 2: %q; %d tries over %d layers declare main as %q, but the yield* twin declares %q\n%s\n-- twin.ts --\n%s", tryNestedQuote, depth, nesting, native, typescript, source, twin)
+			}
 		}
 		ExpectPending(t, tryNestedTarget, specCorpusKey(t))
 	})
 }
 
-func parseTryNestedKey(key string) (operand string, depth, nesting int, bare, ok bool) {
+func parseTryNestedKey(key string) (operand string, depth, nesting int, form string, ok bool) {
 	parts := strings.Split(key, ":")
-	if len(parts) != 4 || !slices.Contains(tryNestedOperands, parts[0]) || (parts[3] != "bare" && parts[3] != "paren") {
-		return "", 0, 0, false, false
+	if len(parts) != 4 || !slices.Contains(tryNestedOperands, parts[0]) || !slices.Contains(tryNestedForms, parts[3]) {
+		return "", 0, 0, "", false
 	}
 	if _, err := fmt.Sscanf(parts[1]+" "+parts[2], "%d %d", &depth, &nesting); err != nil || depth < 1 || depth > 3 || nesting < 0 || nesting > 3 {
-		return "", 0, 0, false, false
+		return "", 0, 0, "", false
 	}
-	return parts[0], depth, nesting, parts[3] == "bare", true
+	return parts[0], depth, nesting, parts[3], true
 }

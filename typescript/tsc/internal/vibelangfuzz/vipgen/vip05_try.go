@@ -164,7 +164,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip05.try-composition", VIP: 5,
 		Requires: []string{"vip01.effect-function"},
-		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value.",
+		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
 			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
@@ -204,7 +204,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip05.try-operand-positions", VIP: 5,
 		Requires: []string{"vip01.effect-function"},
-		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value.",
+		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
 			Reading: "Parentheses, a pipe, a stored Effect and a member are each the Effect e; an argument of a call that initializes an annotated declaration is still a position where try runs it, as yield* does in the reference."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
@@ -216,6 +216,57 @@ func init() {
 			vibe := strings.ReplaceAll(setup+strings.ReplaceAll(position.vibe, "X", form.vibe), "N", n)
 			ref := strings.ReplaceAll(refSetup+strings.ReplaceAll(position.ref, "Y", form.ref), "N", n)
 			return []Stmt{&catchEdge{vibe: vibe, ref: ref}}
+		},
+	})
+}
+
+// tryNestedChain writes depth tries, or yield*s, over operand: grouped's bit
+// i puts the operand of the i-th try from the inside in parentheses.
+func tryNestedChain(word, operand string, depth, grouped int) string {
+	e := operand
+	for i := range depth {
+		if grouped&(1<<i) != 0 {
+			e = "(" + e + ")"
+		}
+		e = word + e
+	}
+	return e
+}
+
+func init() {
+	Register(&Construct{
+		Key: "vip05.try-nested", VIP: 5,
+		Requires: []string{"vip01.effect-function"},
+		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
+			Reading: "Each try runs its own operand: n tries over n nested Effects give the innermost value, as n yield*s do in the reference, whether or not parentheses hold any operand."}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			depth := 1 + g.Intn(4)
+			grouped := g.Intn(1 << depth)
+			n := fmt.Sprint(g.Intn(9) + 1)
+			mode := g.Intn(3)
+			operand := n
+			for i := range depth {
+				switch {
+				case mode == 1:
+					// Each layer records its execution, including its order and count.
+					operand = fmt.Sprintf("Effect.sync(() => { ev(%q); return %s })", g.Label(), operand)
+				case mode == 2 && i == 0:
+					operand = "Effect.fail(" + n + ")"
+				default:
+					operand = "Effect.succeed(" + operand + ")"
+				}
+			}
+			setup := ""
+			if g.Intn(2) != 0 {
+				setup = "const mk = () => " + operand + "; "
+				operand = "mk()"
+			}
+			vibe, ref := tryNestedChain("try ", operand, depth, grouped), tryNestedChain("yield* ", operand, depth, grouped)
+			if g.Intn(2) != 0 {
+				return []Stmt{&catchEdge{vibe: setup + "return " + vibe, ref: setup + "return " + ref}}
+			}
+			return []Stmt{&catchEdge{vibe: setup + "const a = " + vibe + "; return a", ref: setup + "const a = " + ref + "; return a"}}
 		},
 	})
 }
