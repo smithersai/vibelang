@@ -1,13 +1,1 @@
-# Uppercase local object receivers still enter the legacy service-call heuristic.
-FuzzComputedKeyExpressionProjection projection:method:0:EK9203 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection corpus:method-0 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection projection:method:1:EK9203 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection corpus:method-1 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection projection:method:3:EK9203 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection corpus:method-3 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection projection:method:4:EK9203 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection corpus:method-4 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection projection:method:5:EK9203 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection corpus:method-5 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection projection:method:7:EK9203 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
-FuzzComputedKeyExpressionProjection corpus:method-7 compiler VIP-1/VIP-9: a plain local object method is mistaken for a service operation (EK9203)
+# Uppercase local object receivers resolve to their declarations; the legacy service-call heuristic no longer fires (EK9203).
