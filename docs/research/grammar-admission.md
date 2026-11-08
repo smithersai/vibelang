@@ -898,3 +898,10 @@ body's `TS1123` disappears with its type errors. The same body in a plain
 `function*`, or in a producer declaration, still reports `TS1123`. The form
 is pending under `admission:producer-cover-grammar`, keyed by a producer
 written as a call argument.
+
+A later campaign reduced a case to `.00`, which the compiler accepts with no
+diagnostic, as stock TypeScript does: ECMAScript's `DecimalLiteral` may start
+with `.` before a digit. The lab lexer started numbers only at a digit. It
+now reads `.5` as one number, and reads `?.` before a digit as `?`, since
+`OptionalChainingPunctuator` excludes a following digit and `x?.5:1` is a
+conditional expression.

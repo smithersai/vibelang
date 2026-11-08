@@ -8,7 +8,8 @@ import "testing"
 // heritage, conditional, constructor, query and import types, type
 // predicates, `this` parameters, index signatures, catch patterns, do-while,
 // ambient and abstract declarations, namespaces and enums, `using` as an
-// identifier, and an empty type parameter list on a type alias or interface.
+// identifier, an empty type parameter list on a type alias or interface, and
+// numbers that start with a dot.
 func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 	lab, err := admissionLab()
 	if err != nil {
@@ -47,6 +48,9 @@ func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 		"using\nx = 1;",
 		"using x = f(), y = g();",
 		"type T<> = 1; interface I<> {} export type U<> = string; export interface J<> extends I {}",
+		".00",
+		"const a = .5, b = .00, c = .5e3, d = [.1, .2];",
+		"declare const x: boolean; const v = x?.5:1;",
 		"class K { constructor(public readonly n: number, private m?: string) {} }",
 		"const g = (): (() => string) => () => \"a\"; const h = async (): (() => string) => () => \"b\";",
 		"type W = new (x: number) => Date; type X = abstract new () => object;",
@@ -77,6 +81,7 @@ func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 		"function f<>() {}",
 		"class C<> {}",
 		"type T<,> = 1;",
+		"declare const x: { 0: number }; const v = x.0;",
 	}
 	vl := grammarParseMode{prose: true, names: true}
 	derives := func(source string) (bool, bool) {

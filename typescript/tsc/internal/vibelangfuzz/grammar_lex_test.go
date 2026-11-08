@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"strings"
+	"testing"
 	"unicode"
 )
 
@@ -62,7 +63,8 @@ func grammarLexSource(src string) []grammarToken {
 			}
 			j++
 			t.kind = 'x'
-		case r >= '0' && r <= '9':
+		// ECMAScript's DecimalLiteral may start with `.` before a digit: `.5`.
+		case r >= '0' && r <= '9' || r == '.' && grammarIsDecimalDigitAt(rs, i+1):
 			for j < len(rs) && (grammarIsWordRune(rs[j]) || rs[j] == '.') {
 				j++
 			}
@@ -85,6 +87,11 @@ func grammarLexSource(src string) []grammarToken {
 		default:
 			t.kind = 'p'
 			for _, p := range grammarPunctuators {
+				// OptionalChainingPunctuator is `?.` [lookahead ∉ DecimalDigit]:
+				// `a?.5:1` is a conditional expression.
+				if p == "?." && grammarIsDecimalDigitAt(rs, i+2) {
+					continue
+				}
 				if strings.HasPrefix(string(rs[i:min(len(rs), i+4)]), p) {
 					j = i + len([]rune(p))
 					break
@@ -97,6 +104,11 @@ func grammarLexSource(src string) []grammarToken {
 		i = j
 	}
 	return out
+}
+
+// grammarIsDecimalDigitAt reports a decimal digit at i.
+func grammarIsDecimalDigitAt(rs []rune, i int) bool {
+	return i < len(rs) && rs[i] >= '0' && rs[i] <= '9'
 }
 
 // grammarIsUnicodeEscapeAt reports a `\uXXXX` or `\u{…}` escape at i.
@@ -163,4 +175,17 @@ func grammarTight(toks []grammarToken) string {
 		b.WriteString(t.text)
 	}
 	return b.String()
+}
+
+// A leading-dot DecimalLiteral is one numeric token, and `?.` before a digit
+// is `?` followed by that number.
+func TestGrammarLexLeadingDotNumber(t *testing.T) {
+	var got []string
+	for _, tok := range grammarLexSource(".5 a?.5:1 a?.b ...xs .00e1") {
+		got = append(got, string(tok.kind)+tok.text)
+	}
+	want := []string{"n.5", "wa", "p?", "n.5", "p:", "n1", "wa", "p?.", "wb", "p...", "wxs", "n.00e1"}
+	if strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Fatalf("tokens %q, want %q", got, want)
+	}
 }
