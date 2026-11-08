@@ -1,0 +1,788 @@
+[
+  {
+    "key": "effect:body:computed-method:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { break outer; \"m\" }](){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:computed-method:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { continue outer; \"m\" }](){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:computed-method:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { return \"m\" as const; \"m\" }](){} }}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "effect:body:computed-field:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { break outer; \"m\" as const }]=0 }}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "effect:body:computed-field:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { continue outer; \"m\" as const }]=0 }}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "effect:body:computed-field:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { return \"m\" as const; \"m\" as const }]=0 }}}}",
+    "want": [
+      2002,
+      1166
+    ]
+  },
+  {
+    "key": "effect:body:member-decorator:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:member-decorator:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:member-decorator:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) m(){} }}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "effect:body:class-decorator:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:class-decorator:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:class-decorator:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){@(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) class C {}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "effect:body:heritage:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C extends do { break outer; (class {}) } {}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:heritage:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C extends do { continue outer; (class {}) } {}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:heritage:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C extends do { return (class {}); (class {}) } {}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "effect:body:object-method:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { break outer; \"m\" }](){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:object-method:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { continue outer; \"m\" }](){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:body:object-method:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { return \"m\" as const; \"m\" }](){} }}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "effect:head:computed-method:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C { [do { break outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:computed-method:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C { [do { continue outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:computed-method:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C { [do { return \"m\" as const; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "effect:head:computed-field:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C { [do { break outer; \"m\" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "effect:head:computed-field:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C { [do { continue outer; \"m\" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "effect:head:computed-field:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C { [do { return \"m\" as const; \"m\" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002,
+      1166
+    ]
+  },
+  {
+    "key": "effect:head:member-decorator:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:member-decorator:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:member-decorator:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C { @(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "effect:head:class-decorator:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:class-decorator:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:class-decorator:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {@(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "effect:head:heritage:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C extends do { break outer; (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:heritage:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C extends do { continue outer; (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:heritage:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {class C extends do { return (class {}); (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "effect:head:object-method:break",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {const object = { [do { break outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:object-method:continue",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {const object = { [do { continue outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "effect:head:object-method:return",
+    "source": "effect function f(){outer:for(const n of [1]){for try(const {item=do {const object = { [do { return \"m\" as const; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "concurrent:body:computed-method:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C { [do { break outer; \"m\" }](){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:computed-method:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C { [do { continue outer; \"m\" }](){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:computed-method:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C { [do { return \"m\" as const; \"m\" }](){} }}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:body:computed-field:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C { [do { break outer; \"m\" as const }]=0 }}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "concurrent:body:computed-field:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C { [do { continue outer; \"m\" as const }]=0 }}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "concurrent:body:computed-field:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C { [do { return \"m\" as const; \"m\" as const }]=0 }}}}",
+    "want": [
+      2002,
+      1166,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:body:member-decorator:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:member-decorator:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:member-decorator:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) m(){} }}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:body:class-decorator:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:class-decorator:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:class-decorator:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){@(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) class C {}}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:body:heritage:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C extends do { break outer; (class {}) } {}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:heritage:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C extends do { continue outer; (class {}) } {}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:heritage:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){class C extends do { return (class {}); (class {}) } {}}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:body:object-method:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { break outer; \"m\" }](){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:object-method:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { continue outer; \"m\" }](){} }}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:body:object-method:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { return \"m\" as const; \"m\" }](){} }}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:head:computed-method:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C { [do { break outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:computed-method:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C { [do { continue outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:computed-method:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C { [do { return \"m\" as const; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:head:computed-field:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C { [do { break outer; \"m\" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "concurrent:head:computed-field:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C { [do { continue outer; \"m\" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "concurrent:head:computed-field:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C { [do { return \"m\" as const; \"m\" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002,
+      1166,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:head:member-decorator:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:member-decorator:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:member-decorator:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C { @(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:head:class-decorator:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:class-decorator:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:class-decorator:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {@(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:head:heritage:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C extends do { break outer; (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:heritage:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C extends do { continue outer; (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:heritage:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {class C extends do { return (class {}); (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "concurrent:head:object-method:break",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {const object = { [do { break outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:object-method:continue",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {const object = { [do { continue outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "concurrent:head:object-method:return",
+    "source": "effect function f(){outer:for concurrent(const n of [1]){for try(const {item=do {const object = { [do { return \"m\" as const; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}",
+    "want": [
+      2002,
+      1904
+    ]
+  },
+  {
+    "key": "block:body:computed-method:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { break outer; \"m\" }](){} }}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:computed-method:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { continue outer; \"m\" }](){} }}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:computed-method:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { return \"m\" as const; \"m\" }](){} }}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "block:body:computed-field:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { break outer; \"m\" as const }]=0 }}}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "block:body:computed-field:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { continue outer; \"m\" as const }]=0 }}}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "block:body:computed-field:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { return \"m\" as const; \"m\" as const }]=0 }}}}}",
+    "want": [
+      2002,
+      1166
+    ]
+  },
+  {
+    "key": "block:body:member-decorator:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:member-decorator:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:member-decorator:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) m(){} }}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "block:body:class-decorator:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:class-decorator:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:class-decorator:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){@(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) class C {}}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "block:body:heritage:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C extends do { break outer; (class {}) } {}}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:heritage:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C extends do { continue outer; (class {}) } {}}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:heritage:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){class C extends do { return (class {}); (class {}) } {}}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "block:body:object-method:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { break outer; \"m\" }](){} }}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:object-method:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { continue outer; \"m\" }](){} }}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:body:object-method:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { return \"m\" as const; \"m\" }](){} }}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "block:head:computed-method:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C { [do { break outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:computed-method:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C { [do { continue outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:computed-method:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C { [do { return \"m\" as const; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "block:head:computed-field:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C { [do { break outer; \"m\" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "block:head:computed-field:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C { [do { continue outer; \"m\" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003,
+      1166
+    ]
+  },
+  {
+    "key": "block:head:computed-field:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C { [do { return \"m\" as const; \"m\" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2002,
+      1166
+    ]
+  },
+  {
+    "key": "block:head:member-decorator:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:member-decorator:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:member-decorator:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C { @(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "block:head:class-decorator:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:class-decorator:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:class-decorator:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {@(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "block:head:heritage:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C extends do { break outer; (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:heritage:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C extends do { continue outer; (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:heritage:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {class C extends do { return (class {}); (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2002
+    ]
+  },
+  {
+    "key": "block:head:object-method:break",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {const object = { [do { break outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:object-method:continue",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {const object = { [do { continue outer; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2003
+    ]
+  },
+  {
+    "key": "block:head:object-method:return",
+    "source": "effect function f(){const e=effect {outer:for(const n of [1]){for try(const {item=do {const object = { [do { return \"m\" as const; \"m\" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}}",
+    "want": [
+      2002
+    ]
+  }
+]

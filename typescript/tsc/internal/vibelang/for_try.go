@@ -44,7 +44,18 @@ func checkForTry(c *checker.Checker, file *ast.SourceFile) {
 			body = func(x *ast.Node) bool {
 				// A do expression is an invoked arrow, but its jumps still target
 				// the function and statements around the for try.
+				if ast.IsClassLike(x) {
+					for _, expression := range classDefinitionExpressions(x) {
+						body(expression)
+					}
+					return false
+				}
 				if isFunctionBoundary(x) && !isDoArrow(file, x) {
+					if ast.IsFunctionLike(x) {
+						if name := x.Name(); name != nil && ast.IsComputedPropertyName(name) {
+							body(name)
+						}
+					}
 					return false
 				}
 				if ast.IsBreakOrContinueStatement(x) && x.Label() != nil {
@@ -103,8 +114,17 @@ func isReturnKeyword(file *ast.SourceFile, n *ast.Node) bool {
 // Neither introduces a source callable; written callables keep their boundary.
 func labeledJumpTarget(file *ast.SourceFile, jump *ast.Node) *ast.Node {
 	label := jump.Label().Text()
-	for n := jump.Parent; n != nil && (!isFunctionBoundary(n) || isDoArrow(file, n) || isConcurrentBody(n)); n = n.Parent {
-		if n.Kind == ast.KindLabeledStatement && n.AsLabeledStatement().Label.Text() == label {
+	for child, n := jump, jump.Parent; n != nil; child, n = n, n.Parent {
+		if ast.IsFunctionLike(n) || ast.IsClassElement(n) {
+			if n.Name() == child && ast.IsComputedPropertyName(child) || classDecoratorChild(n, child) || isDoArrow(file, n) || isConcurrentBody(n) {
+				continue
+			}
+			return nil
+		}
+		if isFunctionBoundary(n) && !ast.IsClassLike(n) {
+			return nil
+		}
+		if n.Kind == ast.KindLabeledStatement && n.Label().Text() == label {
 			return n
 		}
 	}

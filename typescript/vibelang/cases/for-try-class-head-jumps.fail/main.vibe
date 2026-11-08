@@ -1,0 +1,110 @@
+// expect: EK2002 EK2003 TS1166
+
+// effect:body:computed-method:break
+effect function f0(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { break outer; "m" }](){} }}}}
+
+// effect:body:computed-method:continue
+effect function f1(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { continue outer; "m" }](){} }}}}
+
+// effect:body:computed-method:return
+effect function f2(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { return "m" as const; "m" }](){} }}}}
+
+// effect:body:computed-field:break
+effect function f3(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { break outer; "m" as const }]=0 }}}}
+
+// effect:body:computed-field:continue
+effect function f4(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { continue outer; "m" as const }]=0 }}}}
+
+// effect:body:computed-field:return
+effect function f5(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { [do { return "m" as const; "m" as const }]=0 }}}}
+
+// effect:body:member-decorator:break
+effect function f6(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}
+
+// effect:body:member-decorator:continue
+effect function f7(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} }}}}
+
+// effect:body:member-decorator:return
+effect function f8(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C { @(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) m(){} }}}}
+
+// effect:body:class-decorator:break
+effect function f9(){outer:for(const n of [1]){for try(const item of Stream.make(1)){@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}
+
+// effect:body:class-decorator:continue
+effect function f10(){outer:for(const n of [1]){for try(const item of Stream.make(1)){@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {}}}}
+
+// effect:body:class-decorator:return
+effect function f11(){outer:for(const n of [1]){for try(const item of Stream.make(1)){@(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) class C {}}}}
+
+// effect:body:heritage:break
+effect function f12(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C extends do { break outer; (class {}) } {}}}}
+
+// effect:body:heritage:continue
+effect function f13(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C extends do { continue outer; (class {}) } {}}}}
+
+// effect:body:heritage:return
+effect function f14(){outer:for(const n of [1]){for try(const item of Stream.make(1)){class C extends do { return (class {}); (class {}) } {}}}}
+
+// effect:body:object-method:break
+effect function f15(){outer:for(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { break outer; "m" }](){} }}}}
+
+// effect:body:object-method:continue
+effect function f16(){outer:for(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { continue outer; "m" }](){} }}}}
+
+// effect:body:object-method:return
+effect function f17(){outer:for(const n of [1]){for try(const item of Stream.make(1)){const object = { [do { return "m" as const; "m" }](){} }}}}
+
+// effect:head:computed-method:break
+effect function f18(){outer:for(const n of [1]){for try(const {item=do {class C { [do { break outer; "m" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:computed-method:continue
+effect function f19(){outer:for(const n of [1]){for try(const {item=do {class C { [do { continue outer; "m" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:computed-method:return
+effect function f20(){outer:for(const n of [1]){for try(const {item=do {class C { [do { return "m" as const; "m" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:computed-field:break
+effect function f21(){outer:for(const n of [1]){for try(const {item=do {class C { [do { break outer; "m" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:computed-field:continue
+effect function f22(){outer:for(const n of [1]){for try(const {item=do {class C { [do { continue outer; "m" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:computed-field:return
+effect function f23(){outer:for(const n of [1]){for try(const {item=do {class C { [do { return "m" as const; "m" as const }]=0 };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:member-decorator:break
+effect function f24(){outer:for(const n of [1]){for try(const {item=do {class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:member-decorator:continue
+effect function f25(){outer:for(const n of [1]){for try(const {item=do {class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:member-decorator:return
+effect function f26(){outer:for(const n of [1]){for try(const {item=do {class C { @(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) m(){} };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:class-decorator:break
+effect function f27(){outer:for(const n of [1]){for try(const {item=do {@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:class-decorator:continue
+effect function f28(){outer:for(const n of [1]){for try(const {item=do {@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:class-decorator:return
+effect function f29(){outer:for(const n of [1]){for try(const {item=do {@(do { return ((v:unknown,c:unknown)=>{}); ((v:unknown,c:unknown)=>{}) }) class C {};0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:heritage:break
+effect function f30(){outer:for(const n of [1]){for try(const {item=do {class C extends do { break outer; (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:heritage:continue
+effect function f31(){outer:for(const n of [1]){for try(const {item=do {class C extends do { continue outer; (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:heritage:return
+effect function f32(){outer:for(const n of [1]){for try(const {item=do {class C extends do { return (class {}); (class {}) } {};0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:object-method:break
+effect function f33(){outer:for(const n of [1]){for try(const {item=do {const object = { [do { break outer; "m" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:object-method:continue
+effect function f34(){outer:for(const n of [1]){for try(const {item=do {const object = { [do { continue outer; "m" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}
+
+// effect:head:object-method:return
+effect function f35(){outer:for(const n of [1]){for try(const {item=do {const object = { [do { return "m" as const; "m" }](){} };0}} of Stream.make({item:undefined as number|undefined})){}}}
+

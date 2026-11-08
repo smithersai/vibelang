@@ -762,7 +762,7 @@ func (p *Parser) checkDoBoundary(d *doExpression, boundary *ast.Node, what strin
 			keyword = "yield"
 		}
 		if keyword != "" {
-			if p.doForTryHeadJump(boundary, n) || p.doConcurrentItemJump(boundary, n) || p.doEffectBlockJump(n) {
+			if p.doForTryItemJump(boundary, n) || p.doConcurrentItemJump(boundary, n) || p.doEffectBlockJump(n) {
 				return // The source construct owns its language diagnostic, once.
 			}
 			p.doError(p.skipRangeTrivia(n.Loc), DoBoundaryCode, DoBoundaryMessage, keyword, what)
@@ -773,26 +773,30 @@ func (p *Parser) checkDoBoundary(d *doExpression, boundary *ast.Node, what strin
 // A forbidden per-item jump belongs to VIP-20, even when an unsupported do
 // position is still an IIFE. Letting the for try checker report its language error avoids
 // hiding or duplicating EK2002/EK2003 with implementation-boundary EK0204.
-func (p *Parser) doForTryHeadJump(boundary, jump *ast.Node) bool {
+func (p *Parser) doForTryItemJump(boundary, jump *ast.Node) bool {
 	if jump.Kind != ast.KindReturnStatement && (!ast.IsBreakOrContinueStatement(jump) || jump.Label() == nil) {
 		return false
 	}
-	isDo := func(fn *ast.Node) bool {
-		call := fn.Parent
-		for call != nil && call.Kind == ast.KindParenthesizedExpression {
-			call = call.Parent
-		}
-		d := p.vibelangDos[call]
-		return d != nil && d.arrow == fn
-	}
 	var loop *ast.Node
 	for child, n := boundary, boundary.Parent; n != nil; child, n = n, n.Parent {
-		if ast.IsClassLike(n) || ast.IsFunctionLike(n) && !isDo(n) {
+		if ast.IsFunctionLike(n) || ast.IsClassElement(n) {
+			if name := n.Name(); child == name && ast.IsComputedPropertyName(name) || ast.IsDecorator(child) {
+				continue
+			}
+			if d := p.doOfArrow(n); d != nil && !d.match {
+				continue
+			}
 			return false
 		}
-		if n.Kind == ast.KindForOfStatement && n.Flags&ast.NodeFlagsVibeLang != 0 && child == n.AsForInOrOfStatement().Initializer {
-			loop = n
-			break
+		if n.Kind == ast.KindClassStaticBlockDeclaration || n.Kind == ast.KindEnumDeclaration {
+			return false
+		}
+		if n.Kind == ast.KindForOfStatement && n.Flags&ast.NodeFlagsVibeLang != 0 {
+			f := n.AsForInOrOfStatement()
+			if child == f.Initializer || child == f.Statement {
+				loop = n
+				break
+			}
 		}
 	}
 	if loop == nil {
@@ -801,8 +805,24 @@ func (p *Parser) doForTryHeadJump(boundary, jump *ast.Node) bool {
 	if jump.Kind == ast.KindReturnStatement {
 		return true
 	}
-	for n := jump.Parent; n != nil; n = n.Parent {
-		if ast.IsClassLike(n) || ast.IsFunctionLike(n) && !isDo(n) {
+	for child, n := jump, jump.Parent; n != nil; child, n = n, n.Parent {
+		if ast.IsFunctionLike(n) || ast.IsClassElement(n) {
+			if name := n.Name(); child == name && ast.IsComputedPropertyName(name) || ast.IsDecorator(child) {
+				continue
+			}
+			if d := p.doOfArrow(n); d != nil && !d.match {
+				continue
+			}
+			if ast.IsArrowFunction(n) && ast.IsCallExpression(n.Parent) {
+				call := n.Parent
+				callee := call.Expression()
+				if callee.Kind == ast.KindIdentifier && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$forConcurrent" && len(call.Arguments()) == 3 && call.Arguments()[2] == n {
+					continue
+				}
+			}
+			return false
+		}
+		if n.Kind == ast.KindClassStaticBlockDeclaration || n.Kind == ast.KindEnumDeclaration {
 			return false
 		}
 		if n.Kind != ast.KindLabeledStatement || n.Label().Text() != jump.Label().Text() {
@@ -820,6 +840,7 @@ func (p *Parser) doForTryHeadJump(boundary, jump *ast.Node) bool {
 				return false
 			}
 		}
+		n.Label().Flags |= ast.NodeFlagsVibeLang
 		return true
 	}
 	return false
