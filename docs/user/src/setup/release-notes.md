@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.12
 
 - Automatic fixes left throwing calls in effectful parameter defaults for manual migration. Supported calls now use a TypeScript adapter that keeps their call-time work, return types and original exceptions, including callback defaults.
+- The platform guide's `navigator.hardwareConcurrency` row named `Experimental.Process.availableParallelism`, which does not exist. It now names the `availableParallelism` member of the `Experimental.Process.Process` service.
 
 - `vibelang --fix` could keep a `.pipe` call before `satisfies` or a following property or arithmetic expression. These calls now migrate with the surrounding expression intact.
 
