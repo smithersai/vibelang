@@ -4,7 +4,7 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import test from "node:test"
-import { runnerHelpers, runnerSeconds, stageSeconds } from "./harness-command.mjs"
+import { nearDeadline, runnerHelpers, runnerSeconds, stageSeconds } from "./harness-command.mjs"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
@@ -72,4 +72,17 @@ test("a helper's budget does not come from compiled output or a missing file", (
   fs.writeFileSync(runner, 'import a from "./out/run.mjs"\nimport b from "./missing.mjs"\n')
   assert.deepEqual(runnerHelpers(runner), [])
   assert.equal(runnerSeconds(runner), 60)
+})
+
+test("a passing case that used over half of a phase's deadline is named with that phase", () => {
+  const records = [
+    { phase: "compile", wallMs: 30_000, timeoutMs: 120_000 },
+    { phase: "run", wallMs: 48_200, timeoutMs: 60_000 },
+    { phase: "compare", wallMs: 9_000, timeoutMs: 10_000 },
+  ]
+  assert.deepEqual(nearDeadline(records), { phase: "compare", seconds: 9, limit: 10, ratio: 0.9 }, "the worst ratio wins")
+  assert.equal(nearDeadline(records.slice(0, 1)), null)
+  assert.equal(nearDeadline([{ phase: "run", wallMs: 30_000, timeoutMs: 60_000 }]), null, "exactly half is inside")
+  assert.equal(nearDeadline([{ phase: "run", timeoutMs: 60_000 }, { phase: "run", wallMs: 5, timeoutMs: 0 }]), null, "no wall or no deadline: nothing to compare")
+  assert.equal(nearDeadline(records, 0.2).phase, "compare")
 })

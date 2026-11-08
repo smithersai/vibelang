@@ -28,7 +28,9 @@
 //     deadlines written in it and its helpers. A runner that starts a
 //     process, itself or through a helper, carries the line or imports a
 //     helper that does (harness-deadlines.test.mjs): it runs at the host's
-//     pace, and 60 s killed healthy runs on loaded post-merge boxes.
+//     pace, and 60 s killed healthy runs on loaded post-merge boxes. A
+//     passing case that used over half of a phase's deadline gets a
+//     `deadline:` line under its result and a count in the summary.
 //
 // --jobs must be a positive safe integer. At most one worker per selected
 // case starts; invalid counts exit 2 before reading or modifying cases.
@@ -81,7 +83,7 @@
 // case's node_modules links it under that name, so the compiler and Node
 // resolve the package there, as they would an installed one.
 import { createHash } from "node:crypto"
-import { CaseCommands, runnerSeconds } from "./harness-command.mjs"
+import { CaseCommands, nearDeadline, runnerSeconds } from "./harness-command.mjs"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
@@ -588,7 +590,8 @@ async function main() {
       }
       if (isolated && result.ok) fs.rmSync(path.join(isolatedCasesDir, name), { recursive: true, force: true })
       const status = pending ? (result.ok ? "XPASS" : "pending") : result.ok ? "ok" : "FAIL"
-      results[index] = { name, pending, status, ms: performance.now() - started, commands: reportPath ? commands.records : undefined, ...result }
+      const deadline = result.ok ? nearDeadline(commands.records) : null
+      results[index] = { name, pending, status, ms: performance.now() - started, commands: reportPath ? commands.records : undefined, deadline, ...result }
       flush()
     }
   }
@@ -615,6 +618,8 @@ async function main() {
     `\n${results.length} cases: ${count("ok")} ok, ${count("FAIL")} FAIL, ${count("pending")} pending, ${count("XPASS")} XPASS`,
   )
   if (staleCompiler) console.log(staleCompiler)
+  const near = results.filter((r) => r.deadline)
+  if (near.length > 0) console.log(`${near.length} passed past half a deadline: ${near.map((r) => r.name).join(", ")}`)
   const xpass = results.filter((r) => r.status === "XPASS")
   if (xpass.length > 0) console.log(`XPASS: delete the pending file of ${xpass.map((r) => r.name).join(", ")}`)
   // Piped console output may still be buffered; let it drain before exiting.
@@ -641,6 +646,10 @@ function report(r) {
       break
     default:
       console.log(`FAIL    ${r.name}: ${r.detail}${time}`)
+  }
+  if (r.deadline) {
+    const { phase, seconds, limit } = r.deadline
+    console.log(`        deadline: ${phase} took ${seconds.toFixed(1)} s of ${limit} s; a loaded host kills it (run.mjs: write \`// run-seconds: N\`)`)
   }
   if (r.status === "FAIL" || (verbose && r.log)) {
     for (const line of r.log.trimEnd().split("\n").slice(0, verbose ? 200 : 40)) console.log(`        ${line}`)

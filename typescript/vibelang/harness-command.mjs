@@ -31,6 +31,21 @@ export function stageSeconds(text) {
   return written.reduce((sum, ms) => sum + ms, 0) / 1000
 }
 
+// The phase of a case that came closest to its deadline, when it used more than `fraction` of it: a case that passes
+// at 48 s of 60 on a developer host is killed on a loaded post-merge box, so the harness names it while it still
+// passes. Returns null when every phase stayed inside the fraction.
+export function nearDeadline(records, fraction = 0.5) {
+  let worst = null
+  for (const record of records) {
+    if (!(record.wallMs > 0) || !(record.timeoutMs > 0)) continue
+    const ratio = record.wallMs / record.timeoutMs
+    if (ratio > fraction && (worst === null || ratio > worst.ratio)) {
+      worst = { phase: record.phase, seconds: record.wallMs / 1000, limit: record.timeoutMs / 1000, ratio }
+    }
+  }
+  return worst
+}
+
 // A case owns its command history, so concurrent workers never mix evidence.
 export class CaseCommands {
   records = []

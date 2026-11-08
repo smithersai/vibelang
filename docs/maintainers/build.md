@@ -978,6 +978,10 @@ about three times the slowest post-merge run observed. It reads files only, so
 a line that would get a runner killed as a whole, without naming a stage, or a
 process-starting runner without one, fails in under a second. `//:release` runs the same test, so post-merge, which
 names its targets, keeps the rule too.
+A passing case that used over half of any phase's deadline prints a
+`deadline:` line under its result naming the phase and the two times, and the
+summary counts such cases, so a case drifting toward a kill shows in post-merge
+while it passes.
 
 The Chapter 15 failure case uses `TestClock.layer()` and advances virtual time
 with `TestClock.adjust` before joining its scenario. This checks timeout,
