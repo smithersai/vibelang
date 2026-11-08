@@ -48,3 +48,5 @@ Reference search and rename include imported scalar types in `schema` fields and
 For mapped library types in a schema, definition, type-definition and hover
 queries follow the written type binding, including a type-only import alias.
 An ordinary Schema value keeps its own definition and type information.
+
+A `schema`, `error`, `schema error` or `data` declaration can share a line with the next declaration. Formatting preserves both declarations and their documentation, including a separately written schema type alias.

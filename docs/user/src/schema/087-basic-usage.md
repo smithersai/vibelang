@@ -20,6 +20,8 @@ JSDoc on a `schema` declaration belongs to its constant. Without a written type 
 
 To document the type separately, write `type Message = typeof Message.Type` beside either `schema Message { … }` or `schema Message = …`, before or after it in the same scope. One exact, nongeneric alias replaces the synthesized type. Each written declaration keeps its own JSDoc, position and `export` modifier; native `removeComments` and `stripInternal` still apply. A comment on the same line after a schema’s semicolon stays after the emitted constant, as in TypeScript; put JSDoc on its own line before the type alias to document the type. Other type-name collisions remain errors.
 
+Formatting accepts the schema and its separately written alias on one line. It preserves each declaration’s JSDoc and `export` modifier.
+
 ## Modeling primitives, symbols, literals, enums, and template strings
 
 ```vibe

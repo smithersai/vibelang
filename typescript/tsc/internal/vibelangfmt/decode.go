@@ -540,6 +540,9 @@ func (d *decoder) node(node *ast.Node) error {
 			after = greater
 		}
 		value := alias.Type()
+		if holder.typeSeparator && alias.End() > value.End() && d.text[alias.End()-1] == ';' {
+			d.replace(alias.End()-1, alias.End(), "")
+		}
 		if holder.noBody {
 			d.replace(after, value.End(), "")
 		} else {

@@ -23,6 +23,22 @@ const run = (entry, dir, args) => spawnSync(process.execPath, [entry[1], ...entr
 })
 
 for (const entry of entries) {
+  test(entry[0] + " formatter preserves adjacent schemas and written alias documentation", () => project(dir => {
+    const source = "import { Schema } from 'effect';\n/** Value docs. */ export schema Message { id: string } /** Type docs. */ export type Message = typeof Message.Type\n"
+    writeFileSync(join(dir, "existing.vibe"), source)
+    const result = run(entry, dir, ["--write", "existing.vibe"])
+    assert.equal(result.status, 0, result.stderr)
+    const formatted = readFileSync(join(dir, "existing.vibe"), "utf8")
+    assert.ok(formatted.includes("schema Message"), formatted)
+    assert.ok(formatted.includes("type Message = typeof Message.Type"), formatted)
+    for (const comment of ["/** Value docs. */", "/** Type docs. */"]) assert.equal(formatted.split(comment).length, 2, formatted)
+    const checked = run(entry, dir, ["--check", "existing.vibe"])
+    assert.equal(checked.status, 0, checked.stderr)
+    const again = run(entry, dir, ["--write", "existing.vibe"])
+    assert.equal(again.status, 0, again.stderr)
+    assert.equal(readFileSync(join(dir, "existing.vibe"), "utf8"), formatted)
+  }))
+
   test(entry[0] + " formatter help describes modes and the option terminator without writing", () => project(dir => {
     for (const flag of ["--help", "-h"]) {
       const help = run(entry, dir, [flag])

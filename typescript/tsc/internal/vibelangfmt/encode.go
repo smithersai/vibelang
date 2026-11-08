@@ -106,6 +106,8 @@ type placeholder struct {
 	// alias marks a schema alias, schema Name = Type (D280), whose = and type
 	// the type alias keeps as written.
 	alias bool
+	// typeSeparator marks a separator added only to the projected alias.
+	typeSeparator bool
 	// data marks a data declaration (D307), whose variants with fields the
 	// type literal writes with a colon before the fields.
 	data bool
@@ -767,6 +769,15 @@ func (e *encoder) classMemberSeparators(form parser.VibeSyntax) {
 // brace. A newline before "=" adds a continuation indent that survives
 // decoding the declaration back to VibeLang.
 func (e *encoder) typeBody(form parser.VibeSyntax) {
+	// A structural declaration ends at its brace. Its projected type alias
+	// needs a separator before another statement on the same source line.
+	end := form.Range.End()
+	next := scanner.SkipTrivia(e.source, end)
+	if next < len(e.source) && e.source[next] != ';' && e.source[next] != '}' &&
+		(end == 0 || e.source[end-1] != ';') && !strings.ContainsAny(e.source[end:next], "\r\n\u2028\u2029") {
+		e.holders[len(e.holders)-1].typeSeparator = true
+		e.insert(end, ";", 0)
+	}
 	start := form.Open.Pos()
 	if !hasComment(e.source[form.Head.End():start]) {
 		for start > form.Head.End() && isSpace(e.source[start-1]) {
