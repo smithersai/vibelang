@@ -2291,8 +2291,9 @@ typescript/vibelang/cases/cov2-900b-cite-catch-expression.fail/main.vibe:32:14 l
 typescript/vibelang/cases/cov2-900b-cite-catch-expression.fail/main.vibe:37:20 lambda effectFn table
 typescript/vibelang/cases/cov2-900b-cite-catch-expression.fail/main.vibe:37:36 lambda effectFn table
 typescript/vibelang/cases/cov2-900b-cite-contract-exclude-scoped.fail/main.vibe:7:28 byname program table
-typescript/vibelang/cases/cov2-900b-cite-do-loop-head-labels.fail/main.vibe:17:41 lambda plain fallback
-typescript/vibelang/cases/cov2-900b-cite-do-loop-head-labels.fail/main.vibe:20:33 lambda plain fallback
+typescript/vibelang/cases/cov2-900b-cite-do-loop-head-labels.fail/main.vibe:18:41 lambda plain fallback
+typescript/vibelang/cases/cov2-900b-cite-do-loop-head-labels.fail/main.vibe:21:33 lambda plain fallback
+typescript/vibelang/cases/cov2-900b-cite-do-loop-head-labels.fail/main.vibe:24:19 lambda plain fallback
 typescript/vibelang/cases/cov2-900b-cite-throw-operator-precedence.fail/main.vibe:12:10 lambda effectFn table
 typescript/vibelang/cases/cov2-900b-cite-throw-operator-precedence.fail/main.vibe:12:23 lambda effectFn keyword
 typescript/vibelang/cases/cov2-900b-cite-throw-operator-precedence.fail/main.vibe:12:37 lambda dual fallback
@@ -2940,8 +2941,12 @@ typescript/vibelang/cases/do-loop-head-in-var-simple/main.vibe:17:30 lambda plai
 typescript/vibelang/cases/do-loop-head-in-var-simple/main.vibe:22:18 lambda plain fallback
 typescript/vibelang/cases/do-loop-head-in-var-simple/main.vibe:30:37 lambda plain table
 typescript/vibelang/cases/do-loop-head-in-var-simple/main.vibe:9:31 lambda plain annotation
-typescript/vibelang/cases/do-loop-head-labels.fail/main.vibe:17:41 lambda plain fallback
-typescript/vibelang/cases/do-loop-head-labels.fail/main.vibe:20:33 lambda plain fallback
+typescript/vibelang/cases/do-loop-head-jump-owner.fail/main.vibe:10:33 lambda plain fallback
+typescript/vibelang/cases/do-loop-head-jump-owner.fail/main.vibe:13:19 lambda plain fallback
+typescript/vibelang/cases/do-loop-head-jump-owner.fail/main.vibe:16:36 lambda plain fallback
+typescript/vibelang/cases/do-loop-head-jump-owner.fail/main.vibe:7:22 lambda plain fallback
+typescript/vibelang/cases/do-loop-head-labels.fail/main.vibe:18:41 lambda plain fallback
+typescript/vibelang/cases/do-loop-head-labels.fail/main.vibe:21:33 lambda plain fallback
 typescript/vibelang/cases/do-loop-head-of-assign-array/main.vibe:11:31 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-of-assign-array/main.vibe:12:32 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-of-assign-array/main.vibe:14:14 lambda plain annotation
