@@ -103,19 +103,19 @@ export function describe(failure) {
     {
         const $match10 = failure;
         {
-            const $extracted11 = runtime.$extract(NotFound, $match10, null, true);
+            const $extracted11 = runtime.$extract(NotFound, $match10, null, true, "construct");
             if ($extracted11 !== false && $extracted11.length === 1) {
                 let found = $extracted11[0];
                 return `no user ${found.id}`;
             }
         }
         {
-            if (runtime.$is(Timeout, $match10, null, true)) {
+            if (runtime.$is(Timeout, $match10, null, true, "construct")) {
                 return "retry";
             }
         }
         {
-            const $extracted12 = runtime.$extract(Denied, $match10, null, true);
+            const $extracted12 = runtime.$extract(Denied, $match10, null, true, "construct");
             {
                 runtime.$assertMatch($extracted12 !== false && $extracted12.length === 1, $match10);
                 let denied = $extracted12[0];
