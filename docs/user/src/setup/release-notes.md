@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `.ts` class whose constructor has no `@throws` tag was accepted where a construct signature without `@throws` was expected, such as `const make: new (n: number) => Box = Box` or `register(Box)`, although constructing it in effect code reports `EK0403` and the same unannotated function value reports `EK0402`. The class now reports `EK0402` there too; a class that declares no constructor stays untracked.
+
 - Compiling a program that constructs an `error` while `vibelang-runtime` is not installed reported an argument-count error on each `new` after the missing-package error. Only the one error naming the package is reported now.
 
 - The Effect lint video showed a retired configuration flag and rule; it now demonstrates project-based linting, the current Promise warning and a correction that compiles and runs.

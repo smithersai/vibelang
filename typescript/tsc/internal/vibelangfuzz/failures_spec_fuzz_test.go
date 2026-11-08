@@ -254,6 +254,11 @@ func failuresCases() []*failCase {
 	// Swift's assignability rule. The rule is about types, so the cases
 	// stand in a plain function and need no effect function.
 	add(&failCase{Name: "assign-throwing", Quote: q.assignable, Host: "plain", Decls: failParse, Body: "⟦const r: (s: string) => string = parse⟧"})
+	// An unannotated foreign constructor throws unknown, so its class fits only a construct signature that admits unknown; a class that declares no constructor stays untracked.
+	add(&failCase{Name: "assign-untagged-constructor", Quote: q.assignable, Host: "plain", Lib: "export class Calm { constructor(readonly n: number) {} }\nexport type Ctor = new (n: number) => { n: number }\n", Body: "⟦const make: Ctor = Calm⟧"})
+	add(&failCase{Name: "assign-untagged-constructor-argument", Quote: q.assignable, Host: "plain", Lib: "export class Calm { constructor(readonly n: number) {} }\nexport declare function register(ctor: new (n: number) => { n: number }): number\n", Body: "⟦register(Calm)⟧"})
+	add(&failCase{Name: "assign-untagged-constructor-admitted", Quote: q.assignable, Host: "plain", Lib: "export class Calm { constructor(readonly n: number) {} }\nexport type Loose = {\n  /** @throws {unknown} */\n  new (n: number): { n: number }\n}\n", Body: "const make: Loose = Calm"})
+	add(&failCase{Name: "assign-implicit-constructor", Quote: q.assignable, Host: "plain", Lib: "export class Bare { readonly n = 1 }\n", Body: "const make: new () => { n: number } = Bare"})
 	add(&failCase{Name: "assign-throwing-argument", Owner: "nothrow-impl", Quote: nothrowQ.knownCall, Host: "plain", Decls: failParse + "\nfunction run(f: () => string) { return f() }", Body: "run(() => ⟦parse(s)⟧)", Code: 401})
 	add(&failCase{Name: "assign-annotated-type", Quote: q.assignable, Host: "plain", Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string\n" + "export type Reader = {\n  /** @throws {Error} */\n  (s: string): string\n}\n", Body: "const r: Reader = parse"})
 	add(&failCase{Name: "assign-wrapped", Quote: q.assignable, Host: "plain", Decls: failParse, Body: "const r: () => string = () => {\n  try { return parse(s) } catch { return \"\" }\n}"})

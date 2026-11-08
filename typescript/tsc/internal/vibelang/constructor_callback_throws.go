@@ -40,7 +40,16 @@ func constructorSignatureThrows(c *checker.Checker, signature *checker.Signature
 		isEffectfulType(c, c.GetReturnTypeOfSignature(signature)) {
 		return throwContract{}
 	}
-	return writtenThrows(c, decl)
+	contract := writtenThrows(c, decl)
+	// Chapter 3, Thrown types: a foreign declaration with no tag throws
+	// unknown, so an unannotated constructor fits only a construct signature
+	// that admits unknown, as an unannotated function fits only such a
+	// callback type. A class that declares no constructor has no signature
+	// to carry a tag and stays untracked, as its construction does.
+	if !contract.tagged && decl.Kind == ast.KindConstructor {
+		contract.unknown = true
+	}
+	return contract
 }
 
 func checkConstructorCallbackValue(c *checker.Checker, expr *ast.Node) {
@@ -106,7 +115,11 @@ func checkConstructorCallbackValue(c *checker.Checker, expr *ast.Node) {
 		if !admitted {
 			name := scanner.GetTextOfNode(expr)
 			d := report(c, expr, EK0402)
-			note(d, "{0} includes a constructor declared @throws {{1}} that its contextual construct signature does not admit.", name, thrownText(c, rejected))
+			if rejected.unknown && len(rejected.types) == 0 {
+				note(d, "{0} includes an unannotated foreign constructor, whose thrown type is unknown; its contextual construct signature does not admit it.", name)
+			} else {
+				note(d, "{0} includes a constructor declared @throws {{1}} that its contextual construct signature does not admit.", name, thrownText(c, rejected))
+			}
 			note(d, "Pass a constructor that handles the throw, or write @throws on the construct signature.")
 			return
 		}
