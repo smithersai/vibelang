@@ -1,0 +1,12 @@
+{
+  "property": "skill-platform-service-lists",
+  "rule": "Usage explanations do not add services to the list in the opening sentence",
+  "input": {
+    "platform": "Pure",
+    "mentions": [
+      "Encoding",
+      "NetAddress"
+    ],
+    "whitespace": "\t"
+  }
+}
