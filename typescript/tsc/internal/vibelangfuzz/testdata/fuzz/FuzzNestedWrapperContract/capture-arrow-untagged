@@ -1,0 +1,3 @@
+go test fuzz v1
+string("capture:arrow:untagged")
+byte(0)

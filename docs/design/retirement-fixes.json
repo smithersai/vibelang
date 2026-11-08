@@ -81,6 +81,10 @@
       {
         "input": "typescript/vibelang/cases/member-head-contract.fail",
         "output": "typescript/vibelang/cases/member-head-contract-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/nested-wrapper-contract.fail",
+        "output": "typescript/vibelang/cases/nested-wrapper-contract-fixed-output"
       }
     ]
   },
@@ -247,6 +251,10 @@
       {
         "input": "typescript/vibelang/cases/commonjs-throws-contract.fail",
         "output": "typescript/vibelang/cases/commonjs-throws-contract-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/nested-wrapper-contract.fail",
+        "output": "typescript/vibelang/cases/nested-wrapper-contract-fixed-output"
       }
     ]
   },

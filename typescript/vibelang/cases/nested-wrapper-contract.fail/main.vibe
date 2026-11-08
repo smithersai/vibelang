@@ -1,0 +1,20 @@
+// expect: EK0403 EK0401
+import { risky, Foreign, tag } from "./foreign.js"
+import { sync as capture } from "effect/Effect"
+export const functionFactory = Effect.sync(() => effect function nested(value: string) {
+  return risky(value)
+})
+export const arrowFactory = Effect.sync(() => effect (value: string) => risky(value))
+export const blockFactory = Effect.sync(() => effect {
+  return risky("")
+})
+export const constructorFactory = Effect.promise(() => Promise.resolve(effect function nested(value: string) {
+  return new Foreign(value)
+}))
+export const tagFactory = capture(() => effect function nested(value: string) {
+  return tag`value:${value}`
+})
+export const directFactory = Effect.sync(effect () => risky(""))
+export const defaultFactory = Effect.sync(() => effect function nested(value = risky("")) {
+  return value
+})

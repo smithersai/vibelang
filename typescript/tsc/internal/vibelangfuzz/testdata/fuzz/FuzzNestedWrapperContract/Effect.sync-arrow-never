@@ -1,0 +1,3 @@
+go test fuzz v1
+string("Effect.sync:arrow:never")
+byte(0)

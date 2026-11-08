@@ -1,0 +1,31 @@
+// expect: EK0403 EK0401
+import { risky, Foreign, tag } from "./foreign.js"
+export const functionFactory = effect { return effect function nested(value: string) {
+  return try Effect.orDie(Effect.try({ try: () => risky(value), catch: (e) => e }))
+} }
+export const arrowFactory = effect { return effect (value: string) => try Effect.orDie(Effect.try({ try: () => risky(value), catch: (e) => e })) }
+export const blockFactory = Effect.sync(() => effect {
+  return try Effect.orDie(Effect.try({ try: () => risky(""), catch: (e) => e }))
+})
+export const constructorFactory = Effect.promise(() => Promise.resolve(effect function nested(value: string) {
+  return try Effect.orDie(Effect.try({ try: () => new Foreign(value), catch: (e) => e }))
+}))
+export const tagFactory = effect { return effect function nested(value: string) {
+  return try Effect.orDie(Effect.try({ try: () => tag`value:${value}`, catch: (e) => e }))
+} }
+export const directFactory = Effect.sync(effect () => try Effect.orDie(Effect.try({ try: () => risky(""), catch: (e) => e })))
+export const defaultFactory = effect { return effect function nested(value = $default(() => (risky(""))).value) {
+  return value
+} }
+
+module $default$ts {
+/** @throws {never} */
+export function $default<A>(operation: {
+/** @throws {unknown} */
+(): A
+}): { readonly value: A } {
+try { const value = operation(); return { value } }
+catch (error) { return { get value(): A { throw error } } }
+}
+}
+import { $default } from $default$ts

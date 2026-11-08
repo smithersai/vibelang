@@ -1,0 +1,3 @@
+go test fuzz v1
+string("Effect.promise:default:RangeError")
+byte(0)

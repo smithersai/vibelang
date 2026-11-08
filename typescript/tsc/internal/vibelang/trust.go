@@ -673,7 +673,9 @@ func checkTrust(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node, boundary bool) bool
 	visit = func(node *ast.Node, boundary bool) bool {
 		if ast.IsFunctionLike(node) && node.Body() != nil {
-			boundary = boundary || isBoundaryCallback(c, node)
+			// An explicit Effect body runs as its own program, even when a
+			// wrapper calls its builder. Transparent arrows retain their context.
+			boundary = !isMarkedEffect(node) && (boundary || isBoundaryCallback(c, node))
 		}
 		if ast.IsCallExpression(node) && !boundary && (!outsideFibers(c, a, node) || a.inEffectfulPlainHome(node)) {
 			checkCall(c, a, file, node)

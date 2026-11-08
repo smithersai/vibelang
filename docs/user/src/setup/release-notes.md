@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A foreign call inside an `effect` function or block created in an `Effect.sync` or `Effect.promise` thunk could bypass its throw check. These nested callables now keep their own checks, and `--fix` adds a bridge inside the nested program.
+
 - Schemas rejected library types imported under another name; imported aliases now select the codec of the resolved library type.
 
 - Adding a base configuration could erase a legacy diagnostic map when the same file’s other legacy location was `null`. The selected map now survives inheritance, including an empty base.
