@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Optional Effect calls directly run with `try` skipped form advisories. They now report the advisory and retain optional chaining without an automatic rewrite.
+
 - A throwing default in an `effect` callback passed to `Effect.try` could escape the parameter checks. These defaults now report `EK0401`, and automatic repair keeps their evaluation time and defect value.
 
 - Renaming an imported scalar type could leave its schema uses unchanged. Reference search and rename now follow the written type binding in schema fields and aliases.

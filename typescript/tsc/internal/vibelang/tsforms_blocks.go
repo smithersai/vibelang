@@ -36,6 +36,8 @@ var provideTypeArgumentsForm = EK4836.With("{0} has an explicit type-argument co
 
 const provideTypeArgumentsNote = "No quick fix: keep the native call to preserve its explicit type arguments and written contract."
 
+var blockOptionalCallForm = EK4836.With("{0} uses optional chaining; keep the native call.")
+
 // VIP-12 builds a Layer for Key = value; the native provideService does not.
 // VIP-34 permits a quick fix only when it preserves that observable behavior.
 var provideServiceNativeForm = EK4836.With("{0} installs a service without building a Layer; keep the native call.")
@@ -53,7 +55,7 @@ func init() {
 
 // blockFormOf returns the combinator call calls in its data-first form, or "".
 func blockFormOf(c *checker.Checker, call *ast.Node) string {
-	if !ast.IsCallExpression(call) || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) {
+	if !ast.IsCallExpression(call) || !inLowerableBody(call) || inHatch(call) {
 		return ""
 	}
 	for _, argument := range call.Arguments() {
@@ -65,6 +67,9 @@ func blockFormOf(c *checker.Checker, call *ast.Node) string {
 		return ""
 	}
 	_, name := effectMember(c, call.Expression())
+	if ast.IsOptionalChain(call) && name == "withSpan" {
+		return ""
+	}
 	if call.TypeArguments() != nil && name != "provide" && name != "provideService" {
 		return ""
 	}
@@ -112,6 +117,9 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 	name := blockFormOf(c, call)
 	if name == "" {
 		return nil
+	}
+	if ast.IsOptionalChain(call) {
+		return &formRewrite{message: blockOptionalCallForm, why: optionalCallFormNote}
 	}
 	if name != "withSpan" && call.TypeArguments() != nil {
 		return &formRewrite{message: provideTypeArgumentsForm, why: provideTypeArgumentsNote}

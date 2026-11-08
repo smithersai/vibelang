@@ -50,6 +50,8 @@ var catchTypeArgumentsForm = EK4835.With("{0} has an explicit type-argument cont
 
 const catchTypeArgumentsNote = "No quick fix: keep the native call to preserve its explicit type arguments and written contract."
 
+var catchOptionalCallForm = EK4835.With("{0} uses optional chaining; keep the native call.")
+
 // catchHandlerMessage is EK4835's text for Effect.catch, whose handler the
 // catch expression keeps.
 var catchHandlerMessage = EK4835.With("{0} takes a handler; write a catch expression: x catch (e) => handler.")
@@ -94,7 +96,7 @@ func catchCombinatorOf(c *checker.Checker, call *ast.Node) string {
 // reports only the direct operand of bare try (detail 254); catchStageRewrite
 // also reads a pipeline's last stage, which --fix rewrites and nothing reports.
 func catchCombinatorName(c *checker.Checker, call *ast.Node) string {
-	if !ast.IsCallExpression(call) || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) {
+	if !ast.IsCallExpression(call) || !inLowerableBody(call) || inHatch(call) {
 		return ""
 	}
 	operator := call
@@ -188,6 +190,9 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	if name == "" {
 		return nil
 	}
+	if ast.IsOptionalChain(call) {
+		return &formRewrite{message: catchOptionalCallForm, why: optionalCallFormNote}
+	}
 	if call.TypeArguments() != nil {
 		return &formRewrite{message: catchTypeArgumentsForm, why: catchTypeArgumentsNote}
 	}
@@ -201,7 +206,7 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 // a catch combinator, under the try that runs it, or nil.
 func catchStageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *formRewrite {
 	call := pipe.AsBinaryExpression().Right
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || catchProgramPipe(call) != pipe {
+	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || ast.IsOptionalChain(call) || catchProgramPipe(call) != pipe {
 		return nil
 	}
 	name := catchCombinatorName(c, call)
