@@ -38,7 +38,7 @@ func TestMissingRuntimeQuoted(t *testing.T) { missingRuntimeQuoted(t) }
 func FuzzMissingRuntimeDependency(f *testing.F) {
 	startShortBudget(f)
 	missingRuntimeQuoted(f)
-	keys := []string{"effect", "producer", "catch", "catch-destructure", "catch-rest", "error", "value", "plain", "independent", "explicit", "independent-any", "explicit-only", "disabled-module", "foreign-explicit", "foreign-independent", "native-only", "literal-only"}
+	keys := []string{"effect", "producer", "catch", "catch-destructure", "catch-rest", "error", "error-new", "error-new-independent", "error-new-callback", "value", "plain", "independent", "explicit", "independent-any", "explicit-only", "disabled-module", "foreign-explicit", "foreign-independent", "native-only", "literal-only"}
 	for _, key := range keys {
 		f.Add([]byte(key))
 		f.Add([]byte(key + "\x00\x03"))
@@ -101,6 +101,15 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 				source = fmt.Sprintf("export effect function value%d() { return Effect.fail(%d) catch (...errors) => errors.length }\n", i, i)
 			case "error":
 				source = fmt.Sprintf("export error Missing%d { id: string }\n", i)
+			case "error-new":
+				// A root error extends the runtime's TaggedError base; without the
+				// package its constructor takes no argument, and chapter 7 still
+				// wants one TS2307 rather than an arity error at each `new`.
+				source = fmt.Sprintf("export error Missing%d { id: string }\nexport effect function value%d() { throw new Missing%d({ id: \"x\" }) }\n", i, i, i)
+			case "error-new-independent":
+				source = fmt.Sprintf("export error Missing%d { id: string }\nclass Plain%d { constructor(readonly id: string) {} }\nexport const plain%d = new Plain%d()\nexport effect function value%d() { throw new Missing%d({ id: \"x\" }) }\n", i, i, i, i, i, i)
+			case "error-new-callback":
+				source = fmt.Sprintf("export error Missing%d { id: string; f: () => number }\nexport effect function value%d() { throw new Missing%d({ id: \"x\", f: (): number => \"bad\" }) }\n", i, i, i)
 			case "value":
 				source = fmt.Sprintf("export const value%d = Experimental\n", i)
 			case "plain":
@@ -199,6 +208,12 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 			}
 			if key == "independent-any" {
 				want[implicitCode] = count
+			}
+			if key == "error-new-independent" {
+				want[2554] = count
+			}
+			if key == "error-new-callback" {
+				want[2322] = count
 			}
 			got := map[int32]int{}
 			var messages []string
