@@ -8241,6 +8241,17 @@ typescript/vibelang/cases/service-member-run-head/main.vibe:9:47 lambda effectFn
 typescript/vibelang/cases/service-member-run-head/main.vibe:9:47 lambda program keyword
 typescript/vibelang/cases/service-member-run-head/main.vibe:9:63 lambda effectFn table
 typescript/vibelang/cases/service-member-run-head/main.vibe:9:97 lambda effectFn table
+typescript/vibelang/cases/service-method-spread-missing.fail/main.vibe:3:55 lambda effectFn service
+typescript/vibelang/cases/service-method-spread-result.fail/main.vibe:3:50 lambda effectFn service
+typescript/vibelang/cases/service-method-spread-result.fail/main.vibe:3:77 lambda effectFn service
+typescript/vibelang/cases/service-method-spread/main.vibe:12:37 lambda program table
+typescript/vibelang/cases/service-method-spread/main.vibe:16:35 lambda dual fallback
+typescript/vibelang/cases/service-method-spread/main.vibe:16:63 lambda dual fallback
+typescript/vibelang/cases/service-method-spread/main.vibe:3:53 lambda effectFn service
+typescript/vibelang/cases/service-method-spread/main.vibe:3:81 lambda effectFn service
+typescript/vibelang/cases/service-method-spread/main.vibe:4:42 lambda program table
+typescript/vibelang/cases/service-method-spread/main.vibe:6:28 lambda effectFn service
+typescript/vibelang/cases/service-method-spread/main.vibe:9:31 lambda effectFn annotation
 typescript/vibelang/cases/service-namespace-hygiene/main.vibe:11:36 lambda plain fallback
 typescript/vibelang/cases/service-reference-identifier.fail/flags.vibe:3:34 lambda plain fallback
 typescript/vibelang/cases/service-reference-identifier.fail/main.vibe:4:34 lambda plain fallback

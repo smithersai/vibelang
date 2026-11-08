@@ -13,11 +13,18 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Spreading a service implementation could lose its methods and reject a valid replacement service. These spreads now preserve the service shape; missing methods and incompatible replacements still fail, and ordinary class prototype methods are still omitted.
+
+- A migration could accept a function whose inline callback discarded its Effect argument. It now reports the lost wrapper while continuing to accept callbacks that return the original program.
+
 - A schema could reject a library type imported only as a type, or report a value-use error for a later value with the same name. It now checks the library codec selected by the type binding.
 
 - Calls through supplied `Performance` and `Crypto` values incorrectly reported platform-access errors. They now use the supplied receiver; host-global access remains diagnosed.
 
 - An explicit `effect` function or block inside a wrapper callback could run as plain JavaScript or lose its Effect type. It now keeps its cold Effect behavior and runs its body only when that Effect is run.
+- `vibelang format` refused a `.vibex` file with `the TypeScript formatter changed JSX children` when JSX text wrapped a line with a `{" "}` space, such as `push and{" "}` followed by `{null} actions.` on the next line, because dprint folds that space into the text. The formatter now formats the file and keeps the JSX text as written.
+- Browser-service guidance mentioning `Experimental.Window` twice could be reported as a duplicate service. The check now reads the service list separately from usage examples.
+- A `provide` provider starting with an object literal was mistaken for a trailing block. Object-member expressions now work directly, with the same evaluation order as their parenthesized form.
 
 - Unicode escapes were accepted in a `provide` keyword. They now report `TS1260`, matching TypeScript keyword rules; escaped ordinary identifiers remain usable.
 
