@@ -1,2 +1,0 @@
-FuzzMigrationRecursiveInferRelocation relocation:recursive-infer compiler Chapter 1: an unchanged recursive mapped type fails the inferred-form proof after interface relocation; lane migfix-smithers
-FuzzMigrationRecursiveInferRelocation corpus:smithers-recursive-infer-private-helper compiler Chapter 1: explicit private-helper export context isolates the unchanged recursive type mismatch; lane migfix-smithers
