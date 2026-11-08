@@ -1,7 +1,0 @@
-FuzzMigrationManagedTypeRoutes restore:return-type compiler VIP-34: route restore leaves an inferred type query on a managed route it deletes, so the query reports TS2307; lane migfix-t3code
-FuzzMigrationManagedTypeRoutes restore:import-type compiler VIP-34: route restore leaves an import type on a managed route it deletes, so the type reports TS2307; lane migfix-t3code
-FuzzMigrationManagedTypeRoutes restore:type-query compiler VIP-34: route restore leaves a typeof import query on a managed route it deletes, so the query reports TS2307; lane migfix-t3code
-FuzzMigrationManagedTypeRoutes rebuild:return-type compiler VIP-34: emission reads only value edges and does not restore a managed route an inferred type query still reads; lane migfix-t3code
-FuzzMigrationManagedTypeRoutes rebuild:import-type compiler VIP-34: emission reads only value edges and does not restore a managed route an import type still reads; lane migfix-t3code
-FuzzMigrationManagedTypeRoutes rebuild:type-query compiler VIP-34: emission reads only value edges and does not restore a managed route a typeof import query still reads; lane migfix-t3code
-FuzzMigrationManagedTypeRoutes corpus:t3code-managed-type-query-routes compiler VIP-34: minimized GitHubPullRequestApi inferred type query loses its managed route on restore; lane migfix-t3code
