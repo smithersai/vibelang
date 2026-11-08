@@ -161,7 +161,7 @@ func (p *projector) checkSourceCatchPlacement() {
 			if !hatch && !sourceCatchEffectCode(node) {
 				p.diagnostics = append(p.diagnostics, Diagnostic{
 					Start: p.tokenStart(node.Expression()), Length: len("catch"), Code: 504,
-					Message: "Catch outside effect code. Run an Effect with try inside effect code; use a function literal as the catch handler.",
+					Message: "catch runs an Effect, so it belongs in effect code: an effect function, a producer or an effect block.",
 				})
 			}
 		}

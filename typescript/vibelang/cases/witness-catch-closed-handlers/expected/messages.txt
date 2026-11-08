@@ -2,3 +2,4 @@ main.vibe(10,26): warning EK0508
 main.vibe(18,47): warning EK0508
 main.vibe(19,41): warning EK0508
 main.vibe(21,57): warning EK0508
+This plain catch handler's result may be an Effect, which catch gives as data without running it.

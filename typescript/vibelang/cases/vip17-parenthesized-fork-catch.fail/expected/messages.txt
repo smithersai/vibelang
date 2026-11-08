@@ -1,0 +1,3 @@
+catch runs its operand itself, so a try, fork or join written at its head is one run too many.
+catch runs an Effect and handles its failure, but this operand is not an Effect.
+Its type is Fiber<number, string>.

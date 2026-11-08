@@ -1,1 +1,1 @@
-Catch outside effect code
+catch runs an Effect, so it belongs in effect code

@@ -1,1 +1,1 @@
-A try statement in effect code.
+A try statement cannot handle a failure in effect code

@@ -178,7 +178,7 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 				return node.ForEachChild(visit)
 			}
 			if t := catchOperandType(c, left); t != nil && !isEffectOperandType(c, t) {
-				report(c, left, EK0506)
+				note(report(c, left, EK0506), "Its type is {0}.", typeTextAt(c, t, left))
 				// Cover the rejected operand, retaining independent argument and
 				// handler-body diagnostics inside this catch expression.
 				coverArgument(c, left)

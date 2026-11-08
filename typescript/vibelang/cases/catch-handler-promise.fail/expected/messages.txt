@@ -1,0 +1,1 @@
+This plain catch handler's result may be a Promise or thenable, which catch neither awaits nor assimilates.
