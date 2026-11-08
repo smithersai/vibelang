@@ -499,7 +499,7 @@ const absentSourceDir = ".migrate-absent-sources"
 // Project errors for a source outside the declaration output root.
 const layoutErrors = new Set(["TS5011", "TS6059"])
 
-export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten, emitDiagnostics, emitRoot = packageDir } = {}) {
+export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest = JSON.parse(readFileSync(join(packageDir, "package.json"), "utf8")), { handwritten, emitDiagnostics, emitRoot = packageDir, outsideRoot = {} } = {}) {
   const aliases = {}, logicalPaths = {}, layouts = [], projectContexts = [], projectDeclarations = new Map(), projectOutputs = new Map(), companions = new Set()
   // Why a declaration was not emitted is known only at emit; a later record keeps it.
   const recorded = join(dir, "public-surface.json")
@@ -580,16 +580,36 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
         if (savedNative || existsSync(compatibility)) {
           const name = rel(packageDir, compatibility)
           const stored = savedNative?.stored ?? posix.join(nativeDir, encodeURIComponent(rel(packageDir, source)) + ".d.ts")
+          // A named module body's companion (VIP-40) is outside the root too.
+          // The compatibility declaration re-exports from it beside itself.
+          // Emit wrote it beside the source and emitDeclarations removed it or
+          // restored older bytes there, keeping the emitted text in outsideRoot.
+          // A metadata refresh keeps exactly what its emit saved.
+          const bodies = savedNative ? savedNative.companions ?? [] : (existsSync(source) ? moduleDeclarationFiles(ts, source, readFileSync(source, "utf8"))
+            .map(companion => ({ companion, text: outsideRoot[resolve(companion)] ?? (existsSync(companion) ? readFileSync(companion, "utf8") : undefined) }))
+            .filter(({ text }) => text !== undefined).map(({ companion, text }) => {
+              const logicalCompanion = posix.join(posix.dirname(name), basename(companion))
+              const stored = posix.join(nativeDir, encodeURIComponent(logicalCompanion))
+              mkdirSync(join(dir, nativeDir), { recursive: true })
+              writeFileSync(join(dir, stored), text)
+              return { source: logicalCompanion, stored }
+            }) : [])
           if (!savedNative) {
             mkdirSync(join(dir, nativeDir), { recursive: true })
             writeFileSync(join(dir, stored), readFileSync(compatibility))
-            nativeDeclarations[rel(packageDir, logical)] = { source: name, stored }
+            nativeDeclarations[rel(packageDir, logical)] = { source: name, stored, ...(bodies.length ? { companions: bodies } : {}) }
           }
           logicalPaths[stored] = name
           for (const alias of [source, logical, compatibility])
             aliases[rel(packageDir, alias)] = stored
           aliases[rel(packageDir, logical).replace(/\.d\.ts$/, ".js")] = stored
           context.files.push(stored)
+          for (const body of bodies) {
+            logicalPaths[body.stored] = body.source
+            aliases[body.source] = body.stored
+            companions.add(body.stored)
+            context.files.push(body.stored)
+          }
           delete absentDeclarations[rel(packageDir, logical)]
           continue
         }
@@ -897,6 +917,10 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
             const source = originalName.get(stored)
             const logical = source ? aSurface?.apiMetadata?.logicalPaths?.[source] ?? source
               : saved?.apiMetadata?.logicalPaths?.[stored] ?? stored
+            // A deep path names a file inside the package. A declaration above
+            // it, such as an outside-root helper's, is reached only through the
+            // package's own modules.
+            if (logical === ".." || logical.startsWith("../")) continue
             const name = "./" + logical.replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs").replace(/\.d\.ts$/, ".js")
             const target = projection.destinations.get(stored) ?? stored
             published[name] = join(projection.directory, target)
@@ -1359,8 +1383,11 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
   assertFinished(result, log)
   // A file outside the project's rootDir emits beside its source, where a batch's commit would pick it up.
   const inside = `${resolve(outDir)}${sep}`
+  // recordDeclarationSurface reads a native module body's companion from here.
+  const outsideRoot = {}
   for (const [, file] of result.stdout.matchAll(/^TSFILE: (.+)$/gm)) {
     if (file.startsWith(inside)) continue
+    if (declarationOutput.test(file) && existsSync(file)) outsideRoot[resolve(file)] = readFileSync(file, "utf8")
     const before = existing.get(resolve(file))
     if (before === undefined) rmSync(file, { force: true })
     else writeFileSync(file, before)
@@ -1369,7 +1396,7 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
   if (!files.length) throw new Error(`vibelang emitted no declarations for ${tsconfig} (exit ${result.code}${log ? `, log ${log}` : ""})`)
   const diagnostics = parseDiagnostics(result.stdout + result.stderr, { cwd, root })
   const moduleReferences = recordQuotedModuleReferences(diagnostics, { root, typescript, tsconfig: resolve(cwd, tsconfig) })
-  return { code: result.code, files: files.length, diagnostics, moduleReferences, ...(unsupportedSingleThreaded ? { unsupportedOptions: ["--singleThreaded"], optionProbeLog } : {}) }
+  return { code: result.code, files: files.length, diagnostics, moduleReferences, outsideRoot, ...(unsupportedSingleThreaded ? { unsupportedOptions: ["--singleThreaded"], optionProbeLog } : {}) }
 }
 
 /**

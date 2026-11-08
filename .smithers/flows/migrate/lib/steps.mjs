@@ -484,8 +484,8 @@ async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
   const cwd = join(t, pkg.dir)
   const projects = Wire.projectsOf(ts, cwd, pkg.dtsTsconfig)
   if (projects.length === 1) {
-    const result = await emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log, root: t, typescript: ts })
-    recordDeclarationSurface(ts, outDir, cwd, [{ tsconfig: projects[0], prefix: "." }], undefined, { emitDiagnostics: result.diagnostics, emitRoot: t })
+    const { outsideRoot, ...result } = await emitDeclarations({ compiler, tsconfig: projects[0], cwd, outDir, log, root: t, typescript: ts })
+    recordDeclarationSurface(ts, outDir, cwd, [{ tsconfig: projects[0], prefix: "." }], undefined, { emitDiagnostics: result.diagnostics, emitRoot: t, outsideRoot })
     return result
   }
   rmSync(outDir, { recursive: true, force: true })
@@ -493,15 +493,17 @@ async function emitPackageDeclarations({ compiler, ts, t, pkg, outDir, log }) {
   let files = 0
   const diagnostics = []
   const moduleReferences = []
+  const outsideRoot = {}
   writeJson(join(outDir, "projects-v2", "layout.json"), { version: 2 })
   for (const { tsconfig, prefix } of declarationProjects(projects)) {
     const emitted = await emitDeclarations({ compiler, tsconfig, cwd, outDir: join(outDir, prefix), log: projectLog(log, tsconfig, projects), root: t, typescript: ts })
+    Object.assign(outsideRoot, emitted.outsideRoot)
     code ||= emitted.code
     files += emitted.files
     diagnostics.push(...emitted.diagnostics)
     moduleReferences.push(...emitted.moduleReferences)
   }
-  recordDeclarationSurface(ts, outDir, cwd, declarationProjects(projects), undefined, { emitDiagnostics: diagnostics, emitRoot: t })
+  recordDeclarationSurface(ts, outDir, cwd, declarationProjects(projects), undefined, { emitDiagnostics: diagnostics, emitRoot: t, outsideRoot })
   return { code, files, diagnostics, moduleReferences }
 }
 

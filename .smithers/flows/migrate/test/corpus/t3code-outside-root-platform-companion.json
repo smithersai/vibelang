@@ -1,0 +1,29 @@
+{
+  "property": "outside-root-platform-companion",
+  "rule": "moving it to a sibling `.ts` file (`.tsx` for a body in `.vibex`) with its external-module classification preserved and replacing `from name` with that file's specifier changes no diagnostic, type, emitted statement, declaration or run-time observation.",
+  "input": {
+    "consumer": "consumer",
+    "helper": "helper",
+    "body": "platform",
+    "functions": [
+      {
+        "name": "f",
+        "returns": "number",
+        "reexported": true
+      }
+    ],
+    "own": false
+  },
+  "repoPattern": {
+    "repository": "t3code",
+    "package": "apps/server",
+    "helper": "scripts/lib/linux-arm64-sea.vibe",
+    "export": "assertLinuxArm64PageCompatibility",
+    "include": [
+      "index.ts",
+      "../helper.vibe"
+    ],
+    "rootDir": ".",
+    "rewriteRelativeImportExtensions": true
+  }
+}
