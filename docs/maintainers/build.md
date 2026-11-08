@@ -979,7 +979,10 @@ A runner without a line also never gets less than the sum of the stage
 deadlines written in it and its helpers, so a new case cannot fall short.
 `//:harness-deadlines` holds an explicit line to that sum. It also requires a
 line from every runner that starts a process, itself or through a helper it
-imports: such a runner compiles at the host's pace, and post-merge boxes killed
+imports. The process-import census accepts single- and double-quoted
+`child_process` and `node:child_process` module names in `from` and `require`
+forms, including whitespace around a `require` argument. Such a runner
+compiles at the host's pace, and post-merge boxes killed
 healthy 36- to 64-second runs on the 60-second default. Write at least 120, and
 about three times the slowest post-merge run observed. It reads files only, so
 a line that would get a runner killed as a whole, without naming a stage, or a

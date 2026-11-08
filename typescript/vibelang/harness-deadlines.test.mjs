@@ -27,7 +27,7 @@ test("every runner's deadline covers its stages and the stages of the helpers it
 // host's pace: post-merge boxes compile several times slower than a developer
 // machine, and the 60-second default killed healthy runs that took 36 to 64 s.
 // The budget is the author's decision, written down where the process starts.
-const startsProcess = (text) => /\bfrom\s+"(?:node:)?child_process"|\brequire\("(?:node:)?child_process"\)/.test(text)
+const startsProcess = (text) => /\bfrom\s+(["'])(?:node:)?child_process\1|\brequire\(\s*(["'])(?:node:)?child_process\2\s*\)/.test(text)
 const declaresSeconds = (text) => /^\/\/ run-seconds: \d+\b/m.test(text)
 test("every runner that starts a process declares its deadline, itself or in the helper that starts it", () => {
   const cases = path.join(here, "cases")
@@ -164,4 +164,38 @@ test("realpath aliases count a module once and resolve its own relative helpers"
   fs.writeFileSync(runner, 'import { run } from "./alias.mjs"\nimport { run as other } from "./shared/leaf.mjs"\n')
   assert.deepEqual(new Set(runnerHelpers(runner)), new Set([alias, grand]))
   assert.equal(runnerSeconds(runner), 110)
+})
+
+
+test("the process census recognizes single-quoted child process imports and requires", () => {
+  for (const name of ["node:child_process", "child_process"]) {
+    for (const prefix of [
+      "import { execFileSync } from ", "import childProcess from ",
+      "import * as childProcess from ", "const childProcess = require(",
+    ]) {
+      const source = prefix + "'" + name + "'" + (prefix.includes("require") ? ")" : "")
+      assert.equal(startsProcess(source), true, source)
+    }
+  }
+})
+
+test("process import spelling and whitespace preserve census admission", () => {
+  for (const name of ["node:child_process", "child_process"]) {
+    for (const quote of ['"', "'"]) {
+      for (const space of ["", " ", "\n", "\t"]) {
+        for (const source of [
+          "import { spawn } from" + (space || " ") + quote + name + quote,
+          "const cp = require(" + space + quote + name + quote + space + ")",
+        ]) assert.equal(startsProcess(source), true, source)
+      }
+    }
+  }
+  for (const source of [
+    'import assert from "node:assert/strict"',
+    "const fs = require('node:fs')",
+    'import cp from "node:child_process-extra"',
+    "const cp = require('child_process-extra')",
+    'import cp from "./node:child_process"',
+    "const cp = require('prefix/child_process')",
+  ]) assert.equal(startsProcess(source), false, source)
 })
