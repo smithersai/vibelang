@@ -39,6 +39,10 @@
         "output": "typescript/vibelang/cases/ek0403-predicate-reassigned-fixed-output"
       },
       {
+        "input": "typescript/vibelang/cases/ek0403-predicate-short-circuit.fail",
+        "output": "typescript/vibelang/cases/ek0403-predicate-short-circuit-fixed-output"
+      },
+      {
         "input": "typescript/vibelang/cases/ek0403-predicate-undefined.fail",
         "output": "typescript/vibelang/cases/ek0403-predicate-undefined-fixed-output"
       },

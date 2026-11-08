@@ -1,0 +1,29 @@
+// expect: EK0403
+// expect-result: "news news news absent"
+import { isResolved, type News } from "./foreign.ts"
+export effect function early(news: News | undefined, skip: boolean): string!! {
+  if (skip) return "absent"
+  const resolved = try Effect.orDie(Effect.try({ try: () => isResolved(news) ? news : undefined, catch: (e) => e }))
+  if (resolved === undefined) return "absent"
+  const title: string = resolved.title
+  return title
+}
+export effect function later(news: News | undefined): string!! {
+  const resolved_ = try Effect.orDie(Effect.try({ try: () => isResolved(news) ? news : undefined, catch: (e) => e }))
+  if (resolved_ === undefined || resolved_.title === "") return "absent"
+  return resolved_.title
+}
+export effect function inner(news: News | undefined, ready: boolean): string!! {
+  if (ready) {
+    const resolved__ = try Effect.orDie(Effect.try({ try: () => isResolved(news) ? news : undefined, catch: (e) => e }))
+    if (resolved__ !== undefined && resolved__.title !== "") return resolved__.title
+  }
+  return "absent"
+}
+export effect function main() {
+  const first = try early({ title: "news" }, false)
+  const second = try later({ title: "news" })
+  const third = try inner({ title: "news" }, true)
+  const skipped = try early({ title: "throw" }, true)
+  return [first, second, third, skipped].join(" ")
+}

@@ -233,6 +233,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `vibelang --fix` left `EK0401` on a call that may throw inside an `Effect.catchTag`, `Effect.catchTags`, `Effect.tapError`, `Effect.matchEffect`, `Effect.onExit` or similar handler, so the module could not convert. It now wraps the handler's body so the call fails with the same defect, as it already did for `Effect.suspend` and `Effect.flatMap` callbacks.
 
+- `vibelang --fix` could lose a type predicate's narrowing when other tests shared its `if` condition, leaving property errors. It now preserves the narrowed value and keeps earlier tests from running the predicate when they would skip it.
+
 - The grammar reference omitted decorator lowering for Effect methods. It now records that decorators retain the context where their class is defined.
 
 - Calls that could throw inside a `Promise` executor were wrongly rejected when its native constructor was parenthesized, aliased or accessed through a property, or called with `super(...)`. Those forms now allow executor exceptions to reject the promise.

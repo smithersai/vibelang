@@ -17,7 +17,7 @@ func TestForeignPredicateFixTwins(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"early", "positive", "reassigned", "undefined"} {
+	for _, name := range []string{"early", "positive", "reassigned", "short-circuit", "undefined"} {
 		t.Run(name, func(t *testing.T) {
 			stem := "ek0403-predicate-" + name
 			fixture := filepath.Join(root, "typescript/vibelang/cases", stem+".fail")
@@ -70,6 +70,17 @@ func TestForeignPredicateFixScopes(t *testing.T) {
 		{"generic null constraint", "if (isResolved(x)) return x; return undefined", "const resolved = try", "preserving narrowing"},
 		{"generic intersection", "if (isResolved(x)) return x; return undefined", "const resolved = try", "preserving narrowing"},
 		{"ambiguous alias", "if (isResolved(x)) return x; return ''", "try: () => isResolved(x),", "includes undefined"},
+		{"or first operand", "if (!isResolved(x) || x.length === 0) return ''; const s: string = x; return s", "; if (resolved === undefined || resolved.length === 0) return ''; const s: string = resolved", "preserving narrowing"},
+		{"or first operand else", "if (!isResolved(x) || x.length === 0) { return '' } else { return x }", "if (resolved === undefined || resolved.length === 0) { return '' } else { return resolved }", "preserving narrowing"},
+		{"or later operand", "if (input === 1 || !isResolved(x)) return ''; const s: string = x; return s", "if (input === 1) return '';\nconst resolved = try Effect.orDie(Effect.try({ try: () => isResolved(x) ? x : undefined, catch: (e) => e }))\nif (resolved === undefined) return ''; const s: string = resolved", "preserving narrowing"},
+		{"or middle operand", "if (input === 1 || !isResolved(x) || x.length === 0) return ''; return x", "if (input === 1) return '';\nconst resolved = try Effect.orDie(Effect.try({ try: () => isResolved(x) ? x : undefined, catch: (e) => e }))\nif (resolved === undefined || resolved.length === 0) return ''; return resolved", "preserving narrowing"},
+		{"and first operand else", "if (isResolved(x) && x.length > 0) { return x } else { return '' }", "if (resolved !== undefined && resolved.length > 0) { return resolved } else { return '' }", "preserving narrowing"},
+		{"and later operand", "if (input === 1 && isResolved(x) && x.length > 0) return x; return ''", "if (input === 1) {\n  const resolved = try Effect.orDie(Effect.try({ try: () => isResolved(x) ? x : undefined, catch: (e) => e }))\n  if (resolved !== undefined && resolved.length > 0) return resolved;\n} return ''", "preserving narrowing"},
+		{"or later operand else", "if (input === 1 || !isResolved(x)) { return '' } else { return x }", "try: () => isResolved(x),", "an else"},
+		{"or later operand stays", "if (input === 1 || !isResolved(x)) { input = 2 }; return ''", "try: () => isResolved(x),", "does not exit"},
+		{"and later operand else", "if (input === 1 && isResolved(x)) { return x } else { return '' }", "try: () => isResolved(x),", "an else"},
+		{"mixed operators", "if (input === 1 || input === 2 && !isResolved(x)) return ''; return ''", "try: () => isResolved(x),", "preserving failures"},
+		{"parenthesized chain", "if ((input === 1 || !isResolved(x))) return ''; return ''", "try: () => isResolved(x),", "preserving failures"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			lib := helper

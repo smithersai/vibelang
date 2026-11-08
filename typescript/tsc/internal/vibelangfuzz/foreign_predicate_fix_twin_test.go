@@ -12,12 +12,37 @@ import (
 )
 
 // Predicate narrowing compiles with zero diagnostics and its Exit equals
-// the gen twin for throwing and non-throwing predicates (proxy ruling, 2026-11-04).
+// the gen twin for throwing and non-throwing predicates.
+// Modes 3 to 6 put the predicate in a short-circuit condition. Chapter 7: the
+// bridge "replaces narrowed-scope references with an unshadowed `const`", and an
+// earlier operand that decides the condition still skips the predicate, so a
+// throwing value it skips exits as the twin does.
+const foreignPredicateBridgeQuote = "replaces narrowed-scope references with an unshadowed `const`"
+
+func TestForeignPredicateBridgeQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("007-tooling.md"), foreignPredicateBridgeQuote) {
+		t.Fatal("predicate bridge rule changed")
+	}
+}
+
 func FuzzForeignPredicateFixTwin(f *testing.F) {
 	startShortBudget(f)
+	if !strings.Contains(SpecText("007-tooling.md"), foreignPredicateBridgeQuote) {
+		f.Fatal("predicate bridge rule changed")
+	}
 	for mode := uint8(0); mode < 3; mode++ {
 		for kind := uint8(0); kind < 7; kind++ {
 			f.Add(mode, kind)
+		}
+	}
+	// Each short-circuit mode runs a passing value, a value an earlier operand
+	// skips, and a value whose predicate throws.
+	for _, seed := range []struct {
+		mode  uint8
+		kinds []uint8
+	}{{3, []uint8{2, 3, 4}}, {4, []uint8{0, 2, 4}}, {5, []uint8{2, 4, 5}}, {6, []uint8{2, 3, 5}}} {
+		for _, kind := range seed.kinds {
+			f.Add(seed.mode, kind)
 		}
 	}
 	w := NewWorkspace(f)
@@ -31,11 +56,21 @@ func FuzzForeignPredicateFixTwin(f *testing.F) {
 		value := []string{"undefined", "\"\"", "\"ok\"", "\"primitive\"", "\"object\"", "\"error\"", "\"throw-undefined\""}[kind%7]
 		foreign := "export const marker = { defect: true }\nexport function isResolved(value: string | undefined): value is string { if (value === \"primitive\") throw 7; if (value === \"object\") throw marker; if (value === \"error\") throw new Error(\"boom\"); if (value === \"throw-undefined\") throw undefined; return value !== undefined }\n"
 		body := "if (!isResolved(x)) return -1; const narrowed: string = x; return narrowed.length"
-		if mode%3 == 1 {
+		if mode%7 == 1 {
 			body = "if (isResolved(x)) { const narrowed: string = x; return narrowed.length }; return -1"
 		}
-		if mode%3 == 2 {
+		if mode%7 == 2 {
 			body = "const saved = keep(); if (!isResolved(x)) return -1; function keep(): string | undefined { return x }; const narrowed: string = x; return narrowed.length + (saved === undefined ? 0 : saved.length)"
+		}
+		switch mode % 7 {
+		case 3:
+			body = "if (x === \"primitive\" || !isResolved(x)) return -1; const narrowed: string = x; return narrowed.length"
+		case 4:
+			body = "if (!isResolved(x) || x.length > 5) return -1; const narrowed: string = x; return narrowed.length"
+		case 5:
+			body = "if (x !== \"object\" && isResolved(x) && x.length > 0) { const narrowed: string = x; return narrowed.length }; return -1"
+		case 6:
+			body = "if (x === \"error\" || !isResolved(x) || x === \"ok\") return -1; const narrowed: string = x; return narrowed.length"
 		}
 		stockBody := "export const work = (x: string | undefined) => Effect.gen(function* () { " + body + " })\n"
 		sourceBody := "export const work = effect (x: string | undefined): number!! => { " + body + " }\n"

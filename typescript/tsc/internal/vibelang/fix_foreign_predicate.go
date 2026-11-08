@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"slices"
 	"strings"
 	"unicode"
 
@@ -17,6 +18,9 @@ func planForeignPredicate(c *checker.Checker, file *ast.SourceFile, call *ast.No
 		return nil, fallback
 	}
 	edits, statement, declaration := bridge.edits, bridge.statement, bridge.declaration
+	if bridge.placed {
+		return &formRewrite{edits: joinEditsAt(edits), description: "the predicate through Effect.try, preserving narrowing and defects"}, ""
+	}
 	start := nodeStart(file, statement)
 	indent := lineIndent(file.Text(), start)
 	separator := "\n" + indent
@@ -46,10 +50,13 @@ func planForeignPredicate(c *checker.Checker, file *ast.SourceFile, call *ast.No
 // A predicateBridge is what keeps a foreign type predicate's proof: the edits
 // that read its const in the narrowed scopes and test it in the condition,
 // the const's declaration, and the if statement the declaration goes before.
+// A placed bridge's edits already write the declaration inside the statement,
+// after the operands that run before the predicate.
 type predicateBridge struct {
 	edits       []sourceEdit
 	declaration string
 	statement   *ast.Node
+	placed      bool
 }
 
 // foreignPredicateBridge plans call's predicate bridge, or returns the
@@ -75,10 +82,32 @@ func foreignPredicateBridge(c *checker.Checker, file *ast.SourceFile, call *ast.
 			condition = condition.Parent
 		}
 	}
-	statement := condition.Parent
-	if !ast.IsIfStatement(statement) || statement.Expression() != condition {
+	// The predicate can be one operand of a chain the if tests: a negated
+	// one under ||, whose failure runs the branch, or a plain one under &&.
+	operator := ast.KindAmpersandAmpersandToken
+	if negated {
+		operator = ast.KindBarBarToken
+	}
+	chain := condition
+	for ast.IsBinaryExpression(chain.Parent) && chain.Parent.AsBinaryExpression().OperatorToken.Kind == operator {
+		chain = chain.Parent
+	}
+	statement := chain.Parent
+	if !ast.IsIfStatement(statement) || statement.Expression() != chain {
 		return nil, ""
 	}
+	var operands []*ast.Node
+	var flatten func(*ast.Node)
+	flatten = func(n *ast.Node) {
+		if ast.IsBinaryExpression(n) && n.AsBinaryExpression().OperatorToken.Kind == operator {
+			flatten(n.AsBinaryExpression().Left)
+			flatten(n.AsBinaryExpression().Right)
+			return
+		}
+		operands = append(operands, n)
+	}
+	flatten(chain)
+	at := slices.Index(operands, condition)
 	if predicateMayIncludeUndefined(c, predicate.Type()) {
 		return nil, " (boolean bridge; the predicate type includes undefined, so the sentinel is ambiguous)"
 	}
@@ -126,6 +155,17 @@ func foreignPredicateBridge(c *checker.Checker, file *ast.SourceFile, call *ast.
 	}
 
 	branch := statement.AsIfStatement()
+	// Operands before the predicate can decide the condition without it, so
+	// the const is declared where they have not: under an if of the operands
+	// before it for &&, and after an if of them, which repeats the exiting
+	// branch, for ||.
+	if at > 0 && branch.ElseStatement != nil {
+		return nil, " (boolean bridge; the if has an else and an operand before the predicate)"
+	}
+	if at > 0 && negated && (!predicateGuardExits(branch.ThenStatement) || !ast.IsBlock(statement.Parent)) {
+		return nil, " (boolean bridge; an operand before the predicate and a branch that does not exit)"
+	}
+	// Operands after the predicate run only when it holds.
 	scopes := []*ast.Node{branch.ThenStatement}
 	if negated {
 		scopes = nil
@@ -157,6 +197,7 @@ func foreignPredicateBridge(c *checker.Checker, file *ast.SourceFile, call *ast.
 		}
 		return n.ForEachChild(rewrite)
 	}
+	scopes = append(scopes, operands[at+1:]...)
 	for _, scope := range scopes {
 		rewrite(scope)
 	}
@@ -166,7 +207,31 @@ func foreignPredicateBridge(c *checker.Checker, file *ast.SourceFile, call *ast.
 	}
 	edits = append(edits, sourceEdit{nodeStart(file, condition), condition.End(), name + comparison})
 	declaration := "const " + name + " = try Effect.orDie(Effect.try({ try: () => " + nodeText(file, call) + " ? " + nodeText(file, tested) + " : undefined, catch: " + defectBridgeIdentity + " }))"
-	return &predicateBridge{edits: edits, declaration: declaration, statement: statement}, ""
+	if at == 0 {
+		return &predicateBridge{edits: edits, declaration: declaration, statement: statement}, ""
+	}
+	// Every edit inside the statement is in the predicate's operand, the
+	// operands after it, or a then branch that && narrows.
+	start, end, from := nodeStart(file, statement), statement.End(), nodeStart(file, condition)
+	var outside, inside []sourceEdit
+	for _, edit := range edits {
+		if edit.start >= from && edit.end <= end {
+			inside = append(inside, sourceEdit{edit.start - from, edit.end - from, edit.text})
+		} else {
+			outside = append(outside, edit)
+		}
+	}
+	text := file.Text()
+	head := text[start:operands[at-1].End()]
+	rest := "if (" + applyEdits(text[from:end], inside)
+	indent := lineIndent(text, start)
+	replacement := head + text[chain.End():end] + "\n" + indent + declaration + "\n" + indent + rest
+	if !negated {
+		inner := indent + branchIndentUnit(indent)
+		replacement = head + ") {\n" + inner + declaration + "\n" + inner + rest + "\n" + indent + "}"
+	}
+	edits = append(outside, sourceEdit{start, end, replacement})
+	return &predicateBridge{edits: edits, declaration: declaration, statement: statement, placed: true}, ""
 }
 
 // An uninstantiated parameter can admit undefined even when undefined is

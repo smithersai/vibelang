@@ -1,0 +1,23 @@
+// expect: EK0403
+// expect-result: "news news news absent"
+import { isResolved, type News } from "./foreign.ts"
+export effect function early(news: News | undefined, skip: boolean): string!! {
+  if (skip || !isResolved(news)) return "absent"
+  const title: string = news.title
+  return title
+}
+export effect function later(news: News | undefined): string!! {
+  if (!isResolved(news) || news.title === "") return "absent"
+  return news.title
+}
+export effect function inner(news: News | undefined, ready: boolean): string!! {
+  if (ready && isResolved(news) && news.title !== "") return news.title
+  return "absent"
+}
+export effect function main() {
+  const first = try early({ title: "news" }, false)
+  const second = try later({ title: "news" })
+  const third = try inner({ title: "news" }, true)
+  const skipped = try early({ title: "throw" }, true)
+  return [first, second, third, skipped].join(" ")
+}

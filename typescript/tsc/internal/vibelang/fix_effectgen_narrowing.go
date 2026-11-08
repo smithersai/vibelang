@@ -76,7 +76,7 @@ func keepThrowDefects(c *checker.Checker, a *analyzer, file *ast.SourceFile, gen
 		// that holds the tested value or undefined, as EK0403's fix writes:
 		// a boolean from the wrapper would prove nothing.
 		if target == call {
-			if bridge, _ := foreignPredicateBridge(c, file, call); bridge != nil && ast.IsBlock(bridge.statement.Parent) {
+			if bridge, _ := foreignPredicateBridge(c, file, call); bridge != nil && !bridge.placed && ast.IsBlock(bridge.statement.Parent) {
 				name, _, _ := strings.Cut(strings.TrimPrefix(bridge.declaration, "const "), " ")
 				taken[name] = true
 				plan.add(bridge.statement, false, bridge.declaration)
