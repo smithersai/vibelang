@@ -82,6 +82,7 @@ export const Package = S.Package({
     "go-project-vibelang": goTest("VibeLang manifest invalidation in the project service.", "./internal/project", "internal/project", "^Test(?:ManifestChangeRebuildsTheProgram|StaleManifestChangePreservesTheProgram)$"),
     "go-tsoptions-vibelang": goTest("VibeLang configuration validation and inheritance.", "./internal/tsoptions", "internal/tsoptions", "^(?:TestVibeLang.*|TestDeclarationImportStyleDeprecated)$"),
     "go-ast-vibelang": goTest("VibeLang `// @vibe` directive recognition.", "./internal/ast", "internal/ast", "^(TestHasVibeLangDirective|FuzzHasVibeLangDirective)$"),
+    "go-astnav-vibelang": goTest("VibeLang loop binding source navigation.", "./internal/astnav", "internal/astnav", "^TestVibeLang"),
     "go-tspath-vibelang": goTest("VibeLang source and .vibex extension recognition.", "./internal/tspath", "internal/tspath", "^(TestIsVibeLangSource|TestVibexExtensionLists)$"),
     "go-compiler-body-imports": goTest("Module body declaration imports preserve repeat-build inputs and overwrite protection.", "./internal/compiler", "internal/compiler", "^TestModuleBodyImport"),
     "go-checker": goTest("Go tests of internal/checker.", "./internal/checker/...", "internal/checker"),

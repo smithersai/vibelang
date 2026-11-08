@@ -1,0 +1,5 @@
+go test fuzz v1
+string("for-init")
+byte(0)
+bool(false)
+byte(2)

@@ -39,4 +39,6 @@ Named, top-level `module` declarations hold TypeScript bodies (VIP-40). Diagnost
 
 Find References includes all occurrences in large native TypeScript libraries and files containing module declarations, without the repeated scans that could stall these queries.
 
+Bindings introduced by an `is` pattern in a `while`, `do…while` or `for` head support reference search and rename from either the declaration or a use. A condition that skips initialization through `||`, `&&` or `?:` keeps the same binding identity in the editor.
+
 The `_` in a legacy `infer _` return annotation is an inference placeholder, so the server declines its rename. Ordinary generic parameters and conditional `infer` bindings remain renameable.

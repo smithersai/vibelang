@@ -1055,6 +1055,9 @@ func (p *Parser) hoistForHead(initializer, condition, incrementor *ast.Node, at 
 			declarator.Parent = initializer
 		}
 		list.Declarations.Nodes = append(declarators, list.Declarations.Nodes...)
+		// Condition and update bindings keep their written name positions,
+		// which can follow the source initializer.
+		initializer.Loc = testsSpan(initializer.Loc, declarators...)
 		return initializer
 	default:
 		p.vibelangMatchTemps++
@@ -1114,7 +1117,12 @@ func hoistedDeclarator(statement *ast.Node) *ast.Node {
 
 // mLetList writes let d1, d2, … at at.
 func (p *Parser) mLetList(declarators []*ast.Node, at core.TextRange) *ast.Node {
-	return p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(at, declarators), ast.NodeFlagsLet), at)
+	// Hoisted loop cells retain source names in their condition or update.
+	// Navigation must be able to descend through the list to those names.
+	// Keep the array's original end: native trailing-comma checks read it.
+	list := p.newNodeList(at, declarators)
+	at = testsSpan(at, declarators...)
+	return p.vibelangSpanning(p.factory.NewVariableDeclarationList(list, ast.NodeFlagsLet), at)
 }
 
 // takeHoists removes and returns the let statements hoistVibeLangIs put on
