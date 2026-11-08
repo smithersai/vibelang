@@ -33,6 +33,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Missing pages had no main landmark for screen-reader navigation. The error message and home link now share a main landmark.
 
 - Constructor and base-class references could use the reserved names `fork` and `join` inside effect code. They now report `EK1702`, and `vibelang --fix` preserves the reference and the original binding's name.
+- The global `tryPromise` reported `EK0401` for a call known to throw inside its thunk, such as `tryPromise(() => load())` with `load` declared `@throws`, while `Effect.tryPromise` admitted it. Both spellings now admit the call, in the function and the options form.
 
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 

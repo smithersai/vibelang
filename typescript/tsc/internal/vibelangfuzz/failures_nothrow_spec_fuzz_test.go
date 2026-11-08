@@ -110,6 +110,14 @@ func failuresNoThrowCases() []*failCase {
 	add(&failCase{Name: "nothrow-wrapper-thunk-plain", Quote: q.literal, Host: "plain", Lib: parse, Body: "const e = Effect.try(() => parse(s))"})
 	add(&failCase{Name: "nothrow-wrapper-thunk-throw", Quote: q.literal, Host: "effect", Body: "const v = try Effect.try(() => { ⟦throw new Error(\"x\")⟧ })", Code: 401})
 	add(&failCase{Name: "nothrow-wrapper-thunk-wrapped", Quote: q.literal, Host: "effect", Lib: parse, Body: "return Effect.fail(new Error(\"input\")) catch effect (e) => try Effect.try(() => parse(s))"})
+	// VIP-6: the global tryPromise is Effect.tryPromise, so its thunk admits
+	// calls known to throw in either spelling and either form; a local
+	// declaration shadows the global, and a nested literal stays plain code.
+	add(&failCase{Name: "nothrow-wrapper-global-thunk-plain", Quote: q.literal, Host: "plain", Lib: parse, Body: "const e = tryPromise(() => Promise.resolve(parse(s)))"})
+	add(&failCase{Name: "nothrow-wrapper-global-options-plain", Quote: q.literal, Host: "plain", Lib: parse, Body: "const e = tryPromise({ try: () => Promise.resolve(parse(s)), catch: (e) => e })"})
+	add(&failCase{Name: "nothrow-wrapper-global-thunk-effect", Quote: q.literal, Host: "effect", Lib: parse, Body: "return try tryPromise(() => Promise.resolve(parse(s)))"})
+	add(&failCase{Name: "nothrow-wrapper-global-nested", Quote: q.nested, Host: "effect", Lib: parse, Body: "return try tryPromise(() => { const f = () => ⟦parse(s)⟧; return Promise.resolve(f()) })", Code: 401})
+	add(&failCase{Name: "nothrow-wrapper-global-shadowed", Quote: q.literal, Host: "plain", Lib: parse, Decls: "function tryPromise(f: () => Promise<string>) { return f }", Body: "tryPromise(() => Promise.resolve(⟦parse(s)⟧))", Code: 401})
 	add(&failCase{Name: "nothrow-rethrows-effectful-callee", Quote: q.literal, Host: "effect", Lib: "import { Effect } from \"effect\"\ntype Callback = {\n /** @throws {unknown} */\n (): number\n}\n/** @throws {Error} @rethrows callback */\nexport declare function load(callback: Callback): Effect.Effect<number>", Body: "const value = load(() => JSON.parse(s))"})
 	// each construct of synchronous code outside effect code
 	add(&failCase{Name: "nothrow-arrow", Quote: q.constructs, Host: "none", Decls: "export const check = (s: string) => { if (!s) ⟦throw new Error(\"empty\")⟧; return s }", Code: 401})

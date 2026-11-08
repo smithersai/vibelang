@@ -1,0 +1,13 @@
+// expect-result: [1,"TypeError",2,3]
+// The global tryPromise is Effect.tryPromise: a call known to throw in its
+// thunk, in the function or the options form, belongs to the wrapper, as it
+// does in the Effect.tryPromise spelling.
+import { later, now } from "./foreign.js"
+export effect function main() {
+  const direct = try tryPromise(() => later(false))
+  const failed = try exit(tryPromise({ try: () => later(true), catch: (e) => (e as Error).name }))
+  const sync = try tryPromise(() => Promise.resolve(now()))
+  const qualified = try Effect.tryPromise(() => later(false)) + 2
+  const name = failed._tag === "Failure" && failed.cause.reasons[0]?._tag === "Fail" ? failed.cause.reasons[0].error : null
+  return [direct, name, sync, qualified]
+}

@@ -85,13 +85,18 @@ func isHatchArgument(node *ast.Node) bool {
 }
 
 // isWrappedCode reports whether node is the code that Effect.try or
-// Effect.tryPromise wraps, the wrappers that replaced the try hatch (VIP-5):
+// Effect.tryPromise wraps, the global tryPromise included (VIP-6), the
+// wrappers that replaced the try hatch (VIP-5):
 // a function literal that is the call's argument, or the try property of
 // its options object. Like a hatch's, its body is TypeScript, where a throw
 // or a rejection is JavaScript's, for the wrapper to catch.
 func isWrappedCode(node *ast.Node) bool {
 	if !ast.IsFunctionExpressionOrArrowFunction(node) {
 		return false
+	}
+	// A parenthesized literal is the same argument.
+	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
+		node = node.Parent
 	}
 	call := node.Parent
 	if call != nil && ast.IsPropertyAssignment(call) && ast.IsIdentifier(call.Name()) && call.Name().Text() == "try" && call.Initializer() == node {
@@ -103,12 +108,21 @@ func isWrappedCode(node *ast.Node) bool {
 	if call == nil || !ast.IsCallExpression(call) || len(call.Arguments()) != 1 || call.Arguments()[0] != node {
 		return false
 	}
+	if !isVibeLangFile(ast.GetSourceFileOfNode(call)) {
+		return false
+	}
 	callee := call.Expression()
+	if ast.IsIdentifier(callee) {
+		// VIP-6: the global tryPromise is Effect.tryPromise, unless a local
+		// declaration or an import shadows it, so its thunk is wrapped code
+		// in either spelling (chapter 3, Plain code never throws).
+		return callee.Text() == "tryPromise" && !shadowed(call, "tryPromise")
+	}
 	if !ast.IsPropertyAccessExpression(callee) || !ast.IsIdentifier(callee.Expression()) || callee.Expression().Text() != "Effect" {
 		return false
 	}
 	name := callee.Name().Text()
-	return (name == "try" || name == "tryPromise") && isVibeLangFile(ast.GetSourceFileOfNode(call))
+	return name == "try" || name == "tryPromise"
 }
 
 // forEachHatchVibeLang calls visit with the arguments of call, a hatch, that are
