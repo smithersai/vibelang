@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Under `vibelang/bun`, importing a package whose `default` export names a `.vibelang/js` file with no single source, because `x.ts` and `x.vibe` both exist or its header names a deleted `.vibe`, failed with Bun's `TypeError: onLoad() expects an object returned`. The emitted module now loads in place, as documented.
+
 - The browser hardware-count diagnostic named a process export that does not exist. It now identifies the process service’s `availableParallelism` member and keeps the TypeScript adapter advice for browser counts.
 
 - The optional-call delegation example used untyped callees that require a failure boundary. It now declares the callable signatures while preserving unchecked results, native `TypeError` defects and optional-call evaluation order.

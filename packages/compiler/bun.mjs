@@ -447,7 +447,10 @@ Bun.plugin({
     // for consumers without a loader, runs from its .vibe source (emitted-js.mjs).
     build.onLoad({ filter: /[\\/]\.vibelang[\\/]js[\\/].*\.(?:[cm]?js|jsx)$/ }, ({ path }) => {
       const source = sourceOfEmitted(path)
-      if (source === undefined) return undefined
+      // No single source (ambiguous siblings, or a receipt naming a deleted
+      // .vibe): the emitted module loads in place. Bun 1.4 rejects an
+      // onLoad that returns undefined ("onLoad() expects an object returned").
+      if (source === undefined) return { contents: readFileSync(path, "utf8"), loader: path.endsWith(".jsx") ? "jsx" : "js" }
       claim(source)
       return { contents: reexportOf(source, exportsDefault(source, emitted, loaderOf)), loader: "js" }
     })
