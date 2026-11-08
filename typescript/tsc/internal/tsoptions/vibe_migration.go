@@ -97,7 +97,13 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 	if vibe != nil && !ast.IsObjectLiteralExpression(vibe) || severities != nil && !ast.IsObjectLiteralExpression(severities) {
 		return text, false
 	}
-	entries := map[string]*ast.Node{}
+	// A moved entry keeps its legacy node for its text and comments; code is
+	// the key it is written under, the legacy code or its assigned port.
+	type movedEntry struct {
+		node *ast.Node
+		code string
+	}
+	entries := map[string]movedEntry{}
 	var edits []configEdit
 	for _, property := range properties {
 		value := property.Initializer()
@@ -106,7 +112,7 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 		}
 		movable := true
 		for _, entry := range value.AsObjectLiteralExpression().Properties.Nodes {
-			if !ast.IsPropertyAssignment(entry) || !core.VibeSeverityCode(entry.Name().Text()) {
+			if !ast.IsPropertyAssignment(entry) || !core.VibeSeverityCode(entry.Name().Text()) && len(core.VibeSeverityPorts(entry.Name().Text())) == 0 {
 				movable = false
 				break
 			}
@@ -121,8 +127,17 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 				return text, false
 			}
 			key := entry.Name().Text()
-			if jsonProperty(severities, key) == nil {
-				entries[key] = entry
+			// A legacy port moves as the imported rule's assigned code, so the
+			// migrated entry governs the same check; a modern entry already
+			// written under that code wins.
+			targets := []string{key}
+			if !core.VibeSeverityCode(key) {
+				targets = core.VibeSeverityPorts(key)
+			}
+			for _, target := range targets {
+				if jsonProperty(severities, target) == nil {
+					entries[target] = movedEntry{entry, target}
+				}
 			}
 		}
 		// Remove diagnostics; retain other legacy options. Remove an empty wrapper.
@@ -153,7 +168,12 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 	var values []string
 	for _, key := range slices.Sorted(maps.Keys(entries)) {
 		entry := entries[key]
-		values = append(values, strings.TrimSpace(text[entry.Pos():entry.End()]))
+		value := text[entry.node.Pos():entry.node.End()]
+		if entry.code != entry.node.Name().Text() {
+			name := scanner.GetRangeOfTokenAtPosition(file, entry.node.Name().Pos())
+			value = text[entry.node.Pos():name.Pos()] + strconv.Quote(entry.code) + text[name.End():entry.node.End()]
+		}
+		values = append(values, strings.TrimSpace(value))
 	}
 	if len(values) > 0 {
 		insertion := strings.Join(values, ", ")
@@ -190,7 +210,7 @@ func MigrateLegacySeverities(name tspath.RootedFilePath, text string) (string, b
 			}
 			carried := false
 			for _, entry := range entries {
-				if entry.Pos() <= edit.start+s.TokenStart() && edit.start+s.TokenEnd() <= entry.End() {
+				if entry.node.Pos() <= edit.start+s.TokenStart() && edit.start+s.TokenEnd() <= entry.node.End() {
 					carried = true
 					break
 				}

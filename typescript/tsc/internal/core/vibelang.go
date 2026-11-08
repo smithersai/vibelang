@@ -123,3 +123,23 @@ func MergeVibeSettings(base, child *VibeLangOptions) *VibeLangOptions {
 // VibeLintPorts bridges the legacy VibeLang ports to the imported code registry
 // until the ports are retired. Populated once at startup by the lint adapter.
 var VibeLintPorts = map[string][]string{}
+
+// VibeLegacySeverityPorts maps a retired native check whose imported rule
+// has an assigned code, and which the lint adapter does not list as a port,
+// to that code: EK4801, the native floating-Effect check, is the imported
+// floatingEffect rule, EK3801. A legacy severity map moves such an entry
+// under the assigned code so it keeps governing the same check.
+var VibeLegacySeverityPorts = map[string]string{"EK4801": "EK3801"}
+
+// VibeSeverityPorts returns the release codes a legacy diagnostic code is
+// configured under in vibe.severities: the lint adapter's ports first, then
+// VibeLegacySeverityPorts, and nil for a code with neither.
+func VibeSeverityPorts(code string) []string {
+	if ports := VibeLintPorts[code]; len(ports) > 0 {
+		return ports
+	}
+	if port, ok := VibeLegacySeverityPorts[code]; ok {
+		return []string{port}
+	}
+	return nil
+}

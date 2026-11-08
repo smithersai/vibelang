@@ -40,7 +40,7 @@ func TestLegacyConfigCommentsQuoted(t *testing.T) { legacyCommentsQuoted(t) }
 func FuzzLegacyConfigComments(f *testing.F) {
 	startShortBudget(f)
 	legacyCommentsQuoted(f)
-	keys := []string{"root", "nested", "both", "root-empty", "nested-empty", "root-retained", "nested-retained"}
+	keys := []string{"root", "nested", "both", "root-empty", "nested-empty", "root-retained", "nested-retained", "root-port", "nested-port"}
 	for _, key := range keys {
 		for _, data := range [][]byte{{0}, {1}, {2}, {3}, {4}, {8}, {16}, {24}, {255}, {0, 1, 2, 3, 4, 5, 6, 7}} {
 			f.Add(key, data)
@@ -66,16 +66,23 @@ func FuzzLegacyConfigComments(f *testing.F) {
 		nested := strings.HasPrefix(key, "nested")
 		empty := strings.HasSuffix(key, "empty")
 		retained := strings.HasSuffix(key, "retained")
+		// A port key writes legacy ports, which move as their imported rules'
+		// assigned codes: EK4801 as EK3801, EK4823 as EK38123.
+		port := strings.HasSuffix(key, "port")
 		levels := []string{"off", "warning", "error"}
 		severity := levels[int(choice(1))%len(levels)]
 		mode := (choice(8) >> 3) % 4
 		modern := mode == 0 && choice(2)&1 != 0
 		duplicates := choice(3)&1 != 0
 		trailing := choice(4)&1 != 0
-		entries := `"EK4830":"` + severity + `","EK4831":"warning"`
-		want := map[string]string{"EK4830": severity, "EK4831": "warning"}
+		first, second, firstMoved, secondMoved := "EK4830", "EK4831", "EK4830", "EK4831"
+		if port {
+			first, second, firstMoved, secondMoved = "EK4801", "EK4823", "EK3801", "EK38123"
+		}
+		entries := `"` + first + `":"` + severity + `","` + second + `":"warning"`
+		want := map[string]string{firstMoved: severity, secondMoved: "warning"}
 		if duplicates {
-			entries = `"EK4830":"error",` + entries
+			entries = `"` + first + `":"error",` + entries
 		}
 		if empty {
 			entries = ""
@@ -97,8 +104,8 @@ func FuzzLegacyConfigComments(f *testing.F) {
 			want["EK4833"] = "off"
 		}
 		if modern {
-			modernEntries += `,"EK4830":"off"`
-			want["EK4830"] = "off"
+			modernEntries += `,"` + firstMoved + `":"off"`
+			want[firstMoved] = "off"
 		}
 		legacyProperty := `"vibelang":` + legacy
 		if key == "both" {

@@ -39,6 +39,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Constructor and base-class references could use the reserved names `fork` and `join` inside effect code. They now report `EK1702`, and `vibelang --fix` preserves the reference and the original binding's name.
 - The global `tryPromise` reported `EK0401` for a call known to throw inside its thunk, such as `tryPromise(() => load())` with `load` declared `@throws`, while `Effect.tryPromise` admitted it. Both spellings now admit the call, in the function and the options form.
 
+- `vibelang --fix` left a legacy `vibelang.diagnostics` map in place, still reporting `EK3009`, when it named a ported lint code such as `EK4801`. The map now moves to `vibe.severities` under the rule's assigned code, `EK3801`.
+
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 
 - Wide documentation tables could not be scrolled with the keyboard on phones. Table containers now accept keyboard focus, show a focus outline and scroll with the arrow keys.

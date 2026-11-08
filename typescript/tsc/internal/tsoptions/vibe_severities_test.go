@@ -143,6 +143,44 @@ func TestVibeSeverityLegacyMigration(t *testing.T) {
 	}
 }
 
+// Chapter 007 / legacy EK3009 migration and idempotence: docs/design/src/007-tooling.md#6f4906296e80bddc
+// Chapter 007 / legacy EK3009 migration and idempotence: docs/design/src/007-tooling.md#7514d98e5542a36b
+func TestVibeSeverityLegacyPortMigration(t *testing.T) {
+	for _, test := range []struct{ text, want, absent, severity string }{
+		{`{"vibelang":{"diagnostics":{/* old floating-Effect code */ "EK4801":"off"}},"files":["main.vibe"]}`, `"EK3801":"off"`, `"EK4801"`, "off"},
+		{`{"compilerOptions":{"vibelang":{"diagnostics":{"EK4801":"warning"}}},"files":["main.vibe"]}`, `"EK3801":"warning"`, `"EK4801"`, "warning"},
+		{`{"vibelang":{"diagnostics":{"EK4801":"off"}},"vibe":{"severities":{"EK3801":"error"}},"files":["main.vibe"]}`, `"EK3801":"error"`, `"off"`, "error"},
+		{`{"vibelang":{"diagnostics":{"EK4801":"off","EK4609":"warning"}},"files":["main.vibe"]}`, `"EK3801":"off"`, `"EK4801"`, "off"},
+	} {
+		t.Run(test.text, func(t *testing.T) {
+			fixed, changed := tsoptions.MigrateLegacySeverities("/project/tsconfig.json", test.text)
+			if !changed || strings.Contains(fixed, `"diagnostics"`) || !strings.Contains(fixed, test.want) || strings.Contains(fixed, test.absent) {
+				t.Fatalf("not migrated to the assigned code: %s", fixed)
+			}
+			if strings.Contains(test.text, "old floating-Effect code") && !strings.Contains(fixed, "old floating-Effect code") {
+				t.Fatalf("lost comment: %s", fixed)
+			}
+			config := vibeConfig(t, fixed, "{}")
+			for _, d := range config.Errors {
+				if d.Source() == "EK" {
+					t.Fatalf("migration error: %s", d.String())
+				}
+			}
+			if got := config.CompilerOptions().VibeLang.Severities["EK3801"]; got != test.severity {
+				t.Fatalf("EK3801 is %q, want %q: %s", got, test.severity, fixed)
+			}
+			if again, changed := tsoptions.MigrateLegacySeverities("/project/tsconfig.json", fixed); changed || again != fixed {
+				t.Fatalf("not idempotent: %s", again)
+			}
+		})
+	}
+	// A map holding a code with neither a release severity nor a port stays.
+	text := `{"vibelang":{"diagnostics":{"EK4801":"off","EK9204":"off"}},"files":["main.vibe"]}`
+	if fixed, changed := tsoptions.MigrateLegacySeverities("/project/tsconfig.json", text); changed || fixed != text {
+		t.Fatalf("moved a map with a nonconfigurable code: %s", fixed)
+	}
+}
+
 // Chapter 007 / left-to-right extends arrays and sibling isolation: docs/design/src/007-tooling.md#f8bed900fe15013c
 func TestVibeSeveritiesExtendsArrayAndSiblings(t *testing.T) {
 	fs := vfstest.FromMap(map[string]string{
