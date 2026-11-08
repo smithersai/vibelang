@@ -920,3 +920,10 @@ match. The plain function compiles with no `EK0501`, and with `Effect`
 arms it returns the arm's Effect unrun. A `try` before a `match` in any
 other position, or before a parenthesized `match`, still reports `EK0501`.
 The form is pending under `admission:try-match-statement`.
+
+The next campaign broke a getter across lines: `get` and then `Waiting()` on
+the next line. ECMAScript's `MethodDefinition` puts no line-break
+restriction after `get` or `set`, and TypeScript's parser accepts the getter
+(`canFollowGetOrSetKeyword` has no same-line test), as stock TypeScript 5.9.3
+confirms for object literals and classes. The lab had written a
+no-line-terminator restriction there; it is gone.
