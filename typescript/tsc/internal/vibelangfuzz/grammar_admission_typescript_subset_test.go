@@ -7,8 +7,8 @@ import "testing"
 // cases write: update and compound assignment operators, generic calls and
 // heritage, conditional, constructor, query and import types, type
 // predicates, `this` parameters, index signatures, catch patterns, do-while,
-// ambient and abstract declarations, namespaces and enums, and `using` as
-// an identifier.
+// ambient and abstract declarations, namespaces and enums, `using` as an
+// identifier, and an empty type parameter list on a type alias or interface.
 func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 	lab, err := admissionLab()
 	if err != nil {
@@ -46,6 +46,7 @@ func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 		"using",
 		"using\nx = 1;",
 		"using x = f(), y = g();",
+		"type T<> = 1; interface I<> {} export type U<> = string; export interface J<> extends I {}",
 		"class K { constructor(public readonly n: number, private m?: string) {} }",
 		"const g = (): (() => string) => () => \"a\"; const h = async (): (() => string) => () => \"b\";",
 		"type W = new (x: number) => Date; type X = abstract new () => object;",
@@ -73,6 +74,9 @@ func TestGrammarAdmissionTypeScriptSubset(t *testing.T) {
 		"type U<T> = T extends ? 1 : 2;",
 		"type W = new => Date;",
 		"using = ;",
+		"function f<>() {}",
+		"class C<> {}",
+		"type T<,> = 1;",
 	}
 	vl := grammarParseMode{prose: true, names: true}
 	derives := func(source string) (bool, bool) {

@@ -458,6 +458,9 @@ func grammarSplitLookahead(set string) []string {
 // (parseErrorForMissingSemicolonAfter assumes a declaration diagnostic was
 // already given), so `declare x: number` is `declare` and then `x: number` on
 // one line; DeclareExpressionStatement writes that reading.
+// TypeScript's checker reports an empty type parameter list (TS1098) only on
+// a function or a class (checkGrammarTypeParameterList), so a type alias or
+// an interface may write `<>`; DeclarationTypeParameters admits it there.
 // "{ p = 1 }" is ECMAScript's CoverInitializedName, written only as an assignment
 // target so an object literal still has no initializer. TypeScript's parser keeps its binary
 // loop going after "as T" or "satisfies T", so any operator may follow one:
@@ -533,9 +536,9 @@ FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initia
 MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "*" PropertyName TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd | GetAccessor | "set" [no LineTerminator here] PropertyName "(" FormalParameter ")" Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" ReturnAnnotation? Block
 GetAccessor = "get" [no LineTerminator here] PropertyName "(" ")" ReturnAnnotation? Block
 NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" ReturnAnnotation? Block
-InterfaceDeclaration = "interface" BindingIdentifier TypeParameters? InterfaceExtends? ObjectType
+InterfaceDeclaration = "interface" BindingIdentifier DeclarationTypeParameters? InterfaceExtends? ObjectType
 InterfaceExtends = "extends" TypeReference | InterfaceExtends "," TypeReference
-TypeAliasDeclaration = "type" [no LineTerminator here] BindingIdentifier TypeParameters? "=" Type StatementEnd
+TypeAliasDeclaration = "type" [no LineTerminator here] BindingIdentifier DeclarationTypeParameters? "=" Type StatementEnd
 ImportDeclaration = "import" ImportClause "from" StringLiteral StatementEnd | "import" StringLiteral StatementEnd
 TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier StatementEnd | "import" ModuleSpecifier StatementEnd
 ImportEqualsDeclaration = "import" BindingIdentifier "=" ModuleReference StatementEnd | "import" "type" BindingIdentifier "=" ModuleReference StatementEnd
@@ -619,6 +622,7 @@ ReturnType = ":" Type | ":" TypePredicate
 ReturnAnnotation = ":" Type | ":" TypePredicate
 TypePredicate = IdentifierReference [no LineTerminator here] "is" Type | "this" [no LineTerminator here] "is" Type | "asserts" [no LineTerminator here] IdentifierReference | "asserts" [no LineTerminator here] "this" | "asserts" [no LineTerminator here] IdentifierReference "is" Type | "asserts" [no LineTerminator here] "this" "is" Type
 TypeParameters = "<" TypeParameterList ","? ">"
+DeclarationTypeParameters = TypeParameters | "<" ">"
 TypeParameterList = TypeParameter | TypeParameterList "," TypeParameter
 TypeParameter = "const"? BindingIdentifier | "const"? BindingIdentifier "extends" Type | "const"? BindingIdentifier "=" Type | "const"? BindingIdentifier "extends" Type "=" Type
 TypeArguments = "<" TypeList ">"

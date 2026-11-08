@@ -876,3 +876,11 @@ Appendix A inherits that. TypeScript parses the mixture by precedence and its
 checker rejects it with the grammar error `TS5076`. The oracle now counts
 `TS5076` as a syntax rejection; parenthesized and chained `??` forms still
 derive.
+
+The same campaign wrote `data as < > { Value { value: A } }`. Stock
+TypeScript 5.9.3 accepts an empty type parameter list on a type alias or
+an interface (`type T<> = 1`, `interface I<> {}`) with no diagnostic; its
+checker reports `TS1098` only on a function or a class. The lab's
+TypeScript subset now admits `<>` on those two declarations and nowhere
+else, so `function f<>() {}` and `class C<> {}` still have no derivation and
+the compiler still rejects them with `TS1098`.
