@@ -95,9 +95,13 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	if ast.IsNewExpression(call) || ast.IsTaggedTemplateExpression(call) {
 		return planForeignInvocation(c, file, call)
 	}
-	if !ast.IsCallExpression(call) || call.Flags&ast.NodeFlagsVibeLangTry != 0 {
+	if !ast.IsCallExpression(call) {
 		return nil
 	}
+	// try f(): the parser flags the call itself and widens it to the try
+	// keyword. Its bridge stands under that try, which then runs the Effect
+	// the call returns: try (try Effect.orDie(Effect.try({ try: () => f(), catch: (e) => e }))).
+	tried := call.Flags&ast.NodeFlagsVibeLangTry != 0
 	if !needsBoundary(c, file, call) {
 		return nil
 	}
@@ -140,9 +144,15 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	}
 	var inputs []boundaryInput
 	code := ""
+	if tried && target != call {
+		return nil // a guard around a try operand needs a manual bridge
+	}
 	if target == call {
 		narrowed := func(operand *ast.Node) bool { return readsNarrowedProperty(c, operand) }
 		inputs, code = boundaryInputs(c, file, call, narrowed)
+		if tried {
+			code = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(code), "try"))
+		}
 	} else {
 		code = nodeText(file, target)
 	}
@@ -216,7 +226,9 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 			wrapped = "try ((" + strings.Join(parameters, ", ") + ") => Effect.catch(Effect.try({ try: () => " + code + ", catch: (error) => error }), (error) => " + strings.Join(tests, " || ") + " ? Effect.fail(error) : Effect.die(error)))(" + strings.Join(classes, ", ") + ")"
 		}
 	}
-	if !standsAlone(target) {
+	if tried {
+		wrapped = "try (" + wrapped + ")"
+	} else if !standsAlone(target) {
 		wrapped = "(" + wrapped + ")"
 	}
 	switch at := nodeStart(file, target); {

@@ -105,7 +105,7 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 		return nil
 	}
 	t := callTrust(a.checker, node)
-	if a.performs(node) {
+	if a.performsEffectful(node) {
 		return nil
 	}
 	// An effectful callable throws never: its written @throws does not apply

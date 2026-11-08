@@ -678,7 +678,7 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 		}
 		effectfulPlain = true
 	}
-	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performs(call) || isPlatformCallee(c, call) || returnsEffectful(c, call) {
+	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performsEffectful(call) || isPlatformCallee(c, call) || returnsEffectful(c, call) {
 		return
 	}
 	t := callTrust(c, call)
@@ -780,7 +780,7 @@ func checkInvocation(c *checker.Checker, a *analyzer, file *ast.SourceFile, node
 		}
 		effectfulPlain = true
 	}
-	if a.performs(node) || returnsEffectful(c, node) || isPlatformInvocation(c, node) {
+	if a.performsEffectful(node) || returnsEffectful(c, node) || isPlatformInvocation(c, node) {
 		return
 	}
 	// A constructor no class declares has no signature to carry a tag, so
@@ -891,6 +891,28 @@ func returnsEffectful(c *checker.Checker, call *ast.Node) bool {
 	// The signature target is the callable's own contract. Optional
 	// reference syntax must not erase its legitimate nullable results.
 	return isEffectfulType(c, result)
+}
+
+// performsEffectful reports whether call performs an Effect operation that
+// exempts it from throw tracking: performs, unless call is run by try and its
+// callee's own signature is not effectful. Chapter 3 classifies a generic
+// signature before type-argument substitution and counts any as not
+// effectful, so try get<Effect.Effect<number>>() and a try operand called
+// through any keep the callee's thrown contract: they are checked as any
+// other call in effect code. A VibeLang callee throws never, and an export
+// of effect keeps its trusted contract, so only a foreign callee differs.
+func (a *analyzer) performsEffectful(call *ast.Node) bool {
+	if !a.performs(call) {
+		return false
+	}
+	if !ast.IsCallExpression(call) || !a.runs(call) || returnsEffectful(a.checker, call) {
+		return true
+	}
+	switch callTrust(a.checker, call).kind {
+	case trustForeign, trustTagged, trustUnknown:
+		return false
+	}
+	return true
 }
 
 // isEffectfulType reports whether every value of t is an Effect, a Stream or

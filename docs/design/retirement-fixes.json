@@ -73,6 +73,10 @@
       {
         "input": "typescript/vibelang/cases/effectful-optional-nullable-return.fail",
         "output": "typescript/vibelang/cases/effectful-optional-nullable-return-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/try-operand-generic-contract.fail",
+        "output": "typescript/vibelang/cases/try-operand-generic-contract-fixed-output"
       }
     ]
   },

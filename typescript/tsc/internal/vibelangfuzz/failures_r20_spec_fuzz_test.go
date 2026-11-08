@@ -152,6 +152,15 @@ func failuresRound20Cases() []*failCase {
 	add(&failCase{Name: "generic-unconstrained-substitution", Quote: r20Generic, Lib: "/** @throws {\"boom\"} */\nexport declare function keep<T>(value: T): T\n", Body: "const e = ⟦keep(Effect.succeed(1))⟧", Code: 403})
 	add(&failCase{Name: "generic-unconstrained-wrapped", Quote: r20Generic, Lib: "/** @throws {\"boom\"} */\nexport declare function keep<T>(value: T): T\n", Body: "const e = try Effect.try(() => keep(Effect.succeed(1)))\nconst n = try e"})
 	add(&failCase{Name: "generic-constrained-effectful", Quote: r20Generic, Decls: "function passEffect<T extends Effect.Effect<unknown>>(value: T): T { return value }", Body: "const n = try passEffect(Effect.succeed(2))"})
+	// A try operand keeps its callee's contract: the generic is classified
+	// before substitution whether or not try runs its result, and any is
+	// not effectful; an effect export or a constrained generic stays exempt.
+	add(&failCase{Name: "generic-unconstrained-try-operand", Quote: r20Generic, Lib: "/** @throws {\"boom\"} */\nexport declare function keep<T>(value: T): T\n", Body: "const n = try ⟦keep(Effect.succeed(1))⟧", Code: 403})
+	add(&failCase{Name: "generic-explicit-try-operand", Quote: r20Generic, Lib: "/** @throws {\"boom\"} */\nexport declare function get<T>(): T\n", Body: "const n = try ⟦get<Effect.Effect<number>>()⟧", Code: 403})
+	add(&failCase{Name: "generic-untagged-try-operand", Quote: r20Generic, Lib: "export declare function get<T>(): T\n", Body: "const n = try ⟦get<Effect.Effect<number>>()⟧", Code: 403})
+	add(&failCase{Name: "generic-any-try-operand", Quote: r20Generic, Lib: "/** @throws {\"boom\"} */\nexport declare function loose(): any\n", Body: "const n = try ⟦loose()⟧", Code: 403})
+	add(&failCase{Name: "generic-constrained-try-operand", Quote: r20Generic, Lib: "import type { Effect } from \"effect\"\n/** @throws {\"boom\"} */\nexport declare function get<T extends Effect.Effect<number>>(): T\n", Body: "const n = try get<Effect.Effect<number>>()"})
+	add(&failCase{Name: "generic-effect-method-try-operand", Quote: r20Generic, Body: "const n = try Effect.succeed(1).pipe(Effect.map((x) => x + 1))"})
 	add(&failCase{Name: "catch-param-default", Owner: "nothrow-impl", Quote: r20CatchParams, VIP: 5, Lib: r20Defaults, Body: "return Effect.fail(undefined) catch (e: unknown = ⟦defaultError()⟧) => 7", Code: 401})
 	add(&failCase{Name: "catch-param-computed-key", Owner: "nothrow-impl", Quote: r20CatchParams, VIP: 5, Lib: r20Defaults, Body: "return Effect.fail({}) catch ({ [⟦defaultKey()⟧]: value }: any) => 7", Code: 401})
 	add(&failCase{Name: "catch-param-lazy-default", Owner: "nothrow-impl", Quote: r20CatchParams, VIP: 5, Lib: r20Defaults, Body: "return Effect.fail(undefined) catch (e: unknown = () => ⟦defaultError()⟧) => 7", Code: 401})

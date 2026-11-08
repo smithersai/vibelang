@@ -1,0 +1,11 @@
+// expect: EK0403
+// A try operand keeps its callee's thrown contract. A generic signature is
+// classified as effectful before type-argument substitution, through its
+// constraints, and any is not effectful, so these foreign calls are EK0403
+// even though try runs the Effect they are instantiated to.
+import { get, loose } from "./foreign.js"
+export effect function main() {
+  const generic = try (try ((foreignErrorClass: typeof Error) => Effect.catch(Effect.try({ try: () => get<number!!>("key"), catch: (error) => error }), (error) => error instanceof foreignErrorClass ? Effect.fail(error) : Effect.die(error)))(Error))
+  const untyped = try (try ((foreignErrorClass: typeof Error) => Effect.catch(Effect.try({ try: () => loose(), catch: (error) => error }), (error) => error instanceof foreignErrorClass ? Effect.fail(error) : Effect.die(error)))(Error))
+  return generic + untyped
+}

@@ -283,7 +283,7 @@ func (a *analyzer) rethrowsUnbridgedInEffect(call *ast.Node) bool {
 	if fn == nil || !a.runsAsEffect(fn) || outsideFibers(a.checker, a, call) {
 		return false
 	}
-	if a.performs(call) || returnsEffectful(a.checker, call) || len(a.rethrownThrows(call)) == 0 {
+	if a.performsEffectful(call) || returnsEffectful(a.checker, call) || len(a.rethrownThrows(call)) == 0 {
 		return false
 	}
 	if bound, written := foreignThrowsContract(a.checker, call); written {
