@@ -1,0 +1,3 @@
+go test fuzz v1
+string("textdecoder-mode-local-const-false")
+byte(0)
