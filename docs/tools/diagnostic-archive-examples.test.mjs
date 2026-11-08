@@ -79,3 +79,15 @@ test("the published Cause-catch witness keeps its unmigrated annotation at the c
   assert.equal(checkExample(shifted,appendix,result).length===0,row===0&&column===0)
  }),{seed:2113,numRuns:100})
 })
+
+test("mixed platform imports document both errors at their shared source location",()=>{
+ const appendix=appendixCodes(readFileSync(join(repository,"docs/design/src/900-appendices.md"),"utf8"))
+ const [example]=archiveExamples(new Map([["EK3206",appendix.get("EK3206")]]),repository)
+ assert.deepEqual(example.also,["EK2601"])
+ fc.assert(fc.property(fc.boolean(),fc.boolean(),fc.boolean(),(retirement,mixed,reverse)=>{
+  const codes=[...(retirement?["EK2601"]:[]),...(mixed?["EK3206"]:[])]
+  if(reverse)codes.reverse()
+  const stdout=codes.map(code=>example.at.file+"("+example.at.line+","+example.at.column+"): error "+code+": invalid legacy platform import").join("\n")
+  assert.equal(checkExample(example,appendix,{status:codes.length?2:0,stdout}).length===0,retirement&&mixed)
+ }),{seed:3206,numRuns:40})
+})

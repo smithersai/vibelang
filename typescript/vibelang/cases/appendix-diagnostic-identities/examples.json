@@ -453,6 +453,19 @@
     "archive": true
   },
   {
+    "name": "mixed-platform-import-companion",
+    "code": "EK2601",
+    "also": [
+      "EK3206"
+    ],
+    "source": "import \"vibelang/platform/node\"\nimport \"vibelang/platform/browser\"\n",
+    "at": {
+      "file": "main.vibe",
+      "line": 2,
+      "column": 8
+    }
+  },
+  {
     "code": "EK4201",
     "host": "registration-only",
     "testPath": "typescript/tsc/internal/vibelang/diagnostic_registered_only_hosts_test.go",

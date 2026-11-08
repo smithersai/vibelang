@@ -57,7 +57,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK2127` | error: legacy compiler compatibility — a data type's value is accessed through a nonexistent variant name.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:3:23](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK2127).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK3206` | error: legacy compiler compatibility — legacy platform imports name two different platforms in one file.
-// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:2:8](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK3206).
+// rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:2:8; also EK2601](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK3206).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4201` | error: legacy compiler compatibility — a legacy control operation runs under a combinator on another fiber.
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | Replay [example: main.vibe:9:24](../../../typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/registry-EK4201).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK4401` | error: legacy compiler compatibility — a foreign call has no legacy trusted exception contract.
