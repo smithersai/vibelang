@@ -10,8 +10,8 @@ import (
 )
 
 // blockScopedVarAction is chapter 1's quick fix for a var statement: let, or
-// const when no binding is ever assigned. It is offered only where block
-// scoping cannot change what runs, so the rewrite keeps the program's
+// const when every binding has a written type and is never assigned. It is
+// offered only where block scoping cannot change what runs, so the rewrite keeps the program's
 // behavior:
 //   - the statement sits directly in a block, module block or the file, with
 //     no loop between it and its function, so there is one binding per scope
@@ -19,8 +19,8 @@ import (
 //   - it has no export, and each name has this one declaration, so no
 //     redeclaration, parameter or importer shares the binding;
 //   - every reference lies after its own declarator, inside the statement's
-//     block and outside any hoisted function declaration, so none can run
-//     before initialization (a let would throw where var reads undefined).
+//     block and outside any nested callable, so none can run
+//     before initialization or gain TypeScript's lexical-closure narrowing.
 func blockScopedVarAction(ctx context.Context, fix *ls.CodeFixContext) *ls.CodeAction {
 	file := fix.SourceFile
 	text := file.Text()
@@ -60,21 +60,25 @@ func blockScopedVarAction(ctx context.Context, fix *ls.CodeFixContext) *ls.CodeA
 	c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
 	defer done()
 	ambient := statement.Flags&ast.NodeFlagsAmbient != 0
-	assigned := false
+	needsLet := false
 	for _, declarator := range list.AsVariableDeclarationList().Declarations.Nodes {
-		if declarator.Initializer() == nil && !ambient {
-			assigned = true // const needs an initializer; let keeps undefined
+		// An inferred var binding widens literal and unique-symbol types.
+		// const can narrow them even when the runtime value stays unchanged,
+		// affecting type queries, generic inference and exported signatures.
+		// let preserves that inference without spelling a new annotation.
+		if declarator.Type() == nil || declarator.Initializer() == nil && !ambient {
+			needsLet = true
 		}
 		for _, name := range varBindingNames(declarator.Name()) {
 			written, ok := varReferencesSafe(c, file, container, declarator, name)
 			if !ok {
 				return nil
 			}
-			assigned = assigned || written
+			needsLet = needsLet || written
 		}
 	}
 	keyword := "const"
-	if assigned {
+	if needsLet {
 		keyword = "let"
 	}
 	return &ls.CodeAction{Description: "Write " + keyword + " instead of var", Changes: replaceRange(fix, start, start+len("var"), keyword)}
@@ -131,7 +135,10 @@ func varReferencesSafe(c *checker.Checker, file *ast.SourceFile, container, decl
 					return true
 				}
 				for a := n.Parent; a != nil && a != container; a = a.Parent {
-					if a.Kind == ast.KindFunctionDeclaration {
+					// Lexical bindings can retain a last-assignment narrowing inside
+					// closures where var keeps its declared type. Keep captured var
+					// bindings native until that type change can be ruled out.
+					if ast.IsFunctionLike(a) {
 						ok = false
 						return true
 					}

@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A migrated function that always returned an Effect could gain a plain-value result when extra branches or local assignments hid the change. Verification now reports that loss even when the number of Effect-valued results stays the same.
 - Reference search and rename could miss names introduced by a pattern in a loop condition. They now include the declaration and its uses, even when the condition can skip initialization.
 
+- Replacing an unassigned `var` with `const` could narrow an inferred type, change an exported tuple or generic result, or introduce a type error. The quick fix now keeps inferred bindings as `let` and leaves captured bindings native; an unassigned binding with a written type can use `const`.
+
 - On Bun 1.3, loading a `.vibe` module that imports a sibling `.ts` or `.tsx` file could fail with `ENOENT` for a `file:` path or lose Unicode characters from the filename. These imports now load their source files, including when no emitted JavaScript file exists.
 
 - Explicit type arguments hid the form advisory on directly run `Effect.succeed` and `Effect.fail` calls. They now report `EK4834` and keep their written success or failure contract without an automatic rewrite.
@@ -57,7 +59,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The errors for a `try` statement in effect code, `catch` outside effect code, `try x catch h`, a `catch` operand that is not an Effect, and a plain `catch` handler that returns a Promise or an Effect (`EK0503` to `EK0508`) ended with an unrelated hint about function-literal handlers. Each now says what to write instead, and `EK0506` names the operand's type.
 - The browser hardware-count diagnostic named a process export that does not exist. It now identifies the process service’s `availableParallelism` member and keeps the TypeScript adapter advice for browser counts.
 
-- The quick fix for a `var` in a `.vibe` file (`EK0107`) only offered to move the whole file into a `module` body. Where block scoping cannot change what runs, it and `vibelang --fix` now write `const`, or `let` when the binding is assigned.
+- The quick fix for a `var` in a `.vibe` file (`EK0107`) only offered to move the whole file into a `module` body. Where block scoping cannot change what runs, it and `vibelang --fix` now write `let` or `const`.
 
 - The optional-call delegation example used untyped callees that require a failure boundary. It now declares the callable signatures while preserving unchecked results, native `TypeError` defects and optional-call evaluation order.
 

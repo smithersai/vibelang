@@ -47,18 +47,17 @@ func legacyVarActions(t *testing.T, source string) (titles, results []string) {
 }
 
 // Chapter 1 Legacy JavaScript: the var quick fix is let, or const when the
-// binding is never assigned. It is first wherever block scoping keeps what
-// runs, and the fixed source compiles with no error.
+// binding has a written type and is never assigned. It is first wherever
+// block scoping keeps what runs, and the fixed source compiles with no error.
 func TestLegacyVarQuickFix(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
-		{"never assigned", "export function constant(): number { var n = 1; return n }", "export function constant(): number { const n = 1; return n }"},
+		{"never assigned", "export function constant(): number { var n: number = 1; return n }", "export function constant(): number { const n: number = 1; return n }"},
 		{"assigned", "export function variable(): number { var m = 1; m++; return m }", "export function variable(): number { let m = 1; m++; return m }"},
-		{"module scope", "var a = 1\nexport const b = a", "const a = 1\nexport const b = a"},
-		{"destructuring", "export function d(o: { x: number }) { var { x } = o; return x }", "export function d(o: { x: number }) { const { x } = o; return x }"},
+		{"module scope", "var a = 1\nexport const b = a", "let a = 1\nexport const b = a"},
+		{"destructuring", "export function d(o: { x: number }) { var { x } = o; return x }", "export function d(o: { x: number }) { let { x } = o; return x }"},
 		{"no initializer", "export function u() { var x: number; x = 1; return x }", "export function u() { let x: number; x = 1; return x }"},
-		{"later declarator reads an earlier one", "export function m() { var a = 1, b = a; return b }", "export function m() { const a = 1, b = a; return b }"},
-		{"inside a nested block", "export function n(c: boolean) { if (c) { var t = 1; return t } return 0 }", "export function n(c: boolean) { if (c) { const t = 1; return t } return 0 }"},
-		{"closure after the declaration", "export function k() { var v = 1; return () => v }", "export function k() { const v = 1; return () => v }"},
+		{"later declarator reads an earlier one", "export function m() { var a = 1, b = a; return b }", "export function m() { let a = 1, b = a; return b }"},
+		{"inside a nested block", "export function n(c: boolean) { if (c) { var t = 1; return t } return 0 }", "export function n(c: boolean) { if (c) { let t = 1; return t } return 0 }"},
 		{"compound assignment", "export function s() { var total = 0; for (const x of [1, 2]) total += x; return total }", "export function s() { let total = 0; for (const x of [1, 2]) total += x; return total }"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -80,6 +79,11 @@ func TestLegacyVarQuickFix(t *testing.T) {
 // reads undefined, the var rewrite is not offered.
 func TestLegacyVarQuickFixRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source string }{
+
+		{"closure after the declaration", "export function k() { var v = 1; return () => v }"},
+		{"captured boolean narrowing", "export function f() { var x = true; return () => [x] as const }"},
+		{"captured written union", "export function f(c: boolean) { var x: string | undefined = c ? \"yes\" : undefined; if (x) return () => [x] as const }"},
+		{"captured in a method", "export function f() { var x = true; return { read() { return [x] as const } } }"},
 		{"hoisted function reads it", "export function f() { g(); var x = 1; function g() { return x } return x }"},
 		{"read before the declaration", "export function f() { const y = x; var x = 1; return y }"},
 		{"own initializer reads it", "export function f() { var x: any = typeof x; return x }"},

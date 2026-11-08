@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -41,10 +42,22 @@ var legacyVarShapes = []struct {
 	{"top-const", "export function run(c: boolean) { var x = 1; return [c, x] }", true},
 	{"top-let", "export function run(c: boolean) { var x = 1; if (c) x += 2; return x }", true},
 	{"block", "export function run(c: boolean) { if (c) { var x = 2; return x } return 0 }", true},
-	{"closure-after", "export function run(c: boolean) { var x = 3; const f = () => c ? x : -x; return f() }", true},
-	{"module", "var x = 4\nexport const run = (c: boolean) => c ? x : 0", true},
+	{"closure-after", "export function run(c: boolean) { var x = 3; const f = () => c ? x : -x; return f() }", false},
+	{"module", "var x = 4\nexport const run = (c: boolean) => c ? x : 0", false},
 	{"module-function", "var x = 4\nexport function run(c: boolean) { return c ? x : 0 }", false},
 	{"destructuring", "export function run(c: boolean) { var { a, b = a } = { a: c ? 5 : 6 }; return [a, b] }", false},
+	{"type-number", "export function run(c: boolean) { var x = 1; return [c, x] as const }", true},
+	{"type-string", "export function run(c: boolean) { var x = \"hello\"; return [c, x] as const }", true},
+	{"type-negative", "export function run(c: boolean) { var x = -2; return [c, x] as const }", true},
+	{"type-conditional", "export function run(c: boolean) { var x = c ? 1 : 2; return [x] as const }", true},
+	{"type-query", "export function run(c: boolean) { var x = 1; const y: typeof x = 2; return [c, y] }", true},
+	{"type-generic", "function keep<const T>(x: T): T { return x }; export function run(c: boolean) { var x = 1; return keep([c, x] as const) }", true},
+	{"type-written", "export function run(c: boolean) { var x: number = 1; return [c, x] as const }", true},
+
+	{"capture-boolean", "export function run(c: boolean) { var x = true; return () => [c, x] as const }", false},
+	{"capture-written-union", "export function run(c: boolean) { var x: string | undefined = c ? \"yes\" : undefined; if (x) return () => [x] as const; return () => [x] as const }", false},
+	{"capture-method", "export function run(c: boolean) { var x = true; return { read() { return [c, x] as const } }.read }", false},
+
 	{"hoisted-read", "export function run(c: boolean) { const early = h(); var x = 5; function h() { return typeof x } return [early, x, c] }", false},
 	{"before-read", "export function run(c: boolean) { const y = typeof x; var x = 6; return [y, x, c] }", false},
 	{"loop-closure", "export function run(c: boolean) { const fs: (() => number)[] = []; for (const i of [1, 2]) { var x = c ? i : -i; fs.push(() => x) } return fs.map(f => f()) }", false},
@@ -149,15 +162,22 @@ func FuzzLegacyVarRewrite(f *testing.F) {
 		}
 		want := legacyVarRun(t, w, "main.ts", source, mode&1 != 0)
 		got := legacyVarRun(t, w, "main.vibe", rewritten, mode&1 != 0)
-		if got != want {
-			Gap(t, "FuzzLegacyVarRewrite", "var-rewrite:behavior:"+shape.key, "%s\n%s\nprinted %q, the var program %q\n%s", legacyVarPreserveQuote, legacyVarFixQuote, got, want, rewritten)
+		if got.value != want.value {
+			Gap(t, "FuzzLegacyVarRewrite", "var-rewrite:behavior:"+shape.key, "%s\n%s\nprinted %q, the var program %q\n%s", legacyVarPreserveQuote, legacyVarFixQuote, got.value, want.value, rewritten)
+		}
+		if got.declaration != want.declaration {
+			Gap(t, "FuzzLegacyVarRewrite", "var-rewrite:declaration:"+shape.key, "%s\nbefore:\n%s\nafter:\n%s\n%s", legacyVarPreserveQuote, want.declaration, got.declaration, rewritten)
 		}
 	})
 }
 
+type legacyVarObservation struct {
+	value, declaration string
+}
+
 // legacyVarRun compiles source as name and prints run(c) as JSON, or the
 // name of what it threw. A compile error prints its codes.
-func legacyVarRun(t *testing.T, w *Workspace, name, source string, c bool) string {
+func legacyVarRun(t *testing.T, w *Workspace, name, source string, c bool) legacyVarObservation {
 	t.Helper()
 	r, err := w.Compile(t.Context(), Project{Files: map[string]string{name: source}})
 	if err != nil {
@@ -171,7 +191,7 @@ func legacyVarRun(t *testing.T, w *Workspace, name, source string, c bool) strin
 		}
 	}
 	if len(codes) > 0 {
-		return "compile error " + strings.Join(codes, " ")
+		return legacyVarObservation{value: "compile error " + strings.Join(codes, " ")}
 	}
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "main.js"), []byte(r.Outputs["out/main.js"]), 0o644); err != nil {
@@ -181,7 +201,7 @@ func legacyVarRun(t *testing.T, w *Workspace, name, source string, c bool) strin
 	if c {
 		arg = "true"
 	}
-	runner := "import { run } from \"./main.js\"\nlet out\ntry { out = JSON.stringify(run(" + arg + ")) } catch (e) { out = \"threw \" + e.constructor.name }\nprocess.stdout.write(out)\n"
+	runner := "import { run } from \"./main.js\"\nlet out\ntry { let value = run(" + arg + "); if (typeof value === \"function\") value = value(); out = JSON.stringify(value) ?? \"undefined\" } catch (e) { out = \"threw \" + e.constructor.name }\nprocess.stdout.write(out)\n"
 	if err := os.WriteFile(filepath.Join(dir, "runner.mjs"), []byte(runner), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -189,5 +209,12 @@ func legacyVarRun(t *testing.T, w *Workspace, name, source string, c bool) strin
 	if err != nil {
 		t.Fatalf("node: %v\n%s\n%s", err, out, r.Outputs["out/main.js"])
 	}
-	return string(out)
+	// These generated sources have no authored documentation. The one
+	// allowed declaration difference is the generated no-throw contract.
+	declaration := r.Outputs["out/main.d.ts"]
+	if declaration == "" {
+		t.Fatal("no emitted declaration")
+	}
+	declaration = regexp.MustCompile(`(?m)^[ \t]*/\*\* @throws \{never\} \*/\r?\n`).ReplaceAllString(declaration, "")
+	return legacyVarObservation{value: string(out), declaration: declaration}
 }
