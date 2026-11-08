@@ -1,17 +1,8 @@
 # Static verifier gaps preserve failure channels and callback holders.
-FuzzMigrationRunPhaseBoundaries phase:failure/Effect compiler VIP-1: a preserved returned typed failure is misclassified as a dropped success value; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:failure/E compiler VIP-1: a preserved returned typed failure is misclassified as a dropped success value; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:failure-tagged/Effect compiler VIP-1: a preserved returned typed failure is misclassified as a dropped success value; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:failure-tagged/E compiler VIP-1: a preserved returned typed failure is misclassified as a dropped success value; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:failure-conditional/Effect compiler VIP-1: a preserved returned typed failure is misclassified as a dropped success value; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:failure-conditional/E compiler VIP-1: a preserved returned typed failure is misclassified as a dropped success value; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:failure-wrapped/Effect compiler VIP-1: a preserved returned typed failure is misclassified as a dropped success value; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:failure-wrapped/E compiler VIP-1: a preserved returned typed failure is misclassified as a dropped success value; lane migfix-alchemy
 FuzzMigrationRunPhaseBoundaries phase:array/Effect compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
 FuzzMigrationRunPhaseBoundaries phase:array/E compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
 FuzzMigrationRunPhaseBoundaries phase:array-const/Effect compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
 FuzzMigrationRunPhaseBoundaries phase:array-const/E compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
 FuzzMigrationRunPhaseBoundaries phase:array-block/Effect compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
 FuzzMigrationRunPhaseBoundaries phase:array-block/E compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries corpus:alchemy-yieldable-failure-return compiler VIP-1: minimized preserved failure or tuple callback identity witness; lane migfix-alchemy
 FuzzMigrationRunPhaseBoundaries corpus:alchemy-effect-factory-array-callback compiler VIP-1: minimized preserved failure or tuple callback identity witness; lane migfix-alchemy
