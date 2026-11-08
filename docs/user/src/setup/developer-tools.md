@@ -635,3 +635,5 @@ Use the compiler, plugins and editor integrations above with `.vibe` and `.vibex
 Relative imports keep source files and JavaScript siblings distinct: importing `./value.vibe` and `./value.js` in one module loads each file separately, including when their names use only ASCII characters.
 
 Development imports and hot updates preserve literal percent sequences in filenames. A source such as `percent%20.vibe` and a JavaScript dependency such as `percent%2520.js` retain their own contents and original source-map locations, including under a configured Vite `base`.
+
+The migration flow keeps unrelated native runtime exports at their written source paths. Computed or unresolved imports require package-wide emitted routing only when reachable from a migrated source or a public native runtime entry. An unused private fixture or development script does not change those paths. The `runtimeRouting` emission receipt names the opaque source behind a conservative fallback and lists ignored opaque sources for component routing.

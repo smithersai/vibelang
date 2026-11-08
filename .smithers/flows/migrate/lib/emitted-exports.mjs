@@ -79,7 +79,7 @@ function mappedTargets(map, key) {
 
 // Components, rather than outgoing reachability alone, keep a native singleton
 // shared by a Vibe module and a public native export on one emitted instance.
-// An opaque runtime edge keeps the previous conservative package-wide routing.
+// Reachable opaque runtime edges keep conservative package-wide routing.
 function runtimeComponentOutputs(root, outputs, pkg, typescript) {
   const entries=Object.entries(outputs),roots=entries.filter(([source])=>/\.vibex?$/.test(source)).map(([source])=>plainPath(source))
   const fallback=reason=>({outputs,summary:{mode:"package",reason,modules:entries.length,selected:entries.length}})
@@ -91,6 +91,7 @@ function runtimeComponentOutputs(root, outputs, pkg, typescript) {
   const byOutput=new Map(entries.map(([source,output])=>[plainPath(output),plainPath(source)]))
   if (byOutput.size!==entries.length) return fallback("ambiguous emitted module")
   const graph=new Map([...sources].map(source=>[source,new Set()]))
+  const opaqueSources=new Set()
   // An exported native module may also need its compiled graph: Node cannot
   // follow an authored ./x.js edge when only x.ts exists beside the source.
   // Keep bare native facades in source (their host may provide that module),
@@ -181,7 +182,21 @@ function runtimeComponentOutputs(root, outputs, pkg, typescript) {
       ts.forEachChild(node,visit)
     }
     visit(file)
-    if (opaque) return fallback("opaque runtime module edge")
+    if (opaque) opaqueSources.add(from)
+  }
+  // Unused private importers do not make their runtime edges observable.
+  // Public native roots still participate: a computed import there can reach
+  // any migrated singleton even when no static edge connects the modules.
+  const live=new Set(),entryRoots=[...roots,...[...sources].filter(source=>native.test(source)&&isPublic(source))],entryPending=[...entryRoots]
+  while(entryPending.length) {
+    const next=entryPending.pop()
+    if(live.has(next))continue
+    live.add(next);entryPending.push(...runtimeEdges.get(next))
+  }
+  for(const source of opaqueSources) if(live.has(source)) {
+    const value=fallback("opaque runtime module edge")
+    value.summary.source=source;value.summary.live=live.size
+    return value
   }
   // Only a public importer's outgoing runtime graph can require this route.
   // An unused private importer must not pull a provided facade into emission.
@@ -196,8 +211,8 @@ function runtimeComponentOutputs(root, outputs, pkg, typescript) {
     }
   }
   const selected=new Set([...roots,...nativeRoots]),pending=[...selected]
-  while(pending.length) for(const next of graph.get(pending.pop())??[]) if(!selected.has(next)){selected.add(next);pending.push(next)}
-  return {outputs:Object.fromEntries(entries.filter(([source])=>selected.has(plainPath(source)))),summary:{mode:"component",modules:entries.length,selected:selected.size,vibeRoots:roots.length,nativeRuntimeRoots:nativeRoots.size}}
+  while(pending.length) for(const next of graph.get(pending.pop())??[]) if(live.has(next)&&!selected.has(next)){selected.add(next);pending.push(next)}
+  return {outputs:Object.fromEntries(entries.filter(([source])=>selected.has(plainPath(source)))),summary:{mode:"component",modules:entries.length,selected:selected.size,vibeRoots:roots.length,nativeRuntimeRoots:nativeRoots.size,live:live.size,ignoredOpaque:[...opaqueSources].filter(source=>!live.has(source))}}
 }
 function generatedPatternRoute(value) {
   if (!value || typeof value!=="object") return false

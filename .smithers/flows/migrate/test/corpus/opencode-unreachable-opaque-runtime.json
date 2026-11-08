@@ -1,0 +1,5 @@
+{
+  "property": "opaque-runtime-reachability",
+  "rule": "Unrelated native export paths stay as written.",
+  "input": { "edge": "dynamic", "reachable": "none", "depth": 1, "pattern": false, "reverse": false }
+}
