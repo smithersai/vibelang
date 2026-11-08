@@ -1,0 +1,4 @@
+{
+  "script": "bun check -b --no-script",
+  "pattern": "forced build checker selection with the no-script flag after the build flag"
+}

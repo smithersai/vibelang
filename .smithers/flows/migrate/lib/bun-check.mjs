@@ -9,7 +9,12 @@ export function replaceBunCheck(script) {
   for (const { raw, words } of commands) {
     const start = script.indexOf(raw, offset)
     offset = start + raw.length
-    if (words[0] !== "bun" || words[1] !== "check" || !/^bun[ \t]+check[ \t]+--no-script(?=[ \t]|$)/.test(raw)) continue
+    if (words[0] !== "bun" || words[1] !== "check" || !/^bun[ \t]+check(?=[ \t]|$)/.test(raw)) continue
+    const tokens = raw.match(/(?:[^\s"'\\]|\\[\s\S]|"(?:(?:\\[\s\S])|[^"\\])*"|'[^']*')+/g)
+    if (!tokens || tokens.length !== words.length) continue
+    // Bun accepts --no-script before or after build/project arguments. Only
+    // an authored option selects its checker; quoted strings stay literal.
+    if (!words.some((word, i) => i >= 2 && word === "--no-script" && tokens[i] === "--no-script")) continue
     // Future Bun-only options keep the original command rather than losing flags.
     const build = words.some(word => word === "-b" || word === "--build")
     let valid = true
@@ -27,8 +32,6 @@ export function replaceBunCheck(script) {
     if (build) {
       // Bun accepts project selectors in build mode; TypeScript takes
       // positional projects and requires the build flag first.
-      const tokens = raw.match(/(?:[^\s"'\\]|\\[\s\S]|"(?:(?:\\[\s\S])|[^"\\])*"|'[^']*')+/g)
-      if (!tokens || tokens.length !== words.length) continue
       const mode = words.findIndex(word => word === "-b" || word === "--build")
       const args = []
       for (let i = 2; i < words.length; i++) {
@@ -37,7 +40,7 @@ export function replaceBunCheck(script) {
         args.push(tokens[i])
       }
       next = ["vibelang", tokens[mode], ...args].join(" ")
-    } else next = raw.replace(/^bun\s+check\b/, "vibelang --noEmit").replace(/\s+--no-script(?=\s|$)/, "")
+    } else next = ["vibelang", "--noEmit", ...tokens.slice(2).filter((_, i) => words[i + 2] !== "--no-script")].join(" ")
     result = result.slice(0, start + delta) + next + result.slice(offset + delta)
     delta += next.length - raw.length
   }

@@ -383,7 +383,7 @@ The Node and Bun loaders reuse a cached compile when generated sidecars beside t
 
 No VibeLang setting is needed. The retired `declarationSidecars` option is an error. Run `vibelang -p tsconfig.json --fix` to remove it from the project and its local inherited configs. This also removes the obsolete key from the top-level `vibe` section in `tsconfig.json` or `vibe.config.json`, preserving other settings, comments and a UTF-8 BOM.
 
-When a `check` script is declared, `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution. Bun 1.4.4 also provides a native checker: `bun check --no-script` selects it even when the project has a `check` script.
+When a `check` script is declared, `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution. Bun 1.4.4 also provides a native checker: `bun check --no-script` selects it even when the project has a `check` script. The runtime preload does not replace that checker. For native checking of `.vibe` sources, use `vibelang -b`, or declare `"check": "vibelang -b"` in `package.json` and run `bun run check`. Migration setup replaces supported forced Bun checks with `vibelang`, preserving build mode and project selection even when `--no-script` follows other arguments.
 
 In each project whose checker is not `vibelang`, set TypeScript's [`allowArbitraryExtensions`](https://www.typescriptlang.org/tsconfig/allowArbitraryExtensions.html), and import the module by its source name:
 

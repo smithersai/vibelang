@@ -201,6 +201,8 @@ processes that inherit the environment. The preload must run before the entry.
 
 Imports and re-exports preserve source filenames containing spaces, `#`, `%` and Unicode text. Each compiled import resolves from its original source spelling. Written `.js` imports keep their native literal filename, including when the same module also imports a different percent-containing source filename.
 
+The runtime preload does not replace Bun's built-in `bun check --no-script` checker. Check `.vibe` projects with `vibelang -b`, or use `bun run check` with a `"check": "vibelang -b"` package script. Migration setup translates supported forced Bun checker commands in any flag order and preserves their build mode and selected projects.
+
 Use Bun `1.4.2` or newer for the runtime loader. Bun `1.3.13` can return an asset path instead of a module for computed imports that a plugin resolves, and Bun `1.4.0` can corrupt Unicode import paths.
 
 ```sh

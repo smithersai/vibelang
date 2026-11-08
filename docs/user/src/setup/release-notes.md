@@ -21,6 +21,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The `net.isIP` replacement hint returned a parser object instead of an IP family number. It now shows `0`, `4` or `6`, including IPv6 addresses with Node-compatible zones.
 
+- Migration could leave `bun check -b --no-script` on Bun's built-in checker, which reported missing extensionless imports of converted modules. Setup now selects `vibelang` for supported forced checks in any flag order while preserving the build's projects and compiler errors.
+
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.
