@@ -377,10 +377,15 @@ func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, ra
 
 	// Collect explicitly null field names from raw JSON
 	var explicitNullFields collections.Set[string]
+	hasLegacyObject := false
 	if rawSource != nil {
 		if rawMap, ok := rawSource.(*collections.OrderedMap[string, any]); ok && rawMap != nil {
-			if value, exists := rawMap.Get("vibelang"); exists && value == nil {
-				explicitNullFields.Add("vibelang")
+			if value, exists := rawMap.Get("vibelang"); exists {
+				if value == nil {
+					explicitNullFields.Add("vibelang")
+				} else if object, ok := value.(*collections.OrderedMap[string, any]); ok && object != nil {
+					hasLegacyObject = true
+				}
 			}
 			// Options are nested under "compilerOptions" in both tsconfig.json and wrapped command line options
 			if compilerOptionsRaw, exists := rawMap.Get("compilerOptions"); exists {
@@ -388,6 +393,10 @@ func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, ra
 					for key, value := range compilerOptionsMap.Entries() {
 						if value == nil {
 							explicitNullFields.Add(key)
+						} else if key == "vibelang" {
+							if object, ok := value.(*collections.OrderedMap[string, any]); ok && object != nil {
+								hasLegacyObject = true
+							}
 						}
 					}
 				}
@@ -397,6 +406,11 @@ func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, ra
 
 	previousVibe := targetOptions.VibeLang
 	sourceVibe := sourceOptions.VibeLang
+	if hasLegacyObject && sourceVibe != nil && !sourceVibe.VibeOnly {
+		// Parsing selected an explicit legacy object from one of the two locations.
+		// A null at the other spelling must not erase the same-file selection.
+		explicitNullFields.Delete("vibelang")
+	}
 	mergeCompilerOptionFields(targetOptions, sourceOptions, explicitNullFields)
 	if explicitNullFields.Has("vibelang") {
 		// A legacy reset clears only legacy fields. The generated native-option
