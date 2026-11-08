@@ -1,0 +1,116 @@
+[
+  {
+    "key": "process",
+    "source": "export const value = Process",
+    "advice": "try (try Experimental.Process.Process).pid",
+    "want": 1
+  },
+  {
+    "key": "filesystem",
+    "source": "export const value = FileSystem",
+    "advice": "try (try Experimental.FileSystem.FileSystem).access(path, { executable: true })",
+    "want": 1
+  },
+  {
+    "key": "locks",
+    "source": "export const value = Locks",
+    "advice": "try (try Experimental.Locks.Locks).hold(name)",
+    "want": 1
+  },
+  {
+    "key": "mediaquery",
+    "source": "export const value = MediaQuery",
+    "advice": "try (try Experimental.MediaQuery.MediaQuery).matches(query)",
+    "want": 1
+  },
+  {
+    "key": "animations",
+    "source": "export const value = Animations",
+    "advice": "try (try Experimental.Animations.Animations).nextFrame",
+    "want": 1
+  },
+  {
+    "key": "audiocontext",
+    "source": "export const value = AudioContext",
+    "advice": "try (try Experimental.AudioContext.AudioContext).acquire",
+    "want": 1
+  },
+  {
+    "key": "filereader",
+    "source": "export const value = FileReader",
+    "advice": "try (try Experimental.FileReader.FileReader).readAsText(blob)",
+    "want": 1
+  },
+  {
+    "key": "resizeobserver",
+    "source": "export const value = ResizeObserver",
+    "advice": "try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)",
+    "want": 1
+  },
+  {
+    "key": "document",
+    "source": "export const value = Document",
+    "advice": "try (try Experimental.Document.Document).current",
+    "want": 1
+  },
+  {
+    "key": "browserinfo",
+    "source": "export const value = BrowserInfo",
+    "advice": "try (try Experimental.BrowserInfo.BrowserInfo).userAgent",
+    "want": 1
+  },
+  {
+    "key": "window",
+    "source": "export const value = Window",
+    "advice": "try (try Experimental.Window.Window).current",
+    "want": 1
+  },
+  {
+    "key": "netaddress",
+    "source": "export const value = NetAddress",
+    "advice": "Experimental.NetAddress.isIPv6(address)",
+    "want": 1
+  },
+  {
+    "key": "member-call",
+    "source": "export function value() { return Process.hostname() }",
+    "advice": "try (try Experimental.Process.Process).pid",
+    "want": 1
+  },
+  {
+    "key": "computed-call",
+    "source": "export function value() { return Process[\"hostname\"]() }",
+    "advice": "try (try Experimental.Process.Process).pid",
+    "want": 1
+  },
+  {
+    "key": "constructor",
+    "source": "export function value() { return new FileReader() }",
+    "advice": "try (try Experimental.FileReader.FileReader).readAsText(blob)",
+    "want": 1
+  },
+  {
+    "key": "local-shadow",
+    "source": "const Process = { hostname: () => 1 }; export const value = Process.hostname()",
+    "advice": "",
+    "want": 0
+  },
+  {
+    "key": "property-name",
+    "source": "export const value = ({ Process: 1 }).Process",
+    "advice": "",
+    "want": 0
+  },
+  {
+    "key": "native-module",
+    "source": "module Native { export const value = Process }",
+    "advice": "",
+    "want": 0
+  },
+  {
+    "key": "unrelated-name",
+    "source": "export const value = UnrelatedMissingName",
+    "advice": "",
+    "want": 0
+  }
+]

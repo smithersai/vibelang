@@ -50,6 +50,8 @@ Calling `main()` builds an Effect. `NodeRuntime.runMain` runs it, and `Effect.pr
 
 ## Replacing Node.js and web calls
 
+An unresolved experimental name such as `Process` keeps its TypeScript missing-name diagnostic. Its hint names the `Experimental` module, shows how to read and run the service, and identifies a layer that provides it. For example, read a process identifier with `try (try Experimental.Process.Process).pid` and provide `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node`. Pure helpers such as `Experimental.NetAddress.isIPv6(address)` need no service lookup or layer.
+
 Each Node.js or web call has an Effect replacement, which needs no import. `EK4402` names it and its layer. `Date.now` and `Math.random` are ECMAScript and allowed; their rows give the replacement a test can control:
 
 | Call | Effect | Layer |

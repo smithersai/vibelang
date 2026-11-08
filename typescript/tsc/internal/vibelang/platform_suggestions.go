@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"strings"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/astnav"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -14,7 +12,7 @@ import (
 // A name of an experimental service (D313) that is not in scope, such as
 // Process, gets a note naming Experimental.Process instead.
 //
-//	Process.hostname()   // TS2304, noting Experimental.Process.hostname()
+//	Process.hostname()   // TS2304, showing the service key, run and provider
 func init() {
 	checker.RegisterSpellingSuggestionFilterHook(suggestsNoPlatformGlobal)
 	checker.RegisterDiagnosticsFilterHook(explainExperimentalName)
@@ -48,8 +46,9 @@ func inModuleBlock(node *ast.Node) bool {
 
 // explainExperimentalName adds a note to TS2304 and TS2552 at a name that
 // one of VibeLang's experimental services has (D313), which is in scope only
-// as a member of Experimental: Process.hostname() names
-// Experimental.Process.hostname().
+// as a member of Experimental. Its example uses the same checked service
+// lookup and provider guidance as the platform diagnostic, not a service-member
+// shorthand that the module does not export.
 func explainExperimentalName(c *checker.Checker, file *ast.SourceFile, all []*ast.Diagnostic) []*ast.Diagnostic {
 	if !isVibeLangFile(file) {
 		return all
@@ -62,17 +61,12 @@ func explainExperimentalName(c *checker.Checker, file *ast.SourceFile, all []*as
 		if name == nil || !ast.IsIdentifier(name) || isMemberNameOf(name) || inHatch(name) || inModuleBlock(name) {
 			continue
 		}
-		if _, ok := platformServices["Experimental"+name.Text()]; !ok {
+		key := "Experimental" + name.Text()
+		if platformServices[key] == nil {
 			continue
 		}
-		// The written use, with Experimental. in front: the call or access
-		// that name starts, Process.hostname() or Process.pid.
-		use := name
-		for use.Parent != nil && (ast.IsPropertyAccessExpression(use.Parent) && use.Parent.Expression() == use || ast.IsCallExpression(use.Parent) && use.Parent.Expression() == use) {
-			use = use.Parent
-		}
-		written := strings.TrimSpace(nodeText(file, use))
-		all[i] = note(d.Clone(), "{0} is VibeLang's experimental {0} service, in scope as Experimental.{0}: write Experimental.{1}.", name.Text(), written)
+		all[i] = note(d.Clone(), "{0} is VibeLang's experimental {0} module, available as Experimental.{0}.", name.Text())
+		notePlatformAPI(all[i], platformAPI{service: key})
 	}
 	return all
 }

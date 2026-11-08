@@ -1,9 +1,9 @@
 // expect: TS2304 TS2552
-// Process is not in scope: VibeLang's experimental Process service is
-// Experimental.Process (D313). TypeScript would suggest Node's process,
-// which EK4402 bans in .vibe code, so the error suggests no global and a
-// note names Experimental.Process.hostname(). A hatch's TypeScript may use
-// process, so a misspelling there still suggests it.
+// Process is not in scope: its module is Experimental.Process.
+// The note shows an explicit service lookup, Effect run and provider.
+// TypeScript would suggest Node's process, which EK4402 bans in
+// .vibe code. A TypeScript hatch keeps ordinary spelling suggestions,
+// so its misspelling still suggests process.
 export function host() {
   return Process.hostname()
 }
