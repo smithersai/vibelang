@@ -28,6 +28,10 @@ func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
 		}
 		if defaultForeignValueContext(node) && !defaultForeignIntrinsicMatcher(c, node) && !defaultForeignBindingTagged(c, node, map[*ast.Symbol]bool{}) {
 			target := c.GetContextualType(node, checker.ContextFlagsNone)
+			forwarded := defaultForeignForwardedTarget(c, node)
+			if forwarded != nil {
+				target = forwarded
+			}
 			if target == nil {
 				return node.ForEachChild(visit)
 			}
@@ -35,7 +39,7 @@ func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
 			owners := defaultForeignValueOwners(c, node)
 			if defaultForeignCallbackCandidate(c, source, owners, node) &&
 				!admittedByShippedContract(c, node) && !defaultForeignComputedWrapper(c, node) &&
-				!defaultForeignCallbackFitsOwn(c, source, target, owners, append([]*checker.Type{target}, owners...), !defaultForeignTrustedImpl(c, node)) {
+				!defaultForeignCallbackFitsOwn(c, source, target, owners, append([]*checker.Type{target}, owners...), !defaultForeignTrustedImpl(c, node) && forwarded == nil) {
 				d := report(c, node, EK0402)
 				note(d, "An unannotated foreign function has thrown type unknown; this callback type does not admit it.")
 				note(d, "Handle its throw in a callback, or use a foreign signature with an admitted written @throws contract.")
@@ -192,6 +196,73 @@ func defaultForeignTrustedImpl(c *checker.Checker, node *ast.Node) bool {
 	}
 	call := node.Parent
 	return call != nil && ast.IsCallExpression(call) && len(call.Arguments()) > 0 && call.Arguments()[0] == node && runtimeExportOf(c, call.Expression()) == "trusted"
+}
+
+// A variadic forwarding call checks each supplied value against the
+// corresponding parameter of its callback. Preserve that written destination
+// instead of mistaking the inferred rest tuple for the value's own signature.
+func defaultForeignForwardedTarget(c *checker.Checker, node *ast.Node) *checker.Type {
+	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
+		node = node.Parent
+	}
+	call := node.Parent
+	if call == nil || !ast.IsCallExpression(call) && !ast.IsNewExpression(call) {
+		return nil
+	}
+	index := -1
+	for i, arg := range call.Arguments() {
+		if arg == node {
+			index = i
+		}
+	}
+	signature := c.GetResolvedSignature(call)
+	if index < 0 || signature == nil {
+		return nil
+	}
+	for signature.Target() != nil {
+		signature = signature.Target()
+	}
+	declaration := signature.Declaration()
+	if declaration == nil || !ast.IsFunctionLike(declaration) {
+		return nil
+	}
+	parameters := declaration.Parameters()
+	if len(parameters) < 2 || len(declaration.TypeParameters()) == 0 {
+		return nil
+	}
+	restIndex := len(parameters) - 1
+	rest := parameters[restIndex]
+	if index < restIndex || rest.AsParameterDeclaration().DotDotDotToken == nil || rest.Type() == nil {
+		return nil
+	}
+	for _, parameter := range declaration.TypeParameters() {
+		name := parameter.Name().Text()
+		if !ast.IsTypeReferenceNode(rest.Type()) || !ast.IsIdentifier(rest.Type().AsTypeReferenceNode().TypeName) || rest.Type().AsTypeReferenceNode().TypeName.Text() != name {
+			continue
+		}
+		for i, receiver := range parameters[:restIndex] {
+			if receiver.Type() == nil || !mentionsName(receiver.Type(), name) || i >= len(call.Arguments()) {
+				continue
+			}
+			written := c.GetSignaturesOfType(c.GetTypeFromTypeNode(receiver.Type()), checker.SignatureKindCall)
+			if len(written) != 1 {
+				continue
+			}
+			receiverDecl := written[0].Declaration()
+			if receiverDecl == nil || !ast.IsFunctionLike(receiverDecl) {
+				continue
+			}
+			slots := receiverDecl.Parameters()
+			if len(slots) != 1 || slots[0].AsParameterDeclaration().DotDotDotToken == nil || slots[0].Type() == nil || !mentionsName(slots[0].Type(), name) {
+				continue
+			}
+			actual := c.GetSignaturesOfType(c.GetTypeAtLocation(call.Arguments()[i]), checker.SignatureKindCall)
+			if len(actual) == 1 {
+				return c.GetTypeAtPosition(actual[0], index-restIndex)
+			}
+		}
+	}
+	return nil
 }
 
 // sameRootSignatureDeclaration reports whether two signatures instantiate one

@@ -328,6 +328,9 @@ func checkCallbackValue(c *checker.Checker, expr *ast.Node) {
 		return
 	}
 	contextual := c.GetContextualType(expr, checker.ContextFlagsNone)
+	if forwarded := defaultForeignForwardedTarget(c, expr); forwarded != nil {
+		contextual = forwarded
+	}
 	if contextual == nil {
 		return
 	}

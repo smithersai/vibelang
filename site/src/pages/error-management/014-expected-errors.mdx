@@ -582,6 +582,8 @@ An optional call returning `any` still follows its callee's thrown contract. A c
 
 An `effect` callback's parameter defaults keep their strict no-throw contract inside `Effect.try`, including an options object's `try` callback. A tracked throwing default is `EK0401`; the wrapper does not relax initialization before the callback's Effect or Stream exists. The preserving `--fix` repair retains call-time evaluation and delivers the same defect when the resulting program runs.
 
+A generic helper that forwards arguments into a callback checks each argument against that callback's written parameter type. An inferred rest tuple does not remove the parameter's throws restriction.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/error-management/expected-errors](https://effect.website/docs/v4/error-management/expected-errors/)

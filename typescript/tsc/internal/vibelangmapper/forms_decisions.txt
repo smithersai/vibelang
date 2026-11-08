@@ -4808,6 +4808,10 @@ typescript/vibelang/cases/fork-region-operands/main.vibe:25:24 block appended/pr
 typescript/vibelang/cases/fork-region-operands/main.vibe:28:22 byname program table
 typescript/vibelang/cases/fork-region-operands/main.vibe:29:25 lambda effectFn table
 typescript/vibelang/cases/fork-region-operands/main.vibe:30:25 lambda effectFn table
+typescript/vibelang/cases/forwarded-foreign-contracts.fail/main.vibe:4:17 lambda plain annotation
+typescript/vibelang/cases/forwarded-foreign-contracts.fail/main.vibe:5:18 lambda plain annotation
+typescript/vibelang/cases/forwarded-foreign-contracts.fail/main.vibe:7:33 lambda plain annotation
+typescript/vibelang/cases/forwarded-foreign-contracts.fail/main.vibe:8:31 lambda plain annotation
 typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:2:4 lambda plain fallback
 typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:3:4 lambda plain fallback
 typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:4:4 lambda plain fallback

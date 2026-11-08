@@ -1,0 +1,8 @@
+// expect: EK0402 EK0402
+// spec-rule: docs/design/src/003-failures.md#assignability
+import { read, annotated } from "./foreign.ts"
+const forward = <A extends unknown[]>(f: (...args: A) => string, ...args: A): string => f(...args)
+const identity = <T>(value: T): T => value
+export const own = identity(read)
+export const untagged = forward((run: (path: string) => string) => run("x"), read)
+export const tagged = forward((run: (path: string) => string) => run("x"), annotated)
