@@ -1,0 +1,13 @@
+{
+  "property": "t3code-wrapper-all-program-result-arms",
+  "rule": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "input": {
+    "shape": "inline",
+    "count": 2,
+    "lostAt": 0,
+    "factory": false
+  },
+  "original": "export const target = n => Effect.succeed(n);",
+  "emitted": "export const target = n => ((p) => { let result = p; result = 0; return result; })(Effect.succeed(n));",
+  "pattern": "An Effect-valued local's earlier assignment masks its later scalar result in the preservation check."
+}

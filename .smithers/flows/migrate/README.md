@@ -111,6 +111,8 @@ Declaration identity applies only to published packages. `verify` reports a pack
 
 An inline callback retains its Effect argument only when its result directly forwards that argument, optionally through a local alias or an immutable identity helper. A helper that discards the argument, a shadowed helper, or an overwritten parameter does not prove a retained wrapper. The check reports the containing function instead of accepting it merely because the callback mentions the argument.
 
+When every original result is an Effect, every emitted result arm must retain that guarantee. Additional Effect-valued branches or earlier assignments cannot excuse a plain-value result. Each flag also records `emittedReturns`, the total emitted result-arm count, beside `emittedEffectReturns`, so a loss remains visible when the number of Effect-valued arms alone did not fall. Functions that already mix Effects and plain values retain their existing comparison.
+
 `verify` also checks every path held as data (alchemy's `DevWatchProvider`). See [Paths to converted files](#paths-to-converted-files).
 
 The lost-wrapper proof follows the returned parameter of a plain inline call, directly or through a nearest unique `const` identity function with a single plain return. It keeps the original argument's program evidence, including nested inline stages. Destructuring, mutable or shadowed bindings, defaults, rest parameters, duplicate parameters, opaque helper bodies and parameter mutation do not qualify. Async and generator calls return promises and iterators; an Effect used as their argument cannot prove a returned program.

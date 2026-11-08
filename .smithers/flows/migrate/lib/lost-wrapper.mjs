@@ -5,7 +5,8 @@
 // declares the same API, and adds no wrapper for a wrapper-gain audit to see.
 // So this check compares each function of the original TypeScript with the
 // same function of the emitted JavaScript, and reports a function that is
-// plain in the emitted JavaScript and hands back fewer Effect values.
+// plain in the emitted JavaScript and hands back fewer Effect values, or loses
+// the original guarantee that every returned value is an Effect.
 //
 // It reads the JavaScript because TypeScript's parser recovers badly on .vibe.
 // Functions pair by name path: variable, property, method, function and class
@@ -547,7 +548,15 @@ export function lostWrappers({ ts, original, originalPath = "original.ts", emitt
     if (counterpart) paired++
     if (returned === 0) continue
     if (!counterpart) (program(holderOf(name)) ? inlined : unpaired).push({ function: name, line: fn.line, effectReturns: returned })
-    else if (!keepsProgram(counterpart) && counterpart.effects + forwardedArms(fn, counterpart) < returned) flags.push({ function: name, line: fn.line, effectReturns: returned, emittedEffectReturns: counterpart.effects, cast: fn.cast })
+    else if (!keepsProgram(counterpart)) {
+      // A function that always returns a program must retain that guarantee when lowering
+      // introduces more result arms. Earlier Effect assignments cannot excuse
+      // a later scalar result merely by keeping the old Effect-arm count.
+      const allPrograms = fn.factory || fn.effects === fn.returns
+      const required = allPrograms ? Math.max(returned, counterpart.returns) : returned
+      if (counterpart.effects + forwardedArms(fn, counterpart) < required)
+        flags.push({ function: name, line: fn.line, effectReturns: returned, emittedEffectReturns: counterpart.effects, emittedReturns: counterpart.returns, cast: fn.cast })
+    }
   }
   return { flags, unpaired, inlined, paired }
 }
