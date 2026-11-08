@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A class definition inside an `effect` block could report an implementation restriction for an escaping `break` or `continue`. Decorators, computed names and `extends` expressions now report the block’s `EK0202` error.
+
 - Outward jumps in class definition expressions inside an `async match` could report `EK0204` and suggest moving the `do`. They now report `EK0706` once and explain the Promise boundary.
 
 - The migration's API identity check reported an unchanged exported constant whose type uses `infer`, such as `export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never`, as changed whenever another export in its file changed, for example a function moved behind `export { g } from "./helper.js"`. The constant's own type now decides, so it stays identical; a real change to that type still differs.

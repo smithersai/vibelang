@@ -35,14 +35,20 @@ func checkEffectBlockJumps(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if node.Kind == ast.KindBreakStatement || node.Kind == ast.KindContinueStatement {
-			for parent := node.Parent; parent != nil; parent = parent.Parent {
+			for child, parent := node, node.Parent; parent != nil; child, parent = parent, parent.Parent {
 				if isEffectBlockArrow(file, parent) {
 					keyword := scanner.GetRangeOfTokenAtPosition(file, node.Pos())
 					reportAt(c, file, keyword, EK0202, file.Text()[keyword.Pos():keyword.End()])
 					cover(c, node)
 					break
 				}
-				if isFunctionBoundary(parent) {
+				if ast.IsFunctionLike(parent) || ast.IsClassElement(parent) {
+					if parent.Name() == child && ast.IsComputedPropertyName(child) || classDecoratorChild(parent, child) || isDoArrow(file, parent) {
+						continue
+					}
+					break
+				}
+				if isFunctionBoundary(parent) && !ast.IsClassLike(parent) {
 					break
 				}
 				if label := node.Label(); label != nil {

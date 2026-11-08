@@ -1041,3 +1041,4 @@ parser/vibelang_match_key_types.go:MatchKeyTypeSource	admission:match	900-append
 parser/vibelang_match_key_types.go:Parser.recordMatchKeyType	admission:match	900-appendices.md#MatchExpression,004-match.md	support	VIP-7 records computed expressions without introducing a runtime boundary
 parser/vibelang_match_key_types.go:Parser.attachMatchKeyTypes	admission:match	900-appendices.md#MatchExpression,004-match.md	support	VIP-7 attaches key expression metadata to its source file
 parser/vibelang_match_key_types.go:MatchKeyTypeHoisted	admission:match	900-appendices.md#MatchExpression,004-match.md	support	VIP-7 preserves exact key types across inline captures
+parser/vibelang_effect_block_jumps.go:Parser.doEffectBlockJump	admission:effect-block	900-appendices.md#EffectBlock,002-running.md	recovery	VIP-2 and detail 247: outward block jumps retain `EK0202` in definition-time expressions; admits no syntax

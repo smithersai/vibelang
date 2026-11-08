@@ -1,0 +1,13 @@
+// expect: EK0202 TS1166
+effect function computed_method_break(){outer:for(const n of [1]){const e=effect {class C { [do { break outer; "m" }](){} }};}}
+effect function computed_method_continue(){outer:for(const n of [1]){const e=effect {class C { [do { continue outer; "m" }](){} }};}}
+effect function computed_field_break(){outer:for(const n of [1]){const e=effect {class C { [do { break outer; "m" as const }]=0 }};}}
+effect function computed_field_continue(){outer:for(const n of [1]){const e=effect {class C { [do { continue outer; "m" as const }]=0 }};}}
+effect function member_decorator_break(){outer:for(const n of [1]){const e=effect {class C { @(do { break outer; ((v:unknown,c:unknown)=>{}) }) m(){} }};}}
+effect function member_decorator_continue(){outer:for(const n of [1]){const e=effect {class C { @(do { continue outer; ((v:unknown,c:unknown)=>{}) }) m(){} }};}}
+effect function class_decorator_break(){outer:for(const n of [1]){const e=effect {@(do { break outer; ((v:unknown,c:unknown)=>{}) }) class C {}};}}
+effect function class_decorator_continue(){outer:for(const n of [1]){const e=effect {@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {}};}}
+effect function heritage_break(){outer:for(const n of [1]){const e=effect {class C extends do { break outer; (class {}) } {}};}}
+effect function heritage_continue(){outer:for(const n of [1]){const e=effect {class C extends do { continue outer; (class {}) } {}};}}
+effect function object_method_break(){outer:for(const n of [1]){const e=effect {const object = { [do { break outer; "m" }](){} }};}}
+effect function object_method_continue(){outer:for(const n of [1]){const e=effect {const object = { [do { continue outer; "m" }](){} }};}}
