@@ -1040,7 +1040,11 @@ for a Go build slot and compiling the test binary.
 It runs its test binary through `scripts/go-test-shards.sh` like
 `:go-vibelangfuzz` (below), with weights in
 `internal/vibelang/testdata/shard-seconds.txt`: 339 s as one process, 153 s as
-six, on the same host at load 75 (2026-11-01).
+six, on the same host at load 75 (2026-11-01). A name the file does not list
+counts 1 s, so the dealing is only as good as the file is current: refresh it
+from a `go test -v` log of the package with
+`node scripts/go-shard-seconds.mjs typescript/tsc/internal/vibelang <log>...`,
+which keeps the slowest top-level time of each name at five seconds or more.
 
 A compiler case's `pending` file must start with its owner's lane. An empty or
 whitespace-only file fails that case before installing dependencies or compiling;
@@ -1070,7 +1074,8 @@ module lookup.
 another unless they call `t.Parallel`, so the package was one chain: 686 s on a
 quiet host, and it hit its 40-minute deadline on the loaded post-merges of
 `1180893af776` and `42c771e16b1c`. The script puts the slowest names, by
-`internal/vibelangfuzz/testdata/shard-seconds.txt`, in different processes. To
+`internal/vibelangfuzz/testdata/shard-seconds.txt`, in different processes;
+`scripts/go-shard-seconds.mjs` refreshes that file too. To
 run the suite the same way by hand, from `typescript/tsc`:
 
 ```sh
