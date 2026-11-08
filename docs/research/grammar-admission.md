@@ -732,3 +732,64 @@ report only `EK2109`; the `type` twins report `TS1247`. Without the `?`,
 syntax error, and `static [k] = Missing` reports the `static` type-member
 rejection. These stay outside the family. The compiler is unchanged and
 the witnesses remain pending.
+
+## The compiler cases as admission seeds
+
+`TestGrammarAdmissionCases` reads every program under `typescript/vibelang/cases`
+through the admission oracle and reports how many derive from Appendix A, how
+many the compiler rejects as syntax, and how many the compiler accepts without a
+derivation, each with the token where its last Earley item died. It never fails
+on a missing derivation: a valid program that does not derive is either a lab
+gap or a pending admission key, and both are tracked elsewhere. The programs
+that derive seed `FuzzGrammarAdmissionCases`, so the mutation campaigns start
+from real programs as well as from the handwritten forms. A seed is written as
+`case:<path>` and the program; a mutated seed keeps its name and drives token
+mutations of that case; a seed whose case was renamed or removed replays the
+written program.
+
+The first survey read 3,878 files, of which 2,617 derived, 216 were compiler
+syntax rejections and 741 had no derivation (535 outside `.fail` directories).
+Most of the 535 were ordinary TypeScript the subset did not yet write:
+`--`, the compound assignment operators, generic calls and `new`, class
+heritage type arguments and `implements`, conditional, constructor, mapped,
+query and import types, type predicates, `this` parameters, index signatures,
+catch patterns, do-while, `declare` and `abstract` declarations, namespaces,
+enums, `infer`, `unique symbol`, negative literal types, default type
+parameters, `using` for-of heads, parameter modifier lists and non-ASCII
+identifiers. `TestGrammarAdmissionTypeScriptSubset` holds a valid and an
+invalid control for each. With them the survey reads 3,849 files (29 are over
+6 KB), 3,310 derive and 320 have no derivation.
+
+The relational fallback reading now drops every expression alternative that
+reads `TypeArguments`, in `MemberExpression`, `CallExpression` and
+`OptionalChain`: a generic call reading `C<readonly {` kept alive across a
+line break suppressed the ASI the relational reading needs, exactly as the
+instantiation reading did.
+
+What remains without a derivation is informative. The compiler's own cases
+write `number!string! {`, `string!Empty! =>` and `User!FetchError! =` about two
+dozen times: the trailing-bang form under `admission:effect-type-trailing-bang`,
+which VIP-3's EffectType does not define. Eight cases write `mutable` members in
+interfaces and type literals (`admission:mutable-default`). Two write
+`abstract error Root {}`, which Appendix A's `ErrorStart` does not admit; the
+compiler accepts it with the interim `EK1308` warning, and it is now the
+pending key `admission:abstract-error`. The rest are lab limits: the lexer
+joins `>` with `=` (`Effect<number>={…}`, `type F<A, B>=(…)`), `!!=` and
+`\u` escapes in identifiers; decorators are outside the subset; a computed
+class-member key holding `try` inside an effect function (`[try k()]() {}`)
+does not derive although `ClassElementName` carries the enclosing parameters;
+and `effect is (Object)` does not derive where `effect is Object` and
+`x is (Object)` do, so the keyword table's reading of `effect` before an is
+test with a parenthesized pattern is still wrong.
+
+Two witnesses came from the campaigns. An ordinary campaign found
+`effect function f(s, p) { return fork.in(s) p is join }`: a fork owner form
+whose operand is `p is join`, where the parser reads `join` as a pattern
+identifier and reports only checker errors. The minimal witness is
+`effect function f(p) { return p is join }`; it joins
+`admission:fiber-primary-reference`, whose classifier now keys an is pattern
+head `fork` or `join`. The case-seeded campaign found
+`export error Gone extends Error Error ?? { since: number, by: string }` in
+its second minute: a bodyless error declaration with a heritage clause ends,
+and the compiler starts another expression on the same line. It joins
+`admission:error-no-end`, whose classifier now reads past a heritage clause.

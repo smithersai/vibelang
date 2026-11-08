@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:error-no-end-heritage\nexport error Gone extends Error Error ?? { since: number, by: string }")

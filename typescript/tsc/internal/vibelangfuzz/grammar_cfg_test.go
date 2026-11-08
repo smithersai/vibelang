@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 // Appendix A as a context-free grammar. Appendix A writes VibeLang's
@@ -166,7 +167,7 @@ func grammarLexNotation(s string) []grammarNtok {
 }
 
 func grammarIsWordRune(r rune) bool {
-	return r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9'
+	return r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r > 127 && (unicode.IsLetter(r) || unicode.IsDigit(r))
 }
 
 func isGrammarName(s string) bool {
@@ -440,8 +441,7 @@ func grammarSplitLookahead(set string) []string {
 // grammarTsSubset is the TypeScript the search embeds: ECMAScript 2025's
 // statements and expressions and TypeScript 5.9's types, cut to what the
 // VibeLang productions and the specification's examples touch (regular-expression literals validated independently,
-// templates as one token, no JSX, no decorators, no enums or
-// namespaces). Each rule is ECMAScript's or
+// templates as one token, no JSX, no decorators). Each rule is ECMAScript's or
 // TypeScript's own, with four liberties: helper names; ASI as an explicit
 // symbol (see earley); the restrictions the TypeScript parser puts on line
 // breaks (before "as", "!", "[]" and after a modifier, "readonly" in a
@@ -466,10 +466,15 @@ func grammarSplitLookahead(set string) []string {
 const grammarTsSubset = `
 Script = ScriptItem*
 ScriptItem = Statement
-Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | ForStatement | ForInStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration
+Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | ForStatement | ForInStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration | DoWhileStatement
 SwitchStatement = "switch" "(" Expression ")" "{" CaseClause* "}"
 CaseClause = "case" Expression ":" Statement* | "default" ":" Statement*
-Declaration = HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ImportEqualsDeclaration | ExportDeclaration
+Declaration = HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ImportEqualsDeclaration | ExportDeclaration | "declare" [no LineTerminator here] DeclareDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | NamespaceDeclaration | EnumDeclaration
+DeclareDeclaration = VariableStatement | FunctionDeclaration | ClassDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | NamespaceDeclaration | EnumDeclaration
+NamespaceDeclaration = "namespace" [no LineTerminator here] TypeName "{" ModuleBody? "}"
+EnumDeclaration = "const"? "enum" BindingIdentifier "{" "}" | "const"? "enum" BindingIdentifier "{" EnumMemberList ","? "}"
+EnumMemberList = EnumMember | EnumMemberList "," EnumMember
+EnumMember = PropertyName Initializer?
 HoistableDeclaration = FunctionDeclaration
 Block = "{" Statement* "}"
 FunctionBody = Statement*
@@ -494,34 +499,35 @@ ExpressionStatement = [lookahead ∉ { "{", "function", "class", "let" "[", "asy
 StatementEnd = ";" | ASI
 IfStatement = "if" "(" Expression ")" Statement "else" Statement | "if" "(" Expression ")" Statement [lookahead ∉ { "else" }]
 WhileStatement = "while" "(" Expression ")" Statement
+DoWhileStatement = "do" Statement "while" "(" Expression ")" ";"?
 ForOfStatement = "for" "(" ForOfHead "of" AssignmentExpression ")" Statement | "for" "await" "(" ForAwaitOfHead "of" AssignmentExpression ")" Statement
 ForStatement = "for" "(" [lookahead ∉ { "let" "[" }] Expression? ";" Expression? ";" Expression? ")" Statement | "for" "(" LetOrConst BindingList ";" Expression? ";" Expression? ")" Statement
 ForInStatement = "for" "(" ForOfHead "in" Expression ")" Statement
 ForDeclaration = LetOrConst ForBinding
 ForBinding = BindingIdentifier | BindingPattern
-ForOfHead = LetOrConst BindingIdentifier | LetOrConst BindingPattern | [lookahead ∉ { "let", "async" "of" }] ForAssignmentTarget
-ForAwaitOfHead = LetOrConst BindingIdentifier | LetOrConst BindingPattern | [lookahead ≠ "let"] ForAssignmentTarget
+ForOfHead = LetOrConst BindingIdentifier | LetOrConst BindingPattern | [lookahead ∉ { "let", "async" "of" }] ForAssignmentTarget | "using" [no LineTerminator here] BindingIdentifier | "await" "using" [no LineTerminator here] BindingIdentifier
+ForAwaitOfHead = LetOrConst BindingIdentifier | LetOrConst BindingPattern | [lookahead ≠ "let"] ForAssignmentTarget | "using" [no LineTerminator here] BindingIdentifier | "await" "using" [no LineTerminator here] BindingIdentifier
 ForAssignmentTarget = ForAssignmentTargetBase | ForAssignmentTarget [no LineTerminator here] "as" Type | ForAssignmentTarget [no LineTerminator here] "satisfies" Type
 ForAssignmentTargetBase = LeftHandSideExpression | "<" Type ">" ForAssignmentTargetBase
 ReturnStatement = "return" StatementEnd | "return" [no LineTerminator here] Expression StatementEnd
 ThrowStatement = "throw" [no LineTerminator here] Expression StatementEnd
 TryStatement = "try" Block Catch | "try" Block Finally | "try" Block Catch Finally
-Catch = "catch" "(" BindingIdentifier ")" Block | "catch" Block
+Catch = "catch" "(" BindingIdentifier TypeAnnotation? ")" Block | "catch" "(" BindingPattern TypeAnnotation? ")" Block | "catch" Block
 Finally = "finally" Block
 LabelledStatement = LabelIdentifier ":" Statement
 BreakStatement = "break" StatementEnd | "break" [no LineTerminator here] LabelIdentifier StatementEnd
 ContinueStatement = "continue" StatementEnd | "continue" [no LineTerminator here] LabelIdentifier StatementEnd
-FunctionDeclaration = "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" TypeAnnotation? (Block | StatementEnd) | "async" [no LineTerminator here] "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" TypeAnnotation? (Block | StatementEnd)
+FunctionDeclaration = "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" ReturnAnnotation? (Block | StatementEnd) | "async" [no LineTerminator here] "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" ReturnAnnotation? (Block | StatementEnd)
 ClassDeclaration = "class" BindingIdentifier TypeParameters? ClassHeritage? "{" ClassElement* "}"
-ClassHeritage = "extends" LeftHandSideExpression
-ClassElement = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? OptionalClassMethod | FieldDefinition | "static" Block | ";"
-OptionalClassMethod = "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd
+ClassHeritage = "extends" LeftHandSideExpression | "extends" LeftHandSideExpression [no LineTerminator here] TypeArguments | "implements" TypeList | "extends" LeftHandSideExpression "implements" TypeList | "extends" LeftHandSideExpression [no LineTerminator here] TypeArguments "implements" TypeList
+ClassElement = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? OptionalClassMethod | FieldDefinition | "static" Block | ";" | ClassMemberModifiers? IndexSignature StatementEnd
+OptionalClassMethod = "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd
 ClassMemberModifiers = ClassMemberModifier | ClassMemberModifiers ClassMemberModifier
-ClassMemberModifier = "static" | "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here] | "override" [no LineTerminator here]
+ClassMemberModifier = "static" | "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here] | "override" [no LineTerminator here] | "abstract" [no LineTerminator here] | "declare" [no LineTerminator here] | "accessor" [no LineTerminator here]
 FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName [no LineTerminator here] "!" TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? "=" "throw" UnaryExpression LineTerminator [lookahead ∈ { "*" }]
-MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | GetAccessor | "set" [no LineTerminator here] PropertyName "(" FormalParameter ")" Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
-GetAccessor = "get" [no LineTerminator here] PropertyName "(" ")" TypeAnnotation? Block
-NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
+MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "*" PropertyName TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd | GetAccessor | "set" [no LineTerminator here] PropertyName "(" FormalParameter ")" Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" ReturnAnnotation? Block
+GetAccessor = "get" [no LineTerminator here] PropertyName "(" ")" ReturnAnnotation? Block
+NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" ReturnAnnotation? Block
 InterfaceDeclaration = "interface" BindingIdentifier TypeParameters? InterfaceExtends? ObjectType
 InterfaceExtends = "extends" TypeReference | InterfaceExtends "," TypeReference
 TypeAliasDeclaration = "type" [no LineTerminator here] BindingIdentifier TypeParameters? "=" Type StatementEnd
@@ -535,7 +541,7 @@ NamespaceImport = "*" "as" BindingIdentifier
 NamedImports = "{" "}" | "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
 ImportSpecifier = BindingIdentifier | ModuleExportName "as" BindingIdentifier | "type" BindingIdentifier | "type" ModuleExportName "as" BindingIdentifier
-ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" ImportEqualsDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd
+ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" ImportEqualsDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd | "export" "declare" [no LineTerminator here] DeclareDeclaration | "export" "abstract" [no LineTerminator here] ClassDeclaration | "export" NamespaceDeclaration | "export" EnumDeclaration | "export" "default" "abstract" [no LineTerminator here] ClassDeclaration
 DefaultExportDeclaration = FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression
 ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral StatementEnd
 ExportFromClause = "*" | "*" "as" IdentifierName | NamedExports
@@ -545,7 +551,7 @@ ExportSpecifier = ModuleExportName | ModuleExportName "as" ModuleExportName | "t
 ModuleExportName = IdentifierName | StringLiteral
 Expression = AssignmentExpression | Expression "," AssignmentExpression
 AssignmentExpression = ConditionalExpression | ArrowFunction | AsyncArrowFunction | YieldExpression | LeftHandSideExpression "=" AssignmentExpression | ObjectAssignmentPattern "=" AssignmentExpression | LeftHandSideExpression AssignmentOperator AssignmentExpression
-AssignmentOperator = "+=" | "-=" | "??="
+AssignmentOperator = "*=" | "/=" | "%=" | "+=" | "-=" | "&=" | "^=" | "|=" | "**=" | "&&=" | "||=" | "??="
 ConditionalExpression = ShortCircuitExpression | ShortCircuitExpression "?" AssignmentExpression ":" AssignmentExpression
 ShortCircuitExpression = LogicalORExpression | CoalesceExpression
 CoalesceExpression = CoalesceExpressionHead "??" BitwiseORExpression
@@ -566,15 +572,15 @@ ExponentiationExpression = UnaryExpression | UpdateExpression "**" Exponentiatio
 UnaryExpression = "<" Type ">" UnaryExpression | UpdateExpression | "!" UnaryExpression | "-" UnaryExpression | "+" UnaryExpression | "typeof" UnaryExpression | "void" UnaryExpression | "delete" UnaryExpression | AwaitExpression
 AwaitExpression = "await" UnaryExpression
 YieldExpression = "yield" [lookahead ∉ { "*" }] | "yield" [no LineTerminator here] AssignmentExpression | "yield" [no LineTerminator here] "*" AssignmentExpression
-UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTerminator here] "++" | "++" UnaryExpression | UpdateExpression [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | UpdateExpression [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }]
+UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTerminator here] "++" | "++" UnaryExpression | UpdateExpression [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | UpdateExpression [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }] | LeftHandSideExpression [no LineTerminator here] "--" | "--" UnaryExpression
 LeftHandSideExpression = NewExpression | CallExpression | OptionalExpression
 NewExpression = MemberExpression | "new" NewExpression
-MemberExpression = MemberExpression TypeArguments LineTerminator [lookahead ∉ { "<", ">", "+", "-" }] | MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | MetaProperty | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments
+MemberExpression = MemberExpression TypeArguments LineTerminator [lookahead ∉ { "<", ">", "+", "-" }] | MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | MetaProperty | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments | "new" MemberExpression TypeArguments Arguments
 MetaProperty = "import" "." "meta" | "new" "." "target"
-CallExpression = ImportCall | MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!"
+CallExpression = ImportCall | MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!" | MemberExpression TypeArguments Arguments | CallExpression TypeArguments Arguments
 ImportCall = "import" "(" AssignmentExpression ","? ")" | "import" "(" AssignmentExpression "," AssignmentExpression ","? ")"
 OptionalExpression = MemberExpression OptionalChain | CallExpression OptionalChain | OptionalExpression OptionalChain
-OptionalChain = "?." IdentifierName | "?." Arguments
+OptionalChain = "?." IdentifierName | "?." Arguments | "?." "[" Expression "]" | "?." TypeArguments Arguments | OptionalChain "." IdentifierName | OptionalChain "[" Expression "]" | OptionalChain Arguments | OptionalChain TemplateLiteral | OptionalChain [no LineTerminator here] "!"
 Arguments = "(" ")" | "(" ArgumentList ","? ")"
 ArgumentList = AssignmentExpression | "..." AssignmentExpression | ArgumentList "," AssignmentExpression | ArgumentList "," "..." AssignmentExpression
 PrimaryExpression = "this" | IdentifierReference | Literal | RegularExpressionLiteral | ArrayLiteral | ObjectLiteral | FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression | TemplateLiteral | ParenthesizedExpression
@@ -591,52 +597,63 @@ CoverInitializedName = IdentifierReference Initializer
 PropertyDefinitionList = PropertyDefinition | PropertyDefinitionList "," PropertyDefinition
 PropertyDefinition = IdentifierReference | PropertyName ":" AssignmentExpression | MethodDefinition | "..." AssignmentExpression
 PropertyName = IdentifierName | StringLiteral | NumericLiteral | "[" AssignmentExpression "]"
-FunctionExpression = "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
+FunctionExpression = "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block
 ClassExpression = "class" BindingIdentifier? TypeParameters? ClassHeritage? "{" ClassElement* "}"
 ParenthesizedExpression = "(" Expression ")"
-ArrowFunction = ArrowParameters [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" TypeAnnotation [no LineTerminator here] "=>" ConciseBody | TypeParameters "(" FormalParameters ")" [no LineTerminator here] "=>" ConciseBody
+ArrowFunction = ArrowParameters [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody | TypeParameters "(" FormalParameters ")" [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" ":" "(" Type ")" [no LineTerminator here] "=>" ConciseBody
 ArrowParameters = BindingIdentifier | "(" FormalParameters ")"
-AsyncArrowFunction = "async" [no LineTerminator here] ArrowParameters [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] "(" FormalParameters ")" TypeAnnotation [no LineTerminator here] "=>" ConciseBody
+AsyncArrowFunction = "async" [no LineTerminator here] ArrowParameters [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] "(" FormalParameters ")" ":" "(" Type ")" [no LineTerminator here] "=>" ConciseBody
 ConciseBody = [lookahead ∉ { "{" }] AssignmentExpression | Block
 FormalParameters = FormalParameterList? | FormalParameterList ","
-FormalParameterList = FormalParameter | FormalParameterList "," FormalParameter
-FormalParameter = ParameterModifier? BindingIdentifier "?"? TypeAnnotation? Initializer? | BindingPattern "?"? TypeAnnotation? Initializer? | "..." BindingIdentifier TypeAnnotation? | "..." BindingPattern TypeAnnotation?
+FormalParameterList = FormalParameter | "this" TypeAnnotation | FormalParameterList "," FormalParameter
+FormalParameter = ParameterModifiers? BindingIdentifier "?"? TypeAnnotation? Initializer? | BindingPattern "?"? TypeAnnotation? Initializer? | "..." BindingIdentifier TypeAnnotation? | "..." BindingPattern TypeAnnotation?
 ParameterModifier = "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here]
+ParameterModifiers = ParameterModifier | ParameterModifiers ParameterModifier
 TypeAnnotation = ":" Type
-ReturnType = ":" Type
+ReturnType = ":" Type | ":" TypePredicate
+ReturnAnnotation = ":" Type | ":" TypePredicate
+TypePredicate = IdentifierReference [no LineTerminator here] "is" Type | "this" [no LineTerminator here] "is" Type | "asserts" [no LineTerminator here] IdentifierReference | "asserts" [no LineTerminator here] "this" | "asserts" [no LineTerminator here] IdentifierReference "is" Type | "asserts" [no LineTerminator here] "this" "is" Type
 TypeParameters = "<" TypeParameterList ","? ">"
 TypeParameterList = TypeParameter | TypeParameterList "," TypeParameter
-TypeParameter = BindingIdentifier | BindingIdentifier "extends" Type
+TypeParameter = "const"? BindingIdentifier | "const"? BindingIdentifier "extends" Type | "const"? BindingIdentifier "=" Type | "const"? BindingIdentifier "extends" Type "=" Type
 TypeArguments = "<" TypeList ">"
 TypeList = Type | TypeList "," Type
-Type = UnionType | FunctionType
-TypeNoEffect = UnionType | FunctionType
+Type = UnionType | FunctionType | ConstructorType | ConditionalType
+TypeNoEffect = UnionType | FunctionType | ConstructorType | ConditionalType
+ConditionalType = UnionType "extends" Type "?" Type ":" Type
+ConstructorType = "abstract"? "new" TypeParameters? "(" FormalParameters ")" "=>" Type
 UnionType = "|"? IntersectionType | UnionType "|" IntersectionType
 IntersectionType = "&"? PostfixType | IntersectionType "&" PostfixType
-PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" PostfixType | "keyof" PostfixType
-PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" IdentifierReference
+PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" PostfixType | "keyof" PostfixType | "infer" BindingIdentifier | "infer" BindingIdentifier "extends" Type | "unique" PostfixType
+PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" TypeQueryName | "typeof" TypeQueryName [no LineTerminator here] TypeArguments | "typeof" ImportType | ImportType | "this" | "-" NumericLiteral | MappedType
+TypeQueryName = IdentifierReference | "this" | TypeQueryName "." IdentifierName
+ImportType = "import" "(" StringLiteral ")" | "import" "(" StringLiteral ")" "." TypeName | ImportType [no LineTerminator here] TypeArguments
+MappedType = "{" MappedReadonly? "[" IdentifierName "in" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}" | "{" MappedReadonly? "[" IdentifierName "in" Type "as" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}"
+MappedReadonly = "readonly" | "+" "readonly" | "-" "readonly"
+MappedOptional = "?" | "+" "?" | "-" "?"
 TypeReference = TypeName [lookahead ∉ { "<" }] | TypeName [no LineTerminator here] TypeArguments | TypeName LineTerminator [lookahead ∈ { "<" }] | KeywordType [lookahead ∈ { "<" }]
 KeywordType = "any" | "unknown" | "never" | "number" | "bigint" | "boolean" | "string" | "symbol" | "undefined" | "object"
 TypeName = IdentifierName | TypeName "." IdentifierName
 TupleType = "[" "]" | "[" TupleElementList ","? "]"
 TupleElementList = TupleElement | TupleElementList "," TupleElement
 TupleElement = Type | Type [no LineTerminator here] "?" | IdentifierName "?"? ":" Type | "..." Type | "..." IdentifierName ":" Type
-FunctionType = TypeParameters? "(" FormalParameters ")" "=>" Type
+FunctionType = TypeParameters? "(" FormalParameters ")" "=>" Type | TypeParameters? "(" FormalParameters ")" "=>" TypePredicate
 ObjectType = "{" "}" | "{" TypeMemberList TypeMemberEnd? "}"
 TypeMemberList = TypeMember | TypeMemberList TypeMemberSeparator TypeMember
 TypeMemberSeparator = ";" | "," | LineTerminator
 TypeMemberEnd = ";" | ","
-TypeMember = PropertySignature | MethodSignature | CallSignature | GetAccessorSignature | SetAccessorSignature
-GetAccessorSignature = "get" PropertyName "(" ")" TypeAnnotation?
+TypeMember = PropertySignature | MethodSignature | CallSignature | GetAccessorSignature | SetAccessorSignature | IndexSignature
+IndexSignature = "[" IdentifierName TypeAnnotation "]" TypeAnnotation | "readonly" [no LineTerminator here] "[" IdentifierName TypeAnnotation "]" TypeAnnotation
+GetAccessorSignature = "get" PropertyName "(" ")" ReturnAnnotation?
 SetAccessorSignature = "set" PropertyName "(" FormalParameter ")"
-CallSignature = TypeParameters? "(" FormalParameters ")" TypeAnnotation?
+CallSignature = TypeParameters? "(" FormalParameters ")" ReturnAnnotation?
 RejectedMemberShape = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? | CallSignature
 PropertySignature = PropertyName "?"? TypeAnnotation? | "readonly" [no LineTerminator here] PropertyName "?"? TypeAnnotation?
-MethodSignature = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation?
+MethodSignature = PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation?
 ClassElementName = PropertyName | "#" IdentifierName
-GeneratorExpression = "function" "*" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
-AsyncFunctionExpression = "async" [no LineTerminator here] "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
-AsyncGeneratorExpression = "async" [no LineTerminator here] "function" "*" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
+GeneratorExpression = "function" "*" BindingIdentifier? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block
+AsyncFunctionExpression = "async" [no LineTerminator here] "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block
+AsyncGeneratorExpression = "async" [no LineTerminator here] "function" "*" BindingIdentifier? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block
 Name = BindingIdentifier
 `
 
@@ -920,14 +937,14 @@ func grammarReadAppendix(text, file string) (*grammarAppendixData, error) {
 	return a, nil
 }
 
-// grammarWithoutExpressionTypeArguments removes MemberExpression's
-// `MemberExpression TypeArguments ...` alternatives, the instantiation
-// expression readings.
+// grammarWithoutExpressionTypeArguments removes an expression production's
+// alternatives that read TypeArguments: the instantiation expression, the
+// generic call, the generic `new` and the generic optional call.
 func grammarWithoutExpressionTypeArguments(d grammarNdef) grammarNdef {
 	var alts [][]grammarNelem
 	var prose []string
 	for k, alt := range d.alts {
-		if len(alt) > 1 && alt[0].name == "MemberExpression" && alt[1].name == "TypeArguments" {
+		if slices.ContainsFunc(alt, func(e grammarNelem) bool { return e.name == "TypeArguments" }) {
 			continue
 		}
 		alts = append(alts, alt)
@@ -954,7 +971,9 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		}
 	}
 	if a.relational {
-		tsDefs["MemberExpression"] = grammarWithoutExpressionTypeArguments(tsDefs["MemberExpression"])
+		for _, name := range []string{"MemberExpression", "CallExpression", "OptionalChain"} {
+			tsDefs[name] = grammarWithoutExpressionTypeArguments(tsDefs[name])
+		}
 	}
 	defined := map[string]bool{}
 	for _, d := range a.defs {

@@ -53,6 +53,15 @@ func TestGrammarAdmissionQuoted(t *testing.T) {
 
 var grammarFiberBinding = regexp.MustCompile(`\b(?:const|let|var)\s+(?:fork|join)\b`)
 
+// grammarFiberPattern is fork or join heading an is pattern, after an optional
+// not or an opening parenthesis: the parser reads the word as a pattern
+// identifier where Appendix A reserves it.
+var grammarFiberPattern = regexp.MustCompile(`\bis\s+(?:not\s+|\(\s*)*(fork|join)\b`)
+
+// grammarAbstractError is the legacy abstract error root, which Appendix A's
+// ErrorStart ("error" BindingIdentifier) does not admit.
+var grammarAbstractError = regexp.MustCompile(`\babstract\s+(?:schema\s+)?error\s+[A-Za-z_$]`)
+
 var grammarFiberParameter = regexp.MustCompile(`\beffect\s+function\b[^(]*\([^)]*\b(?:fork|join)\b`)
 
 var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
@@ -295,6 +304,10 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"binding-rest-trailing-comma", "const [...p,] = [1];"},
 	{"binding-rest-initializer", "const [...p = []] = [1];"},
 	{"binding-rest-not-last", "const { ...rest, a } = { a: 1 };"},
+	{"fiber-primary-reference-pattern", "effect function f(p) { return p is join }"},
+	{"fiber-primary-reference-fork-owner", "effect function f(s, p) { return fork.in(s) p is join }"},
+	{"abstract-error", "abstract error Root {}"},
+	{"error-no-end-heritage", "export error Gone extends Error Error ?? { since: number, by: string }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -830,9 +843,58 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			if at+1 < len(ts) && !ts[at+1].nl && !slices.Contains([]string{"{", "<", "extends", ";", "}"}, ts[at+1].text) {
 				return "admission:error-no-end"
 			}
+			// After a heritage clause the same rule applies: a bodyless
+			// declaration ends, and the next token on its line starts another
+			// statement without a separator.
+			if at+1 < len(ts) && ts[at+1].text == "extends" {
+				if end := grammarHeritageEnd(ts, at+2); end < len(ts) && !ts[end].nl && !slices.Contains([]string{"{", ";", "}", "implements"}, ts[end].text) {
+					return "admission:error-no-end"
+				}
+			}
 		}
 	}
 	return ""
+}
+
+// grammarHeritageEnd returns the index after the heritage expression that
+// starts at k: a name, its member accesses, and balanced call, index and
+// type-argument groups.
+func grammarHeritageEnd(ts []grammarToken, k int) int {
+	if k >= len(ts) || ts[k].kind != 'w' {
+		return k
+	}
+	k++
+	for k < len(ts) {
+		switch ts[k].text {
+		case ".":
+			if k+1 < len(ts) && ts[k+1].kind == 'w' {
+				k += 2
+				continue
+			}
+			return k
+		case "(", "[", "<":
+			close := map[string]string{"(": ")", "[": "]", "<": ">"}[ts[k].text]
+			depth := 0
+			for k < len(ts) {
+				if ts[k].text == close {
+					depth--
+					if depth == 0 {
+						k++
+						break
+					}
+				} else if ts[k].text == "(" || ts[k].text == "[" || ts[k].text == "<" {
+					if ts[k].text == "<" && ts[k-1].text != ">" && ts[k-1].kind != 'w' {
+						return k
+					}
+					depth++
+				}
+				k++
+			}
+			continue
+		}
+		return k
+	}
+	return k
 }
 
 // grammarDeclarationExpressionPrefix recognizes tokens that still require
@@ -996,6 +1058,10 @@ func TestGrammarAdmissionDeclarationKeys(t *testing.T) {
 		"module;":                                  "",
 		"error E\nx;":                              "",
 		"error instanceof E;":                      "admission:error-no-end",
+		"error E extends Error x;":                 "admission:error-no-end",
+		"error E extends a.B<T>() x;":              "admission:error-no-end",
+		"error E extends Error\nx;":                "",
+		"error E extends Error {}":                 "",
 		"schema error E { a: T }":                  "",
 		"schema error E;":                          "",
 		"const schema = x; schema;":                "",
@@ -1274,6 +1340,14 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarFiberPrimaryReference(file) {
 		return "admission:fiber-primary-reference"
+	}
+	for _, at := range grammarFiberPattern.FindAllStringSubmatchIndex(source, -1) {
+		if grammarAdmissionEffectAt(file, at[2]) {
+			return "admission:fiber-primary-reference"
+		}
+	}
+	if grammarAbstractError.MatchString(source) {
+		return "admission:abstract-error"
 	}
 	for _, form := range forms {
 		if form.Kind != parser.VibeSyntaxBlockStatement {

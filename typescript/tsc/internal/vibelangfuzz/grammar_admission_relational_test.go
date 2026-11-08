@@ -5,8 +5,9 @@ import (
 	"testing"
 )
 
-// The relational reading removes exactly the instantiation-expression
-// alternatives, so a later MemberExpression edit cannot silently widen it.
+// The relational reading removes exactly the alternatives that read type
+// arguments (two instantiation readings and the generic `new`), so a later
+// MemberExpression edit cannot silently widen it.
 func TestGrammarAdmissionRelationalReadingDropsTypeArguments(t *testing.T) {
 	for _, l := range strings.Split(grammarTsSubset, "\n") {
 		m := production.FindStringSubmatch(l)
@@ -14,8 +15,8 @@ func TestGrammarAdmissionRelationalReadingDropsTypeArguments(t *testing.T) {
 			continue
 		}
 		d := grammarParseDef(m[1], strings.TrimSpace(l[strings.Index(l, "=")+1:]), 0)
-		if got := len(d.alts) - len(grammarWithoutExpressionTypeArguments(d).alts); got != 2 {
-			t.Fatalf("relational reading removed %d MemberExpression alternatives, want the 2 TypeArguments ones", got)
+		if got := len(d.alts) - len(grammarWithoutExpressionTypeArguments(d).alts); got != 3 {
+			t.Fatalf("relational reading removed %d MemberExpression alternatives, want the 3 TypeArguments ones", got)
 		}
 		return
 	}

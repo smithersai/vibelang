@@ -70,6 +70,9 @@ var grammarFiberReferenceGaps = []string{
 	"effect function f ( ) { return new join . target ! }",
 	"effect function f() { return new join!.target; }",
 	"effect function f() { return class extends join! {}; }",
+	"effect function f(p) { return p is join }",
+	"effect function f(p) { return p is not fork }",
+	"effect function f(s, p) { return fork.in(s) p is join }",
 }
 
 var grammarFiberReferenceControls = []string{
@@ -82,6 +85,8 @@ var grammarFiberReferenceControls = []string{
 	"effect function f() { return { join }; }",
 	"effect function f() { return x?.join; }",
 	"class C extends join {}",
+	"function g(p) { return p is join }",
+	"effect function f(p) { return p is x.join }",
 }
 
 func TestGrammarAdmissionFiberReferenceQuoted(t *testing.T) {

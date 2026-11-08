@@ -1002,7 +1002,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1025 records)</summary>
+<summary>Parser and lowering hooks (1026 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1106,6 +1106,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_effect.go:Parser.vibelangEffectMember ` | ` admission:effect ` | ` 900-appendices.md#EffectMethod `, ` 900-appendices.md#ProducerMethod ` | ` support ` | Appendix A: EffectMethod, ProducerMethod; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
 | ` parser/vibelang_errors.go:Parser.isStartOfVibeLangSchemaError ` | ` admission:error ` | ` 900-appendices.md#SchemaErrorDeclaration ` | ` support ` | Appendix A: SchemaErrorDeclaration; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
 | ` parser/vibelang_errors.go:Parser.parseErrorDeclaration ` | ` admission:error ` | ` 900-appendices.md#ErrorDeclaration `, ` 900-appendices.md#SchemaErrorDeclaration ` | ` support ` | Appendix A: ErrorDeclaration, SchemaErrorDeclaration; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
+| ` parser/vibelang_errors.go:Parser.parseErrorDeclaration@abstract-error ` | ` admission:abstract-error ` | ` - ` | ` pending ` | Appendix A: ErrorStart is `error` [no LineTerminator here] BindingIdentifier and admits no modifier; an abstract error root compiles with only an interim legacy-form warning |
 | ` parser/vibelang_errors.go:Parser.parseErrorDeclaration@jsdoc-schema-field-type ` | ` admission:schema-jsdoc-field-type ` | ` - ` | ` pending ` | VIP-29 maps schema-error fields through VIP-15; recovered JSDoc type prefixes leave only `EK2109` after mapping instead of a native syntax rejection |
 | ` parser/vibelang_errors.go:Parser.parseVibeLangErrorHeritage ` | ` admission:error ` | ` 900-appendices.md#ErrorDeclaration ` | ` support ` | VIP-13/29 error declarations, members and recovery |
 | ` parser/vibelang_errors.go:Parser.isVibeLangFieldComma ` | ` admission:error ` | ` 900-appendices.md#ErrorDeclaration ` | ` support ` | VIP-13/29 error declarations, members and recovery |
