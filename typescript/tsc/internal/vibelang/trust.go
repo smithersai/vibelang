@@ -742,7 +742,7 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 		// VIP-4: unknown is a thrown contract. Keep the legacy trust
 		// diagnostics for Promise and unreachable-class contracts.
 		d := report(c, callee, EK0403)
-		note(d, "Call it through {0}, or {1}.", boundaryCall(c, file, "try", call, ""), trustedNote(c, file, call))
+		note(d, "Call it through {0}, or keep its exceptions as defects with {1}.", boundaryCall(c, file, "try", call, ""), defectBridgeCall(c, file, call))
 	case t.kind == trustTagged && t.unreachable != "":
 		d := report(c, callee, unreachableThrows, name, t.unreachable)
 		note(d, "Name an exported class in @throws.")
@@ -922,20 +922,14 @@ func isEffectfulType(c *checker.Checker, t *checker.Type) bool {
 	return isEffectType(c, t) || isEffectOperandType(c, t) || (c.GetPropertyOfType(t, streamTypeID) != nil && forTryOperandType(c, t)) || isLayerType(c, t)
 }
 
-// trustedNote is EK0403's other fix: declare the function's failures with
-// trusted(impl, [Errors]) (D249), whose listed classes are expected failures
-// and any other exception a defect. A method needs a function around it first.
-// VIP-4 retires package trust, so the note must not recommend that setting.
-func trustedNote(c *checker.Checker, file *ast.SourceFile, call *ast.Node) string {
-	declaration := signatureDeclaration(c, call)
-	callee := ast.SkipParentheses(call.Expression())
-	wrap := "wrap it in a function and declare that function's failures with trusted(impl, [Errors]), imported from \"vibelang-runtime\""
-	if declaration != nil && !ast.IsMethodDeclaration(declaration) && declaration.Kind != ast.KindMethodSignature && ast.IsEntityNameExpression(callee) {
-		impl := nodeText(file, callee)
-		value := impl[strings.LastIndex(impl, ".")+1:] + "Trusted"
-		wrap = "declare its failures once, const " + value + " = trusted(" + impl + ", [Errors]) with trusted imported from \"vibelang-runtime\", and call " + value
-	}
-	return wrap
+// defectBridgeCall writes EK0403's defect bridge for call (chapter 900,
+// EK0403): Effect.orDie over Effect.try with an identity catch, which keeps
+// each exception a defect, as the code action writes it. The note never
+// suggests the legacy trusted wrapper: its function argument is itself EK0402,
+// and the empty form is retired (VIP-4, EK0407).
+func defectBridgeCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) string {
+	inputs, text := boundaryInputs(c, file, call, nil)
+	return strings.Join(inputConsts(inputs), "") + "try Effect.orDie(Effect.try({ try: () => " + text + ", catch: " + defectBridgeIdentity + " }))"
 }
 
 // reachClass finds how the generated code of file refers to f's class at run

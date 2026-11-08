@@ -1,0 +1,4 @@
+import { evaluate } from "./probe_foreign.ts"
+export effect function use(x: number) {
+  return try Effect.orDie(Effect.try({ try: () => evaluate(x), catch: (e) => e }))
+}
