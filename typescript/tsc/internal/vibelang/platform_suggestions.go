@@ -20,14 +20,15 @@ func init() {
 
 // suggestsNoPlatformGlobal is the checker's spelling suggestion filter: in
 // .vibe code outside a hatch or a module block, where EK4402 applies, a
-// platform global (platformGlobals) is never suggested. A declaration of
-// the program's own with such a name may be.
+// platform global (platformGlobals) is never suggested. Embedded module bodies
+// have their own TypeScript source files; ordinary namespaces stay VibeLang.
+// A declaration of the program's own with such a name may be.
 func suggestsNoPlatformGlobal(c *checker.Checker, location *ast.Node, candidate *ast.Symbol) bool {
 	name := candidate.Name()
 	if _, ok := platformGlobals[name]; !ok {
 		return true
 	}
-	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || inHatch(location) || inModuleBlock(location) {
+	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || inHatch(location) {
 		return true
 	}
 	return !isPlatformGlobalBinding(c, candidate)
@@ -58,7 +59,7 @@ func explainExperimentalName(c *checker.Checker, file *ast.SourceFile, all []*as
 			continue
 		}
 		name := astnav.GetTokenAtPosition(file, d.Pos())
-		if name == nil || !ast.IsIdentifier(name) || isMemberNameOf(name) || inHatch(name) || inModuleBlock(name) {
+		if name == nil || !ast.IsIdentifier(name) || isMemberNameOf(name) || inHatch(name) {
 			continue
 		}
 		key := "Experimental" + name.Text()

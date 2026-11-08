@@ -101,6 +101,8 @@ Get a service with `try`, as in `const random = try SecureRandom.SecureRandom`, 
 
 Where Effect has no service yet, as for `os.hostname()`, `process.pid`, an execute-permission check, or `navigator.locks`, EK4402 names the experimental service VibeLang adds, such as `try (try Experimental.Process.Process).pid` ([Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md)), whose layers come from `vibelang-runtime/experimental/platform-node`, `-bun`, or `-browser`. There, `ExperimentalNodeServices.layer` is `@effect/platform-node`'s bundle plus the experimental `FileSystem`, `Crypto`, `Process` and `Stdio`, so it replaces Effect's in `main`; like Effect's, it holds none of Effect's crypto services. Where nothing covers the call yet, as for `os.uptime()`, EK4402 says to escape to TypeScript: a `.ts` file that imports the API. Wrap calls that may throw with `Effect.try`, or Promises with `tryPromise`. [Platform globals](platform-globals.md) answers every Node.js and web global.
 
+Ordinary `namespace` blocks keep these VibeLang rules. An unresolved experimental name receives the same guidance there as outside the namespace, and spelling suggestions omit banned host globals. A named top-level `module` body is TypeScript and keeps TypeScript’s suggestions.
+
 ## Making an HTTP client request
 
 Provide `FetchHttpClient.layer` to make requests through Effect 4's `HttpClient`.

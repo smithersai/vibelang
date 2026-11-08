@@ -25,6 +25,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The Bun and Node loaders could refuse a module the project compile accepts: a call into a referenced project, such as `users.getByName(id)` after `const users = try Users`, reported `EK0403` because a loader reads the referenced project's TypeScript sources where the project compile reads its declaration output. The loaders now classify those sources as that output, so both compiles report the same calls.
 
+- Inside `namespace` blocks, unresolved experimental names could suggest banned host globals or omit service guidance. Diagnostics now follow the surrounding VibeLang rules.
 - A class definition inside an `effect` block could report an implementation restriction for an escaping `break` or `continue`. Decorators, computed names and `extends` expressions now report the block’s `EK0202` error.
 
 - Outward jumps in class definition expressions inside an `async match` could report `EK0204` and suggest moving the `do`. They now report `EK0706` once and explain the Promise boundary.
