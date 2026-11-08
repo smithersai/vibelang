@@ -2,7 +2,7 @@ import { Effect } from "effect"
 const trace: string[] = []
 const y = "outer"
 function ordinary(a = do { trace.push("a"); return 7 }, b = (trace.push("b"), 2)) { trace.push("body"); return 0 }
-function scoped(a = do { return 0 }, b = () => y) { const y = "body"; return b() }
+function scoped(a: number = do { return 0 }, b = () => y) { const y = "body"; return b() }
 const literal = (a = do { return "early" as const }) => 1 as const
 const earlyType: 1 | "early" = literal()
 export effect function main() {
