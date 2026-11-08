@@ -6,6 +6,8 @@ A parsed `fork` or `join` runs only inside an `effect` function or `effect { ...
 
 An `effect` function or producer expression cannot name itself `fork` or `join` (`EK1702`). A declaration uses its enclosing context: `export effect function fork() { return 1 }` is allowed in plain code, while a declaration named `fork` or `join` inside effect code is rejected. Method and property names remain ordinary names, so `{ effect join() { return 1 } }` is allowed.
 
+The reservation also covers constructor and base-class references: `new join.C()` or `class extends fork.C {}` inside effect code reports `EK1702`. Rename the binding, or run `vibelang --fix` to preserve the reference through a plain function without changing the binding or its name. Property names such as `new tools.join()` remain ordinary names; plain nested functions and class field initializers keep their own context.
+
 ## Forking and awaiting
 
 ```vibe

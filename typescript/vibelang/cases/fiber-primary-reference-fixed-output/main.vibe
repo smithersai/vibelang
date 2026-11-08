@@ -1,0 +1,17 @@
+// expect: EK1702
+// expect-result: [7,11,7,11,"join","C",0]
+class join { value = 7 }
+const fork = { C: class { value = 11 } }
+function names() { return [join.name, fork.C.name] }
+export effect function main() {
+  const worker = fork Effect.succeed(0)
+  const zero = join worker
+  return [
+    new ((() => join)())().value,
+    new ((() => fork)()).C().value,
+    new (class extends ((() => join)()) {})().value,
+    new (class extends ((() => fork)()).C {})().value,
+    ...names(),
+    zero,
+  ]
+}

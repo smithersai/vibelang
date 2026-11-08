@@ -6193,6 +6193,12 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
 			return p.parseTopicReference() // the topic of a pipe (vibelang_pipes.go)
 		}
 	}
+	// Unary parsing handles fiber operations. A new callee or heritage
+	// expression enters here directly and still reserves IdentifierReferences.
+	// A bare arrow parameter is checked by parseSimpleArrowFunctionExpression.
+	if p.isReservedFiberName() && !p.lookAhead((*Parser).nextTokenIsEqualsGreaterThan) {
+		p.rejectReservedFiberName(p.tokenRange())
+	}
 	return p.parseIdentifierWithDiagnostic(diagnostics.Expression_expected, nil)
 }
 

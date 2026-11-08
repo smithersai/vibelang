@@ -12,10 +12,8 @@ const grammarFiberReferenceQuote = "An `IdentifierReference`, `BindingIdentifier
 
 // grammarFiberPrimaryReference reports fork or join at the head of a new
 // callee or an extends clause in Effect code. Appendix A reserves both words
-// wherever an IdentifierReference could stand there, but the parser tests for
-// them only where a unary expression starts. A new callee and a heritage
-// expression begin at a primary expression instead, so the word is read as an
-// identifier and only checker errors such as EK4410 follow, not EK1702.
+// wherever an IdentifierReference could stand there. These positions begin at
+// a primary expression, so they need the same EK1702 reservation as bindings.
 func grammarFiberPrimaryReference(file *ast.SourceFile) bool {
 	// A MemberExpression continues through member access, a non-null
 	// assertion and a tagged template before its primary head.
@@ -86,10 +84,13 @@ var grammarFiberReferenceControls = []string{
 	"class C extends join {}",
 }
 
-func TestGrammarAdmissionFiberReferenceKeys(t *testing.T) {
+func TestGrammarAdmissionFiberReferenceQuoted(t *testing.T) {
 	if !strings.Contains(SpecText(grammarAppendix), grammarFiberReferenceQuote) {
 		t.Fatalf("the Appendix A fork/join reservation changed: %s", grammarFiberReferenceQuote)
 	}
+}
+
+func TestGrammarAdmissionFiberReferenceKeys(t *testing.T) {
 	for _, source := range grammarFiberReferenceGaps {
 		if got := grammarAdmissionForm(source); got != "admission:fiber-primary-reference" {
 			t.Errorf("key=%q, want admission:fiber-primary-reference: %q", got, source)
@@ -106,9 +107,9 @@ func TestGrammarAdmissionFiberReferenceRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarFiberReferenceGaps {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			if grammarAdmissionVerdict(t, w, source) {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("reserved reference still exposes an admission gap: %v", r.Diagnostics)
 			}
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})

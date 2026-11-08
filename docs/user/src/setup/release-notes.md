@@ -28,6 +28,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Missing pages had no main landmark for screen-reader navigation. The error message and home link now share a main landmark.
 
+- Constructor and base-class references could use the reserved names `fork` and `join` inside effect code. They now report `EK1702`, and `vibelang --fix` preserves the reference and the original binding's name.
+
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 
 - Wide documentation tables could not be scrolled with the keyboard on phones. Table containers now accept keyboard focus, show a focus outline and scroll with the arrow keys.
@@ -703,6 +705,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 | Implicit service keys in a package with `"name": ""` | Keys now begin with `/`. Run `vibelang --fix --fix-legacy-service-keys` on existing source to retain its earlier directory-prefixed keys explicitly. |
 | `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it, or `vibelang --fix` to retain the unrun Effect and native suspension. |
 | An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |
+| `new join.C()` or `class extends fork.C {}` inside effect code | `EK1702`: rename the reserved binding, or run `vibelang --fix` to preserve the reference without renaming the binding. Member names such as `tools.join` remain allowed. |
 
 ## 0.0.12
 

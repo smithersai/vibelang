@@ -286,5 +286,14 @@
         "output": "typescript/vibelang/cases/effect-subtype-generic-argument-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK1702",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/fiber-primary-reference.fail",
+        "output": "typescript/vibelang/cases/fiber-primary-reference-fixed-output"
+      }
+    ]
   }
 ]

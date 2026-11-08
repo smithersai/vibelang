@@ -46,6 +46,21 @@ func TestReservedFiberNames(t *testing.T) {
 			{"nested class name", `export effect function f() { class W { } return 1 }`, 1},
 			{"plain expression name in effect code", `export effect function f() { return function W() { return 1 } }`, 0},
 			{"renamed destructuring", `export effect function f(o: { W: number }) { const { W: v } = o; return v }`, 0},
+			{"new callee", `export effect function f() { return new W }`, 1},
+			{"new call", `export effect function f() { return new W(1) }`, 1},
+			{"new member", `export effect function f() { return new W.C }`, 1},
+			{"new computed member", `export effect function f() { return new W[0] }`, 1},
+			{"new non-null", `export effect function f() { return new W!.C }`, 1},
+			{"heritage", `export effect function f() { return class extends W {} }`, 1},
+			{"heritage member", `export effect function f() { return class extends W.C {} }`, 1},
+			{"effect arrow new", `export const f = effect () => new W.C`, 1},
+			{"producer new", `export effect function* f() { yield new W.C }`, 1},
+			{"effect parameter new", `export effect function f(x = new W.C) { return x }`, 1},
+			{"ordinary constructor", `export function f() { return new W.C }`, 0},
+			{"ordinary heritage", `export function f() { return class extends W.C {} }`, 0},
+			{"nested ordinary constructor", `export effect function f() { return () => new W.C }`, 0},
+			{"field constructor", `export effect function f() { return class { x = new W.C } }`, 0},
+			{"constructor member name", `export effect function f() { return new C.W }`, 0},
 			{"member read", `export effect function f(o: { W: number }) { return o.W }`, 0},
 			{"object key", `export effect function f() { return { W: 1 } }`, 0},
 			{"plain local", `export function f() { const W = 1; return W }`, 0},
@@ -106,6 +121,17 @@ export const make = effect () => {
     fork2(wait)
     return 1
   }
+}
+`},
+		{"constructor and heritage references", `class join { value = 7 }
+const fork = { C: class { value = 11 } }
+export effect function main() {
+  return [new join().value, new fork.C().value, new (class extends join {})().value, new (class extends fork.C {})().value]
+}
+`, `class join { value = 7 }
+const fork = { C: class { value = 11 } }
+export effect function main() {
+  return [new ((() => join)())().value, new ((() => fork)()).C().value, new (class extends ((() => join)()) {})().value, new (class extends ((() => fork)()).C {})().value]
 }
 `},
 		{"parameter and shorthand keep the key", `export effect function f(join: number) {

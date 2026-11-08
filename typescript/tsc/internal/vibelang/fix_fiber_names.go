@@ -45,10 +45,11 @@ func init() {
 
 // A fiberRename is the rename of one binding named fork or join and its uses.
 type fiberRename struct {
-	name    *ast.Node    // the identifier that selected the binding
-	newName string       // the name the rename writes
-	edits   []sourceEdit // empty when why says it cannot be renamed
-	why     string       // why the binding keeps its name, or ""
+	name      *ast.Node    // the identifier that selected the binding
+	newName   string       // the name the rename writes
+	edits     []sourceEdit // empty when why says it cannot be renamed
+	why       string       // why the binding keeps its name, or ""
+	reference bool         // a primary reference keeps its original binding
 }
 
 func isFiberWord(text string) bool { return text == "fork" || text == "join" }
@@ -214,6 +215,12 @@ func fiberNameRenames(c *checker.Checker, file *ast.SourceFile) []fiberRename {
 			renames = append(renames, fiberExpressionNameFix(c, file, id))
 			continue
 		}
+		if fiberPrimaryReference(id) {
+			start := nodeStart(file, id)
+			read := "((() => " + text[start:id.End()] + ")())"
+			renames = append(renames, fiberRename{name: id, newName: id.Text(), reference: true, edits: []sourceEdit{{start, id.End(), read}}})
+			continue
+		}
 		add(id)
 	}
 	var visit func(node *ast.Node) bool
@@ -228,6 +235,35 @@ func fiberNameRenames(c *checker.Checker, file *ast.SourceFile) []fiberRename {
 	file.AsNode().ForEachChild(visit)
 	slices.SortStableFunc(renames, func(a, b fiberRename) int { return nodeStart(file, a.name) - nodeStart(file, b.name) })
 	return renames
+}
+
+// fiberPrimaryReference identifies a new callee or class heritage reference.
+// Its binding can be valid plain code. Read it in a plain arrow instead of
+// renaming it, preserving callable names, live writes and other fiber operations
+// that happen to share its spelling.
+func fiberPrimaryReference(id *ast.Node) bool {
+	node := id
+	for parent := node.Parent; parent != nil; parent = node.Parent {
+		switch {
+		case ast.IsPropertyAccessExpression(parent) || ast.IsElementAccessExpression(parent) || ast.IsNonNullExpression(parent) || ast.IsCallExpression(parent):
+			if parent.Expression() != node {
+				return false
+			}
+			node = parent
+		case ast.IsTaggedTemplateExpression(parent):
+			if parent.AsTaggedTemplateExpression().Tag != node {
+				return false
+			}
+			node = parent
+		case ast.IsNewExpression(parent):
+			return parent.Expression() == node
+		case ast.IsExpressionWithTypeArguments(parent):
+			return parent.Expression() == node && parent.Parent != nil && ast.IsHeritageClause(parent.Parent)
+		default:
+			return false
+		}
+	}
+	return false
 }
 
 // fiberExpressionNameFix keeps the callable's observable name and immutable
@@ -400,10 +436,15 @@ func fiberNameMigrationFixes(ctx context.Context, program *compiler.Program, fil
 	for _, r := range fiberNameRenames(c, file) {
 		line, _ := scannerLineOf(file, nodeStart(file, r.name))
 		key := "fiberNameRename:" + r.name.Text() + ":" + strconv.Itoa(line+1)
+		label := fiberNameRenameLabel
+		if r.reference {
+			key = "fiberNameReference:" + strconv.Itoa(nodeStart(file, r.name))
+			label = "fork and join reference repairs"
+		}
 		if len(r.edits) == 0 || refused[key] || slices.ContainsFunc(r.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
 			continue
 		}
-		p.fixes = append(p.fixes, fileFix{code: reservedFiberName.Code, edits: r.edits, key: key, label: fiberNameRenameLabel, scattered: true})
+		p.fixes = append(p.fixes, fileFix{code: reservedFiberName.Code, edits: r.edits, key: key, label: label, scattered: true})
 		taken = append(taken, r.edits...)
 	}
 	return p
@@ -430,6 +471,9 @@ func fiberNameActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAc
 		description := "Rename " + r.name.Text() + " and its uses to " + r.newName
 		if r.newName == r.name.Text() {
 			description = "Preserve " + r.name.Text() + " through a local constant"
+		}
+		if r.reference {
+			description = "Read " + r.name.Text() + " in a plain function, preserving its binding"
 		}
 		return []*ls.CodeAction{{Description: description, Changes: changes}}, nil
 	}
