@@ -86,8 +86,13 @@ func effectDeclarationKeys(t *testing.T) []string {
 	t.Helper()
 	seen := map[string]bool{}
 	for _, name := range effectPinnedPackages {
-		root := effectPackageDir(name)
-		err := filepath.WalkDir(root, func(file string, entry fs.DirEntry, err error) error {
+		// An install may link the package directory, as the merge queue's
+		// shared dependency installs do; WalkDir does not follow a linked root.
+		root, err := filepath.EvalSymlinks(effectPackageDir(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = filepath.WalkDir(root, func(file string, entry fs.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
