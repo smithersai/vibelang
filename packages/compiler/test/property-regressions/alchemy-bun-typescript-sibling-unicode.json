@@ -1,0 +1,12 @@
+{
+  "property": "bun-typescript-siblings",
+  "rule": "Anything TypeScript or the pinned TC39 proposal already defines (evaluation order, binding, types, modules, resolution, declaration emit) is as in TypeScript and is not restated.",
+  "input": {
+    "name": "snow-雪",
+    "extension": "ts",
+    "importer": "entry",
+    "dynamic": false,
+    "value": 7
+  },
+  "reason": "Bun 1.3 returns a parsed Unicode import as UTF-8 bytes in a Latin-1 string; the native module must keep the TypeScript source filename."
+}

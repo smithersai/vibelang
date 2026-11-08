@@ -176,7 +176,14 @@ const pathOf = (importer) => importer?.startsWith(`${moduleNamespace}:`) ? impor
 // import("./leaf-\u96ea"); scan() reports neither require() calls nor
 // type-only imports. A CommonJS require and `import x = require()` reach a
 // .vibe module through the CommonJS resolve hook above instead.
-const esImports = (code, loader) => new Bun.Transpiler({ loader }).scan(code).imports
+// Bun 1.3 exposes parsed import paths as UTF-8 bytes in a Latin-1 string.
+// Probe once so every filename is decoded exactly once on that runtime.
+const importsAreBytes = new Bun.Transpiler({ loader: "js" }).scan('import "./é"').imports[0].path !== "./é"
+const importPaths = (entries) => importsAreBytes
+  ? entries.map((entry) => ({ ...entry, path: Buffer.from(entry.path, "latin1").toString("utf8") }))
+  : entries
+const esImports = (code, loader) => importPaths(new Bun.Transpiler({ loader }).scan(code).imports)
+let typescriptSiblingResolutions = 0
 const relativeJs = /^\.\.?\/.*\.jsx?$/
 // The compiler writes relative output specifiers as URL paths. Bun's source
 // resolver takes filesystem names instead, so decode compiled imports once.
@@ -230,6 +237,16 @@ function resolveImports(path, contents, loader, inNamespace = false) {
   const entries = esImports(contents, loader)
   function resolveSpecifier(specifier) {
     let source = registeredImport(dirname(path), specifier) ?? vibeImport(dirname(path), specifier)
+    // Bun 1.3 cannot resolve the missing JavaScript name of a TypeScript
+    // sibling from a pretranspiled module. Pick the same existing-file and
+    // source-sibling order as the relative-name resolver before adding @bun.
+    if (source === undefined && /\.vibex?$/.test(path) && relativeJs.test(specifier)) {
+      const sibling = fromModuleOutput(dirname(path), specifier, path)
+      if (sibling !== undefined && /\.tsx?$/.test(sibling)) {
+        source = sibling
+        typescriptSiblingResolutions++
+      }
+    }
     if (source === undefined && inNamespace) source = fromModuleOutput(dirname(path), specifier, path)
     return source
   }
@@ -387,7 +404,7 @@ Bun.plugin({
       try {
         code ??= readFileSync(file, "utf8")
         rewritten = esImports(code, loader)
-        imports = [...new Bun.Transpiler({ loader }).scanImports(code), ...rewritten]
+        imports = [...importPaths(new Bun.Transpiler({ loader }).scanImports(code)), ...rewritten]
       } catch { return }
       const needsRewrite = rewritten.some((entry) =>
         registeredImport(dirname(file), entry.path) !== undefined || vibeImport(dirname(file), entry.path) !== undefined)
@@ -431,7 +448,14 @@ Bun.plugin({
     // times, each a JavaScript callback (opencode-35).
     const debug = process.env.VIBELANG_BUN_DEBUG
     let resolutions = 0
-    if (debug) process.once("exit", () => console.error(`vibelang/bun: ${resolutions} resolution${resolutions === 1 ? "" : "s"} reached discovery`))
+    if (debug) process.once("exit", () => {
+      console.error("vibelang/bun: " + resolutions + " resolution" + (resolutions === 1 ? "" : "s") + " reached discovery")
+      console.error("vibelang/bun: " + JSON.stringify({
+        stage: "source-imports",
+        typescriptSiblingResolutions,
+        importPathEncoding: importsAreBytes ? "utf8-bytes" : "unicode"
+      }))
+    })
     build.onResolve({ filter: pathSpecifier }, ({ path, importer }) => {
       if (debug) resolutions++
       // A module declaration's output named by its absolute path: bun test
