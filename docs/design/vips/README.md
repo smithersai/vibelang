@@ -41,6 +41,12 @@ A retirement is any change that makes source accepted by an earlier toolchain fa
 | [41](0041-throw-expressions.md) | TC39 throw expressions | accepted 2026-11-02 |
 
 
+## Acceptance
+
+Will personally approves each VIP. An agent review never accepts a VIP.
+
+The specification as a whole is accepted when four reviewers, Codex Astra, Codex Sol, Claude Fable and Claude Opus, each answer LGTM with an A grade. VibeLang's specification has passed this gate. After acceptance, work continues by keeping the specification self-consistent, building it optimistically and fuzz testing it.
+
 ## Denied
 
 | VIP | Title | Status |
