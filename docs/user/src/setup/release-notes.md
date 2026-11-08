@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A constructor repair treated a parenthesized direct `eval`, such as `(eval)(code)`, as an ordinary call and could move it into a defect bridge, which changes the scope it reads. It is now refused as direct `eval`.
 
+- The diagnostic code map and the guides described `EK0406` as a `@throws` or `@rethrows` tag, so an `@exception` report had no entry. They now name the `@exception` alias beside `@throws`.
+
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 
 - Wide documentation tables could not be scrolled with the keyboard on phones. Table containers now accept keyboard focus, show a focus outline and scroll with the arrow keys.

@@ -690,7 +690,7 @@ An ordinary namespace type such as `Names.Shape` follows TypeScript namespace re
 
 Native `Context.Service` classes keep TypeScript namespace rules: `Key.Shape` needs a declared namespace, while `Context.Service.Shape<typeof Key>` extracts the implementation without one. The `EK4831` style warning does not add members to a native class. The native namespace diagnostic offers a binding-safe shape-extractor repair for a genuine service key, also applied by `vibelang --fix`; it leaves an explicit namespace, a shadowing type and type arguments unchanged.
 
-The `EK0406` annotation diagnostic has no automatic comment rewrite. Remove `@throws` or `@rethrows` manually while preserving the documentation.
+The `EK0406` annotation diagnostic has no automatic comment rewrite. Remove `@throws`, `@exception` or `@rethrows` manually while preserving the documentation.
 
 For `EK0704`, the editor keeps captured variables and comments when it rewrites an extractor as a class and property pattern. It offers a bare class test only for an empty argument list.
 
