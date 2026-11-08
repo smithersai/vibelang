@@ -630,6 +630,7 @@ function report(r) {
   const owner = r.pending?.owner ?? "-"
   if (statusOnly) {
     console.log(`${r.name.padEnd(36)} ${owner.padEnd(5)} ${r.status}${r.logFile ? ` (log: ${r.logFile})` : ""}`)
+    reportDeadline(r.deadline)
     return
   }
   if (r.logFile) console.log(`log:    ${r.logFile}`)
@@ -647,12 +648,16 @@ function report(r) {
     default:
       console.log(`FAIL    ${r.name}: ${r.detail}${time}`)
   }
-  if (r.deadline) {
-    const { phase, seconds, limit } = r.deadline
-    console.log(`        deadline: ${phase} took ${seconds.toFixed(1)} s of ${limit} s; a loaded host kills it (run.mjs: write \`// run-seconds: N\`)`)
-  }
+  reportDeadline(r.deadline)
   if (r.status === "FAIL" || (verbose && r.log)) {
     for (const line of r.log.trimEnd().split("\n").slice(0, verbose ? 200 : 40)) console.log(`        ${line}`)
+  }
+}
+
+function reportDeadline(deadline) {
+  if (deadline) {
+    const { phase, seconds, limit } = deadline
+    console.log(`        deadline: ${phase} took ${seconds.toFixed(1)} s of ${limit} s; a loaded host kills it (run.mjs: write \`// run-seconds: N\`)`)
   }
 }
 

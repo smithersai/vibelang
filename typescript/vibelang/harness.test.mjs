@@ -818,3 +818,24 @@ test("a registered --fix output compiles standalone despite its input's expect h
   assert.equal(result.status, 0, result.stdout + result.stderr)
   assert.match(result.stdout, /^ok\s+witness-fixed-output/m)
 })
+
+// Exercise the real harness renderer as well as the threshold helper. Status
+// mode is used for compact case inventories and must retain the timing cause.
+test("status output retains a passing runner deadline warning and summary", (t) => {
+  const { root, harness } = fixture(t)
+  const at = path.join(root, "vibelang/cases/deadline-margin")
+  fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+  fs.writeFileSync(path.join(at, "scenario"), "runtime")
+  fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+  fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
+  fs.writeFileSync(path.join(at, "run.mjs"), `// run-seconds: 6\nawait new Promise((resolve) => setTimeout(resolve, 3600))\nconsole.log("expected")\n`)
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  for (const flags of [[], ["--status"], ["--verbose"], ["--status", "--verbose"]]) {
+    const result = spawnSync(process.execPath, [harness, ...flags, "deadline-margin"], { env, encoding: "utf8", timeout: 30_000 })
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    if (flags.includes("--status")) assert.match(result.stdout, /^deadline-margin\s+-\s+ok$/m)
+    else assert.match(result.stdout, /^ok\s+deadline-margin/m)
+    assert.match(result.stdout, /^\s+deadline: run took \d+\.\d s of 6 s/m, "every output mode must retain the phase and both times")
+    assert.match(result.stdout, /1 passed past half a deadline: deadline-margin/)
+  }
+})
