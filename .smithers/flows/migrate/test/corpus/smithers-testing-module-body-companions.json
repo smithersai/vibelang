@@ -1,0 +1,35 @@
+{
+  "repository": "smithers",
+  "pattern": "packages/testing: a .vibe module with an inline module $throw$ts companion, a src/index.ts consumer that re-exports it, and a project whose rootDir is src with a hidden sidecar directory; the emitted graph under .vibelang/js/src/ must load in plain Node",
+  "tsconfig": {
+    "vibe": { "sidecarDir": ".vibe/declarations" },
+    "compilerOptions": {
+      "customConditions": ["vibelang-source"],
+      "rootDirs": [".", ".vibe/declarations"],
+      "allowArbitraryExtensions": true,
+      "target": "ES2022",
+      "module": "NodeNext",
+      "moduleResolution": "NodeNext",
+      "strict": true,
+      "verbatimModuleSyntax": true,
+      "allowImportingTsExtensions": true,
+      "rewriteRelativeImportExtensions": true,
+      "isolatedModules": true,
+      "skipLibCheck": true,
+      "rootDir": "src",
+      "outDir": "dist/esm",
+      "declaration": true,
+      "declarationMap": true,
+      "sourceMap": true,
+      "inlineSources": true,
+      "types": []
+    },
+    "include": ["src/**/*"]
+  },
+  "source": "src/Fixture.vibe",
+  "module": "$throw$ts",
+  "text": "module $throw$ts { export function raise(value: unknown): never { throw value } }\nimport { raise as $raise } from $throw$ts\nexport const boom = (): never => $raise(new Error(\"boom\"))\nexport const total = 1\n",
+  "consumer": "src/index.ts",
+  "consumerText": "export * as Fixture from \"./Fixture.vibe\"\n",
+  "companion": "src/Fixture.vibe.-24-throw-24-ts.js"
+}
