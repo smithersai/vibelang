@@ -79,15 +79,15 @@ If neither table exists, use `overrides` as shown above. When both fields are pr
 Then run:
 
 ```sh
-bun add --exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-node@4.1.1
-bun add -d --exact vibelang@0.0.12 vibelang-vite@0.0.12 vitest@5.1.0 @effect/vitest@4.1.1
+bun add --exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
+bun add -d --exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 With npm, run:
 
 ```sh
-npm install --save-exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-node@4.1.1
-npm install --save-dev --save-exact vibelang@0.0.12 vibelang-vite@0.0.12 vitest@5.1.0 @effect/vitest@4.1.1
+npm install --save-exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
+npm install --save-dev --save-exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 With pnpm, configure the [transitive pin](https://pnpm.io/settings/dependency-resolution#overrides) in `pnpm-workspace.yaml`. Also allow the install script of `dprint`, which `vibelang` depends on. pnpm 11 and later fail an install with `ERR_PNPM_IGNORED_BUILDS` when a dependency's build script is neither allowed nor denied. Merge these settings into `pnpm-workspace.yaml`:
@@ -102,8 +102,8 @@ allowBuilds:
 Then run:
 
 ```sh
-pnpm add --save-exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-node@4.1.1
-pnpm add --save-dev --save-exact vibelang@0.0.12 vibelang-vite@0.0.12 vitest@5.1.0 @effect/vitest@4.1.1
+pnpm add --save-exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
+pnpm add --save-dev --save-exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 With Yarn, use the `node_modules` linker. Yarn Classic already uses it; for Yarn 2 and later, merge this into `.yarnrc.yml`:
@@ -125,8 +125,8 @@ Put the transitive pin under [`resolutions`](https://yarnpkg.com/configuration/m
 Then run:
 
 ```sh
-yarn add --exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-node@4.1.1
-yarn add --dev --exact vibelang@0.0.12 vibelang-vite@0.0.12 vitest@5.1.0 @effect/vitest@4.1.1
+yarn add --exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
+yarn add --dev --exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 | Package | Install as | Purpose |
@@ -152,7 +152,7 @@ npx vibelang --version
 The output is:
 
 ```out
-VibeLang 0.0.12 (TypeScript 7.1.0-dev)
+VibeLang 0.0.13 (TypeScript 7.1.0-dev)
 ```
 
 ## 4. Port Effect TypeScript files
