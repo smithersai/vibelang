@@ -1,0 +1,11 @@
+// VIP-44: library collection types nest inside arrays and ReadonlySet. The
+// exported schema declares what TypeScript declares for its Effect TypeScript
+// counterpart (typescript/main.ts).
+import { Schema } from "effect"
+
+export schema Nested {
+  readonly maps: ReadonlyArray<ReadonlyMap<string, number>>
+  readonly sets: ReadonlySet<Record<string, number>>
+  readonly both: ReadonlySet<ReadonlyMap<string, Date>>
+  writable: Array<ReadonlyMap<string, boolean>>
+}

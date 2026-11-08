@@ -29,12 +29,27 @@ var schemaGenericLegacyBindingFix = &ls.CodeFixProvider{
 		if fix.Diagnostic == nil || !strings.HasPrefix(fix.Diagnostic.Message.AsString(), "This generic type does not name a mapped TypeScript-library schema type.") {
 			return nil, nil
 		}
+		spans := func(name *ast.Node) bool {
+			return name != nil && scanner.SkipTrivia(fix.SourceFile.Text(), name.Pos()) == fix.Span.Pos() && name.End() == fix.Span.End()
+		}
+		// The inner name of G<H<K, V>> has its own reference too. Expand the
+		// outer codec, which holds the inner one; Readonly<Record<K, V>>
+		// does not hold the inner reference's mutable-key Record.
+		var expression *ast.Node
 		for _, ref := range fix.SourceFile.VibeLangSchemaGenerics {
-			for _, name := range []*ast.Node{ref.Name, ref.InnerName} {
-				if name != nil && ref.Legacy && scanner.SkipTrivia(fix.SourceFile.Text(), name.Pos()) == fix.Span.Pos() && name.End() == fix.Span.End() {
-					return schemaFlagExpansionAt(ctx, fix, ref.Expression)
-				}
+			if !ref.Legacy {
+				continue
 			}
+			if spans(ref.InnerName) {
+				expression = ref.Expression
+				break
+			}
+			if expression == nil && spans(ref.Name) {
+				expression = ref.Expression
+			}
+		}
+		if expression != nil {
+			return schemaFlagExpansionAt(ctx, fix, expression)
 		}
 		return nil, nil
 	},

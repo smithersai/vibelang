@@ -124,13 +124,17 @@ func (p *Parser) vibelangSchemaGenericName(name *ast.Node) *ast.Node {
 
 // Keep both written bindings and each admitted codec. Readonly<Record<K,V>>
 // is selected only after resolving both names; an Array alias around the same
-// inner Record retains the ordinary array mapping.
+// inner Record retains the ordinary array mapping. The inner Record is its own
+// two-argument candidate, so a library ReadonlyMap inside an array or a
+// ReadonlySet selects Schema.ReadonlyMap (VIP-44).
 func (p *Parser) vibelangReadonlyRecordReference(outer, inner *ast.Node, parts []*ast.Node) *ast.Node {
 	key, value := p.vibelangSchemaOf(parts[0]), p.vibelangSchemaOf(parts[1])
 	readonlyRecord := p.vibelangSchemaCall("Record", outer.Loc, key, value)
 	mutableRecord := p.vibelangSchemaCall("Record", inner.Loc, key, p.vibelangSchemaCall("mutableKey", parts[1].Loc, value))
+	p.vibelangRecordSchemaReference(inner, mutableRecord, ast.IsIdentifier(inner) && inner.Text() == "Record")
 	readonlyArray := p.vibelangSchemaCall("Array", outer.Loc, mutableRecord)
 	mutableArray := p.vibelangSchemaCall("mutable", outer.Loc, p.vibelangSchemaCall("Array", outer.Loc, mutableRecord))
+	set := p.vibelangSchemaCall("ReadonlySet", outer.Loc, mutableRecord)
 	kind, legacy := 2, false
 	if ast.IsIdentifier(outer) {
 		switch outer.Text() {
@@ -144,7 +148,8 @@ func (p *Parser) vibelangReadonlyRecordReference(outer, inner *ast.Node, parts [
 			}
 		}
 	}
-	legacy = legacy && ast.IsIdentifier(inner) && inner.Text() == "Record"
+	// A written ReadonlyMap keeps its spelling-based mapping in an array.
+	legacy = legacy && ast.IsIdentifier(inner) && (inner.Text() == "Record" || kind != 4 && inner.Text() == "ReadonlyMap")
 	visible := readonlyArray
 	if kind == 1 {
 		visible = mutableArray
@@ -154,7 +159,7 @@ func (p *Parser) vibelangReadonlyRecordReference(outer, inner *ast.Node, parts [
 	}
 	// Shared mapped arguments keep their visible parents. Alternatives are
 	// metadata, never bound independently or allowed to reparent those values.
-	for _, root := range []*ast.Node{readonlyRecord, readonlyArray, mutableArray} {
+	for _, root := range []*ast.Node{readonlyRecord, readonlyArray, mutableArray, set} {
 		var link func(*ast.Node, *ast.Node)
 		link = func(node, parent *ast.Node) {
 			if node == key || node == value {
@@ -170,7 +175,7 @@ func (p *Parser) vibelangReadonlyRecordReference(outer, inner *ast.Node, parts [
 	outerName.Parent.Parent, innerName.Parent.Parent = visible, visible
 	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
 		Arity: 1, Name: outerName, InnerName: innerName, Expression: visible,
-		MutableArray: mutableArray, ReadonlyArray: readonlyArray, ReadonlyRecord: readonlyRecord,
+		MutableArray: mutableArray, ReadonlyArray: readonlyArray, ReadonlyRecord: readonlyRecord, Library: set,
 		DefaultMutable: kind == 1, DefaultKind: kind, Legacy: legacy,
 	})
 	return visible

@@ -58,14 +58,12 @@ func schemaGenericKind(c *checker.Checker, ref *ast.SchemaGenericReference) int 
 		}
 		return 0
 	}
-	if ref.InnerName != nil {
-		inner := c.ResolveEntityName(ref.InnerName, ast.SymbolFlagsType)
-		if !isGlobal(c, inner) || inner.Name() != "Record" {
-			return 0
-		}
-		if symbol.Name() == "Readonly" {
+	if ref.InnerName != nil && symbol.Name() == "Readonly" {
+		// Elsewhere the inner name's own reference selects Record or ReadonlyMap.
+		if inner := c.ResolveEntityName(ref.InnerName, ast.SymbolFlagsType); isGlobal(c, inner) && inner.Name() == "Record" {
 			return 4
 		}
+		return 0
 	}
 	switch symbol.Name() {
 	case "Array":
@@ -116,6 +114,8 @@ func schemaGenericReplacement(c *checker.Checker, node *ast.Node) *ast.Node {
 			selected = ref.ReadonlyArray
 		case 4:
 			selected = ref.ReadonlyRecord
+		case schemaLibrarySet:
+			selected = ref.Library
 		}
 		if selected != node {
 			return selected
@@ -185,26 +185,27 @@ func checkSchemaGenericReferences(c *checker.Checker, file *ast.SourceFile) {
 			continue // the written name's ordinary Schema-value check applies
 		}
 		if ast.GetSourceFileOfNode(ref.Name) == file && schemaGenericKind(c, ref) == 0 {
-			names := []*ast.Node{ref.Name}
+			// An outer reference reports its own name. The inner name has its
+			// own reference, which reports an unmapped inner type; only
+			// Readonly<ReadonlyMap<K, V>> is reported here, at the inner name.
+			name, readonlyMap := ref.Name, false
 			if ref.InnerName != nil {
-				names = nil
-				outer := c.ResolveEntityName(ref.Name, ast.SymbolFlagsType)
-				if !isGlobal(c, outer) || (outer.Name() != "Array" && outer.Name() != "ReadonlyArray" && outer.Name() != "Readonly") {
-					names = append(names, ref.Name)
-				}
-				inner := c.ResolveEntityName(ref.InnerName, ast.SymbolFlagsType)
-				if !isGlobal(c, inner) || inner.Name() != "Record" {
-					names = append(names, ref.InnerName)
+				if outer := c.ResolveEntityName(ref.Name, ast.SymbolFlagsType); isGlobal(c, outer) && outer.Name() == "Readonly" {
+					inner := c.ResolveEntityName(ref.InnerName, ast.SymbolFlagsType)
+					if !isGlobal(c, inner) || inner.Name() != "ReadonlyMap" {
+						continue
+					}
+					name, readonlyMap = ref.InnerName, true
 				}
 			}
-			for _, name := range names {
-				span := core.NewTextRange(scanner.SkipTrivia(file.Text(), name.Pos()), name.End())
-				d := reportAt(c, file, span, EK2109.With("This generic type does not name a mapped TypeScript-library schema type."))
-				if mutable := schemaMutableCollection(c, ref); mutable != "" {
-					note(d, "Effect has no mutable "+mutable+" schema. Write Readonly"+mutable+", which maps to Schema.Readonly"+mutable+".")
-				}
-				note(d, "Name a schema value without type arguments, or write the decoder with explicit Effect Schema codecs.")
+			span := core.NewTextRange(scanner.SkipTrivia(file.Text(), name.Pos()), name.End())
+			d := reportAt(c, file, span, EK2109.With("This generic type does not name a mapped TypeScript-library schema type."))
+			if readonlyMap {
+				note(d, "Readonly<T> maps only a Record. A ReadonlyMap is already read-only: write ReadonlyMap<K, V>, which maps to Schema.ReadonlyMap.")
+			} else if mutable := schemaMutableCollection(c, ref); mutable != "" {
+				note(d, "Effect has no mutable "+mutable+" schema. Write Readonly"+mutable+", which maps to Schema.Readonly"+mutable+".")
 			}
+			note(d, "Name a schema value without type arguments, or write the decoder with explicit Effect Schema codecs.")
 		}
 	}
 }
@@ -212,9 +213,6 @@ func checkSchemaGenericReferences(c *checker.Checker, file *ast.SourceFile) {
 // schemaMutableCollection returns "Set" or "Map" when ref names the library's
 // mutable collection, which VIP-44 leaves without a schema.
 func schemaMutableCollection(c *checker.Checker, ref *ast.SchemaGenericReference) string {
-	if ref.InnerName != nil {
-		return ""
-	}
 	symbol := c.ResolveEntityName(ref.Name, ast.SymbolFlagsType)
 	if !isGlobal(c, symbol) {
 		return ""

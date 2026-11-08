@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Nested collection types in `schema` fields could report `EK2109` even when each part was supported. They now compose their Schema mappings recursively.
+
 - A throwing call in a computed member name or decorator could get the wrong error or be rejected despite a surrounding handler. These expressions now use the context defining the class or object, while member bodies keep their own checks.
 
 - A migrated package's emitted JavaScript under `.vibelang/js` kept relative imports without an extension, such as `import { Api } from "../api"`, so plain Node, which that tree exists for, failed with `ERR_MODULE_NOT_FOUND` when a packed package routed a consumer there. The migration flow now writes such an import of a module inside the package as that module's emitted file, `"../api.js"` or `"../location/index.js"`; imports of packages, assets, tests and modules outside the package stay as written.

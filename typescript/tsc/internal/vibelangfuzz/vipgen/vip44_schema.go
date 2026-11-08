@@ -22,6 +22,27 @@ function witness() {
 }`,
 		Cite: Citation{VIP: 44, Template: "Schema.ReadonlySet(Schema.String)", Quote: "These names mean the TypeScript-library bindings, selected by ordinary type lookup, as VIP-15's mapped generics do."},
 	})
+
+	// Nested collection mappings compose independently of scalar mappings.
+	registerWitness(44, ChapterWitness{
+		Key:     "vip44.schema-library-nested-plain",
+		Chapter: "006-data.md",
+		Quote:   "In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax.",
+		Modules: []string{"Schema"},
+		Vibe: `schema witnessNestedCollections { maps: ReadonlyArray<ReadonlyMap<string, number>>; sets: ReadonlySet<Record<string, number>>; both: ReadonlySet<ReadonlyMap<string, Date>>; writable: Array<ReadonlyMap<string, boolean>> }
+function witness() {
+  const good = { maps: [new Map([["a", 1]])], sets: new Set([{ a: 1 }]), both: new Set([new Map([["t", new Date(0)]])]), writable: [new Map([["x", true]])] }
+  const probes: unknown[] = [good, { ...good, maps: [{ a: 1 }] }, { ...good, maps: [new Map([["a", "1"]])] }, { ...good, sets: new Set([{ a: "1" }]) }, { ...good, sets: [{ a: 1 }] }, { ...good, both: new Set([new Map([["t", "1970"]])]) }, { ...good, writable: new Set() }]
+  return probes.map((v) => Schema.is(witnessNestedCollections)(v))
+}`,
+		Effect: `const witnessNestedCollections = Schema.Struct({ maps: Schema.mutableKey(Schema.Array(Schema.ReadonlyMap(Schema.String, Schema.Number))), sets: Schema.mutableKey(Schema.ReadonlySet(Schema.Record(Schema.String, Schema.mutableKey(Schema.Number)))), both: Schema.mutableKey(Schema.ReadonlySet(Schema.ReadonlyMap(Schema.String, Schema.Date))), writable: Schema.mutableKey(Schema.mutable(Schema.Array(Schema.ReadonlyMap(Schema.String, Schema.Boolean)))) })
+function witness() {
+  const good = { maps: [new Map([["a", 1]])], sets: new Set([{ a: 1 }]), both: new Set([new Map([["t", new Date(0)]])]), writable: [new Map([["x", true]])] }
+  const probes = [good, { ...good, maps: [{ a: 1 }] }, { ...good, maps: [new Map([["a", "1"]])] }, { ...good, sets: new Set([{ a: "1" }]) }, { ...good, sets: [{ a: 1 }] }, { ...good, both: new Set([new Map([["t", "1970"]])]) }, { ...good, writable: new Set() }]
+  return probes.map((v) => Schema.is(witnessNestedCollections)(v))
+}`,
+		Cite: Citation{VIP: 44, Template: "Schema.ReadonlySet(", Quote: "These names mean the TypeScript-library bindings, selected by ordinary type lookup, as VIP-15's mapped generics do."},
+	})
 }
 
 // The Error row: a refined Schema.Defect that accepts only Error instances.

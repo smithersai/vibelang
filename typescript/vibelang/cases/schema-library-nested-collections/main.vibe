@@ -1,0 +1,20 @@
+// expect-result: [true,false,false,false,false,false,false,true]
+// VIP-44 mappings compose inside generic collections: an array or a
+// ReadonlySet of a library ReadonlyMap holds Schema.ReadonlyMap, and a
+// ReadonlySet of a Record holds Schema.Record.
+import { Schema } from "effect"
+schema Nested {
+  readonly maps: ReadonlyArray<ReadonlyMap<string, number>>
+  readonly sets: ReadonlySet<Record<string, number>>
+  readonly both: ReadonlySet<ReadonlyMap<string, Date>>
+  writable: Array<ReadonlyMap<string, boolean>>
+}
+export effect function main() {
+  const is = Schema.is(Nested)
+  const good = { maps: [new Map([["a", 1]])], sets: new Set([{ a: 1 }]), both: new Set([new Map([["t", new Date(0)]])]), writable: [new Map([["x", true]])] }
+  return [
+    is(good), is({ ...good, maps: [{ a: 1 }] }), is({ ...good, maps: [new Map([["a", "1"]])] }), is({ ...good, sets: new Set([{ a: "1" }]) }),
+    is({ ...good, sets: [{ a: 1 }] }), is({ ...good, both: new Set([new Map([["t", "1970-01-01T00:00:00.000Z"]])]) }), is({ ...good, writable: new Set([new Map()]) }),
+    is({ maps: [], sets: new Set(), both: new Set(), writable: [] })
+  ]
+}
