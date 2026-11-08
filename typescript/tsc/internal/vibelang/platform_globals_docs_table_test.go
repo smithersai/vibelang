@@ -249,3 +249,18 @@ func FuzzPlatformGlobalsTable(f *testing.F) {
 		}
 	})
 }
+
+// The process namespace does not directly export the counter. Keep the
+// diagnostic and the guide attached to the injected process service.
+func TestBrowserCountAdviceNamesProcessService(t *testing.T) {
+	answer := platformGlobalAnswer("navigator.hardwareConcurrency")
+	for _, want := range []string{
+		"The availableParallelism member of the Experimental.Process.Process service",
+		"read navigator.hardwareConcurrency in a .ts adapter",
+		"not provided by the browser layer",
+	} {
+		if !strings.Contains(answer, want) {
+			t.Errorf("browser count advice omits %q: %s", want, answer)
+		}
+	}
+}

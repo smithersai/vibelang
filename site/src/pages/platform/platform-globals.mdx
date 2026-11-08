@@ -45,6 +45,8 @@ WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provid
 
 `crypto.randomInt(min, max)` excludes `max`. Its replacement hint sets `halfOpen: true` explicitly. For valid native integer bounds, set `halfOpen: true` on the `SecureRandom.SecureRandom` service’s `intBetween` method to retain that range. The Effect method includes both bounds by default and rounds fractional bounds; keep a native call in a `.ts` adapter when its argument validation is required.
 
+Browser hardware concurrency is read through a `navigator.hardwareConcurrency` adapter in TypeScript. A Node or Bun program can instead run `try (try Experimental.Process.Process).availableParallelism` after providing its process layer; this service member does not report the browser’s count.
+
 | Global | Use instead |
 | --- | --- |
 | `BroadcastChannel` | escape to TypeScript for now: Effect has no service for messages between browser tabs; a Worker carries messages to a worker. |

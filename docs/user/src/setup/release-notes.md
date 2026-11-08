@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The browser hardware-count diagnostic named a process export that does not exist. It now identifies the process service’s `availableParallelism` member and keeps the TypeScript adapter advice for browser counts.
+
 - The optional-call delegation example used untyped callees that require a failure boundary. It now declares the callable signatures while preserving unchecked results, native `TypeError` defects and optional-call evaluation order.
 
 - A CommonJS function annotated at an `exports` or `module.exports` assignment could lose its throws contract, rejecting non-throwing calls or missing a throwing call. These assignments now retain their written `@throws` contract.

@@ -91,7 +91,7 @@ func FuzzBrowserCountAdvice(f *testing.F) {
 			}
 			count++
 			text := layerMergeAdviceText(d)
-			for _, want := range []string{browserCountExample, "not provided by the browser layer"} {
+			for _, want := range []string{browserCountExample, "not provided by the browser layer", "The availableParallelism member of the Experimental.Process.Process service"} {
 				if !strings.Contains(text, want) {
 					Gap(t, "FuzzBrowserCountAdvice", row.Key, "%s: missing %q in %s", browserCountDiagnosticQuote, want, text)
 					return

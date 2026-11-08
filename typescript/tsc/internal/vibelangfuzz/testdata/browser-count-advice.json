@@ -38,5 +38,15 @@
     "key": "parameter:browser",
     "source": "export const read=(navigator:{hardwareConcurrency:number})=>navigator.hardwareConcurrency",
     "host": false
+  },
+  {
+    "key": "browser:global-optional",
+    "source": "export const read=()=>globalThis.navigator?.hardwareConcurrency",
+    "host": true
+  },
+  {
+    "key": "browser:literal-optional",
+    "source": "export const read=()=>navigator?.[\"hardwareConcurrency\"]",
+    "host": true
   }
 ]
