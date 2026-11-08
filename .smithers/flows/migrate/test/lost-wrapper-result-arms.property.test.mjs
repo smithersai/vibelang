@@ -82,3 +82,48 @@ test("unchanged mixed Effect and value returns keep their existing classificatio
   assert.equal(Effect.isEffect(execute(original)(1)), true)
   assert.deepEqual(scan(original, original).flags, [])
 })
+
+
+const forwarded = JSON.parse(readFileSync(new URL("./corpus/member-forwarding-branches.json", import.meta.url)))
+
+test("member-forwarding corpus retains an equivalent callback record across branches", () => {
+  assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes(forwarded.rule))
+  const before = execute(forwarded.original), after = execute(forwarded.emitted)
+  for (const n of [0, 1]) {
+    assert.equal(Effect.isEffect(before(n)), false)
+    assert.equal(Effect.isEffect(after(n)), false)
+    assert.equal(Effect.runSync(before(n).onSome(n)), n)
+    assert.equal(Effect.runSync(after(n).onSome(n)), n)
+  }
+  assert.deepEqual(scan(forwarded.original, forwarded.emitted).flags, [])
+})
+
+test("property: extra callback-record branches keep named-member forwarding credit", async () => {
+  await checkProperty(fc, {
+    name: forwarded.property, rule: forwarded.rule, numRuns: 120,
+    regressions: new URL("./corpus/", import.meta.url),
+    command: "node --test .smithers/flows/migrate/test/lost-wrapper-result-arms.property.test.mjs",
+    arbitrary: fc.record({
+      count: fc.integer({ min: 2, max: 6 }),
+      parameter: fc.constantFrom("p", "value", "input", "$value"),
+      field: fc.constantFrom("onSome", "handle", "make"),
+    }),
+    check: ({ count, parameter, field }) => {
+      const original = "export const target = n => ({ " + field + ": Effect.succeed });"
+      const record = "({ " + field + ": " + parameter + " => Effect.succeed(" + parameter + ") })"
+      const emitted = "export const target = n => " + Array.from({ length: count }, (_, i) => i)
+        .reduceRight((tail, i) => "n === " + i + " ? " + record + " : " + tail, record) + ";"
+      const before = execute(original), after = execute(emitted)
+      for (let n = -1; n < count; n++) {
+        assert.equal(Effect.isEffect(before(n)), false)
+        assert.equal(Effect.isEffect(after(n)), false)
+        assert.equal(Effect.runSync(before(n)[field](n)), n)
+        assert.equal(Effect.runSync(after(n)[field](n)), n)
+      }
+      assert.deepEqual(scan(original, emitted).flags, [], emitted)
+      // A complete change to the forwarded member must remain observable.
+      const changed = emitted.replaceAll("Effect.succeed", "Effect.fail")
+      assert.deepEqual(scan(original, changed).flags.map(flag => flag.function), ["/target"])
+    },
+  })
+})

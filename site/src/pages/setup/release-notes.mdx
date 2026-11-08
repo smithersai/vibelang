@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A migration could mistake a returned record of Effect callbacks for a returned Effect and reject equivalent branches. Such callback records now keep their existing preservation rules.
+
 - A migrated function that always returned an Effect could gain a plain-value result when extra branches or local assignments hid the change. Verification now reports that loss even when the number of Effect-valued results stays the same.
 
 - On Bun 1.3, loading a `.vibe` module that imports a sibling `.ts` or `.tsx` file could fail with `ENOENT` for a `file:` path or lose Unicode characters from the filename. These imports now load their source files, including when no emitted JavaScript file exists.

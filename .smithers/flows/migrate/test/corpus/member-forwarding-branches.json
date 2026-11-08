@@ -1,0 +1,12 @@
+{
+  "property": "migration-named-member-forwarded-branches",
+  "rule": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "input": {
+    "count": 2,
+    "parameter": "value",
+    "field": "onSome"
+  },
+  "original": "export const target = n => ({ onSome: Effect.succeed });",
+  "emitted": "export const target = n => n ? ({ onSome: value => Effect.succeed(value) }) : ({ onSome: value => Effect.succeed(value) });",
+  "pattern": "Returning a record of Effect callbacks does not establish that the returned record is an Effect."
+}

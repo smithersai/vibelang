@@ -552,9 +552,13 @@ export function lostWrappers({ ts, original, originalPath = "original.ts", emitt
       // A function that always returns a program must retain that guarantee when lowering
       // introduces more result arms. Earlier Effect assignments cannot excuse
       // a later scalar result merely by keeping the old Effect-arm count.
-      const allPrograms = fn.factory || fn.effects === fn.returns
+      const forwarded = forwardedArms(fn, counterpart)
+      // Named-member forwarding also describes records of callbacks, not just
+      // returned programs. Keep its existing comparison rather than inferring
+      // a program-return guarantee from those members.
+      const allPrograms = fn.factory || (fn.effects === fn.returns && forwarded === 0)
       const required = allPrograms ? Math.max(returned, counterpart.returns) : returned
-      if (counterpart.effects + forwardedArms(fn, counterpart) < required)
+      if (counterpart.effects + forwarded < required)
         flags.push({ function: name, line: fn.line, effectReturns: returned, emittedEffectReturns: counterpart.effects, emittedReturns: counterpart.returns, cast: fn.cast })
     }
   }
