@@ -189,6 +189,9 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
         }
         if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
           const visibilityMarkers = new Set()
+          // A source class is not ambient: its added fields are declared, so
+          // they need no initializer and the brand key is no value use.
+          const declared = (node.flags & ts.NodeFlags.Ambient) === 0 ? [factory.createModifier(ts.SyntaxKind.DeclareKeyword)] : []
           const members = node.members.map(member => {
             const visibility = member.modifiers?.find(m => m.kind === ts.SyntaxKind.PrivateKeyword || m.kind === ts.SyntaxKind.ProtectedKeyword)
             const privateName = member.name && ts.isPrivateIdentifier(member.name)
@@ -217,14 +220,14 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
             if (visibilityMarkers.has(markerKey)) return transformedMember
             visibilityMarkers.add(markerKey)
             const marker = factory.createPropertyDeclaration(
-              [...(staticModifier ? [staticModifier] : []), factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)],
+              [...declared, ...(staticModifier ? [staticModifier] : []), factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)],
               factory.createStringLiteral("__api_visibility_" + member.name.getText(source)), undefined,
               factory.createLiteralTypeNode(factory.createStringLiteral(privateName ? "#" : ts.tokenToString(visibility.kind))), undefined)
             return [transformedMember, marker]
           }).flat()
           if (members.some((m, i) => m !== node.members[i]) && node.members.some(m => m.name && (ts.isPrivateIdentifier(m.name) || m.modifiers?.some(x => x.kind === ts.SyntaxKind.PrivateKeyword || x.kind === ts.SyntaxKind.ProtectedKeyword)))) {
             members.push(factory.createPropertyDeclaration(
-              [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], brandKey(brand(source, node)), undefined,
+              [...declared, factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], brandKey(brand(source, node)), undefined,
               factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword), undefined))
           }
           return ts.isClassDeclaration(node)

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The migration's API identity check could not finish comparing a package whose `.ts` source exports a class with a private, protected or `#private` member, even when nothing changed: its own rewriting of the class reported `TS2564` and `TS1361`. It now compares such a class, and still reports a member whose visibility changes.
+
 - Under `bun --preload vibelang/bun`, a `.vibe` module ignored `--define` and a `bunfig.toml` `[define]` table: `declare const BUILD_VERSION: string` read as undefined where the same `.ts` module read the defined value. A `.vibe` module that names a defined value now reads it as its TypeScript twin does.
 
 - Under `vibelang/bun`, importing a package whose `default` export names a `.vibelang/js` file with no single source, because `x.ts` and `x.vibe` both exist or its header names a deleted `.vibe`, failed with Bun's `TypeError: onLoad() expects an object returned`. The emitted module now loads in place, as documented.
