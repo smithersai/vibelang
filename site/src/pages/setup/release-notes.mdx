@@ -26,6 +26,25 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The replacement hint for `crypto.hash()` returned bytes where callers expected hex text. It now uses `digestHex` for the default string output and explains how to retain byte output.
 
 - The hint for `navigator.hardwareConcurrency` selected a process service that browser layers cannot provide. It now points to a TypeScript adapter that preserves the browser value.
+- When the migration flow split platform code into a `.platform.ts` sibling, a moved private function such as `const applyCredentials = (request) => …` came back in the `.vibe` module as `const applyCredentials: typeof applyCredentials$platform = applyCredentials$platform`, which the compiler rejects with `EK0402`. A moved function or class now comes back as a plain import; a moved data value keeps its typed local binding, which preserves narrowing inside closures.
+- `declare global { var __LIMIT__: number | undefined }` in a `.vibe` file reported `EK0107`, though it emits no code and no other declaration types a property of `globalThis`. An ambient `var` directly in `declare global { }` is now allowed; every other `var` is still `EK0107`.
+- Migration kept a module in TypeScript on every pass when a plain function returning an Effect called TypeScript that may throw, such as an eager `Effect.succeed(foreign())` factory or a listener registration. With the earlier pass's receipts listed, those declarations now move into a `module throwing { }` body, keeping their eager calls and declarations, and the rest of the module migrates.
+- An existing platform helper could block migration even when a module body needed no new sibling. Body-only repairs now proceed while preserving that helper; repairs that need its path still refuse the collision.
+
+- Two proposal comparison tables left their first column unnamed. The column now has a visible label that screen readers can announce.
+
+- Two specification sections skipped a heading level, making their structure harder to follow with a screen reader. Both now use the correct section level.
+
+- Visiting an internal declaration-file URL could show a blank page with a successful status. These URLs now show the normal missing-page response.
+
+- Screen readers could miss the site logo and alpha notice when navigating by page regions. The header, home link and release notice now belong to named landmarks.
+
+- Missing pages had no main landmark for screen-reader navigation. The error message and home link now share a main landmark.
+
+- Constructor and base-class references could use the reserved names `fork` and `join` inside effect code. They now report `EK1702`, and `vibelang --fix` preserves the reference and the original binding's name.
+- The global `tryPromise` reported `EK0401` for a call known to throw inside its thunk, such as `tryPromise(() => load())` with `load` declared `@throws`, while `Effect.tryPromise` admitted it. Both spellings now admit the call, in the function and the options form.
+
+- `vibelang --fix` left a legacy `vibelang.diagnostics` map in place, still reporting `EK3009`, when it named a ported lint code such as `EK4801`. The map now moves to `vibe.severities` under the rule's assigned code, `EK3801`.
 
 - WebSocket replacement hints could leave an unrun program or an unsatisfied constructor requirement. They now show `try` and the constructor layer needed to obtain a socket.
 
@@ -702,6 +721,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 | Implicit service keys in a package with `"name": ""` | Keys now begin with `/`. Run `vibelang --fix --fix-legacy-service-keys` on existing source to retain its earlier directory-prefixed keys explicitly. |
 | `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it, or `vibelang --fix` to retain the unrun Effect and native suspension. |
 | An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |
+| `new join.C()` or `class extends fork.C {}` inside effect code | `EK1702`: rename the reserved binding, or run `vibelang --fix` to preserve the reference without renaming the binding. Member names such as `tools.join` remain allowed. |
 
 ## 0.0.12
 
