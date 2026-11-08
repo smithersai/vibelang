@@ -572,6 +572,8 @@ For `abstract schema error` roots, the native-class migration retains the origin
 
 Inside an `Effect.try` thunk, a callback supplied to a rethrowing array method may call a function known to throw. A function returned from that callback is a separate plain function and still needs its own boundary.
 
+An optional call returning `any` still follows its callee's thrown contract. A callable declared in `.vibe` outside a `module` body throws `never`, including when its result is `any`; calling a value itself typed `any` needs an explicit failure boundary in effect code.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/error-management/expected-errors](https://effect.website/docs/v4/error-management/expected-errors/)

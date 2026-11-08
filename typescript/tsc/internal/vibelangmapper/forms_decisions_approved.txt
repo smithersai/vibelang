@@ -2384,3 +2384,6 @@ typescript/vibelang/cases/vip5-coverage-handler-generator.fail/main.vibe:3:55 la
 typescript/vibelang/cases/vip5-coverage-handler-generator.fail/main.vibe:5:67 lambda: plain fallback -> effectFn table # a rejected generator expression is parsed as the handler itself so its parameters take the failure's type; EK0509 unchanged
 typescript/vibelang/cases/vip5-coverage-handler-generator.fail/main.vibe:6:69 lambda: plain fallback -> effectFn table # a rejected generator expression is parsed as the handler itself so its parameters take the failure's type; EK0509 unchanged
 typescript/vibelang/cases/vip5-coverage-handler-generator.fail/main.vibe:7:63 lambda: plain fallback -> effectFn table # a rejected generator expression is parsed as the handler itself so its parameters take the failure's type; EK0509 unchanged
+
+typescript/vibelang/cases/try-optional-native-delegation/main.vibe:18:25 lambda: choice fallback -> effectFn table # the typed producer parameter supplies context for this callback, which returns an Effect; the Exit and event witness stays unchanged
+typescript/vibelang/cases/try-optional-native-delegation/main.vibe:28:30 lambda: plain fallback -> effectFn annotation # the written producer signature resolves this Effect-returning callback instead of the untyped fallback; the runtime witness preserves its cold result

@@ -292,7 +292,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,300 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 20,000 |
-| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |
+| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,100 |
 | **Appendices** | **140,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 110,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |

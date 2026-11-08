@@ -8587,11 +8587,9 @@ typescript/vibelang/cases/try-operations-effect-instance/main.vibe:3:36 lambda p
 typescript/vibelang/cases/try-operations-effect-instance/main.vibe:7:51 lambda plain table
 typescript/vibelang/cases/try-operations-effect-instance/main.vibe:7:59 lambda program keyword
 typescript/vibelang/cases/try-operations-effect-instance/main.vibe:9:39 byname program table
-typescript/vibelang/cases/try-optional-native-delegation/main.vibe:12:57 lambda dual fallback
-typescript/vibelang/cases/try-optional-native-delegation/main.vibe:15:30 lambda choice fallback
-typescript/vibelang/cases/try-optional-native-delegation/main.vibe:16:25 lambda choice fallback
-typescript/vibelang/cases/try-optional-native-delegation/main.vibe:18:27 byname program table
-typescript/vibelang/cases/try-optional-native-delegation/main.vibe:19:27 byname program table
+typescript/vibelang/cases/try-optional-native-delegation/main.vibe:14:81 lambda dual fallback
+typescript/vibelang/cases/try-optional-native-delegation/main.vibe:17:30 lambda choice fallback
+typescript/vibelang/cases/try-optional-native-delegation/main.vibe:18:25 lambda effectFn table
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:20:27 byname program table
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:21:27 byname program table
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:22:27 byname program table
@@ -8599,9 +8597,11 @@ typescript/vibelang/cases/try-optional-native-delegation/main.vibe:23:27 byname 
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:24:27 byname program table
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:25:27 byname program table
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:26:27 byname program table
-typescript/vibelang/cases/try-optional-native-delegation/main.vibe:26:30 lambda plain fallback
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:27:27 byname program table
 typescript/vibelang/cases/try-optional-native-delegation/main.vibe:28:27 byname program table
+typescript/vibelang/cases/try-optional-native-delegation/main.vibe:28:30 lambda effectFn annotation
+typescript/vibelang/cases/try-optional-native-delegation/main.vibe:29:27 byname program table
+typescript/vibelang/cases/try-optional-native-delegation/main.vibe:30:27 byname program table
 typescript/vibelang/cases/try-parenthesized-call/main.vibe:14:26 lambda program annotation
 typescript/vibelang/cases/try-parenthesized-effect-block/main.vibe:13:16 lambda program table
 typescript/vibelang/cases/try-parenthesized-effect-block/main.vibe:21:21 lambda effectFn table

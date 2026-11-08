@@ -393,7 +393,7 @@ if (first.value.$fiber !== 1 || second.value.$fiber !== 2 ||
 // Success({ $fiber: 1, ["__proto__"]: 7 }) differs from Success({ $fiber: 2, ["__proto__"]: 8 }).
 ```
 
-<a id="unchecked-delegation"></a>Unchecked `try` operands keep ECMA-262's [delegated yield evaluation](https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-generator-function-definitions-runtime-semantics-evaluation) inside the accepted `Effect.gen` counterpart, without a runtime Effect guard ([`try`](002-running.md#try)). A noniterable defects with its native `TypeError`; an unchecked iterable can complete normally. Native iterator getters, calls, results and errors keep their reached order and identity. This does not change static operand admission or Effect's generator abandonment.
+<a id="unchecked-delegation"></a>Unchecked `try` operands keep ECMA-262's [delegated yield evaluation](https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-generator-function-definitions-runtime-semantics-evaluation) inside the accepted `Effect.gen` counterpart, without a runtime Effect guard ([`try`](002-running.md#try)). A noniterable defects with its native `TypeError`; an unchecked iterable can complete normally. Native iterator getters, calls, results and errors keep their reached order and identity. This does not change static operand admission or Effect's generator abandonment. An unchecked result does not erase the callee's thrown contract: a call through `any` still needs a failure boundary, while a callable declared in `.vibe` outside a `module` body with an `any` result has thrown type `never`.
 
 ```vibe es
 // compiler-gap: pending VIP-5
