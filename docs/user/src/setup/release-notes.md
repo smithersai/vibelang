@@ -33,6 +33,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Nested `try` expressions with parenthesized operands could leave an Effect unrun and infer an extra Effect layer. Each `try` now runs its operand once, with or without parentheses.
 
+- `when Function:` and `value is Function` reported `EK0107` twice at the same place. They now report it once, with the advice to test the value with a `typeof` guard; `when globalThis.Function:` gives the same advice.
+
 - Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
 
 - Migration API checks could lose one referenced project's declarations when config paths shared an output name. Each project now keeps separate declarations and compiler logs, and ambiguous older snapshots require fresh setup.

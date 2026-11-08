@@ -1,0 +1,11 @@
+// expect: EK0107
+export function bare(s: unknown) { return match (s) { when Function: 1; default: 0; } }
+export function inline(s: unknown) { return s is Function }
+export function extract(s: unknown) { return match (s) { when Function(let g): 1; default: 0; } }
+export function global(s: unknown) { return match (s) { when globalThis.Function: 1; default: 0; } }
+export function globalIs(s: unknown) { return s is globalThis.Function }
+export function globalExtract(s: unknown) { return match (s) { when globalThis.Function(let g): 1; default: 0; } }
+export const value = Function
+export function subject() { return match (Function) { when let g: 1; } }
+export function allowed(s: unknown) { return s instanceof Function }
+export function local(s: unknown) { class Function {}; return s is Function }

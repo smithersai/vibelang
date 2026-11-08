@@ -1,0 +1,8 @@
+main.vibe(2,60): error EK0107
+main.vibe(3,50): error EK0107
+main.vibe(4,63): error EK0107
+main.vibe(5,62): error EK0107
+main.vibe(6,52): error EK0107
+main.vibe(7,69): error EK0107
+main.vibe(8,22): error EK0107
+main.vibe(9,43): error EK0107

@@ -17,7 +17,9 @@ func checkGlobalLegacyMembers(c *checker.Checker, file *ast.SourceFile) {
 			case "eval":
 				report(c, node, EK0107.With("globalThis.eval runs a string as code and is not allowed in a .vibe file. Move the code to a .ts or .js file."))
 			case "Function":
-				if !globalLegacyFunctionExempt(node) {
+				if isPatternMatcher(node) {
+					report(c, node, ek0107Pattern)
+				} else if !globalLegacyFunctionExempt(node) {
 					report(c, node, EK0107.With("globalThis.Function reaches the Function constructor, which runs a string as code. Move the code to a .ts or .js file; instanceof and .prototype stay allowed."))
 				}
 			}

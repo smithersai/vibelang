@@ -22,6 +22,13 @@ var (
 	ek0107Pattern   = EK0107.With("The global Function is not available in a .vibe file: test the value with a typeof guard, when let f and if (typeof f === \"function\").")
 )
 
+// isPatternMatcher reports whether node is the matcher of a pattern's $is or
+// $extract call: the class expression of when C: or s is C.
+func isPatternMatcher(node *ast.Node) bool {
+	parent := node.Parent
+	return (isPatternCall(parent, "$is") || isPatternCall(parent, "$extract")) && parent.Arguments()[0] == node
+}
+
 // checkClassPatternDispatch checks matcher, the expression of a class pattern
 // that no earlier diagnostic took, against the rule above.
 func checkClassPatternDispatch(c *checker.Checker, matcher *ast.Node, extractor bool) {
@@ -30,8 +37,9 @@ func checkClassPatternDispatch(c *checker.Checker, matcher *ast.Node, extractor 
 	}
 	name := scanner.GetTextOfNode(matcher)
 	if ast.IsIdentifier(matcher) && matcher.Text() == "Function" {
+		// The global Function's EK0107, with this pattern's advice, comes
+		// from the legacy JavaScript check, so the span reports it once.
 		if symbol := c.GetSymbolAtLocation(matcher); symbol != nil && isGlobal(c, symbol) {
-			report(c, matcher, ek0107Pattern)
 			cover(c, matcher)
 		}
 		return

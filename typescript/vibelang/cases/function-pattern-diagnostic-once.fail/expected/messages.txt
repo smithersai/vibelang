@@ -1,0 +1,1 @@
+test the value with a typeof guard
