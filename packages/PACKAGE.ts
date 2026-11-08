@@ -183,7 +183,8 @@ const migrateLoaderValidation = S.Shell.Test({
 
 const migrateTest = S.Shell.Test({
   summary: "The migrate and convert flows' tests.",
-  shell: "cd packages/compiler && bun install --frozen-lockfile && " +
+  shell: "cd docs/tools && bun install --frozen-lockfile && cd ../.. && " +
+    "cd packages/compiler && bun install --frozen-lockfile && " +
     "cd ../../.smithers/flows && files=$(node ../../scripts/testing/migrate-slice.mjs migrate/test/*.test.mjs convert/*.test.mjs) && node --test " +
     "--test-reporter=../../scripts/testing/migrate-progress.mjs --test-reporter-destination=stderr $files",
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,

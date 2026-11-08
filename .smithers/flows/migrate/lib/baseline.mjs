@@ -1,4 +1,5 @@
 // Keep upgrade failures outside the migration baseline, including old run receipts.
+import { createHash } from "node:crypto"
 import { join } from "node:path"
 import { newErrors } from "./diagnostics.mjs"
 import { compareTests } from "./tests.mjs"
@@ -16,6 +17,39 @@ export function compilerAdmission(before, after) {
   const exitRegression = before.code === 0 && after.code !== 0
   return { ok: !added.length && !exitRegression, newErrors: added, exitRegression,
     exit: { before: before.code, after: after.code }, beforeCompiler: before.compiler, afterCompiler: after.compiler }
+}
+
+// Versioned names keep package paths separate from both each other and legacy slugs.
+export function setupCompileKey(pkg) {
+  const path = pkg || ".", encoded = encodeURIComponent(path)
+  // Keep a valid package segment from exceeding the receipt filename limit.
+  return "compile-v2/" + (encoded.length <= 180 ? "package-" + encoded
+    : "digest-" + createHash("sha256").update(path).digest("hex"))
+}
+
+export function recordSetupCompile(p, pkg, checked) {
+  const key = setupCompileKey(pkg)
+  writeJson(join(p.baseline, key + ".json"), checked.diagnostics)
+  writeJson(join(p.baseline, key + ".exit.json"), { code: checked.code })
+}
+
+/** A legacy receipt is evidence only when its package identity is unambiguous. */
+export function readSetupCompile(p, pkg, packages) {
+  const read = name => readJsonIf(join(p.baseline, name))
+  let key = setupCompileKey(pkg)
+  let diagnostics = read(key + ".json"), outcome = read(key + ".exit.json")
+  if (diagnostics === undefined && outcome === undefined) {
+    key = "compile-" + slug(pkg)
+    diagnostics = read(key + ".json")
+    outcome = read(key + ".exit.json")
+    if (diagnostics === undefined && outcome === undefined) return
+    const aliases = packages.filter(dir => slug(dir) === slug(pkg))
+    if (aliases.length > 1) return { receipt: key + ".json",
+      reason: "legacy setup compile receipt aliases packages: " + aliases.join(", "), packages: aliases }
+  }
+  const receipt = key + ".exit.json"
+  if (!Array.isArray(diagnostics)) return { receipt: key + ".json", reason: "setup compiler diagnostics are missing or invalid" }
+  return { diagnostics, code: outcome?.code, receipt }
 }
 
 /** Recompute from raw reports so a legacy green verify cannot absorb a failed switch. */
@@ -44,20 +78,20 @@ export function assertBaselineSafe(p, { includeSetup = true } = {}) {
   const original = read("upstream-checks.json") ?? {}, current = read("upgraded-checks.json") ?? {}
   for (const [pkg, before] of Object.entries(original)) {
     if (current[pkg]) compile.push({ stage: "upgrade", package: pkg, ...compilerAdmission(before, current[pkg]) })
-    const candidate = includeSetup && read("compile-" + slug(pkg) + ".json")
+    const candidate = includeSetup && readSetupCompile(p, pkg, Object.keys(original))
     // Compare actual exits: an Effect diagnostic printed as an error can
     // still exit zero under ignoreEffect*InTscExitCode. Missing or invalid
     // setup outcomes remain unverified, including legacy receipts.
     if (candidate) {
       const before_ = current[pkg] ?? before
-      const receipt = "compile-" + slug(pkg) + ".exit.json"
-      const code = read(receipt)?.code
-      if (!Number.isInteger(code) || code < 0) {
+      const { receipt, code } = candidate
+      if (candidate.reason || !Number.isInteger(code) || code < 0) {
         compile.push({ stage: "setup", package: pkg, state: "unverified",
-          receipt, reason: "setup compiler exit is missing or invalid", ok: false })
+          receipt, reason: candidate.reason ?? "setup compiler exit is missing or invalid",
+          ...(candidate.packages ? { packages: candidate.packages } : {}), ok: false })
       } else {
         compile.push({ stage: "setup", package: pkg,
-          ...compilerAdmission(before_, { compiler: "setup", code, diagnostics: candidate }) })
+          ...compilerAdmission(before_, { compiler: "setup", code, diagnostics: candidate.diagnostics }) })
       }
     }
   }

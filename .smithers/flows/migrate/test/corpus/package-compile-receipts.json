@@ -1,0 +1,29 @@
+{
+  "key": "package-compile-receipts:nested-underscore",
+  "packages": [
+    "packages/core",
+    "packages__core"
+  ],
+  "sources": [
+    "export const value: number = 1\n",
+    "export const value: number = \"existing error\"\n"
+  ],
+  "neighbours": [
+    [
+      ".",
+      "root"
+    ],
+    [
+      "a/b__c",
+      "a__b/c"
+    ],
+    [
+      "space \u03b4/core",
+      "space \u03b4__core"
+    ],
+    [
+      "a%2Fb",
+      "a/b"
+    ]
+  ]
+}

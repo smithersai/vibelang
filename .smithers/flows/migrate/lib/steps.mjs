@@ -20,7 +20,7 @@ import { wireDeclarationRedirects } from "./declaration-redirects.mjs"
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { assertBaselineSafe } from "./baseline.mjs"
+import { assertBaselineSafe, readSetupCompile, recordSetupCompile, setupCompileKey } from "./baseline.mjs"
 import { assertNoTestBundleRename } from "./test-bundles.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import * as Enumerations from "./enumerations.mjs"
@@ -1388,9 +1388,8 @@ export async function setup(options) {
   const declarations = {}
   const ts = typeScriptOf(config)
   for (const pkg of config.packages) {
-    const checked = await checkPackage({ compiler, ts, t, pkg, log: join(logs, `compile-${slug(pkg.dir)}.log`) })
-    writeJson(join(p.baseline, `compile-${slug(pkg.dir)}.json`), checked.diagnostics)
-    writeJson(join(p.baseline, `compile-${slug(pkg.dir)}.exit.json`), { code: checked.code })
+    const checked = await checkPackage({ compiler, ts, t, pkg, log: join(logs, setupCompileKey(pkg.dir) + ".log") })
+    recordSetupCompile(p, pkg.dir, checked)
     compile[pkg.dir] = summarize(checked.diagnostics)
     assertBaselineSafe(p)
     const outDir = join(p.baseline, "dts", slug(pkg.dir))
@@ -1863,9 +1862,11 @@ export async function compile(options) {
   const added = []
   const ts = typeScriptOf(config)
   for (const pkg of config.packages) {
-    const checked = await checkPackage({ compiler, ts, t: config.target, pkg, log: join(p.batch(b), "logs", `compile-${slug(pkg.dir)}.log`) })
+    const checked = await checkPackage({ compiler, ts, t: config.target, pkg, log: join(p.batch(b), "logs", setupCompileKey(pkg.dir) + ".log") })
     diagnostics.push(...checked.diagnostics)
-    added.push(...newErrors(readJson(join(p.baseline, `compile-${slug(pkg.dir)}.json`)), checked.diagnostics))
+    const baseline = readSetupCompile(p, pkg.dir, config.packages.map(pkg => pkg.dir))
+    if (!baseline || baseline.reason) throw new Error("unverified setup compile for " + pkg.dir + ": " + (baseline?.reason ?? "missing receipt"))
+    added.push(...newErrors(baseline.diagnostics, checked.diagnostics))
   }
   const preserved = await preservedErrorAdvisories({
     compiler, target: config.target, packages: config.packages,
