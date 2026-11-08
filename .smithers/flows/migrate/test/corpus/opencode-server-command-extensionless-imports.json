@@ -1,0 +1,13 @@
+{
+  "sources": {
+    "src/api.ts": "export const Api = { name: \"server\" }\n",
+    "src/location/index.ts": "export const response = (value: string) => \"ok:\" + value\n",
+    "src/handlers/command.vibe": "import { Api } from \"../api\"\nimport { response } from \"../location\"\nexport const describe = () => response(Api.name)\n"
+  },
+  "outputs": {
+    "src/api.ts": "export const Api = { name: \"server\" };\n",
+    "src/location/index.ts": "export const response = (value) => \"ok:\" + value;\n",
+    "src/handlers/command.vibe": "import { Api } from \"../api\";\nimport { response } from \"../location\";\nexport const describe = () => response(Api.name);\n"
+  },
+  "expected": "ok:server"
+}
