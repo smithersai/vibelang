@@ -19,7 +19,7 @@ func TestVibexDeclarationSpellingQuoted(t *testing.T) {
 		t.Fatal("missing generated contract identity rule")
 	}
 
-	const quote = "The public \x60x.d.ts\x60 is API-identical ([VIP-27](0027-declaration-output.md)) to the one the fork writes for the \x60.tsx\x60 twin that carries the same \x60@throws\x60 tags."
+	const quote = "The public \x60x.d.ts\x60 is API-identical ([VIP-27](0027-declaration-output.md)) to the one the fork writes for the unmodified \x60.tsx\x60 twin, with VIP-27's one generated-contract exception: the emitted declaration may add a generated \x60@throws {never}\x60 where the twin has no authored throw contract."
 	if !strings.Contains(SpecText("../vips/0039-vibex.md"), quote) {
 		t.Fatalf("VIP39 no longer says %q", quote)
 	}
