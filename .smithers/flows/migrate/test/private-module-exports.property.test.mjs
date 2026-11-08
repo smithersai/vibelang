@@ -6,6 +6,7 @@ import { dirname, join } from "node:path"
 import { spawnSync } from "node:child_process"
 import { test } from "node:test"
 import { routeEmittedExports } from "../lib/emitted-exports.mjs"
+import { excludePrivateModules } from "../lib/private-module-exports.mjs"
 import { emitPackageJs } from "../lib/declarations.mjs"
 import { checkProperty } from "../../../../scripts/testing/property.mjs"
 const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
@@ -109,5 +110,29 @@ test("native JSX-preserving companions are private while their emitted bodies st
     routeEmittedExports(root, result.outputs, { moduleOutputs: result.moduleOutputs })
     assert.equal(JSON.parse(readFileSync(join(root, "package.json"))).exports["./Route.vibex.-24-throw-24-ts"], null)
     assert.deepEqual(readFileSync(join(root, body.output)), bytes)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+// A receipt from an earlier compiler names module-body companions unencoded
+// (./bom.vibe.$call$ts); the 0.0.12 and later outputs encode the dollar
+// (./bom.vibe.-24-call-24-ts). Re-running the exclusion with the current
+// outputs drops the old null entries and nulls the encoded names, so the
+// ./* wildcard cannot publish a companion (opencode Util bom and patch).
+test("opencode Util: a stale unencoded receipt gives way to the encoded companion names", () => {
+  const root = mkdtempSync(join(tmpdir(), "private-module-receipt-"))
+  try {
+    mkdirSync(join(root, "src"), { recursive: true })
+    mkdirSync(join(root, ".vibelang"), { recursive: true })
+    writeFileSync(join(root, "src/bom.vibe"), "")
+    writeFileSync(join(root, "src/patch.vibe"), "")
+    writeFileSync(join(root, ".vibelang/private-module-exports.json"), JSON.stringify({ version: 1, entries: [{ field: "exports", key: "./bom.vibe.$call$ts" }, { field: "exports", key: "./patch.vibe.$throw$ts" }] }))
+    const pkg = { name: "@opencode/util", exports: { "./*": { types: "./src/*.ts", "vibelang-source": "./src/*.ts", default: "./.vibelang/js/src/*.js" }, "./bom.vibe.$call$ts": null, "./patch.vibe.$throw$ts": null } }
+    excludePrivateModules(root, pkg, [
+      { source: "./src/bom.vibe", output: "./.vibelang/js/src/bom.vibe.-24-call-24-ts.js" },
+      { source: "./src/patch.vibe", output: "./.vibelang/js/src/patch.vibe.-24-throw-24-ts.js" }
+    ])
+    assert.deepEqual(Object.keys(pkg.exports).sort(), ["./*", "./bom.vibe.-24-call-24-ts", "./patch.vibe.-24-throw-24-ts"])
+    assert.equal(pkg.exports["./bom.vibe.-24-call-24-ts"], null)
+    assert.deepEqual(JSON.parse(readFileSync(join(root, ".vibelang/private-module-exports.json"), "utf8")).entries.map((entry) => entry.key).sort(), ["./bom.vibe.-24-call-24-ts", "./patch.vibe.-24-throw-24-ts"])
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
