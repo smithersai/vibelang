@@ -83,7 +83,6 @@ var specAhead = map[int32]string{
 	1402: "lane spec-lander assigned EK1402 (claim spec:EK1402-public-provenance); " + renumbering,
 	1707: "lane relic-try-forms registers EK1707 (claim diagnostic:EK1707-bare-fork-block)",
 	2401: "lane relic-try-forms registers EK2401 (claim diagnostic:EK2401-wire-intrinsic)",
-	2601: renumbering,
 	3010: "lane no-trusted-packages registers EK3010 (claim trustedPackages:deprecation)",
 	3011: renumbering,
 	3410: "lane relic-mutable registers EK3410 (claim diagnostic:EK3410:retired-mutable)",
