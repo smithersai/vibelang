@@ -122,6 +122,13 @@ func missingRuntimeDiagnostics(c *checker.Checker, file *ast.SourceFile, all []*
 			if (d.Code() == 7006 || d.Code() == 7019 || d.Code() == 7031) && missingRuntimeHelperAncestor(astnav.GetTokenAtPosition(file, d.Pos())) {
 				continue
 			}
+			// The runtime's TaggedError base types a root error's constructor.
+			// Without it the synthesized class takes no argument, so each
+			// `new` of such an error adds an arity or argument error that the
+			// one TS2307 already explains.
+			if missingRuntimeErrorConstruction(c, file, d) {
+				continue
+			}
 		}
 		kept = append(kept, d)
 	}
@@ -159,4 +166,39 @@ func runtimeInstalledFor(c *checker.Checker, file *ast.SourceFile) bool {
 	}
 	resolved := c.Program().ResolveModuleNameForFile(runtimeModule, file)
 	return resolved != nil && resolved.IsResolved()
+}
+
+// missingRuntimeConstructionCodes are TypeScript's call-argument errors.
+var missingRuntimeConstructionCodes = map[int32]bool{2345: true, 2554: true, 2555: true, 2556: true, 2769: true}
+
+// missingRuntimeErrorConstruction reports whether d is an argument error on
+// a `new` of an error whose generated base the absent runtime supplies. A
+// diagnostic inside a written callable among the arguments is independent.
+func missingRuntimeErrorConstruction(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic) bool {
+	if !missingRuntimeConstructionCodes[d.Code()] {
+		return false
+	}
+	for node := astnav.GetTokenAtPosition(file, d.Pos()); node != nil; node = node.Parent {
+		if ast.IsFunctionLike(node) || ast.IsClassLike(node) {
+			return false
+		}
+		if !ast.IsNewExpression(node) {
+			continue
+		}
+		callee := ast.SkipParentheses(node.Expression())
+		symbol := c.GetSymbolAtLocation(callee)
+		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		if symbol == nil {
+			return false
+		}
+		for _, declaration := range symbol.Declarations() {
+			if form, _ := errorFormOf(declaration); form == errorFormRoot || form == errorFormSubclass {
+				return true
+			}
+		}
+		return false
+	}
+	return false
 }

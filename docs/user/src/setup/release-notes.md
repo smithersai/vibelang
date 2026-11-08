@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Compiling a program that constructs an `error` while `vibelang-runtime` is not installed reported an argument-count error on each `new` after the missing-package error. Only the one error naming the package is reported now.
+
 - The Effect lint video showed a retired configuration flag and rule; it now demonstrates project-based linting, the current Promise warning and a correction that compiles and runs.
 
 - Introductory and tooling videos displayed a personal machine's absolute project path. Their recordings now use project-relative display paths.
