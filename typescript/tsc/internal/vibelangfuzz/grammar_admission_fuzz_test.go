@@ -310,6 +310,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"error-no-end-heritage", "export error Gone extends Error Error ?? { since: number, by: string }"},
 	{"pattern-rest-ellipsis-for", grammarPatternRestEllipsisWitness},
 	{"pattern-rest-ellipsis-binding", grammarPatternRestEllipsisGaps[1]},
+	{"try-in-hatch", grammarTryInHatchWitness},
+	{"try-in-hatch-promise-shapes", grammarTryInHatchCaseWitness},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1194,6 +1196,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if form := grammarAdmissionDeclarationForm(declarationTokens); form != "" {
 		return form
+	}
+	if grammarTryInHatch(declarationTokens) {
+		return "admission:try-in-hatch"
 	}
 	for i, tok := range ts {
 		// EffectFunction = EffectModifier [no LineTerminator here] "function":

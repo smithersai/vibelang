@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:try-in-hatch-promise-shapes\nexport effect function main() { const r: number = try sync((flag: boolean): number | Promise<number> => try flag ? Promise.resolve(1) : 2, true); return r }")

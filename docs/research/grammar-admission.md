@@ -846,3 +846,15 @@ that a foreign plain object with the recognized tag is covered. Its quote
 includes the chapter's additional `instanceof` fallback; the existing
 shadowed-helper and mismatching-tag fuzz controls keep the tag guarantee
 separate from an ordinary custom matcher.
+
+A case-seeded campaign put a `try` inside the callback that
+`hatch-promise-shapes` passes to `sync`. VIP-6 replaces the legacy hatches,
+so that callback is plain code, where `try` is `EK0501`. The compiler still
+reads the first argument of a call to the prelude's `sync` as TypeScript and
+skips `EK0501` there. With a well-typed operand,
+`function f() { return sync(() => try Effect.succeed(1)) }` compiles with no
+diagnostic, and the emitted callback returns `Effect.succeed(1)` unrun. The
+witnesses remain pending under `admission:try-in-hatch`. The classifier reads
+only the first argument of an unqualified `sync` call; inputs after it,
+member calls, `new sync(...)` and programs that declare `sync` keep their
+`EK0501` and do not acquire the key.

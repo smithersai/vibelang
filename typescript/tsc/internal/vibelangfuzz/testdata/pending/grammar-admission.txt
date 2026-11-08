@@ -103,3 +103,6 @@ FuzzGrammarAdmission corpus:abstract-error compiler Appendix A: ErrorStart is `e
 FuzzGrammarAdmission admission:pattern-rest-ellipsis compiler VIP-7: the pinned MatchRestElement admits one ellipsis followed by an optional MatchPattern; a repeated ellipsis in an is pattern inside a for condition reports only checker errors
 FuzzGrammarAdmission corpus:pattern-rest-ellipsis-for compiler VIP-7: a for condition accepts a duplicated rest ellipsis absent from the pinned MatchRestElement grammar
 FuzzGrammarAdmission corpus:pattern-rest-ellipsis-binding compiler VIP-7: a binding before a duplicated rest marker in a var-initialized for condition suppresses the pattern syntax rejection even when the repeated marker has a binding operand
+FuzzGrammarAdmission admission:try-in-hatch compiler VIP-6: D148's sync hatch is replaced, so a try in its callback is plain code (EK0501); the compiler still reads the first argument of a call to the prelude's sync as TypeScript, skips EK0501 there and emits the callback without the try
+FuzzGrammarAdmission corpus:try-in-hatch compiler VIP-6: a try in a sync callback in a plain function compiles with no diagnostic and the callback returns the Effect unrun
+FuzzGrammarAdmission corpus:try-in-hatch-promise-shapes compiler VIP-6: a try in a sync callback inside an effect function reports only TS2769, never EK0501
