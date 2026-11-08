@@ -64,9 +64,9 @@ var preludeModules = map[string]string{
 	"$global":           runtimeModule,
 	"$bindingIterators": runtimeModule,
 	// How a schema error joins its family, which the parser writes (D304).
-	"$schemaErrorFamily":  runtimeModule,
+	"$schemaErrorFamily": runtimeModule,
 	// The refinement of an Error field's Schema (VIP-44, parser/vibelang_schema_generic.go).
-	"$isError": runtimeModule,
+	"$isError":            runtimeModule,
 	"$schemaErrorMember":  runtimeModule,
 	"$schemaErrorMatcher": runtimeModule,
 	"Control":             runtimeModule,
@@ -253,6 +253,13 @@ func mayUsePrelude(file *ast.SourceFile) (prelude bool, root bool, barrels []str
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+	// A library schema alias can have no visible Schema expression. Its
+	// detached codec still needs the modules used when that binding is selected.
+	for _, reference := range file.VibeLangSchemaGenerics {
+		if reference.Library != nil {
+			visit(reference.Library)
+		}
+	}
 	slices.Sort(barrels)
 	return prelude, root, barrels
 }

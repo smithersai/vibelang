@@ -24,6 +24,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Converting an `Effect.gen` whose TypeScript call read a just-checked property through a method, as `foreignId(request.id.trim())` after `if (!request.id) return`, failed with `TS18049` and kept the generator. The conversion now moves `request.id.trim()` to a `const` before the call, as the direct `EK0403` repair already did; a call that may throw still stays inside the bridge.
 - The mixed-platform import example omitted the error for a retired platform import. It now lists both errors at that import.
 - Postfix increments, decrements, non-null assertions and generic instantiations on a variable named `provide` could be rejected before a division expression. These expressions now keep TypeScript’s values and updates.
+- A standalone `schema` alias for a library type such as `Date` could be rejected unless another declaration loaded its codec. These aliases now load their required Schema modules.
 
 - A `schema` field typed `ReadonlyMap<K, V>` with a `Date`, collection, tuple or struct key reported `TS2345` against `Schema.Record`'s key constraint. The checker now checks the selected `Schema.ReadonlyMap` call, so any key schema is admitted.
 
