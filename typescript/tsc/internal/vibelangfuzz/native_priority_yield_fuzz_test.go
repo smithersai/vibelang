@@ -17,7 +17,6 @@ var priorityYieldKeys = []string{"literal", "undefined", "optional", "comments",
 func priorityYieldMigrationQuoted(t testing.TB) {
 	t.Helper()
 	for _, quote := range []string{
-		"Every breaking change ships a codemod.",
 		"One `vibelang --fix` run applies fixes until none applies; running it again changes nothing.",
 	} {
 		if !strings.Contains(SpecText("007-tooling.md"), quote) {

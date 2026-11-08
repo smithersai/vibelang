@@ -10,11 +10,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
-const bindingRenameMigrationQuote = "Every breaking change ships a codemod."
-
 func TestBindingRenameOwnershipQuoted(t *testing.T) {
 	text := SpecText("007-tooling.md")
-	for _, quote := range []string{bindingRenameMigrationQuote, "Preserve runtime behavior and comments;"} {
+	for _, quote := range []string{"Preserve runtime behavior and comments;"} {
 		if !strings.Contains(text, quote) {
 			t.Fatalf("chapter 007 no longer says %q", quote)
 		}

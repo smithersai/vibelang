@@ -8,7 +8,7 @@ import { chapter, read } from "./spec-witness.mjs"
 // and VIP-34. FuzzFix and TestFixFixedPointQuoted read the first sentence.
 test("chapter 7 states the --fix fixed point and the missing-runtime error", () => {
   const tooling = chapter("007-tooling")
-  const codemods = tooling.split("\n").find((line) => line.startsWith("Every breaking change ships a codemod."))
+  const codemods = tooling.split("\n").find((line) => line.startsWith("One `vibelang --fix` run applies fixes"))
   assert.match(codemods, /One `vibelang --fix` run applies fixes until none applies; running it again changes nothing\. A run that has not converged within its pass limit reports the remaining fixes as an error\./)
   const diagnostics = tooling.split("\n").find((line) => line.startsWith("When emitted JavaScript needs"))
   assert.match(diagnostics, /needs `vibelang-runtime` and the package cannot resolve, report one `TS2307` naming that package/)
