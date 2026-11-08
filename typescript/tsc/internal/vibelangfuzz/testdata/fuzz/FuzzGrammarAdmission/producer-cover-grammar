@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:producer-cover-grammar\nimport { Effect } from \"effect\"\nconst g = Effect.gen(effect function* () {\nconst\nconst users = 1\n})")

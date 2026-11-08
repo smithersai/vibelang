@@ -890,3 +890,11 @@ TypeScript's `TypeParameters`, whose list needs a `TypeParameter`, and a
 class, an error or a service with `<>` reports `TS1098`. A data declaration
 with `<>` compiles with no diagnostic, so `data D<> { Value { value: number } }`
 remains pending under `admission:data-empty-type-parameters`.
+
+Another case mutation passed a producer to `Effect.gen` and left an empty
+`const` line in its body. A producer given to a native generator API
+reports `EK1002`, and that diagnostic covers the whole argument, so the
+body's `TS1123` disappears with its type errors. The same body in a plain
+`function*`, or in a producer declaration, still reports `TS1123`. The form
+is pending under `admission:producer-cover-grammar`, keyed by a producer
+written as a call argument.

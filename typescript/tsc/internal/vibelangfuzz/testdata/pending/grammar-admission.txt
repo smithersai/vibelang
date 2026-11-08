@@ -109,3 +109,6 @@ FuzzGrammarAdmission corpus:try-in-hatch-promise-shapes compiler VIP-6: a try in
 FuzzGrammarAdmission admission:data-empty-type-parameters compiler VIP-16 and Appendix A: DataDeclaration takes TypeScript's TypeParameters, which needs a TypeParameter; an empty list on a data declaration compiles with no diagnostic, while a class, error or service reports TS1098
 FuzzGrammarAdmission corpus:data-empty-type-parameters compiler VIP-16 and Appendix A: `data D<> { }` compiles with no diagnostic; TypeParameters has no empty alternative
 FuzzGrammarAdmission corpus:data-empty-type-parameters-campaign compiler VIP-16 and Appendix A: an exported data declaration named as with an empty type parameter list reports only TS2304
+FuzzGrammarAdmission admission:producer-cover-grammar compiler VIP-21: a producer passed to a native generator API reports EK1002, which covers the whole argument and hides TypeScript's grammar rejections in its body, such as TS1123 for an empty declaration list
+FuzzGrammarAdmission corpus:producer-cover-grammar compiler VIP-21: an empty const declaration list inside a producer given to Effect.gen reports only EK1002
+FuzzGrammarAdmission corpus:producer-cover-grammar-campaign compiler VIP-21: a producer given to Effect.gen in a service program hides the TS1123 of its empty declaration list behind EK1002

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:producer-cover-grammar-campaign\nclass UserNotFound extends TaggedError ( \"UserNotFound\" ) < { readonly id : string } > { }\ninterface User {\nid : string\nname : string\n}\nservice Users {\nfind ( id : string ) : Effect < User , UserNotFound , never >\n}\nconst findName\n= effect ( id : string ) => try Effect . gen ( effect function * ( ) {\nconst\nconst users = try Users\nconst user = try users . find ( id )\nyield user . name\n} )")
