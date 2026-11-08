@@ -195,9 +195,9 @@ test("smithers: setup's admission compares the compiles' real exit codes, so Eff
       put(join(p.baseline, "upgraded-checks.json"), checks(input.before))
       const extra = { category: "error", code: "TS2322", file: "src/New.ts", line: 1, column: 1, message: "new", notes: [] }
       put(join(p.baseline, `compile-${slug}.json`), input.added ? [...corpus.diagnostics, extra] : corpus.diagnostics)
-      // null: a receipt from before setup recorded its exit code.
+      // null: a legacy receipt without its own setup exit remains unverified.
       if (input.after !== null) put(join(p.baseline, `compile-${slug}.exit.json`), { code: input.after })
-      const refused = input.added || (input.before === 0 && input.after === 2)
+      const refused = input.after === null || input.added || (input.before === 0 && input.after === 2)
       if (refused) assert.throws(() => assertBaselineSafe(p), failure)
       else assert.equal(assertBaselineSafe(p).state, "accepted")
     }), { seed: 3870, numRuns: 60 })

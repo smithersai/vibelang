@@ -45,19 +45,25 @@ export function assertBaselineSafe(p, { includeSetup = true } = {}) {
   for (const [pkg, before] of Object.entries(original)) {
     if (current[pkg]) compile.push({ stage: "upgrade", package: pkg, ...compilerAdmission(before, current[pkg]) })
     const candidate = includeSetup && read("compile-" + slug(pkg) + ".json")
-    // The setup compile's own exit code, as the upgraded check records its: an
-    // Effect diagnostic printed as an error (EK38xx) exits 0 under
-    // ignoreEffect*InTscExitCode, so a code derived from the categories said 2
-    // where both compiles exited 0 (smithers packages/smithers, EK3870). A
-    // receipt from before the code was recorded compares diagnostics only.
-    const before_ = current[pkg] ?? before
-    const code = read("compile-" + slug(pkg) + ".exit.json")?.code ?? before_.code
-    if (candidate) compile.push({ stage: "setup", package: pkg,
-      ...compilerAdmission(before_, { compiler: "setup", code, diagnostics: candidate }) })
+    // Compare actual exits: an Effect diagnostic printed as an error can
+    // still exit zero under ignoreEffect*InTscExitCode. Missing or invalid
+    // setup outcomes remain unverified, including legacy receipts.
+    if (candidate) {
+      const before_ = current[pkg] ?? before
+      const receipt = "compile-" + slug(pkg) + ".exit.json"
+      const code = read(receipt)?.code
+      if (!Number.isInteger(code) || code < 0) {
+        compile.push({ stage: "setup", package: pkg, state: "unverified",
+          receipt, reason: "setup compiler exit is missing or invalid", ok: false })
+      } else {
+        compile.push({ stage: "setup", package: pkg,
+          ...compilerAdmission(before_, { compiler: "setup", code, diagnostics: candidate }) })
+      }
+    }
   }
   const result = { state: [...tests, ...compile].every(check => check.ok) ? "accepted" : "rejected", tests, compile }
   const receipt = join(p.baseline, "admission.json")
   writeJson(receipt, result)
-  if (result.state === "rejected") throw new Error("toolchain baseline regression: new test failures or compiler errors cannot become a migration baseline; see " + receipt)
+  if (result.state === "rejected") throw new Error("toolchain baseline regression: new test failures, compiler errors or unverified setup outcomes cannot become a migration baseline; see " + receipt)
   return result
 }

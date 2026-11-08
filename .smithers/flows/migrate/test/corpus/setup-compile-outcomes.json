@@ -1,0 +1,15 @@
+[
+  { "key": "missing" },
+  { "key": "null", "receipt": null },
+  { "key": "empty", "receipt": {} },
+  { "key": "null-code", "receipt": { "code": null } },
+  { "key": "string-code", "receipt": { "code": "0" } },
+  { "key": "boolean-code", "receipt": { "code": false } },
+  { "key": "negative-code", "receipt": { "code": -1 } },
+  { "key": "fractional-code", "receipt": { "code": 0.5 } },
+  { "key": "object-code", "receipt": { "code": {} } },
+  { "key": "array", "receipt": [] },
+  { "key": "terminated", "receipt": { "code": null, "signal": "SIGTERM" } },
+  { "key": "success", "receipt": { "code": 0 }, "code": 0 },
+  { "key": "failure", "receipt": { "code": 2 }, "code": 2 }
+]
