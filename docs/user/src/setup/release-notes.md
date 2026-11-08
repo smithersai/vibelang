@@ -35,6 +35,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Closing a `go test` diagnostic pipe could leave its commands running. The progress reporter now stops those commands and returns a failure status.
 
+- Changing `Map` methods in a `match` guard could make iterable patterns throw or miss cleanup. Their private caches now keep the native operations.
+
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.

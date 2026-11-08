@@ -5466,6 +5466,13 @@ typescript/vibelang/cases/match-iterable-cache/main.vibe:5:37 lambda plain fallb
 typescript/vibelang/cases/match-iterable-cache/main.vibe:6:39 lambda plain fallback
 typescript/vibelang/cases/match-iterable-completions/main.vibe:11:75 byname program table
 typescript/vibelang/cases/match-iterable-completions/main.vibe:5:90 lambda dual fallback
+typescript/vibelang/cases/match-iterator-cache-intrinsics/main.vibe:12:31 lambda choice fallback
+typescript/vibelang/cases/match-iterator-cache-intrinsics/main.vibe:12:43 lambda dual fallback
+typescript/vibelang/cases/match-iterator-cache-intrinsics/main.vibe:16:32 lambda choice fallback
+typescript/vibelang/cases/match-iterator-cache-intrinsics/main.vibe:16:44 lambda plain fallback
+typescript/vibelang/cases/match-iterator-cache-intrinsics/main.vibe:6:22 lambda plain table
+typescript/vibelang/cases/match-iterator-cache-intrinsics/main.vibe:7:31 lambda choice fallback
+typescript/vibelang/cases/match-iterator-cache-intrinsics/main.vibe:7:43 lambda dual fallback
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:24:53 lambda plain fallback
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:31:85 byname program annotation
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:31:97 lambda plain table

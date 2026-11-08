@@ -6,7 +6,8 @@ const mapGet = Function.prototype.call.bind(Map.prototype.get) as (map: Map<any,
 const mapSet = Function.prototype.call.bind(Map.prototype.set) as (map: Map<any, any>, key: unknown, value: unknown) => unknown
 const propertyKeyString = String
 
-const propertyMapClear = Function.prototype.call.bind(Map.prototype.clear) as (map: Map<any, any>) => void
+const mapClear = Function.prototype.call.bind(Map.prototype.clear) as (map: Map<any, any>) => void
+const mapValues = Function.prototype.call.bind(Map.prototype.values) as (map: Map<any, any>) => MapIterator<any>
 
 // Private property observations and Iterator Records for VIP-7's match cache.
 // Prefer known iterable union members, as TypeScript's iterable guard does.
@@ -48,7 +49,7 @@ const object = (value: unknown): value is object =>
 
 /** Compiler ABI: one instance per match expression or is test. */
 export function $matchCache() {
-  const records = new Map<unknown, RecordState | false>()
+  const records = new PropertyCacheMap<unknown, RecordState | false>()
   const presence = new PropertyCacheMap<object, Map<PropertyKey, boolean>>()
   const values = new PropertyCacheMap<object, Map<PropertyKey, unknown>>()
   const observe = <T>(groups: Map<object, Map<PropertyKey, T>>, subject: object, key: PropertyKey, read: () => T): T => {
@@ -67,7 +68,7 @@ export function $matchCache() {
   let failed = false
   let failure: unknown
   const record = (subject: unknown): RecordState => {
-    const entry = records.get(subject)
+    const entry = mapGet(records, subject) as RecordState | false | undefined
     if (!entry) throw new TypeError("Missing match iterator")
     return entry
   }
@@ -87,7 +88,7 @@ export function $matchCache() {
     return index < entry.values.length
   }
   return {
-    start(): true { propertyMapClear(presence); propertyMapClear(values); records.clear(); failed = false; failure = undefined; return true },
+    start(): true { mapClear(presence); mapClear(values); mapClear(records); failed = false; failure = undefined; return true },
     propertyHas(subject: object, key: PropertyKey): boolean {
       return observe(presence, subject, key, () => key in subject)
     },
@@ -95,14 +96,14 @@ export function $matchCache() {
       return observe(values, subject, key, () => (subject as any)[key])
     },
     iterable<S>(subject: S): subject is S & Iterable<Item<S>> {
-      if (records.has(subject)) return records.get(subject) !== false
-      if (subject === null || subject === undefined) { records.set(subject, false); return false }
+      if (mapHas(records, subject)) return mapGet(records, subject) !== false
+      if (subject === null || subject === undefined) { mapSet(records, subject, false); return false }
       const method = (subject as any)[Symbol.iterator]
-      if (typeof method !== "function") { records.set(subject, false); return false }
+      if (typeof method !== "function") { mapSet(records, subject, false); return false }
       const iterator = Reflect.apply(method, subject, [])
       if (!object(iterator)) throw new TypeError("Iterator is not an object")
       const next = (iterator as any).next
-      records.set(subject, { iterator, next, values: [], done: false })
+      mapSet(records, subject, { iterator, next, values: [], done: false })
       return true
     },
     has(subject: unknown, index: number): boolean { return pull(record(subject), index) },
@@ -120,7 +121,7 @@ export function $matchCache() {
       const errors: unknown[] = failed ? [failure] : []
       failed = false
       failure = undefined
-      for (const entry of records.values()) {
+      for (const entry of mapValues(records) as Iterable<RecordState | false>) {
         if (!entry || entry.done) continue
         entry.done = true
         try {
