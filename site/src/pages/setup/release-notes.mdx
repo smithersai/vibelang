@@ -13,9 +13,23 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A class definition inside an `effect` block could report an implementation restriction for an escaping `break` or `continue`. Decorators, computed names and `extends` expressions now report the block’s `EK0202` error.
+
+- Outward jumps in class definition expressions inside an `async match` could report `EK0204` and suggest moving the `do`. They now report `EK0706` once and explain the Promise boundary.
+
 - The migration's API identity check reported an unchanged exported constant whose type uses `infer`, such as `export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never`, as changed whenever another export in its file changed, for example a function moved behind `export { g } from "./helper.js"`. The constant's own type now decides, so it stays identical; a real change to that type still differs.
 
-- A `return` in a `do` expression in a parameter default of a plain or `async` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run, keeping the parameter order, the function's `length` and its declaration output; generators, `effect` functions and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.
+- A `return` in a `do` expression in a parameter default of a plain, `async` or `effect` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run (an `effect` function's call gives an Effect that succeeds with the value), keeping the parameter order, the function's `length` and its declaration output; generators and producers, constructors, a default that uses `try`, `await` or `yield`, and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.
+- Misspelled names could lose TypeScript's suggestion for a project-defined global named `process`, `fetch` or another host-global name. Those suggestions now follow the binding's actual declaration.
+
+- Hints for an unresolved experimental name could suggest a nonexistent module method. They now show an explicit service lookup, run its Effect and name the provider layer; pure helpers remain direct calls.
+
+- Calls that may throw inside `Effect.try` or `Effect.tryPromise` thunks could report `EK0401` when the wrapper was called through parentheses, computed access, constant aliases or `bind`. These forms now accept the same thunks as a direct call.
+
+- Formatting could reject a `schema`, `error` or `data` declaration followed by another declaration on the same line with `';' expected`. These files now format while keeping their declarations and documentation.
+
+- A migration could overwrite one package's saved declarations with another package's and then compare the wrong API. Each package now keeps separate declaration snapshots; ambiguous older snapshots require a fresh setup.
+
 
 - A `catch` whose head was a parenthesized `try` of a block or pipeline that only fails, such as `(try effect { … return throw new Pending() }) catch h`, or whose head's value was `any`, stopped recovering the head's failures after head evaluation moved before the catch, and `vibelang --fix` left it unchanged with only an `EK9204` warning. `--fix` now removes that `try`, or wraps another such head in an `effect` block, so the handler receives those failures again; a head whose value is an Effect keeps its `try`.
 
