@@ -27,6 +27,11 @@ import (
 // branch of ?:, and the right side of ??, ||, or &&. Calls with type arguments
 // are refused: the value alone would not carry them.
 
+// A direct value or throw cannot preserve a written generic instantiation.
+var directTypeArgumentsForm = EK4834.With("{0} has an explicit type-argument contract; keep the native call.")
+
+const directTypeArgumentsNote = "No quick fix: keep the native call to preserve its explicit type arguments and written contract."
+
 // directFailMessage is EK4834's text for Effect.fail.
 var directFailMessage = EK4834.With("{0} runs here, so it fails the function as a throw does: {1}.")
 
@@ -42,7 +47,7 @@ func init() {
 // directFormCall reports whether call is Effect.succeed or Effect.fail of
 // one argument that runs in a VibeLang function body, and returns which.
 func directFormCall(c *checker.Checker, call *ast.Node) string {
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || len(call.Arguments()) != 1 || ast.IsSpreadElement(call.Arguments()[0]) || ast.IsOptionalChain(call) {
+	if !ast.IsCallExpression(call) || len(call.Arguments()) != 1 || ast.IsSpreadElement(call.Arguments()[0]) || ast.IsOptionalChain(call) {
 		return ""
 	}
 	if !isEffectFunction(c, call.Expression(), "Effect", "succeed", "fail") || !inLowerableBody(call) || inHatch(call) || directTryFormSite(call) == nil {
@@ -62,7 +67,7 @@ func findDirectForms(c *checker.Checker, file *ast.SourceFile, report func(at *a
 			if rewrite == nil {
 				rewrite = &formRewrite{why: directTrySafetyNote}
 			}
-			if !rewrite.fixable() {
+			if !rewrite.fixable() && rewrite.message == nil {
 				rewrite.description = shortText(expressionText(file, node.Arguments()[0]), "the argument")
 				if directFormCall(c, node) == "fail" {
 					rewrite.description = "throw " + rewrite.description
@@ -124,6 +129,9 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	name := directFormCall(c, call)
 	if name == "" {
 		return nil
+	}
+	if call.TypeArguments() != nil {
+		return &formRewrite{message: directTypeArgumentsForm, why: directTypeArgumentsNote}
 	}
 	if directTryFormSite(call) != call {
 		return &formRewrite{why: directTryWrapperNote}

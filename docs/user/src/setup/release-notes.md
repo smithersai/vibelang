@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Explicit type arguments hid the form advisory on directly run `Effect.succeed` and `Effect.fail` calls. They now report `EK4834` and keep their written success or failure contract without an automatic rewrite.
+
 - Direct `try Effect.provide(...)` calls with explicit type arguments missed the form advisory. They now report `EK4836` and retain their written type contract without an automatic rewrite.
 
 - Spreading a service implementation could lose its methods and reject a valid replacement service. These spreads now preserve the service shape; missing methods and incompatible replacements still fail, and ordinary class prototype methods are still omitted.
