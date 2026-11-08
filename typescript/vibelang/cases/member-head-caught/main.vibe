@@ -1,0 +1,20 @@
+// expect-result: ["key","decorator",7,"RangeError"]
+import { key, decorator } from "./foreign.js"
+
+function caughtName() {
+  try { class Local { [key(true)]() { return 7 } }; return "missed" }
+  catch (error) { return error instanceof RangeError ? error.message : "other" }
+}
+function caughtDecorator() {
+  try { class Local { @(decorator(true)) method() {} }; return "missed" }
+  catch (error) { return error instanceof RangeError ? error.message : "other" }
+}
+function caughtObject() {
+  try { const local = { [key(false)]() { return 7 } }; return local.value() }
+  catch { return -1 }
+}
+export effect function main() {
+  const failed = try exit(Effect.try({ try: () => { class Local { [key(true)]() {} }; return Local }, catch: (error) => error }))
+  const failure = failed._tag === "Failure" && failed.cause.reasons[0]?._tag === "Fail" ? failed.cause.reasons[0].error : null
+  return [caughtName(), caughtDecorator(), caughtObject(), failure instanceof RangeError ? failure.name : "missing"]
+}

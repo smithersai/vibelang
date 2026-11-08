@@ -346,8 +346,8 @@ func containsYield(node *ast.Node) bool {
 // a trusted call's listed exception a typed failure, which the catch receives
 // (D54); elsewhere it propagates unchanged, as JavaScript's (D282).
 func inCatchingTry(node *ast.Node) bool {
-	for n := node; n.Parent != nil; n = n.Parent {
-		parent := n.Parent
+	for n := node; throwContextParent(n) != nil; n = throwContextParent(n) {
+		parent := throwContextParent(n)
 		// Heritage is evaluated by the code defining the class.
 		if classExtendsChild(parent, n) {
 			continue

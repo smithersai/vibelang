@@ -77,6 +77,10 @@
       {
         "input": "typescript/vibelang/cases/try-operand-generic-contract.fail",
         "output": "typescript/vibelang/cases/try-operand-generic-contract-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/member-head-contract.fail",
+        "output": "typescript/vibelang/cases/member-head-contract-fixed-output"
       }
     ]
   },

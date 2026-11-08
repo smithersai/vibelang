@@ -1271,6 +1271,7 @@ func failuresCases() []*failCase {
 	}
 	cases = append(cases, failuresPromiseExecutorCases()...)
 	cases = append(cases, failuresTextDecoderModeCases()...)
+	cases = append(cases, failuresMemberHeadCases()...)
 	return foreignFixtures(append(append(cases, failuresExtraCases()...), failuresNoThrowCases()...))
 }
 

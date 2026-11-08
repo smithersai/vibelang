@@ -1,0 +1,3 @@
+go test fuzz v1
+string("member-head-tag-getter-nested")
+byte(0)

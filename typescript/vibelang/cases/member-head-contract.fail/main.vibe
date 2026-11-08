@@ -1,0 +1,10 @@
+// expect: EK0403 EK0403 EK0403
+import { key, decorator } from "./foreign.js"
+export effect function probe() {
+  class Local {
+    async [key(false)]() {}
+    effect [key(false)]() {}
+    @(decorator(false)) value = 1
+  }
+  return Local
+}

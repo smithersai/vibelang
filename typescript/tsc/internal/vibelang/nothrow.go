@@ -262,7 +262,7 @@ func admitsCallbackPosition(c *checker.Checker, fn, call *ast.Node, index int, r
 // and an async generator's runs at the call.
 func (a *analyzer) plainHomeOf(node *ast.Node) *ast.Node {
 	inParameters := false
-	for n := node.Parent; n != nil; n = n.Parent {
+	for n := throwContextParent(node); n != nil; n = throwContextParent(n) {
 		switch {
 		case parser.IsVibeLangModuleDeclaration(n):
 			return nil

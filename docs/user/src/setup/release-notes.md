@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A throwing call in a computed member name or decorator could get the wrong error or be rejected despite a surrounding handler. These expressions now use the context defining the class or object, while member bodies keep their own checks.
+
 - A migrated package's emitted JavaScript under `.vibelang/js` kept relative imports without an extension, such as `import { Api } from "../api"`, so plain Node, which that tree exists for, failed with `ERR_MODULE_NOT_FOUND` when a packed package routed a consumer there. The migration flow now writes such an import of a module inside the package as that module's emitted file, `"../api.js"` or `"../location/index.js"`; imports of packages, assets, tests and modules outside the package stay as written.
 
 - With the Effect plugin entry setting the severity of a rule that a VibeLang check answers, such as `overriddenSchemaConstructor`, `vibelang --fix` deleted that rule's unused `@effect-diagnostics-next-line` comment and left the check's error on the next line. It now rewrites the comment to `@vibelang-diagnostics-next-line` with the check's code, such as `EK4814:off`, as it does without the plugin setting.

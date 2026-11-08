@@ -610,10 +610,32 @@ func inParameterListOf(node, fn *ast.Node) bool {
 // the callee.
 var foreignCallInEffectParameters = EK0401.With("'{0}' may throw, and an effect function's parameter list runs at the call, before its Effect exists, so nothing there may throw. Compute the value in the body, or move the code to a '.ts' file.")
 
+// throwContextParent follows source evaluation rather than member ownership.
+// A computed name or decorator runs while defining its class or object, before
+// the member callable exists. A nested callable encountered first still owns
+// its own code; only the direct head-to-member edge skips that boundary.
+func throwContextParent(node *ast.Node) *ast.Node {
+	parent := node.Parent
+	if parent == nil {
+		return nil
+	}
+	if classDecoratorChild(parent, node) && ast.IsClassLike(parent) {
+		return parent.Parent
+	}
+	if classMemberNameChild(parent, node) || classDecoratorChild(parent, node) {
+		return parent.Parent.Parent
+	}
+	if ast.IsComputedPropertyName(node) && ast.IsFunctionLike(parent) &&
+		parent.Parent != nil && ast.IsObjectLiteralExpression(parent.Parent) {
+		return parent.Parent
+	}
+	return parent
+}
+
 // enclosingFunction returns the function whose body holds node, or nil at
 // the module's top level.
 func enclosingFunction(node *ast.Node) *ast.Node {
-	for n := node.Parent; n != nil; n = n.Parent {
+	for n := throwContextParent(node); n != nil; n = throwContextParent(n) {
 		if ast.IsFunctionLike(n) && n.Body() != nil {
 			return n
 		}
