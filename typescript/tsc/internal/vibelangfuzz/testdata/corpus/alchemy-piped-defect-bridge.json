@@ -9,5 +9,9 @@
   {"key":"pipe-unprotected","expression":"PROGRAM |> Effect.asVoid(%)","count":1},
   {"key":"unrelated-orDie","expression":"PROGRAM |> unrelated.orDie(%)","count":1},
   {"key":"unrelated-defect","expression":"PROGRAM |> Effect.orDie(Effect.succeed(%))","count":1},
-  {"key":"duplicated-topic","expression":"PROGRAM |> [%, Effect.orDie(%)][0]","count":1}
+  {"key":"duplicated-topic","expression":"PROGRAM |> [%, Effect.orDie(%)][0]","count":1},
+  {"key":"catch-die","expression":"Effect.catch(PROGRAM, (error) => error instanceof RangeError ? Effect.fail(error) : Effect.die(error))","count":0},
+  {"key":"catch-die-parentheses","expression":"Effect.catch(((PROGRAM)), ((error) => Effect.die(error)))","count":0},
+  {"key":"catch-recover","expression":"Effect.catch(PROGRAM, (error) => Effect.succeed(error))","count":1},
+  {"key":"unrelated-catch","expression":"unrelated.catch(PROGRAM, (error: unknown) => Effect.die(error))","count":1}
 ]

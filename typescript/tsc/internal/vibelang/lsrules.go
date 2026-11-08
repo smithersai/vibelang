@@ -655,9 +655,40 @@ func isDefectBridge(c *checker.Checker, operand *ast.Node) bool {
 		return len(topics) == 1 && isDefectBridge(c, topics[0])
 	}
 	parent := operand.Parent
-	return parent != nil && ast.IsCallExpression(parent) &&
-		len(parent.Arguments()) == 1 && parent.Arguments()[0] == operand &&
-		isEffectFunction(c, ast.SkipParentheses(parent.Expression()), "Effect", "orDie")
+	if parent == nil || !ast.IsCallExpression(parent) || len(parent.Arguments()) == 0 || parent.Arguments()[0] != operand {
+		return false
+	}
+	callee := ast.SkipParentheses(parent.Expression())
+	if len(parent.Arguments()) == 1 {
+		return isEffectFunction(c, callee, "Effect", "orDie")
+	}
+	// The preserving bridge EK0403's fix writes keeps the listed classes as
+	// typed failures and dies with anything else: Effect.catch(Effect.try(…),
+	// (error) => error instanceof C ? Effect.fail(error) : Effect.die(error)).
+	// Its handler is the catch that reads the mapping, so it has what failed.
+	return len(parent.Arguments()) == 2 && isEffectFunction(c, callee, "Effect", "catch") && handlerDies(c, parent.Arguments()[1])
+}
+
+// handlerDies reports whether handler, a function literal, calls Effect.die.
+func handlerDies(c *checker.Checker, handler *ast.Node) bool {
+	handler = ast.SkipParentheses(handler)
+	if !ast.IsFunctionExpressionOrArrowFunction(handler) {
+		return false
+	}
+	dies := false
+	var visit func(n *ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if dies {
+			return true
+		}
+		if ast.IsCallExpression(n) && isEffectFunction(c, ast.SkipParentheses(n.Expression()), "Effect", "die") {
+			dies = true
+			return true
+		}
+		return n.ForEachChild(visit)
+	}
+	handler.ForEachChild(visit)
+	return dies
 }
 
 // checkRunChannels reports EK4811 when call, which runs, adds any or unknown

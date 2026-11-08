@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The `EK4806` lint warned on the preserving defect bridge that the `EK0403` fix writes, `Effect.catch(Effect.try({ try, catch: (error) => error }), (error) => error instanceof C ? Effect.fail(error) : Effect.die(error))`, as if its `catch` mapping leaked `unknown`. A bridge whose handler dies with unmatched failures is now exempt, as `Effect.orDie` already was.
+
 - A `try` operand such as `try get<Effect.Effect<number>>()` or `try loose()`, whose foreign callee is generic or returns `any`, skipped `EK0403` for the callee's `@throws` contract, while the same call bound first reported it. The operand is now checked like any other call in effect code: a generic signature is classified by its constraints, before type-argument substitution. `vibelang --fix` bridges such an operand under its `try`, as `try (try Effect.orDie(Effect.try({ try: () => get<…>(), catch: (e) => e })))`.
 
 - Under `bun test --isolate`, a test of a `.vibe` module containing a `module` declaration, such as the `module $throw$ts` bridge `vibelang --fix` writes, failed before its first test with `Cannot find module …/x.vibe.-24-throw-24-ts.js`. `vibelang/bun` now serves a module declaration's output when Bun imports it by its absolute path, as `--isolate` does.

@@ -67,7 +67,7 @@ func checkLintDefectBridge(t *testing.T, w *Workspace, row lintDefectBridgeRow, 
 		program = "Effect.tryPromise({ try: async () => predicate(value) ? value : undefined, catch: " + mapping + " })"
 	}
 	source := header + "import { predicate } from \"./foreign.js\"\n" +
-		"const unrelated = { orDie: (self: Effect.Effect<unknown, unknown>) => self }\n" +
+		"const unrelated = { orDie: (self: Effect.Effect<unknown, unknown>) => self, catch: (self: Effect.Effect<unknown, unknown>, handler: unknown) => self }\n" +
 		"export effect function probe(value: unknown) { return try (" +
 		strings.ReplaceAll(row.Expression, "PROGRAM", program) + ") }\n"
 	corpus := filepath.Join(Root(), "typescript/tsc/internal/vibelangfuzz/testdata/lint-defect-bridge")
