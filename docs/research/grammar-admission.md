@@ -793,3 +793,23 @@ head `fork` or `join`. The case-seeded campaign found
 its second minute: a bodyless error declaration with a heritage clause ends,
 and the compiler starts another expression on the same line. It joins
 `admission:error-no-end`, whose classifier now reads past a heritage clause.
+
+Two of the survey's open items are now read by the lab. TypeScript's parser
+reports nothing after a bare `declare` identifier expression, so
+`declare x: number` is the expression `declare` and then `x: number` on one
+line, with only name and type errors from tsc and from the compiler alike;
+`DeclareExpressionStatement` writes that reading, and the subset also has the
+ambient `declare module "m" { }` and `declare global { }` forms. The keyword
+table's clause "at a statement start, a name other than `as`, `satisfies` or
+`is`, then `(` or `<`" was read as bare tokens, which made `effect` a keyword
+before `is (`; the reader now takes it as a statement-start position, a name
+outside the listed words, then `(` or `<`, so `effect is (Object)` derives
+with `effect` as an identifier while `effect run(x) { … }` keeps its keyword
+reading.
+
+The `new` callee and heritage witnesses under `admission:fiber-primary-reference`
+are now rejected with `EK1702`, and that key is recovery. An is pattern's
+head still reads `fork` or `join` as a pattern identifier
+(`effect function f(p) { return p is join }`, also as the operand of
+`fork.in(s) p is join`), so those witnesses are the pending key
+`admission:fiber-pattern-reference`.

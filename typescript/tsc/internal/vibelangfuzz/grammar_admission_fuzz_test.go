@@ -304,8 +304,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"binding-rest-trailing-comma", "const [...p,] = [1];"},
 	{"binding-rest-initializer", "const [...p = []] = [1];"},
 	{"binding-rest-not-last", "const { ...rest, a } = { a: 1 };"},
-	{"fiber-primary-reference-pattern", "effect function f(p) { return p is join }"},
-	{"fiber-primary-reference-fork-owner", "effect function f(s, p) { return fork.in(s) p is join }"},
+	{"fiber-pattern-reference", "effect function f(p) { return p is join }"},
+	{"fiber-pattern-reference-fork-owner", "effect function f(s, p) { return fork.in(s) p is join }"},
 	{"abstract-error", "abstract error Root {}"},
 	{"error-no-end-heritage", "export error Gone extends Error Error ?? { since: number, by: string }"},
 }
@@ -707,10 +707,18 @@ func TestGrammarAdmissionPipes(t *testing.T) {
 // grammarAdmissionDeclarationForm keys the known gaps a declaration or a type
 // shows in its own tokens.
 func grammarAdmissionDeclarationForm(ts []grammarToken) string {
-	// base is the bracket depth of the current `type Name =` alias, so an alias
-	// inside a block reads its own top-level bangs.
-	depth, base := 0, 0
-	lastBang := -1
+	// lastBang is the last top-level bang of the type being read at each
+	// bracket depth, so an alias inside a block and a return annotation
+	// inside a class each read their own bangs.
+	depth := 0
+	lastBang := map[int]int{}
+	var open []string
+	bangAt := func() int {
+		if at, ok := lastBang[depth]; ok {
+			return at
+		}
+		return -1
+	}
 	for i, tok := range ts {
 		if tok.kind == 's' || tok.kind == 't' {
 			continue
@@ -718,29 +726,32 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 		switch tok.text {
 		case "(", "[", "{":
 			depth++
+			open = append(open, tok.text)
+			delete(lastBang, depth)
 		case ")", "]", "}":
+			delete(lastBang, depth)
 			depth--
+			if len(open) > 0 {
+				open = open[:len(open)-1]
+			}
 		case "=":
-			if i >= 2 && ts[i-2].text == "type" {
-				base, lastBang = depth, -1
-			}
-		case ";":
-			if depth == base {
-				lastBang = -1
-			}
+			delete(lastBang, depth)
+		case ";", ",", "=>":
+			delete(lastBang, depth)
 		case "!":
 			// EffectType has [no LineTerminator here] around each bang: neither the
 			// next bang nor the next slot may start a line.
 			if i+1 < len(ts) && ts[i+1].nl && (ts[i+1].text == "!" || (ts[i+1].kind != 'p' || ts[i+1].text == "(") && grammarInTypeAlias(ts, i)) && i > 0 && (ts[i-1].kind != 'p' || slices.Contains([]string{")", "]", "}"}, ts[i-1].text)) {
 				return "admission:effect-type-line-break"
 			}
-			// A!E! with no R: only the omitted-E form A!! ends in a bang.
-			if depth == base && lastBang >= 0 && lastBang != i-1 && (i+1 == len(ts) || ts[i+1].nl || slices.Contains([]string{";", ",", ")", "}", "]"}, ts[i+1].text)) {
+			// A!E! with no R: only the omitted-E form A!! ends in a bang. The
+			// type ends at a separator, a closing bracket, a line break, or
+			// where an arrow, an initializer or a body follows an annotation.
+			// A parenthesized type's bangs belong to the parenthesized family.
+			if at := bangAt(); at >= 0 && at != i-1 && (len(open) == 0 || open[len(open)-1] != "(") && (i+1 == len(ts) || ts[i+1].nl || slices.Contains([]string{";", ",", ")", "}", "]", "=>", "=", "{"}, ts[i+1].text)) {
 				return "admission:effect-type-trailing-bang"
 			}
-			if depth == base {
-				lastBang = i
-			}
+			lastBang[depth] = i
 		case "concurrent":
 			if i > 0 && ts[i-1].text == "for" && i+1 < len(ts) && ts[i+1].nl {
 				return "admission:for-concurrent-line-break"
@@ -1025,49 +1036,55 @@ func TestGrammarAdmissionInterruptionKeys(t *testing.T) {
 
 func TestGrammarAdmissionDeclarationKeys(t *testing.T) {
 	for source, want := range map[string]string{
-		"type T = (A | B)!E;":                      "",
-		"type T = A!(B | E);":                      "",
-		"type T = A | B; type U = C!E;":            "",
-		"schema C<T> { a: T }":                     "admission:schema-type-parameters",
-		"schema C { a: number }":                   "",
-		"schema C string":                          "admission:schema-no-body",
-		"schema C":                                 "admission:schema-no-body",
-		"schema C = string;":                       "",
-		"schema error E effect { a: T }":           "admission:error-no-end",
-		"error E effect { a: T }":                  "admission:error-no-end",
-		"error effect [a]":                         "admission:error-no-end",
-		"error E;":                                 "",
-		"type T = A!B!;":                           "admission:effect-type-trailing-bang",
-		"type T = number ! 1 ! ;":                  "admission:effect-type-trailing-bang",
-		"type T = A!(B | C)!;":                     "admission:effect-type-trailing-bang",
-		"const b = !x; const c = !y;":              "",
-		"type T = A!B!C;":                          "",
-		"type T = A!!;":                            "",
-		"schema error":                             "admission:schema-no-body",
-		"schema error;":                            "admission:schema-no-body",
-		"type T = number !\n! ;":                   "admission:effect-type-line-break",
-		"type T = 1 !\n! ;":                        "admission:effect-type-line-break",
-		"type T = (A) !\n! ;":                      "admission:effect-type-line-break",
-		"{ type T =\nnumber ! string !\nboolean }": "admission:effect-type-line-break",
-		"{ type T =\nnumber ! string ! }":          "admission:effect-type-trailing-bang",
-		"{ type T = A | (B!E) }":                   "",
-		"type T = number !\nstring ;":              "admission:effect-type-line-break",
-		"const v = p !\nfoo ;":                     "",
-		"const b = !\n!x;":                         "",
-		"module M { }":                             "",
-		"module;":                                  "",
-		"error E\nx;":                              "",
-		"error instanceof E;":                      "admission:error-no-end",
-		"error E extends Error x;":                 "admission:error-no-end",
-		"error E extends a.B<T>() x;":              "admission:error-no-end",
-		"error E extends Error\nx;":                "",
-		"error E extends Error {}":                 "",
-		"schema error E { a: T }":                  "",
-		"schema error E;":                          "",
-		"const schema = x; schema;":                "",
-		"for concurrent\n(const x of xs) x;":       "admission:for-concurrent-line-break",
-		"for\nconcurrent (const x of xs) x;":       "",
-		"const s = \"!\" + \"|\";":                 "",
+		"type T = (A | B)!E;":                         "",
+		"type T = A!(B | E);":                         "",
+		"type T = A | B; type U = C!E;":               "",
+		"schema C<T> { a: T }":                        "admission:schema-type-parameters",
+		"schema C { a: number }":                      "",
+		"schema C string":                             "admission:schema-no-body",
+		"schema C":                                    "admission:schema-no-body",
+		"schema C = string;":                          "",
+		"schema error E effect { a: T }":              "admission:error-no-end",
+		"error E effect { a: T }":                     "admission:error-no-end",
+		"error effect [a]":                            "admission:error-no-end",
+		"error E;":                                    "",
+		"type T = A!B!;":                              "admission:effect-type-trailing-bang",
+		"type T = number ! 1 ! ;":                     "admission:effect-type-trailing-bang",
+		"type T = A!(B | C)!;":                        "admission:effect-type-trailing-bang",
+		"const f = effect (): number ! string ! => 1": "admission:effect-type-trailing-bang",
+		"effect function f(): number ! string ! { return 1 }": "admission:effect-type-trailing-bang",
+		"class C { effect m(): string ! E ! { return 1 } }":   "admission:effect-type-trailing-bang",
+		"const v: User ! E ! = x":                             "admission:effect-type-trailing-bang",
+		"effect function f(): number ! ! { return 1 }":        "",
+		"const f = effect (): number ! ! => 1":                "",
+		"const b = !x; const c = !y;":                         "",
+		"type T = A!B!C;":                                     "",
+		"type T = A!!;":                                       "",
+		"schema error":                                        "admission:schema-no-body",
+		"schema error;":                                       "admission:schema-no-body",
+		"type T = number !\n! ;":                              "admission:effect-type-line-break",
+		"type T = 1 !\n! ;":                                   "admission:effect-type-line-break",
+		"type T = (A) !\n! ;":                                 "admission:effect-type-line-break",
+		"{ type T =\nnumber ! string !\nboolean }":            "admission:effect-type-line-break",
+		"{ type T =\nnumber ! string ! }":                     "admission:effect-type-trailing-bang",
+		"{ type T = A | (B!E) }":                              "",
+		"type T = number !\nstring ;":                         "admission:effect-type-line-break",
+		"const v = p !\nfoo ;":                                "",
+		"const b = !\n!x;":                                    "",
+		"module M { }":                                        "",
+		"module;":                                             "",
+		"error E\nx;":                                         "",
+		"error instanceof E;":                                 "admission:error-no-end",
+		"error E extends Error x;":                            "admission:error-no-end",
+		"error E extends a.B<T>() x;":                         "admission:error-no-end",
+		"error E extends Error\nx;":                           "",
+		"error E extends Error {}":                            "",
+		"schema error E { a: T }":                             "",
+		"schema error E;":                                     "",
+		"const schema = x; schema;":                           "",
+		"for concurrent\n(const x of xs) x;":                  "admission:for-concurrent-line-break",
+		"for\nconcurrent (const x of xs) x;":                  "",
+		"const s = \"!\" + \"|\";":                            "",
 	} {
 		if got := grammarAdmissionDeclarationForm(grammarLexSource(source)); got != want {
 			t.Errorf("%q keyed %q; want %q", source, got, want)
@@ -1343,7 +1360,7 @@ func grammarAdmissionForm(source string) string {
 	}
 	for _, at := range grammarFiberPattern.FindAllStringSubmatchIndex(source, -1) {
 		if grammarAdmissionEffectAt(file, at[2]) {
-			return "admission:fiber-primary-reference"
+			return "admission:fiber-pattern-reference"
 		}
 	}
 	if grammarAbstractError.MatchString(source) {

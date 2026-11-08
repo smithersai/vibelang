@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:fiber-pattern-reference-fork-owner\neffect function f(s, p) { return fork.in(s) p is join }")

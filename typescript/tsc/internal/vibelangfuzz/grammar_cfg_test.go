@@ -454,6 +454,10 @@ func grammarSplitLookahead(set string) []string {
 // a line break or the end of the file, a binary operator (not < > + -) or a
 // token that starts no expression. A keyword type takes no type arguments, and
 // a type name takes none across a line break, so "<" there is relational.
+// TypeScript reports nothing after a bare `declare` identifier expression
+// (parseErrorForMissingSemicolonAfter assumes a declaration diagnostic was
+// already given), so `declare x: number` is `declare` and then `x: number` on
+// one line; DeclareExpressionStatement writes that reading.
 // "{ p = 1 }" is ECMAScript's CoverInitializedName, written only as an assignment
 // target so an object literal still has no initializer. TypeScript's parser keeps its binary
 // loop going after "as T" or "satisfies T", so any operator may follow one:
@@ -466,11 +470,11 @@ func grammarSplitLookahead(set string) []string {
 const grammarTsSubset = `
 Script = ScriptItem*
 ScriptItem = Statement
-Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | ForStatement | ForInStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration | DoWhileStatement
+Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | ForStatement | ForInStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration | DoWhileStatement | DeclareExpressionStatement
 SwitchStatement = "switch" "(" Expression ")" "{" CaseClause* "}"
 CaseClause = "case" Expression ":" Statement* | "default" ":" Statement*
 Declaration = HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ImportEqualsDeclaration | ExportDeclaration | "declare" [no LineTerminator here] DeclareDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | NamespaceDeclaration | EnumDeclaration
-DeclareDeclaration = VariableStatement | FunctionDeclaration | ClassDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | NamespaceDeclaration | EnumDeclaration
+DeclareDeclaration = VariableStatement | FunctionDeclaration | ClassDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | NamespaceDeclaration | EnumDeclaration | "module" StringLiteral "{" ModuleBody? "}" | "module" StringLiteral StatementEnd | "global" "{" ModuleBody? "}"
 NamespaceDeclaration = "namespace" [no LineTerminator here] TypeName "{" ModuleBody? "}"
 EnumDeclaration = "const"? "enum" BindingIdentifier "{" "}" | "const"? "enum" BindingIdentifier "{" EnumMemberList ","? "}"
 EnumMemberList = EnumMember | EnumMemberList "," EnumMember
@@ -500,6 +504,7 @@ StatementEnd = ";" | ASI
 IfStatement = "if" "(" Expression ")" Statement "else" Statement | "if" "(" Expression ")" Statement [lookahead ∉ { "else" }]
 WhileStatement = "while" "(" Expression ")" Statement
 DoWhileStatement = "do" Statement "while" "(" Expression ")" ";"?
+DeclareExpressionStatement = "declare" [no LineTerminator here] [lookahead ∉ { "(", "[", ".", "?.", "!", ",", ";", "=>", "?", ":", "=", "+=", "-=", "*=", "/=", "%=", "**=", "&=", "|=", "^=", "&&=", "||=", "??=", "+", "-", "*", "/", "%", "**", "<", ">", "<=", ">=", "==", "!=", "===", "!==", "&&", "||", "??", "&", "|", "^", "++", "--", "as", "satisfies", "is", "in", "instanceof", "|>", "catch" }] Statement
 ForOfStatement = "for" "(" ForOfHead "of" AssignmentExpression ")" Statement | "for" "await" "(" ForAwaitOfHead "of" AssignmentExpression ")" Statement
 ForStatement = "for" "(" [lookahead ∉ { "let" "[" }] Expression? ";" Expression? ";" Expression? ")" Statement | "for" "(" LetOrConst BindingList ";" Expression? ";" Expression? ")" Statement
 ForInStatement = "for" "(" ForOfHead "in" Expression ")" Statement

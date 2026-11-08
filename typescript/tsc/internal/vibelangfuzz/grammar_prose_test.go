@@ -24,8 +24,9 @@ type grammarKeywordRule struct {
 }
 
 // A grammarKwElem matches tokens after the keyword: 't' one of toks, 'n' a name,
-// 'g' a parenthesized group, 'e' a token that can start an expression, 'P'
-// the token before the keyword.
+// 'N' a name that is none of toks, 'g' a parenthesized group, 'e' a token that
+// can start an expression, 'P' the token before the keyword, 'S' the keyword
+// at a statement start.
 type grammarKwElem struct {
 	kind byte
 	toks []string
@@ -39,9 +40,12 @@ type grammarProseRule struct {
 var (
 	grammarTokenSet      = regexp.MustCompile("`([^`]+)` or `([^`]+)`")
 	grammarMemberContext = regexp.MustCompile("(?:in a class or object literal|on an `interface` or type literal member)[^;]*;?")
-	grammarBacktick      = regexp.MustCompile("`([^`]*)`")
-	grammarTableRow      = regexp.MustCompile(`^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*.*\|\s*$`)
-	grammarSentences     = regexp.MustCompile(`[^.]*(?:\.[^ \n][^.]*)*\.`)
+	// "at a statement start, a name other than `as`, `satisfies` or `is`, then
+	// `(` or `<`": the EffectShorthand head, with its excluded names.
+	grammarShorthandStart = regexp.MustCompile("at a statement start, a name other than ((?:`[^`]+`(?:, | or )?)+), then `\\(` or `<`[^;]*;?")
+	grammarBacktick       = regexp.MustCompile("`([^`]*)`")
+	grammarTableRow       = regexp.MustCompile(`^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*.*\|\s*$`)
+	grammarSentences      = regexp.MustCompile(`[^.]*(?:\.[^ \n][^.]*)*\.`)
 )
 
 func grammarReadKeywordTable(text string) []grammarKeywordRule {
@@ -99,6 +103,17 @@ func grammarParseKeywordPhrase(words []string, phrase string) grammarKeywordRule
 	if grammarMemberContext.MatchString(p) {
 		p = grammarMemberContext.ReplaceAllString(p, "")
 		k.alts = append(k.alts, []grammarKwElem{{kind: 'C'}})
+	}
+	// The shorthand head is a statement-start position, a name that is not one
+	// of the listed words, then `(` or `<`; read as bare tokens, the listed
+	// words themselves would make `effect is (x)` a keyword.
+	if m := grammarShorthandStart.FindStringSubmatch(p); m != nil {
+		var excluded []string
+		for _, w := range grammarBacktick.FindAllStringSubmatch(m[1], -1) {
+			excluded = append(excluded, w[1])
+		}
+		k.alts = append(k.alts, []grammarKwElem{{kind: 'S'}, {kind: 'N', toks: excluded}, {kind: 't', toks: []string{"(", "<"}}})
+		p = grammarShorthandStart.ReplaceAllString(p, "")
 	}
 	// "`{` or `<`" is one position that takes either token.
 	p = grammarTokenSet.ReplaceAllString(p, "`$1\x00$2`")
@@ -430,6 +445,12 @@ func (s *grammarProseSet) matchAlt(alt []grammarKwElem, toks []grammarToken, i i
 			}
 			continue
 		}
+		if e.kind == 'S' {
+			if !grammarStatementStart(toks, i) {
+				return false
+			}
+			continue
+		}
 		if j >= len(toks) || s.sameLine == 2 && toks[j].nl {
 			return false
 		}
@@ -442,6 +463,11 @@ func (s *grammarProseSet) matchAlt(alt []grammarKwElem, toks []grammarToken, i i
 			j++
 		case 'n':
 			if t.kind != 'w' || grammarReservedWords[t.text] {
+				return false
+			}
+			j++
+		case 'N':
+			if t.kind != 'w' || grammarReservedWords[t.text] || grammarContainsWord(e.toks, t.text) {
 				return false
 			}
 			j++
