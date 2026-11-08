@@ -106,3 +106,33 @@ func portSeverityProgram(t *testing.T, config string, files map[string]string) m
 	}
 	return result
 }
+
+// EK4804 ports globalErrorInEffectCatch and globalErrorInEffectFailure and
+// cannot tell which one a report answers. The plugin entry decides it only
+// when both rules have one severity; otherwise it keeps its own default, so a
+// project that turns off only globalErrorInEffectFailure keeps EK4804.
+func TestTwoRulePortFollowsAnAgreedSeverity(t *testing.T) {
+	const source = "export effect function f(n: number) {\n  if (n < 0) throw new Error(\"x\")\n  return n\n}\n"
+	config := func(severities string) string {
+		return `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,` +
+			`"plugins":[{"name":"@effect/language-service","diagnosticSeverity":{` + severities + `}}]},"files":["m.vibe"]}`
+	}
+	for _, test := range []struct {
+		severities string
+		want       map[int32]string
+	}{
+		{``, map[int32]string{4804: "warning"}},
+		{`"globalErrorInEffectFailure":"off"`, map[int32]string{4804: "warning"}},
+		{`"globalErrorInEffectCatch":"error"`, map[int32]string{4804: "warning"}},
+		{`"globalErrorInEffectFailure":"off","globalErrorInEffectCatch":"off"`, map[int32]string{}},
+		{`"globalErrorInEffectFailure":"error","globalErrorInEffectCatch":"error"`, map[int32]string{3848: "error"}},
+		{`"globalErrorInEffectFailure":"warning"`, map[int32]string{3849: "warning"}},
+	} {
+		got := portSeverityProgram(t, config(test.severities), map[string]string{"m.vibe": source})["m.vibe"]
+		for _, code := range []int32{4804, 3848, 3849} {
+			if got[code] != test.want[code] {
+				t.Errorf("{%s}: EK%d is %q, want %q (all: %v)", test.severities, code, got[code], test.want[code], got)
+			}
+		}
+	}
+}
