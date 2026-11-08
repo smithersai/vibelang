@@ -2908,6 +2908,8 @@ typescript/vibelang/cases/do-loop-head-effect/main.vibe:4:29 lambda plain annota
 typescript/vibelang/cases/do-loop-head-effect/main.vibe:6:31 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-effect/main.vibe:7:16 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-effect/main.vibe:9:26 lambda plain table
+typescript/vibelang/cases/do-loop-head-function-positions.fail/main.vibe:7:22 lambda plain fallback
+typescript/vibelang/cases/do-loop-head-function-positions.fail/main.vibe:8:33 lambda plain fallback
 typescript/vibelang/cases/do-loop-head-in-assign-simple/main.vibe:11:31 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-in-assign-simple/main.vibe:12:32 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-in-assign-simple/main.vibe:14:14 lambda plain annotation
@@ -3560,6 +3562,9 @@ typescript/vibelang/cases/ek0403-inline-catch-fixed/main.vibe:3:27 byname progra
 typescript/vibelang/cases/ek0403-inline-catch-fixed/main.vibe:3:45 lambda plain table
 typescript/vibelang/cases/ek0403-inline-catch-fixed/main.vibe:3:71 lambda plain table
 typescript/vibelang/cases/ek0403-inline-catch.fail/main.vibe:3:21 lambda effectFn keyword
+typescript/vibelang/cases/ek0403-note-forms-compile/main.vibe:3:27 byname program table
+typescript/vibelang/cases/ek0403-note-forms-compile/main.vibe:3:45 lambda plain table
+typescript/vibelang/cases/ek0403-note-forms-compile/main.vibe:3:71 lambda plain table
 typescript/vibelang/cases/ek0403-predicate-early-fixed-output/main.vibe:5:105 lambda plain table
 typescript/vibelang/cases/ek0403-predicate-early-fixed-output/main.vibe:5:37 byname program table
 typescript/vibelang/cases/ek0403-predicate-early-fixed-output/main.vibe:5:55 lambda plain table
@@ -3931,6 +3936,17 @@ typescript/vibelang/cases/experimental-resize-observer/main.vibe:14:14 lambda ef
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:20:23 byname program table
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:20:43 lambda effectFn annotation
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:6:33 lambda choice fallback
+typescript/vibelang/cases/experimental-window-page/main.vibe:12:45 lambda choice fallback
+typescript/vibelang/cases/experimental-window-page/main.vibe:23:43 lambda plain fallback
+typescript/vibelang/cases/experimental-window-page/main.vibe:34:30 lambda plain fallback
+typescript/vibelang/cases/experimental-window-page/main.vibe:48:32 lambda choice fallback
+typescript/vibelang/cases/experimental-window-page/main.vibe:52:46 lambda plain fallback
+typescript/vibelang/cases/experimental-window-page/main.vibe:52:84 lambda plain fallback
+typescript/vibelang/cases/experimental-window-page/main.vibe:64:22 byname program table
+typescript/vibelang/cases/experimental-window-page/main.vibe:65:48 lambda plain table
+typescript/vibelang/cases/experimental-window-page/main.vibe:66:35 lambda plain table
+typescript/vibelang/cases/experimental-window-page/main.vibe:67:35 lambda plain table
+typescript/vibelang/cases/experimental-window-page/main.vibe:68:34 lambda plain table
 typescript/vibelang/cases/experimental-window/main.vibe:11:28 lambda choice fallback
 typescript/vibelang/cases/experimental-window/main.vibe:11:64 lambda choice fallback
 typescript/vibelang/cases/experimental-window/main.vibe:8:24 byname program table
