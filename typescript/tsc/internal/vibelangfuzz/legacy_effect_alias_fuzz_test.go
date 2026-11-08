@@ -93,8 +93,8 @@ func FuzzLegacyEffectAlias(f *testing.F) {
 			Gap(t, "FuzzLegacyEffectAlias", key, "chapter 007 %q: want %d EK4856 and errors %v; got %d, %v; %s", legacyAliasQuote, want, wantErrors, warnings, errors, use)
 		}
 		if key == "legacy-class" {
-			// The qualified spelling independently keeps the inherited foreign
-			// callback rejection. Alias migration cannot remove that VIP-4 error.
+			// The qualified spelling independently keeps the inherited source
+			// signatures and their thrown contracts.
 			qualified := maps.Clone(files)
 			qualified["main.vibe"] = strings.ReplaceAll(use, "implements Effect<", "implements Effect.Effect<")
 			control, err := w.Compile(t.Context(), Project{Files: qualified})
@@ -382,15 +382,9 @@ func checkLegacyHeritageFix(t *testing.T, w *Workspace, key string, shape uint8,
 	}
 }
 
-// Chapter 003 applies throws assignability to implements clauses too.
-// This fixture inherits Effect's unannotated foreign callable members;
-// the alias spelling does not make their throws fit a pure member type.
-func legacyHeritageExpectedErrors(key string) []string {
-	if key == "legacy-class" {
-		return []string{"EK402"}
-	}
-	return nil
-}
+// Inherited Effect members are checked against their own declarations.
+// Chapter 3 admits a callable at a destination with its own signature.
+func legacyHeritageExpectedErrors(key string) []string { return nil }
 func legacyHeritageErrors(r *Result) []string {
 	var codes []string
 	for _, d := range r.Diagnostics {
@@ -401,6 +395,9 @@ func legacyHeritageErrors(r *Result) []string {
 	return codes
 }
 func TestLegacyHeritageThrowsQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("003-failures.md"), ownSignatureQuote) {
+		t.Fatal("missing own-signature assignability rule")
+	}
 	const quote = "The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`, with `service` members as interface members."
 	if !strings.Contains(SpecText("003-failures.md"), quote) {
 		t.Fatal("missing heritage throws authority")
