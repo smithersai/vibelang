@@ -113,6 +113,7 @@ const specTests = [
   "TestGrammarAdmissionPatternRestEllipsisRegression",
   "TestGrammarAdmissionTryInHatchKeys",
   "TestGrammarAdmissionTryInHatchRegression",
+  "TestGrammarAdmissionCoalesceMixing",
   "TestGrammarAdmissionComputedKeyContext",
   "TestGrammarAdmissionServiceRejectedMembers",
   "TestGrammarAdmissionArithmeticGrouping",

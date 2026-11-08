@@ -867,3 +867,12 @@ neither does Appendix A's; a `using` declaration needs a `BindingIdentifier`
 on the same line. The lab's TypeScript subset had excluded every statement
 that starts with `using`. It now keeps only the declaration's line-break
 restriction, and the TypeScript-subset test holds these identifier forms.
+
+The next case-seeded campaign joined two `is` statements with `??`, giving
+`effect is (Point) && (hits += 1) ?? async is < 5 && (hits += 1)`. ECMAScript's
+`CoalesceExpressionHead` is a `CoalesceExpression` or a `BitwiseORExpression`,
+so `??` never shares an unparenthesized operand with `&&` or `||`, and
+Appendix A inherits that. TypeScript parses the mixture by precedence and its
+checker rejects it with the grammar error `TS5076`. The oracle now counts
+`TS5076` as a syntax rejection; parenthesized and chained `??` forms still
+derive.

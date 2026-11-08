@@ -2250,6 +2250,13 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// it, and its early error rejects the production in an ObjectLiteral.
 	case 1312:
 		return true
+	// checkNullishCoalesceOperands: `??` mixed with `&&` or `||` without
+	// parentheses (TS5076). ECMAScript's CoalesceExpressionHead is a
+	// CoalesceExpression or a BitwiseORExpression, so `a && b ?? c` has no
+	// derivation; TypeScript parses it by precedence and the checker rejects
+	// it with this grammar error.
+	case 5076:
+		return true
 	// checkGrammarJSDocNonNullable: a `!` at the end or start of a type (TS17019,
 	// TS17020). No TypeScript type starts with `!`, and EffectType needs its operand.
 	case 17019, 17020:
