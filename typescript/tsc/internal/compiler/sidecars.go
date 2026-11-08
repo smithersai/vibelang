@@ -90,6 +90,15 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	if len(sources) == 0 {
 		return nil
 	}
+	// Private project emission may serve unaffected modules despite errors.
+	// Compatibility declarations are shared project outputs: publish them only
+	// after checking and declaration serialization both succeed.
+	if projectSidecarOptions {
+		diagnostics := GetDiagnosticsOfAnyProgram(ctx, p, nil, true, p.GetBindDiagnostics, p.GetSemanticDiagnostics)
+		if ctx.Err() != nil || diagnosticsAffectBuild(diagnostics) {
+			return &EmitResult{EmitSkipped: true}
+		}
+	}
 	// Overlapping roots can make one module's old colocated sidecar another
 	// module's selected output. Cleanup must not remove any selected output,
 	// regardless of the order in which the sources emit.
@@ -103,6 +112,17 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 		for _, body := range file.EmbeddedModules() {
 			bodies[tspath.RemoveFileExtension(string(body.FileName()))] = body
 		}
+	}
+	var publication []func() error
+	var publicationMutex sync.Mutex
+	publish := func(action func() error) error {
+		if !projectSidecarOptions {
+			return action()
+		}
+		publicationMutex.Lock()
+		defer publicationMutex.Unlock()
+		publication = append(publication, action)
+		return nil
 	}
 	var mutex sync.Mutex
 	var referenced []*ast.SourceFile
@@ -159,10 +179,15 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 					return nil
 				}
 				if output != nil && stale != "" && !selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(stale))] && output.FileExists(tspath.RootedFilePathFromNormalized(stale)) {
-					if err := output.Remove(tspath.RootedPathFromNormalized(stale)); err != nil {
+					if err := publish(func() error {
+						if err := output.Remove(tspath.RootedPathFromNormalized(stale)); err != nil {
+							return err
+						}
+						p.pruneSidecarDirectories(tspath.GetDirectoryPath(stale), output)
+						return nil
+					}); err != nil {
 						return err
 					}
-					p.pruneSidecarDirectories(tspath.GetDirectoryPath(stale), output)
 				}
 				// Resolve from the source using the real module resolver, then write
 				// relative to the final compatibility output. Another project's
@@ -196,7 +221,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				if existing, ok := fs.ReadFile(tspath.RootedFilePathFromNormalized(sidecar)); ok && existing == text {
 					return nil
 				}
-				return write(sidecar, text)
+				return publish(func() error { return write(sidecar, text) })
 			},
 		})
 	}
@@ -219,6 +244,19 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 		result.Diagnostics = p.sidecarReaderDiagnostics(result.Diagnostics, sources)
 	}
 	result.EmitSkipped = result.EmitSkipped || blocked.Load()
+	if projectSidecarOptions {
+		if ctx.Err() != nil || result.EmitSkipped || diagnosticsAffectBuild(result.Diagnostics) {
+			result.EmitSkipped = true
+			return result
+		}
+		for _, action := range publication {
+			if err := action(); err != nil {
+				result.EmitSkipped = true
+				result.Diagnostics = append(result.Diagnostics, ast.NewCompilerDiagnostic(diagnostics.Could_not_write_file_0_Colon_1, "compatibility declaration", err.Error()))
+				break
+			}
+		}
+	}
 	return result
 }
 

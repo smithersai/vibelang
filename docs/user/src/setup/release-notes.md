@@ -27,6 +27,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An invalid `async` handler after `catch` could also report that its return value lacked Effect properties. It now reports the handler error while preserving errors in written return types and body code.
 
+- A failed loader check could replace an existing `number` declaration with `any` after an unresolved import. Failed loader checks now preserve existing compatibility declarations and publish updates only after successful checking.
+
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.

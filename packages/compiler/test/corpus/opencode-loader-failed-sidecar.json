@@ -1,0 +1,12 @@
+{
+  "property": "loader-sidecar-transaction",
+  "rule": "failed loader checks preserve existing compatibility declarations",
+  "input": {
+    "extension": "vibe",
+    "directory": "",
+    "noEmit": false,
+    "declaration": true,
+    "failure": "missing",
+    "preexisting": true
+  }
+}

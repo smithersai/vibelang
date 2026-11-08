@@ -181,6 +181,8 @@ node -e 'import("vibelang/project").then(p => console.log(p.writeLoaderRecord({ 
 
 A project with a type error gets no record.
 
+A private project compile that fails checking or declaration serialization leaves existing compatibility declarations unchanged: it creates no sidecars and removes no previous layout. Sidecar writes and cleanup are published only after checking and declaration serialization succeed. A loader can still serve an unaffected module from its private JavaScript output.
+
 ## Run Playwright with .vibe modules
 
 ```sh

@@ -379,6 +379,8 @@ A `schema` declaration's JSDoc is emitted on its constant only; the generated `t
 
 A compatibility declaration keeps an explicit `./tag.vibe` import bound to that source when `tag.ts` is also present. The same applies to inferred import types: sidecar resolution preserves the selected source before computing its output-relative path.
 
+A failed Node or Bun loader check leaves existing compatibility declarations unchanged and does not create new ones or remove declarations from the previous sidecar layout. Once the project checks successfully, the loader updates its declarations and removes obsolete copies. This publication rule also applies to private project emission through `vibelang/project`; ordinary compiler emission still follows the project's output options.
+
 The Node and Bun loaders reuse a cached compile when generated sidecars beside their sources, or anywhere under `vibe.sidecarDir`, appear, change or disappear. They still recompile when a source or a standalone declaration file changes.
 
 No VibeLang setting is needed. The retired `declarationSidecars` option is an error. Run `vibelang -p tsconfig.json --fix` to remove it from the project and its local inherited configs. This also removes the obsolete key from the top-level `vibe` section in `tsconfig.json` or `vibe.config.json`, preserving other settings, comments and a UTF-8 BOM.
