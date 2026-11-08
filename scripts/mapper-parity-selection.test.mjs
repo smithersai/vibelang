@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import test, { before, after } from "node:test"
+import { locateMapper } from "./testing/mapper-binary.mjs"
 import { checkProperty } from "./testing/property.mjs"
 
 const root = fileURLToPath(new URL("../", import.meta.url))
@@ -13,13 +14,14 @@ const require = createRequire(new URL("../packages/compiler/package.json", impor
 const fc = require("fast-check")
 const version = JSON.parse(readFileSync(join(root, "packages/ts-mapper/package.json"), "utf8")).devDependencies.typescript
 const stock = join(root, "packages/ts-mapper/test/.cache/typescript-" + version, "node_modules/.bin/tsc")
-// PARITY_TEST_MAPPER can point at the real locally built mapper. Invalid
-// selections must exit before any compiler is used, including --version.
-let mapper = process.env.PARITY_TEST_MAPPER ?? join(root, "packages/ts-mapper/bin/vibelang-mapper")
+// PARITY_TEST_MAPPER can point at the real locally built mapper; otherwise the
+// packaged or graph-built copy serves, and only a tree with neither builds one.
+// Invalid selections must exit before any compiler is used, including --version.
+let mapper = locateMapper({ root })
 
 let ownedMapper
 before(() => {
-  if (existsSync(mapper)) return
+  if (mapper) return
   ownedMapper = mkdtempSync(join(tmpdir(), "vibelang-parity-selection-mapper-"))
   mapper = join(ownedMapper, "vibelang-mapper")
   const build = spawnSync("sh", [join(root, "scripts/native-output.sh"), "build", mapper,

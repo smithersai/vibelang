@@ -740,7 +740,9 @@ const targets = {
   "mapper-scripts": check(
     "The mapper's hover, parity and RPC runners work on the current fixtures and compiler.",
     "node --test --test-concurrency=4 scripts/mapper-*.test.mjs",
-    [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"]],
+    // The parity selection test drives typescript/built/local/vibelang-mapper (scripts/testing/mapper-binary.mjs).
+    // Without it the test built its own copy inside a 900 s hook, which timed out on a loaded post-merge box.
+    [Typescript.compiler, Typescript.mapper, Packages["runtime-dist"], Packages["compiler-native"]],
     [bun, node],
     // 280-610 s on a shared 4-vCPU gate box; 10m cut off 2 of 11 post-merge runs mid-suite.
     "20m"
