@@ -4503,6 +4503,10 @@ typescript/vibelang/cases/for-try-native-iteration-errors.fail/main.vibe:3:63 la
 typescript/vibelang/cases/for-try-native-iteration-errors.fail/main.vibe:3:79 lambda plain fallback
 typescript/vibelang/cases/for-try-native-iteration-errors.fail/main.vibe:4:53 lambda dual fallback
 typescript/vibelang/cases/for-try-native-iteration-errors.fail/main.vibe:5:62 lambda dual fallback
+typescript/vibelang/cases/foreign-call-catch-argument.fail/main.vibe:5:10 lambda effectFn table
+typescript/vibelang/cases/foreign-call-catch-argument.fail/main.vibe:5:102 lambda dual fallback
+typescript/vibelang/cases/foreign-call-catch-argument.fail/main.vibe:5:82 lambda effectFn keyword
+typescript/vibelang/cases/foreign-call-catch-argument.fail/main.vibe:7:14 lambda dual fallback
 typescript/vibelang/cases/foreign-callback-admitted/main.vibe:41:62 lambda plain table
 typescript/vibelang/cases/foreign-callback-aliases.fail/main.vibe:16:19 lambda plain fallback
 typescript/vibelang/cases/foreign-callback-aliases/main.vibe:12:21 lambda effectFn table

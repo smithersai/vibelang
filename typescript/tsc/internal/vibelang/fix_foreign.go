@@ -189,7 +189,9 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 			consts += strings.TrimSuffix(declaration, "; ") + separator
 		}
 	}
-	if !isMarkedEffect(fn) && (ast.IsArrowFunction(fn) || ast.IsFunctionExpression(fn)) {
+	// A parser-made program arrow is the surrounding source context, not
+	// a written function where an effect modifier can be inserted.
+	if !isMarkedEffect(fn) && !isProgramArrow(fn) && (ast.IsArrowFunction(fn) || ast.IsFunctionExpression(fn)) {
 		edits = append(edits, sourceEdit{nodeStart(file, fn), nodeStart(file, fn), "effect "}) // try needs effect code
 	}
 	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: " + defectBridgeIdentity + " }))"

@@ -11,11 +11,29 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
-// Every generated synchronous defect bridge compiles with zero
-// diagnostics and retains the stock Effect Exit (proxy ruling, 2026-11-04).
+// Generated defect bridges preserve the call and handler, as the tooling
+// chapter requires; the Effect twin independently checks the resulting Exit.
+const generatedDefectBridgeQuote = "The inline catch mapper provably cannot throw and preserves the exact thrown value as a defect."
+const caughtArgumentBridgeQuote = "When a throwing call appears inside a `catch` operand's arguments, the repair preserves the enclosing call's Effect result and the existing handler."
+
+func TestGeneratedDefectBridgeQuoted(t *testing.T) {
+	text := SpecText("007-tooling.md")
+	for _, quote := range []string{generatedDefectBridgeQuote, caughtArgumentBridgeQuote} {
+		if !strings.Contains(text, quote) {
+			t.Fatalf("generated defect bridge rule changed: %s", quote)
+		}
+	}
+}
+
 func FuzzGeneratedDefectBridgeFixTwin(f *testing.F) {
 	startShortBudget(f)
-	for mode := uint8(0); mode < 3; mode++ {
+	text := SpecText("007-tooling.md")
+	for _, quote := range []string{generatedDefectBridgeQuote, caughtArgumentBridgeQuote} {
+		if !strings.Contains(text, quote) {
+			f.Fatalf("generated defect bridge rule changed: %s", quote)
+		}
+	}
+	for mode := uint8(0); mode < 6; mode++ {
 		for kind := uint8(0); kind < 5; kind++ {
 			f.Add(mode, kind, false)
 			f.Add(mode, kind, true)
@@ -36,15 +54,27 @@ func FuzzGeneratedDefectBridgeFixTwin(f *testing.F) {
 		value := []string{"undefined", "\"ok\"", "\"primitive\"", "\"object\"", "\"error\""}[kind%5]
 		// Both sides inspect the Exit and compare the very same thrown object,
 		// not just its serialized shape.
-		foreign := "export const marker = { defect: true }\nexport const log = { info(value: string) { if (value === \"primitive\") throw 7; if (value === \"object\") throw marker; if (value === \"error\") throw new Error(\"boom\"); return value.length } }\n"
+		foreign := "import { Effect } from \"effect\"\nexport function screen(n: number): Effect.Effect<number, { _tag: \"Cancelled\" }> { return n === 2 ? Effect.fail({ _tag: \"Cancelled\" }) : Effect.succeed(n) }\nexport const marker = { defect: true }\nexport const log = { info(value: string) { if (value === \"primitive\") throw 7; if (value === \"object\") throw marker; if (value === \"error\") throw new Error(\"boom\"); return value.length } }\n"
 		stockBody := "export const work = (x: string | undefined) => Effect.gen(function* () { if (x) log.info(x); return 1 })\n"
 		sourceBody := "export const work = effect (x: string | undefined) => { if (x) log.info(x); return 1 }\n"
-		switch mode % 3 {
+		switch mode % 6 {
 		case 1:
 			sourceBody = stockBody
 		case 2:
 			prefix += "import { trusted } from \"vibelang-runtime\"\n"
 			sourceBody = "const info = trusted(log.info, [])\nexport const work = effect (x: string | undefined) => { if (x) info(x); return 1 }\n"
+		}
+		if mode%6 >= 3 {
+			prefix += "import { screen } from \"./foreign.js\"\n"
+			stockBody = "export const work = (x: string | undefined) => Effect.gen(function* () { return yield* Effect.catch(screen(log.info(x ?? \"\")), () => Effect.succeed(-1)) })\n"
+			handler := "() => -1"
+			if mode%6 == 4 {
+				handler = "effect () => -1"
+			}
+			if mode%6 == 5 {
+				handler = "effect (e) => match (e) { when { _tag: \"Cancelled\" }: -1; default: throw e; }"
+			}
+			sourceBody = "export const work = effect (x: string | undefined) => { return screen(log.info(x ?? \"\")) catch " + handler + " }\n"
 		}
 		runner := fmt.Sprintf("import { Cause, Effect, Exit } from \"effect\"\nimport { marker } from \"./foreign.js\"\nimport { work } from \"./main.js\"\nexport const main = () => Effect.map(Effect.exit(work(%s)), ex => Exit.isSuccess(ex) ? { exit: \"success\", value: ex.value } : { exit: \"failure\", reasons: ex.cause.reasons.map(r => r._tag), same: Cause.squash(ex.cause) === marker, value: String(Cause.squash(ex.cause)) })\n", value)
 		toolsGuard(t, target, func() {

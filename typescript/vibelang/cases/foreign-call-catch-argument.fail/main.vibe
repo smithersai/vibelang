@@ -1,0 +1,9 @@
+// expect: EK0403
+// expect-result: "cancel"
+import { terminal, view } from "./foreign.ts"
+export effect function main() {
+  return terminal.prompt.screen(view({ initialValue: "cancel" as const })) catch effect (e) => match (e) {
+    when { _tag: "Cancelled" }: "cancel" as const;
+    default: throw e;
+  }
+}
