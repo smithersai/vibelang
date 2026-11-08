@@ -1,0 +1,12 @@
+// expect-result: [1,2,123]
+export effect function single() {
+  provide { layer: Layer.empty }.layer { return 1 }
+}
+export effect function nested() {
+  provide { box: { layer: Layer.empty } }.box.layer { return 2 }
+}
+export effect function ordered() {
+  let order = 0
+  provide { get layer() { order = order * 10 + 1; return Layer.empty } }.layer, { get layer() { order = order * 10 + 2; return Layer.empty } }.layer, { get layer() { order = order * 10 + 3; return Layer.empty } }.layer { return order }
+}
+export effect function main() { return [try single(), try nested(), try ordered()] }

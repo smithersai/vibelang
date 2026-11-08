@@ -44,6 +44,8 @@ A variable named `provide` also keeps native postfix operations in expressions: 
 
 Write the keyword `provide` without Unicode escapes. An escaped spelling used as the keyword reports `TS1260`, as for TypeScript’s `async` keyword. Its quick fix, also applied by `vibelang --fix`, writes the keyword without escapes. Escaped ordinary identifiers still work in bindings, calls and expressions such as `return pr\u006fvide / scale`.
 
+An object literal can start a provider: `provide { layer: Layer.empty }.layer { … }`. Member reads, getter calls, nested objects and `Key = value` entries follow the ordinary provider expression grammar. Provider expressions are evaluated once, from left to right.
+
 Do not break immediately before or after a provider-separating comma (`EK1202`). Line breaks inside a provider expression remain allowed; use `Layer.mergeAll(...)` for multiline composition. The compiler still checks the recovered body, including `EK1201` for a block outside effect code and independent type errors.
 
 A `provide` block takes layers and `Key = value` entries, separated by commas, and Effect's own `provide` types them. A provider typed as `any` follows Effect's overloads too: its error and requirement types remain `unknown`. A concrete `never` provider adds no error or requirement types, and keeps any service requirements its body still needs. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once.

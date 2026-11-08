@@ -656,7 +656,7 @@ func (p *Parser) isStartOfVibeLangProvide() bool {
 
 func (p *Parser) scanStartOfVibeLangProvide() bool {
 	p.nextToken()
-	if p.hasPrecedingLineBreak() || p.token == ast.KindOpenBraceToken {
+	if p.hasPrecedingLineBreak() {
 		return false
 	}
 	if p.token == ast.KindOpenParenToken && p.lookAhead((*Parser).scanVibeLangProvideArguments) {
