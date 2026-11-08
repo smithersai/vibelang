@@ -1,8 +1,6 @@
-// Without declaration output nothing prints the alias, so EK4832 still offers
-// the schema declaration.
+// The required declaration sidecar prints the written helper alias even
+// when ordinary declaration emit is disabled, so the codec/type pair stays.
 export const Token = Schema.Struct({ id: Schema.String })
 export type Token = Schema.Schema.Type<typeof Token>
-
-// Appendix B: EK4832 — spec-rule: docs/design/src/900-appendices.md#84ad230838705145
 
 // Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

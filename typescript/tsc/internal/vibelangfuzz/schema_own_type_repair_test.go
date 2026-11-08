@@ -11,9 +11,14 @@ import (
 
 const schemaOwnRepairQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
 
+const schemaOwnSidecarQuote = "Every \x60.vibe\x60 module has a declaration, its sidecar, so \x60noEmit\x60 and \x60declaration: false\x60 change nothing here."
+
 func schemaOwnTypeRepairQuotes(t testing.TB) {
-	if !strings.Contains(SpecText("007-tooling.md"), schemaOwnRepairQuote) {
-		t.Fatal("chapter 007 lost schema repair preservation rule")
+	t.Helper()
+	for _, quote := range []string{schemaOwnRepairQuote, schemaOwnSidecarQuote} {
+		if !strings.Contains(SpecText("007-tooling.md"), quote) {
+			t.Fatalf("chapter 007 lost schema repair preservation rule: %q", quote)
+		}
 	}
 }
 
@@ -73,7 +78,9 @@ func FuzzSchemaOwnTypeRepair(f *testing.F) {
 		if !toolsErrorFree(r) {
 			t.Fatalf("invalid fixture: %v", r.Diagnostics)
 		}
-		want := !custom && (!declared || key == "own-query")
+		// The mandatory sidecar preserves the written alias/interface even
+		// when ordinary declaration emit is disabled.
+		want := !custom && key == "own-query"
 		warned := false
 		for _, d := range r.Diagnostics {
 			if d.Source() == "EK" && d.Code() == 4832 {
