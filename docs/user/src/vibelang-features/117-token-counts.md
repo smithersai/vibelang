@@ -113,12 +113,12 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Known limitations](../setup/known-limitations.md) | 710 |
 | [Source maps](../setup/source-maps.md) | 870 |
 | **Start a project** | **11,000** |
-| [New project](../setup/new-project.md) | 670 |
+| [New project](../setup/new-project.md) | 690 |
 | [Existing project](../setup/existing-project.md) | 4,600 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,500 |
 | **Build and test** | **26,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 22,000 |
-| [Vite and Vitest](../setup/vite.md) | 4,500 |
+| [Vite and Vitest](../setup/vite.md) | 4,600 |
 | **Format and lint** | **14,000** |
 | [Format with dprint](../setup/formatting.md) | 3,500 |
 | [Developer tools](../setup/developer-tools.md) | 11,000 |

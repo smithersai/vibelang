@@ -3558,6 +3558,12 @@ typescript/vibelang/cases/effectful-plain-unknown-default.fail/main.vibe:9:25 la
 typescript/vibelang/cases/effectful-subtype-returns/main.vibe:18:35 byname program table
 typescript/vibelang/cases/effectful-subtype-returns/main.vibe:19:74 lambda plain fallback
 typescript/vibelang/cases/effectful-unknown-promise.fail/main.vibe:9:29 lambda effectFn annotation
+typescript/vibelang/cases/ek0402-own-signature-target/main.vibe:10:18 lambda plain annotation
+typescript/vibelang/cases/ek0402-own-signature-target/main.vibe:19:28 lambda plain table
+typescript/vibelang/cases/ek0402-own-signature-target/main.vibe:20:28 lambda plain table
+typescript/vibelang/cases/ek0402-own-signature-target/main.vibe:21:28 lambda plain table
+typescript/vibelang/cases/ek0402-own-signature-target/main.vibe:22:30 lambda plain table
+typescript/vibelang/cases/ek0402-own-signature-target/main.vibe:23:33 lambda plain table
 typescript/vibelang/cases/ek0403-defect-default-fixed/main.vibe:3:105 lambda plain table
 typescript/vibelang/cases/ek0403-defect-default-fixed/main.vibe:3:37 byname program table
 typescript/vibelang/cases/ek0403-defect-default-fixed/main.vibe:3:55 lambda plain table

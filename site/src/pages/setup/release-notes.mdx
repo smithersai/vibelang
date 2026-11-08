@@ -13,6 +13,22 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `.ts` class whose constructor has no `@throws` tag was accepted where a construct signature without `@throws` was expected, such as `const make: new (n: number) => Box = Box` or `register(Box)`, although constructing it in effect code reports `EK0403` and the same unannotated function value reports `EK0402`. The class now reports `EK0402` there too; a class that declares no constructor stays untracked.
+
+- Compiling a program that constructs an `error` while `vibelang-runtime` is not installed reported an argument-count error on each `new` after the missing-package error. Only the one error naming the package is reported now.
+
+- The Effect lint video showed a retired configuration flag and rule; it now demonstrates project-based linting, the current Promise warning and a correction that compiles and runs.
+
+- Introductory and tooling videos displayed a personal machine's absolute project path. Their recordings now use project-relative display paths.
+
+- The coding-agent video showed outdated compiler diagnostics. It now shows the compiler rejecting a discarded Effect and the corrected program printing its greeting.
+
+- The starter-test video showed syntax that the compiler rejects. It now shows the current starter source and a real passing test run.
+
+- A child config that set `vibelang.diagnostics` to `null` to clear an inherited legacy severity map was rejected with TS5024. An explicit `null`, like `{}`, now replaces the inherited map with no entries.
+
+- The proposal overview displayed internal review metadata. It now states the retirement rule without those details.
+
 - Repeated computed property declarations with matching types could be rejected as duplicate identifiers. They now follow TypeScript, while incompatible property types remain errors.
 
 - A `break` or `continue` leaving a `do` expression in a `for` loop's test or update, or in a `do…while` test, reported both `EK0205` and the compiler-gap code `EK0204`. It now reports `EK0205` alone.
