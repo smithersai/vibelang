@@ -153,13 +153,19 @@ export function run(args) {
     child.stdout.destroy()
     forward("SIGTERM")
   })
-  child.stdout.on("data", chunk => {
-    if (!process.stdout.write(chunk)) {
-      child.stdout.pause()
-      process.stdout.once("drain", () => child.stdout.resume())
+  // Read in paused mode. Node resumes a child's stdio when the child exits,
+  // which would restart a paused "data" flow before stdout drains.
+  let awaitingDrain = false
+  const forwardOutput = () => {
+    for (let chunk; !awaitingDrain && (chunk = child.stdout.read()) !== null;) {
+      if (!process.stdout.write(chunk)) {
+        awaitingDrain = true
+        process.stdout.once("drain", () => { awaitingDrain = false; forwardOutput() })
+      }
+      observer.consume(decoder.write(chunk), event => record(event))
     }
-    observer.consume(decoder.write(chunk), event => record(event))
-  })
+  }
+  child.stdout.on("readable", forwardOutput)
   child.on("error", error => { spawnError = error.code || "UNKNOWN" })
   child.on("close", (code, signal) => {
     clearInterval(heartbeat)
