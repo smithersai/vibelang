@@ -22,7 +22,11 @@ const vitest = join(dirname(createRequire(import.meta.url).resolve("vitest/packa
 // The functions each .vibe module's author wrote.
 const authored = { byname: 5, callbacks: 7, catches: 10, matches: 4, recursion: 2, services: 5 }
 
-async function coverageRun(t, extraFiles = {}) {
+// coverageRun copies the fixture, adds extraFiles, and runs Vitest with v8
+// coverage. With only, Vitest runs and reports just test/<only>.test.ts and
+// src/<only>.*, so a property's probe compiles and covers its own module
+// rather than the whole fixture again.
+async function coverageRun(t, extraFiles = {}, only) {
   const base = join(packageRoot, "test/.fixtures")
   await mkdir(base, { recursive: true })
   const root = await mkdtemp(join(base, "coverage-"))
@@ -35,8 +39,8 @@ import vibelang from ${JSON.stringify(join(packageRoot, "src/index.js"))}
 export default defineConfig({
   plugins: [vibelang({ compiler: ${JSON.stringify(compiler)} })],
   test: {
-    include: ["test/*.test.ts"],
-    coverage: { enabled: true, provider: "v8", include: ["src/**"], reporter: ["json"] }
+    include: [${JSON.stringify(only ? `test/${only}.test.ts` : "test/*.test.ts")}],
+    coverage: { enabled: true, provider: "v8", include: [${JSON.stringify(only ? `src/${only}.*` : "src/**")}], reporter: ["json"] }
   }
 })
 `)
@@ -134,7 +138,7 @@ test("delegated tail coverage preserves source functions through Vite", async (t
     numRuns: 8,
     regressions: new URL("./property-regressions/", import.meta.url),
     check: async (input) => {
-      const coverage = await coverageRun(t, tailFiles(input))
+      const coverage = await coverageRun(t, tailFiles(input), "tail-generated")
       const byName = Object.fromEntries(Object.entries(coverage).map(([path, file]) => [basename(path), counts(file)]))
       const actual = byName["tail-generated.vibe"], twin = byName["tail-generated.effect.ts"]
       const authored = input.kind === "fallback" || input.kind === "rethrow" ? 3 : 2
