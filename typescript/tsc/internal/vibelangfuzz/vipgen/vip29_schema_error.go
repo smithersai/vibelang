@@ -377,7 +377,7 @@ function witness() {
 		{
 			Key:     "vip29.schema-error-cross-copy-plain",
 			Chapter: "004-match.md",
-			Quote:   "An `error` class ([Failures](003-failures.md#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`.",
+			Quote:   "An `error` class ([Failures](003-failures.md#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`, then `subject instanceof` the class.",
 			Vibe: `schema error Gone { id: string }
 function witness() {
   const subjects: unknown[] = [new Gone({ id: "a" }), { _tag: "Gone" }, Object.assign(Object.create(null), { _tag: "Gone" }), Object.assign(() => 1, { _tag: "Gone" }), { _tag: "Other" }, null, undefined, 1, "Gone"]
