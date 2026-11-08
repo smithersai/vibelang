@@ -1,0 +1,7 @@
+{
+  "rule": "A .ts source compared with the declarations TypeScript emits for it is identical: an arrow or function expression inherits its binding's JSDoc, which the comparison reads on the binding, not on the signature.",
+  "repository": "t3code",
+  "pattern": "a saved .ts script exports a documented arrow, and the migrated side holds its emitted declaration header",
+  "before": "/** Retain this contract. */\nexport const f = (n: number): number => n + 1;\n",
+  "after": "/** Retain this contract. */\nexport declare const f: (n: number) => number;\n"
+}

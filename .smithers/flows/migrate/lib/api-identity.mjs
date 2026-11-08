@@ -329,7 +329,11 @@ function signatureDocs(ts, checker, signature) {
   const ordinary = docs(ts, checker, signature)
   const node = signature.getDeclaration()
   if (!node) return ordinary
-  if (ordinary && !ts.isFunctionTypeNode(node) && !ts.isConstructorTypeNode(node)) return ordinary
+  // An arrow or function expression inherits the JSDoc of the binding it
+  // initializes, as a function type does, and declaration emit prints it as
+  // that function type. Read both kinds from their own comments only.
+  const inherits = ts.isFunctionTypeNode(node) || ts.isConstructorTypeNode(node) || ts.isArrowFunction(node) || ts.isFunctionExpression(node)
+  if (ordinary && !inherits) return ordinary
   const source = node.getSourceFile()
   // Same-line trivia after "=" or ":" is classified as trailing by the
   // scanner even though it precedes this type node.
@@ -340,7 +344,7 @@ function signatureDocs(ts, checker, signature) {
   // Function-type signatures inherit a binding's prose through TypeScript's
   // symbol API. That prose is already compared on the binding itself. An own
   // inline tag must not make that inherited prose appear removed or replaced.
-  if (!comments.length) return ts.isFunctionTypeNode(node) || ts.isConstructorTypeNode(node) ? "" : ordinary
+  if (!comments.length) return inherits ? "" : ordinary
   const parsed = ts.createSourceFile("docs.ts", comments.join("\n") + "\nfunction documented() {}", ts.ScriptTarget.Latest, true)
   const blocks = parsed.statements[0]?.jsDoc ?? []
   const text = normalized(blocks.map(doc => ts.getTextOfJSDocComment(doc.comment) ?? "").join(" "))

@@ -104,7 +104,7 @@ and API comparison, and reject unrelated browser libraries. Native module
 options, self comparisons, type, value, name and documentation mutations,
 and four generated samples remain required.
 
-Callable parameter and return signatures keep their own documentation in the comparison, including inline function types. The compiler’s migration-fixture Go test uses this same gate while retaining its unannotated stock-twin goldens.
+Callable parameter and return signatures keep their own documentation in the comparison, including inline function types. A function type, an arrow and a function expression inherit the JSDoc of the binding they type or initialize; that prose is compared on the binding, and each signature keeps only the comments written on it. A documented `.ts` arrow therefore matches the declaration `tsc` emits for it. The compiler’s migration-fixture Go test uses this same gate while retaining its unannotated stock-twin goldens.
 This implements Will’s 2026-11-04 answer: “Yes this is normal that it doesn't
 exactly match”. Inline `{@link ...}`, `{@linkcode ...}` and `{@linkplain ...}` comments
 retain their targets, labels and rendering kinds when a private target resolves
