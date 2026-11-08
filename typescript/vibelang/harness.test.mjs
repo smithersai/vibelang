@@ -141,6 +141,30 @@ test("a runner takes the largest run-seconds among the helpers it imports", (t) 
   for (const name of ["takes-largest", "own-line-wins", "plain-helper"]) assert.match(result.stdout, new RegExp(`^ok\\s+${name}`, "m"), result.stdout)
 })
 
+test("nested helper budgets bound the real runner process", (t) => {
+  const { root, harness } = fixture(t)
+  const cases = path.join(root, "vibelang/cases")
+  for (const seconds of [1, 5]) {
+    fs.writeFileSync(path.join(cases, "nested-leaf-" + seconds + ".mjs"),
+      "// run-seconds: " + seconds + "\nexport const wait = () => new Promise(resolve => setTimeout(resolve, 2500))\n")
+    fs.writeFileSync(path.join(cases, "nested-wrapper-" + seconds + ".mjs"),
+      'import { wait } from "./nested-leaf-' + seconds + '.mjs"\nexport { wait }\n')
+    const at = path.join(cases, "nested-runner-" + seconds)
+    fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+    fs.writeFileSync(path.join(at, "scenario"), "runtime")
+    fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+    fs.writeFileSync(path.join(at, "expected/stdout.txt"), "expected\n")
+    fs.writeFileSync(path.join(at, "run.mjs"),
+      'import { wait } from "../nested-wrapper-' + seconds + '.mjs"\nawait wait()\nconsole.log("expected")\n')
+  }
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const result = spawnSync(process.execPath, [harness, "--jobs", "2", "nested-runner-1", "nested-runner-5"],
+    { env, encoding: "utf8", timeout: 30_000 })
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /^FAIL\s+nested-runner-1:.*killed by SIGKILL/m)
+  assert.match(result.stdout, /^ok\s+nested-runner-5/m)
+})
+
 test("command evidence records deadline kills, spawn errors, and bounded tails", async () => {
   const { CaseCommands } = await import("./harness-command.mjs")
   const commands = new CaseCommands()

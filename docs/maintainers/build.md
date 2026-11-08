@@ -968,6 +968,9 @@ runs after four compiles on loaded hosts (medians of 13 to 20 seconds, maxima of
 A shared helper that is such a pipeline carries the line itself, and a runner
 without its own takes the largest `N` among the helpers it imports, so a new
 case on `cov-ch004-twin.mjs` or `census-vibex.mjs` needs no line.
+Helper discovery follows relative `.mjs` imports through wrappers. Shared modules,
+aliases and import cycles contribute their declared budgets and stages once;
+compiled `out/` modules and missing files remain excluded.
 A runner without a line also never gets less than the sum of the stage
 deadlines written in it and its helpers, so a new case cannot fall short.
 `//:harness-deadlines` holds an explicit line to that sum. It also requires a

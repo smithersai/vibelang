@@ -4,11 +4,26 @@ import path from "node:path"
 
 const runSecondsLine = /^\/\/ run-seconds: (\d+)\b/m
 
-// The relative .mjs modules a runner imports, compiled output aside.
+// Relative helper modules, including their helpers, excluding compiled output.
+// Module identities are real paths so cycles and shared or aliased imports
+// contribute their budget and written stages only once.
 export function runnerHelpers(file, text = fs.readFileSync(file, "utf8")) {
-  return [...text.matchAll(/\bfrom\s+"(\.{1,2}\/[^"]+\.mjs)"/g)]
-    .map((match) => path.resolve(path.dirname(file), match[1]))
-    .filter((helper) => fs.existsSync(helper) && !helper.split(path.sep).includes("out"))
+  const helpers = []
+  const entry = fs.realpathSync(file)
+  const seen = new Set([entry])
+  const visit = (source, contents) => {
+    for (const match of contents.matchAll(/\bfrom\s+"(\.{1,2}\/[^"]+\.mjs)"/g)) {
+      const helper = path.resolve(path.dirname(source), match[1])
+      if (!fs.existsSync(helper) || helper.split(path.sep).includes("out")) continue
+      const identity = fs.realpathSync(helper)
+      if (seen.has(identity)) continue
+      seen.add(identity)
+      helpers.push(helper)
+      visit(identity, fs.readFileSync(identity, "utf8"))
+    }
+  }
+  visit(entry, text)
+  return helpers
 }
 
 // A custom runner's deadline: the N of its own `// run-seconds: N` line, or

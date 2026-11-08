@@ -1,3 +1,4 @@
+// run-seconds: 120
 // Chapter 007 / loader validation receipt: docs/design/src/007-tooling.md#81f803590b7c4cfb
 // Chapter 007 / loader validation receipt: docs/design/src/007-tooling.md#306cfb3f27039261
 import assert from "node:assert/strict"

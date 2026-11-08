@@ -86,3 +86,82 @@ test("a passing case that used over half of a phase's deadline is named with tha
   assert.equal(nearDeadline([{ phase: "run", timeoutMs: 60_000 }, { phase: "run", wallMs: 5, timeoutMs: 0 }]), null, "no wall or no deadline: nothing to compare")
   assert.equal(nearDeadline(records, 0.2).phase, "compare")
 })
+
+test("nested helper deadlines cover shared imports once and stop at import cycles", (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-nested-deadlines-"))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  const write = (name, text) => {
+    const file = path.join(dir, name)
+    fs.writeFileSync(file, text)
+    return file
+  }
+  const leaf = write("leaf.mjs", "// run-seconds: 180\nexport const run = () => spawn({ timeout: 60_000 })\n")
+  const left = write("left.mjs", 'import { run } from "./leaf.mjs"\nexport { run }\n')
+  const right = write("right.mjs", 'import { run } from "./leaf.mjs"\nexport { run }\n')
+  const runner = write("run.mjs", 'import { run } from "./left.mjs"\nimport { run as other } from "./right.mjs"\n')
+  assert.equal(runnerSeconds(runner), 180, "a wrapper must not hide the existing helper budget")
+  assert.deepEqual(new Set(runnerHelpers(runner)), new Set([left, right, leaf]))
+  fs.appendFileSync(leaf, 'import "node:fs"\nimport { run as again } from "./run.mjs"\n')
+  assert.equal(runnerSeconds(runner), 180)
+  assert.deepEqual(new Set(runnerHelpers(runner)), new Set([left, right, leaf]), "cycles exclude the runner itself")
+  fs.writeFileSync(leaf, "export const run = () => spawn({ timeout: 120_000 })\n")
+  assert.equal(runnerSeconds(runner), 120, "a diamond counts shared stage deadlines once")
+})
+
+test("generated helper graphs retain reachable budgets and stages without duplicate or output modules", (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-helper-graphs-"))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  let state = 1781
+  const random = (n) => ((state = Math.imul(state, 1664525) + 1013904223 >>> 0) % n)
+  for (let sample = 0; sample < 100; sample++) {
+    const at = path.join(dir, String(sample))
+    fs.mkdirSync(path.join(at, "out"), { recursive: true })
+    fs.writeFileSync(path.join(at, "out/ignored.mjs"), "// run-seconds: 9000\n")
+    const n = 2 + random(6)
+    const names = Array.from({ length: n }, (_, i) => "helper-" + i + ".mjs").concat("run.mjs", "out/ignored.mjs")
+    const nodes = Array.from({ length: n + 1 }, (_, i) => ({
+      budget: i === n ? 0 : [0, 90, 180][random(3)],
+      stage: [0, 5, 10, 20][random(4)],
+      edges: i === n ? [0, random(n + 2), 0] : Array.from({ length: random(4) }, () => random(n + 2)),
+    }))
+    for (let i = 0; i <= n; i++) {
+      const node = nodes[i]
+      const imports = node.edges.map((edge, j) => 'import { x as x' + j + ' } from "./' + names[edge] + '"\n').join("")
+      fs.writeFileSync(path.join(at, names[i]),
+        (node.budget ? "// run-seconds: " + node.budget + "\n" : "") +
+        imports + "export const x = () => spawn({ timeout: " + node.stage * 1000 + " })\n")
+    }
+    const reachable = new Set([n])
+    const visit = (i) => {
+      for (const edge of nodes[i].edges) {
+        if (edge > n || reachable.has(edge)) continue
+        reachable.add(edge)
+        visit(edge)
+      }
+    }
+    visit(n)
+    const inherited = [...reachable].filter(i => i !== n).map(i => nodes[i].budget).filter(Boolean)
+    const stages = [...reachable].reduce((sum, i) => sum + nodes[i].stage, 0)
+    const expected = Math.max(inherited.length ? Math.max(...inherited) : 60, stages)
+    const runner = path.join(at, "run.mjs")
+    assert.equal(runnerSeconds(runner), expected, "generated graph " + sample)
+    assert.deepEqual(new Set(runnerHelpers(runner)),
+      new Set([...reachable].filter(i => i !== n).map(i => path.join(at, names[i]))), "generated graph " + sample)
+  }
+})
+
+test("realpath aliases count a module once and resolve its own relative helpers", { skip: process.platform === "win32" }, (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-helper-alias-"))
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }))
+  fs.mkdirSync(path.join(dir, "shared"))
+  const leaf = path.join(dir, "shared/leaf.mjs")
+  const grand = path.join(dir, "shared/grand.mjs")
+  const alias = path.join(dir, "alias.mjs")
+  fs.writeFileSync(leaf, 'import { x } from "./grand.mjs"\nexport const run = () => spawn({ timeout: 30_000 })\n')
+  fs.writeFileSync(grand, "export const x = () => spawn({ timeout: 80_000 })\n")
+  fs.symlinkSync(leaf, alias)
+  const runner = path.join(dir, "run.mjs")
+  fs.writeFileSync(runner, 'import { run } from "./alias.mjs"\nimport { run as other } from "./shared/leaf.mjs"\n')
+  assert.deepEqual(new Set(runnerHelpers(runner)), new Set([alias, grand]))
+  assert.equal(runnerSeconds(runner), 110)
+})
