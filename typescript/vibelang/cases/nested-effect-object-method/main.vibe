@@ -1,0 +1,20 @@
+// expect-result: [0,2,1]
+// An `effect` method of an object literal built in a `sync` callback returns
+// its Effect unrun (Chapter 1), and the `try` in its body runs with it.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+
+export effect function main() {
+  let runs = 0
+  const holder = try sync(() => ({
+    effect run() {
+      runs++
+      const value = try sync(() => runs)
+      return value + 1
+    },
+  }))
+  const runType: Equal<ReturnType<typeof holder.run>, number!!> = true
+  const program = holder.run()
+  const before = runs
+  const result = try program
+  return [before, result, runs]
+}

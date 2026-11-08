@@ -1,0 +1,31 @@
+// expect-result: [0,1,12,2]
+// Two levels: an `effect` arrow in a `sync` callback creates, in an
+// `Effect.try` callback, a method returning an `effect { }` block. Each level
+// is its own cold Effect (Chapters 1 and 2): creating the inner one runs
+// nothing, so `afterInner` is 1, and running it runs its `try`.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+
+export effect function main() {
+  let runs = 0
+  let afterInner = 0
+  const outer = try sync(() => ({
+    run: effect () => {
+      runs++
+      const inner = try Effect.try(() => ({
+        run: () => effect {
+          runs++
+          const value = try sync(() => 10)
+          return value + 1
+        },
+      }))
+      afterInner = runs
+      const value = try inner.run()
+      return value + afterInner
+    },
+  }))
+  const runType: Equal<ReturnType<typeof outer.run>, number!Cause.UnknownError> = true
+  const program = outer.run()
+  const before = runs
+  const result = try program
+  return [before, afterInner, result, runs]
+}

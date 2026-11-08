@@ -1,0 +1,40 @@
+// expect-result: [2,0,"open:act:15d","15e",2]
+// Minimized from a smithers flow binding: a `sync` callback filters and maps
+// flows to bindings whose handler is an `effect` arrow. Each handler is its
+// own cold Effect (Chapter 1), so its `try` results are values that feed the
+// next call, and nothing in it runs until the handler's Effect runs.
+error IssueFailure { reason: string }
+
+type Call = { identity: readonly string[] }
+type Handler = (request: { op: string }, call: Call) => string!IssueFailure
+type Binding = { name: string; handler: Handler }
+
+const make = (binding: Binding): Binding => binding
+const source = (id: string, bindings: Binding[]) => ({ id, bindings })
+let digests = 0
+
+effect function digestHex(bytes: Uint8Array) {
+  digests++
+  return bytes.reduce((sum, byte) => sum + byte, 0).toString(16)
+}
+
+export effect function bindings(flows: string[]) {
+  return try sync(() => source("issues", flows.filter((flow) => flow.startsWith("issues/")).map((flow) => make({
+    name: flow,
+    handler: effect (request, call) => {
+      const bytes = try sync(() => new TextEncoder().encode(JSON.stringify(call.identity)))
+      const key = try digestHex(bytes)
+      if (request.op === "fail") throw new IssueFailure({ reason: key })
+      return `${flow.slice("issues/".length)}:${request.op}:${key}`
+    },
+  }))))
+}
+
+export effect function main() {
+  const built = try bindings(["issues/open", "other/x", "issues/close"])
+  const program = built.bindings[0].handler({ op: "act" }, { identity: ["a"] })
+  const before = digests
+  const first = try program
+  const failed = built.bindings[1].handler({ op: "fail" }, { identity: ["b"] }) catch (e) => e.reason
+  return [built.bindings.length, before, first, failed, digests]
+}

@@ -1,0 +1,25 @@
+// expect-result: [0,2,1]
+// "Calling an `effect` function returns its Effect unrun" (Chapter 1). An
+// `effect` arrow inside a plain `sync` callback is its own generator: its
+// `try` runs only when that Effect runs, so `value` is a number.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+let runs = 0
+
+export effect function nested() {
+  return try sync(() => ({
+    run: effect () => {
+      runs++
+      const value = try sync(() => 1)
+      return value + 1
+    },
+  }))
+}
+
+export effect function main() {
+  const holder = try nested()
+  const runType: Equal<ReturnType<typeof holder.run>, number!!> = true
+  const program = holder.run()
+  const before = runs
+  const result = try program
+  return [before, result, runs]
+}

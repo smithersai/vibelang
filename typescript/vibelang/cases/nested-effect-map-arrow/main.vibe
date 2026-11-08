@@ -1,0 +1,17 @@
+// expect-result: [0,[2,3,4],3]
+// `.map` inside a `sync` callback calls each `effect` arrow, which returns
+// its Effect unrun (Chapter 1): no body runs until `all` runs the array.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+
+export effect function main() {
+  let runs = 0
+  const programs = try sync(() => [1, 2, 3].map(effect (n) => {
+    runs++
+    const value = try sync(() => n)
+    return value + 1
+  }))
+  const programsType: Equal<typeof programs, (number!!)[]> = true
+  const before = runs
+  const results = try all(programs)
+  return [before, results, runs]
+}

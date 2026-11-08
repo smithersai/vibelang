@@ -1,0 +1,22 @@
+// expect-result: [0,1,1]
+// "`effect { … }` is an expression. It builds an Effect from the block
+// without running it" (Chapter 2). A block returned from a method made in an
+// `Effect.try` callback stays cold, and its `try Ref.get` runs only when the
+// block's Effect runs.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+
+export effect function main() {
+  const state = try Ref.make(0)
+  const holder = try Effect.try(() => ({
+    run: () => effect {
+      const value = try Ref.get(state)
+      try Ref.set(state, value + 1)
+      return value + 1
+    },
+  }))
+  const runType: Equal<ReturnType<typeof holder.run>, number!!> = true
+  const program = holder.run()
+  const before = try Ref.get(state)
+  const result = try program
+  return [before, result, try Ref.get(state)]
+}

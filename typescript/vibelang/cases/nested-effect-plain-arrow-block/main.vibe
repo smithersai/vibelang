@@ -1,0 +1,19 @@
+// expect-result: [0,6,1]
+// A plain arrow made in an `Effect.try` callback returns an `effect { }`
+// block, which builds its Effect without running it (Chapter 2). The plain
+// arrow stays plain: calling it builds the block and runs nothing.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+
+export effect function main() {
+  let runs = 0
+  const make = try Effect.try(() => (n: number) => effect {
+    runs++
+    const value = try sync(() => n)
+    return value * 2
+  })
+  const makeType: Equal<typeof make, (n: number) => number!!> = true
+  const program = make(3)
+  const before = runs
+  const result = try program
+  return [before, result, runs]
+}

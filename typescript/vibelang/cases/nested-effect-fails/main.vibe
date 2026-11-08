@@ -1,0 +1,22 @@
+// expect-result: ["Refused",1,0]
+// A nested `effect` arrow that throws fails its own Effect with the typed
+// error (Chapter 3), and only when that Effect runs: creating it in a `sync`
+// callback fails nothing, and the outer `catch` sees `Refused`.
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+
+error Refused { attempt: number }
+
+export effect function main() {
+  let runs = 0
+  const holder = try sync(() => ({
+    run: effect () => {
+      const value = try sync(() => 1)
+      if (value > 0) throw new Refused({ attempt: value })
+      runs++
+      return value
+    },
+  }))
+  const runType: Equal<ReturnType<typeof holder.run>, number!Refused> = true
+  const outcome = holder.run() catch (e) => [e._tag, e.attempt, runs]
+  return outcome
+}
