@@ -116,6 +116,15 @@ func formatGuardRewrite(source string, mask []byte) string {
 	visit = func(node *ast.Node) bool {
 		switch node.Kind {
 		case ast.KindBlock, ast.KindModuleBlock, ast.KindCaseClause, ast.KindDefaultClause, ast.KindSourceFile:
+			// Lowering also makes blocks around unbraced item bodies. Their
+			// children are not a written statement list: inserting an empty
+			// statement there would replace the loop body.
+			if node.Kind == ast.KindBlock {
+				start := scanner.SkipTrivia(source, node.Pos())
+				if start >= len(source) || source[start] != '{' {
+					break
+				}
+			}
 			for _, statement := range formatGuardStatements(node) {
 				// Where dprint writes it: right before a statement that
 				// starts with a parenthesis, a bracket or a template.
