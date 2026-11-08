@@ -99,7 +99,7 @@ func schemaArrayLegacyMigrationFixes(ctx context.Context, program *compiler.Prog
 		unsupported := false
 		var visit func(*ast.Node) bool
 		visit = func(node *ast.Node) bool {
-			if nested := schemaGenericReferences(c, file)[node]; nested != nil && !nested.Legacy {
+			if nested := schemaGenericReferences(c, file)[node]; nested != nil && nested.Arity != 0 && !nested.Legacy {
 				unsupported = true
 				return true
 			}

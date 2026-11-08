@@ -2383,7 +2383,9 @@ type SchemaOptionalReference struct {
 type SchemaGenericReference struct {
 	// Library is the Schema a TypeScript-library type maps to (VIP-44):
 	// Schema.Date for Date, Schema.ReadonlySet(S) for ReadonlySet<T>.
-	Library        *Node
+	Library *Node
+	// Scalar alternatives are selected after type binding and alias resolution.
+	LibraryScalars map[string]*Node
 	RestArray      bool
 	Arity          int
 	InnerName      *Node
@@ -2416,8 +2418,8 @@ type SourceFile struct {
 	data   map[sourceFileDataKey]any
 
 	// Fields set by parser
-	VibeLangSchemaGenerics []SchemaGenericReference
-	VibeLangSchemaOptionals     []SchemaOptionalReference
+	VibeLangSchemaGenerics  []SchemaGenericReference
+	VibeLangSchemaOptionals []SchemaOptionalReference
 
 	// VibeLangDeniedTrailingBlock marks a retired same-line brace. It requests
 	// compatibility diagnostics without admitting that form into the AST.

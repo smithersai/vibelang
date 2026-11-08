@@ -1509,14 +1509,7 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 		}
 		switch {
 		case len(arguments) == 0:
-			last := name
-			if ast.IsQualifiedName(last) {
-				last = last.AsQualifiedName().Right
-			}
-			if ast.IsIdentifier(last) && vibelangSchemaLibraryTypes[last.Text()] {
-				return p.vibelangLibrarySchemaReference(name)
-			}
-			return p.vibelangEntityExpression(name)
+			return p.vibelangLibrarySchemaReference(name)
 		case ast.IsIdentifier(name) && (name.Text() == "Array" || name.Text() == "ReadonlyArray") && len(arguments) == 1:
 			value := p.vibelangSchemaCall("Array", name.Loc, p.vibelangSchemaOf(arguments[0]))
 			if name.Text() == "Array" {

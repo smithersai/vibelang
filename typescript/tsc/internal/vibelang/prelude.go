@@ -259,6 +259,9 @@ func mayUsePrelude(file *ast.SourceFile) (prelude bool, root bool, barrels []str
 		if reference.Library != nil {
 			visit(reference.Library)
 		}
+		for _, scalar := range reference.LibraryScalars {
+			visit(scalar)
+		}
 	}
 	slices.Sort(barrels)
 	return prelude, root, barrels

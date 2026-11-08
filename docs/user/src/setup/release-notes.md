@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Schemas rejected library types imported under another name; imported aliases now select the codec of the resolved library type.
+
 - Adding a base configuration could erase a legacy diagnostic map when the same file’s other legacy location was `null`. The selected map now survives inheritance, including an empty base.
 
 - Schema fields using qualified library types such as `globalThis.Date` were rejected as nonschema values. They now use the same codecs as their unqualified library names.

@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Schemas rejected library types imported under another name; imported aliases now select the codec of the resolved library type.
+
 - Schema fields using qualified library types such as `globalThis.Date` were rejected as nonschema values. They now use the same codecs as their unqualified library names.
 
 - The matching guide described generated errors as matching only by tag. It now also explains the instance check that recognizes subclasses with different tags.

@@ -17,6 +17,7 @@ func TestSchemaGenericArrayLegacyProjectScope(t *testing.T) {
 	}{
 		{"mutable legacy", "export namespace N { export import Array=globalThis.ReadonlyArray; export schema S=Array<number>; export function append(s:S):number {return s.push(1)} }", "const S = Schema.mutable(Schema.Array(Schema.Number));", true},
 		{"readonly legacy", "export namespace N { export import ReadonlyArray=globalThis.Array; export schema S=ReadonlyArray<number> }", "const S = Schema.Array(Schema.Number);", true},
+		{"named codec element", "const Item=Schema.Number; namespace N { export import Array=globalThis.ReadonlyArray; export schema S=Array<Item> }", "const S = Schema.mutable(Schema.Array(Item));", true},
 		{"ordinary library", "export schema S=Array<number>", "", false},
 		{"new qualified form", "export schema S=globalThis.Array<number>", "", false},
 		{"mixed new form", "namespace N { export import Array=globalThis.ReadonlyArray; export schema S { readonly old:Array<number>; readonly added:globalThis.Array<number> } }", "", false},

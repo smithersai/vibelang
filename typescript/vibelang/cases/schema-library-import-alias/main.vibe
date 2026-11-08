@@ -1,0 +1,18 @@
+import NativeDate = globalThis.Date
+import NativeURL = globalThis.URL
+import NativeRegExp = globalThis.RegExp
+import NativeBytes = globalThis.Uint8Array
+import NativeError = globalThis.Error
+import Date = globalThis.URL
+import Error = globalThis.Date
+
+export schema Example {
+ readonly at: NativeDate
+ readonly site: NativeURL
+ readonly pattern: NativeRegExp
+ readonly bytes: NativeBytes
+ readonly cause: NativeError
+ readonly renamedSite: Date
+ readonly renamedDate: Error
+}
+export schema Single = NativeDate

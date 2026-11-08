@@ -190,7 +190,7 @@ func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 			}
 			return p.schemaExpression(reference.Library, schema)
 		}
-		if reference.Expression == node && reference.Library != nil && reference.Arity == 0 {
+		if reference.Expression == node && reference.Arity == 0 {
 			break // a shadowing declaration keeps the written name
 		}
 		if reference.Expression == node && !reference.Legacy {

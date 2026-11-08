@@ -54,11 +54,7 @@ func schemaGenericKind(c *checker.Checker, ref *ast.SchemaGenericReference) int 
 		return 0
 	}
 	if ref.Arity == 0 {
-		last := ref.Name
-		if ast.IsQualifiedName(last) {
-			last = last.AsQualifiedName().Right
-		}
-		if ref.Library != nil && ast.IsIdentifier(last) && symbol.Name() == last.Text() {
+		if ref.LibraryScalars[symbol.Name()] != nil {
 			return schemaLibraryValue
 		}
 		return 0
@@ -158,7 +154,7 @@ func schemaLibraryNameReplacement(c *checker.Checker, node *ast.Node) *ast.Node 
 	if ref == nil || ref.Arity != 0 || schemaGenericKind(c, ref) != schemaLibraryValue {
 		return nil
 	}
-	return ref.Library
+	return ref.LibraryScalars[c.ResolveEntityName(ref.Name, ast.SymbolFlagsType).Name()]
 }
 
 // schemaLibraryNameType gives a selected library name its Schema's type, as

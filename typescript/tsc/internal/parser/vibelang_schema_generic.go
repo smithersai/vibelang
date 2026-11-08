@@ -66,6 +66,9 @@ func (p *Parser) attachVibeLangSchemaGenericScopes(file *ast.SourceFile) {
 		if ref.Library != nil && ref.Library != ref.Expression {
 			ref.Library.Parent = scope
 		}
+		for _, scalar := range ref.LibraryScalars {
+			scalar.Parent = scope
+		}
 	}
 }
 
@@ -92,10 +95,9 @@ func (p *Parser) vibelangRecordSchemaReference(name, value *ast.Node, legacy boo
 	return value
 }
 
-// vibelangLibrarySchemaReference keeps the written name as the visible codec,
-// the value a Schema of that name would be, and Schema.Date and so on as the
-// codec the checker selects when the name's type binding is the TypeScript
-// library's (VIP-44). A shadowing declaration keeps the written value.
+// vibelangLibrarySchemaReference retains the written value and scalar
+// alternatives until ordinary type lookup selects a library binding (VIP-44).
+// An import alias may rename that binding, including to another scalar name.
 func (p *Parser) vibelangLibrarySchemaReference(name *ast.Node) *ast.Node {
 	last := name
 	if ast.IsQualifiedName(last) {
@@ -103,17 +105,21 @@ func (p *Parser) vibelangLibrarySchemaReference(name *ast.Node) *ast.Node {
 	}
 	visible := p.vibelangEntityExpression(name)
 	anchor := p.vibelangCalleeAnchor(name.Loc)
-	library := p.vibelangSchemaMember(nil, last.Text(), anchor)
-	if last.Text() == "Error" {
-		// Schema.Defect().pipe(Schema.refine($isError)), as VIP-44 writes it.
-		refine := p.vibelangSchemaCall("refine", name.Loc, p.vibelangIntrinsic("$isError", anchor))
-		library = p.mCall(p.mProperty(p.vibelangSchemaCall("Defect", name.Loc), "pipe", anchor), []*ast.Node{refine}, name.Loc)
+	scalars := make(map[string]*ast.Node, len(vibelangSchemaLibraryTypes))
+	for _, scalar := range []string{"Date", "URL", "RegExp", "Uint8Array", "Error"} {
+		library := p.vibelangSchemaMember(nil, scalar, anchor)
+		if scalar == "Error" {
+			// Schema.Defect().pipe(Schema.refine($isError)), as VIP-44 writes it.
+			refine := p.vibelangSchemaCall("refine", name.Loc, p.vibelangIntrinsic("$isError", anchor))
+			library = p.mCall(p.mProperty(p.vibelangSchemaCall("Defect", name.Loc), "pipe", anchor), []*ast.Node{refine}, name.Loc)
+		}
+		ast.SetParentInChildren(library)
+		scalars[scalar] = library
 	}
-	ast.SetParentInChildren(library)
 	clonedName := p.vibelangSchemaGenericName(name)
 	clonedName.Parent.Parent = visible
 	p.vibelangSchemaGenerics = append(p.vibelangSchemaGenerics, ast.SchemaGenericReference{
-		Arity: 0, Name: clonedName, Expression: visible, Library: library,
+		Arity: 0, Name: clonedName, Expression: visible, Library: scalars[last.Text()], LibraryScalars: scalars,
 	})
 	return visible
 }
