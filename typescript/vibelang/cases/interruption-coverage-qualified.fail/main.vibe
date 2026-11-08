@@ -1,4 +1,4 @@
-// expect: TS2304
+// expect: TS2552 TS2552
 import { Effect } from "effect"
 // VIP-22 keywords remove the two same-named globals; qualify native APIs.
 export effect function missingMask() { return try uninterruptible(Effect.succeed(1)) }
