@@ -1,0 +1,17 @@
+// An ambient `var` in `declare global { }` is type-only: it emits nothing and
+// is the only declaration that adds a typed property to `typeof globalThis`, so
+// EK0107 exempts it. spec-rule: docs/design/src/001-functions.md#direct-eval
+export {}
+
+declare global {
+  var __vibeCaseLimit__: number | undefined
+  var __vibeCaseName__: string | undefined, __vibeCaseCount__: number | undefined
+}
+
+const limit: typeof globalThis.__vibeCaseLimit__ = 3
+const name: string = globalThis.__vibeCaseName__ ?? "unset"
+
+// expect-result: [3,"unset",true]
+export effect function main() {
+  return [limit, name, globalThis.__vibeCaseCount__ === undefined]
+}

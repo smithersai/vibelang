@@ -1166,6 +1166,6 @@ effect function logAll(ids: string[]) {
 ```
 
 
-Source `var` declarations are `EK0107` everywhere in a `.vibe` file, including `do` expressions and plain functions. Use `const` or `let` and preserve the original scope when rewriting. The `do` rules above describe completion and scope; they do not exempt `var` from that source restriction.
+Source `var` declarations are `EK0107` everywhere in a `.vibe` file, including `do` expressions and plain functions. The one exception is an ambient `var` directly in `declare global { }`, such as `declare global { var __LIMIT__: number | undefined }`: it emits no code and is how TypeScript adds a typed property to `globalThis`. Use `const` or `let` and preserve the original scope when rewriting. The `do` rules above describe completion and scope; they do not exempt `var` from that source restriction.
 
 The schema and schema-error examples use TypeScript's default optional-property setting. With `exactOptionalPropertyTypes: true`, `name?: T` uses `Schema.optionalKey`; write `name?: T | undefined` for `Schema.optional`. Optional tuple elements follow the same setting.

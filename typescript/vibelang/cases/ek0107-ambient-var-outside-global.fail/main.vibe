@@ -1,0 +1,22 @@
+// expect: EK0107 EK0107 EK0107 EK0107
+// The ambient `var` exemption covers only a `var` directly in `declare global { }`.
+// A runtime `var`, a module-scope `declare var`, and an ambient `var` in a
+// declared namespace (also one inside `declare global`) stay EK0107.
+export {}
+
+declare var moduleScoped: number
+
+declare namespace VibeCaseNamespace {
+  var inNamespace: number
+}
+
+declare global {
+  namespace VibeCaseGlobalNamespace {
+    var nested: number
+  }
+}
+
+export function runtime(): number {
+  var t = 1
+  return t
+}

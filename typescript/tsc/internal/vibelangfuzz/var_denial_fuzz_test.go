@@ -9,6 +9,7 @@ import (
 
 const varDenialQuote = "every `var` declaration, `for (var …)` included"
 const varPropertyQuote = "Property names on ordinary objects"
+const varGlobalAugmentationQuote = "An ambient `var` directly in `declare global { }` is exempt"
 
 func requireVarDenialQuotes(t testing.TB) {
 	t.Helper()
@@ -16,7 +17,7 @@ func requireVarDenialQuotes(t testing.TB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, quote := range []string{varDenialQuote, varPropertyQuote} {
+	for _, quote := range []string{varDenialQuote, varPropertyQuote, varGlobalAugmentationQuote} {
 		if !strings.Contains(string(chapter), quote) {
 			t.Fatalf("missing var rule: %q", quote)
 		}
@@ -26,7 +27,7 @@ func TestVarDenialQuoted(t *testing.T) { requireVarDenialQuotes(t) }
 func FuzzVarDenial(f *testing.F) {
 	startShortBudget(f)
 	requireVarDenialQuotes(f)
-	for _, key := range []string{"conformance-witness", "plain", "effect", "async", "arrow", "method", "module", "for", "for-in", "for-of", "destructured", "ambient", "global-augmentation", "namespace-ambient", "global-augmentation-let-control", "do", "do-call-argument", "do-nested", "do-for-head", "generator-do-loop-head", "generator-for-of-head", "property-control", "literal-control", "let-control", "for-in-assignment-control", "for-of-assignment-control", "for-of-array-assignment-control", "for-of-object-assignment-control"} {
+	for _, key := range []string{"conformance-witness", "plain", "effect", "async", "arrow", "method", "module", "for", "for-in", "for-of", "destructured", "ambient", "global-augmentation", "global-augmentation-declarators", "global-augmentation-beside-runtime", "global-augmentation-namespace", "function-named-global", "namespace-ambient", "global-augmentation-let-control", "do", "do-call-argument", "do-nested", "do-for-head", "generator-do-loop-head", "generator-for-of-head", "property-control", "literal-control", "let-control", "for-in-assignment-control", "for-of-assignment-control", "for-of-array-assignment-control", "for-of-object-assignment-control"} {
 		for _, mode := range []uint8{0, 1, 2} {
 			f.Add(key, mode)
 		}
@@ -37,6 +38,10 @@ func FuzzVarDenial(f *testing.F) {
 		declaration := "var" + gap + "value = 1"
 		source := "export function load(): number { " + declaration + "; return value }"
 		want := 1
+		quote := varDenialQuote
+		if strings.HasPrefix(key, "global-augmentation") {
+			quote = varGlobalAugmentationQuote
+		}
 		switch key {
 		case "conformance-witness":
 			source = "export function probe() { var x = 1; return x }"
@@ -62,7 +67,17 @@ func FuzzVarDenial(f *testing.F) {
 			source = "declare var" + gap + "provided: number; export { provided }"
 		case "global-augmentation":
 			// The smithers sandbox flow declares its limit this way.
-			source = "export {}\ndeclare global { var" + gap + "__LIMIT__: number | undefined }"
+			source, want = "export {}\ndeclare global { var"+gap+"__LIMIT__: number | undefined }\nexport const limit = globalThis.__LIMIT__ ?? 1", 0
+		case "global-augmentation-declarators":
+			source, want = "export {}\ndeclare global { interface Window { n: number }\n var"+gap+"__A__: number, __B__: string\n var"+gap+"__C__: boolean }", 0
+		case "global-augmentation-beside-runtime":
+			// The exemption is the ambient statement, not the file.
+			source = "export {}\ndeclare global { var __LIMIT__: number }\nexport function load(): number { " + declaration + "; return value }"
+		case "global-augmentation-namespace":
+			source = "export {}\ndeclare global { namespace Limits { var" + gap + "max: number } }"
+		case "function-named-global":
+			// A function body is not a global augmentation even when named global.
+			source = "export function global(): number { " + declaration + "; return value }"
 		case "namespace-ambient":
 			source = "declare namespace Limits { var" + gap + "max: number }\nexport const limit = Limits.max"
 		case "global-augmentation-let-control":
@@ -115,7 +130,7 @@ func FuzzVarDenial(f *testing.F) {
 			}
 		}
 		if count != want {
-			Gap(t, "FuzzVarDenial", "var:"+key, "%s; got %d EK0107, want %d\n%s\n%v", varDenialQuote, count, want, source, result.Diagnostics)
+			Gap(t, "FuzzVarDenial", "var:"+key, "%s; got %d EK0107, want %d\n%s\n%v", quote, count, want, source, result.Diagnostics)
 		}
 	})
 }

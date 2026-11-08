@@ -1,0 +1,19 @@
+// `let` and `const` in `declare global { }` were never EK0107 and stay as they
+// were; only the ambient `var` exemption is new. They add no property to
+// `typeof globalThis`, as in TypeScript.
+export {}
+
+declare global {
+  let vibeCaseGlobalLet: number
+  const vibeCaseGlobalConst: string
+  interface VibeCaseGlobalShape {
+    readonly n: number
+  }
+}
+
+const shape: VibeCaseGlobalShape = { n: 4 }
+
+// expect-result: [4]
+export effect function main() {
+  return [shape.n]
+}
