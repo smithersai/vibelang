@@ -264,13 +264,15 @@ export function linkModules(temp: string) {
 // prepared, as a project: one module per block, whose prefix imports the
 // names that earlier blocks declare, and a tsconfig.json that lists them.
 // offsets holds the number of prefix lines in each module.
-export function writeProject(dir: string, blocks: Block[], options: { exportFunctions?: boolean; omitFragments?: boolean } = {}): { filenames: Map<number, string>; offsets: Map<string, number> } {
+type ContextBinding = { name: string; from: string; id: string; value?: string }
+export function writeProject(dir: string, blocks: Block[], options: { exportFunctions?: boolean; omitFragments?: boolean } = {}): { filenames: Map<number, string>; offsets: Map<string, number>; context: Map<string, ContextBinding[]> } {
   const ts = typescript()
   mkdirSync(dir)
   writeFileSync(join(dir, "package.json"), '{"type":"module","name":"docs-snippets"}')
   const filenames = blockFilenames(blocks)
   const scope = new Map<string, { from: string; value: boolean }>()
   const offsets = new Map<string, number>()
+  const context = new Map<string, ContextBinding[]>()
   for (const block of blocks) {
     const filename = filenames.get(block.number)!
     mkdirSync(dirname(join(dir, filename)), { recursive: true })
@@ -356,6 +358,7 @@ export function writeProject(dir: string, blocks: Block[], options: { exportFunc
     }
     for (const name of localValues) typeOnly.delete(name)
     const imports = new Map<string, string[]>()
+    const contextBindings: ContextBinding[] = []
     const values: string[] = []
     for (const [name, previous] of scope) {
       if (names.has(name) && !(typeOnly.has(name) && previous.value)) continue
@@ -364,8 +367,10 @@ export function writeProject(dir: string, blocks: Block[], options: { exportFunc
         list.push(`${name} as $doc_${name}`)
         values.push(`const ${name} = $doc_${name}`)
       } else list.push(name)
+      contextBindings.push({ name, from: previous.from, id: typeOnly.has(name) ? name + " as $doc_" + name : name, value: typeOnly.has(name) ? "const " + name + " = $doc_" + name : undefined })
       imports.set(previous.from, list)
     }
+    context.set(filename, contextBindings)
     const prefix = [...[...imports].map(([from, ids]) => `import { ${ids.join(", ")} } from "${localImport(filename, from)}"`), ...values].join("\n") + "\n"
     offsets.set(filename, prefix.split("\n").length - 1)
     let source = block.source
@@ -379,7 +384,7 @@ export function writeProject(dir: string, blocks: Block[], options: { exportFunc
     strict: true, target: "ESNext", module: "NodeNext", moduleResolution: "NodeNext",
     skipLibCheck: true, noEmit: true, types: [...new Set(blocks.flatMap(block => block.types ?? []))], rewriteRelativeImportExtensions: true
   }, files: blocks.filter(block => !(options.omitFragments && block.fragment)).map(block => filenames.get(block.number)!) }))
-  return { filenames, offsets }
+  return { filenames, offsets, context }
 }
 
 // Keep compile and execution output separate so a failure identifies its stage.
@@ -500,22 +505,87 @@ export async function runBlock(dir: string, blocks: Block[], result: Result, com
 // so it stays out of the program: TypeScript reports no semantic error in a
 // program with a syntax error, and a fragment would hide every other block.
 async function compilePage(dir: string, blocks: Block[], page: string, compiler: string, keep = false): Promise<Result[]> {
-  const { filenames, offsets } = writeProject(dir, blocks, { omitFragments: true })
+  const { filenames, offsets, context } = writeProject(dir, blocks, { omitFragments: true })
   const compiled = blocks.some(block => !block.fragment)
-  const child = compiled ? Bun.spawn([compiler, "--noEmit", "--pretty", "false", "-p", join(dir, "tsconfig.json")], { cwd: dir, stdout: "pipe", stderr: "pipe" }) : undefined
-  const [stdout, stderr, code] = child ? await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]) : ["", "", 0]
-  const output = `${stdout}\n${stderr}`
-  if (keep) writeFileSync(join(dir, "compiler.log"), output)
-  const parsed = parseDiagnostics(output)
-  const infrastructure = parsed.filter(d => !d.file || !offsets.has(relative(dir, resolve(dir, d.file)).replaceAll("\\", "/")))
-  if (infrastructure.length || (code !== 0 && !parsed.length)) throw new Error(`Compiler failed for ${relative(repo, page)} (exit ${code}):\n${output}`)
-  return blocks.map(block => {
+  const config = join(dir, "tsconfig.json")
+  const check = async (project: string, label: string, options: string[] = []) => {
+    const child = Bun.spawn([compiler, "--noEmit", "--pretty", "false", ...options, "-p", project], { cwd: dir, stdout: "pipe", stderr: "pipe" })
+    const [stdout, stderr, code] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
+    const output = stdout + "\n" + stderr
+    if (keep) writeFileSync(join(dir, label + ".log"), output)
+    const parsed = parseDiagnostics(output)
+    const infrastructure = parsed.filter(d => !d.file || !offsets.has(relative(dir, resolve(dir, d.file)).replaceAll("\\", "/")))
+    if (infrastructure.length || (code !== 0 && !parsed.length)) throw new Error("Compiler failed for " + relative(repo, page) + " (" + label + ", exit " + code + "):\n" + output)
+    return parsed
+  }
+  const parsed = compiled ? await check(config, "compiler") : []
+  const localFile = (file: string) => relative(dir, resolve(dir, file)).replaceAll("\\", "/")
+  const diagnosticsFor = (block: Block, output: ReturnType<typeof parseDiagnostics>) => {
     const filename = filenames.get(block.number)!
-    const diagnostics = parsed.filter(d => d.file && relative(dir, resolve(dir, d.file)).replaceAll("\\", "/") === filename).map(({ diagnostic }) => ({
+    return output.filter(d => d.file && localFile(d.file) === filename).map(({ diagnostic }) => ({
       ...diagnostic, line: block.line + diagnostic.line! - offsets.get(filename)! - 1
     }))
-    return classify(block, diagnostics)
-  })
+  }
+  // A syntax error stops TypeScript's semantic pass for the entire program.
+  // Probe without semantic checking, then check each entry and its imports
+  // separately when syntax errors exist. Negative examples keep their errors.
+  const syntax = parsed.length ? await check(config, "syntax", ["--noCheck"]) : []
+  if (!syntax.length) return blocks.map(block => classify(block, diagnosticsFor(block, parsed)))
+  const syntaxFiles = new Set(syntax.flatMap(d => d.file ? [localFile(d.file)] : []))
+  const ts = typescript()
+  const ambient = blocks.filter(block => {
+    const file = filenames.get(block.number)!
+    if (block.fragment || syntaxFiles.has(file)) return false
+    const ast = ts.createSourceFile(file, block.source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    return ast.statements.some(statement => ts.isModuleDeclaration(statement) &&
+      ((statement.flags & ts.NodeFlags.GlobalAugmentation) !== 0 || ts.isStringLiteral(statement.name)))
+  }).map(block => filenames.get(block.number)!)
+  // Page scaffolding imports earlier bindings even when unused. Start with
+  // no synthetic imports and restore only names the compiler actually needs;
+  // an unrelated example must not inherit another example's broken imports.
+  const bodies = new Map([...context].map(([file]) => [file, readFileSync(join(dir, file), "utf8").split("\n").slice(offsets.get(file)!).join("\n")]))
+  const selected = new Map([...context].map(([file, bindings]) => [file, new Set(bindings.filter(binding => binding.value).map(binding => binding.name))]))
+  const render = (file: string) => {
+    const active = context.get(file)!.filter(binding => selected.get(file)!.has(binding.name))
+    const imports = new Map<string, string[]>()
+    for (const binding of active) {
+      const ids = imports.get(binding.from) ?? []
+      ids.push(binding.id); imports.set(binding.from, ids)
+    }
+    const lines = [...imports].map(([from, ids]) => 'import { ' + ids.join(", ") + ' } from "' + localImport(file, from) + '"')
+    lines.push(...active.flatMap(binding => binding.value ? [binding.value] : []))
+    const prefix = lines.map(line => line + "\n").join("") + "\n".repeat(offsets.get(file)! - lines.length)
+    writeFileSync(join(dir, file), prefix + bodies.get(file)!)
+  }
+  for (const file of context.keys()) render(file)
+  const original = JSON.parse(readFileSync(config, "utf8"))
+  const results: Result[] = []
+  for (const block of blocks) {
+    if (block.fragment) { results.push(classify(block, [])); continue }
+    const filename = filenames.get(block.number)!
+    const project = join(dir, "check-" + block.number + ".json")
+    writeFileSync(project, JSON.stringify({ ...original, files: [...new Set([filename, ...ambient])] }))
+    let output: Awaited<ReturnType<typeof check>> = []
+    for (let round = 0; ; round++) {
+      output = await check(project, "compiler-block-" + block.number + "-" + round)
+      const changed = new Set<string>()
+      for (const entry of output) {
+        if (!entry.file || !["TS2304", "TS2552", "TS2693", "TS18004", "TS2503"].includes(entry.diagnostic.code)) continue
+        const file = localFile(entry.file)
+        const name = /'([^']+)'/.exec(entry.diagnostic.message)?.[1]
+        if (!name || !context.get(file)?.some(binding => binding.name === name) || selected.get(file)!.has(name)) continue
+        selected.get(file)!.add(name); changed.add(file)
+      }
+      if (!changed.size) break
+      for (const file of changed) render(file)
+    }
+    const result = classify(block, diagnosticsFor(block, output))
+    const blocked = [...new Set(output.flatMap(d => d.file && localFile(d.file) !== filename && syntaxFiles.has(localFile(d.file)) ? [localFile(d.file)] : []))]
+    results.push(blocked.length && !syntaxFiles.has(filename) ? {
+      ...result, status: "fail", reason: "Semantic checking is blocked by a syntax error in " + blocked.join(", ")
+    } : result)
+  }
+  return results
 }
 
 // The pending blocks the compiler now takes, as the blocks they would be with

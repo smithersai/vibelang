@@ -2547,6 +2547,8 @@ The proposals page lists further ideas, each to get its own VIP: durable executi
 
 A VibeLang example the compiler does not yet pass starts with `// compiler-gap: pending VIP-N`, and every Effect TypeScript example that names functions it doesn't declare starts with `// fragment`. The snippet checker reports a `compiler-gap` block as a known gap, not a failure.
 
+[Documentation check isolation and retained compiler logs](https://github.com/smithersai/vibelang/blob/vibe/CONTRIBUTING.md#test-your-change).
+
 To check the specification's examples:
 
 ```sh
