@@ -8826,6 +8826,14 @@ typescript/vibelang/cases/try-proven-present-optional/main.vibe:27:129 lambda ef
 typescript/vibelang/cases/try-proven-present-optional/main.vibe:27:66 lambda effectFn annotation
 typescript/vibelang/cases/try-proven-present-optional/main.vibe:4:15 lambda dual fallback
 typescript/vibelang/cases/try-proven-present-optional/main.vibe:8:16 lambda dual fallback
+typescript/vibelang/cases/try-result-foreign-contract.fail/main.vibe:11:26 lambda program keyword
+typescript/vibelang/cases/try-result-foreign-contract.fail/main.vibe:12:26 lambda program keyword
+typescript/vibelang/cases/try-result-foreign-contract.fail/main.vibe:13:29 lambda program keyword
+typescript/vibelang/cases/try-result-foreign-contract.fail/main.vibe:14:29 lambda program keyword
+typescript/vibelang/cases/try-result-foreign-contract.fail/main.vibe:15:29 lambda program keyword
+typescript/vibelang/cases/try-result-foreign-contract.fail/main.vibe:16:29 lambda program keyword
+typescript/vibelang/cases/try-result-foreign-contract.fail/main.vibe:17:27 lambda program keyword
+typescript/vibelang/cases/try-result-foreign-contract.fail/main.vibe:18:27 lambda program keyword
 typescript/vibelang/cases/try-tail-native-delegation/main.vibe:12:22 lambda effectFn keyword
 typescript/vibelang/cases/try-tail-native-delegation/main.vibe:13:22 lambda effectFn keyword
 typescript/vibelang/cases/try-tail-native-delegation/main.vibe:13:77 lambda plain fallback

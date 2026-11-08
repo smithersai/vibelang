@@ -248,6 +248,12 @@ func reachedThroughTrustedPackage(c *checker.Checker, call *ast.Node, followRetu
 			return followReturned && callTrust(c, callee).kind == trustEffect
 		case ast.IsIdentifier(callee):
 			if initializer := constCallInitializer(c, callee); initializer != nil {
+				// try x holds the success of x, not something the runtime
+				// helper the parser writes for try returned (VIP-4).
+				if operand := tryOperand(initializer); operand != nil {
+					callee = ast.SkipParentheses(operand)
+					continue
+				}
 				// A const holds what its trusted call returned; a let may not.
 				return followReturned && callTrust(c, initializer).kind == trustEffect
 			}

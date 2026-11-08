@@ -1,0 +1,18 @@
+// expect: EK0403
+// A callable declared outside VibeLang throws unknown without @throws, by one
+// rule for a .ts, .js or .d.ts declaration (chapter 3, VIP-4 as amended). try x
+// gives the success of x, so a method read from what try gave keeps its
+// declaring file's contract: the same calls are EK0403 whether a declaration
+// output or its TypeScript source declares them, as a project compile and a
+// module loader's compile read one reference. A method's @throws {never}
+// contract keeps either call direct.
+import { holder as sourceHolder, ns as sourceNs, obj as sourceObj } from "./source.js"
+import { holder as outputHolder, ns as outputNs, obj as outputObj } from "./output.js"
+export const sourceTry = effect { const n = try sourceNs; return n.getByName("a") }
+export const outputTry = effect { const n = try outputNs; return n.getByName("a") }
+export const sourceMember = effect { const n = try sourceHolder.ns; return n.getByName("b") }
+export const outputMember = effect { const n = try outputHolder.ns; return n.getByName("b") }
+export const sourceDirect = effect { return sourceObj.getByName("c") }
+export const outputDirect = effect { return outputObj.getByName("c") }
+export const sourceSafe = effect { const n = try sourceNs; return n.safe("d") }
+export const outputSafe = effect { const n = try outputNs; return n.safe("d") }

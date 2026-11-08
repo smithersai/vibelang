@@ -1,0 +1,3 @@
+# A value an Effect API returns keeps trusted-package receiver trust for a method a .d.ts declares, though VIP-4 as amended gives an untagged foreign method unknown; the same method in a .ts source is EK0403.
+FuzzForeignReceiverContract receiver:const-succeed:d.ts:getByName compiler VIP-4: a method of the value try Effect.succeed(obj) gives keeps Effect receiver trust when a .d.ts declares it; lane migfix-alchemy-b
+FuzzForeignReceiverContract corpus:const-succeed-declaration-receiver compiler VIP-4: receiver:const-succeed:d.ts:getByName; lane migfix-alchemy-b
