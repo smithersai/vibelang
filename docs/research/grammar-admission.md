@@ -912,3 +912,11 @@ never derived. It now has ECMAScript's `ShiftExpression` between the
 relational and additive levels. The lexer keeps `<` and `>` as single tokens
 so type arguments still close as TypeScript rescans them, and the operators
 are written as token sequences.
+
+A campaign put `try` before a returned `match` in a plain function. The
+parser lowers a `match` written as a return operand or as a whole expression
+statement to statements, and that lowering never reads the `try` on the
+match. The plain function compiles with no `EK0501`, and with `Effect`
+arms it returns the arm's Effect unrun. A `try` before a `match` in any
+other position, or before a parenthesized `match`, still reports `EK0501`.
+The form is pending under `admission:try-match-statement`.

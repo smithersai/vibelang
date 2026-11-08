@@ -316,6 +316,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"data-empty-type-parameters-campaign", grammarDataEmptyTypeParametersCampaign},
 	{"producer-cover-grammar", grammarProducerCoverWitness},
 	{"producer-cover-grammar-campaign", grammarProducerCoverCampaign},
+	{"try-match-statement", grammarTryMatchStatementWitness},
+	{"try-match-statement-campaign", grammarTryMatchStatementCampaign},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1209,6 +1211,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarProducerArgument(declarationTokens) {
 		return "admission:producer-cover-grammar"
+	}
+	if grammarTryMatchStatement(declarationTokens) {
+		return "admission:try-match-statement"
 	}
 	for i, tok := range ts {
 		// EffectFunction = EffectModifier [no LineTerminator here] "function":

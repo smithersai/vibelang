@@ -118,6 +118,8 @@ const specTests = [
   "TestGrammarAdmissionDataEmptyTypeParametersRegression",
   "TestGrammarAdmissionProducerCoverKeys",
   "TestGrammarAdmissionProducerCoverRegression",
+  "TestGrammarAdmissionTryMatchStatementKeys",
+  "TestGrammarAdmissionTryMatchStatementRegression",
   "TestGrammarAdmissionComputedKeyContext",
   "TestGrammarAdmissionServiceRejectedMembers",
   "TestGrammarAdmissionArithmeticGrouping",

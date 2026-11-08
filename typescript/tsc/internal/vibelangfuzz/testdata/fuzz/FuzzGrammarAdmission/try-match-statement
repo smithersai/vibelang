@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:try-match-statement\nimport { Effect } from \"effect\"\nexport function f(s: unknown) { return try match (s) { when 1: Effect.succeed(1); default: Effect.succeed(0); } }")
