@@ -60,6 +60,9 @@ func isConcurrentBody(fn *ast.Node) bool {
 
 func init() {
 	checker.RegisterTransparentYieldFunctionHook(isConcurrentBody)
+	// A do or match the parser still writes as a function called in place
+	// is no function boundary for labels (chapter 2, Region bodies).
+	checker.RegisterLabelTransparentFunctionHook(isCalledInPlace)
 	for _, m := range []*Message{EK4601, EK4602, EK4603, EK4604, EK1903, EK1904, EK1906, EK4607, EK4609, EK4610, EK1704, EK4612} {
 		registry[m.Code] = m
 	}

@@ -4325,8 +4325,9 @@ func (c *Checker) checkLabeledStatement(node *ast.Node) {
 	labelNode := labeledStatement.Label
 	labelText := labelNode.Text()
 	if !c.checkGrammarStatementInAmbientContext(node) {
-		// A generated concurrent item callback keeps the source label scope.
-		for current := node.Parent; current != nil && (!ast.IsFunctionLike(current) || isTransparentYieldFunction(current)); current = current.Parent {
+		// A generated concurrent item callback, and the function written
+		// around a do or match expression, keep the source label scope.
+		for current := node.Parent; current != nil && (!ast.IsFunctionLike(current) || isTransparentYieldFunction(current) || isLabelTransparentFunction(current)); current = current.Parent {
 			if ast.IsLabeledStatement(current) && current.Label().Text() == labelText {
 				c.grammarErrorOnNode(labelNode, diagnostics.Duplicate_label_0, labelText)
 				break

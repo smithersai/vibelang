@@ -19,6 +19,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Schema fields using qualified library types such as `globalThis.Date` were rejected as nonschema values. They now use the same codecs as their unqualified library names.
 - Matching a TypeScript class or passing its inferred constructor value could report `EK0402`. Those uses now retain the constructor's own signature; written constructor types still require a compatible throw contract.
 
+- A label inside a `do` expression that the compiler still writes as a function, such as a `for concurrent` head default or an optional call's argument, could repeat a label around it without an error. It now reports `TS1114`, as for any other `do` expression.
 - The matching guide described generated errors as matching only by tag. It now also explains the instance check that recognizes subclasses with different tags.
 
 - The migration's API identity check could not finish comparing a package whose `.ts` source exports a class with a private, protected or `#private` member, even when nothing changed: its own rewriting of the class reported `TS2564` and `TS1361`. It now compares such a class, and still reports a member whose visibility changes.

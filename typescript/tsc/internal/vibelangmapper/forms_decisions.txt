@@ -3087,6 +3087,9 @@ typescript/vibelang/cases/do-region-source-names/main.vibe:2:53 lambda plain fal
 typescript/vibelang/cases/do-region-source-names/main.vibe:3:48 lambda plain fallback
 typescript/vibelang/cases/do-region-source-names/main.vibe:5:55 lambda plain fallback
 typescript/vibelang/cases/do-region-source-names/main.vibe:7:49 lambda plain fallback
+typescript/vibelang/cases/do-retained-duplicate-label.fail/main.vibe:11:32 lambda plain fallback
+typescript/vibelang/cases/do-retained-duplicate-label.fail/main.vibe:7:31 lambda effectFn table
+typescript/vibelang/cases/do-retained-duplicate-label.fail/main.vibe:7:40 lambda plain fallback
 typescript/vibelang/cases/do-return-match-arms/main.vibe:16:14 lambda plain annotation
 typescript/vibelang/cases/do-return-match-arms/main.vibe:3:24 lambda plain annotation
 typescript/vibelang/cases/do-return-plain-functions/main.vibe:15:12 lambda plain annotation

@@ -8,7 +8,6 @@ FuzzDoDeclarationBytes bytes:inferred-return:depth-4 compiler VIP-1, VIP-27: una
 
 # Adjacent to unchecked-try-success-type: direct any calls already preserve success; E/R is a separate gap.
 
-FuzzConcurrentDuplicateLabel scope:head-default compiler VIP-2: a retained do initializer still hides an enclosing source label
 
 FuzzConcurrentFreshBindings binding:rhs-capture compiler VIP-19: source RHS head captures retain a preexisting inference disagreement with native for-of; separate source-inference repair remains
 FuzzConcurrentFreshBindings corpus:rhs-capture compiler VIP-19: minimized captured-head inference witness

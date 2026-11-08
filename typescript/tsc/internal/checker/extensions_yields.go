@@ -26,3 +26,28 @@ func isTransparentYieldFunction(fn *ast.Node) bool {
 	}
 	return false
 }
+
+// LabelTransparentFunctionHook reports whether fn, a function-like node, is
+// transparent to source labels: a labeled statement inside it is checked
+// against the labels around fn, as if it stood there. VibeLang registers the
+// functions it writes around a do or match expression and calls in place,
+// which ECMAScript does not treat as function boundaries (vibelang/forms.go).
+type LabelTransparentFunctionHook func(fn *ast.Node) bool
+
+var labelTransparentFunctionHooks []LabelTransparentFunctionHook
+
+// RegisterLabelTransparentFunctionHook adds hook to every checker. Call it
+// only from the init function of an in-tree package that tsc/cmd/tsc
+// imports; registration is not synchronized.
+func RegisterLabelTransparentFunctionHook(hook LabelTransparentFunctionHook) {
+	labelTransparentFunctionHooks = append(labelTransparentFunctionHooks, hook)
+}
+
+func isLabelTransparentFunction(fn *ast.Node) bool {
+	for _, hook := range labelTransparentFunctionHooks {
+		if hook(fn) {
+			return true
+		}
+	}
+	return false
+}

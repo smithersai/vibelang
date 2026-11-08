@@ -1,0 +1,12 @@
+// expect: TS1114 TS1114
+// A do expression is no function boundary, so a label in it is checked
+// against the source labels around it, as ECMAScript's ContainsDuplicateLabels
+// does, also where the compiler still writes the do as a function: a for
+// concurrent head default and an optional call's argument.
+export effect function head(rows: ReadonlyArray<{ n?: number }>) {
+  item: for concurrent (const { n = do { item: { 7 }; 1 } } of rows) { void n }
+  return 7
+}
+export function chain(o: { f?: (n: number) => number } | undefined) {
+  outer: { const v = o?.f?.(do { outer: { 7 }; 1 }); return v }
+}
