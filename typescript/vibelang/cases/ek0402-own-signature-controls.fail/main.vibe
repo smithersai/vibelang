@@ -1,0 +1,9 @@
+// expect: EK0402 EK0402 EK0402
+// The own-signature rule covers only the source's own declaration: a written
+// function type without @throws, a member of one, and another function's type
+// query admit only never. spec-rule: docs/design/src/003-failures.md#assignability
+import { probe, other } from "./foreign.ts"
+
+export const written: (path: string) => string = probe
+export const member: { readonly run: (path: string) => string } = { run: probe }
+export const different: typeof probe = other

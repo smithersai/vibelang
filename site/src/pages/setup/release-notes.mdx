@@ -33,6 +33,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `vibelang --fix` could keep a `.pipe` call before `satisfies` or a following property or arithmetic expression. These calls now migrate with the surrounding expression intact.
 
+- A function from a `.ts` file or a package, such as a Schema's `make`, reported `EK0402` when assigned to its own type: `const probe: typeof f = f`, `identity(f)` or `Object.assign({}, { make: A.make })`. A destination typed by the function's own signature now accepts it; a written function type without `@throws` still reports `EK0402`.
+
 - A migrated module's generated platform companion asserted its call helpers to the callee's type with no justification, so a repository lint that requires a `SAFETY:` comment on every type assertion rejected the companion. Each asserted helper now carries that comment.
 
 - A constructor repair treated a parenthesized direct `eval`, such as `(eval)(code)`, as an ordinary call and could move it into a defect bridge, which changes the scope it reads. It is now refused as direct `eval`.

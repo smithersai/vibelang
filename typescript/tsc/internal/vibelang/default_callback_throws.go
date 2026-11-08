@@ -32,7 +32,7 @@ func checkDefaultForeignCallbacks(c *checker.Checker, file *ast.SourceFile) {
 			owners := defaultForeignValueOwners(c, node)
 			if defaultForeignCallbackCandidate(c, source, owners, node) &&
 				!admittedByShippedContract(c, node) && !defaultForeignComputedWrapper(c, node) &&
-				!defaultForeignCallbackFits(c, source, target, owners, append([]*checker.Type{target}, owners...)) {
+				!defaultForeignCallbackFitsOwn(c, source, target, owners, append([]*checker.Type{target}, owners...), !defaultForeignTrustedImpl(c, node)) {
 				d := report(c, node, EK0402)
 				note(d, "An unannotated foreign function has thrown type unknown; this callback type does not admit it.")
 				note(d, "Handle its throw in a callback, or use a foreign signature with an admitted written @throws contract.")
@@ -116,12 +116,18 @@ func defaultForeignClassMember(c *checker.Checker, source, instance *checker.Typ
 // Every required overload must have a native-compatible admitted source
 // signature. Written tags are metadata; they do not replace native inference.
 func defaultForeignCallbackFits(c *checker.Checker, source, target *checker.Type, sourceOwners, targetOwners []*checker.Type) bool {
+	return defaultForeignCallbackFitsOwn(c, source, target, sourceOwners, targetOwners, true)
+}
+
+// defaultForeignCallbackFitsOwn admits a target signature that is the
+// source's own declaration when own is set.
+func defaultForeignCallbackFitsOwn(c *checker.Checker, source, target *checker.Type, sourceOwners, targetOwners []*checker.Type, own bool) bool {
 	if source == nil || target == nil || !c.IsTypeAssignableTo(source, target) {
 		return true
 	}
 	if source.Flags()&checker.TypeFlagsUnion != 0 {
 		for _, part := range source.Types() {
-			if !defaultForeignCallbackFits(c, part, target, sourceOwners, targetOwners) {
+			if !defaultForeignCallbackFitsOwn(c, part, target, sourceOwners, targetOwners, own) {
 				return false
 			}
 		}
@@ -149,6 +155,13 @@ func defaultForeignCallbackFits(c *checker.Checker, source, target *checker.Type
 				if !callbackSignatureRelated(c, given, required, overloaded) {
 					continue
 				}
+				if own && sameRootSignatureDeclaration(given, required) {
+					// typeof f, or a type parameter inferred from the argument,
+					// names the source's own signature, so it carries the same
+					// thrown type: unknown for an untagged foreign declaration.
+					matched = true
+					break
+				}
 				contract, known := defaultForeignCallbackContract(c, given, append(append([]*checker.Type{}, sourceOwners...), source), true)
 				if !known || bound.admits(c, contract) {
 					matched = true
@@ -165,6 +178,29 @@ func defaultForeignCallbackFits(c *checker.Checker, source, target *checker.Type
 		}
 	}
 	return false
+}
+
+// The runtime's listed trusted(impl, [Errors]) wrapper requires impl's written
+// contract: its generic impl parameter is impl's own type, which would
+// otherwise admit an untagged foreign function.
+func defaultForeignTrustedImpl(c *checker.Checker, node *ast.Node) bool {
+	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
+		node = node.Parent
+	}
+	call := node.Parent
+	return call != nil && ast.IsCallExpression(call) && len(call.Arguments()) > 0 && call.Arguments()[0] == node && runtimeExportOf(c, call.Expression()) == "trusted"
+}
+
+// sameRootSignatureDeclaration reports whether two signatures instantiate one
+// declaration.
+func sameRootSignatureDeclaration(a, b *checker.Signature) bool {
+	for a.Target() != nil {
+		a = a.Target()
+	}
+	for b.Target() != nil {
+		b = b.Target()
+	}
+	return a.Declaration() != nil && a.Declaration() == b.Declaration()
 }
 
 // Preserve substitutions from inherited generic owners whose parameters occur

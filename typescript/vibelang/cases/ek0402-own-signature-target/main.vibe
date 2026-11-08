@@ -1,0 +1,25 @@
+// A destination typed by the source's own signature admits the source's thrown
+// type (003 Assignability): typeof, a type parameter inferred from the
+// argument, and Object.assign. Smithers' platform split writes the first form;
+// its ModelEvent statics write the last one with Schema make.
+// spec-rule: docs/design/src/003-failures.md#assignability
+import { probe as probe$platform } from "./foreign.ts"
+
+export const probe: typeof probe$platform = probe$platform
+
+const identity = <T>(x: T): T => x
+const viaIdentity = identity(probe$platform)
+const statics = Object.assign({}, { probe: probe$platform })
+
+const Row = Schema.Struct({ id: Schema.String })
+const RowStatics = Object.assign({}, { make: Row.make })
+
+// expect-result: ["a","b","c","x",true]
+export effect function main() {
+  const a = try Effect.try(() => probe("a"))
+  const b = try Effect.try(() => viaIdentity("b"))
+  const c = try Effect.try(() => statics.probe("c"))
+  const row = try Effect.try(() => RowStatics.make({ id: "x" }))
+  const failed = try Effect.try(() => probe("")).pipe(Effect.isFailure)
+  return [a, b, c, row.id, failed]
+}
