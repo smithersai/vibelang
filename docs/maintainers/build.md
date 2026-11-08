@@ -2495,3 +2495,5 @@ original project and the project after a quick fix use the same extension
 policy. Keep static and dynamic imports of both `.vibe` and `.vibex` covered.
 
 Changes to the checker or computed-member regressions select `//scripts/fuzz-gate:computed-members`, which compares literal computed duplicate diagnostics and alias controls with the pinned TypeScript compiler.
+
+Trusted-wrapper repair changes also select `//:trusted-empty-forwarding`, covering repaired declarations, narrowed arguments, known throws and the generated forwarding case.

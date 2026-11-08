@@ -145,20 +145,25 @@ func trustedEmptyRewrite(c *checker.Checker, file *ast.SourceFile, decl *ast.Nod
 				}
 			}
 			thunk := "() => " + expressionText(file, call)
+			wrapped := "try Effect.orDie(Effect.try({ try: " + thunk + ", catch: " + defectBridgeIdentity + " }))"
 			if trustedEmptyNarrowedArguments(c, call) {
 				// A closure loses the narrowing of a parameter, a let or a
 				// property path, so evaluate the arguments here, in their
 				// original order, and give the thunk their narrowed values.
 				// Only a thunk written as Effect.try's own try function may
-				// call a callee known to throw, so such a call is refused.
-				captured, ok := trustedEmptyCapturedThunk(file, call)
-				if !ok || writtenThrows {
+				// call a callee known to throw, so for such a callee the
+				// arguments are captured before the bridge is created.
+				captured, ok := trustedEmptyCapturedThunk(file, call, writtenThrows)
+				if !ok {
 					safe = false
 					return true
 				}
-				thunk = captured
+				if writtenThrows {
+					wrapped = "try " + captured
+				} else {
+					wrapped = "try Effect.orDie(Effect.try({ try: " + captured + ", catch: " + defectBridgeIdentity + " }))"
+				}
 			}
-			wrapped := "try Effect.orDie(Effect.try({ try: " + thunk + ", catch: " + defectBridgeIdentity + " }))"
 			if !standsAlone(call) {
 				wrapped = "(" + wrapped + ")"
 			}
@@ -270,8 +275,10 @@ func trustedEmptyReferenceNarrowed(c *checker.Checker, n *ast.Node) bool {
 
 // trustedEmptyCapturedThunk returns ((arg0, …) => () => f(arg0, …))(a, …),
 // which evaluates call's arguments where call stood, or false for a spread
-// argument or explicit type arguments.
-func trustedEmptyCapturedThunk(file *ast.SourceFile, call *ast.Node) (string, bool) {
+// argument or explicit type arguments. With bridge, the inner function is the
+// whole Effect.try bridge, so f(arg0, …) stays in Effect.try's written thunk:
+// ((arg0, …) => Effect.orDie(Effect.try({ try: () => f(arg0, …), … })))(a, …).
+func trustedEmptyCapturedThunk(file *ast.SourceFile, call *ast.Node, bridge bool) (string, bool) {
 	// The parameters are visible only to the thunk, which reads nothing else
 	// but the callee: they must not shadow its names.
 	used := map[string]bool{}
@@ -300,6 +307,9 @@ func trustedEmptyCapturedThunk(file *ast.SourceFile, call *ast.Node) (string, bo
 	}
 	callee := expressionText(file, call.Expression())
 	list := strings.Join(params, ", ")
+	if bridge {
+		return "((" + list + ") => Effect.orDie(Effect.try({ try: () => " + callee + "(" + list + "), catch: " + defectBridgeIdentity + " })))(" + strings.Join(args, ", ") + ")", true
+	}
 	return "((" + list + ") => () => " + callee + "(" + list + "))(" + strings.Join(args, ", ") + ")", true
 }
 

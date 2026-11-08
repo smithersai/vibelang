@@ -13,6 +13,9 @@ export function select(paths) {
   if (names.some(path => /^(templates\/|docs\/tools\/starter-templates\.test\.ts$|scripts\/starter-templates\.test\.mjs$|typescript\/tsc\/cmd\/vibelang-forms\/)/.test(path))) {
     selected.push("//:starter-templates")
   }
+  if (names.some(path => /^typescript\/tsc\/internal\/vibelang\/fix_trusted_empty(?:[^/]*_test)?\.go$/.test(path))) {
+    selected.push("//:trusted-empty-forwarding")
+  }
   return selected.sort()
 }
 

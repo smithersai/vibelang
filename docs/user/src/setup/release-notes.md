@@ -25,6 +25,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A migration could overwrite one package's saved declarations with another package's and then compare the wrong API. Each package now keeps separate declaration snapshots; ambiguous older snapshots require a fresh setup.
 
+- Migrating an empty trusted wrapper could refuse a narrowed argument when the wrapped function declared its throws. The repair now captures the argument before creating its preserving defect bridge.
+
 - Passing a foreign function through a variadic forwarding helper could lose the receiving callback's throws restriction. The written callback parameter is now checked.
 
 - Repeated computed property declarations could escape duplicate-member errors. They now receive the same diagnostics as TypeScript.

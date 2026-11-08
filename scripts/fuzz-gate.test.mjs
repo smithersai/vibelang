@@ -265,3 +265,9 @@ test("computed checker paths select the pinned TypeScript comparison", () => {
   assert.deepEqual(select(["typescript/tsc/internal/checker/checker.go"]), ["//scripts/fuzz-gate:computed-members"])
   assert.deepEqual(select(["typescript/tsc/internal/checker/checker.go.backup"]), [])
 })
+
+
+test("trusted-wrapper repairs select their unit, declaration and forwarding regressions", () => {
+  assert.deepEqual(select(["typescript/tsc/internal/vibelang/fix_trusted_empty.go"]), ["//:trusted-empty-forwarding"])
+  assert.deepEqual(select(["typescript/tsc/internal/vibelang/fix_trusted_empty_test.go"]), ["//:trusted-empty-forwarding"])
+})

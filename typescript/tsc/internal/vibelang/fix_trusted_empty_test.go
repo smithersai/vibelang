@@ -269,10 +269,9 @@ export effect function f(cause: Cause | undefined): number!! {
 	}
 }
 
-// A narrowed argument of a callee known to throw cannot move out of the
-// thunk Effect.try calls, so the migration refuses that wrapper and its
-// EK0407 stays, with the note that --fix cannot rewrite it.
-func TestTrustedEmptyMigrationRefusesNarrowedKnownThrows(t *testing.T) {
+// Capture the narrowed value before constructing Effect.try, so its written
+// thunk retains the throwing call and the destination's narrowed type.
+func TestTrustedEmptyMigrationKeepsNarrowedKnownThrows(t *testing.T) {
 	for _, tag := range []string{"{Error}", "{unknown}"} {
 		t.Run(tag, func(t *testing.T) {
 			source := "import { trusted } from \"vibelang-runtime\"\n" +
@@ -299,20 +298,23 @@ func TestTrustedEmptyMigrationRefusesNarrowedKnownThrows(t *testing.T) {
 			if file == nil {
 				t.Fatal("no main.vibe")
 			}
-			if p := trustedEmptyMigrationFixes(t.Context(), program, file, map[string]bool{}); len(p.fixes) != 0 {
-				t.Fatalf("unsafe migration: %s", p.text())
+			result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{})
+			if result.Err != nil || len(result.Refused) != 0 || len(result.Files) == 0 {
+				t.Fatalf("missing preserving migration: %v, refused %v", result.Err, result.Refused)
 			}
-			noted := false
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Code() != 407 {
-					continue
+			for name, fixed := range result.Files {
+				if !strings.Contains(fixed.Text, "Effect.try({ try: () => info(arg0)") {
+					t.Fatalf("throwing call escaped its written thunk:\n%s", fixed.Text)
 				}
-				for _, related := range d.MessageChain() {
-					noted = noted || strings.Contains(related.String(), "vibelang --fix cannot rewrite this wrapper")
+				if err := os.WriteFile(name.AsString(), []byte(fixed.Text), 0600); err != nil {
+					t.Fatal(err)
 				}
 			}
-			if !noted {
-				t.Fatal("the refused wrapper has no located EK0407")
+			checked := fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, map[tspath.RootedFilePath]string{})
+			for _, diagnostic := range checked.GetSemanticDiagnostics(t.Context(), nil) {
+				if diagnostic.Category() == diagnostics.CategoryError {
+					t.Fatalf("repaired program: %s", diagnostic.String())
+				}
 			}
 		})
 	}
