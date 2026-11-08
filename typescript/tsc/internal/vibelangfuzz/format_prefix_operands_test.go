@@ -16,7 +16,7 @@ import (
 var formatPrefixQuotes = []struct{ chapter, quote string }{
 	{"900-appendices.md", `TryExpression = [+Effect] "try" UnaryExpression   (where ECMAScript has AwaitExpression)`},
 	{"900-appendices.md", `ForkOperand = UnaryExpression   (await's operand, as for try; VIP-17, amended: "exactly as await")`},
-	{"007-tooling.md", "It takes the repository's quote style and print width from that formatter's configuration, so `.vibe` and `.ts` files share them."},
+	{"007-tooling.md", "It takes the repository's quote style and print width from that formatter's configuration, so `.vibe` and `.ts` files share them; a `dprint.json` also supplies its global `indentWidth`, `useTabs` and `newLineKind` and every `typescript` option, as dprint applies them to `.ts` files, with semicolons `\"asi\"` when it sets none."},
 }
 
 func requireFormatPrefixQuotes(t testing.TB) {

@@ -87,6 +87,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A throwing call in a computed member name or decorator could get the wrong error or be rejected despite a surrounding handler. These expressions now use the context defining the class or object, while member bodies keep their own checks.
 
 - `vibelang-format` read only the quote style and print width from a `dprint.json`, so a `.vibe` file under `"trailingCommas": "never"`, `indentWidth: 4` or another option was formatted differently from the project's `.ts` files and from dprint run with the same configuration. It now applies the configuration's global `indentWidth`, `useTabs` and `newLineKind` and every `typescript` option, keeping `"asi"` only when no semicolon option is set.
+  This includes indentation and semicolon settings around `try`, `fork` and `join` expressions.
 
 - A migrated package's emitted JavaScript under `.vibelang/js` kept relative imports without an extension, such as `import { Api } from "../api"`, so plain Node, which that tree exists for, failed with `ERR_MODULE_NOT_FOUND` when a packed package routed a consumer there. The migration flow now writes such an import of a module inside the package as that module's emitted file, `"../api.js"` or `"../location/index.js"`; imports of packages, assets, tests and modules outside the package stay as written.
 
