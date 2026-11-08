@@ -139,9 +139,13 @@ func forEachHatchVibeLang(call *ast.Node, visit func(node *ast.Node) bool) bool 
 }
 
 // inHatch reports whether node is a hatch's first argument or inside one,
-// where TypeScript, not VibeLang, gives the code its meaning.
+// where TypeScript, not VibeLang, gives the code its meaning. An explicit
+// Effect activation keeps its own VibeLang body inside that native code.
 func inHatch(node *ast.Node) bool {
-	for n := node; n != nil && n.Parent != nil; n = n.Parent {
+	for n := node; n != nil && n.Parent != nil; n = throwContextParent(n) {
+		if isMarkedEffect(n) {
+			return false
+		}
 		if isHatchArgument(n) {
 			return true
 		}

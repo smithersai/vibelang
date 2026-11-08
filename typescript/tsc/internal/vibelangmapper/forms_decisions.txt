@@ -10317,6 +10317,8 @@ typescript/vibelang/cases/witness07-vip27-recursion-diagnostics/project/main.vib
 typescript/vibelang/cases/witness07-vip27-recursion-diagnostics/project/main.vibe:4:24 lambda plain fallback
 typescript/vibelang/cases/witness07-vip27-recursion-diagnostics/project/main.vibe:4:60 lambda plain fallback
 typescript/vibelang/cases/witness07-vip27-spelling-identity/main.vibe:3:21 lambda plain fallback
+typescript/vibelang/cases/wrapper-effect-activation/main.vibe:4:34 lambda plain table
+typescript/vibelang/cases/wrapper-effect-activation/main.vibe:4:40 lambda effectFn keyword
 typescript/vibelang/cases/wrapper-global-thunk/main.vibe:10:43 lambda plain table
 typescript/vibelang/cases/wrapper-global-thunk/main.vibe:7:33 lambda plain table
 typescript/vibelang/cases/wrapper-global-thunk/main.vibe:8:27 byname program table

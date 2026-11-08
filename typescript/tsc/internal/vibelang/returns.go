@@ -61,7 +61,9 @@ func (a *analyzer) expectsProgramReturn(fn *ast.Node) bool {
 	if fn.Type() != nil {
 		return a.hasContract(fn)
 	}
-	if isLambda(fn) {
+	// A written marker needs no contextual return row. An object method's
+	// inferred contextual type can depend on that same row.
+	if isMarkedEffect(fn) || isLambda(fn) {
 		return a.isEffect(fn)
 	}
 	return a.expectsEffect(fn)

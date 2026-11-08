@@ -1,0 +1,13 @@
+// expect-result: [0,1,2,2]
+export effect function main() {
+  let runs = 0
+  const factory = try Effect.try(() => effect function nested() {
+    runs++
+    return runs
+  })
+  const program = factory()
+  const before = runs
+  const first = try program
+  const second = try program
+  return [before, first, second, runs]
+}
