@@ -40,7 +40,8 @@ import (
 // (VibeLangMovedParameterDefault). An effect function's lowering runs the
 // moved defaults at the call, before Effect.gen, and returns Effect.succeed
 // of a returned value (vibelang/effect_parameters_lower.go,
-// VibeLangHasMovedDefaults). Generators and producers, constructors, a
+// VibeLangHasMovedDefaults); a producer's lowering likewise returns an empty
+// Stream (vibelang/producers.go). Generators, constructors, a
 // parameter list with a binding pattern or a rest parameter from the
 // returning default on, and a default that suspends (try, await or yield,
 // which a parameter list cannot do) keep the do expression as a function and
@@ -146,8 +147,8 @@ func movableDefaults(fn *ast.Node, from int) bool {
 	default:
 		return false
 	}
-	if fn.Body() == nil || isGeneratorFunction(fn) {
-		return false
+	if fn.Body() == nil || isGeneratorFunction(fn) && fn.Flags&ast.NodeFlagsVibeLangEffect == 0 {
+		return false // a native generator binds its parameters when it is called, before its first next
 	}
 	for _, parameter := range fn.Parameters()[from:] {
 		if parameter.AsParameterDeclaration().DotDotDotToken != nil || !ast.IsIdentifier(parameter.Name()) || defaultSuspends(parameter.Initializer()) {

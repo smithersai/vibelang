@@ -42,7 +42,10 @@ func (tx *lowering) callTimeEffectBody(node *ast.Node, parameters *ast.NodeList,
 	}
 	effect := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("gen"), ast.NodeFlagsNone), nil, nil, f.NewNodeList(arguments), ast.NodeFlagsNone)
 	if outer != nil {
-		return tx.effectBindingBoundary(node, parameters, tx.movedDefaultsBody(outer, middle, effect))
+		succeed := func(value *ast.Node) *ast.Node {
+			return f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("succeed"), ast.NodeFlagsNone), nil, nil, f.NewNodeList([]*ast.Node{value}), ast.NodeFlagsNone)
+		}
+		return tx.effectBindingBoundary(node, parameters, tx.movedDefaultsBody(outer, middle, effect, succeed))
 	}
 	if bindingMayThrow(node) {
 		return tx.effectBindingBoundary(node, parameters, effect)
@@ -61,21 +64,22 @@ func (tx *lowering) callTimeEffectBody(node *ast.Node, parameters *ast.NodeList,
 // movedDefaultsBody returns outer, the body `{ temps…; { shadows…; { source
 // body } } }` of a function whose parameter defaults moved, with the source
 // body replaced by `return effect` and each return among the temps and
-// shadows returning Effect.succeed of its value.
-func (tx *lowering) movedDefaultsBody(outer, middle, effect *ast.Node) *ast.Node {
+// shadows returning returned of its value: Effect.succeed for an effect
+// function, an empty Stream for a producer.
+func (tx *lowering) movedDefaultsBody(outer, middle, effect *ast.Node, returned func(value *ast.Node) *ast.Node) *ast.Node {
 	f := tx.Factory()
 	var prologue func(statements []*ast.Node) []*ast.Node
 	prologue = func(statements []*ast.Node) []*ast.Node {
 		out := make([]*ast.Node, 0, len(statements))
 		for _, statement := range statements {
-			out = append(out, tx.succeedReturns(statement))
+			out = append(out, tx.succeedReturns(statement, returned))
 		}
 		return out
 	}
 	outerStatements := outer.AsBlock().Statements.Nodes
 	middleStatements := middle.AsBlock().Statements.Nodes
-	returned := tx.generated(f.NewReturnStatement(effect))
-	newMiddle := f.NewBlock(f.NewNodeList(append(prologue(middleStatements[:len(middleStatements)-1]), returned)), true)
+	tail := tx.generated(f.NewReturnStatement(effect))
+	newMiddle := f.NewBlock(f.NewNodeList(append(prologue(middleStatements[:len(middleStatements)-1]), tail)), true)
 	tx.EmitContext().SetOriginal(newMiddle, middle)
 	newOuter := f.NewBlock(f.NewNodeList(append(prologue(outerStatements[:len(outerStatements)-1]), newMiddle)), true)
 	tx.EmitContext().SetOriginal(newOuter, outer)
@@ -83,10 +87,10 @@ func (tx *lowering) movedDefaultsBody(outer, middle, effect *ast.Node) *ast.Node
 }
 
 // succeedReturns returns statement with each return outside a nested
-// function returning Effect.succeed of its value (undefined for a bare
-// return): VIP-2, an effect function's call gives an Effect that succeeds
-// with a parameter default's returned value.
-func (tx *lowering) succeedReturns(statement *ast.Node) *ast.Node {
+// function returning returned of its value (undefined for a bare return):
+// VIP-2, an effect function's call gives an Effect that succeeds with a
+// parameter default's returned value, and a producer's call an empty Stream.
+func (tx *lowering) succeedReturns(statement *ast.Node, returned func(value *ast.Node) *ast.Node) *ast.Node {
 	f := tx.Factory()
 	var visitor *ast.NodeVisitor
 	visitor = tx.EmitContext().NewNodeVisitor(func(node *ast.Node) *ast.Node {
@@ -98,11 +102,10 @@ func (tx *lowering) succeedReturns(statement *ast.Node) *ast.Node {
 			if value == nil {
 				value = f.NewVoidExpression(f.NewNumericLiteral("0", ast.TokenFlagsNone))
 			}
-			succeed := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("succeed"), ast.NodeFlagsNone), nil, nil, f.NewNodeList([]*ast.Node{value}), ast.NodeFlagsNone)
-			returned := f.NewReturnStatement(succeed)
-			tx.EmitContext().SetOriginal(returned, node)
-			returned.Loc = node.Loc
-			return returned
+			statement := f.NewReturnStatement(returned(value))
+			tx.EmitContext().SetOriginal(statement, node)
+			statement.Loc = node.Loc
+			return statement
 		}
 		return visitor.VisitEachChild(node)
 	})

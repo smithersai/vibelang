@@ -567,11 +567,17 @@ func init() {
 	// trailing form keeps a later parameter that has no default, and the
 	// effect homes give an Effect that succeeds with the returned value at
 	// the call, without starting the body.
-	for _, home := range []string{"function", "arrow", "method", "effect-function", "effect-arrow", "effect-method"} {
+	for _, home := range []string{"function", "arrow", "method", "effect-function", "effect-arrow", "effect-method", "effect-producer"} {
 		for _, form := range []string{"direct", "nested", "untyped", "trailing"} {
-			value := "do { log.push(\"first\"); return 9 }"
+			// A producer's default returns nothing: its call gives an empty Stream.
+			producer := home == "effect-producer"
+			returnValue := "return 9"
+			if producer {
+				returnValue = "return"
+			}
+			value := "do { log.push(\"first\"); " + returnValue + " }"
 			if form == "nested" {
-				value = "do { log.push(\"first\"); const inner = do { if (true) return 9; 0 }; inner }"
+				value = "do { log.push(\"first\"); const inner = do { if (true) " + returnValue + "; 0 }; inner }"
 			}
 			params := "a: number = " + value + ", b: number = (log.push(\"later\"), 0)"
 			returns := ": number "
@@ -583,7 +589,7 @@ func init() {
 				// A default that always returns has the completion type never;
 				// this one completes with 0 on an unreachable path, so a is a
 				// number for the callers below.
-				params = "a = do { log.push(\"first\"); if (log.length) return 9; 0 }, b = (log.push(\"later\"), 0)"
+				params = "a = do { log.push(\"first\"); if (log.length) " + returnValue + "; 0 }, b = (log.push(\"later\"), 0)"
 				returns = " "
 				first = "if (a === undefined) { log.push(\"first\"); if (log.length) return 9; a = 0 }; "
 			case "trailing":
@@ -599,7 +605,14 @@ func init() {
 				marker, returns = "effect ", " "
 				nativeBody = "{ " + strings.ReplaceAll(first, "return 9", "return Effect.succeed(9)") + later + "return Effect.gen(function* () { log.push(\"body\"); return " + result + " }) }"
 			}
+			if producer {
+				body = "{ log.push(\"body\"); yield " + result + " }"
+				nativeBody = "{ " + strings.ReplaceAll(first, "return 9", "return Stream.empty") + later + "return Stream.suspend(() => { log.push(\"body\"); return Stream.make(" + result + ") }) }"
+			}
 			declaration := marker + "function f(" + params + ")" + returns + body
+			if producer {
+				declaration = "effect function* f(" + params + ") " + body
+			}
 			reference := "function f(a,b) " + nativeBody
 			switch strings.TrimPrefix(home, "effect-") {
 			case "arrow":
@@ -623,6 +636,12 @@ func init() {
 				witness.ReturnsEffect = true
 				witness.Vibe = "effect function witness() { const log: string[] = []; " + declaration + "; return [[try f(), try f(undefined,3), try f(2), try f(2,3)], log] }"
 				witness.Effect = "function witness() { return Effect.gen(function* () { const log = []; " + reference + "; return [[yield* f(), yield* f(undefined,3), yield* f(2), yield* f(2,3)], log] }) }"
+			}
+			if producer {
+				witness.Requires = append(witness.Requires, "vip21.producer")
+				witness.Modules = []string{"Stream"}
+				witness.Vibe = "effect function witness() { const log: string[] = []; " + declaration + "; return [[try Stream.runCollect(f()), try Stream.runCollect(f(undefined,3)), try Stream.runCollect(f(2)), try Stream.runCollect(f(2,3))], log] }"
+				witness.Effect = "function witness() { return Effect.gen(function* () { const log = []; " + reference + "; return [[yield* Stream.runCollect(f()), yield* Stream.runCollect(f(undefined,3)), yield* Stream.runCollect(f(2)), yield* Stream.runCollect(f(2,3))], log] }) }"
 			}
 			registerWitness(2, witness)
 		}

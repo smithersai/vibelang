@@ -1,0 +1,15 @@
+// expect-result: [["first"],[],["first"],[3],["first","later","body"]]
+// VIP-2: a return in a do in a producer's parameter default gives, at the
+// call, an empty Stream: the defaults run at the call, the body never runs,
+// and a later parameter's default is skipped.
+import { Stream } from "effect"
+const log: string[] = []
+effect function* p(a: number = do { log.push("first"); return }, b: number = (log.push("later"), 2)) { log.push("body"); yield a + b }
+export effect function main() {
+  const built = p()
+  const snap1 = log.slice()
+  const items = try Stream.runCollect(built)
+  const snap2 = log.slice()
+  const items2 = try Stream.runCollect(p(1))
+  return [snap1, [...items], snap2, [...items2], log]
+}

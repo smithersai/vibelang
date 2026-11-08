@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"slices"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -328,6 +329,19 @@ func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	body := ec.VisitFunctionBody(node.Body(), tx.Visitor())
 	tx.inEffect, tx.frame, tx.plain = saved, savedFrame, savedPlain
 
+	// Parameter defaults the parser moved into the body (VIP-2: a default whose
+	// do expression returns) stay at the call: the body is then `{ temps…; {
+	// shadows…; { source body } } }`, the producer body takes the source body,
+	// and a return among the temps and shadows returns an empty Stream
+	// (effect_parameters_lower.go).
+	var outer, middle *ast.Node
+	if parser.VibeLangHasMovedDefaults(node) {
+		outer = body
+		statements := outer.AsBlock().Statements.Nodes
+		middle = statements[len(statements)-1]
+		inner := middle.AsBlock().Statements.Nodes
+		body = inner[len(inner)-1]
+	}
 	generator := tx.generatorExpression(node, sourceName(node), f.NewNodeList(nil), body)
 	if refersToOwnName(node) {
 		// The plain function keeps the name (frames_lower.go).
@@ -341,7 +355,13 @@ func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	}
 	produce := tx.nativeProducerCall(run)
 	block := f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(produce)}), true /*multiLine*/)
-	if bindingMayThrow(node) {
+	if outer != nil {
+		empty := func(*ast.Node) *ast.Node {
+			done := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("succeed"), ast.NodeFlagsNone), nil, nil, f.NewNodeList([]*ast.Node{f.NewVoidExpression(f.NewNumericLiteral("0", ast.TokenFlagsNone))}), ast.NodeFlagsNone)
+			return tx.nativeProducerCall(f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*returnType*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), done))
+		}
+		parameters, block = tx.producerBindingBoundary(node, parameters, tx.movedDefaultsBody(outer, middle, produce, empty))
+	} else if bindingMayThrow(node) {
 		parameters, block = tx.producerBindingBoundary(node, parameters, produce)
 	}
 	block.Loc = node.Body().Loc

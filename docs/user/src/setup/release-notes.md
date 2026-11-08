@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An Effect package stored in a numbered directory could make valid `try` operands report that they were not Effects. The compiler now recognizes the resolved package regardless of its storage directory.
 - Returning from a `provide` block could count an extra uncovered branch even when every authored path ran. Coverage now excludes the generated completion check and keeps authored statements visible.
 
+- A producer with a returning `do` expression in a parameter default reported `EK0204`. Its call now returns an empty `Stream` before later defaults or its body run.
+
 - V8 coverage could count generated `match` cleanup as an uncovered statement inside an Effect handler, despite every authored arm running. It now counts authored statements while keeping unvisited source code uncovered.
 
 - An esbuild bundle could create separate copies of a native module when a generated module map used an absolute import. Absolute and relative imports now share the same exports and state.
@@ -65,7 +67,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migration's API identity check reported an unchanged exported constant whose type uses `infer`, such as `export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never`, as changed whenever another export in its file changed, for example a function moved behind `export { g } from "./helper.js"`. The constant's own type now decides, so it stays identical; a real change to that type still differs.
 
-- A `return` in a `do` expression in a parameter default of a plain, `async` or `effect` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run (an `effect` function's call gives an Effect that succeeds with the value), keeping the parameter order, the function's `length` and its declaration output; generators and producers, constructors, a default that uses `try`, `await` or `yield`, and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.
+- A `return` in a `do` expression in a parameter default of a plain, `async` or `effect` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run (an `effect` function's call gives an Effect that succeeds with the value), keeping the parameter order, the function's `length` and its declaration output; generators, constructors, a default that uses `try`, `await` or `yield`, and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.
 - Misspelled names could lose TypeScript's suggestion for a project-defined global named `process`, `fetch` or another host-global name. Those suggestions now follow the binding's actual declaration.
 
 - Hints for an unresolved experimental name could suggest a nonexistent module method. They now show an explicit service lookup, run its Effect and name the provider layer; pure helpers remain direct calls.
