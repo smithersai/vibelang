@@ -271,3 +271,12 @@ test("trusted-wrapper repairs select their unit, declaration and forwarding regr
   assert.deepEqual(select(["typescript/tsc/internal/vibelang/fix_trusted_empty.go"]), ["//:trusted-empty-forwarding"])
   assert.deepEqual(select(["typescript/tsc/internal/vibelang/fix_trusted_empty_test.go"]), ["//:trusted-empty-forwarding"])
 })
+
+
+test("own-signature and module-loader paths select the fuzz targets their changes broke", () => {
+  assert.deepEqual(select(["typescript/tsc/internal/vibelang/default_callback_throws.go"]), ["//scripts/fuzz-gate:forwarded-callbacks"])
+  assert.ok(families["forwarded-callbacks"].tests.includes("FuzzLegacyEffectAlias"))
+  assert.deepEqual(select(["typescript/tsc/internal/compiler/fileloader.go"]), ["//scripts/fuzz-gate:inline-module-artifacts"])
+  assert.deepEqual(select(["typescript/tsc/internal/vibelangfuzz/testdata/pending/inline-module-artifacts.txt"]), ["//scripts/fuzz-gate:inline-module-artifacts"])
+  assert.deepEqual(select(["typescript/tsc/internal/compiler/fileloader.go.backup"]), [])
+})
