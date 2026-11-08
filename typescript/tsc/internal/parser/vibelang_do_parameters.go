@@ -9,8 +9,9 @@ import (
 )
 
 // A return in a do expression in a parameter default acts as return at the
-// top of the body (VIP-2): a plain function returns the value and an async
-// function fulfills with it, before later defaults or the body run. Chapter
+// top of the body (VIP-2): a plain function returns the value, an async
+// function fulfills with it and an effect function's call gives an Effect
+// that succeeds with it, before later defaults or the body run. Chapter
 // 002, "Destructuring and parameter defaults", keeps the parameter list's
 // own semantics: defaults run in order, a default reads a later parameter in
 // its temporal dead zone, and a closure in a default shares the body's
@@ -36,11 +37,29 @@ import (
 // later parameter is in its temporal dead zone while an earlier default runs,
 // and the body, in its own block, cannot shadow a name a default reads. A
 // parameter without a type takes the type of its moved default
-// (VibeLangMovedParameterDefault). Generators, effect functions and
-// constructors, and a parameter list with a binding pattern or a rest
-// parameter from the returning default on, keep the do expression as a
-// function and its EK0204.
+// (VibeLangMovedParameterDefault). An effect function's lowering runs the
+// moved defaults at the call, before Effect.gen, and returns Effect.succeed
+// of a returned value (vibelang/effect_parameters_lower.go,
+// VibeLangHasMovedDefaults). Generators and producers, constructors, a
+// parameter list with a binding pattern or a rest parameter from the
+// returning default on, and a default that suspends (try, await or yield,
+// which a parameter list cannot do) keep the do expression as a function and
+// its EK0204.
 var movedParameterDefaultsKey = ast.NewSourceFileDataKey[map[*ast.Node]*ast.Node]()
+var movedDefaultFunctionsKey = ast.NewSourceFileDataKey[map[*ast.Node]bool]()
+
+// VibeLangHasMovedDefaults reports whether fn's body begins with moved
+// parameter defaults: `{ temps…; { shadows…; { body } } }`.
+func VibeLangHasMovedDefaults(fn *ast.Node) bool {
+	if fn == nil {
+		return false
+	}
+	file := ast.GetSourceFileOfNode(fn)
+	if file == nil {
+		return false
+	}
+	return file.GetOrComputeData(movedDefaultFunctionsKey, func(*ast.SourceFile) map[*ast.Node]bool { return nil })[fn]
+}
 
 // VibeLangMovedParameterDefault returns the expression whose type parameter
 // takes when its default moved into the body: the lowered default, or nil.
@@ -127,15 +146,37 @@ func movableDefaults(fn *ast.Node, from int) bool {
 	default:
 		return false
 	}
-	if fn.Body() == nil || fn.Flags&ast.NodeFlagsVibeLangEffect != 0 || isGeneratorFunction(fn) {
+	if fn.Body() == nil || isGeneratorFunction(fn) {
 		return false
 	}
 	for _, parameter := range fn.Parameters()[from:] {
-		if parameter.AsParameterDeclaration().DotDotDotToken != nil || !ast.IsIdentifier(parameter.Name()) {
+		if parameter.AsParameterDeclaration().DotDotDotToken != nil || !ast.IsIdentifier(parameter.Name()) || defaultSuspends(parameter.Initializer()) {
 			return false
 		}
 	}
 	return true
+}
+
+// defaultSuspends reports a try, await or yield in init outside any source
+// function: a parameter list is not effect code, and the moved default must
+// not become some (EK0501, EK0102 and EK2104 report it where it stands).
+func defaultSuspends(init *ast.Node) bool {
+	found := false
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if found || ast.IsClassLike(n) || ast.IsFunctionLike(n) && !isSynthesizedArrow(n) {
+			return false
+		}
+		if n.Kind == ast.KindAwaitExpression || n.Kind == ast.KindYieldExpression || n.Flags&ast.NodeFlagsVibeLangTry != 0 {
+			found = true
+			return false
+		}
+		return n.ForEachChild(visit)
+	}
+	if init != nil {
+		visit(init)
+	}
+	return found
 }
 
 func isGeneratorFunction(fn *ast.Node) bool {
@@ -229,12 +270,15 @@ func (p *Parser) recordMovedParameterDefaults(file *ast.SourceFile, l *doLowerin
 		return
 	}
 	values := map[*ast.Node]*ast.Node{}
+	functions := map[*ast.Node]bool{}
 	for parameter, init := range moved {
 		value := l.bindingDefaultValues[init]
 		if value == nil {
 			value = init
 		}
 		values[parameter] = value
+		functions[parameter.Parent] = true
 	}
 	file.GetOrComputeData(movedParameterDefaultsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return values })
+	file.GetOrComputeData(movedDefaultFunctionsKey, func(*ast.SourceFile) map[*ast.Node]bool { return functions })
 }

@@ -563,9 +563,11 @@ func (p *doNarrowingProbe) Ends() bool       { return true }
 // Keep direct do and nested-do neighbours separate from VIP-7's existing
 // match-in-default witness, so a pending match lowering cannot hide these.
 func init() {
-	// The untyped form infers each moved parameter from its default, and the
-	// trailing form keeps a later parameter that has no default.
-	for _, home := range []string{"function", "arrow", "method"} {
+	// The untyped form infers each moved parameter from its default, the
+	// trailing form keeps a later parameter that has no default, and the
+	// effect homes give an Effect that succeeds with the returned value at
+	// the call, without starting the body.
+	for _, home := range []string{"function", "arrow", "method", "effect-function", "effect-arrow", "effect-method"} {
 		for _, form := range []string{"direct", "nested", "untyped", "trailing"} {
 			value := "do { log.push(\"first\"); return 9 }"
 			if form == "nested" {
@@ -573,8 +575,9 @@ func init() {
 			}
 			params := "a: number = " + value + ", b: number = (log.push(\"later\"), 0)"
 			returns := ": number "
-			body := "{ log.push(\"body\"); return a + b }"
-			nativeBody := "{ if (a === undefined) { log.push(\"first\"); return 9 }; if (b === undefined) { log.push(\"later\"); b=0 }; log.push(\"body\"); return a+b }"
+			result := "a + b"
+			first := "if (a === undefined) { log.push(\"first\"); return 9 }; "
+			later := "if (b === undefined) { log.push(\"later\"); b=0 }; "
 			switch form {
 			case "untyped":
 				// A default that always returns has the completion type never;
@@ -582,31 +585,46 @@ func init() {
 				// number for the callers below.
 				params = "a = do { log.push(\"first\"); if (log.length) return 9; 0 }, b = (log.push(\"later\"), 0)"
 				returns = " "
-				nativeBody = "{ if (a === undefined) { log.push(\"first\"); if (log.length) return 9; a = 0 }; if (b === undefined) { log.push(\"later\"); b=0 }; log.push(\"body\"); return a+b }"
+				first = "if (a === undefined) { log.push(\"first\"); if (log.length) return 9; a = 0 }; "
 			case "trailing":
 				params = "a: number = " + value + ", b?: number"
-				body = "{ log.push(\"body\"); return a + (b ?? 0) }"
-				nativeBody = "{ if (a === undefined) { log.push(\"first\"); return 9 }; log.push(\"body\"); return a + (b ?? 0) }"
+				result = "a + (b ?? 0)"
+				later = ""
 			}
-			declaration := "function f(" + params + ")" + returns + body
+			effect := strings.HasPrefix(home, "effect-")
+			body := "{ log.push(\"body\"); return " + result + " }"
+			nativeBody := "{ " + first + later + "log.push(\"body\"); return " + result + " }"
+			marker := ""
+			if effect {
+				marker, returns = "effect ", " "
+				nativeBody = "{ " + strings.ReplaceAll(first, "return 9", "return Effect.succeed(9)") + later + "return Effect.gen(function* () { log.push(\"body\"); return " + result + " }) }"
+			}
+			declaration := marker + "function f(" + params + ")" + returns + body
 			reference := "function f(a,b) " + nativeBody
-			if home == "arrow" {
-				declaration = "const f = (" + params + ")" + returns + "=> " + body
+			switch strings.TrimPrefix(home, "effect-") {
+			case "arrow":
+				declaration = "const f = " + marker + "(" + params + ")" + returns + "=> " + body
 				reference = "const f = (a,b) => " + nativeBody
-			}
-			if home == "method" {
-				declaration = "class Box { read(" + params + ")" + returns + body + " }; const box = new Box(); const f = (a?: number,b?: number): number => box.read(a,b)"
+			case "method":
+				declaration = "class Box { " + marker + "read(" + params + ")" + returns + body + " }; const box = new Box(); const f = (a?: number,b?: number) => box.read(a,b)"
 				reference = "class Box { read(a,b) " + nativeBody + " }; const box = new Box(); const f = (a,b) => box.read(a,b)"
 			}
-			tail := "; return [[f(),f(undefined,3),f(2),f(2,3)],log] }"
-			registerWitness(2, ChapterWitness{
+			witness := ChapterWitness{
 				Key:     "vip02.do-parameter-return-" + home + "-" + form + "-plain",
 				Chapter: "../vips/0002-effect-blocks-and-do.md",
 				Quote:   "A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body:",
-				Vibe:    "function witness(): unknown[] { const log: string[] = []; " + declaration + tail,
-				Effect:  "function witness() { const log = []; " + reference + tail,
+				Vibe:    "function witness(): unknown[] { const log: string[] = []; " + declaration + "; return [[f(),f(undefined,3),f(2),f(2,3)],log] }",
+				Effect:  "function witness() { const log = []; " + reference + "; return [[f(),f(undefined,3),f(2),f(2,3)],log] }",
 				Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
-			})
+			}
+			if effect {
+				witness.Key = "vip02.do-parameter-return-" + home + "-" + form
+				witness.Requires = []string{"vip01.effect-function", "vip05.try"}
+				witness.ReturnsEffect = true
+				witness.Vibe = "effect function witness() { const log: string[] = []; " + declaration + "; return [[try f(), try f(undefined,3), try f(2), try f(2,3)], log] }"
+				witness.Effect = "function witness() { return Effect.gen(function* () { const log = []; " + reference + "; return [[yield* f(), yield* f(undefined,3), yield* f(2), yield* f(2,3)], log] }) }"
+			}
+			registerWitness(2, witness)
 		}
 	}
 }

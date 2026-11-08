@@ -1,0 +1,27 @@
+// expect-result: [["default"],null,null,["default"],1,["default","body"],-1,4,5,"early",[1,2],5,2]
+// VIP-2: a return in a do in an effect function's parameter default gives, at
+// the call, an Effect that succeeds with the value: the body never starts, and
+// running that Effect again evaluates no default again. A throw there is
+// EK0401, as in any parameter list: synchronous VibeLang code never throws.
+const log: string[] = []
+export effect function g(x: number = do { log.push("default"); return null }) { log.push("body"); return 1 }
+effect function typed(a: number = do { return -1 }, b: number = (log.push("later"), 2)) { log.push("body"); return a + b }
+const arrow = effect (a = do { if (log.length >= 0) return "early"; 1 }, b = 2) => [a, b]
+class Box {
+  constructor(readonly base: number) {}
+  effect read(a: number = do { return this.base }) { return a + 1 }
+}
+export effect function main() {
+  const results: unknown[] = []
+  const built = g()
+  results.push(log.slice())
+  results.push(try built, try built)
+  results.push(log.slice())
+  results.push(try g(5))
+  results.push(log.slice())
+  const good: Effect.Effect<number | null> = g()
+  results.push((try good) === null ? -1 : 0, try typed(2), try typed(2, 3))
+  results.push(try arrow(), try arrow(1))
+  results.push(try new Box(5).read(), try new Box(5).read(1))
+  return results
+}

@@ -30,7 +30,8 @@ func TestVibeLangDoEarlyErrors(t *testing.T) {
 		{"function f() { l: for (const x of do { continue l; [] }) {} }", "continue l;", parser.DoLoopHeadCode},
 		{"function f(a = do { var y = 1; y }) {}", "var y = 1", parser.DoParameterVarCode},
 		{"function* g(a = do { return 1 }) {}", "return 1", parser.DoBoundaryCode},
-		{"effect function e(a = do { return 1 }) {}", "return 1", parser.DoBoundaryCode},
+		{"effect function* p(a = do { return 1 }) { yield 1 }", "return 1", parser.DoBoundaryCode},
+		{"effect function e(a = do { try g(); return 1 }) {}", "return 1", parser.DoBoundaryCode},
 		{"function f(a = do { return 1 }, { b } = {}) {}", "return 1", parser.DoBoundaryCode},
 		{"function f(a = do { return 1 }, ...rest) {}", "return 1", parser.DoBoundaryCode},
 		{"class C { constructor(a = do { return 1 }) {} }", "return 1", parser.DoBoundaryCode},
@@ -68,6 +69,9 @@ func TestVibeLangDoEarlyErrors(t *testing.T) {
 		"const o = { m(a = do { return 1 }) { return a } }",
 		"class C { m(a: number = do { return 1 }) { return a } }",
 		"async function f(a = do { return 1 }) { return a }",
+		"effect function e(a = do { return null }) { return 1 }",
+		"const k = effect (a = do { return 1 }) => a",
+		"class C { effect m(a: number = do { return this }) { return a } }",
 		"function f(a = do { const inner = do { if (x) return 9; 0 }; inner }) { return a }",
 	} {
 		file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/test.vibe", PathKey: "/test.vibe"}, text, core.ScriptKindTS)

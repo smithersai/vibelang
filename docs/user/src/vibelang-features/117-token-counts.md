@@ -18,7 +18,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,282 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,813 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,869 |
 | The skill and the user guide (145 pages) | 590,000 |
 | The user guide alone | 580,000 |
 | The specification (11 chapters) | 270,000 |
@@ -277,7 +277,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Diagnostic code map](diagnostic-code-map.md) | 5,400 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 11,000 |
-| **All 9 pages** | **72,000** |
+| **All 9 pages** | **73,000** |
 
 ### Specification
 
@@ -292,7 +292,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,300 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 20,000 |
-| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,100 |
+| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |
 | **Appendices** | **140,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 120,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |

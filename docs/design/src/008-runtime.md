@@ -240,7 +240,6 @@ if (Effect.runSync(defaults()) !== 7) throw new Error("default left its activati
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-2
 effect function eager(x = do { return null }) { return 1 }
 // eager() is an Effect that succeeds with null, built when eager() is called
 ```
