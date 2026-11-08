@@ -243,6 +243,10 @@
       {
         "input": "typescript/vibelang/cases/generator-admitted-throws.fail",
         "output": "typescript/vibelang/cases/generator-admitted-throws-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/commonjs-throws-contract.fail",
+        "output": "typescript/vibelang/cases/commonjs-throws-contract-fixed-output"
       }
     ]
   },

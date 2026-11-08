@@ -391,6 +391,12 @@ func jsdocHosts(decl *ast.Node) []*ast.Node {
 	var hosts []*ast.Node
 	for n := decl; n != nil; n = n.Parent {
 		hosts = append(hosts, n)
+		// JavaScript attaches JSDoc on an exported function assignment to
+		// its expression statement. Follow only a simple assignment value,
+		// never an arbitrary binary expression or a nested callable body.
+		if ast.IsInJSFile(n) && ast.IsAssignmentExpression(n, true) {
+			continue
+		}
 		switch n.Kind {
 		case ast.KindArrowFunction, ast.KindFunctionExpression, ast.KindFunctionType, ast.KindParenthesizedExpression,
 			ast.KindParenthesizedType, ast.KindAsExpression, ast.KindSatisfiesExpression,

@@ -1,0 +1,4 @@
+// expect: EK0401
+import { risky } from "./foreign.cjs"
+export function read(value: string): number { return risky(value) }
+export const count: number = read("ok")

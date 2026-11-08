@@ -1,0 +1,9 @@
+// expect: EK0401
+import { risky } from "./foreign.cjs"
+export function read(value: string): number { return $invoke(risky,value) }
+export const count: number = read("ok")
+
+module $call$ts {
+export function $invoke<T extends Function>(target:T,arg0:Parameters<Extract<T,(...args:any[])=>any>>[0]):ReturnType<Extract<T,(...args:any[])=>any>> { return target(arg0) }
+}
+import { $invoke } from $call$ts

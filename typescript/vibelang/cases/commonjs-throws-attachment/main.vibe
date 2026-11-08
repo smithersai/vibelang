@@ -1,0 +1,12 @@
+// expect-result: [2,"empty","RangeError"]
+import { safe, risky } from "./foreign.cjs"
+
+function caught() {
+  try { return String(risky("")) }
+  catch (error) { return error instanceof RangeError ? error.message : "other" }
+}
+export effect function main() {
+  const failed = try exit(Effect.try({ try: () => risky(""), catch: (error) => error }))
+  const error = failed._tag === "Failure" && failed.cause.reasons[0]?._tag === "Fail" ? failed.cause.reasons[0].error : null
+  return [safe("ok"), caught(), error instanceof RangeError ? error.name : "missing"]
+}
