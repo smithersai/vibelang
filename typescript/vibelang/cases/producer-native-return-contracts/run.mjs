@@ -1,4 +1,4 @@
-// run-seconds: 150
+// run-seconds: 480
 // Chapter 2: producer annotation compatibility follows the native Stream counterpart.
 import assert from "node:assert/strict"
 import {mkdtempSync,writeFileSync,symlinkSync,rmSync} from "node:fs"

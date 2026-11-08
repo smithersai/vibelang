@@ -1,3 +1,4 @@
+// run-seconds: 180
 // Shared temp-project driver for the chapter 7 tooling witnesses.
 // Each case's run.mjs imports it; the harness supplies VIBELANG_BINARY,
 // EFFECT_NODE_MODULES and VIBELANG_RUNTIME.

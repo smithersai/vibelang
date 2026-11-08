@@ -1,3 +1,4 @@
+// run-seconds: 360
 // Where the compatibility sidecar of app/src/user.vibe lands for each
 // sidecarDir spelling, with app/tsconfig.json as the selected config.
 import assert from "node:assert/strict"

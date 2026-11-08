@@ -1,3 +1,4 @@
+// run-seconds: 120
 // Chapter 900 coverage references: stock TypeScript checks the independent Effect
 // program and compares its inferred A/E/R channels and complete Exit to VibeLang.
 // COVERAGE_TWIN_EFFECT selects an isolated Effect 4.1.0 proof; normal cases use the runtime pin.

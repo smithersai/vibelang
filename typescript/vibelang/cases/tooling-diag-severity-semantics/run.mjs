@@ -1,4 +1,4 @@
-// run-seconds: 120
+// run-seconds: 300
 // Severity values for VibeLang's own warnings: "error" fails vibelang and
 // vibelang lint and blocks emit under noEmitOnError; "warning" (the default)
 // prints and exits 0; "suggestion" prints nowhere in the CLI and is a Hint

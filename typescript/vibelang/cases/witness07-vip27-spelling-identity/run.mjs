@@ -1,3 +1,4 @@
+// run-seconds: 120
 // The public declaration spells the import as the native twin would, and the
 // compatibility sidecar keeps the source reference; each still names the same
 // module, so a nominal class from that module is the one `make` returns, and a

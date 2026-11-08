@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | Emitted `.vibe` and `.vibex` modules that use the key request the runtime initialization dependency first, before every other import or re-export dependency, independently of the Effect prelude switches.
 // rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | TypeScript modules (`.ts`, `.tsx` and VIP-40 bodies) retain ordinary dependency order and arrange initialization before using the key, normally with `import "vibelang-runtime"` first.
 // rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | Without prior host or runtime initialization, `Symbol.customMatcher` can be `undefined` even when its ambient type is visible.

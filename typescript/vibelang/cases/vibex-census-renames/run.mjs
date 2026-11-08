@@ -1,3 +1,4 @@
+// run-seconds: 120
 // VIP-39 Renaming parses the same both ways. Renaming x.vibe to: docs/design/vips/0039-vibex.md#23363d729fa1c720
 // VIP-39 JSX in every .vibe file Flow Babel ReScript CoffeeScript: docs/design/vips/0039-vibex.md#647b0a4b1a01af73
 import assert from "node:assert/strict"

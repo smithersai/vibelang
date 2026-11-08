@@ -1,4 +1,4 @@
-// run-seconds: 180
+// run-seconds: 600
 import assert from "node:assert/strict"
 import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"

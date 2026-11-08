@@ -1,3 +1,4 @@
+// run-seconds: 300
 // A module body's compatibility declaration is written beside its file's sidecar.
 // rule-evidence: docs/design/vips/0040-module-declarations.md#41699fff05dc8475
 // When the file's VIP-27 sidecar `main.d.vibe.ts` refers to the body, `main.vibe.parse.d.ts` is also written beside that sidecar, so stock `tsc` resolves the sidecar's relative import from the sidecar's actual location: beside `main.vibe` by default, or at the mirrored path under `vibe.sidecarDir` ([VIP-27](0027-declaration-output.md#amendment-an-opt-in-sidecar-directory-2026-11-01)).

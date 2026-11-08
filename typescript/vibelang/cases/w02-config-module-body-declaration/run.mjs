@@ -1,3 +1,4 @@
+// run-seconds: 120
 // A module body's declaration beside its sidecar is an emit output, not an
 // input, exactly while its source declares that body.
 import assert from "node:assert/strict"

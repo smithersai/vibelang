@@ -1,3 +1,4 @@
+// run-seconds: 120
 import { strict as assert } from "node:assert"
 import { execFileSync } from "node:child_process"
 import { mkdtempSync, writeFileSync, rmSync } from "node:fs"

@@ -1,3 +1,4 @@
+// run-seconds: 120
 // Chapter 007 / run-phase-bindings: docs/design/src/007-tooling.md#6eefb2c31fd7eb98
 import assert from "node:assert/strict"
 import {createRequire} from "node:module"

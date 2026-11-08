@@ -1,3 +1,4 @@
+// run-seconds: 120
 // project/ holds the same text as a .vibe file and an unchanged .ts file.
 // tsc 7.0.2 and 5.9.3 report exactly these errors for both as .ts files, and
 // declaration emit elides the anonymous cycle on line 4 of each without one.

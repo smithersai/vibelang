@@ -956,10 +956,12 @@ The harness sets `VIBELANG_BINARY` to the absolute compiler executable it used w
 A case's custom `run.mjs` has 60 seconds unless one of its lines says
 `// run-seconds: N`. The twelve `rewrite-*` runners call `compareRewrite`, a
 pipeline of six stages (two compiles, two runs, two `--fix` passes) that each
-have a 30-second deadline, and declare `// run-seconds: 180`, their sum: a slow
-stage then trips its own deadline, which names the stage in
+have a 30-second deadline. Eleven declare `// run-seconds: 180`, their sum: a
+slow stage then trips its own deadline, which names the stage in
 `out/rewrite-evidence/<stage>.log` with its duration, instead of the runner
-being killed as a whole. Under the 60-second default, post-merge killed healthy
+being killed as a whole. `rewrite-reserved-error-payload` declares 600: its six
+stages ran 70 to 182 seconds in total over 159 post-merge runs, and the sum
+killed it twice without a stage tripping. Under the 60-second default, post-merge killed healthy
 runs after four compiles on loaded hosts (medians of 13 to 20 seconds, maxima of
 86 to 115 seconds over 214 runs).
 
@@ -968,9 +970,13 @@ without its own takes the largest `N` among the helpers it imports, so a new
 case on `cov-ch004-twin.mjs` or `census-vibex.mjs` needs no line.
 A runner without a line also never gets less than the sum of the stage
 deadlines written in it and its helpers, so a new case cannot fall short.
-`//:harness-deadlines` holds an explicit line to that sum. It reads files only,
-so a line that would get a runner killed as a whole, without naming a stage,
-fails in under a second. `//:release` runs the same test, so post-merge, which
+`//:harness-deadlines` holds an explicit line to that sum. It also requires a
+line from every runner that starts a process, itself or through a helper it
+imports: such a runner compiles at the host's pace, and post-merge boxes killed
+healthy 36- to 64-second runs on the 60-second default. Write at least 120, and
+about three times the slowest post-merge run observed. It reads files only, so
+a line that would get a runner killed as a whole, without naming a stage, or a
+process-starting runner without one, fails in under a second. `//:release` runs the same test, so post-merge, which
 names its targets, keeps the rule too.
 
 The Chapter 15 failure case uses `TestClock.layer()` and advances virtual time

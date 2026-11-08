@@ -1,3 +1,4 @@
+// run-seconds: 120
 // Runs main, compiles consumer/src/main.ts against out/main.d.ts with this
 // compiler, then runs what it exports.
 import { execFileSync } from "node:child_process"

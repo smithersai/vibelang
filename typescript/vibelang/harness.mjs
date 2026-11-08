@@ -25,7 +25,10 @@
 //     shared helper that is such a pipeline carries the line, and a runner
 //     without its own takes the largest N among the helpers it imports. A
 //     runner without a line never gets less than the sum of the stage
-//     deadlines written in it and its helpers.
+//     deadlines written in it and its helpers. A runner that starts a
+//     process, itself or through a helper, carries the line or imports a
+//     helper that does (harness-deadlines.test.mjs): it runs at the host's
+//     pace, and 60 s killed healthy runs on loaded post-merge boxes.
 //
 // --jobs must be a positive safe integer. At most one worker per selected
 // case starts; invalid counts exit 2 before reading or modifying cases.

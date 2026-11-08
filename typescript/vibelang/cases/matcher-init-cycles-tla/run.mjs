@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | Cycles and top-level `await` keep their ordinary TypeScript meanings.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"

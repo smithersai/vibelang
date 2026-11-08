@@ -1,3 +1,4 @@
+// run-seconds: 180
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { readFileSync, readdirSync } from "node:fs"

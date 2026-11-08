@@ -1,3 +1,4 @@
+// run-seconds: 120
 // Runs none.js as a host that says it started the module (Bun), then the
 // page in Chromium when Playwright's Chromium is installed, else in Bun.
 import { execFileSync } from "node:child_process"

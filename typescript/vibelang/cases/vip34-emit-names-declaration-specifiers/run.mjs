@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision
 // rule-evidence: docs/design/vips/0027-declaration-output.md#prior-art
 // Compiles one VibeLang project and its all-TypeScript twin (user.ts, App.tsx,

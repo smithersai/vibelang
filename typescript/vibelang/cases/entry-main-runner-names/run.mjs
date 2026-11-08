@@ -1,3 +1,4 @@
+// run-seconds: 120
 // Runs each entry module the way `node out/main.js` does: the host starts it.
 import { execFileSync } from "node:child_process"
 

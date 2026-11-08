@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/src/001-functions.md#declaration-output | **Specifiers.** Declaration emit follows TypeScript for the source’s `.ts`/`.tsx` twin.
 // rule-evidence: docs/design/src/001-functions.md#declaration-output | Ordinary package declarations use the native twin’s relative specifiers: `./user.vibe` is declared as `./user.ts` and `./App.vibex` as `./App.tsx`; written `./user.js`, `./App.jsx`, `./user` and native `./plain.ts` keep their spelling.
 // rule-evidence: docs/design/src/001-functions.md#declaration-output | Compatibility sidecars instead keep VibeLang source references such as `./user.vibe` and `./App.vibex`, relocated to the selected compatibility declaration when necessary, to preserve source identity.

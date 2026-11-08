@@ -1,3 +1,4 @@
+// run-seconds: 120
 // Lookup order for written .vibe and .vibex specifiers, shown by removing the
 // winning candidate one at a time. The native .ts/.tsx twin rows run alongside.
 import assert from "node:assert/strict"

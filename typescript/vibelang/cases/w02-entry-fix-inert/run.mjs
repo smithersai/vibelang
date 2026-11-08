@@ -1,3 +1,4 @@
+// run-seconds: 180
 // rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | An eligible legacy startup is an exported, non-default, zero-parameter function declaration `main` with a body and no checker-resolved top-level runner call under the pinned legacy compiler and options.
 // rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | Without eligible startup, remove only the inert marker and keep any explicit runner.
 // vibelang --fix on marked modules without an eligible startup removes the

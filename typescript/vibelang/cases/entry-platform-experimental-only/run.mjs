@@ -1,3 +1,4 @@
+// run-seconds: 120
 // Runs each entry module as its host starts it: Node for the node import,
 // Bun for the bun import.
 import { execFileSync } from "node:child_process"

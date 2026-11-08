@@ -1,3 +1,4 @@
+// run-seconds: 120
 import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 const tsc = fileURLToPath(new URL("../../../built/local/tsc", import.meta.url))

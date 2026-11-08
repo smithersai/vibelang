@@ -1,3 +1,4 @@
+// run-seconds: 120
 // The retired declarationImportStyle setting warns with EK3011 in both legacy
 // locations for every value and changes neither exit status nor output.
 import assert from "node:assert/strict"

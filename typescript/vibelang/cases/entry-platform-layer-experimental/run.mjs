@@ -1,3 +1,4 @@
+// run-seconds: 120
 // Runs each entry module the way `node out/main.js` does. vibelang-runtime
 // ships no experimental modules yet, so hooks.mjs resolves them to the stubs
 // that tsconfig.json's paths give the compiler.

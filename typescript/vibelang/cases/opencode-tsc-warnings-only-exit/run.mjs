@@ -1,3 +1,4 @@
+// run-seconds: 180
 // rule-evidence: docs/design/src/007-tooling.md#config-files
 // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision
 // opencode's packages/http-recorder build ran stock `bunx tsc

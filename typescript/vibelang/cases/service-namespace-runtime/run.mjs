@@ -1,3 +1,4 @@
+// run-seconds: 120
 import assert from "node:assert/strict"
 import {spawnSync} from "node:child_process"
 import {readFile} from "node:fs/promises"

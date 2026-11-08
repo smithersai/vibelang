@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | Only a marked module is migration input.
 // vibelang --fix on a project whose exported mains carry no marker applies no
 // fix, reports no diagnostic, exits 0 and leaves every source byte for byte.

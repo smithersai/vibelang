@@ -1,3 +1,4 @@
+// run-seconds: 120
 import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"

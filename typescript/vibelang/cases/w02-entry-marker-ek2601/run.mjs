@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | `EK2601` rejects the retired side-effect markers `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser`, even without `main`: `legacy platform entry marker: run vibelang --fix and write an explicit runner`.
 // rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | A remaining marker keeps `EK2601`; `main` alone is ordinary source, gets no entry diagnostic and causes no implicit startup ([VIP-26](../vips/0026-top-level-and-main.md#decision), [VIP-34](../vips/0034-compiler-and-tooling.md#decision)).
 // Each marker module reports one EK2601, with the rule's message, on the

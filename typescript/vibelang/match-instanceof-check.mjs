@@ -1,3 +1,4 @@
+// run-seconds: 120
 // RC-15 / effectscript-75: EK4839 repairs preserve the predicate's results.
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"

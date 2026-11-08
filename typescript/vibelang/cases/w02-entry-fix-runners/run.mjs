@@ -1,3 +1,4 @@
+// run-seconds: 180
 // rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | `vibelang --fix` removes the marker and expands eligible startup as follows:
 // rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | | `node` | `NodeRuntime.runMain` from `@effect/platform-node/NodeRuntime` | `NodeServices.layer` |
 // rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | | `bun` | The same Node runner | `BunServices.layer` from `@effect/platform-bun/BunServices` |

@@ -1,3 +1,4 @@
+// run-seconds: 120
 import assert from "node:assert/strict"
 import { createRequire } from "node:module"
 const fc = createRequire(new URL("../../../../docs/tools/package.json", import.meta.url))("fast-check")

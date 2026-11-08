@@ -1,3 +1,4 @@
+// run-seconds: 480
 import assert from "node:assert/strict"
 import {Effect} from "effect"
 import * as actual from "./out/main.js"

@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/src/007-tooling.md#vibelang-warnings | An `effect { … }` expression statement builds and discards an unrun Effect; imported `floatingEffect` reports it as `EK3801`, as in TypeScript.
 // project/twin.ts is project/main.vibe in Effect TypeScript: both report EK3801
 // at the same discarded statements and nothing else.

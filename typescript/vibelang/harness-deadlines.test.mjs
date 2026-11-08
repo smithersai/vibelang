@@ -23,6 +23,24 @@ test("every runner's deadline covers its stages and the stages of the helpers it
   assert.deepEqual(short, [], "a runner killed as a whole names no stage; set `// run-seconds: N` to the sum of the deadlines")
 })
 
+// A runner that starts a process, itself or through a helper, runs at the
+// host's pace: post-merge boxes compile several times slower than a developer
+// machine, and the 60-second default killed healthy runs that took 36 to 64 s.
+// The budget is the author's decision, written down where the process starts.
+const startsProcess = (text) => /\bfrom\s+"(?:node:)?child_process"|\brequire\("(?:node:)?child_process"\)/.test(text)
+const declaresSeconds = (text) => /^\/\/ run-seconds: \d+\b/m.test(text)
+test("every runner that starts a process declares its deadline, itself or in the helper that starts it", () => {
+  const cases = path.join(here, "cases")
+  const silent = []
+  for (const name of fs.readdirSync(cases)) {
+    const runner = path.join(cases, name, "run.mjs")
+    if (!fs.existsSync(runner)) continue
+    const texts = [runner, ...runnerHelpers(runner)].map((file) => fs.readFileSync(file, "utf8"))
+    if (texts.some(startsProcess) && !texts.some(declaresSeconds)) silent.push(name)
+  }
+  assert.deepEqual(silent, [], "a runner that starts a process runs at the host's pace; write `// run-seconds: N` in the runner, or in the helper that starts the process")
+})
+
 test("a runner without a line gets at least the stage deadlines written for it", (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-harness-stages-"))
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }))

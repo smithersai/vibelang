@@ -1,3 +1,4 @@
+// run-seconds: 180
 // rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | A remaining marker keeps `EK2601`; `main` alone is ordinary source, gets no entry diagnostic and causes no implicit startup ([VIP-26](../vips/0026-top-level-and-main.md#decision), [VIP-34](../vips/0034-compiler-and-tooling.md#decision)).
 // Starting a module whose only startup candidate is an unmarked exported main
 // runs nothing, its JavaScript holds no entry statement, its compilation

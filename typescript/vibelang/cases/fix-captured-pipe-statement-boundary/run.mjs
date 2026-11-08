@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/src/007-tooling.md#fix-ownership-and-preservation
 import assert from "node:assert/strict"
 import { mkdtempSync, readFileSync, writeFileSync, symlinkSync, rmSync } from "node:fs"

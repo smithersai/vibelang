@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/src/001-functions.md#module-declarations | Its body is a TypeScript file stored in the `.vibe` file: moving it to a sibling `.ts` file (`.tsx` for a body in `.vibex`) with its external-module classification preserved and replacing `from name` with that file's specifier changes no diagnostic, type, emitted statement, declaration or run-time observation.
 // rule-evidence: docs/design/src/001-functions.md#module-declarations | A body is an external module before binding and checking, even without written imports or exports and regardless of `moduleDetection`.
 //

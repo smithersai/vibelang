@@ -1,3 +1,4 @@
+// run-seconds: 120
 // rule-evidence: docs/design/vips/0034-compiler-and-tooling.md#decision
 // rule-evidence: docs/design/src/007-tooling.md#config-files
 // Compiles one VibeLang project and its all-TypeScript twin under each
