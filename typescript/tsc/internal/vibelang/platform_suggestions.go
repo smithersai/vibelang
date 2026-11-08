@@ -30,7 +30,7 @@ func suggestsNoPlatformGlobal(c *checker.Checker, location *ast.Node, candidate 
 	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || inHatch(location) || inModuleBlock(location) {
 		return true
 	}
-	return c.GlobalSymbol(name, candidate.Flags()) != candidate
+	return !isPlatformGlobalBinding(c, candidate)
 }
 
 // inModuleBlock reports whether node is in a module declaration's body,

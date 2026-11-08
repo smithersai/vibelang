@@ -1,9 +1,9 @@
-// expect: TS2304 TS2552
+// expect: TS2552
 // Process is not in scope: its module is Experimental.Process.
 // The note shows an explicit service lookup, Effect run and provider.
-// TypeScript would suggest Node's process, which EK4402 bans in
-// .vibe code. A TypeScript hatch keeps ordinary spelling suggestions,
-// so its misspelling still suggests process.
+// The fixture's process is project-owned, so ordinary spelling
+// suggestions remain available both here and inside a callback.
+// Actual Node globals remain distinct from these project declarations.
 export function host() {
   return Process.hostname()
 }

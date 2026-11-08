@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migration's API identity check reported an unchanged exported constant whose type uses `infer`, such as `export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never`, as changed whenever another export in its file changed, for example a function moved behind `export { g } from "./helper.js"`. The constant's own type now decides, so it stays identical; a real change to that type still differs.
 
 - A `return` in a `do` expression in a parameter default of a plain, `async` or `effect` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run (an `effect` function's call gives an Effect that succeeds with the value), keeping the parameter order, the function's `length` and its declaration output; generators and producers, constructors, a default that uses `try`, `await` or `yield`, and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.
+- Misspelled names could lose TypeScript's suggestion for a project-defined global named `process`, `fetch` or another host-global name. Those suggestions now follow the binding's actual declaration.
+
 - Hints for an unresolved experimental name could suggest a nonexistent module method. They now show an explicit service lookup, run its Effect and name the provider layer; pure helpers remain direct calls.
 
 - Calls that may throw inside `Effect.try` or `Effect.tryPromise` thunks could report `EK0401` when the wrapper was called through parentheses, computed access, constant aliases or `bind`. These forms now accept the same thunks as a direct call.

@@ -1,4 +1,4 @@
-main.vibe(8,10): error TS2304: Cannot find name 'Process'.
+main.vibe(8,10): error TS2552: Cannot find name 'Process'. Did you mean 'process'?
 Process is VibeLang's experimental Process module, available as Experimental.Process.
 Use the experimental Process service:   try (try Experimental.Process.Process).pid
 Provide it in main with ExperimentalNodeServices.layer

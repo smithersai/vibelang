@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("document-local\u0000\u0000")
