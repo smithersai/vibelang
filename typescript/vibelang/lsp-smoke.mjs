@@ -303,9 +303,10 @@ try {
     assert(errorEdits.length === 1 && errorEdits[0].newText === "error NotFound { id: string }", `EK4830 edits ${JSON.stringify(errorEdits)}`)
     assert(errorEdits[0].range.start.line === classAt.line && errorEdits[0].range.start.character === classAt.character, `EK4830 edit range ${JSON.stringify(errorEdits[0].range)}`)
     const type = items.find((d) => d.code === 4833)
-    const typeEdits = await fixOf(type, "Write string!NotFound")
+    // Exported declaration repairs preserve the written never requirement.
+    const typeEdits = await fixOf(type, "Write string!NotFound!never")
     const typeAt = at(file, "Effect.Effect<string")
-    assert(typeEdits.length === 1 && typeEdits[0].newText === "string!NotFound", `EK4833 edits ${JSON.stringify(typeEdits)}`)
+    assert(typeEdits.length === 1 && typeEdits[0].newText === "string!NotFound!never", `EK4833 edits ${JSON.stringify(typeEdits)}`)
     assert(typeEdits[0].range.start.line === typeAt.line && typeEdits[0].range.start.character === typeAt.character, `EK4833 edit range ${JSON.stringify(typeEdits[0].range)}`)
   })
 
