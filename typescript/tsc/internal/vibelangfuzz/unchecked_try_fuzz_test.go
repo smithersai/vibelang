@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -9,11 +10,16 @@ import (
 const uncheckedTryDeclarationsTarget = "FuzzUncheckedTryDeclarations"
 const uncheckedTryDeclarationsQuote = "Declarations are exactly what idiomatic Effect TypeScript would declare."
 const uncheckedTryDelegationQuote = "`try e` is `yield* e`. It runs `e` and gives its success value."
+const uncheckedTryContractQuote = "the emitted declaration may add VIP-27’s generated `@throws {never}` contract where the twin has no authored throw contract"
+
+var generatedNeverMember = regexp.MustCompile(`(?m)^[ \t]+/\*\* @throws \{never\} \*/\n`)
 
 func TestUncheckedTryDeclarationsQuoted(t *testing.T) {
-	for chapter, quote := range map[string]string{"001-functions.md": uncheckedTryDeclarationsQuote, "002-running.md": uncheckedTryDelegationQuote} {
-		if !strings.Contains(SpecText(chapter), quote) {
-			t.Fatalf("%s no longer says %q", chapter, quote)
+	for chapter, quote := range map[string]string{"001-functions.md": uncheckedTryDeclarationsQuote + "|" + uncheckedTryContractQuote, "002-running.md": uncheckedTryDelegationQuote} {
+		for _, quote := range strings.Split(quote, "|") {
+			if !strings.Contains(SpecText(chapter), quote) {
+				t.Fatalf("%s no longer says %q", chapter, quote)
+			}
 		}
 	}
 }
@@ -52,17 +58,18 @@ func FuzzUncheckedTryDeclarations(f *testing.F) {
 		case "conditional":
 			operand = "(flag ? value : value)"
 			parameter += ", flag: boolean"
+		// A call through any throws unknown (chapter 3), so the call forms
+		// call an untagged callable whose result is unchecked.
 		case "call":
-			operand = "value()"
+			operand, parameter = "value()", "value: () => any"
 		case "call-parentheses":
-			operand = "(value())"
+			operand, parameter = "(value())", "value: () => any"
 		case "call-property":
-			operand = "value.read()"
+			operand, parameter = "value.read()", "value: { read(): any }"
 		case "call-element":
-			operand = "value[\"read\"]()"
+			operand, parameter = "value[\"read\"]()", "value: { read(): any }"
 		case "call-conditional":
-			operand = "(flag ? value : value)()"
-			parameter += ", flag: boolean"
+			operand, parameter = "(flag ? value : value)()", "value: () => any, flag: boolean"
 		case "effect-any":
 			parameter = "value: Effect.Effect<any>"
 		case "effect-number":
@@ -107,7 +114,9 @@ func FuzzUncheckedTryDeclarations(f *testing.F) {
 			t.Fatal("missing declaration")
 			return ""
 		}
-		got, want := declaration(results[0]), declaration(results[1])
+		// Only the generated never contract on the callee parameter may differ.
+		got := strings.ReplaceAll(generatedNeverMember.ReplaceAllString(declaration(results[0]), ""), "\n/** @throws {never} */\n", "")
+		want := declaration(results[1])
 		key := fmt.Sprintf("%s:%d", form, depth%2)
 		if got != want {
 			Gap(t, uncheckedTryDeclarationsTarget, key, "VIP-27: %q; VIP-5: %q\ngot %s\nwant %s", uncheckedTryDeclarationsQuote, uncheckedTryDelegationQuote, got, want)

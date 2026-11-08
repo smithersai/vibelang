@@ -12,6 +12,7 @@ import (
 
 const nullableTryQuote = "A statically non-Effect or possibly `undefined` operand is `EK0502`"
 const nullableOptionsQuote = "These are ordinary TypeScript assignability tests, with the project's compiler options; `any` and `never` pass."
+const nullableAnyCallQuote = "Calls through `any` or `Function` throw `unknown`"
 
 func TestTryNullableOperandsQuoted(t *testing.T) {
 	chapter := SpecText("002-running.md")
@@ -20,30 +21,34 @@ func TestTryNullableOperandsQuoted(t *testing.T) {
 			t.Fatalf("Chapter 2 no longer says %q", quote)
 		}
 	}
+	if !strings.Contains(SpecText("003-failures.md"), nullableAnyCallQuote) {
+		t.Fatalf("Chapter 3 no longer says %q", nullableAnyCallQuote)
+	}
 }
 
 type nullableTryShape struct {
-	key, declarations, body string
-	nullable, badArgument   bool
+	key, declarations, body       string
+	nullable, badArgument, throws bool
 }
 
 func nullableTryShapes() []nullableTryShape {
 	return []nullableTryShape{
-		{"value", "declare const input: Effect.Effect<number> | undefined;", "return try input", true, false},
-		{"optional-call", "declare const make: (() => Effect.Effect<number>) | undefined;", "return try make?.()", true, false},
-		{"grouped-call", "declare const make: (() => Effect.Effect<number>) | undefined;", "return try (make?.())", true, false},
-		{"optional-method", "declare const obj: { make?(): Effect.Effect<number> };", "return try obj.make?.()", true, false},
-		{"optional-receiver", "declare const obj: { make(): Effect.Effect<number> } | undefined;", "return try obj?.make()", true, false},
-		{"nullable-return", "declare function make(): Effect.Effect<number> | undefined;", "return try make()", true, false},
-		{"undefined-success", "declare function make(): Effect.Effect<undefined>;", "return try make?.()", false, false},
-		{"narrowed", "declare const make: (() => Effect.Effect<number>) | undefined;", "if (make) return try make?.(); return 0", false, false},
-		{"asserted", "declare const make: (() => Effect.Effect<number>) | undefined;", "return try (make?.()!)", false, false},
-		{"known-receiver", "declare const obj: { make(): Effect.Effect<number> };", "return try obj?.make()", false, false},
-		{"known-method", "declare const obj: { make(): Effect.Effect<number> };", "return try obj.make?.()", false, false},
-		{"narrowed-receiver", "declare const obj: { make(): Effect.Effect<number> } | undefined;", "if (obj) return try obj?.make(); return 0", false, false},
-		{"asserted-callable", "declare const make: (() => Effect.Effect<number>) | undefined;", "return try make!?.()", false, false},
-		{"unchecked", "declare const make: any;", "return try make?.()", false, false},
-		{"bad-argument", "declare const make: ((value: string) => Effect.Effect<number>) | undefined;", "return try make?.(0)", true, true},
+		{"value", "declare const input: Effect.Effect<number> | undefined;", "return try input", true, false, false},
+		{"optional-call", "declare const make: (() => Effect.Effect<number>) | undefined;", "return try make?.()", true, false, false},
+		{"grouped-call", "declare const make: (() => Effect.Effect<number>) | undefined;", "return try (make?.())", true, false, false},
+		{"optional-method", "declare const obj: { make?(): Effect.Effect<number> };", "return try obj.make?.()", true, false, false},
+		{"optional-receiver", "declare const obj: { make(): Effect.Effect<number> } | undefined;", "return try obj?.make()", true, false, false},
+		{"nullable-return", "declare function make(): Effect.Effect<number> | undefined;", "return try make()", true, false, false},
+		{"undefined-success", "declare function make(): Effect.Effect<undefined>;", "return try make?.()", false, false, false},
+		{"narrowed", "declare const make: (() => Effect.Effect<number>) | undefined;", "if (make) return try make?.(); return 0", false, false, false},
+		{"asserted", "declare const make: (() => Effect.Effect<number>) | undefined;", "return try (make?.()!)", false, false, false},
+		{"known-receiver", "declare const obj: { make(): Effect.Effect<number> };", "return try obj?.make()", false, false, false},
+		{"known-method", "declare const obj: { make(): Effect.Effect<number> };", "return try obj.make?.()", false, false, false},
+		{"narrowed-receiver", "declare const obj: { make(): Effect.Effect<number> } | undefined;", "if (obj) return try obj?.make(); return 0", false, false, false},
+		{"asserted-callable", "declare const make: (() => Effect.Effect<number>) | undefined;", "return try make!?.()", false, false, false},
+		{"unchecked", "declare const make: (() => any) | undefined;", "return try make?.()", false, false, false},
+		{"unchecked-callee", "declare const make: any;", "return try make?.()", false, false, true},
+		{"bad-argument", "declare const make: ((value: string) => Effect.Effect<number>) | undefined;", "return try make?.(0)", true, true, false},
 	}
 }
 
@@ -110,10 +115,13 @@ func FuzzTryNullableOperands(f *testing.F) {
 		if shape.badArgument {
 			want = append(want, "TS2345")
 		}
+		if shape.throws {
+			want = append(want, "EK0403")
+		}
 		slices.Sort(codes)
 		slices.Sort(want)
 		if !slices.Equal(codes, want) {
-			Gap(t, "FuzzTryNullableOperands", fmt.Sprintf("operand:%s:%d", shape.key, variant%4), "Chapter 2: %q; options: %q; strictNullChecks=%t; want %v, got %v\n%s", nullableTryQuote, nullableOptionsQuote, strict, want, codes, source)
+			Gap(t, "FuzzTryNullableOperands", fmt.Sprintf("operand:%s:%d", shape.key, variant%4), "Chapter 2: %q; options: %q; chapter 3: %q; strictNullChecks=%t; want %v, got %v\n%s", nullableTryQuote, nullableOptionsQuote, nullableAnyCallQuote, strict, want, codes, source)
 		}
 	})
 }

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("unchecked-callee")
+byte('\x00')
