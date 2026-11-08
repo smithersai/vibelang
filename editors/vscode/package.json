@@ -2,7 +2,7 @@
   "name": "vibelang",
   "displayName": "VibeLang",
   "description": "VibeLang language support: the vibelang language server, diagnostics with EK codes, hovers with inferred contracts, and syntax highlighting for .vibe and .vibex files.",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "publisher": "vibelang",
   "private": true,
   "type": "commonjs",

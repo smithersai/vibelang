@@ -14,7 +14,7 @@ cd my-app
 bun run start
 ```
 
-The native `vibelang` compiler compiles `.vibe` sources to JavaScript. Version 0.0.12 installs from npm.
+The native `vibelang` compiler compiles `.vibe` sources to JavaScript. Version 0.0.13 installs from npm.
 
 > **For agents.** To set up VibeLang with a coding agent, give it this prompt:
 >
@@ -28,7 +28,7 @@ The native `vibelang` compiler compiles `.vibe` sources to JavaScript. Version 0
 
 Install Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.4 or later. Bun is optional. The compiler is a native binary: `vibelang` lists one package per platform as an optional dependency, and your package manager installs only the one that matches your machine:
 
-| Platform | Package | Rehearsed for 0.0.12 |
+| Platform | Package | Rehearsed for 0.0.13 |
 | --- | --- | --- |
 | macOS on Apple silicon | `vibelang-darwin-arm64` | No |
 | macOS on Intel | `vibelang-darwin-x64` | No |
@@ -37,7 +37,7 @@ Install Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.
 | Windows on x64 | `@smthrs/cli-win32-x64` | No |
 | Windows on arm64 | `@smthrs/cli-win32-arm64` | No |
 
-Version 0.0.12 publishes six native packages for macOS, Linux and Windows on arm64 and x64. The release rehearsal creates, starts and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built but have not been rehearsed on their target platforms for this release.
+Version 0.0.13 publishes six native packages for macOS, Linux and Windows on arm64 and x64. The release rehearsal creates, starts and tests a starter with npm and Bun on Linux x64. The other five binaries are cross-built but have not been rehearsed on their target platforms for this release.
 
 Keep optional dependencies enabled: if an install skips them, as `npm install --omit=optional` does, `vibelang` cannot find its binary and exits with an error.
 
@@ -90,8 +90,8 @@ If neither table exists, use `overrides` as shown above. When both fields are pr
 Then run:
 
 ```sh
-bun add --exact vibelang-runtime@0.0.12 effect@4.1.1 @effect/platform-node@4.1.1
-bun add -d --exact vibelang@0.0.12 vibelang-vite@0.0.12 vitest@5.1.0 @effect/vitest@4.1.1
+bun add --exact vibelang-runtime@0.0.13 effect@4.1.1 @effect/platform-node@4.1.1
+bun add -d --exact vibelang@0.0.13 vibelang-vite@0.0.13 vitest@5.1.0 @effect/vitest@4.1.1
 ```
 
 With npm, run `npm install --save-exact` for the first line and `npm install --save-dev --save-exact` for the second.
@@ -104,7 +104,7 @@ With npm, run `npm install --save-exact` for the first line and `npm install --s
 | `vibelang-vite` | Dev dependency | Compiles `.vibe` modules for Vite and Vitest |
 | `vitest`, `@effect/vitest` | Dev dependency | Vitest 5.1.0 and `@effect/vitest` 4.1.1 for tests |
 
-The compiler reads the `effect` the project resolves and reports `EK3201` when its version is not the pinned 4.1.1 (`The resolved effect is 4.0.3; VibeLang 0.0.12 pins 4.1.1: upgrade both together`), in the CLI and the editor. Upgrade `effect` and VibeLang together.
+The compiler reads the `effect` the project resolves and reports `EK3201` when its version is not the pinned 4.1.1 (`The resolved effect is 4.0.3; VibeLang 0.0.13 pins 4.1.1: upgrade both together`), in the CLI and the editor. Upgrade `effect` and VibeLang together.
 
 `vibelang-runtime` requires `effect` 4.1.1 exactly. The runtime depends on Effect internals and checks the exact version at load. VibeLang follows Effect 4.0.6's defect precedence, which 4.1.1 keeps: a failure whose cleanup crashes is a defect. Read the [release notes](../setup/release-notes.md) before updating code that inspects causes or recovers mixed failures. Keep `effect`, `@effect/platform-node`, and `@effect/vitest` at 4.1.1, so the runtime and your program share one copy of `effect`. Keep `vibelang`, `vibelang-runtime`, and `vibelang-vite` at one version; they are released together.
 

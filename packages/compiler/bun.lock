@@ -17,12 +17,12 @@
         "prettier": "3.6.2",
       },
       "optionalDependencies": {
-        "@smthrs/cli-win32-arm64": "0.0.12",
-        "@smthrs/cli-win32-x64": "0.0.12",
-        "vibelang-darwin-arm64": "0.0.12",
-        "vibelang-darwin-x64": "0.0.12",
-        "vibelang-linux-arm64": "0.0.12",
-        "vibelang-linux-x64": "0.0.12",
+        "@smthrs/cli-win32-arm64": "0.0.13",
+        "@smthrs/cli-win32-x64": "0.0.13",
+        "vibelang-darwin-arm64": "0.0.13",
+        "vibelang-darwin-x64": "0.0.13",
+        "vibelang-linux-arm64": "0.0.13",
+        "vibelang-linux-x64": "0.0.13",
       },
       "peerDependencies": {
         "@babel/core": "^7.29.0",
