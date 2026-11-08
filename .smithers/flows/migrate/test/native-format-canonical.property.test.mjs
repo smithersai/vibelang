@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -40,7 +40,7 @@ function project(input) {
     const configDir = input.nested ? "packages/core" : "."
     writeFileSync(join(root, configDir, "dprint.json"), JSON.stringify({
       incremental: false, lineWidth: input.width,
-      typescript: { semiColons: "asi", quoteStyle: style.quoteStyle },
+      typescript: { [input.legacySemicolonOption ? "semiColons" : "semicolons"]: "asi", quoteStyle: style.quoteStyle },
       plugins: [typescriptPlugin, "npm:vibelang/dprint-plugin.json"],
     }))
   } else {
@@ -62,14 +62,14 @@ async function check(input) {
     assert.notEqual(expected, p.source, "the corpus must expose an unformatted batch")
     const files = [p.selected, p.directory + "/ordinary.ts", p.directory + "/EventSource.d.vibe.ts", "missing.vibe"]
     const log = join(p.root, "format.log")
-    assert.deepEqual(await formatVibe(p.config, files, log), { files: [p.selected], code: 0 })
+    assert.deepEqual(await formatVibe(p.config, files, log), { files: [p.selected], code: 0 }, "format stage " + JSON.stringify(input) + "\n" + (existsSync(log) ? readFileSync(log, "utf8").slice(-8192) : "formatter did not produce a stage log"))
     const once = readFileSync(join(p.root, p.selected), "utf8")
     assert.equal(once, expected, "the migration step must use the public formatter's canonical output")
     assert.ok(once.includes("/** Keep the event source contract. */"))
     assert.ok(once.includes("void!never!Req"), "native effect type slots remain native")
     const checked = run(p.root, ["--check", p.selected])
     assert.equal(checked.status, 0, checked.stderr + checked.stdout)
-    assert.deepEqual(await formatVibe(p.config, [p.selected], log), { files: [p.selected], code: 0 })
+    assert.deepEqual(await formatVibe(p.config, [p.selected], log), { files: [p.selected], code: 0 }, "repeat format stage " + JSON.stringify(input) + "\n" + (existsSync(log) ? readFileSync(log, "utf8").slice(-8192) : "formatter did not produce a stage log"))
     assert.equal(readFileSync(join(p.root, p.selected), "utf8"), once, "formatting is idempotent")
     for (const file of [p.ignored, p.directory + "/ordinary.ts", p.directory + "/EventSource.d.vibe.ts"]) {
       assert.equal(readFileSync(join(p.root, file), "utf8"), p.source, "files outside the selected native source remain untouched")
@@ -86,6 +86,15 @@ test("native migration formatter contract is quoted from the tooling chapter and
 })
 test("captured event-source pattern becomes canonical through the actual migration formatter", async () => {
   await check({ backend: "fallback", nested: true, extension: "vibe", crlf: false, width: 120, singleQuote: false })
+})
+test("direct migration formatting uses the pinned plugin's semicolon setting", async () => {
+  await check({ backend: "dprint", nested: false, extension: "vibe", crlf: false, width: 80, singleQuote: false })
+})
+test("a failed native format stage keeps its configuration diagnostic", async () => {
+  await assert.rejects(check({
+    backend: "dprint", nested: false, extension: "vibe", crlf: false, width: 80,
+    singleQuote: false, legacySemicolonOption: true,
+  }), /format stage.*Unknown property in configuration \(semiColons\)/s)
 })
 test("property: native batch formatting respects routing, style, paths and line endings", async () => {
   await fc.assert(fc.asyncProperty(fc.record({

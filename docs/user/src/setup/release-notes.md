@@ -12,6 +12,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `vibelang --fix` could refuse a throwing call nested inside a caught Effect call, leaving `EK0403`. It now wraps the nested call while preserving the outer call and its `catch` handler.
 
+- A migration formatter example used an unsupported semicolon option and failed before formatting the file. It now uses `semicolons` with the pinned TypeScript plugin, and formatter failures retain their stage and explanation.
+
 - A migration could mistake a returned record of Effect callbacks for a returned Effect and reject equivalent branches. Such callback records now keep their existing preservation rules.
 
 - A migrated function that always returned an Effect could gain a plain-value result when extra branches or local assignments hid the change. Verification now reports that loss even when the number of Effect-valued results stays the same.
