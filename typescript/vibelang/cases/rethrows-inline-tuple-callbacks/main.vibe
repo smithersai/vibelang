@@ -1,0 +1,23 @@
+// expect-result: [40,20,20]
+import{higher,after,many,optional,Runner,parse,argument,safe,verify}from"./lib.js";
+export function probe0(broken:boolean){try{return higher(...[()=>parse(broken)] as const)}catch(error){return error}}
+export function probe1(broken:boolean){try{return higher(...[function(){return parse(broken)}] as const)}catch(error){return error}}
+export function probe2(broken:boolean){try{return higher(...([()=>parse(broken)] as const))}catch(error){return error}}
+export function probe3(broken:boolean){try{return higher(...([function(){return parse(broken)}] as const))}catch(error){return error}}
+export function probe4(broken:boolean){try{return higher(...[...[()=>parse(broken)] as const] as const)}catch(error){return error}}
+export function probe5(broken:boolean){try{return higher(...[...[function(){return parse(broken)}] as const] as const)}catch(error){return error}}
+export function probe6(broken:boolean){try{return after(...[argument(),()=>parse(broken)] as const)}catch(error){return error}}
+export function probe7(broken:boolean){try{return after(...[argument(),function(){return parse(broken)}] as const)}catch(error){return error}}
+export function probe8(broken:boolean){try{return after(...[argument()] as const,...[()=>parse(broken)] as const)}catch(error){return error}}
+export function probe9(broken:boolean){try{return after(...[argument()] as const,...[function(){return parse(broken)}] as const)}catch(error){return error}}
+export function probe10(broken:boolean){try{return many(...[()=>safe(),()=>parse(broken)] as const)}catch(error){return error}}
+export function probe11(broken:boolean){try{return many(...[()=>safe(),function(){return parse(broken)}] as const)}catch(error){return error}}
+export function probe12(broken:boolean){try{return new Runner(...[()=>parse(broken)] as const).value}catch(error){return error}}
+export function probe13(broken:boolean){try{return new Runner(...[function(){return parse(broken)}] as const).value}catch(error){return error}}
+export function probe14(broken:boolean){try{return optional(...[()=>parse(broken)] as [(()=>number)?])}catch(error){return error}}
+export function probe15(broken:boolean){try{return optional(...[function(){return parse(broken)}] as [(()=>number)?])}catch(error){return error}}
+export function probe16(broken:boolean){const prefix=[argument()] as const;try{return after(...prefix,...[()=>parse(broken)] as const)}catch(error){return error}}
+export function probe17(broken:boolean){const prefix=[argument()] as const;try{return after(...prefix,...[function(){return parse(broken)}] as const)}catch(error){return error}}
+export function probe18(broken:boolean){const prefix=[argument()] as const;try{return after(...[...prefix,()=>parse(broken)] as const)}catch(error){return error}}
+export function probe19(broken:boolean){const prefix=[argument()] as const;try{return after(...[...prefix,function(){return parse(broken)}] as const)}catch(error){return error}}
+export effect function main(){return try verify([probe0,probe1,probe2,probe3,probe4,probe5,probe6,probe7,probe8,probe9,probe10,probe11,probe12,probe13,probe14,probe15,probe16,probe17,probe18,probe19])}

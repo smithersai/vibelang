@@ -185,6 +185,9 @@ func isIntrinsicPromiseConstruction(c *checker.Checker, call, decl *ast.Node) bo
 // A rest parameter's element, or a tuple-rest member, is the parameter of the
 // arguments in its positions.
 func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
+	if call, index, ok := inlineTupleCallbackInvocation(c, fn); ok {
+		return admitsCallbackPosition(c, fn, call, index, true)
+	}
 	node := fn
 	for parent := callbackValueParent(node); parent != nil; parent = callbackValueParent(node) {
 		node = parent
@@ -203,6 +206,10 @@ func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
 	if index < 0 {
 		return false
 	}
+	return admitsCallbackPosition(c, fn, call, index, false)
+}
+
+func admitsCallbackPosition(c *checker.Checker, fn, call *ast.Node, index int, runtimePosition bool) bool {
 	signature := c.GetResolvedSignature(call)
 	if signature == nil {
 		return false
@@ -240,6 +247,9 @@ func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
 	}
 	// A parameter named by @rethrows admits anything: what the literal throws
 	// belongs to the call (003 Plain code never throws; rethrows_known.go).
+	if runtimePosition {
+		return rethrowsRuntimeArgument(c, call, index)
+	}
 	return rethrowsArgument(c, call, index)
 }
 

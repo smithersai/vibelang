@@ -1,0 +1,3 @@
+go test fuzz v1
+string("rethrows-tuple-inline-split-arrow-effect")
+byte(0)

@@ -236,6 +236,7 @@ func (a *analyzer) rethrownThrows(call *ast.Node) []*checker.Type {
 	if !ast.IsCallExpression(call) && !ast.IsNewExpression(call) && !ast.IsTaggedTemplateExpression(call) || returnsEffectful(a.checker, call) {
 		return thrown
 	}
+	thrown = append(thrown, a.rethrownTupleLiteralCalls(call)...)
 	for index, argument := range rethrowsCallArguments(call) {
 		if argument == nil {
 			continue
@@ -296,6 +297,10 @@ func (a *analyzer) rethrowsUnbridgedInEffect(call *ast.Node) bool {
 // a lib Array method names (Appendix E).
 func rethrowsArgument(c *checker.Checker, call *ast.Node, index int) bool {
 	index = invocationArgumentPosition(c, call, index)
+	return rethrowsRuntimeArgument(c, call, index)
+}
+
+func rethrowsRuntimeArgument(c *checker.Checker, call *ast.Node, index int) bool {
 	signature := c.GetResolvedSignature(call)
 	if signature == nil {
 		return false
