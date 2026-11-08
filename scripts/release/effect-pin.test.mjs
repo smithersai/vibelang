@@ -3,7 +3,7 @@
 // runtime and starter. A matching range is still not an exact pin.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -27,7 +27,7 @@ function metadataFixture(t) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-effect-peer-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   for (const path of [
-    "scripts/release/make-packages.mjs", "docs/tools/release-docs.mjs",
+    "scripts/release/make-packages.mjs", "scripts/release/zip-times.mjs", "docs/tools/release-docs.mjs",
     "typescript/tsc/internal/vibelang/identity.go",
     ...["compiler", "runtime", "vite", "unplugin", "create-vibelang", "typescript-shim"].map(name => "packages/" + name + "/package.json"),
     "templates/app/package.json",
@@ -37,6 +37,20 @@ function metadataFixture(t) {
   }
   return root
 }
+
+test("the metadata fixture loads the real packager and stops before building or staging", t => {
+  const root = metadataFixture(t)
+  const result = spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build"],
+    { encoding: "utf8", timeout: 10_000 })
+  assert.ifError(result.error)
+  assert.equal(result.status, 1, result.stderr)
+  assert.doesNotMatch(result.stderr, /ERR_MODULE_NOT_FOUND|Cannot find module/, "load the packager's local helpers before checking metadata")
+  const missing = [...result.stderr.matchAll(/missing dist-npm\/bin\/([^/]+)\/vibelang(?:\.exe)?;/g)].map(match => match[1])
+  assert.deepEqual(missing.sort(), ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-arm64", "win32-x64"])
+  assert.doesNotMatch(result.stderr, /effect peer must/)
+  assert.equal(existsSync(join(root, "dist-npm")), false, "metadata rejection must not stage packages")
+  assert.equal(existsSync(join(root, "packages/runtime/dist")), false, "metadata rejection must not build the runtime")
+})
 
 test("release rejects missing, ranged, optional and mismatched compiler Effect peers before packaging", t => {
   const root = metadataFixture(t)

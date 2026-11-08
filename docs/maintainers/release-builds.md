@@ -44,3 +44,9 @@ Before packaging a new version, finalize its release-notes heading and keep each
 fix in the version that ships it. Publication checks validate the candidate's
 bug list and preserve required historical fixes in their original release;
 a version bump does not require copying those fixes into the new list.
+
+The Effect-pin metadata tests execute the real packager in a temporary tree.
+Keep its local module dependencies, including `scripts/release/zip-times.mjs`,
+in that fixture when the packager gains an import. Its smoke check must reach
+all six missing-binary diagnostics without building or staging packages;
+the generated invalid-pin controls then check the actual metadata policy.
