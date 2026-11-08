@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A local `Effect.try` or `Effect.tryPromise` member pointing to `sync` or `promise` could hide calls that may throw. Those callbacks now report `EK0401`, as calls to the original APIs do.
 
+- One-pass migration could return a healthy dependency to TypeScript because it read an outdated declaration path. It now uses each package's saved declarations to retain unchanged dependencies while returning the changed one.
+
 - A class definition inside an `effect` block could report an implementation restriction for an escaping `break` or `continue`. Decorators, computed names and `extends` expressions now report the block’s `EK0202` error.
 
 - Outward jumps in class definition expressions inside an `async match` could report `EK0204` and suggest moving the `do`. They now report `EK0706` once and explain the Promise boundary.

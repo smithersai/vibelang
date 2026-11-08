@@ -14,7 +14,7 @@ import { assertFinished, newErrors, parseDiagnostics, styleProblems, warningExce
 import { parseImports, resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { isToolConfig } from "./plan.mjs"
-import { assertBaselineSafe } from "./baseline.mjs"
+import { assertBaselineSafe, declarationBaselineDir } from "./baseline.mjs"
 import { assertNoTestBundleRename, pinnedBundleInputs, testBundleDeferrals } from "./test-bundles.mjs"
 import { bareRunnerDeferrals } from "./bare-runners.mjs"
 import { loadTypeScript } from "./declarations.mjs"
@@ -262,7 +262,8 @@ export function blameCandidates(graph, diagnostic, live, same = new Set()) {
   return changed.length ? changed : hits
 }
 
-function identicalDeclarations(config, p, cm) {
+/** Modules whose saved declaration bytes still match their current sidecars. */
+export function identicalDeclarations(config, p, cm) {
   const same = new Set()
   for (const r of cm.renames) {
     const dir = owner(config, r.from), pkg = config.packages.find(p => p.dir === dir)
@@ -278,7 +279,7 @@ function identicalDeclarations(config, p, cm) {
     if (!root) continue
     const rel = posix.relative(root, join(config.target,r.from)).replace(/\.(?:ts|tsx)$/, ".d.ts")
     if (rel.startsWith("../")) continue
-    const base = join(p.baseline,"dts",slug(dir),rel)
+    const base = join(declarationBaselineDir(p, dir, config.packages.map(pkg => pkg.dir)), rel)
     const side = join(config.target,r.to.replace(/\.(vibex?)$/, ".d.$1.ts"))
     if (!existsSync(base) || !existsSync(side)) continue
     const normalize = text => text.replace(/(["'])(\.\.?\/[^"'\n]+?)\.(?:tsx?|vibex?|jsx?)\1/g,"$1$2.js$1")

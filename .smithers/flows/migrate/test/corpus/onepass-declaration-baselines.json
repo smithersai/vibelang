@@ -1,0 +1,24 @@
+{
+  "key": "onepass:declaration-baseline-layout",
+  "colliding": [
+    "packages/core",
+    "packages__core"
+  ],
+  "packages": [
+    ".",
+    "root",
+    "packages/core",
+    "packages__core",
+    "δ/lib",
+    "δ__lib",
+    "percent%lib",
+    "space lib"
+  ],
+  "symptom": "A changed dependency makes a TypeScript importer fail; the sibling with an unchanged declaration must remain migrated.",
+  "sources": {
+    "src/a.ts": "export const a: number = 1;\n",
+    "src/b.ts": "export const b: number = 2;\n",
+    "src/client.ts": "import { a } from \"./a.js\";\nimport { b } from \"./b.js\";\nexport const sum: number = a + b;\n"
+  },
+  "changed": "export const b: string = \"changed\";\n"
+}
