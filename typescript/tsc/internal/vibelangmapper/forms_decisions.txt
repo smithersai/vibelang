@@ -7089,6 +7089,7 @@ typescript/vibelang/cases/platform-host-members/main.vibe:5:30 lambda plain anno
 typescript/vibelang/cases/platform-host-members/main.vibe:7:54 lambda plain annotation
 typescript/vibelang/cases/platform-hrtime-advice/main.vibe:12:19 lambda program table
 typescript/vibelang/cases/platform-hrtime-advice/main.vibe:8:35 lambda plain table
+typescript/vibelang/cases/platform-injected-clock-receivers/main.vibe:7:96 lambda plain table
 typescript/vibelang/cases/platform-net-ip-family-advice/main.vibe:7:5 lambda plain table
 typescript/vibelang/cases/platform-net-ipv4-advice/main.vibe:6:5 lambda plain table
 typescript/vibelang/cases/platform-postmessage.fail/main.vibe:5:22 lambda plain fallback

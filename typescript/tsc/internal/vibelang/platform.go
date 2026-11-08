@@ -1083,8 +1083,19 @@ func clockReadOf(c *checker.Checker, call *ast.Node) string {
 	if ast.IsNewExpression(call) {
 		return ""
 	}
-	if _, ok := clockReads[key]; ok {
-		return key
+	if _, ok := clockReads[key]; !ok {
+		return ""
+	}
+	// A native signature can also belong to a supplied receiver or callable.
+	// Only a receiver chain that actually reads a host binding is a host read.
+	for target := ast.SkipOuterExpressions(call.Expression(), ast.OEKAll); target != nil; {
+		if _, host := platformReference(c, target); host {
+			return key
+		}
+		if !ast.IsPropertyAccessExpression(target) && !ast.IsElementAccessExpression(target) {
+			break
+		}
+		target = ast.SkipOuterExpressions(target.Expression(), ast.OEKAll)
 	}
 	return ""
 }

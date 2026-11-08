@@ -1,0 +1,12 @@
+// expect-result: [12,"00000000-0000-4000-8000-000000000000",[7,7],12]
+import { clock, randomness } from "./native.js"
+export function clockValue(input: Performance) { return input.now() }
+export function uuidValue(input: Crypto) { return input.randomUUID() }
+export function bytesValue(input: Crypto) { return input.getRandomValues(new Uint8Array(2)) }
+service Inputs { static readonly key = "test/Inputs"; clock: Performance }
+export effect function fromService() { const clock = (try Inputs).clock; return try Effect.try(() => clock.now()) }
+export effect function main() {
+  provide Inputs = { clock } {
+    return [clockValue(clock), uuidValue(randomness), Array.from(bytesValue(randomness)), try fromService()]
+  }
+}
