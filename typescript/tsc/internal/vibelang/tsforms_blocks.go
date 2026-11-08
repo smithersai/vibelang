@@ -31,6 +31,11 @@ import (
 // withSpanGlobalForm is EK4836 for Effect.withSpan, which the global spells.
 var withSpanGlobalForm = EK4836.With("{0} is the global withSpan written through Effect; write {1}.")
 
+// Explicit instantiation can widen the result beyond a provide block's type.
+var provideTypeArgumentsForm = EK4836.With("{0} has an explicit type-argument contract; keep the native call.")
+
+const provideTypeArgumentsNote = "No quick fix: keep the native call to preserve its explicit type arguments and written contract."
+
 // VIP-12 builds a Layer for Key = value; the native provideService does not.
 // VIP-34 permits a quick fix only when it preserves that observable behavior.
 var provideServiceNativeForm = EK4836.With("{0} installs a service without building a Layer; keep the native call.")
@@ -48,7 +53,7 @@ func init() {
 
 // blockFormOf returns the combinator call calls in its data-first form, or "".
 func blockFormOf(c *checker.Checker, call *ast.Node) string {
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) {
+	if !ast.IsCallExpression(call) || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) {
 		return ""
 	}
 	for _, argument := range call.Arguments() {
@@ -60,6 +65,9 @@ func blockFormOf(c *checker.Checker, call *ast.Node) string {
 		return ""
 	}
 	_, name := effectMember(c, call.Expression())
+	if call.TypeArguments() != nil && name != "provide" {
+		return ""
+	}
 	switch {
 	case name == "withSpan" && len(call.Arguments()) == 2:
 		if ast.IsPropertyAccessExpression(call.Expression()) {
@@ -104,6 +112,9 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 	name := blockFormOf(c, call)
 	if name == "" {
 		return nil
+	}
+	if name == "provide" && call.TypeArguments() != nil {
+		return &formRewrite{message: provideTypeArgumentsForm, why: provideTypeArgumentsNote}
 	}
 	if name != "withSpan" && directTryFormSite(call) != call {
 		return &formRewrite{why: directTryWrapperNote}
