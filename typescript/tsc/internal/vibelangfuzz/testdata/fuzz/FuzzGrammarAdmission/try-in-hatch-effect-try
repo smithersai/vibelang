@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:try-in-hatch-effect-try\nimport { Effect } from \"effect\"\nexport effect function main() { const b = try Effect.try(() => try Effect.succeed(1)); return b }")

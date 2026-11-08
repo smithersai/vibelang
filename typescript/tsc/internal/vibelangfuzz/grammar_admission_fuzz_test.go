@@ -319,6 +319,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"try-match-statement", grammarTryMatchStatementWitness},
 	{"try-match-statement-campaign", grammarTryMatchStatementCampaign},
 	{"initializer-context", "effect function f() { class C { value = join ?? 7; } enum E { A = fork(1) } service S { static readonly defaultValue = join ?? 7; value: number } }"},
+	{"try-in-hatch-effect-try", grammarTryInHatchWrapperWitness},
+	{"try-in-hatch-own-signature-target", grammarTryInHatchWrapperCaseWitness},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

@@ -859,6 +859,23 @@ only the first argument of an unqualified `sync` call; inputs after it,
 member calls, `new sync(...)` and programs that declare `sync` keep their
 `EK0501` and do not acquire the key.
 
+A later case-seeded campaign put a `try` inside the arrow that
+`ek0402-own-signature-target` passes to `Effect.try`. VIP-6 says no language
+feature wraps TypeScript into an Effect: Effect's own wrappers take ordinary
+arrows, so that arrow is plain code too. The compiler reads the function that
+`Effect.try`, `Effect.tryPromise` or the global `tryPromise` wraps, as a direct
+argument or as the `try` property of an options object, as TypeScript
+(`isWrappedCode`), skips `EK0501` there and drops the `try` from the emitted
+callback:
+`export effect function main() { const b = try Effect.try(() => try Effect.succeed(1)); return b }`
+compiles with no diagnostic. The classifier now reads those wrapper calls as
+it reads `sync`, recognizing `Effect.try` and `Effect.tryPromise` by the name
+`Effect` as the compiler does; `x.try(...)`, `new Effect.try(...)`,
+`Effect.map(...)`, inputs after the first argument, a `catch` property and
+programs that declare `tryPromise` keep their `EK0501` and do not acquire the
+key. The wrapper witnesses are keyed seeds and corpus files under
+`admission:try-in-hatch`.
+
 A later case-seeded campaign reduced a case to the one-word program
 `using`. The compiler reports only `TS2304`, as stock TypeScript 5.9.3 does
 for `using;`, `using(x);`, `using.x = 1;`, `using = 1;` and `using[0];`.
