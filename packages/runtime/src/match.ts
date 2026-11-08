@@ -213,7 +213,7 @@ const instanceExtractors = new Set<unknown>([
 function extractedList(result: unknown): ReadonlyArray<any> | false {
   if (result === false) return false
   if (Array.isArray(result)) return result
-  if (result !== null && (typeof result === "object" || typeof result === "function") && Symbol.iterator in result) return [...result as Iterable<unknown>]
+  if (result !== null && (typeof result === "object" || typeof result === "function")) return [...result as Iterable<unknown>]
   throw new TypeError("A matcher used as an extractor must return false or an iterable object")
 }
 

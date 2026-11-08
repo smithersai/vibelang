@@ -37,7 +37,7 @@ Each arm, `when pattern: expression;`, is tried in order; the first match gives 
 
 A Boolean example that should type-check both alternatives can take a `boolean` function parameter. A literal `false` subject tested by a `when true:` arm retains TypeScript's `TS2367` impossible-comparison diagnostic.
 
-An extractor calls its matcher once for each pattern attempt and reuses that result for its argument checks. This also applies inside `or`, `not` and `is`.
+An extractor calls its matcher once for each pattern attempt and reuses that result for its argument checks. This also applies inside `or`, `not` and `is`. When a custom extractor acquires an iterator from its result, it reads `Symbol.iterator` directly, without testing property presence first. Iterator getters, `Proxy` access and iterator-call receivers keep their native behavior.
 
 An arm always keeps its expression when `vibelang --fix` removes a no-op Effect. For example, `when true: try Effect.void;` becomes `when true: (undefined as void);`: the assertion preserves an inferred `void` result. `try Effect.undefined` becomes `undefined`. If a local binding shadows `undefined`, the fix uses `void 0` instead. A held `Effect.void` without `try` stays an Effect.
 

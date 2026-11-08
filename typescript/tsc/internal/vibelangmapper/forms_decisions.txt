@@ -5383,6 +5383,15 @@ typescript/vibelang/cases/match-extractor-errors/main.vibe:6:32 lambda effectFn 
 typescript/vibelang/cases/match-extractor-errors/main.vibe:6:56 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors/main.vibe:7:13 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors/main.vibe:8:20 lambda dual fallback
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:10:5 lambda choice fallback
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:15:17 lambda plain fallback
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:16:20 lambda plain fallback
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:17:19 lambda dual fallback
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:18:19 lambda dual fallback
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:19:18 lambda effectFn fallback
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:20:18 lambda effectFn fallback
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:7:5 lambda plain protocol
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:9:5 lambda choice fallback
 typescript/vibelang/cases/match-extractor-optional-cells/main.vibe:13:47 lambda choice fallback
 typescript/vibelang/cases/match-extractor-optional-cells/main.vibe:14:47 lambda choice fallback
 typescript/vibelang/cases/match-extractor-optional-cells/main.vibe:6:45 lambda choice fallback

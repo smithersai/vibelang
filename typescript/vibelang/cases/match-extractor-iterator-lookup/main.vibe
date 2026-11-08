@@ -1,0 +1,24 @@
+// expect-result: [7,7,true,true,["get","iterate","get","iterate","get","iterate","get","iterate"]]
+import { Effect } from "effect"
+
+export function witness() {
+  const trace: string[] = []
+  const iterable = new Proxy({
+    *[Symbol.iterator]() { trace.push("iterate"); yield 7 }
+  }, {
+    has() { trace.push("has"); return false },
+    get(target, key, receiver) {
+      if (key === Symbol.iterator) trace.push("get")
+      return Reflect.get(target, key, receiver)
+    }
+  })
+  const own = { [Symbol.customMatcher]() { return iterable } }
+  const callable = (_subject: unknown) => iterable
+  const a = match (null) { when own(let value): value; default: -1; }
+  const b = match (null) { when callable(let value): value; default: -1; }
+  const c = null is own(7)
+  const d = null is callable(7)
+  return [a, b, c, d, trace]
+}
+
+export function main() { return Effect.sync(witness) }

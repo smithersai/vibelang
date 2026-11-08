@@ -29,6 +29,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A failed loader check could replace an existing `number` declaration with `any` after an unresolved import. Failed loader checks now preserve existing compatibility declarations and publish updates only after successful checking.
 
+- Custom extractor patterns could reject an iterable proxy or throw the wrong error while looking up its iterator. They now read the iterator directly, preserving its getter and receiver.
+
 - Source-map checks could reject a service used beside an Effect producer by confusing its erased metadata name with a generated property. They now distinguish those tokens while still checking written properties.
 
 - Pipeline repairs after a declaration without a semicolon could be refused with spurious type errors. Repairs that capture stages now preserve the statement boundary and keep conditional and loop bodies in place.
