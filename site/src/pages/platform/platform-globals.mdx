@@ -139,7 +139,8 @@ WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provid
 | `process.exit` | return from main for exit 0; fail for exit 1; interruption exits 130 |
 | `process.exitCode` | return from main for exit 0; fail for exit 1; interruption exits 130 |
 | `process.getuid` | `try (try Experimental.Process.Process).currentUid`; absent is `undefined`, root is `0`, native errors stay typed failures |
-| `process.hrtime` | `try Clock.monotonicTimeNanos` |
+| `process.hrtime` | `Duration.toHrTime(try Clock.monotonicTimeNanos)` |
+| `process.hrtime.bigint` | `try Clock.monotonicTimeNanos` |
 | `process.kill` | `try (try Experimental.Process.Process).kill(pid, { killSignal })` |
 | `process.memoryUsage` | `try (try Experimental.Process.Process).memoryUsage` |
 | `process.nextTick` | `try yieldNow` |
@@ -176,6 +177,8 @@ WebSocket replacement advice runs `Socket.makeWebSocket(url)` with `try`. Provid
 | `window.getComputedStyle` | `try (try Experimental.Window.Window).computedStyle(element)` |
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
+
+`process.hrtime()` returns a `[seconds, nanoseconds]` tuple; `process.hrtime.bigint()` returns a `bigint`. To measure elapsed time, capture `const startNanos = try Clock.monotonicTimeNanos`, then use `Duration.toHrTime((try Clock.monotonicTimeNanos) - startNanos)` for a tuple or subtract the readings directly for a `bigint`. Use readings from the same injected clock: its arbitrary origin need not match native `hrtime`, so do not subtract a saved native tuple from it.
 
 The `EK4402` replacement examples obtain `SecureRandom.SecureRandom` with `try` before calling its methods. The `randomBytes` method returns new bytes; it does not fill an existing array.
 

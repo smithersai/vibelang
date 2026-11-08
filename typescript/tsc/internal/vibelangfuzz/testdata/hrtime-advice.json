@@ -1,0 +1,86 @@
+[
+  {
+    "key": "process:tuple:named",
+    "source": "import { hrtime } from \"process\"; export const read=()=>hrtime()",
+    "host": true,
+    "tuple": true
+  },
+  {
+    "key": "process:tuple:alias",
+    "source": "import { hrtime as clock } from \"process\"; export const read=()=>clock()",
+    "host": true,
+    "tuple": true
+  },
+  {
+    "key": "node:process:tuple:named",
+    "source": "import { hrtime } from \"node:process\"; export const read=()=>hrtime()",
+    "host": true,
+    "tuple": true
+  },
+  {
+    "key": "node:process:tuple:alias",
+    "source": "import { hrtime as clock } from \"node:process\"; export const read=()=>clock()",
+    "host": true,
+    "tuple": true
+  },
+  {
+    "key": "global:tuple",
+    "source": "export const read=()=>process.hrtime()",
+    "host": true,
+    "tuple": true
+  },
+  {
+    "key": "global:bigint",
+    "source": "export const read=()=>process.hrtime.bigint()",
+    "host": true,
+    "tuple": false
+  },
+  {
+    "key": "local:tuple",
+    "source": "const process={hrtime:()=>[0,1]};export const read=()=>process.hrtime()",
+    "host": false,
+    "tuple": true
+  },
+  {
+    "key": "parameter:bigint",
+    "source": "export const read=(process:{hrtime:{bigint():bigint}})=>process.hrtime.bigint()",
+    "host": false,
+    "tuple": false
+  },
+  {
+    "key": "literal:tuple",
+    "source": "export const read=()=>process[\"hrtime\"]()",
+    "host": true,
+    "tuple": true
+  },
+  {
+    "key": "literal:bigint",
+    "source": "export const read=()=>process[\"hrtime\"][\"bigint\"]()",
+    "host": true,
+    "tuple": false
+  },
+  {
+    "key": "global-this:tuple",
+    "source": "export const read=()=>globalThis.process.hrtime()",
+    "host": true,
+    "tuple": true
+  },
+  {
+    "key": "global-this:bigint",
+    "source": "export const read=()=>globalThis.process.hrtime[\"bigint\"]()",
+    "host": true,
+    "tuple": false
+  },
+  {
+    "key": "global-literal:tuple",
+    "source": "export const read=()=>globalThis[\"process\"][\"hrtime\"]()",
+    "host": true,
+    "tuple": true
+  },
+  {
+    "key": "global-literal:bigint",
+    "source": "export const read=()=>globalThis[\"process\"][\"hrtime\"][\"bigint\"]()",
+    "host": true,
+    "tuple": false
+  }
+]

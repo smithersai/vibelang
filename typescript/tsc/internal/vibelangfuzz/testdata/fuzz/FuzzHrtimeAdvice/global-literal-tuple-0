@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("global-literal:tuple\x00\x00")

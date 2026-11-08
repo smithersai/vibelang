@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("global-literal:bigint\x00\a")

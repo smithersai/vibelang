@@ -1,0 +1,22 @@
+// expect-result: [0,0,[3,250000001],[1,750000003],"6750000007",4]
+import { Clock, Duration, Effect } from "effect"
+
+let reads = 0
+const times = [3_250_000_001n, 4_000_000_002n, 5_750_000_005n, 6_750_000_007n]
+const clock: Clock.Clock = {
+  ...Effect.runSync(Clock.Clock),
+  monotonicTimeNanos: Effect.sync(() => times[reads++])
+}
+export effect function main() {
+  const before = reads
+  const program = effect {
+    const tuple: [number, number] = Duration.toHrTime(try Clock.monotonicTimeNanos)
+    const startNanos = try Clock.monotonicTimeNanos
+    const elapsed: [number, number] = Duration.toHrTime((try Clock.monotonicTimeNanos) - startNanos)
+    const nanos: bigint = try Clock.monotonicTimeNanos
+    return [tuple, elapsed, String(nanos)]
+  }
+  const cold = reads
+  const result = try Effect.provideService(program, Clock.Clock, clock)
+  return [before, cold, ...result, reads]
+}
