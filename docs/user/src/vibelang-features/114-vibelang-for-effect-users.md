@@ -408,6 +408,8 @@ Generic instantiation substitutes within the declaration's existing thrown contr
 
 A final tuple spread retains each optional callback's written thrown contract when that callback can be present. This includes readonly tuples and optional callback slots after fixed prefixes. An empty tuple supplies no callback, and a supplied nonthrowing callback remains valid. A known throwing callback still needs its exception bridge in Effect code (`EK0403`), or a native `try/catch` in plain code (`EK0401`).
 
+A fixed tuple spread checks each callable’s written `@throws` contract against its receiving callback parameter. Saving the tuple or giving it a readonly type keeps that check. Optional entries and callback rest parameters use their runtime argument positions, and a parameter named by `@rethrows` keeps its usual admission.
+
 Named tuple labels inside an `effect` function, arrow or method are type-only names, as in TypeScript. They do not count as writes to an enclosing parameter; actual writes retain the parameter binding created when the function was called.
 
 ## Trace and debug calls

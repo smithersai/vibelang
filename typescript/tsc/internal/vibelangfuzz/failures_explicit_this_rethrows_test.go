@@ -144,10 +144,6 @@ func checkExplicitThisRethrows(t *testing.T, w *Workspace, key string, choice ui
 	if want == 0 && len(got) != 0 || want != 0 && (len(got) != 1 || got[0] != want) {
 		Gap(t, explicitThisRethrowsTarget, key, "%q: got %v, want EK%04d", explicitThisRethrowsQuotes[1], got, want)
 	}
-
-	if want == 402 && strings.HasPrefix(key, "fixed-spread:") {
-		ExpectPending(t, explicitThisRethrowsTarget, key)
-	}
 }
 
 func TestExplicitThisRethrows(t *testing.T) {

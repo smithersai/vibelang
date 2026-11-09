@@ -124,9 +124,6 @@ func TestExplicitThisRethrows(t *testing.T) {
 					}
 					got = append(got, int(d.Code()))
 				}
-				if want == 402 && strings.HasPrefix(key, "fixed-spread:") {
-					t.Skip("Separate strict callback gap is tracked by the keyed fuzz regression")
-				}
 				if want == 0 && len(got) != 0 || want != 0 && (len(got) != 1 || got[0] != want) {
 					t.Errorf("got %v, want EK%04d (zero means none)", got, want)
 				}

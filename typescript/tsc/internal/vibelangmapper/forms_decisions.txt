@@ -4397,6 +4397,12 @@ typescript/vibelang/cases/fibers-join-identifiers/main.vibe:20:18 byname program
 typescript/vibelang/cases/fibers-join-record.fail/main.vibe:6:22 block appended/program table
 typescript/vibelang/cases/fibers-join-record/main.vibe:90:22 lambda program table
 typescript/vibelang/cases/fibers-join-record/main.vibe:91:23 lambda program table
+typescript/vibelang/cases/fixed-spread-callback-contracts/main.vibe:10:33 lambda plain table
+typescript/vibelang/cases/fixed-spread-callback-contracts/main.vibe:11:18 lambda plain table
+typescript/vibelang/cases/fixed-spread-callback-contracts/main.vibe:11:47 lambda plain table
+typescript/vibelang/cases/fixed-spread-callback-contracts/main.vibe:12:33 lambda plain table
+typescript/vibelang/cases/fixed-spread-callback-contracts/main.vibe:22:61 lambda choice fallback
+typescript/vibelang/cases/fixed-spread-callback-contracts/main.vibe:9:33 lambda plain table
 typescript/vibelang/cases/floating-program-reference.fail/main.vibe:17:10 lambda effectFn keyword
 typescript/vibelang/cases/foldkit-config-effect-calls/main.vibe:13:26 lambda effectFn keyword
 typescript/vibelang/cases/foldkit-config-effect-calls/main.vibe:14:28 lambda effectFn keyword
