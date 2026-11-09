@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Source-location validation could reject nested `do` expressions after a bundler inlined them. It now follows copies between generated temporaries to the expression's mapped reads.
+
 - A `for concurrent` loop over a value that is not an `Iterable` reported `EK1901` and then extra TypeScript errors from its item, such as `Type 'unknown' must have a '[Symbol.iterator]()' method`, when the head destructured or the body read the item. It now reports `EK1901` once, as TypeScript reports one error for such a `for…of`.
 
 - TypeScript’s error for an `unknown` or possibly missing loop operand could name a compiler-generated variable such as `$forTryHead1`, `$isItems1` or `$do1`. This affected `for try`, a `for…of` head with an `is` binding and a `do` expression operand. The error now names the operand you wrote, or says `Object` for an expression, as TypeScript does.

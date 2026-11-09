@@ -1,0 +1,12 @@
+{
+  "property": "source-map-programs",
+  "rule": "A bundled literal can retain the source position of a reachable read through generated temporary copies.",
+  "input": {
+    "key": "nested-do-dynamic-import",
+    "files": {
+      "main.vibe": "import { ev } from \"vip-events\"\nimport { Effect } from \"effect\"\n\nfunction dynamic0(): boolean { const p = import((do { ev(\"specifier\"); (do { ev(\"specifier\"); (do { ev(\"specifier\"); (do { ev(\"specifier\"); \"effect\" }) }) }) })); p.then(() => undefined, () => undefined); return p instanceof Promise }\n\nexport function main() {\n  return Effect.sync(() => dynamic0())\n}\n"
+    },
+    "variant": "plain",
+    "bundler": "rolldown"
+  }
+}

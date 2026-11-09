@@ -26,7 +26,7 @@ Each row is checked by driving the tool itself. The table names each test file.
 | Error trackers | A minified production stack resolves to `.vibe` lines and source context, as Sentry does, through `@sentry/vite-plugin`'s debug IDs too | `production.test.mjs` |
 | Editors | Go to definition from a built package's import reaches the `.vibe` declaration, in VibeLang's language server and in `tsserver` | `language-server.test.mjs` |
 
-Bundlers can inline a string held in a compiler temporary. Its composed map may name the original string or the temporary's source expression. The checks retain that distinction when a generated import uses the same module name, including dynamic imports.
+Bundlers can inline a string held in a compiler temporary. Its composed map may name the original string or the temporary's source expression, including a reachable read through a chain of generated temporary copies. The checks retain that distinction when a generated import uses the same module name, including dynamic imports.
 
 Service key strings keep their written positions. The `key` metadata name is erased; a generated producer property with the same name has no corresponding written token. Mapping checks distinguish these from retained object and class properties.
 

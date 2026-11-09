@@ -204,12 +204,24 @@ function temporaryReads(map, code) {
     const name = temporaryAssignment.exec(code.slice(Math.max(0, at - 64), at))?.[1]
     if (!name) continue
     const positions = []
-    for (const use of code.matchAll(new RegExp(`(?<![\\w$])${name.replace("$", "\\$")}(?![\\w$])`, "g"))) {
-      const after = code.slice(use.index + name.length)
-      if (/^\s*=(?!=)/.test(after) || /(?:let|const|var)\s+$/.test(code.slice(Math.max(0, use.index - 8), use.index))) continue
-      const found = originalPositionFor(trace, position(code, use.index))
-      if (found.line !== null) positions.push({ line: found.line, column: found.column })
+    const visited = new Set()
+    const syntax = blank(code, "\0")
+    const visit = (name) => {
+      if (visited.has(name)) return
+      visited.add(name)
+      for (const use of syntax.matchAll(new RegExp(`(?<![\\w$])${name.replace("$", "\\$")}(?![\\w$])`, "g"))) {
+        const after = syntax.slice(use.index + name.length)
+        const before = syntax.slice(Math.max(0, use.index - 64), use.index)
+        if (/^\s*=(?!=)/.test(after) || /(?:let|const|var)\s+$/.test(before)) continue
+        const found = originalPositionFor(trace, position(code, use.index))
+        if (found.line !== null) positions.push({ line: found.line, column: found.column })
+        // A bundler can inline a whole copy chain, retaining the last
+        // temporary's read position. Follow only a complete temporary copy.
+        const copy = /(?<![\w$])(\$[A-Za-z_]+\d+)\s*=\s*\(*\s*$/.exec(before)?.[1]
+        if (copy && /^\s*\)*\s*;/.test(after)) visit(copy)
+      }
     }
+    visit(name)
     reads.set(text, positions)
   }
   return reads
@@ -301,6 +313,45 @@ test("a string inlined from a compiler temporary may take that temporary's read 
   // A written name is no compiler temporary.
   const written = 'let t;\n{\n    t = "length";\n}\nexport const x = u[(t)];\n'
   assert.equal(temporaryReads(generator.toJSON(), written).size, 0)
+})
+
+test("inlined temporary copies retain only their reachable source positions", async () => {
+  await fc.assert(fc.asyncProperty(fc.integer({ min: 2, max: 8 }), fc.constantFrom("\n", "\r\n"), fc.boolean(),
+    async (depth, newline, cycle) => {
+      const text = '"effect"'
+      const source = "export const x = u[" + "(do { ".repeat(depth) + text + " })".repeat(depth) + "]" + newline
+      const keywords = [...source.matchAll(/do \{/g)].map(match => position(source, match.index))
+      const quote = position(source, source.indexOf(text))
+      const lines = Array.from({ length: depth }, (_, index) => "let $do" + index + ";")
+      lines.push("$do0 = " + text + ";")
+      for (let index = 1; index < depth; index++) lines.push("$do" + index + " = ($do" + (index - 1) + ");")
+      if (cycle) lines.push("$do0 = ($do" + (depth - 1) + ");")
+      lines.push("let $do" + depth + ";", "$do" + depth + " = $do0 + 1;", "consume($do" + depth + ");")
+      lines.push("export const x = u[($do" + (depth - 1) + ")];")
+      const compiled = lines.join(newline) + newline
+      const map = new SourceMapGenerator({ file: "main.js" })
+      map.addMapping({ generated: position(compiled, compiled.indexOf(text)), original: quote, source: "main.vibe" })
+      for (let index = 0; index < depth; index++) {
+        const read = compiled.indexOf("$do" + index + ")")
+        map.addMapping({ generated: position(compiled, read), original: keywords[depth - index - 1], source: "main.vibe" })
+      }
+      map.addMapping({ generated: position(compiled, compiled.indexOf("$do" + depth + ")")),
+        original: position(source, source.indexOf("u[")), source: "main.vibe" })
+      const reads = temporaryReads(map.toJSON(), compiled)
+      const bundled = "const x = u[" + text + "];" + newline
+      const bundle = original => {
+        const result = new SourceMapGenerator({ file: "main.js" })
+        result.addMapping({ generated: position(bundled, bundled.indexOf(text)), original, source: "main.vibe" })
+        return result.toJSON()
+      }
+      for (const keyword of keywords) {
+        assert.equal(await checkBundle(bundle(keyword), bundled, source, "main.vibe", undefined, reads), 1)
+        await assert.rejects(checkBundle(bundle({ ...keyword, column: keyword.column + 1 }),
+          bundled, source, "main.vibe", undefined, reads), undefined, "shifted read")
+      }
+      await assert.rejects(checkBundle(bundle(position(source, source.indexOf("u["))),
+        bundled, source, "main.vibe", undefined, reads), undefined, "unrelated source token")
+    }), { seed: 275276, numRuns: 40 })
 })
 
 test("generated module imports do not hide an inlined temporary's string", async () => {
