@@ -38,8 +38,6 @@ The skill below teaches accepted VIPs, and the toolchain does not implement ever
 
 | The skill | Write on this toolchain | Until then |
 | --- | --- | --- |
-| Every export of `Effect` as a global: `ensuring(…)`, `scoped(…)`, `onExit(…)`, `serviceOption(…)`, `currentParentSpan` | `Effect.ensuring(…)`, `Effect.scoped(…)`, `Effect.onExit(…)`, `Effect.serviceOption(…)`, `Effect.currentParentSpan`; unqualified are `all`, `die`, `exit`, `forEach`, `log`, `logDebug`, `logError`, `logInfo`, `logWarning`, `race`, `repeat`, `retry`, `sleep`, `timeout` and `withSpan` | TS2304 |
-| `fork.scoped w()`, `fork.in(scope) w()`, `fork.detached w()` | `Effect.forkScoped(w())`, `Effect.forkIn(w(), scope)`, `Effect.forkDetach(w())` | TS1005, EK4410 |
 | A function with no modifier is plain (VIP-1) | Before the compiler's VIP-1 flip, a value-only helper needs a written plain return type or `: infer _`; the codemod probes and records the actual model | Writing `: infer _` after the flip (decided detail 269); assuming the model from a package version |
 
 `Date.now()` and `Math.random()` are allowed (decided detail 56). Prefer injected `Clock` and `Random` services for controllable tests.
