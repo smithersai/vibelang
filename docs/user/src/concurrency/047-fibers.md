@@ -104,6 +104,8 @@ To continue during cleanup, fork the interruption (`const stopping = fork Fiber.
 
 ## Protecting work from interruption
 
+The `uninterruptible`, `restore` and `interruptible` block keywords must be written literally. Escaping a letter reports `TS1260`. An escaped name followed by a block on the next line keeps its ordinary identifier reading.
+
 Interruption blocks require an `effect` function or `effect { }` block. Plain and `async` functions, `class` field and `enum` member initializers, `static` blocks and parameter defaults report `EK2201`; a plain callback nested in effect code is still plain. Remove the ignored keyword to keep the ordinary JavaScript block the old compiler emitted.
 
 ```vibe

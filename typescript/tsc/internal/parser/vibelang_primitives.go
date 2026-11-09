@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // The primitives of a .vibe file that have their own syntax (D176-D180):
@@ -53,6 +54,9 @@ func (p *Parser) parseVibeLangMaskBlock() *ast.Node {
 	word := p.scanner.TokenValue()
 	anchor := p.scanner.TokenRange()
 	form := VibeSyntax{Kind: VibeSyntaxBlockStatement, Word: anchor, Head: anchor}
+	if p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape() {
+		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
+	}
 	p.nextToken()
 	p.rejectVibeLangBlockDo(word)
 	callee := p.vibelangIntrinsic("$"+word+vibelangMaskBlockLabel, anchor)

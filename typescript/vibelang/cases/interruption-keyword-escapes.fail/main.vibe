@@ -1,0 +1,7 @@
+// expect: TS1260 TS1260 TS1260
+export const uninterrupt\u0069ble = 1
+export const rest\u006fre = 2
+export const interrupt\u0069ble = 3
+export effect function first() { uninterrupt\u0069ble {} }
+export effect function second() { interrupt\u{69}ble {} }
+export effect function third() { uninterruptible { rest\u006fre {} } }
