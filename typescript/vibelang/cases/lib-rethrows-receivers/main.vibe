@@ -1,0 +1,24 @@
+// expect-result: [3,true,true,["safe","safe","safe","risky","risky"]]
+import { Effect } from "effect"
+import { events, risky, safe, sentinel } from "./foreign.js"
+
+const entries = new Map([["a", 1], ["b", 2]])
+const bytes = new Uint8Array([1])
+
+function caught(): unknown {
+  try {
+    entries.forEach(risky)
+    return undefined
+  } catch (error) {
+    return error
+  }
+}
+
+export effect function main() {
+  entries.forEach(safe)
+  const mapped = bytes.map(safe)
+  const first = caught() === sentinel
+  const outcome = try exit(Effect.try({ try: () => new Set([1]).forEach(risky), catch: (error: unknown) => error }))
+  const second = outcome._tag === "Failure" && outcome.cause.reasons[0]?._tag === "Fail" && outcome.cause.reasons[0].error === sentinel
+  return [entries.size + mapped.length, first, second, events]
+}

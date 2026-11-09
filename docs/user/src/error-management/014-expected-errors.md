@@ -66,6 +66,8 @@ An array spread into a `@rethrows` rest parameter keeps each element’s written
 
 Optional callback parameters and `undefined` or `null` alternatives retain a supplied callback’s written `@throws` contract at a rethrowing invocation. `Array.prototype.sort` follows the same rule. Omitting an optional callback contributes no callback throw.
 
+The array callback rule also covers typed arrays, their `from` functions, and `forEach` on `Map`, `ReadonlyMap`, `Set` and `ReadonlySet`: `entries.forEach(parse)` can throw whatever `parse` declares, so plain code reports `EK0401` and effect code reports `EK0403`. Other built-in methods keep an ordinary callback parameter even when they share a method name: `query.forEach(parse)` on a `URLSearchParams`, or `iterator.map(parse)`, reports `EK0402` for a callback with a throwing contract.
+
 For `EK0401`, choose an explicit Effect failure or defect, or retain JavaScript throwing behavior behind a TypeScript boundary. Preserve an exported declaration's contract when moving it.
 
 An `async` function's `throw` rejects its Promise, as in TypeScript, and its declaration carries `@throws {never}`. A `.ts` function that merely returns a Promise can still throw before returning. Without a `@throws {never}` contract, calling it in an effect function's parameter default or in a plain function whose result is wholly an Effect, a Stream or a Layer reports `EK0401`. A local `async` function or a foreign signature annotated `@throws {never}` can supply a Promise as a default value. Calls through `any` or `Function` have thrown type `unknown` and also report `EK0401` in an effect function's or producer's parameter defaults.

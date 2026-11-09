@@ -455,8 +455,8 @@ func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 		if isIntrinsicPromiseConstruction(c, call, decl) && parameter == "executor" {
 			return true // new Promise(executor): the executor admits unknown
 		}
-		owner := ownerOf(decl)
-		return owner != nil && shippedRethrows[declarationName(owner)] == parameter && rethrowAdmitted
+		name := shippedRethrowsParameter(decl)
+		return name != "" && name == parameter && rethrowAdmitted
 	}
 	for _, host := range jsdocHosts(decl) {
 		for _, jsdoc := range host.JSDoc(nil) {

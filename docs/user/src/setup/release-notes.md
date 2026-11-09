@@ -38,6 +38,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Spreading an array of throwing callbacks into a `@rethrows` rest parameter hid their throws. The call now reports `EK0401` in plain code and `EK0403` in effect code.
 
 - `provide layer ||= next { … }` compiled, although a provider is `Key = value` or a layer expression and a compound assignment is neither. The line is now a syntax error; write `provide (layer ||= next) { … }`.
+- A throwing callback passed to `forEach` on a `Map` or `Set`, or to a typed-array method such as `map` or `sort`, was accepted and its throw was not tracked. Those calls now report `EK0401` in plain code and `EK0403` in effect code, as the array methods do. Other built-in methods that take a callback, such as `URLSearchParams.forEach` or an iterator helper, now report `EK0402` for a throwing callback.
+
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
 - A `for concurrent` header accepted Unicode escapes in its keyword. Escaped spellings now report `TS1260`, as TypeScript does for escaped loop keywords.

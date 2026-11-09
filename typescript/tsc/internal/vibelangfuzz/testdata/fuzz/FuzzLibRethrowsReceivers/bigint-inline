@@ -1,0 +1,3 @@
+go test fuzz v1
+string("bigint-forEach:effect")
+byte(4)

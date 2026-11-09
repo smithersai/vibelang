@@ -76,12 +76,8 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 	}
 	named := map[string]bool{}
 	if isLibFile(c, file) {
-		key := globalKey(decl)
-		switch {
-		case strings.HasPrefix(key, "Array."), strings.HasPrefix(key, "ReadonlyArray."), key == "ArrayConstructor.from":
-			if name := shippedRethrows[declarationName(decl)]; name != "" {
-				named[name] = true
-			}
+		if name := shippedRethrowsParameter(decl); name != "" {
+			named[name] = true
 		}
 	} else {
 		for _, host := range jsdocHosts(decl) {
@@ -332,6 +328,45 @@ func rethrowsRuntimeArgument(c *checker.Checker, call *ast.Node, index int) bool
 	return rethrowsNames(c, decl)[declarationName(parameters[index])]
 }
 
+// shippedRethrowsArrays are the lib interfaces whose listed methods run the
+// callback before they return: arrays and typed arrays (Appendix E and the
+// throws inventory).
+var shippedRethrowsArrays = map[string]bool{
+	"Array": true, "ReadonlyArray": true,
+	"Int8Array": true, "Uint8Array": true, "Uint8ClampedArray": true, "Int16Array": true, "Uint16Array": true,
+	"Int32Array": true, "Uint32Array": true, "Float16Array": true, "Float32Array": true, "Float64Array": true,
+	"BigInt64Array": true, "BigUint64Array": true,
+}
+
+// shippedRethrowsCollections run only their forEach callback before returning.
+var shippedRethrowsCollections = map[string]bool{
+	"Map": true, "ReadonlyMap": true, "Set": true, "ReadonlySet": true, "CSSNumericArray": true,
+}
+
+// shippedRethrowsParameter returns the callback parameter the shipped
+// annotation of the lib method decl names, or "". The receiver decides it:
+// a method that only shares a name with an array method, such as
+// NodeList.forEach or a lazy Iterator helper, has an ordinary callback
+// parameter, which admits only never.
+func shippedRethrowsParameter(decl *ast.Node) string {
+	receiver, method, found := strings.Cut(globalKey(decl), ".")
+	name := shippedRethrows[method]
+	if !found || name == "" {
+		return ""
+	}
+	if method == "from" {
+		base, constructor := strings.CutSuffix(receiver, "Constructor")
+		if constructor && base != "ReadonlyArray" && shippedRethrowsArrays[base] {
+			return name
+		}
+		return ""
+	}
+	if shippedRethrowsArrays[receiver] || method == "forEach" && shippedRethrowsCollections[receiver] {
+		return name
+	}
+	return ""
+}
+
 // rethrowsNames returns the parameter names decl's @rethrows tags name, or,
 // for a lib Array method, the parameter its shipped annotation names.
 func rethrowsNames(c *checker.Checker, decl *ast.Node) map[string]bool {
@@ -341,11 +376,8 @@ func rethrowsNames(c *checker.Checker, decl *ast.Node) map[string]bool {
 		return named
 	}
 	if isLibFile(c, file) {
-		key := globalKey(decl)
-		if strings.HasPrefix(key, "Array.") || strings.HasPrefix(key, "ReadonlyArray.") || key == "ArrayConstructor.from" {
-			if name := shippedRethrows[declarationName(decl)]; name != "" {
-				named[name] = true
-			}
+		if name := shippedRethrowsParameter(decl); name != "" {
+			named[name] = true
 		}
 		return named
 	}

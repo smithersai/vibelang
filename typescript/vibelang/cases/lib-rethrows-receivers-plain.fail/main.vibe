@@ -1,0 +1,6 @@
+// expect: EK0401 EK0402
+import { risky } from "./foreign.js"
+
+export function map(entries: Map<string, number>) { entries.forEach(risky) }
+export function sorted(values: Int32Array) { return values.sort(risky) }
+export function params(query: URLSearchParams) { query.forEach(risky) }

@@ -1,0 +1,7 @@
+// expect: EK0403
+import { risky } from "./foreign.js"
+
+export effect function map(entries: Map<string, number>) { entries.forEach(risky); return 1 }
+export effect function set(values: ReadonlySet<number>) { values.forEach(risky); return 1 }
+export effect function typed(bytes: Uint8Array) { return bytes.map(risky) }
+export effect function from(values: number[]) { return Float64Array.from(values, risky) }
