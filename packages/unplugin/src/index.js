@@ -232,7 +232,7 @@ async function esbuildMessage(formatDiagnostic, diagnostic) {
 
 /** @type {import('./index.d.ts').unplugin} */
 export const unplugin = createUnplugin((options = {}, meta) => {
-  let root, project, backend, modules, current, closing, entryDirectory
+  let root, project, backend, modules, current, closing, entryDirectory, viteCommand
 
   function configure(base) {
     if (root) return
@@ -454,22 +454,25 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       // Any project source or the tsconfig can change the contracts this module compiles against.
       const rollupWatch = meta.framework === "rollup" && this.meta?.watchMode && !watchClosed
       const nativeWatch = ["rolldown", "vite"].includes(meta.framework)
+      // Vite serve also reports watchMode, but buildStart runs only once.
+      // Its server watches directories itself, without build acknowledgements.
+      const managedWatch = rollupWatch || (nativeWatch && viteCommand !== "serve" && this.meta?.watchMode && !watchClosed)
       const watch = new Set()
       for (const input of [project, ...inputs]) {
-        if (rollupWatch && !existsSync(input)) continue
-        if (!nativeWatch || existsSync(input)) watch.add(input)
-        else {
-          // Native watchers can ignore absent paths. Register their existing
-          // parent instead: multiple absent alternatives in one directory can
-          // otherwise narrow its watcher to just one of those file names.
-          let directory = dirname(input)
-          while (!existsSync(directory) && dirname(directory) !== directory) directory = dirname(directory)
-          watch.add(directory)
-          debug(`watch missing relative source directory: ${directory}`)
+        // A directory watch does not reliably observe an index created in a
+        // new child directory. Missing candidates use the file notifier below.
+        if ((rollupWatch || nativeWatch) && !existsSync(input)) {
+          if (nativeWatch && !managedWatch) {
+            let directory = dirname(input)
+            while (!existsSync(directory) && dirname(directory) !== directory) directory = dirname(directory)
+            watch.add(directory)
+          }
+          continue
         }
+        watch.add(input)
       }
       for (const input of watch) this.addWatchFile(input)
-      if (rollupWatch) {
+      if (managedWatch) {
         const missing = missingRelativeInputs(errors)
         if (missing.length) {
           missingWatcher ??= missingSourceWatcher(debug)
@@ -524,7 +527,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         return { ...input, input: withoutSidecarEntries(input.input), resolve: { ...input.resolve, conditionNames: sourceConditions(input.resolve?.conditionNames ?? defaults) } }
       }
     },
-    vite: { config: sourceConditionConfig, configResolved(config) { configure(config.root) } },
+    vite: { config: sourceConditionConfig, configResolved(config) { viteCommand = config.command; configure(config.root) } },
     webpack(compiler) {
       configure(compiler.context)
       compiler.options.resolve ??= {}

@@ -2,9 +2,10 @@ import { existsSync, mkdtempSync, rmSync, watch, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve, sep } from "node:path"
 
-// Rollup's native watcher cannot safely share removable directory watches
-// with source-file watches. Observe only unresolved candidates ourselves,
-// and notify Rollup through one ordinary file that is updated in place.
+// Bundler watchers cannot reliably follow directories created after a failed
+// build, and Rollup cannot safely share removable directory watches with
+// source-file watches. Observe unresolved candidates and notify the bundler
+// through one ordinary file that is updated in place.
 export function missingSourceWatcher(debug = () => {}) {
   const directory = mkdtempSync(join(tmpdir(), "vibelang-watch-"))
   const file = join(directory, "changed")
@@ -25,7 +26,7 @@ export function missingSourceWatcher(debug = () => {}) {
   function notify() {
     if (closed || timer) return
     write()
-    // An event can arrive before Rollup finishes arming its error watches.
+    // An event can arrive before the bundler finishes arming its error watches.
     // Keep it pending until the next build acknowledges the notification.
     timer = setInterval(write, 100)
     timer.unref()
@@ -83,7 +84,10 @@ export function missingSourceWatcher(debug = () => {}) {
   }
   return {
     file,
-    begin: acknowledge,
+    begin() {
+      if (timer) debug(`missing source signal ${revision} acknowledged by build`)
+      acknowledge()
+    },
     add(paths) {
       if (closed) return
       if (failure) throw failure
