@@ -243,6 +243,7 @@ func TestPurityRegressions(t *testing.T) {
 		{"rootAlias", `import { FileSystem as fs } from "effect"; function f(p) { return fs.realPath(p) }`, "effect"},
 		{"platformAlias", `import { NodeFileSystem as fs } from "@effect/platform-node"; function f() { return fs.layer() }`, "effect"},
 		{"try", `function f() { return try(() => g(), (e) => e) }`, "effect"},
+		{"tryParameterDefault", `const k = Effect.succeed("m"); function f(s: string = try k) { return s }`, "effect"},
 		{"suspend", `import { suspend } from "vibelang-runtime"; function f() { return suspend(() => {}) }`, "effect"},
 		{"handoff", `import { handoff } from "vibelang-runtime"; function f() { return handoff(() => g(), () => g()) }`, "effect"},
 		{"attempt", `import { attempt } from "vibelang-runtime"; function f() { return attempt(() => g()) }`, "effect"},

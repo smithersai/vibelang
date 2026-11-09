@@ -229,6 +229,11 @@ func (p *projector) bodyObstacle(fn *ast.Node, callee func(name string) (obstacl
 	if p.plainBuiltinBodies[fn] != nil {
 		return obstacleNone
 	}
+	for _, parameter := range fn.Parameters() {
+		if runsTry(parameter) {
+			return obstacleBlocking
+		}
+	}
 	worst := obstacleNone
 	var visit func(node *ast.Node) bool // true: stop, the body is blocked
 	visit = func(node *ast.Node) bool {
@@ -288,6 +293,22 @@ func (p *projector) bodyObstacle(fn *ast.Node, callee func(name string) (obstacl
 	}
 	fn.Body().ForEachChild(visit)
 	return worst
+}
+
+// runsTry reports whether node runs a try outside any nested function. A try
+// in a parameter default is rejected, so its function never gets a direct entry.
+func runsTry(node *ast.Node) bool {
+	if node.Flags&ast.NodeFlagsVibeLangTry != 0 {
+		return true
+	}
+	// `try e` on a non-call operand parses as a call of the $try intrinsic.
+	if ast.IsCallExpression(node) && node.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && node.Expression().Text() == "$try" {
+		return true
+	}
+	if ast.IsFunctionLike(node) {
+		return false
+	}
+	return node.ForEachChild(runsTry)
 }
 
 // callObstacle classifies one call of a body (purity's comment).
