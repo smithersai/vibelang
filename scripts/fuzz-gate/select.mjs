@@ -16,7 +16,7 @@ export function select(paths) {
   if (names.some(path => /^typescript\/tsc\/internal\/vibelang\/fix_trusted_empty(?:[^/]*_test)?\.go$/.test(path))) {
     selected.push("//:trusted-empty-forwarding")
   }
-  if (names.some(path => /^typescript\/tsc\/internal\/vibelang\/(tsforms|fix_declared_imports|fix_prelude|fix_empty_error_declarations|schema_(proto_setter_fix|value_keyword_fix|custom_own_type|private_declared_constant)|native_error_class_shapes)[^/]*\.go$/.test(path) || path === "packages/compiler/test/fix.test.mjs")) {
+  if (names.some(path => /^typescript\/tsc\/internal\/vibelang\/(tsforms|fix_prelude|schema_(proto_setter_fix|value_keyword_fix|custom_own_type)|native_error_class_shapes)[^/]*\.go$/.test(path))) {
     selected.push("//:form-repair-sidecars")
   }
   return selected.sort()

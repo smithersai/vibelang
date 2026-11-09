@@ -2499,6 +2499,6 @@ Changes to the checker or computed-member regressions select `//scripts/fuzz-gat
 
 Trusted-wrapper repair changes also select `//:trusted-empty-forwarding`, covering repaired declarations, narrowed arguments, known throws and the generated forwarding case.
 
-TypeScript-form repair changes select `//:form-repair-sidecars`, which runs the repair tests in `internal/vibelang` and `packages/compiler/test/fix.test.mjs`. The `vibelang` package has no changed-path fuzz family, so a change to a repair rule reaches these tests before it lands only through this target.
+TypeScript-form repair changes select `//:form-repair-sidecars`, which runs the repair tests in `internal/vibelang`. The `vibelang` package has no changed-path fuzz family, so a change to a repair rule reaches these tests before it lands only through this target.
 
 Changes to the own-signature throws check also run `FuzzLegacyEffectAlias`, whose inherited Effect members are checked at their own signatures. Changes to the module file loader select `//scripts/fuzz-gate:inline-module-artifacts`, so a loader fix that closes an inline-module gap also removes its pending lines.

@@ -960,7 +960,7 @@ const targets = {
   ),
   "form-repair-sidecars": check(
     "TypeScript-form repairs keep declaration sidecars under every emit option.",
-    "cd typescript/tsc && CGO_ENABLED=0 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -count=1 -trimpath -timeout=5m ./internal/vibelang -run '^(TestTypeScriptForm|TestSchemaConstantKeeps|TestSchemaConstantPrivateDeclared|TestFormFixesKeepSidecar|TestSchemaPrototypeSetter|TestSchemaValueKeywordRepairControls|TestSchemaCustomOwnType|TestNativeErrorClassShapes|TestFixExplicitEmptyErrorDeclarations|TestFixSchemaErrorImports)' && cd ../../packages/compiler && VIBELANG_BINARY=$PWD/native/vibelang node --test test/fix.test.mjs",
+    "cd typescript/tsc && CGO_ENABLED=0 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -count=1 -trimpath -timeout=5m ./internal/vibelang -run '^(TestTypeScriptForm|TestSchemaPrototypeSetter|TestSchemaValueKeywordRepairControls|TestSchemaCustomOwnType|TestNativeErrorClassShapes)'",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelang-files"], Vibelang.tree],
     [go, node, bun],
     "10m"

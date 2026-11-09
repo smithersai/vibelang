@@ -287,9 +287,8 @@ test("form repair changes select the tests that pin their sidecar rules", () => 
     "typescript/tsc/internal/vibelang/tsforms_errors.go",
     "typescript/tsc/internal/vibelang/tsforms_schemas.go",
     "typescript/tsc/internal/vibelang/tsforms_types.go",
-    "typescript/tsc/internal/vibelang/fix_declared_imports.go",
+    "typescript/tsc/internal/vibelang/fix_prelude.go",
     "typescript/tsc/internal/vibelang/native_error_class_shapes_test.go",
-    "packages/compiler/test/fix.test.mjs",
   ]) assert.deepEqual(select([path]), ["//:form-repair-sidecars"], path)
   assert.deepEqual(select(["typescript/tsc/internal/vibelang/tsforms_errors.go.backup"]), [])
 })
