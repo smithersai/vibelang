@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migration verification could reject an unchanged ambient registration after its inline type moved into a platform module. Closed structural aliases now compare with the original inline type, and changed contracts remain rejected.
+
 - Migration verification could reject an unchanged Effect factory returned inside a tuple. Array and tuple elements now keep their own function identities, while changed callback timing still fails verification.
 
 - A Vite or Rolldown watch build could stay failed after a missing directory index was created. Creating the source now rebuilds its importers without another edit.

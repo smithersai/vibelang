@@ -452,11 +452,42 @@ function workspaceOrigin(file) {
 // respell `./work` as `./work.ts` or `./work.js` in the same declaration.
 const specifierStem = specifier => specifier.replace(/\.[cm]?[jt]sx?$|\.vibex?$/, "")
 
-function ambientContribution(ts, source) {
+function ambientContribution(ts, source, checker) {
   const printer = ts.createPrinter()
   // An inferred import type names the module the same way a named import does.
-  const print = node => printer.printNode(ts.EmitHint.Unspecified, node, source).replace(/\s+/gu, " ")
+  // A generated platform alias can replace an inline structural type.
+  // Expand only closed type literals: references, queries, generics and nominal
+  // types keep their dependency proof rather than borrowing the merged program.
+  const closed = node => {
+    if (ts.isTypeReferenceNode(node) || ts.isImportTypeNode(node) ||
+        ts.isTypeQueryNode(node) || ts.isTypePredicateNode(node) ||
+        ts.isThisTypeNode(node) || ts.isInferTypeNode(node) ||
+        ts.isComputedPropertyName(node) ||
+        ts.isTypeOperatorNode(node) && node.operator === ts.SyntaxKind.UniqueKeyword || node.typeParameters?.length) return false
+    return !ts.forEachChild(node, child => !closed(child))
+  }
+  const transform = context => {
+    const copy = node => ts.visitEachChild(ts.setTextRange(ts.factory.cloneNode(node), { pos: -1, end: -1 }), copy, context)
+    const visit = node => {
+      if (ts.isImportTypeNode(node) && !node.isTypeOf && node.qualifier && !node.typeArguments?.length) {
+        let symbol = checker.getSymbolAtLocation(node.qualifier)
+        if (symbol?.flags & ts.SymbolFlags.Alias) symbol = checker.getAliasedSymbol(symbol)
+        const declarations = symbol?.declarations
+        if (declarations?.length === 1 && ts.isTypeAliasDeclaration(declarations[0]) &&
+            !declarations[0].typeParameters?.length && closed(declarations[0].type))
+          return copy(declarations[0].type)
+      }
+      return ts.visitEachChild(node, visit, context)
+    }
+    return node => ts.visitNode(node, visit)
+  }
+  const print = node => {
+    const transformed = ts.transform(node, [transform])
+    const text = printer.printNode(ts.EmitHint.Unspecified, transformed.transformed[0], source)
+    transformed.dispose()
+    return text.replace(/\s+/gu, " ")
     .replace(/\bimport\((["'])(\.{1,2}\/[^"']*)\1\)/gu, (_, quote, specifier) => "import(" + quote + specifierStem(specifier) + quote + ")")
+  }
   const locals = new Map()
   for (const statement of source.statements) {
     if (ts.isImportDeclaration(statement)) {
@@ -1414,8 +1445,8 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       if (a && b && (a === b || ambientProof.get(b) === a)) continue
       // A snapshot's own exports are compared as entries; a workspace module
       // is its own package's comparison. Only the environment is left here.
-      if (a && b && /^(?:workspace|owned):/.test(key) && JSON.stringify(ambientContribution(ts, program.getSourceFile(a))) ===
-        JSON.stringify(ambientContribution(ts, program.getSourceFile(b)))) continue
+      if (a && b && /^(?:workspace|owned):/.test(key) && JSON.stringify(ambientContribution(ts, program.getSourceFile(a), program.getTypeChecker())) ===
+        JSON.stringify(ambientContribution(ts, program.getSourceFile(b), program.getTypeChecker()))) continue
       result.environmentDiagnostics.push({ blocking: true, file: b ?? a, diagnostic: "Ambient declaration closures differ; shared-program comparison is unavailable: " + key })
     }
     const copies = [...leftCopies, ...rightCopies]

@@ -1,0 +1,3 @@
+# Passing keys; the eight layout modes and keyed corpus remain strict.
+FuzzMigrationAmbientPlatformTypes closure:platform-type-alias Chapter 1: an unchanged ambient contract becomes unavailable when its inline type moves into a generated platform alias
+FuzzMigrationAmbientPlatformTypes corpus:t3code-ambient-platform-type-alias Chapter 1: minimized Register.router closure retains its public structural type across a platform split
