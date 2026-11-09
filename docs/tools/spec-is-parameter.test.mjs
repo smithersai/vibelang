@@ -8,7 +8,7 @@ test("is bindings require a defined lexical home during parameter initialization
   assert.ok(match.includes("## `is` bindings in parameter initialization"))
   assert.ok(match.includes("evaluated computed binding keys"))
   assert.ok(match.includes("Nested source callable bodies keep their own scopes"))
-  assert.ok(match.includes("There is no generic move-to-body quick fix"))
+  assert.ok(match.includes("There is no generic move-to-body manual change"))
   assert.ok(match.includes('function nested({ a = (1 is const captured) } = {})'))
   assert.ok(match.includes('function key({ [(1 is let captured) ? "x" : "y"]'))
   assert.ok(match.includes('function arm(a = match (1)'))

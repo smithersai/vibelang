@@ -297,14 +297,14 @@ parser/vibelang_syntax.go:Parser.recordVibeSyntaxClause	admission:syntax-records
 parser/vibelang_try.go:Parser.isStartOfVibeLangTry	admission:try	900-appendices.md#TryExpression,900-appendices.md#TryAll	support	Appendix A: TryExpression, TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_try.go:Parser.nextTokenStartsTryOperand	admission:try	900-appendices.md#TryExpression	support	VIP-5 try execution and VIP-18 operations
 parser/vibelang_try.go:Parser.parseVibeLangTry	admission:try	900-appendices.md#TryExpression,900-appendices.md#TryAll	support	Appendix A: TryExpression, TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
-vibelang/try_operations.go:init	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18: registers EK1801, its file check and the object quick fix; introduces no syntax
+vibelang/try_operations.go:init	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18: registers EK1801 and its file check; introduces no syntax
 vibelang/try_operations.go:tryOperationName	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: names the reparsed try.all, try.race, try.any or try.allSettled call; introduces no syntax
 vibelang/try_operations.go:checkTryOperations	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: EK1801 rejects an operand that is not an array of Effects (Appendix B); introduces no syntax
 vibelang/try_operations.go:coverTryOperationOperand	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 `TryAll`: covers only the rejected array operand mismatch while preserving independent native errors; introduces no syntax
 vibelang/try_operations.go:tryOperationArrayType	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: EK1801 operand assignability to ReadonlyArray<Effect>; introduces no syntax
 vibelang/try_operations.go:filterRejectedTryOperationArgumentDiagnostics	admission:try	900-appendices.md#TryAll,002-running.md,007-tooling.md	support	VIP-18 and VIP-34: `EK1801` replaces only the generated operand mismatch; written native errors remain; introduces no syntax
 vibelang/try_operations.go:tryOperationEffectType	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: EK1801 element assignability to Effect; introduces no syntax
-vibelang/try_operations.go:tryOperationImportPosition	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18: import placement for the EK1801 object quick fix; introduces no syntax
+vibelang/try_operations.go:tryOperationImportPosition	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18: import placement shared by explicit Effect rewrites; introduces no syntax
 vibelang/try_operations.go:lowering.nativeTryAllCall	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: writes Effect.all through the project's Effect instance with unbounded concurrency; introduces no syntax
 vibelang/try_operations.go:trySettledLiteral	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: selects a no-spread array literal operand of try.allSettled for direct lowering (5c1a266c); introduces no syntax
 vibelang/try_operations.go:lowering.visitTrySettledLiteral	admission:try	900-appendices.md#TryAll,002-running.md	support	VIP-18 TryAll: lowers try.allSettled over a no-spread array literal per element, without a helper array (5c1a266c); introduces no syntax
@@ -736,7 +736,7 @@ vibelang/wire.go:noteEntryLayers	admission:wire	-	pending	Legacy lowering has no
 vibelang/wire.go:runnerRequirements	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
 vibelang/wire.go:services.wireNeeders	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
 vibelang/wire.go:providedBy	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
-parser/vibelang_catch.go:Parser.parseVibeLangCatchRest@catch-value	admission:catch-value	900-appendices.md#CatchHandler,002-running.md	recovery	VIP-5: a value handler is parsed only to report EK0509 with its quick fix (4488a715)
+parser/vibelang_catch.go:Parser.parseVibeLangCatchRest@catch-value	admission:catch-value	900-appendices.md#CatchHandler,002-running.md	recovery	VIP-5: a value handler is parsed only to report EK0509 (4488a715)
 parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration@effect-shorthand	admission:effect-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK0101; not language admission
 parser/vibelang.go:Parser.parseServiceDeclaration@control-declaration	admission:control-declaration	-	pending	Open VIP-35 does not admit control declarations
 parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-aggregate	admission:join-aggregate	-	pending	VIP-17 admits grammar operand but not aggregate Fiber join semantics
@@ -925,7 +925,7 @@ parser/vibelang_blocks.go:Parser.parseVibeLangThrow	admission:throw-expression	9
 parser/vibelang_throw_lookahead.go:ThrowLookaheadMessage	admission:throw-expression	900-appendices.md	support	VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support
 parser/vibelang_throw_lookahead.go:isThrowExpressionInvalidPunctuator	admission:throw-expression	900-appendices.md	support	VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support
 parser/vibelang_throw_lookahead.go:throwInvalidPunctuatorCanFollowASI	admission:throw-expression	900-appendices.md	support	VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support
-parser/vibelang_throw_lookahead.go:Parser.checkVibeLangThrowLookahead	admission:throw-expression	900-appendices.md,003-failures.md	support	VIP-41 rejects every invalid punctuator, including comma separators; the preserving quick fix groups the whole throw expression.
+parser/vibelang_throw_lookahead.go:Parser.checkVibeLangThrowLookahead	admission:throw-expression	900-appendices.md,003-failures.md	support	VIP-41 rejects every invalid punctuator, including comma separators; an explicit preserving edit groups the whole throw expression.
 parser/vibelang_throw_lookahead.go:Parser.atVibeLangThrowStop	admission:throw-expression	900-appendices.md	support	VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support
 parser/vibelang_throw_lookahead.go:Parser.reportVibeLangThrowStop	admission:throw-expression	900-appendices.md	support	VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support
 parser/vibelang_match.go:Parser.parseMatchRelationOperand	admission:match	004-match.md	support	VIP-7: relational patterns of the pinned TC39 snapshot, such as < 0

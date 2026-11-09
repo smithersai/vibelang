@@ -1,3 +1,0 @@
-go test fuzz v1
-string("EK9101@EK9101-editor")
-[]byte("\x00")

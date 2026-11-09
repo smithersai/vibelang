@@ -56,22 +56,6 @@ func provideLayer(block *ast.Node) *ast.Node {
 	return block.AsBlock().Statements.Nodes[0].Expression()
 }
 
-// hasProvideBlock reports whether fn's own body has a provide block, which makes it
-// an Effect: the block runs Effect.provide.
-func hasProvideBlock(fn *ast.Node) bool {
-	if fn.Body() == nil {
-		return false
-	}
-	var visit func(n *ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if isFunctionBoundary(n) {
-			return false
-		}
-		return isProvideBlock(n) || n.ForEachChild(visit)
-	}
-	return visit(fn.Body())
-}
-
 // provideFlow collects what can escape a provide block: the errors of its
 // statements and of building the layer, and the requirements of its
 // statements that the layer does not provide, plus the layer's own.

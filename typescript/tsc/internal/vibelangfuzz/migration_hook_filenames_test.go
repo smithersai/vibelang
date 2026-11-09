@@ -12,7 +12,7 @@ import (
 
 func TestMigrationHookFilenamesQuoted(t *testing.T) {
 	chapterSays(t, "001-functions.md", "each export's type identical to `tsc`'s in both directions")
-	chapterSays(t, "007-tooling.md", "A rewrite that can't preserve types, behavior and declaration output refuses at that site.")
+	chapterSays(t, "007-tooling.md", "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.")
 }
 
 func FuzzMigrationHookFilenames(f *testing.F) {

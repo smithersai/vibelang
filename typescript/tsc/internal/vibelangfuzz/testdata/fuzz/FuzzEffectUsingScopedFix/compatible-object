@@ -1,3 +1,0 @@
-go test fuzz v1
-string("compatible-object")
-byte(0)

@@ -89,26 +89,6 @@ func TestErrorNominalTemplateMembers(t *testing.T) {
 		}
 	}
 }
-func TestErrorNominalTemplateClassFix(t *testing.T) {
-	for _, row := range nominalKeyDomains {
-		if !row.reserved {
-			continue
-		}
-		t.Run(row.name, func(t *testing.T) {
-			source := nominalKeyPrelude + "declare const key: " + row.domain + "; export schema error E { id: string; get [key](): number { return 1 } }"
-			fixed := applyQuickFixOf(t, source, 2117, diagnostics.CategoryError)
-			if !strings.Contains(fixed, "class E extends") || !strings.Contains(fixed, "get [key](): number { return 1 }") {
-				t.Fatalf("missing preserving class repair: %s", fixed)
-			}
-			program, file, _, _ := editorProgram(t, fixed)
-			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Fatalf("fixed source reports %s", d.String())
-				}
-			}
-		})
-	}
-}
 
 func TestSchemaErrorNominalKeyInverse(t *testing.T) {
 	for _, row := range nominalKeyDomains {

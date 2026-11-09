@@ -2,10 +2,7 @@ package vibelang
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"strings"
 	"testing"
 )
@@ -82,7 +79,7 @@ func TestSpreadDirectFormAdvisories(t *testing.T) {
 							}
 							if d.Source() == diagnosticSource && d.Code() == spreadDirectFormCode(api) {
 								count++
-								if !strings.Contains(diagnosticWithNotes(d), "spread iteration") {
+								if !strings.Contains(diagnosticWithNotes(d), "uses spread arguments") {
 									t.Fatalf("missing spread-call explanation: %s", diagnosticWithNotes(d))
 								}
 							}
@@ -98,38 +95,6 @@ func TestSpreadDirectFormAdvisories(t *testing.T) {
 				}
 			}
 		}
-	}
-}
-func TestSpreadDirectFormAdvisoriesPreserveCalls(t *testing.T) {
-	for _, api := range []string{"succeed", "fail", "catch", "catchTag", "catchTags", "provide", "provideService"} {
-		t.Run(api, func(t *testing.T) {
-			p, file, service, converters := editorProgram(t, spreadDirectFormSource(api, 0, "direct", false))
-			var found *ast.Diagnostic
-			for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Source() == diagnosticSource && d.Code() == spreadDirectFormCode(api) {
-					found = d
-				}
-			}
-			if found == nil {
-				t.Fatal("missing advisory")
-			}
-			if !strings.Contains(diagnosticWithNotes(found), "No quick fix") {
-				t.Fatalf("missing refusal: %s", diagnosticWithNotes(found))
-			}
-			diagnostic := lsconv.DiagnosticToLSPPush(t.Context(), converters, found)
-			only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-			response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())}, Range: diagnostic.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{diagnostic}, Only: &only}})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if response.CommandOrCodeActionArray != nil {
-				for _, a := range *response.CommandOrCodeActionArray {
-					if a.CodeAction != nil && a.CodeAction.Edit != nil {
-						t.Fatalf("spread call rewrite offered: %s", a.CodeAction.Title)
-					}
-				}
-			}
-		})
 	}
 }
 

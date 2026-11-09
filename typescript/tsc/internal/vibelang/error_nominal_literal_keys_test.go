@@ -2,7 +2,6 @@ package vibelang
 
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"strings"
 	"testing"
 )
@@ -80,105 +79,5 @@ func TestErrorNominalLiteralKeys(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-func TestErrorNominalLiteralClassRepair(t *testing.T) {
-	for _, row := range nominalLiteralKeyRows {
-		if !row.reserved {
-			continue
-		}
-		t.Run(row.name, func(t *testing.T) {
-			source := nominalLiteralKeyPrelude + "declare const key: " + row.domain + "; export error E { id: string; get [key](): \"E\" { return \"E\" } }"
-			if row.name == "raw-tag" {
-				program, file, service, _ := editorProgram(t, source)
-				found := false
-				for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-					if d.Code() != 2117 {
-						continue
-					}
-					found = true
-					actions, err := errorMemberClassFix.GetCodeActions(t.Context(), &ls.CodeFixContext{SourceFile: file, Span: d.Loc(), ErrorCode: 2117, Program: program, LS: service})
-					if err != nil {
-						t.Fatal(err)
-					}
-					if len(actions) != 0 {
-						t.Fatal("offered a class whose getter overrides the base property (TS2611)")
-					}
-				}
-				if !found {
-					t.Fatal("missing EK2117")
-				}
-				return
-			}
-			fixed := applyQuickFixOf(t, source, 2117, diagnostics.CategoryError)
-			if !strings.Contains(fixed, "class E extends") || !strings.Contains(fixed, "get [key](): \"E\" { return \"E\" }") {
-				t.Fatalf("member lost in repair: %s", fixed)
-			}
-			program, file, _, _ := editorProgram(t, fixed)
-			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Fatalf("repaired source: %s", d.String())
-				}
-			}
-		})
-	}
-}
-
-// A different diagnostic on the same declaration must not bypass the guard.
-func TestErrorReservedKnownMemberRefusesInvalidClass(t *testing.T) {
-	for _, form := range []string{"error", "schema error"} {
-		for _, member := range []string{
-			"get _tag(): \"E\" { return \"E\" }",
-			"get [\"_tag\"](): \"E\" { return \"E\" }",
-			"get [key](): \"E\" { return \"E\" }",
-			"set _tag(value: string) {}",
-			"_tag(): number { return 1 }",
-		} {
-			t.Run(form+"/"+member, func(t *testing.T) {
-				source := "const key = \"_tag\" as const; export " + form + " E { id: string; static meta = 1; " + member + " }"
-				program, file, service, _ := editorProgram(t, source)
-				count := 0
-				for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-					if d.Code() != 1302 && d.Code() != 2117 {
-						continue
-					}
-					count++
-					actions, err := errorMemberClassFix.GetCodeActions(t.Context(), &ls.CodeFixContext{SourceFile: file, Span: d.Loc(), ErrorCode: d.Code(), Program: program, LS: service})
-					if err != nil {
-						t.Fatal(err)
-					}
-					if len(actions) != 0 {
-						t.Fatalf("EK%d offers an invalid native tag override", d.Code())
-					}
-				}
-				if count != 2 {
-					t.Fatalf("want EK1302 and EK2117, got %d applicable diagnostics", count)
-				}
-			})
-		}
-	}
-}
-
-// A generated empty payload argument is not a user-written <{}> contract.
-func TestErrorFieldlessMemberRepairOmitsSyntheticPayload(t *testing.T) {
-	for _, row := range []struct {
-		source string
-		code   int32
-	}{
-		{"export error E { static meta = 1 }", 1302},
-		{nominalLiteralKeyPrelude + "declare const key: Tag; export error E { get [key](): number { return 1 } }", 2117},
-	} {
-		t.Run(row.source, func(t *testing.T) {
-			fixed := applyQuickFixOf(t, row.source, row.code, diagnostics.CategoryError)
-			if strings.Contains(fixed, "<{}>") {
-				t.Fatalf("synthetic payload changes the fieldless declaration: %s", fixed)
-			}
-			program, file, _, _ := editorProgram(t, fixed)
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Fatalf("class repair: %s", d.String())
-				}
-			}
-		})
 	}
 }

@@ -6,7 +6,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // EK4840 (D473): an Option pipeline, which method syntax on Option values
@@ -36,14 +35,10 @@ var EK4840 = message(4840, warningCategory, "{0} pipes a value through Option's 
 func init() {
 	registry[EK4840.Code] = EK4840
 	tsFormMessages = append(tsFormMessages, EK4840)
-	tsFormFixCodes = append(tsFormFixCodes, EK4840.Code)
 	tsFormRules[EK4840.Code] = &tsFormRule{
-		message:   EK4840,
-		find:      findOptionPipes,
-		plan:      optionPipeRewrite,
-		diagnosed: ast.IsCallExpression,
+		message: EK4840,
+		find:    findOptionPipes,
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4840.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 // optionPipeOf returns the subject and the stages of call when it is an

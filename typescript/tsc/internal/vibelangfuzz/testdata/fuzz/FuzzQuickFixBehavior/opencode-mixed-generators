@@ -1,3 +1,0 @@
-go test fuzz v1
-string("opencode-mixed-generators")
-[]byte("\a\x01")

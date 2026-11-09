@@ -8,11 +8,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
-	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
 )
 
 // VIP-11 denies trailing blocks. Ordinary compilation leaves the call and
@@ -26,9 +23,6 @@ func init() {
 	registry[EK1101.Code] = EK1101
 	fileChecks = append(fileChecks, checkTrailingBlocks)
 	compiler.RegisterSyntacticDiagnosticsHook(deniedTrailingBlockDiagnostics)
-	tsFormFixCodes = append(tsFormFixCodes, EK1101.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK1101.Code)
-	ls.RegisterCodeFixProvider(trailingBlockFix)
 }
 
 // trailingBlockCalls returns file's calls that pass a trailing block,
@@ -200,79 +194,6 @@ func trailingBlockSpelling(c *checker.Checker, file *ast.SourceFile, call *ast.N
 		head = shortText(strings.Join(written, ", "), "…") + ", "
 	}
 	return shortText(nodeText(file, call.Expression()), "f") + "(" + head + trailingBlockLead(c, call) + "{ … })"
-}
-
-// trailingBlockRewrite plans the edits that make call's block its last
-// written argument: `) {` becomes `, lead{` (or `(lead{` after a bare name)
-// and the block's closing brace gains `)`. Nothing moves, so the arguments
-// still run in their order. A comment between the call and the block has no
-// place in the rewrite, so the fix refuses it.
-func trailingBlockRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
-	if legacyDualBlock(c, call) != dualBlockNone {
-		return nil // EK1023 or TypeScript's error carries dual_block_migration.go's fix
-	}
-	text := file.Text()
-	arguments := call.Arguments()
-	block := arguments[len(arguments)-1]
-	brace := nodeStart(file, block.Body())
-	lead := trailingBlockLead(c, call)
-	before := strings.TrimRightFunc(text[:brace], stringutil.IsWhiteSpaceSingleLine)
-	closing := sourceEdit{block.End(), block.End(), ")"}
-	switch {
-	case len(before) == call.Expression().End() && len(arguments) == 1:
-		// f { … }: the block becomes the only argument.
-		return &formRewrite{edits: []sourceEdit{{call.Expression().End(), brace, "(" + lead}, closing}, description: "Pass the block as the call's argument"}
-	case strings.HasSuffix(before, ")") && call.Expression().End() < len(before)-1:
-		// f(args) { … } or f<T>(args) { … }: the block joins the written list.
-		paren := len(before) - 1
-		separator := ""
-		if len(arguments) > 1 {
-			switch strings.TrimSpace(text[arguments[len(arguments)-2].End():paren]) {
-			case "":
-				separator = ", "
-			case ",":
-				separator = " " // f(a,) { … }: the written trailing comma separates the block
-			default:
-				return &formRewrite{why: "A comment stands before the call's closing parenthesis."}
-			}
-		} else if strings.TrimSpace(text[scanner.SkipTrivia(text, call.Expression().End()):paren]) != "(" && call.TypeArguments() == nil {
-			return &formRewrite{why: "A comment stands inside the call's parentheses."}
-		}
-		return &formRewrite{edits: []sourceEdit{{paren, brace, separator + lead}, closing}, description: "Pass the block as the call's last argument"}
-	}
-	return &formRewrite{why: "A comment stands between the call and its block."}
-}
-
-var trailingBlockFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK1101.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		program, file := fix.Program, fix.SourceFile
-		if !file.ParseOptions().VibeLangLegacyTrailingBlocks {
-			program = trailingBlockMigrationProgram(program)
-			file = program.GetSourceFile(file.FileName())
-			if file == nil {
-				return nil, nil
-			}
-		}
-		for _, call := range trailingBlockCalls(file) {
-			if trailingBlockBrace(file, call) != fix.Span {
-				continue
-			}
-			c, done := program.GetTypeCheckerForFile(ctx, file)
-			defer done()
-			r := trailingBlockRewrite(c, file, call)
-			if !r.fixable() {
-				return nil, nil
-			}
-			var changes []*lsproto.TextEdit
-			for _, edit := range r.edits {
-				changes = append(changes, replaceRange(fix, edit.start, edit.end, edit.text)...)
-			}
-			return []*ls.CodeAction{{Description: r.description, Changes: changes}}, nil
-		}
-		return nil, nil
-	},
 }
 
 // trailingBlockMigrationProgram preserves the editor's in-memory snapshot.

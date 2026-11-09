@@ -293,7 +293,7 @@ if (outcome.value.started !== 8 || outcome.value.consumed !== 1) {
 }
 ```
 
-`using` keeps TypeScript’s meaning ([VIP-8](/vips/0008-using-denied), denied). It disposes when JavaScript control leaves its scope, including by `return` or a JavaScript throw; on a success `Exit`, the disposer runs as in TypeScript. A non-success `Exit` of an Effect run by `try` [abandons](/spec/008-runtime#abandonment) the generator without unwinding that scope. Use Effect’s `scoped`, `acquireRelease`, `acquireDisposable` or `addFinalizer` for cleanup on every Effect exit. `using` in effect code gets a warning (`EK0801`), with a quick fix to `acquireDisposable` inside `scoped`; the warning does not change disposal semantics.
+`using` keeps TypeScript’s meaning ([VIP-8](/vips/0008-using-denied), denied). It disposes when JavaScript control leaves its scope, including by `return` or a JavaScript throw; on a success `Exit`, the disposer runs as in TypeScript. A non-success `Exit` of an Effect run by `try` [abandons](/spec/008-runtime#abandonment) the generator without unwinding that scope. Use Effect’s `scoped`, `acquireRelease`, `acquireDisposable` or `addFinalizer` for cleanup on every Effect exit. `using` in effect code gets a warning (`EK0801`), with a manual change to `acquireDisposable` inside `scoped`; the warning does not change disposal semantics.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-34

@@ -85,17 +85,3 @@ func TestReservedFiberNames(t *testing.T) {
 		}
 	}
 }
-
-// A pattern's reference does not authorize changing a valid outer class's name.
-func TestFiberPatternFixPreservesOuterClass(t *testing.T) {
-	for _, word := range []string{"fork", "join"} {
-		source := "class " + word + " {}\nexport effect function f(p: unknown) { return p is " + word + " }\n"
-		program, file, _, _ := editorProgram(t, source)
-		c, done := program.GetTypeCheckerForFile(t.Context(), file)
-		renamed := fiberNameRenames(c, file)
-		done()
-		if len(renamed) != 1 || len(renamed[0].edits) != 0 || !strings.Contains(renamed[0].why, "outer callable") {
-			t.Fatalf("unsafe outer rename: %+v", renamed)
-		}
-	}
-}

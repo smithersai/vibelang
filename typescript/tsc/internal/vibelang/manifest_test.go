@@ -77,10 +77,14 @@ func TestStaleManifestDoesNotChangeDeclarationCalls(t *testing.T) {
 					}
 					want := 0
 					if extension == "vibe" && contract != "never" {
-                        want = 1 // Unknown defaults are diagnosed at the unwrapped effect call.
-                        if contract == "unknown" { want = 2 } // An explicit throwing contract also rejects the plain call.
-                        if len(diagnostics) == 2 && (!strings.HasPrefix(diagnostics[0], "401:") || !strings.HasPrefix(diagnostics[1], "403:")) { t.Errorf("lost diagnostic ownership: %v", diagnostics) }
-                    }
+						want = 1 // Unknown defaults are diagnosed at the unwrapped effect call.
+						if contract == "unknown" {
+							want = 2
+						} // An explicit throwing contract also rejects the plain call.
+						if len(diagnostics) == 2 && (!strings.HasPrefix(diagnostics[0], "401:") || !strings.HasPrefix(diagnostics[1], "403:")) {
+							t.Errorf("lost diagnostic ownership: %v", diagnostics)
+						}
+					}
 					if len(diagnostics) != want {
 						t.Errorf("contract %q: got %v, want %d diagnostics", contract, diagnostics, want)
 					}

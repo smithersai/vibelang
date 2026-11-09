@@ -15,7 +15,7 @@ const doTemporaryTarget = "FuzzMigrationDoTemporaryReturns"
 
 func TestMigrationDoTemporaryReturnsQuoted(t *testing.T) {
 	r4Quoted(t, "001-functions.md", migrationPlainQuote)
-	r4Quoted(t, "007-tooling.md", migrationHomeQuote)
+	r4Quoted(t, "../../../.smithers/flows/migrate/rules.md", migrationHomeQuote)
 }
 
 // This is a static migration-verifier oracle over actual compiler output.

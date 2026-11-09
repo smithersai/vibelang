@@ -34,10 +34,6 @@ test("r14 OPUS-3: legacy option paths cannot silently gain authority", () => fix
   edit(chapter, s => s + "\n`compilerOptions.vibelang.madeUp`\n")
   assert.ok(lintRegistry(root).some(f => f.message.startsWith("compilerOptions.vibelang.madeUp")))
 }))
-test("r14 OPUS-2: VIP-11 has three repair forms", () => fixture((root, edit) => {
-  edit(appendix, s => s.replace(/\| \[11\].*\n/, "| [11](../vips/0011-trailing-blocks-denied.md) | trailing blocks | `f(x, () => { … })` or `f(x, effect { … })` |\n"))
-  assert.ok(lintTables(root).some(f => f.message.includes("VIP-11")))
-}))
 test("r14 OPUS-1: reordered resolution candidates fail the generated copy contract", () => fixture((root, edit) => {
   edit(chapter, s => s.replace("`App.ts`, `App.tsx`, `App.vibe`", "`App.vibe`, `App.ts`, `App.tsx`"))
   for (const check of [lintCopies]) assert.ok(check(root).some(f => f.message.includes("resolution")))

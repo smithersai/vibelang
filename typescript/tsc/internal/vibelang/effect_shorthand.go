@@ -5,7 +5,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -19,17 +18,10 @@ import (
 
 func init() {
 	fileChecks = append(fileChecks, checkShorthands)
-	tsFormFixCodes = append(tsFormFixCodes, EK0101.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK0101.Code)
 	tsFormRules[EK0101.Code] = &tsFormRule{
 		message: EK0101,
 		find:    func(*checker.Checker, *ast.SourceFile, func(*ast.Node, *formRewrite, ...any)) {},
-		plan:    shorthandRewrite,
-		diagnosed: func(node *ast.Node) bool {
-			return node.Parent != nil && shorthandName(ast.GetSourceFileOfNode(node), node.Parent) == node
-		},
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK0101.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 // checkShorthands reports EK0101 at each shorthand declaration of file.
@@ -37,9 +29,7 @@ func checkShorthands(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if name := shorthandName(file, node); name != nil {
-			rewrite := shorthandRewrite(c, file, name)
-			d := reportAt(c, file, tsFormSpan(file, name), EK0101, shorthandModifier(node), name.Text())
-			note(d, "Its quick fix writes {0}.", rewrite.description)
+			reportAt(c, file, tsFormSpan(file, name), EK0101, shorthandModifier(node), name.Text())
 		}
 		return node.ForEachChild(visit)
 	}
@@ -75,13 +65,4 @@ func shorthandModifier(fn *ast.Node) string {
 		return "effect"
 	}
 	return "async"
-}
-
-// shorthandRewrite plans EK0101's fix at name: function before it.
-func shorthandRewrite(_ *checker.Checker, file *ast.SourceFile, name *ast.Node) *formRewrite {
-	at := nodeStart(file, name)
-	return &formRewrite{
-		edits:       []sourceEdit{{at, at, "function "}},
-		description: shorthandModifier(name.Parent) + " function " + name.Text(),
-	}
 }

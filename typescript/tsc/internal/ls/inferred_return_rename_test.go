@@ -16,7 +16,7 @@ import (
 )
 
 type inferredReturnRenameHost struct {
-	trustedFixHost
+	snapshotTestHost
 	files map[string]string
 }
 
@@ -51,7 +51,7 @@ func TestInferredReturnPlaceholderRename(t *testing.T) {
 		converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(path tspath.RootedFilePath) *lsconv.LSPLineMap {
 			return lsconv.ComputeLSPLineStarts(files[string(path)])
 		})
-		service := ls.NewLanguageService(nil, p, inferredReturnRenameHost{trustedFixHost: trustedFixHost{converters: converters}, files: files}, name)
+		service := ls.NewLanguageService(nil, p, inferredReturnRenameHost{snapshotTestHost: snapshotTestHost{converters: converters}, files: files}, name)
 		file := p.GetSourceFile(tspath.RootedFilePath(name))
 		pos, _ := converters.ToLSPPosition(file, core.TextPos(strings.Index(tc.source, "_")))
 		uri := lsconv.FileNameToDocumentURI(file.FileName())

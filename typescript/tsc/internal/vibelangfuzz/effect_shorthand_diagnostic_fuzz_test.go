@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const effectShorthandDiagnosticQuote = "There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`."
+const effectShorthandDiagnosticQuote = "There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors; insert `function`."
 
 func TestEffectShorthandDiagnosticQuoted(t *testing.T) {
 	chapter, err := os.ReadFile(SpecPath("001-functions.md"))

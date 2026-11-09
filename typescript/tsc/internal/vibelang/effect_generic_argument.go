@@ -1,13 +1,11 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // Inference is not an explicit request to receive a cold program (VIP-1/5).
@@ -182,45 +180,4 @@ func (r *ruleCheck) checkInferredEffectArguments(call *ast.Node) {
 		d := report(r.c, arg, inferredEffectArgument, messageText(arg, "This argument"))
 		note(d, "Run the Effect with try where it is constructed, or write the Effect type argument explicitly to pass the program itself.")
 	}
-}
-
-// A direct Effect argument can be repaired locally. A container or callback
-// needs its Effect run at the construction site, so offer no invalid try on it.
-func directInferredEffectArgument(c *checker.Checker, value *ast.Node) bool {
-	call := value.Parent
-	return call != nil && ast.IsCallExpression(call) && slices.Contains(inferredEffectArguments(c, call), value) &&
-		(isEffectType(c, c.GetTypeAtLocation(value)) || isEffectSubtype(c, c.GetTypeAtLocation(value)))
-}
-
-// This action is an explicit user choice. Batch --fix must not silence an
-// ambiguous call by deciding that the author intended to hold the program.
-const keepInferredEffectTitle = "Keep the Effect value with explicit type arguments"
-
-var inferredEffectTypeArgumentFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4802.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		value := reportedNode(fix.SourceFile, fix.Span, func(n *ast.Node) bool {
-			return n.Parent != nil && ast.IsCallExpression(n.Parent) && slices.Contains(n.Parent.Arguments(), n)
-		})
-		if value == nil {
-			return nil, nil
-		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-		defer done()
-		call := value.Parent
-		if !slices.Contains(inferredEffectArguments(c, call), value) {
-			return nil, nil
-		}
-		args := c.GetTypeArgumentsForResolvedSignature(c.GetResolvedSignature(call))
-		texts := make([]string, len(args))
-		for i, arg := range args {
-			texts[i] = bangTypes(c.TypeToStringEx(arg, call, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil))
-		}
-		at := call.Expression().End()
-		if token := call.QuestionDotToken(); token != nil {
-			at = token.End()
-		}
-		return []*ls.CodeAction{{Description: keepInferredEffectTitle, Changes: replaceRange(fix, at, at, "<"+strings.Join(texts, ", ")+">")}}, nil
-	},
 }

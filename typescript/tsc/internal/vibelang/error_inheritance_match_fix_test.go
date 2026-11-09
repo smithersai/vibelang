@@ -1,33 +1,10 @@
 package vibelang
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
-
-func TestErrorInheritanceQuickFixPreservesOwnTagMatch(t *testing.T) {
-	for _, form := range []string{"error", "schema error"} {
-		source := errorInheritanceSource(form, `"Base" as string`, "{}") + `
-function label(value: Child | { readonly _tag: "Child"; readonly id: string }) {
- return match(value) { when Child: value.id; }
-}
-`
-		t.Run(form, func(t *testing.T) {
-			fixed := applyQuickFixOf(t, source, 2117, diagnostics.CategoryError)
-			if !strings.Contains(fixed, "$schemaErrorMatcher") {
-				t.Fatalf("the expansion lost its own generated matcher:\n%s", fixed)
-			}
-			p, file, _, _ := editorProgram(t, fixed)
-			for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), file), p.GetSemanticDiagnostics(t.Context(), file)...) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("%s\n%s", d.String(), fixed)
-				}
-			}
-		})
-	}
-}
 
 func TestWrittenGeneratedErrorMatcherCoverageControls(t *testing.T) {
 	for _, test := range []struct {

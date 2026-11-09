@@ -21,7 +21,7 @@ const runtime = fileURLToPath(new URL("../../../../packages/runtime/", import.me
 const ts = loadTypeScript([runtime])
 const fc = createRequire(join(runtime, "package.json"))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-platform-split-element-return.json", import.meta.url), "utf8"))
-const quote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
+const quote = "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 const globals = ["getComputedStyle", "document"]
 const ambient = `declare namespace JSX {
   interface Element { readonly element: true }

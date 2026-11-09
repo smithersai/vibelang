@@ -17,7 +17,6 @@ package vibelang
 // never becomes a program at an Effect parameter (VIP-2).
 
 import (
-	"context"
 	"slices"
 	"strings"
 
@@ -25,14 +24,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 func init() {
 	checker.RegisterDiagnosticsFilterHook(explainDualBlock)
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{1023}, GetCodeActions: dualBlockActions})
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{ErrorCodes: []int32{2345, 2554, 2769}, GetCodeActions: dualBlockActions})
 }
 
 // dualBlockMigrationNote marks every dual-block site for the docs migration
@@ -193,9 +188,7 @@ func explainDualBlock(c *checker.Checker, file *ast.SourceFile, ds []*ast.Diagno
 		}
 		note(found, "{0}", dualBlockSpelling(c, file, call))
 		note(found, dualBlockMigrationNote)
-		if r := dualBlockRewrite(c, file, call); r != nil && r.why != "" {
-			note(found, "{0}", r.why)
-		}
+
 	}
 	return ds
 }
@@ -219,102 +212,4 @@ func dualBlockSpelling(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 // strictlyInside reports whether loc lies inside body's braces.
 func strictlyInside(file *ast.SourceFile, body *ast.Node, loc core.TextRange) bool {
 	return nodeStart(file, body) < loc.Pos() && loc.End() < body.End()
-}
-
-// dualBlockRewrite plans the edits that keep the 0.0.10 meaning of call's
-// block: the program first, f(effect { … }, args), where a data-first
-// signature takes it, else the curried call, f(args)(effect { … }). The block
-// moves before the written arguments, which still run in their order, and
-// building an effect block runs nothing (VIP-2), so the rewrite is exact.
-func dualBlockRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
-	refuse := func(why string) *formRewrite {
-		return &formRewrite{why: "This block cannot be moved automatically: " + why}
-	}
-	form := legacyDualBlock(c, call)
-	if form == dualBlockNone {
-		return nil
-	}
-	if call.TypeArguments() != nil || ast.IsOptionalChain(call) {
-		return refuse("explicit type arguments or an optional call need an explicit signature.")
-	}
-	text := file.Text()
-	args := call.Arguments()
-	block := args[len(args)-1]
-	brace := nodeStart(file, block.Body())
-	calleeEnd := call.Expression().End()
-	head := strings.TrimRight(text[calleeEnd:brace], " \t")
-	written := ""
-	paren := -1
-	if open := scanner.SkipTrivia(text, calleeEnd); open < brace && text[open] == '(' {
-		paren = calleeEnd + len(head) - 1
-		if text[paren] != ')' {
-			return refuse("a comment stands between the call and its block.")
-		}
-		written = strings.TrimSpace(text[open+1 : paren])
-	} else if strings.TrimSpace(head) != "" {
-		return refuse("a comment stands between the call and its block.")
-	}
-	var edits []sourceEdit
-	description := ""
-	if form == dualBlockPrepended {
-		for _, argument := range args[:len(args)-1] {
-			if ast.IsSpreadElement(argument) {
-				return refuse("a spread argument needs an explicit signature.")
-			}
-		}
-		open := scanner.SkipTrivia(text, calleeEnd)
-		edits = []sourceEdit{{open + 1, brace, "effect "}, {block.End(), block.End(), ", " + written + ")"}}
-		description = "the program first, as the data-first signature takes it"
-	} else {
-		if paren < 0 {
-			edits = []sourceEdit{{calleeEnd, brace, "()(effect "}, {block.End(), block.End(), ")"}}
-		} else {
-			edits = []sourceEdit{{paren + 1, brace, "(effect "}, {block.End(), block.End(), ")"}}
-		}
-		description = "the program applied to the curried call"
-	}
-	return &formRewrite{edits: edits, description: description}
-}
-
-func dualBlockActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-	program, file := fix.Program, fix.SourceFile
-	if !file.ParseOptions().VibeLangLegacyTrailingBlocks {
-		if !file.VibeLangDeniedTrailingBlock {
-			return nil, nil
-		}
-		program = trailingBlockMigrationProgram(program)
-		file = program.GetSourceFile(file.FileName())
-	}
-	c, done := program.GetTypeCheckerForFile(ctx, file)
-	defer done()
-	calls := dualBlockCalls(c, file)
-	// The innermost call whose span holds the diagnostic.
-	for i := len(calls) - 1; i >= 0; i-- {
-		call := calls[i]
-		if call.Pos() <= fix.Span.Pos() && fix.Span.End() <= call.End() {
-			r := dualBlockRewrite(c, file, call)
-			if !r.fixable() {
-				return nil, nil
-			}
-			changes := replaceRange(fix, r.edits[0].start, r.edits[0].end, r.edits[0].text)
-			changes = append(changes, replaceRange(fix, r.edits[1].start, r.edits[1].end, r.edits[1].text)...)
-			return []*ls.CodeAction{{Description: "Pass the block where " + nodeText(file, call.Expression()) + " takes its program", Changes: changes}}, nil
-		}
-	}
-	return nil, nil
-}
-
-// withFixes adds to p the fixes of more whose edits overlap none of p's.
-func (p proposal) withFixes(more proposal) proposal {
-	var taken []sourceEdit
-	for _, f := range p.fixes {
-		taken = append(taken, f.edits...)
-	}
-	for _, f := range more.fixes {
-		if !slices.ContainsFunc(f.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
-			p.fixes = append(p.fixes, f)
-			taken = append(taken, f.edits...)
-		}
-	}
-	return p
 }

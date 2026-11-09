@@ -10,7 +10,7 @@ import { compareDeclarations, recordDeclarationSurface } from "../lib/declaratio
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-published-platform-split.json", import.meta.url), "utf8"))
-const quote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
+const quote = "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 
 function check(input) {
   assert.ok(readFileSync(new URL("../../../../docs/design/src/007-tooling.md", import.meta.url), "utf8").includes(quote))

@@ -92,5 +92,5 @@ func mergedModuleService(t *testing.T, source string) (*ls.LanguageService, *com
 	converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
 		return lsconv.ComputeLSPLineStarts(files[string(name)])
 	})
-	return ls.NewLanguageService(nil, p, retiredModulesHost{trustedFixHost: trustedFixHost{converters: converters}, files: files}, "/project/main.vibe"), p, converters
+	return ls.NewLanguageService(nil, p, retiredModulesHost{snapshotTestHost: snapshotTestHost{converters: converters}, files: files}, "/project/main.vibe"), p, converters
 }

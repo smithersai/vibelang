@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-func TestNativeGeneratorRefusalReasonQuoted(t *testing.T) {
-	nativeGeneratorRefusalReasonChapter(t)
-}
-
 func nativeGeneratorRefusalReasonChapter(t testing.TB) {
 	t.Helper()
 	nativeGeneratorsChapter(t)

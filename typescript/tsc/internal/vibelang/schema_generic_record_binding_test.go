@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -46,24 +45,6 @@ func TestSchemaGenericRecordBindings(t *testing.T) {
 				t.Errorf("EK2109 count %d, want %d", count, tc.errors)
 			}
 		})
-	}
-}
-
-func TestSchemaGenericRecordLegacyShadowFix(t *testing.T) {
-	for _, source := range []string{
-		"type Record<K,V>={key:K;value:V}; schema S=Record<string,number>; function f(s:S){s.x=1}",
-		"namespace N { export import Record=globalThis.Array; export schema S=Record<string,number>; export function f(s:S){s.x=1} }",
-	} {
-		fixed := applyQuickFixOf(t, source, EK2109.Code, diagnostics.CategoryError)
-		if !strings.Contains(fixed, "Schema.Record") {
-			t.Fatalf("old record codec not preserved: %s", fixed)
-		}
-		program, file, _, _ := editorProgram(t, fixed)
-		for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-			if d.Category() == diagnostics.CategoryError {
-				t.Errorf("invalid expansion: %s\n%s", d.String(), fixed)
-			}
-		}
 	}
 }
 

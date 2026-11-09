@@ -5,7 +5,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // VIP-13/29, decided detail248: custom error declarations construct runtime
@@ -16,13 +15,6 @@ func init() {
 	registry[EK1307.Code] = EK1307
 	fileChecks = append(fileChecks, checkAmbientErrorDeclarations)
 	checker.RegisterDiagnosticsFilterHook(filterAmbientErrorDeclarationDiagnostics)
-	tsFormFixCodes = append(tsFormFixCodes, EK1307.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK1307.Code)
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{
-		Source:         diagnosticSource,
-		ErrorCodes:     []int32{EK1307.Code},
-		GetCodeActions: errorMemberClassFix.GetCodeActions,
-	})
 }
 
 func checkAmbientErrorDeclarations(c *checker.Checker, file *ast.SourceFile) {

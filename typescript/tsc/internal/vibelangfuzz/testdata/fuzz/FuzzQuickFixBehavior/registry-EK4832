@@ -1,3 +1,0 @@
-go test fuzz v1
-string("EK4832@tsforms-schemas")
-[]byte("\x00")

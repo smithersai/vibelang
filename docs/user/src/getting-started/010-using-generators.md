@@ -2,11 +2,11 @@
 
 VibeLang sequences computations with effect functions and `try`, covering the control-flow tasks `Effect.gen` handles in TypeScript. `effect function*` produces Streams; plain `function*` keeps its JavaScript meaning.
 
-A function declaration keeps `function`: write `effect function load()` or `async function load()`. The removed shorthands `effect load()` and `async load()` report `EK0101`; the quick fix inserts `function`. Methods keep `effect load()` and `async load()`, as in TypeScript. Computed names work in classes and object literals too: `effect [key]() { … }`, `static effect [key]() { … }` and `effect [key]<T>(value: T) { … }`.
+A function declaration keeps `function`: write `effect function load()` or `async function load()`. The removed shorthands `effect load()` and `async load()` report `EK0101`; write `function`. Methods keep `effect load()` and `async load()`, as in TypeScript. Computed names work in classes and object literals too: `effect [key]() { … }`, `static effect [key]() { … }` and `effect [key]<T>(value: T) { … }`.
 
 `effect` and `async` remain identifiers outside their modifier positions. Expressions such as `effect as (Handler)` and `async satisfies (Handler)` keep TypeScript's assertion and checking rules.
 
-Typed `effect` arrows put their parameters in parentheses: `effect (x: number) => x`. Type parameters also require parentheses, as in `effect <T>(x: T) => x`. A bare typed or generic head reports `EK0109`, including with `--noCheck`; its quick fix inserts the parentheses and preserves the body and comments.
+Typed `effect` arrows put their parameters in parentheses: `effect (x: number) => x`. Type parameters also require parentheses, as in `effect <T>(x: T) => x`. A bare typed or generic head reports `EK0109`, including with `--noCheck`; write the parentheses and preserves the body and comments.
 
 Optional class methods use `effect read?() { … }` or `effect [key]?() { … }`, as `async` methods do.
 
@@ -16,11 +16,11 @@ A class can extend a value named `effect`: in `class Derived extends effect { }`
 
 `try` keeps native delegated iteration even when it is the function's only return. An unchecked empty iterable succeeds with `undefined`, an unchecked noniterable dies with its native `TypeError`, and iterator getters keep their evaluation order. An iterator getter on an `Effect` is still observed. Tail returns preserve the native error's `name` and `message`, including when a typed or generic operand receives an unchecked value.
 
-Comments do not supply a keyword: `export /* function */ effect load() { }` still needs `function` before `load`, and its quick fix preserves the comment.
+Comments do not supply a keyword: `export /* function */ effect load() { }` still needs `function` before `load`; retain that comment when adding the keyword.
 
 Pattern tests such as `effect is (Number)` and `async is (String)` keep their pattern meaning, including at the start of a statement. A method named `is` still uses `effect is(...) { ... }` or `async is(...) { ... }`.
 
-Write the `effect` keyword literally, as with `async`: Unicode escapes in a function modifier or an `effect` block report `TS1260`. The editor quick fix writes the literal keyword. An ordinary identifier named `effect` may still use Unicode escapes.
+Write the `effect` keyword literally, as with `async`: Unicode escapes in a function modifier or an `effect` block report `TS1260`. Write the literal keyword. An ordinary identifier named `effect` may still use Unicode escapes.
 
 ## Sequence computations
 

@@ -11,7 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const hrtimeDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const hrtimeDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 const hrtimeInjectionQuote = "Platform access is only through injected Effect services"
 const hrtimeExample = "Duration.toHrTime(try Clock.monotonicTimeNanos)"
 

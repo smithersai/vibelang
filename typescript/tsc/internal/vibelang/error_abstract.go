@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // VIP-13 and the relic ruling: retain the old abstract root as the native
@@ -13,11 +12,7 @@ var EK1308 = message(1308, warningCategory, "An abstract error root is a legacy 
 func init() {
 	registry[EK1308.Code] = EK1308
 	fileChecks = append(fileChecks, checkAbstractErrorRoots)
-	tsFormFixCodes = append(tsFormFixCodes, EK1308.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK1308.Code)
-	provider := *errorMemberClassFix
-	provider.ErrorCodes = []int32{EK1308.Code}
-	ls.RegisterCodeFixProvider(&provider)
+
 }
 
 func checkAbstractErrorRoots(c *checker.Checker, file *ast.SourceFile) {

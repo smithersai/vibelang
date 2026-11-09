@@ -12,7 +12,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 // toolsFreshOutcome runs the original in a fresh Node process at its original
@@ -40,38 +39,9 @@ func toolsCompile(t *testing.T, w *Workspace, target string, files map[string]st
 	return r
 }
 
-// toolsMemberRepairRuntime admits only the error-member rejection that has
-// an explicit equivalent class fix. Other invalid programs have no runtime
-// equivalence promise in this oracle.
-func toolsMemberRepairRuntime(r *Result) bool {
-	if r.EmitSkipped {
-		return false
-	}
-	found := false
-	for _, d := range r.Diagnostics {
-		if d.Category() != diagnostics.CategoryError {
-			continue
-		}
-		if !IsEK(d) || d.Code() != 1302 {
-			return false
-		}
-		found = true
-	}
-	return found
-}
-
 // toolsErrorFree reports whether a compilation reports no error and emitted.
 func toolsErrorFree(r *Result) bool {
 	return !r.EmitSkipped && !slices.ContainsFunc(r.Diagnostics, func(d *ast.Diagnostic) bool { return d.Category() == diagnostics.CategoryError })
-}
-
-// VIP-11 retires source that previously ran. EK1101 is its migration
-// diagnostic, so it must not exclude the old emit from the existing D372
-// Exit oracle. Every other error still makes an original non-runnable.
-func toolsTrailingBlockRunnable(r *Result) bool {
-	return !r.EmitSkipped && !slices.ContainsFunc(r.Diagnostics, func(d *ast.Diagnostic) bool {
-		return d.Category() == diagnostics.CategoryError && !(IsEK(d) && d.Code() == 1101)
-	})
 }
 
 // toolsSameOutcome compares Chapter 26 and D372's exits: "the same exit and
@@ -149,62 +119,6 @@ func toolsRunnableExports(r *Result) []toolsRunnable {
 	}
 	slices.SortFunc(entries, func(a, b toolsRunnable) int { return strings.Compare(a.file+":"+a.name, b.file+":"+b.name) })
 	return entries
-}
-
-// A toolsUnpermittedFix is a diagnostic that no permitted refusal explains,
-// with what the Preconditions refusal lacks: an explanation, or a quick fix
-// that --fix did not apply.
-type toolsUnpermittedFix struct {
-	diagnostic        *ast.Diagnostic
-	explains, offered bool
-}
-
-// toolsExplains reports whether a diagnostic carries an explanation beyond
-// its rule's message: a note with text in its message chain.
-func toolsExplains(d *ast.Diagnostic) bool {
-	return slices.ContainsFunc(d.MessageChain(), func(note *ast.Diagnostic) bool {
-		return strings.TrimSpace(note.String()) != "" || toolsExplains(note)
-	})
-}
-
-// toolsOffersQuickFix reports whether the language service offers a quick
-// fix for the diagnostic d of the file rel, the automatic fix that a refusal
-// under Chapter 28's Preconditions offers none of.
-func toolsOffersQuickFix(t *testing.T, w *Workspace, r *Result, rel string, d *ast.Diagnostic) bool {
-	t.Helper()
-	program := toolsProgram(w, r.Dir)
-	if program == nil {
-		t.Fatalf("cannot build the program of %s to ask for its quick fixes", r.Dir)
-	}
-	uri := toolsURI(r.Dir, rel)
-	service, _ := toolsService(w, program, toolsFileName(r.Dir, rel))
-	var offered bool
-	toolsRun(t, "FuzzFix", "code actions", Archive(r.Sources), nil, func() {
-		diagnostics, err := toolsDiagnostics(t.Context(), service, uri)
-		if err != nil {
-			t.Fatalf("diagnostics of %s: %v", rel, err)
-		}
-		lines := newToolsLines(d.File().Text())
-		start, end := lines.position(d.Pos()), lines.position(d.End())
-		for _, ld := range diagnostics {
-			if code, source := toolsDiagnosticCode(ld); code != d.Code() || source != "EK" || ld.Range.End.Line < start.Line || ld.Range.Start.Line > end.Line {
-				continue
-			}
-			response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: uri}, Range: ld.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{ld}}})
-			if err != nil {
-				t.Fatalf("code actions of %s: %v", rel, err)
-			}
-			if response.CommandOrCodeActionArray == nil {
-				continue
-			}
-			for _, action := range *response.CommandOrCodeActionArray {
-				if action.CodeAction != nil && action.CodeAction.Kind != nil && *action.CodeAction.Kind == lsproto.CodeActionKindQuickFix && action.CodeAction.Edit != nil {
-					offered = true
-				}
-			}
-		}
-	})
-	return offered
 }
 
 // toolsContracts returns the names of the contracts a declaration file
@@ -324,22 +238,3 @@ func toolsContractMismatch(t *testing.T, w *Workspace, before, after *Result, sa
 // `@rethrows` tags. In a .vibe file each is EK0406, whose fix removes it
 // (chapter 3, Thrown types: "is `EK0406`: remove it"), so D372 does not count it.
 var fixRemovedThrowsTag = regexp.MustCompile(`^/\*\*\s*(?:(?:@throws\s*\{[^}]*\}|@rethrows\s+\w+)\s*)+\*/$`)
-
-// A retired declaration still emits its former implementation for the Chapter
-// 7 migration oracle. Require that exact error, and refuse unrelated errors.
-func declarationRetirementRunnable(r *Result, code int32) bool {
-	if r.EmitSkipped {
-		return false
-	}
-	found := false
-	for _, d := range r.Diagnostics {
-		if d.Category() != diagnostics.CategoryError {
-			continue
-		}
-		if !IsEK(d) || d.Code() != code {
-			return false
-		}
-		found = true
-	}
-	return found
-}

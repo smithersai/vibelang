@@ -62,52 +62,6 @@ func TestEffectWrittenContainer(t *testing.T) {
 	}
 }
 
-func TestEffectWrittenContainerQuickFix(t *testing.T) {
-	for _, test := range []struct{ source, want string }{
-		{"export const f = effect (): any => 1", "export const f = effect () => 1"},
-		{"export const f = effect (): /*contract*/ unknown => 1", "export const f = effect () /*contract*/ => 1"},
-		{"export const f = effect (): /* \"contract\" */ unknown => 1", "export const f = effect () /* \"contract\" */ => 1"},
-		{"export const f = effect function(): unknown { return 1 }", "export const f = effect function() { return 1 }"},
-		{"export const o = { effect f(): unknown { return 1 } }", "export const o = { effect f() { return 1 } }"},
-		{"export class C { effect f(): any { return 1 } }", "export class C { effect f() { return 1 } }"},
-		{"export effect function f() /*head*/: /*contract*/ unknown { return 1 }", "export effect function f() /*head*/ /*contract*/ { return 1 }"},
-		{"export effect function f(): //contract\n unknown { return 1 }", "export effect function f() //contract\n { return 1 }"},
-		// A union of Effects becomes the one Effect of its joined channels, as
-		// TS1064 suggests Promise<string | number> for Promise<number> | Promise<string>.
-		{"export effect function f(): Effect.Effect<number> | Effect.Effect<string, TypeError> { return 1 }", "export effect function f(): (string | number)!TypeError { return 1 }"},
-		{"export const f = effect (): (number!!) | (number!RangeError) => 1", "export const f = effect (): number!RangeError => 1"},
-		{"export class C { effect f(): (number!TypeError) | (string!RangeError) { return 1 } }", "export class C { effect f(): (string | number)!(RangeError | TypeError) { return 1 } }"},
-	} {
-		t.Run(test.source, func(t *testing.T) {
-			got := applyQuickFixOf(t, test.source, EK0106.Code, diagnostics.CategoryError)
-			if got != test.want {
-				t.Fatalf("got %q, want %q", got, test.want)
-			}
-			program, file, _, _ := editorProgram(t, got)
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("fixed source reports %s %d: %s", d.Source(), d.Code(), d.String())
-				}
-			}
-		})
-	}
-}
-
-func TestEffectWrittenContainerBodylessFix(t *testing.T) {
-	source := "export effect function f(n: number): unknown;\nexport effect function f(n: number) { return n }"
-	want := strings.Replace(source, "): unknown;", "): unknown!!;", 1)
-	got := applyQuickFixOf(t, source, EK0106.Code, diagnostics.CategoryError)
-	if got != want {
-		t.Fatalf("bodyless signature must keep its contract: %q", got)
-	}
-	program, file, _, _ := editorProgram(t, got)
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Errorf("fixed overload reports %s %d: %s", d.Source(), d.Code(), d.String())
-		}
-	}
-}
-
 // EK0106's text names one repair. A broad annotation's repair removes the
 // annotation, so the message says only that; a narrow one's repair writes
 // T!!, and the message offers that or leaving the type out.

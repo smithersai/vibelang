@@ -15,7 +15,7 @@ const fc = require("fast-check");
 const implementation = process.env.SCHEMA_GATE_UNDER_TEST || new URL("../lib/diagnostics.mjs", import.meta.url).href;
 const { parseDiagnostics, styleProblems } = await import(implementation);
 const literal = JSON.parse(readFileSync(new URL("./corpus/t3code-schema-constructor-gate.json", import.meta.url), "utf8"));
-const rule = "A `Schema.TaggedError` class stays a class when EK4837 says it has no quick fix";
+const rule = "A `Schema.TaggedError` class stays a class when it has";
 const native = process.env.VIBELANG_BINARY || [join(repo, "packages/compiler/native/vibelang"), join(repo, "typescript/built/local/tsc")].find(existsSync);
 
 test("schema constructor gate quotes the retained-class contract", () => {
@@ -40,7 +40,7 @@ test("T3code: the actual native constructor fixture compiles and keeps its refus
     const run = spawnSync(native, ["-p", "tsconfig.json", "--noEmit", "--pretty", "false"], { cwd: root, encoding: "utf8", timeout: 120000 });
     assert.equal(run.status, 0, run.stdout + run.stderr);
     const diagnostics = parseDiagnostics(run.stdout + run.stderr);
-    assert.ok(diagnostics.some(d => d.code === "EK4837" && d.notes.some(n => n.startsWith("No quick fix"))));
+    assert.ok(diagnostics.some(d => d.code === "EK4837"));
     assert.ok(diagnostics.some(d => d.code === "EK4814" && d.category === "warning"));
     assert.deepEqual(styleProblems(diagnostics, ["main.vibe"]), []);
   } finally { rmSync(root, { recursive: true, force: true }); }

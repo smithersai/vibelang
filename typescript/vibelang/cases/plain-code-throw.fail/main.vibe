@@ -61,3 +61,10 @@ export const name = missing ?? throw new Bad({ why: "expression" })
 export function main() {
   return [new Port(1), new Gauge(), Registry, new Retry()]
 }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/002-running.md#meaning | A `throw` in a plain handler is `EK0401`, with the suggested spelling `catch effect (e) => { … }`, which makes the throw a typed failure.
+
+export effect function manualTypedFailure(program: number!string) {
+  return program catch effect (error) => { throw error }
+}

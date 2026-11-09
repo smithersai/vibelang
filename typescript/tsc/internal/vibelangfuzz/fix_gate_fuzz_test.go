@@ -2,29 +2,8 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"maps"
-	"os"
-	"path/filepath"
-	"slices"
 	"strings"
-	"testing"
 )
-
-// fixGateRule is the sentence of D291 that FuzzFixGate checks the gate of
-// vibelang --fix against.
-const fixGateRule = "A round's fixes are kept only when the edited program reports no error that the original did not, compared by file, code, and message: when the round as a whole would add one, each file's fixes are tried together, then one at a time, and each fix that adds an error is refused, named with its line and the first error it adds, and not tried again."
-
-// TestFixGateQuoted checks that the decision log still says what
-// FuzzFixGate quotes.
-func TestFixGateQuoted(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join(Root(), "docs/design/history/DECISIONS.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(data), fixGateRule) {
-		t.Fatalf("docs/design/history/DECISIONS.md no longer says, in D291: %q", fixGateRule)
-	}
-}
 
 // fixGateFiles are the files FuzzFixGate builds projects of, by key. Each
 // takes the index of its place in the input, so names do not collide.
@@ -90,32 +69,4 @@ func fixGateMatch(name string) string {
 		"    Match.orElse(() => \"other\"),\n" +
 		"  )\n" +
 		"}\n"
-}
-
-// fixGateProject builds the project input names, of up to six files, with
-// a main.vibe that imports none of them; nil when input names none.
-func fixGateProject(input string) map[string]string {
-	files := map[string]string{"main.vibe": "export const main = 1\n"}
-	for i, key := range strings.Split(input, ",") {
-		if i == 6 {
-			break
-		}
-		if key == "" {
-			continue
-		}
-		at := slices.IndexFunc(fixGateFiles, func(f struct {
-			key   string
-			files func(i int) map[string]string
-		}) bool {
-			return f.key == key
-		})
-		if at < 0 {
-			at = int(key[0]) % len(fixGateFiles)
-		}
-		maps.Copy(files, fixGateFiles[at].files(i))
-	}
-	if len(files) == 1 {
-		return nil
-	}
-	return files
 }

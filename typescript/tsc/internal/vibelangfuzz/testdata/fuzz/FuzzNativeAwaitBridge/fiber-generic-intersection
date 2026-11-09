@@ -1,3 +1,0 @@
-go test fuzz v1
-string("fiber-generic-intersection")
-uint8(3)

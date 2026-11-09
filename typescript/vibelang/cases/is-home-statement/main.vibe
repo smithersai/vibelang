@@ -42,3 +42,11 @@ export effect function main() {
     expressionStatement({ a: 3, b: 4 }),
   ]
 }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK0705` | an `is` lexical binding in an unbraced statement body (matching `TS1156`; add braces), or one that would need formal-parameter or catch-parameter initialization as its home; use an explicit local block preserving the intended result and call phase; also a binding in an `enum` member initializer, which has no lexical home | 7 | [Pattern matching](004-match.md#is-bindings-in-parameter-initialization) |
+
+export function explicitPatternHome(value: unknown) {
+  { if (value is { id: let id }) return id }
+  return undefined
+}

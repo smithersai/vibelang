@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // EK4842 (D475): an import of one of Effect's modules under the name of a
@@ -51,14 +50,10 @@ var globalModuleAliases = map[string][]string{
 func init() {
 	registry[EK4842.Code] = EK4842
 	tsFormMessages = append(tsFormMessages, EK4842)
-	tsFormFixCodes = append(tsFormFixCodes, EK4842.Code)
 	tsFormRules[EK4842.Code] = &tsFormRule{
-		message:   EK4842,
-		find:      findGlobalModuleImports,
-		plan:      globalImportRewrite,
-		diagnosed: isImportBindingName,
+		message: EK4842,
+		find:    findGlobalModuleImports,
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4842.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 // isImportBindingName reports whether node is the name an import specifier

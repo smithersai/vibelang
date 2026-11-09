@@ -11,7 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const netIPFamilyDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const netIPFamilyDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 const netIPFamilyInjectionQuote = "a `.vibe` file has no `node:*` value imports"
 const netIPFamilyExample = "Result.isSuccess(NetAddress.ipv4FromString(address)) ? 4 : Experimental.NetAddress.isIPv6(address) ? 6 : 0"
 

@@ -1,12 +1,7 @@
 package vibelang
 
 import (
-	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 func TestBangTypes(t *testing.T) {
@@ -61,52 +56,5 @@ func TestBangCompoundChannels(t *testing.T) {
 				t.Fatalf("printed compound Effect channel changes its grammar: got %q, want %q", actual, test.want)
 			}
 		})
-	}
-}
-
-func TestBangCompoundQuickFix(t *testing.T) {
-	head := "type Left = { readonly x: number }\n" +
-		"type Right = { readonly y: number }\n" +
-		"export type Program = "
-	source := head + "Effect.Effect<number | string, \"left\" | \"right\", Left & Right>\n"
-	want := head + "(number | string)!(\"left\" | \"right\")!(Left & Right)\n"
-	program, file, service, _ := editorProgram(t, source)
-	hover, err := service.ProvideHover(t.Context(), &lsproto.HoverParams{
-		TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-		Position:     lsproto.Position{Line: 2, Character: 13},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if hover.Hover == nil || hover.Hover.Contents.MarkupContent == nil ||
-		!strings.Contains(hover.Hover.Contents.MarkupContent.Value, "type Program = (string | number)!(\"left\" | \"right\")!(Left & Right)") {
-		t.Fatalf("compound public hover violates operand grammar: %+v", hover)
-	}
-	refused := false
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Code() == EK4833.Code {
-			refused = strings.Contains(diagnosticChainText(d), "No quick fix")
-		}
-	}
-	if refused {
-		// The same original manual spelling must still compile; no omitted
-		// input or inferred contract can make a refusal satisfy the writer test.
-		manual, manualFile, _, _ := editorProgram(t, want)
-		for _, d := range manual.GetSemanticDiagnostics(t.Context(), manualFile) {
-			if d.Category() == diagnostics.CategoryError {
-				t.Fatalf("manual grouped type: %s", d.String())
-			}
-		}
-		return
-	}
-	fixed := applyQuickFixOf(t, source, EK4833.Code, diagnostics.CategoryWarning)
-	if fixed != want {
-		t.Fatalf("compound quick fix violates Effect operand grammar: got %q, want %q", fixed, want)
-	}
-	program, file, _, _ = editorProgram(t, fixed)
-	for _, diagnostic := range program.GetSemanticDiagnostics(t.Context(), file) {
-		if diagnostic.Category() == diagnostics.CategoryError {
-			t.Fatalf("fixed type no longer checks: %s", diagnostic.String())
-		}
 	}
 }

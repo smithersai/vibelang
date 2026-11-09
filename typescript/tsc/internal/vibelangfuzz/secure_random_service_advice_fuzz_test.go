@@ -14,7 +14,7 @@ const secureRandomInjectionQuote = "Platform access is only through injected Eff
 
 func secureRandomServiceAdviceQuoted(t testing.TB) {
 	t.Helper()
-	chapterSays(t, "007-tooling.md", "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible.")
+	chapterSays(t, "007-tooling.md", "Every VibeLang diagnostic says what is wrong and how to fix it.")
 	text := SpecText("005-services.md")
 	for _, quote := range []string{secureRandomModuleQuote, secureRandomInjectionQuote} {
 		if !strings.Contains(text, quote) {

@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -42,29 +41,6 @@ func TestSchemaGenericTypeBindings(t *testing.T) {
 			}
 			if count != tc.count {
 				t.Errorf("EK2109 count = %d; want %d", count, tc.count)
-			}
-		})
-	}
-}
-
-func TestSchemaGenericTypeBindingQuickFix(t *testing.T) {
-	for _, source := range []string{
-		"type Array<T> = { value: T }; schema S = Array<number>",
-		"type Readonly<T> = { value: T }; schema S { values: Readonly<Record<string, number>> }",
-		"type Record<K,V> = { key: K; value: V }; schema S = Readonly<Record<string, number>>",
-		"type Array<T> = { value: T }; schema error Bad { values: Array<number> }",
-		"namespace N { type Array<T> = { value: T }; export schema S = Array<number> }",
-	} {
-		t.Run(source, func(t *testing.T) {
-			fixed := applyQuickFixOf(t, "export {};\n"+source+"\n", EK2109.Code, diagnostics.CategoryError)
-			if !strings.Contains(fixed, "Schema") {
-				t.Fatalf("missing explicit codec: %s", fixed)
-			}
-			program, file, _, _ := editorProgram(t, fixed)
-			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("fixed source reports %s%d: %s\n%s", d.Source(), d.Code(), d.String(), fixed)
-				}
 			}
 		})
 	}

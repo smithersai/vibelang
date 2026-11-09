@@ -8,7 +8,7 @@ import { chapter, read } from "./spec-witness.mjs"
 test("every owner of the plain-handler throw rule states EK0401, not the EK0511 warning", () => {
   const running = chapter("002-running")
   assert.match(running, /\| `x catch \(e\) => \{ throw e \}` \| plain function \| a compile error, `EK0401`; write `x catch effect \(e\) => \{ throw e \}` \|/)
-  assert.match(running, /A `throw` in a plain handler is `EK0401`, with the quick fix `catch effect \(e\) => \{ … \}`, which makes the throw a typed failure\./)
+  assert.match(running, /A `throw` in a plain handler is `EK0401`, with the suggested spelling `catch effect \(e\) => \{ … \}`, which makes the throw a typed failure\./)
   assert.doesNotMatch(running, /A `throw` caught inside the handler, or written in a nested function, does not warn\./)
   assert.doesNotMatch(chapter("007-tooling"), /^\| `EK0511` \|/m)
   const appendix = chapter("900-appendices")

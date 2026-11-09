@@ -60,10 +60,8 @@ var catchHandlerMessage = EK4835.With("{0} takes a handler; write a catch expres
 
 func init() {
 	tsFormRules[EK4835.Code] = &tsFormRule{
-		message:   EK4835,
-		find:      findCatchCombinators,
-		plan:      catchCombinatorRewrite,
-		diagnosed: ast.IsCallExpression,
+		message: EK4835,
+		find:    findCatchCombinators,
 	}
 }
 

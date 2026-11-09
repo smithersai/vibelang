@@ -44,11 +44,9 @@ func TestDiagnosticCodeNames(t *testing.T) {
 				t.Errorf("%s: got %q, want %s", path, got, test.name)
 			}
 		}
-		source, kind := "EK", lsproto.CodeActionKindQuickFix
+		source := "EK"
 		lsp := &lsproto.Diagnostic{Source: &source, Code: &lsproto.IntegerOrString{Integer: &test.code}}
-		if got := toolsActionKey(&lsproto.CodeAction{Kind: &kind}, lsp); got != test.name {
-			t.Errorf("quick fix key = %s, want %s", got, test.name)
-		}
+
 		if got := toolsDiagnosticKey(lsp); !strings.HasPrefix(got, test.name+" ") {
 			t.Errorf("LSP key = %s, want %s", got, test.name)
 		}

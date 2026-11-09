@@ -11,7 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const hashHexDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const hashHexDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 const hashHexInjectionQuote = "a `.vibe` file has no `node:*` value imports"
 const hashHexExample = "try (try Digest.Digest).digestHex(Digest.sha256, bytes)"
 

@@ -3,8 +3,6 @@ package vibelang
 import (
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 func TestSchemaReadonlyFieldReferenceFlags(t *testing.T) {
@@ -37,46 +35,6 @@ func TestSchemaReadonlyFieldReferenceInverseSafety(t *testing.T) {
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Source() == diagnosticSource && d.Code() == EK4832.Code {
 			t.Fatalf("unsafe inverse: %s", d.String())
-		}
-	}
-}
-
-func TestSchemaReadonlyFieldReferenceFix(t *testing.T) {
-	for _, source := range []string{
-		"const Mutable=Schema.mutableKey(Schema.Number)\nexport schema Direct { readonly value: Mutable; readonly maybe?: Mutable }\n",
-		"const Mutable=Schema.mutableKey(Schema.Number)\nnamespace N { const Schema=1; export schema Named { readonly value: Mutable } }\n",
-		"const Mutable=Schema.mutableKey(Schema.Number)\nexport abstract schema error Parent { id: string }\nexport schema error Child extends Parent { readonly child: { readonly value: Mutable } }\n",
-	} {
-		fixed := applyQuickFixOf(t, source, EK2109.Code, diagnostics.CategoryError)
-		if strings.Contains(source, "schema error Child extends") {
-			fixed = applyQuickFixOf(t, fixed, 2117, diagnostics.CategoryError)
-		}
-		program, file, _, _ := editorProgram(t, fixed)
-		for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-			if d.Category() == diagnostics.CategoryError {
-				t.Errorf("fixed source reports %s:\n%s", d.String(), fixed)
-			}
-		}
-	}
-}
-
-func TestSchemaReadonlyFieldReferenceSourceKeys(t *testing.T) {
-	source := "const Mutable=Schema.mutableKey(Schema.Number)\nconst key=Symbol(\"key\")\nconst dynamic:string=\"dynamic\"\nschema Keys {\n readonly \"a-b\": Mutable\n readonly 1: Mutable\n readonly [key]: Mutable\n readonly [dynamic]: Mutable\n readonly café: Mutable\n}\n"
-	program, file, _, _ := editorProgram(t, source)
-	count := 0
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Source() == diagnosticSource && d.Code() == EK2109.Code && strings.HasPrefix(d.String(), "A readonly schema field") {
-			count++
-		}
-	}
-	if count != 5 {
-		t.Fatalf("got %d quoted/numeric/computed/unicode key errors, want5", count)
-	}
-	fixed := applyQuickFixOf(t, source, EK2109.Code, diagnostics.CategoryError)
-	program, file, _, _ = editorProgram(t, fixed)
-	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Errorf("computed field fix reports %s:\n%s", d.String(), fixed)
 		}
 	}
 }

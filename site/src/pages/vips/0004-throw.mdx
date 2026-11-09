@@ -6,6 +6,8 @@ title: "VIP-4: throw, and calls that may throw"
 
 **Status:** accepted by Will, 2026-10-28.
 
+Before its first release, VibeLang ships no quick fixes or codemods of its own (PROC-29). TypeScript's built-in code fixes remain available.
+
 ## Decision
 
 ```ts
@@ -40,7 +42,7 @@ effect function load(id) {
 - A function type or interface member with no `@throws` admits only `never`. A call through `any` or `Function` throws `unknown`, and a union of callables throws the union of its alternatives. `new X()` is tracked; getters and setters are not.
 - **Amended 2026-10-29: contracts sit on call signatures.** `@throws` and `@rethrows` attach to a call signature, as TypeScript attaches JSDoc to each overload; a returned function's contract sits on its own signature. Declaration output writes the contract on every emitted call signature. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 38).
 - **Amended 2026-10-29: generated annotations.** The remaining annotations of `lib.d.ts` globals and effect 4.1.1's non-Effect exports are generated: `@throws {never}` only when the source has no `throw` reachable from well-typed input, a named class when one is known (`SchemaError`), otherwise `unknown`. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 40).
-- **Amended 2026-10-29: only two wrappers take a throwing thunk.** Only `Effect.try` and `Effect.tryPromise` admit a throwing thunk. `sync`, `promise`, `callback` and `suspend` take `LazyArg`, which has no `@throws`, so a throwing thunk there is a compile error with a quick fix to the matching wrapper. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 41).
+- **Amended 2026-10-29: only two wrappers take a throwing thunk.** Only `Effect.try` and `Effect.tryPromise` admit a throwing thunk. `sync`, `promise`, `callback` and `suspend` take `LazyArg`, which has no `@throws`, so a throwing thunk there is a compile error; use the matching wrapper. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 41).
 
 *Corrected 2026-10-29: in effect 4.1.1, `Schema.decodeUnknownSync(schema)` only builds a decoder and throws nothing; the decoder it returns is what throws `SchemaError`. The annotation amendment above means that returned decoder (found by the round-4 review).*
 

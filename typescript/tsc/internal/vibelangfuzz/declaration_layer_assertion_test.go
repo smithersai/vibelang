@@ -9,7 +9,7 @@ import (
 )
 
 func TestLayerAssertionDeclarationsQuoted(t *testing.T) {
-	TestMigrationDeclarationFixQuoted(t)
+	chapterSays(t, "001-functions.md", "Declarations are exactly what idiomatic Effect TypeScript would declare.")
 	chapterSays(t, "000-intro.md", "TypeScript's meaning outside Effect code.")
 	chapterSays(t, "001-functions.md", "Declarations are exactly what idiomatic Effect TypeScript would declare.")
 }

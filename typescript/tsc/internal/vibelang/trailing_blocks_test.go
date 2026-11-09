@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,12 +10,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -91,80 +85,6 @@ func TestTrailingBlockLeavesForkBlocks(t *testing.T) {
 	}
 }
 
-// The editor offers --fix's rewrite on EK1101.
-func TestTrailingBlockCodeAction(t *testing.T) {
-	source := trailingBlockPrelude + "export const live = Layer.effect(Users) { return { effect find(id: string) { return id } } }"
-	program, file, service, converters := editorProgram(t, source)
-	var diagnostic *ast.Diagnostic
-	for _, d := range program.GetSyntacticDiagnostics(t.Context(), file) {
-		if d.Code() == EK1101.Code {
-			diagnostic = d
-		}
-	}
-	if diagnostic == nil {
-		t.Fatal("no EK1101")
-	}
-	if want := "write the block as an argument, Layer.effect(Users, effect { … })"; !strings.Contains(diagnostic.String(), want) {
-		t.Fatalf("message %q lacks %q", diagnostic.String(), want)
-	}
-	d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
-	only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-	response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-		TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-		Range:        d.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{d}, Only: &only},
-	})
-	if err != nil || response.CommandOrCodeActionArray == nil {
-		t.Fatalf("no code action: %v", err)
-	}
-	for _, action := range *response.CommandOrCodeActionArray {
-		if action.CodeAction != nil && action.CodeAction.Title == "Pass the block as the call's last argument" {
-			return
-		}
-	}
-	t.Fatalf("actions %+v lack the rewrite", *response.CommandOrCodeActionArray)
-}
-
-// trailingBlockEmitShape compares these fixtures' executable structure,
-// ignoring printed comments and the equivalent single-return arrow body.
-// Runtime preservation is separately checked by FuzzFix's Exit oracle.
-func trailingBlockEmitShape(t *testing.T, text string) string {
-	t.Helper()
-	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/emit.js", PathKey: "/emit.js"}, text, core.ScriptKindJS)
-	if len(file.Diagnostics()) != 0 {
-		t.Fatalf("invalid JavaScript emit: %v", file.Diagnostics())
-	}
-	var shape strings.Builder
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		fmt.Fprintf(&shape, "(%v", n.Kind)
-		if ast.IsIdentifier(n) || ast.IsLiteralExpression(n) {
-			fmt.Fprintf(&shape, ":%q", n.Text())
-		}
-		var body, expression *ast.Node
-		if n.Kind == ast.KindArrowFunction {
-			body = n.Body()
-			if body.Kind == ast.KindBlock {
-				statements := body.AsBlock().Statements.Nodes
-				if len(statements) == 1 && statements[0].Kind == ast.KindReturnStatement {
-					expression = statements[0].Expression()
-				}
-			}
-		}
-		n.ForEachChild(func(child *ast.Node) bool {
-			if child == body && expression != nil {
-				visit(expression)
-			} else {
-				visit(child)
-			}
-			return false
-		})
-		shape.WriteByte(')')
-		return false
-	}
-	visit(file.AsNode())
-	return shape.String()
-}
-
 // legacyTrailingBlockErrorsOf checks the migration decoder rather than treating
 // retired syntax as an accepted ordinary program.
 func legacyTrailingBlockErrorsOf(t *testing.T, source string) []*ast.Diagnostic {
@@ -179,66 +99,6 @@ func legacyTrailingBlockErrorsOf(t *testing.T, source string) []*ast.Diagnostic 
 		}
 	}
 	return errors
-}
-
-// The program holds an unsaved editor snapshot; disk deliberately has no call.
-// Diagnostics and fixes must use the snapshot without writing to the disk.
-func TestTrailingBlockUnsavedCodeAction(t *testing.T) {
-	for _, test := range []struct{ source, want string }{
-		{"export const n = twice() { return 2 }", "export const n = twice(() => { return 2 })"},
-		{"export const live = Layer.effect(Users) { return { effect find(id: string) { return id } } }", "export const live = Layer.effect(Users, effect { return { effect find(id: string) { return id } } })"},
-		{"export const n = test(\"one\") { return 1 }", "export const n = test(\"one\", effect () => { return 1 })"},
-		{"export const n = twice() /* keep */ { return 2 }", ""},
-	} {
-		t.Run(test.source, func(t *testing.T) {
-			source := trailingBlockPrelude + test.source
-			program, file, service, converters := editorProgram(t, source)
-			// Equal line lengths make the editor coordinate fixture independent
-			// of the disk contents; every line on disk is only a comment.
-			lines := strings.Split(source, "\n")
-			for i, line := range lines {
-				if len(line) >= 2 {
-					lines[i] = "//" + strings.Repeat(" ", len(line)-2)
-				}
-			}
-			sentinel := strings.Join(lines, "\n")
-			if err := os.WriteFile(file.FileName().AsString(), []byte(sentinel), 0600); err != nil {
-				t.Fatal(err)
-			}
-			found := false
-			for _, diagnostic := range program.GetSyntacticDiagnostics(t.Context(), file) {
-				if diagnostic.Source() != diagnosticSource || diagnostic.Code() != EK1101.Code {
-					continue
-				}
-				found = true
-				actions, err := trailingBlockFix.GetCodeActions(t.Context(), &ls.CodeFixContext{
-					SourceFile: file, Span: diagnostic.Loc(), ErrorCode: EK1101.Code, Program: program, LS: service,
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if test.want == "" {
-					if len(actions) != 0 {
-						t.Fatalf("comment refusal changed: %+v", actions)
-					}
-				} else {
-					if len(actions) != 1 {
-						t.Fatalf("want one snapshot action, got %+v", actions)
-					}
-					if got := applyEditorEdits(t, file, converters, actions[0].Changes); got != trailingBlockPrelude+test.want {
-						t.Fatalf("snapshot rewrite:\n%s\nwant:\n%s", got, trailingBlockPrelude+test.want)
-					}
-				}
-			}
-			if !found {
-				t.Fatal("snapshot lost EK1101")
-			}
-			disk, err := os.ReadFile(file.FileName().AsString())
-			if err != nil || string(disk) != sentinel {
-				t.Fatalf("quick fix wrote the disk: %v", err)
-			}
-		})
-	}
 }
 
 func trailingBlockErrorsOf(t *testing.T, source string) []*ast.Diagnostic {

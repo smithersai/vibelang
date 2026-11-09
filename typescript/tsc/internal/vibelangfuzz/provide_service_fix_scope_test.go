@@ -1,38 +1,6 @@
 package vibelangfuzz
 
-import (
-	"os"
-	"strings"
-	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
-)
-
-const provideServiceFixMeaningQuote = "without changing the meaning of TypeScript-style source."
-const provideServiceFixLayerQuote = "which means `Layer.succeed(Key, value)`"
-
 var provideServiceFixScopeKeys = []string{"native", "alias", "qualified", "layer"}
-
-func TestProvideServiceFixScopeQuoted(t *testing.T) { provideServiceFixScopeQuoted(t) }
-func provideServiceFixScopeQuoted(t testing.TB) {
-	t.Helper()
-	for file, quote := range map[string]string{"007-tooling.md": provideServiceFixMeaningQuote, "005-services.md": provideServiceFixLayerQuote} {
-		text, err := os.ReadFile(SpecPath(file))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(string(text), quote) {
-			t.Fatalf("%s no longer says %q", file, quote)
-		}
-	}
-}
-func provideServiceFixDiagnostic(d *ast.Diagnostic) string {
-	text := d.String()
-	for _, child := range d.MessageChain() {
-		text += "\n" + provideServiceFixDiagnostic(child)
-	}
-	return text
-}
 
 // Native service provision leaves no Layer memo map. Layer provision creates
 // one. Both editor actions and --fix must preserve those pinned observations.

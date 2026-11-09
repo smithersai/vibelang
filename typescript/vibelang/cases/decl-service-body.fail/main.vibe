@@ -6,3 +6,11 @@ export service Users {
   }
   region = "eu"
 }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/005-services.md#static-rules | A bodyless `effect find(id: string): User!NotFound` or `async find(): Promise<User>` is `EK0902` | `EK0902` | as in a TypeScript `interface`, members declare a shape and have no implementation |
+
+service ManualSignature {
+  static readonly key = "manual-signature"
+  find(id: string): string
+}

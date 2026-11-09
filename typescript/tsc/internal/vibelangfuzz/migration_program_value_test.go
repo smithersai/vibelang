@@ -1,26 +1,5 @@
 package vibelangfuzz
 
-import (
-	"strings"
-	"testing"
-)
-
-const migrationProgramValueTarget = "FuzzMigrationProgramValue"
-const migrationProgramValueQuote = "`try e` is `yield* e`. It runs `e` and gives its success value."
-
-// A yield* whose success is itself a program gives that program as a value,
-// and try gives the same value, so --fix writes one for the other and the
-// program stays held until something runs it. --fix used to refuse every such
-// yield*: Smithers' ArtifactSweep held a guard's check and dropped others,
-// Route held a service's Liveness, opencode a helper's finalizer. The generator
-// then stayed, and the module's only errors were an unfixed EK1002 and the
-// TS2375 its any caused. The oracle compares the fixed module with the same
-// source as .ts: main's outcome counts each time the inner program ran.
-const migrationProgramValuePrelude = `import { Context, Effect, Layer } from "effect"
-let runs = 0
-const make = () => Effect.sync(() => Effect.sync(() => ++runs))
-`
-
 var migrationProgramValuePrograms = []struct{ key, source string }{
 	{"binding", "export const main = () => Effect.gen(function* () {\n  const inner = yield* make()\n  return yield* inner\n})\n"},
 	{"returned", "const get = () => Effect.gen(function* () {\n  return yield* make()\n})\nexport const main = () => Effect.gen(function* () {\n  const inner = yield* get()\n  return [runs, yield* inner, runs]\n})\n"},
@@ -34,10 +13,4 @@ var migrationProgramValuePrograms = []struct{ key, source string }{
 	{"service", "class Env extends Context.Service<Env, Effect.Effect<number>>()(\"Env\") {}\nexport const main = () => Effect.provide(Effect.gen(function* () {\n  const env = yield* Env\n  return [runs, yield* env]\n}), Layer.succeed(Env, Effect.sync(() => ++runs)))\n"},
 	{"iterated", "export const main = () => Effect.gen(function* () {\n  let total = 0\n  for (const step of [make(), make()]) {\n    const inner = yield* step\n    total += yield* inner\n  }\n  return total\n})\n"},
 	{"exit", "export const main = () => Effect.gen(function* () {\n  const exit = yield* Effect.exit(Effect.sync(() => ++runs))\n  return [exit._tag, runs]\n})\n"},
-}
-
-func TestMigrationProgramValueQuoted(t *testing.T) {
-	if chapter := SpecText("002-running.md"); !strings.Contains(chapter, migrationProgramValueQuote) {
-		t.Fatalf("Chapter 2 no longer says %q", migrationProgramValueQuote)
-	}
 }

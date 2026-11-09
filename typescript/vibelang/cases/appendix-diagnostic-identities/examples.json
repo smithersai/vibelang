@@ -181,14 +181,14 @@
   {
     "code": "EK9100",
     "host": true,
-    "testPath": "typescript/tsc/internal/ls/inferred_form_fix_test.go",
-    "testName": "TestInferredFormFix"
+    "testPath": "typescript/tsc/internal/ls/inferred_form_session_test.go",
+    "testName": "TestFormChoiceDidChange"
   },
   {
     "code": "EK9101",
     "host": true,
-    "testPath": "typescript/tsc/internal/ls/inferred_receiver_fix_test.go",
-    "testName": "TestInferredReceiverFix"
+    "testPath": "typescript/tsc/internal/ls/inferred_receiver_session_test.go",
+    "testName": "TestReceiverChoiceDidChange"
   },
   {
     "code": "EK9001",
@@ -809,7 +809,7 @@
     "code": "EK4838",
     "host": true,
     "testPath": "typescript/tsc/internal/vibelang/fork_escape_test.go",
-    "testName": "TestFiberFlowFixes"
+    "testName": "TestFiberFlows"
   },
   {
     "name": "appendix-archive-EK9209",

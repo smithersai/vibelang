@@ -2,7 +2,7 @@
 
 Any editor with an LSP client can run VibeLang's language server, `vibelang --lsp --stdio`: the compiler the project installs as `node_modules/.bin/vibelang`. It serves the `.vibe`, `.vibex`, `.ts` and `.tsx` files selected by the project configuration. VibeLang discovers `vibe.config.json`, `tsconfig.json`, then `jsconfig.json`. It reports diagnostics on request, through LSP 3.17 pull diagnostics (`textDocument/diagnostic`). A client that only accepts pushed diagnostics, such as Claude Code's, declares `publishDiagnostics` without `diagnostic`; the server then publishes each open file's diagnostics after every open, change and save.
 
-Retired `service class` and `layer` declarations report `EK0909` and `EK2121` as errors. Both diagnostics offer a quick fix when the rewrite preserves the declaration; changing warning settings does not make either spelling valid.
+Retired `service class` and `layer` declarations report `EK0909` and `EK2121` as errors. Changing warning settings does not make either spelling valid. Edit these declarations explicitly.
 
 ## 1. Check the server
 

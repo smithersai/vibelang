@@ -2,7 +2,7 @@ package vibelangfuzz
 
 // VIP-15 / detail 241: mutate the schema body's own field boundary while
 // retaining native TypeScript diagnostics in nested and alias types.
-const schemaFieldSeparatorQuote = "two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them (quick fix: insert `;`)"
+const schemaFieldSeparatorQuote = "two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them"
 
 func schemaFieldSeparatorRules() []dataRule {
 	return []dataRule{

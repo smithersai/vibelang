@@ -1,10 +1,7 @@
 package vibelang
 
 import (
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"strings"
 	"testing"
 )
 
@@ -40,26 +37,6 @@ func errorInheritanceSource(form, tag, body string) string {
 	return "import { Data, Schema } from \"effect\"\n" + base + "\nexport " + form + " Child extends Base " + body + "\n"
 }
 
-func TestErrorInheritanceQuickFix(t *testing.T) {
-	for _, form := range []string{"error", "schema error"} {
-		for _, body := range []string{"{}", "{ value: number }", "{ value?: number }", "{ get label(): string { return this.id } }"} {
-			source := errorInheritanceSource(form, `"Base" as string`, body)
-			t.Run(form+body, func(t *testing.T) {
-				fixed := applyQuickFixOf(t, source, 2117, diagnostics.CategoryError)
-				if !strings.Contains(fixed, "class Child extends") {
-					t.Fatalf("not a class: %s", fixed)
-				}
-				program, file, _, _ := editorProgram(t, fixed)
-				for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-					if d.Category() == diagnostics.CategoryError {
-						t.Errorf("%s\n%s", d.String(), fixed)
-					}
-				}
-			})
-		}
-	}
-}
-
 func TestErrorInheritanceNativeClassesUnaffected(t *testing.T) {
 	source := "import { Data } from \"effect\"; class Base extends Data.TaggedError(\"Base\" as string)<{readonly id:string}> {}; export class Child extends Base {}"
 	program, file, _, _ := editorProgram(t, source)
@@ -67,79 +44,6 @@ func TestErrorInheritanceNativeClassesUnaffected(t *testing.T) {
 		if d.Code() == 2117 {
 			t.Errorf("native class rejected: %s", d.String())
 		}
-	}
-}
-
-func TestErrorInheritanceNamespaceNamedSchema(t *testing.T) {
-	source := "import { Data } from \"effect\"; namespace Schema { export class Base extends Data.TaggedError(\"Base\" as string)<{readonly id:string}> {} }; export error Child extends Schema.Base { value:number }"
-	fixed := applyQuickFixOf(t, source, 2117, diagnostics.CategoryError)
-	program, file, _, _ := editorProgram(t, fixed)
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Errorf("%s\n%s", d.String(), fixed)
-		}
-	}
-}
-
-func TestErrorInheritanceQuickFixRefusesNarrowParent(t *testing.T) {
-	for _, form := range []string{"error", "schema error"} {
-		for _, tag := range []string{`"Base"`, `"Base" as "Base" | "Other"`} {
-			t.Run(form+tag, func(t *testing.T) {
-				source := errorInheritanceSource(form, tag, "{}")
-				program, file, service, _ := editorProgram(t, source)
-				program.GetSemanticDiagnostics(t.Context(), file)
-				var class *ast.Node
-				var visit func(*ast.Node) bool
-				visit = func(n *ast.Node) bool {
-					if f, _ := errorFormOf(n); f == errorFormSubclass || f == errorFormSchemaSubclass {
-						class = n
-					}
-					return n.ForEachChild(visit)
-				}
-				file.AsNode().ForEachChild(visit)
-				if class == nil {
-					t.Fatal("missing inherited class")
-				}
-				actions, err := errorInheritanceClassActions(t.Context(), &ls.CodeFixContext{SourceFile: file, Program: program, LS: service}, class)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if len(actions) != 0 {
-					t.Fatal("offered a class with an incompatible inherited tag")
-				}
-			})
-		}
-	}
-}
-
-func TestErrorInheritanceQuickFixRefusesWrongBaseFlavor(t *testing.T) {
-	for _, source := range []string{
-		"import { Data } from \"effect\"; class Base extends Data.TaggedError(\"Base\" as string)<{}> {}; schema error Child extends Base {}",
-		"import { Schema } from \"effect\"; class Base extends Schema.TaggedError<Base>()(\"Base\" as string, {}) {}; error Child extends Base {}",
-	} {
-		t.Run(source, func(t *testing.T) {
-			program, file, service, _ := editorProgram(t, source)
-			program.GetSemanticDiagnostics(t.Context(), file)
-			var class *ast.Node
-			var visit func(*ast.Node) bool
-			visit = func(n *ast.Node) bool {
-				if f, _ := errorFormOf(n); f == errorFormSubclass || f == errorFormSchemaSubclass {
-					class = n
-				}
-				return n.ForEachChild(visit)
-			}
-			file.AsNode().ForEachChild(visit)
-			if class == nil {
-				t.Fatal("missing inherited class")
-			}
-			actions, err := errorInheritanceClassActions(t.Context(), &ls.CodeFixContext{SourceFile: file, Program: program, LS: service}, class)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(actions) != 0 {
-				t.Fatal("offered a class using the wrong base flavor")
-			}
-		})
 	}
 }
 

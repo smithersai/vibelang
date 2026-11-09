@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const catchCompletionAPIQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
+const catchCompletionAPIQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func TestCatchCompletionDeclarationsQuoted(t *testing.T) {
 	chapterSays(t, "007-tooling.md", catchCompletionAPIQuote)

@@ -1,13 +1,11 @@
 package vibelang
 
 import (
-	"context"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // A VibeLang callable never throws (VIP-4, amended 2026-10-31; Will: "if you
@@ -27,9 +25,6 @@ var EK0406 = message(406, errorCategory, "{0} is not allowed in a VibeLang file:
 func init() {
 	registry[EK0406.Code] = EK0406
 	fileChecks = append(fileChecks, checkVibeThrowsTags)
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK0406.Code}, GetCodeActions: throwsTagFixActions})
-	tsFormFixCodes = append(tsFormFixCodes, EK0406.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK0406.Code)
 }
 
 func checkVibeThrowsTags(c *checker.Checker, file *ast.SourceFile) {
@@ -44,7 +39,6 @@ func checkVibeThrowsTags(c *checker.Checker, file *ast.SourceFile) {
 				seen[tag.Pos()] = true
 				d := reportAt(c, file, tagNameRange(tag), EK0406, "@"+tag.TagName().Text())
 				note(d, "Remove the tag. An effect function writes its failures in its error type, such as number!NotFound; code that throws belongs in a .ts file, whose @throws tags VibeLang reads.")
-				note(d, "No automatic fix: the tag is part of a comment. Remove it manually while retaining the documentation.")
 			}
 		}
 		return n.ForEachChild(visit)
@@ -61,13 +55,6 @@ func isContractTag(tag *ast.Node) bool {
 // tagNameRange is the range of @name at the start of tag.
 func tagNameRange(tag *ast.Node) core.TextRange {
 	return core.NewTextRange(tag.Pos(), tag.TagName().End())
-}
-
-// throwsTagFixActions refuses to rewrite documentation automatically.
-func throwsTagFixActions(_ context.Context, _ *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-	// Chapter 7 / VIP-34: the annotation is part of an author's comment.
-	// Removing it needs an explicit documentation edit.
-	return nil, nil
 }
 
 // contractTagRemoval returns the range of text that removing tag from

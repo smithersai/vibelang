@@ -1,0 +1,18 @@
+import { Effect } from "effect"
+import { formatName, type User } from "./helpers.ts"
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws | For `EK0403`, an explicit synchronous defect bridge is `try Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`.
+// rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws | It preserves the thrown value as a defect without widening `E`.
+// rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws | When manually bridging a foreign type-predicate, preserve the narrowed value and check whether its type includes `undefined` before using `undefined` as a sentinel.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code; write an explicit `Effect.try` bridge ([Failures](003-failures.md#plain-code-never-throws)) | 4 | [Failures](003-failures.md#calls-in-effect-code) |
+
+export effect function manualDefectBridge(user: User): string!! {
+  return try Effect.orDie(Effect.try({ try: () => formatName(user), catch: (error) => error }))
+}
+export function isMissing(value: unknown): value is undefined { return value === undefined }
+export function preserveNarrowedValue(value: string | undefined):
+  { matched: true; value: undefined } | { matched: false; value: string } {
+  if (isMissing(value)) return { matched: true, value }
+  return { matched: false, value }
+}

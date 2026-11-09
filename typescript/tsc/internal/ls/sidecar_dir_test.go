@@ -59,7 +59,7 @@ func TestLanguageServiceResolvesVibeSourceInBothSidecarModes(t *testing.T) {
 			converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
 				return lsconv.ComputeLSPLineStarts(files[string(name)])
 			})
-			service := ls.NewLanguageService(nil, p, retiredModulesHost{trustedFixHost: trustedFixHost{converters: converters}, files: files}, "/project/src/main.ts")
+			service := ls.NewLanguageService(nil, p, retiredModulesHost{snapshotTestHost: snapshotTestHost{converters: converters}, files: files}, "/project/src/main.ts")
 			position, _ := converters.ToLSPPosition(file, core.TextPos(strings.LastIndex(main, "greet")))
 			definition, err := service.ProvideDefinition(t.Context(), lsconv.FileNameToDocumentURI(file.FileName()), position)
 			if err != nil {

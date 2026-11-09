@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -80,15 +79,4 @@ func platformCallProgram(t *testing.T, dir string) *compiler.Program {
 		t.Fatal(errors)
 	}
 	return compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
-}
-
-func platformCallProblems(t *testing.T, dir string) []string {
-	t.Helper()
-	var errs []string
-	for _, d := range platformCallProgram(t, dir).GetSemanticDiagnostics(t.Context(), nil) {
-		if d.Category() == errorCategory || d.Code() == EK4402.Code {
-			errs = append(errs, fmt.Sprintf("TS%d %s", d.Code(), d.String()))
-		}
-	}
-	return errs
 }

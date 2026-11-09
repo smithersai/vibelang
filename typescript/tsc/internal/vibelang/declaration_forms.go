@@ -1,14 +1,11 @@
 package vibelang
 
 import (
-	"context"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -32,14 +29,9 @@ var (
 
 func init() {
 	registry[EK0909.Code] = EK0909
-	tsFormFixCodes = append(tsFormFixCodes, EK0909.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK0909.Code)
 	registry[EK2120.Code] = EK2120
 	registry[EK2121.Code] = EK2121
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK2121.Code)
 	fileChecks = append(fileChecks, checkDeclarationSpelling)
-	ls.RegisterCodeFixProvider(serviceClassFix)
-	ls.RegisterCodeFixProvider(layerDeclarationFix)
 }
 
 // declarationWordRange returns the range of the word service or control that
@@ -119,184 +111,6 @@ func checkDeclarationSpelling(c *checker.Checker, file *ast.SourceFile) {
 		return n.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-}
-
-// serviceClassFix is EK2120's quick fix: it replaces service class or control
-// class, which the diagnostic spans, with the word alone.
-var serviceClassFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK2120.Code, EK0909.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		text := fix.SourceFile.Text()
-		if fix.Diagnostic == nil || fix.Span.End() > len(text) {
-			return nil, nil
-		}
-		span := text[fix.Span.Pos():fix.Span.End()]
-		lex := scanner.NewScanner()
-		lex.SetText(span)
-		lex.Scan()
-		word := lex.TokenText()
-		if word != "service" && word != "control" {
-			return nil, nil
-		}
-		if lex.Scan() != ast.KindClassKeyword {
-			return nil, nil
-		}
-		classStart := lex.TokenStart()
-		if lex.Scan() != ast.KindEndOfFile {
-			return nil, nil
-		}
-		// The diagnostic covers both keywords. Retain the trivia between
-		// them, including comments, and remove only the class token.
-		replacement := strings.TrimSpace(span[:classStart])
-		return []*ls.CodeAction{{
-			Description: "Write " + word + " without class",
-			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: replacement}},
-		}}, nil
-	},
-}
-
-// layerDeclarationFix is EK2121's quick fix: it rewrites the layer declaration
-// whose word layer the diagnostic marks into the call it abbreviates.
-var layerDeclarationFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK2121.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		file := fix.SourceFile
-		var statement *ast.Node
-		var find func(n *ast.Node) bool
-		find = func(n *ast.Node) bool {
-			if call := layerDeclarationCall(n); call != nil && call.Expression().Expression().Pos() == fix.Span.Pos() {
-				statement = n
-				return true
-			}
-			return n.ForEachChild(find)
-		}
-		file.AsNode().ForEachChild(find)
-		if statement == nil {
-			return nil, nil
-		}
-		// The parser's Layer is intrinsic. Source text must resolve to the
-		// same namespace, or the rewrite would capture a user's local Layer.
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
-		defer done()
-		c.GetDiagnostics(ctx, file)
-		visible := c.ResolveName("Layer", statement, ast.SymbolFlagsValue|ast.SymbolFlagsNamespace|ast.SymbolFlagsAlias, false)
-		expected := preludeSymbol(c, preludeStateOf(c), file, "Layer")
-		if visible == nil || expected == nil || c.GetTypeOnlyAliasDeclaration(visible) != nil {
-			return nil, nil
-		}
-		if visible.Flags()&ast.SymbolFlagsAlias != 0 {
-			visible = c.GetAliasedSymbol(visible)
-		}
-		if expected.Flags()&ast.SymbolFlagsAlias != 0 {
-			expected = c.GetAliasedSymbol(expected)
-		}
-		if visible != expected {
-			return nil, nil
-		}
-		replacement, ok := layerDeclarationText(file, statement)
-		if !ok {
-			return nil, nil
-		}
-		start := scanner.SkipTrivia(file.Text(), statement.Pos())
-		return []*ls.CodeAction{{
-			Description: "Rewrite the layer declaration as a Layer call",
-			Changes: []*lsproto.TextEdit{{
-				Range:   lsproto.Range{Start: lspPosition(file, start), End: lspPosition(file, statement.End())},
-				NewText: replacement,
-			}},
-		}}, nil
-	},
-}
-
-// lspPosition converts an offset in file to an LSP position.
-func lspPosition(file *ast.SourceFile, pos int) lsproto.Position {
-	line, character := scanner.GetECMALineAndUTF16CharacterOfPosition(file, pos)
-	return lsproto.Position{Line: uint32(line), Character: uint32(character)}
-}
-
-// layerDeclarationText writes statement, a layer declaration, as the call it
-// abbreviates:
-//
-//	export const UsersLive = Layer.effect(Users, effect {
-//	  const seen = new Set<string>()
-//	  return {
-//	    find(id) { ... },
-//	    region: "eu"
-//	  }
-//	})
-//
-// or, without setup statements, export const DirectoryLive = Layer.succeed(Directory, { ... }).
-func layerDeclarationText(file *ast.SourceFile, statement *ast.Node) (string, bool) {
-	text := file.Text()
-	call := layerDeclarationCall(statement)
-	args := call.Arguments()
-	if len(args) != 2 {
-		return "", false
-	}
-	start := scanner.SkipTrivia(text, statement.Pos())
-	word := call.Expression().Expression().Loc
-	prefix := text[start:word.Pos()] // modifiers such as export, with their spacing
-	indent := lineIndent(text, start)
-	declaration := statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
-	name := sourceText(file, declaration.Name())
-	service := sourceText(file, args[0])
-
-	var statements []*ast.Node
-	object := args[1]
-	if ast.IsArrowFunction(args[1]) {
-		body := args[1].Body().AsBlock().Statements.Nodes
-		if len(body) == 0 || !ast.IsReturnStatement(body[len(body)-1]) || body[len(body)-1].Expression() == nil {
-			return "", false
-		}
-		statements = body[:len(body)-1]
-		object = body[len(body)-1].Expression()
-	}
-	if !ast.IsObjectLiteralExpression(object) {
-		return "", false
-	}
-	var members []string
-	for _, member := range object.AsObjectLiteralExpression().Properties.Nodes {
-		switch {
-		case ast.IsPropertyAssignment(member):
-			members = append(members, sourceText(file, member.Name())+": "+sourceText(file, member.Initializer()))
-		default:
-			members = append(members, sourceText(file, member))
-		}
-	}
-
-	var b strings.Builder
-	b.WriteString(prefix)
-	b.WriteString("const " + name + " = ")
-	if len(statements) == 0 {
-		b.WriteString("Layer.succeed(" + service + ", {\n")
-		writeMembers(&b, members, indent+"  ", "")
-		b.WriteString(indent + "})")
-		return b.String(), true
-	}
-	b.WriteString("Layer.effect(" + service + ", effect {\n")
-	for _, s := range statements {
-		b.WriteString(indent + "  " + sourceText(file, s) + "\n")
-	}
-	b.WriteString(indent + "  return {\n")
-	writeMembers(&b, members, indent+"    ", "  ")
-	b.WriteString(indent + "  }\n")
-	b.WriteString(indent + "})")
-	return b.String(), true
-}
-
-// writeMembers writes members, one per line at indent and separated by
-// commas, adding extra to the indentation of their continuation lines.
-func writeMembers(b *strings.Builder, members []string, indent string, extra string) {
-	for i, member := range members {
-		member = strings.ReplaceAll(member, "\n", "\n"+extra)
-		b.WriteString(indent + member)
-		if i < len(members)-1 {
-			b.WriteString(",")
-		}
-		b.WriteString("\n")
-	}
 }
 
 // sourceText returns node's text in file, without leading trivia.

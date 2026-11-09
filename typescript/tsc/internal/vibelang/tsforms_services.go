@@ -45,10 +45,6 @@ func init() {
 	tsFormRules[EK4831.Code] = &tsFormRule{
 		message: EK4831,
 		find:    findServiceClasses,
-		plan: func(c *checker.Checker, file *ast.SourceFile, at *ast.Node) *formRewrite {
-			return serviceClassRewrite(c, file, at.Parent)
-		},
-		diagnosed: isClassName,
 	}
 }
 

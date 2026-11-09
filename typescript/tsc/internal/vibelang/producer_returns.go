@@ -1,11 +1,8 @@
 package vibelang
 
 import (
-	"context"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
@@ -26,8 +23,6 @@ var EK2128 = message(parser.ProducerReturnValueCode, errorCategory, parser.Produ
 func init() {
 	registry[EK2128.Code] = EK2128
 	fileChecks = append(fileChecks, checkProducerReturns)
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK2128.Code}, GetCodeActions: producerReturnFixActions})
-	tsFormFixCodes = append(tsFormFixCodes, EK2128.Code)
 }
 
 // producerReturns calls f with each `return value` of each producer in file and
@@ -90,31 +85,5 @@ func checkProducerReturns(c *checker.Checker, file *ast.SourceFile) {
 			note(d, "A JavaScript caller can read a plain function*'s return value; mark the function effect if it is a producer.")
 			return
 		}
-		note(d, "Its quick fix writes {0}.", producerReturnRewrite(c, file, ret))
 	})
-}
-
-// producerReturnRewrite is the statement that ends the stream and keeps the
-// dropped value's evaluation.
-func producerReturnRewrite(c *checker.Checker, file *ast.SourceFile, ret *ast.Node) string {
-	if stableValue(c, ret.Expression()) {
-		return "return"
-	}
-	return "{ " + nodeText(file, ret.Expression()) + "; return }"
-}
-
-func producerReturnFixActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-	defer done()
-	var actions []*ls.CodeAction
-	producerReturns(c, fix.SourceFile, func(producer, ret *ast.Node) {
-		if isMarkedEffect(producer) && len(actions) == 0 && nodeStart(fix.SourceFile, ret.Expression()) == fix.Span.Pos() {
-			end := ret.End()
-			if text := fix.SourceFile.Text(); end > 0 && text[end-1] == ';' {
-				end--
-			}
-			actions = append(actions, &ls.CodeAction{Description: "End the stream without a value", Changes: replaceRange(fix, nodeStart(fix.SourceFile, ret), end, producerReturnRewrite(c, fix.SourceFile, ret))})
-		}
-	})
-	return actions, nil
 }

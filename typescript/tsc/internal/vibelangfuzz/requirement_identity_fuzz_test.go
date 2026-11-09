@@ -3,17 +3,9 @@ package vibelangfuzz
 import (
 	"fmt"
 	"strings"
-	"testing"
 )
 
 const requirementIdentityTarget = "FuzzRequirementIdentity"
-const requirementIdentityQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
-
-func TestRequirementIdentityQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("007-tooling.md"), requirementIdentityQuote) {
-		t.Fatalf("chapter 007 no longer says %q", requirementIdentityQuote)
-	}
-}
 
 var requirementIdentityKeys = []string{"alias", "namespace", "collision", "two-services", "private", "generic", "local"}
 

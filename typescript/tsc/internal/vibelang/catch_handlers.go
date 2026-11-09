@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
 	"strconv"
 	"strings"
@@ -10,8 +9,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -77,9 +74,6 @@ func init() {
 		return d.Source() == diagnosticSource && recoverableSyntaxCodes[d.Code()] || recoverableNativeSyntax(d)
 	})
 	registry[EK0509.Code] = EK0509
-	tsFormFixCodes = append(tsFormFixCodes, EK0509.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK0509.Code)
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK0509.Code}, GetCodeActions: catchHandlerActions})
 }
 
 // malformedCatchHandler returns the handler of a catch expression the parser
@@ -358,36 +352,6 @@ func catchHandlerNeedsParentheses(call *ast.Node) bool {
 		return outer != nil && outer.Arguments()[0] == parent
 	}
 	return false
-}
-
-func catchHandlerActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-	var call, handler *ast.Node
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if found := catchExpressionOf(n); found != nil {
-			_, fallback := catchParts(found)
-			if h := malformedCatchHandler(found, fallback); h != nil && scanner.SkipTrivia(fix.SourceFile.Text(), h.Pos()) == fix.Span.Pos() && h.End() == fix.Span.End() {
-				call, handler = found, h
-				return true
-			}
-		}
-		return n.ForEachChild(visit)
-	}
-	fix.SourceFile.AsNode().ForEachChild(visit)
-	if handler == nil {
-		return nil, nil
-	}
-	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-	defer done()
-	edits, text := catchHandlerRepair(c, fix.SourceFile, call, handler)
-	if len(edits) == 0 {
-		return nil, nil
-	}
-	var changes []*lsproto.TextEdit
-	for _, edit := range edits {
-		changes = append(changes, replaceRange(fix, edit.Pos(), edit.End(), edit.NewText)...)
-	}
-	return []*ls.CodeAction{{Description: "Write the handler as " + text, Changes: changes}}, nil
 }
 
 // catchNativeKeywordRefusal keeps the result a valid plain handler when the

@@ -1,3 +1,0 @@
-go test fuzz v1
-string("ambient-nested-callable-control")
-byte(0)

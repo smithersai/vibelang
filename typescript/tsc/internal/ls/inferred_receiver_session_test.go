@@ -1,6 +1,7 @@
 package ls_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
@@ -66,17 +67,10 @@ func TestReceiverChoiceDidChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	applied := false
-	for _, a := range *response.CommandOrCodeActionArray {
-		if a.CodeAction != nil && a.CodeAction.Title == "Annotate as the fork infers" {
-			applyTrustedAction(t, files, a.CodeAction)
-			applied = true
-			break
-		}
+	if response.CommandOrCodeActionArray != nil && len(*response.CommandOrCodeActionArray) != 0 {
+		t.Fatal("VibeLang offered an automatic annotation")
 	}
-	if !applied {
-		t.Fatal("no annotation action")
-	}
+	files[name] = strings.Replace(source, "const todos = work(1)", "const todos: ReadonlyArray<number> = work(1)", 1)
 	session.DidChangeFile(t.Context(), uri, 2, []lsproto.TextDocumentContentChangePartialOrWholeDocument{{WholeDocument: &lsproto.TextDocumentContentChangeWholeDocument{Text: files[name]}}})
 	changed := get()
 	for _, d := range report(changed, uri) {

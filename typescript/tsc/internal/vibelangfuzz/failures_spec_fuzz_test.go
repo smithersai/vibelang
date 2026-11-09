@@ -400,7 +400,7 @@ func failuresCases() []*failCase {
 	}{{"error", 13}, {"schema error", 29}} {
 		for i, next := range []string{" ⟦b⟧: string", " /* gap */ ⟦b⟧?: string", "\t⟦readonly⟧ b: string", " ⟦get⟧ b() { return 1 }", " ⟦describe⟧() { return 1 }"} {
 			add(&failCase{Name: fmt.Sprintf("%s-missing-separator-%d", strings.ReplaceAll(form.prefix, " ", "-"), i), Chapter: failuresChapter, VIP: form.vip, Owner: "impl-hunt-fail", Host: "none", Code: 1306, OneDiagnostic: true,
-				Quote: "| two members on one line with no separator, in either error form; write `;` or a line break between them (quick fix: insert `;`) | `EK1306` |",
+				Quote: "| two members on one line with no separator, in either error form; write `;` or a line break between them | `EK1306` |",
 				Decls: "export " + form.prefix + " E { a: number" + next + " }"})
 		}
 	}
@@ -414,7 +414,7 @@ func failuresCases() []*failCase {
 		} {
 			add(&failCase{Name: strings.ReplaceAll(form.prefix, " ", "-") + "-" + member.key + "-missing-separator",
 				Chapter: failuresChapter, VIP: form.vip, Owner: "impl-hunt-fail", Host: "none", Code: 1306, OneDiagnostic: true,
-				Quote: "| two members on one line with no separator, in either error form; write `;` or a line break between them (quick fix: insert `;`) | `EK1306` |",
+				Quote: "| two members on one line with no separator, in either error form; write `;` or a line break between them | `EK1306` |",
 				Decls: "declare const dec: any; export " + form.prefix + " E { " + member.source + " }"})
 		}
 	}

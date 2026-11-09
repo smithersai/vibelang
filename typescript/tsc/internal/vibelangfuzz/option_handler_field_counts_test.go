@@ -5,7 +5,9 @@ import (
 	"testing"
 )
 
-func TestOptionHandlerFieldCountsQuoted(t *testing.T) { TestOptionMatchFixQuoted(t) }
+func TestOptionHandlerFieldCountsQuoted(t *testing.T) {
+	chapterSays(t, "001-functions.md", "Declarations are exactly what idiomatic Effect TypeScript would declare.")
+}
 
 // Do not let a missing Effect dependency or an already-invalid input turn the
 // editor regression into a no-op. Every retained shape must compile and reach

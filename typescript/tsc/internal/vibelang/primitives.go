@@ -138,29 +138,6 @@ func isCauseVariable(declaration *ast.Node) bool {
 	return name != nil && name.Kind == ast.KindIdentifier && name.Flags&ast.NodeFlagsReparsed != 0 && name.Text() == "$cause"
 }
 
-// hasPrimitiveStatement reports whether fn's own body has an interruption
-// block, a catch clause typed Cause, or `finally (exit)`, which make it an
-// Effect.
-func hasPrimitiveStatement(fn *ast.Node) bool {
-	if fn.Body() == nil {
-		return false
-	}
-	var visit func(n *ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if isFunctionBoundary(n) {
-			return false
-		}
-		if maskWord(n) != "" {
-			return true
-		}
-		if n.Kind == ast.KindTryStatement && (isCauseCatch(n) || exitBinding(n.AsTryStatement().FinallyBlock) != nil) {
-			return true
-		}
-		return n.ForEachChild(visit)
-	}
-	return visit(fn.Body())
-}
-
 // primitiveTypes is what one checker remembers about effect's Cause interface.
 type primitiveTypes struct {
 	cause         *checker.Type

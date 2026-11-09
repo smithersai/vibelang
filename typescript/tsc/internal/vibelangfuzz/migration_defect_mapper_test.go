@@ -5,19 +5,7 @@ import (
 	"testing"
 )
 
-const migrationDefectMapperTarget = "FuzzMigrationDefectMapper"
-const migrationDefectMapperQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
-const migrationDefectMapperContract = "export function validateGlob(pattern: string): string | undefined { return pattern === \"valid\" ? undefined : \"bad\" }\n" + `
-export type Input<T> = T | { readonly deferred: () => T };
-export const isResolved = <T>(v:Input<T>):v is T => !hasUnresolved(v);
-const hasUnresolved=(v:unknown):boolean => v!==null && typeof v==="object" && ("deferred" in v || Object.values(v).some(hasUnresolved));
-export const havePropsChanged=(a:object,b:object)=>JSON.stringify(a)!==JSON.stringify(b);
-export function makeNews(mode: number): object {
-  if (mode === 1) return Object.defineProperty({}, "value", { enumerable: true, get() { throw "getter defect" } });
-  if (mode === 2) return { value: 1n };
-  return { value: 1 };
-}
-`
+const migrationDefectMapperQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 var migrationDefectMapperPrograms = []struct{ key, source string }{
 	{"alchemy-success", "import { isResolved, havePropsChanged, makeNews } from \"./contract.js\"\nexport const main = () => Effect.gen(function* () { const news = makeNews(0); if (!isResolved(news)) return undefined; return havePropsChanged({}, news) ? \"update\" : \"noop\" })\n"},

@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // EK1301 (VIP-13, VIP-29; chapter 3 static rules, first row): a constructor
@@ -16,11 +15,7 @@ var EK1301 = message(1301, errorCategory, "An error declaration cannot have a co
 func init() {
 	registry[EK1301.Code] = EK1301
 	fileChecks = append(fileChecks, checkErrorConstructors)
-	tsFormFixCodes = append(tsFormFixCodes, EK1301.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK1301.Code)
-	provider := *errorMemberClassFix
-	provider.ErrorCodes = []int32{EK1301.Code}
-	ls.RegisterCodeFixProvider(&provider)
+
 }
 
 func checkErrorConstructors(c *checker.Checker, file *ast.SourceFile) {
@@ -31,8 +26,7 @@ func checkErrorConstructors(c *checker.Checker, file *ast.SourceFile) {
 		if restrictedEffectMember(member) {
 			continue
 		}
-		d := report(c, member, EK1301)
-		note(d, "Keep the constructor in an Effect TypeScript class: the quick fix rewrites the declaration as one.")
+		report(c, member, EK1301)
 	}
 }
 

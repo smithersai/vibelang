@@ -7,7 +7,7 @@ import (
 )
 
 const crossConfigTarget = "FuzzPreludeCrossConfigTypes"
-const crossConfigQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
+const crossConfigQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 const crossConfigMeaningQuote = "Written imports, local or ambient types, type parameters, already qualified exports and a namespace's own members keep their TypeScript meaning."
 
 func TestPreludeCrossConfigTypesQuoted(t *testing.T) { crossConfigQuoted(t) }

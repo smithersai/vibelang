@@ -11,7 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const clockOriginDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const clockOriginDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 const clockOriginInjectionQuote = "Platform access is only through injected Effect services"
 const clockOriginExample = "Number((try Clock.monotonicTimeNanos) - startNanos) / 1e6"
 

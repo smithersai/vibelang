@@ -33,8 +33,6 @@ Organize Imports and Remove Unused Imports keep type-only bindings used by gener
 
 A retired `select` block still reports `EK4607`, while Find References, hover, Rename and call hierarchy follow its written callees and bindings. This includes empty arms and defaults before later cases.
 
-The `EK0401` quick fix that makes a function effectful and uses `die` keeps written statement separators and comments, so a following statement or `else` stays separate.
-
 The editor outline gives each `module` declaration its own entry, including a second declaration whose duplicate name reports `EK4005`, so every written name remains available for navigation.
 
 For GitHub highlighting, add `*.vibe linguist-language=TypeScript` to `.gitattributes`; the starter's `.gitattributes` already has this line. Effect's type-aware lint rules, `@effect/tsgo`'s `effecttsgo/*` rules, are built into `vibelang`: see [Lint Effect code](../setup/vibelang-cli.md#lint-effect-code).
@@ -99,14 +97,6 @@ Use a throw statement to fail an Effect: `if (value === undefined) throw new Mis
 
 The server exposes TypeScript completions through the VibeLang checker, service member types included. Catch-specific completions are not implemented. Other diagnostic messages suggest repairs as text. Use an effect function and `try` for VibeLang sequencing.
 
-The `EK0501` editor quick fix marks an ordinary function `effect`, so callers receive an unrun Effect. Header comments stay unchanged while the modifier is added before the declaration’s `function` keyword.
-
-For `EK0801`, the resource quick fix moves a direct `using` declaration and the rest of its Effect callable into `scoped`, with `acquireDisposable` for acquisition. It withholds the action when an earlier closure, hoisted reference or type reference needs a declaration that would move into the new block. Move the dependent code together when writing the conversion by hand. The action also stays unavailable when the moved code needs the ambient `Scope`, or its requirements are still generic and could include `Scope`: the new `scoped` would consume that requirement. Broad requirements such as `object`, `{}` or an empty interface also prevent the action because their Effect can still read the caller’s scope. A concrete unrelated requirement remains eligible. A `Scope` use before the declaration, a locally provided scope, or an unrun nested Effect does not prevent the edit.
-
-The `EK0801` resource action keeps initializer names: an anonymous class, function or arrow initializer has no automatic conversion when the acquisition callback would erase its inferred name. A class can observe that name while its static fields initialize, so setting `.name` afterward is insufficient.
-
-The resource action groups object initializers through `as`, `satisfies` and non-null `!` wrappers, so acquisition still returns the object. Acquisition uses an explicit `effect { … }` block, preserving `try` in computed names and heritage and retaining nested Effect bodies. A local name `sync` does not prevent this repair. Comments around the binding, initializer and commas remain in the repaired declaration.
-
 ### Move a TypeScript module body to a file
 
 Place the cursor in a top-level `module parse { … }` declaration and request **Move module to a TypeScript file** (VIP-40). The refactor writes the TypeScript body to `parse.ts` beside a `.vibe` source, or to `parse.tsx` beside a `.vibex` source even when the body has no JSX, and rewrites its identifier imports, re-exports and side-effect imports to that file. When the copied body would be a script under the project's options, for example a body with no `import` or `export` under `moduleDetection: "legacy"`, the new file ends with `export {}` so its declarations stay private; otherwise the body is copied unchanged. Other module declarations stay in place. The new file keeps the body's comments, JSDoc, relative imports and runtime behavior.
@@ -119,7 +109,7 @@ A generated declaration for a `module` body keeps relative imports pointed at th
 
 ## Diagnostic reference: additional codes
 
-`EK1502` rejects type parameters on a `schema` body or alias. Write a generic TypeScript factory for parameterized construction. If an older compiler accepted the header as an empty schema followed by a TypeScript expression, its quick fix makes that empty body explicit and retain the expression, preserving the old decoder and public type.
+`EK1502` rejects type parameters on a `schema` body or alias. Write a generic TypeScript factory for parameterized construction.
 
 Each entry gives the condition and the repair. The examples and language-service tables on this page cover the other registered codes for these forms.
 
@@ -182,145 +172,31 @@ Unknown or retired warning codes cannot be configured. Remove an entry for the r
 
 ## TypeScript-style Effect code
 
-Native `Schema.TaggedError` classes whose fields object contains a spread, and native `Schema.TaggedError` or `Data.TaggedError` classes with a written static `_tag`, keep their library form without `EK4837` or `EK4830` and without a declaration quick fix. These shapes have no equivalent declaration form; a stale editor diagnostic does not make them eligible for a repair.
+VibeLang does not ship its own automatic fixes before 1.0. Edit diagnosed source explicitly; TypeScript's built-in code fixes remain available.
 
-Effect declarations and combinator calls written in TypeScript's style use the same library APIs in `.vibe`. The table shows declaration forms and their existing diagnostics. Quick fixes for new VIP forms arrive with the compiler's VIP implementation; [Effect.gen in direct style](#effectgen-and-effectfn) shows the conversion.
+Effect declarations and combinator calls written in TypeScript's style still use the same library APIs in `.vibe`. These diagnostics suggest equivalent VibeLang forms without changing how the original source compiles or runs.
 
-The `.pipe(...)` quick fix captures custom stage expressions before applying them when one could change a later expression. All stages are constructed before the first is applied. Options with accessors or opaque values keep the data-last `retry`, `repeat` or `withSpan` call, preserving when options are read. A custom stage that may observe the receiver supplied by `.pipe(...)` keeps its library form. Comments between captured stages keep their original association by declining the automatic rewrite.
+| Code | TypeScript style | VibeLang form |
+| --- | --- | --- |
+| EK4830 | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` | `error NotFound { id: string }` |
+| EK4831 | `class Users extends Context.Service<Users, { find(id: string): Effect.Effect<User> }>()("app/Users") {}` | `service Users { static readonly key = "app/Users"; find(id: string): User!! }` |
+| EK4832 | `const User = Schema.Struct({ id: Schema.String })` | `schema User { readonly id: string }` |
+| `EK4833` | `Effect.Effect<User \| null, NotFound \| Timeout, Db>` | `(User \| null)!(NotFound \| Timeout)!Db` |
+| EK4834 | `return try Effect.succeed(user)`, `try Effect.fail(error)` | `return user`, `throw error` |
+| EK4835 | `try Effect.catchTag(find(id), "NotFound", (e) => …)` | `find(id) catch effect (e) => match (e) { when { _tag: "NotFound" }: …; default: throw e; }` |
+| `EK4836` | `Effect.withSpan(main(), "main")`, `return try Effect.provide(main(), AppLive)`, `try Effect.provideService(main(), Users, users)` | `withSpan(main(), "main")`, `provide AppLive { return try main() }`; retain the native `Effect.provideService` call |
+| EK4837 | `class Failed extends Schema.TaggedError<Failed>()("Failed", { … }) {}` | `schema error Failed { … }` |
+| EK4839 | `Match.value(status).pipe(Match.when("idle", () => "Idle"), Match.orElse(() => "Busy"))` | `match (status) { when "idle": "Idle"; default: "Busy"; }` |
+| EK4841 | `export const Tags = Schema.Array(Schema.String)` just before `export type Tags = typeof Tags.Type` | `export schema Tags = readonly string[]` |
+| EK4842 | `import { Array } from "effect"` and `Array.take(values, 2)` | `import { Array as Arr } from "effect"` and `Arr.take(values, 2)` |
 
-For `EK4834`, `EK4835` and the `provide` calls in `EK4836`, only the direct operand of bare `try` in effect code warns. Parentheses, `as`, `satisfies` and non-null `!` wrappers still count, as do resolved import aliases. Stored or returned Effects, `fork` and `join` operands, `try.all` and its siblings' elements, Effect API arguments and `catch` heads keep their library forms. A recognized direct operand still warns when no safe rewrite exists; its note explains why the quick fix is unavailable. Wrappers with written type effects stay intact. A direct `Effect.provide` call with explicit type arguments still warns, but keeps its native call: a block cannot preserve that written type contract. Explicit type arguments on `Effect.succeed` or `Effect.fail` also retain their calls: the advisory explains why a value or `throw` cannot preserve the written contract. Explicit type arguments on `Effect.catch`, `Effect.catchTag` and `Effect.catchTags` retain the call too: the advisory explains why an automatic catch-expression rewrite would lose the written contract. A typed `Effect.provideService` call also keeps its advisory and native form; a layer-based rewrite would not preserve the written contract or service scope.
+For `EK4834`, `EK4835` and the `provide` calls in `EK4836`, only the direct operand of bare `try` in effect code warns. Parentheses, `as`, `satisfies` and non-null `!` wrappers still count, as do resolved import aliases. Stored or returned Effects, `fork` and `join` operands, collection operands, Effect API arguments and `catch` heads keep their existing diagnostics.
 
-These direct-call advisories also recognize optional calls such as `try Effect.succeed?.(value)`. The native call stays intact, preserving optional chaining and conditional argument evaluation without an automatic rewrite. Tuple spreads such as `try Effect.succeed(...args)` also retain their advisory and native call, preserving spread iteration and argument evaluation.
+Native error classes with spread fields or a written static `_tag` retain their existing library form and advisory exemptions. Schema constants retain their existing associated-type and declaration-preservation checks. `EK4833` retains its checks on written Effect type arguments, and `EK4856` still warns about the transitional bare `Effect<A, E, R>` alias.
 
-Calls through a single literal member key, such as `try Effect["succeed"](value)` or `try Effect[key](value)` with `key` typed as `"succeed"`, receive the same advisory as the dotted call. Their automatic fix is withheld to preserve computed member lookup and argument evaluation. A local receiver that shadows `Effect` keeps its own meaning.
-
-| Code | TypeScript style | VibeLang form | Quick fix |
-| --- | --- | --- | --- |
-| EK4830 | `class NotFound extends Data.TaggedError("NotFound")<{ readonly id: string }> {}` | `error NotFound { id: string }` | When the tag is the class name and the base is `Data.TaggedError`; a different tag keeps the warning without one. A class extending untagged `Data.Error` draws no EK4830: keep its library form |
-| EK4831 | `class Users extends Context.Service<Users, { find(id: string): Effect.Effect<User> }>()("app/Users") {}` | `service Users { static readonly key = "app/Users"; find(id: string): User!! }` | When the members are written in the type argument; the class's key stays, written as `static readonly key` unless it is the one the compiler derives |
-| EK4832 | `const User = Schema.Struct({ id: Schema.String })` | `schema User { readonly id: string }` | When every field has a declaration form. With `Schema.optionalKey` or a check, the warning stays but offers no quick fix, and says why. In a project that emits declarations, an exported constant keeps its form unless the file also declares its type, `export type User = typeof User.Type`: the declaration would add that type to the declaration file. A private constant without its type keeps its form there too when the declaration file names it, through `typeof User`, `Schema.Schema.Type<typeof User>`, `export { User }` or `export default User`: the declaration would print the type beside it. An alias or interface written with `Schema.Schema.Type<typeof User>` also keeps its form, private or exported, because a `schema` declaration would change its printed spelling. A documented `type User = typeof User.Type` stays beside the declaration with its comment, which replaces the alias the declaration synthesizes (VIP-15, detail 256). Without declaration output, the helper must resolve to Effect's own `Schema.Type`; a same-spelled custom helper keeps its alias or interface and its constant An optional field is written `name?: T \| undefined`, which is `Schema.optional` under either `exactOptionalPropertyTypes` setting, so the fix keeps the schema in every project that compiles the file; a `Schema.optional(Schema.Undefined)` field keeps its constant. |
-| `EK4833` | `Effect.Effect<User \| null, NotFound \| Timeout, Db>` | `(User \| null)!(NotFound \| Timeout)!Db` | Hovers and offered edits keep compound channels grouped; a warning may retain the qualified type when no automatic edit preserves its contract |
-| EK4834 | `return try Effect.succeed(user)`, `try Effect.fail(error)` | `return user`, `throw error` | When bare `try` directly runs the call and the replacement preserves its types and evaluation |
-| EK4835 | `try Effect.catchTag(find(id), "NotFound", (e) => …)` | `find(id) catch effect (e) => match (e) { when { _tag: "NotFound" }: …; default: throw e; }` | When bare `try` directly runs the call and each handler is an arrow with one value. A handler that only gives `Effect.succeed` values stays plain; a `throw` or a `try` makes it `effect` |
-| `EK4836` | `Effect.withSpan(main(), "main")`, `return try Effect.provide(main(), AppLive)`, `try Effect.provideService(main(), Users, users)` | `withSpan(main(), "main")`, `provide AppLive { return try main() }`; retain the native `Effect.provideService` call | `withSpan` always. A `provide` block when bare `try` directly runs the call as a statement or a return, and the program is a stable binding or a call of an `effect` function: the block evaluates it after the layers build, where the call evaluated it first. A service call has no automatic block rewrite: building a `Layer` changes scope and memo-map observations |
-| EK4837 | `class Failed extends Schema.TaggedError<Failed>()("Failed", { … }) {}` | `schema error Failed { … }` | When the tag is the class's name and the body holds accessors and annotated methods; a field with no type form is named by a constant, including in a private class. Comments between fields and before or after members are retained. A JSDoc comment that would gain a new member attachment keeps the class. `Schema.optionalKey`, an annotations argument or a constructor keeps the class |
-| EK4839 | `Match.value(status).pipe(Match.when("idle", () => "Idle"), Match.orElse(() => "Busy"))` | `match (status) { when "idle": "Idle"; default: "Busy"; }` | When each pattern is a literal, an object of patterns, a `Match` refinement such as `Match.string`, or `Match.instanceOf(C)` for a proven ordinary class, and each handler an arrow function that runs no program; `Match.instanceOf(Number)`, `Match.instanceOf(String)`, `Match.instanceOf(Boolean)`, `Match.instanceOf(Array)` and other unproven constructors keep the warning without a repair, as do predicate functions and array patterns. A type the arms do not share is written: `withReturnType`'s or the handlers' type, or a primitive one |
-| EK4841 | `export const Tags = Schema.Array(Schema.String)` just before `export type Tags = typeof Tags.Type` | `export schema Tags = readonly string[]` | `Schema.Struct` pairs qualify too, for example `schema User = { readonly name: string }`; their repair keeps the written imports. When the type alias is the statement just after the constant, with the same export and no JSDoc, and every part of the schema has a type; a type written before its constant keeps its form, because the alias's declaration file lists the constant first; the repair keeps an explicit statement terminator so deleting the type alias cannot join the following statement to the schema initializer |
-| EK4842 | `import { Array } from "effect"` and `Array.take(values, 2)` | `import { Array as Arr } from "effect"` and `Arr.take(values, 2)` | When no type is written with the import, as `Array.NonEmptyReadonlyArray<T>`, and nothing the file exports names it or has a type the module declares; the names are `Arr`, `Str`, `Num`, `Bool`, `Fn`, `Sym`, `Big` and `Regex`, or `EffectArray` and its siblings when the file already uses the short one |
-
-`EK4856` warns about the transitional bare `Effect<A, E, R>` alias. Its migration fix uses shorthand only when it needs no new parentheses: `Effect<number>[]` becomes `Effect.Effect<number>[]`, while `(Effect<number>)[]` becomes `(Effect.Effect<number>)[]` to retain its declaration bytes. Existing parentheses, comments and explicit default slots are preserved; `Effect<number, never>` becomes `number!never`. Local and imported types named `Effect` retain their native meaning.
-
-`EK4833` then writes the equivalent shorthand with its required parentheses, such as `(number | string)!!` for `Effect.Effect<number | string>`, because added parentheses leave declaration output unchanged. `EK4833` refuses, and its note says why, only where declaration output would drop parentheses written in the source, such as `(Effect.Effect<number>)[]`, or where the rewrite would lose comments between type arguments.
-
-Schema repairs retain value references. A library alias or field that refers to a value named `string`, `number` or another type keyword (including `keyof` and `readonly`) keeps its form: using that bare name as a schema type would change its meaning. Qualified references such as `holder.string` and neutral names remain eligible for automatic repair.
-
-`EK4833` omits an unused requirements slot: `Effect.Effect<User, NotFound>` becomes `User!NotFound`, whose requirements default to `never`. A custom alias named `Effect` is suggested only when its written arguments already match the resolved Effect's success, error and requirements types, including omitted `never` slots. Aliases whose parameter order, defaults, wrapped slots, service requirements or union branches would change the resulting type keep their spelling.
-
-A pure `Option.gen(function* () { … })` has an eager plain-function quick fix for
-statement-position `yield*` bindings, discarded yields, and `return yield*`.
-It evaluates each Option in order, returns `Option.none()` at the first `None`, and wraps normal
-completion in a fresh `Some`. A fallthrough or void return, nested expression yield, nested function,
-generator receiver, `try`/`finally`, or a delegated yield inside a `for...of` body keeps the diagnostic and its refusal
-reason; those shapes need a manual rewrite.
-
-A plain `Option.match(value, { onNone, onSome })` has a native quick fix: the subject and the handler object are read once, in their original order, then a `match` chooses `when Option.Some(let value)` or the default. A handler may ignore the `Some` payload; the repair preserves its contextual result type and passes the original argument. A private interface payload from another module is expanded structurally when the repair needs an annotation, so it does not introduce an out-of-scope type name. A choice whose arms return programs keeps the diagnostic and its reason.
-
-A discarded `Option.match` result becomes a statement block; expression positions retain a `do` expression. A choice that starts a larger expression statement is parenthesized. Both evaluate the subject and callbacks once, in order.
-
-Write legacy Effect data extension calls as namespace calls: `Option.some(1).map(f)` becomes `Option.map(Option.some(1), f)`.
-
-An Option pipe whose stage argument is a callback factory, a property read or an object literal, such as `pipe(value, Option.map(EffectArray.append(1)))`, is cached first: a `do` block evaluates the subject and each argument in pipe order, then calls the module functions on the cached values, so no factory moves into the stage that uses it.
-
-A default `Match.orElse` handler that destructures its parameter, `({ _tag }) => _tag`, becomes a catch-all `let` arm whose `do` block performs the same destructure, defaults included, only when the default runs.
-
-A `Match.when(String.startsWith("Core"), …)` predicate, alone or inside `Match.whenOr` with exact literals, becomes a guarded arm, `when let value and if (value.startsWith("Core"))`, in the original case order.
-
-A hoisted return-type stage, `const withChoice = Match.withReturnType<T>()` passed to `.pipe(withChoice, …)`, converts like the inline form: the chain becomes a `match`, the hint's type context is kept, and the hint is still read before the subject so initialization order and TDZ behavior do not change.
-
-A `service` without a derived key reports `EK0903`. Its quick fix inserts `static readonly key` with the current identity.
 ### Effect.gen and Effect.fn
 
-Converting an Effect generator preserves a native constructor hidden by an implicit Effect namespace: `new Headers(input)` becomes `new globalThis.Headers(input)`. Local and imported constructors keep their bindings. This qualification does not permit host APIs in VibeLang: a banned constructor still reports `EK4402` and belongs in a TypeScript adapter. If a local `globalThis` prevents safe qualification, the generator stays unchanged.
-
-The conversion writes an `Effect.gen` or `Effect.fn` program as an effect function or an `effect { … }` block, and a `.pipe` of an Effect with `|>`. When the `|>` form of a generator's `.pipe` would add an error, as `HttpEffect.toWebHandlerWith(context)` does by taking its requirements from the `.pipe`, the generator becomes an effect function that keeps that `.pipe`. The last stage of a pipeline that runs becomes a catch expression: `Effect.catch`, `Effect.catchTag`, `Effect.catchTags`, `Effect.orElseSucceed(x, () => v)` as `x catch () => v`, and `Effect.mapError(x, (e) => f(e))` as `x catch effect (e) => { throw f(e) }`. A stage with stages after it stays a call, and so does a pipeline held as a value. `Effect.withSpan(x, name)` as a last stage becomes `withSpan(() => x, name)`, and under `try`, `Effect.provide(x, L)` becomes `try effect { provide L { return try x } }`. `try Effect.void` goes. `Effect.sync(() => v)` becomes `effect { return v }`, or `v` where it runs, and `Effect.suspend(() => p)` becomes `effect { return try p }`, or `try p` where it runs. A thunk that throws, awaits, or reads `this`, and a `sync` whose value is a program, stay as written. Each `yield* e` becomes `try e`, including an Effect value such as a service key or a `Config` descriptor:
-
-```ts
-// fragment
-export const greet = (id: string) =>
-  Effect.gen(function* () {
-    const users = yield* Users
-    return `Hello, ${yield* users.find(id)}`
-  })
-```
-
-```vibe
-// pending: VIP-1, VIP-5
-// fragment
-export const greet = effect (id: string) => {
-  const users = try Users
-  return `Hello, ${try users.find(id)}`
-}
-```
-
-Use an effect function for a sequence with parameters, and `effect { … }` for an Effect argument, such as `Layer.effect`'s second argument. Keep unrun Effect values intact. A `throw` in effect code fails the Effect with a typed error; plain and `async` callbacks keep JavaScript's exception semantics.
-
-`Effect.fn` infers its parameter tuple before TypeScript prints declarations. Its repair writes those checked parameter types: for example, a generator parameter written `ReadonlyArray<T>` becomes `readonly T[]`. It preserves generic parameters, optional parameters and the generator's input types through pipeline stages. A parameter without an annotation, defaulted or not, takes the tuple's `any`, so `function* (version = "unknown")` becomes `effect (version: any = "unknown") =>`; when every parameter is defaulted and a stage follows, TypeScript infers an empty tuple and the generator stays. When the written annotation was the last read of a type name, the repair removes that name under `noUnusedLocals`: a type-only import binding, an import binding that only types read, such as `Schema` in `Schema.ID` or `typeof made`, or a type alias the module does not export. It leaves a name the author had already left unused, and a local value it leaves unused still refuses the fix. A comment inside a type that needs rewriting keeps the diagnostic and its reason instead of losing the comment. An explicit import type such as `import("effect/Brand").Brand<"Path">` stays qualified in the parameter and inferred return declaration.
-
-An `Effect.gen` generator with a written `Effect.fn.Return<A, E, R>` or an alias of a generator type retains its checked `Effect` result type on a cold function around the converted body. This keeps contextual literal return types and the declared failure and requirement channels, including when a surrounding pipeline transforms the result. A direct JavaScript iterator annotation such as `Generator<Y, A, N>` already selects a native generator and stays native. Unsafe rewrites still leave the generator and explain the refusal.
-
-`Effect.fn("name")` keeps its name as a span, `try Effect.withSpan(effect { … }, "name")`. When it has a written `Effect.fn.Return` or contextual Effect return type, the fix puts that type on a cold function inside the span, so literal object fields retain their declared types. An effect function records no `Effect.fn` stack frame in a failure's trace. A parameter with a default or a pattern, bound when an `Effect.gen` function is called, keeps the function plain: `({ id }): infer _ => effect { … }`. A generator's `throw`, a defect in Effect, becomes `return try Effect.die(e)`. A stage that reads the function's arguments, `(effect, path) => …`, receives the effect function's parameters, `|> ((effect, path) => …)(%, path)`; a generator parameter with a default or a pattern, which does not hold its argument, keeps its native form, and so does a stage that names an argument otherwise, `(effect, _path)`, whose name `Effect.fn`'s declaration takes, or that reads a name one of the generator's parameters would hide. A comment in the generator's parameter list, or before a stage, keeps its place. A `.pipe` stage that a call into a TypeScript module builds, as `effect.pipe(instances.provide(session))`, goes through the same defect bridge as the generator's other throwing calls: `effect.pipe(try Effect.orDie(Effect.try({ try: () => instances.provide(session), catch: (e) => e })))`.
-
-Legacy `: infer _` annotations in plain callbacks checked as TypeScript by `Effect.try`, `Effect.tryPromise`, `sync` or `callback` can report `TS1338`. The conversion removes a simple whole-return marker and keeps TypeScript's inferred result, including inside a converted generator. Conditional `infer` types keep their meaning; an async or generator return contract, a named inference parameter, or an annotation containing comments is left for a manual edit.
-
-The conversion also preserves a named `Effect.fn` generator's generic requirement contract. When `withSpan` would otherwise infer `Exclude<R, ParentSpan>`, the converted function retains the original final `Effect` return type, including any pipeline stages. A written generator contract still belongs to the cold inner program.
-
-A bare `return` in an `Effect.fn` generator must satisfy its written `Effect.fn.Return<A>` success type. If it does not, the conversion leaves the generator unchanged and reports the incompatible return; `void`, `undefined` and success types that include `undefined` remain eligible for conversion.
-
-Async conversion requires every `await` operand to be statically `PromiseLike`. JavaScript also permits `await` on a scalar, an unknown value or a mixed union. Normalize those operands explicitly, for example with `await Promise.resolve(value)`, before requesting the refactor.
-
-A legacy service's cached `static readonly default` remains a cached value during migration. An exported key that cannot be changed safely is left with an explained refusal; a safe local key can become an equivalent native service class. Field reads, type reads and unrelated shadowed utility types remain intact. Adopting a `defaultValue` fallback is a separate semantic change.
-
-For a throwing call in plain code, the repair can move the invocation into a TypeScript `module` helper while keeping the function synchronous. An overloaded call is eligible when every overload accepts the supplied argument count and has the same types at those argument positions and the same return type. The helper retains method receivers and evaluates a method getter before its arguments. Overloads with generic parameters, predicates, rest parameters or an explicit `this` parameter still require manual repair.
-
-A generator parameter may omit array elements, as in `[, value]` or `[,]`. The teaching rewrite for an ordinary `Effect.fn` call or `Effect.fnUntraced` retains that destructuring inside the cold body, including its defaults and skipped value reads. A binding combined with a named span or stage keeps its valid native generator form when the rewrite cannot preserve that boundary. Import cleanup may still apply.
-
-A known-throwing call in an effectful callable’s parameter initializer has a preserving repair: a private TypeScript adapter evaluates the call immediately and preserves its value or original exception. Destructuring defaults and computed binding keys keep their native order. Repeated runs do not reevaluate the callable’s defaults; a callback’s own defaults still run when its caller invokes that callback. A strict callable’s body remains a separate boundary.
-
-A synchronous call of a plain TypeScript function whose exceptions nothing lists, `EK0403` in effect code, becomes `try Effect.orDie(Effect.try({ try: () => f(x), catch: (e) => e }))`: the inline mapper cannot throw, an exception stays the defect it was in `Effect.gen`, and the function's type doesn't change. The same repair applies to a throwing argument of a call handled by `catch`, preserving that call and its handler. To make it a typed failure, return an `error` declaration's instance from `catch` and remove `Effect.orDie`. In a function that runs no Effect, the repair writes `: infer _`, which keeps the function plain. `EK1002`'s rewrite of an `Effect.gen` or `Effect.fn` generator writes its throwing calls through the same wrapper. Both keep what a guard proved about a property the call reads, which the wrapper's function would not know: in `o.p ? f(o.p) : 0` the guard moves into `try:` with the call, and a property an earlier statement proved moves to a `const` before the call's statement, as `if (!o.p) return 0` then `const n = o.p` and `f(n)`. An unbraced `if` branch becomes a block that holds the `const`. A foreign type predicate that an `if` tests keeps its proof the same way: `if (!isRecord(body)) return 0` becomes `const record = try Effect.orDie(Effect.try({ try: () => isRecord(body) ? body : undefined, catch: (e) => e }))`, `if (record === undefined) return 0`, and the code the test guards reads `record`. A predicate tested beside other operands keeps it too: `if (!output || !isRecord(body)) return 0` becomes `if (!output) return 0`, the `const`, and `if (record === undefined) return 0`, so `isRecord` still runs only when `output` is set.
-
-Prelude cleanup keeps imports used by bare type references, including interface base types, and does not shorten a qualified type such as `FileSystem.FileSystem` to a bare name. A shared module may be checked under several configs: changing `lib` or `types` must not make its fixed types resolve to another config’s ambient declarations.
-
-A service-class fix requires a literal key. A dynamic key stays as written, including its evaluation during class initialization.
-
-Async conversion is not offered for a body containing a JavaScript `try` statement, `using` or `await using`. Rewrite its handlers and cleanup explicitly with Effect before converting; nested functions keep their own completion and disposal rules.
-
-Async conversion is withheld when an `await` evaluates a computed member name or a class’s `extends` expression. Those expressions run in the enclosing function; nested `async` bodies keep their own awaits. This also applies when the definition is inside another `await` operand, such as an object or class passed to `Promise.resolve`. Simplify the definition’s awaited expressions before converting.
-
-Async conversion requires each `await` operand to contain no further `await` from the same function. Simplify code such as `return await await input` before converting; nested functions keep their own `await` expressions.
-
-When a fix removes the last value imported from another module, it keeps a side-effect import in the same position. Removing an unused binding must not remove that module's initialization.
-
-A proposed rewrite includes removal of imports from `effect` and its modules that it makes unused, so `noUnusedLocals` does not prevent an otherwise valid fix.
-
-Calls such as `JSON.parse(text)` keep their exceptions as defects while an `Effect.gen` body is migrated. The repair uses an explicit `Effect.orDie` boundary, preserving the original error channel and catch behavior.
-
-A direct `extends` or `implements` entry retains its named type, such as `Effect.Effect<number>`. Effect types inside another base's type arguments can still shorten, as in `Holder<number!!>`.
-
-A helper's return-type quick fix writes imported names in the helper's scope: for a namespace import such as `foreign`, it writes `foreign.Thing`. If the inferred type cannot be written there, the annotation is `infer _`.
-
-When annotating helpers also changes a collected callback result, the fix writes `: infer _` so the return type follows the corrected helpers.
-
-An existing callback error on a factory result does not prevent safe rewrites inside its arguments. For a unique named call, the diagnostic keeps a label such as `Effect.catchTags(…)`; repeated or computed calls retain their source text.
-
-Fixes retain field comments and comments before unwrapped succeed/fail arguments. If a proposed rewrite cannot retain its comments, the editor does not apply it.
-
-The editor offers those bindings through imports and local declarations.
-
-Before async conversion, await a returned `Promise` or `PromiseLike` explicitly, as in `return await input`. Async functions adopt returned thenables; effect bodies require explicit Promise handling. The refactors therefore require an explicit `await` for those returns, including a union that may contain a Promise. A fresh returned object literal with an explicit noncallable data property `then`, such as `{ then: 7 }`, keeps the conversion available. Promise adoption reads `then` even when its declared result is primitive, so a getter may run or throw. Getters, computed keys, spreads and aliased objects still require an adoption bridge.
-
-A primitive TypeScript type can still hide a boxed runtime value with a `then` method. For returned values that need adoption, conversion finishes the body in an `effect { … }` block before bridging its result through `Effect.tryPromise`. Iterator cleanup therefore completes before a thenable is adopted. The conversion retains source comments, template contents and strict-mode directives, and is unavailable when a local or type-only `Effect` binding would make the bridge invalid.
-
-For bodyless service contracts, `EK0902`'s quick fix removes class-only modifiers and definite assignment assertions, preserving comments and the written types. Choose a public contract name for a private field.
+Write an Effect generator in direct style with an `effect` function or block and `try` for each run Effect. Preserve the original evaluation order, coldness and thrown-error policy when changing a program by hand. See [Creating effects](005-creating-effects.md) and [the cheat sheet](../vibelang-features/115-cheat-sheet.md).
 
 ## Effect language service rules
 
@@ -365,7 +241,7 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Correctness | `missingReturnYieldStar` | Not needed in `.vibe`: `throw` ends the function | `throw new NotFound({ id })` |
 | Correctness | `missingStarInYieldEffectGen` | Use `try` in an effect function | `const user = try (try Users).find(id)` |
 | Correctness | `nonObjectEffectServiceType` | Effect 3 only, and a `service` declares members | `service Port { value: number }` |
-| Correctness | `outdatedApi` | EK4813, error, in place of TS2339, with a quick fix; the same fix on TS2339 in `.ts` files | `Effect.catchAll`; the fix writes `Effect.catch` |
+| Correctness | `outdatedApi` | EK4813, error, in place of TS2339 | `Effect.catchAll`; use `Effect.catch` |
 | Correctness | `outdatedEffectCodegen` | Not adopted: no codegen comments | None |
 | Correctness | `overriddenSchemaConstructor` | EK4814, warning | `class Person extends Schema.Class<Person>("Person")({ … }) { constructor() { … } }` |
 | Anti-pattern | `catchUnfailableEffect` | Covered: `EK9204` (interim), warning. Appendix B assigns the imported rule `EK3818` | `succeed(1) catch (e) => fallback`; a catch expression receives typed failures only |
@@ -421,11 +297,11 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Style | `schemaUnionOfLiterals` | Effect 3 only | None |
 | Style | `serviceNotAsClass` | Not needed: `service` declarations | `service Users { … }` |
 | Style | `strictBooleanExpressions` | EK4822, off by default | `if (count) { … }` |
-| Style | `unnecessaryArrowBlock` | EK4823, off by default, with a quick fix | `(x) => { return x + 1 }` |
+| Style | `unnecessaryArrowBlock` | EK4823, off by default | `(x) => { return x + 1 }` |
 | Style | `unnecessaryEffectGen` | Effect functions use `try` | None |
 | Style | `unnecessaryFailYieldableError` | Not needed: `throw new NotFound({ id })` | `throw new NotFound({ id })` |
-| Style | `unnecessaryPipe` | EK4824, off by default, with a quick fix | `pipe(x)` |
-| Style | `unnecessaryPipeChain` | `EK4825`, off by default, with a quick fix | `x.pipe(f).pipe(g)` |
+| Style | `unnecessaryPipe` | EK4824, off by default | `pipe(x)` |
+| Style | `unnecessaryPipeChain` | `EK4825`, off by default | `x.pipe(f).pipe(g)` |
 | Hover | Extended Effect type | Covered: a function's hover shows its contract, `A!E!R` | `string!UserNotFound!Users` |
 | Hover | `yield*` hover | Use `try` to get the success value | `try load()` returns `User` |
 | Hover | Layer service involvement | Hover: a layer lists what it provides, needs, and fails with | Hover on `UsersLive` |
@@ -622,52 +498,20 @@ Library debugging concepts still apply; VibeLang's effect functions, service dec
 
 ## First calls from Effect TypeScript
 
-| Code | Meaning and fix |
+Port source explicitly. Use `effect` functions and blocks for programs, `try` to run an Effect, and `catch` handlers for typed failures. Keep argument evaluation, coldness, error channels and public declarations in mind when replacing library forms.
+
+| Code | Meaning and manual guidance |
 | --- | --- |
-| EK1015 | Use `try` in an effect function: `const value = try load()`. Producers use `yield` to emit values. |
+| `EK1015` | Use `try` in an effect function: `const value = try load()`. Producers use `yield` to emit values. |
 | `EK2112` | A legacy typed catch clause no longer filters failures. Write `catch effect (e) => match (e) { when NotFound: fallback; default: throw e; }` to recover selected failures and fail again with the rest. An ordinary function-literal handler parameter annotation, such as `catch (e: NotFound) => fallback`, remains a TypeScript annotation. Native catch parameter annotations `any` and `unknown` also retain TypeScript behavior, including destructuring with `any`. |
-| TS2709, TS2707, TS2351 (`Message`, `Command`, `new Worker(…)`) | The name is Effect's module, in scope without an import. The note names the module; declare or import your own of that name. For a DOM name Effect takes, such as `Worker`, the note says how to reach the DOM's: `globalThis.Worker` in a `.ts` adapter, or its type aliased in a `.ts` file. Code that `Effect.try` or `Effect.tryPromise` wraps gets the same note. |
-| TS2339 (`Number.sum`, `Array.make`) | JavaScript's global wins over Effect's module of that name, so the note names Effect's module and its import under another name: `import { Number as EffectNumber } from "effect"`. A member of Effect's type of a DOM name, such as `w.postMessage` on Effect's `Worker`, gets the DOM's alias instead. |
-| TS2304, TS2552 (`Process`, `Locks`) | An experimental service is in scope only as a member of `Experimental`; the note qualifies the access, such as `try (try Experimental.Process.Process).hostname`. A misspelled name never suggests a platform global that EK4402 bans, such as `process`; inside a `.ts` file, it may. |
-| TS2304 (`Model`, `Prompt`) | Two of effect's subpath packages have a module of this name, so neither is in scope. The note names both imports; write the one you mean, such as `import { Model } from "effect/schema"`. |
+| `TS2709`, `TS2707`, `TS2351` (`Message`, `Command`, `new Worker(…)`) | The name is Effect's module, in scope without an import. The note names the module; declare or import your own of that name. For a DOM name Effect takes, such as `Worker`, the note says how to reach the DOM's: `globalThis.Worker` in a `.ts` adapter, or its type aliased in a `.ts` file. Code that `Effect.try` or `Effect.tryPromise` wraps gets the same note. |
+| `TS2339` (`Number.sum`, `Array.make`) | JavaScript's global wins over Effect's module of that name, so the note names Effect's module and its import under another name: `import { Number as EffectNumber } from "effect"`. A member of Effect's type of a DOM name, such as `w.postMessage` on Effect's `Worker`, gets the DOM's alias instead. |
+| `TS2304`, `TS2552` (`Process`, `Locks`) | An experimental service is in scope only as a member of `Experimental`; the note qualifies the access, such as `try (try Experimental.Process.Process).hostname`. A misspelled name never suggests a platform global that EK4402 bans, such as `process`; inside a `.ts` file, it may. |
+| `TS2304` (`Model`, `Prompt`) | Two of effect's subpath packages have a module of this name, so neither is in scope. The note names both imports; write the one you mean, such as `import { Model } from "effect/schema"`. |
 
-The `sync` and `callback` globals can be stored and renamed, and their arrows may capture surrounding locals. The old `EK4405` is retired, and its input fix is no longer offered. When native call errors trace to an older `typeof sync` or `typeof callback` annotation, the quick fix keeps its compatibility signature with `typeof import("vibelang-runtime").sync` or `typeof import("vibelang-runtime").callback`. This type-only migration preserves evaluation and can follow an owned annotation across file imports and factory returns.
+An `EK4802` warning describes an Effect passed as data to a plain generic function. If the function should receive its result, run that Effect with `try` at the intended execution site. A returned Effect can remain data.
 
-`EK4839` also reports direct `Option.match(value, handlers)` calls, including named imports and namespace aliases. Its message names `Option`'s own `match` API. The fix uses native `match`, preserving subject evaluation, handler construction, property reads and the selected callback's order. Effect-valued callbacks keep returning cold programs; an explicit `try` runs the selected callback's result in its arm, as a statement too. It refuses comments between the arguments; those calls keep the warning and its refusal note.
-
-The `EK4839` repair keeps literal-typed getters, properties, mutable bindings and computed constants as `Match` calls: their construction-time reads must not move into a lazy arm or a returned function. A literal `const` initialized earlier in the same activation can still convert. Reads across functions, class initializers or imports keep their advisory, because even a literal binding may still be uninitialized.
-
-A `Match` handler's object parameter is destructured only after its original predicate succeeds. Missing optional fields, defaults, rest bindings and getters retain their ordinary parameter behavior; a binding cannot add a presence test to the arm. A handler whose function scope cannot be preserved keeps the advisory without a repair.
-
-The `EK4839` quick fix preserves a Match return-type hint with a checked
-annotation on its binding, including destructuring, or a typed local binding
-inside a `do` expression. It uses existing written context when available
-and does not introduce an `as` assertion.
-
-`Convert to a pipe` keeps object literals and class expressions parenthesized at the pipe head, so the result remains an expression when used as a statement.
-
-Completion and token navigation accept `service`, `error`, and `schema error` declaration keywords, including declarations with decorators and modifiers.
-
-Signature help accepts positions throughout an `error` declaration, including comments and whitespace before payload fields.
-
-Renaming a service also updates its `Shape` qualifiers, including qualified names and imported aliases.
-
-For an inferred Effect argument such as `expect(awaited())`, `EK4802` offers `expect(try awaited())` when the function's written error and requirement channels accept it. Arrays and callbacks need an explicit repair at the construction site. A returned Effect remains data and has no automatic execution repair.
-
-An ordinary namespace type such as `Names.Shape` follows TypeScript namespace resolution. A missing or out-of-scope qualifier reports a TypeScript diagnostic; a service's `Shape` qualifier keeps its service identity for references and rename.
-
-Native `Context.Service` classes keep TypeScript namespace rules: `Key.Shape` needs a declared namespace, while `Context.Service.Shape<typeof Key>` extracts the implementation without one. The `EK4831` style warning does not add members to a native class. The native namespace diagnostic offers a binding-safe shape-extractor repair for a genuine service key; it leaves an explicit namespace, a shadowing type and type arguments unchanged.
-
-The `EK0406` annotation diagnostic has no automatic comment rewrite. Remove `@throws`, `@exception` or `@rethrows` manually while preserving the documentation.
-
-For `EK0704`, the editor keeps captured variables and comments when it rewrites an extractor as a class and property pattern. It offers a bare class test only for an empty argument list.
-
-`EK0501` requires reviewing callers before marking a plain function `effect`.
-
-An `EK4813` rename that changes a callback or result contract has no automatic fix.
-For `either`, `async` and `withFiberRuntime`, review the diagnostic's migration note and update callers explicitly.
-
-Selected imported `floatingEffect` checks use the same file eligibility, exclusions, severity and `@effect-diagnostics` directives for `.ts` and `.vibe` inputs. The legacy `EK4801` check does not also run when that imported path is selected, even when the rule is configured `off`.
+See [the cheat sheet](../vibelang-features/115-cheat-sheet.md) for each form beside its Effect TypeScript, and [TypeScript-style Effect code](#typescript-style-effect-code) for the retained advisory codes.
 
 ## Last resort: keep TypeScript file names
 

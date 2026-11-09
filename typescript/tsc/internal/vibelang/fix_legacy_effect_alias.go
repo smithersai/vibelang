@@ -5,7 +5,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // VIP-3/VIP-14 and decided detail260 retain the old prelude alias only for
@@ -15,12 +14,9 @@ var EK4856 = message(4856, warningCategory, "The bare Effect type alias is trans
 func init() {
 	registry[EK4856.Code] = EK4856
 	tsFormMessages = append(tsFormMessages, EK4856)
-	tsFormFixCodes = append(tsFormFixCodes, EK4856.Code)
 	tsFormRules[EK4856.Code] = &tsFormRule{
 		message: EK4856, find: findLegacyEffectAliases,
-		plan: legacyEffectAliasRewrite, diagnosed: legacyEffectAliasNode,
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4856.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 func legacyEffectAliasNode(node *ast.Node) bool {
 	return ast.IsTypeReferenceNode(node) || ast.IsExpressionWithTypeArguments(node)

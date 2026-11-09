@@ -1,12 +1,8 @@
 package vibelang
 
 import (
-	"slices"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -80,17 +76,4 @@ func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
 		raw.AsNode().ForEachChild(visit)
 	}
 	return repairs
-}
-
-func schemaTypeMemberRepairEdits(fix *ls.CodeFixContext) []*lsproto.TextEdit {
-	for _, repair := range schemaTypeMemberRepairs(fix.SourceFile) {
-		if slices.Contains(repair.tokens, fix.Span) {
-			var edits []*lsproto.TextEdit
-			for _, span := range repair.tokens {
-				edits = append(edits, replaceRange(fix, span.Pos(), span.End(), "")...)
-			}
-			return edits
-		}
-	}
-	return nil
 }

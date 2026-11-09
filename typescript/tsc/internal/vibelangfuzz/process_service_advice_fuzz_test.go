@@ -11,7 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const processAdviceQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const processAdviceQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 
 const processInjectionQuote = "Platform access is only through injected Effect services"
 

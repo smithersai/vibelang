@@ -10,7 +10,7 @@ import (
 )
 
 const experimentalNameAdviceTarget = "FuzzExperimentalNameAdvice"
-const experimentalNameAdviceQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const experimentalNameAdviceQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 const experimentalNameServiceQuote = "There is no `Users.find(id)` shorthand"
 
 func experimentalNameAdviceQuoted(t testing.TB) {
@@ -49,7 +49,9 @@ func FuzzExperimentalNameAdvice(f *testing.F) {
 		i := slices.IndexFunc(rows, func(row struct {
 			Key, Source, Advice string
 			Want                int
-		}) bool { return row.Key == parts[0] })
+		}) bool {
+			return row.Key == parts[0]
+		})
 		if i < 0 {
 			i = len(data) % len(rows)
 		}

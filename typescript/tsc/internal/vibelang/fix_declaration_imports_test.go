@@ -14,20 +14,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
-// declarationImports returns the import lines of main.d.ts, which the
-// project of config emits.
-func declarationImports(t *testing.T, config string) string {
-	t.Helper()
-	dts := declarationText(t, config)
-	var imports []string
-	for line := range strings.Lines(dts) {
-		if strings.HasPrefix(line, "import ") {
-			imports = append(imports, strings.TrimSpace(line))
-		}
-	}
-	return strings.Join(imports, "\n")
-}
-
 // declarationText returns the main.d.ts that the project of config emits.
 func declarationText(t *testing.T, config string) string {
 	t.Helper()
@@ -58,10 +44,3 @@ var generatedThrowsBlock = regexp.MustCompile(`/\*\* @throws \{never\} \*/\s*`)
 // follows on the same line, where the printer starts it on a line of its own
 // so that it stays attached when the declarations reload (7d8785b65f8b).
 var generatedThrowsLineBreak = regexp.MustCompile(`([(=>?:|,][ \t]*)\n[ \t]*/\*\* @throws \{never\} \*/\s*`)
-
-// withoutGeneratedThrows removes the one declaration difference API identity
-// allows against the TypeScript twin.
-func withoutGeneratedThrows(declaration string) string {
-	declaration = generatedThrowsLineBreak.ReplaceAllString(declaration, "$1")
-	return generatedThrowsBlock.ReplaceAllString(declaration, "")
-}

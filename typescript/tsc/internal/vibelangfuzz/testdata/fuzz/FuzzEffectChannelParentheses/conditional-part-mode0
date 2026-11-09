@@ -1,3 +1,0 @@
-go test fuzz v1
-string("conditional-part")
-byte(0)

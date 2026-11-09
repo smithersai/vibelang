@@ -6,8 +6,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 const dualBlockWork = "effect function work() { try sleep(\"1 millis\"); return \"done\" }\n"
@@ -91,49 +89,5 @@ func TestDualBlockRecorderLeavesAppendedForms(t *testing.T) {
 			t.Errorf("%s: recorded %d dual blocks", source, len(calls))
 		}
 		done()
-	}
-}
-
-// The editor offers the same rewrite as --fix on the site's error, the
-// TypeScript error or EK1023.
-func TestDualBlockCodeAction(t *testing.T) {
-	for _, test := range []struct{ source, want string }{
-		{"export function f() { return withSpan(\"load\") { return work() } }", "export function f() { return withSpan(effect { return work() }, \"load\") }"},
-		{"export function f() { return withSpan(\"k\") { return { attributes: {} } } }", "export function f() { return withSpan(effect { return { attributes: {} } }, \"k\") }"},
-	} {
-		program, file, service, converters := editorProgram(t, dualBlockWork+test.source)
-		var diagnostic *ast.Diagnostic
-		for _, d := range program.GetSyntacticDiagnostics(t.Context(), file) {
-			if hasDualBlockMigrationNote(d) {
-				diagnostic = d
-			}
-		}
-		if diagnostic == nil {
-			t.Fatalf("no error in %s", test.source)
-		}
-		d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
-		only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-		response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-			TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-			Range:        d.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{d}, Only: &only},
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		var chosen *lsproto.CodeAction
-		if response.CommandOrCodeActionArray != nil {
-			for _, action := range *response.CommandOrCodeActionArray {
-				if action.CodeAction != nil && strings.HasPrefix(action.CodeAction.Title, "Pass the block where withSpan takes its program") {
-					chosen = action.CodeAction
-				}
-			}
-		}
-		if chosen == nil || chosen.Edit == nil || chosen.Edit.Changes == nil {
-			t.Fatalf("no code action for %s", test.source)
-		}
-		changes := *chosen.Edit.Changes
-		if got := applyEditorEdits(t, file, converters, changes[lsconv.FileNameToDocumentURI(file.FileName())]); got != dualBlockWork+test.want {
-			t.Fatalf("the code action writes\n%s\nwant\n%s", got, dualBlockWork+test.want)
-		}
 	}
 }

@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"slices"
@@ -10,8 +9,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -56,53 +53,9 @@ import (
 // What stays type-checks only where the gate of vibelang --fix (fix.go) finds
 // no new error.
 
-func init() {
-	tsFormFixCodes = append(tsFormFixCodes, EK1002.Code)
-	ls.RegisterCodeFixProvider(effectGenFix)
-}
-
-// effectGenFix is EK1002's quick fix.
-var effectGenFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK1002.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		callee := tsFormNodeAt(fix.SourceFile, fix.Span, isCallee)
-		if callee == nil {
-			return nil, nil
-		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-		defer done()
-		rewrite := planEffectGen(c, fix.SourceFile, generatorCallOf(callee))
-		if !rewrite.fixable() {
-			return nil, nil
-		}
-		var changes []*lsproto.TextEdit
-		for _, edit := range rewrite.edits {
-			changes = append(changes, replaceRange(fix, edit.start, edit.end, edit.text)...)
-		}
-		return []*ls.CodeAction{{Description: "Write " + rewrite.description, Changes: changes}}, nil
-	},
-}
-
-// generatorCallOf returns the call that callee, the API EK1002 names, leads
-// to and that passes the generator: Effect.fn("n")(function* …) for the
-// Effect.fn of that text.
-func generatorCallOf(callee *ast.Node) *ast.Node {
-	call := callee.Parent
-	for !slices.ContainsFunc(call.Arguments(), isGeneratorExpression) && call.Parent != nil && ast.IsCallExpression(call.Parent) && call.Parent.Expression() == call {
-		call = call.Parent
-	}
-	return call
-}
-
 // isGeneratorExpression reports whether node is a function* written in place.
 func isGeneratorExpression(node *ast.Node) bool {
 	return ast.IsFunctionExpression(node) && node.BodyData().AsteriskToken != nil
-}
-
-// isCallee reports whether node is the callee of a call.
-func isCallee(node *ast.Node) bool {
-	return node.Parent != nil && ast.IsCallExpression(node.Parent) && node.Parent.Expression() == node
 }
 
 // noteEffectGenFix adds to d, EK1002 at call, what its quick fix writes, or
@@ -114,9 +67,7 @@ func noteEffectGenFix(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnosti
 	rewrite := planEffectGen(c, file, call)
 	switch {
 	case rewrite.fixable():
-		note(d, "Its quick fix writes {0}.", rewrite.description)
 	case rewrite != nil && rewrite.why != "":
-		note(d, "{0}", rewrite.why)
 	}
 }
 

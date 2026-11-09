@@ -18,7 +18,7 @@ import (
 )
 
 type retiredModulesHost struct {
-	trustedFixHost
+	snapshotTestHost
 	files map[string]string
 }
 
@@ -110,7 +110,7 @@ func moduleEditorServiceFiles(t *testing.T, source string, extra map[string]stri
 		}
 		return lsconv.ComputeLSPLineStarts(files[string(name)])
 	})
-	return ls.NewLanguageService(nil, p, retiredModulesHost{trustedFixHost: trustedFixHost{converters: converters}, files: files}, "/project/main.vibe"), p, converters
+	return ls.NewLanguageService(nil, p, retiredModulesHost{snapshotTestHost: snapshotTestHost{converters: converters}, files: files}, "/project/main.vibe"), p, converters
 }
 
 // These fixtures are ASCII, so LSP UTF-16 columns equal byte columns.
@@ -149,7 +149,7 @@ func TestOrdinaryModuleEdits(t *testing.T) {
 	converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
 		return lsconv.ComputeLSPLineStarts(files[string(name)])
 	})
-	service := ls.NewLanguageService(nil, p, retiredModulesHost{trustedFixHost: trustedFixHost{converters: converters}, files: files}, "/project/main.ts")
+	service := ls.NewLanguageService(nil, p, retiredModulesHost{snapshotTestHost: snapshotTestHost{converters: converters}, files: files}, "/project/main.ts")
 	file := p.GetSourceFile("/project/main.ts")
 	if edits := service.OrganizeImports(t.Context(), file, p, lsproto.CodeActionKindSourceOrganizeImportsTs); len(edits) == 0 {
 		t.Error("ordinary organize imports was blocked")

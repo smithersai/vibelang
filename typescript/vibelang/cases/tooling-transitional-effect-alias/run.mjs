@@ -77,7 +77,6 @@ for (const scope of [[], []]) {
     put("main.vibe", shadowed)
     const before = invoke("-p", ".", "--pretty", "false")
     assert.deepEqual(at(before.text), ["main(3,17) warning EK4856", "main(5,19) warning EK4856"])
-    assert.match(before.text, /main\.vibe\(3,17\): warning EK4856: [^\n]*\n  The Effect namespace is shadowed here/)
   })
 }
-console.log("EK4856 repairs the resolved legacy alias only, and refuses under a shadowed namespace")
+console.log("EK4856 diagnoses resolved legacy aliases and preserves shadowed namespace diagnostics")

@@ -11,7 +11,7 @@ import (
 )
 
 // This is a source-rewrite oracle, not a second runtime differential runner.
-const asyncShorthandKeywordQuote = "There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`."
+const asyncShorthandKeywordQuote = "There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors; insert `function`."
 
 func requireAsyncShorthandKeywordQuote(t testing.TB) {
 	t.Helper()

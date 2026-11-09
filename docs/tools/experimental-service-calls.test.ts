@@ -71,7 +71,7 @@ declare const options: Experimental.NodeStream.Options
     return program.getSemanticDiagnostics(program.getSourceFile(file)).map(diagnostic => diagnostic.code)
   }
   const guide = readFileSync(new URL("../user/src/getting-started/012-devtools.md", import.meta.url), "utf8")
-  const row = guide.split("\n").find(line => line.startsWith("| TS2304, TS2552") && line.includes(".hostname"))
+  const row = guide.split("\n").find(line => line.startsWith("| `TS2304`, `TS2552`") && line.includes(".hostname"))
   const advice = row?.match(/try \(try Experimental\.Process\.Process\)\.hostname(?:\(\))?/)?.[0]
   expect(advice).toBeDefined()
   expect(diagnostics("export const repaired = Effect.gen(function*() { return " + advice!.replace(/\btry\b/g, "yield*") + " })")).toEqual([])

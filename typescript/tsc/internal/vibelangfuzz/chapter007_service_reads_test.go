@@ -7,7 +7,7 @@ import (
 )
 
 var chapter007ServiceReadQuotes = []string{
-	"A rewrite that can't preserve types, behavior and declaration output refuses at that site.",
+	"Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.",
 }
 
 func TestChapter007ServiceReadHygieneQuoted(t *testing.T) {

@@ -1,20 +1,17 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 func init() {
 	fileChecks = append(fileChecks, checkSchemaTypeMemberModifiers)
 	checker.RegisterDiagnosticsFilterHook(filterSchemaTypeMemberModifierDiagnostics)
-	registerNativeSchemaFix(1070)
-	ls.RegisterCodeFixProvider(schemaTypeMemberModifierFix)
+
 }
 
 func checkSchemaTypeMemberModifiers(c *checker.Checker, file *ast.SourceFile) {
@@ -43,18 +40,4 @@ func filterSchemaTypeMemberModifierDiagnostics(_ *checker.Checker, file *ast.Sou
 		}
 		return false
 	})
-}
-
-var schemaTypeMemberModifierFix = &ls.CodeFixProvider{
-	Source:     "",
-	ErrorCodes: []int32{1070},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		if fix.Diagnostic == nil {
-			return nil, nil
-		}
-		if edits := schemaTypeMemberRepairEdits(fix); len(edits) > 0 {
-			return []*ls.CodeAction{{Description: "Write the schema field without class-only modifiers", Changes: edits}}, nil
-		}
-		return nil, nil
-	},
 }

@@ -19,7 +19,7 @@ const diagnostic = fc.record({
 test("property: generated diagnostic mixes never promote a warning to a style failure", () => {
   fc.assert(fc.property(fc.array(diagnostic, { maxLength: 40 }), fc.subarray(["src/a.vibe", "src/b.vibe"]), (entries, files) => {
     const output = entries.map(d => d.file + "(" + d.line + "," + d.column + "): " + d.category + " " + d.code + ": finding\n" +
-      (d.refusal === "note" ? "  No quick fix: preserve the public signature.\n" : "")).join("")
+      (d.refusal === "note" ? "  Preserve the public signature.\n" : "")).join("")
     const ds = parseDiagnostics(output)
     const problems = styleProblems(ds, files)
     const scopedErrors = ds.filter(d => files.includes(d.file) && d.category === "error")
@@ -37,14 +37,13 @@ test("property: generated diagnostic mixes never promote a warning to a style fa
     assert.deepEqual(warningExceptions([...ds, ...ds].reverse(), files), exceptions)
     for (const d of expected) {
       const e = exceptions.find(e => e.file === d.file && e.line === d.line && e.column === d.column && e.code === d.code)
-      const refused = d.notes.length > 0
-      assert.equal(e.name, refused ? "warning-fix-refused" : "warning-retained")
+      assert.equal(e.name, "warning-retained")
     }
   }), { numRuns: 500, seed: 48394802 })
 })
 
 test("imported diagnostic warnings never exempt an error", () => {
-  const ds = parseDiagnostics("src/a.vibe(9,4): warning FUTURE12345: advisory\nsrc/b.vibe(9,4): warning FUTURE12345: same code elsewhere\nsrc/a.vibe(10,4): error EK4833: error\n  No quick fix: keep this.\n")
+  const ds = parseDiagnostics("src/a.vibe(9,4): warning FUTURE12345: advisory\nsrc/b.vibe(9,4): warning FUTURE12345: same code elsewhere\nsrc/a.vibe(10,4): error EK4833: error\n  Keep this.\n")
   assert.deepEqual(styleProblems(ds, ["src/a.vibe"]), [ds[2]])
   assert.deepEqual(warningExceptions(ds, ["src/b.vibe"]).map(e => e.name), ["warning-retained"])
 })

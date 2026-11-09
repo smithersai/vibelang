@@ -14,12 +14,8 @@ func init() { fileChecks = append(fileChecks, checkPlatformTypeExports) }
 
 func checkPlatformTypeExports(c *checker.Checker, file *ast.SourceFile) {
 	findPlatformTypeExports(c, file, func(at *ast.Node, rewrite *formRewrite, args ...any) {
-		d := report(c, at, platformTypeExportDiagnostic, args...)
-		if rewrite.fixable() {
-			note(d, "Its quick fix keeps the runtime dependency in a native module and retains the type exports.")
-		} else if rewrite != nil && rewrite.why != "" {
-			note(d, rewrite.why)
-		}
+		report(c, at, platformTypeExportDiagnostic, args...)
+
 	})
 }
 
@@ -102,15 +98,4 @@ func platformTypeExportRewrite(c *checker.Checker, file *ast.SourceFile, stateme
 func findPlatformTypeLoads(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
 	findPlatformTypeImports(c, file, report)
 	findPlatformTypeExports(c, file, report)
-}
-
-func platformTypeLoadRewrite(c *checker.Checker, file *ast.SourceFile, at *ast.Node) *formRewrite {
-	if ast.IsStringLiteral(at) && at.Parent != nil && ast.IsExportDeclaration(at.Parent) {
-		return platformTypeExportRewrite(c, file, at.Parent)
-	}
-	return platformTypeImportRewrite(c, file, at)
-}
-
-func platformTypeLoadDiagnosticNode(node *ast.Node) bool {
-	return ast.IsImportDeclaration(node) || (ast.IsStringLiteral(node) && node.Parent != nil && ast.IsExportDeclaration(node.Parent) && node.Parent.ModuleSpecifier() == node)
 }

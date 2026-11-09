@@ -24,15 +24,3 @@ func schemaMappedFieldObject(node *ast.Node) *ast.Node {
 	}
 	return nil
 }
-
-// A direct reference cannot be repaired by hiding it behind another codec
-// name: its flags would still conflict. The native class keeps those flags,
-// decoding, method bodies and constructor behavior without a source promise.
-func directSchemaErrorReference(value *ast.Node) bool {
-	for node := value.Parent; node != nil; node = node.Parent {
-		if ast.IsObjectLiteralExpression(node) {
-			return isSchemaErrorFields(node)
-		}
-	}
-	return false
-}

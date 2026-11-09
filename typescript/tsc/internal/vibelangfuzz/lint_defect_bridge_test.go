@@ -14,11 +14,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-const lintDefectBridgeQuote = "Generated synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`."
+const lintDefectBridgeQuote = "For `EK0403`, an explicit synchronous defect bridge is `try Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`."
 
 func TestLintDefectBridgeQuoted(t *testing.T) {
 	for chapter, quote := range map[string]string{
-		"007-tooling.md":       lintDefectBridgeQuote,
+		"003-failures.md":      lintDefectBridgeQuote,
 		"../vips/0023-pipe.md": nativePipeLintQuote,
 	} {
 		if !strings.Contains(SpecText(chapter), quote) {

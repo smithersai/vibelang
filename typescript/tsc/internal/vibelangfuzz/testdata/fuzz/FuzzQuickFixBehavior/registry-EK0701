@@ -1,3 +1,0 @@
-go test fuzz v1
-string("EK0701@EK0701-runtime")
-[]byte("\x00")

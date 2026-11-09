@@ -1,3 +1,0 @@
-go test fuzz v1
-string("object-method")
-byte(11)

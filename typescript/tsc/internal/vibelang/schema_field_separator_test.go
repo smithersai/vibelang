@@ -6,8 +6,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
@@ -85,61 +83,5 @@ func TestSchemaFieldSeparatorIsolation(t *testing.T) {
 		if len(f.Diagnostics()) != 0 {
 			t.Errorf("valid separator rejected: %v\n%s", f.Diagnostics(), source)
 		}
-	}
-}
-
-func TestSchemaFieldSeparatorQuickFix(t *testing.T) {
-	for _, source := range []string{
-		"export schema S { a: string b: number }",
-		"export schema S { a: string /* keep */ b: number }",
-		"export schema S { a: { n: number } b: string }",
-	} {
-		t.Run(source, func(t *testing.T) {
-			source = "// café 😀\n" + source
-			program, file, service, converters := editorProgram(t, source)
-			var diagnostic *ast.Diagnostic
-			for _, d := range program.GetSyntacticDiagnostics(t.Context(), file) {
-				if d.Source() == "EK" && d.Code() == 1504 {
-					diagnostic = d
-					break
-				}
-			}
-			if diagnostic == nil {
-				t.Fatalf("missing EK1504: %v", program.GetSyntacticDiagnostics(t.Context(), file))
-			}
-			d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
-			response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-				TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-				Range:        d.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{d}},
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			var chosen *lsproto.CodeAction
-			if response.CommandOrCodeActionArray != nil {
-				for _, a := range *response.CommandOrCodeActionArray {
-					if a.CodeAction != nil && a.CodeAction.Title == "Insert ; between schema fields" {
-						chosen = a.CodeAction
-					}
-				}
-			}
-			if chosen == nil || chosen.Edit == nil || chosen.Edit.Changes == nil {
-				t.Fatal("missing separator quick fix")
-			}
-			changes := *chosen.Edit.Changes
-			edits := changes[lsconv.FileNameToDocumentURI(file.FileName())]
-			if len(changes) != 1 || len(edits) != 1 || edits[0].NewText != ";" {
-				t.Fatalf("unexpected edits: %v", changes)
-			}
-			got := applyEditorEdits(t, file, converters, edits)
-			want := source[:diagnostic.Pos()] + ";" + source[diagnostic.Pos():]
-			if got != want {
-				t.Fatalf("got %q, want %q", got, want)
-			}
-			checked, edited, _, _ := editorProgram(t, got)
-			if ds := checked.GetSyntacticDiagnostics(t.Context(), edited); len(ds) != 0 {
-				t.Fatalf("fix left syntax errors: %v", ds)
-			}
-		})
 	}
 }

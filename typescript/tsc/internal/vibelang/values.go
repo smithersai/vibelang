@@ -115,18 +115,6 @@ func (a *analyzer) programOf(t *checker.Type) *checker.Type {
 	return nil
 }
 
-// iteratedTypes returns the element types of t and true when t is iterable:
-// an array, a tuple, or an object with a [Symbol.iterator] method.
-func (a *analyzer) iteratedTypes(t *checker.Type) ([]*checker.Type, bool) {
-	if a.checker.IsArrayLikeType(t) {
-		return a.elementTypes(t, 0), true
-	}
-	if element := a.checker.IteratedType(t); element != nil {
-		return []*checker.Type{element}, true
-	}
-	return nil, false
-}
-
 // esFunctionOf returns the .vibe function that node, an identifier or a
 // namespace member such as M.double, names: a function declaration, or a
 // variable initialized with a lambda.
@@ -171,30 +159,4 @@ func factoryReturns(fn *ast.Node, cb func(*ast.Node)) {
 		return n.ForEachChild(visit)
 	}
 	visit(fn.Body())
-}
-
-// declaredProgramReturn returns the Effect type that fn's return annotation
-// writes, or nil.
-func (a *analyzer) declaredProgramReturn(fn *ast.Node) *checker.Type {
-	if fn == nil || !isLowerable(fn) || isProducer(fn) || fn.Type() == nil {
-		return nil
-	}
-	if t := a.checker.GetTypeFromTypeNode(fn.Type()); isEffectType(a.checker, t) {
-		return t
-	}
-	return nil
-}
-
-// firstPause returns the first call in fn's own body that performs an Effect
-// operation, or nil when fn compiles to plain JavaScript.
-func (a *analyzer) firstPause(fn *ast.Node) *ast.Node {
-	var pause *ast.Node
-	a.forEachRunningCallInBody(fn, func(call *ast.Node) bool {
-		if a.performs(call) {
-			pause = call
-			return true
-		}
-		return false
-	})
-	return pause
 }

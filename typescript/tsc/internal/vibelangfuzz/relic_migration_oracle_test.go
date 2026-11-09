@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-const relicMigrationFixQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
+const relicMigrationFixQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func TestRelicStatementFixQuoted(t *testing.T) {
 	text, err := os.ReadFile(SpecPath("007-tooling.md"))

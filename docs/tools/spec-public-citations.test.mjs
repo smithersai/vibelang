@@ -38,7 +38,7 @@ const functionPairs = [
     [/`Function\["prototype"\]` \(VIP-1, amended\)/, 1, "the `Function` member-access exemption covers `.prototype` only"],
     [/close the other ways to reach these globals \(VIP-33 and VIP-1, amended\)/, 33, "`globalThis` and `import()`"],
     [/close the other ways to reach these globals \(VIP-33 and VIP-1, amended\)/, 1, "`Function` through `.constructor`"],
-    [/a quick fix that parenthesizes \(VIP-3, amended; `EK0301`\)/, 3, "`!` beside other type operators"],
+    [/requires parentheses \(VIP-3, amended; `EK0301`\)/, 3, "`!` beside other type operators"],
     [/needs no parentheses \(VIP-3, amended\)/, 3, "function-type returns"],
     [/the same on every build \(VIP-28, amended\)/, 28, "the helper's name"],
     [/Generated matcher declarations follow \[VIP-27's published matcher boundary\]\(\.\.\/vips\/0027-declaration-output\.md#decision\)/, 27, "published declarations add neither"],

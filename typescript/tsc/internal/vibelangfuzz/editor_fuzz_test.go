@@ -34,10 +34,6 @@ import (
 //     overlapping, and leaves a file that parsed still parsing: "Every
 //     automatic change to source keeps the program's meaning" (Chapter 28,
 //     "Rewrites keep meaning", D372).
-//   - Applying an EK diagnostic's quick fix removes that diagnostic at its
-//     span and adds no error: a quick fix keeps the program's meaning, and
-//     "that the rewritten program reports no new error is checked as well"
-//     (D372, D291).
 //
 // offsets holds big-endian pairs of bytes, each a byte offset into the main
 // file modulo its length.
@@ -103,7 +99,6 @@ type toolsEditor struct {
 	main     string
 	uri      lsproto.DocumentUri
 	service  *ls.LanguageService
-	verified int
 	where    string // the request's position, for a report
 }
 
@@ -348,7 +343,7 @@ func (e *toolsEditor) check(what string, response any) {
 }
 
 // codeActions requests the code actions of a range, applies each, and
-// verifies the first EK quick fixes by compiling the result.
+// validates edits without changing the source files.
 func (e *toolsEditor) codeActions(r lsproto.Range, d *lsproto.Diagnostic) {
 	actionContext := &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{}}
 	if d != nil {
@@ -364,14 +359,7 @@ func (e *toolsEditor) codeActions(r lsproto.Range, d *lsproto.Diagnostic) {
 		if action.CodeAction == nil || action.CodeAction.Edit == nil {
 			continue
 		}
-		files, edits := e.apply(toolsActionKey(action.CodeAction, d), "code action "+action.CodeAction.Title, action.CodeAction.Edit)
-		if files == nil || d == nil || action.CodeAction.Kind == nil || *action.CodeAction.Kind != lsproto.CodeActionKindQuickFix {
-			continue
-		}
-		if code, source := toolsDiagnosticCode(d); source == "EK" && e.verified < 3 {
-			e.verified++
-			e.verifyQuickFix(action.CodeAction.Title, code, d, files, edits)
-		}
+		e.apply(toolsActionKey(action.CodeAction, d), "code action "+action.CodeAction.Title, action.CodeAction.Edit)
 	}
 }
 
@@ -416,47 +404,6 @@ func (e *toolsEditor) apply(key, what string, edit *lsproto.WorkspaceEdit) (map[
 	return files, mainEdits
 }
 
-// verifyQuickFix compiles the project with an EK diagnostic's quick fix
-// applied. The diagnostic is gone from its span, and no error is added
-// (D372, D291).
-func (e *toolsEditor) verifyQuickFix(title string, code int32, d *lsproto.Diagnostic, files map[string]string, edits []toolsEdit) {
-	start, end, ok := newToolsLines(e.files[e.main]).span(d.Range)
-	if !ok {
-		return // reported by check
-	}
-	start, end = toolsMap(start, edits, true), toolsMap(end, edits, false)
-	fixed := toolsCompile(e.t, e.w, "FuzzEditor", files)
-	defer fixed.Remove()
-	if added := toolsAddedErrors(e.r, fixed); len(added) > 0 {
-		// The key names the codes the fix adds, such as
-		// editor:quickfix-error:EK4834:EK2116, so that one known gap of a
-		// fix does not switch the oracle off for every error it may add.
-		var codes []string
-		for _, line := range added {
-			if _, code, ok := strings.Cut(line, ": "); ok && !strings.HasPrefix(line, " ") && !slices.Contains(codes, code) {
-				codes = append(codes, code)
-			}
-		}
-		slices.Sort(codes)
-		Gap(e.t, "FuzzEditor", fmt.Sprintf("editor:quickfix-error:EK%04d:%s", code, strings.Join(codes, "+")), "the quick fix %q of EK%04d adds errors: %s\n%s\nfixed:\n%s", title, code, strings.Join(added, "\n"), e.archive, Archive(files))
-	}
-	// A quick fix keeps comments (quickFixCommentQuote): it may move one with
-	// its code, never copy it, as EK1301's class rewrite once copied a field's
-	// doc comment into TaggedError's arguments (Smithers SmithersError).
-	for _, comment := range toolsBlockComments(e.files[e.main]) {
-		if strings.Count(files[e.main], comment) > strings.Count(e.files[e.main], comment) {
-			Gap(e.t, "FuzzEditor", fmt.Sprintf("editor:quickfix-comment:EK%04d", code), "the quick fix %q of EK%04d copies the comment %q:\n%s\nfixed:\n%s", title, code, comment, e.archive, Archive(files))
-			break
-		}
-	}
-	file := fixed.SourceFile(e.main)
-	for _, after := range fixed.Diagnostics {
-		if after.File() == file && file != nil && after.Source() == "EK" && after.Code() == code && after.Pos() == start && after.End() == end {
-			Gap(e.t, "FuzzEditor", fmt.Sprintf("editor:quickfix-kept:EK%04d", code), "the quick fix %q leaves EK%04d at its span: %s\n%s\nfixed:\n%s", title, code, after.String(), e.archive, Archive(files))
-		}
-	}
-}
-
 // toolsActionKey names a code action in a pending key: a quick fix by the
 // code of its diagnostic, such as "EK4832", and any other action by the
 // first two words of its title, such as "Convert-to".
@@ -498,28 +445,10 @@ func toolsEnclosingKind(name, text string, offset int) string {
 
 // quickFixCommentQuote is the rule FuzzEditor's comment oracle checks
 // (chapter 7, built-in warnings).
-const quickFixCommentQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
+const quickFixCommentQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func TestQuickFixCommentRuleQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), quickFixCommentQuote) {
 		t.Fatal(quickFixCommentQuote)
-	}
-}
-
-// toolsBlockComments returns each block comment of text, /* */ or /** */,
-// in order.
-func toolsBlockComments(text string) []string {
-	var comments []string
-	for {
-		start := strings.Index(text, "/*")
-		if start < 0 {
-			return comments
-		}
-		end := strings.Index(text[start+2:], "*/")
-		if end < 0 {
-			return comments
-		}
-		comments = append(comments, text[start:start+2+end+2])
-		text = text[start+2+end+2:]
 	}
 }

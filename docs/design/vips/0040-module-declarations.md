@@ -2,6 +2,8 @@
 
 **Status:** accepted, 2026-11-03. Will: "Are you asking me if I accept a vip I already asked you to add?" Replaces denied [VIP-25](0025-inline-modules-denied.md).
 
+Before its first release, VibeLang ships no quick fixes or codemods of its own (PROC-29). TypeScript's built-in code fixes remain available.
+
 **One sentence.** `module name { … }` at a `.vibe` file's top level is a TC39 module declaration whose body is a TypeScript module, checked, emitted, declared, linted and formatted exactly as a sibling `.ts` file would be, and imported only with `import … from name`.
 
 **One paragraph.** Will's ruling of 2026-10-31 removes `throw` from sync VibeLang functions: code that throws, catches native exceptions or wraps a throwing API lives in TypeScript, "in a ts module using module syntax" or "a ts file you import into vibelang". VIP-25 denied the inline form because plain functions kept TypeScript's `throw`; that reason is gone. This VIP restores old VibeLang's D283 escape with its D364/D403 semantics, which main still implements (50 `.vibe` files and 18 `module-declaration-*` cases), and corrects the three places where that implementation disagrees with TC39. It adopts only the named, top-level, unexported declaration. Everything else TC39 offers (module expressions, exported and nested declarations, the name as a `Module` value, a body naming a sibling declaration) is a compile error, so adding any of it later breaks nothing.
@@ -242,7 +244,7 @@ The same text, `module X { … }`, has three readings:
 | `module.exports`, `module.id`, `const module`, `module(…)` | Identifiers, as today | `module.exports` in VibeLang code stays VIP-33's `EK4402`. In a body it is whatever it is in `.ts`. |
 | `module`⏎`X { }`, `module`⏎`{ }` | Identifier statement, then a block | `[no LineTerminator here]`, as TC39 and TypeScript. |
 | `namespace X { }` | A namespace of VibeLang code | Unchanged; not an escape. |
-| `const text = 1` beside `module text { }` | `EK4005` error | TC39's redeclaration rule, decided by it, not asked (Will: decide by precedent). Main warns today, so case `module-declaration-collision-unused` becomes a `.fail` case; the quick fix renames the `const`. |
+| `const text = 1` beside `module text { }` | `EK4005` error | TC39's redeclaration rule, decided by it, not asked (Will: decide by precedent). Main warns today, so case `module-declaration-collision-unused` becomes a `.fail` case; rename the `const` explicitly. |
 | `service X {`, `error X {`, `schema X {`, `data X {` | Unchanged | Same shape, different keyword; none overlaps. |
 
 ## Will's words

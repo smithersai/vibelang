@@ -8,7 +8,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -49,14 +48,10 @@ var EK4839 = message(4839, warningCategory, "{0} chooses with {2}; a match expre
 func init() {
 	registry[EK4839.Code] = EK4839
 	tsFormMessages = append(tsFormMessages, EK4839)
-	tsFormFixCodes = append(tsFormFixCodes, EK4839.Code)
 	tsFormRules[EK4839.Code] = &tsFormRule{
-		message:   EK4839,
-		find:      findMatchChains,
-		plan:      matchChainRewrite,
-		diagnosed: ast.IsCallExpression,
+		message: EK4839,
+		find:    findMatchChains,
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4839.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 // A matchChain is a Match chain's parts.

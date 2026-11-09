@@ -13,7 +13,7 @@ import (
 
 const platformTimerAdviceTarget = "FuzzPlatformTimerAdvice"
 const platformTimerColdQuote = "Returning an Effect does not itself execute it."
-const platformTimerDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const platformTimerDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 
 func TestPlatformTimerAdviceQuoted(t *testing.T) {
 	platformTimerBoundaryQuoted(t)

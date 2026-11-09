@@ -5,45 +5,20 @@ import (
 	"testing"
 )
 
-const promisePipelineQuote = "Generator repairs preserve nested pipeline edits when an outer pipeline captures its receiver and stages."
+const promisePipelineQuote = "Keep nested pipeline edits when an outer pipeline captures its receiver and stages."
 
 // The oracle is the existing Chapter 7 declaration-preservation oracle. This
 // target varies Promise-returning boundaries around a generator rather than
 // adding a runtime comparison; runtime equivalence stays in FuzzVIPDifferential.
 func TestMigrationPromisePipelinesQuoted(t *testing.T) {
-	TestMigrationDeclarationFixQuoted(t)
-	if !strings.Contains(SpecText("007-tooling.md"), promisePipelineQuote) {
+	chapterSays(t, "001-functions.md", "Declarations are exactly what idiomatic Effect TypeScript would declare.")
+	if !strings.Contains(SpecText("../../../.smithers/flows/migrate/rules.md"), promisePipelineQuote) {
 		t.Fatalf("Chapter 7 no longer says %q", promisePipelineQuote)
 	}
 }
 
 type promisePipelineModel struct {
 	annotation, wrapper, stages, imports, layout string
-}
-
-func parsePromisePipeline(data []byte) promisePipelineModel {
-	choices := [][]string{
-		{"written", "inferred"},
-		{"arrow", "function", "held"},
-		{"scoped", "mapped", "plain"},
-		{"namespace", "named"},
-		{"lf", "crlf"},
-	}
-	parts := strings.Split(strings.TrimPrefix(string(data), "promise-pipeline:"), ":")
-	picked := make([]string, len(choices))
-	for i, values := range choices {
-		picked[i] = values[0]
-		if strings.HasPrefix(string(data), "promise-pipeline:") && i < len(parts) {
-			for _, value := range values {
-				if parts[i] == value {
-					picked[i] = value
-				}
-			}
-		} else if i < len(data) {
-			picked[i] = values[int(data[i])%len(values)]
-		}
-	}
-	return promisePipelineModel{picked[0], picked[1], picked[2], picked[3], picked[4]}
 }
 
 func (m promisePipelineModel) source() string {

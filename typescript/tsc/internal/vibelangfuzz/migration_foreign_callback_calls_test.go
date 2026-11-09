@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-const foreignCallbackCallsTarget = "FuzzMigrationForeignCallbackCalls"
 const foreignCallbackCallsQuote = "An effectful callable's thrown type is `never`, and it never rethrows a callback: its failures are its Effect's error channel."
 
 func TestMigrationForeignCallbackCallsQuoted(t *testing.T) {

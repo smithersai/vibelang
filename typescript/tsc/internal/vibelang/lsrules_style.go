@@ -1,13 +1,10 @@
 package vibelang
 
 import (
-	"context"
-	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -32,7 +29,6 @@ func init() {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkStyleRules)
-	ls.RegisterCodeFixProvider(styleFix)
 }
 
 // checkStyleRules reports EK4821-EK4825 in file.
@@ -205,82 +201,4 @@ func checkCondition(c *checker.Checker, condition *ast.Node) {
 			return
 		}
 	}
-}
-
-// styleFix repairs EK4821, EK4823, EK4824, and EK4825.
-var styleFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4821.Code, EK4823.Code, EK4824.Code, EK4825.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		file := fix.SourceFile
-		text := func(node *ast.Node) string { return scanner.GetTextOfNode(node) }
-		if fix.ErrorCode == EK4823.Code {
-			body := reportedNode(file, fix.Span, func(node *ast.Node) bool {
-				return ast.IsBlock(node) && node.Parent != nil && ast.IsArrowFunction(node.Parent)
-			})
-			if body == nil || returnedValue(body.Parent) == nil {
-				return nil, nil
-			}
-			returned := returnedValue(body.Parent)
-			value := text(returned)
-			// A concise body that starts with { is a block, and a comma there
-			// ends the arrow: (n) => { return n, 1 } in a call would pass 1 as
-			// another argument.
-			if ast.IsObjectLiteralExpression(ast.SkipParentheses(returned)) || ast.IsBinaryExpression(returned) && returned.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
-				value = "(" + value + ")"
-			}
-			return []*ls.CodeAction{{Description: "Write the value as the body", Changes: replaceRange(fix, nodeStart(file, body), body.End(), value)}}, nil
-		}
-		call := reportedNode(file, fix.Span, ast.IsCallExpression)
-		if call == nil {
-			return nil, nil
-		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
-		defer done()
-		var description, newText string
-		var kept []*ast.Node
-		switch fix.ErrorCode {
-		case EK4821.Code:
-			// TaggedStruct changes make input and constructor behavior.
-			return nil, nil
-		case EK4824.Code:
-			kept = []*ast.Node{pipeReceiver(c, call)}
-			description, newText = "Remove the pipe", text(kept[0])
-		case EK4825.Code:
-			inner := pipeReceiver(c, call)
-			functions := append(slices.Clone(pipeFunctions(inner)), pipeFunctions(call)...)
-			var texts []string
-			for _, f := range functions {
-				texts = append(texts, text(f))
-			}
-			kept = append([]*ast.Node{pipeReceiver(c, inner)}, functions...)
-			if isMethodPipe(call) {
-				newText = text(kept[0]) + ".pipe(" + strings.Join(texts, ", ") + ")"
-			} else {
-				kept = append(kept, call.Expression())
-				newText = text(call.Expression()) + "(" + text(kept[0]) + ", " + strings.Join(texts, ", ") + ")"
-			}
-			description = "Pass every function to one pipe"
-		}
-		if commentBetween(file, nodeStart(file, call), call.End(), kept) {
-			return nil, nil // the repair writes its own punctuation there
-		}
-		return []*ls.CodeAction{{Description: description, Changes: replaceRange(fix, nodeStart(file, call), call.End(), newText)}}, nil
-	},
-}
-
-// commentBetween reports whether file's text in [start, end), outside the
-// nodes a repair keeps, holds a comment the repair would drop. A repair that
-// would drop a comment is not offered (chapter 7, Effect's type-aware lint).
-func commentBetween(file *ast.SourceFile, start, end int, kept []*ast.Node) bool {
-	kept = slices.Clone(kept)
-	slices.SortFunc(kept, func(a, b *ast.Node) int { return nodeStart(file, a) - nodeStart(file, b) })
-	text := file.Text()
-	for _, node := range kept {
-		if from := nodeStart(file, node); from > start && hasComment(text[start:from]) {
-			return true
-		}
-		start = max(start, node.End())
-	}
-	return start < end && hasComment(text[start:end])
 }

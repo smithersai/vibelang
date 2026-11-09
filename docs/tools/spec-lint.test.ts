@@ -112,13 +112,6 @@ test("declaration-import-form rejects round 14 OPUS-4's `import type` beside `im
   ])
 })
 
-test("denied-vip-repairs rejects round 14 OPUS-2's two-repair Appendix C row for VIP-11", () => {
-  const defect = withEdit("src/900-appendices.md", text => text.replace(/^(\| \[11\]\(\.\.\/vips\/0011-trailing-blocks-denied\.md\) \| trailing blocks, `f\(x\) \{ … \}` \| )[^\n]*$/m, "$1`f(x, () => { … })` or `f(x, effect { … })` |"))
-  expect(lint(defect, rule("denied-vip-repairs")).map(v => v.message)).toEqual([
-    expect.stringMatching(/^VIP-11's Appendix C repairs .* differ from `EK1101`'s quick fix /)
-  ])
-})
-
 test("retired-forms rejects round 7 ASTRA-4's `catch guest` in VIP-5's Decision example (row 46)", () => {
   const defect = withEdit("vips/0005-try-runs-effects.md", text => text.replace("const g = fetchUser(id) catch () => guest", "const g = fetchUser(id) catch guest"))
   const source = examples(defect.get("vips/0005-try-runs-effects.md")!)[0]!
@@ -130,7 +123,7 @@ test("retired-forms rejects round 7 ASTRA-4's `catch guest` in VIP-5's Decision 
 test("retired-forms rejects round 7 OPUS-6's bare `Effect<User, NotFound, Users>` in VIP-1 (row 45)", () => {
   const defect = withEdit("vips/0001-effect-and-async-functions.md", text => text.replace("effect function load(id): User!NotFound!Users {", "effect function load(id): Effect<User, NotFound, Users> {"))
   expect(lint(defect, rule("retired-forms")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
-    expect.stringMatching(/^vips\/0001-effect-and-async-functions\.md:27 the bare type `Effect<A, E, R>` is removed/)
+    expect.stringMatching(/^vips\/0001-effect-and-async-functions\.md:29 the bare type `Effect<A, E, R>` is removed/)
   ])
 })
 
@@ -141,8 +134,8 @@ test("platform-imports rejects round 6 OPUS-4's VIP-33 and VIP-26 examples (row 
   defect.set("vips/0026-top-level-and-main.md", spec.get("vips/0026-top-level-and-main.md")!.replace(/^import \{ NodeRuntime \} from "@effect\/platform-node"\n/m, ""))
   expect(lint(defect, rule("platform-imports")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
     "vips/0026-top-level-and-main.md:9 `NodeRuntime` is a platform package's value, not in scope: the example must import it",
-    "vips/0033-platform-stdlib.md:12 `NodeServices` is a platform package's value, not in scope: the example must import it",
-    "vips/0033-platform-stdlib.md:12 `provide NodeServices…` at a module's top level is outside effect code (EK1201)"
+    "vips/0033-platform-stdlib.md:14 `NodeServices` is a platform package's value, not in scope: the example must import it",
+    "vips/0033-platform-stdlib.md:14 `provide NodeServices…` at a module's top level is outside effect code (EK1201)"
   ])
 })
 
@@ -150,7 +143,7 @@ test("counterpart-using rejects round 9 ASTRA-2's VIP-8 counterpart without `usi
   const original = "// Effect TS\nconst load = (p, q) => Effect.scoped(Effect.gen(function* () {\n  const db = yield* openDb()\n  return yield* db.query(q)\n}))\n```"
   const defect = withEdit("vips/0008-using-denied.md", text => text.replace(/\/\/ Effect TS\n[^]*?\n```/, original))
   expect(lint(defect, rule("counterpart-using")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
-    "vips/0008-using-denied.md:7 the Effect TS counterpart drops `using f = …`, so it does not acquire or dispose what the source does"
+    "vips/0008-using-denied.md:9 the Effect TS counterpart drops `using f = …`, so it does not acquire or dispose what the source does"
   ])
 })
 

@@ -1,3 +1,0 @@
-go test fuzz v1
-string("before-read")
-byte('\x03')

@@ -6,3 +6,12 @@ export effect function main() {
   fork p catch () => 0;
   return 0;
 }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/002-running.md#syntax | Wrap a value in a function literal, so the handler's kind stays visible in the source, and removes `async` or `*` from a function:
+// rule-evidence: docs/design/src/002-running.md#static-rules | It fires when a `try` or `try.all` is reachable from the head through unary and binary operator nodes only, ignoring the erased TypeScript wrappers described below: `try a + b catch h`, `-try a catch h` and `x + try a catch h` are each `EK0505`; the manual change removes `try`.
+
+export effect function manualCatch(program: number!string) {
+  return program catch (error) => error.length
+}
+export const visibleHandler = (error: string): number => error.length

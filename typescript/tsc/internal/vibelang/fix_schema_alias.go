@@ -5,7 +5,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -43,14 +42,10 @@ var EK4841 = message(4841, warningCategory, "{0} holds a schema and its type ali
 func init() {
 	registry[EK4841.Code] = EK4841
 	tsFormMessages = append(tsFormMessages, EK4841)
-	tsFormFixCodes = append(tsFormFixCodes, EK4841.Code)
 	tsFormRules[EK4841.Code] = &tsFormRule{
-		message:   EK4841,
-		find:      findSchemaAliasConstants,
-		plan:      schemaAliasRewrite,
-		diagnosed: isSchemaConstantName,
+		message: EK4841,
+		find:    findSchemaAliasConstants,
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4841.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 // findSchemaAliasConstants reports EK4841 at each constant of file that a

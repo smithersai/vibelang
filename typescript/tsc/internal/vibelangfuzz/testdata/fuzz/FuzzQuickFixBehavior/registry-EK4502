@@ -1,3 +1,0 @@
-go test fuzz v1
-string("EK4502@diag-call-pipe.fail")
-[]byte("\x00")

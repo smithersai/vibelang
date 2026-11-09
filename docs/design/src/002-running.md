@@ -25,7 +25,7 @@ Every operand is evaluated once, left to right as written, with two exceptions: 
 
 In effect code, a plain call whose own inferred type argument is an Effect reports `EK4802` at each argument that uses that type parameter outside a declared Effect position. Inspect the resolved signature's unsubstituted parameter types, following unions, intersections, container type arguments such as `T[]` and `Promise<T>`, object properties, and callback parameter and result types; stop at a declared Effect position such as `Effect.Effect<T>`. A parameter whose declared type is or contains an Effect, Stream or another Effect data type never reports this warning, including through an alias, union, intersection or generic constraint. Effect-ness must come only from inference into a bare type parameter or its plain generic container; the argument itself having an Effect annotation does not exempt a plain `expect<T>(x: T)` call. For this advisory, the inferred type must be Effect's own `Effect<A, E, R>` interface, including aliases and unions of that interface. A subtype with its own data structure, such as `effect/cli`'s `Command`, keeps its data identity even though it implements Effect. This also applies to type arguments inferred from a Pipeable receiver; it adds no exemption based on a callee's name. This includes overloads, methods and `T extends unknown`. A signature with a declared Effect result is excluded, as are arguments already run with `try`, explicit call type arguments and explicitly instantiated callees. Only ordinary call expressions are inspected, not the execution syntax nodes `try e`, `try.all`, `try.race`, `try.any`, `try.allSettled`, `fork` and its scoped forms, `join`, `catch`, `for try`, `for concurrent`, `provide`, `uninterruptible`, `interruptible` or `restore`. Ordinary calls inside their operands, heads and bodies are still inspected when they are in effect code. A VIP-40 `module name { … }` declaration body is TypeScript code and is excluded. Nested plain or `async` functions keep TypeScript's inference; a nested `effect` body is inspected independently outside a module declaration body. Composition calls such as `pipe(e, Effect.map(f))` and `e.pipe(Effect.map(f))` follow the same argument-position test, including callback contracts; `pipe` has no name-based exemption: a call is exempt only by consumption, when it is the direct operand of `try`, parenthesized or not, as in `try x.pipe(Stream.runCollect)` or `try take(job)`, because `try` runs the inferred Effect at once, while the same call assigned, passed, returned or pushed without `try` still reports. This rule follows [VIP-1’s dated amendment](../vips/0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03); `EK4802` is advisory, keeps its configured severity and changes neither inference nor execution. An ignored warning or `"off"` leaves the argument unrun; only a project-wide `"error"` setting requires a repair.
 
-Writing the call's type arguments explicitly opts out: `expect<Effect.Effect<number>>(e)` passes the program as data. An explicitly instantiated callee, such as `const checkProgram = expect<Effect.Effect<number>>`, also keeps the program. A declared `Effect.Effect<T>` parameter accepts a program without explicit type arguments. To pass a result instead, write `expect(try e)`. The editor offers `try` for a direct Effect-valued argument when the enclosing written failure and requirement contract accepts it; this action checks those channels, not the edited call's overloads, other arguments or expected result type. A container or callback needs its Effect run where constructed, or the editor action to write explicit type arguments; a non-Effect callback never receives `try`.
+Writing the call's type arguments explicitly opts out: `expect<Effect.Effect<number>>(e)` passes the program as data. An explicitly instantiated callee, such as `const checkProgram = expect<Effect.Effect<number>>`, also keeps the program. A declared `Effect.Effect<T>` parameter accepts a program without explicit type arguments. To pass a result instead, write `expect(try e)`. A direct Effect-valued argument can use `try` when the enclosing written failure and requirement contract accepts it. A container or callback needs its Effect run where constructed, or explicit type arguments to keep the program; a non-Effect callback never receives `try`.
 
 ## `try`
 
@@ -111,7 +111,7 @@ The handler is always a function literal, and its syntax alone decides its kind 
 | an `effect` arrow or `effect function` expression | effect function | what the function's Effect succeeds with; a `throw` in it fails again, typed |
 | an arrow or `function` expression | plain function | what the function returns |
 
-Anything else after `catch` is a syntax error (`EK0509`): a name, a call, any other value, an `effect { … }` block, a class expression, an `async` arrow or function expression, or a generator or `async` generator expression. The quick fix wraps a value in a function literal, so the handler's kind stays visible in the source, and removes `async` or `*` from a function:
+Anything else after `catch` is a syntax error (`EK0509`): a name, a call, any other value, an `effect { … }` block, a class expression, an `async` arrow or function expression, or a generator or `async` generator expression. Wrap a value in a function literal, so the handler's kind stays visible in the source, and removes `async` or `*` from a function:
 
 | Written | Kind | On `fail("bad")` gives |
 | --- | --- | --- |
@@ -120,12 +120,12 @@ Anything else after `catch` is a syntax error (`EK0509`): a name, a call, any ot
 | `x catch function (e) { return 7 }` | plain function | `7` |
 | `x catch effect (e) => 7`, `x catch (effect function (e) { return 7 })` | effect function | `7` |
 | `x catch (e) => { throw e }` | plain function | a compile error, `EK0401`; write `x catch effect (e) => { throw e }` |
-| `x catch guest` | syntax error | quick fix: `x catch () => guest` |
-| `x catch onErr` (`onErr` a function) | syntax error | quick fix: `x catch (e) => onErr(e)` |
-| `x catch effect { return 7 }` | syntax error | quick fix: `x catch effect () => { return 7 }` |
-| `x catch async (e) => 7` | syntax error | quick fix: `x catch (e) => 7` |
-| `x catch function* (e) { }` | syntax error | quick fix: `x catch function (e) { }` |
-| `try x catch (e) { … }` | syntax error `EK0509` | quick fix: `x catch effect (e) => { … }` |
+| `x catch guest` | syntax error | write `x catch () => guest` |
+| `x catch onErr` (`onErr` a function) | syntax error | write `x catch (e) => onErr(e)` |
+| `x catch effect { return 7 }` | syntax error | write `x catch effect () => { return 7 }` |
+| `x catch async (e) => 7` | syntax error | write `x catch (e) => 7` |
+| `x catch function* (e) { }` | syntax error | write `x catch function (e) { }` |
+| `try x catch (e) { … }` | syntax error `EK0509` | write `x catch effect (e) => { … }` |
 
 An expression-bodied arrow handler takes an `AssignmentExpression` as its body, as in `(e) => a ?? b`: `a catch () => b ? c : d` means `a catch (() => (b ? c : d))`, and `a catch () => b |> % + 1` means `a catch (() => (b |> % + 1))`: with `a` succeeding with `5` and `b` equal to `0` it gives `5`, and `(a catch () => b) |> % + 1` gives `6`. So `a catch effect (e) => b catch () => c` means `a catch (effect (e) => (b catch (() => c)))`. With a plain arrow, `b catch () => c` is in a plain function, so `a catch (e) => b catch () => c` is the error "`catch` outside effect code". Parenthesizing the arrow, `a catch ((e) => b) catch ((e) => c)`, parses, but the outer `catch` then needs an Effect operand (below).
 
@@ -178,7 +178,7 @@ if (Effect.runSync(closedCatchConditional) !== 1 || Effect.runSync(closedCatchCh
 | Rule | Diagnostic |
 | --- | --- |
 | `catch` outside effect code | `EK0504` |
-| `try x catch h`: write `try x` or `x catch h`, never both. It fires when a `try` or `try.all` is reachable from the head through unary and binary operator nodes only, ignoring the erased TypeScript wrappers described below: `try a + b catch h`, `-try a catch h` and `x + try a catch h` are each `EK0505`; the quick fix removes `try`. One inside arguments, an array or object literal, a template substitution, parentheses, a function body or a `match` arm does not count, so `g(try a) catch h` catches `g`'s failure. `try.all x catch h` and the other three operations get this error too, not the one below. A `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` head gets it by the same rule, since each runs an Effect as `try` does: `join f catch h` (quick fix `Fiber.join(f) catch h`, which handles the fiber's failure) and `fork e catch h` (quick fix `fork Effect.catch(e, ($e) => Effect.succeed(h($e)))`, or `fork Effect.catch(e, h)` for an `effect` handler: `e` stays on the caller and the handler runs on the forked fiber, as [`fork`'s operand](#fork-operand) says). `fork (e catch h)` runs `e` here and forks its result: `EK1703` unless the result is an Effect. `(try x) catch h` and `(join f) catch h` are allowed: each catches the Effect its parenthesized operand succeeds with. `(fork e) catch h` is not `EK0505`, but its head is a `Fiber`, which is not an Effect in Effect 4.1.1, so it is `EK0506` | `EK0505` |
+| `try x catch h`: write `try x` or `x catch h`, never both. It fires when a `try` or `try.all` is reachable from the head through unary and binary operator nodes only, ignoring the erased TypeScript wrappers described below: `try a + b catch h`, `-try a catch h` and `x + try a catch h` are each `EK0505`; the manual change removes `try`. One inside arguments, an array or object literal, a template substitution, parentheses, a function body or a `match` arm does not count, so `g(try a) catch h` catches `g`'s failure. `try.all x catch h` and the other three operations get this error too, not the one below. A `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` head gets it by the same rule, since each runs an Effect as `try` does: `join f catch h` (manual change `Fiber.join(f) catch h`, which handles the fiber's failure) and `fork e catch h` (manual change `fork Effect.catch(e, ($e) => Effect.succeed(h($e)))`, or `fork Effect.catch(e, h)` for an `effect` handler: `e` stays on the caller and the handler runs on the forked fiber, as [`fork`'s operand](#fork-operand) says). `fork (e catch h)` runs `e` here and forks its result: `EK1703` unless the result is an Effect. `(try x) catch h` and `(join f) catch h` are allowed: each catches the Effect its parenthesized operand succeeds with. `(fork e) catch h` is not `EK0505`, but its head is a `Fiber`, which is not an Effect in Effect 4.1.1, so it is `EK0506` | `EK0505` |
 | `e catch h` where `e` is not an Effect | `EK0506` |
 | a non-function handler, including a parameter list followed directly by a block, or an `async`, generator or `async` generator handler (table above) | `EK0509` |
 | `catch` mixed with `??`, `\|\|` or `&&` without parentheses (parenthesize the mixed operands), or a member access or call after any closed handler (a parenthesized handler, a function-expression handler or a block-bodied arrow handler); parenthesize the whole catch expression | `EK0512` |
@@ -298,7 +298,7 @@ The known-throwing-call check covers a plain handler's eager parameter/default/d
 
 A handler's parameter may have a type annotation, checked as for a TypeScript arrow parameter: the error type must be assignable to it, so `x catch (e: NotFound) => guest` is an error when `x` can also fail with `DbError` (VIP-5, amended).
 
-A plain handler whose result type is an Effect gets a VIP-38 lint warning (`EK0508`), with the quick fix `catch effect (e) => try …`:
+A plain handler whose result type is an Effect gets a VIP-38 lint warning (`EK0508`), with the suggested spelling `catch effect (e) => try …`:
 
 ```vibe es
 // compiler-gap: pending VIP-38
@@ -307,7 +307,7 @@ fetchUser(id) catch (e) => fetchUser("guest")              // warning: the fallb
 fetchUser(id) catch effect (e) => try fetchUser("guest")   // the fix: Effect.catch(fetchUser(id), () => fetchUser("guest"))
 ```
 
-A `throw` in a plain handler is `EK0401`, with the quick fix `catch effect (e) => { … }`, which makes the throw a typed failure.
+A `throw` in a plain handler is `EK0401`, with the suggested spelling `catch effect (e) => { … }`, which makes the throw a typed failure.
 
 ```vibe es
 // compiler-gap: pending VIP-4, VIP-5
@@ -1170,7 +1170,7 @@ function first() {
 | `yield*` in a producer, `effect function* p() { yield* other() }`: no VIP specifies delegation | `EK2103` |
 | `yield` in nonproducer effect code (an `effect` function, arrow or block), whether or not an outer producer exists, or in directly evaluated formal-parameter initialization of an Effect callable or producer | `EK2104` |
 
-`EK2104` offers a quick fix for `yield* e` in a nonproducer Effect body when `e` is an Effect: write `try e`. If the operand already runs with `try` and gives a non-Effect value, remove the redundant `yield*`, so `yield* try load()` becomes `try load()`. If that `try` gives another Effect, keep both runs as `try (try e)`. The fix preserves comments and operand grouping. A bare `yield`, a producer delegation and a parameter initializer have no such rewrite.
+For `EK2104` on `yield* e` in a nonproducer Effect body when `e` is an Effect, write `try e`. If the operand already runs with `try` and gives a non-Effect value, remove the redundant `yield*`, so `yield* try load()` becomes `try load()`. If that `try` gives another Effect, keep both runs as `try (try e)`. Preserve comments and operand grouping. A bare `yield`, a producer delegation and a parameter initializer have no such rewrite.
 
 `EK2104` does not require an outer producer:
 

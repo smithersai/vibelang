@@ -8,13 +8,11 @@ import (
 	"testing"
 )
 
-const callableInferenceTarget = "FuzzMigrationCallableInference"
-
 var callableInferenceKeys = []string{"default-parameter", "error-subtype", "annotated-default-control", "explicit-union-control"}
 
 func TestMigrationCallableInferenceQuoted(t *testing.T) {
 	chapterSays(t, "001-functions.md", "each export's type identical to \x60tsc\x60's in both directions")
-	TestMigrationDeclarationFixQuoted(t)
+	chapterSays(t, "001-functions.md", "Declarations are exactly what idiomatic Effect TypeScript would declare.")
 }
 
 func callableInferenceFiles(t testing.TB, key string, mode uint8) map[string]string {

@@ -3,10 +3,8 @@ package vibelangfuzz
 import (
 	"bytes"
 	"maps"
-	"os"
 	"slices"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -278,15 +276,4 @@ func legacyInPlace(fn *ast.Node) bool {
 	}
 	paren := fn.Parent
 	return paren != nil && ast.IsParenthesizedExpression(paren) && paren.Parent != nil && ast.IsCallExpression(paren.Parent) && paren.Parent.Expression() == paren
-}
-
-// VIP-5 gives the catch ownership of the run, including migrated value calls.
-func TestLegacyValueCatchMigrationQuoted(t *testing.T) {
-	data, err := os.ReadFile(SpecPath("../vips/0005-try-runs-effects.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(data), "As in Zig, you write `try x` or `x catch y`, never both.") {
-		t.Fatal("VIP-5 catch/run quote changed; review the migration oracle")
-	}
 }

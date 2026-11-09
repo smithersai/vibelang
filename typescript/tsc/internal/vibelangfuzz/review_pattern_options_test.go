@@ -121,6 +121,7 @@ func FuzzReviewPatternOptions(f *testing.F) {
 		ExpectPending(t, reviewPatternOptionsTarget, specCorpusKey(t))
 	})
 }
+
 // VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#1427e4d6b181f70e
 // VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#021d0d8b108648f2
 // VIP-7 native differential under strict/exact/access/all/loose project options including real undefined and author-written access controls; rule: docs/design/vips/0007-match.md#0152143a72e9d2c0

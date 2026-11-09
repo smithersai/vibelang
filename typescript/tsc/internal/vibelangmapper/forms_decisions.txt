@@ -281,6 +281,7 @@ typescript/vibelang/cases/async-match-class-head-jumps.fail/main.vibe:13:53 lamb
 typescript/vibelang/cases/async-match-class-head-jumps.fail/main.vibe:13:84 lambda plain fallback
 typescript/vibelang/cases/async-match-class-head-jumps.fail/main.vibe:15:53 lambda plain fallback
 typescript/vibelang/cases/async-match-class-head-jumps.fail/main.vibe:15:76 lambda plain fallback
+typescript/vibelang/cases/async-match-class-head-jumps.fail/main.vibe:21:22 lambda plain fallback
 typescript/vibelang/cases/async-match-class-head-jumps.fail/main.vibe:3:53 lambda plain fallback
 typescript/vibelang/cases/async-match-class-head-jumps.fail/main.vibe:3:71 lambda plain fallback
 typescript/vibelang/cases/async-match-class-head-jumps.fail/main.vibe:5:53 lambda plain fallback
@@ -359,6 +360,8 @@ typescript/vibelang/cases/await-operand-per-run/main.vibe:32:56 lambda plain tab
 typescript/vibelang/cases/await-operand-per-run/main.vibe:33:45 lambda plain fallback
 typescript/vibelang/cases/await-operand-per-run/main.vibe:33:72 lambda plain table
 typescript/vibelang/cases/await-ops.fail/main.vibe:11:19 lambda plain table
+typescript/vibelang/cases/await-ops.fail/main.vibe:20:19 byname program table
+typescript/vibelang/cases/await-ops.fail/main.vibe:20:38 byname program table
 typescript/vibelang/cases/await-ops.fail/main.vibe:7:22 byname program table
 typescript/vibelang/cases/await-ops.fail/main.vibe:7:30 byname program table
 typescript/vibelang/cases/await-ops/main.vibe:105:21 lambda program table
@@ -773,6 +776,9 @@ typescript/vibelang/cases/catch-expression/main.vibe:87:18 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:87:40 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:89:14 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:89:36 lambda effectFn table
+typescript/vibelang/cases/catch-fork-head-diagnostic.fail/main.vibe:15:10 lambda effectFn table
+typescript/vibelang/cases/catch-fork-head-diagnostic.fail/main.vibe:15:24 lambda effectFn table
+typescript/vibelang/cases/catch-fork-head-diagnostic.fail/main.vibe:17:31 lambda plain annotation
 typescript/vibelang/cases/catch-fork-head-diagnostic.fail/main.vibe:6:16 lambda effectFn table
 typescript/vibelang/cases/catch-fork-head-diagnostic.fail/main.vibe:6:3 lambda effectFn table
 typescript/vibelang/cases/catch-handler-parentheses/main.vibe:4:13 lambda effectFn table
@@ -1972,6 +1978,8 @@ typescript/vibelang/cases/cov-ch900a-ek0506.fail/main.vibe:3:40 lambda effectFn 
 typescript/vibelang/cases/cov-ch900a-ek0506.fail/main.vibe:3:48 lambda effectFn table
 typescript/vibelang/cases/cov-ch900a-ek0507.fail/main.vibe:3:40 lambda effectFn table
 typescript/vibelang/cases/cov-ch900a-ek0507.fail/main.vibe:3:65 lambda effectFn table
+typescript/vibelang/cases/cov-ch900a-ek0508.fail/main.vibe:10:10 lambda effectFn table
+typescript/vibelang/cases/cov-ch900a-ek0508.fail/main.vibe:10:24 lambda effectFn keyword
 typescript/vibelang/cases/cov-ch900a-ek0508.fail/main.vibe:4:40 lambda effectFn table
 typescript/vibelang/cases/cov-ch900a-ek0508.fail/main.vibe:4:65 lambda effectFn table
 typescript/vibelang/cases/cov-ch900a-ek0511.fail/main.vibe:4:40 lambda effectFn table
@@ -1986,6 +1994,8 @@ typescript/vibelang/cases/cov-ch900a-ek1907.fail/main.vibe:2:61 lambda effectFn 
 typescript/vibelang/cases/cov-ch900a-ek4835.fail/main.vibe:2:57 byname program table
 typescript/vibelang/cases/cov-ch900a-ek4835.fail/main.vibe:2:77 lambda effectFn table
 typescript/vibelang/cases/cov-ch900a-ek4836.fail/main.vibe:3:66 byname program table
+typescript/vibelang/cases/cov-ch900a-ek4839.fail/main.vibe:12:35 lambda plain annotation
+typescript/vibelang/cases/cov-ch900a-ek4839.fail/main.vibe:13:9 lambda plain fallback
 typescript/vibelang/cases/cov-ch900a-ek4839.fail/main.vibe:3:57 lambda plain table
 typescript/vibelang/cases/cov-ch900a-ek4839.fail/main.vibe:3:74 lambda plain table
 typescript/vibelang/cases/cov-ch900a-empty-list/main.vibe:13:3 lambda plain fallback
@@ -5596,6 +5606,9 @@ typescript/vibelang/cases/lsrules.fail/main.vibe:59:59 lambda plain table
 typescript/vibelang/cases/lsrules.fail/main.vibe:92:39 lambda plain fallback
 typescript/vibelang/cases/malformed-catch.fail/main.vibe:2:40 lambda effectFn table
 typescript/vibelang/cases/malformed-catch.fail/main.vibe:2:48 lambda effectFn table
+typescript/vibelang/cases/manual-foreign-call-boundaries/main.vibe:11:27 byname program table
+typescript/vibelang/cases/manual-foreign-call-boundaries/main.vibe:11:45 lambda plain table
+typescript/vibelang/cases/manual-foreign-call-boundaries/main.vibe:11:76 lambda plain table
 typescript/vibelang/cases/mapper-join-native/main.vibe:5:49 byname program table
 typescript/vibelang/cases/mapper-join-native/main.vibe:6:44 lambda plain table
 typescript/vibelang/cases/mapper-join-native/main.vibe:6:69 lambda plain annotation
@@ -7237,6 +7250,8 @@ typescript/vibelang/cases/plain-code-throw-caught.fail/main.vibe:42:41 lambda pl
 typescript/vibelang/cases/plain-code-throw-caught.fail/main.vibe:42:71 lambda plain table
 typescript/vibelang/cases/plain-code-throw-caught.fail/main.vibe:44:26 lambda plain table
 typescript/vibelang/cases/plain-code-throw.fail/main.vibe:59:32 lambda dual fallback
+typescript/vibelang/cases/plain-code-throw.fail/main.vibe:69:10 lambda effectFn table
+typescript/vibelang/cases/plain-code-throw.fail/main.vibe:69:24 lambda effectFn keyword
 typescript/vibelang/cases/plain-contract-callback/a.vibe:1:22 lambda plain annotation
 typescript/vibelang/cases/plain-contract-callback/a.vibe:3:27 lambda plain annotation
 typescript/vibelang/cases/plain-contract-curried.fail/a.vibe:4:24 lambda plain annotation

@@ -17,10 +17,10 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,273 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,024 |
-| The skill and the user guide (145 pages) | 580,000 |
-| The user guide alone | 570,000 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,302 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,051 |
+| The skill and the user guide (145 pages) | 560,000 |
+| The user guide alone | 560,000 |
 | The specification (11 chapters) | 270,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -97,13 +97,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Effects](../getting-started/005-creating-effects.md) | 4,500 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,700 |
-| **Core Concepts** | **30,000** |
+| **Core Concepts** | **23,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,500 |
 | [Running Effects](../getting-started/009-running-effects.md) | 2,100 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 2,100 |
-| [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,100 |
-| [Devtools](../getting-started/012-devtools.md) | 20,000 |
-| **All 13 pages** | **51,000** |
+| [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,000 |
+| [Devtools](../getting-started/012-devtools.md) | 14,000 |
+| **All 13 pages** | **44,000** |
 
 ### Setup
 
@@ -115,7 +115,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start a project** | **8,200** |
 | [New project](../setup/new-project.md) | 690 |
 | [Existing project](../setup/existing-project.md) | 4,300 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,300 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,200 |
 | **Build and test** | **22,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 17,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,700 |
@@ -132,7 +132,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [VS Code and Cursor](../setup/vscode.md) | 1,400 |
 | [Neovim](../setup/neovim.md) | 1,200 |
 | [Zed](../setup/zed.md) | 520 |
-| [Other editors](../setup/other-editors.md) | 990 |
+| [Other editors](../setup/other-editors.md) | 980 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Keep .ts file names** | **1,400** |
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |
@@ -145,10 +145,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,300 |
-| **Error Management** | **25,000** |
+| **Error Management** | **24,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 13,000 |
-| [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,900 |
-| [Fallback](../error-management/016-fallback.md) | 2,800 |
+| [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,800 |
+| [Fallback](../error-management/016-fallback.md) | 2,700 |
 | [Matching](../error-management/017-matching.md) | 790 |
 | [Retrying](../error-management/018-retrying.md) | 780 |
 | [Timing Out](../error-management/019-timing-out.md) | 830 |
@@ -157,13 +157,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Error Channel Operations](../error-management/022-error-channel-operations.md) | 1,400 |
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,200 |
-| **Requirements Management** | **13,000** |
+| **Requirements Management** | **12,000** |
 | [Managing Services](../requirements-management/025-services.md) | 6,200 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
 | [Managing Layers](../requirements-management/027-layers.md) | 3,800 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |
-| **Resource Management** | **4,800** |
-| [Introduction](../resource-management/029-introduction.md) | 2,100 |
+| **Resource Management** | **4,700** |
+| [Introduction](../resource-management/029-introduction.md) | 1,900 |
 | [Scope](../resource-management/030-scope.md) | 2,800 |
 | **Observability** | **6,900** |
 | [Logging](../observability/031-logging.md) | 2,100 |
@@ -234,7 +234,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Schema** | **36,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
 | [Getting Started](../schema/086-getting-started.md) | 3,600 |
-| [Basic Usage](../schema/087-basic-usage.md) | 5,400 |
+| [Basic Usage](../schema/087-basic-usage.md) | 5,300 |
 | [Filters](../schema/088-filters.md) | 1,500 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 3,000 |
 | [Projections](../schema/090-projections.md) | 710 |
@@ -291,7 +291,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [4. Pattern matching](../../../design/src/004-match.md) | 23,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,300 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 18,000 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 17,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |
 | **Appendices** | **140,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 120,000 |

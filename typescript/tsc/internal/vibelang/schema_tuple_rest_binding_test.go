@@ -67,25 +67,3 @@ func TestSchemaTupleRestBindingRename(t *testing.T) {
 		}
 	}
 }
-
-func TestSchemaTupleRestBindingQuickFix(t *testing.T) {
-	for _, source := range []string{
-		"type Array<T>={value:T};schema S=readonly [...Array<number>]",
-		"type ReadonlyArray<T>={value:T};schema S=[...items:ReadonlyArray<number>]",
-		"type Array<T>={value:T};schema S=readonly [string,...[...Array<number>],boolean]",
-		"type Array<T>={value:T};schema S {value:readonly [...Array<number>]}",
-	} {
-		t.Run(source, func(t *testing.T) {
-			fixed := applyQuickFixOf(t, "export {};\n"+source+"\n", EK2109.Code, diagnostics.CategoryError)
-			if !strings.Contains(strings.Join(strings.Fields(fixed), ""), "Schema.TupleWithRest") {
-				t.Fatalf("old repeating codec lost: %s", fixed)
-			}
-			p, f, _, _ := editorProgram(t, fixed)
-			for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), f), p.GetSemanticDiagnostics(t.Context(), f)...) {
-				if d.Category() == diagnostics.CategoryError {
-					t.Errorf("fixed source: %s\n%s", d.String(), fixed)
-				}
-			}
-		})
-	}
-}

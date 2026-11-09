@@ -40,22 +40,6 @@ func TestSchemaGenericArrayBindings(t *testing.T) {
 	}
 }
 
-func TestSchemaGenericArrayExpansionPreservesBinding(t *testing.T) {
-	for _, source := range []string{
-		"namespace N { export import Sequence=globalThis.Array }; const Optional=Schema.optional(Schema.Number); schema S { items:N.Sequence<number>; required:Optional }; function f(s:S){s.items.push(1)}",
-		"namespace N { export import Sequence=globalThis.Array }; const Optional=Schema.optional(Schema.Number); schema S=[N.Sequence<number>,{required:Optional}]; function f(s:S){s[0].push(1)}",
-		"namespace N { export import Array=globalThis.ReadonlyArray; const Optional=Schema.optional(Schema.Number); schema S { items:Array<number>; required:Optional }; function f(s:S){\n// @ts-expect-error readonly\ns.items.push(1) } }",
-	} {
-		fixed := applyQuickFixOf(t, source, EK2109.Code, diagnostics.CategoryError)
-		program, file, _, _ := editorProgram(t, fixed)
-		for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-			if d.Category() == diagnostics.CategoryError {
-				t.Errorf("expansion changed the selected array type: %s\n%s", d.String(), fixed)
-			}
-		}
-	}
-}
-
 func TestSchemaGenericArrayVisibleParents(t *testing.T) {
 	_, file, _, _ := editorProgram(t, "schema S=globalThis.Array<{xs:globalThis.ReadonlyArray<number>}>;")
 	var visit func(*ast.Node)

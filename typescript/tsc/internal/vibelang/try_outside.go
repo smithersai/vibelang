@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -23,12 +22,9 @@ func init() {
 	registry[EK0501.Code] = EK0501
 	fileChecks = append(fileChecks, checkTriesOutsideEffectCode)
 	tsFormRules[EK0501.Code] = &tsFormRule{
-		message:   EK0501,
-		find:      func(*checker.Checker, *ast.SourceFile, func(*ast.Node, *formRewrite, ...any)) {},
-		plan:      markEffectRewrite,
-		diagnosed: isTry,
+		message: EK0501,
+		find:    func(*checker.Checker, *ast.SourceFile, func(*ast.Node, *formRewrite, ...any)) {},
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK0501.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 // isTry reports whether node is a try: a call the parser flagged
@@ -151,7 +147,6 @@ func reportTryOutsideEffectCode(c *checker.Checker, file *ast.SourceFile, node *
 	}
 	d := reportAt(c, file, tsFormSpan(file, node), EK0501, where)
 	if rewrite := markEffectRewrite(c, file, node); rewrite.fixable() {
-		note(d, "Mark the function effect: {0}. Its callers then get its Effect unrun. Its quick fix writes effect.", rewrite.description)
 	} else if fn == nil {
 		note(d, "Run it inside an effect function, such as export effect function main().")
 	}

@@ -15,7 +15,7 @@ const asyncRefactorBridgeQuote = "| a Promise, in an `effect` function | an Effe
 
 const asyncRefactorEffectQuote = "`effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1)"
 
-const asyncRefactorPreservationQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
+const asyncRefactorPreservationQuote = "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 
 func requireAsyncRefactorBridgeQuote(t testing.TB) {
 	t.Helper()

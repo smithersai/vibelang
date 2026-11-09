@@ -11,7 +11,7 @@ import (
 )
 
 const generatedOutputNamesTarget = "FuzzMigrationGeneratedOutputNames"
-const generatedOutputNamesQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
+const generatedOutputNamesQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func TestMigrationGeneratedOutputNamesQuoted(t *testing.T) {
 	chapterSays(t, "007-tooling.md", generatedOutputNamesQuote)

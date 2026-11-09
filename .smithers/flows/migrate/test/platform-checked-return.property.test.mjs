@@ -24,7 +24,7 @@ const runtime = fileURLToPath(new URL("../../../../packages/runtime/", import.me
 const ts = loadTypeScript([runtime])
 const fc = createRequire(join(runtime, "package.json"))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-platform-split-checked-return.json", import.meta.url), "utf8"))
-const quote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
+const quote = "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 const ambient = "declare function setTimeout(handler: () => void, ms?: number): number\n"
 const config = { compilerOptions: { strict: true, noUnusedLocals: true, target: "ES2022", module: "ESNext", moduleResolution: "Bundler", lib: ["ES2022"], types: [], noEmit: true, allowImportingTsExtensions: true }, include: ["*.ts"] }
 

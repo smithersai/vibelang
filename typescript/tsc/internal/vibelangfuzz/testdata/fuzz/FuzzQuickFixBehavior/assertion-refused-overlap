@@ -1,3 +1,0 @@
-go test fuzz v1
-string("assertion-refused-overlap")
-[]byte("\u0007\u0001")

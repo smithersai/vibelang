@@ -55,10 +55,6 @@ func init() {
 	tsFormRules[EK4832.Code] = &tsFormRule{
 		message: EK4832,
 		find:    findSchemaConstants,
-		plan: func(c *checker.Checker, file *ast.SourceFile, at *ast.Node) *formRewrite {
-			return schemaConstantRewrite(c, file, at)
-		},
-		diagnosed: isSchemaConstantName,
 	}
 }
 

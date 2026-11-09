@@ -3,7 +3,6 @@ package vibelang
 import (
 	"context"
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"strings"
 	"testing"
 )
@@ -52,24 +51,6 @@ func TestMatchVarBindingDiagnostic(t *testing.T) {
 					}
 				})
 			}
-		}
-	}
-}
-
-func TestMatchVarBindingQuickFix(t *testing.T) {
-	for _, source := range []string{
-		"export function f(): unknown { return match (7) { when var value: value; } }",
-		"export function f(): unknown { if ([7] is [var value]) return value; return 0 }",
-		"export function f(): unknown { if (({ value: 7 }) is { /*keep*/ var value }) return value; return 0 }",
-		"export const f = (): boolean => 7 is Number(var value)",
-	} {
-		got := applyQuickFixOf(t, source, EK0107.Code, diagnostics.CategoryError)
-		want := strings.Replace(source, "var value", "let value", 1)
-		if got != want {
-			t.Fatalf("got %q, want %q", got, want)
-		}
-		if ds := errorsOf(t, got); len(ds) != 0 {
-			t.Fatalf("fixed source: %v", ds)
 		}
 	}
 }

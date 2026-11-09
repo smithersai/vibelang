@@ -9,7 +9,7 @@ import (
 )
 
 const provideTypeArgumentsQuote = "| \x60EK4836\x60 | \x60Effect.provide\x60 or \x60Effect.provideService\x60 as the direct operand of bare \x60try\x60 in effect code |"
-const provideTypeArgumentsSafetyQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
+const provideTypeArgumentsSafetyQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func provideTypeArgumentsQuoted(t testing.TB) {
 	t.Helper()

@@ -3,7 +3,7 @@
 
 These are the imported `effecttsgo/*` rules from `@effect/tsgo@0.57.0`. The code identifies the rule; a rule can have several messages. Placeholders such as `{0}` are replaced by the names and types from your source.
 
-Follow the message's repair advice at the reported source location. When the editor offers a quick fix, review the edit and rerun the original check. A rule without an offered repair needs a manual change; `vibelang --fix` does not promise a rewrite for every imported rule.
+Follow the message's advice at the reported source location, change the source manually and rerun the original check. VibeLang does not provide automatic fixes for these diagnostics.
 
 The default column comes from the pinned rule. Suggestions appear in the language server and can print in compiler checks when `includeSuggestionsInTsc` is `true`. A rule whose default is `off` must be enabled to report. File and Effect-version eligibility still apply. Configure supported rules with [`vibe.severities`](../setup/vibelang-cli.md#diagnostic-severities); the full code matters: `EK3810` and `EK38100` are different rules.
 

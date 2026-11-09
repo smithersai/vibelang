@@ -1,3 +1,0 @@
-go test fuzz v1
-string("console-statement")
-byte(0)

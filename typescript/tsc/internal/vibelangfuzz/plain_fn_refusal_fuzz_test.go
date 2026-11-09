@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-const plainFnRefusalQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
+const plainFnRefusalQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func TestPlainFnRefusalQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), plainFnRefusalQuote) {

@@ -1,14 +1,11 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 // EK0403's (and legacy EK4401's) quick fix writes a call of a plain TypeScript function that nothing
@@ -48,211 +45,6 @@ import (
 // with the call. A guard in an earlier statement keeps its proof in a const
 // before the statement, when nothing runs before the read.
 
-func init() {
-	tsFormFixCodes = append(tsFormFixCodes, EK0403.Code, EK4401.Code)
-	// VIP-4 migration keeps exceptions in native effect code as defects.
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK0403.Code)
-	ls.RegisterCodeFixProvider(foreignCallFix)
-}
-
-// foreignCallFix keeps the preserving foreign-call rewrite on both codes.
-var foreignCallFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK0403.Code, EK4401.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		call := tsFormNodeAt(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
-			return ast.IsNewExpression(node) || ast.IsTaggedTemplateExpression(node)
-		})
-		if call == nil {
-			callee := tsFormNodeAt(fix.SourceFile, fix.Span, isCallee)
-			if callee == nil {
-				return nil, nil
-			}
-			call = callee.Parent
-		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-		defer done()
-		var actions []*ls.CodeAction
-		rewrite := planForeignCall(c, fix.SourceFile, call)
-		if rewrite.fixable() {
-			var changes []*lsproto.TextEdit
-			for _, edit := range rewrite.edits {
-				changes = append(changes, replaceRange(fix, edit.start, edit.end, edit.text)...)
-			}
-			actions = append(actions, &ls.CodeAction{Description: "Write " + rewrite.description, Changes: changes})
-		}
-		if fix.ErrorCode == EK0403.Code && ast.IsCallExpression(call) {
-			if action := throwsNeverAction(c, fix, call); action != nil {
-				actions = append(actions, action)
-			}
-		}
-		return actions, nil
-	},
-}
-
-// planForeignCall plans the preserving foreign-call fix, or returns nil.
-func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
-	if ast.IsNewExpression(call) || ast.IsTaggedTemplateExpression(call) {
-		return planForeignInvocation(c, file, call)
-	}
-	if !ast.IsCallExpression(call) {
-		return nil
-	}
-	// try f(): the parser flags the call itself and widens it to the try
-	// keyword. Its bridge stands under that try, which then runs the Effect
-	// the call returns: try (try Effect.orDie(Effect.try({ try: () => f(), catch: (e) => e }))).
-	tried := call.Flags&ast.NodeFlagsVibeLangTry != 0
-	if !needsBoundary(c, file, call) {
-		return nil
-	}
-	fn := enclosingFunction(call)
-	if fn == nil || fn.BodyData() == nil || fn.BodyData().AsteriskToken != nil {
-		return nil // a generator's Effect.gen is fixed first
-	}
-	// The outermost foreign call's wrapper holds the calls in its operands.
-	for n := call.Parent; n != nil && n != fn; n = n.Parent {
-		if ast.IsCallExpression(n) && n.Expression() != call && needsBoundary(c, file, n) {
-			return nil
-		}
-	}
-	a := analyzerFor(c)
-	if returnsEffectGen(c, fn) {
-		return nil // what fn is follows from the program it returns, written first
-	}
-	if a.staysPlain(fn) && a.knownThrows(call) == nil {
-		at := returnTypePosition(file, fn)
-		if at < 0 {
-			return nil
-		}
-		return &formRewrite{edits: []sourceEdit{{at, at, ": infer _"}}, description: "the function plain"}
-	}
-	predicateFallback := ""
-	if isMarkedEffect(fn) {
-		var predicate *formRewrite
-		predicate, predicateFallback = planForeignPredicate(c, file, call)
-		if predicate != nil {
-			return predicate
-		}
-	}
-	target := call
-	guard := outermostGuardedExpression(call)
-	if guard != nil && holdsNarrowedForeignCall(c, file, guard) {
-		if a.runsVibeLang(guard) {
-			return nil // a try cannot run inside the wrapper's function
-		}
-		target = guard
-	}
-	var inputs []boundaryInput
-	code := ""
-	if tried && target != call {
-		return nil // a guard around a try operand needs a manual bridge
-	}
-	if target == call {
-		narrowed := func(operand *ast.Node) bool { return readsNarrowedProperty(c, operand) }
-		inputs, code = boundaryInputs(c, file, call, narrowed)
-		if tried {
-			code = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(code), "try"))
-		}
-	} else {
-		code = nodeText(file, target)
-	}
-	if needsExplicitThrowsBridge(c, call) && (len(inputs) > 0 || target != call) {
-		// Preserve the former callee, operand and constructor-read ordering.
-		// A running operand or a surrounding guard needs a manual bridge.
-		return nil
-	}
-	var edits []sourceEdit
-	var statement, branch *ast.Node
-	consts := ""
-	if len(inputs) > 0 {
-		statement, branch = enclosingStatement(call), branchStatement(call)
-		if branch != nil {
-			statement = branch // the consts go under the branch's guard, in braces
-		}
-		if statement == nil || a.runsOutOfOrder(statement, call, inputs) {
-			return nil
-		}
-		for _, in := range inputs {
-			if readsNarrowedProperty(c, in.node) && runsBefore(statement, in.node) {
-				return nil // the call that runs first could change the property
-			}
-		}
-		start := nodeStart(file, statement)
-		separator := "\n" + lineIndent(file.Text(), start)
-		if branch != nil {
-			outer := lineIndent(file.Text(), nodeStart(file, branch.Parent))
-			separator = "\n" + outer + branchIndentUnit(outer)
-		} else if line := file.Text()[strings.LastIndexByte(file.Text()[:start], '\n')+1 : start]; strings.TrimSpace(line) != "" {
-			separator = "; " // if (o.p) { f(o.p) }: the statement shares its line
-		}
-		for _, declaration := range inputConsts(inputs) {
-			consts += strings.TrimSuffix(declaration, "; ") + separator
-		}
-	}
-	// A parser-made program arrow is the surrounding source context, not
-	// a written function where an effect modifier can be inserted.
-	if !isMarkedEffect(fn) && !isProgramArrow(fn) && (ast.IsArrowFunction(fn) || ast.IsFunctionExpression(fn)) {
-		edits = append(edits, sourceEdit{nodeStart(file, fn), nodeStart(file, fn), "effect "}) // try needs effect code
-	}
-	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: " + defectBridgeIdentity + " }))"
-	// A contracted call formerly lowered through $trusted: listed classes failed
-	// through E; every other exception was a defect. Preserve that distinction.
-	// Class-base evaluation formerly ran directly in the generator, so
-	// even a listed intrinsic exception was a defect at this site.
-	if !inClassBase(call) && needsExplicitThrowsBridge(c, call) {
-		failures := legacyForeignCallFailures(c, call)
-		if len(failures) > 0 {
-			var tests, parameters, classes []string
-			for _, failure := range failures {
-				module, name, ok := reachClass(c, file, failure)
-				if !ok {
-					return nil
-				}
-				symbol := c.ResolveName(name, call, ast.SymbolFlagsValue, false)
-				if symbol == nil || c.GetMergedSymbol(aliasTarget(c, symbol)) != failure.class {
-					if module == "" {
-						return nil
-					} // a shadowed global needs a manual bridge
-					exported := name
-					name = freshValueName(c, call, "foreign"+failure.name)
-					imported := trustedImportEdit(file, module, exported+" as "+name)
-					edits = append(edits, sourceEdit{imported.start, imported.end, imported.text})
-				}
-				captured := freshValueName(c, call, "foreign"+failure.name+"Class")
-				parameters = append(parameters, captured+": typeof "+name)
-				classes = append(classes, name)
-				tests = append(tests, "error instanceof "+captured)
-			}
-			// $trusted evaluated its class array before invoking the thunk. Capture
-			// the same constructors now: the callee can replace a global constructor.
-			wrapped = "try ((" + strings.Join(parameters, ", ") + ") => Effect.catch(Effect.try({ try: () => " + code + ", catch: (error) => error }), (error) => " + strings.Join(tests, " || ") + " ? Effect.fail(error) : Effect.die(error)))(" + strings.Join(classes, ", ") + ")"
-		}
-	}
-	if tried {
-		wrapped = "try (" + wrapped + ")"
-	} else if !standsAlone(target) {
-		wrapped = "(" + wrapped + ")"
-	}
-	switch at := nodeStart(file, target); {
-	case branch != nil:
-		// if (o.p) f(o.p): the branch becomes a block that holds the consts
-		// and the statement, so they run only when the branch does.
-		outer := lineIndent(file.Text(), nodeStart(file, branch.Parent))
-		start := nodeStart(file, branch)
-		text := file.Text()[start:at] + wrapped + file.Text()[target.End():branch.End()]
-		edits = append(edits, sourceEdit{start, branch.End(), "{\n" + outer + branchIndentUnit(outer) + consts + text + "\n" + outer + "}"})
-	case consts != "" && at == nodeStart(file, statement):
-		// The call is the statement: one edit, or the consts' insertion and
-		// the call's rewrite would share a start and could apply in either order.
-		edits = append(edits, sourceEdit{at, target.End(), consts + wrapped})
-	case consts != "":
-		edits = append(edits, sourceEdit{nodeStart(file, statement), nodeStart(file, statement), consts}, sourceEdit{at, target.End(), wrapped})
-	default:
-		edits = append(edits, sourceEdit{at, target.End(), wrapped})
-	}
-	return &formRewrite{edits: joinEditsAt(edits), description: "the call through Effect.try, preserving failures and defects" + predicateFallback}
-}
-
 // branchStatement returns the statement that holds node when it is the
 // unbraced branch of an if, as in if (o.p) f(o.p), or nil.
 func branchStatement(node *ast.Node) *ast.Node {
@@ -286,22 +78,6 @@ func outermostGuardedExpression(node *ast.Node) *ast.Node {
 		}
 	}
 	return guard
-}
-
-// holdsNarrowedForeignCall reports whether a call EK4401 reports, in
-// expression, reads a property whose type control flow narrowed.
-func holdsNarrowedForeignCall(c *checker.Checker, file *ast.SourceFile, expression *ast.Node) bool {
-	var visit func(n *ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if isFunctionBoundary(n) {
-			return false
-		}
-		if ast.IsCallExpression(n) && needsBoundary(c, file, n) && readsNarrowedProperty(c, n) {
-			return true
-		}
-		return n.ForEachChild(visit)
-	}
-	return visit(expression)
 }
 
 // readsNarrowedProperty reports whether node reads, outside the functions it
@@ -367,55 +143,6 @@ func needsBoundary(c *checker.Checker, file *ast.SourceFile, call *ast.Node) boo
 		_, _, ok := reachClass(c, file, f)
 		return !ok
 	})
-}
-
-// staysPlain reports whether fn, a function with no written form, has no
-// Effect operation of its own and no destination that asks for an Effect.
-func (a *analyzer) staysPlain(fn *ast.Node) bool {
-	if isMarkedEffect(fn) || fn.Type() != nil || isProducer(fn) || !isLowerable(fn) || a.expectsEffect(fn) || a.destinationTakesProgram(fn) {
-		return false
-	}
-	return !a.forEachRunningCallInBody(fn, a.performs) && !hasVibeLangStatement(fn) && !hasEscapingThrow(fn) && !declaresUsing(fn) && !a.hasStreamLoop(fn) && !a.returnsProgram(fn)
-}
-
-// destinationTakesProgram reports whether fn, a function expression, stands
-// where its contextual type returns an Effect, as in { reduce: (s) => … } for
-// reduce: (s: S) => Effect<S>. Its body is the program's, which an earlier fix
-// may have left with no Effect operation.
-func (a *analyzer) destinationTakesProgram(fn *ast.Node) bool {
-	if !ast.IsArrowFunction(fn) && !ast.IsFunctionExpression(fn) {
-		return false
-	}
-	contextual := a.checker.GetContextualType(fn, checker.ContextFlagsNone)
-	if contextual == nil {
-		return false
-	}
-	return slices.ContainsFunc(a.checker.GetSignaturesOfType(contextual, checker.SignatureKindCall), func(signature *checker.Signature) bool {
-		return holdsEffectValue(a.checker, a.checker.GetReturnTypeOfSignature(signature))
-	})
-}
-
-// returnsProgram reports whether a value fn returns is an Effect.
-func (a *analyzer) returnsProgram(fn *ast.Node) bool {
-	isProgram := func(expr *ast.Node) bool {
-		t := a.checker.GetTypeAtLocation(expr)
-		return t != nil && holdsEffectValue(a.checker, t)
-	}
-	body := fn.Body()
-	if !ast.IsBlock(body) {
-		return isProgram(body)
-	}
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if isFunctionBoundary(node) {
-			return false
-		}
-		if ast.IsReturnStatement(node) && node.Expression() != nil && isProgram(node.Expression()) {
-			return true
-		}
-		return node.ForEachChild(visit)
-	}
-	return body.ForEachChild(visit)
 }
 
 // returnTypePosition is where fn's return annotation goes: after the
@@ -500,41 +227,4 @@ func standsAlone(node *ast.Node) bool {
 		return false
 	}
 	return true
-}
-
-// returnsEffectGen reports whether a value fn returns is an Effect.gen call.
-func returnsEffectGen(c *checker.Checker, fn *ast.Node) bool {
-	var isGen func(expr *ast.Node) bool
-	isGen = func(expr *ast.Node) bool {
-		value := ast.SkipParentheses(expr)
-		if ast.IsConditionalExpression(value) {
-			conditional := value.AsConditionalExpression()
-			return isGen(conditional.WhenTrue) || isGen(conditional.WhenFalse)
-		}
-		return ast.IsCallExpression(value) && isEffectFunction(c, value.Expression(), "Effect", "gen")
-	}
-	body := fn.Body()
-	if !ast.IsBlock(body) {
-		return isGen(body)
-	}
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if isFunctionBoundary(node) {
-			return false
-		}
-		if ast.IsReturnStatement(node) && node.Expression() != nil && isGen(node.Expression()) {
-			return true
-		}
-		return node.ForEachChild(visit)
-	}
-	return body.ForEachChild(visit)
-}
-
-// freshValueName keeps imported or captured failure classes clear of lexical bindings.
-func freshValueName(c *checker.Checker, call *ast.Node, base string) string {
-	name := base
-	for c.ResolveName(name, call, ast.SymbolFlagsValue|ast.SymbolFlagsType|ast.SymbolFlagsAlias, false) != nil {
-		name += "_"
-	}
-	return name
 }

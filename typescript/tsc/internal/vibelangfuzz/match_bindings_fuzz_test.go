@@ -214,6 +214,7 @@ func TestMatchBindingWrittenReadStaysUnchecked(t *testing.T) {
 	}
 	t.Fatalf("s[0] in an arm lost the option's undefined: %v", r.Diagnostics)
 }
+
 // VIP-7 array/tuple, fixed extraction and custom matcher iterable element types; rule: docs/design/vips/0007-match.md#85a4e6f81d15056c
 // VIP-7 array/tuple, fixed extraction and custom matcher iterable element types; rule: docs/design/vips/0007-match.md#b9d8abd6466118a7
 // VIP-7 array/tuple, fixed extraction and custom matcher iterable element types; rule: docs/design/vips/0007-match.md#c9a107da1e1f8891

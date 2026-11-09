@@ -1,23 +1,10 @@
 package vibelangfuzz
 
 import (
-	"os"
 	"strings"
-	"testing"
 )
 
 const effectFnContextualTarget = "FuzzEffectFnContextualChannels"
-const effectFnContextualQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
-
-func TestEffectFnContextualChannelsQuoted(t *testing.T) {
-	text, err := os.ReadFile(SpecPath("007-tooling.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(text), effectFnContextualQuote) {
-		t.Fatalf("chapter 7 no longer says %q", effectFnContextualQuote)
-	}
-}
 
 // Minimized from opencode's core plugin/verbosity: an Effect.fn plugin body
 // whose holder gives it a contextual Effect type wider than its body needs.

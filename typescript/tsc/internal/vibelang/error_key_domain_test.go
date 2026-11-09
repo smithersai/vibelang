@@ -69,17 +69,3 @@ func TestSchemaErrorComputedKeyDomain(t *testing.T) {
 		}
 	}
 }
-
-// The explicit-class repair keeps a previously valid getter as it was.
-func TestSchemaErrorComputedKeyDomainClassFix(t *testing.T) {
-	fixed := applyQuickFixOf(t, "declare const broad: string\nexport schema error E { id: string; get [broad](): number { return 1 } }\n", 2117, diagnostics.CategoryError)
-	if !strings.Contains(fixed, "class E extends") || !strings.Contains(fixed, "get [broad](): number { return 1 }") {
-		t.Fatalf("class repair did not keep the getter:\n%s", fixed)
-	}
-	program, file, _, _ := editorProgram(t, fixed)
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Fatalf("class repair: %s\n%s", d.String(), fixed)
-		}
-	}
-}

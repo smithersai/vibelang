@@ -6,3 +6,14 @@ export {}
 
 // VIP-9 a function-local service has no derived package key and needs an explicit key; rule: docs/design/vips/0009-service-declarations.md#fdd8726f1a2d1231
 
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/005-services.md#static-rules | A service in a file outside any package (or in one whose `package.json` has no string `name`), or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error (`EK0903`); write an explicit key.
+
+export function manualLocalKey() {
+  service ExplicitLocal {
+    static readonly key = "explicit-local"
+    value: number
+  }
+  return ExplicitLocal.key
+}

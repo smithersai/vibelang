@@ -27,7 +27,7 @@ test("using warning has VIP-34 ownership and the unchanged diagnostic exception"
 const warningClauses = [
  "the native-resource warning belongs to VIP-34",
  "`using` in effect code has the default warning `EK0801`",
- "context-safe quick fix uses `acquireDisposable` inside `scoped`",
+ "manual form uses `acquireDisposable` inside `scoped`",
  "never changes TypeScript disposal or starts cleanup by itself",
  "not an imported Effect lint rule",
  "retained under the unchanged-code exception",

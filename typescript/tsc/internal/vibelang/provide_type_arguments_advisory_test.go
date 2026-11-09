@@ -36,7 +36,7 @@ func TestProvideTypeArgumentAdvisory(t *testing.T) {
 						}
 						if d.Source() == diagnosticSource && d.Code() == 4836 {
 							count++
-							if !strings.Contains(diagnosticWithNotes(d), "explicit type arguments") {
+							if !strings.Contains(diagnosticWithNotes(d), "explicit type-argument contract") {
 								t.Fatalf("missing type contract explanation: %s", diagnosticWithNotes(d))
 							}
 						}

@@ -2,24 +2,7 @@ package vibelangfuzz
 
 import (
 	"strings"
-	"testing"
 )
-
-// TestSchemaConstantDeclarationFixQuoted fails when a chapter rewords a
-// sentence the oracle quotes (RULES.md 9).
-func TestSchemaConstantDeclarationFixQuoted(t *testing.T) { schemaConstantDeclarationQuotes(t) }
-
-func schemaConstantDeclarationQuotes(tb testing.TB) {
-	tb.Helper()
-	for chapter, quote := range map[string]string{
-		"007-tooling.md": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix.",
-		"006-data.md":    "Without one, the same bare alias is synthesized",
-	} {
-		if !strings.Contains(SpecText(chapter), quote) {
-			tb.Fatalf("%s no longer says %q", chapter, quote)
-		}
-	}
-}
 
 // Each seed is export:own:use:scope. Every value of each dimension appears,
 // and every reference the declaration file prints meets a private constant.
@@ -51,37 +34,6 @@ type schemaConstantDeclaration struct{ export, own, use, scope string }
 
 func (s schemaConstantDeclaration) key() string {
 	return "schema-decl:" + s.export + ":" + s.own + ":" + s.use + ":" + s.scope
-}
-
-// parseSchemaConstantDeclaration reads the keyed form,
-// `schema-decl:<export>:<own>:<use>:<scope>`, so a saved corpus file keeps
-// what it tests (RULES.md 11), and otherwise reads the choices from the bytes.
-func parseSchemaConstantDeclaration(data []byte) schemaConstantDeclaration {
-	pick := func(values []string, want string, fallback int) string {
-		for _, v := range values {
-			if v == want {
-				return v
-			}
-		}
-		return values[fallback%len(values)]
-	}
-	at := func(i int) int {
-		if i < len(data) {
-			return int(data[i])
-		}
-		return 0
-	}
-	var s schemaConstantDeclaration
-	if rest, ok := strings.CutPrefix(string(data), "schema-decl:"); ok {
-		parts := append(strings.Split(rest, ":"), "", "", "", "")
-		s = schemaConstantDeclaration{pick(schemaDeclExports, parts[0], 0), pick(schemaDeclOwns, parts[1], 0), pick(schemaDeclUses, parts[2], 0), pick(schemaDeclScopes, parts[3], 0)}
-	} else {
-		s = schemaConstantDeclaration{schemaDeclExports[at(0)%len(schemaDeclExports)], schemaDeclOwns[at(1)%len(schemaDeclOwns)], schemaDeclUses[at(2)%len(schemaDeclUses)], schemaDeclScopes[at(3)%len(schemaDeclScopes)]}
-	}
-	if s.scope == "namespace" && s.export == "default" {
-		s.export = "private" // a namespace has no default export
-	}
-	return s
 }
 
 // module prints the module: a Schema.Struct constant Item, its own type, a
@@ -126,5 +78,3 @@ func (s schemaConstantDeclaration) module() string {
 	}
 	return body
 }
-
-const schemaConstantDeclarationConfig = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out"},"files":["main.vibe"]}`

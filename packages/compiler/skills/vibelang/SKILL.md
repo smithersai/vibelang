@@ -7,6 +7,8 @@ description: Write, edit or review VibeLang (.vibe files), Effect programs in Ty
 
 VibeLang is TypeScript with syntax for Effect. An `effect` function returns an Effect, `try` runs an Effect, and every construct is exact sugar for the Effect TypeScript beside it, with Effect 4's runtime behavior. Plain and `async` functions mean what they mean in TypeScript. `vibelang` (a TypeScript 7 compiler) checks `.vibe` and `.ts` files together and emits JavaScript and declarations.
 
+VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
+
 ## The model
 
 - `effect` goes exactly where `async` goes: `effect function load(id: string) { … }` declares an Effect function, as do `effect function (id) { … }`, `effect (id) => …` and a method `effect find(id) { … }` in a class or object literal. A function with no modifier is plain. Its recursion has JavaScript's stack limit; deep recursion is written `effect`, running recursive calls with `try`. Outside a class or object literal, `effect f() { … }` is an error: write `effect function f() { … }`. Calling it returns its Effect unrun, as calling an `async` function returns a Promise. Its return type is an Effect, written or inferred.

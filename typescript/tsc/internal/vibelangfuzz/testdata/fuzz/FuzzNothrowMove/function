@@ -1,6 +1,0 @@
-go test fuzz v1
-string("function")
-int8(1)
-bool(true)
-bool(false)
-bool(true)

@@ -1,3 +1,0 @@
-go test fuzz v1
-string("binding-nested-block-binding")
-byte('\x01')

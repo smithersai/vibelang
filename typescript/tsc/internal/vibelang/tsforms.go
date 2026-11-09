@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"context"
 	"regexp"
 	"slices"
 	"strings"
@@ -9,16 +8,13 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // TypeScript-style Effect code in a .vibe file (D284-D291). Each rule finds a
 // construct written the way Effect's TypeScript writes it where VibeLang has
-// its own form, reports it as a warning, and offers a quick fix that writes
-// the VibeLang form when the rewrite keeps the program's meaning:
+// its own form and reports it as a warning with textual advice:
 //
 //	EK4830  class X extends Data.TaggedError("X")<{ … }> {}   error X { … }
 //	EK4831  class X extends Context.Service<X, { … }>()("k")  service X { … }
@@ -31,10 +27,10 @@ import (
 //
 // The rules are lint (D241): adjustable in the vibelang setting diagnostics,
 // silenced for one line by @vibelang-diagnostics-next-line, warnings by
-// default, and never errors that change emit or the exit status. The plan of
-// each rewrite is computed once and serves the check, which words the
-// warning by whether a fix exists, the editor's quick fix, and vibelang --fix
-// (fix.go), which applies every fix in tsFormFixCodes.
+// default, and never errors that change emit or the exit status. Existing
+// diagnostic eligibility and message arguments depend on the legacy form
+// analysis below. That analysis is read-only: it offers and applies no source
+// rewrite in either the CLI or the editor.
 
 var (
 	// EK4830 (D284): a class that Effect's TypeScript writes for a tagged error. {0} is the class, {1} its base.
@@ -63,7 +59,6 @@ func init() {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkTypeScriptForms)
-	ls.RegisterCodeFixProvider(typeScriptFormFix)
 }
 
 // A sourceEdit replaces the text from start to end of one file.
@@ -72,10 +67,8 @@ type sourceEdit struct {
 	text       string
 }
 
-// A formRewrite is a rule's plan for one construct: the edits that write the
-// VibeLang form, or none when the construct has no exact rewrite. why, when
-// set, is the note that explains a missing fix; note, the note under a
-// warning that has one.
+// formRewrite retains legacy analysis metadata used to decide diagnostic
+// eligibility and print source examples. There is no mutation entrypoint.
 type formRewrite struct {
 	edits       []sourceEdit
 	description string
@@ -95,20 +88,10 @@ type tsFormRule struct {
 	// find calls report for each construct in file, with the node the
 	// diagnostic stands at and the plan of its rewrite.
 	find func(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any))
-	// plan plans the rewrite of the construct whose diagnostic stands at node.
-	plan func(c *checker.Checker, file *ast.SourceFile, at *ast.Node) *formRewrite
-	// diagnosed reports whether node is a node this rule's diagnostics stand at.
-	diagnosed func(node *ast.Node) bool
 }
 
 // tsFormRules are registered by the rules' files.
 var tsFormRules = map[int32]*tsFormRule{}
-
-// tsFormFixCodes are the codes whose quick fixes vibelang --fix applies
-// (D291): the rules above, whose fixes keep the program's meaning, and the
-// retired spellings whose fixes write the current ones (D172, D219, D221,
-// D223).
-var tsFormFixCodes = []int32{4830, 4831, 4832, 4833, 4834, 4835, 4836, 4837, 2112, 2113, 2120, 2121}
 
 // checkTypeScriptForms reports the rules' warnings in file.
 func checkTypeScriptForms(c *checker.Checker, file *ast.SourceFile) {
@@ -129,13 +112,8 @@ func checkFormRules(c *checker.Checker, file *ast.SourceFile, messages []*Messag
 			if rewrite != nil && rewrite.message != nil {
 				m = rewrite.message
 			}
-			d := reportAt(c, file, tsFormSpan(file, at), m, args...)
-			if rewrite.fixable() {
-				note(d, "Its quick fix writes {0}.", rewrite.description)
-			}
-			if rewrite != nil && rewrite.why != "" {
-				note(d, "{0}", rewrite.why)
-			}
+			reportAt(c, file, tsFormSpan(file, at), m, args...)
+
 		})
 	}
 }
@@ -144,55 +122,6 @@ func checkFormRules(c *checker.Checker, file *ast.SourceFile, messages []*Messag
 // leading trivia.
 func tsFormSpan(file *ast.SourceFile, node *ast.Node) core.TextRange {
 	return core.NewTextRange(nodeStart(file, node), node.End())
-}
-
-// tsFormNodeAt returns the node of file whose span is span and that test
-// accepts.
-func tsFormNodeAt(file *ast.SourceFile, span core.TextRange, test func(node *ast.Node) bool) *ast.Node {
-	var found *ast.Node
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if found != nil || node.End() < span.Pos() || node.Pos() > span.End() {
-			return found != nil
-		}
-		if nodeStart(file, node) == span.Pos() && node.End() == span.End() && test(node) {
-			found = node
-			return true
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return found
-}
-
-// typeScriptFormFix is the quick fix of every rule.
-var typeScriptFormFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{4830, 4831, 4832, 4833, 4834, 4835, 4836, 4837},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		rule := tsFormRules[fix.ErrorCode]
-		if rule == nil {
-			return nil, nil
-		}
-		at := tsFormNodeAt(fix.SourceFile, fix.Span, rule.diagnosed)
-		if at == nil {
-			return nil, nil
-		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-		defer done()
-		// Import cleanup reads runtime alias references collected by the
-		// complete file check, including for editor requests with supplied diagnostics.
-		c.GetDiagnostics(ctx, fix.SourceFile)
-		rewrite := preserveRewriteComments(fix.SourceFile, rule.plan(c, fix.SourceFile, at))
-		if !rewrite.fixable() {
-			return nil, nil
-		}
-		var changes []*lsproto.TextEdit
-		for _, edit := range rewrite.edits {
-			changes = append(changes, replaceRange(fix, edit.start, edit.end, edit.text)...)
-		}
-		return []*ls.CodeAction{{Description: "Write " + rewrite.description, Changes: changes}}, nil
-	},
 }
 
 // withImportRemovals adds to r's edits the removal of every import binding

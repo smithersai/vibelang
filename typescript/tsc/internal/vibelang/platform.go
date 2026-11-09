@@ -897,16 +897,7 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 	}
 	d := report(c, use, message, name)
 	notePlatformAPI(d, platformAPIOf(ref, members))
-	if call, method := consoleCall(use); call != nil {
-		if why := consoleFixRefusal(c, call, method); why != "" {
-			note(d, "No quick fix: {0}", why)
-		}
-	}
-	if call := bufferByteLengthCall(use); call != nil {
-		if why := bufferByteLengthRefusal(c, file, call); why != "" {
-			note(d, "No quick fix: {0}", why)
-		}
-	}
+
 }
 
 // isClockReadMember reports whether id, a platform global, is the object of

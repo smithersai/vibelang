@@ -1,15 +1,11 @@
 package vibelang
 
 import (
-	"context"
-	"regexp"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -32,7 +28,6 @@ import (
 
 func init() {
 	fileChecks = append(fileChecks, checkRetiredCatches)
-	ls.RegisterCodeFixProvider(retiredCatchFix)
 }
 
 // An oldClause is one catch clause of a retired chain as the user wrote it.
@@ -209,10 +204,8 @@ func checkRetiredCatches(c *checker.Checker, file *ast.SourceFile) {
 				for _, clause := range chain.clauses {
 					switch {
 					case clause.cause && clause.name != nil:
-						d := reportAt(c, file, annotationRange(text, clause.name), EK2113)
-						if chain.causeLiteralResult(c) {
-							note(d, "No automatic fix: matching the exit would widen a literal return type. Write a return contract that accepts the nested block's result before converting this catch.")
-						}
+						reportAt(c, file, annotationRange(text, clause.name), EK2113)
+
 					case clause.typeNode != nil:
 						name := "e" // a destructured binding is no name to test
 						if clause.name != nil && ast.IsIdentifier(clause.name) {
@@ -228,318 +221,10 @@ func checkRetiredCatches(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// retiredCatchFix is the quick fix of EK2112 and EK2113.
-var retiredCatchFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK2112.Code, EK2113.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		if fix.Diagnostic == nil {
-			return nil, nil
-		}
-		chain := retiredCatchAt(fix.SourceFile, fix.Span)
-		if chain == nil {
-			return retiredCatchExpressionActions(ctx, fix)
-		}
-		if !inEffectCode(chain.try) {
-			return nil, nil // the rewrite writes try, which runs only in effect code (VIP-1)
-		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-		defer done()
-		description, start, newText, ok := chain.rewrite(c, fix.SourceFile)
-		if !ok {
-			return nil, nil
-		}
-		end := chain.try.AsTryStatement().CatchClause.End()
-		if chain.causes {
-			end = chain.try.End()
-		}
-		return []*ls.CodeAction{{
-			Description: description,
-			Changes:     []*lsproto.TextEdit{{Range: fix.LS.ToLSPRange(fix.SourceFile, core.NewTextRange(start, end)), NewText: newText}},
-		}}, nil
-	},
-}
-
-// retiredCatchAt returns the retired chain whose catch clauses contain span.
-func retiredCatchAt(file *ast.SourceFile, span core.TextRange) *retiredCatch {
-	var found *retiredCatch
-	var visit func(n *ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if found != nil {
-			return true
-		}
-		if n.Kind == ast.KindTryStatement {
-			if clause := n.AsTryStatement().CatchClause; clause != nil && clause.Pos() <= span.Pos() && span.End() <= clause.End() {
-				if chain := retiredCatchOf(file, n); chain != nil {
-					found = chain
-				}
-			}
-		}
-		return n.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return found
-}
-
-// dottedName is a pattern a type can become: a name or a dotted name.
-var dottedName = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*(\.[A-Za-z_$][A-Za-z0-9_$]*)*$`)
-
-// patternOf returns the match pattern for a clause's type: each member of a
-// union must name a class, such as an error declaration, so that the
-// pattern tests instances of it. ok is false for any other type.
-func patternOf(c *checker.Checker, text string, typeNode *ast.Node) (string, bool) {
-	var members []*ast.Node
-	if typeNode.Kind == ast.KindUnionType {
-		members = typeNode.AsUnionTypeNode().Types.Nodes
-	} else {
-		members = []*ast.Node{typeNode}
-	}
-	var patterns []string
-	for _, member := range members {
-		if member.Kind != ast.KindTypeReference || member.AsTypeReferenceNode().TypeArguments != nil {
-			return "", false
-		}
-		name := member.AsTypeReferenceNode().TypeName
-		if ast.NodeIsMissing(name) {
-			return "", false // a syntax error's missing type has no text
-		}
-		source := text[scanner.SkipTrivia(text, name.Pos()):name.End()]
-		if !dottedName.MatchString(source) {
-			return "", false
-		}
-		symbol := c.GetSymbolAtLocation(rightmostName(name))
-		if symbol == nil || symbol.Flags()&ast.SymbolFlagsClass == 0 {
-			if symbol == nil || symbol.Flags()&ast.SymbolFlagsAlias == 0 {
-				return "", false
-			}
-			if target := c.GetAliasedSymbol(symbol); target == nil || target.Flags()&ast.SymbolFlagsClass == 0 {
-				return "", false
-			}
-		}
-		patterns = append(patterns, source)
-	}
-	return strings.Join(patterns, " or "), true
-}
-
 // rightmostName returns the last identifier of an entity name.
 func rightmostName(name *ast.Node) *ast.Node {
 	if name.Kind == ast.KindQualifiedName {
 		return name.AsQualifiedName().Right
 	}
 	return name
-}
-
-// rewrite returns the quick fix for the chain: its description, the start of
-// the text it replaces, and the new text. The replaced text ends at the end
-// of the catch clause, or of the whole try statement for a Cause clause.
-func (r *retiredCatch) rewrite(c *checker.Checker, file *ast.SourceFile) (string, int, string, bool) {
-	text := file.Text()
-	if r.causes {
-		if r.causeLiteralResult(c) {
-			return "", 0, "", false
-		}
-		return r.rewriteCause(text)
-	}
-	for _, clause := range r.clauses {
-		if clause.name != nil && !ast.IsIdentifier(clause.name) {
-			return "", 0, "", false // a destructured binding has no name for match to test
-		}
-	}
-	main := "e"
-	for _, clause := range r.clauses {
-		if clause.name != nil {
-			main = clause.name.Text()
-			break
-		}
-	}
-	patterns := make([]string, len(r.clauses))
-	for i, clause := range r.clauses {
-		if clause.open < 0 {
-			return "", 0, "", false
-		}
-		if clause.typeNode != nil {
-			pattern, ok := patternOf(c, text, clause.typeNode)
-			if !ok {
-				return "", 0, "", false
-			}
-			patterns[i] = pattern
-		} else if i != len(r.clauses)-1 {
-			return "", 0, "", false // clauses after an untyped one cannot run (EK2106)
-		}
-	}
-	catchStart := scanner.SkipTrivia(text, r.try.AsTryStatement().CatchClause.Pos())
-	base := indentationAt(text, catchStart)
-	unit := indentUnit(text, r.clauses[0], base)
-	if form, ok := r.matchForm(text, main, patterns, base, unit); ok {
-		return "Test the failure with match", catchStart, form, true
-	}
-	var b strings.Builder
-	b.WriteString("catch (" + main + ") {\n" + base + unit)
-	untyped := false
-	for i, clause := range r.clauses {
-		body := text[clause.open+1 : clause.end-1]
-		if clause.name != nil && clause.name.Text() != main {
-			body = "\n" + base + unit + unit + "const " + clause.name.Text() + " = " + main + body
-		}
-		body = reindent(body, unit)
-		if patterns[i] == "" {
-			untyped = true
-			if i == 0 {
-				return "", 0, "", false
-			}
-			b.WriteString(" else {" + body + "}")
-			continue
-		}
-		if i > 0 {
-			b.WriteString(" else ")
-		}
-		b.WriteString("if (" + main + " is " + patterns[i] + ") {" + body + "}")
-	}
-	if !untyped {
-		b.WriteString(" else {\n" + base + unit + unit + "throw " + main + "\n" + base + unit + "}")
-	}
-	b.WriteString("\n" + base + "}")
-	return "Test the failure with is", catchStart, b.String(), true
-}
-
-// matchForm returns the chain as `return match (e) { ... }` when every
-// clause is one return of a value and names the same variable.
-func (r *retiredCatch) matchForm(text, main string, patterns []string, base, unit string) (string, bool) {
-	inner := base + unit + unit
-	arms := make([]string, len(r.clauses))
-	for i, clause := range r.clauses {
-		if clause.name != nil && clause.name.Text() != main {
-			return "", false
-		}
-		value, ok := singleReturn(text, clause.statements)
-		if !ok {
-			return "", false
-		}
-		if patterns[i] == "" {
-			arms[i] = "default: " + value + ";"
-		} else {
-			arms[i] = "when " + patterns[i] + ": " + value + ";"
-		}
-		statement := clause.statements[0]
-		leading := strings.TrimSpace(text[clause.open+1 : scanner.SkipTrivia(text, statement.Pos())])
-		if leading != "" {
-			arms[i] = reindent(leading, unit) + "\n" + inner + arms[i]
-		}
-		trailing := strings.TrimRight(text[statement.End():clause.end-1], " \t\r\n")
-		arms[i] += reindent(trailing, unit)
-	}
-	if patterns[len(patterns)-1] != "" {
-		arms = append(arms, "default: throw "+main+";")
-	}
-	return "catch (" + main + ") {\n" + base + unit + "return match (" + main + ") {\n" + inner + strings.Join(arms, "\n"+inner) + "\n" + base + unit + "}\n" + base + "}", true
-}
-
-// causeLiteralResult rejects a protected return whose widening inside the
-// new effect block expands its original union or exceeds a written contract.
-func (r *retiredCatch) causeLiteralResult(c *checker.Checker) bool {
-	fn := ast.GetContainingFunction(r.try)
-	if fn == nil || !r.causes || len(r.clauses) != 1 {
-		return false
-	}
-	groups := [][]*ast.Node{r.try.AsTryStatement().TryBlock.AsBlock().Statements.Nodes, r.clauses[0].statements}
-	var types []*checker.Type
-	for _, statements := range groups {
-		if len(statements) != 1 || statements[0].Kind != ast.KindReturnStatement || statements[0].Expression() == nil {
-			return false
-		}
-		types = append(types, c.GetTypeAtLocation(statements[0].Expression()))
-	}
-	widened := c.GetBaseTypeOfLiteralType(types[0])
-	if widened == types[0] {
-		return false
-	}
-	accepts := c.GetUnionType(types)
-	if fn.Type() != nil {
-		declared := analyzerFor(c).declaredProgramReturn(fn)
-		if declared == nil {
-			return true
-		}
-		accepts = successType(c, declared)
-		if accepts == nil {
-			return true
-		}
-	}
-	return !c.IsTypeAssignableTo(widened, accepts)
-}
-
-// rewriteCause rewrites `try { return X } catch (cause: Cause) { return Y }`
-// as `return match (try exit(effect { return X })) { ... }`. Other shapes have no quick fix.
-func (r *retiredCatch) rewriteCause(text string) (string, int, string, bool) {
-	ts := r.try.AsTryStatement()
-	if ts.FinallyBlock != nil || r.try.Flags&ast.NodeFlagsVibeLang != 0 || len(r.clauses) != 1 || !r.clauses[0].cause || r.clauses[0].name == nil {
-		return "", 0, "", false
-	}
-	body, ok := singleReturn(text, ts.TryBlock.AsBlock().Statements.Nodes)
-	if !ok {
-		return "", 0, "", false
-	}
-	fallback, ok := singleReturn(text, r.clauses[0].statements)
-	if !ok {
-		return "", 0, "", false
-	}
-	start := scanner.SkipTrivia(text, r.try.Pos())
-	base := indentationAt(text, start)
-	unit := "  "
-	value := "value"
-	if r.clauses[0].name.Text() == value {
-		value = "result"
-	}
-	inner := base + unit
-	return "Match on exit(…)", start, "return match (try exit(effect { return " + body + " })) {\n" +
-		inner + "when Exit.Success(let " + value + "): " + value + ";\n" +
-		inner + "when Exit.Failure(let " + r.clauses[0].name.Text() + "): " + fallback + ";\n" +
-		base + "}", true
-}
-
-// singleReturn returns the text of X when statements are one `return X`.
-func singleReturn(text string, statements []*ast.Node) (string, bool) {
-	if len(statements) != 1 || statements[0].Kind != ast.KindReturnStatement {
-		return "", false
-	}
-	expression := statements[0].Expression()
-	if expression == nil {
-		return "", false
-	}
-	value := strings.TrimSpace(text[expression.Pos():expression.End()])
-	suffix := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text[expression.End():statements[0].End()]), ";"))
-	if suffix != "" {
-		value += " " + suffix
-	}
-	return value, true
-}
-
-// indentationAt returns the leading white space of the line holding pos.
-func indentationAt(text string, pos int) string {
-	start := strings.LastIndexByte(text[:pos], '\n') + 1
-	end := start
-	for end < len(text) && (text[end] == ' ' || text[end] == '\t') {
-		end++
-	}
-	return text[start:end]
-}
-
-// indentUnit guesses one level of indentation from a clause's first line.
-func indentUnit(text string, clause oldClause, base string) string {
-	if clause.open < 0 {
-		return "  "
-	}
-	body := text[clause.open+1 : clause.end-1]
-	if newline := strings.IndexByte(body, '\n'); newline >= 0 {
-		line := body[newline+1:]
-		indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
-		if strings.HasPrefix(indent, base) && len(indent) > len(base) {
-			return indent[len(base):]
-		}
-	}
-	return "  "
-}
-
-// reindent indents every line of body after the first by unit.
-func reindent(body, unit string) string {
-	return strings.ReplaceAll(body, "\n", "\n"+unit)
 }

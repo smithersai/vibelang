@@ -2,6 +2,8 @@
 
 **Status:** accepted by Will, 2026-10-28.
 
+Before its first release, VibeLang ships no quick fixes or codemods of its own (PROC-29). TypeScript's built-in code fixes remain available.
+
 ## Decision
 
 ```ts
@@ -43,7 +45,7 @@ class Users extends Context.Service<Users, {
   | `service Repo<T> { … }`, or a member contract capturing an outer type parameter | EK3005 | specialized shapes would share one key; a parameter belonging to a member-local generic signature is allowed |
 
 - **Amended 2026-10-29: any member type.** A bodyless `service` member may declare any return type, Effect or not, as `Context.Service` allows (the old EK2101 is relaxed). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
-- **Amended 2026-10-29: no derived key outside a package.** A `service` in a file outside any package, or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error with a quick fix that inserts one. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 54).
+- **Amended 2026-10-29: no derived key outside a package.** A `service` in a file outside any package, or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error and needs an explicit key. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 54).
 
 
 - **Amended 2026-10-30: recursive member shapes.** Declare the written member shape under a private type alias before constructing the service key. Inside that service's own shape, `S.Shape` denotes that alias directly, so recursive members do not project through the not-yet-constructed `typeof S`. Outside the shape it retains `Context.Service.Shape<typeof S>`. Apply this to both class services and defaulted `Context.Reference` services, using resolved service identity rather than spelling. The hook is type-only; no runtime namespace or `Shape` property is created.

@@ -81,7 +81,7 @@ Schema references keep TypeScript’s declaration order and temporal dead zone. 
 
 A member of a `schema` body that is not a field, such as a method `m(): string`, an index signature `[k: string]: number` or a name without a type, reports `EK1505`. Write `name: Type` or `name?: Type`; a method belongs on a `schema error`, and a set of keys is a `Record<K, V>` field.
 
-Separate `schema` declaration fields with `;`, `,` or a new line. Two fields on one line with no separator, such as `schema S { a: string b: number }`, report `EK1504`; the editor offers a quick fix that inserts `;`. Nested object types and alias types retain TypeScript’s comma separators and TypeScript's diagnostic for a missing one.
+Separate `schema` declaration fields with `;`, `,` or a new line. Two fields on one line with no separator, such as `schema S { a: string b: number }`, report `EK1504`; insert `;`. Nested object types and alias types retain TypeScript’s comma separators and TypeScript's diagnostic for a missing one.
 
 A JSDoc comment on a `schema` declaration documents the emitted constant only; its generated type alias has no comment. Tags such as `@deprecated` and `@internal` follow the constant, as on the ordinary Effect TypeScript pair. When the constant and its type need different comments, write one nongeneric `type Name = typeof Name.Type` in the same scope as the `schema Name`, before or after it. The written type replaces the generated alias, keeping its own JSDoc and `export` modifier. Comments after a schema’s optional semicolon are retained in declarations as TypeScript retains comments after the equivalent constant.
 
@@ -231,7 +231,7 @@ Guards and assertions check the decoded type: a numeric `pieces` is valid, a str
 
 ## Coming from Effect
 
-`Schema.decodeUnknownEffect(Shipment)(input)` returns an Effect. Inside an `effect` function, `try` runs it and gives the shipment. Use `catch` on the Effect value to recover from schema failures. A `const` that holds a `Schema.Struct` draws EK4832 when a `schema` declaration writes the same struct, and its quick fix writes the declaration ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
+`Schema.decodeUnknownEffect(Shipment)(input)` returns an Effect. Inside an `effect` function, `try` runs it and gives the shipment. Use `catch` on the Effect value to recover from schema failures. A `const` that holds a `Schema.Struct` draws EK4832 when a `schema` declaration writes the same struct, and an explicit edit can use the declaration ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
 
 A value named `string`, `number` or another type keyword keeps its library form when its bare name would select a different schema. Qualified references such as `holder.string` remain eligible for a preserving repair.
 
@@ -239,4 +239,4 @@ A value named `string`, `number` or another type keyword keeps its library form 
 
 For older programs that relied on an implicit readonly schema key, write the old readonly keys explicitly. A referenced codec whose decoded-key flags cannot be represented by that modifier stays an explicit Effect codec, preserving its public type and identity.
 
-An eligible `Schema.Struct` constant immediately followed by its matching `typeof Name.Type` alias also receives the configurable `EK4841` warning. Its quick fix combines the pair as a `schema Name = …` declaration while preserving its fields, exports, and written imports.
+An eligible `Schema.Struct` constant immediately followed by its matching `typeof Name.Type` alias also receives the configurable `EK4841` warning. When combining the pair as a `schema Name = …` declaration, preserve its fields, exports and written imports.

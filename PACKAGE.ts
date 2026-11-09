@@ -397,7 +397,7 @@ const specAppendixExamples = S.Shell.Test({
 })
 const specAppendixHostExamples = goVibelang(
   "Appendix mapper diagnostics and explicit editor repairs keep their documented identities.",
-  `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -trimpath -timeout 5m -run "TestCompatibilityIdentityPrimaryMessages|TestFiberFlowFixes|TestAppendixMapperHostExamples|TestAppendixEditorHostExamples|TestAppendixRegisteredOnlyHostExamples|TestInferred|TestUnprojectedForm|TestRenderExec|TestAutomaticTracingOptionRejected|TestVersionMismatchDiagnostic" ./internal/vibelang ./internal/vibelangmapper ./internal/ls`
+  `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -trimpath -timeout 5m -run "TestCompatibilityIdentityPrimaryMessages|TestFiberFlows|TestAppendixMapperHostExamples|TestAppendixEditorHostExamples|TestAppendixRegisteredOnlyHostExamples|TestInferred|TestFormChoiceDidChange|TestReceiverChoiceDidChange|TestUnprojectedForm|TestRenderExec|TestAutomaticTracingOptionRejected|TestVersionMismatchDiagnostic" ./internal/vibelang ./internal/vibelangmapper ./internal/ls`
 )
 const specTables = specCheck("tables")
 const specCopies = specCheck("copies", [specSharedTables, specCopySections])

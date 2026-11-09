@@ -15,7 +15,7 @@ var existingPlatformBodyKeys = []string{"body-existing", "body-absent", "sibling
 
 func TestMigrationExistingPlatformBodyQuoted(t *testing.T) {
 	r4Quoted(t, "../vips/0040-module-declarations.md", "**A body is a TypeScript file stored inside a \x60.vibe\x60 file.**")
-	r4Quoted(t, "005-services.md", "never rewrite an existing foreign file")
+	r4Quoted(t, "../../../.smithers/flows/migrate/rules.md", "Never rewrite an existing foreign file")
 }
 func checkExistingPlatformBody(t *testing.T, key string, mode uint8) {
 	t.Helper()

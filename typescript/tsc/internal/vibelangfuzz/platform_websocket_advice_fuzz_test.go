@@ -13,7 +13,7 @@ import (
 
 const platformWebSocketAdviceTarget = "FuzzPlatformWebSocketAdvice"
 const platformWebSocketColdQuote = "Returning an Effect does not itself execute it."
-const platformWebSocketDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const platformWebSocketDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 
 func TestPlatformWebSocketAdviceQuoted(t *testing.T) {
 	platformWebSocketBoundaryQuoted(t)

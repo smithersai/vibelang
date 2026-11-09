@@ -1,1 +1,0 @@
-the editor offers try only for an accepted direct argument, and explicit type arguments everywhere

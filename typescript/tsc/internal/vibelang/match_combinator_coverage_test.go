@@ -5,9 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 func TestMatchCombinatorCoverage(t *testing.T) {
@@ -27,22 +25,6 @@ func TestMatchCombinatorCoverage(t *testing.T) {
 				t.Fatalf("got %d EK4701 diagnostics, want one", count)
 			}
 		})
-	}
-}
-
-func TestMatchCombinatorCoverageFix(t *testing.T) {
-	for _, modifier := range []string{"", "async ", "effect "} {
-		source := "export " + modifier + "function f(x:boolean){return match(x){when true and true:1;when false:0;}}"
-		got := applyQuickFixOf(t, source, EK4701.Code, diagnostics.CategoryError)
-		if ds := errorsOf(t, got); len(ds) != 0 {
-			t.Fatalf("fixed source: %v\n%s", ds, got)
-		}
-		// The fallback contributes never, never a new success/error/environment.
-		want := combinatorDeclarations(t, "export "+modifier+"function f(x:boolean){return match(x){when true:1;when false:0;}}")
-		actual := combinatorDeclarations(t, got)
-		if actual != want {
-			t.Fatalf("declarations changed:\n%s\nwant:\n%s", actual, want)
-		}
 	}
 }
 
@@ -81,27 +63,6 @@ func TestMatchCombinatorNativeComparison(t *testing.T) {
 	if len(ds) != 1 || ds[0].Code() != 2367 {
 		t.Fatalf("native comparison: %v", ds)
 	}
-}
-
-func combinatorDeclarations(t *testing.T, source string) string {
-	t.Helper()
-	p, f, _, _ := editorProgram(t, source)
-	for _, d := range p.GetSemanticDiagnostics(t.Context(), f) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Fatal(d.String())
-		}
-	}
-	text := ""
-	p.Emit(t.Context(), compiler.EmitOptions{ForceEmit: true, EmitOnly: compiler.EmitOnlyDts, WriteFile: func(name tspath.RootedFilePath, contents string, _ *compiler.WriteFileData) error {
-		if strings.HasSuffix(name.AsString(), "/main.d.ts") {
-			text = contents
-		}
-		return nil
-	}})
-	if text == "" {
-		t.Fatal("no declaration emitted")
-	}
-	return text
 }
 
 // rule-evidence: docs/design/vips/0007-match.md#8c614925acdf1e60 | An irrefutable capture on either side of and preserves the other pattern's coverage, including nested conjunctions and captures within a property or extractor argument.

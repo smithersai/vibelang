@@ -13,7 +13,7 @@ import (
 const metadataShebangTarget = "FuzzMigrationMetadataShebang"
 
 func TestMigrationMetadataShebangQuoted(t *testing.T) {
-	chapterSays(t, "005-services.md", "refuse with the not-fixed explanation if the move cannot preserve run phase, captures, receiver and public types")
+	chapterSays(t, "../../../.smithers/flows/migrate/rules.md", "Preserve run phase, captures, receiver and public types.")
 	chapterSays(t, "../vips/0040-module-declarations.md", "Each tool reads a body as the")
 }
 func FuzzMigrationMetadataShebang(f *testing.F) {

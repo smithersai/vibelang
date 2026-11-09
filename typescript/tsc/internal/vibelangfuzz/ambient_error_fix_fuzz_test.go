@@ -9,8 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
-const ambientErrorFixTarget = "FuzzAmbientErrorFix"
-const ambientErrorFixQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
+const ambientErrorFixQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 const ambientErrorRuleQuote = "a recognized `error` or `schema error` declaration in an ambient source context, explicit or inherited"
 const ambientErrorNativeQuote = "Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types."
 
@@ -139,72 +138,4 @@ func TestAmbientErrorFixErasure(t *testing.T) {
 			t.Fatalf("executable or invalid module accepted: %s", js)
 		}
 	}
-}
-
-// A repair may refuse this invalid custom declaration. Every offered repair
-// must retain an ambient native class that type-checks, with no runtime class
-// initializer. Check each plan separately, across explicit/inherited declare,
-// empty/optional payloads and both TaggedError libraries. No runtime oracle is
-// needed: declaration contexts never execute. The Opencode m24 regression was
-// a schema-error matcher static block inserted into an explicit declare class.
-func FuzzAmbientErrorFix(f *testing.F) {
-	startShortBudget(f)
-	ambientErrorFixCheckQuotes(f)
-	rules := ambientErrorFixRules()
-	for _, rule := range rules {
-		f.Add([]byte("key:" + rule.key))
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, data []byte) {
-		rule := rules[ambientErrorFixPick(data, rules)]
-		defer recoverCompilerPanic(t, ambientErrorFixTarget)
-		compile := func(source string) *Result {
-			r := toolsCompile(t, w, ambientErrorFixTarget, map[string]string{"main.vibe": source})
-			t.Cleanup(r.Remove)
-			return r
-		}
-		native := compile(rule.native)
-		if errors := r4Errors(native.Diagnostics); len(errors) != 0 {
-			t.Fatalf("%s: independently written ambient native control: %v\n%s", rule.key, errors, rule.native)
-		}
-		if js, exists := native.Outputs["out/main.js"]; !exists || !ambientErrorFixErased(js) {
-			t.Fatalf("%s: native ambient control did not erase its class: %s", rule.key, js)
-		}
-		g := &Gaps{Target: ambientErrorFixTarget, Input: rule.source}
-		original := compile(rule.source)
-		if errors := r4Errors(original.Diagnostics); !slices.Equal(errors, []string{"EK1307"}) {
-			slices.Sort(errors)
-			g.Add("original-diagnostic:"+rule.key+":"+strings.Join(errors, ","), "Chapter 3: %s; want EK1307 alone, got %v\n%s", ambientErrorRuleQuote, errors, rule.source)
-		}
-		plans, _, seen := quickfixEditorPlans(t, w, original, map[string]string{"main.vibe": rule.source}, []int32{1307})
-		if !seen[1307] {
-			t.Fatalf("%s: editor lost EK1307", rule.key)
-		}
-		for _, plan := range plans {
-			if len(plan.edits) != 1 || len(plan.edits["main.vibe"]) == 0 {
-				t.Fatalf("%s: unexpected edit scope %v", rule.key, plan.edits)
-			}
-			fixed, _, err := toolsApply(rule.source, plan.edits["main.vibe"])
-			if err != nil {
-				t.Fatal(err)
-			}
-			after := compile(fixed)
-			// Ambient declarations erase their class. Import plans may differ,
-			// so inspect executable declarations rather than comparing text.
-			if len(r4Errors(after.Diagnostics)) == 0 {
-				js, exists := after.Outputs["out/main.js"]
-				if !exists || !ambientErrorFixErased(js) {
-					t.Fatalf("%s: repair emitted executable declarations\n%s\nrepair:\n%s", rule.key, js, fixed)
-				}
-			}
-			errors := r4Errors(after.Diagnostics)
-			if len(errors) != 0 {
-				// Include the entire diagnostic set in the pending key, so an
-				// additional independent error cannot hide under a known gap.
-				slices.Sort(errors)
-				g.Add("offered-repair:"+rule.key+":"+strings.Join(errors, ","), "VIP-34: %s Native control compiles; repair introduces %v\nsource:\n%s\nrepair:\n%s", ambientErrorFixQuote, errors, rule.source, fixed)
-			}
-		}
-		g.FinishInput(t, specCorpusKey(t))
-	})
 }

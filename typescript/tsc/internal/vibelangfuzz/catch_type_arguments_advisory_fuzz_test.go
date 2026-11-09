@@ -9,7 +9,7 @@ import (
 )
 
 const catchTypeArgumentsQuote = "| \x60EK4835\x60 | \x60Effect.catch\x60, \x60Effect.catchTag\x60, or \x60Effect.catchTags\x60 as the direct operand of bare \x60try\x60 in effect code |"
-const catchTypeArgumentsSafetyQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
+const catchTypeArgumentsSafetyQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func catchTypeArgumentsQuoted(t testing.TB) {
 	t.Helper()

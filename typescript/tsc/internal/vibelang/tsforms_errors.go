@@ -30,24 +30,11 @@ func init() {
 	tsFormRules[EK4830.Code] = &tsFormRule{
 		message: EK4830,
 		find:    findErrorClasses,
-		plan: func(c *checker.Checker, file *ast.SourceFile, at *ast.Node) *formRewrite {
-			return errorClassRewrite(c, file, at.Parent)
-		},
-		diagnosed: isClassName,
 	}
 	tsFormRules[EK4837.Code] = &tsFormRule{
 		message: EK4837,
 		find:    findSchemaErrorClasses,
-		plan: func(c *checker.Checker, file *ast.SourceFile, at *ast.Node) *formRewrite {
-			return errorClassRewrite(c, file, at.Parent)
-		},
-		diagnosed: isClassName,
 	}
-}
-
-// isClassName reports whether node is the name of a class declaration.
-func isClassName(node *ast.Node) bool {
-	return ast.IsIdentifier(node) && node.Parent != nil && ast.IsClassDeclaration(node.Parent) && node.Parent.Name() == node
 }
 
 // errorBase is what an error class extends.

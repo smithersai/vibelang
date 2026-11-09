@@ -15,7 +15,7 @@ Diagnostic codes follow Appendix B of the specification: `EK`, the two-digit VIP
 | `TS1141` (identifier specifier in a body) | `EK4007` | Share code through a `.ts` file or merge the bodies. |
 | Previously accepted `import.meta` in a body | `EK4009` | Pass metadata in as an argument or use a `.ts` file. |
 | `TS2708` (module name as a value) | `EK4004` | Import the module's exports with a static identifier import. |
-| `EK4618` | `EK0101` | A declaration such as `effect load() {}` or `async load() {}` needs `function`. The quick fix inserts it. |
+| `EK4618` | `EK0101` | A declaration such as `effect load() {}` or `async load() {}` needs `function`. Insert it. |
 | `EK4617` | `EK0103` | `await` does not run an Effect in an `async` function. Use `await runPromise(program)`. |
 | `EK1019` for `var` | `EK0107` | `var` inside `do` uses the global declaration restriction. `do` control-flow diagnostics use `EK0201` through `EK0205`. |
 
@@ -189,7 +189,7 @@ These identities remain in the compiler registry for older source and migration 
 | --- | --- |
 | `EK1011` | An Effect construct cannot resolve the Effect type. Install `effect@4.1.1` where the source resolves packages; if the diagnostic names another installed version, align it with the compiler's pinned peer. |
 | `EK1503` | A `schema` declaration lacks its body or supported alias. Write `schema Name { field: string }` or an admitted schema alias. |
-| `EK1504` | Schema fields have no separator. Insert `;` or a line break; the quick fix inserts `;`. |
+| `EK1504` | Schema fields have no separator. Insert `;` or a line break; write `;`. |
 | `EK1705` | A `fork.` owner is unknown. Choose `fork.in(scope)`, `fork.scoped` or `fork.detached` for the intended lifetime. |
 | `EK1706` | A `fork.in(scope)` operand is not a `Scope.Scope`. Pass an acquired scope; a lifetime string or layer is not a scope. |
 | `EK4857` | A return channel still writes legacy `infer`. Run the preserving migration or write the inferred channel type explicitly. Remove an all-`infer` annotation only from an explicit `effect` callable when that preserves its contract. A repair is withheld when the returned Effect conflicts with a written channel. |

@@ -16,7 +16,7 @@ import (
 // all subjects (absent, undefined, present, inherited and nonmatching) run.
 func TestMatchHandlerDestructureQuoted(t *testing.T) {
 	for _, quote := range []string{
-		"A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+		"Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.",
 		"only for patterns and handlers whose tests and results are preserved.",
 	} {
 		if !strings.Contains(SpecText("007-tooling.md"), quote) {

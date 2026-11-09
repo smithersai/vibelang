@@ -195,7 +195,7 @@ func TestModuleServiceThroughPreludeNamespace(t *testing.T) {
 func TestEditorModuleServices(t *testing.T) {
 	source := "export effect function read(path: string) {\n  const fs = try FileSystem.FileSystem\n  return try fs.readFileString(path)\n}\n"
 	program, file, _, converters := editorProgram(t, source)
-	service := ls.NewLanguageService(nil, program, fixHost{program: program, converters: converters}, file.FileName().AsString())
+	service := ls.NewLanguageService(nil, program, programEditorHost{program: program, converters: converters}, file.FileName().AsString())
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Category() == diagnostics.CategoryError {
 			t.Fatalf("source: %s", d.String())
@@ -309,7 +309,7 @@ func findNode(root *ast.Node, match func(*ast.Node) bool) *ast.Node {
 func TestEditorExperimentalServices(t *testing.T) {
 	source := "export effect function host() {\n  return try (try Experimental.Process.Process).hostname\n}\n"
 	program, file, _, converters := editorProgram(t, source)
-	service := ls.NewLanguageService(nil, program, fixHost{program: program, converters: converters}, file.FileName().AsString())
+	service := ls.NewLanguageService(nil, program, programEditorHost{program: program, converters: converters}, file.FileName().AsString())
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Category() == diagnostics.CategoryError {
 			t.Fatalf("source: %s", d.String())
@@ -396,7 +396,7 @@ export declare const make: (value: string) => FileSystem;`
 	converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
 		return lsconv.ComputeLSPLineStarts(program.GetSourceFile(name).Text())
 	})
-	service := ls.NewLanguageService(nil, program, fixHost{program: program, converters: converters}, file.FileName().AsString())
+	service := ls.NewLanguageService(nil, program, programEditorHost{program: program, converters: converters}, file.FileName().AsString())
 	result, err := service.GetCompletionsAtPosition(t.Context(), file, strings.Index(source, "FileSystem.make")+len("FileSystem."), nil, true)
 	if err != nil || result == nil {
 		t.Fatalf("completions: %v, %v", result, err)

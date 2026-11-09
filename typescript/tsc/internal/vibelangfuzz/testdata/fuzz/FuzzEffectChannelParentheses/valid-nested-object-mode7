@@ -1,3 +1,0 @@
-go test fuzz v1
-string("valid-nested-object")
-byte(7)

@@ -1,13 +1,8 @@
 package vibelang
 
 import (
-	"context"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -31,12 +26,9 @@ var (
 
 func init() {
 	registry[EK1013.Code] = EK1013
-	tsFormFixCodes = append(tsFormFixCodes, EK1013.Code)
 	registry[EK1306.Code] = EK1306
 	registry[EK0908.Code] = EK0908
 	fileChecks = append(fileChecks, checkFieldCommas)
-	ls.RegisterCodeFixProvider(fieldCommaFix)
-	ls.RegisterCodeFixProvider(separatorFix)
 }
 
 // checkFieldCommas reports EK1013 at each comma the parser read after a field.
@@ -77,63 +69,4 @@ func fieldDeclarationKind(class *ast.Node) string {
 		return "a control"
 	}
 	return "a declaration"
-}
-
-// fieldCommaFix is EK1013's quick fix: it writes ; for the comma the
-// diagnostic spans.
-var fieldCommaFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK1013.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		text := fix.SourceFile.Text()
-		if fix.Diagnostic == nil || fix.Span.End() > len(text) || text[fix.Span.Pos():fix.Span.End()] != "," {
-			return nil, nil
-		}
-		return []*ls.CodeAction{{
-			Description: "Write ; for the comma",
-			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: ";"}},
-		}}, nil
-	},
-}
-
-// separatorFix is EK1306's and EK0908's quick fix: it writes ; after the
-// first member, before any spaces or tabs between the two.
-var separatorFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK1306.Code, EK0908.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		if fix.Diagnostic == nil {
-			return nil, nil
-		}
-		at := separatorInsertion(fix.SourceFile, fix.Span.Pos())
-		if at < 0 {
-			return nil, nil
-		}
-		return []*ls.CodeAction{{
-			Description: "Write ; between the members",
-			Changes:     []*lsproto.TextEdit{{Range: fix.LS.ToLSPRange(fix.SourceFile, core.NewTextRange(at, at)), NewText: ";"}},
-		}}, nil
-	},
-}
-
-// separatorInsertion uses the gap marker's full start: the preceding member's
-// end, before any trivia, even when a payload field was projected into heritage.
-// Inserting at the next token would detach its JSDoc onto an empty member.
-func separatorInsertion(file *ast.SourceFile, pos int) int {
-	at := -1
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if ast.IsClassDeclaration(node) {
-			for _, member := range node.Members() {
-				if ast.IsSemicolonClassElement(member) && member.Flags&ast.NodeFlagsVibeLang != 0 && member.Pos() == member.End() &&
-					scanner.GetRangeOfTokenAtPosition(file, member.Pos()).Pos() == pos {
-					at = member.Pos()
-					return true
-				}
-			}
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return at
 }

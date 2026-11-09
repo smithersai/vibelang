@@ -17,7 +17,7 @@ const fc = require("fast-check")
 const { Effect } = require("effect")
 const ts = require(join(modules, "typescript"))
 const skip = [compiler, join(runtime, "dist/index.js")].some(p => !existsSync(p)) && "build compiler and runtime first"
-const rule = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
+const rule = "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 const tick = String.fromCharCode(96)
 const source = [
   "export const trace: string[] = []",

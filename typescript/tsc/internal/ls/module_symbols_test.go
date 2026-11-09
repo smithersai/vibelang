@@ -44,7 +44,7 @@ func moduleSymbols(t *testing.T, fileName, source string) ([]*lsproto.DocumentSy
 	converters := lsconv.NewConverters(lsproto.PositionEncodingKindUTF16, func(name tspath.RootedFilePath) *lsconv.LSPLineMap {
 		return lsconv.ComputeLSPLineStarts(files[string(name)])
 	})
-	service := ls.NewLanguageService(nil, p, retiredModulesHost{trustedFixHost: trustedFixHost{converters: converters}, files: files}, fileName)
+	service := ls.NewLanguageService(nil, p, retiredModulesHost{snapshotTestHost: snapshotTestHost{converters: converters}, files: files}, fileName)
 	capabilities := &lsproto.ResolvedClientCapabilities{}
 	capabilities.TextDocument.DocumentSymbol.HierarchicalDocumentSymbolSupport = true
 	ctx := lsproto.WithClientCapabilities(t.Context(), capabilities)

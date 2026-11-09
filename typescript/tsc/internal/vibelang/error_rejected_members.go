@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // EK1304's member form (VIP-13, VIP-29; chapter 3 static rules, last row): a
@@ -18,17 +17,13 @@ var ek1304Member = EK1304.With("An error declaration's body has fields, methods 
 
 func init() {
 	fileChecks = append(fileChecks, checkErrorRejectedMembers)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK1304.Code)
 	checker.RegisterDiagnosticsFilterHook(dropRejectedMemberDiagnostics)
-	provider := *errorMemberClassFix
-	provider.ErrorCodes = []int32{EK1304.Code}
-	ls.RegisterCodeFixProvider(&provider)
+
 }
 
 func checkErrorRejectedMembers(c *checker.Checker, file *ast.SourceFile) {
 	for _, member := range errorRejectedMembers(c, file) {
-		d := report(c, member, ek1304Member, rejectedMemberKind(member))
-		note(d, "Keep it in an Effect TypeScript class: the quick fix rewrites the declaration as one.")
+		report(c, member, ek1304Member, rejectedMemberKind(member))
 		if ast.HasSyntacticModifier(member, ast.ModifierFlagsPrivate|ast.ModifierFlagsProtected) {
 			// A private or protected member named like a base member, such
 			// as message, makes the generated class incorrectly extend its

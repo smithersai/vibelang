@@ -2,3 +2,10 @@
 // Appendix B: EK0508 — spec-rule: docs/design/src/900-appendices.md#08c89055b32da7de
 // Promote this configurable warning to an error so the rejection harness checks its trigger.
 export effect function load() { return Effect.fail("bad") catch () => Effect.succeed(0) }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/002-running.md#meaning | A plain handler whose result type is an Effect gets a VIP-38 lint warning (`EK0508`), with the suggested spelling `catch effect (e) => try …`:
+
+export effect function manualEffectHandler(program: number!string, recovery: number!!) {
+  return program catch effect (error) => try recovery
+}

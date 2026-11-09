@@ -5,3 +5,8 @@ declare const resource: Disposable
 export effect function load() { using r = resource; return 1 }
 
 // Chapter 900: Appendix B EK0801 using in effect code warning — spec-rule: docs/design/src/900-appendices.md#0cbfacbce69e50d1
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | `using` in effect code gets a warning (`EK0801`), with a manual change to `acquireDisposable` inside `scoped`; the warning does not change disposal semantics.
+
+export function plainDisposal() { using retained = resource; return 1 }

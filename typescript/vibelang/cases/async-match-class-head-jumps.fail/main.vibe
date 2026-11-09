@@ -13,3 +13,13 @@ function bad4(){outer:while(true){return async match(1){default:do{class C { @(d
 function bad5(){outer:while(true){return async match(1){when let n and if (do{@(do { continue outer; ((v:unknown,c:unknown)=>{}) }) class C {};1}):1;default:0;}}}
 
 function bad6(){outer:while(true){return async match(do{class C extends do { return 9; (class {}) } {};1}){default:1;}}}
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/004-match.md#exhaustiveness | No manual change rewrites the jump, because no jump can cross the `Promise` boundary.
+
+export async function manualLocalJump() {
+  return async match (0) {
+    when 0: do { for (;;) { break } 1 };
+    default: 2;
+  }
+}

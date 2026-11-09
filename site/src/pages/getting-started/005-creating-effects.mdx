@@ -42,7 +42,7 @@ effect function reserve(item: string, available: boolean) {
 
 The compiler records the returned object in `A` and `Unavailable` in `E`. `succeed(value)` and `fail(error)` build Effects; run them with `try`. To store the work, write `const reservation = reserve("notebook", true)`.
 
-A return annotation on an `effect` function describes the whole Effect: write `unknown!!` for an Effect that succeeds with an unknown value, or leave the annotation out to infer its success, error and requirement channels. Bare `any` and `unknown`, including aliases and unions that resolve to them, report `EK0106`; they do not name an Effect container. A union of different Effect types, such as `(number!!) | (string!Refused)`, is not one Effect either, as a union of Promises is not an `async` function's return type: it reports `EK0106`, and its quick fix writes the one Effect of the joined channels, `(string | number)!Refused`.
+A return annotation on an `effect` function describes the whole Effect: write `unknown!!` for an Effect that succeeds with an unknown value, or leave the annotation out to infer its success, error and requirement channels. Bare `any` and `unknown`, including aliases and unions that resolve to them, report `EK0106`; they do not name an Effect container. A union of different Effect types, such as `(number!!) | (string!Refused)`, is not one Effect either, as a union of Promises is not an `async` function's return type: it reports `EK0106`, and an explicit edit can use the one Effect of the joined channels, `(string | number)!Refused`.
 
 ## Track errors as values
 

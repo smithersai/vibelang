@@ -48,10 +48,8 @@ const provideServiceScopeNote = "No quick fix: a provide block builds a Layer an
 
 func init() {
 	tsFormRules[EK4836.Code] = &tsFormRule{
-		message:   EK4836,
-		find:      findBlockForms,
-		plan:      blockFormRewrite,
-		diagnosed: ast.IsCallExpression,
+		message: EK4836,
+		find:    findBlockForms,
 	}
 }
 

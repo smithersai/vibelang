@@ -1,20 +1,15 @@
 package vibelang
 
 import (
-	"context"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 func init() {
 	fileChecks = append(fileChecks, checkSchemaEmptyArguments)
-	ls.RegisterCodeFixProvider(schemaEmptyArgumentsFix)
 }
 
 // Schema mapping replaces type references with their values, so TypeScript
@@ -102,22 +97,4 @@ func emptySchemaArgumentsReplacement(text string) (string, bool) {
 		return "", false
 	}
 	return "(" + text[:open] + text[open+1:close] + ")", true
-}
-
-var schemaEmptyArgumentsFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK2109.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		if fix.Diagnostic == nil || fix.Span.End() > len(fix.SourceFile.Text()) {
-			return nil, nil
-		}
-		replacement, ok := emptySchemaArgumentsReplacement(fix.SourceFile.Text()[fix.Span.Pos():fix.Span.End()])
-		if !ok {
-			return nil, nil
-		}
-		return []*ls.CodeAction{{
-			Description: "Write the schema reference without empty type arguments",
-			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: replacement}},
-		}}, nil
-	},
 }

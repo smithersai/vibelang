@@ -63,19 +63,6 @@ func TestDirectTryFormWarnings(t *testing.T) {
 	}
 }
 
-func TestDirectTryFormSafeFixes(t *testing.T) {
-	for _, test := range []struct{ source, want string }{
-		{"export effect function f() { return try Effect.succeed(1) }", "export effect function f() { return 1 }"},
-		{"export effect function f() { return try Effect.fail(\"boom\") }", "export effect function f() { throw \"boom\" }"},
-	} {
-		t.Run(test.source, func(t *testing.T) {
-			if got := applyQuickFix(t, test.source, 4834); got != test.want {
-				t.Fatalf("got:\n%s\nwant:\n%s", got, test.want)
-			}
-		})
-	}
-}
-
 // A written assertion or check cannot disappear just because the underlying
 // call has an advisory. Refuse the rewrite rather than delete its type effect.
 func TestDirectTryFormWrappedFixRefusal(t *testing.T) {

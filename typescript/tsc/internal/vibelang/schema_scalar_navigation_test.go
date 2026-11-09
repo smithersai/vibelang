@@ -42,7 +42,7 @@ func TestSchemaScalarTypeNavigation(t *testing.T) {
 				answers := map[string]string{}
 				for _, row := range []struct{ file, source string }{{"main.ts", prefix + twin}, {"main.vibe", prefix + body}} {
 					program, file, service, converters := editorProgramAt(t, row.file, `{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"types":[]}`, row.source, editorPackageJSON, packages)
-					service = ls.NewLanguageService(nil, program, fixHost{program: program, converters: converters}, file.FileName().AsString())
+					service = ls.NewLanguageService(nil, program, programEditorHost{program: program, converters: converters}, file.FileName().AsString())
 					for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 						if d.Category() == diagnostics.CategoryError {
 							t.Fatalf("setup: %s", d.String())
@@ -93,7 +93,7 @@ func TestSchemaScalarTypeNavigationValueControls(t *testing.T) {
 		for _, row := range []struct{ file, body string }{{"main.ts", "export type Example={readonly value:typeof Decoder.Type}"}, {"main.vibe", "export schema Example {readonly value:Decoder}"}} {
 			source := prefix + row.body
 			program, file, _, converters := editorProgramAt(t, row.file, `{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"types":[]}`, source, editorPackageJSON, editorPackages)
-			service := ls.NewLanguageService(nil, program, fixHost{program: program, converters: converters}, file.FileName().AsString())
+			service := ls.NewLanguageService(nil, program, programEditorHost{program: program, converters: converters}, file.FileName().AsString())
 			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 				if d.Category() == diagnostics.CategoryError {
 					t.Fatal(d.String())

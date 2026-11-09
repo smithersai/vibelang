@@ -19,10 +19,8 @@ import (
 
 func init() {
 	tsFormRules[EK4833.Code] = &tsFormRule{
-		message:   EK4833,
-		find:      findEffectTypes,
-		plan:      effectTypeRewrite,
-		diagnosed: ast.IsTypeReferenceNode,
+		message: EK4833,
+		find:    findEffectTypes,
 	}
 }
 

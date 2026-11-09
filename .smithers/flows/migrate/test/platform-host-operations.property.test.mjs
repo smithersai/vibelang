@@ -27,7 +27,7 @@ test("TestPlatformHostOperationsQuoted", () => {
   const vip = readFileSync(new URL("../../../../docs/design/vips/0040-module-declarations.md", import.meta.url), "utf8")
   for (const quote of ["A body that needs metadata receives it as an argument or lives in a `.ts` file.", "**`import.meta` is `EK4009` anywhere in a body.**"]) assert.ok(vip.includes(quote), quote)
   const spec = readFileSync(SpecPath("005-services.md"), "utf8")
-  assert.ok(spec.includes("refuse with the not-fixed explanation if the move cannot preserve run phase, captures, receiver and public types"))
+  assert.ok(spec.includes("while preserving run phase, captures, receiver and public types"))
 })
 
 test("the minimal witness keeps its declaration and moves only the environment read", () => {

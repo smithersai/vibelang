@@ -1,3 +1,0 @@
-go test fuzz v1
-string("object-wrapped-satisfies")
-byte(0)

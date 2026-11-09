@@ -10,43 +10,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// Keep the predicate and its narrowed read in the same plain thunk. The
-// boolean bridge alone cannot transport TypeScript's control-flow proof.
-func planForeignPredicate(c *checker.Checker, file *ast.SourceFile, call *ast.Node) (*formRewrite, string) {
-	bridge, fallback := foreignPredicateBridge(c, file, call)
-	if bridge == nil {
-		return nil, fallback
-	}
-	edits, statement, declaration := bridge.edits, bridge.statement, bridge.declaration
-	if bridge.placed {
-		return &formRewrite{edits: joinEditsAt(edits), description: "the predicate through Effect.try, preserving narrowing and defects"}, ""
-	}
-	start := nodeStart(file, statement)
-	indent := lineIndent(file.Text(), start)
-	separator := "\n" + indent
-	if strings.TrimSpace(file.Text()[strings.LastIndexByte(file.Text()[:start], '\n')+1:start]) != "" {
-		separator = "; "
-	}
-	if !ast.IsBlock(statement.Parent) {
-		// A declaration must stay under an enclosing unbraced guard or label.
-		var inside, outside []sourceEdit
-		for _, edit := range edits {
-			if edit.start >= start && edit.end <= statement.End() {
-				inside = append(inside, sourceEdit{edit.start - start, edit.end - start, edit.text})
-			} else {
-				outside = append(outside, edit)
-			}
-		}
-		text := file.Text()[start:statement.End()]
-		text = applyEdits(text, inside)
-		inner := indent + branchIndentUnit(indent)
-		edits = append(outside, sourceEdit{start, statement.End(), "{\n" + inner + declaration + "\n" + inner + text + "\n" + indent + "}"})
-	} else {
-		edits = append(edits, sourceEdit{start, start, declaration + separator})
-	}
-	return &formRewrite{edits: joinEditsAt(edits), description: "the predicate through Effect.try, preserving narrowing and defects"}, ""
-}
-
 // A predicateBridge is what keeps a foreign type predicate's proof: the edits
 // that read its const in the narrowed scopes and test it in the condition,
 // the const's declaration, and the if statement the declaration goes before.

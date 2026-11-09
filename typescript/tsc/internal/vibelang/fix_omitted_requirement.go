@@ -5,7 +5,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/nodebuilder"
 )
 
@@ -14,7 +13,6 @@ var EK4853 = message(4853, warningCategory, "An omitted requirement slot means n
 func init() {
 	registry[EK4853.Code] = EK4853
 	tsFormMessages = append(tsFormMessages, EK4853)
-	tsFormFixCodes = append(tsFormFixCodes, EK4853.Code)
 	tsFormRules[EK4853.Code] = &tsFormRule{
 		message: EK4853,
 		find: func(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
@@ -29,10 +27,7 @@ func init() {
 			}
 			file.AsNode().ForEachChild(visit)
 		},
-		plan:      omittedRequirementRewrite,
-		diagnosed: ast.IsTypeReferenceNode,
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4853.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 // omittedRequirementRewrite writes out the R that the retired rule inferred

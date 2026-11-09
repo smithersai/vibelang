@@ -8,19 +8,6 @@ import (
 )
 
 const defaultLiteralDeclarationsTarget = "FuzzServiceDefaultLiteralDeclarations"
-const defaultLiteralDeclarationsQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
-
-const defaultLiteralNativeClassQuote = "Use an equivalent native `Context.Service` class, retaining its key, eager initialization, cached identity, field and type reads, mutable shape members and missing-provider failure; otherwise refuse (VIP-9)."
-
-func TestServiceDefaultLiteralDeclarationsQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("007-tooling.md"), defaultLiteralDeclarationsQuote) {
-		t.Fatalf("chapter 7 no longer says %q; update the oracle", defaultLiteralDeclarationsQuote)
-	}
-	if !strings.Contains(SpecText("007-tooling.md"), defaultLiteralNativeClassQuote) {
-		t.Fatalf("chapter 7 no longer says %q; update the reference", defaultLiteralNativeClassQuote)
-	}
-	TestServiceDefaultReadsQuoted(t)
-}
 
 var defaultLiteralKinds = []string{"number", "string", "boolean", "bigint", "null", "undefined", "union", "annotated-number", "wide-number", "symbol", "void", "never", "unknown"}
 

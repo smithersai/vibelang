@@ -10,9 +10,9 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const regressions = new URL("./property-regressions/", import.meta.url)
 const tooling=readFileSync(join(repo,"docs/design/src/007-tooling.md"),"utf8")
 const flow=readFileSync(join(repo,".smithers/flows/migrate/rules.md"),"utf8")
-const quote="A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
+const quote="Every VibeLang diagnostic says what is wrong and how to fix it."
 const tick=String.fromCharCode(96)
-const flowQuote="A "+tick+"Context.Service"+tick+" class stays a class when EK4831 says it has no quick fix"
+const flowQuote="A "+tick+"Context.Service"+tick+" class stays a class when it has"
 const severityQuote="A warning never returns\n" + "an error-free module to TypeScript, regardless of its code or diagnostic source."
 let diagnostics=""
 function render(input) {
@@ -36,7 +36,7 @@ test("diagnostics retain errors, locations and notes across LF, CRLF and mixed s
    global:fc.boolean(),file:fc.constantFrom("src/testing.vibe","src/path with spaces/a.vibe","src/(generated)/a.vibe"),
    line:fc.integer({min:1,max:999}),column:fc.integer({min:1,max:999}),category:fc.constantFrom("error","warning"),
    code:fc.constantFrom("EK4831","TS2322","EK1002"),message:fc.constantFrom("Svc extends Context.Service.","The value has the wrong type."),
-   notes:fc.array(fc.constantFrom("No quick fix: its members come from Shape.","Its quick fix writes the accepted form.","A second explanation."),{maxLength:3})
+   notes:fc.array(fc.constantFrom("Its members come from Shape.","The declaration has an accepted form.","A second explanation."),{maxLength:3})
   }),{minLength:1,maxLength:4})}),
   diagnostics:()=>diagnostics,
   artifacts:input=>({"compiler-output.txt":render(input).output,"main.vibe":input.source||'export class Svc extends Context.Service<Svc, Shape>()("app/Svc") {}\n'}),
@@ -59,7 +59,7 @@ test("verify retains warnings and blocks promoted style errors for every refusal
   check:input=>{
    const notes={named:"its members come from Shape; write them in the declaration.",static:"move its static members into the declaration.",dynamic:"its key is not a literal."}
    const category=input.category??"warning"
-   const out="src/service.vibe("+input.line+","+input.column+"): "+category+" "+input.code+": Svc uses a TypeScript-style form.\n  "+(input.refused?"No quick fix: "+notes[input.shape]:"Its quick fix writes the accepted declaration.")+"\n"
+   const out="src/service.vibe("+input.line+","+input.column+"): "+category+" "+input.code+": Svc uses a TypeScript-style form.\n  "+(input.refused?notes[input.shape]:"The declaration has an accepted form.")+"\n"
    const parsed=parseDiagnostics(input.crlf?out.replaceAll("\n","\r\n"):out)
    const problems=styleProblems(parsed,input.inBatch?["src/service.vibe"]:["src/other.vibe"])
    const blocked=input.inBatch&&category==="error"
@@ -70,8 +70,8 @@ test("verify retains warnings and blocks promoted style errors for every refusal
    assert.equal(exceptions.length,input.inBatch&&category==="warning"?1:0,diagnostics)
    if(exceptions.length) {
     assert.equal(exceptions[0].code,input.code)
-    assert.equal(exceptions[0].name,input.refused?"warning-fix-refused":"warning-retained")
-    if(input.refused) assert.ok(exceptions[0].reason.includes(notes[input.shape]))
+    assert.equal(exceptions[0].name,"warning-retained")
+    assert.equal(exceptions[0].reason,"Warning retained for manual review.")
    }
    assert.equal(parsed[0].line,input.line);assert.equal(parsed[0].notes.length,1)
   }

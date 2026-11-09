@@ -2,7 +2,6 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"strings"
 )
 
 // Chapter 7: --fix keeps an import a module's declaration needs, and only
@@ -90,18 +89,3 @@ var fixDeclaredSuffixes = []string{".vibe", ".vibex"}
 // Chapter 007 / prelude cleanup preserves explicit declaration source imports: docs/design/src/007-tooling.md#6d35bc3d7ac16521
 // Chapter 007 / prelude cleanup preserves explicit declaration source imports: docs/design/src/007-tooling.md#cc08d856d0ffcb94
 // Chapter 007 / prelude cleanup preserves explicit declaration source imports: docs/design/src/007-tooling.md#97560f522c03cbbf
-
-// fixDeclaredPreludeImport reports whether line imports a prelude module
-// under its own name, the imports the prelude rewrite removes: a named import
-// of Option, Schema, Layer or Duration from effect's root, type-only or not,
-// or a namespace import of one from its own module.
-func fixDeclaredPreludeImport(line string) bool {
-	for _, name := range fixDeclaredNames {
-		for _, form := range []string{"import { %[1]s } from \"effect\"", "import type { %[1]s } from \"effect\"", "import { %[1]s } from 'effect'", "import * as %[1]s from \"effect/%[1]s\""} {
-			if strings.TrimSpace(line) == fmt.Sprintf(form, name.name) {
-				return true
-			}
-		}
-	}
-	return false
-}

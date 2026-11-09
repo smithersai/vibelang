@@ -6,3 +6,8 @@ export effect function main() {
 }
 
 export function* delegated(): Generator<number, void, unknown> { yield* [1, 2] }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/002-running.md#static-rules | For `EK2104` on `yield* e` in a nonproducer Effect body when `e` is an Effect, write `try e`.
+
+export effect function manualRun(program: number!!) { return try program }

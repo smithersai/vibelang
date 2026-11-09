@@ -221,42 +221,30 @@ try {
     assert(shown.includes("Promise<number>"), "ordinary async hover: " + JSON.stringify(shown))
   })
 
-  await check("code action: EK0102 repairs effect await with join or try Deferred.await", async () => {
+  await check("code action: TypeScript's interface implementation fix remains available", async () => {
+    const file = "src/ts-codefix.ts"
+    open(file, "typescript")
+    const items = await diagnostics(file)
+    const item = items.find(d => d.code === 2420)
+    assert(item, "missing TS2420 control: " + JSON.stringify(items))
+    const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri: fileUri(file) }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
+    assert(actions.some(a => a.edit), "TypeScript's implementation fix is missing: " + JSON.stringify(actions))
+  })
+
+  await check("diagnostics retained without VibeLang automatic fixes: src/old-await.vibe", async () => {
     open("src/old-await.vibe", "vibe")
     const items = await diagnostics("src/old-await.vibe")
     const placement = items.filter((d) => d.code === 102)
     assert(placement.length === 2 && placement.every((d) => d.source === "EK" && d.severity === 1),
       "placement diagnostics " + JSON.stringify(items))
     const uri = fileUri("src/old-await.vibe")
-    const fixFor = async (item, title) => {
-      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
-      const fix = actions.find((a) => a.title === title)
-      assert(fix, "no quick fix " + title + " among " + JSON.stringify(actions.map((a) => a.title)))
-      return fix.edit?.changes?.[uri] ?? []
+    for (const item of items.filter(d => d.source === "EK")) {
+      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri: fileUri("src/old-await.vibe") }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
+      assert(actions.length === 0, "VibeLang automatic fixes were offered: " + JSON.stringify(actions))
     }
-    const fiber = placement.find((d) => d.range.start.line === at("src/old-await.vibe", "await f").line)
-    const fiberEdits = await fixFor(fiber, "Join the fiber with join")
-    assert(fiberEdits.length === 1 && fiberEdits[0].newText === "join" && JSON.stringify(fiberEdits[0].range) === JSON.stringify(fiber.range),
-      "fiber edits " + JSON.stringify(fiberEdits))
-    const deferred = placement.find((d) => d.range.start.line === at("src/old-await.vibe", "await d").line)
-    const deferredEdits = await fixFor(deferred, "Wait for the Deferred with try Deferred.await")
-    const start = at("src/old-await.vibe", "await d")
-    assert(deferredEdits.length === 1 && deferredEdits[0].newText === "try Deferred.await(d)" && deferredEdits[0].range.start.line === start.line && deferredEdits[0].range.start.character === start.character && deferredEdits[0].range.end.character === start.character + "await d".length,
-      "deferred edits " + JSON.stringify(deferredEdits))
-    for (const [code, title, expression] of [
-      [4609, "Join the fiber with await runPromise", "await $awaitRunPromise($awaitJoin(f))"],
-      [4610, "Wait for the Deferred with await runPromise", "await $awaitRunPromise($awaitDeferred(d))"],
-    ]) {
-      const warning = items.find((d) => d.code === code)
-      assert(warning?.severity === 2, "missing native await warning " + JSON.stringify(items))
-      const edits = await fixFor(warning, title)
-      assert(edits.some((e) => e.newText === expression) && edits.some((e) => e.newText.includes('from "effect/Effect"')),
-        "native bridge edits " + JSON.stringify(edits))
-    }
-
   })
 
-  await check("code action: EK0909 and EK2121 reject retired declarations, with preserving quick fixes", async () => {
+  await check("diagnostics retained without VibeLang automatic fixes: src/old-declarations.vibe", async () => {
     const file = "src/old-declarations.vibe"
     open(file, "vibe")
     const items = await diagnostics(file)
@@ -266,51 +254,26 @@ try {
     const service = items.find((d) => d.code === 909)
     const serviceStart = at(file, "service class Greeting")
     assert(service.range.start.line === serviceStart.line && service.range.start.character === serviceStart.character, `EK0909 range ${JSON.stringify(service.range)}`)
-    const serviceActions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: service.range, context: { diagnostics: [service], only: ["quickfix"] } })) ?? []
-    const serviceFix = serviceActions.find((a) => a.title === "Write service without class")
-    assert(serviceFix, `no EK0909 quick fix among ${JSON.stringify(serviceActions.map((a) => a.title))}`)
-    const serviceEdits = serviceFix.edit?.changes?.[uri] ?? []
-    assert(serviceEdits.length === 1 && serviceEdits[0].newText === "service" && JSON.stringify(serviceEdits[0].range) === JSON.stringify(service.range), `EK0909 edits ${JSON.stringify(serviceEdits)}`)
-    const layer = items.find((d) => d.code === 2121)
-    const layerStart = at(file, "layer GreetingLive")
-    assert(layer.range.start.line === layerStart.line && layer.range.start.character === layerStart.character, `EK2121 range ${JSON.stringify(layer.range)}`)
-    const layerActions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: layer.range, context: { diagnostics: [layer], only: ["quickfix"] } })) ?? []
-    const layerFix = layerActions.find((a) => a.title === "Rewrite the layer declaration as a Layer call")
-    assert(layerFix, `no EK2121 quick fix among ${JSON.stringify(layerActions.map((a) => a.title))}`)
-    const layerEdits = layerFix.edit?.changes?.[uri] ?? []
-    // The layer's member is an effect method: a method without effect is plain (VIP-1).
-    const want = "const GreetingLive = Layer.effect(Greeting, effect {\n  const word = \"hi\"\n  return {\n    effect text() { return word }\n  }\n})"
-    assert(layerEdits.length === 1 && layerEdits[0].newText === want, `EK2121 edits ${JSON.stringify(layerEdits)}`)
-    assert(layerEdits[0].range.start.line === layerStart.line && layerEdits[0].range.end.line === lineOf(file, "effect text() { return word }") + 1, `EK2121 edit range ${JSON.stringify(layerEdits[0].range)}`)
+    for (const item of items.filter(d => d.source === "EK")) {
+      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri: fileUri("src/old-declarations.vibe") }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
+      assert(actions.length === 0, "VibeLang automatic fixes were offered: " + JSON.stringify(actions))
+    }
   })
 
-  await check("code action: TypeScript-style forms warn as EK4830 and EK4833, and their quick fixes write an error declaration and A!E", async () => {
+  await check("diagnostics retained without VibeLang automatic fixes: src/ts-forms.vibe", async () => {
     const file = "src/ts-forms.vibe"
     open(file, "vibe")
     const items = await diagnostics(file)
     const codes = items.map((d) => `${d.source} ${d.code} ${d.severity}`).sort()
     assert(JSON.stringify(codes) === JSON.stringify(["EK 4830 2", "EK 4833 2"]), `diagnostics ${JSON.stringify(codes)}`)
     const uri = fileUri(file)
-    const fixOf = async (item, title) => {
-      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
-      const fix = actions.find((a) => a.title === title)
-      assert(fix, `no quick fix ${JSON.stringify(title)} among ${JSON.stringify(actions.map((a) => a.title))}`)
-      return fix.edit?.changes?.[uri] ?? []
+    for (const item of items.filter(d => d.source === "EK")) {
+      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri: fileUri("src/ts-forms.vibe") }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
+      assert(actions.length === 0, "VibeLang automatic fixes were offered: " + JSON.stringify(actions))
     }
-    const error = items.find((d) => d.code === 4830)
-    const errorEdits = await fixOf(error, "Write error NotFound { id: string }")
-    const classAt = at(file, "class NotFound")
-    assert(errorEdits.length === 1 && errorEdits[0].newText === "error NotFound { id: string }", `EK4830 edits ${JSON.stringify(errorEdits)}`)
-    assert(errorEdits[0].range.start.line === classAt.line && errorEdits[0].range.start.character === classAt.character, `EK4830 edit range ${JSON.stringify(errorEdits[0].range)}`)
-    const type = items.find((d) => d.code === 4833)
-    // Exported declaration repairs preserve the written never requirement.
-    const typeEdits = await fixOf(type, "Write string!NotFound!never")
-    const typeAt = at(file, "Effect.Effect<string")
-    assert(typeEdits.length === 1 && typeEdits[0].newText === "string!NotFound!never", `EK4833 edits ${JSON.stringify(typeEdits)}`)
-    assert(typeEdits[0].range.start.line === typeAt.line && typeEdits[0].range.start.character === typeAt.character, `EK4833 edit range ${JSON.stringify(typeEdits[0].range)}`)
   })
 
-  await check("code action: EK2112 warns at a typed catch clause, and its quick fix writes a match", async () => {
+  await check("diagnostics retained without VibeLang automatic fixes: src/old-catch.vibe", async () => {
     open("src/old-catch.vibe", "vibe")
     const nativeTry = (await diagnostics("src/old-catch.vibe")).filter((d) => d.code === 503)
     assert(nativeTry.length === 2 && nativeTry.every((d) => d.source === "EK" && d.severity === 1), `VIP-5 native try diagnostics: ${JSON.stringify(nativeTry)}`)
@@ -321,41 +284,20 @@ try {
     const start = at("src/old-catch.vibe", "Missing) {")
     assert(item.range.start.line === start.line && item.range.start.character === start.character, `range ${JSON.stringify(item.range)}`)
     const uri = fileUri("src/old-catch.vibe")
-    const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
-    const fix = actions.find((a) => a.title === "Test the failure with match")
-    assert(fix, `no quick fix among ${JSON.stringify(actions.map((a) => a.title))}`)
-    const edits = fix.edit?.changes?.[uri] ?? []
-    const want = "catch (e) {\n    return match (e) {\n      when Missing: `missing ${e.id}`;\n      when Late: \"late\";\n      default: throw e;\n    }\n  }"
-    assert(edits.length === 1 && edits[0].newText === want, `edits ${JSON.stringify(edits)}`)
-    const catchAt = at("src/old-catch.vibe", "catch (e: Missing)")
-    assert(edits[0].range.start.line === catchAt.line && edits[0].range.start.character === catchAt.character, `edit range ${JSON.stringify(edits[0].range)}`)
+    for (const item of items.filter(d => d.source === "EK")) {
+      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri: fileUri("src/old-catch.vibe") }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
+      assert(actions.length === 0, "VibeLang automatic fixes were offered: " + JSON.stringify(actions))
+    }
   })
 
-  await check("code action: EK2113 warns at a Cause clause, and its quick fix matches on exit", async () => {
+  await check("diagnostics retained without VibeLang automatic fixes: src/old-catch.vibe", async () => {
     const items = (await diagnostics("src/old-catch.vibe")).filter((d) => d.code === 2113)
     assert(items.length === 1, `expected one EK2113 warning, got ${JSON.stringify(items.map((d) => d.message))}`)
     const [item] = items
     const uri = fileUri("src/old-catch.vibe")
-    const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
-    const fix = actions.find((a) => a.title === "Match on exit(…)")
-    assert(fix, `no quick fix among ${JSON.stringify(actions.map((a) => a.title))}`)
-    const edits = fix.edit?.changes?.[uri] ?? []
-    // Tooling: a quick fix preserves evaluation order, coldness and types.
-    // 4db9c1cb correctly keeps the protected expression inside exit's Effect,
-    // with the try that runs it there (VIP-5).
-    const want = "return match (try exit(effect { return try lookupUser(id) })) {\n    when Exit.Success(let value): value;\n    when Exit.Failure(let cause): \"fallback\";\n  }"
-    assert(edits.length === 1 && edits[0].newText === want, `edits ${JSON.stringify(edits)}`)
-    const original = text("src/old-catch.vibe")
-    const offset = (p) => original.split("\n").slice(0, p.line).reduce((n, line) => n + line.length + 1, 0) + p.character
-    const fixed = original.slice(0, offset(edits[0].range.start)) + edits[0].newText + original.slice(offset(edits[0].range.end))
-    connection.notify("textDocument/didChange", { textDocument: { uri, version: 2 }, contentChanges: [{ text: fixed }] })
-    try {
-      const after = await diagnostics("src/old-catch.vibe")
-      assert(!after.some((d) => d.code === 2113 || (d.severity === 1 && d.code !== 503)), `fixed Cause catch: ${JSON.stringify(after)}`)
-      // label still contains its independent native try statement (VIP-5).
-      assert(after.filter((d) => d.code === 503).length === 1, `remaining native try: ${JSON.stringify(after)}`)
-    } finally {
-      connection.notify("textDocument/didChange", { textDocument: { uri, version: 3 }, contentChanges: [{ text: original }] })
+    for (const item of items.filter(d => d.source === "EK")) {
+      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri: fileUri("src/old-catch.vibe") }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
+      assert(actions.length === 0, "VibeLang automatic fixes were offered: " + JSON.stringify(actions))
     }
   })
 
@@ -375,48 +317,33 @@ try {
     assert(!actions.some((a) => a.title === "Pass text as an input"), "retired input fix was offered")
   })
 
-  await check("code action: Effect's language service rules report in .vibe, execution repairs refuse, and names can be repaired", async () => {
+  await check("diagnostics retained without VibeLang automatic fixes: src/lsrules.vibe", async () => {
     open("src/lsrules.vibe", "vibe")
     const items = await diagnostics("src/lsrules.vibe")
     const codes = items.map((d) => `${d.source}${d.code}:${d.severity}`).sort()
     // EK4833 is the TypeScript spelling of discard's parameter type (D287).
     assert(JSON.stringify(codes) === JSON.stringify(["EK4801:1", "EK4808:2", "EK4813:1", "EK4833:2"]), `codes ${JSON.stringify(codes)}`)
     const uri = fileUri("src/lsrules.vibe")
-    const fixFor = async (item, title) => {
-      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
-      const fix = actions.find((a) => a.title === title)
-      assert(fix, `no quick fix ${title} among ${JSON.stringify(actions.map((a) => a.title))}`)
-      return fix.edit?.changes?.[uri] ?? []
-    }
-    const floating = items.find((d) => d.code === 4801)
+    const floating = items.find(d => d.code === 4801)
     const start = at("src/lsrules.vibe", "program\n  //")
-    assert(floating.range.start.line === start.line && floating.range.start.character === start.character, `range ${JSON.stringify(floating.range)}`)
-    const floatingActions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: floating.range, context: { diagnostics: [floating], only: ["quickfix"] } })) ?? []
-    assert(!floatingActions.some((a) => a.title === "Run it with try"), `unsafe execution repair: ${JSON.stringify(floatingActions)}`)
-    assert(JSON.stringify(floating).includes("No automatic fix"), `missing refusal explanation: ${JSON.stringify(floating)}`)
-    const nested = items.find((d) => d.code === 4808)
-    const nestedActions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: nested.range, context: { diagnostics: [nested], only: ["quickfix"] } })) ?? []
-    assert(!nestedActions.some((a) => a.title === "Provide both layers in one block"), `unsafe nested provide merge: ${JSON.stringify(nestedActions)}`)
-    const renameEdits = await fixFor(items.find((d) => d.code === 4813), "Write Effect.catch")
-    assert(renameEdits.length === 1 && renameEdits[0].newText === "catch", `edits ${JSON.stringify(renameEdits)}`)
+    assert(floating.range.start.line === start.line && floating.range.start.character === start.character, "floating diagnostic range changed")
+    for (const item of items.filter(d => d.source === "EK")) {
+      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri: fileUri("src/lsrules.vibe") }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
+      assert(actions.length === 0, "VibeLang automatic fixes were offered: " + JSON.stringify(actions))
+    }
   })
 
   // D266: a .ts file keeps TypeScript's verdict, so yield without * draws no
-  // EK4819 there; TS2339 on an Effect 3 name still offers EK4813's rename.
-  await check("code action: in a .ts file, yield without * draws no EK diagnostic (D266), and TS2339 on an Effect 3 name renames it", async () => {
+  // EK4819 there; VibeLang's Effect API rename is no longer offered.
+  await check("diagnostics retained without VibeLang automatic fixes: src/lsrules-gen.ts", async () => {
     open("src/lsrules-gen.ts", "typescript")
     const items = await diagnostics("src/lsrules-gen.ts")
     const codes = items.map((d) => `${d.source ?? "ts"}${d.code}`).sort()
     assert(JSON.stringify(codes) === JSON.stringify(["ts2339"]), `codes ${JSON.stringify(codes)}`)
     const uri = fileUri("src/lsrules-gen.ts")
-    const fixFor = async (item, title) => {
-      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
-      const fix = actions.find((a) => a.title === title)
-      assert(fix, `no quick fix ${title} among ${JSON.stringify(actions.map((a) => a.title))}`)
-      return fix.edit?.changes?.[uri] ?? []
-    }
-    const renameEdits = await fixFor(items.find((d) => d.code === 2339), "Write Effect.catch")
-    assert(renameEdits.length === 1 && renameEdits[0].newText === "catch", `edits ${JSON.stringify(renameEdits)}`)
+    const item = items.find(d => d.code === 2339)
+    const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri: fileUri("src/lsrules-gen.ts") }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
+    assert(!actions.some(a => a.title === "Write Effect.catch"), "removed VibeLang API rename was offered")
   })
 
   // apply returns a file's text after edits, which do not overlap.
@@ -481,15 +408,15 @@ try {
     assert(codes.includes("EK4801:off") && codes.includes("EK4856:off") && codes.includes("*:off"), `codes ${JSON.stringify(codes.slice(0, 5))}`)
   })
 
-  await check("code action: a comment turns EK4823 on, and its quick fix writes the value as the body", async () => {
+  await check("diagnostics retained without VibeLang automatic fixes: src/lsrules-editor.vibe", async () => {
     const relative = "src/lsrules-editor.vibe"
     const items = (await diagnostics(relative)).filter((d) => d.code === 4823)
     assert(items.length === 1 && items[0].severity === 2, `EK4823 ${JSON.stringify(items)}`)
     const uri = fileUri(relative)
-    const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: items[0].range, context: { diagnostics: items, only: ["quickfix"] } })) ?? []
-    const fix = actions.find((a) => a.title === "Write the value as the body")
-    assert(fix, `no quick fix among ${JSON.stringify(actions.map((a) => a.title))}`)
-    assert(apply(relative, fix.edit.changes[uri]).includes("export const increment = (n: number) => n + 1\n"), "body not written")
+    for (const item of items.filter(d => d.source === "EK")) {
+      const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri: fileUri("src/lsrules-editor.vibe") }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
+      assert(actions.length === 0, "VibeLang automatic fixes were offered: " + JSON.stringify(actions))
+    }
   })
 
   await check("diagnostics: an edit to main.vibe is checked with VibeLang types", async () => {

@@ -13,7 +13,7 @@ import (
 
 const serviceKeyContextTarget = "FuzzServiceDerivedKeyContext"
 const serviceKeyDerivationQuote = "It is derived from the package, the file and the name:"
-const serviceKeyContextQuote = "A service in a file outside any package (or in one whose `package.json` has no string `name`), or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error (`EK0903`) with a quick fix that inserts one."
+const serviceKeyContextQuote = "A service in a file outside any package (or in one whose `package.json` has no string `name`), or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error (`EK0903`); write an explicit key."
 
 var serviceKeyContexts = []struct {
 	key, context, pkg string

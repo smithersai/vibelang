@@ -1,3 +1,10 @@
 // expect: EK1504
 // Chapter 900: Appendix B EK1504 schema field separator — spec-rule: docs/design/src/900-appendices.md#d5988aa0f498ac42
 export schema User { name: string age: number }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/006-data.md#meaning | | two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them (insert `;`) | `EK1504` |
+// rule-evidence: docs/design/src/900-appendices.md#separator | Insert `;` after the first.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK1504` | two `schema` fields with no separator between them; write `;` or a line break between them (insert `;`) | 15 | [Data](006-data.md#schema-declarations) |
+
+schema ManualPoint { x: number; y: number }

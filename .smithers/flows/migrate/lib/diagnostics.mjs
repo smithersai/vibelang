@@ -86,13 +86,11 @@ export function warningExceptions(diagnostics, files) {
   const inFiles = new Set(files), records = new Map()
   for (const d of diagnostics) {
     if (d.category !== "warning" || !inFiles.has(d.file)) continue
-    const reasons = (d.notes ?? []).filter(note => /no quick fix/i.test(note))
-    const reason = [...new Set(reasons)].sort().join("\n")
     const record = {
-      name: reason ? "warning-fix-refused" : "warning-retained",
+      name: "warning-retained",
       category: "warning", code: d.code, file: d.file, line: d.line, column: d.column,
       message: d.message,
-      reason: reason || "Warning remains after the safe-fix pass; no refusal reason was reported."
+      reason: "Warning retained for manual review."
     }
     records.set(JSON.stringify(record), record)
   }

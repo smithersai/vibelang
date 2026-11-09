@@ -22,7 +22,7 @@ const contractProbePackage = `{"type":"module"}`
 
 func contractProbeQuoted(t testing.TB) {
 	t.Helper()
-	quote := "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
+	quote := "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 	if !strings.Contains(SpecText("007-tooling.md"), quote) {
 		t.Fatalf("Chapter 7 no longer says %q", quote)
 	}

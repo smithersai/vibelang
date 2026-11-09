@@ -19,7 +19,7 @@ const migrationTypedFailureQuote = "the Effect fails with `e`, a typed error: `r
 func TestMigrationRunPhaseBoundariesQuoted(t *testing.T) {
 	r4Quoted(t, "001-functions.md", migrationPlainQuote)
 	r4Quoted(t, "003-failures.md", migrationTypedFailureQuote)
-	r4Quoted(t, "007-tooling.md", migrationHomeQuote)
+	r4Quoted(t, "../../../.smithers/flows/migrate/rules.md", migrationHomeQuote)
 }
 
 // A static verifier must keep typed failure returns and nested callback

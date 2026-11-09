@@ -192,19 +192,6 @@ func forEachStreamLoop(c *checker.Checker, fn *ast.Node, cb func(loop *ast.Node)
 	return fn.Body() != nil && visit(fn.Body())
 }
 
-// hasStreamLoop reports whether fn's own body loops over a Stream, which can
-// pause, so fn must compile to an Effect.
-func (a *analyzer) hasStreamLoop(fn *ast.Node) bool {
-	s := producersOf(a.checker)
-	if pausing, ok := s.pausing[fn]; ok {
-		return pausing
-	}
-	s.pausing[fn] = false
-	pausing := forEachStreamLoop(a.checker, fn, func(*ast.Node) bool { return true })
-	s.pausing[fn] = pausing
-	return pausing
-}
-
 // addStreamLoop adds what statement, a for...of over a Stream, adds to E and
 // R: the Stream's failures and requirements. Its body's own calls are part of
 // the enclosing flow.

@@ -1,13 +1,10 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
-	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // EK1801: VIP-18 accepts only arrays of Effects.
@@ -17,8 +14,6 @@ func init() {
 	checker.RegisterCallArgumentDiagnosticsFilterHook(filterRejectedTryOperationArgumentDiagnostics)
 	registry[EK1801.Code] = EK1801
 	fileChecks = append(fileChecks, checkTryOperations)
-	tsFormFixCodes = append(tsFormFixCodes, EK1801.Code)
-	ls.RegisterCodeFixProvider(tryOperationObjectFix)
 }
 
 func tryOperationName(node *ast.Node) string {
@@ -59,43 +54,6 @@ func checkTryOperations(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// An object already contains Effects: all is its direct, mechanical repair.
-var tryOperationObjectFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK1801.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		var actions []*ls.CodeAction
-		var visit func(*ast.Node) bool
-		visit = func(node *ast.Node) bool {
-			if tryOperationName(node) == "try.all" {
-				operand := node.Arguments()[0]
-				if nodeStart(fix.SourceFile, operand) == fix.Span.Pos() && ast.SkipParentheses(operand).Kind == ast.KindObjectLiteralExpression {
-					name := "$tryAllEffects"
-					for strings.Contains(fix.SourceFile.Text(), name) {
-						name += "_"
-					}
-					text := "(try " + name + "(" + expressionText(fix.SourceFile, operand) + ", { concurrency: \"unbounded\" }))"
-					at := tryOperationImportPosition(fix.SourceFile)
-					imported := "import { all as " + name + " } from \"effect/Effect\"\n"
-					if at > 0 && fix.SourceFile.Text()[at-1] != '\n' {
-						imported = "\n" + imported
-					}
-					changes := replaceRange(fix, nodeStart(fix.SourceFile, node), node.End(), text)
-					if at == nodeStart(fix.SourceFile, node) {
-						changes[0].NewText = imported + text
-					} else {
-						changes = append(changes, replaceRange(fix, at, at, imported)...)
-					}
-					actions = append(actions, &ls.CodeAction{Description: "Write try all for an object", Changes: changes})
-				}
-			}
-			return node.ForEachChild(visit)
-		}
-		fix.SourceFile.AsNode().ForEachChild(visit)
-		return actions, nil
-	},
-}
-
 // VIP-18 uses native array assignability, including any, never, generic
 // constraints and the project's null-checking options.
 func tryOperationArrayType(c *checker.Checker, t *checker.Type) bool {
@@ -109,21 +67,6 @@ func tryOperationArrayType(c *checker.Checker, t *checker.Type) bool {
 	any := c.GetAnyType()
 	effect := c.NewTypeReference(base, []*checker.Type{any, any, any})
 	return c.IsTypeAssignableTo(t, c.CreateArrayType(effect, true))
-}
-
-// Keep file comments and directive prologues before an inserted import.
-func tryOperationImportPosition(file *ast.SourceFile) int {
-	if len(file.Statements.Nodes) == 0 {
-		return len(file.Text())
-	}
-	at := nodeStart(file, file.Statements.Nodes[0])
-	for _, statement := range file.Statements.Nodes {
-		if statement.Kind != ast.KindExpressionStatement || statement.Expression().Kind != ast.KindStringLiteral {
-			break
-		}
-		at = statement.End()
-	}
-	return at
 }
 
 // trySettledLiteral returns a no-spread source literal. Spread operands keep

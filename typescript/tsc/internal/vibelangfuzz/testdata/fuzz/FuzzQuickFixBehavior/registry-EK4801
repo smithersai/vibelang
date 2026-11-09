@@ -1,3 +1,0 @@
-go test fuzz v1
-string("EK4801@EK4801-cold")
-[]byte("\u0000")

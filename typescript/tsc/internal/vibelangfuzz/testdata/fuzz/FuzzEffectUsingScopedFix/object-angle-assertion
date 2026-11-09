@@ -1,3 +1,0 @@
-go test fuzz v1
-string("object-angle-assertion")
-byte(0)

@@ -1,14 +1,9 @@
 package vibelang
 
 import (
-	"context"
-	"strings"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -68,8 +63,6 @@ func init() {
 	}
 	fileChecks = append(fileChecks, checkFiberForms)
 	ls.RegisterQuickInfoHook(fiberFormQuickInfo)
-	ls.RegisterCodeFixProvider(awaitFiberFix)
-	ls.RegisterCodeFixProvider(awaitDeferredFix)
 }
 
 // fiberHelper returns the runtime helper that call, a call the parser wrote
@@ -351,184 +344,6 @@ func isJoinable(c *checker.Checker, t *checker.Type, depth int) bool {
 // isDeferred reports whether t is a Deferred.
 func isDeferred(c *checker.Checker, t *checker.Type) bool {
 	return c.GetPropertyOfType(t, "~effect/Deferred") != nil
-}
-
-// awaitCallAt returns the $await call whose await keyword starts at pos.
-func awaitCallAt(file *ast.SourceFile, pos int) *ast.Node {
-	var found *ast.Node
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if found != nil || node.End() < pos || node.Pos() > pos {
-			return found != nil
-		}
-		if fiberHelper(node) == "$await" && scanner.GetRangeOfTokenAtPosition(file, node.Pos()).Pos() == pos {
-			found = node
-			return true
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
-	return found
-}
-
-// awaitFiberFix repairs EK4609 and the Fiber form of EK0102 with join.
-var awaitFiberFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4609.Code, EK0102.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		if fix.ErrorCode == EK4609.Code {
-			return nativeAwaitBridgeFix(ctx, fix, "Fiber")
-		}
-		text := fix.SourceFile.Text()
-		if fix.Diagnostic == nil || fix.Span.End() > len(text) || text[fix.Span.Pos():fix.Span.End()] != "await" {
-			return nil, nil
-		}
-		if fix.ErrorCode == EK0102.Code {
-			call := awaitCallAt(fix.SourceFile, fix.Span.Pos())
-			if call == nil || len(call.Arguments()) != 1 {
-				return nil, nil
-			}
-			c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-			defer done()
-			if typ := c.GetTypeAtLocation(call.Arguments()[0]); typ == nil || !isJoinable(c, typ, 0) {
-				return nil, nil
-			}
-			operand := call.Arguments()[0]
-			if rewrite := legacyCollectionRewrite(c, fix.SourceFile, call, operand); rewrite.fixable() {
-				var changes []*lsproto.TextEdit
-				for _, edit := range rewrite.edits {
-					changes = append(changes, replaceRange(fix, edit.start, edit.end, edit.text)...)
-				}
-				return []*ls.CodeAction{{Description: "Join the fibers in the collection", Changes: changes}}, nil
-			}
-			if ast.IsCallExpression(ast.SkipParentheses(operand)) {
-				// Parentheses also handle contextual keyword callees such as get.
-				operandText := strings.TrimSpace(text[fix.Span.End():operand.End()])
-				return []*ls.CodeAction{{
-					Description: "Join the fiber with join",
-					Changes: []*lsproto.TextEdit{{
-						Range:   fix.LS.ToLSPRange(fix.SourceFile, core.NewTextRange(fix.Span.Pos(), operand.End())),
-						NewText: "join (" + operandText + ")",
-					}},
-				}}, nil
-			}
-		}
-		return []*ls.CodeAction{{
-			Description: "Join the fiber with join",
-			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: "join"}},
-		}}, nil
-	},
-}
-
-// awaitDeferredFix repairs EK4610 and the Deferred form of EK0102.
-var awaitDeferredFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4610.Code, EK0102.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		if fix.ErrorCode == EK4610.Code {
-			return nativeAwaitBridgeFix(ctx, fix, "Deferred")
-		}
-		if fix.Diagnostic == nil || fix.LS == nil {
-			return nil, nil
-		}
-		call := awaitCallAt(fix.SourceFile, fix.Span.Pos())
-		if call == nil || len(call.Arguments()) != 1 {
-			return nil, nil
-		}
-		operand := call.Arguments()[0]
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-		defer done()
-		if typ := c.GetTypeAtLocation(operand); typ == nil || !isDeferred(c, typ) {
-			return nil, nil
-		}
-		// Keep comments between await and its operand inside the replacement.
-		operandText := strings.TrimSpace(fix.SourceFile.Text()[fix.Span.End():operand.End()])
-		namespace := "Deferred"
-		var imports []*lsproto.TextEdit
-		symbol := c.ResolveName(namespace, operand, ast.SymbolFlagsValue|ast.SymbolFlagsNamespace, false)
-		available := symbol != nil && c.GetTypeOnlyAliasDeclaration(symbol) == nil
-		if available && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
-			symbol = c.GetAliasedSymbol(symbol)
-		}
-		if !available || symbol != effectModuleNamespace(c, fix.SourceFile, "Deferred") {
-			namespace = (&freshNames{file: fix.SourceFile}).freshName("Deferred")
-			imports = schemaFlagHeader(fix, "import { Deferred as "+namespace+" } from \"effect\";\n")
-		}
-		start := fix.Span.Pos()
-		edits := []*lsproto.TextEdit{{
-			Range:   fix.LS.ToLSPRange(fix.SourceFile, core.NewTextRange(start, operand.End())),
-			NewText: "try " + namespace + ".await(" + operandText + ")",
-		}}
-		edits = append(edits, imports...)
-		return []*ls.CodeAction{{
-			Description: "Wait for the Deferred with try Deferred.await",
-			Changes:     edits,
-		}}, nil
-	},
-}
-
-// A generic constraint can hide the same union that a generic join/await
-// call cannot infer. Intersections preserve the constraint's ambiguity too.
-func nativeAwaitBridgeHasUnion(c *checker.Checker, value *checker.Type) bool {
-	value = c.GetApparentType(value)
-	if value.Flags()&checker.TypeFlagsUnion != 0 {
-		return true
-	}
-	if value.Flags()&checker.TypeFlagsIntersection != 0 {
-		for _, member := range value.Types() {
-			if nativeAwaitBridgeHasUnion(c, member) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// nativeAwaitBridgeFix preserves JavaScript suspension and evaluates the
-// operand once. Import fresh bindings even when the prelude is disabled or
-// the source shadows Effect, Fiber, Deferred, or runPromise (VIP-1/VIP-5).
-func nativeAwaitBridgeFix(ctx context.Context, fix *ls.CodeFixContext, module string) ([]*ls.CodeAction, error) {
-	if fix.Diagnostic == nil || fix.LS == nil {
-		return nil, nil
-	}
-	var await *ast.Node
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if node.End() < fix.Span.Pos() || node.Pos() > fix.Span.Pos() {
-			return false
-		}
-		if node.Kind == ast.KindAwaitExpression && scanner.GetRangeOfTokenAtPosition(fix.SourceFile, node.Pos()).Pos() == fix.Span.Pos() {
-			await = node
-			return true
-		}
-		return node.ForEachChild(visit)
-	}
-	fix.SourceFile.AsNode().ForEachChild(visit)
-	if await == nil {
-		return nil, nil
-	}
-	operand := await.Expression()
-	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-	defer done()
-	// A same-kind union can warrant a warning without being accepted by
-	// one generic join/await call. Never offer an edit that adds an error.
-	value := c.GetTypeAtLocation(operand)
-	if value == nil || nativeAwaitBridgeHasUnion(c, value) || !nativeAwaitTarget(c, value, module) {
-		return nil, nil
-	}
-	names := &freshNames{file: fix.SourceFile}
-	runner := names.freshName("$awaitRunPromise")
-	helper, operation, description := names.freshName("$awaitJoin"), "join", "Join the fiber with await runPromise"
-	if module == "Deferred" {
-		helper, operation, description = names.freshName("$awaitDeferred"), "await", "Wait for the Deferred with await runPromise"
-	}
-	operandText := strings.TrimSpace(fix.SourceFile.Text()[fix.Span.End():operand.End()])
-	edits := []*lsproto.TextEdit{{
-		Range:   fix.LS.ToLSPRange(fix.SourceFile, core.NewTextRange(fix.Span.Pos(), await.End())),
-		NewText: "await " + runner + "(" + helper + "(" + operandText + "))",
-	}}
-	edits = append(edits, schemaFlagHeader(fix, "import { runPromise as "+runner+" } from \"effect/Effect\";\nimport { "+operation+" as "+helper+" } from \"effect/"+module+"\";\n")...)
-	return []*ls.CodeAction{{Description: description, Changes: edits}}, nil
 }
 
 // awaitOperationNames maps an await operation's helper to the operation as

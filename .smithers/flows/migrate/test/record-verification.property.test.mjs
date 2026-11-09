@@ -111,7 +111,7 @@ test("foldkit-13-record: formatter assertion mutations fail before certification
 
 test("warning exceptions reach final module provenance, commit and report", async () => {
   await fixture(false, "retained", async ({ run, p, target }) => {
-    const diagnostic = "main.vibe(1,9): warning EK4839: A match chain remains.\n  No quick fix: the handler is not an arrow function.\n"
+    const diagnostic = "main.vibe(1,9): warning EK4839: A match chain remains.\n  The handler is not an arrow function.\n"
     const compiler = join(target, "node_modules/.bin/vibelang")
     writeFileSync(compiler, readFileSync(compiler, "utf8") +
       '\nif (!process.argv.includes("--outDir")) console.log(' + JSON.stringify(diagnostic) + ');\n')
@@ -120,9 +120,9 @@ test("warning exceptions reach final module provenance, commit and report", asyn
     assert.equal(checked.ok, true, JSON.stringify(checked))
     const exceptions = checked.files[0].warningExceptions
     assert.deepEqual(exceptions, [{
-      name: "warning-fix-refused", category: "warning", code: "EK4839",
+      name: "warning-retained", category: "warning", code: "EK4839",
       file: "main.vibe", line: 1, column: 9, message: "A match chain remains.",
-      reason: "No quick fix: the handler is not an arrow function."
+      reason: "Warning retained for manual review."
     }])
     const recorded = await record({ run, batch: "01" })
     assert.deepEqual(recorded.files[0].warningExceptions, exceptions)
@@ -130,7 +130,7 @@ test("warning exceptions reach final module provenance, commit and report", asyn
     const committed = await must('jj log --no-graph -r @- -T description', { cwd: target })
     // Jj.commit wraps long body lines; compare the description with its wrapping undone.
     const description = committed.stdout.replace(/\s+/g, " ")
-    assert.ok(description.includes("Exception warning-fix-refused: EK4839 main.vibe:1:9: " + exceptions[0].reason), committed.stdout)
+    assert.ok(description.includes("Exception warning-retained: EK4839 main.vibe:1:9: " + exceptions[0].reason), committed.stdout)
     const reported = await report({ run })
     assert.deepEqual(reported.warningExceptions, exceptions.map(e => ({ batch: "01", ...e })))
     assert.ok(readFileSync(p.report, "utf8").includes(exceptions[0].reason))

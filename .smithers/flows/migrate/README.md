@@ -1051,22 +1051,19 @@ positions are one-based):
 
 ```json
 {
-  "name": "warning-fix-refused",
+  "name": "warning-retained",
   "category": "warning",
   "code": "EK4833",
   "file": "src/client.vibe",
   "line": 12,
   "column": 9,
   "message": "This Effect type is TypeScript's spelling of an Effect type.",
-  "reason": "No quick fix: keep the qualified Effect type here to preserve grouping and declaration output."
+  "reason": "Warning retained for manual review."
 }
 ```
 
-`warning-fix-refused` means the compiler's `No quick fix` note on the warning
-supplied the reason. Other remaining warnings use `warning-retained` and the explicit reason
-`Warning remains after the safe-fix pass; no refusal reason was reported.`
-No refusal is invented. Reasons are deduplicated and sorted, joined with a
-newline. Records are deduplicated and sorted by file, line, column, code,
+Warnings use `warning-retained` with the reason
+`Warning retained for manual review.` Records are deduplicated and sorted by file, line, column, code,
 name, reason and message without depending on host locale. Only current
 warnings in the migrated scope are included; errors and reverted modules
 never become exceptions. Rechecking replaces this snapshot rather than

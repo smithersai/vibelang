@@ -1,14 +1,9 @@
 package vibelang
 
 import (
-	"context"
-	"strings"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -19,7 +14,6 @@ func init() {
 	registry[EK0704.Code] = EK0704
 	fileChecks = append(fileChecks, checkOrdinaryExtractors)
 	checker.RegisterCallExpressionTypeHook(ordinaryExtractorRecoveryType)
-	ls.RegisterCodeFixProvider(ordinaryExtractorFix)
 }
 
 func ordinaryExtractorType(c *checker.Checker, call *ast.Node) *checker.Type {
@@ -131,114 +125,6 @@ func checkOrdinaryExtractors(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-}
-
-func ordinaryExtractorBindings(file *ast.SourceFile, matcher *ast.Node, span core.TextRange) ([]int, core.TextRange, bool) {
-	s := scanner.NewScanner()
-	s.SetText(file.Text())
-	s.ResetPos(matcher.End())
-	if s.Scan() != ast.KindOpenParenToken {
-		return nil, core.TextRange{}, false
-	}
-	insideStart := s.TokenEnd()
-	var starts []int
-	token := s.Scan()
-	for token != ast.KindCloseParenToken {
-		if token != ast.KindLetKeyword && token != ast.KindConstKeyword && token != ast.KindVarKeyword {
-			return nil, core.TextRange{}, false
-		}
-		starts = append(starts, s.TokenStart())
-		if s.Scan() != ast.KindIdentifier {
-			return nil, core.TextRange{}, false
-		}
-		token = s.Scan()
-		if token == ast.KindCommaToken {
-			token = s.Scan()
-		} else if token != ast.KindCloseParenToken {
-			return nil, core.TextRange{}, false
-		}
-	}
-	return starts, core.NewTextRange(insideStart, s.TokenStart()), s.TokenEnd() == span.End()
-}
-
-func ordinaryExtractorProperties(c *checker.Checker, constructor *checker.Type) []string {
-	symbol := constructor.Symbol()
-	if symbol == nil || symbol.ValueDeclaration() == nil || !ast.IsClassLike(symbol.ValueDeclaration()) {
-		return nil
-	}
-	for _, member := range symbol.ValueDeclaration().Members() {
-		if member.Kind != ast.KindConstructor || member.Body() == nil {
-			continue
-		}
-		var names []string
-		for _, parameter := range member.Parameters() {
-			if ast.IsParameterPropertyDeclaration(parameter, member) && ast.IsIdentifier(parameter.Name()) {
-				names = append(names, parameter.Name().Text())
-			}
-		}
-		return names
-	}
-	return nil
-}
-
-var ordinaryExtractorFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK0704.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		if fix.Diagnostic == nil {
-			return nil, nil
-		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-		defer done()
-		var actions []*ls.CodeAction
-		var visit func(*ast.Node) bool
-		visit = func(node *ast.Node) bool {
-			if constructor := ordinaryExtractorType(c, node); constructor != nil {
-				matcher := node.Arguments()[0]
-				span := ordinaryExtractorSpan(fix.SourceFile, matcher)
-				if span == fix.Span {
-					bare := fix.SourceFile.Text()[span.Pos():matcher.End()]
-					action := func(description, text string) *ls.CodeAction {
-						return &ls.CodeAction{Description: description, Changes: []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: text}}}
-					}
-					if bindings, inside, ok := ordinaryExtractorBindings(fix.SourceFile, matcher, span); ok && len(bindings) != 0 {
-						properties := ordinaryExtractorProperties(c, constructor)
-						if len(properties) == len(bindings) {
-							// Insert property keys without discarding argument comments or line breaks.
-							text := fix.SourceFile.Text()
-							var body strings.Builder
-							pos := inside.Pos()
-							for i, start := range bindings {
-								body.WriteString(text[pos:start])
-								body.WriteString(properties[i] + ": ")
-								pos = start
-							}
-							body.WriteString(text[pos:inside.End()])
-							beforeOpen := text[matcher.End() : inside.Pos()-1]
-							actions = append(actions, action("Write the class test and its parameter properties", bare+" and "+beforeOpen+"{ "+body.String()+" }"))
-						}
-					}
-					// A bare class test may only replace an empty argument list.
-					// Otherwise it discards captures, property reads or comments.
-					if _, inside, ok := ordinaryExtractorBindings(fix.SourceFile, matcher, span); ok && strings.TrimSpace(fix.SourceFile.Text()[inside.Pos():inside.End()]) == "" && strings.TrimSpace(fix.SourceFile.Text()[matcher.End():inside.Pos()-1]) == "" {
-						// --fix applies the first action, and a "Write" title names
-						// the rewrite it applies; the bare test is the alternative
-						// only where the parameter properties can be matched.
-						if len(actions) == 0 {
-							actions = append(actions, action("Write the bare class test", bare))
-						} else {
-							actions = append(actions, action("Test the class without extracting values", bare))
-						}
-
-					}
-					return true
-				}
-			}
-			return node.ForEachChild(visit)
-		}
-		fix.SourceFile.AsNode().ForEachChild(visit)
-		return actions, nil
-	},
 }
 
 // The schema-error class repair installs an own runtime matcher in its

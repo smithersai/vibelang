@@ -7,8 +7,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 // VIP-3/VIP-14, decided detail260: only the unwritten transitional prelude
@@ -67,48 +65,6 @@ func TestLegacyEffectAliasPreservesNativeBindings(t *testing.T) {
 		})
 	}
 }
-func TestLegacyEffectAliasQuickFix(t *testing.T) {
-	for _, test := range []struct{ source, want string }{
-		{"export type Value = Effect<number>", "export type Value = number!!"},
-		{"export type Value = Effect<number, never>", "export type Value = number!never"},
-		{"export type Value = Effect<number, never, never>", "export type Value = number!never!never"},
-		{"type Inner = Effect<number, never, never>; export type Value = Inner", "type Inner = number!never!never; export type Value = Inner"},
-		{"export type Value = Effect<number | string>", "export type Value = Effect.Effect<number | string>"},
-		{"export type Value = Effect<{ a: number } & { b: string }>", "export type Value = Effect.Effect<{ a: number } & { b: string }>"},
-		{"export type Value = Effect<number, Error | { readonly _tag: 'Missing' }>", "export type Value = Effect.Effect<number, Error | { readonly _tag: 'Missing' }>"},
-		{"export type Value = Effect<number, never, \"Left\" | \"Right\">", "export type Value = Effect.Effect<number, never, \"Left\" | \"Right\">"},
-		{"export type Value = Array<Effect<number>>", "export type Value = Array<number!!>"},
-		{"export type Value = Effect<() => number>", "export type Value = Effect.Effect<() => number>"},
-		{"export type Value = Effect<number, Error>", "export type Value = number!Error"},
-		{"export type Value = [Effect<number>]", "export type Value = [number!!]"},
-		{"export type Value = Effect<number>[]", "export type Value = Effect.Effect<number>[]"},
-		{"export interface Value extends Effect<number> {}", "export interface Value extends Effect.Effect<number> {}"},
-		{"export type Value = Effect<number> | null", "export type Value = Effect.Effect<number> | null"},
-		{"export type Value = null | Effect<number>", "export type Value = null | Effect.Effect<number>"},
-		{"export type Value = Effect<number> & { readonly id: string }", "export type Value = Effect.Effect<number> & { readonly id: string }"},
-		{"export type Value = keyof Effect<number>", "export type Value = keyof Effect.Effect<number>"},
-		{"export type Value<T> = Effect<number> extends T ? 1 : 2", "export type Value<T> = Effect.Effect<number> extends T ? 1 : 2"},
-		{"export type Value = (Effect<number>)[]", "export type Value = (Effect.Effect<number>)[]"},
-		{"export type Value = Effect<(number | string)>", "export type Value = Effect.Effect<(number | string)>"},
-		{"export type Value = Effect<number, (Error | string)>", "export type Value = Effect.Effect<number, (Error | string)>"},
-		{"export type Value = Effect<(() => number)>", "export type Value = Effect.Effect<(() => number)>"},
-		{"export type Value = Effect<new () => { readonly id: number }>", "export type Value = Effect.Effect<new () => { readonly id: number }>"},
-		{"export type Value<T> = Effect<T extends string ? 1 : 2>", "export type Value<T> = Effect.Effect<T extends string ? 1 : 2>"},
-	} {
-		t.Run(test.source, func(t *testing.T) {
-			got := applyQuickFix(t, test.source, 4856)
-			if got != test.want {
-				t.Errorf("got %q; want %q", got, test.want)
-			}
-			program, file, _, _ := editorProgram(t, got)
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Code() == 4856 || d.Category() == diagnostics.CategoryError {
-					t.Errorf("repair failed: %s", d.String())
-				}
-			}
-		})
-	}
-}
 
 // D260 retains native namespace/type distinctions. These are native-error
 // controls, separate from the legacy prelude alias that receives a warning.
@@ -152,54 +108,5 @@ func TestLegacyEffectAliasModuleConfiguration(t *testing.T) {
 				}
 			})
 		}
-	}
-}
-
-// Details260/277: a qualified migration result retains its EK4833 advisory,
-// when source-written parentheses would be lost by declaration emission.
-func TestLegacyEffectAliasStyleAdvisory(t *testing.T) {
-	for _, source := range []string{
-		"export type Value = (Effect.Effect<number>)[]",
-		"export type Value = Effect.Effect<(number | string)>",
-	} {
-		t.Run(source, func(t *testing.T) {
-			program, file, service, converters := editorProgram(t, source)
-			found := false
-			for _, diagnostic := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if diagnostic.Category() == diagnostics.CategoryError {
-					t.Fatalf("native qualified contract failed: %s", diagnostic.String())
-				}
-				if diagnostic.Code() != 4833 || diagnostic.Source() != diagnosticSource {
-					continue
-				}
-				found = true
-				notes := ""
-				for _, note := range diagnostic.MessageChain() {
-					notes += note.String()
-				}
-				if !strings.Contains(notes, "No quick fix") {
-					t.Fatalf("advisory omitted its refusal reason: %s", notes)
-				}
-				d := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
-				only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-				response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-					TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-					Range:        d.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{d}, Only: &only},
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if response.CommandOrCodeActionArray != nil {
-					for _, action := range *response.CommandOrCodeActionArray {
-						if action.CodeAction != nil && strings.HasPrefix(action.CodeAction.Title, "Write ") {
-							t.Fatalf("unsafe automatic style edit: %s", action.CodeAction.Title)
-						}
-					}
-				}
-			}
-			if !found {
-				t.Fatal("qualified type lost its EK4833 style advisory")
-			}
-		})
 	}
 }

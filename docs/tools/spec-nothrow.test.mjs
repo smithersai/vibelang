@@ -100,18 +100,9 @@ test("VIP-4's decision bullets no longer let a plain function throw or infer a .
   assert.doesNotMatch(decision, /^- \*\*Amended 2026-10-29: plain functions may throw/m)
 })
 
-test("chapter 3 lists the quick fixes in the foldkit migration's order", () => {
-  const section = plainSection()
-  const fixes = section.slice(section.indexOf("Quick fixes, in order:"))
-  const order = ["make the function `effect`", "make it `effect` and write `return try die(e)`", "move the code to a `.ts` file"].map(f => fixes.indexOf(f))
-  assert.ok(order.every(i => i > 0) && order[0] < order[1] && order[1] < order[2], String(order))
-  assert.match(fixes, /An exported function of a published package offers the `\.ts` fix first, because `effect` changes its declaration\./)
-  assert.match(fixes, /A plain handler gets `x catch effect \(e\) => \{ throw e \}` and `x catch effect \(e\) => \{ return try die\(e\) \}`/)
-})
-
 test("VIP-5 makes a throw in a plain catch handler EK0401 and retires EK0511", () => {
   const text = read("docs/design/vips/0005-try-runs-effects.md")
-  assert.match(text, /\*\*Amended 2026-10-31: a `throw` in a plain handler is `EK0401`\*\* \(VIP-4\)\. A call known to throw in its parameters or body is too\. The quick fix is `catch effect`/)
+  assert.match(text, /\*\*Amended 2026-10-31: a `throw` in a plain handler is `EK0401`\*\* \(VIP-4\)\. A call known to throw in its parameters or body is too\. Write `catch effect` to make the throw a typed failure/)
   assert.match(text, /The old lint warning `EK0511` retires\./)
 })
 
@@ -178,8 +169,7 @@ test("chapter 7 lists no EK0511 warning", () => {
 
 const ek0403AdviceClauses = [
   "| `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code;",
-  "first wrap with `try Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))` to preserve defects and E",
-  "then offer adding `/** @throws {never} */` to a provably non-throwing same-project `.ts` declaration",
+  "write an explicit `Effect.try` bridge",
   "| 4 |"
 ]
 function ek0403AdviceProblems(row = "") {
@@ -200,7 +190,7 @@ test("Appendix B widens EK0401 and EK0406, narrows EK0403 and retires EK0405 and
   assert.match(b, /\| `EK0401` \| a `throw`, or a call known to throw outside the `try` block of a `try`\/`catch` statement, in synchronous `\.vibe` code outside effect code; .* \| 4, 5, 7 \|/)
   const row = b.split("\n").find(line => line.startsWith("| `EK0403` |"))
   assert.deepEqual(ek0403AdviceProblems(row), [])
-  assert.match(b, /\| `EK0406` \| a `@throws` or `@rethrows` tag in `\.vibe` or `\.vibex` source outside a `module` body, including on a service member or function-type signature; quick fix: remove the tag \|/)
+  assert.match(b, /\| `EK0406` \| a `@throws` or `@rethrows` tag in `\.vibe` or `\.vibex` source outside a `module` body, including on a service member or function-type signature/)
   assert.doesNotMatch(b, /^\| `EK0405` \|/m)
   assert.doesNotMatch(b, /^\| `EK0511` \|/m)
   assert.match(b, /The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`\./)

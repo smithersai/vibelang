@@ -1,3 +1,0 @@
-go test fuzz v1
-string("EK4610@native-await-single-interfaces.fail")
-[]byte("\x00")

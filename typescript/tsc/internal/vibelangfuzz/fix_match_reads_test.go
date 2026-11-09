@@ -9,7 +9,7 @@ import (
 
 var matchOperandReadKeys = []string{"tdz-value", "const-local-value", "getter-value", "getter-type", "nested-getter", "or-getter", "not-getter", "property-value", "property-type", "let-type", "computed-type", "const-value", "const-type", "import-type"}
 
-const matchOperandReadQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
+const matchOperandReadQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func TestMatchOperandReadsQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), matchOperandReadQuote) {

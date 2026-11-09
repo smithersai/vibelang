@@ -50,22 +50,6 @@ export const Explicit = Schema.Struct({ value: Schema.mutableKey(Schema.Number) 
 	}
 }
 
-func TestSchemaErrorReferenceFlagsQuickFix(t *testing.T) {
-	for _, codec := range []string{"Schema.mutableKey(Schema.Number)", "Schema.optionalKey(Schema.Number)"} {
-		source := "const Codec = " + codec + "\nexport schema error Bad { value: Codec; get label(): string { return \"kept\" } }\n"
-		fixed := applyQuickFixOf(t, source, EK2109.Code, diagnostics.CategoryError)
-		if fixed == source || strings.Contains(fixed, "schema error Bad") {
-			t.Fatalf("expected explicit class repair:\n%s", fixed)
-		}
-		program, file, _, _ := editorProgram(t, fixed)
-		for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-			if d.Category() == diagnostics.CategoryError {
-				t.Errorf("repair reports %s:\n%s", d.String(), fixed)
-			}
-		}
-	}
-}
-
 func TestSchemaErrorReferenceFlagsInverse(t *testing.T) {
 	for _, codec := range []string{"Schema.mutableKey(Schema.Number)", "Schema.Number as Schema.Top"} {
 		source := "const Codec = " + codec + "\nexport class Bad extends Schema.TaggedError<Bad>()(\"Bad\", {value: Codec}) {}\n"

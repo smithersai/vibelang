@@ -11,7 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const browserCountDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const browserCountDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 const browserCountInjectionQuote = "Platform access is only through injected Effect services"
 const browserCountExample = "read navigator.hardwareConcurrency in a .ts adapter"
 

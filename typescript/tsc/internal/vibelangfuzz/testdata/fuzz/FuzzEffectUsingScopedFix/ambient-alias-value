@@ -1,3 +1,0 @@
-go test fuzz v1
-string("ambient-alias-value")
-byte(0)

@@ -328,24 +328,7 @@ func newPortDiagnosticAt(options *core.CompilerOptions, plugin pluginSeverity, f
 		code = int32(n)
 	}
 	d := ast.NewExternalDiagnostic(file, loc, diagnosticSource, category, code, format(m.Text, args))
-	if m.Code == EK4807.Code {
-		note(d, "No automatic fix: supplying a dependency changes its provider and the exported requirement. Review the provider and build order before composing manually.")
-	}
-	if m.Code == EK4810.Code {
-		note(d, "No automatic fix: removing this assertion changes the program's public channel types. Write and check the intended contract explicitly.")
-	}
-	if m.Code == EK4817.Code {
-		note(d, "No automatic fix: replacing instanceof with Schema.is can reorder operand evaluation and changes the test being requested. Write the intended test explicitly.")
-	}
-	if m.Code == EK4821.Code {
-		note(d, "No automatic fix: TaggedStruct makes the tag optional in make input and changes JavaScript constructor behavior. Choose the constructor contract explicitly.")
-	}
-	if m.Code == EK4801.Code {
-		note(d, "No automatic fix: running the discarded program changes its coldness, side effects or failures. Write try explicitly when you intend to run it.")
-	}
-	if m.Code == EK4838.Code {
-		note(d, "No automatic fix: VIP-17 uses native fiber ownership. This legacy region diagnostic cannot choose a different lifetime; choose an explicit owner only when intended.")
-	}
+
 	return d
 }
 

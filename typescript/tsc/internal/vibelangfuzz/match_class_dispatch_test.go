@@ -13,8 +13,8 @@ import (
 // callees with neither signature (`any`, `unknown`, `Function`, non-callable objects), are
 // `EK0702`".
 var classDispatchCallees = []struct {
-	name, decl     string
-	bare, extract  int32 // the diagnostic code; 0 when the pattern compiles
+	name, decl    string
+	bare, extract int32 // the diagnostic code; 0 when the pattern compiles
 }{
 	{"Point", "class Point { constructor(readonly x: number) {} }", 0, 704},
 	{"Empty", "class Empty {}", 0, 704},

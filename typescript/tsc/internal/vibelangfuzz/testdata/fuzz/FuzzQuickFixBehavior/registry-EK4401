@@ -1,3 +1,0 @@
-go test fuzz v1
-string("EK4401@EK4401-boundary")
-[]byte("\u0000")

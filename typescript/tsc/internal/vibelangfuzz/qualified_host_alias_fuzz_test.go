@@ -45,7 +45,9 @@ func FuzzQualifiedHostAlias(f *testing.F) {
 		index := slices.IndexFunc(rows, func(row struct {
 			Key, Source, Mode string
 			Errors            []string
-		}) bool { return row.Key == parts[0] })
+		}) bool {
+			return row.Key == parts[0]
+		})
 		if index < 0 {
 			index = len(data) % len(rows)
 		}

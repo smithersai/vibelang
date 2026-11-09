@@ -2,10 +2,8 @@ package vibelang
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
@@ -59,27 +57,7 @@ const shared = { cause: Schema.Defect() }
 						if count != want {
 							t.Errorf("got %d error-class advisories, want %d", count, want)
 						}
-						c, done := program.GetTypeCheckerForFile(t.Context(), file)
-						defer done()
-						var class *ast.Node
-						for _, statement := range file.Statements.Nodes {
-							if ast.IsClassDeclaration(statement) {
-								class = statement
-							}
-						}
-						rewrite := errorClassRewrite(c, file, class)
-						if native && rewrite.fixable() {
-							t.Errorf("native class has stale-diagnostic repair: %+v", rewrite)
-						}
-						// The required sidecar prints Schema.TaggedError under every
-						// emit option, so an aliased base keeps its class (Chapter 7).
-						aliasedSchema := alias && schema
-						if aliasedSchema && rewrite.fixable() {
-							t.Errorf("aliased schema base has a repair that changes its sidecar: %+v", rewrite)
-						}
-						if !native && !aliasedSchema && !rewrite.fixable() {
-							t.Errorf("eligible control lost repair: %+v", rewrite)
-						}
+
 					})
 				}
 			}
@@ -161,39 +139,6 @@ func FuzzNativeErrorClassShapes(f *testing.F) {
 		if count != want {
 			t.Fatalf("got %d EK%d, want %d (spread=%t static=%t schema=%t)\n%s", count, code, want, spread, static, schema, source)
 		}
-		c, done := program.GetTypeCheckerForFile(t.Context(), file)
-		defer done()
-		var class *ast.Node
-		for _, statement := range file.Statements.Nodes {
-			if ast.IsClassDeclaration(statement) {
-				class = statement
-				break
-			}
-		}
-		rewrite := errorClassRewrite(c, file, class)
-		if exempt {
-			if rewrite.fixable() {
-				t.Fatalf("native class has a stale-diagnostic fix: %+v", rewrite)
-			}
-		} else {
-			if !rewrite.fixable() {
-				t.Fatalf("ordinary class lost its fix: %+v", rewrite)
-			}
-		}
-	})
-}
 
-func TestNativeErrorClassOrdinaryFixControls(t *testing.T) {
-	for _, schema := range []bool{false, true} {
-		t.Run(fmt.Sprint(schema), func(t *testing.T) {
-			code, source := int32(4830), "export class Native extends Data.TaggedError(\"Native\")<{ readonly id: string }> {}"
-			if schema {
-				code, source = 4837, "export class Native extends Schema.TaggedError<Native>()(\"Native\", {id: Schema.String}) {}"
-			}
-			fixed := applyQuickFix(t, source, code)
-			if fixed == source || !strings.Contains(fixed, "error Native") {
-				t.Fatalf("ordinary class lost its editor repair:\n%s", fixed)
-			}
-		})
-	}
+	})
 }

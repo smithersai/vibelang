@@ -1,23 +1,19 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 func init() {
 	fileChecks = append(fileChecks, checkSchemaDuplicateReadonly)
-	registerNativeSchemaFix(1030)
-	ls.RegisterCodeFixProvider(schemaDuplicateReadonlyFix)
+
 }
 
 // VIP-15 uses TypeScript field modifiers. Mapping a schema body to an object
@@ -90,21 +86,4 @@ func checkSchemaDuplicateReadonly(c *checker.Checker, file *ast.SourceFile) {
 	for _, span := range schemaDuplicateReadonlyRanges(file) {
 		c.AddDiagnostic(ast.NewDiagnostic(file, span, diagnostics.X_0_modifier_already_seen, "readonly"))
 	}
-}
-
-var schemaDuplicateReadonlyFix = &ls.CodeFixProvider{
-	Source:     "",
-	ErrorCodes: []int32{1030},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		if fix.Diagnostic == nil || !slices.Contains(schemaDuplicateReadonlyRanges(fix.SourceFile), fix.Span) {
-			return nil, nil
-		}
-		if edits := schemaTypeMemberRepairEdits(fix); len(edits) > 0 {
-			return []*ls.CodeAction{{Description: "Write the schema field with one readonly modifier", Changes: edits}}, nil
-		}
-		return []*ls.CodeAction{{
-			Description: "Write the schema field with one readonly modifier",
-			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: ""}},
-		}}, nil
-	},
 }

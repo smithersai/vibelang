@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // Effect slots written `infer` (VIP-3, amended 2026-11-02).
@@ -25,7 +24,6 @@ func init() {
 	fileChecks = append(fileChecks, func(c *checker.Checker, file *ast.SourceFile) {
 		checkFormRules(c, file, []*Message{EK4857})
 	})
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK4857.Code)
 	tsFormRules[EK4857.Code] = &tsFormRule{
 		message: EK4857,
 		find: func(c *checker.Checker, file *ast.SourceFile, report func(*ast.Node, *formRewrite, ...any)) {
@@ -38,12 +36,7 @@ func init() {
 			}
 			file.AsNode().ForEachChild(visit)
 		},
-		plan: inferSlotRewrite,
-		diagnosed: func(node *ast.Node) bool {
-			return node.Parent != nil && node.Parent.Type() == node && isLowerable(node.Parent)
-		},
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4857.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 // inferSlotAnnotation reports whether annotation, a function's return

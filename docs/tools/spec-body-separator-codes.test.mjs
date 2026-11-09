@@ -13,7 +13,7 @@ test("a missing member separator in a VibeLang declaration body has the owning V
     ["`EK1605`", "two variants of a `data` declaration, or two fields of a variant"],
   ]) {
     const row = rows.get(code) ?? ""
-    assert.ok(row.includes(owner) && row.includes("(quick fix: insert `;`)"), code)
+    assert.ok(row.includes(owner) && row.includes("(insert `;`)"), code)
   }
   assert.ok(appendix.includes("service S { a: number b: string } EK0908: no separator"))
   assert.ok(appendix.includes("error E { a: number b: string }   EK1306: no separator"))
@@ -21,7 +21,7 @@ test("a missing member separator in a VibeLang declaration body has the owning V
   assert.ok(appendix.includes("These bodies never report TypeScript's `TS1005` or `TS1442` for it"))
   assert.ok(chapter("005-services").includes("on one line is a syntax error, `EK0908`."))
   const failures = chapter("003-failures")
-  assert.ok(failures.includes("`error E { a: number b: string }`, are `EK1306`; the quick fix inserts `;`."))
+  assert.ok(failures.includes("`error E { a: number b: string }`, are `EK1306`"))
   assert.ok(lexer(failures).filter(t => t.type === "table").flatMap(t => t.rows).some(r => r[1]?.text === "`EK1306`"))
   const data = chapter("006-data")
   assert.ok(data.includes("`{ a: string b: number }` is a syntax error, `EK1504`."))

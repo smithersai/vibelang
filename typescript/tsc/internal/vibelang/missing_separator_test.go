@@ -82,27 +82,6 @@ func TestBodySeparatorsAccepted(t *testing.T) {
 	}
 }
 
-func TestMissingBodySeparatorQuickFix(t *testing.T) {
-	// rule-evidence: docs/design/src/900-appendices.md#8d45f00465a15e43 — Chapter 900: missing member separator repair
-	for _, tc := range []struct {
-		source, want string
-		code         int32
-	}{
-		{"export error E { a: number b: string }\n", "export error E { a: number; b: string }\n", 1306},
-		{"export schema error E { a: number  b: string }\n", "export schema error E { a: number;  b: string }\n", 1306},
-		{"export service S { a: number b: string }\n", "export service S { a: number; b: string }\n", 908},
-		{"export error E { a: number /** @internal */ b: string }\n", "export error E { a: number; /** @internal */ b: string }\n", 1306},
-		{"export schema error E { a: number /* keep */ b: string }\n", "export schema error E { a: number; /* keep */ b: string }\n", 1306},
-		{"export error E { a(): number /** @deprecated */ a(): number { return 1 } }\n", "export error E { a(): number; /** @deprecated */ a(): number { return 1 } }\n", 1306},
-	} {
-		t.Run(tc.source, func(t *testing.T) {
-			if got := applyQuickFixOf(t, tc.source, tc.code, diagnostics.CategoryError); got != tc.want {
-				t.Fatalf("quick fix wrote %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
 // Decided detail 241 preserves native TypeScript diagnostics, including inside
 // a nested native class or an object method in an error's method body.
 func TestNativeMissingSeparators(t *testing.T) {

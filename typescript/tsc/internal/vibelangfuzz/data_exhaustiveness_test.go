@@ -73,6 +73,7 @@ func dataExhaustivenessRules() []dataRule {
 		{name: "exhaustive-retained-error-complete", chapter: "004-match.md", quote: "a retained error covers its case when it is bare", source: "error E;function f(x:E|Cause.TimeoutError){return match(x){when E:1;when Cause.TimeoutError(let e):0;}}", code: "", owner: "vip-match"},
 	}
 }
+
 // VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#8679ee3f59945039
 // VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#8115e279d032c9ec
 // VIP-7 closed/open subject classification and positive/negative arm coverage witnesses; rule: docs/design/vips/0007-match.md#a31f7267ead610b5

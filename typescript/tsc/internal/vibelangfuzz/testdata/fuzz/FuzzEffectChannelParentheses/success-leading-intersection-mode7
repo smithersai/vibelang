@@ -1,3 +1,0 @@
-go test fuzz v1
-string("success-leading-intersection")
-byte(7)

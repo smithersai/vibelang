@@ -15,7 +15,7 @@ import (
 const emptyPackageKeyTarget = "FuzzServiceEmptyPackageKey"
 const emptyPackageKeyQuote = "the `name` in the package's `package.json`, `/`, the file's package-relative path without its extension, `#`, the service name."
 const emptyPackageNearestQuote = "The package is the file's Node package scope, the nearest ancestor directory with a `package.json`"
-const emptyPackageFixPreservationQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
+const emptyPackageFixPreservationQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func TestServiceEmptyPackageKeyQuoted(t *testing.T) {
 	chapterSays(t, "005-services.md", emptyPackageKeyQuote)

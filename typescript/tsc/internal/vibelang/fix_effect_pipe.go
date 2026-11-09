@@ -1,14 +1,12 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -33,28 +31,6 @@ import (
 // It rewrites a .pipe whose receiver is an Effect or that has a stage of
 // Effect's own module. Any other .pipe, such as a Stream's or a Schema's,
 // keeps its meaning and stays.
-
-func init() {
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4502.Code}, GetCodeActions: effectPipeActions})
-}
-
-func effectPipeActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-	call := tsFormNodeAt(fix.SourceFile, fix.Span, isPipeCall)
-	if call == nil {
-		return nil, nil
-	}
-	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-	defer done()
-	rewrite := planEffectPipe(c, fix.SourceFile, call)
-	if !rewrite.fixable() {
-		return nil, nil
-	}
-	var changes = replaceRange(fix, rewrite.edits[0].start, rewrite.edits[0].end, rewrite.edits[0].text)
-	for _, edit := range rewrite.edits[1:] {
-		changes = append(changes, replaceRange(fix, edit.start, edit.end, edit.text)...)
-	}
-	return []*ls.CodeAction{{Description: "Write " + rewrite.description, Changes: changes}}, nil
-}
 
 // isPipeCall reports whether node is x.pipe(…) as the source writes it, not
 // a pipe the parser wrote for x |> f(%).

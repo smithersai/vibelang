@@ -1,3 +1,0 @@
-go test fuzz v1
-string("EK9201@EK9201-refused-contract")
-[]byte("\u0000")

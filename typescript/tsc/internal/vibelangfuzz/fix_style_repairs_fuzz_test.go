@@ -1,14 +1,7 @@
 package vibelangfuzz
 
 import (
-	"fmt"
 	"strings"
-
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-)
-
-const (
-	fixStyleRepairsTarget = "FuzzFixStyleRepairs"
 )
 
 // A style construct: its declaration line, the rule that reports it, the
@@ -33,18 +26,6 @@ var fixStyleConstructs = map[string]fixStyleConstruct{
 }
 
 var fixStyleSeverities = []string{"off", "suggestion", "warning", "error"}
-
-// styleReports counts the reports of construct's rule, under either code.
-func styleReports(r *Result, construct fixStyleConstruct) int {
-	n := 0
-	for _, d := range r.Diagnostics {
-		code := fmt.Sprintf("EK%d", d.Code())
-		if IsEK(d) && (code == construct.port || code == construct.lint) && d.Category() != diagnostics.CategoryMessage {
-			n++
-		}
-	}
-	return n
-}
 
 // declarationsOf returns r's declaration outputs by name.
 func declarationsOf(r *Result) map[string]string {

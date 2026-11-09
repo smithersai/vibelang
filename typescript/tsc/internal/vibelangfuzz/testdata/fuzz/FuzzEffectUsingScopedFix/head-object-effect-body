@@ -1,3 +1,0 @@
-go test fuzz v1
-string("head-object-effect-body")
-byte(0)

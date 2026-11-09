@@ -103,41 +103,6 @@ func TestErrorReservedMemberKeepsIndependentErrors(t *testing.T) {
 	}
 }
 
-func TestErrorReservedStaticMemberQuickFix(t *testing.T) {
-	for _, form := range []string{"error", "schema error"} {
-		for _, member := range []string{
-			"static _tag = \"metadata\"",
-			"static get _tag() { return \"metadata\" }",
-			"static set _tag(value: string) {}",
-			"static [\"_tag\"] = \"metadata\"",
-		} {
-			t.Run(form+"/"+member, func(t *testing.T) {
-				fixed := applyQuickFixOf(t, "export "+form+" E { id: string; "+member+" }\n", 2117, diagnostics.CategoryError)
-				if !strings.Contains(fixed, member) || !strings.Contains(fixed, "class E extends") {
-					t.Fatalf("static member was not retained: %s", fixed)
-				}
-				program, file, _, _ := editorProgram(t, fixed+"\nconst id: string = new E({ id: \"x\" }).id;\n")
-				for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-					if d.Category() == diagnostics.CategoryError {
-						t.Errorf("invalid class migration: %s\n%s", d.String(), fixed)
-					}
-				}
-			})
-		}
-	}
-}
-
-func TestErrorReservedStaticMemberFixAvoidsCapture(t *testing.T) {
-	source := "const TaggedError = 0; const $ErrorTaggedError = 1; const Data = 2;\nexport error E { value: number; static _tag = \"metadata\" }\n"
-	fixed := applyQuickFixOf(t, source, 2117, diagnostics.CategoryError)
-	program, file, _, _ := editorProgram(t, fixed+"\nconst n: number = new E({ value: 1 }).value;\n")
-	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Errorf("migration captured a user name: %s\n%s", d.String(), fixed)
-		}
-	}
-}
-
 func TestSchemaErrorTeachingKeepsReservedMembers(t *testing.T) {
 	for _, member := range []string{
 		"static get _tag() { return \"metadata\" }",
@@ -152,17 +117,6 @@ func TestSchemaErrorTeachingKeepsReservedMembers(t *testing.T) {
 		done()
 		if rewrite != nil && len(rewrite.edits) != 0 {
 			t.Fatalf("teaching must not introduce a rejected member: %s", source)
-		}
-	}
-}
-
-func TestErrorReservedAbstractSchemaMemberQuickFix(t *testing.T) {
-	source := "export abstract schema error E { id: string; static _tag = \"metadata\" }\n"
-	fixed := applyQuickFixOf(t, source, 2117, diagnostics.CategoryError)
-	program, file, _, _ := editorProgram(t, fixed)
-	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-		if d.Category() == diagnostics.CategoryError {
-			t.Errorf("abstract schema migration: %s\n%s", d.String(), fixed)
 		}
 	}
 }

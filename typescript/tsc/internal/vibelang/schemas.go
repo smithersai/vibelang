@@ -1,13 +1,9 @@
 package vibelang
 
 import (
-	"context"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -39,8 +35,6 @@ var EK1505 = message(1505, errorCategory, "{0} is not a field: a schema body hol
 func init() {
 	registry[EK1505.Code] = EK1505
 	fileChecks = append(fileChecks, checkSchemaDeclarations)
-	tsFormFixCodes = append(tsFormFixCodes, EK2109.Code)
-	ls.RegisterCodeFixProvider(schemaKeywordFix)
 }
 
 // schemaKeywordConstants names the Schema constant of each keyword type that
@@ -62,40 +56,6 @@ func noteSchemaKeyword(d *ast.Diagnostic, text string) bool {
 		note(d, "{0} is not a primitive; name its schema instead: {1}.", text, constant)
 	}
 	return ok
-}
-
-// schemaKeywordFix is EK2109's quick fix at a keyword type that the mapping
-// leaves out: it writes the keyword's Schema constant.
-var schemaKeywordFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK2109.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		text := fix.SourceFile.Text()
-		if fix.Diagnostic == nil || fix.Span.End() > len(text) {
-			return nil, nil
-		}
-		constant, ok := schemaKeywordConstants[text[fix.Span.Pos():fix.Span.End()]]
-		legacy := legacyNestedAliasKeywordAt(fix.SourceFile, fix.Span.Pos(), fix.Span.End())
-		if !ok && !legacy {
-			return nil, nil
-		}
-		var actions []*ls.CodeAction
-		if ok {
-			actions = append(actions, &ls.CodeAction{
-				Description: "Write " + constant,
-				Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: constant}},
-			})
-		}
-		if legacy && constant != "Schema.Unknown" {
-			// Retain the codec and decoded type of a formerly accepted alias.
-			// The explicit keyword schema stays available as a separate choice.
-			actions = append([]*ls.CodeAction{{
-				Description: "Keep the previous Schema.Unknown codec",
-				Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: "Schema.Unknown"}},
-			}}, actions...)
-		}
-		return actions, nil
-	},
 }
 
 // schemaTypeID names the property that every Effect 4 schema has.

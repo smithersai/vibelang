@@ -2,3 +2,12 @@
 function expect<T>(actual: T, message?: string): boolean { return actual === 42 }
 effect function awaited() { return 42 }
 export effect function main() { return expect(awaited()) }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/007-tooling.md#vibelang-warnings | | A plain call in effect code infers an Effect type argument outside a declared Effect position ([Inferred Effect arguments](002-running.md#inferred-effect-arguments); [VIP-1, amended](../vips/0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03)) | `EK4802` | Write `try` for a direct Effect-valued argument when its written failure and requirement contract accepts it, or explicit type arguments to keep the program.
+
+function preserveProgram<T>(value: T): T { return value }
+export effect function manualTypeArguments() {
+  const program = preserveProgram<number!!>(Effect.succeed(1))
+  return try program
+}

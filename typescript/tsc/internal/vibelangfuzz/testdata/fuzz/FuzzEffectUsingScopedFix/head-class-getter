@@ -1,3 +1,0 @@
-go test fuzz v1
-string("head-class-getter")
-byte(0)

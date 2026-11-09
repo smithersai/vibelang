@@ -21,7 +21,7 @@ A function's kind is decided by a keyword on the function, never by its body or 
 [EffectFunction](/spec/900-appendices#effectfunction), [EffectArrow](/spec/900-appendices#effectarrow) and [EffectMethod](/spec/900-appendices#effectmethod). [ArrowParams](/spec/900-appendices#arrowparams) is TypeScript's parenthesized `async`-arrow parameter list, and [Modifiers](/spec/900-appendices#modifiers) are its class-member modifiers. As for `async`, `effect x => …` is allowed; only a parenthesized arrow head may have type parameters or a return annotation. `export` and `export default` come before `effect function` through ECMAScript's `ExportDeclaration`, as before `async function`.
 
 - `effect` goes exactly where TypeScript allows `async`, and nowhere else (VIP-1), apart from the `effect { … }` block (VIP-2). [Name](/spec/900-appendices#name) is optional where it is optional for `async function`: required in a declaration except `export default effect function () { }`, optional in an expression.
-- There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors, with a quick fix that inserts `function`. At a statement start or after `export`, `effect` or `async` followed by a name other than `as`, `satisfies` or `is`, then `(` or `<`, parses so this rule can report it. `effect as (Handler)` stays TypeScript's type assertion. `EK0101`.
+- There is no top-level shorthand: `effect load() { }` and `async load() { }` outside a class or object literal are syntax errors; insert `function`. At a statement start or after `export`, `effect` or `async` followed by a name other than `as`, `satisfies` or `is`, then `(` or `<`, parses so this rule can report it. `effect as (Handler)` stays TypeScript's type assertion. `EK0101`.
 - As for `async`: type parameters follow the name, as in `effect m<T>(x: T) { }` and `effect function f<T>(x: T) { }`; `static effect m()` and a private `effect #load() { }` are allowed; getters, setters and constructors can't be `effect`; and `effect() { }` alone is a method named `effect`.
 - A recognized `effect` modifier in a TypeScript-forbidden `async` position is `EK0108`: on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member. Recognition follows syntax, including TypeScript’s recovery positions; ordinary TypeScript syntax keeps its own diagnostics. Valid function/class overload signatures retain TypeScript’s ordinary rules. A method named `effect`, such as `interface Ordinary { effect(): number }`, has no Effect modifier.
 - `effect get x() { }` and `effect set x(v) { }` parse, so the getter/setter rule below reports them, as TypeScript parses `async get x() { }` and reports TS1042.
@@ -30,7 +30,7 @@ A function's kind is decided by a keyword on the function, never by its body or 
 - A decorator list precedes the class modifiers, as for `async` methods; object-literal methods have no decorators. An `effect` function declaration or class method may have bodyless overload signatures wherever TypeScript admits the corresponding `async` signatures, with its ordering, adjacent-implementation, compatibility and semicolon rules. Function expressions, object-literal methods and arrows require bodies. A starred overload signature keeps TypeScript’s `TS1222`, as `async *m(): S;` does; `abstract effect` methods and ambient `effect` declarations are `EK0108`, above. A signature without a return annotation exposes `any`, as a bodyless `async` signature does, with TypeScript’s `TS7010` under `noImplicitAny`. It is not inferred from the implementation; write the Effect type to give the signature a checked contract.
 - `effect function*` declares a producer ([Running Effects](/spec/002-running#producers)).
 
-`effect` and `async` on one function or block, in either order, is a compile error (`EK0105`; VIP-1/VIP-2). Both orders parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so this code is reported instead of a generic syntax error. A function’s quick fixes remove one modifier. A block’s quick fix removes `async`, retaining `effect { B }`; `async { B }` is not admitted. No Effect TypeScript counterpart combines an `Effect.gen` with a Promise-returning `async` function.
+`effect` and `async` on one function or block, in either order, is a compile error (`EK0105`; VIP-1/VIP-2). Both orders parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so this code is reported instead of a generic syntax error. On a function, remove one modifier. On a block, remove `async`, retaining `effect { B }`; `async { B }` is not admitted. No Effect TypeScript counterpart combines an `Effect.gen` with a Promise-returning `async` function.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-1, VIP-2
@@ -234,9 +234,9 @@ const names = Effect.gen(function* () {
 console.log(JSON.stringify(Effect.runSync(names)))
 ```
 
-<a id="direct-eval"></a>**Legacy JavaScript.** Five JavaScript features are compile errors anywhere in a `.vibe` file, plain functions included, each with a quick fix (VIP-1 and VIP-4, amended 2026-10-29). Code that needs one lives in a `.ts` or `.js` file.
+<a id="direct-eval"></a>**Legacy JavaScript.** Five JavaScript features are compile errors anywhere in a `.vibe` file, plain functions included (VIP-1 and VIP-4, amended 2026-10-29). Code that needs one lives in a `.ts` or `.js` file.
 
-| Banned | What the rule matches | Quick fix |
+| Banned | What the rule matches | Suggested source edit |
 | --- | --- | --- |
 | `eval` | every `IdentifierReference` named `eval`: a direct `eval(s)` as ECMAScript defines it, and indirect uses such as `(0, eval)(s)`, `eval?.(s)` and `const e = eval` | move the code to a `.ts` or `.js` file |
 | `Function` | every `IdentifierReference` resolving to the global `Function` constructor, except the right operand of `instanceof` (VIP-1, amended) and the object of a statically named `prototype` access, `Function.prototype`, `Function?.prototype` or `Function["prototype"]` (VIP-1, amended): `new Function("a", "return a")`, `Function("return 1")`, `Function?.(s)`, `const F = Function`, `Function.call(null, "return 7")`, `Function.name`. `x instanceof Function` and `Function.prototype.toString.call(f)` are allowed; the type `Function`, as in `const f: Function = g`, stays TypeScript's | move the code to a `.ts` or `.js` file |
@@ -445,7 +445,7 @@ function load(id: string): Effect.Effect<User, NotFound, Users> { return Effect.
 interface UserStore { find(id: string): Effect.Effect<User, NotFound> }
 ```
 
-`!` does not mix with `|`, `&`, conditional types, or a function or constructor type in a slot, without parentheses: each is a syntax error with a quick fix that parenthesizes (VIP-3, amended; `EK0301`). A slot holds such a type only in parentheses, as in `User!(NotFound | Timeout)`. Each slot is a type-operator-level type, as an operand of `&` is in TypeScript (`keyof A & B` is `(keyof A) & B`): `keyof`, `readonly`, `[]` and `[K]` bind tighter than `!`.
+`!` does not mix with `|`, `&`, conditional types, or a function or constructor type in a slot, without parentheses: each is a syntax error that requires parentheses (VIP-3, amended; `EK0301`). A slot holds such a type only in parentheses, as in `User!(NotFound | Timeout)`. Each slot is a type-operator-level type, as an operand of `&` is in TypeScript (`keyof A & B` is `(keyof A) & B`): `keyof`, `readonly`, `[]` and `[K]` bind tighter than `!`.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-3
@@ -569,7 +569,7 @@ import { port } from "./parse.ts"
 export function loadPort(raw: string) { return Effect.gen(function* () { return yield* Effect.try(() => port(raw)) }) }
 ```
 
-| Rule | Diagnostic | Quick fix |
+| Rule | Diagnostic | Suggested source edit |
 | --- | --- | --- |
 | a module declaration below the file's top level | `EK4001` | move it to the top level |
 | `export module name { }` or `export default module { }` | `EK4002` | `export { … } from name` |

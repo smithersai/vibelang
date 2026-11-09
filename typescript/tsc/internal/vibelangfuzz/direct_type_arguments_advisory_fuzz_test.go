@@ -9,7 +9,7 @@ import (
 )
 
 const directTypeArgumentsQuote = "| \x60EK4834\x60 | \x60Effect.succeed(v)\x60 or \x60Effect.fail(e)\x60 as the direct operand of bare \x60try\x60 in effect code |"
-const directTypeArgumentsSafetyQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
+const directTypeArgumentsSafetyQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 
 func directTypeArgumentsQuoted(t testing.TB) {
 	t.Helper()

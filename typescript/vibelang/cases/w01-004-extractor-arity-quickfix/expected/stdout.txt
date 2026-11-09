@@ -1,1 +1,0 @@
-EK0703 quick fixes write when X: and, for a singleton list, when X(let e):

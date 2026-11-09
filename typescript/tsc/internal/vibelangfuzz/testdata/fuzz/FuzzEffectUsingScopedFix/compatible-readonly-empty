@@ -1,3 +1,0 @@
-go test fuzz v1
-string("compatible-readonly-empty")
-byte(0)

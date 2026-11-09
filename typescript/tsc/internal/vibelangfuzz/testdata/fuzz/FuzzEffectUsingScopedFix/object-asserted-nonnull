@@ -1,3 +1,0 @@
-go test fuzz v1
-string("object-asserted-nonnull")
-byte(0)

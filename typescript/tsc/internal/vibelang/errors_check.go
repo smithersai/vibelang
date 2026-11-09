@@ -142,8 +142,7 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 	// VIP-13/VIP-29 reject the clause, independently of the native base's
 	// tag width. Keep the old lowering available only to the preserving fix.
 	if form == errorFormSubclass || form == errorFormSchemaSubclass {
-		d := report(c, base, EK2117.With("An error declaration cannot have an extends clause. Use a union to group errors, or keep inheritance in a TypeScript class."))
-		note(d, "The quick fix writes the equivalent class and preserves its base, tag and constructor.")
+		report(c, base, EK2117.With("An error declaration cannot have an extends clause. Use a union to group errors, or keep inheritance in a TypeScript class."))
 		// These checks belong to the generated helper call, not to the
 		// source clause that is already rejected.
 		if form == errorFormSubclass {

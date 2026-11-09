@@ -5,12 +5,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 )
 
 func copyCompilerFixture(t *testing.T, fixture, root string) string {
@@ -163,24 +159,6 @@ func copyCompilerFixture(t *testing.T, fixture, root string) string {
 		}
 	}
 	return dir
-}
-
-// commandLineDiagnostics returns the diagnostics `vibelang -p` reports for
-// program: its semantic diagnostics only when it has no syntax errors.
-func commandLineDiagnostics(t *testing.T, configErrors []*ast.Diagnostic, program *compiler.Program) []*ast.Diagnostic {
-	t.Helper()
-	all := slices.Concat(configErrors, program.GetConfigFileParsingDiagnostics())
-	syntactic := program.GetSyntacticDiagnostics(t.Context(), nil)
-	all = append(all, syntactic...)
-	if len(syntactic) == 0 {
-		all = append(all, program.GetGlobalDiagnostics(t.Context())...)
-		all = append(all, program.GetSemanticDiagnostics(t.Context(), nil)...)
-		// What a sidecar cannot print, which vibelang reports from its emit.
-		if sidecars := program.EmitDeclarationSidecars(t.Context(), func(string, string) error { return nil }, nil); sidecars != nil {
-			all = append(all, sidecars.Diagnostics...)
-		}
-	}
-	return all
 }
 
 // The compiler fixtures must see the runtime as an installed package. A

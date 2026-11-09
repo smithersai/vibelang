@@ -550,7 +550,7 @@ for (const d of ds) {
 }
 if (${withError} && pkg === "app") {
   console.log("src/index.vibe(1,1): error EK4833: configured as an error, with the same code as a retained warning.")
-  console.log("  No quick fix: keep the qualified Effect type here.")
+  console.log("  Keep the qualified Effect type here.")
   process.exitCode = 1
 }
 `
@@ -609,7 +609,7 @@ if (!fs.existsSync("src/index.vibe")) process.exit(0)
 for (const d of ${JSON.stringify(entries)}) {
   if (d.pkg !== pkg) continue
   console.log("src/index.vibe(" + d.line + ",1): " + d.category + " " + d.code + ": generated finding")
-  console.log("  No quick fix: preserve this signature.")
+  console.log("  Preserve this signature.")
   if (d.category === "error") process.exitCode = 1
 }
 `, { mode: 0o755 })
@@ -628,7 +628,7 @@ for (const d of ${JSON.stringify(entries)}) {
         const records = settled.warningExceptions.filter(e => e.file === file)
         assert.deepEqual(new Set(records.map(e => e.code + ":" + e.line)),
           new Set(expected.map(d => d.code + ":" + d.line)))
-        assert.ok(records.every(e => e.name === "warning-fix-refused" && /signature|TS2322/.test(e.reason)))
+        assert.ok(records.every(e => e.name === "warning-retained" && e.reason === "Warning retained for manual review."))
         assert.deepEqual(done[pkg].warningExceptions, records)
       }
     } finally { rmSync(f.root, { recursive: true, force: true }) }

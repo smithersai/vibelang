@@ -140,7 +140,7 @@ For VIP-10, write a direct implementation call inside Effect code, `Users.find(i
 
 For VIP-19, a closure in a `for concurrent` iterable expression retains the uninitialized head binding. If this correction makes an old outer capture fail type checking, rename the item binding and its uses, preserving the RHS reference to the live outer binding, including later mutations. See [basic concurrency](/concurrency/007-basic-concurrency).
 
-The editor quick fix also rewrites service access written as a call, `try FileSystem.FileSystem()`, to `try FileSystem.FileSystem`. The call reports `TS2349`, or `TS2348` for a class tag or a `Context.Reference`. A function that returns an Effect keeps its call, and a read without `try` keeps its error.
+Replace service access written as a call, `try FileSystem.FileSystem()`, with `try FileSystem.FileSystem`. The call reports `TS2349`, or `TS2348` for a class tag or a `Context.Reference`. A function that returns an Effect keeps its call, and a read without `try` keeps its error.
 
 The repository migration flow, with `"platformModuleBodies": true`, keeps a newly created compiler companion private when a package export wildcard would otherwise expose it. It records exact `null` export exclusions before writing the manifest and removes them when reverting the source. A pre-existing companion or authored export is preserved.
 
@@ -259,7 +259,7 @@ A native `.tsx` sibling keeps the project’s `jsx` output extension: a source i
 
 ### Inspect repaired trailing blocks
 
-A legacy trailing block reports `EK1101`. Apply its repair before running the program. Inspect the explicit argument: an Effect program uses `effect { ... }`, an Effect callback uses `effect () => { ... }`, and a plain callback uses `() => { ... }`. These destinations have different execution behavior. The automatic repair needs to prove the argument kind and placement; an ambiguous call requires a manual rewrite.
+A legacy trailing block reports `EK1101`. Apply its repair before running the program. Inspect the explicit argument: an Effect program uses `effect { ... }`, an Effect callback uses `effect () => { ... }`, and a plain callback uses `() => { ... }`. These destinations have different execution behavior. Check the argument kind and placement before changing the source.
 
 ## 4. Add an entry point
 

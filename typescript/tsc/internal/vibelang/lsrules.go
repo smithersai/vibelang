@@ -9,7 +9,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/lint"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -75,22 +74,11 @@ func init() {
 		return isFiberOperator(ast.SkipParentheses(expression)) && !inEffectCode(expression)
 	})
 	// Ordinary generic repairs are excluded from the historical VIP migration.
-	tsFormFixCodes = append(tsFormFixCodes, EK4802.Code)
 	for _, m := range []*Message{EK4801, EK4802, EK4803, EK4804, EK4805, EK4806, EK4807, EK4808, EK4809, EK4810,
 		EK4811, EK4812, EK4813, EK4814, EK4815, EK4816, EK4817, EK4818} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkEffectRules)
-	ls.RegisterCodeFixProvider(inferredFormFix)
-	ls.RegisterCodeFixProvider(trustedValueFix)
-	ls.RegisterCodeFixProvider(callEffectFix)
-	ls.RegisterCodeFixProvider(inferredEffectTypeArgumentFix)
-	ls.RegisterCodeFixProvider(mergeAllFix)
-	ls.RegisterCodeFixProvider(assertionFix)
-	tsFormFixCodes = append(tsFormFixCodes, EK4813.Code)
-	ls.RegisterCodeFixProvider(outdatedAPIFix)
-	ls.RegisterCodeFixProvider(outdatedAPITypeScriptFix)
-	ls.RegisterCodeFixProvider(schemaIsFix)
 }
 
 // ruleCheck checks one .vibe file against the rules.
@@ -221,16 +209,6 @@ func isDiscardingForm(expression *ast.Node) bool {
 	return ast.IsAssignmentExpression(expression, false)
 }
 
-// programMembers reports whether t, a union, has a member that is an Effect
-// value or a program (programOf), and whether every member is one.
-func (a *analyzer) programMembers(t *checker.Type) (some bool, all bool) {
-	if t == nil || t.Flags()&checker.TypeFlagsUnion == 0 {
-		return false, false
-	}
-	program := func(member *checker.Type) bool { return isEffectType(a.checker, member) || a.programOf(member) != nil }
-	return core.Some(t.Types(), program), core.Every(t.Types(), program)
-}
-
 // isEffectSubtype reports whether t is an Effect with structure of its own
 // (D24), or a union of such types, as Exit is.
 func isEffectSubtype(c *checker.Checker, t *checker.Type) bool {
@@ -238,28 +216,6 @@ func isEffectSubtype(c *checker.Checker, t *checker.Type) bool {
 		return len(t.Types()) > 0 && core.Every(t.Types(), func(member *checker.Type) bool { return isEffectSubtype(c, member) })
 	}
 	return effectInterfaceSymbol(c, t) != nil
-}
-
-// returnedParts returns the parts of value, a returned expression, whose
-// value can be the one returned: a conditional's arms, the operands of ?? and
-// ||, and the right side of &&, whose left side is returned only when it is
-// falsy, which an Effect never is.
-func returnedParts(value *ast.Node) []*ast.Node {
-	value = ast.SkipParentheses(value)
-	switch {
-	case value.Kind == ast.KindConditionalExpression:
-		conditional := value.AsConditionalExpression()
-		return []*ast.Node{conditional.WhenTrue, conditional.WhenFalse}
-	case ast.IsBinaryExpression(value):
-		binary := value.AsBinaryExpression()
-		switch binary.OperatorToken.Kind {
-		case ast.KindQuestionQuestionToken, ast.KindBarBarToken:
-			return []*ast.Node{binary.Left, binary.Right}
-		case ast.KindAmpersandAmpersandToken:
-			return []*ast.Node{binary.Right}
-		}
-	}
-	return nil
 }
 
 // checkThrow reports what an Effect function's throw statement fails with:
@@ -338,7 +294,6 @@ func (r *ruleCheck) checkClass(class *ast.Node) {
 				// An error declaration's constructor takes one object of its
 				// fields, so it cannot keep the positional constructor
 				// new Legacy(message, options) that the class exports.
-				note(d, "No quick fix: an error declaration's constructor takes one object of its fields, so declaring {0} with error would change the constructor it exports, new {0}(message, options).", name)
 			} else {
 				note(d, "Declare it with error instead, as in error {0} { message: string }, so that catch, match, and is can tell it apart by its _tag.", core.IfElse(class.Name() != nil, name, "Failed"))
 			}
@@ -741,7 +696,7 @@ func (r *ruleCheck) checkOutdated(access *ast.Node) {
 	if change.renamed != "" {
 		d := report(r.c, name, EK4813, module, name.Text(), change.renamed)
 		if change.note != "" {
-			note(d, "No automatic fix: "+change.note)
+			note(d, change.note)
 		}
 	} else {
 		report(r.c, name, outdatedAPI, module, name.Text())

@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"strings"
 )
@@ -15,12 +14,10 @@ func init() {
 	for _, m := range []*Message{EK4854, EK4855} {
 		registry[m.Code] = m
 		tsFormMessages = append(tsFormMessages, m)
-		tsFormFixCodes = append(tsFormFixCodes, m.Code)
+
 	}
-	tsFormRules[EK4854.Code] = &tsFormRule{message: EK4854, find: findLegacyServices, plan: legacyServiceRewrite, diagnosed: ast.IsClassDeclaration}
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK4855.Code)
-	tsFormRules[EK4855.Code] = &tsFormRule{message: EK4855, find: findLegacyDefaults, plan: legacyDefaultRewrite, diagnosed: ast.IsPropertyDeclaration}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4854.Code, EK4855.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
+	tsFormRules[EK4854.Code] = &tsFormRule{message: EK4854, find: findLegacyServices}
+	tsFormRules[EK4855.Code] = &tsFormRule{message: EK4855, find: findLegacyDefaults}
 }
 
 // This recognizes the retired spelling only for migration; it never affects

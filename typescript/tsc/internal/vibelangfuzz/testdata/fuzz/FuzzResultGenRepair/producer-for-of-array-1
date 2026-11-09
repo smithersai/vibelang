@@ -1,3 +1,0 @@
-go test fuzz v1
-string("for-of-array")
-byte(1)

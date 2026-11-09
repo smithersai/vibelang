@@ -1,21 +1,17 @@
 package vibelang
 
 import (
-	"context"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 func init() {
 	fileChecks = append(fileChecks, checkSchemaFieldInitializers)
-	registerNativeSchemaFix(1247)
-	ls.RegisterCodeFixProvider(schemaFieldInitializerFix)
+
 }
 
 type schemaFieldInitializerSite struct {
@@ -72,20 +68,4 @@ func checkSchemaFieldInitializers(c *checker.Checker, file *ast.SourceFile) {
 	for _, site := range schemaFieldInitializerSites(file) {
 		c.AddDiagnostic(ast.NewDiagnostic(file, site.expression, diagnostics.A_type_literal_property_cannot_have_an_initializer))
 	}
-}
-
-var schemaFieldInitializerFix = &ls.CodeFixProvider{
-	Source:     "",
-	ErrorCodes: []int32{1247},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		if fix.Diagnostic == nil {
-			return nil, nil
-		}
-		for _, site := range schemaFieldInitializerSites(fix.SourceFile) {
-			if site.expression == fix.Span {
-				return []*ls.CodeAction{{Description: "Write the schema field without an ignored initializer", Changes: replaceRange(fix, site.removal.Pos(), site.removal.End(), site.trivia)}}, nil
-			}
-		}
-		return nil, nil
-	},
 }

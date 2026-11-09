@@ -13,7 +13,7 @@ import (
 
 const platformHTTPAdviceTarget = "FuzzPlatformHTTPAdvice"
 const platformHTTPColdQuote = "Returning an Effect does not itself execute it."
-const platformHTTPDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const platformHTTPDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 
 func TestPlatformHTTPAdviceQuoted(t *testing.T) {
 	platformHTTPBoundaryQuoted(t)

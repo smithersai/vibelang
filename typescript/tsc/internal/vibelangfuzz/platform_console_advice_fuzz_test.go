@@ -13,7 +13,7 @@ import (
 
 const platformConsoleAdviceTarget = "FuzzPlatformConsoleAdvice"
 const platformConsoleColdQuote = "Returning an Effect does not itself execute it."
-const platformConsoleDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible."
+const platformConsoleDiagnosticQuote = "Every VibeLang diagnostic says what is wrong and how to fix it."
 
 func TestPlatformConsoleAdviceQuoted(t *testing.T) {
 	chapterSays(t, "002-running.md", platformConsoleColdQuote)

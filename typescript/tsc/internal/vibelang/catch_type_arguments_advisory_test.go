@@ -51,7 +51,7 @@ func TestCatchTypeArgumentsAdvisory(t *testing.T) {
 							}
 							if d.Source() == diagnosticSource && d.Code() == 4835 {
 								count++
-								if !strings.Contains(diagnosticWithNotes(d), "explicit type arguments") {
+								if !strings.Contains(diagnosticWithNotes(d), "explicit type-argument contract") {
 									t.Fatalf("missing contract explanation: %s", diagnosticWithNotes(d))
 								}
 							}

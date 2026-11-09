@@ -1,3 +1,0 @@
-go test fuzz v1
-string("type-generic")
-byte(0)

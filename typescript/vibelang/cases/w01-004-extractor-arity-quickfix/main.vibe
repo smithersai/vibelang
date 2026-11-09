@@ -1,3 +1,0 @@
-// rule-evidence: docs/design/src/004-match.md#class-patterns | When a class or fixed pattern's extracted list has a statically known length (an `error` or `schema error` class and the thirty-four retained errors: 1; `Option.Some`, `Exit.*`, `Result.*`: 1; `Option.None`: 0) and its known length lies outside the admitted interval of an extractor without a rest pattern: required positions through total positions, counting every elision slot and counting optional elements only in the maximum, VibeLang reports the VIP-38 lint warning `EK0703`, with the quick fixes `when X:` and, for a singleton list, `when X(let e):`.
-// run.mjs asks the language server for the EK0703 quick fixes of each probe.
-export const witness = 1

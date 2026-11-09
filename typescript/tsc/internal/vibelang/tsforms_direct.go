@@ -45,10 +45,8 @@ var directFailMessage = EK4834.With("{0} runs here, so it fails the function as 
 
 func init() {
 	tsFormRules[EK4834.Code] = &tsFormRule{
-		message:   EK4834,
-		find:      findDirectForms,
-		plan:      directFormRewrite,
-		diagnosed: ast.IsCallExpression,
+		message: EK4834,
+		find:    findDirectForms,
 	}
 }
 

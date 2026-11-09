@@ -1,15 +1,12 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 // Two top-level is patterns that bind one name in one lexical home redeclare
@@ -31,7 +28,6 @@ import (
 // smallest number that no identifier of the file uses.
 
 func init() {
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{ErrorCodes: []int32{2451, 2300}, GetCodeActions: bindingRenameActions})
 	checker.RegisterBindDiagnosticsFilterHook(explainBindingRename)
 }
 
@@ -83,11 +79,6 @@ type bindingRename struct {
 	code    int32        // 2451, or 2300 beside a parameter
 	newName string       // the name the rename writes
 	edits   []sourceEdit // the binding, then each later use, in source order
-}
-
-// description names the fix.
-func (r bindingRename) description() string {
-	return "Rename the later binding " + r.name.Text() + " and its uses to " + r.newName
 }
 
 // at reports whether span lies in the later binding's name or the first
@@ -337,24 +328,4 @@ func nearestOpener(text string, end int) byte {
 
 func isIdentifierByte(b byte) bool {
 	return b == '_' || b == '$' || b >= '0' && b <= '9' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= 0x80
-}
-
-// bindingRenameActions offers the rename at either report of the duplicate.
-func bindingRenameActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-	if !fix.SourceFile.IsVibeLang() {
-		return nil, nil
-	}
-	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-	defer done()
-	for _, r := range bindingRenames(c, fix.SourceFile) {
-		if !r.at(fix.SourceFile, fix.Span) {
-			continue
-		}
-		var changes []*lsproto.TextEdit
-		for _, e := range r.edits {
-			changes = append(changes, replaceRange(fix, e.start, e.end, e.text)...)
-		}
-		return []*ls.CodeAction{{Description: r.description(), Changes: changes}}, nil
-	}
-	return nil, nil
 }

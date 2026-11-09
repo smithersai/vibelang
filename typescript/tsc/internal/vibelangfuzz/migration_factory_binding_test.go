@@ -5,8 +5,7 @@ import (
 	"testing"
 )
 
-const migrationFactoryBindingTarget = "FuzzMigrationFactoryBinding"
-const migrationFactoryBindingQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
+const migrationFactoryBindingQuote = "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite."
 const factoryBindingPrefix = "import { Effect } from \"effect\"\nlet constructions = 0\n/** @throws {never} */\nexport const count = () => constructions\n"
 const factoryBindingSimple = factoryBindingPrefix + "export function make(label = \"value\") { constructions++; return Effect.succeed(label) }\n"
 const factoryBindingGuarded = factoryBindingPrefix + "export function make(label = \"first\") { constructions++; let closed = false; return Effect.sync(() => { if (closed) return \"closed\"; closed = true; return label }) }\n"

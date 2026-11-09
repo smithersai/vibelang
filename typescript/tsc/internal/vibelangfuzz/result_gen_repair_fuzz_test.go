@@ -1,18 +1,5 @@
 package vibelangfuzz
 
-import (
-	"fmt"
-	"strings"
-	"testing"
-)
-
-func TestResultGenRepairQuoted(t *testing.T) {
-	chapterSays(t, "../vips/0021-producers.md", "A plain `function*` stays a JavaScript generator.")
-	if !strings.Contains(SpecText("007-tooling.md"), migrationDeclarationFixQuote) {
-		t.Fatalf("chapter 007 no longer says %q", migrationDeclarationFixQuote)
-	}
-}
-
 // resultGenBodies pairs each key with a generator body and whether plain code
 // can say the same thing. An explicit producer used as a native generator
 // keeps EK1002 when its body cannot be repaired.
@@ -31,55 +18,4 @@ var resultGenBodies = map[string]struct {
 	"nested":       {"return (yield* VALUE) + 1;", false},
 	"this":         {"const y = yield* VALUE; return [y].map(() => this)[0];", false},
 	"fallthrough":  {"yield* VALUE;", false},
-}
-
-// Static oracle, chapter 007: a repair is offered only where a plain body keeps
-// Result.gen's evaluation order.
-func FuzzResultGenRepair(f *testing.F) {
-	startShortBudget(f)
-	for key := range resultGenBodies {
-		f.Add(key, uint8(0))
-		f.Add(key, uint8(1))
-	}
-	w := NewWorkspace(f)
-	f.Fuzz(func(t *testing.T, key string, variant uint8) {
-		TestResultGenRepairQuoted(t)
-		rule, ok := resultGenBodies[key]
-		if !ok {
-			return
-		}
-		value := "Result.succeed<number, string>(1)"
-		if variant%2 != 0 {
-			value = "Result.fail<string, number>(\"e\")"
-		}
-		source := fmt.Sprintf("export const f = (xs: Iterable<number>, n: number): Result.Result<number, string> => Result.gen(function* () { %s });", strings.ReplaceAll(rule.body, "VALUE", value))
-		native, err := w.Compile(t.Context(), Single(source))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer native.Remove()
-		for _, diagnostic := range native.Diagnostics {
-			if diagnostic.Source() == "EK" && diagnostic.Code() == 1002 {
-				Gap(t, "FuzzResultGenRepair", key+":native", "VIP-21: a plain function* stays a JavaScript generator")
-			}
-		}
-		source = strings.Replace(source, "Result.gen(function*", "Result.gen(effect function*", 1)
-		r, err := w.Compile(t.Context(), Single(source))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer r.Remove()
-		found := false
-		for _, d := range r.Diagnostics {
-			if d.Source() == "EK" && d.Code() == 1002 {
-				found = true
-				if offered := toolsOffersQuickFix(t, w, r, "main.vibe", d); offered != rule.fixed {
-					Gap(t, "FuzzResultGenRepair", key, "chapter 007: %q; quick fix offered = %v, want %v: %s", migrationDeclarationFixQuote, offered, rule.fixed, source)
-				}
-			}
-		}
-		if !found {
-			Gap(t, "FuzzResultGenRepair", key+":diagnostic", "explicit producer passed to Result.gen must reach EK1002")
-		}
-	})
 }

@@ -5,7 +5,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-var ek1302Setter = EK1302.With("An error declaration cannot contain a setter. Write a method instead, or use the quick fix to keep the setter in an Effect TypeScript class.")
+var ek1302Setter = EK1302.With("An error declaration cannot contain a setter. Write a method instead, or keep the setter in an Effect TypeScript class.")
 
 func init() {
 	fileChecks = append(fileChecks, checkErrorSetters)

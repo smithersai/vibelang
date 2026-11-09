@@ -1,3 +1,0 @@
-go test fuzz v1
-string("EK4839@tsforms-option-match-api")
-[]byte("\x00")

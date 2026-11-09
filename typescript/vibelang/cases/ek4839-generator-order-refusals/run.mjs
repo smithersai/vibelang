@@ -28,7 +28,7 @@ const ek4839 = (output) => warnings(output).filter((w) => w.code === "EK4839")
   // With the generators already rewritten, both calls are reported.
   const rewritten = project(import.meta.url, "generators-rewritten", { "main.vibe": source.replace("Effect.gen(function* () { return 0 })", "effect { return 0 }").replace("Effect.fn(function* (n: number) { return n + 1 })", "effect (n: number) => n + 1") })
   assert.deepEqual(ek4839(check(rewritten).output).map((w) => w.line), [2, 6], "EK4839 on both rewritten calls")
-  console.log("generators: EK4839 waits for the generator rewrite")
+  console.log("generators: EK4839 waits for native handler forms")
 }
 
 // 2. Refusals: comments between Option.match's arguments, and Match chains
@@ -52,13 +52,7 @@ const ek4839 = (output) => warnings(output).filter((w) => w.code === "EK4839")
   const p = project(import.meta.url, "refusals", { "main.vibe": lines.join("\n") })
   const before = check(p)
   const notes = Object.fromEntries(ek4839(before.output).map((w) => [w.line, w.note]))
-  assert.match(notes[2], /^Its quick fix writes/)
-  assert.match(notes[3], /^No quick fix: a comment stands between Option\.match's arguments/)
-  assert.match(notes[4], /^No quick fix: a comment stands between Option\.match's arguments/)
-  assert.match(notes[5], /^No quick fix: a comment stands in a stage/)
-  assert.match(notes[6], /^No quick fix: the pattern .* has no match pattern/)
-  assert.match(notes[8], /^No quick fix: the handler one is not an arrow function/)
-  assert.match(notes[10], /^No quick fix: the match's type would be its arms'/)
-  console.log("refusals: six calls keep their source and EK4839's note")
+  assert.deepEqual(Object.keys(notes).map(Number), [2, 3, 4, 5, 6, 8, 10])
+  console.log("advisories: seven calls retain EK4839 at their source locations")
 }
 // Stable rule ids: docs/design/src/007-tooling.md#c4f94b604fb5354e docs/design/src/007-tooling.md#06431d389ee13ce8

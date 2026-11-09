@@ -1,3 +1,0 @@
-go test fuzz v1
-string("binding-type-query")
-byte('\x01')

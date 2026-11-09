@@ -12,3 +12,10 @@ export effect function inHatch() {
     await Promise.resolve(1)
   })
 }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK1802` | a retired `await.all`, `await.race`, `await.any` or `await.allSettled`; write the `try` operation that replaces it | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
+
+export effect function manualConcurrentOperations() {
+  return try.all([Effect.succeed(1), Effect.succeed(2)])
+}

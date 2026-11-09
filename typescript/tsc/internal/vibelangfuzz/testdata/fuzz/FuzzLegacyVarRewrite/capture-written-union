@@ -1,3 +1,0 @@
-go test fuzz v1
-string("capture-written-union")
-byte(0)

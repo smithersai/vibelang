@@ -1,9 +1,7 @@
 package vibelangfuzz
 
 import (
-	"os"
 	"strings"
-	"testing"
 )
 
 // FuzzAmbientServiceContract checks a contract's requirement slot against
@@ -51,20 +49,6 @@ var ambientContracts = []struct{ key, format string }{
 var ambientLibs = []struct{ key, libs string }{
 	{"dom", `["ES2022", "DOM"]`},
 	{"es", `["ES2022"]`},
-}
-
-func TestAmbientServiceContractQuoted(t *testing.T) { ambientServiceChapters(t) }
-
-func ambientServiceChapters(f testing.TB) {
-	for _, q := range ambientServiceQuotes {
-		chapter, err := os.ReadFile(SpecPath(q.chapter))
-		if err != nil {
-			f.Fatal(err)
-		}
-		if !strings.Contains(string(chapter), q.quote) {
-			f.Fatalf("%s no longer says %q", q.chapter, q.quote)
-		}
-	}
 }
 
 type ambientServiceInput struct{ service, contract, lib string }

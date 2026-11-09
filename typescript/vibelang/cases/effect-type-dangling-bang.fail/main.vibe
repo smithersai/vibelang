@@ -29,3 +29,9 @@ type Opt = [User!!?]
 type Opt2 = [User!NotFound?]
 export { ok, ok2, ok3 }
 export type { Clock, Opt, Opt2 }
+
+// Manual forms retain their compiler contracts without automatic repairs.
+// rule-evidence: docs/design/src/900-appendices.md#notes-on-the-productions | A `!` after a type with no slot and no second `!` after it on its line is a syntax error, as in TypeScript (TS17019); the manual change parenthesizes: `(x as Foo)!`.
+
+type ManualEntity = { value: number }
+export const manualNonNull = (null as unknown as ManualEntity | undefined)!

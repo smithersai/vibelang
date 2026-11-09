@@ -191,28 +191,6 @@ func withoutRequirement(c *checker.Checker, info *effectInfo, handled *checker.T
 	return out
 }
 
-// hasVibeLangStatement reports whether fn's own body has a provide block or a
-// handle statement, which make it an Effect: they run Effect.provide and
-// handle.
-func hasVibeLangStatement(fn *ast.Node) bool {
-	return hasProvideBlock(fn) || hasHandleStatement(fn) || hasPrimitiveStatement(fn)
-}
-
-// hasHandleStatement reports whether fn's own body has a handle statement.
-func hasHandleStatement(fn *ast.Node) bool {
-	if fn.Body() == nil {
-		return false
-	}
-	var visit func(n *ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if isFunctionBoundary(n) {
-			return false
-		}
-		return isHandleStatement(n) || n.ForEachChild(visit)
-	}
-	return visit(fn.Body())
-}
-
 // checkHandleStatements checks control clauses during legacy source recovery.
 func checkHandleStatements(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(n *ast.Node, inFunction bool) bool

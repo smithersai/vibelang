@@ -12,7 +12,7 @@ import (
 
 func TestMigrationNativePeerInferenceQuoted(t *testing.T) {
 	chapterSays(t, "001-functions.md", "each export's type identical to \x60tsc\x60's in both directions")
-	chapterSays(t, "007-tooling.md", "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output")
+	chapterSays(t, "007-tooling.md", "Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.")
 }
 func FuzzMigrationNativePeerInference(f *testing.F) {
 	startShortBudget(f)

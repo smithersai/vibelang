@@ -1,3 +1,0 @@
-go test fuzz v1
-string("binding-hoisted-function")
-byte('\x01')

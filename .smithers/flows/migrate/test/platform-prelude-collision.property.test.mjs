@@ -14,7 +14,7 @@ const causes = diagnostic => platformGlobalsFromCauses([{ "src/Reply.vibe": { di
 
 test("the platform collision handoff follows the platform split rule", () => {
   const spec = readFileSync(new URL("../../../../docs/design/src/005-services.md", import.meta.url), "utf8")
-  assert.ok(spec.includes("The quick fix moves the code into a sibling `" + ".ts` module that does not exist yet"))
+  assert.ok(spec.includes("Move the code to a TypeScript boundary"))
   const messages = readFileSync(new URL("../../../../typescript/tsc/internal/vibelang/prelude_collision_diagnostic.go", import.meta.url), "utf8")
   assert.ok(messages.includes("The global {0} is platform code, which lives in a .ts file."))
   assert.ok(messages.includes("The global {0} has {0}.{1}, and it is platform code, which lives in a .ts file."))

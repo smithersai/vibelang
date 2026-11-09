@@ -14,12 +14,12 @@ import (
 
 const migrationHomeTarget = "FuzzMigrationThrowCallHome"
 const migrationContainerTarget = "FuzzMigrationEffectContainers"
-const migrationHomeQuote = "The migration preserves eager factory calls, argument evaluation and closure state shared by repeated runs"
+const migrationHomeQuote = "Preserve eager factory calls, argument evaluation and closure state shared by repeated runs"
 const migrationPlainQuote = "an unmarked callable is plain, and returning an Effect leaves it unrun."
 const migrationBodyQuote = "No VibeLang rule runs on it, except the three below."
 
 func TestMigrationFactoryBoundariesQuoted(t *testing.T) {
-	r4Quoted(t, "007-tooling.md", migrationHomeQuote)
+	r4Quoted(t, "../../../.smithers/flows/migrate/rules.md", migrationHomeQuote)
 	r4Quoted(t, "001-functions.md", migrationPlainQuote, migrationBodyQuote)
 	r4Quoted(t, "003-failures.md", migrationTrackedThrowQuote)
 }

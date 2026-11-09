@@ -1,13 +1,9 @@
 package vibelang
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
 // VIP-17 uses native Fiber values; the retired region escape diagnostic
@@ -77,52 +73,6 @@ func TestFiberFlows(t *testing.T) {
 			}
 
 		})
-	}
-}
-
-// A stale legacy diagnostic in an editor cannot choose a different owner.
-func TestFiberFlowFixes(t *testing.T) {
-	for _, source := range []string{
-		"effect function one(){return 1}\nexport effect function main(){return fork one()}",
-		"effect function one(){return 1}\nexport const main=effect ()=>fork one()",
-		"effect function one(){return 1}\nexport effect function main(){return fork {try one()}}",
-		"effect function one(){return 1}\nlet saved:unknown\nexport effect function main(){saved=fork one();return 7}",
-	} {
-		for _, crlf := range []bool{false, true} {
-			s := source
-			if crlf {
-				s = strings.ReplaceAll(s, "\n", "\r\n")
-			}
-			t.Run(s, func(t *testing.T) {
-				program, file, service, converters := editorProgram(t, s)
-				for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-					if d.Code() == EK4838.Code {
-						t.Fatalf("obsolete ownership diagnostic: %s", d.String())
-					}
-				}
-				pos := strings.Index(s, "fork")
-				if pos < 0 {
-					t.Fatal("missing stale diagnostic site")
-				}
-				stale := ast.NewExternalDiagnostic(file, core.NewTextRange(pos, pos+4), diagnosticSource, EK4838.Category, EK4838.Code, format(EK4838.Text, []any{"the old region", "retained"}))
-				d := lsconv.DiagnosticToLSPPush(t.Context(), converters, stale)
-				only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-				response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-					TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-					Range:        d.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{d}, Only: &only},
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if response.CommandOrCodeActionArray != nil {
-					for _, item := range *response.CommandOrCodeActionArray {
-						if a := item.CodeAction; a != nil && a.Edit != nil && a.Edit.Changes != nil && len(*a.Edit.Changes) > 0 {
-							t.Errorf("legacy diagnostic changed lifetime: %s", a.Title)
-						}
-					}
-				}
-			})
-		}
 	}
 }
 

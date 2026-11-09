@@ -13,7 +13,7 @@ import (
 const foreignNoteTarget = "FuzzForeignCallNoteForms"
 
 // The repairs chapter 900 names for EK0403, the first being the defect bridge.
-const foreignNoteRepairs = "| `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code; quick fixes: first wrap with `try Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))` to preserve defects and E"
+const foreignNoteRepairs = "| `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code; write an explicit `Effect.try` bridge ([Failures](003-failures.md#plain-code-never-throws)) | 4 | [Failures](003-failures.md#calls-in-effect-code) |"
 
 // The empty legacy wrapper is no accepted form, so a note must not name it.
 const foreignNoteRetired = "The historical `trusted(f, [])` runtime wrapper is not an accepted VIP form."

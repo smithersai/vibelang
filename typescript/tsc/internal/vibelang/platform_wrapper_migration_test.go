@@ -66,5 +66,3 @@ func TestLegacyWrappedPlatformMigrationWarning(t *testing.T) {
 		})
 	}
 }
-
-const smithersRestoreWrapper = "export effect function restore(previous: string | undefined) { try sync((previous) => { if (previous === undefined) delete process.env.COMPLETE; else process.env.COMPLETE = previous }, previous) }"

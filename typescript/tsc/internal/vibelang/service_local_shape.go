@@ -1,12 +1,7 @@
 package vibelang
 
 import (
-	"context"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/astnav"
-	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // A body-only service has a public Shape namespace only at module scope.
@@ -55,60 +50,4 @@ func serviceOwnShapeName(class *ast.Node, name *ast.Node) bool {
 		}
 	}
 	return false
-}
-
-func localServiceShapeName(c *checker.Checker, name *ast.Node) bool {
-	if name == nil || !ast.IsQualifiedName(name) || name.AsQualifiedName().Right.Text() != serviceShapeName {
-		return false
-	}
-	if ast.IsTypeReferenceNode(name.Parent) && name.Parent.AsTypeReferenceNode().TypeArguments != nil {
-		return false // the non-generic Shape alias cannot preserve these arguments
-	}
-	symbol := c.ResolveEntityName(name.AsQualifiedName().Left, ast.SymbolFlagsType)
-	if symbol == nil {
-		return false
-	}
-	class := symbol.ValueDeclaration()
-	if classKindOf(class) == serviceClass {
-		return !serviceShapeNamespaceScope(class) && !serviceOwnShapeName(class, name)
-	}
-	// Native Context keys have no synthetic namespace. Preserve an explicitly
-	// declared Shape member and reject type aliases or shadowing type parameters.
-	if symbol.Flags()&ast.SymbolFlagsClass == 0 || c.GetMergedSymbol(symbol).Exports()[serviceShapeName] != nil {
-		return false
-	}
-	return serviceShapeOfIdentifier(c, c.GetDeclaredTypeOfSymbol(symbol)) != nil
-}
-
-func localServiceShapeEdit(file *ast.SourceFile, name *ast.Node) sourceEdit {
-	left := nodeText(file, name.AsQualifiedName().Left)
-	// A type import works without a Context global and cannot capture a local binding.
-	return sourceEdit{nodeStart(file, name), name.End(), "import(\"effect/Context\").Service.Shape<typeof " + left + ">"}
-}
-
-func init() {
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{
-		ErrorCodes: []int32{2702, 2503, 2713},
-		GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-			name := astnav.GetTokenAtPosition(fix.SourceFile, fix.Span.Pos())
-			if name == nil {
-				return nil, nil
-			}
-			if ast.IsIdentifier(name) {
-				name = name.Parent
-			}
-			c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-			defer done()
-			if !localServiceShapeName(c, name) {
-				return nil, nil
-			}
-			edit := localServiceShapeEdit(fix.SourceFile, name)
-			description := "Use Context.Service.Shape for the local service"
-			symbol := c.ResolveEntityName(name.AsQualifiedName().Left, ast.SymbolFlagsType)
-			if classKindOf(symbol.ValueDeclaration()) != serviceClass {
-				description = "Use Context.Service.Shape for the service key"
-			}
-			return []*ls.CodeAction{{Description: description, Changes: replaceRange(fix, edit.start, edit.end, edit.text)}}, nil
-		},
-	})
 }

@@ -5,7 +5,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // An effect function returns an Effect, as an async function returns a
@@ -31,16 +30,11 @@ var effectReturnTypeOmitted = EK0106.With("An effect function returns an Effect,
 
 func init() {
 	registry[EK0106.Code] = EK0106
-	tsFormFixCodes = append(tsFormFixCodes, EK0106.Code)
-	vipMigrationFixCodes = append(vipMigrationFixCodes, EK0106.Code)
 	fileChecks = append(fileChecks, checkEffectReturnTypes)
 	tsFormRules[EK0106.Code] = &tsFormRule{
-		message:   EK0106,
-		find:      func(*checker.Checker, *ast.SourceFile, func(*ast.Node, *formRewrite, ...any)) {},
-		plan:      effectReturnTypeRewrite,
-		diagnosed: isWrittenReturnTypeOfEffectFunction,
+		message: EK0106,
+		find:    func(*checker.Checker, *ast.SourceFile, func(*ast.Node, *formRewrite, ...any)) {},
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK0106.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 // isWrittenReturnTypeOfEffectFunction reports whether node is the return
@@ -64,20 +58,12 @@ func checkEffectReturnTypes(c *checker.Checker, file *ast.SourceFile) {
 				text := nodeText(file, t)
 				rewrite := effectReturnTypeRewrite(c, file, t)
 				omits := rewrite.description == inferredEffectReturn
-				var d *ast.Diagnostic
 				if omits {
-					d = reportAt(c, file, tsFormSpan(file, t), effectReturnTypeOmitted, text)
+					reportAt(c, file, tsFormSpan(file, t), effectReturnTypeOmitted, text)
 				} else {
-					d = reportAt(c, file, tsFormSpan(file, t), EK0106, text, rewrite.description)
+					reportAt(c, file, tsFormSpan(file, t), EK0106, text, rewrite.description)
 				}
-				available := preserveRewriteComments(file, rewrite)
-				if available.fixable() && omits {
-					note(d, "Its quick fix removes the return type.")
-				} else if available.fixable() {
-					note(d, "Its quick fix writes {0}.", rewrite.description)
-				} else if available.why != "" {
-					note(d, "{0}", available.why)
-				}
+
 			}
 		}
 		return node.ForEachChild(visit)

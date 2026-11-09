@@ -1,7 +1,6 @@
 package vibelang
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
@@ -27,21 +26,6 @@ func TestSchemaReferencesRequireTop(t *testing.T) {
 		}
 		if count != 1 {
 			t.Errorf("want one EK2109 for %q, got %d", declaration, count)
-		}
-	}
-}
-
-func TestSchemaReferenceAliasExpansion(t *testing.T) {
-	source := "const Fake = { \"~effect/Schema/Schema\": Schema.String[\"~effect/Schema/Schema\"], Type: 0 }\nexport schema Value = Fake\nexport const n: Value = 1\n"
-	got := applyQuickFixOf(t, source, EK2109.Code, diagnostics.CategoryError)
-	want := strings.Replace(source, "export schema Value = Fake", "export const Value = Fake;\nexport type Value = typeof Value.Type;", 1)
-	if got != want {
-		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
-	}
-	program, file, _, _ := editorProgram(t, got)
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Category() == diagnostics.CategoryError || d.Code() == EK4841.Code {
-			t.Errorf("expanded source reports %s%d: %s", d.Source(), d.Code(), d.String())
 		}
 	}
 }

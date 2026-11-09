@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 var platformTypeImportDiagnostic = EK4402.With("This import keeps a runtime load of {0}; write import type for type bindings, or move the import to a .ts file.")
@@ -12,24 +11,16 @@ func init() {
 	fileChecks = append(fileChecks, checkPlatformTypeImports)
 	// Reuse the source-edit, comment-preserving editor/CLI fix machinery,
 	// without replacing EK4402's general platform message in the registry.
-	tsFormFixCodes = append(tsFormFixCodes, EK4402.Code)
 	tsFormRules[EK4402.Code] = &tsFormRule{
-		message:   platformTypeImportDiagnostic,
-		find:      findPlatformTypeLoads,
-		plan:      platformTypeLoadRewrite,
-		diagnosed: platformTypeLoadDiagnosticNode,
+		message: platformTypeImportDiagnostic,
+		find:    findPlatformTypeLoads,
 	}
-	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK4402.Code}, GetCodeActions: typeScriptFormFix.GetCodeActions})
 }
 
 func checkPlatformTypeImports(c *checker.Checker, file *ast.SourceFile) {
 	findPlatformTypeImports(c, file, func(at *ast.Node, rewrite *formRewrite, args ...any) {
-		d := reportAt(c, file, tsFormSpan(file, at), platformTypeImportDiagnostic, args...)
-		if rewrite.fixable() {
-			note(d, "Its quick fix writes import type.")
-		} else if rewrite != nil && rewrite.why != "" {
-			note(d, rewrite.why)
-		}
+		reportAt(c, file, tsFormSpan(file, at), platformTypeImportDiagnostic, args...)
+
 	})
 }
 

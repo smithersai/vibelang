@@ -10,7 +10,7 @@ const root = new URL("../../../../", import.meta.url);
 const require = createRequire(new URL("packages/runtime/package.json", root));
 const fc = require("fast-check");
 const ts = loadTypeScript([new URL("packages/runtime/", root).pathname, new URL(".smithers/", root).pathname]);
-const rule = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix.";
+const rule = "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.";
 const canonical = text => canonicalize(ts, text, "subscribeBeforeSnapshot.d.ts");
 test("declaration gate quotes the public-contract rule", () => {
   assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes(rule));

@@ -12,7 +12,7 @@ const fc=require("fast-check")
 const {parseDiagnostics,styleProblems}=await import(process.env.REFUSED_TAGGED_ERROR_GATE_UNDER_TEST||new URL("../lib/diagnostics.mjs",import.meta.url).href)
 const corpus=JSON.parse(readFileSync(new URL("./corpus/alchemy-refused-tagged-error.json",import.meta.url),"utf8"))
 
-const rule="A `Data.TaggedError` class stays a class when EK4830 says it has no quick fix"
+const rule="A `Data.TaggedError` class stays a class when its declaration would change:"
 test("the retained-tag contract is recorded in migration rules",()=>{assert.ok(readFileSync(new URL("../rules.md",import.meta.url),"utf8").includes(rule))})
 test("Alchemy: a refused published TaggedError tag stays out of the style gate",()=>{
  assert.deepEqual(styleProblems(parseDiagnostics(corpus.output),["main.vibe"]),[])
@@ -20,7 +20,7 @@ test("Alchemy: a refused published TaggedError tag stays out of the style gate",
  assert.deepEqual(styleProblems(control,["main.vibe"]),[])
 })
 test("warnings are retained while an error remains scoped",()=>{
- const ds=parseDiagnostics(corpus.output+"main.vibe(4,1): warning EK4830: repairable class.\n  Its quick fix writes an error.\nmain.vibe(5,1): warning EK4835: unrelated style.\n  No quick fix: keep this.\nmain.vibe(6,1): error EK4402: forbidden global.\n  No quick fix: keep this.\n")
+ const ds=parseDiagnostics(corpus.output+"main.vibe(4,1): warning EK4830: repairable class.\n  Retain its declaration contract.\nmain.vibe(5,1): warning EK4835: unrelated style.\n  keep this.\nmain.vibe(6,1): error EK4402: forbidden global.\n  keep this.\n")
  assert.deepEqual(styleProblems(ds,["main.vibe"]).map(d=>d.code),["EK4402"])
  assert.deepEqual(styleProblems(ds,["other.vibe"]),[])
 })
@@ -38,7 +38,7 @@ test("the current compiler keeps the minimized Alchemy class and its published t
   const result=spawnSync(binary,["-p",".","--noEmit","--pretty","false"],{cwd:dir,encoding:"utf8",timeout:120000})
   assert.equal(result.status,0,result.stdout+result.stderr)
   const ds=parseDiagnostics(result.stdout+result.stderr)
-  assert.ok(ds.some(d=>d.code==="EK4830"&&d.notes.some(n=>n.startsWith("No quick fix"))))
+  assert.ok(ds.some(d=>d.code==="EK4830"))
   assert.deepEqual(styleProblems(ds,["main.vibe"]),[])
   const fixed=readFileSync(join(dir,"main.vibe"),"utf8")
   assert.ok(fixed.includes("class BucketNotCreated"))
@@ -53,7 +53,7 @@ test("property: retained tags match refused service handling without hiding othe
   refused:fc.boolean(),selected:fc.boolean(),newline:fc.constantFrom("\n","\r\n"),className:fc.stringMatching(/^[A-Z][a-z]{1,16}$/)
  }),input=>{
   const file="src/group"+input.directory+"/main.vibe"
-  const note=input.refused?"No quick fix: its tag is published API.":"Its quick fix writes the canonical form."
+  const note=input.refused?"its tag is published API.":"The canonical form has the same contract."
   const output=file+"("+input.line+","+input.column+"): warning "+input.code+": "+input.className+" extends a native class."+input.newline+"  "+note+input.newline
   const ds=parseDiagnostics(output)
   const actual=styleProblems(ds,input.selected?[file]:["unselected.vibe"])

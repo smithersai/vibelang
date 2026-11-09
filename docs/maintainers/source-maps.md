@@ -55,7 +55,6 @@ Rule names are stable. A test cites them.
 | `match` | an immediately invoked function or a block | Each arm's binding and value map to where they are written. Generated subject arguments of cached pattern reads have no source position; their checker anchors must not send an arm binding back to the subject |
 | `.vibex` JSX | elements, or `jsx` calls | Elements and names map to where they are written |
 | `module m { }` | its own file, `main.vibe.m.js` | Its map names the containing `.vibe` file |
-| `--fix` | a new `.vibe` text | No map survives a rewrite: the next compile writes it from the new text |
 
 Capturing `new.target` for an Effect body retains the written meta-property node in the capture initializer. Its `target` token keeps its source range when the read moves, across functions, constructors, nested Effect blocks and text variants.
 

@@ -75,7 +75,8 @@ test("the prerelease repair policy preserves native TypeScript fixes without int
   const tooling = readFileSync(resolve(root, "docs/design/src/007-tooling.md"), "utf8")
   const appendix = readFileSync(resolve(root, "docs/design/src/900-appendices.md"), "utf8")
   const toolingVip = readFileSync(resolve(root, "docs/design/vips/0034-compiler-and-tooling.md"), "utf8")
-  assert.match(toolingVip, /VibeLang ships no codemods or quick fixes of its own before its first release; TypeScript's own code fixes stay/)
+  assert.match(toolingVip, /Before its first release, VibeLang ships no quick fixes or codemods of its own/)
+  assert.match(toolingVip, /TypeScript's built-in code fixes remain available/)
   assert.deepEqual(publicHygiene("docs/design/src/007-tooling.md", tooling), [])
   assert.deepEqual(publicHygiene("docs/design/src/900-appendices.md", appendix), [])
 })
@@ -94,14 +95,14 @@ test("internal authority prose stays rejected across spec chapters and punctuati
 })
 
 
-test("throw punctuator policy includes its preserving migration without private attribution", () => {
+test("throw punctuator policy explains manual grouping without private attribution", () => {
   for (const chapter of ["003-failures", "900-appendices"]) {
     const file = "docs/design/src/" + chapter + ".md"
     const text = readFileSync(resolve(root, file), "utf8")
     assert.deepEqual(publicHygiene(file, text), [])
     assert.match(text, /EK1010/)
     assert.match(text, /[Ee]very invalid (?:following )?punctuator reports.*error/)
-    assert.match(text, /legacy.*comma|before a comma/)
+    assert.match(text, /[Cc]ommas count|comma separators/)
     assert.match(text, /parenthesiz|groups a legacy throw expression/)
   }
 })

@@ -3,23 +3,14 @@ package vibelangfuzz
 import (
 	"fmt"
 	"maps"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vfs"
 )
-
-// fixGateBoundsFuzzModules is the most modules a campaign tries. Within
-// ends a fuzzing worker after HangLimit, 10 s, in one stage, and with
-// coverage and four workers on 4 vCPU a --fix run of 160 modules took
-// longer (2026-11-02). A seed run, VIBELANG_FUZZ_SEEDS=all included, still
-// runs larger inputs, such as opencode's witness of 160 modules.
-const fixGateBoundsFuzzModules = 32
 
 // fixGateBoundsInput is a FuzzFixGateBounds input: m modules, each with g
 // good fixes; a refused fix in each module whose index is at modulo every,
@@ -125,27 +116,6 @@ func fixGateBoundsHubbed(p fixGateBoundsInput) []int {
 	return hubbed
 }
 
-// fixGateBoundsInnocent returns the modules of p whose good fixes no error
-// can reach: not a reader, not one a reader or the hub imports, and not one
-// that holds a refused fix.
-func fixGateBoundsInnocent(p fixGateBoundsInput) []string {
-	reached := map[int]bool{}
-	for i := range p.m {
-		if i%p.every == p.at {
-			reached[i] = true
-		} else if j := i - p.d; j >= 0 && j%p.every == p.at {
-			reached[i], reached[i-1], reached[j] = true, true, true
-		}
-	}
-	var innocent []string
-	for i := range p.m {
-		if !reached[i] && p.g > 0 {
-			innocent = append(innocent, fmt.Sprintf("m%03d.vibe", i))
-		}
-	}
-	return innocent
-}
-
 // fixGateBoundsFS is a workspace's file system that counts builds and
 // still shares the workspace's parsed library and package files, as the
 // --fix runs of FuzzFixGate do.
@@ -161,17 +131,6 @@ func (fs fixGateBoundsFS) GetSourceFile(opts ast.SourceFileParseOptions) *ast.So
 		return shared.GetSourceFile(opts)
 	}
 	return nil
-}
-
-// fixGateBoundsTexts names the texts of a verified set by their paths in
-// the project dir.
-func fixGateBoundsTexts(dir string, texts map[tspath.RootedFilePath]string) map[string]string {
-	prefix := filepath.ToSlash(dir) + "/"
-	named := map[string]string{}
-	for name, text := range texts {
-		named[strings.TrimPrefix(name.AsString(), prefix)] = text
-	}
-	return named
 }
 
 // TestFixGateBoundsProjectShape checks that the opencode witness's input

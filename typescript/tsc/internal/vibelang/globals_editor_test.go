@@ -52,7 +52,7 @@ func TestEditorSubpathModules(t *testing.T) {
 	program, file, _, converters := editorProgram(t, source)
 	// The definition of a library name follows its declaration source maps,
 	// which reads files through the host.
-	service := ls.NewLanguageService(nil, program, fixHost{program: program, converters: converters}, file.FileName().AsString())
+	service := ls.NewLanguageService(nil, program, programEditorHost{program: program, converters: converters}, file.FileName().AsString())
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		if d.Category() == diagnostics.CategoryError {
 			t.Fatalf("source: %s", d.String())

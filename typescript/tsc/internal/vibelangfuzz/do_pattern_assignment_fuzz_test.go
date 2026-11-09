@@ -51,7 +51,9 @@ func FuzzDoPatternDefiniteAssignment(f *testing.F) {
 		index := slices.IndexFunc(doPatternAssignmentRules, func(rule struct {
 			key, condition string
 			missing        int
-		}) bool { return rule.key == key })
+		}) bool {
+			return rule.key == key
+		})
 		if index < 0 {
 			index = int(context) % len(doPatternAssignmentRules)
 			key = doPatternAssignmentRules[index].key

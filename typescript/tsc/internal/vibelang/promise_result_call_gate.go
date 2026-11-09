@@ -1,11 +1,8 @@
 package vibelang
 
 import (
-	"context"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/ls"
 )
 
 // VIP-4 and chapter 2's Result tests: every native invocation that may
@@ -49,8 +46,6 @@ func unwrappedPromiseInvocation(c *checker.Checker, node *ast.Node) bool {
 
 func init() {
 	fileChecks = append(fileChecks, checkPromiseInvocations)
-	tsFormFixCodes = append(tsFormFixCodes, EK0404.Code)
-	ls.RegisterCodeFixProvider(promiseInvocationFix)
 }
 
 func checkPromiseInvocations(c *checker.Checker, file *ast.SourceFile) {
@@ -66,58 +61,4 @@ func checkPromiseInvocations(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-}
-
-// --fix preserves the Promise as data, its identity and synchronous timing.
-// Effect.try does not assimilate its success; orDie retains the original
-// synchronous defect policy. Awaiting with tryPromise would change the value.
-var promiseInvocationFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK0404.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		node := tsFormNodeAt(fix.SourceFile, fix.Span, promiseInvocation)
-		if node == nil || isTry(node) {
-			return nil, nil
-		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
-		defer done()
-		if !unwrappedPromiseInvocation(c, node) {
-			return nil, nil
-		}
-		if implicitEffectModuleDisabled(c, fix.SourceFile, "Effect") && !shadowedByValue(node, "Effect") {
-			return nil, nil
-		}
-		visible := c.ResolveName("Effect", node, ast.SymbolFlagsValue, false)
-		if visible != nil && visible.Flags()&ast.SymbolFlagsAlias != 0 {
-			visible = c.GetAliasedSymbol(visible)
-		}
-		official := effectModuleNamespace(c, fix.SourceFile, "Effect")
-		if visible == nil || official == nil || c.GetMergedSymbol(visible) != c.GetMergedSymbol(official) {
-			return nil, nil
-		}
-
-		// The outer boundary includes all its native operands. Do not emit
-		// overlapping inner edits or move an Effect operation into a plain thunk.
-		for n := node.Parent; n != nil && !isFunctionBoundary(n); n = n.Parent {
-			if unwrappedPromiseInvocation(c, n) {
-				return nil, nil
-			}
-		}
-		var unsafe func(*ast.Node) bool
-		unsafe = func(n *ast.Node) bool {
-			if ast.IsFunctionLike(n) {
-				return false
-			}
-			return isTry(n) || isTopic(n) || ast.IsAwaitExpression(n) || ast.IsYieldExpression(n) || (isInvocation(n) && analyzerFor(c).performs(n)) || isDoExpressionCall(n) || n.ForEachChild(unsafe)
-		}
-		if node.ForEachChild(unsafe) {
-			return nil, nil
-		}
-		text := "try Effect.orDie(Effect.try({ try: () => " + nodeText(fix.SourceFile, node) + ", catch: (error) => error }))"
-		if !standsAlone(node) {
-			text = "(" + text + ")"
-		}
-		changes := replaceRange(fix, nodeStart(fix.SourceFile, node), node.End(), text)
-		return []*ls.CodeAction{{Description: "Keep the native Promise as data through Effect.try", Changes: changes}}, nil
-	},
 }

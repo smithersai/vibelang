@@ -22,10 +22,10 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,273 |
-| The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 17,024 |
-| The skill and the user guide (145 pages) | 580,000 |
-| The user guide alone | 570,000 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,302 |
+| The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 17,051 |
+| The skill and the user guide (145 pages) | 560,000 |
+| The user guide alone | 560,000 |
 | The specification (11 chapters) | 270,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -102,13 +102,13 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Creating Effects](/getting-started/005-creating-effects) | 4,500 |
 | [Two Types of Errors](/error-management/006-two-error-types) | 650 |
 | [Basic Concurrency](/concurrency/007-basic-concurrency) | 3,700 |
-| **Core Concepts** | **30,000** |
+| **Core Concepts** | **23,000** |
 | [Effect's Modules](/getting-started/008-importing-effect) | 3,500 |
 | [Running Effects](/getting-started/009-running-effects) | 2,100 |
 | [Sequencing Effects](/getting-started/010-using-generators) | 2,100 |
-| [Building Pipelines](/getting-started/011-building-pipelines) | 2,100 |
-| [Devtools](/getting-started/012-devtools) | 20,000 |
-| **All 13 pages** | **51,000** |
+| [Building Pipelines](/getting-started/011-building-pipelines) | 2,000 |
+| [Devtools](/getting-started/012-devtools) | 14,000 |
+| **All 13 pages** | **44,000** |
 
 ### Setup
 
@@ -120,7 +120,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | **Start a project** | **8,200** |
 | [New project](/setup/new-project) | 690 |
 | [Existing project](/setup/existing-project) | 4,300 |
-| [Migrating retired forms](/setup/migrating-retired-forms) | 3,300 |
+| [Migrating retired forms](/setup/migrating-retired-forms) | 3,200 |
 | **Build and test** | **22,000** |
 | [vibelang CLI](/setup/vibelang-cli) | 17,000 |
 | [Vite and Vitest](/setup/vite) | 4,700 |
@@ -137,7 +137,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [VS Code and Cursor](/setup/vscode) | 1,400 |
 | [Neovim](/setup/neovim) | 1,200 |
 | [Zed](/setup/zed) | 520 |
-| [Other editors](/setup/other-editors) | 990 |
+| [Other editors](/setup/other-editors) | 980 |
 | [Coding agents](/setup/coding-agents) | 1,100 |
 | **Keep .ts file names** | **1,400** |
 | [VibeLang in .ts files](/setup/typescript-shim) | 1,400 |
@@ -150,10 +150,10 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](/013-getting-started) | 1,300 |
-| **Error Management** | **25,000** |
+| **Error Management** | **24,000** |
 | [Expected Errors](/error-management/014-expected-errors) | 13,000 |
-| [Unexpected Errors](/error-management/015-unexpected-errors) | 1,900 |
-| [Fallback](/error-management/016-fallback) | 2,800 |
+| [Unexpected Errors](/error-management/015-unexpected-errors) | 1,800 |
+| [Fallback](/error-management/016-fallback) | 2,700 |
 | [Matching](/error-management/017-matching) | 790 |
 | [Retrying](/error-management/018-retrying) | 780 |
 | [Timing Out](/error-management/019-timing-out) | 830 |
@@ -162,13 +162,13 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Error Channel Operations](/error-management/022-error-channel-operations) | 1,400 |
 | [Parallel and Sequential Errors](/error-management/023-parallel-and-sequential-errors) | 810 |
 | [Custom Error Classes](/error-management/024-yieldable-errors) | 1,200 |
-| **Requirements Management** | **13,000** |
+| **Requirements Management** | **12,000** |
 | [Managing Services](/requirements-management/025-services) | 6,200 |
 | [Default Services](/requirements-management/026-default-services) | 1,400 |
 | [Managing Layers](/requirements-management/027-layers) | 3,800 |
 | [Layer Memoization](/requirements-management/028-layer-memoization) | 1,100 |
-| **Resource Management** | **4,800** |
-| [Introduction](/resource-management/029-introduction) | 2,100 |
+| **Resource Management** | **4,700** |
+| [Introduction](/resource-management/029-introduction) | 1,900 |
 | [Scope](/resource-management/030-scope) | 2,800 |
 | **Observability** | **6,900** |
 | [Logging](/observability/031-logging) | 2,100 |
@@ -239,7 +239,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | **Schema** | **36,000** |
 | [Introduction](/schema/085-introduction) | 1,400 |
 | [Getting Started](/schema/086-getting-started) | 3,600 |
-| [Basic Usage](/schema/087-basic-usage) | 5,400 |
+| [Basic Usage](/schema/087-basic-usage) | 5,300 |
 | [Filters](/schema/088-filters) | 1,500 |
 | [Advanced Usage](/schema/089-advanced-usage) | 3,000 |
 | [Projections](/schema/090-projections) | 710 |
@@ -296,7 +296,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [4. Pattern matching](/spec/004-match) | 23,000 |
 | [5. Services and the environment](/spec/005-services) | 13,000 |
 | [6. Data](/spec/006-data) | 9,300 |
-| [7. Configuration and tooling](/spec/007-tooling) | 18,000 |
+| [7. Configuration and tooling](/spec/007-tooling) | 17,000 |
 | [8. Runtime guarantees](/spec/008-runtime) | 8,000 |
 | **Appendices** | **140,000** |
 | [Grammar, diagnostics, and denied and open VIPs](/spec/900-appendices) | 120,000 |

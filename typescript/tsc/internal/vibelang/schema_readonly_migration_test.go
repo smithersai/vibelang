@@ -21,18 +21,6 @@ func TestSchemaWritableFieldMapping(t *testing.T) {
 	}
 }
 
-func TestSchemaWritableInverseKeepsReadonly(t *testing.T) {
-	for _, test := range []struct{ source, want string }{
-		{"const S=Schema.Struct({value:Schema.Number})\n", "schema S { readonly value: number }"},
-		{"const S=Schema.Struct({value:Schema.mutableKey(Schema.Number)})\n", "schema S { value: number }"},
-	} {
-		fixed := applyQuickFix(t, test.source, EK4832.Code)
-		if !strings.Contains(fixed, test.want) {
-			t.Fatalf("got%s\nwant%s", fixed, test.want)
-		}
-	}
-}
-
 func TestSchemaWritableFieldReferenceHover(t *testing.T) {
 	source := "const Codec=Schema.Number\nschema S {value:Codec}\n"
 	_, file, service, _ := editorProgram(t, source)
@@ -57,20 +45,4 @@ func TestSchemaWritableRefactorPreservesKeys(t *testing.T) {
 		}
 	}
 	t.Fatal("missing schema refactor")
-}
-
-func TestLegacySchemaReadonlyType(t *testing.T) {
-	source := "{value:number;nested:{flag:boolean};readonly fixed:string;mutable open:number}"
-	fixed := preserveLegacySchemaReadonlyType(source)
-	for _, want := range []string{"readonly value", "readonly nested", "readonly flag", "readonly fixed", "mutable open:number"} {
-		if !strings.Contains(fixed, want) {
-			t.Fatalf("lost legacy key flags: %s", fixed)
-		}
-	}
-	if strings.Contains(fixed, "readonly open") {
-		t.Fatal(fixed)
-	}
-	if again := preserveLegacySchemaReadonlyType(fixed); again != fixed {
-		t.Fatalf("not idempotent: %s", again)
-	}
 }

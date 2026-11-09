@@ -11,7 +11,7 @@ import (
 
 const moduleColdCallsQuote = "Calling an `effect` function returns its Effect unrun, as calling an `async` function returns a Promise."
 const moduleTopLevelQuote = "A module's top level is ordinary JavaScript (VIP-26)."
-const moduleUnnamedServiceQuote = "A service in a file outside any package (or in one whose `package.json` has no string `name`), or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error (`EK0903`) with a quick fix that inserts one."
+const moduleUnnamedServiceQuote = "A service in a file outside any package (or in one whose `package.json` has no string `name`), or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error (`EK0903`); write an explicit key."
 
 func TestModuleColdCallTypesQuoted(t *testing.T) {
 	for chapter, quotes := range map[string][]string{

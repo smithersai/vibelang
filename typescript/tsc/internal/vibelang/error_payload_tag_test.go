@@ -2,10 +2,7 @@ package vibelang
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
-	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"strings"
 	"testing"
 )
@@ -128,73 +125,6 @@ func TestErrorReservedPayloadTagTriviaName(t *testing.T) {
 				}
 				if !found {
 					t.Fatal("missing EK2117")
-				}
-			})
-		}
-	}
-}
-
-func TestErrorReservedPayloadTagClassRepair(t *testing.T) {
-	for _, form := range []string{"error", "schema error"} {
-		for _, tag := range []string{"\"E\"", "string", "any", "never"} {
-			t.Run(form+tag, func(t *testing.T) {
-				source := "export " + form + " E { _tag: " + tag + "; id: string }"
-				fixed := applyQuickFixOf(t, source, 2117, diagnostics.CategoryError)
-				if !strings.Contains(fixed, "class E extends") {
-					t.Fatal(fixed)
-				}
-				if form == "schema error" && !strings.Contains(fixed, "$schemaErrorFamily") {
-					t.Fatal("lost family registration", fixed)
-				}
-				program, file, _, _ := editorProgram(t, fixed)
-				for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-					if d.Category() == diagnostics.CategoryError {
-						t.Errorf("class fix added %s\n%s", d.String(), fixed)
-					}
-				}
-			})
-		}
-	}
-}
-
-func TestErrorReservedPayloadTagUnsafeClassRefusal(t *testing.T) {
-	for _, form := range []string{"error", "schema error"} {
-		for _, fields := range []string{
-			"_tag: number; id: string", "_tag: unknown; id: string",
-			"_tag: { x: string }; id: string", "_tag: string | undefined; id: string",
-			"_tag: \"E\"; _tag: string; id: string", "_tag: string",
-		} {
-			if form == "schema error" && fields == "_tag: string" {
-				continue
-			}
-			t.Run(form+fields, func(t *testing.T) {
-				source := "export " + form + " E { " + fields + " }"
-				program, file, service, converters := editorProgram(t, source)
-				var diagnostic *ast.Diagnostic
-				for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-					if d.Source() == diagnosticSource && d.Code() == 2117 {
-						diagnostic = d
-						break
-					}
-				}
-				if diagnostic == nil {
-					t.Fatal("missing reserved-field diagnostic")
-				}
-				translated := lsconv.DiagnosticToLSPPush(t.Context(), converters, diagnostic)
-				only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
-				response, err := service.ProvideCodeActions(t.Context(), &lsproto.CodeActionParams{
-					TextDocument: lsproto.TextDocumentIdentifier{Uri: lsconv.FileNameToDocumentURI(file.FileName())},
-					Range:        translated.Range, Context: &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{translated}, Only: &only},
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				if response.CommandOrCodeActionArray != nil {
-					for _, action := range *response.CommandOrCodeActionArray {
-						if action.CodeAction != nil && strings.HasPrefix(action.CodeAction.Title, "Write ") {
-							t.Fatal("unsafe class rewrite offered", action.CodeAction.Title)
-						}
-					}
 				}
 			})
 		}

@@ -4,8 +4,6 @@ package vibelang
 
 import (
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 func TestErrorTypeParameterBan(t *testing.T) {
@@ -19,15 +17,5 @@ func TestErrorTypeParameterBan(t *testing.T) {
 			}
 			t.Fatal("missing EK1303 for type parameters")
 		})
-	}
-}
-
-func TestErrorTypeParameterQuickFix(t *testing.T) {
-	fixed := applyQuickFixOf(t, "export error E<T> { value: T }\n", 1303, diagnostics.CategoryError)
-	program, file, _, _ := editorProgram(t, fixed+"\nconst item = new E<number>({value: 1}); const n: number = item.value;\n")
-	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
-		if d.Category() == diagnostics.CategoryError || d.Code() == 4830 {
-			t.Errorf("fixed source: %s", d.String())
-		}
 	}
 }
