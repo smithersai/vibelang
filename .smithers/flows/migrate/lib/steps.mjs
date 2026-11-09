@@ -1436,6 +1436,7 @@ export async function setup(options) {
     tests: testsOf(tests),
     wiringRegressions: wiring && { newFailures: wiring.newFailures, missing: wiring.missing, exit: { before: upstream.code, after: tests.code } },
     compile,
+    compileBaselineVersion: 2,
     declarations,
     declarationBaselineVersion: 2,
     inventory: inventory.summary,

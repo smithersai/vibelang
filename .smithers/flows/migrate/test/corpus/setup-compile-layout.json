@@ -1,0 +1,7 @@
+{
+  "key": "baseline:setup-compile-legacy-fallback-after-loss",
+  "quote": "A toolchain switch must not turn new test failures or compiler errors into the next baseline.",
+  "packages": [".", "packages/core", "packages__core", "space δ", "a%b"],
+  "losses": ["none", "diagnostics", "exit", "pair", "directory"],
+  "source": "export const value: number = 1\n"
+}

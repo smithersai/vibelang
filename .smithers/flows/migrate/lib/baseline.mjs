@@ -68,6 +68,8 @@ export function readSetupCompile(p, pkg, packages) {
   let key = setupCompileKey(pkg)
   let diagnostics = read(key + ".json"), outcome = read(key + ".exit.json")
   if (diagnostics === undefined && outcome === undefined) {
+    // Neither a missing package pair nor a lost directory may reactivate legacy evidence.
+    if (existsSync(join(p.baseline, "compile-v2")) || readJsonIf(p.setup)?.compileBaselineVersion === 2) return
     key = "compile-" + slug(pkg)
     diagnostics = read(key + ".json")
     outcome = read(key + ".exit.json")
