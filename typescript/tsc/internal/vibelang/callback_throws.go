@@ -393,8 +393,10 @@ func rethrowsParameterNames(comment string) []string {
 // shippedRethrows maps each lib method Appendix E annotates @rethrows to
 // the parameter it rethrows.
 var shippedRethrows = map[string]string{
-	"map": "callbackfn", "forEach": "callbackfn", "filter": "predicate", "find": "predicate",
-	"some": "predicate", "every": "predicate", "sort": "compareFn", "reduce": "callbackfn", "from": "mapfn",
+	"map": "callbackfn", "flatMap": "callback", "forEach": "callbackfn", "filter": "predicate",
+	"find": "predicate", "findIndex": "predicate", "findLast": "predicate", "findLastIndex": "predicate",
+	"some": "predicate", "every": "predicate", "sort": "compareFn", "toSorted": "compareFn",
+	"reduce": "callbackfn", "reduceRight": "callbackfn", "from": "mapfn",
 }
 
 // admittedByShippedContract reports whether expr is an argument, or the try

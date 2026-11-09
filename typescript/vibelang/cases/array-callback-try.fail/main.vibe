@@ -1,0 +1,7 @@
+// expect: EK0403 EK0401 EK0401
+import { risky } from "./foreign.js"
+export effect function unwrapped() { return [1].flatMap(n => [risky(n)]) }
+export function plain() { return [1].flatMap(n => [risky(n)]) }
+export effect function escapes() {
+  return try Effect.try(() => [1].flatMap(n => [() => risky(n)]))
+}
