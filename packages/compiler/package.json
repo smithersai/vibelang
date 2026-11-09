@@ -76,6 +76,7 @@
     "metro.cjs",
     "babel.cjs",
     "register.mjs",
+    "register-prefill.mjs",
     "bun.mjs",
     "bun-export-surface.mjs",
     "README.md",

@@ -505,6 +505,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Building the compiler could succeed with unregistered parser or lowering hooks, leaving the grammar check to fail later. The developer build now checks the grammar inventory before generating or replacing compiler artifacts.
 
+- A program started through `vibelang/register` on a cold cache compiled every workspace project one after another, so a large workspace took tens of seconds to start. The remaining projects now compile at once into the cache.
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.

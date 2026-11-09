@@ -1,6 +1,6 @@
 import { inlineSourceMap } from "./inline-source-map.mjs"
 import { rememberSourceMap } from "./source-map-frames.mjs"
-import { loaderScope } from "./loader-scope.mjs"
+import { loaderMiss, loaderScope } from "./loader-scope.mjs"
 import { extensionlessImport } from "./relative-imports.mjs"
 import { sourceOfEmitted } from "./emitted-js.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
@@ -23,13 +23,15 @@ import { fileHasVibeDirective } from "./source.mjs"
 // JavaScript comes from the same compile.
 // VIBELANG_REGISTER_DEBUG=1 reports each project's compile, with the time of
 // each stage, or its cache hit, and at exit the time the hook took in all.
+import { spawnSync } from "node:child_process"
 import { existsSync, realpathSync, statSync } from "node:fs"
 import * as Module from "node:module"
 import { registerHooks } from "node:module"
 import { dirname, resolve } from "node:path"
 import { performance } from "node:perf_hooks"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
+import { cacheDirectory } from "./cache.mjs"
+import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, packageRoot, workspaceProject } from "./project.mjs"
 
 if (typeof registerHooks !== "function") {
   throw new Error(`vibelang/register needs module.registerHooks, in Node 22.15 or later; this is Node ${process.version}`)
@@ -84,6 +86,20 @@ function changedSince(file, time) {
   return stat !== undefined && Math.max(stat.mtimeMs, stat.ctimeMs) > time
 }
 
+// The projects this process found uncached.
+const coldProjects = new Set()
+
+// One compile can be an edited project; a second project says the cache is cold, and
+// the projects still to come are compiled at once, in a child because this
+// hook cannot wait for anything else. The cache is what it leaves behind: if
+// it fails, each project compiles here as it would have.
+function prefill(project) {
+  if (process.env.VIBELANG_PROJECT || cacheDirectory() === undefined) return
+  const roots = [dirname(project), ...(process.argv[1] && existsSync(process.argv[1]) ? [packageRoot(realpathSync(process.argv[1]))] : [])]
+  const { NODE_OPTIONS: _, ...env } = process.env
+  spawnSync(process.execPath, [fileURLToPath(new URL("./register-prefill.mjs", import.meta.url)), ...roots], { env, stdio: ["ignore", "ignore", "inherit"], timeout: 120_000 })
+}
+
 // A long-running process compiles a project again when a module it imports
 // is newer than the compile, or was not there yet: a watcher's re-import of
 // an edited file, or a module written after the program started.
@@ -98,10 +114,12 @@ function emitted(file) {
   if (compiled === undefined) {
     const started = Date.now()
     const clock = performance.now()
-    compiled = { started, result: compileProjectSync({ project, debug, [loaderScope]: true }), missing: new Set() }
+    const before = coldProjects.size
+    compiled = { started, result: compileProjectSync({ project, debug, [loaderScope]: true, [loaderMiss]: () => coldProjects.add(project) }), missing: new Set() }
     results.set(project, compiled)
     spent.projects++
     spent.compile += since(clock)
+    if (before === 1 && coldProjects.size === 2) prefill(project)
   }
   const { result } = compiled
   if (!result.outputs.has(file) && !owners.has(file)) {

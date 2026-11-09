@@ -1,4 +1,4 @@
-import { loaderScope } from "./loader-scope.mjs"
+import { loaderMiss, loaderScope } from "./loader-scope.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
 import { isVibeLangFile } from "./source.mjs"
 // Whole-project compilation for the bundler plugins (vibelang-vite,
@@ -326,7 +326,7 @@ function stopwatch() {
 // Serves a compile from the cache, or runs it and caches its result. The
 // debug report names the time of each stage: the cache lookup, the snapshot of
 // the inputs, the compiler process, reading its outputs, and the cache write.
-function cached({ project, root, compiler, cache, debug, loader, scope = loader ? "loader" : "project" }, run) {
+function cached({ project, root, compiler, cache, debug, loader, onMiss, scope = loader ? "loader" : "project" }, run) {
   const started = performance.now()
   const stages = stopwatch()
   const store = projectCache({ project, root, compiler, cache, debug, scope })
@@ -353,6 +353,7 @@ function cached({ project, root, compiler, cache, debug, loader, scope = loader 
       `${modules} ${modules === 1 ? "module" : "modules"}, ${files.length} files read`)
     return result
   }
+  onMiss?.()
   const compiled = run(stages)
   return compiled instanceof Promise ? compiled.then(finish) : finish(compiled)
 }
@@ -443,7 +444,7 @@ export function projectBackend({ root, compiler, cache, debug = () => {}, preser
  * compileProjectSync is projectBackend's compile for callers that cannot wait,
  * such as Node's synchronous module hooks.
  */
-export function compileProjectSync({ project, root = packageRoot(project), compiler = findCompiler(root), cache, debug = () => {}, preserveJsx = false, [loaderScope]: loader = false }) {
+export function compileProjectSync({ project, root = packageRoot(project), compiler = findCompiler(root), cache, debug = () => {}, preserveJsx = false, [loaderScope]: loader = false, [loaderMiss]: onMiss }) {
   let extra = []
   if (preserveJsx) {
     const [file, argv] = command(compiler, showConfigArgs(project))
@@ -451,8 +452,8 @@ export function compileProjectSync({ project, root = packageRoot(project), compi
     if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
     extra = preservedJsxArgs(run.stdout, preserveJsx)
   }
-  if (extra.length) return cached({ project, root, compiler, cache, debug, loader, scope: "tool-jsx" }, (stages) => compileOnce(project, root, compiler, stages, loader, extra))
-  return cached({ project, root, compiler, cache, debug, loader }, (stages) => compileOnce(project, root, compiler, stages, loader))
+  if (extra.length) return cached({ project, root, compiler, cache, debug, loader, onMiss, scope: "tool-jsx" }, (stages) => compileOnce(project, root, compiler, stages, loader, extra))
+  return cached({ project, root, compiler, cache, debug, loader, onMiss }, (stages) => compileOnce(project, root, compiler, stages, loader))
 }
 
 const showConfigArgs = (project) => ["--project", project, "--showConfig"]

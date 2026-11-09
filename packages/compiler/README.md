@@ -77,7 +77,7 @@ project comes from that compile. It checks and emits only `.vibe` sources
 under the project's directory. Native TypeScript files supply types to those
 modules, but their independent errors are not checked. A workspace package the project imports as
 source only supplies types to it; that package's own compile checks it when
-one of its `.vibe` modules loads. A project the tsconfig lists in `references`
+one of its `.vibe` modules loads. On a cold cache, the second project a process compiles starts the rest of the workspace's `.vibe` projects at once, one for each package the program's runtime dependencies reach, up to eight at a time, so a fresh checkout's start no longer pays for each project in turn. A project the tsconfig lists in `references`
 supplies its types from its sources too, as in the editor, so no `vibelang -b`
 has to build it first. Set `VIBELANG_PROJECT` to a tsconfig path to
 choose another project, such as `tsconfig.test.json` for an example beside a
