@@ -29,7 +29,9 @@ func (p *Program) sidecarOwnerReceipt(sidecar string, output vfs.FS) (path, pref
 }
 
 func sidecarReceiptText(text string) string {
-	return fmt.Sprintf("vibelang-sidecar-owner-v1\n%x\n", sha256.Sum256([]byte(text)))
+	// Source tools may include these files with a broad glob. Comments keep
+	// private ownership data inert if such a tool parses it as JavaScript.
+	return fmt.Sprintf("// vibelang-sidecar-owner-v1\n// %x\n", sha256.Sum256([]byte(text)))
 }
 
 func (p *Program) recordSidecarOwner(sidecar, text string, output vfs.FS) error {
@@ -63,7 +65,7 @@ func (p *Program) pruneOwnedSidecar(sidecar string, output vfs.FS) error {
 		}
 	}
 	target := tspath.RootedFilePathFromNormalized(sidecar)
-	if text, exists := output.ReadFile(target); exists && owned == sidecarReceiptText(text) {
+	if text, exists := output.ReadFile(target); exists && (owned == sidecarReceiptText(text) || owned == strings.ReplaceAll(sidecarReceiptText(text), "// ", "")) {
 		if err := output.Remove(target.AsPath()); err != nil {
 			return err
 		}

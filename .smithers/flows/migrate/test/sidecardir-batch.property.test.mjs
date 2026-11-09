@@ -2,7 +2,8 @@ import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, posix } from "node:path"
+import { createHash } from "node:crypto"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
@@ -91,4 +92,29 @@ test("the locator reads each package's vibe.sidecarDir, and a package without on
     assert.equal(locate("a/src/main.d.ts"), null)
     assert.equal(locate("a/package.json"), null)
   } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("ownership receipts follow only the batch's own adjacent and relocated sidecars", () => {
+  const receipt = (sidecar, owner) => posix.join(posix.dirname(sidecar),
+    ".vibelang-sidecar-" + createHash("sha256").update(posix.basename(sidecar)).digest("hex") +
+    "-" + createHash("sha256").update(owner).digest("hex") + ".owner")
+  fc.assert(fc.property(stem, fc.boolean(), fc.constantFrom("", ".vibe/declarations", "gen/types"), segment,
+    (name, jsx, directory, owner) => {
+      const extension = jsx ? ".vibex" : ".vibe"
+      const source = "src/" + name + extension
+      const adjacent = "src/" + name + ".d" + extension + ".ts"
+      const located = directory ? directory + "/" + adjacent : adjacent
+      const batch = { files: [{ planned: source.replace(/\.vibex?$/, jsx ? ".tsx" : ".ts"), path: source }],
+        codemod: {}, sidecar: () => located }
+      const own = [...new Set([adjacent, located])].map(path => ({ status: "A", path: receipt(path, owner) }))
+      const foreign = [
+        { status: "A", path: receipt("src/other/" + name + ".d" + extension + ".ts", owner) },
+        { status: "A", path: receipt(located.replace(/\.d\.vibex?\.ts$/, "-other.d" + extension + ".ts"), owner) },
+        { status: "A", path: receipt(located, owner).replace(/\.owner$/, ".owner.ts") },
+        { status: "A", path: posix.join(posix.dirname(located), ".vibelang-sidecar-not-a-hash.owner") }
+      ]
+      assert.deepEqual(foreignChanges([...own, ...foreign], batch), foreign)
+      const moved = { status: "R", path: own[0].path, from: foreign[0].path }
+      assert.deepEqual(foreignChanges([moved], batch), [moved], "both rename endpoints remain checked")
+    }), { seed: 275275, numRuns: 150 })
 })

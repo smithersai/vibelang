@@ -1126,3 +1126,5 @@ API comparison batches retain the nominal identities established by every publis
 Referenced declaration projects use separate bounded output and log identities, so `config/build.json` and `config__build.json` cannot overwrite each other's evidence. Verification rejects ambiguous legacy project snapshots with all conflicting config paths named and asks for a fresh setup. Single-project and unambiguous legacy snapshots remain readable.
 
 Before legacy compiler repairs, migration refuses `Effect.fn` and `Effect.fnUntraced` generator parameter defaults with located diagnostics. Those defaults belong to each program execution; native `effect` parameters bind at the call. Retain TypeScript or preserve the defaults inside a cold block before retrying.
+
+Compiler ownership receipts beside a batch's adjacent or relocated sidecars are generated support for those declarations. Recording matches the receipt's directory and declaration-name digest; receipts for any other declaration remain outside the batch's scope.

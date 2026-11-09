@@ -1,10 +1,11 @@
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join, posix } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
+import { Script } from "node:vm"
 import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
 
@@ -44,6 +45,14 @@ test("nested project sidecars survive every check order and shared-layout switch
       const check = (path) => {
         assert.ok(existsSync(join(root, path)), path)
         assert.match(readFileSync(join(root, path), "utf8"), /export declare const W = 1;/)
+        // Coverage consumers can read every file under a source glob.
+        const directory = dirname(join(root, path))
+        const receipts = readdirSync(directory).filter(name => name.endsWith(".owner"))
+        assert.ok(receipts.length > 0, "sidecar retains ownership metadata")
+        for (const name of receipts) {
+          assert.equal(new Script(readFileSync(join(directory, name), "utf8")).runInNewContext(), undefined,
+            "ownership metadata is inert when a source tool parses it as JavaScript")
+        }
       }
       try {
         const nested = Array(depth).fill("worker").join("/")

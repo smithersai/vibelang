@@ -164,3 +164,31 @@ func TestSidecarPruningPreservesUnownedOrEditedOutput(t *testing.T) {
 		})
 	}
 }
+
+func TestSidecarPruningLegacyOwnershipReceipt(t *testing.T) {
+	fs := bundled.WrapFS(vfstest.FromMap(map[string]any{
+		"/src/tsconfig.json": sidecarOwnershipConfig("", `["Own.vibe"]`, "[]", false),
+		"/src/Own.vibe":      `export const own = 1;`,
+	}, tspath.CaseSensitive))
+	emitOwnedSidecars(t, fs, "/src/tsconfig.json")
+	var receipts int
+	for _, name := range fs.GetAccessibleEntries("/src").Files {
+		if strings.HasSuffix(name, ".owner") {
+			path := tspath.RootedFilePathFromNormalized("/src/" + name)
+			text, _ := fs.ReadFile(path)
+			if err := fs.WriteFile(path, strings.ReplaceAll(text, "// ", "")); err != nil {
+				t.Fatal(err)
+			}
+			receipts++
+		}
+	}
+	if receipts != 1 {
+		t.Fatalf("expected one ownership receipt, got %d", receipts)
+	}
+	fs.WriteFile("/src/tsconfig.json", sidecarOwnershipConfig(".vibe/declarations", `["Own.vibe"]`, "[]", false))
+	emitOwnedSidecars(t, fs, "/src/tsconfig.json")
+	if fs.FileExists("/src/Own.d.vibe.ts") {
+		t.Fatal("a legacy receipt lost ownership of its unchanged declaration")
+	}
+	requireOwnedSidecar(t, fs, "/src/.vibe/declarations/Own.d.vibe.ts")
+}

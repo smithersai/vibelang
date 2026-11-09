@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Generated declaration ownership files could break Istanbul coverage and make migration recording refuse its own outputs. The metadata is now inert when parsed as JavaScript, and recording accepts receipts only for declarations in the batch.
+
 - Optional matcher-symbol properties could be read before their runtime key was installed. Optional access and destructuring now initialize the key before use.
 
 - TypeScript projections imported an unavailable helper module, so source inspection reported `TS2307` and lost body-local types. The helper declarations now ship with `vibelang`, and projections preserve those types in stock TypeScript.

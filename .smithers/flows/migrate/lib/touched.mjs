@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+import { posix } from "node:path"
 import { packageScriptProofs } from "./package-script-scope.mjs"
 import { isProtectedFile } from "./test-diff.mjs"
 
@@ -66,6 +68,16 @@ export function batchScope({ files, codemod, testDiff, manifestSnapshots, sideca
 export function foreignChanges(changed, batch) {
   const scope = batchScope(batch)
   const rejected = new Set(packageScriptProofs(batch).filter(proof => !proof.ok).map(proof => proof.manifest))
-  const own = (path) => !rejected.has(path) && (scope.has(path) || emitted.test(path))
+  // A declaration's ownership receipt belongs to that same generated output.
+  // Match its directory and full basename digest; unrelated receipts and
+  // authored files remain outside scope, including either end of a rename.
+  const receiptPrefixes = new Set([...scope].filter(path => /\.d(?:\.vibex?)?\.ts$/.test(path)).map(path =>
+    posix.join(posix.dirname(path), ".vibelang-sidecar-" +
+      createHash("sha256").update(posix.basename(path)).digest("hex") + "-")))
+  const ownReceipt = (path) => {
+    const match = /^(.*\.vibelang-sidecar-[a-f0-9]{64}-)[a-f0-9]{64}\.owner$/.exec(path)
+    return match !== null && receiptPrefixes.has(match[1])
+  }
+  const own = (path) => !rejected.has(path) && (scope.has(path) || emitted.test(path) || ownReceipt(path))
   return changed.filter((c) => !own(c.path) || (c.from !== undefined && !own(c.from)))
 }
