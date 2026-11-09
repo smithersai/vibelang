@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -13,8 +14,9 @@ import (
 // service used as a base class (EK3002, EK3003, EK3004), declared generic
 // (EK3005), or with a static member that shadows a service member (EK9208).
 
-// ek3004Pattern is EK3004 for a class pattern naming a service. {0} is the pattern's expression.
-var ek3004Pattern = EK3004.With("A class pattern naming {0} is always false: implementations are plain objects; match their members instead, when { find: let find }.")
+// ek3004Pattern is EK3004 for a class pattern naming a service. {0} is the pattern's
+// expression and {1} a member of the service's shape, for the suggested pattern.
+var ek3004Pattern = EK3004.With("A class pattern naming {0} is always false: implementations are plain objects; match their members instead, when { {1}: let {1} }.")
 
 func init() { fileChecks = append(fileChecks, checkServices) }
 
@@ -38,7 +40,7 @@ func checkServices(c *checker.Checker, file *ast.SourceFile) {
 			// A class pattern, when Users: or when Users(…):, tests the subject
 			// as instanceof does (chapter 005's static rules table).
 			if matcher := node.Arguments()[0]; serviceNamedBy(c, matcher) != nil || serviceKeyOperand(c, c.GetTypeAtLocation(matcher)) {
-				report(c, matcher, ek3004Pattern, scanner.GetTextOfNode(matcher))
+				report(c, matcher, ek3004Pattern, scanner.GetTextOfNode(matcher), serviceMemberExample(c, matcher))
 			}
 		}
 		return node.ForEachChild(visit)
@@ -58,6 +60,20 @@ func markDeclarationImports(c *checker.Checker, file *ast.SourceFile) {
 			c.MarkSymbolReferenced(statement.ImportClause().AsImportClause().NamedBindings.Symbol())
 		}
 	}
+}
+
+// serviceMemberExample names the first member of the shape of the service that
+// matcher names, for the member pattern EK3004 suggests, or "member" when the
+// service is not named directly or no member has a plain identifier name.
+func serviceMemberExample(c *checker.Checker, matcher *ast.Node) string {
+	if class := serviceNamedBy(c, matcher); class != nil {
+		for _, member := range c.GetPropertiesOfType(servicesFor(c).shapeOf(class)) {
+			if name := member.Name(); scanner.IsIdentifierText(name, core.LanguageVariantStandard) {
+				return name
+			}
+		}
+	}
+	return "member"
 }
 
 // declarationWord returns "service" or "control" when class was declared with

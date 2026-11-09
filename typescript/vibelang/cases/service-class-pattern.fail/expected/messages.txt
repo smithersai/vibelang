@@ -1,0 +1,1 @@
+A class pattern naming Users is always false: implementations are plain objects; match their members instead, when { find: let find }.
