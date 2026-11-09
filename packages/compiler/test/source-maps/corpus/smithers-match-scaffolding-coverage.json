@@ -1,0 +1,5 @@
+{
+  "key": "emit:match-scaffolding-uncovered",
+  "plain": "export function read(state: { tag: \"ready\"; value: number } | { tag: \"idle\" }) {\n  const result = match (state) {\n    when { tag: \"ready\", let value }: value;\n    default: 0;\n  }\n  return result\n}\nexport function notCalled() { return 97 }\n",
+  "effect": "export error Wrapped { message: string }\nexport effect function read(state: { _tag: \"ConfigError\" } | { _tag: \"Other\" }) {\n  return fail(state) catch effect (failure) => match (failure) {\n    when { _tag: \"ConfigError\" }: throw new Wrapped({ message: \"config\" });\n    default: throw new Wrapped({ message: \"other\" });\n  }\n}\nexport function notCalled() { return 97 }\n"
+}

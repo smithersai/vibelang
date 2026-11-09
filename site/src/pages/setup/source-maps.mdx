@@ -39,3 +39,7 @@ A `new.target` read captured by Effect lowering keeps its written token position
 - **Names:** `names` is empty, as in `tsc`. A debugger shows an emitted name, such as `$do1`, where the lowering made one.
 - **Line ends:** `U+2028` and `U+2029` end a line, as in JavaScript.
 - **Stacks:** a JavaScript stack shows the active frame above Effect's run loop. Use spans for the logical call chain.
+
+Coverage excludes the cleanup statements generated for `match`, including
+inside a `catch effect` handler. Generated cleanup does not appear as an
+uncovered source statement; an unvisited source function or arm remains uncovered.

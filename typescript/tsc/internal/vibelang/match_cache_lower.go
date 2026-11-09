@@ -27,12 +27,16 @@ func (tx *lowering) visitMatchCacheBlock(node *ast.Node, names []*ast.Node) *ast
 		name := names[i]
 		method := func(word string, args ...*ast.Node) *ast.Node {
 			member := f.NewPropertyAccessExpression(name, nil, f.NewIdentifier(word), ast.NodeFlagsNone)
-			return f.NewExpressionStatement(f.NewCallExpression(member, nil, nil, f.NewNodeList(args), ast.NodeFlagsNone))
+			return tx.generated(f.NewExpressionStatement(f.NewCallExpression(member, nil, nil, f.NewNodeList(args), ast.NodeFlagsNone)))
 		}
 		thrown := f.NewUniqueName("matchError")
-		handler := f.NewCatchClause(f.NewVariableDeclaration(thrown, nil, nil, nil), f.NewBlock(f.NewNodeList([]*ast.Node{method("threw", thrown), f.NewThrowStatement(thrown)}), true))
+		handler := f.NewCatchClause(f.NewVariableDeclaration(thrown, nil, nil, nil), f.NewBlock(f.NewNodeList([]*ast.Node{method("threw", thrown), tx.generated(f.NewThrowStatement(thrown))}), true))
+		// Cleanup has no authored statement. Reset the map at the native catch
+		// and try headers as well as its calls, while retaining maps on the
+		// source statements nested in the protected body.
+		tx.generated(handler)
 		finish := f.NewBlock(f.NewNodeList([]*ast.Node{method("finish")}), true)
-		body = []*ast.Node{f.NewTryStatement(f.NewBlock(f.NewNodeList(body), true), handler, finish)}
+		body = []*ast.Node{tx.generated(f.NewTryStatement(f.NewBlock(f.NewNodeList(body), true), handler, finish))}
 	}
 	return f.UpdateBlock(node.AsBlock(), f.NewNodeList(append(declarations, body...)), node.AsBlock().MultiLine)
 }
