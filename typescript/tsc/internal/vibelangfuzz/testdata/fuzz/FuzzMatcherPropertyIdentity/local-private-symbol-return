@@ -1,0 +1,5 @@
+go test fuzz v1
+string("unrelated-symbol")
+byte('\u0096')
+byte('a')
+byte('a')

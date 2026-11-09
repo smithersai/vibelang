@@ -1,0 +1,21 @@
+// expect: EK0702
+const customMatcher = Symbol("other")
+const Matcher = { [customMatcher](s: unknown): number[] { return [1] } }
+export function predicate(s: unknown): unknown { return s is Matcher }
+export function arm(s: unknown): unknown { return match(s) { when Matcher: 1; default: 0; } }
+export function extraction(s: unknown): unknown { return match(s) { when Matcher(let x): x; default: 0; } }
+export function stringKey(s: unknown): unknown {
+  const customMatcher = "customMatcher"
+  const Matcher = { [customMatcher](s: unknown): number[] { return [1] } }
+  return s is Matcher
+}
+export function numericKey(s: unknown): unknown {
+  const customMatcher = 17
+  const Matcher = { [customMatcher](s: unknown): number[] { return [1] } }
+  return s is Matcher
+}
+export function otherWellKnownKey(s: unknown): unknown {
+  const customMatcher = Symbol.toStringTag
+  const Matcher = { [customMatcher](s: unknown): number[] { return [1] } }
+  return s is Matcher
+}

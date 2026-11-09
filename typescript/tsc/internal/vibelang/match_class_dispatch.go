@@ -135,12 +135,6 @@ func hasOwnPatternMatcher(c *checker.Checker, t *checker.Type) bool {
 			if property != "" && candidate.Name() == property {
 				return true
 			}
-			if name := declaration.Name(); name != nil && ast.IsComputedPropertyName(name) {
-				switch entityText(name.Expression()) {
-				case "customMatcher", "Symbol.customMatcher":
-					return true
-				}
-			}
 		}
 	}
 	return false

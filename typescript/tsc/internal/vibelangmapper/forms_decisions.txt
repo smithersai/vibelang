@@ -6331,6 +6331,10 @@ typescript/vibelang/cases/matcher-init-cycles-tla/b.vibe:6:22 lambda plain fallb
 typescript/vibelang/cases/matcher-init-cycles-tla/tla.vibe:5:58 lambda plain table
 typescript/vibelang/cases/matcher-init-cycles-tla/tla.vibe:8:24 lambda plain fallback
 typescript/vibelang/cases/matcher-init-order/uses.vibe:14:21 lambda plain fallback
+typescript/vibelang/cases/matcher-property-identity.fail/main.vibe:14:21 lambda plain annotation
+typescript/vibelang/cases/matcher-property-identity.fail/main.vibe:19:21 lambda plain annotation
+typescript/vibelang/cases/matcher-property-identity.fail/main.vibe:3:19 lambda plain annotation
+typescript/vibelang/cases/matcher-property-identity.fail/main.vibe:9:21 lambda plain annotation
 typescript/vibelang/cases/member-head-caught/main.vibe:13:25 lambda plain fallback
 typescript/vibelang/cases/member-head-caught/main.vibe:17:110 lambda plain table
 typescript/vibelang/cases/member-head-caught/main.vibe:17:27 byname program table

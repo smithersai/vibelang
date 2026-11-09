@@ -221,6 +221,8 @@ An extractor on a class without its own matcher is `EK0704`: use `when C:`, or `
 
 The global `Function` is not a class pattern: `when Function:`, `value is Function` and `globalThis.Function` pattern forms report `EK0107` once per written occurrence. Use a guard such as `when let f and if (typeof f === "function"):`. A locally declared class named `Function` keeps ordinary class matching.
 
+A computed member named `customMatcher` provides the matcher protocol only when its key resolves to the runtime's actual symbol. A string, number or unrelated symbol does not make a non-callable object a matcher, even when the key's variable is named `customMatcher`; using that object as a pattern is `EK0702`.
+
 The runtime installs `Symbol.customMatcher` on engines that lack it. VibeLang source files see its protocol types through their compiler-loaded runtime prelude. Published declarations preserve the Effect TypeScript API: generated matcher members and runtime type-reference directives are omitted, while the matcher remains in JavaScript. User-written matcher members keep their native declarations.
 
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
