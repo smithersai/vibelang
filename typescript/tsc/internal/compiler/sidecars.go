@@ -115,12 +115,14 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	}
 	var publication []func() error
 	var publicationMutex sync.Mutex
+	// Declaration emit runs files in parallel; write is the caller's function
+	// and is called one at a time, so a caller may collect into a plain map.
 	publish := func(action func() error) error {
+		publicationMutex.Lock()
+		defer publicationMutex.Unlock()
 		if !projectSidecarOptions {
 			return action()
 		}
-		publicationMutex.Lock()
-		defer publicationMutex.Unlock()
 		publication = append(publication, action)
 		return nil
 	}
