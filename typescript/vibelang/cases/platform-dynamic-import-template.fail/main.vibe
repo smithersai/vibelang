@@ -1,0 +1,9 @@
+// expect: EK4402
+// Chapter 005, platform rules: a template with no substitutions names its
+// module statically, as a string literal does, so the Node builtin rule
+// applies to it. A specifier with a substitution stays unchecked.
+export const bare = () => import(`fs`)
+export const scheme = () => import(`node:fs`)
+export const subpath = () => import(`node:fs/promises`)
+export const literal = () => import("node:fs")
+export const computed = (name: string) => import(`node:${name}`)

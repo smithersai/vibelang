@@ -455,7 +455,7 @@ effect function loadData() {
 // Output: 1
 ```
 
-A computed `import(specifier)` stays unchecked by this rule. Type-level `import(…)` queries keep their TypeScript meaning.
+A computed `import(specifier)` stays unchecked by this rule. A template without substitutions, such as ``import(`node:fs`)``, is a literal specifier: it reports `EK4402` for a Node builtin and `EK0107` for a `data:` or `blob:` URL. Type-level `import(…)` queries keep their TypeScript meaning.
 
 For an inherited child whose cancellation must return without waiting for exit,
 `Experimental.ChildProcess.ChildProcess` provides `runInherited(command, args,

@@ -7212,6 +7212,11 @@ typescript/vibelang/cases/platform-clock-native-errors.fail/main.vibe:7:22 lambd
 typescript/vibelang/cases/platform-clock-native-errors.fail/main.vibe:8:24 lambda choice fallback
 typescript/vibelang/cases/platform-clock-origin-advice/main.vibe:12:19 lambda program table
 typescript/vibelang/cases/platform-clock-origin-advice/main.vibe:8:35 lambda plain table
+typescript/vibelang/cases/platform-dynamic-import-template.fail/main.vibe:5:21 lambda choice fallback
+typescript/vibelang/cases/platform-dynamic-import-template.fail/main.vibe:6:23 lambda choice fallback
+typescript/vibelang/cases/platform-dynamic-import-template.fail/main.vibe:7:24 lambda choice fallback
+typescript/vibelang/cases/platform-dynamic-import-template.fail/main.vibe:8:24 lambda choice fallback
+typescript/vibelang/cases/platform-dynamic-import-template.fail/main.vibe:9:25 lambda plain fallback
 typescript/vibelang/cases/platform-hash-hex-advice/main.vibe:12:19 lambda program table
 typescript/vibelang/cases/platform-hash-hex-advice/main.vibe:8:11 lambda plain fallback
 typescript/vibelang/cases/platform-hash-hex-advice/main.vibe:8:67 lambda plain table

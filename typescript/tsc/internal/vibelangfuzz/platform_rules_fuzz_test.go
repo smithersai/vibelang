@@ -16,6 +16,8 @@ var platformRules = []struct {
 	code                  int32
 }{
 	{"node-private", "Node's `module.builtinModules`", `import type {} from "_http_common"; export const n = 1`, `import "_http_common"; export const n = 1`, 4402},
+	{"node-import-dynamic", "an `import(…)` call with a string-literal specifier", `const s: string = "node:fs"; export const load = () => import(s)`, `export const load = () => import("node:fs")`, 4402},
+	{"node-import-template", "a template with no substitutions", `const s: string = "node:fs"; export const load = () => import(s)`, "export const load = () => import(`node:fs`)", 4402},
 	{"import-meta", "`import.meta` may appear only as the object of `.url`", `export const url = import.meta.url`, `export const meta = import.meta`, 4402},
 	{"global-this-alias", "an alias (`const g = globalThis`)", `export const value = globalThis.URL`, `export const value = globalThis`, 107},
 	{"global-this-dynamic", "a computed key (`globalThis[k]`)", `export const value = globalThis["URL"]`, `const k: string = "URL"; export const value = globalThis[k]`, 107},

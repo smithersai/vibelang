@@ -517,7 +517,9 @@ func checkPlatform(c *checker.Checker, file *ast.SourceFile) {
 			// unlisted globals are; the checker gives its operand value meaning.
 			return false
 		case ast.IsImportCall(node):
-			if arguments := node.Arguments(); len(arguments) > 0 && ast.IsStringLiteral(arguments[0]) {
+			// A template with no substitutions is a literal specifier too:
+			// TypeScript resolves it, and Node loads the module it names.
+			if arguments := node.Arguments(); len(arguments) > 0 && ast.IsStringLiteralLike(arguments[0]) {
 				if r, ok := platformModuleOf(arguments[0].Text()); ok {
 					d := report(c, arguments[0], platformModule, arguments[0].Text())
 					notePlatformAPI(d, platformAPI{service: r})
