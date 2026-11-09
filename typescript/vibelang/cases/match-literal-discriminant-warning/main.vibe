@@ -1,0 +1,14 @@
+type Shape = { readonly kind: "circle"; readonly r: number } | { readonly kind: "square"; readonly side: number }
+
+export function area(shape: Shape): number {
+  return match (shape) {
+    when { kind: "circle", let r }: Math.PI * r * r;
+  }
+}
+
+export function complete(shape: Shape): number {
+  return match (shape) {
+    when { kind: "circle", let r }: r;
+    when { kind: "square", let side }: side;
+  }
+}

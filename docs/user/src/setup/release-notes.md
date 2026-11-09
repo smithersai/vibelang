@@ -18,6 +18,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Converting a package module could stop API checking with `Conflicting declaration snapshot alias`. The check now recognizes the compiler's `x.d.ts` forwarding file as the same module and keeps authored declarations separate.
 
+- A `match` could silently omit a case when its union used `kind`, `type` or another literal field instead of `_tag`. It now warns with the missing cases, including nested unions, while keeping compilation and runtime matching unchanged.
+
 - Open and proposed VIPs could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
 
 - An instance method body or property initializer in a `service` could hide errors on its other static members. Each rejected member now reports its own `EK0902`.

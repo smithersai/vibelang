@@ -19,6 +19,8 @@ import (
 var (
 	// EK4701: a match over a finite union with no default arm misses a case. {0} is the subject's type, {1} the cases left.
 	EK4701 = message(4701, errorCategory, "This match does not handle every case of {0}: {1} is left.")
+	// EK0708: advisory coverage of other literal discriminants; emission is unchanged.
+	EK0708 = message(708, warningCategory, "This match does not handle every case of {0}: {1} is left.")
 	// EK4703: an is whose pattern binds names where the compiler gives them
 	// no home yet: a for head whose initializer is a var or using list, a
 	// for…in or for…of head, or a computed member key.
@@ -35,7 +37,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK4701, EK4703, EK0702} {
+	for _, m := range []*Message{EK4701, EK0708, EK4703, EK0702} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkPatterns)
@@ -86,6 +88,7 @@ func checkExhaustive(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	}
 	declared, left := matchRemainder(c, call)
 	if declared == nil {
+		checkLiteralDiscriminantMatch(c, file, call)
 		return
 	}
 	// Flow analysis already reported its complexity limit. Its error sentinel

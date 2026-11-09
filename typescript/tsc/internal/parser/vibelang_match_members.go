@@ -6,13 +6,16 @@ import "github.com/microsoft/TypeScript/tsc/internal/ast"
 type MatchMemberProperty struct {
 	Key      *ast.Node
 	Computed bool
-	Value    *ast.Node // nil for a presence test or irrefutable capture
+	Value    *ast.Node       // nil for a presence test or irrefutable capture
+	Pattern  *MatchMemberArm // recursive advisory coverage only
 }
 
 // MatchMemberArm retains coverage independently of generated flow narrowing.
 // Unsupported patterns contribute no proof.
 type MatchMemberArm struct {
 	Value        *ast.Node
+	Irrefutable  bool
+	Advisory     *MatchMemberArm // does not participate in EK4701 or lowering
 	Properties   []MatchMemberProperty
 	Alternatives []MatchMemberArm
 }
@@ -68,10 +71,51 @@ func (p *Parser) recordMatchMemberArms(call *ast.Node, info *matchInfo) {
 		p.vibelangMatchMemberArms = map[*ast.Node][]MatchMemberArm{}
 	}
 	for _, arm := range info.arms {
-		p.vibelangMatchMemberArms[call] = append(p.vibelangMatchMemberArms[call], memberCoverageArm(arm.pattern))
+		member := memberCoverageArm(arm.pattern)
+		advisory := advisoryCoverageArm(arm.pattern)
+		member.Advisory = &advisory
+		p.vibelangMatchMemberArms[call] = append(p.vibelangMatchMemberArms[call], member)
 	}
 }
 
 func (p *Parser) attachMatchMemberArms(file *ast.SourceFile) {
 	file.GetOrComputeData(matchMemberArmsKey, func(*ast.SourceFile) map[*ast.Node][]MatchMemberArm { return p.vibelangMatchMemberArms })
+}
+
+// advisoryCoverageArm retains nested literal object patterns for warnings.
+// The existing finite-case metadata and all executable tests stay unchanged.
+func advisoryCoverageArm(pat *pattern) MatchMemberArm {
+	pat = coveragePattern(pat)
+	if pat == nil {
+		return MatchMemberArm{}
+	}
+	switch pat.kind {
+	case patternBinding:
+		return MatchMemberArm{Irrefutable: true}
+	case patternLiteral, patternValue:
+		return MatchMemberArm{Value: pat.expr}
+	case patternOr:
+		out := MatchMemberArm{}
+		for _, item := range pat.items {
+			out.Alternatives = append(out.Alternatives, advisoryCoverageArm(item))
+		}
+		return out
+	case patternObject:
+		if len(pat.items) != 0 || pat.rest != nil && coveragePattern(pat.rest).kind != patternBinding {
+			return MatchMemberArm{}
+		}
+		out := MatchMemberArm{}
+		for _, clause := range pat.clauses {
+			if clause.key == nil {
+				return MatchMemberArm{}
+			}
+			sub := advisoryCoverageArm(clause.pattern)
+			if clause.pattern == nil {
+				sub = MatchMemberArm{Irrefutable: true}
+			}
+			out.Properties = append(out.Properties, MatchMemberProperty{Key: clause.key, Computed: clause.computed, Pattern: &sub})
+		}
+		return out
+	}
+	return MatchMemberArm{}
 }
