@@ -1,0 +1,11 @@
+{
+  "key": "alchemy:bun-native-ts-file-url:ENOENT",
+  "input": {
+    "name": "foreign",
+    "prefix": "",
+    "extension": "ts",
+    "dynamic": false,
+    "value": 42,
+    "importer": "native"
+  }
+}

@@ -22,7 +22,7 @@ const skip = missing ? "missing test dependency: " + missing : spawnSync(bun, ["
 const rule = "Anything TypeScript or the pinned TC39 proposal already defines (evaluation order, binding, types, modules, resolution, declaration emit) is as in TypeScript and is not restated."
 const regression = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-bun-typescript-sibling.json", import.meta.url), "utf8"))
 
-function check({ name, extension, dynamic, value, importer = "entry", escaped = false, debug = false }) {
+function check({ name, extension, dynamic, value, importer = "entry", escaped = false, debug = false, prefix = "leaf-" }) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bun-url-")))
   try {
     mkdirSync(join(root, "node_modules"))
@@ -34,8 +34,8 @@ function check({ name, extension, dynamic, value, importer = "entry", escaped = 
       compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [], jsx: "preserve", allowImportingTsExtensions: true, noEmit: true },
       include: ["*.vibe", "*.ts", "*.tsx"]
     }))
-    const specifier = "./leaf-" + name + "." + extension
-    writeFileSync(join(root, "leaf-" + name + "." + extension), "export const value = " + value + "\n")
+    const specifier = "./" + prefix + name + "." + extension
+    writeFileSync(join(root, prefix + name + "." + extension), "export const value = " + value + "\n")
     let quoted = JSON.stringify(specifier)
     if (escaped) quoted = quoted.replace(/[^\x00-\x7f]/g, character => "\\u" + character.charCodeAt(0).toString(16).padStart(4, "0"))
     const source = "import { value } from " + quoted + "\nexport const result = value\n"
@@ -79,6 +79,10 @@ test("BunTypeScriptSiblingImportsQuoted", () => {
   assert.equal(regression.rule, rule)
 })
 test("Bun native modules resolve a TypeScript sibling without an emitted JavaScript file", { skip }, () => check(regression.input))
+test("Alchemy retained foreign TypeScript imports do not become file URL filesystem paths", { skip }, () => {
+  const witness = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-bun-foreign-file-url.json", import.meta.url)))
+  check(witness.input)
+})
 for (const importer of ["space source", "percent%25source"]) {
   test("Bun TypeScript sibling resolution keeps the source filename " + importer, { skip }, () => check({ ...regression.input, importer }))
 }
