@@ -324,6 +324,9 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"unhomed-pattern-grammar", grammarUnhomedPatternWitness},
 	{"unhomed-pattern-grammar-rest-not-last", grammarUnhomedPatternGaps[1]},
 	{"unhomed-pattern-grammar-parameter", grammarUnhomedPatternGaps[2]},
+	{"fiber-type-name", grammarFiberTypeNameWitness},
+	{"fiber-type-name-enum", grammarFiberTypeNameGaps[1]},
+	{"fiber-type-name-parameter", grammarFiberTypeNameGaps[2]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1205,6 +1208,10 @@ func grammarAdmissionForm(source string) string {
 	declarationTokens := ts
 	if tokens, ok := grammarValidatedRegExpTokens(source); ok {
 		declarationTokens = tokens
+	}
+	// A declaration named fork is not a fork operand: `enum fork { }`.
+	if grammarFiberTypeName(source) {
+		return "admission:fiber-type-name"
 	}
 	if form := grammarAdmissionDeclarationForm(declarationTokens); form != "" {
 		return form

@@ -861,6 +861,18 @@ keys the witness only when that reading carries a deferred pattern syntax
 error, so a well-formed pattern in the same position keeps its ordinary
 verdict.
 
+The same probes named type-space declarations `fork` and `join` in effect
+code. Appendix A reserves the two words there as `await` is reserved under
+`[+Await]`: no `BindingIdentifier` can be either. The compiler reports
+`EK1702` for a variable, parameter, function, class or label with either
+name, and nothing for a type alias, an interface, an enum or a type
+parameter: `effect function f() { type fork = 1 }` compiles with no
+diagnostic. Stock TypeScript 5.9.3 rejects each `await` twin in an `async`
+function (`TS2457`, `TS2427`, `TS1003`, `TS1139`). These witnesses are pending
+under `admission:fiber-type-name`. The form classifier read `enum fork { }` as
+a bare `fork` block until now, because `fork` stands before `{` there; it
+asks the parser for the declaration first.
+
 The generated-error migration counterpart continues to test the guarantee
 that a foreign plain object with the recognized tag is covered. Its quote
 includes the chapter's additional `instanceof` fallback; the existing
