@@ -1,0 +1,21 @@
+// expect-result: [0,true,true,true,true,true,true,true,true,16,true]
+import {Effect} from "effect"
+import {invokeLatin,invokeAstral,tagCjk,tagJoiner,risky} from "./foreign.js"
+export const programs = [
+ Effect.try({try:()=>invokeLatin(risky),catch:(error:unknown)=>error}),
+ Effect.try({try:()=>invokeAstral(risky),catch:(error:unknown)=>error}),
+ Effect.try({try:()=>tagCjk`${risky}`,catch:(error:unknown)=>error}),
+ Effect.try({try:()=>tagJoiner`${risky}`,catch:(error:unknown)=>error})
+]
+import {events,templates,sentinel} from "./foreign.js"
+const construction = events.length
+export effect function main() {
+ const same: boolean[] = []
+ for (let repeat=0;repeat<2;repeat++) {
+  for (const program of programs) {
+   const result = try exit(program)
+   same.push(result._tag === "Failure" && result.cause.reasons[0]?._tag === "Fail" && result.cause.reasons[0].error === sentinel)
+  }
+ }
+ return [construction,...same,events.length,templates.every(value=>value)]
+}

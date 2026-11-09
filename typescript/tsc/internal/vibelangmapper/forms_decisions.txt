@@ -3968,6 +3968,15 @@ typescript/vibelang/cases/error-matcher-delete/main.vibe:13:64 lambda plain fall
 typescript/vibelang/cases/error-matcher-delete/main.vibe:13:82 lambda dual fallback
 typescript/vibelang/cases/error-matcher-delete/main.vibe:14:76 lambda plain fallback
 typescript/vibelang/cases/error-matcher-delete/main.vibe:14:94 lambda dual fallback
+typescript/vibelang/cases/escaped-rethrows-parameters/main.vibe:20:61 lambda choice fallback
+typescript/vibelang/cases/escaped-rethrows-parameters/main.vibe:5:18 lambda plain table
+typescript/vibelang/cases/escaped-rethrows-parameters/main.vibe:5:47 lambda plain table
+typescript/vibelang/cases/escaped-rethrows-parameters/main.vibe:6:18 lambda plain table
+typescript/vibelang/cases/escaped-rethrows-parameters/main.vibe:6:48 lambda plain table
+typescript/vibelang/cases/escaped-rethrows-parameters/main.vibe:7:18 lambda plain table
+typescript/vibelang/cases/escaped-rethrows-parameters/main.vibe:7:45 lambda plain table
+typescript/vibelang/cases/escaped-rethrows-parameters/main.vibe:8:18 lambda plain table
+typescript/vibelang/cases/escaped-rethrows-parameters/main.vibe:8:48 lambda plain table
 typescript/vibelang/cases/execution-power-parentheses/main.vibe:4:38 byname program table
 typescript/vibelang/cases/expando-repeated-assignments/main.vibe:14:11 lambda plain fallback
 typescript/vibelang/cases/expando-repeated-assignments/main.vibe:15:14 lambda plain fallback

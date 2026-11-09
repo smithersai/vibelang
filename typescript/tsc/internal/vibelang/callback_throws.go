@@ -3,10 +3,10 @@ package vibelang
 import (
 	"regexp"
 	"slices"
-	"unicode/utf8"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -370,27 +370,22 @@ func thrownText(c *checker.Checker, src throwContract) string {
 }
 
 // rethrowsParameterNames reads complete TypeScript identifiers from JSDoc.
-// A Unicode continuation belongs to the name, rather than to a shorter ASCII
-// prefix that could accidentally name a different parameter.
+// Native scanning keeps Unicode escapes and continuations in one canonical
+// name, rather than binding an unrelated ASCII prefix.
 var rethrowsTagStart = regexp.MustCompile("@rethrows\\s+")
 
 func rethrowsParameterNames(comment string) []string {
 	var names []string
 	for _, span := range rethrowsTagStart.FindAllStringIndex(comment, -1) {
-		text := comment[span[1]:]
-		first, width := utf8.DecodeRuneInString(text)
-		if !scanner.IsIdentifierStart(first) {
-			continue
+		lex := scanner.NewScanner()
+		valid := true
+		lex.SetText(comment[span[1]:])
+		lex.SetOnError(func(_ *diagnostics.Message, _ int, _ int, _ ...any) { valid = false })
+		token := lex.Scan()
+		identifier := token == ast.KindIdentifier || token >= ast.KindFirstKeyword && token <= ast.KindLastKeyword
+		if valid && lex.TokenStart() == 0 && identifier {
+			names = append(names, lex.TokenValue())
 		}
-		end := width
-		for end < len(text) {
-			next, width := utf8.DecodeRuneInString(text[end:])
-			if !scanner.IsIdentifierPart(next) {
-				break
-			}
-			end += width
-		}
-		names = append(names, text[:end])
 	}
 	return names
 }

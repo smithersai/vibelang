@@ -22,6 +22,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A returning `do` in a parameter default could incorrectly allow a body declaration to reuse a parameter name. The compiler now reports TypeScript's declaration errors while allowing shadowing in nested blocks.
 - Bun builds could report missing named exports from a `.vibex` module. The build plugin now compiles JSX VibeLang modules and passes preserved JSX to Bun.
 
+- Unicode escapes in `@rethrows` parameter names could miss the callback or track a shorter name. Escaped and literal names now identify the same complete parameter.
+
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
 - A `for concurrent` header accepted Unicode escapes in its keyword. Escaped spellings now report `TS1260`, as TypeScript does for escaped loop keywords.

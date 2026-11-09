@@ -388,7 +388,7 @@ A synchronous generator body also keeps this check when the generator is passed 
 
 A generator callback's parameter defaults run at the invoking `@rethrows` call, for both `function*` and `async function*`. Calls known to throw in those defaults contribute to that invocation, so a surrounding native `try/catch` or `Effect.try` can handle them. The generator's body keeps its separate iteration-time check. An ordinary `async function` instead rejects its Promise when a default throws.
 
-The parameter name in a `@rethrows` tag is matched as a complete identifier, including Unicode letters and continuation characters. The complete name distinguishes parameters that share an ASCII prefix.
+The parameter name in a `@rethrows` tag is matched as a complete identifier, including Unicode letters and continuation characters. The complete name distinguishes parameters that share an ASCII prefix. Unicode escapes in the tag resolve to the same name as in a parameter declaration: `@rethrows \u0063b` names `cb`, while `@rethrows cb\u03a9` names `cbΩ`.
 
 A tagged template checks each substitution against its callback parameter’s throw contract, just as an ordinary call checks an argument. A parameter without `@throws` admits only `never`; a written bound and a parameter named by `@rethrows` keep their usual admission rules.
 
