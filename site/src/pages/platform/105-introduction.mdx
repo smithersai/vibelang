@@ -57,7 +57,7 @@ Calling `main()` builds an Effect. `NodeRuntime.runMain` runs it, and `Effect.pr
 
 An unresolved experimental name such as `Process` keeps its TypeScript missing-name diagnostic. Its hint names the `Experimental` module, shows how to read and run the service, and identifies a layer that provides it. For example, read a process identifier with `try (try Experimental.Process.Process).pid` and provide `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node`. Pure helpers such as `Experimental.NetAddress.isIPv6(address)` need no service lookup or layer.
 
-Project-defined globals keep TypeScript's normal spelling suggestions even when their name is also a host-global name, such as `process` or `fetch`.
+Project-defined globals keep TypeScript's normal spelling suggestions even when their name is also a host-global name, such as `process` or `fetch`. Suggestions in value expressions omit every banned host global, including names outside the replacement table such as `screen`, `status` and `MutationObserver`. Allowed web utilities and ECMAScript globals keep TypeScript’s suggestions.
 
 Each Node.js or web call has an Effect replacement, which needs no import. `EK4402` names it and its layer. `Date.now` and `Math.random` are ECMAScript and allowed; their rows give the replacement a test can control:
 

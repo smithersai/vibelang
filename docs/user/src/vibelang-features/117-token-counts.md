@@ -253,7 +253,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Formatter](../schema/103-formatter.md) | 540 |
 | [Schema Compilers](../schema/104-compilers.md) | 2,200 |
 | **Platform** | **26,000** |
-| [Introduction](../platform/105-introduction.md) | 4,600 |
+| [Introduction](../platform/105-introduction.md) | 4,700 |
 | [FileSystem](../platform/106-file-system.md) | 1,400 |
 | [Path](../platform/107-path.md) | 950 |
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |

@@ -20,12 +20,13 @@ func init() {
 
 // suggestsNoPlatformGlobal is the checker's spelling suggestion filter: in
 // .vibe code outside a hatch or a module block, where EK4402 applies, a
-// platform global (platformGlobals) is never suggested. Embedded module bodies
-// have their own TypeScript source files; ordinary namespaces stay VibeLang.
+// banned host binding is never suggested, whether listed or declaration-derived.
+// Embedded module bodies have their own TypeScript source files; ordinary
+// namespaces stay VibeLang.
 // A declaration of the program's own with such a name may be.
 func suggestsNoPlatformGlobal(c *checker.Checker, location *ast.Node, candidate *ast.Symbol) bool {
 	name := candidate.Name()
-	if _, ok := platformGlobals[name]; !ok {
+	if _, ok := platformGlobals[name]; !ok && (!isUnlistedHostGlobal(c, candidate) || isErasedPlatformSpellingReference(location)) {
 		return true
 	}
 	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || inHatch(location) || ast.IsPartOfTypeQuery(location) {
@@ -43,6 +44,18 @@ func inModuleBlock(node *ast.Node) bool {
 		}
 	}
 	return false
+}
+
+// isErasedPlatformSpellingReference includes a type name's namespace qualifiers.
+// Class extends expressions remain values after following their member names.
+func isErasedPlatformSpellingReference(node *ast.Node) bool {
+	if ast.IsPartOfTypeQuery(node) {
+		return true
+	}
+	for node.Parent != nil && (ast.IsQualifiedName(node.Parent) || ast.IsPropertyAccessExpression(node.Parent)) {
+		node = node.Parent
+	}
+	return ast.IsPartOfTypeNode(node) || ast.IsPartOfTypeOnlyImportOrExportDeclaration(node)
 }
 
 // explainExperimentalName adds a note to TS2304 and TS2552 at a name that
