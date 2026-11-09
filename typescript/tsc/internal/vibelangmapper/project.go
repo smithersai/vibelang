@@ -50,7 +50,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// PreludeModule is the module every projected file imports its names from.
+// PreludeModule is the experimental content mapper's default prelude.
 const PreludeModule = "vibelang-ts-mapper/prelude"
 
 const inlineModuleProjectionMessage = "The TypeScript mapper cannot project inline modules with their ECMAScript module semantics; build with vibelang."
@@ -90,6 +90,8 @@ type FileContext struct {
 	// declares, as the fork computes it (module.go): "app/src/users" for
 	// src/users.vibe in the package app.
 	ModuleKey string
+	// PreludeModule overrides the default for hosts that ship their own prelude.
+	PreludeModule string
 	// Lint asks for a projection a syntax tool reads, not one a checker
 	// checks (vibelang --ts-projection): a form the mapper cannot decide
 	// without types takes its value reading instead of staying as VibeLang
@@ -194,10 +196,14 @@ type projector struct {
 // text it cannot lower passes through verbatim, and VibeLang syntax it does not
 // lower yet draws an EK9001 diagnostic.
 func Project(text string, ctx FileContext) Projection {
+	if ctx.PreludeModule == "" {
+		ctx.PreludeModule = PreludeModule
+	}
 	p := lower(text, ctx)
 	text = p.text // without the try keywords lower blanks
 	p.brandPureExports()
-	prefix := p.names.importLine
+	importLine := func() string { return p.names.importLine(ctx.PreludeModule) }
+	prefix := importLine
 	if ctx.Lint {
 		// Imports hoist, so a syntax tool can read the prelude line last. Every
 		// source line then keeps its number, a leading /// directive stays
@@ -206,7 +212,7 @@ func Project(text string, ctx FileContext) Projection {
 	}
 	out, segments, overlap, ok := p.plan.render(checking{names: p.names}, text, prefix)
 	if ctx.Lint && ok && len(p.file.Statements.Nodes) > 0 {
-		out += "\n" + p.names.importLine()
+		out += "\n" + importLine()
 	}
 	if !ok {
 		// Invalid or overlapping edits cannot render; pass the file through

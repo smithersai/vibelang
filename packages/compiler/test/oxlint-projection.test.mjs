@@ -43,7 +43,7 @@ test("the documented command prints the projection and its span map", () => {
   assert.match(text, /\$gen\(function\* \(\)/)
   // The source's lines keep their numbers; the prelude import comes last.
   assert.ok(text.split("\n")[0].startsWith("export function f()"), text)
-  assert.match(text.trimEnd().split("\n").at(-1), /^import \{.*vibelang-ts-mapper\/prelude/)
+  assert.match(text.trimEnd().split("\n").at(-1), /^import \{.*vibelang\/prelude/)
   for (const [virtualStart, virtualLength, originalStart, originalLength, kind] of mappings) {
     if (kind === 0) assert.equal(text.slice(virtualStart, virtualStart + virtualLength), source.slice(originalStart, originalStart + originalLength))
   }

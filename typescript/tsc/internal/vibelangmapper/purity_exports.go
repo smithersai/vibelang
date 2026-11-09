@@ -47,6 +47,6 @@ func (p *projector) brandPureExports() {
 		if ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport) {
 			prefix = "export "
 		}
-		p.plan.insert(statement.End(), "\n"+prefix+"declare namespace "+name+" { const $plain: import(\"vibelang-ts-mapper/prelude\").$Plain<typeof "+name+"> }\n")
+		p.plan.insert(statement.End(), "\n"+prefix+"declare namespace "+name+" { const $plain: import(\""+p.ctx.PreludeModule+"\").$Plain<typeof "+name+"> }\n")
 	}
 }

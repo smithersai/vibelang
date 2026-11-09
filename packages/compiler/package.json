@@ -44,6 +44,9 @@
     "./source": {
       "types": "./source.d.mts",
       "default": "./source.mjs"
+    },
+    "./prelude": {
+      "types": "./prelude.d.ts"
     }
   },
   "bin": {
@@ -89,7 +92,8 @@
     "source.mjs",
     "source.d.mts",
     "vibe-directive.mjs",
-    "source-map-frames.mjs"
+    "source-map-frames.mjs",
+    "prelude.d.ts"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs"

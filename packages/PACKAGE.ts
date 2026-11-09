@@ -94,7 +94,7 @@ const compilerTest = (shard: number) => S.Shell.Test({
   // Shard 1 carries the edge to the formatter's Go tests, so a compiler gate still selects them
   // (scripts/compiler-formatter-gate.test.mjs). They write no output the node tests read, and in every shard they cost
   // 206-297 s of a box before the tests start (measured 2026-11-04).
-  data: [compilerNative, ...(shard === 1 ? [Tsc["go-vibelangfmt"]] : []), runtimeDist, S.glob("compiler/**"), migrationSources,
+  data: [compilerNative, ...(shard === 1 ? [Tsc["go-vibelangfmt"]] : []), runtimeDist, S.glob("compiler/**"), S.file("ts-mapper/prelude.d.ts"), S.file("//scripts/generate-projection-prelude.mjs"), migrationSources,
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"), S.file("//docs/tools/lint-code-assignments.json"),
     S.file("//scripts/testing/node-failures.mjs"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/004-match.md"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/007-tooling.md"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"),

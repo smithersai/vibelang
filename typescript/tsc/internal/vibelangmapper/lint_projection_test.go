@@ -144,3 +144,27 @@ func TestLintProjectionOfModuleBodyReexports(t *testing.T) {
 		}
 	}
 }
+
+func TestProjectionPreludeModule(t *testing.T) {
+	source := "export effect function load(id: string) { const value = try Effect.succeed(id.length); return value }\nexport effect function pure() { return 1 }\n"
+	for _, lint := range []bool{false, true} {
+		for _, module := range []string{"", "vibelang/prelude"} {
+			ctx := FileContext{FileName: "/src/a.vibe", ModuleKey: "p/src/a", Lint: lint, PreludeModule: module}
+			projection := Project(source, ctx)
+			if len(projection.Diagnostics) != 0 {
+				t.Fatalf("lint=%v module=%q: %v", lint, module, projection.Diagnostics)
+			}
+			expected := module
+			if expected == "" {
+				expected = PreludeModule
+			}
+			if !strings.Contains(projection.Text, "from \""+expected+"\"") ||
+				!strings.Contains(projection.Text, "import(\""+expected+"\").$Plain") {
+				t.Fatalf("prelude references disagree: %s", projection.Text)
+			}
+			if module != "" && strings.Contains(projection.Text, PreludeModule) {
+				t.Fatalf("default prelude leaked into host projection: %s", projection.Text)
+			}
+		}
+	}
+}

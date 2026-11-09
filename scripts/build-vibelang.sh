@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+node "$root/scripts/generate-projection-prelude.mjs"
 command -v go >/dev/null 2>&1 || { echo "build-vibelang: Go is required." >&2; exit 1; }
 export GOFLAGS="${GOFLAGS:+$GOFLAGS }-trimpath"
 # The inventory reads source and specification files, without linking the compiler.

@@ -1,0 +1,7 @@
+{
+  "file": "mod.vibe",
+  "source": "export effect function load(id: string) {\n  const value = try Effect.succeed(id.length)\n  return value\n}\n",
+  "locals": {
+    "value": "number"
+  }
+}

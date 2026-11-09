@@ -225,7 +225,7 @@ func (n *names) shadowsPreludeType(name string) bool {
 // the sentinel that fails at line 1 when the prelude's own imports do not
 // resolve (prelude.d.ts, $PreludeLoaded). Names are sorted, so the line is
 // deterministic.
-func (n *names) importLine() string {
+func (n *names) importLine(module string) string {
 	loaded := n.helper("$PreludeLoaded")
 	var specifiers []string
 	for export, local := range n.imports {
@@ -242,7 +242,7 @@ func (n *names) importLine() string {
 	slices.SortFunc(specifiers, func(a, b string) int {
 		return strings.Compare(strings.TrimPrefix(a, "type "), strings.TrimPrefix(b, "type "))
 	})
-	return "import { " + strings.Join(specifiers, ", ") + ` } from "` + PreludeModule + `"; true satisfies ` + loaded + ";\n"
+	return "import { " + strings.Join(specifiers, ", ") + ` } from "` + module + `"; true satisfies ` + loaded + ";\n"
 }
 
 // forEachTopLevelName calls fn with each name that statement, a statement at

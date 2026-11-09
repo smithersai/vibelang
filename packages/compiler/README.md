@@ -59,6 +59,12 @@ dependencies. Point `vibe.config.json`, `tsconfig.json`, or `jsconfig.json` at y
 | `npx vibelang agents init` | Set up Claude Code, Codex, opencode, Cursor and VS Code for `.vibe` files ([coding agents](https://vibelang.sh/setup/coding-agents)) |
 | `npx vibelang --version` | Print the VibeLang and TypeScript versions |
 
+`vibelang --ts-projection src/app.vibe < src/app.vibe` prints a JSON object
+with virtual TypeScript in `text` and a source span map in `mappings`. Its
+helper declarations ship as the types-only export `vibelang/prelude`. Source
+tools can check that text with stock TypeScript beside the original source
+when `vibelang`, `vibelang-runtime` and their pinned `effect` peer are installed.
+
 For tests with Vitest, add [`vibelang-vite`](https://www.npmjs.com/package/vibelang-vite).
 
 ## Run .vibe modules in Node

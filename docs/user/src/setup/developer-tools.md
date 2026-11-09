@@ -312,6 +312,13 @@ the virtual TypeScript; `extension`; `mappings`, the span map back to the source
 and `diagnostics`. Like `--estree`, it takes one file and exits with status 2 on
 a usage error. A form the checking projection leaves for an annotation takes its
 value reading here, because only syntax matters to a linter.
+The projected text imports its helper types from `vibelang/prelude`, shipped
+with `vibelang`. Stock TypeScript can resolve those types in a consumer with
+`vibelang`, `vibelang-runtime` and their pinned `effect` peer installed; no
+content mapper package is required. Keep the virtual file in the source
+project so its relative imports resolve. The projection is for source
+inspection and checking, not executable JavaScript.
+
 Module bodies keep their native lint checks when their members are re-exported,
 including named, namespace and type-only re-exports.
 

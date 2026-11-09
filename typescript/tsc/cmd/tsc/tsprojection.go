@@ -28,6 +28,7 @@ func runTSProjection(args []string) int {
 	}
 	context := vibelangmapper.FileContextOf(args[0])
 	context.Lint = true
+	context.PreludeModule = "vibelang/prelude"
 	result, err := vibelangmapper.TransformResult(vibelangmapper.Project(string(text), context))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "vibelang --ts-projection:", err)
