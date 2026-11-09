@@ -407,6 +407,29 @@ func GetPackageNameFromDirectory(path tspath.RootedPath) string {
 
 // ProcessEntrypointEnding processes a pre-computed module specifier from a package.json exports
 // entrypoint according to the entrypoint's Ending type and the user's preferred endings.
+// ProcessVibeImportEnding returns the specifier an import written into source
+// names a relative .vibe or .vibex module by: the ending its TypeScript twin
+// takes under the importing file's options. Specifier generation keeps the
+// VibeLang suffix so the declaration emitter can choose the output spelling; a
+// written import has no such later step. moduleFileName locates the module for
+// the index-file check.
+func ProcessVibeImportEnding(
+	specifier tspath.ModuleSpecifier,
+	moduleFileName tspath.RootedFilePath,
+	allowedEndings []ModuleSpecifierEnding,
+	options *core.CompilerOptions,
+	host ModuleSpecifierGenerationHost,
+) tspath.ModuleSpecifier {
+	twin, ok := specifier.RewriteVibeExtension()
+	if !ok {
+		return specifier
+	}
+	if ending := processEnding(twin, moduleFileName, allowedEndings, options, host); ending != twin {
+		return ending
+	}
+	return specifier
+}
+
 func ProcessEntrypointEnding(
 	entrypoint *module.ResolvedEntrypoint,
 	prefs UserPreferences,

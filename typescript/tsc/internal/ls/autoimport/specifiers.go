@@ -82,6 +82,7 @@ func (v *View) GetModuleSpecifier(
 		if specifier.Contains("/node_modules/") {
 			continue
 		}
+		specifier = modulespecifiers.ProcessVibeImportEnding(specifier, export.ModuleFileName, v.getAllowedEndings(), v.program.Options(), v.program)
 		cache.Store(export.Path, specifier)
 		return specifier, kind
 	}
