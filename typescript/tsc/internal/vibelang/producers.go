@@ -65,7 +65,7 @@ func streamInterface(c *checker.Checker) *checker.Type {
 	}
 	s.streamSearched = true
 	for _, file := range c.Program().SourceFiles() {
-		if !isEffectModuleFile(file, "Stream") || file.Symbol == nil {
+		if !isEffectModuleFile(c, file, "Stream") || file.Symbol == nil {
 			continue
 		}
 		for _, export := range c.GetExportsOfModule(file.Symbol) {

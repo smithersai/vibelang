@@ -536,7 +536,7 @@ func (a *analyzer) programEffectInterface() *checker.Type {
 	}
 	a.programEffectSearched = true
 	for _, file := range a.checker.Program().SourceFiles() {
-		if !isEffectModuleFile(file, "Effect") || file.Symbol == nil {
+		if !isEffectModuleFile(a.checker, file, "Effect") || file.Symbol == nil {
 			continue
 		}
 		for _, export := range a.checker.GetExportsOfModule(file.Symbol) {

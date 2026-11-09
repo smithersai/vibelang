@@ -1,5 +1,7 @@
 # Developer tools after migration
 
+Effect packages keep their identity when a package manager stores them in a numbered or content-addressed directory and links them as `effect`. Foreign `Effect` values and `Context.Reference` keys remain valid operands of `try`; their physical storage directory does not need to be named `effect`.
+
 The migration setup extends the repository's existing format and lint scripts,
 rather than accepting a green command that skips VibeLang.
 

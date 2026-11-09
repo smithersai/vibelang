@@ -122,7 +122,7 @@ func effectModuleExport(c *checker.Checker, callee *ast.Node) (module string, na
 	}
 	file := ast.GetSourceFileOfNode(symbol.Declarations()[0])
 	for _, m := range []string{"Effect", "Stream"} {
-		if isEffectModuleFile(file, m) {
+		if isEffectModuleFile(c, file, m) {
 			return m, symbol.Name()
 		}
 	}

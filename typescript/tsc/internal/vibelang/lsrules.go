@@ -454,7 +454,7 @@ func (r *ruleCheck) checkLeakingRequirements(service *ast.Node) {
 		}
 		var needs []*checker.Type
 		for _, t := range requirements.Distributed() {
-			if t.Flags()&checker.TypeFlagsNever == 0 && !isScopeType(t) && !isLeakable(t) {
+			if t.Flags()&checker.TypeFlagsNever == 0 && !isScopeType(r.c, t) && !isLeakable(t) {
 				needs = append(needs, t)
 			}
 		}

@@ -138,7 +138,7 @@ func builtinMatcherOf(c *checker.Checker, matcher *ast.Node) (parser.BuiltinMatc
 		if symbol != nil {
 			for _, decl := range symbol.Declarations() {
 				for module, guards := range fixedErrorGuards {
-					if guard := guards[symbol.Name()]; guard != "" && isEffectModuleFile(ast.GetSourceFileOfNode(decl), module) {
+					if guard := guards[symbol.Name()]; guard != "" && isEffectModuleFile(c, ast.GetSourceFileOfNode(decl), module) {
 						return parser.BuiltinMatcher{Module: module, Guard: guard, Values: []string{""}}, true
 					}
 				}
@@ -168,12 +168,12 @@ func effectModuleNamed(c *checker.Checker, expression *ast.Node) string {
 	}
 	for _, declaration := range symbol.Declarations() {
 		for _, module := range []string{"Option", "Exit", "Result"} {
-			if isEffectModuleFile(ast.GetSourceFileOfNode(declaration), module) {
+			if isEffectModuleFile(c, ast.GetSourceFileOfNode(declaration), module) {
 				return module
 			}
 		}
 		for module := range fixedErrorGuards {
-			if isEffectModuleFile(ast.GetSourceFileOfNode(declaration), module) {
+			if isEffectModuleFile(c, ast.GetSourceFileOfNode(declaration), module) {
 				return module
 			}
 		}

@@ -182,7 +182,7 @@ func causeInterface(c *checker.Checker) *checker.Type {
 	}
 	s.causeSearched = true
 	for _, file := range c.Program().SourceFiles() {
-		if !isEffectModuleFile(file, "Cause") || file.Symbol == nil {
+		if !isEffectModuleFile(c, file, "Cause") || file.Symbol == nil {
 			continue
 		}
 		for _, export := range c.GetExportsOfModule(file.Symbol) {

@@ -499,7 +499,7 @@ func keywordOperandRewrite(c *checker.Checker, file *ast.SourceFile, call, opera
 			module = c.GetAliasedSymbol(module)
 		}
 		if module == nil || module.ValueDeclaration() == nil ||
-			!isEffectModuleFile(ast.GetSourceFileOfNode(module.ValueDeclaration()), "Effect") {
+			!isEffectModuleFile(c, ast.GetSourceFileOfNode(module.ValueDeclaration()), "Effect") {
 			return nil
 		}
 		text := "try Effect.forkChild" + file.Text()[call.Expression().End():call.End()]

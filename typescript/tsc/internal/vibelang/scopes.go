@@ -215,7 +215,7 @@ func (a *analyzer) requiresScope(initializer *ast.Node) bool {
 // its constraint: R extends Scope is Scope, and so is a constraint that has
 // Scope as a member. An unconstrained R, any, and unknown are not (D490).
 func (a *analyzer) isScopeRequirement(t *checker.Type) bool {
-	if isScopeType(t) {
+	if isScopeType(a.checker, t) {
 		return true
 	}
 	if t.Flags()&checker.TypeFlagsInstantiable == 0 {
@@ -225,7 +225,7 @@ func (a *analyzer) isScopeRequirement(t *checker.Type) bool {
 	if constraint == nil || constraint == t || constraint.Flags()&checker.TypeFlagsAnyOrUnknown != 0 {
 		return false
 	}
-	return slices.ContainsFunc(unionMembers(constraint), isScopeType)
+	return slices.ContainsFunc(unionMembers(constraint), func(member *checker.Type) bool { return isScopeType(a.checker, member) })
 }
 
 // usingInitializer is the checker's using initializer hook. In a .vibe
@@ -313,7 +313,7 @@ func (a *analyzer) withoutScope(info *effectInfo, scope *checker.Type) *effectIn
 		}
 		for _, member := range members {
 			switch {
-			case isScopeType(member):
+			case isScopeType(a.checker, member):
 			case scope != nil && member.Flags()&checker.TypeFlagsInstantiable != 0:
 				out.addRequirement(a.checker.ExcludeType(member, scope), source)
 			default:
@@ -334,7 +334,7 @@ func (a *analyzer) programScope() *checker.Type {
 	}
 	a.programScopeSearched = true
 	for _, file := range a.checker.Program().SourceFiles() {
-		if !isEffectModuleFile(file, "Scope") || file.Symbol == nil {
+		if !isEffectModuleFile(a.checker, file, "Scope") || file.Symbol == nil {
 			continue
 		}
 		for _, export := range a.checker.GetExportsOfModule(file.Symbol) {
@@ -348,13 +348,13 @@ func (a *analyzer) programScope() *checker.Type {
 }
 
 // isScopeType reports whether t is effect's Scope.Scope.
-func isScopeType(t *checker.Type) bool {
+func isScopeType(c *checker.Checker, t *checker.Type) bool {
 	symbol := t.Symbol()
 	if symbol == nil || symbol.Name() != "Scope" || symbol.Flags()&ast.SymbolFlagsInterface == 0 {
 		return false
 	}
 	for _, declaration := range symbol.Declarations() {
-		if isEffectModuleFile(ast.GetSourceFileOfNode(declaration), "Scope") {
+		if isEffectModuleFile(c, ast.GetSourceFileOfNode(declaration), "Scope") {
 			return true
 		}
 	}

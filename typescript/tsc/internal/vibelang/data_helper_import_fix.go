@@ -215,7 +215,7 @@ func effectDataDefinition(c *checker.Checker, symbol *ast.Symbol) bool {
 					continue
 				}
 				for _, d := range target.Declarations() {
-					if isEffectModuleFile(ast.GetSourceFileOfNode(d), "Data") {
+					if isEffectModuleFile(c, ast.GetSourceFileOfNode(d), "Data") {
 						return true
 					}
 				}

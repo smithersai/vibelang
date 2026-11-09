@@ -29,7 +29,7 @@ func newConstructorFiberTypes(c *checker.Checker, source *ast.SourceFile) *const
 				if symbol != nil {
 					for _, declaration := range symbol.Declarations() {
 						for module, constructors := range fixedErrorGuards {
-							if constructors[symbol.Name()] != "" && isEffectModuleFile(ast.GetSourceFileOfNode(declaration), module) {
+							if constructors[symbol.Name()] != "" && isEffectModuleFile(c, ast.GetSourceFileOfNode(declaration), module) {
 								imported = true
 							}
 						}

@@ -250,7 +250,7 @@ func (s *services) effectExport(module, name string) *ast.Symbol {
 	symbol, searched := s.modules[module]
 	if !searched {
 		for _, file := range s.checker.Program().SourceFiles() {
-			if isEffectModuleFile(file, module) {
+			if isEffectModuleFile(s.checker, file, module) {
 				symbol = file.Symbol
 				break
 			}
@@ -270,9 +270,22 @@ func (s *services) effectExport(module, name string) *ast.Symbol {
 
 // isEffectModuleFile reports whether file declares the module effect/<name>
 // of the effect package.
-func isEffectModuleFile(file *ast.SourceFile, name string) bool {
+func isEffectModuleFile(c *checker.Checker, file *ast.SourceFile, name string) bool {
+	if file == nil {
+		return false
+	}
 	fileName := file.FileName().AsString()
-	return strings.HasSuffix(fileName, "/effect/dist/"+name+".d.ts") || strings.HasSuffix(fileName, "/effect/src/"+name+".ts")
+	if strings.HasSuffix(fileName, "/effect/dist/"+name+".d.ts") || strings.HasSuffix(fileName, "/effect/src/"+name+".ts") {
+		return true
+	}
+	// Package storage may use a numbered or content-addressed directory.
+	// Resolve its declared identity, then require the module at the package
+	// root rather than treating an arbitrary same-named file as Effect.
+	if !strings.HasSuffix(fileName, "/dist/"+name+".d.ts") && !strings.HasSuffix(fileName, "/src/"+name+".ts") {
+		return false
+	}
+	root, pkg := packageRootOf(c, file.FileName().Directory())
+	return pkg == "effect" && (fileName == root.AsString()+"/dist/"+name+".d.ts" || fileName == root.AsString()+"/src/"+name+".ts")
 }
 
 // key returns the key of the service that class declares: the key its body

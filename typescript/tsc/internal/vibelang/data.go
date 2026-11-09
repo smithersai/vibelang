@@ -91,7 +91,7 @@ func isDataConstructors(c *checker.Checker, t *checker.Type) bool {
 		return false
 	}
 	for _, declaration := range is.Declarations() {
-		if isEffectModuleFile(ast.GetSourceFileOfNode(declaration), "Data") {
+		if isEffectModuleFile(c, ast.GetSourceFileOfNode(declaration), "Data") {
 			return true
 		}
 	}

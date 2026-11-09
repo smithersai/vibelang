@@ -14,7 +14,7 @@ func nativeJoinSymbol(c *checker.Checker) *ast.Symbol {
 	return c.ExtensionState(nativeJoinSymbolKey{}, func() any {
 		binding := &nativeJoinBinding{}
 		for _, file := range c.Program().SourceFiles() {
-			if isEffectModuleFile(file, "Fiber") && file.Symbol != nil {
+			if isEffectModuleFile(c, file, "Fiber") && file.Symbol != nil {
 				binding.symbol = c.TryGetMemberInModuleExports("join", file.Symbol)
 				if binding.symbol != nil {
 					break

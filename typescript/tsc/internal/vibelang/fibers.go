@@ -303,7 +303,7 @@ func isJoinable(c *checker.Checker, t *checker.Type, depth int) bool {
 	// Native assignability handles constraints as well as structural members.
 	// Use the same erased channels as the operand domain in VIP-17.
 	for _, file := range c.Program().SourceFiles() {
-		if !isEffectModuleFile(file, "Fiber") || file.Symbol == nil {
+		if !isEffectModuleFile(c, file, "Fiber") || file.Symbol == nil {
 			continue
 		}
 		for _, symbol := range c.GetExportsOfModule(file.Symbol) {
@@ -745,7 +745,7 @@ func nativeAwaitTarget(c *checker.Checker, value *checker.Type, module string) b
 		return false
 	}
 	for _, file := range c.Program().SourceFiles() {
-		if !isEffectModuleFile(file, module) || file.Symbol == nil {
+		if !isEffectModuleFile(c, file, module) || file.Symbol == nil {
 			continue
 		}
 		for _, export := range c.GetExportsOfModule(file.Symbol) {

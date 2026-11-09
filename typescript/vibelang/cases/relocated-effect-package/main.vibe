@@ -1,0 +1,2 @@
+import { Counter, task } from "./foreign/values.js"
+export effect function run() { const counter = try Counter; return (try task) + counter }

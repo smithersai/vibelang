@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- An Effect package stored in a numbered directory could make valid `try` operands report that they were not Effects. The compiler now recognizes the resolved package regardless of its storage directory.
+
 - V8 coverage could count generated `match` cleanup as an uncovered statement inside an Effect handler, despite every authored arm running. It now counts authored statements while keeping unvisited source code uncovered.
 
 - An esbuild bundle could create separate copies of a native module when a generated module map used an absolute import. Absolute and relative imports now share the same exports and state.

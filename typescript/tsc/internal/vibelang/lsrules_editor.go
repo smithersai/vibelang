@@ -184,7 +184,7 @@ func isDurationInput(c *checker.Checker, t *checker.Type) bool {
 	}
 	if alias := t.Alias(); alias != nil && alias.Symbol() != nil && alias.Symbol().Name() == "Input" {
 		return slices.ContainsFunc(alias.Symbol().Declarations(), func(d *ast.Node) bool {
-			return isEffectModuleFile(ast.GetSourceFileOfNode(d), "Duration")
+			return isEffectModuleFile(c, ast.GetSourceFileOfNode(d), "Duration")
 		})
 	}
 	return t.IsUnion() && slices.ContainsFunc(t.Types(), func(member *checker.Type) bool { return isDurationInput(c, member) })

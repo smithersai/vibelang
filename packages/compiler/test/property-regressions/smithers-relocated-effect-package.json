@@ -1,0 +1,10 @@
+{
+  "property": "RelocatedEffectPackage",
+  "rule": "Anything TypeScript or the pinned TC39 proposal already defines (evaluation order, binding, types, modules, resolution, declaration emit) is as in TypeScript and is not restated.",
+  "input": {
+    "location": "packages/71",
+    "subpaths": false,
+    "newline": "\n",
+    "value": 1
+  }
+}
