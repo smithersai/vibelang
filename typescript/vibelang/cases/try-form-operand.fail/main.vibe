@@ -1,0 +1,20 @@
+// expect: EK0502
+// try runs the value a form gives (VIP-5). try.all and try.allSettled give
+// an array, try.race here gives a number, and this match and do give a
+// number, so a try written before each has no Effect to run.
+import * as Effect from "effect/Effect"
+
+const e = (n: number) => Effect.succeed(n)
+const one = (): 1 | 2 => 1
+
+export effect function main() {
+  const a = try try.all [e(1)]
+  const b = try (try.allSettled [e(2)])
+  const c = try try.race [e(3)]
+  const d = try (try.any [e(4)])
+  const f = try match (one()) { when 1: 5; default: 0; }
+  const g = try (match (one()) { when 1: 6; default: 0; })
+  const h = try (do { 7 })
+  const i = try try do { e(8) }
+  return [a, b, c, d, f, g, h, i]
+}

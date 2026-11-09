@@ -1,0 +1,35 @@
+// expect-result: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
+// try runs the value a form gives, as it runs any operand: a do or match
+// expression and try.race or try.any run where they stand, and each try
+// written before one runs its value once, with or without parentheses.
+import * as Effect from "effect/Effect"
+
+const e = (n: number) => Effect.succeed(n)
+const ee = (n: number) => Effect.succeed(Effect.succeed(n))
+const eee = (n: number) => Effect.succeed(ee(n))
+const o = { id: (n: number) => n }
+const yes = (): boolean => true
+const one = (): 1 | 2 => 1
+
+export const raceBare = effect { return try try.race [ee(1), ee(1)] }
+export const raceParen = effect { return try (try.race [ee(2), ee(2)]) }
+export const anyParen = effect { return try (try.any ([ee(3)])) }
+export const raceThree = effect { return try try (try.race [eee(4)]) }
+export const doParen = effect { return try (do { e(5) }) }
+export const doBranchParen = effect { return try (do { if (yes()) { e(6) } else { e(0) } }) }
+export const doTwice = effect { return try try do { ee(7) } }
+export const doParenTwice = effect { return try (try (do { ee(8) })) }
+export const doReturn = effect { const v = try (do { if (!yes()) return 0; e(9) }); return v }
+export const doKept = effect { return o?.id(try do { e(10) }) }
+export const doKeptParen = effect { return o?.id(try (do { e(11) })) }
+export const doDiscarded = effect { let n = 0; try (do { Effect.sync(() => { n = 12 }) }); return n }
+export const matchBare = effect { return try match (one()) { when 1: e(13); default: e(0); } }
+export const matchParen = effect { return try (match (one()) { when 1: e(14); default: e(0); }) }
+export const matchTwice = effect { return try try match (one()) { when 1: ee(15); default: ee(0); } }
+export const doBare = effect { return try do { e(16) } }
+export const doMember = effect { return try (do { ({ x: e(17) }) }).x }
+export const raceMember = effect { return try (try.race [Effect.succeed({ v: e(18) })]).v }
+
+export effect function main() {
+  return [try raceBare, try raceParen, try anyParen, try raceThree, try doParen, try doBranchParen, try doTwice, try doParenTwice, try doReturn, try doKept, try doKeptParen, try doDiscarded, try matchBare, try matchParen, try matchTwice, try doBare, try doMember, try raceMember]
+}

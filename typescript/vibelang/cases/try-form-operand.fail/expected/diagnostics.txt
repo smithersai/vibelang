@@ -1,0 +1,8 @@
+main.vibe(11,17): error EK0502
+main.vibe(12,17): error EK0502
+main.vibe(13,17): error EK0502
+main.vibe(14,17): error EK0502
+main.vibe(15,17): error EK0502
+main.vibe(16,17): error EK0502
+main.vibe(17,17): error EK0502
+main.vibe(18,17): error EK0502

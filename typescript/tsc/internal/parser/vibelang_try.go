@@ -50,7 +50,8 @@ func (p *Parser) parseVibeLangTry() *ast.Node {
 	operand := p.parseSimpleUnaryExpression()
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: anchor, Range: core.NewTextRange(anchor.Pos(), operand.End())})
 	// A call that holds a try already is that try's: the outer try runs its value.
-	if inner := ast.SkipParentheses(operand); (ast.IsCallExpression(inner) || ast.IsTaggedTemplateExpression(inner)) && !holdsVibeLangTry(operand) {
+	// So does a call the parser writes for a form, whose value it is.
+	if inner := ast.SkipParentheses(operand); (ast.IsCallExpression(inner) || ast.IsTaggedTemplateExpression(inner)) && !holdsVibeLangTry(operand) && !isVibeLangFormCall(inner) {
 		operand.Flags |= ast.NodeFlagsVibeLangTry
 		operand.Loc = core.NewTextRange(pos, operand.End())
 		return operand
@@ -70,6 +71,15 @@ func isVibeLangTry(node *ast.Node) bool {
 	}
 	callee := node.Expression()
 	return callee.Kind == ast.KindIdentifier && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$try"
+}
+
+// isVibeLangFormCall reports whether node is a call the parser writes for a
+// form that is not a call in the source: a do or match expression, which is
+// the call of its function, or try.all, try.race, try.any or try.allSettled.
+// The form runs where it stands and gives a value; try (VIP-5) runs that
+// value, so try do { e } and try try.race [a, b] are $try(…), as try p is.
+func isVibeLangFormCall(node *ast.Node) bool {
+	return IsVibeLangSynthesizedCall(node) || ast.IsCallExpression(node) && isTryOperation(isIntrinsicCall(node))
 }
 
 // holdsVibeLangTry reports whether operand, or parentheses it holds, is a

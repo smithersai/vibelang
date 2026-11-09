@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `try` before a `match` expression, a parenthesized `do` block, `try.race` or `try.any` could leave the Effect it gives unrun, and `try try do { … }` ran one layer too few. Each `try` now runs the value the form gives, and reports `EK0502` when that value is not an Effect.
+
 - DOM constructor names in `Effect.tryPromise` callbacks could be confused with implicit Effect namespaces. The platform guide now explains their `globalThis` spellings and the TypeScript boundary those host calls still need.
 
 - Native phase imports could crash the compiler instead of producing diagnostics. They now complete checking and report any applicable errors.

@@ -960,10 +960,11 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 			}
 			if n.Kind == ast.KindCallExpression {
 				switch name := isIntrinsicCall(n); {
-				case name == "", name == "$await", name == "$join", isTryOperation(name):
+				case name == "", name == "$await", name == "$join", name == "$try", isTryOperation(name):
 					// VIP-2: a do element of try.all, race, any or
 					// allSettled runs now, as any do does; VIP-18's
-					// operand is an array of Effect values.
+					// operand is an array of Effect values. try do { … }
+					// is $try of the do, which runs before try runs its value.
 				case isAwaitLiteralOperation(name):
 					// D322: a do element is still a program by syntax.
 					return nil
@@ -1564,19 +1565,9 @@ func (l *doLowering) expr(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		l.origins[binding] = &DoNarrowingOrigin{Body: d.block}
 		let := l.letStatement(binding, d.keyword)
 		*pre = append(*pre, let, d.block)
-		at := l.p.sourceRange(e)
-		if e.Flags&ast.NodeFlagsVibeLangTry == 0 {
-			ref := l.ref(d.name, at)
-			l.p.completionSite(let, ref)
-			return ref
-		}
-		// try do { … } (VIP-5): the parser flagged the do's call and widened
-		// it to start at try. The reference starts at do, after its let, and
-		// $try runs the value, as try runs any operand that is not a call.
-		ref := l.ref(d.name, core.NewTextRange(d.keyword.Pos(), at.End()))
+		ref := l.ref(d.name, l.p.sourceRange(e))
 		l.p.completionSite(let, ref)
-		callee := l.p.vibelangIntrinsic("$try", core.NewTextRange(at.Pos(), at.Pos()+len("try")))
-		return l.p.vibelangSpanning(l.p.factory.NewCallExpression(callee, nil, nil, l.p.newNodeList(ref.Loc, []*ast.Node{ref}), ast.NodeFlagsNone), at)
+		return ref
 	}
 	switch e.Kind {
 	case ast.KindParenthesizedExpression, ast.KindAsExpression, ast.KindSatisfiesExpression, ast.KindNonNullExpression,

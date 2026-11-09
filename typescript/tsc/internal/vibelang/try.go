@@ -118,7 +118,10 @@ func checkTry(c *checker.Checker, file *ast.SourceFile, call, operand *ast.Node)
 		note(d, "To run it as yield* {0} does, write try {0}.asEffect().", expressionText(file, operand))
 	case c.GetPromisedTypeOfPromise(t) != nil:
 		note(d, "Wrap the promise: try Effect.tryPromise(() => {0}).", expressionText(file, operand))
-	case ast.IsCallExpression(ast.SkipParentheses(operand)):
+	case ast.IsCallExpression(ast.SkipParentheses(operand)) && !parser.IsVibeLangSynthesizedCall(ast.SkipParentheses(operand)) && tryOperationName(ast.SkipParentheses(operand)) == "" && !isTryCall(ast.SkipParentheses(operand)):
+		// A do or match expression, try.all and the other operations and an
+		// inner try are calls only as the parser writes them: the source has
+		// no call to keep.
 		note(d, "Call it without try, or wrap a call that may throw: try Effect.try(() => {0}).", expressionText(file, operand))
 	default:
 		note(d, "Remove try: a value that is not an Effect has nothing to run.")
