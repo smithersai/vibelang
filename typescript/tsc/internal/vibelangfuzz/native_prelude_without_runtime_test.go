@@ -14,8 +14,9 @@ import (
 const nativePreludeQuote = "Every root export of the core `effect` package is in scope in a `.vibe` file without an import."
 const nativePreludeModulesDisabledQuote = "\"vibe\": { \"effectModules\": false }"
 const nativePreludeGlobalsDisabledQuote = "\"vibe\": { \"effectGlobals\": false }"
+const nativePreludeMissingQuote = "A name that resolves to nothing is TypeScript's `TS2304`"
 
-var nativePreludeKeys = []string{"Effect", "Layer", "Schema", "Scope", "contract", "explicit", "shadow", "disabled", "disabled-all"}
+var nativePreludeKeys = []string{"Effect", "Layer", "Schema", "Scope", "contract", "explicit", "shadow", "disabled", "disabled-all", "missing-effect-Schedule", "missing-effect-Stream", "missing-effect-Config"}
 
 func TestNativePreludeWithoutRuntimeQuoted(t *testing.T) { nativePreludeQuoted(t) }
 func nativePreludeQuoted(t testing.TB) {
@@ -24,7 +25,7 @@ func nativePreludeQuoted(t testing.TB) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, quote := range []string{nativePreludeQuote, nativePreludeModulesDisabledQuote, nativePreludeGlobalsDisabledQuote} {
+	for _, quote := range []string{nativePreludeQuote, nativePreludeModulesDisabledQuote, nativePreludeGlobalsDisabledQuote, nativePreludeMissingQuote} {
 		if !strings.Contains(string(chapter), quote) {
 			t.Fatalf("chapter 5 no longer says %q", quote)
 		}
@@ -44,8 +45,15 @@ func FuzzNativePreludeWithoutRuntime(f *testing.F) {
 	for _, key := range nativePreludeKeys {
 		f.Add([]byte(key))
 		f.Add([]byte(key + "\x00\x03"))
+		if strings.HasPrefix(key, "missing-effect-") {
+			f.Add([]byte(key + "\x00\x04"))
+		}
 	}
 	absent, present := NewWorkspace(f), NewWorkspace(f)
+	missingEffect := NewWorkspace(f)
+	if err := os.Rename(filepath.Join(missingEffect.Dir, "node_modules", "effect"), filepath.Join(missingEffect.Dir, "disabled-effect")); err != nil {
+		f.Fatal(err)
+	}
 	runtime := filepath.Join(absent.Dir, "node_modules", "vibelang-runtime")
 	if err := os.Rename(runtime, filepath.Join(absent.Dir, "disabled-runtime")); err != nil {
 		f.Fatal(err)
@@ -60,9 +68,11 @@ func FuzzNativePreludeWithoutRuntime(f *testing.F) {
 		if len(parts) > 1 && len(parts[1]) > 0 {
 			variant = parts[1][0]
 		}
-		source := "export const value = " + key + "\n"
+		missing := strings.HasPrefix(key, "missing-effect-")
+		name := strings.TrimPrefix(key, "missing-effect-")
+		source := "export const value = " + name + "\n"
 		if variant&1 != 0 {
-			source = "export type API = typeof " + key + "\nexport declare const value: API\n"
+			source = "export type API = typeof " + name + "\nexport declare const value: API\n"
 		}
 		switch key {
 		case "contract":
@@ -73,6 +83,10 @@ func FuzzNativePreludeWithoutRuntime(f *testing.F) {
 			source = "const Effect = { local: 7 as const }\nexport const value: 7 = Effect.local\n"
 		case "disabled", "disabled-all":
 			source = "export const value = Effect\n"
+		}
+		local := missing && variant&4 != 0
+		if local {
+			source = "const " + name + " = { local: 7 as const }\n" + source
 		}
 		if variant&2 != 0 {
 			source = "/* retained */\n" + strings.ReplaceAll(source, "value", "valueCafé")
@@ -86,10 +100,15 @@ func FuzzNativePreludeWithoutRuntime(f *testing.F) {
 			}
 			config = strings.TrimSuffix(config, "\n}") + ",\n\"vibe\": { " + options + " }\n}"
 		}
-		for _, control := range []struct {
+		controls := []struct {
 			name string
 			w    *Workspace
-		}{{"absent", absent}, {"installed", present}} {
+		}{{"absent", absent}, {"installed", present}}
+		if missing {
+			controls = controls[:1]
+			controls[0].name, controls[0].w = "missing-effect", missingEffect
+		}
+		for _, control := range controls {
 			r, err := control.w.Compile(t.Context(), Project{Config: config, Files: map[string]string{"main.vibe": source, "package.json": `{"name":"native-prelude-runtime-independent","type":"module"}`}})
 			if err != nil {
 				t.Fatal(err)
@@ -107,14 +126,14 @@ func FuzzNativePreludeWithoutRuntime(f *testing.F) {
 				}
 			}
 			want := []int32(nil)
-			if disabled {
+			if disabled || missing && !local {
 				want = []int32{2304}
 			}
 			if !slices.Equal(codes, want) {
 				Gap(t, "FuzzNativePreludeWithoutRuntime", key+":"+control.name, "VIP-14 native Effect namespaces: want %v, got %v; diagnostics=%v; source=%s", want, codes, r.Diagnostics, source)
 				return
 			}
-			if !disabled {
+			if !disabled && (!missing || local) {
 				found := false
 				for name, text := range r.Outputs {
 					if strings.HasSuffix(name, "main.js") {

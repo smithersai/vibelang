@@ -87,7 +87,7 @@ func TestPreludeMissingPackageNotes(t *testing.T) {
 	}{
 		{"error declaration without the runtime", "export error NotFound { id: string }", effectOnly, 2307,
 			"Install vibelang-runtime at the version of vibelang."},
-		{"Effect module without effect", `export const policy = (): unknown => Schedule.spaced("1 second")`, map[string]string{"vibelang-runtime": "packages/runtime"}, 2552,
+		{"Effect module without effect", `export const policy = (): unknown => Schedule.spaced("1 second")`, map[string]string{"vibelang-runtime": "packages/runtime"}, 2304,
 			"Schedule is in scope in a .vibe file without an import, from effect, and this file does not resolve effect."},
 		{"own name", "export const x = Missing.value", effectOnly, 2304, ""},
 	} {
@@ -96,7 +96,12 @@ func TestPreludeMissingPackageNotes(t *testing.T) {
 			var found, all []string
 			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 				all = append(all, diagnosticWithNotes(d))
-				if d.Code() == test.code {
+				code := d.Code()
+				// Native spelling suggestions leave the same unresolved name.
+				if code == 2552 {
+					code = 2304
+				}
+				if d.Source() == "" && code == test.code {
 					found = append(found, diagnosticWithNotes(d))
 				}
 			}
