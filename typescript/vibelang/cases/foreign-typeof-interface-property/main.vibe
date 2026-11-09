@@ -1,0 +1,11 @@
+import { task } from "./foreign.ts"
+
+export interface Ports { readonly task: typeof task }
+export const ports: Ports = { task }
+export const nested: { inner: Ports } = { inner: { task } }
+export const checked = { task } satisfies Ports
+
+// expect-result: [true,true,true]
+export effect function main() {
+  return [ports.task === task, nested.inner.task === task, checked.task === task]
+}
