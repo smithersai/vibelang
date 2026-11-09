@@ -1840,58 +1840,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			p.compilePattern(pat.rest, p.enterSubject(restPath, pat.rest, steps, ctx), steps, ctx)
 		}
 	case patternExtractor:
-		if known, ok := BuiltinMatcherNamed(pat.expr); ok && known.TypeOf != "" {
-			// The test is the variable pattern's; the values are the
-			// built-in extractor's, the subject or the variant's property.
-			test(p.matcherTest(pat, path))
-			// Extract once before checking the list, even for an elision or
-			// an arity mismatch: a wrapper's valueOf() is observable.
-			typeOf := p.vibelangSpanning(p.factory.NewTypeOfExpression(path()), at)
-			primitive := p.mBinary(typeOf, ast.KindEqualsEqualsEqualsToken, p.mString(known.TypeOf, at), at)
-			keyword := map[string]ast.Kind{
-				"string": ast.KindStringKeyword, "number": ast.KindNumberKeyword,
-				"boolean": ast.KindBooleanKeyword, "bigint": ast.KindBigIntKeyword,
-				"symbol": ast.KindSymbolKeyword,
-			}[known.TypeOf]
-			// The erased bridge keeps the extraction's primitive type even
-			// when a statically primitive subject makes this branch unreachable.
-			unknown := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindUnknownKeyword), at)
-			boxed := p.vibelangSpanning(p.factory.NewAsExpression(path(), unknown), at)
-			boxed = p.vibelangSpanning(p.factory.NewAsExpression(boxed, p.vibelangSynthesized(p.factory.NewKeywordTypeNode(keyword), at)), at)
-			unboxed := p.mCall(p.mProperty(p.mParens(boxed, at), "valueOf", at), nil, at)
-			value := p.vibelangSpanning(p.factory.NewConditionalExpression(primitive, p.mToken(ast.KindQuestionToken, at), path(), p.mToken(ast.KindColonToken, at), unboxed), at)
-			p.vibelangMatchTemps++
-			name := "$primitive" + strconv.Itoa(p.vibelangMatchTemps)
-			declaration := p.mConst(p.mTemp(name, at), ast.NodeFlagsConst, value, at)
-			if ctx.inline {
-				test(p.hoistDeclaration(declaration, at))
-			} else {
-				*steps = append(*steps, matchStep{decl: declaration})
-			}
-			values := []string{""}
-			if len(pat.items) > len(values) || (!pat.hasRest && len(pat.items) != len(values)) {
-				test(p.mKeyword(ast.KindFalseKeyword, at))
-				return
-			}
-			element := func(i int) matchPath {
-				return func() *ast.Node { return p.mTemp(name, at) }
-			}
-			for i, item := range pat.items {
-				p.compilePattern(item, p.enterSubject(element(i), item, steps, ctx), steps, ctx)
-			}
-			if pat.rest != nil {
-				restPath := func() *ast.Node {
-					var elements []*ast.Node
-					for i := len(pat.items); i < len(values); i++ {
-						elements = append(elements, element(i)())
-					}
-					return p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(at, elements), false), at)
-				}
-				p.compilePattern(pat.rest, p.enterSubject(restPath, pat.rest, steps, ctx), steps, ctx)
-			}
-			return
-		}
-		// A matcher the compiler does not know: $extract runs its custom matcher.
+		// Resolve every extractor through its matcher binding.
 		matcher := pat.expr
 		p.vibelangMatchTemps++
 		name := "$extracted" + strconv.Itoa(p.vibelangMatchTemps)

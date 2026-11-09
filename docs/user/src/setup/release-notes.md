@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Extractors named `String`, `Number`, `Boolean`, `BigInt` or `Symbol` could reject a local callable or read the subject instead of the custom matcher's result. Local bindings now use their own extractor protocol, while built-in constructors keep unboxing primitive values.
+
 - Misspelled names inside Effect wrapper callbacks could suggest host globals that the language disallows. Suggestions now respect the platform boundary inside callbacks too.
 
 - A decorator before `schema` or `data` could crash compilation and the editor. These declarations now report `TS1206`, as TypeScript does for constants and type aliases.

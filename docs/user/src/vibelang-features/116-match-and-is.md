@@ -223,6 +223,8 @@ A computed member named `customMatcher` provides the matcher protocol only when 
 
 A local binding named `Symbol`, including a parameter or a destructured parameter, keeps its normal TypeScript meaning: `Symbol.customMatcher` reads that binding's property. An unshadowed global `Symbol.customMatcher` value read initializes the runtime first.
 
+Extractor names resolve to their actual bindings. A local function or class named `String`, `Number`, `Boolean`, `BigInt` or `Symbol` uses its own extractor protocol; the built-in constructors keep their primitive recognition and unboxing rules.
+
 The runtime installs `Symbol.customMatcher` on engines that lack it. VibeLang source files see its protocol types through their compiler-loaded runtime prelude. Published declarations preserve the Effect TypeScript API: generated matcher members and runtime type-reference directives are omitted, while the matcher remains in JavaScript. User-written matcher members keep their native declarations.
 
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:

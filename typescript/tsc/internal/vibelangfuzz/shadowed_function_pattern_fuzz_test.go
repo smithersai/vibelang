@@ -44,7 +44,7 @@ func FuzzShadowedFunctionPatternAdmission(f *testing.F) {
 		f.Add(c.key, uint8(0), uint8(0))
 		f.Add(c.key, uint8(1), uint8(1))
 	}
-	names := []string{"Function", "Matcher", "Array"}
+	names := []string{"Function", "Matcher", "Array", "String", "Number", "Boolean", "BigInt", "Symbol"}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, spelling, home uint8) {
 		TestShadowedFunctionPatternAdmissionQuoted(t)

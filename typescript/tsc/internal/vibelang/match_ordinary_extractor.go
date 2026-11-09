@@ -23,19 +23,10 @@ func init() {
 }
 
 func ordinaryExtractorType(c *checker.Checker, call *ast.Node) *checker.Type {
-	if !isPatternCall(call, "$extract") && !isPatternCall(call, "$is") {
+	if !isPatternCall(call, "$extract") {
 		return nil
 	}
 	matcher := call.Arguments()[0]
-	// Primitive-spelled extractors initially lower to the membership helper.
-	// The written parentheses distinguish them from an admitted bare pattern,
-	// even when a local class shadows String, Number, Boolean, BigInt or Symbol.
-	if isPatternCall(call, "$is") {
-		file := ast.GetSourceFileOfNode(call)
-		if file == nil || ordinaryExtractorSpan(file, matcher).End() == matcher.End() {
-			return nil
-		}
-	}
 	if _, known := builtinMatcherOf(c, matcher); known {
 		return nil
 	}

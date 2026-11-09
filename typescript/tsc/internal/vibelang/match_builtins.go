@@ -303,7 +303,26 @@ func builtinExtractionType(c *checker.Checker, call *ast.Node, t *checker.Type) 
 		return t
 	}
 	builtin, ok := builtinMatcherOf(c, call.Arguments()[0])
-	if !ok || builtin.Guard == "" {
+	if !ok {
+		return t
+	}
+	var primitive *checker.Type
+	switch builtin.TypeOf {
+	case "string":
+		primitive = c.GetStringType()
+	case "number":
+		primitive = c.GetNumberType()
+	case "boolean":
+		primitive = c.GetBooleanType()
+	case "bigint":
+		primitive = c.GetBigIntType()
+	case "symbol":
+		primitive = c.GetESSymbolType()
+	}
+	if primitive != nil {
+		return c.CreatePatternExtractionType([]*checker.Type{primitive})
+	}
+	if builtin.Guard == "" {
 		return t
 	}
 	predicate := builtinGuardPredicate(c, call.Arguments()[0], builtin, true)
@@ -351,6 +370,25 @@ func narrowBuiltinExtraction(c *checker.Checker, reference *ast.Node, t *checker
 	}
 	if !ok {
 		return narrowConstructorExtraction(c, reference, t, call, binary, length, assumeTrue)
+	}
+	if builtin.TypeOf != "" {
+		if !length && binary.Right.Kind == ast.KindFalseKeyword && binary.OperatorToken.Kind == ast.KindExclamationEqualsEqualsToken {
+			var candidate *checker.Type
+			switch builtin.TypeOf {
+			case "string":
+				candidate = c.GetStringType()
+			case "number":
+				candidate = c.GetNumberType()
+			case "boolean":
+				candidate = c.GetBooleanType()
+			case "bigint":
+				candidate = c.GetBigIntType()
+			case "symbol":
+				candidate = c.GetESSymbolType()
+			}
+			return c.NarrowTypeTo(t, c.GetUnionType([]*checker.Type{candidate, c.GetApparentType(candidate)}), assumeTrue)
+		}
+		return nil
 	}
 	if builtin.Guard == "" {
 		return nil

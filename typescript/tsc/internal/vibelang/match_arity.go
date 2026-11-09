@@ -26,8 +26,7 @@ func init() {
 // pattern (compileList). An error declaration and one of Effect's retained
 // errors extract [subject]; Option.Some, Exit.Success, Exit.Failure,
 // Result.Success and Result.Failure extract one value; Option.None extracts
-// []. The primitive classes test their arity in the parser and never reach
-// $extract.
+// []. Primitive constructors retain their runtime list-length checks.
 func checkExtractorArity(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
