@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- DOM constructor names in `Effect.tryPromise` callbacks could be confused with implicit Effect namespaces. The platform guide now explains their `globalThis` spellings and the TypeScript boundary those host calls still need.
+
 - Native phase imports could crash the compiler instead of producing diagnostics. They now complete checking and report any applicable errors.
 
 - Extractors named `String`, `Number`, `Boolean`, `BigInt` or `Symbol` could reject a local callable or read the subject instead of the custom matcher's result. Local bindings now use their own extractor protocol, while built-in constructors keep unboxing primitive values.

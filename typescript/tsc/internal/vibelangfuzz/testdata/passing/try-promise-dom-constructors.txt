@@ -1,0 +1,12 @@
+# VIP-34 decision 2 (PROC-29) retires the CLI-codemod requirement.
+# Every original key and corpus now checks the active namespace/platform binding rules.
+FuzzEffectTryPromiseDOMConstructors Headers/expression VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
+FuzzEffectTryPromiseDOMConstructors Headers/block VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
+FuzzEffectTryPromiseDOMConstructors Headers/conditional VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
+FuzzEffectTryPromiseDOMConstructors Headers/named-import VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
+FuzzEffectTryPromiseDOMConstructors corpus:alchemy-try-promise-headers VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
+FuzzEffectTryPromiseDOMConstructors Response/expression VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
+FuzzEffectTryPromiseDOMConstructors Response/block VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
+FuzzEffectTryPromiseDOMConstructors Response/conditional VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
+FuzzEffectTryPromiseDOMConstructors Response/named-import VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
+FuzzEffectTryPromiseDOMConstructors corpus:alchemy-try-promise-response VIP-34: no VibeLang CLI codemod is required; VIP-33 preserves namespace precedence and explicit platform rejection.
