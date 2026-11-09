@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- TypeScript’s error for an `unknown` or possibly missing loop operand could name a compiler-generated variable such as `$forTryHead1`, `$isItems1` or `$do1`. This affected `for try`, a `for…of` head with an `is` binding and a `do` expression operand. The error now names the operand you wrote, or says `Object` for an expression, as TypeScript does.
+
 - Unicode escapes in `try.any` and `fork.in` names could be rejected with `TS1260`. The names after the dot now follow TypeScript's `new.target` and `import.meta` rules.
 
 - Escaped spellings of `uninterruptible`, `restore` and `interruptible` were accepted as block headers. These headers now require literal spellings and report `TS1260`.

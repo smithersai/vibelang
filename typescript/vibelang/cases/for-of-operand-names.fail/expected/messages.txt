@@ -1,0 +1,5 @@
+error TS18046: 'rows' is of type 'unknown'.
+error TS18046: 'holder.rows' is of type 'unknown'.
+error TS2571: Object is of type 'unknown'.
+error TS18048: 'rows' is possibly 'undefined'.
+error TS2531: Object is possibly 'null'.

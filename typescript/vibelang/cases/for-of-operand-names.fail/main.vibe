@@ -1,0 +1,15 @@
+// expect: EK2004 TS18046 TS2571 TS18048 TS2531
+// A loop head that holds its operand in a compiler constant keeps the
+// TypeScript error of the written operand: its name, or "Object".
+declare const holder: { rows: unknown }
+declare function load(): unknown
+declare function maybe(): number[][] | null
+declare const probe: unknown
+
+effect function named(rows: unknown) { for try (const row of rows) { void row } }
+effect function property() { for try (const row of holder.rows) { void row } }
+effect function called() { for try (const row of load()) { void row } }
+function headNamed(rows: unknown) { for (const [row = (probe is [let first]) ? first : 0] of rows) { void row } }
+function headOptional(rows: number[][] | undefined) { for (const [row = (probe is [let first]) ? first : 0] of rows) { void row } }
+function headCalled() { for (const [row = (probe is [let first]) ? first : 0] of maybe()) { void row } }
+function headDo() { for (const row of do { maybe() }) { void row } }

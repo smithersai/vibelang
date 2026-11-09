@@ -701,7 +701,7 @@ A final `for concurrent` discards its item results. To keep the formerly accepte
 
 An anonymous function or class used as a `do` completion, conditional value, method receiver, computed key, `match` subject or array value keeps its empty `.name`. An object property before a later `do` keeps its property name; class static initializers observe that source name during creation.
 
-A `do` in the right-hand operand of a `for…in` or `for…of` lexical head keeps that head's scope. Its closures capture the uninitialized `let` or `const` head bindings, separately from the initialized bindings of each iteration.
+A `do` in the right-hand operand of a `for…in` or `for…of` lexical head keeps that head's scope. Its closures capture the uninitialized `let` or `const` head bindings, separately from the initialized bindings of each iteration. TypeScript reports an `unknown` or possibly missing `do` operand of `for…of` as `Object` (`TS2571`, `TS2532`), as it does for a call.
 
 A `do` in a short-circuit operand keeps the selected branch’s TypeScript narrowing: `x !== undefined && do { x.length }` is valid for `x: string | undefined`. The same rule applies to `||` and `??`; the left operand runs once, and assignments inside the body invalidate narrowing normally.
 

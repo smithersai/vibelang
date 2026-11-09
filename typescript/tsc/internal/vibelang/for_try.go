@@ -37,7 +37,9 @@ func checkForTry(c *checker.Checker, file *ast.SourceFile) {
 			}
 			if !forTryOperandType(c, c.GetTypeAtLocation(n.Expression())) {
 				report(c, n.Expression(), EK2004)
-				coverExactErrorCodes(c, n.Expression(), 18047, 18048, 18049)
+				// TypeScript reports a nullable operand by name (18047 to 18049) or
+				// as an object (2531 to 2533); EK2004 says the same of this operand.
+				coverExactErrorCodes(c, n.Expression(), 18047, 18048, 18049, 2531, 2532, 2533)
 				coverExactErrorCodes(c, n.Expression(), 2488, 2504)
 			}
 			var body func(*ast.Node) bool

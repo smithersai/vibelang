@@ -493,6 +493,8 @@ assignment to one of its names reports `TS2588`. For source accepted before
 this check, the manual change writes `let` in that initializer,
 preserving the earlier emitted behavior and closure captures.
 
+A `for…of` loop whose head contains an `is` binding keeps TypeScript’s errors for its operand. An `unknown` or possibly missing operand is reported as for the same loop without the binding: by its written name (`TS18046`, `TS18048`), or as `Object` for a call or a parenthesized expression (`TS2571`, `TS2532`).
+
 Binding `is` tests also work inside a call argument and its literal containers, such as `consume(subject is let value)`. The bindings belong to the caller's lexical block, and the mapper preserves the subject's single evaluation and the written source locations.
 
 

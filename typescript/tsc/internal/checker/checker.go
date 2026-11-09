@@ -18322,7 +18322,7 @@ func (c *Checker) isNullOrUndefined(node *ast.Node) bool {
 
 func (c *Checker) checkRightHandSideOfForOf(statement *ast.Node) *Type {
 	use := core.IfElse(statement.AsForInOrOfStatement().AwaitModifier != nil, IterationUseForAwaitOf, IterationUseForOf)
-	iterated := c.checkNonNullExpression(statement.Expression())
+	iterated := c.checkForOfOperand(statement.Expression())
 	if t := c.iteratedElementTypeFromHooks(statement, iterated); t != nil {
 		return t
 	}

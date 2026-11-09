@@ -102,7 +102,7 @@ func FuzzForTryOperands(f *testing.F) {
 					count++
 					continue
 				}
-				if !IsEK(diag) && (d.key == "unknown" && diag.Code() == 18046 || d.key == "optional" && diag.Code() == 18048) {
+				if !IsEK(diag) && (d.key == "unknown" && (diag.Code() == 18046 || diag.Code() == 2571) || d.key == "optional" && diag.Code() == 18048) {
 					continue
 				}
 				t.Fatalf("unexpected diagnostic for %s: %s\n%s", d.key, diag.String(), source)
