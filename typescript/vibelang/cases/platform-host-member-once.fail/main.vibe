@@ -1,0 +1,7 @@
+// expect: EK4402
+// Chapter 005, platform rules: a banned host global read through a listed
+// host global reports EK4402 once, with the listed global's advice.
+export const constructor = window.KeyboardEvent
+export const chained = globalThis.window.KeyboardEvent
+export const keyed = globalThis["window"]["WheelEvent"]
+export const direct = globalThis.KeyboardEvent

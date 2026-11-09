@@ -43,13 +43,13 @@ func checkUnlistedHostGlobals(c *checker.Checker, file *ast.SourceFile) {
 				symbol = c.GetSymbolAtLocation(node)
 			}
 		case ast.IsPropertyAccessExpression(node):
-			if isValueUse(node) && receiverReachesHost(c, node.Expression()) {
+			if isValueUse(node) && receiverReachesHost(c, node.Expression()) && !listedPlatformReceiver(c, node.Expression()) {
 				symbol = c.GetSymbolAtLocation(node)
 			}
 		case ast.IsElementAccessExpression(node):
 			key := node.AsElementAccessExpression().ArgumentExpression
 			if key != nil && (ast.IsStringLiteral(key) || key.Kind == ast.KindNoSubstitutionTemplateLiteral) && isValueUse(node) &&
-				receiverReachesHost(c, node.Expression()) {
+				receiverReachesHost(c, node.Expression()) && !listedPlatformReceiver(c, node.Expression()) {
 				symbol = c.GetPropertyOfType(c.GetApparentType(c.GetTypeAtLocation(node.Expression())), key.Text())
 			}
 		}
@@ -66,6 +66,16 @@ func checkUnlistedHostGlobals(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// listedPlatformReceiver reports whether a member read's receiver is itself
+// a listed platform global, such as window in window.KeyboardEvent or
+// globalThis.window.KeyboardEvent. checkPlatformUse reports that chain with
+// the global's own advice, so the derived ban adds no second EK4402 for it.
+func listedPlatformReceiver(c *checker.Checker, receiver *ast.Node) bool {
+	receiver = ast.SkipOuterExpressions(receiver, ast.OEKParentheses|ast.OEKAssertions)
+	ref, ok := platformReference(c, receiver)
+	return ok && ref.module == ""
 }
 
 // receiverReachesHost reports whether a member read's receiver is the host:

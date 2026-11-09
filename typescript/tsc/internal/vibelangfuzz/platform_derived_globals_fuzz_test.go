@@ -85,6 +85,7 @@ func FuzzPlatformDerivedGlobals(f *testing.F) {
 		"URL:value", "URL:type", "URL:member", "URL:shadow",
 		"AbortSignal:value", "AbortSignal:type", "AbortSignal:member",
 		"AbortSignal.timeout:host-member", "URL.createObjectURL:host-member", "URL.revokeObjectURL:host-member",
+		"KeyboardEvent:window-member", "fetch:window-member", "URL:window-member",
 	} {
 		f.Add([]byte(key))
 	}
@@ -98,7 +99,7 @@ func FuzzPlatformDerivedGlobals(f *testing.F) {
 		Missing(f, "install pinned @types/node in docs/tools before derived-platform fuzzing: %v", err)
 	}
 	names := append(slices.Clone(inventory.Banned), inventory.Allowlist...)
-	modes := []string{"value", "type", "qualified-type", "member", "shorthand", "shadow"}
+	modes := []string{"value", "type", "qualified-type", "member", "shorthand", "shadow", "window-member"}
 	f.Fuzz(func(t *testing.T, data []byte) {
 		parts := strings.SplitN(string(data), ":", 2)
 		name, mode := parts[0], "value"
@@ -125,7 +126,8 @@ func FuzzPlatformDerivedGlobals(f *testing.F) {
 		}
 		source := "export const value = " + name
 		want := 0
-		if hostMember || (slices.Contains(inventory.Banned, name) && (mode == "value" || mode == "member" || mode == "shorthand")) {
+		// A member of window is a read of the banned window, whatever the member: one report.
+		if hostMember || mode == "window-member" || (slices.Contains(inventory.Banned, name) && (mode == "value" || mode == "member" || mode == "shorthand")) {
 			want = 1
 		}
 		switch mode {
@@ -138,6 +140,9 @@ func FuzzPlatformDerivedGlobals(f *testing.F) {
 		case "member":
 			literal, _ := json.Marshal(name)
 			source = "export const value = globalThis[" + string(literal) + "]"
+		case "window-member":
+			literal, _ := json.Marshal(name)
+			source = "export const value = window[" + string(literal) + "]"
 		case "shadow":
 			source = "export function value(" + name + ": number): number { return " + name + " }"
 		}

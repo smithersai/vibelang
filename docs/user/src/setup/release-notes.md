@@ -41,6 +41,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A throwing callback passed to `forEach` on a `Map` or `Set`, or to a typed-array method such as `map` or `sort`, was accepted and its throw was not tracked. Those calls now report `EK0401` in plain code and `EK0403` in effect code, as the array methods do. Other built-in methods that take a callback, such as `URLSearchParams.forEach` or an iterator helper, now report `EK0402` for a throwing callback.
 
 - A service member with a symbol key, such as `[Symbol.iterator](): Iterator<number>`, was missing from `Name.Shape`: an implementation that had the member reported `TS2353`, and one that lacked it compiled. `Name.Shape` now includes symbol-keyed members.
+- A host global read through another, such as `window.KeyboardEvent` or `globalThis.window.KeyboardEvent`, reported `EK4402` twice at one position. It now reports once, with the advice for the receiving global.
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
 - A `for concurrent` header accepted Unicode escapes in its keyword. Escaped spellings now report `TS1260`, as TypeScript does for escaped loop keywords.
