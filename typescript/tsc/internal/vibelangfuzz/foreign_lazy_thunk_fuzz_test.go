@@ -33,7 +33,7 @@ var foreignLazyQuotes = []struct{ chapter, text string }{
 	{"003-failures.md", "Effect's `LazyArg` and other callback parameter types, those in `.d.ts` files included, describe what an argument callback may throw: without `@throws`, they admit only `never`. So `sync(() => parse(s))` is an error."},
 	{"003-failures.md", "`Effect.try` and `Effect.tryPromise` declare their thunk `@throws {unknown}` in both overloads, so `Effect.try(() => parse(s))` is allowed and the wrapper turns a throw into a failure."},
 	{"../vips/0006-effect-globals.md", "Every export of Effect's `Effect` module is a global variable in a `.vibe` file: `retry`, `sleep`, `log`, `all`, `race`, `tryPromise`, `sync`, `callback`, `map`, and so on."},
-	{"../vips/0004-throw.md", "Only `Effect.try` and `Effect.tryPromise` admit a throwing thunk. `sync`, `promise`, `callback` and `suspend` take `LazyArg`, which has no `@throws`, so a throwing thunk there is a compile error with a quick fix to the matching wrapper."},
+	{"../vips/0004-throw.md", "Only `Effect.try` and `Effect.tryPromise` admit a throwing thunk. `sync`, `promise`, `callback` and `suspend` take `LazyArg`, which has no `@throws`, so a throwing thunk there is a compile error; use the matching wrapper."},
 }
 
 type foreignLazyWrapper struct {
