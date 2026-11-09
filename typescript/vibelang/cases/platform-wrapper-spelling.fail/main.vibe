@@ -1,0 +1,7 @@
+// expect: TS2304
+export const attempt = Effect.try(() => MutatonObserver)
+export const attemptOptions = Effect.try({ try: () => statuz, catch: (error: unknown) => ({ _tag: "Failure" as const }) })
+export const promise = Effect.tryPromise(() => Promise.resolve(setTimeuot))
+export const promiseOptions = Effect.tryPromise({ try: () => Promise.resolve(MutatonObserver), catch: (error: unknown) => ({ _tag: "Failure" as const }) })
+export const implicitPromise = tryPromise(() => Promise.resolve(statuz))
+export const synchronous = sync(() => setTimeuot)

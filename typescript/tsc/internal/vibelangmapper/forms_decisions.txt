@@ -7470,6 +7470,14 @@ typescript/vibelang/cases/platform-terminal-service-members/main.vibe:5:14 bynam
 typescript/vibelang/cases/platform-terminal-service-members/main.vibe:6:13 byname program table
 typescript/vibelang/cases/platform-terminal-service-members/main.vibe:7:9 byname program table
 typescript/vibelang/cases/platform-terminal-service-members/main.vibe:8:12 lambda effectFn table
+typescript/vibelang/cases/platform-wrapper-spelling.fail/main.vibe:2:35 lambda plain table
+typescript/vibelang/cases/platform-wrapper-spelling.fail/main.vibe:3:49 lambda plain table
+typescript/vibelang/cases/platform-wrapper-spelling.fail/main.vibe:3:70 lambda plain table
+typescript/vibelang/cases/platform-wrapper-spelling.fail/main.vibe:4:42 lambda plain table
+typescript/vibelang/cases/platform-wrapper-spelling.fail/main.vibe:5:103 lambda plain table
+typescript/vibelang/cases/platform-wrapper-spelling.fail/main.vibe:5:56 lambda plain table
+typescript/vibelang/cases/platform-wrapper-spelling.fail/main.vibe:6:43 lambda plain table
+typescript/vibelang/cases/platform-wrapper-spelling.fail/main.vibe:7:33 lambda plain table
 typescript/vibelang/cases/prelude-collision-imports/main.vibe:13:59 lambda plain table
 typescript/vibelang/cases/prelude-imports-cjs/main.vibe:18:3 lambda effectFn keyword
 typescript/vibelang/cases/prelude-imports-cjs/main.vibe:24:63 lambda program table

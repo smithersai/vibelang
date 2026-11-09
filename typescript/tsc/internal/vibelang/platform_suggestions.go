@@ -19,7 +19,7 @@ func init() {
 }
 
 // suggestsNoPlatformGlobal is the checker's spelling suggestion filter: in
-// .vibe code outside a hatch or a module block, where EK4402 applies, a
+// .vibe code, including wrapper callbacks where EK4402 still applies, a
 // banned host binding is never suggested, whether listed or declaration-derived.
 // Embedded module bodies have their own TypeScript source files; ordinary
 // namespaces stay VibeLang.
@@ -29,7 +29,7 @@ func suggestsNoPlatformGlobal(c *checker.Checker, location *ast.Node, candidate 
 	if _, ok := platformGlobals[name]; !ok && !isUnlistedHostGlobal(c, candidate) {
 		return true
 	}
-	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || inHatch(location) || isErasedPlatformSpellingReference(location) {
+	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || isErasedPlatformSpellingReference(location) {
 		return true
 	}
 	return !isPlatformGlobalBinding(c, candidate)

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Misspelled names inside Effect wrapper callbacks could suggest host globals that the language disallows. Suggestions now respect the platform boundary inside callbacks too.
+
 - A decorator before `schema` or `data` could crash compilation and the editor. These declarations now report `TS1206`, as TypeScript does for constants and type aliases.
 
 - A callback created by an earlier parameter default could read a stale value after a later default used a returning `do` expression. Earlier defaults in the same group of simple parameters now share their bindings with the body, so callback reads and writes observe body changes. Function and class defaults also keep their inferred names and TypeScript's contextual callback parameter types.

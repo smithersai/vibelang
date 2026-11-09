@@ -1,0 +1,6 @@
+main.vibe(2,41): error TS2304
+main.vibe(3,55): error TS2304
+main.vibe(4,64): error TS2304
+main.vibe(5,78): error TS2304
+main.vibe(6,65): error TS2304
+main.vibe(7,39): error TS2304
