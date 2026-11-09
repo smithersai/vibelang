@@ -652,7 +652,8 @@ UnionType = "|"? IntersectionType | UnionType "|" IntersectionType
 IntersectionType = "&"? PostfixType | IntersectionType "&" PostfixType
 PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" PostfixType | "keyof" PostfixType | "infer" BindingIdentifier | "infer" BindingIdentifier "extends" Type | "unique" PostfixType
 PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | TemplateLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" TypeQueryName | "typeof" TypeQueryName [no LineTerminator here] TypeArguments | "typeof" ImportType | ImportType | "this" | "-" NumericLiteral | MappedType
-TypeQueryName = IdentifierReference | "this" | TypeQueryName "." IdentifierName
+TypeQueryName = IdentifierReference | TypeQueryReservedHead | TypeQueryName "." IdentifierName
+TypeQueryReservedHead = "this" | "await" | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger" | "default" | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false" | "finally" | "for" | "function" | "if" | "in" | "instanceof" | "new" | "null" | "return" | "super" | "switch" | "throw" | "true" | "try" | "typeof" | "var" | "void" | "while" | "with" | "yield" | "let" | "static" | "implements" | "interface" | "package" | "private" | "protected" | "public"
 ImportType = "import" "(" StringLiteral ")" | "import" "(" StringLiteral ")" "." TypeName | ImportType [no LineTerminator here] TypeArguments
 MappedType = "{" MappedReadonly? "[" IdentifierName "in" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}" | "{" MappedReadonly? "[" IdentifierName "in" Type "as" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}"
 MappedReadonly = "readonly" | "+" "readonly" | "-" "readonly"

@@ -897,6 +897,17 @@ oracle counts the checker's rejection, as it does for a misplaced `const`.
 The lab still has no decorators; a program that uses one reads as a mismatch
 and is not evidence about the compiler.
 
+A type query's first name followed. TypeScript's parser reads it with
+reserved words allowed (`parseTypeQuery` calls `parseEntityName` with
+`allowReservedWords`), so `type X = typeof try.Type` is well formed and its
+error is the checker's `TS2304`; only `import` can't start the name, because
+`typeof import` is an import type that needs `(`. The lab's `TypeQueryName`
+took an `IdentifierReference`, so a campaign mutation that replaced a schema
+name with `try` read as a mismatch. It now takes any reserved word but
+`import` as the first name, and the compiler agrees on every reserved word.
+In effect code `fork` and `join` stay outside it: VIP-17 reserves them, and
+the compiler's acceptance there is the keyed `admission:fiber-type-name` gap.
+
 One gap the probes found was outside what the lab can show. TypeScript parses
 a lexical declaration as a loop body for recovery and rejects it with
 `TS1156`, and the lab derives that recovery, so `if (c) const y = 1;` reads

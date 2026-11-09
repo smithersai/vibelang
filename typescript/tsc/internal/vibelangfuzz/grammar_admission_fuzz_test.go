@@ -340,6 +340,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"declaration-decorators-schema-error", "@dec schema error E { }"},
 	{"declaration-decorators-service", "@dec service S { value: number }"},
 	{"effect-type-callback-trailing-bang", grammarCallbackTrailingEffectWitness},
+	{"type-query-reserved-head", grammarTypeQueryReservedHeads[0]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
