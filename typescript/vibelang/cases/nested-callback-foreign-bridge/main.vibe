@@ -1,0 +1,11 @@
+import {make} from "./foreign.ts"
+export const probe = effect () => try Effect.orDie(Effect.try({
+  try: () => make({execute: effect (sql) => try effect { return sql }}),
+  catch: (error) => error,
+}))
+
+// expect-result: "query"
+export effect function main() {
+  const options = try probe()
+  return try options.execute("query")
+}

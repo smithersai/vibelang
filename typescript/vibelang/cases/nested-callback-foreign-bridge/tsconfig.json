@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "skipLibCheck": true,
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "types": [],
+    "rewriteRelativeImportExtensions": true,
+    "outDir": "out"
+  },
+  "files": [
+    "main.vibe",
+    "foreign.ts"
+  ]
+}
