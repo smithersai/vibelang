@@ -916,10 +916,9 @@ families above. Both list shapes are pending under
 
 A campaign then broke the line between `try` and a `match` statement in a
 plain function. A `TryExpression` has no line-break restriction, so the
-`match` on the next line is still the operand, and the statement lowering
-drops the `try` as it does on one line. The classifier for
-`admission:try-match-statement` required the two words on one line; it reads
-the pair across a line break now.
+`match` on the next line is still the operand. The compiler now reports
+`EK0501` for that source, as it does when both words share a line. The
+retained campaign corpus runs without a pending entry.
 
 The generated-error migration counterpart continues to test the guarantee
 that a foreign plain object with the recognized tag is covered. Its quote
@@ -1011,12 +1010,11 @@ so type arguments still close as TypeScript rescans them, and the operators
 are written as token sequences.
 
 A campaign put `try` before a returned `match` in a plain function. The
-parser lowers a `match` written as a return operand or as a whole expression
-statement to statements, and that lowering never reads the `try` on the
-match. The plain function compiles with no `EK0501`, and with `Effect`
-arms it returns the arm's Effect unrun. A `try` before a `match` in any
-other position, or before a parenthesized `match`, still reports `EK0501`.
-The form is pending under `admission:try-match-statement`.
+compiler now reports `EK0501` in both returned and statement positions,
+including across a line break. The saved corpus and quoted oracle remain
+active after their pending entries were removed. The regression checks
+exactly one `EK0501` per witness and retains the emitted Effect-arm check
+when emission is enabled despite the diagnostic.
 
 The next campaign broke a getter across lines: `get` and then `Waiting()` on
 the next line. ECMAScript's `MethodDefinition` puts no line-break

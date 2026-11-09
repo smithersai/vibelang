@@ -1232,9 +1232,6 @@ func grammarAdmissionForm(source string) string {
 	if grammarProducerArgument(declarationTokens) {
 		return "admission:producer-cover-grammar"
 	}
-	if grammarTryMatchStatement(declarationTokens) {
-		return "admission:try-match-statement"
-	}
 	for i, tok := range ts {
 		// EffectFunction = EffectModifier [no LineTerminator here] "function":
 		// `effect` on the line before is its own statement after ASI.
