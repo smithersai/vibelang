@@ -94,8 +94,82 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		valueRead := ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node)
+		var readType *checker.Type
+		var bindingSource *checker.Type
+		if ast.IsBindingElement(node) && node.Parent != nil && ast.IsObjectBindingPattern(node.Parent) &&
+			node.AsBindingElement().DotDotDotToken == nil {
+			container := node.Parent.Parent
+			for container != nil && ast.IsBindingElement(container) && container.Parent != nil {
+				container = container.Parent.Parent
+			}
+			if container != nil && ast.IsVariableDeclaration(container) {
+				valueRead = container.Initializer() != nil
+				if container.Parent != nil && container.Parent.Parent != nil {
+					loop := container.Parent.Parent
+					valueRead = valueRead || ast.IsForOfStatement(loop) || ast.IsForInStatement(loop)
+				}
+			}
+			if container != nil && ast.IsParameterDeclaration(container) {
+				fn := container.Parent
+				valueRead = fn != nil && ast.IsFunctionLike(fn) && fn.Body() != nil
+			}
+			if valueRead {
+				bindingSource = c.GetTypeAtLocation(node.Parent)
+			}
+		} else if (ast.IsPropertyAssignment(node) || ast.IsShorthandPropertyAssignment(node)) &&
+			node.Parent != nil && ast.IsArrayLiteralOrObjectLiteralDestructuringPattern(node.Parent) {
+			valueRead = true
+			bindingSource = c.GetTypeOfAssignmentPattern(node.Parent)
+		}
+		if valueRead && bindingSource != nil {
+			key := node.PropertyNameOrName()
+			name := ast.GetPropertyNameForPropertyNameNode(key)
+			if ast.IsComputedPropertyName(key) {
+				name, _ = checker.PropertyNameOfType(c.GetTypeAtLocation(key.Expression()))
+			}
+			if member := c.GetPropertyOfType(c.GetNonNullableType(bindingSource), name); member != nil {
+				readType = c.GetTypeOfSymbol(member)
+			}
+		}
+		runtimeRead := valueRead && !p.matcherInitialization && !inTypeNode(node) && !inModuleBlock(node)
+		if runtimeRead {
+			for owner := node; owner != nil; owner = owner.Parent {
+				if ast.IsInterfaceDeclaration(owner) || owner.Flags&ast.NodeFlagsAmbient != 0 ||
+					ast.HasSyntacticModifier(owner, ast.ModifierFlagsAmbient) ||
+					!ast.IsClassLike(owner) && ast.HasSyntacticModifier(owner, ast.ModifierFlagsAbstract) {
+					runtimeRead = false
+					break
+				}
+			}
+		}
+		if runtimeRead {
+			t := readType
+			if t == nil {
+				t = c.GetTypeAtLocation(node)
+			}
+			if t != nil && t.Flags()&checker.TypeFlagsUniqueESSymbol != 0 {
+				name, _ := checker.PropertyNameOfType(t)
+				matcherName := customMatcherPropertyName(c)
+				if matcherName == "" {
+					// A type reference can load the global augmentation without a
+					// module specifier in this source file's resolved import map.
+					if global := c.GlobalSymbol("Symbol", ast.SymbolFlagsValue); global != nil {
+						if member := c.GetPropertyOfType(c.GetTypeOfSymbol(global), "customMatcher"); member != nil {
+							t := c.GetTypeOfSymbol(member)
+							if t != nil && t.Flags()&checker.TypeFlagsUniqueESSymbol != 0 {
+								matcherName, _ = checker.PropertyNameOfType(t)
+							}
+						}
+					}
+				}
+				if name != "" && name == matcherName {
+					p.matcherInitialization = true
+				}
+			}
+		}
 		if ast.IsPropertyAccessExpression(node) && node.Name().Text() == "customMatcher" &&
-			!ast.IsPartOfTypeNode(node) && !inModuleBlock(node) &&
+			runtimeRead &&
 			ast.IsIdentifier(node.Expression()) && node.Expression().Text() == "Symbol" &&
 			c.GetSymbolAtLocation(node.Expression()) == c.GlobalSymbol("Symbol", ast.SymbolFlagsValue) {
 			p.matcherInitialization = true

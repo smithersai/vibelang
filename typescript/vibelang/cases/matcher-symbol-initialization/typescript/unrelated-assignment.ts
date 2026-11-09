@@ -1,0 +1,1 @@
+import type {customMatcher as Protocol} from "vibelang-runtime";export type Key=typeof Protocol;const own=Symbol("own");let key:symbol;({customMatcher:key}={customMatcher:own});export function inspect():boolean{return key===own&&!Reflect.has(Symbol,"customMatcher")}

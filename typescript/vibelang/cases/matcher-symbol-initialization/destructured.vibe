@@ -1,0 +1,4 @@
+import type {customMatcher as Protocol} from "vibelang-runtime"
+export type Key=typeof Protocol
+const {customMatcher:key}=Symbol
+export function inspect():boolean{return typeof key==="symbol"}

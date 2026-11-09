@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Indexed, aliased or destructured reads of `Symbol.customMatcher` could see the property before it was initialized. VibeLang modules now initialize it before those value reads; type-only references stay type-only.
+
 - Escaped `fork` and `join` operator keywords could compile without an error. They now report `TS1260`, while ordinary escaped names keep their TypeScript meaning.
 
 - Passing a throwing callback to a tagged template could bypass its parameter’s throw contract. Tagged substitutions now enforce the same callback checks as an ordinary call.
