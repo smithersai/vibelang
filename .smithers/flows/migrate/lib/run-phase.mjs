@@ -83,6 +83,11 @@ export function effectFunctions(ast, text = "") {
       visit(node.handler, callbackPath(path, "catch", 0, ordinals), node)
       return
     }
+    // Array positions are distinct holders, including holes and nested tuples.
+    if (node.type === "ArrayExpression") {
+      node.elements.forEach((element, index) => visit(element, [...path, "[" + index + "]"], node))
+      return
+    }
     if (node.type === "CallExpression") {
       // ESTree represents an effect block as an intrinsic builder holding a
       // lexical arrow. That arrow is the program body, not a changed function.
@@ -148,6 +153,15 @@ export function originalFunctions(ts, text, file = "original.ts") {
   }
   const visit = (node, path) => {
     if (ts.isReturnStatement(node) && visitReturned(node.expression, path)) return
+    if (ts.isArrayLiteralExpression(node)) {
+      node.elements.forEach((element, index) => {
+        const next = [...path, "[" + index + "]"]
+        const shape = functionShape(ts, element)
+        if (shape) found.set(next.join("."), shape)
+        visit(element, next)
+      })
+      return
+    }
     if (ts.isCallExpression(node)) {
       visit(node.expression, path)
       // Effect.gen's generator belongs to the surrounding callback or named

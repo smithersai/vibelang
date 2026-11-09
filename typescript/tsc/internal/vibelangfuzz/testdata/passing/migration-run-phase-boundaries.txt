@@ -1,0 +1,8 @@
+# Passing keys; the target and its keyed corpus enforce these without an allowance.
+FuzzMigrationRunPhaseBoundaries phase:array/Effect VIP-1: an inner Effect function is paired with its plain tuple-returning callback
+FuzzMigrationRunPhaseBoundaries phase:array/E VIP-1: an inner Effect function is paired with its plain tuple-returning callback
+FuzzMigrationRunPhaseBoundaries phase:array-const/Effect VIP-1: an inner Effect function is paired with its plain tuple-returning callback
+FuzzMigrationRunPhaseBoundaries phase:array-const/E VIP-1: an inner Effect function is paired with its plain tuple-returning callback
+FuzzMigrationRunPhaseBoundaries phase:array-block/Effect VIP-1: an inner Effect function is paired with its plain tuple-returning callback
+FuzzMigrationRunPhaseBoundaries phase:array-block/E VIP-1: an inner Effect function is paired with its plain tuple-returning callback
+FuzzMigrationRunPhaseBoundaries corpus:alchemy-effect-factory-array-callback VIP-1: minimized preserved failure or tuple callback identity witness

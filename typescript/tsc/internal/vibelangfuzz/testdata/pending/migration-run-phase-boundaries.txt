@@ -1,8 +1,0 @@
-# Static verifier gaps preserve failure channels and callback holders.
-FuzzMigrationRunPhaseBoundaries phase:array/Effect compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:array/E compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:array-const/Effect compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:array-const/E compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:array-block/Effect compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries phase:array-block/E compiler VIP-1: an inner Effect function is paired with its plain tuple-returning callback; lane migfix-alchemy
-FuzzMigrationRunPhaseBoundaries corpus:alchemy-effect-factory-array-callback compiler VIP-1: minimized preserved failure or tuple callback identity witness; lane migfix-alchemy
