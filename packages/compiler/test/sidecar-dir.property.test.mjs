@@ -148,11 +148,17 @@ test("sidecar-overlap-cleanup: one output never removes another module's selecte
           [sources[0]]: "export type T0 = string\n",
           [sources[1]]: "export type T1 = number\n"
         }
-        for (const source of sources) files[source.replace(/\.vibe$/, ".d.vibe.ts")] = "export type Stale = never\n"
         for (const [name, text] of Object.entries(files)) {
           mkdirSync(dirname(join(root, name)), { recursive: true })
           writeFileSync(join(root, name), text)
         }
+        // Generate the previous layout with this project, rather than
+        // treating hand-written declarations as compiler-owned stale outputs.
+        const relocated = files["tsconfig.json"]
+        writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: options, files: reverse ? [...sources].reverse() : sources, include: [] }))
+        const initial = spawnSync(native, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
+        assert.equal(initial.status, 0, initial.stdout + initial.stderr)
+        writeFileSync(join(root, "tsconfig.json"), relocated)
         for (let run = 0; run < 2; run++) {
           const built = spawnSync(native, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })
           assert.equal(built.status, 0, built.stdout + built.stderr)

@@ -242,10 +242,14 @@ for (const sidecarDir of ["..", "src"]) {
       "lib/consumer.ts": 'import type { Outer } from "./a.vibe"\nimport type { Inner } from "./src/b.vibe"\nexport type Both = [Outer, Inner]\n',
       "lib/tsconfig.json": JSON.stringify({ compilerOptions: { ...options, rootDirs: [".", sidecarDir] }, include: ["."], vibe: { sidecarDir } })
     })
-    for (const source of ["a", "src/b"]) {
-      // Start with stale colocated declarations in both source folders.
-      writeFileSync(join(root, "lib", source + ".d.vibe.ts"), "export type Stale = never\n")
-    }
+    // Generate the old layout with this project so cleanup has ownership
+    // evidence; unrelated handwritten declarations must remain untouched.
+    const relocated = readFileSync(join(root, "lib/tsconfig.json"), "utf8")
+    const adjacent = JSON.parse(relocated)
+    delete adjacent.vibe
+    writeFileSync(join(root, "lib/tsconfig.json"), JSON.stringify(adjacent))
+    build(root)
+    writeFileSync(join(root, "lib/tsconfig.json"), relocated)
     for (let buildNumber = 0; buildNumber < 2; buildNumber++) {
       build(root)
       for (const source of ["a", "src/b"]) assert.ok(existsSync(join(root, "lib", sidecarDir, source + ".d.vibe.ts")), source)

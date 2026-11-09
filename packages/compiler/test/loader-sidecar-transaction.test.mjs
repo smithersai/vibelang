@@ -29,19 +29,31 @@ function check({ extension, directory, noEmit, declaration, failure, preexisting
   ], { cwd: root, encoding: "utf8", timeout: 60000 })
   try {
     put("package.json", '{"type":"module"}')
-    put("tsconfig.json", JSON.stringify({
+    const config = {
       compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: true,
         types: [], rootDir: ".", outDir: "out", noEmit, declaration, ...(extension === "vibex" ? { jsx: "preserve" } : {}) },
       vibe: { effectGlobals: false, effectModules: false, ...(directory ? { sidecarDir: directory } : {}) },
       files: [source, ...(failure === "declaration" ? ["src/consumer.ts"] : [])]
-    }))
+    }
+    // Establish a compiler-owned previous layout before testing publication.
+    // Handwritten declarations have no ownership record and must be retained.
+    const previous = structuredClone(config)
+    previous.vibe = { effectGlobals: false, effectModules: false,
+      ...(directory ? {} : { sidecarDir: ".vibe/declarations" }) }
+    put("tsconfig.json", JSON.stringify(previous))
+    put(source, "export const value: number = 42\n")
+    if (failure === "declaration") put("src/consumer.ts", 'import { value } from "./main.' + extension + '"; export { value }\n')
+    const initial = run()
+    assert.ifError(initial.error)
+    assert.equal(initial.status, 0, initial.stdout + initial.stderr)
+    assert.equal(readFileSync(join(root, stale), "utf8"), good)
+    put("tsconfig.json", JSON.stringify(config))
     put(source, failure === "missing"
       ? 'import { missing } from "./missing.js"\nexport const value = missing\n'
       : failure === "declaration" ? "export const value = class { private field = 1 }\n"
       : 'export const value: number = "wrong"\n')
     if (failure === "declaration") put("src/consumer.ts", 'import { value } from "./main.' + extension + '"; export { value }\n')
     if (preexisting) put(selected, good)
-    put(stale, good)
     const failed = run()
     assert.ifError(failed.error)
     assert.notEqual(failed.status, 0, failed.stdout + failed.stderr)

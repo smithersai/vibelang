@@ -1,0 +1,12 @@
+{
+  "property": "sidecar-project-ownership",
+  "rule": "A compiling project preserves another project's sidecar when relocating its own declarations.",
+  "input": {
+    "depth": 1,
+    "name": "W",
+    "extension": ".vibe",
+    "workerFirst": false,
+    "shared": false
+  },
+  "generatorVersion": 1
+}

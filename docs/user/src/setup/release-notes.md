@@ -24,6 +24,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Unicode escapes in `@rethrows` parameter names could miss the callback or track a shorter name. Escaped and literal names now identify the same complete parameter.
 
+- Checking a root project could delete a nested project's declaration files and break package aliases. Sidecar cleanup now preserves other projects' declarations and removes only the compiling project's own stale outputs.
+
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
 - A `for concurrent` header accepted Unicode escapes in its keyword. Escaped spellings now report `TS1260`, as TypeScript does for escaped loop keywords.

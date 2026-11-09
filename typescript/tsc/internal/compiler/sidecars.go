@@ -73,9 +73,9 @@ var (
 // program's .vibe modules whose text changed, with write, and returns the
 // declaration emit's result. A sidecar whose text is unchanged is not
 // written, so a watch that includes it does not rebuild. With output, the
-// file system the sidecars go to, it also deletes each module's sidecar from
-// the place the other layout puts it, so switching vibe.sidecarDir on or off
-// leaves one sidecar per module.
+// file system the sidecars go to, it records project ownership and prunes
+// unchanged outputs from the other layout only when this project is their
+// last owner. Untracked declarations belong to their existing producer.
 //
 // A module declaration's body has no sidecar of its own. A sidecar that refers
 // to one, ./main.vibe.parse.js, reaches TypeScript's declaration of the body,
@@ -180,17 +180,6 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 					blocked.Store(true)
 					return nil
 				}
-				if output != nil && stale != "" && !selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(stale))] && output.FileExists(tspath.RootedFilePathFromNormalized(stale)) {
-					if err := publish(func() error {
-						if err := output.Remove(tspath.RootedPathFromNormalized(stale)); err != nil {
-							return err
-						}
-						p.pruneSidecarDirectories(tspath.GetDirectoryPath(stale), output)
-						return nil
-					}); err != nil {
-						return err
-					}
-				}
 				// Resolve from the source using the real module resolver, then write
 				// relative to the final compatibility output. Another project's
 				// checker never inherits this project's rootDirs (opencode-53).
@@ -220,10 +209,25 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				if isBody && p.emitsDeclarationAt(data.SourceFile, sidecar) {
 					return nil
 				}
-				if existing, ok := fs.ReadFile(tspath.RootedFilePathFromNormalized(sidecar)); ok && existing == text {
+				return publish(func() error {
+					// Publish the replacement before pruning its old layout. A
+					// failed write must leave the previous declaration available.
+					if existing, ok := fs.ReadFile(tspath.RootedFilePathFromNormalized(sidecar)); !ok || existing != text {
+						if err := write(sidecar, text); err != nil {
+							return err
+						}
+					}
+					if output == nil {
+						return nil
+					}
+					if err := p.recordSidecarOwner(sidecar, text, output); err != nil {
+						return err
+					}
+					if stale != "" && !selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(stale))] && p.GetSourceFile(tspath.RootedFilePathFromNormalized(stale)) == nil {
+						return p.pruneOwnedSidecar(stale, output)
+					}
 					return nil
-				}
-				return publish(func() error { return write(sidecar, text) })
+				})
 			},
 		})
 	}
