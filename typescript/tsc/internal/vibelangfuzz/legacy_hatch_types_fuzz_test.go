@@ -11,12 +11,12 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
-const legacyHatchTypesQuote = "Every breaking change ships a `vibelang --fix` codemod, so code that compiled under the previous release migrates mechanically."
+const legacyHatchTypesQuote = "select preserving repairs; they do not run Effects or change omitted-slot or service semantics."
 
 func TestLegacyHatchTypesQuoted(t *testing.T) {
 	TestEffectGlobalsQuoted(t)
-	if !strings.Contains(SpecText("../vips/0034-compiler-and-tooling.md"), legacyHatchTypesQuote) {
-		t.Fatal("VIP-34 no longer requires the migration oracle")
+	if !strings.Contains(SpecText("007-tooling.md"), legacyHatchTypesQuote) {
+		t.Fatal("Chapter 7 no longer requires preserving repairs")
 	}
 }
 
