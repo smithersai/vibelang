@@ -1,0 +1,8 @@
+{
+  "rule": "docs/user/src/setup/developer-tools.md: Existing native and in-memory entries keep their priority.",
+  "entries": [
+    "src/repository.ts",
+    "src/session/store.ts",
+    "src/util/slug.ts"
+  ]
+}

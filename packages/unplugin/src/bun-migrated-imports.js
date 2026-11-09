@@ -37,16 +37,23 @@ export function migratedImports(build, options = {}) {
     return aliases = { nearestProject, workspaceProject, aliasImport }
   }
 
-  // Bun loses an in-memory entry when an onResolve filter matches its name,
-  // even if the callback returns nothing. Keep those requests out of the hook.
-  const virtualNames = new Set()
+  // Bun can drop native or in-memory entries when a resolve filter matches
+  // their names, even if the callback returns nothing. Exclude those requests.
+  const excludedNames = new Set()
   for (const file of Object.keys(build.config.files || {})) {
-    virtualNames.add(file)
-    virtualNames.add(resolve(cwd, file))
-    virtualNames.add(relative(cwd, resolve(cwd, file)))
-    virtualNames.add("./" + relative(cwd, resolve(cwd, file)))
+    excludedNames.add(file)
+    excludedNames.add(resolve(cwd, file))
+    excludedNames.add(relative(cwd, resolve(cwd, file)))
+    excludedNames.add("./" + relative(cwd, resolve(cwd, file)))
   }
-  const exclusions = [...virtualNames].map(escape).join("|")
+  for (const entry of Array.isArray(build.config.entrypoints) ? build.config.entrypoints : []) {
+    if (typeof entry !== "string" || !entry.endsWith(".ts")) continue
+    const absolute = resolve(cwd, entry)
+    // Bun normalizes disk entries before resolving them. Relative import names
+    // must still reach the hook when another directory has a migrated sibling.
+    if (fileExists(absolute)) excludedNames.add(absolute)
+  }
+  const exclusions = [...excludedNames].map(escape).join("|")
   const filter = new RegExp("^(?!.*\\.d\\.ts$)" + (exclusions ? "^(?!(?:" + exclusions + ")$)" : "") + ".*\\.ts$")
   build.onResolve({ filter, namespace: "file" }, ({ path, importer }) => {
     if (!importer || path.endsWith(".d.ts")) return

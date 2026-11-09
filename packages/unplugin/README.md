@@ -308,7 +308,9 @@ as `file:line:column - error TS2322: text`.
   `./x.js` to `x.ts` or `x.tsx` itself, even when another directory has
   an `x.vibe` with the same basename; the plugin leaves that import to Bun.
   A separate `.ts` import hook follows migrated sources while excluding
-  declaration names and in-memory entry names from its filter.
+  declaration names, existing native entry paths and in-memory entry names
+  from its filter. Native disk entries stay entirely under Bun’s resolver so
+  a successful multi-entry build retains their JavaScript outputs.
   A filter sees only the specifier, so matching it is a precondition:
   the resolve callback claims a path only when it serves the resolved module.
   A `.vibe` file added during a build

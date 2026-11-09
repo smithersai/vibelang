@@ -467,7 +467,9 @@ imports and adds the VibeLang adapter to test-owned builds without editing
 their source, options, plugins or assertions. Each child Bun process needs
 its own preload configuration. A literal `.ts` bundle entry can remain
 unchanged after migration: the Bun adapter loads the sibling `.vibe` only when the TypeScript file is missing.
-Existing native and in-memory entries keep their priority.
+Existing native and in-memory entries keep their priority. The adapter excludes
+existing native entry paths from its migrated-import hook so a successful
+package build retains every native JavaScript entry output.
 Runtime-only `vibelang/bun` does not
 configure the bundler; other bundlers still need their own integration.
 Native modules inside a Bun bundle can also keep relative, absolute, or
