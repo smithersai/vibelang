@@ -10,6 +10,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration verification could reject an unchanged Effect factory returned inside a tuple. Array and tuple elements now keep their own function identities, while changed callback timing still fails verification.
 
+- Cached declaration comparisons could miss changes to the rules their fixtures read. Editing those rules now refreshes the comparison.
 - A Bun package build could report success while omitting native JavaScript entry files, leaving consumers with missing modules. Existing native entries now stay under Bun’s resolver and keep their outputs.
 - An object with a computed member named `customMatcher` could pass pattern checks even when its key was a different symbol or a string. It now reports `EK0702`; aliases of the actual matcher symbol remain valid.
 

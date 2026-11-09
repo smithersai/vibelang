@@ -1794,7 +1794,8 @@ and generated names as well as the dedicated tests of program values.
 
 The `//:api-identity-test` cache key uses `api-inputs.ts` rather than the
 whole repository tree. It includes scripts and corpus files, specification
-chapters (including historical chapter lookup), all package sources, the
+chapters (including historical chapter lookup), the declaration-identity
+maintainer guide read by the dependency fixtures, all package sources, the
 `docs/tools` and `experiments` sources and lockfiles, the staged checker
 copies, and the root JSON project configurations and Smithers install declarations. The installed tool
 and lockfiles still identify the TypeScript environment. Compiler Go,

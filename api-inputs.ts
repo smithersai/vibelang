@@ -8,6 +8,7 @@ type SDK = typeof Smithers
 export const apiInputPatterns = [
   "scripts/**",
   "docs/design/**",
+  "docs/maintainers/api-identity.md",
   "docs/tools/**",
   "experiments/**",
   ".smithers/flows/migrate/lib/api-identity*.mjs",
