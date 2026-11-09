@@ -119,7 +119,7 @@ An object pattern matches only an object or a function, never a primitive, and r
 
 ## Option, Exit, Result, and primitives
 
-Effect 4.1.0 also retains thirty-three tagged error patterns, including `Csv.CsvError` from `effect/encoding/Csv` and `HttpClientError.HttpClientError` from `effect/http/HttpClientError`. Their resolved module guards recognize branded errors across installed copies, reject unbranded tag lookalikes, and extract the subject itself.
+Effect 4.1.1 also retains thirty-four tagged error patterns, including `Csv.CsvError` from `effect/encoding/Csv` and `HttpClientError.HttpClientError` from `effect/http/HttpClientError`. Their resolved module guards recognize branded errors across installed copies, reject unbranded tag lookalikes, and extract the subject itself.
 
 These matchers compile to the module's own test. A name means what it resolves to. A local binding named `String` or `Option` shadows the built-in or intrinsic. A class pattern naming a `data` declaration or variant is `EK0702`. Until Effect ships custom matchers for Option, Exit, Result, and its tagged errors, VIP-7 keeps these fixed checks without patching Effect at runtime.
 

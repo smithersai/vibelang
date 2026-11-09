@@ -161,7 +161,7 @@ For generic schema arrays, resolve the TypeScript-library type binding instead o
 
 ## Retained nested Effect error patterns (VIP-7, detail 92)
 
-Qualified constructors in the thirty-three retained Effect error patterns use their native module guards. When upgrading code whose nested-module patterns previously used ordinary class matching, introduce fresh local constructor aliases and explicit call-only extractors (detail 100), then rewrite those patterns to preserve their own matcher, `instanceof` behavior and declared types. Keep direct qualified patterns when deliberately adopting the native guard semantics. Compare complete `Exit`s and the emitted declarations after the upgrade.
+Qualified constructors in the thirty-four retained Effect error patterns use their native module guards. When upgrading code whose nested-module patterns previously used ordinary class matching, introduce fresh local constructor aliases and explicit call-only extractors (detail 100), then rewrite those patterns to preserve their own matcher, `instanceof` behavior and declared types. Keep direct qualified patterns when deliberately adopting the native guard semantics. Compare complete `Exit`s and the emitted declarations after the upgrade.
 
 ## VIP-15: Schema type-member grammar
 
