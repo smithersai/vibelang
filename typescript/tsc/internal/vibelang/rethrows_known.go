@@ -109,6 +109,9 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 			end = len(arguments)
 		}
 		for position := index; position < end && position < len(arguments); position++ {
+			if arguments[position].rest && parameter.AsParameterDeclaration().DotDotDotToken == nil {
+				continue
+			}
 			for _, argument := range rethrowsCallbackAlternatives(c, arguments[position]) {
 				source := argument.source
 				if source == nil {
@@ -153,8 +156,8 @@ func rethrowsCallbackAlternatives(c *checker.Checker, argument knownRethrowsArgu
 	node := ast.SkipParentheses(argument.expression)
 	if ast.IsConditionalExpression(node) {
 		conditional := node.AsConditionalExpression()
-		left := knownRethrowsArgument{conditional.WhenTrue, c.GetTypeAtLocation(conditional.WhenTrue)}
-		right := knownRethrowsArgument{conditional.WhenFalse, c.GetTypeAtLocation(conditional.WhenFalse)}
+		left := knownRethrowsArgument{expression: conditional.WhenTrue, source: c.GetTypeAtLocation(conditional.WhenTrue)}
+		right := knownRethrowsArgument{expression: conditional.WhenFalse, source: c.GetTypeAtLocation(conditional.WhenFalse)}
 		return append(rethrowsCallbackAlternatives(c, left), rethrowsCallbackAlternatives(c, right)...)
 	}
 	return []knownRethrowsArgument{argument}
@@ -448,6 +451,8 @@ func callbackReceiverIsWritten(c *checker.Checker, node *ast.Node, seen map[*ast
 type knownRethrowsArgument struct {
 	expression *ast.Node
 	source     *checker.Type
+	// rest marks an element of unknown count, which only a rest parameter receives.
+	rest bool
 }
 
 // Fixed tuple spreads occupy their native argument positions. Their element
@@ -461,7 +466,7 @@ func knownRethrowsArguments(c *checker.Checker, call *ast.Node) []knownRethrowsA
 			continue
 		}
 		if !ast.IsSpreadElement(argument) {
-			result = append(result, knownRethrowsArgument{argument, c.GetTypeAtLocation(argument)})
+			result = append(result, knownRethrowsArgument{expression: argument, source: c.GetTypeAtLocation(argument)})
 			continue
 		}
 		elements, fixed := fixedRethrowsSpreadTypes(c, argument)
@@ -469,6 +474,12 @@ func knownRethrowsArguments(c *checker.Checker, call *ast.Node) []knownRethrowsA
 			elements, fixed = trailingOptionalRethrowsSpreadTypes(c, argument)
 		}
 		if !fixed {
+			if elements, required, open := openRethrowsSpreadTypes(c, argument); open {
+				for position, element := range elements {
+					result = append(result, knownRethrowsArgument{source: element, rest: position >= required})
+				}
+				continue
+			}
 			result = append(result, knownRethrowsArgument{})
 			continue
 		}
@@ -506,6 +517,40 @@ func fixedRethrowsSpreadTypes(c *checker.Checker, argument *ast.Node) ([]*checke
 		}
 	}
 	return c.GetTypeArguments(spread), true
+}
+
+// openRethrowsSpreadTypes reads a spread of unknown length: an array, or a
+// tuple of required elements around one rest element. TypeScript accepts such
+// a spread only where its open part and every later argument reach a rest
+// parameter, so each callback the spread can supply reaches that parameter.
+// The leading required elements keep their own positions.
+func openRethrowsSpreadTypes(c *checker.Checker, argument *ast.Node) (elements []*checker.Type, required int, open bool) {
+	if argument == nil || !ast.IsSpreadElement(argument) {
+		return nil, 0, false
+	}
+	spread := c.GetTypeAtLocation(argument.Expression())
+	if c.IsArrayType(spread) {
+		return []*checker.Type{c.GetElementTypeOfArrayType(spread)}, 0, true
+	}
+	if !checker.IsTupleType(spread) {
+		return nil, 0, false
+	}
+	for position, flag := range spread.TargetTupleType().ElementFlags() {
+		switch {
+		case flag&checker.ElementFlagsRequired != 0:
+			if !open {
+				required = position + 1
+			}
+		case flag&checker.ElementFlagsRest != 0:
+			open = true
+		default:
+			return nil, 0, false
+		}
+	}
+	if !open {
+		return nil, 0, false
+	}
+	return c.GetTypeArguments(spread), required, true
 }
 
 // Optional entries in a final tuple spread keep their parameter positions

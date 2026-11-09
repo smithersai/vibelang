@@ -35,6 +35,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `get` or `set` accessor without a body in a `service`, such as `get value(): number`, reported TypeScript's `'{' expected`, and `abstract get value(): number` compiled without an error into an ordinary class. Each now reports `EK0902`, which says to declare a property or a method.
 - A dynamic import whose specifier is a template without substitutions, such as ``import(`node:fs`)``, loaded a Node builtin without the `EK4402` that a string literal reports. It now reports `EK4402`.
+- Spreading an array of throwing callbacks into a `@rethrows` rest parameter hid their throws. The call now reports `EK0401` in plain code and `EK0403` in effect code.
+
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
 - A `for concurrent` header accepted Unicode escapes in its keyword. Escaped spellings now report `TS1260`, as TypeScript does for escaped loop keywords.

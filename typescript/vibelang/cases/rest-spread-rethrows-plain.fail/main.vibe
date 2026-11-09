@@ -1,0 +1,6 @@
+// expect: EK0401
+import { many, risky } from "./foreign.js"
+
+const callbacks: readonly (typeof risky)[] = [risky]
+
+export function main() { return many(...callbacks) }

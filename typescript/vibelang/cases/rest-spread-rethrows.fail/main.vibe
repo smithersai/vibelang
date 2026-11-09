@@ -1,0 +1,8 @@
+// expect: EK0403
+import { many, risky, safe } from "./foreign.js"
+
+const callbacks: (typeof risky)[] = [risky]
+
+export effect function head() { return many(...callbacks) }
+export effect function tail() { return many(...callbacks, safe) }
+export effect function later() { return many(safe, ...callbacks) }

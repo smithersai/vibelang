@@ -1,0 +1,22 @@
+// expect-result: [14,true,true,["safe","safe","safe","risky","risky"]]
+import { Effect } from "effect"
+import { events, many, risky, safe, sentinel } from "./foreign.js"
+
+const safes: (typeof safe)[] = [safe, safe]
+const callbacks: readonly (typeof risky)[] = [risky]
+
+function caught(): unknown {
+  try {
+    return many(safe, ...callbacks)
+  } catch (error) {
+    return error
+  }
+}
+
+export effect function main() {
+  const total = many(...safes)
+  const first = caught() === sentinel
+  const outcome = try exit(Effect.try({ try: () => many(...callbacks, safe), catch: (error: unknown) => error }))
+  const second = outcome._tag === "Failure" && outcome.cause.reasons[0]?._tag === "Fail" && outcome.cause.reasons[0].error === sentinel
+  return [total, first, second, events]
+}

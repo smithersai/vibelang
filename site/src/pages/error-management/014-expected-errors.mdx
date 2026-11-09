@@ -65,6 +65,8 @@ A TypeScript `this` parameter describes the receiver and does not occupy a runti
 
 Fixed tuple spreads at a `@rethrows` call retain the callback contracts in each argument position, including spreads before a later callback. An inline callback supplied directly in a tuple literal keeps the invocation boundary too: `invoke(...[() => JSON.parse(text)] as const)` is handled by catching `invoke` or wrapping it with `Effect.try`. Nested literal spreads and fixed prefix spreads retain native argument order. A callback stored in a tuple has its own source scope; storing it does not permit known throwing calls in its body. Handle a throwing callback through `Effect.try`.
 
+An array spread into a `@rethrows` rest parameter keeps each element’s written `@throws` contract. With `const callbacks: (typeof risky)[]`, the call `many(...callbacks)` can throw whatever `risky` declares: plain code reports `EK0401` and effect code reports `EK0403`. A readonly array, arguments written before or after the spread, and the rest element of a tuple follow the same rule.
+
 Optional callback parameters and `undefined` or `null` alternatives retain a supplied callback’s written `@throws` contract at a rethrowing invocation. `Array.prototype.sort` follows the same rule. Omitting an optional callback contributes no callback throw.
 
 For `EK0401`, choose an explicit Effect failure or defect, or retain JavaScript throwing behavior behind a TypeScript boundary. Preserve an exported declaration's contract when moving it.
