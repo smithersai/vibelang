@@ -622,7 +622,14 @@ var formsHatchNames = map[string]bool{"sync": true, "callback": true}
 // Effect is a finalizer, not an Effect-function body. Nested functions keep
 // the existing hatch rule. A hatch is one only when no scope binds its name.
 func (r *Resolver) inHatch(node *ast.Node) (string, bool) {
-	for n := node; n.Parent != nil; n = n.Parent {
+	var child *ast.Node
+	for n := node; n.Parent != nil; child, n = n, n.Parent {
+		// A written activation owns its body inside native code. Computed
+		// names and decorators still run while defining the member.
+		if n.Flags&ast.NodeFlagsVibeLangEffect != 0 &&
+			(child == nil || !ast.IsComputedPropertyName(child) && child.Kind != ast.KindDecorator) {
+			return "", false
+		}
 		p := n.Parent
 		if !ast.IsCallExpression(p) || p.Expression() == n {
 			continue

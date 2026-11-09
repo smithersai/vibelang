@@ -138,7 +138,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Calls through supplied `Performance` and `Crypto` values incorrectly reported platform-access errors. They now use the supplied receiver; host-global access remains diagnosed.
 
-- An explicit `effect` function or block inside a wrapper callback could run as plain JavaScript or lose its Effect type. It now keeps its cold Effect behavior and runs its body only when that Effect is run.
+- An explicit `effect` function or block inside a wrapper callback could run as plain JavaScript or lose its Effect type. It now keeps its cold Effect behavior in compiled code and editor typechecking, and runs its body only when that Effect is run.
 
 - Formatting JSX in the language server could silently leave a `.vibex` file or a `.tsx` buffer marked with `// @vibe` unchanged. Both now format as JSX and preserve their text.
 
