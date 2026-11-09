@@ -1,0 +1,3 @@
+go test fuzz v1
+string("export function captured(): Effect.Effect<unknown> { return effect { return new.target } }\n")
+string("bom")

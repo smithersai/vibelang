@@ -1,0 +1,3 @@
+go test fuzz v1
+string("export effect function captured(): unknown!! { return new.target }\n")
+string("astral")

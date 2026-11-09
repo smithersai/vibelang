@@ -57,6 +57,8 @@ Rule names are stable. A test cites them.
 | `module m { }` | its own file, `main.vibe.m.js` | Its map names the containing `.vibe` file |
 | `--fix` | a new `.vibe` text | No map survives a rewrite: the next compile writes it from the new text |
 
+Capturing `new.target` for an Effect body retains the written meta-property node in the capture initializer. Its `target` token keeps its source range when the read moves, across functions, constructors, nested Effect blocks and text variants.
+
 ## Text
 
 | Text | Rule |

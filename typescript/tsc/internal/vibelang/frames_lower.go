@@ -227,6 +227,7 @@ func (tx *lowering) lexicalReceiver(generator *ast.Node) {
 type activation struct {
 	binds                                                             frameBinding
 	super, superSet, superReference, arguments, newTarget, thisGetter *ast.Node
+	newTargetSource                                                   *ast.Node
 	lexical                                                           *ast.Node        // source arrow whose callable can declare a lazy receiver
 	parameter                                                         bool             // initializer scope, outside the callable's body declarations
 	thisValue                                                         func() *ast.Node // source receiver before this synthetic activation
@@ -384,6 +385,8 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 		case newTarget != nil && isNewTarget(node):
 			if newTarget.newTarget == nil {
 				newTarget.newTarget = f.NewUniqueName("newTarget")
+				// Retain the written meta-property so the capture keeps its token positions.
+				newTarget.newTargetSource = node
 			}
 			return newTarget.newTarget
 		case node.Kind == ast.KindArrowFunction:
@@ -597,7 +600,7 @@ func (tx *lowering) declareFrameBindings(fn *ast.Node, a *activation) *ast.Node 
 		declare(a.arguments, f.NewIdentifier("arguments"))
 	}
 	if a.newTarget != nil {
-		declare(a.newTarget, f.NewMetaProperty(ast.KindNewKeyword, f.NewIdentifier("target")))
+		declare(a.newTarget, a.newTargetSource)
 	}
 	if fn.Kind == ast.KindPropertyDeclaration || fn.Kind == ast.KindParameter || fn.Kind == ast.KindBindingElement {
 		// initializer = (() => { const super_1 = …; return initializer; })()

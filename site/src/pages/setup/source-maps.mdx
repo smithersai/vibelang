@@ -28,6 +28,8 @@ Bundlers can inline a string held in a compiler temporary. Its composed map may 
 
 Service key strings keep their written positions. The `key` metadata name is erased; a generated producer property with the same name has no corresponding written token. Mapping checks distinguish these from retained object and class properties.
 
+A `new.target` read captured by Effect lowering keeps its written token position, including in constructors and across Unicode text and line endings.
+
 ## Limits
 
 - **Bun's runtime:** Bun reads a source map only from a module it runs without transpiling. `vibelang/bun` can do that for a module whose emitted JavaScript is ASCII and that needs nothing from Bun's transpiler: no JSX left in the output, no decorators at `target: "ESNext"`, no `require`, `__dirname` or `__filename`, and no name that `--define` or a `bunfig.toml` `[define]` table replaces. In any other module a stack frame names the `.vibe` file with the line of its compiled JavaScript.

@@ -261,6 +261,16 @@ for (const version of ["fixture", "7.0.2"]) {
 }
 
 
+test("lexical capture edits select retained-token source-map controls", () => {
+  for (const path of [
+    "typescript/tsc/internal/vibelang/frames_lower.go",
+    "typescript/tsc/internal/vibelangfuzz/source_map_captured_new_target_test.go",
+    "typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzSourceMapTokens/captured-new-target-function-astral",
+    "docs/maintainers/source-maps.md",
+  ]) assert.ok(select([path]).includes(label("source-map-frames")), path)
+  assert.deepEqual(select(["typescript/tsc/internal/vibelang/frames_lower.go.backup"]), [])
+})
+
 test("computed checker paths select the pinned TypeScript comparison", () => {
   assert.deepEqual(select(["typescript/tsc/internal/checker/checker.go"]), ["//scripts/fuzz-gate:computed-members"])
   assert.deepEqual(select(["typescript/tsc/internal/checker/checker.go.backup"]), [])
@@ -280,3 +290,5 @@ test("own-signature and module-loader paths select the fuzz targets their change
   assert.deepEqual(select(["typescript/tsc/internal/vibelangfuzz/testdata/pending/inline-module-artifacts.txt"]), ["//scripts/fuzz-gate:inline-module-artifacts"])
   assert.deepEqual(select(["typescript/tsc/internal/compiler/fileloader.go.backup"]), [])
 })
+
+
