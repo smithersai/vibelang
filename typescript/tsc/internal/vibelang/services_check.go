@@ -16,7 +16,7 @@ import (
 
 // ek3004Pattern is EK3004 for a class pattern naming a service. {0} is the pattern's
 // expression and {1} a member of the service's shape, for the suggested pattern.
-var ek3004Pattern = EK3004.With("A class pattern naming {0} is always false: implementations are plain objects; match their members instead, when { {1}: let {1} }.")
+var ek3004Pattern = EK3004.With("A class pattern naming {0} is always false: implementations are plain objects; match their members instead, when { {1}: let value }.")
 
 func init() { fileChecks = append(fileChecks, checkServices) }
 

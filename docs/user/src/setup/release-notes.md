@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A class method written with `declare effect` reported a missing implementation instead of rejecting the Effect modifier. It now reports `EK0108` for the ambient declaration and retains TypeScript’s separate error on `declare`.
 
+- The `EK3004` service-pattern message could suggest invalid bindings such as `let default` for a member named `default`. Its suggested member pattern now uses a valid binding name.
 - Stock `tsc` and `bun check` reported `TS2307` for a `.ts` file's `./x.js` or `./x` import once `x` became a `.vibe` module, though `vibelang` accepted it. The compiler now also writes `x.d.ts`, which re-exports `x.d.vibe.ts`, so those imports resolve and the importer's published declarations are unchanged.
 - `effect` written before an object-literal property, as in `{ effect size: 1 }`, or before a parameter name, as in `function f(effect x: number)`, reported a missing comma. They now report what TypeScript reports for `async` there: `TS1042` and `TS1090`, naming `effect`.
 - Dynamically importing `vibelang/register` from a strict TypeScript configuration reported `TS7016` because its declarations were missing. The loader entry now ships declarations for both static and dynamic imports.
