@@ -76,7 +76,7 @@ function scenario(input) {
   const packed=execute(rewritten.text,structuredClone(pkg),input.package)
   const nativeConditions=execute(nativeScript,{imports:{"#native":{types:"./src/keep.ts",node:"./src/keep.ts"}}},input.package).imports["#native"]
   assert.deepEqual(packed.imports["#native"],nativeConditions,"authored native conditions preserve their original mapper")
-  assert.equal(packed.imports[alias].default,pkg.imports[alias].default,"runtime target remains the committed JavaScript")
+  assert.equal(packed.imports[alias].default,"./dist/"+stem+".js","runtime target follows the same build as the package exports, so one module identity loads")
   put("package.json",packed)
   put(platform,'import type { Sqlite } from "'+routed+'"; export declare const client: Sqlite;\n')
   assert.deepEqual(diagnostics(root,"consumer.ts"),[],"packed private import must resolve actual regular declarations")

@@ -56,6 +56,7 @@ async function fixture(action, { identical = false, stock = true, stockExit = 0,
     writeJson(p.config, makeConfig({ target, test: "true", vibelangVersion: "0.0.11", wire: false, includePrivateDeclarations: includePrivate, ...(custom ? { stockCompiler: "node_modules/.bin/custom-tsc" } : {}) }))
     writeJson(p.upgrade, { jj: { initialized: true, commit: await commitId(target) }, effect: { to: "4.1.0" }, changed: [], tests: {} })
     writeJson(join(p.baseline, "upgraded-tests.json"), { code: 0, tests: {} })
+    writeJson(join(p.baseline, "upstream-checks.json"), { ".": { compiler: "original", code: 0, diagnostics: [] } })
     writeJson(join(p.baseline, "upstream-packs.json"), await packRepository({ target }, join(run, "upstream-packs")))
     const baseline = await setup({ run })
     assert.equal(readFileSync(join(target, "build-ready.txt"), "utf8"), "ready")

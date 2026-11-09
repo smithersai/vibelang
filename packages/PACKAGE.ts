@@ -237,6 +237,17 @@ const migrateToolchainBaseline = S.Shell.Test({
   timeout: "3m"
 })
 
+// Removing a rule from the specification breaks every migrate oracle quoting
+// it, which only the full migrate-test run would otherwise report.
+const migrateQuotedRules = S.Shell.Test({
+  summary: "Every migrate corpus quote is text the specification or the flow still states.",
+  shell: "node --test .smithers/flows/migrate/test/quoted-rules-exist.test.mjs",
+  data: [migrationSources, S.glob("//docs/design/src/*.md"), S.glob("//docs/design/vips/*.md"), S.glob("//docs/user/src/setup/*.md")],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "1m"
+})
+
 const pluginTest = (name: string, summary: string, timeout: string) => S.Shell.Test({
   summary,
   shell: `VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/${name}/test/run.sh`,
@@ -315,6 +326,7 @@ export const Package = S.Package({
     "compiler-native": compilerNative,
     "tooling-adapter-srcs": toolingAdapterSources,
     "migrate-toolchain-baseline": migrateToolchainBaseline,
+    "migrate-quoted-rules": migrateQuotedRules,
     "compiler-test-1": compilerTest(1),
     "compiler-test-2": compilerTest(2),
     "compiler-test-3": compilerTest(3),
