@@ -1,5 +1,7 @@
 # Source maps
 
+A `return`, `break` or `continue` leaving a `provide` or scoped region keeps its authored source position. Coverage excludes the generated completion test and transfer that forward that jump.
+
 `vibelang` writes standard version 3 source maps that name `.vibe` lines. Turn them on with `"sourceMap": true`. Add `"inlineSources": true` to carry the source text, and `"declarationMap": true` for go-to-definition into a built package.
 
 ## What works where

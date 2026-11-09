@@ -443,7 +443,10 @@ func (tx *lowering) dispatch(completion *ast.Node, j jump) *ast.Node {
 			then = f.NewContinueStatement(label)
 		}
 	}
-	return f.NewIfStatement(test, then, nil /*elseStatement*/)
+	// This dispatch has no authored condition or alternative branch. The
+	// source jump was mapped inside the region; do not map its generated
+	// completion test or transfer back onto the closing source brace.
+	return tx.generated(f.NewIfStatement(test, tx.generated(then), nil /*elseStatement*/))
 }
 
 // runNow builds the region Effect. Its generator uses lexical receiver

@@ -1,0 +1,15 @@
+{
+  "property": "ProvideReturnCoverage",
+  "rule": "A function or statement no source stands for starts with a segment that has no source position",
+  "service": "import { Context } from \"effect\"; export class Counter extends Context.Service<Counter, number>()(\"Counter\") {}\n",
+  "native": "import { Counter } from \"./service.ts\";\nexport effect function run() {\n  return try effect { provide Counter = 1 { return try Counter } }\n}\n",
+  "reference": "import { Effect } from \"effect\";\nimport { Counter } from \"./service.ts\";\nexport const run = () => Effect.gen(function*() { return yield* Effect.provideService(Effect.gen(function*(){ return yield* Counter }), Counter, 1); });\n",
+  "break": {
+    "native": "import { Counter } from \"./service.ts\";\nexport effect function run() {\n  let result = 0;\n  outer: { provide Counter = 1 { result = try Counter; break outer } }\n  return result;\n}\n",
+    "reference": "import { Effect } from \"effect\";\nimport { Counter } from \"./service.ts\";\nexport const run = () => Effect.gen(function*() {\n  let result = 0;\n  outer: { yield* Effect.provideService(Effect.gen(function*(){ result = yield* Counter }), Counter, 1); break outer; }\n  return result;\n});\n"
+  },
+  "continue": {
+    "native": "import { Counter } from \"./service.ts\";\nexport effect function run() {\n  let result = 0;\n  for (let i = 0; i < 2; i++) { provide Counter = 1 { result += try Counter; continue } }\n  return result;\n}\n",
+    "reference": "import { Effect } from \"effect\";\nimport { Counter } from \"./service.ts\";\nexport const run = () => Effect.gen(function*() {\n  let result = 0;\n  for (let i = 0; i < 2; i++) { yield* Effect.provideService(Effect.gen(function*(){ result += yield* Counter }), Counter, 1); continue; }\n  return result;\n});\n"
+  }
+}
