@@ -11,7 +11,7 @@ import { checkProperty } from "../../../../scripts/testing/property.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check"), ts = require("typescript")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-bun-source-native-root.json", import.meta.url), "utf8"))
-const rule = "A rewrite that can't preserve types, behavior and declaration output refuses at that site"
+const rule = "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 const put = (root, file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
 
 test("native source condition oracle quotes the tooling specification", () => {

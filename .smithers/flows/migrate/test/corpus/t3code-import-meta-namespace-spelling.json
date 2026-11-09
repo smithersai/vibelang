@@ -1,6 +1,6 @@
 {
   "key": "t3code-import-meta-namespace-spelling",
-  "quote": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "source": "export const filename = () => import.meta.filename;\n",
   "namespace": "NodeURL",
   "pattern": "A generated metadata companion uses a fresh dollar-prefixed node:url namespace instead of the repository's required NodeURL binding."

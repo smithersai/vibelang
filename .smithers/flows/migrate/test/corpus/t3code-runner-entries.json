@@ -18,7 +18,7 @@
     "scripts/lib/note.ts",
     "scripts/notify-discord-release.ts"
   ],
-  "specQuote": "A rewrite that can't preserve types, behavior and declaration output refuses at that site.",
+  "specQuote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "runnerQuotes": [
     "an executable file with a `node`, `bun`, `tsx` or `ts-node` shebang (with no execute bit the line runs nothing, and whatever starts the file names its own runner)",
     "Where a loader serves the script, the modules it reaches can migrate",

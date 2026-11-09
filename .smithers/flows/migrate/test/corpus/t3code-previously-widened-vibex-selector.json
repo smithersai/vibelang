@@ -1,6 +1,6 @@
 {
   "key": "previously-widened-vibex-selector",
-  "quote": "A rewrite that can't preserve types, behavior and declaration output refuses at that site.",
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "jsxQuote": "Renaming `x.tsx` to `x.vibex` changes nothing in its JSX",
   "pattern": "An earlier batch already widened the source selector for native modules; a later JSX rename must preserve the earlier selection and exclude both kinds of sidecars.",
   "witness": {

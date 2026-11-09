@@ -1,6 +1,6 @@
 {
   "key": "t3code-import-meta-dirname-strict-index",
-  "quote": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "source": "export function directory(): string | undefined { return import.meta.dirname; }\n",
   "pattern": "A generated directory helper indexes its UNC separator from a string under noUncheckedIndexedAccess, producing string | undefined where legacy String.split overloads require a string."
 }

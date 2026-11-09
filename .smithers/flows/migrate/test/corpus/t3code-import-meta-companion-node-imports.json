@@ -1,6 +1,6 @@
 {
   "key": "t3code-import-meta-companion-node-imports",
-  "quote": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "source": "import * as Effect from \"effect/Effect\";\nexport const program = Effect.sync(() => `${import.meta.dirname}/bin/cli.js`);\n",
   "pattern": "An import.meta.dirname companion introduces a node:path import and named Node imports under the repository's unchanged lint policy."
 }

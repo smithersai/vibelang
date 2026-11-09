@@ -1,6 +1,6 @@
 {
   "property": "t3code-wrapper-passthrough-stage-discarded-argument",
-  "rule": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "rule": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "input": {
     "name": "p",
     "kind": "assign",

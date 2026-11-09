@@ -1,6 +1,6 @@
 {
   "key": "run-phase-binding-provenance",
-  "quote": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix.",
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "samples": [
     {
       "key": "shadowed-gen",

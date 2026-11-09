@@ -1,6 +1,6 @@
 {
   "key": "t3code-existing-platform-module-body",
-  "quote": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "source": "import * as Effect from \"effect/Effect\";\nexport const pure = 1;\nexport const program: Effect.Effect<string> = Effect.sync(() => process.cwd());\n",
   "existing": "/** Existing public entry. */\nexport const legacy = 1;\n"
 }

@@ -5,5 +5,5 @@
   "after": "import { $ } from \"bun\"\nimport { readdir, rm } from \"node:fs/promises\"\nimport vibelang from \"vibelang-unplugin/bun\"\n\nawait rm(\"dist\", { recursive: true, force: true })\nawait $`bunx vibelang --emitDeclarationOnly`\n\nconst build = await Bun.build({\n  plugins: [vibelang()],\n  entrypoints: [\"./src/index.ts\"],\n  outdir: \"dist\",\n})\n",
   "afterSetup": "import { $ } from \"bun\"\nimport { readdir, rm } from \"node:fs/promises\"\nimport vibelang from \"vibelang-unplugin/bun\"\n\nawait rm(\"dist\", { recursive: true, force: true })\nawait $`bunx vibelang --emitDeclarationOnly`\n\nconst build = await Bun.build({\n  plugins: [vibelang()],\n  entrypoints: [\"./src/index.vibe\"],\n  outdir: \"dist\",\n})\n",
   "spec": "007-tooling.md",
-  "quote": "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 }

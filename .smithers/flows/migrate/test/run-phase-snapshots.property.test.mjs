@@ -9,7 +9,7 @@ import { originalFunctions, runPhaseOf, blocking, runPhaseChanges, vibeTree } fr
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check"), Effect = require("effect/Effect")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-factory-property-snapshot.json", import.meta.url), "utf8"))
-const quote = "The migration preserves eager factory calls, argument evaluation and closure state shared by repeated runs"
+const quote = "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 const phase = source => runPhaseOf(ts, originalFunctions(ts, source).get("make").node)
 const source = statement => 'import { Effect } from "effect"; export function make(input: any) { ' + statement + '; return Effect.gen(function* () { return snapshot }) }'
 const templates = [

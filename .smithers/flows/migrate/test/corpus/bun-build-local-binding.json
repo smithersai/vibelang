@@ -6,5 +6,5 @@
     "entry": "src/index.ts"
   },
   "spec": "007-tooling.md",
-  "quote": "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output."
 }

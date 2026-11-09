@@ -1,6 +1,6 @@
 {
   "key": "alchemy-eager-streaming-decoder",
-  "quote": "The migration preserves eager factory calls, argument evaluation and closure state shared by repeated runs",
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "original": "import { Effect } from \"effect\"; export const make = (decoder: TextDecoder) => (chunk: Uint8Array) => Effect.succeed(decoder.decode(chunk, { stream: true }));",
   "retimed": "import { Effect } from \"effect\"; export const make = (decoder: TextDecoder) => effect (chunk: Uint8Array) => { return try Effect.orDie(Effect.try(() => decoder.decode(chunk, { stream: true }))); };",
   "preservedBoundary": "decoder.ts",

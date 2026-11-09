@@ -1,6 +1,6 @@
 {
   "key": "alchemy-factory-property-snapshot",
-  "quote": "The migration preserves eager factory calls, argument evaluation and closure state shared by repeated runs",
+  "quote": "Explicit editor refactors preserve evaluation order, coldness, types, comments and declaration output.",
   "samples": [
     {
       "key": "getter",
