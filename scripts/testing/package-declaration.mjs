@@ -14,7 +14,7 @@ export function declarationFixture(file, { env = {}, bindings = {}, source = rea
     ...apiInputs, ...buildContractInputs,
     fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]],
       ["migration", ["FuzzMigrationFormatterFixedPoint", "FuzzMigrationJSXRoutes"]]]),
-    vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
+    vibelangTopics: new Map([["inventory", ["TestInventoryFirst", "TestInventorySecond"]]]),
     migrationSources: { migrationSources: true },
     process: { env },
     S: { Generate: identity, Filegroup: identity, glob: identity, file: identity, Package: identity,

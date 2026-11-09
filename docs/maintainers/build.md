@@ -173,6 +173,8 @@ settings; child processes they spawn are additional to the four file workers.
 
 The release target runs `typescript/vibelang/coverage-stock-twins.test.mjs`. Its controls check changes to `Exit` values and public types, plus Effect version mismatches. It also runs `typescript/vibelang/vip7-reference.test.mjs`, which checks concurrent reference installation and lock cleanup after a failed install. These tests use fixture packages and need no reference compiler install. The test inventory keeps both suites registered.
 
+The Go test inventory names only existing tests. Retiring a CLI feature also retires its deleted test names and targets; topic checks continue to cover surviving declaration and matcher probes. Quote-test selection and the check for unresolved test names remain required.
+
 ## Go package coverage
 
 Migration import checks compare each rewritten source with its stock TypeScript twin, including diagnostic codes, messages and source locations. The resolver and import-form matrix covers type-only imports and both source-extension flags; native module-body imports keep their own spelling.
@@ -438,7 +440,6 @@ queue:
 | `//:go-vibelangfuzz-editor` | the language service, `typescript/tsc/internal/ls/` |
 | `//:go-error-inheritance` | Error declaration parsing/checking, diagnostic filtering and their regression tests; checks `EK2117` ownership and preserves independent native errors. |
 | `//:go-module-highlights` | Module reference/rename and document-highlight implementations and regression tests; verifies merged module bindings in ordinary and multi-document highlighting. |
-| `//:go-vibelang-fix-twins` | a non-test Go source in the parser, `internal/vibelang/` or `internal/effectglobals/` |
 
 `//:docs-check` also runs `docs/tools/check-case-collisions.mjs`, which fails when two tracked paths, or two of their directories, differ only by letter case. A macOS or Windows checkout folds case, keeps one of the two files and reports the other as deleted, so a commit made there deletes it. Rename such a file so its name differs by more than case; a Go fuzz seed under `testdata/fuzz/<target>/` may take any name.
 
@@ -793,7 +794,6 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :go-vibelangfuzz-hangs        bounded child probes for stale hang markers (merge gate)
   :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail, and every VIP and data probe (merge gate)
   :go-vibelangfuzz-editor       the editor oracles over documentation examples and cases (merge gate)
-  :go-vibelang-fix-twins        the --fix fixed twins of the TypeScript-form and migration cases, the --fix cost guards and the platform-wrapper repairs (merge gate)
   :go-vibelangfuzz-compile      the compile oracles over their short sample of cases and documentation examples (merge gate)
   :go-vibelangfuzz-config       the project-settings oracles over every case's vibelang section (merge gate)
   :go-vibelangfuzz-topic-<t>    the Fuzz and Test functions of internal/vibelangfuzz/<t>_*_test.go (merge gate,

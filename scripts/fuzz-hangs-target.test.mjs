@@ -41,7 +41,7 @@ test("each fuzz topic runs its Fuzz functions over their seeds", () => {
 test("the fuzz topics name every Fuzz and Test function by its file's first word", async () => {
   const { fuzzTopics } = await import("../fuzz-topics.ts")
   assert.ok(fuzzTopics.get("prelude").includes("FuzzPreludeGlobalMember"), "prelude_global_member_fuzz_test.go")
-  assert.ok(fuzzTopics.get("fix").includes("FuzzFix"), "fix_fuzz_test.go")
+  assert.ok(fuzzTopics.get("match").includes("FuzzExtractorArity"), "match_arity_fuzz_test.go")
   // A topic's Test functions break main as its oracles do: both turned 2519454b6513 RED post-merge.
   assert.ok(fuzzTopics.get("declaration").includes("TestDeclarationIdentityCanonicalization"), "declaration_identity_fuzz_test.go")
   assert.ok(fuzzTopics.get("data").includes("TestDataCounterpartFoldkit"), "data_counterpart_fuzz_test.go")
@@ -56,16 +56,16 @@ test("the fuzz topics name every Fuzz and Test function by its file's first word
 })
 
 test("each internal/vibelang test topic runs its Test functions", () => {
-  const fix = targets()["go-vibelang-topic-fix"]
-  assert.ok(fix, "the merge gate selects //:go-vibelang-topic-<topic> (ls/gate-cases.sh)")
-  assert.match(fix.shell, /go test -count=1 .*-run '\^\(TestFixReachesFixedPoint\|TestFixArguments\)\$' \.\/internal\/vibelang\/$/)
-  assert.ok(fix.data.includes("tsc.vibelang-files"))
+  const topic = targets()["go-vibelang-topic-inventory"]
+  assert.ok(topic, "the merge gate selects //:go-vibelang-topic-<topic> (ls/gate-cases.sh)")
+  assert.match(topic.shell, /go test -count=1 .*-run '\^\(TestInventoryFirst\|TestInventorySecond\)\$' \.\/internal\/vibelang\/$/)
+  assert.ok(topic.data.includes("tsc.vibelang-files"))
 })
 
 test("the internal/vibelang topics name every Test function by its file's first word", async () => {
   const { vibelangTopics } = await import("../vibelang-topics.ts")
-  assert.ok(vibelangTopics.get("fix").includes("TestFixReachesFixedPoint"), "fix_fixedpoint_test.go")
-  assert.ok(vibelangTopics.get("tsforms").includes("TestTypeScriptFormCasesFix"), "tsforms_test.go")
+  assert.ok(vibelangTopics.get("declaration").includes("TestDeclarationTypeScriptConsumerOfVibeModule"), "declaration_reexport_actual_test.go")
+  assert.ok(vibelangTopics.get("declarations").includes("TestDeclarationKeepsAssertedReturnAlias"), "declarations_asserted_return_test.go")
   for (const [topic, names] of vibelangTopics) {
     assert.match(topic, /^[a-z0-9]+$/)
     for (const name of names) assert.match(name, /^Test[A-Za-z0-9_]+$/)

@@ -233,7 +233,6 @@ const specTests = [
   "TestNativeAwaitOptionsTypeScriptCompatibility",
   "TestRegistryRowsSuggestRepairs",
   "TestCommandLineFlagsCoverSpec",
-  "TestCommandLineFixScopes",
   "TestSpecFacts",
   "TestDiagnosticCodesKeepFullOrdinal",
   "TestPendingLines",
@@ -255,7 +254,6 @@ const specTests = [
   "TestVIPTemplatesCited",
   "TestCLISpecCommandFlags",
   "TestVIPFiberIDNumberEquality",
-  "TestFixExplicitEmptyErrorDeclarations",
   "TestFunctionsSpecQuotes",
   "TestVIPCoverage",
   "TestSpecProductionsOnlyInAppendixA",
@@ -268,15 +266,6 @@ const specTests = [
   "TestDeclarationIdentityCanonicalization",
   "TestDataCounterpartFoldkit",
 ]
-// The cost guards of vibelang --fix. They count programs and parsed files, and
-// compare the time and memory of two project sizes, so a slower fix loop fails
-// here in seconds; the rewrite cases, which meet it as a 30 s limit on a busy
-// host, run after the merge.
-// The platform-wrapper --fix repairs: an EK4402 access inside a bare sync,
-// callback or tryPromise moves into a .platform.ts companion, or the run says
-// why it refuses. They take about 45 s together. dd45ca328242 (VIP-6 sync and
-// callback as Effect globals) changed the prelude identity of sync, and the
-// repair silently found no wrapper; only post-merge //:go-vibelang ran them.
 // The cost guards of flow narrowing. They count allocations, so a repeated
 // union removal that rehashes fails here in seconds; match-flow-limit.fail,
 // which meets it as a 120 s limit on a busy host, runs after the merge.
@@ -1909,7 +1898,7 @@ const targets = {
     timeout: "15m"
   }),
   "spec-tests": S.Shell.Test({
-    summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of --fix and flow narrowing.",
+    summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of flow narrowing.",
     shell:
       `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
       `node ../../scripts/go-test-progress.mjs go test -json -count=1 -trimpath -run '^(Test[A-Za-z0-9_]*Quoted|${[...specTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/ ./internal/effecttsgo/shim/checker/`,
