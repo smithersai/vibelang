@@ -41,7 +41,7 @@ after(() => {
   rmSync(npmRoot, { recursive: true, force: true })
 })
 
-function fakeCompiler(bin, { side, target, calls, fixCode = 0, probeCode = 0, declaration, version = "0.0.11", finishServices = false, expectedEffect, expectedRuntime }) {
+function fakeCompiler(bin, { side, probeCode = 0, declaration, version = "0.0.11", expectedEffect, expectedRuntime }) {
   writeFileSync(bin, `#!/usr/bin/env node
 const fs = require("node:fs"), path = require("node:path")
 const args = process.argv.slice(2)
@@ -63,37 +63,7 @@ if (args.includes("--emitDeclarationOnly") && project && fs.readFileSync(project
   if (${declaration !== null}) fs.writeFileSync(path.join(out, "probe.d.ts"), ${JSON.stringify(declaration ?? (side === "pre" ? "export declare const f: (n: number) => Effect.Effect<number, never, never>;\n" : "export declare const f: (n: number) => number;\n"))})
   process.exit(0)
 }
-if (${finishServices} && !args.includes("--fix-vip-only") && args.includes("--noEmit")) {
- const file=path.join(${JSON.stringify(target)},"src/rule.vibe")
- if (fs.existsSync(file) && fs.readFileSync(file,"utf8").includes("try RuleContext()")) {
-  console.log(file+"(3,18): error TS2348: service class is not callable")
-  process.exit(2)
- }
-}
-if (!args.includes("--fix-vip-only")) process.exit(0)
-if (${fixCode}) process.exit(${fixCode})
-const target = ${JSON.stringify(target)}, calls = ${JSON.stringify(calls)}
-if (calls) fs.appendFileSync(calls, process.cwd() + "|" + args.join(" ") + "|" + path.basename(JSON.parse(fs.readFileSync(path.join(target, "package.json"), "utf8")).dependencies.vibelang) + ${JSON.stringify("\n")})
-function walk(dir) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
-    const file = path.join(dir, entry.name)
-    if (entry.isDirectory()) walk(file)
-    else if (file.endsWith(".vibe")) fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace(/^export function unwrap/m, "export effect function unwrap").replace(/\\.map\\(\\(/g, ".map(effect ("))
-  }
-}
-walk(process.cwd())
-if (${finishServices}) {
- function finish(dir) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-   if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
-   const file = path.join(dir, entry.name)
-   if (entry.isDirectory()) finish(file)
-   else if (file.endsWith(".vibe")) fs.writeFileSync(file, fs.readFileSync(file, "utf8").replaceAll("try RuleContext()", "try RuleContext"))
-  }
- }
- finish(process.cwd())
-}
+process.exit(0)
 `, { mode: 0o755 })
 }
 

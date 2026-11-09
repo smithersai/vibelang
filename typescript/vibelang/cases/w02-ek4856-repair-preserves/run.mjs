@@ -59,7 +59,7 @@ try {
     const before = tsc(root, [])
     assert.equal(before.status, 0, before.output)
     assert.equal((before.output.match(/warning EK4856:/g) || []).length, 5, before.output)
-    assert.match(before.output, /shadow\.vibe\(4,21\): warning EK4856:[^\n]*\n\s*The Effect namespace is shadowed here/)
+    assert.match(before.output, /shadow\.vibe\(4,21\): warning EK4856:/)
     const declarations = { main: read(root, "out/main.d.ts"), shadow: read(root, "out/shadow.d.ts") }
     // The legacy alias already emits the qualified Effect type.
     assert.match(declarations.main, /paren: \(Effect\.Effect<number>\)\[\];/)

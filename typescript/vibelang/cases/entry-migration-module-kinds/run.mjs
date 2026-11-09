@@ -9,7 +9,7 @@
 // import too. --fix keeps the marker, which stays an error, and the compiler
 // keeps no dispatcher: importing or starting the module starts nothing.
 import assert from "node:assert/strict"
-import { codes, importer, marked, probe, refusal } from "../../tests/entry-migration.mjs"
+import { codes, importer, marked, probe } from "../../tests/entry-migration.mjs"
 
 const source = 'import "vibelang/platform/node"\n\nexport effect function main() {\n  try Console.log("main ran")\n}\n'
 

@@ -1,1 +1,1 @@
-nominal plain-error key migrations preserve Exits and declarations
+nominal plain-error keys retain diagnostics, Exits and declarations

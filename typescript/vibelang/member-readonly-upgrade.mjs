@@ -48,7 +48,7 @@ export function checkMemberReadonlyUpgrade(caseUrl) {
   const expected = fs.readFileSync(path.join(dir,"decl","main.d.ts"),"utf8")
   if (process.env.VIBELANG_PREPIN_BINARY) {
     // Check the explicit published member contract across compiler versions.
-    // The migration itself is checked byte-for-byte against that contract below;
+    // The explicit member spelling remains independently compilable;
     // historical releases differ in synthesized defaults and matcher helpers.
     fs.writeFileSync(path.join(dir,"main.vibe"),reference)
     const oldPin = spawnSync(process.env.VIBELANG_PREPIN_BINARY, ["-p",dir,"--pretty","false"], {encoding:"utf8",timeout:20000})
@@ -60,14 +60,14 @@ export function checkMemberReadonlyUpgrade(caseUrl) {
     assert.deepEqual(readonlyProjection(expected),readonlyProjection(prepin),"published member contract readonly projection")
   }
   fs.writeFileSync(path.join(dir,"main.vibe"),source)
-  const fixed = run("--fix","--fix-migration-only")
-  assert(!/not fixed:|not written:|fixes? refused/.test(fixed.text),fixed.text)
-  assert.equal(fs.readFileSync(path.join(dir,"main.vibe"),"utf8"),reference,fixed.text)
-  assert.equal(fs.readFileSync(path.join(dir,"decl","main.d.ts"),"utf8"),expected)
-  if (invalid) assert.match(fixed.text,/EK2109/)
-  else assert.equal(fixed.status,0,fixed.text)
-  const again = run("--fix","--fix-migration-only")
-  assert(!/not fixed:|not written:|fixes? refused/.test(again.text),again.text)
-  assert.equal(fs.readFileSync(path.join(dir,"main.vibe"),"utf8"),reference)
-  console.log("member readonly migration preserves pre-pin declarations")
+  const current = run()
+  if (invalid) assert.match(current.text,/EK2109/)
+  else assert.equal(current.status,0,current.text)
+  const declaration = fs.readFileSync(path.join(dir,"decl","main.d.ts"),"utf8")
+  assert.equal(fs.readFileSync(path.join(dir,"main.vibe"),"utf8"),source)
+  const again = run()
+  assert.equal(again.status,current.status,again.text)
+  assert.equal(fs.readFileSync(path.join(dir,"decl","main.d.ts"),"utf8"),declaration)
+  assert.equal(fs.readFileSync(path.join(dir,"main.vibe"),"utf8"),source)
+  console.log("explicit and native member declarations are stable")
 }

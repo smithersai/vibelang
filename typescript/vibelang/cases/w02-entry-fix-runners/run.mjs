@@ -23,7 +23,6 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
-import { refusal, following, importer } from "../../tests/entry-migration.mjs"
 
 const binary = process.env.VIBELANG_BINARY
 assert.ok(binary, "the harness supplies its built compiler")

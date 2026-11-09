@@ -33,9 +33,8 @@ fs.writeFileSync(path.join(work, "tsconfig.json"), JSON.stringify({
   compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: true, declaration: true, outDir: "out" },
   files: ["main.vibe"],
 }) + "\n")
-function command(stage, fix = false) {
+function command(stage) {
   const args = ["-p", work, "--pretty", "false"]
-  if (fix) args.push("--fix")
   const result = spawnSync(compiler, args, { encoding: "utf8", timeout: 30000 })
   fs.writeFileSync(path.join(work, stage + ".log"), JSON.stringify({ status: result.status, stdout: result.stdout, stderr: result.stderr, error: result.error?.message }, null, 2))
   assert.equal(result.status, 0, result.stdout + result.stderr)

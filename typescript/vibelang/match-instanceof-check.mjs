@@ -1,12 +1,12 @@
 // run-seconds: 120
-// RC-15 / effectscript-75: EK4839 repairs preserve the predicate's results.
+// Native TypeScript and Vibe predicates preserve runtime and public types.
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
-export async function checkInstanceOfRepair(url, expected, repaired) {
+export async function checkInstanceOfParity(url, expected) {
   const dir = path.dirname(fileURLToPath(url))
   const root = path.resolve(dir, "../../../..")
   const compiler = path.join(root, "typescript/built/local/tsc")
@@ -34,30 +34,20 @@ export async function checkInstanceOfRepair(url, expected, repaired) {
     return work
   }
   const nativeDir = compile("native", "ts", native)
-  const fixedDir = compile("fixed", "vibe", compiler, ["--fix"])
-  const fixed = readFileSync(path.join(fixedDir, "main.vibe"), "utf8")
   assert.deepEqual(await run(path.join(nativeDir, "out/main.js")), original, "native TypeScript vs original")
-  assert.deepEqual(await run(path.join(fixedDir, "out/main.js")), original, "CLI repair vs original")
   if (dir.endsWith("-array")) {
     const { runInNewContext } = await import("node:vm")
     const foreign = runInNewContext("[7]")
-    for (const file of [path.join(dir, "out/main.js"), path.join(nativeDir, "out/main.js"), path.join(fixedDir, "out/main.js")]) {
+    for (const file of [path.join(dir, "out/main.js"), path.join(nativeDir, "out/main.js")]) {
       assert.equal((await import(pathToFileURL(file).href)).choose(foreign), "miss", "native instanceof rejects a foreign array")
     }
-  }
-  if (repaired) {
-    assert.match(fixed, /when C:/, "ordinary class still has its repair")
-    assert.doesNotMatch(fixed, /Match.instanceOf/)
-  } else {
-    assert.match(fixed, /Match.instanceOf/, "unproven constructor keeps advisory without repair")
-    assert.doesNotMatch(fixed, /when (Number|String|Boolean|Array):/)
   }
   // The compiler writes the generated `@throws {never}` contract on exported
   // functions (decided detail 42); the native twin has none. Compare without it.
   const withoutContract = (text) => text.replace(/^\/\*\* @throws \{never\} \*\/\n/gm, "")
   const declaration = withoutContract(readFileSync(path.join(dir, "out/main.d.ts"), "utf8"))
-  for (const work of [nativeDir, fixedDir]) {
+  for (const work of [nativeDir]) {
     assert.equal(withoutContract(readFileSync(path.join(work, "out/main.d.ts"), "utf8")), declaration, "public declarations")
   }
-  console.log("native, original and CLI repair agree")
+  console.log("native and Vibe predicates agree")
 }

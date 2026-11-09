@@ -1,1 +1,1 @@
-member readonly migration preserves pre-pin declarations
+explicit and native member declarations are stable

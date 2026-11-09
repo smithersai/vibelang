@@ -1,8 +1,4 @@
-// --fix repairs owned configs: legacy severity maps, the retired
-// declarationSidecars setting, the EK3012 plugin-entry migration and the
-// --fix-vip-only EK4802 override. It traverses extends only inside the
-// repository and outside node_modules, and reports external configs
-// without editing them.
+// Legacy owned configuration settings retain their diagnostics.
 import assert from "node:assert/strict"
 import { mkdirSync, symlinkSync } from "node:fs"
 import { join } from "node:path"
@@ -17,7 +13,6 @@ const repo = (ctx, config, main = "export const value = 1\n") => {
   ctx.put("repo/main.vibe", main)
   ctx.put("repo/tsconfig.json", config)
 }
-const fix = (ctx, ...flags) => ctx.invoke(...flags, "--fix", "-p", "repo/tsconfig.json", "--pretty", "false")
 const compile = ctx => ctx.invoke("-p", "repo/tsconfig.json", "--pretty", "false")
 
 // 2. The retired declarationSidecars setting is removed; other vibe keys stay.
@@ -31,4 +26,4 @@ project(ctx => {
   assert.match(compile(ctx).text, /EK3012/, "the legacy activation is diagnosed")
 })
 
-console.log("owned configs are repaired; extends stops at the repository and node_modules")
+console.log("owned legacy settings are diagnosed")

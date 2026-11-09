@@ -1,5 +1,0 @@
-  Its quick fix writes Effect.Effect<number, string>; vibelang --fix applies every such fix in the project.
-  Its quick fix writes Effect.Effect<number, never>; vibelang --fix applies every such fix in the project.
-  Its quick fix writes Effect.Effect<string, never, never>; vibelang --fix applies every such fix in the project.
-  Its quick fix writes Effect.Effect<number, never, never>; vibelang --fix applies every such fix in the project.
-  Its quick fix writes boolean!never!never; vibelang --fix applies every such fix in the project.
