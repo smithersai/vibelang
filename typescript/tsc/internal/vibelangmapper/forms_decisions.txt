@@ -9440,6 +9440,13 @@ typescript/vibelang/cases/union-effect-channels.fail/main.vibe:15:25 byname prog
 typescript/vibelang/cases/union-effect-channels.fail/main.vibe:15:91 lambda plain table
 typescript/vibelang/cases/value-form-effect.fail/main.vibe:25:17 lambda plain table
 typescript/vibelang/cases/var-denied.fail/main.vibe:5:22 lambda plain fallback
+typescript/vibelang/cases/variadic-spread-callback-contracts/main.vibe:10:33 lambda plain table
+typescript/vibelang/cases/variadic-spread-callback-contracts/main.vibe:11:33 lambda plain table
+typescript/vibelang/cases/variadic-spread-callback-contracts/main.vibe:12:18 lambda plain table
+typescript/vibelang/cases/variadic-spread-callback-contracts/main.vibe:12:47 lambda plain table
+typescript/vibelang/cases/variadic-spread-callback-contracts/main.vibe:13:33 lambda plain table
+typescript/vibelang/cases/variadic-spread-callback-contracts/main.vibe:14:36 lambda plain table
+typescript/vibelang/cases/variadic-spread-callback-contracts/main.vibe:24:61 lambda choice fallback
 typescript/vibelang/cases/vibe-callee-channel-reduction/main.vibe:10:24 lambda effectFn keyword
 typescript/vibelang/cases/vibe-callee-channel-reduction/main.vibe:11:23 lambda effectFn keyword
 typescript/vibelang/cases/vibe-callee-channel-reduction/main.vibe:12:21 lambda effectFn keyword

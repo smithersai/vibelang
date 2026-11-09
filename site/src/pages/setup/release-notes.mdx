@@ -69,6 +69,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - `abstract service S { … }` reported `'abstract' modifier already seen` (`TS1030`), which named a modifier the compiler added itself. It now reports `TS1042`, `'abstract' modifier cannot be used here`, at the written modifier.
 - A throwing callback could bypass its receiving parameter’s throw contract when passed through a fixed tuple spread. Tuple elements now keep the same callback checks as ordinary arguments.
 
+- A throwing callback could bypass its receiving rest parameter’s throw contract through a final array spread. Array elements now keep their written callback contract.
+
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
 - A `for concurrent` header accepted Unicode escapes in its keyword. Escaped spellings now report `TS1260`, as TypeScript does for escaped loop keywords.

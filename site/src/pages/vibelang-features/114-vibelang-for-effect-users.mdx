@@ -414,6 +414,8 @@ A final tuple spread retains each optional callback's written thrown contract wh
 
 A fixed tuple spread checks each callable’s written `@throws` contract against its receiving callback parameter. Saving the tuple or giving it a readonly type keeps that check. Optional entries and callback rest parameters use their runtime argument positions, and a parameter named by `@rethrows` keeps its usual admission.
 
+A final array spread into a callback rest parameter keeps each element’s written `@throws` contract. Saving the array, using a `readonly` array type or supplying fixed arguments before it keeps the same callback check. A rest parameter named by `@rethrows` admits its callbacks as usual.
+
 Named tuple labels inside an `effect` function, arrow or method are type-only names, as in TypeScript. They do not count as writes to an enclosing parameter; actual writes retain the parameter binding created when the function was called.
 
 ## Trace and debug calls

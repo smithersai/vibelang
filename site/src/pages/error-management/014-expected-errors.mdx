@@ -71,6 +71,8 @@ Fixed tuple spreads at a `@rethrows` call retain the callback contracts in each 
 
 An array spread into a `@rethrows` rest parameter keeps each element’s written `@throws` contract. With `const callbacks: (typeof risky)[]`, the call `many(...callbacks)` can throw whatever `risky` declares: plain code reports `EK0401` and effect code reports `EK0403`. A readonly array, arguments written before or after the spread, and the rest element of a tuple follow the same rule.
 
+A final array spread into a callback rest parameter keeps each element’s written `@throws` contract. Saving the array, using a `readonly` array type or supplying fixed arguments before it keeps the same callback check. A rest parameter named by `@rethrows` admits its callbacks as usual.
+
 Optional callback parameters and `undefined` or `null` alternatives retain a supplied callback’s written `@throws` contract at a rethrowing invocation. `Array.prototype.sort` follows the same rule. Omitting an optional callback contributes no callback throw.
 
 The array callback rule also covers typed arrays, their `from` functions, and `forEach` on `Map`, `ReadonlyMap`, `Set` and `ReadonlySet`: `entries.forEach(parse)` can throw whatever `parse` declares, so plain code reports `EK0401` and effect code reports `EK0403`. Other built-in methods keep an ordinary callback parameter even when they share a method name: `query.forEach(parse)` on a `URLSearchParams`, or `iterator.map(parse)`, reports `EK0402` for a callback with a throwing contract.

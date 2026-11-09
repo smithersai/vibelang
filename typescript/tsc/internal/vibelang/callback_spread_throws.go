@@ -49,7 +49,13 @@ func checkInvocationSpreadCallbacks(c *checker.Checker, call *ast.Node) {
 			elements, fixed = trailingOptionalRethrowsSpreadTypes(c, argument)
 		}
 		if !fixed {
-			return
+			// An unknown-length final array has one element contract when all
+			// remaining arguments enter the same array rest parameter.
+			element, uniform := uniformRestSpreadElement(c, signature, argument, position)
+			if raw != len(call.Arguments())-1 || !uniform {
+				return
+			}
+			elements = []*checker.Type{element}
 		}
 		for offset, source := range elements {
 			slot := position + offset
@@ -131,4 +137,21 @@ func writtenSpreadCallbacksFit(c *checker.Checker, source, target *checker.Type)
 		}
 	}
 	return false, rejected
+}
+
+// A uniform array rest parameter keeps the same receiving callback type at
+// every remaining runtime position. Signature parameters already omit this.
+// Other variable-width tuple layouts retain their separate position analysis.
+func uniformRestSpreadElement(c *checker.Checker, signature *checker.Signature, argument *ast.Node, position int) (*checker.Type, bool) {
+	parameters := signature.Parameters()
+	if !signature.HasRestParameter() || len(parameters) == 0 || position < len(parameters)-1 {
+		return nil, false
+	}
+	rest := c.GetTypeOfSymbol(parameters[len(parameters)-1])
+	source := c.GetTypeAtLocation(argument.Expression())
+	if !c.IsArrayType(rest) || !c.IsArrayType(source) {
+		return nil, false
+	}
+	element := c.GetIndexTypeOfType(source, c.GetNumberType())
+	return element, element != nil
 }
