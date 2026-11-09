@@ -1,0 +1,6 @@
+main.vibe(9,34): error TS1156: 'const' declarations can only be declared inside a block.
+main.vibe(10,34): error TS1156: 'let' declarations can only be declared inside a block.
+main.vibe(11,43): error TS1156: 'const' declarations can only be declared inside a block.
+main.vibe(11,37): error TS1344: A label is not allowed here.
+main.vibe(15,44): error TS1156: 'interface' declarations can only be declared inside a block.
+main.vibe(16,39): error TS1156: 'type' declarations can only be declared inside a block.

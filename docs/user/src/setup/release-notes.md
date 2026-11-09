@@ -34,6 +34,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration verification could reject an unchanged Effect factory returned inside a tuple. Array and tuple elements now keep their own function identities, while changed callback timing still fails verification.
 
+- A `let`, `const` or `using` declaration, an interface or a type alias written as the whole body of a `for concurrent` loop, as in `for concurrent (const x of xs) const y = x;`, compiled without an error. It now reports `TS1156`, as `for try` and TypeScript's own loops do.
 - A Vite or Rolldown watch build could stay failed after a missing directory index was created. Creating the source now rebuilds its importers without another edit.
 - Cached declaration comparisons could miss changes to the rules their fixtures read. Editing those rules now refreshes the comparison.
 - A private name used as a pattern key, such as `{ #a: 1 }`, crashed the compiler. It now reports `EK0707`.

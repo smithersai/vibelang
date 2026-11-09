@@ -74,7 +74,7 @@ func init() {
 		})
 	})
 	compiler.RegisterRecoverableSyntacticDiagnosticCallback(func(d *ast.Diagnostic) bool {
-		return d.Source() == diagnosticSource && recoverableSyntaxCodes[d.Code()]
+		return d.Source() == diagnosticSource && recoverableSyntaxCodes[d.Code()] || recoverableNativeSyntax(d)
 	})
 	registry[EK0509.Code] = EK0509
 	tsFormFixCodes = append(tsFormFixCodes, EK0509.Code)

@@ -895,15 +895,14 @@ oracle counts the checker's rejection, as it does for a misplaced `const`.
 The lab still has no decorators; a program that uses one reads as a mismatch
 and is not evidence about the compiler.
 
-One gap the probes found is outside what the lab can show. TypeScript parses
+One gap the probes found was outside what the lab can show. TypeScript parses
 a lexical declaration as a loop body for recovery and rejects it with
 `TS1156`, and the lab derives that recovery, so `if (c) const y = 1;` reads
-as derived. `for concurrent (const x of xs) const y = 1;` compiles with no
-diagnostic, while `for try` and a native loop keep `TS1156`; Appendix A gives
-all three a `Statement` body. A separate test compares the compiler with
-itself: a native `for`...`of` sets the expectation for each body, and both
-VibeLang loops must meet it. The `for concurrent` rows are pending under
-`admission:for-concurrent-declaration-body`.
+as derived. `for concurrent (const x of xs) const y = 1;` used to compile with
+no diagnostic, while `for try` and a native loop kept `TS1156`; Appendix A
+gives all three a `Statement` body. A separate test compares the compiler
+with itself: a native `for`...`of` sets the expectation for each body, and
+both VibeLang loops meet it.
 
 The next case-seeded campaign deleted a type argument in a schema field:
 `HashMap<string, >`. TypeScript's type argument list is not empty and takes

@@ -732,6 +732,35 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	p.setContextFlags(ast.NodeFlagsAwaitContext, false)
 	body := p.parseEmbeddedStatement()
 	p.contextFlags = saveContextFlags
+	// The body is a Statement (VIP-19), as a for...of body is. The block
+	// written around it below would hide a declaration that stands as the
+	// body from TypeScript's own check, so its TS1156 is reported here, at
+	// the range TypeScript gives a native loop's.
+	declaration := body
+	for declaration.Kind == ast.KindLabeledStatement {
+		declaration = declaration.AsLabeledStatement().Statement
+	}
+	switch declaration.Kind {
+	case ast.KindVariableStatement:
+		keyword := ""
+		switch declaration.AsVariableStatement().DeclarationList.Flags & ast.NodeFlagsBlockScoped {
+		case ast.NodeFlagsLet:
+			keyword = "let"
+		case ast.NodeFlagsConst:
+			keyword = "const"
+		case ast.NodeFlagsUsing:
+			keyword = "using"
+		case ast.NodeFlagsAwaitUsing:
+			keyword = "await using"
+		}
+		if keyword != "" {
+			p.parseErrorAtRange(p.skipRangeTrivia(declaration.Loc), diagnostics.X_0_declarations_can_only_be_declared_inside_a_block, keyword)
+		}
+	case ast.KindInterfaceDeclaration:
+		p.parseErrorAtRange(p.skipRangeTrivia(declaration.Name().Loc), diagnostics.X_0_declarations_can_only_be_declared_inside_a_block, "interface")
+	case ast.KindTypeAliasDeclaration:
+		p.parseErrorAtRange(p.skipRangeTrivia(declaration.Name().Loc), diagnostics.X_0_declarations_can_only_be_declared_inside_a_block, "type")
+	}
 	// The source body has its own scope below the callback parameter, as a
 	// for...of body does below its head binding. Keep its braces so a body
 	// declaration may shadow the iteration binding.

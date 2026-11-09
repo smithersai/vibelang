@@ -1,0 +1,25 @@
+// expect: TS1156 TS1344
+// VIP-19, Appendix A: a for concurrent body is a Statement, as a for...of
+// body is. A lexical declaration, an interface or a type alias that stands
+// as the body is TypeScript's TS1156, labeled or not; for try and the native
+// loops already reported it. A block, a class or a function declaration
+// stays allowed, as in TypeScript. The file's other errors are reported with
+// it, here TypeScript's TS1344 for the label before a declaration.
+export effect function lexical(xs: number[]) {
+  for concurrent (const x of xs) const y = x;
+  for concurrent (const x of xs) let y = x;
+  for concurrent(2) (const x of xs) item: const y = x;
+}
+
+export effect function types(xs: number[]) {
+  for concurrent (const x of xs) interface Row { n: number }
+  for concurrent (const x of xs) type Row = number;
+}
+
+export effect function allowed(xs: number[]) {
+  let total = 0
+  for concurrent (const x of xs) { const y = x; total += y }
+  for concurrent (const x of xs) total += x;
+  for concurrent (const x of xs) class Row {}
+  return total
+}

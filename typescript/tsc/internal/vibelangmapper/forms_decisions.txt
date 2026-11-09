@@ -1420,6 +1420,14 @@ typescript/vibelang/cases/concurrent-coverage-operations/main.vibe:8:44 byname p
 typescript/vibelang/cases/concurrent-coverage-operations/main.vibe:8:89 lambda effectFn table
 typescript/vibelang/cases/concurrent-coverage-operations/main.vibe:9:24 byname program table
 typescript/vibelang/cases/concurrent-coverage-operations/main.vibe:9:48 byname program table
+typescript/vibelang/cases/concurrent-declaration-body.fail/main.vibe:10:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-declaration-body.fail/main.vibe:11:28 lambda effectFn table
+typescript/vibelang/cases/concurrent-declaration-body.fail/main.vibe:15:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-declaration-body.fail/main.vibe:16:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-declaration-body.fail/main.vibe:21:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-declaration-body.fail/main.vibe:22:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-declaration-body.fail/main.vibe:23:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-declaration-body.fail/main.vibe:9:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-default-shadow/main.vibe:11:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-default-shadow/main.vibe:5:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-do-continue/main.vibe:14:41 lambda effectFn table
