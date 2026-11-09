@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.12
 
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
+- Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
 
 - Callback throws could be missed when `@rethrows` named a Unicode parameter. Those names now keep the same throw checks as other TypeScript parameter names.
 

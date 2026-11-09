@@ -1,0 +1,11 @@
+{
+  "property": "paths-asset-probes",
+  "rule": "An asset alias keeps the runtime's native resolution when no TypeScript or Vibe source matches; a non-directory probe does not abort later substitutions.",
+  "input": {
+    "asset": "style.css",
+    "nested": false,
+    "fallback": false,
+    "exact": false
+  },
+  "reason": "A CSS import through @/* caused the Bun loader to stat style.css/index.ts and throw ENOTDIR."
+}
