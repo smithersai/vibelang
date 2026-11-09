@@ -1620,6 +1620,12 @@ const targets = {
     [],
     [bun]
   ),
+  "docs-release-upgrade-commands": check(
+    "Current release upgrade instructions use supported compiler commands.",
+    "node docs/tools/release-upgrade-commands.mjs && node --test docs/tools/release-upgrade-commands.test.mjs",
+    [],
+    [node]
+  ),
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --only-failures --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
