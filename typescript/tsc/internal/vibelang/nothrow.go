@@ -154,6 +154,9 @@ func (a *analyzer) throwsBelongToCall(home, site *ast.Node) bool {
 	if ast.GetFunctionFlags(home)&ast.FunctionFlagsGenerator != 0 && !inParameterListOf(site, home) {
 		return false
 	}
+	if home != nil && ast.IsMethodDeclaration(home) {
+		return isAdmittedWrappedCode(a.checker, home)
+	}
 	return ast.IsFunctionExpressionOrArrowFunction(home) && (isAdmittedWrappedCode(a.checker, home) || isRetiredHatchFunction(a.checker, home) || admitsThrows(a.checker, home))
 }
 
@@ -202,6 +205,9 @@ func isAdmittedWrappedCode(c *checker.Checker, fn *ast.Node) bool {
 // The key expression still executes in its own surrounding code.
 func throwingCallbackOwner(c *checker.Checker, fn *ast.Node) (*ast.Node, []pathStep) {
 	return ownerCallWithPropertyName(fn, func(name *ast.Node) (string, bool) {
+		if ast.IsIdentifier(name) || ast.IsStringLiteral(name) || ast.IsNumericLiteral(name) {
+			return name.Text(), true
+		}
 		if !ast.IsComputedPropertyName(name) {
 			return "", false
 		}

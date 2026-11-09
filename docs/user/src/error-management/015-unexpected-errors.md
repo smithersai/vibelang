@@ -26,6 +26,8 @@ An explicit `throw` in an effect function, even `throw new Error(...)`, is a typ
 
 In the options overload, a computed key that resolves to `"try"`, such as `["try"]` or `[key]` with `const key = "try" as const`, keeps the same thunk contract. Evaluating the key stays in the surrounding code. Native `call` and `apply` forward that computed-key callback contract too.
 
+An inline options method such as `try() { return parse(text) }` keeps that thunk contract too, including quoted and computed method names and native `call` or `apply`. Its `catch` method and any function nested inside it keep their own plain-code checks. A getter or a method stored in a separate options object keeps its own source scope.
+
 ```vibe
 // run: try Console.log(try firstLabel(["one"])); try Console.log(try firstLabel([]))
 effect function firstLabel(labels: ReadonlyArray<string>) {

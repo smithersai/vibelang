@@ -1,0 +1,9 @@
+// expect: EK0401
+import { Effect } from "effect"
+import { risky } from "./foreign.js"
+export const mapper=Effect.try({try(){return 1},catch(){return risky("mapper",true)}})
+export const nested=Effect.try({try(){return (()=>risky("nested",true))()},catch(error:unknown){return error}})
+export const explicit=Effect.try({try(){throw new RangeError()},catch(error:unknown){return error}})
+export const getter=Effect.try({get try(){risky("getter",true);return ()=>1},catch(error:unknown){return error}})
+export const delayed=Effect.try({*try(){yield risky("generator",true)},catch(error:unknown){return error}})
+export const inner=Effect.try({try(){return {read(){return risky("inner",true)}}},catch(error:unknown){return error}})

@@ -354,6 +354,8 @@ A plain VibeLang function never throws (a `throw` there is `EK0401`), so an effe
 
 In the options overload, a computed key that resolves to `"try"`, such as `["try"]` or `[key]` with `const key = "try" as const`, keeps the same thunk contract. Evaluating the key stays in the surrounding code. Native `call` and `apply` forward that computed-key callback contract too.
 
+An inline options method such as `try() { return parse(text) }` keeps that thunk contract too, including quoted and computed method names and native `call` or `apply`. Its `catch` method and any function nested inside it keep their own plain-code checks. A getter or a method stored in a separate options object keeps its own source scope.
+
 The historical empty wrapper `trusted(predicate, [])` is retired with `EK0407`; passing a foreign predicate as its input does not also produce `EK0402`. Its callable type follows TypeScript, including generic predicates and explicitly annotated assertion targets. To keep predicate or assertion narrowing at a native boundary, put the guarded operation in a TypeScript function that returns an Effect, then call it with `try` from effect code. TypeScript requires an explicitly annotated assertion-call target (`TS2775`); an unannotated `const` wrapper cannot narrow in either language.
 
 The plain-code `throw` restriction includes ordinary generator functions and methods (`EK0401`), including one nested in Effect code. An `async function*` body rejects its iteration `Promise` when it throws; an `effect function*` producer uses its typed failure channel.

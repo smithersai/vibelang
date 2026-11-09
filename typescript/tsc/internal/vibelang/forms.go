@@ -177,10 +177,20 @@ func ownerCall(fn *ast.Node) (*ast.Node, []pathStep) {
 	return ownerCallWithPropertyName(fn, nil)
 }
 
-// ownerCallWithPropertyName lets throw-contract analysis resolve a computed
-// property without changing the syntactic paths used to select call forms.
+// ownerCallWithPropertyName lets throw-contract analysis resolve method and
+// computed property names without changing the paths used to select call forms.
 func ownerCallWithPropertyName(fn *ast.Node, resolve func(*ast.Node) (string, bool)) (*ast.Node, []pathStep) {
 	var path []pathStep
+	if resolve != nil && ast.IsMethodDeclaration(fn) {
+		if fn.Name() == nil {
+			return nil, nil
+		}
+		property, ok := resolve(fn.Name())
+		if !ok {
+			return nil, nil
+		}
+		path = append(path, pathStep{property: property})
+	}
 	node := fn
 	for parent := node.Parent; parent != nil; node, parent = parent, parent.Parent {
 		switch parent.Kind {
