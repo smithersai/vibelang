@@ -3,6 +3,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
+import { spawnSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
 import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
 import { aliasImport, forgetPaths } from "../paths-imports.mjs"
@@ -51,4 +53,11 @@ test("asset alias probes preserve native and Vibe fallback across path layouts",
     command: "bun test test/paths-assets.property.test.mjs",
     check,
   })
+})
+
+// The declared compiler targets run with Node; the original defect is specific to Bun stat probes.
+test("the Node suite also exercises native asset probes in Bun", { skip: !!process.versions.bun }, () => {
+  const child = spawnSync("bun", ["test", fileURLToPath(import.meta.url)], { encoding: "utf8", timeout: 30_000 })
+  assert.ifError(child.error)
+  assert.equal(child.status, 0, child.stdout + "\n" + child.stderr)
 })
