@@ -2170,10 +2170,10 @@ func (p *Parser) parseClassElement() *ast.Node {
 		return p.parseClassStaticBlockDeclaration(pos, jsdoc, modifiers)
 	}
 	if p.parseContextualModifier(ast.KindGetKeyword) {
-		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsNone)
+		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsNone, p.vibelangServiceMembers)
 	}
 	if p.parseContextualModifier(ast.KindSetKeyword) {
-		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone)
+		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone, p.vibelangServiceMembers)
 	}
 	if p.token == ast.KindConstructorKeyword || p.token == ast.KindStringLiteral {
 		constructorDeclaration := p.tryParseConstructorDeclaration(pos, jsdoc, modifiers)
@@ -3627,10 +3627,10 @@ func (p *Parser) parseTypeMember() *ast.Node {
 		return p.markEffect(p.parsePropertyOrMethodSignature(pos, jsdoc, modifiers), word)
 	}
 	if p.parseContextualModifier(ast.KindGetKeyword) {
-		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsType)
+		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsType, false)
 	}
 	if p.parseContextualModifier(ast.KindSetKeyword) {
-		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsType)
+		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsType, false)
 	}
 	if p.isIndexSignature() {
 		if p.vibelangImplicitReadonly && !mutable {
@@ -3878,13 +3878,18 @@ func (p *Parser) parseTypeMemberSemicolon() {
 	p.parseSemicolon()
 }
 
-func (p *Parser) parseAccessorDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, kind ast.Kind, flags ParseFlags) *ast.Node {
+func (p *Parser) parseAccessorDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, kind ast.Kind, flags ParseFlags, allowComma bool) *ast.Node {
 	name := p.parsePropertyName()
 	defer p.setVibeLangFiberContext(false)()
 	typeParameters := p.parseTypeParameters()
 	parameters := p.parseParameters(ParseFlagsNone)
 	returnType := p.parseReturnType(ast.KindColonToken, false /*isType*/)
-	body := p.parseFunctionBlockOrSemicolon(flags, nil /*diagnosticMessage*/)
+	var body *ast.Node
+	if allowComma && p.token == ast.KindCommaToken {
+		p.nextToken() // interface-style separator after a service accessor signature, which the checker rejects
+	} else {
+		body = p.parseFunctionBlockOrSemicolon(flags, nil /*diagnosticMessage*/)
+	}
 	var result *ast.Node
 	// Keep track of `typeParameters` (for both) and `type` (for setters) if they were parsed those indicate grammar errors
 	if kind == ast.KindGetAccessor {
@@ -6256,10 +6261,10 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 		return member
 	}
 	if p.parseContextualModifier(ast.KindGetKeyword) {
-		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsNone)
+		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsNone, false)
 	}
 	if p.parseContextualModifier(ast.KindSetKeyword) {
-		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone)
+		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone, false)
 	}
 	if p.isStartOfVibeLangEffectMember() || p.isStartOfMixedEffectAccessor(modifiers) {
 		word := p.parseVibeLangEffectMember()

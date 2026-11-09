@@ -328,9 +328,9 @@ func (p *Parser) tryParseVibeLangRestrictedEffectMember(pos int, jsdoc jsdocScan
 	word := p.parseVibeLangEffectMember()
 	var member *ast.Node
 	if p.parseContextualModifier(ast.KindGetKeyword) {
-		member = p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsNone)
+		member = p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsNone, false)
 	} else if p.parseContextualModifier(ast.KindSetKeyword) {
-		member = p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone)
+		member = p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone, false)
 	} else {
 		member = p.tryParseConstructorDeclaration(pos, jsdoc, modifiers)
 	}
@@ -461,7 +461,7 @@ func (p *Parser) parseEffectAccessor(pos int, jsdoc jsdocScannerInfo, modifiers 
 			modifiers = p.newModifierList(modifiers.Loc, nodes)
 		}
 	}
-	return p.parseAccessorDeclaration(pos, jsdoc, modifiers, kind, ParseFlagsNone)
+	return p.parseAccessorDeclaration(pos, jsdoc, modifiers, kind, ParseFlagsNone, false)
 }
 
 // Mixed arrows must reach expression parsing before statement-level shorthand

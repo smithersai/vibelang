@@ -1,0 +1,27 @@
+// expect: EK0902
+// Chapter 005, static rules: a get or set accessor is not a service member.
+// A bodyless accessor reports one EK0902, with or without a modifier, in
+// place of the TypeScript class-accessor errors.
+export service Getter {
+ static readonly key = "accessor/getter";
+ get value(): number
+}
+export service Setter {
+ static readonly key = "accessor/setter";
+ set value(next: number)
+}
+export service Pair {
+ static readonly key = "accessor/pair"
+ read(): number!!
+ get value(): number
+ set value(next: number)
+ readonly region: string
+}
+export service Abstract {
+ static readonly key = "accessor/abstract";
+ abstract get value(): number
+}
+export service Private {
+ static readonly key = "accessor/private";
+ private get value(): number
+}

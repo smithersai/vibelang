@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("body/private/pair\x00\x07")

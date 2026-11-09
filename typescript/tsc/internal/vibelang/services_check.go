@@ -91,6 +91,14 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 		if ast.HasStaticModifier(member) || member.Name() == nil {
 			continue
 		}
+		// A bodyless accessor is an interface accessor signature. Report the
+		// member rule ahead of TypeScript's class-accessor errors, which an
+		// abstract modifier would otherwise silence altogether.
+		if word == "service" && ast.IsAccessor(member) && member.Body() == nil {
+			report(c, member, serviceAccessorSignatureDiagnostic)
+			cover(c, member)
+			continue
+		}
 		if serviceContractClassSyntax(member) {
 			report(c, member, serviceContractModifierDiagnostic)
 			cover(c, member)
