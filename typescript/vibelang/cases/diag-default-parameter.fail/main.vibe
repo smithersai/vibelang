@@ -1,7 +1,7 @@
-// expect: EK0501 TS2365 TS2345
+// expect: EK0501 TS2345
 // A parameter default is evaluated when the function is called, outside any
-// Effect (VIP-1 formal-parameter amendment): try there is EK0501, and the
-// Effect it leaves is not a number (TS2365).
+// Effect (VIP-1 formal-parameter amendment): try there is EK0501.
+// Recovery types its success value as a number, as rejected await does.
 effect function value() { try sleep("1 millis"); return 7 }
 export function f(x = try value()) { return x + 1 }
 export function test() { return [f(), f(10)] }

@@ -1,4 +1,4 @@
-// expect: EK0501 EK4801 TS2339
+// expect: EK0501
 // A method without the effect modifier is plain (VIP-1), whatever its
 // annotation, so a method that runs an Effect with try is EK0501, as a
 // function is. Its quick fix marks the method effect; method-effect-contract-dts

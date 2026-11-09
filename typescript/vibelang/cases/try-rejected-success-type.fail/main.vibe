@@ -1,0 +1,12 @@
+// expect: EK0501 EK0501 EK0501 EK0501 EK0501 EK0501
+// A try outside effect code is EK0501 alone. Like an await that TypeScript
+// rejects, it keeps the type of the value it would give, so the code around
+// it reports no second error (chapter 2: try stands where await stands).
+const k = Effect.succeed("m")
+const b = Effect.succeed(class { v = 1 })
+export function plain() { const s: string = try k; return s.length }
+export function member() { return (try k).toUpperCase() }
+export function heritage() { class C extends (try b) {}; return new C().v }
+export effect function defaulted(s: string = try k) { return s }
+export effect function heritageDefault(c = class extends (try b) {}) { return c }
+export const top: string = try k

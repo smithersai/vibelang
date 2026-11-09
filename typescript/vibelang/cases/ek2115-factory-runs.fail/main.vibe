@@ -1,7 +1,7 @@
-// expect: EK0501 EK4801
+// expect: EK0501
 // A plain function that returns an Effect is plain JavaScript (VIP-1; D269's
 // factories and EK2115 are retired): running an Effect in its body is
-// written try, which there is EK0501, and the Effect it leaves unrun is EK4801.
+// written try, which there is EK0501. Recovery uses its success type.
 // tail only returns Effects, which is fine.
 import { Effect } from "effect"
 service Needed { value(): number!! }

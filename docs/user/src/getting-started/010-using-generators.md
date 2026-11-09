@@ -58,7 +58,7 @@ effect function greeting() {
 
 `try delayedLabel("sora")` waits for the callee; the computation can pause and keeps typed errors, service requirements, and interruption support. At a promise-based framework boundary, run the exported function through a runner from `.ts`.
 
-`try` runs an Effect only in effect code: the body of an `effect` function, method or arrow, or an `effect { }` block. A plain function nested in an effect function is plain, so `try` in it is `EK0501`; mark that function `effect`. A return type written on an effect function is an Effect type, such as `effect function load(id: string): User!NotFound`; `User` alone is `EK0106`.
+`try` runs an Effect only in effect code: the body of an `effect` function, method or arrow, or an `effect { }` block. A plain function nested in an effect function is plain, so `try` in it is `EK0501`; mark that function `effect`. After reporting `EK0501`, the compiler checks the rejected expression as the Effect's success value, as TypeScript does for a rejected `await`; unrelated type errors still report. A return type written on an effect function is an Effect type, such as `effect function load(id: string): User!NotFound`; `User` alone is `EK0106`.
 
 ## Branches and loops
 

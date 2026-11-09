@@ -13,7 +13,7 @@ import (
 // file (plain.go). Every other call keeps its type.
 func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *checker.Type {
 	t = providedCallType(c, call, t)
-	if !isInvocation(call) || holdsProgram(c, call) || !analyzerFor(c).runs(call) {
+	if !isInvocation(call) || holdsProgram(c, call) || !analyzerFor(c).runs(call) && !rejectedTry(analyzerFor(c), call) {
 		return t
 	}
 	if isExitMarkerCall(call) {
@@ -51,6 +51,14 @@ func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *ch
 		return success // its success may itself be subtype data
 	}
 	return t
+}
+
+// rejectedTry reports whether call is a try outside effect code (EK0501).
+// TypeScript types an await it rejects as the value the await would give, so
+// the code around it reports no second, derived error; try follows await's
+// placement (chapter 2), so a rejected try keeps the Effect's success type.
+func rejectedTry(a *analyzer, call *ast.Node) bool {
+	return isTry(call) && !inEffectCode(call) && !inHatch(call) && (serviceLookup(a.checker, call) == nil || a.resolvedRunsResult(call))
 }
 
 // runningCallInferenceTarget keeps TypeScript from inferring a candidate's

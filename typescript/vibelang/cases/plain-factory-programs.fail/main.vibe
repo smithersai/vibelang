@@ -1,8 +1,8 @@
-// expect: EK0501 EK9201 EK9202 TS2339
+// expect: EK0501 EK9201 EK9202
 // A plain function's call gives its Effect unrun (VIP-1): stored at the top
 // level it is data. try runs it, only in effect code (VIP-5), and the run
 // program's channels must fit the effect function's contract. Outside effect
-// code try leaves the Effect unrun, so TypeScript also reports service.n.
+// code try reports EK0501 while type recovery retains the success value.
 const makeRuntime = (n: number): infer _ => {
   const p: Effect.Effect<{ n: number }, never, never> = effect { return { n } }
   return p

@@ -1,9 +1,9 @@
-// expect: EK0501 TS2365
+// expect: EK0501
 // A sort comparator, and a callback a VibeLang function calls as a plain
 // function, are plain functions (VIP-1): try there is EK0501. Run the Effects
 // first, or give the callback an Effect contract and run it in an effect
-// function (D12). A try outside effect code leaves its Effect, which > and +
-// reject (TS2365).
+// function (D12). Recovery types each rejected try as its success value.
+// Independent callback and return checks still apply.
 let count = 0
 effect function tick(): number!! { try sleep("0 millis"); count++; return count }
 

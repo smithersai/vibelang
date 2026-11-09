@@ -1,8 +1,8 @@
-// expect: EK0501 EK4801
+// expect: EK0501
 // A function without the effect modifier is plain JavaScript (VIP-1), and its
 // return annotation keeps its type. Running an Effect is written try (VIP-5),
 // which in a plain function is EK0501 (the retired EK9203 said the same of a
-// plain annotation, D67); the Effect it leaves unrun is EK4801. A throw in a
+// plain annotation, D67). Type recovery follows the Effect's success value. A throw in a
 // plain function is JavaScript's throw (plain-contract-exceptions covers it).
 import { Console } from "effect"
 

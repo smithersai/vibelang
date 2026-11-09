@@ -1,4 +1,4 @@
-// expect: EK0501
+// expect: EK0501 TS2322 TS2352
 // A module's top level is ordinary JavaScript (VIP-26): try there is EK0501,
 // whatever the binding's annotation. Without try, each const holds its Effect.
 import { Effect } from "effect"

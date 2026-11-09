@@ -1,6 +1,8 @@
 main.vibe(5,28): error EK0501
+main.vibe(6,12): error TS2322
 main.vibe(6,21): warning EK4833
 main.vibe(6,57): error EK0501
 main.vibe(7,37): error EK0501
+main.vibe(8,25): error TS2352
 main.vibe(8,26): error EK0501
 main.vibe(8,66): warning EK4833
