@@ -905,6 +905,16 @@ itself: a native `for`...`of` sets the expectation for each body, and both
 VibeLang loops must meet it. The `for concurrent` rows are pending under
 `admission:for-concurrent-declaration-body`.
 
+The next case-seeded campaign deleted a type argument in a schema field:
+`HashMap<string, >`. TypeScript's type argument list is not empty and takes
+no trailing comma; its checker rejects both on a recovered parse (`TS1009`,
+`TS1099`), and a type alias, `data`, `error` or `service` member with the
+same type reports them. Schema mapping reads the field type first.
+`schema S { a: Array<string, > }` compiles with no diagnostic, and a type
+the mapping does not know reports `EK2109` alone, as in the other schema
+families above. Both list shapes are pending under
+`admission:schema-type-argument-list`.
+
 The generated-error migration counterpart continues to test the guarantee
 that a foreign plain object with the recognized tag is covered. Its quote
 includes the chapter's additional `instanceof` fallback; the existing

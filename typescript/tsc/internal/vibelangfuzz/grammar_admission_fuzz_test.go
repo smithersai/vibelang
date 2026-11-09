@@ -327,6 +327,9 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"fiber-type-name", grammarFiberTypeNameWitness},
 	{"fiber-type-name-enum", grammarFiberTypeNameGaps[1]},
 	{"fiber-type-name-parameter", grammarFiberTypeNameGaps[2]},
+	{"schema-type-argument-list", grammarSchemaTypeArgumentsWitness},
+	{"schema-type-argument-list-empty", grammarSchemaTypeArgumentsGaps[1]},
+	{"schema-type-argument-list-campaign", grammarSchemaTypeArgumentsCampaign},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1188,6 +1191,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarSchemaSignatureReservedBinding(ts) {
 		return "admission:schema-signature-reserved-binding"
+	}
+	if grammarSchemaTypeArgumentList(ts) {
+		return "admission:schema-type-argument-list"
 	}
 	if grammarInvalidImportMeta(ts) {
 		return "admission:import-meta-property"

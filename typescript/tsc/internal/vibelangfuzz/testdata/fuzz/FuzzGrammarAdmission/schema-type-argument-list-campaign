@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-type-argument-list-campaign\nschema Probe { readonly value : Option < string > }\nschema Ids { readonly ids : HashSet < string > }\nschema Copies { readonly copies : HashMap < string , > }\nschema Items { readonly items : Chunk < number > }\nschema Bare = Option < string >\nschema error Missing { readonly value : Option < number > }")
