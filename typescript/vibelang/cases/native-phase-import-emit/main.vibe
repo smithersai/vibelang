@@ -1,0 +1,6 @@
+export function source(specifier: string) {
+  return import.source(specifier)
+}
+export function deferred(specifier: string) {
+  return import.defer(specifier)
+}

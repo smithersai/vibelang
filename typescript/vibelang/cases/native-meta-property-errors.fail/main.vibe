@@ -1,0 +1,5 @@
+// expect: TS17012 TS1005
+export const invalid = import.x
+export const sourcePhase = import.source
+export const deferredPhase = import.defer
+export const member = import.x.url

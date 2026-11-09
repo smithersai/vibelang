@@ -33,8 +33,6 @@ FuzzGrammarAdmission corpus:schema-jsdoc-field-type compiler VIP-15 and Appendix
 FuzzGrammarAdmission corpus:schema-error-jsdoc-field-type compiler VIP-15/29 and Appendix A: schema-error fields share schema mapping; a JSDoc type prefix loses native syntax rejection and leaves only EK2109
 FuzzGrammarAdmission admission:dynamic-import-arity compiler Appendix A: inherited ImportCall requires one or two arguments; native TS1450 is CategoryMessage and the VibeLang build-exit filter ignores it
 FuzzGrammarAdmission corpus:native-dynamic-import-arity compiler Appendix A: an empty native ImportCall has no derivation but reports only message TS1450, which does not affect the VibeLang build
-FuzzGrammarAdmission admission:import-meta-property compiler Appendix A and VIP-33: a bad import meta-property name or an incomplete phase import is not native syntax; platform EK4402 covers the node before native grammar rejection
-FuzzGrammarAdmission corpus:import-meta-property compiler Appendix A and VIP-33: import.x has no MetaProperty derivation but reports only platform EK4402
 FuzzGrammarAdmission admission:schema-async-field compiler Appendix A Field and VIP-15: an unresolved schema field reference covers the declaration after EK2109, hiding its native async modifier rejection
 FuzzGrammarAdmission corpus:schema-async-field compiler Appendix A Field and VIP-15: schema S { async id: Missing } reports only unsupported-type EK2109
 FuzzGrammarAdmission corpus:schema-async-duplicate-modifier compiler Appendix A Field and VIP-15: repeated async field modifiers share the unsupported-reference EK2109 cover path

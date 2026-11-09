@@ -1,0 +1,1 @@
+{"compilerOptions":{"strict":true,"skipLibCheck":true,"target":"ESNext","module":"NodeNext","moduleResolution":"NodeNext","lib":["ESNext","DOM"],"types":[],"outDir":"out"},"files":["main.vibe"]}

@@ -72,7 +72,7 @@ func TestGrammarAdmissionMetaPropertyRegression(t *testing.T) {
 		source   string
 		mismatch bool
 	}{
-		{"import.x;", true}, {"import.x=1;", true}, {"import.source;", true}, {"import.defer;", true},
+		{"import.x;", false}, {"import.x=1;", false}, {"import.source;", false}, {"import.defer;", false},
 		{"import.x.url;", false}, {"(import.x).url;", false}, {"import.meta.url;", false},
 		{"function f(){return new.target;}", false}, {"new.foo;", false},
 	} {
@@ -80,17 +80,6 @@ func TestGrammarAdmissionMetaPropertyRegression(t *testing.T) {
 			result, err := w.Compile(context.Background(), Single(c.source))
 			if err != nil {
 				t.Fatal(err)
-			}
-			if c.mismatch {
-				found := false
-				for _, d := range result.Diagnostics {
-					if IsEK(d) && d.Code() == 4402 {
-						found = true
-					}
-				}
-				if !found {
-					t.Fatal("platform check did not exercise EK4402")
-				}
 			}
 			if got := grammarAdmissionVerdict(t, w, c.source); got != c.mismatch {
 				t.Fatalf("mismatch=%v,want %v; diagnostics=%v", got, c.mismatch, result.Diagnostics)
