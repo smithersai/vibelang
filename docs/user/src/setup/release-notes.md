@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A Vite or Rolldown watch build could stay failed after a missing directory index was created. Creating the source now rebuilds its importers without another edit.
 - Cached declaration comparisons could miss changes to the rules their fixtures read. Editing those rules now refreshes the comparison.
+- A private name used as a pattern key, such as `{ #a: 1 }`, crashed the compiler. It now reports `EK0707`.
 - A Bun package build could report success while omitting native JavaScript entry files, leaving consumers with missing modules. Existing native entries now stay under Bun’s resolver and keep their outputs.
 - An object with a computed member named `customMatcher` could pass pattern checks even when its key was a different symbol or a string. It now reports `EK0702`; aliases of the actual matcher symbol remain valid.
 

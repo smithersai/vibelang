@@ -726,7 +726,12 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 		default:
 			key := p.parsePropertyName()
 			clause := objectClause{key: key}
-			if key.Kind == ast.KindComputedPropertyName {
+			if ast.IsPrivateIdentifier(key) {
+				// MatchProperty takes a PropertyName, which has no private name.
+				// The string key keeps the clause lowerable, so its pattern still binds.
+				result.items = append(result.items, &pattern{kind: patternInvalid, anchor: key.Loc, code: 707, detail: "A pattern key cannot be a private name. Test it in a guard: when let v and if (" + key.Text() + " in v)."})
+				clause.key = p.mString(key.Text(), key.Loc)
+			} else if key.Kind == ast.KindComputedPropertyName {
 				clause.key = key.Expression()
 				clause.computed = !isLiteralKey(clause.key)
 			} else if (ast.IsIdentifier(key) || ast.IsStringLiteral(key)) && key.Text() == "__proto__" {
