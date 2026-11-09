@@ -71,7 +71,13 @@ const shared = { cause: Schema.Defect() }
 						if native && rewrite.fixable() {
 							t.Errorf("native class has stale-diagnostic repair: %+v", rewrite)
 						}
-						if !native && !rewrite.fixable() {
+						// The required sidecar prints Schema.TaggedError under every
+						// emit option, so an aliased base keeps its class (Chapter 7).
+						aliasedSchema := alias && schema
+						if aliasedSchema && rewrite.fixable() {
+							t.Errorf("aliased schema base has a repair that changes its sidecar: %+v", rewrite)
+						}
+						if !native && !aliasedSchema && !rewrite.fixable() {
 							t.Errorf("eligible control lost repair: %+v", rewrite)
 						}
 					})

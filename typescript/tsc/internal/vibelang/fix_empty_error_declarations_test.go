@@ -28,7 +28,8 @@ func TestFixExplicitEmptyErrorDeclarations(t *testing.T) {
 		{"declaration-noemit", "<{}>", `"declaration":true,"noEmit":true`, true},
 		{"bare", "", `"declaration":true`, false},
 		{"one-field", "<{ readonly id: string }>", `"declaration":true`, false},
-		{"no-declarations", "<{}>", `"noEmit":true`, false},
+		// The sidecar is the declaration under noEmit, so the bytes still matter (Chapter 7).
+		{"no-declarations", "<{}>", `"noEmit":true`, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "import { Data } from \"effect\"\nexport class MissingBuildId extends Data.TaggedError(\"MissingBuildId\")" + tc.payload + " {}\n"

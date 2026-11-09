@@ -8,7 +8,9 @@ import (
 )
 
 // VIP-34 requires associated types to survive schema repairs, even when a
-// custom helper has exactly the library helper's spelling.
+// custom helper has exactly the library helper's spelling. The required
+// sidecar prints a written helper alias under every emit option (Chapter 7,
+// D501), so only the type query of the constant's own Type is repaired.
 func TestSchemaCustomOwnType(t *testing.T) {
 	for _, test := range []struct {
 		name, prefix, own string
@@ -18,8 +20,8 @@ func TestSchemaCustomOwnType(t *testing.T) {
 		{"custom object alias", `namespace Schema { export namespace Schema { export type Type<T> = { readonly brand: "custom" } } }`, `export type User = Schema.Schema.Type<typeof User>;`, false},
 		{"custom interface", `namespace Schema { export namespace Schema { export type Type<T> = { readonly brand: "custom" } } }`, `export interface User extends Schema.Schema.Type<typeof User> {}`, false},
 		{"renamed custom", `namespace Other { export namespace Schema { export type Type<T> = "sentinel" } }`, `export type User = Other.Schema.Type<typeof User>;`, false},
-		{"real helper alias", `import * as Schema from "effect/Schema";`, `export type User = Schema.Schema.Type<typeof User>;`, true},
-		{"real helper interface", `import * as Schema from "effect/Schema";`, `export interface User extends Schema.Schema.Type<typeof User> {}`, true},
+		{"real helper alias", `import * as Schema from "effect/Schema";`, `export type User = Schema.Schema.Type<typeof User>;`, false},
+		{"real helper interface", `import * as Schema from "effect/Schema";`, `export interface User extends Schema.Schema.Type<typeof User> {}`, false},
 		{"own type query", ``, `export type User = typeof User.Type;`, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {

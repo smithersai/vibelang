@@ -64,7 +64,8 @@ func TestSchemaValueKeywordRepairControls(t *testing.T) {
 			}
 			for _, body := range []string{
 				"export const X=" + ref + ";export type X=typeof X.Type;",
-				"export const X=Schema.Struct({field:" + ref + "});",
+				// The paired type keeps the constant eligible (D501, Chapter 7).
+				"export const X=Schema.Struct({field:" + ref + "});export type X=typeof X.Type;",
 			} {
 				code := int32(4841)
 				if strings.Contains(body, "Struct") {

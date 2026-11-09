@@ -18,8 +18,8 @@ func TestSchemaPrototypeSetterHasNoLossyRewrite(t *testing.T) {
 			name, source string
 			code         int32
 		}{
-			{"struct", "export const Proto = Schema.Struct({ " + field + " })", 4832},
-			{"nested", "export const Proto = Schema.Struct({ value: Schema.Struct({ " + field + " }) })", 4832},
+			{"struct", "export const Proto = Schema.Struct({ " + field + " })\nexport type Proto = typeof Proto.Type", 4832},
+			{"nested", "export const Proto = Schema.Struct({ value: Schema.Struct({ " + field + " }) })\nexport type Proto = typeof Proto.Type", 4832},
 			{"schema-error", "export class Proto extends Schema.TaggedError<Proto>()(\"Proto\", { " + field + " }) {}", 4837},
 		} {
 			t.Run(fmt.Sprintf("key%d/%s", i, test.name), func(t *testing.T) {
@@ -57,7 +57,9 @@ func TestSchemaPrototypeSetterHasNoLossyRewrite(t *testing.T) {
 func TestSchemaPrototypeSetterLeavesOrdinaryFieldRepairs(t *testing.T) {
 	for _, key := range []string{"id", `"prototype"`, `"constructor"`} {
 		t.Run(key, func(t *testing.T) {
-			source := "export const Proto = Schema.Struct({ " + key + ": Schema.String })"
+			// The paired type keeps the constant eligible: an exported constant
+			// with no type of its name stays as written (D501, Chapter 7).
+			source := "export const Proto = Schema.Struct({ " + key + ": Schema.String })\nexport type Proto = typeof Proto.Type"
 			fixed := applyQuickFixOf(t, source, 4832, diagnostics.CategoryWarning)
 			program, file, _, _ := editorProgram(t, fixed)
 			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
