@@ -130,3 +130,4 @@ FuzzGrammarAdmission corpus:declaration-decorators compiler Appendix A: ErrorSta
 FuzzGrammarAdmission corpus:declaration-decorators-export compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
 FuzzGrammarAdmission corpus:declaration-decorators-schema-error compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
 FuzzGrammarAdmission corpus:declaration-decorators-service compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
+FuzzGrammarAdmission corpus:effect-type-callback-trailing-bang compiler VIP-3 and Appendix A: a callback return type ending in A!E! omits the required final operand before its parameter boundary

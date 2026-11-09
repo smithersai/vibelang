@@ -1032,3 +1032,5 @@ enclosing context, static blocks retain keyword reservation, and a nested
 explicit Effect callable or block establishes its own context. The regression
 test exercises both names across instance and static fields, enum members and
 service defaults, with plain and nested Effect controls.
+
+A case mutation ended a callback return type in `Disposable!E!` immediately before the enclosing parameter list's `)`. The compiler reports only a warning. This joins `admission:effect-type-trailing-bang`: parentheses also contain parameter lists, not only parenthesized aliases. Removing the dangling bang must restore a complete Appendix A derivation, including at a comma or a parameter default, so unrelated gaps and ordinary non-null assertions keep their own classification. Keyed corpus inputs retain the minimized callback program independently of the compiler-case list's order.

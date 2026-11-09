@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"slices"
 	"strings"
 	"testing"
 )
@@ -14,9 +15,10 @@ func TestGrammarAdmissionParenthesizedEffectQuoted(t *testing.T) {
 }
 
 // A delimiter scope owns its bangs: a nested operand cannot supply the first
-// bang of an enclosing type. Only a dangling bang before a closing parenthesis
-// in an alias is considered. Removing just those bangs must restore a complete
-// Appendix A derivation, so independent gaps retain their own keys.
+// bang of an enclosing type. A parenthesis may hold a type or a parameter
+// list, whose callback return type can end before a comma or default value.
+// Removing just the dangling bangs must restore a complete Appendix A
+// derivation, so independent gaps and non-null expressions keep their keys.
 func grammarParenthesizedEffectTrailingBang(ts []grammarToken) bool {
 	type scope struct {
 		open     string
@@ -41,7 +43,7 @@ func grammarParenthesizedEffectTrailingBang(ts []grammarToken) bool {
 			scopes[at].lastBang = -1
 		case "!":
 			last := scopes[at].lastBang
-			if scopes[at].open == "(" && last >= 0 && last != i-1 && i+1 < len(ts) && ts[i+1].text == ")" && grammarInTypeAlias(ts, i) {
+			if scopes[at].open == "(" && last >= 0 && last != i-1 && i+1 < len(ts) && slices.Contains([]string{")", ",", ";", "}", "]", "=>", "=", "{"}, ts[i+1].text) {
 				marks[i] = true
 			}
 			scopes[at].lastBang = i
