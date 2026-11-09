@@ -173,7 +173,7 @@ settings; child processes they spawn are additional to the four file workers.
 
 The release target runs `typescript/vibelang/coverage-stock-twins.test.mjs`. Its controls check changes to `Exit` values and public types, plus Effect version mismatches. It also runs `typescript/vibelang/vip7-reference.test.mjs`, which checks concurrent reference installation and lock cleanup after a failed install. These tests use fixture packages and need no reference compiler install. The test inventory keeps both suites registered.
 
-The Go test inventory names only existing tests. Retiring a CLI feature also retires its deleted test names and targets; topic checks continue to cover surviving declaration and matcher probes. Quote-test selection and the check for unresolved test names remain required.
+The Go test inventory names only existing tests. Retiring a CLI or editor feature also retires its deleted test names and targets; topic checks continue to cover surviving declaration and matcher probes. Quote-test selection and the check for unresolved test names remain required.
 
 ## Go package coverage
 

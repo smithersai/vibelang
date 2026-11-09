@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
+
 - Callback throws could be missed when `@rethrows` named a Unicode parameter. Those names now keep the same throw checks as other TypeScript parameter names.
 
 - Upgrade instructions could fail with an unknown compiler option because they still called retired repair commands. The current upgrade table now gives source edits and editor steps.
