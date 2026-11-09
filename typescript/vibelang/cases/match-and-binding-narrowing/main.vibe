@@ -1,0 +1,14 @@
+// Chapter 004: conjunction bindings keep the counterpart value type.
+export function literalLeft(s:string):"spec" | "none" {return match(s){when "spec" and let x:x;default:"none";}}
+export function literalRight(s:string):"spec" | "none" {return match(s){when let x and "spec":x;default:"none";}}
+export function unionLeft(s:string):"spec" | "tasks" | "none" {return match(s){when ("spec" or "tasks") and let x:x;default:"none";}}
+export function unionRight(s:string):"spec" | "tasks" | "none" {return match(s){when let x and ("spec" or "tasks"):x;default:"none";}}
+export function arrayLeft(s:string[]):"spec" | "tasks" | "none" {return match(s){when [("spec" or "tasks") and let x]:x;default:"none";}}
+export function arrayRight(s:string[]):"spec" | "tasks" | "none" {return match(s){when [let x and ("spec" or "tasks")]:x;default:"none";}}
+export function nested(s:string):"tasks" | "none" {return match(s){when (("spec" or "tasks") and let x) and "tasks":x;default:"none";}}
+export function nonNarrowing(s:string):string | "none" {return match(s){when let x and if(true):x;default:"none";}}
+
+type Shape={_tag:"Square";side:number}|{_tag:"Rect";side:number}|{_tag:"Circle";radius:number}
+export function objectOrLeft(s:Shape):number{return match(s){when {_tag:("Square" or "Rect")} and let x:x.side;default:0;}}
+export function objectOrRight(s:Shape):number{return match(s){when let x and {_tag:("Square" or "Rect")}:x.side;default:0;}}
+export function freshGuard():number{return match(2){when let n and if(n===1):n;default:0;}}

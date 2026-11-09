@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A binding joined to a literal pattern with `and` could keep its original wide type and reject a valid return. Bindings now retain the type narrowed by the conjunction, in either order and inside array or object patterns.
+
 - Open and proposed VIPs could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
 
 - An instance method body or property initializer in a `service` could hide errors on its other static members. Each rejected member now reports its own `EK0902`.

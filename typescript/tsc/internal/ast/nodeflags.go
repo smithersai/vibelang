@@ -66,6 +66,8 @@ const (
 
 	NodeFlagsVibeLangUncountedPattern NodeFlags = 1 << 40 // A match and/not test: ordinary flow narrowing applies, but not finite coverage.
 
+	NodeFlagsVibeLangPatternBinding NodeFlags = 1 << 43 // A conjunction binding retains refinements of its captured value without changing lexical-cell lowering.
+
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsAwaitUsing  = NodeFlagsConst | NodeFlagsUsing // Variable declaration (NOTE: on a single node these flags would otherwise be mutually exclusive)

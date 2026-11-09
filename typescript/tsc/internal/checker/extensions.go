@@ -145,11 +145,10 @@ func RegisterCatchVariableTypeHook(hook CatchVariableTypeHook) {
 	catchVariableTypeHooks = append(catchVariableTypeHooks, hook)
 }
 
-// DeclaredTypeHook gives a variable declaration that has neither a type
-// annotation nor an initializer its declared type, or returns nil to leave
-// TypeScript's control-flow tracked type. VibeLang uses it for the let
-// declarations its parser hoists for pattern bindings, whose value the
-// pattern assigns later (internal/vibelang/match_homes.go).
+// DeclaredTypeHook gives an unannotated variable its declared type, or returns
+// nil to leave native inference intact. It applies to uninitialized declarations
+// and marked conjunction bindings, whose inference follows their extracted
+// value instead of ordinary initializer widening (internal/vibelang/match_homes.go).
 type DeclaredTypeHook func(c *Checker, declaration *ast.Node) *Type
 
 var declaredTypeHooks []DeclaredTypeHook

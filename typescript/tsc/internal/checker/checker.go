@@ -17284,7 +17284,8 @@ func (c *Checker) getTypeForVariableLikeDeclaration(declaration *ast.Node, inclu
 			return c.addOptionalityEx(t, isProperty, isOptional)
 		}
 	}
-	if ast.IsVariableDeclaration(declaration) && declaration.Initializer() == nil && ast.IsIdentifier(declaration.Name()) {
+	if ast.IsVariableDeclaration(declaration) && ast.IsIdentifier(declaration.Name()) &&
+		(declaration.Initializer() == nil || declaration.Flags&ast.NodeFlagsVibeLangPatternBinding != 0) {
 		if t := c.applyDeclaredTypeHooks(declaration); t != nil {
 			return t
 		}

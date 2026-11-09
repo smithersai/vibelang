@@ -84,26 +84,147 @@ func narrowCapturedSubject(c *checker.Checker, reference *ast.Node, t *checker.T
 	if read := capturedRead(c, reference, test); read != nil {
 		return narrowAlias(read, t, nil)
 	}
-	return nil
+	return narrowCapturedBindingProperty(c, reference, t, test, narrowAlias)
 }
 
 // capturedRead returns the first node of test that reads what reference
 // reads through a capture, or nil.
 func capturedRead(c *checker.Checker, reference *ast.Node, test *ast.Node) *ast.Node {
-	var found *ast.Node
-	var visit func(node *ast.Node) bool
+	// Keep tests of the binding itself on their ordinary native path before
+	// following the value it captured for tests of a later conjunct.
+	find := func(reference *ast.Node) (through, direct *ast.Node) {
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if readsThroughCapture(c, reference, node) {
+				through = node
+				return true
+			}
+			if (ast.IsAccessExpression(node) || ast.IsIdentifier(node) && isValueUse(node)) &&
+				c.IsMatchingReference(reference, node) && direct == nil {
+				direct = node
+			}
+			if ast.IsFunctionLike(node) {
+				return false
+			}
+			return node.ForEachChild(visit)
+		}
+		visit(test)
+		return
+	}
+	through, direct := find(reference)
+	if through != nil {
+		return through
+	}
+	if direct != nil {
+		return nil
+	}
+	if subject := patternBindingSubject(c, reference, test); subject != nil {
+		through, direct = find(subject)
+		if through != nil {
+			return through
+		}
+		return direct
+	}
+	return nil
+}
+
+// patternBindingSubject follows a binding's single captured value. Multiple or
+// alternatives may share that value; source assignments end the relationship.
+func patternBindingSubject(c *checker.Checker, reference, test *ast.Node) *ast.Node {
+	if !ast.IsIdentifier(reference) || reference.Flags&ast.NodeFlagsReparsed != 0 ||
+		ast.IsRightSideOfQualifiedNameOrPropertyAccess(reference) {
+		return nil
+	}
+	symbol := c.GetSymbolAtLocation(reference)
+	if symbol == nil {
+		return nil
+	}
+	declaration := symbol.ValueDeclaration()
+	if declaration == nil || declaration.Flags&ast.NodeFlagsVibeLangPatternBinding == 0 {
+		return nil
+	}
+	values := []*ast.Node{declaration.Initializer()}
+	if values[0] == nil {
+		values = hoistedValues(declaration)
+	}
+	if len(values) == 0 {
+		return nil
+	}
+	for _, value := range values[1:] {
+		if !c.IsMatchingReference(values[0], value) {
+			return nil
+		}
+	}
+	var written func(*ast.Node) bool
+	written = func(node *ast.Node) bool {
+		if node.Flags&ast.NodeFlagsReparsed == 0 && node.Pos() < test.End() && ast.IsAssignmentTarget(node) {
+			root := node
+			for ast.IsAccessExpression(root) {
+				root = root.Expression()
+			}
+			if ast.IsIdentifier(root) && c.GetSymbolAtLocation(root) == symbol {
+				return true
+			}
+		}
+		return node.ForEachChild(written)
+	}
+	if written(declaration.Parent.Parent.Parent) {
+		return nil
+	}
+	return values[0]
+}
+
+// A property used by or may itself be captured once before its literal tests.
+// Project its native discriminant narrowing back to the whole captured value,
+// including when inline lowering hoists that property into a temporary let.
+func narrowCapturedBindingProperty(c *checker.Checker, reference *ast.Node, t *checker.Type, test *ast.Node, narrowAlias func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
+	// Finite coverage has its own projection, independent of arm typing.
+	if call := reference.Parent; call != nil && ast.IsCallExpression(call) &&
+		ast.IsIdentifier(call.Expression()) && call.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 &&
+		call.Expression().Text() == "$noMatch" {
+		return nil
+	}
+	subject := patternBindingSubject(c, reference, test)
+	if subject == nil {
+		if reference.Flags&ast.NodeFlagsReparsed == 0 || capturedSubject(c, reference) == nil {
+			return nil
+		}
+		subject = reference
+	}
+	var result *checker.Type
+	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if readsThroughCapture(c, reference, node) {
-			found = node
-			return true
+		origin := capturedSubject(c, node)
+		for origin != nil && ast.IsIdentifier(ast.SkipParentheses(origin)) {
+			next := capturedSubject(c, ast.SkipParentheses(origin))
+			if next == nil {
+				break
+			}
+			origin = next
+		}
+		if origin != nil {
+			origin = ast.SkipParentheses(origin)
+			if ast.IsAccessExpression(origin) {
+				base := origin.Expression()
+				if c.IsMatchingReference(subject, base) || readsThroughCapture(c, subject, base) ||
+					c.IsMatchingReference(reference, base) || readsThroughCapture(c, reference, base) {
+					narrowed := c.NarrowTypeByDiscriminant(t, origin, func(property *checker.Type) *checker.Type {
+						return narrowAlias(node, property, nil)
+					})
+					if narrowed != t {
+						result = narrowed
+						return true
+					}
+				}
+			}
 		}
 		if ast.IsFunctionLike(node) {
-			return false // its own tests are narrowed where it is called
+			return false
 		}
 		return node.ForEachChild(visit)
 	}
 	visit(test)
-	return found
+	return result
 }
 
 // readsThroughCapture reports whether node, an expression of a test, reads

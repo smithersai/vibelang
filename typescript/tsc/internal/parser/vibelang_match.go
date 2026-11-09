@@ -158,11 +158,12 @@ func isPropertyChain(node *ast.Node) bool {
 
 // matchCompile carries the state of compiling one top-level pattern.
 type matchCompile struct {
-	coverage     bool   // mark refutable combinators in finite coverage queries
-	cache        string // the private per-evaluation Iterator Record cache
-	anchor       core.TextRange
-	inline       bool         // inside or, not, or an is without an if or while: no declarations
-	inlineLocals *[]*ast.Node // captures local to a binding-free is wrapper
+	narrowBinding bool   // bindings within a conjunction retain its narrowed value type
+	coverage      bool   // mark refutable combinators in finite coverage queries
+	cache         string // the private per-evaluation Iterator Record cache
+	anchor        core.TextRange
+	inline        bool         // inside or, not, or an is without an if or while: no declarations
+	inlineLocals  *[]*ast.Node // captures local to a binding-free is wrapper
 	// uncovered marks refutable and/not tests, which cover nothing, in a match
 	// with no default arm, for EK4701 (chapter 004, Coverage). With a default arm
 	// no coverage is checked, and the arms narrow as TypeScript does.
@@ -876,6 +877,7 @@ func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
 	// Keep it when an if/while is turns their declarations into assignments.
 	hoistedDeclaration := hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
 	hoistedDeclaration.AsVariableDeclaration().Type = declaration.Type()
+	hoistedDeclaration.Flags |= declaration.Flags & ast.NodeFlagsVibeLangPatternBinding
 	if source := p.vibelangMatchKeyTypes[declaration]; source != nil {
 		// An is test can hoist an already-captured key again into its home.
 		// Keep the source type attached to the declaration that binding sees.
@@ -1749,7 +1751,11 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			value = p.mParens(p.mBinary(p.patternErrorCall(107, "", at), ast.KindCommaToken, value, at), at)
 			flags = ast.NodeFlagsLet
 		}
-		*steps = append(*steps, matchStep{decl: p.mConst(pat.name, flags, value, pat.name.Loc)})
+		declaration := p.mConst(pat.name, flags, value, pat.name.Loc)
+		if ctx.narrowBinding {
+			declaration.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangPatternBinding
+		}
+		*steps = append(*steps, matchStep{decl: declaration})
 	case patternGuard:
 		// The parentheses span the guard's expression, so that the language
 		// service finds its names.
@@ -1858,6 +1864,9 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			return p.mCall(p.mProperty(extracted(), "slice", at), []*ast.Node{p.mNumber(n, at)}, at)
 		}, func() *ast.Node { return p.mProperty(extracted(), "length", at) }, steps, ctx)
 	case patternAnd:
+		outerNarrowing := ctx.narrowBinding
+		ctx.narrowBinding = true
+		defer func() { ctx.narrowBinding = outerNarrowing }()
 		first := len(*steps)
 		for _, item := range pat.items {
 			p.compilePattern(item, path, steps, ctx)
@@ -2197,7 +2206,11 @@ func (p *Parser) inlineBinding(pat *pattern, path matchPath, ctx *matchCompile) 
 	// Preserve a written binding's identity: a synthesized identifier would
 	// make hoistDeclaration register its assignment as a hygienic temporary.
 	name := p.vibelangSpanning(p.factory.NewIdentifier(pat.name.Text()), pat.name.Loc)
-	assign := p.hoistDeclaration(p.mConst(name, flags, value, pat.name.Loc), pat.anchor)
+	binding := p.mConst(name, flags, value, pat.name.Loc)
+	if ctx.narrowBinding {
+		binding.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangPatternBinding
+	}
+	assign := p.hoistDeclaration(binding, pat.anchor)
 	if ctx.bound[key] {
 		last := len(p.reparseList) - 1
 		delete(p.vibelangHoists, p.reparseList[last])
@@ -2213,7 +2226,7 @@ func (p *Parser) inlinePattern(pat *pattern, path matchPath, ctx *matchCompile) 
 	if ctx.bound == nil {
 		ctx.bound = map[string]bool{}
 	}
-	inner := &matchCompile{anchor: ctx.anchor, inline: true, coverage: ctx.coverage, uncovered: ctx.uncovered, bound: ctx.bound, cache: ctx.cache, inlineLocals: ctx.inlineLocals, checked: ctx.checked, checkedOrder: ctx.checkedOrder, orNumbers: ctx.orNumbers, laterIn: ctx.laterIn}
+	inner := &matchCompile{narrowBinding: ctx.narrowBinding, anchor: ctx.anchor, inline: true, coverage: ctx.coverage, uncovered: ctx.uncovered, bound: ctx.bound, cache: ctx.cache, inlineLocals: ctx.inlineLocals, checked: ctx.checked, checkedOrder: ctx.checkedOrder, orNumbers: ctx.orNumbers, laterIn: ctx.laterIn}
 	mark := len(p.reparseList)
 	var steps []matchStep
 	if subjectReads(pat) >= 2 {

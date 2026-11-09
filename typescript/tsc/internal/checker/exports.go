@@ -401,6 +401,15 @@ func (c *Checker) GetMinTypeArgumentCount(typeParameters []*Type) int {
 	return c.getMinTypeArgumentCount(typeParameters)
 }
 
+// GetTypeOfExpression retains the freshness used by native initializer inference.
+func (c *Checker) GetTypeOfExpression(node *ast.Node) *Type {
+	return c.getTypeOfExpression(ast.GetReparsedNodeForNode(node))
+}
+
+func (c *Checker) GetRegularTypeOfLiteralType(t *Type) *Type {
+	return c.getRegularTypeOfLiteralType(t)
+}
+
 func (c *Checker) GetWidenedLiteralType(t *Type) *Type {
 	return c.getWidenedLiteralType(t)
 }
