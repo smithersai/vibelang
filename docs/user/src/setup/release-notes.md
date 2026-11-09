@@ -26,6 +26,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Checking a root project could delete a nested project's declaration files and break package aliases. Sidecar cleanup now preserves other projects' declarations and removes only the compiling project's own stale outputs.
 
+- Seven setup, editor and testing guides still said that support for the new forms arrives with the compiler's VIP implementation. That sentence is removed: the compiler, its language server and the formatter handle those forms.
 - The pattern-matching guide and the migration rules said Effect `4.1.0` retains thirty-three tagged error patterns. They now name Effect `4.1.1` and its thirty-four patterns, which include `JoseError.JoseError`.
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.

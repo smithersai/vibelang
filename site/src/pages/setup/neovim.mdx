@@ -101,8 +101,6 @@ nvim --headless src/main.vibe "+lua vim.wait(5000, function() return #vim.lsp.ge
 
 It prints `1 vibelang client`. A language server spawn error means Neovim found no `vibelang`: install the project's dependencies.
 
-Support for the new forms arrives with the compiler's VIP implementation.
-
 The repository’s `editors/nvim/vibelang.lua` also registers the VibeLang tree-sitter grammars. With `nvim-treesitter` on its `master` branch, run `:TSInstall vibe vibex` for VibeLang forms inside JSX containers. The `vibex` queries inherit TSX and VibeLang highlights.
 
 JSX tag names, including member tags such as `<catch.Box/>`, follow JSX’s name rules in `.vibex` files. Keywords remain reserved in ordinary code.

@@ -118,7 +118,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,400 |
 | **Build and test** | **22,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 17,000 |
-| [Vite and Vitest](../setup/vite.md) | 4,700 |
+| [Vite and Vitest](../setup/vite.md) | 4,600 |
 | **Format and lint** | **15,000** |
 | [Format with dprint](../setup/formatting.md) | 3,600 |
 | [Developer tools](../setup/developer-tools.md) | 12,000 |
@@ -131,8 +131,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Editors** | **5,200** |
 | [VS Code and Cursor](../setup/vscode.md) | 1,400 |
 | [Neovim](../setup/neovim.md) | 1,200 |
-| [Zed](../setup/zed.md) | 520 |
-| [Other editors](../setup/other-editors.md) | 980 |
+| [Zed](../setup/zed.md) | 500 |
+| [Other editors](../setup/other-editors.md) | 970 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Keep .ts file names** | **1,400** |
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |

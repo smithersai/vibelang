@@ -20,8 +20,6 @@ export default defineConfig({
 
 Register `it.effect` at the top level or inside `describe`; its callback returns an Effect, as in `() => effect { … }`. `assert` and `expect` from `@effect/vitest` are Effect package exports: an assertion may throw, so wrap it in `Effect.try`, as in `try Effect.try(() => assert.strictEqual(actual, expected))` or `try Effect.try(() => expect(actual).toBe(expected))`; `sync` takes only a function that can't throw. A failed assertion fails the Effect, which fails the test, and the plugin's maps point its stack at the original `.vibe` line. Import them from `@effect/vitest`. The examples below use a local `check` helper that works the same way.
 
-Support for the new forms arrives with the compiler's VIP implementation.
-
 ## Controlling virtual time
 
 ```vibe

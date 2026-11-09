@@ -124,8 +124,6 @@ A migrated config helper may retain an extensionless import of an unchanged `.ts
 
 ## 2. Configure tsconfig.json
 
-Support for the new forms and configuration files arrives with the compiler's VIP implementation.
-
 The plugin compiles the project `tsconfig.json` describes, with its options and diagnostics. Its compile backend automatically enables `rewriteRelativeImportExtensions` when emitting JavaScript, so source imports such as `./greet.vibe` work with Vite's `allowImportingTsExtensions` configuration. Check two things:
 
 1. `include` selects the app's `.vibe` files. When Vite's `root` is a directory inside your package, such as `root: "web"`, name the package's config as `vibelang({ project: "../tsconfig.json" })`: the plugin compiles every module it includes, inside Vite's root or not. A `.vibe` file of another workspace package, such as one the app imports by name, compiles with the nearest `tsconfig.json` above it instead: that package's own project. This holds outside the root and for a package nested inside it, one with its own `package.json` and `tsconfig.json`.
