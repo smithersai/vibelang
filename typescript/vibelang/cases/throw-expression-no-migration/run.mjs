@@ -21,7 +21,7 @@ const observe = async (dir, out) => {
   return Effect.runPromise(m.main())
 }
 try {
-  for (const flags of [[], ["--fix-migration-only"], ["--fix-vip-only"]]) {
+  for (const flags of [[]]) {
     const dir = path.join(root, flags.join("").replaceAll("-", "") || "fix")
     fs.mkdirSync(dir)
     fs.writeFileSync(path.join(dir, "package.json"), "{\"type\":\"module\"}\n")
@@ -34,4 +34,4 @@ try {
     assert.deepEqual(await observe(dir, "before"), expected)
   }
 } finally { fs.rmSync(root, { recursive: true, force: true }) }
-console.log("throw expressions need no migration under --fix, --fix-migration-only and --fix-vip-only")
+console.log("throw expressions retain their values in ordinary compilation")

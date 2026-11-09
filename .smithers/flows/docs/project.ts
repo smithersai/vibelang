@@ -22,6 +22,7 @@ export const facts = {
   merge: "Maintainers land their own work on `vibe`. `main` advances only to a commit on `vibe` whose post-merge checks passed, with no failing commit below it. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge.",
   generated: "CONTRIBUTING.md, MAINTAINERS.md and both AGENTS.md files come from `.smithers/flows/docs/project.ts`, except the starter's Essentials, which come from `docs/user/llms-essentials.md`. Edit the source, then run `bun run docs:generate` in `.smithers/`",
   style: "Follow the surrounding code and each package's configuration. Format Go with gofmt. Keep TypeScript and VibeLang examples consistent with nearby files, and don't reformat unrelated code.",
+  noOwnFixes: "VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.",
   secrets: "Never put credentials or private user content in fixtures, logs or issues."
 } as const;
 
@@ -81,7 +82,7 @@ export const releaseSteps: readonly string[] = [
 
 export const contributing: Document = {
   title: "Contributing to {{name}}",
-  intro: "Bug reports with a minimal reproduction, ideas, docs fixes and focused pull requests are welcome. {{name}} is v0, so the language still changes in breaking ways.",
+  intro: "Bug reports with a minimal reproduction, ideas, docs fixes and focused pull requests are welcome. {{name}} is v0, so the language still changes in breaking ways.\n\n{{noOwnFixes}}",
   sections: [
     {
       heading: "How work moves",
@@ -218,6 +219,7 @@ Specification: \`docs/design/src/\`. Process: CONTRIBUTING.md.
 
 - Work on one accepted issue. Add a test that fails without your change; compiler semantics get a case in \`typescript/vibelang/cases/\`.
 - Run \`{{e2e}}\` for install, compiler, runtime or starter changes. Report exact results, including failures and checks you couldn't run.
+- {{noOwnFixes}}
 - A file that says it is generated changes only through its source.
 - Match nearby code, format Go with gofmt, and don't reformat unrelated code.
 - {{secrets}}

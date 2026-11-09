@@ -277,8 +277,6 @@ const specTests = [
 // why it refuses. They take about 45 s together. dd45ca328242 (VIP-6 sync and
 // callback as Effect globals) changed the prelude identity of sync, and the
 // repair silently found no wrapper; only post-merge //:go-vibelang ran them.
-const platformWrapperFixTests = ["TestFixPlatformWrapperInputsAndOneCompanion", "TestFixPlatformWrapperInputRefusals", "TestFixPlatformWrapperInputRuntime", "TestFixPlatformWrapperPreservesDeclaration", "TestFixPlatformOneCompanionVerified", "TestFixPlatformExistingGeneratedCompanion"]
-const fixCostTests = ["TestFixProjectBoundsChecks", "TestFixProgramsShareParsedFiles", "TestFixProjectChecksAPassingRoundOnce", "TestFixGateChecksAFewTimes", "TestFixScalesWithTheProject", "TestFixHalvingChecksTheWholeProgramAFewTimes"]
 // The cost guards of flow narrowing. They count allocations, so a repeated
 // union removal that rehashes fails here in seconds; match-flow-limit.fail,
 // which meets it as a 120 s limit on a busy host, runs after the merge.
@@ -1586,12 +1584,6 @@ const targets = {
     [],
     [bun]
   ),
-  "docs-fix-progress-guide": check(
-    "Progress advice distinguishes native standard error from the migration runner's optional log files.",
-    "node docs/tools/fix-progress-guide.mjs && bun test --timeout 60000 docs/tools/fix-progress-guide.test.ts",
-    [],
-    [bun, node]
-  ),
   "docs-shim-availability": check(
     "The TypeScript replacement guides distinguish prepared source versions from recorded npm availability and match proposal status and checker API requirements.",
     "node docs/tools/shim-availability.mjs && bun test --timeout 60000 docs/tools/shim-availability.test.ts docs/tools/checker-version-claims.test.ts docs/tools/shim-preparation.test.ts",
@@ -1839,12 +1831,6 @@ const targets = {
     [Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]],
     "15m"
   ),
-  "go-vibelang-fix-twins": goVibelang(
-    "What --fix writes for the TypeScript-form, migration and pipeline-stage cases is their fixed twin, within the --fix cost bounds, and platform wrappers move into their companion.",
-    `CGO_ENABLED=0 ${effect} go test -count=1 -timeout 20m -trimpath -run '^(TestTypeScriptFormCasesFix|TestMigrationCasesFix|TestEffectStageFixes|TestEffectStageFixesRefuse|${fixCostTests.join("|")}|${platformWrapperFixTests.join("|")})$' ./internal/vibelang/`,
-    [Tsc["vibelang-files"]],
-    "30m"
-  ),
   "lint-config": check(
     "Imported lint activation and config migration preserve diagnostics, exit judgment, emission, plugins and authored settings.",
     `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -p 8 -count=1 -trimpath -run '^(TestLintPlugin.*|TestImportedLint.*|TestLintActivationQuoted|TestRegistryMatchesSpec|FuzzLintPluginMigration|FuzzLintActivation|FuzzEffectExitOptions)$' ./internal/tsoptions ./internal/vibelang ./internal/effecttsgo/lint ./internal/vibelangfuzz`,
@@ -1920,7 +1906,7 @@ const targets = {
     summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of --fix and flow narrowing.",
     shell:
       `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      `node ../../scripts/go-test-progress.mjs go test -json -count=1 -trimpath -run '^(Test[A-Za-z0-9_]*Quoted|${[...specTests, ...fixCostTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/ ./internal/effecttsgo/shim/checker/`,
+      `node ../../scripts/go-test-progress.mjs go test -json -count=1 -trimpath -run '^(Test[A-Za-z0-9_]*Quoted|${[...specTests, ...narrowingCostTests].join("|")})$' ./internal/checker/ ./internal/vibelang/ ./internal/vibelangfuzz/ ./internal/effecttsgo/shim/checker/`,
     data: [design, goTestProgress, migrationSources, Tsc.srcs, Tsc["effect-shim-files"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
     tools: [go, node],
     sandbox: "none",

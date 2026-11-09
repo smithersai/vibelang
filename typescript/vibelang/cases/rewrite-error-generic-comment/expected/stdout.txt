@@ -1,1 +1,1 @@
-rewrite preserves error-generic-comment
+ok

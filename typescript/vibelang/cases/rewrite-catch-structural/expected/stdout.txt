@@ -1,1 +1,1 @@
-rewrite preserves catch-structural
+7

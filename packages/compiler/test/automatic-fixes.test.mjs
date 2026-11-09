@@ -15,6 +15,7 @@ const options = [
   ["--fix"], ["--FIX"], ["--fix-vip-only"], ["--fix-migration-only"], ["--fix-only"],
   ["--fix", "--fix-vip-only"], ["--fix-vip-only", "--fix"],
   ["--fix", "--fix-migration-only"], ["--fix-migration-only", "--fix"],
+  ["--only", "main.vibe"], ["--fix", "--only", "main.vibe"],
 ]
 for (const flags of options) {
   test(`automatic fix option ${flags.join(" ")} is rejected without writing files`, () => {

@@ -25,7 +25,7 @@ const positions = [
   ["export type Out<T> = T extends Effect<infer A> ? A : never", "export type Out<T> = T extends Effect.Effect<infer A> ? A : never"],
 ]
 const source = positions.map(([legacy]) => legacy).join("\n") + "\n"
-for (const scope of [["--fix", "--fix-migration-only"], ["--fix"]]) {
+for (const scope of [[]]) {
   project(({ put, read, invoke }) => {
     put("tsconfig.json", options)
     put("main.vibe", source)
@@ -54,7 +54,7 @@ project(({ put, stock }) => {
   expected.push(...at(stock("-p", ".", "--pretty", "false").text))
 })
 assert.deepEqual(expected, ["namespace(2,15) error TS2709"])
-for (const scope of [["--fix", "--fix-migration-only"], ["--fix"]]) {
+for (const scope of [[]]) {
   project(({ put, read, invoke }) => {
     put("tsconfig.json", { compilerOptions: { ...baseOptions(), noEmit: true }, include: ["*.vibe", "*.ts"] })
     put("types.ts", types)
@@ -71,7 +71,7 @@ const shadowed = `export namespace N {
 }
 export let outer: Effect<number> | undefined
 `
-for (const scope of [["--fix", "--fix-migration-only"], ["--fix"]]) {
+for (const scope of [[]]) {
   project(({ put, read, invoke }) => {
     put("tsconfig.json", { compilerOptions: { ...baseOptions(), noEmit: true }, include: ["*.vibe"] })
     put("main.vibe", shadowed)

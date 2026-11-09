@@ -24,7 +24,7 @@ async function cli(script: string, root: string, temp: string, args: string[]) {
   return { stdout, stderr, status }
 }
 
-for (const script of ["check-snippets.ts", "fix-snippets.ts"]) {
+for (const script of ["check-snippets.ts"]) {
   test(script + " refuses an unmatched filter and preserves source and existing receipts", async () => {
     await fixture(async (root, temp) => {
       const page = join(root, "selected.md"), report = join(root, "prior.json"), pending = join(root, "prior.txt")
@@ -41,7 +41,6 @@ for (const script of ["check-snippets.ts", "fix-snippets.ts"]) {
       expect(readFileSync(pending, "utf8")).toBe("prior pending\n")
       expect(readdirSync(temp)).toEqual([])
       expect(output.stdout).not.toContain("Totals:")
-      expect(output.stdout).not.toContain("fix-snippets:")
     })
   })
 
@@ -115,7 +114,7 @@ test("generated nonmatching selectors fail before temporary staging in both comm
     writeFileSync(join(root, "guide.md"), "# Guide\n")
     await fc.assert(fc.asyncProperty(fc.integer({ min: 0, max: 1_000_000_000 }), async suffix => {
       const filter = "absent_selection145_" + suffix
-      for (const script of ["check-snippets.ts", "fix-snippets.ts"]) {
+      for (const script of ["check-snippets.ts"]) {
         const output = await cli(script, root, temp, ["--filter", filter])
         expect(output.status).toBe(2)
         expect(output.stderr).toContain("No Markdown pages match")

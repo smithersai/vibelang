@@ -72,23 +72,13 @@ checkout compiler; run `sh scripts/build-vibelang.sh` first. These tools never
 fall back to `vibelang` on `PATH`, including hover generation, snippet fixes
 and `--run` execution. An explicit compiler option can select an installed
 release. `--filter text` selects pages, and `--json path` writes diagnostics with Markdown line numbers.
-Both snippet commands exit `2` if the root contains no Markdown pages or the filter matches none, before dependency setup or writing receipts. A selected prose page with no code is allowed.
+The snippet checker exits `2` if the root contains no Markdown pages or the filter matches none, before dependency setup or writing receipts. A selected prose page with no code is allowed.
 Temporary files are removed on success and failure; `--keep` preserves the
 temporary projects for debugging. Compiler crashes, missing runtime builds, and
 project configuration errors exit 2. Snippet failures exit 1.
 
 The pending-marker output regression uses executable logging fixtures with `export effect function main()`, `try Console.log(...)` and an explicit `await runPromise(main())`. An exported `main` alone stays unrun. Its native property checks 32 generated Unicode and quoted messages against exact output, a changed final line and an unrun entry. The three-stage CLI regression reports phase timings, exit status and output byte counts within a two-minute deadline.
 
-`bun docs/tools/fix-snippets.ts` uses the same extraction, page scope and temporary
-projects to run `vibelang --fix --fix-migration-only`. It writes changed code
-blocks back only when diagnostics still match and every declared output on the
-page still runs with its expected stdout, both before and after the edit. A
-refusal leaves the whole page unchanged. Prose, fences, output assertions and
-plain-TypeScript hatch/module comments are preserved; new hatches and modules
-receive those comments. `--check` reports proposed edits without writing, and
-`--compiler`, `--root`, `--filter` and `--timeout` work as in the checker.
-`--all-fixes` also enables the existing style and prelude cleanups; the default
-scope contains decision-1 migration edits only, so S0 makes zero edits.
 
 ```sh
 bun test docs/tools/check-snippets.test.ts docs/tools/first-run.test.ts docs/tools/hovers.test.ts

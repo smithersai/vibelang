@@ -32,6 +32,8 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 
 ## Why VibeLang
 
+VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
+
 Effect gives you typed failures, dependency injection, concurrency and resource management. VibeLang gives those programs direct syntax: an `effect` function returns an Effect, `try` runs one, and its errors and required services stay in its type. Every form is exact sugar for the Effect TypeScript it replaces.
 
 Plain and `async` functions are TypeScript's, so your `.ts` code and npm packages call as they do in TypeScript. The compiler tracks what a function may throw, and Effect code calls one that may throw through Effect's own `Effect.try` ([TypeScript boundaries](https://vibelang.sh/vibelang-features/114-vibelang-for-effect-users#keep-platform-work-in-effect)):
@@ -203,4 +205,4 @@ Report a bug with a minimal reproduction, or propose an idea, in [Issues](https:
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,426 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,455 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

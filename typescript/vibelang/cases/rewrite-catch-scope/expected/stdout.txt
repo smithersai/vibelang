@@ -1,1 +1,2 @@
-rewrite preserves catch-scope
+1 100
+11 100

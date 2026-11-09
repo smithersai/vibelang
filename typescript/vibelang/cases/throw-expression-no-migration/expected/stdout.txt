@@ -1,1 +1,1 @@
-throw expressions need no migration under --fix, --fix-migration-only and --fix-vip-only
+throw expressions retain their values in ordinary compilation

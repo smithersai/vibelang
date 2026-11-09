@@ -1,1 +1,1 @@
-rewrite preserves deep-types
+ok

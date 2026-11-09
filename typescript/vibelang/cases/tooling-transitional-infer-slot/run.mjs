@@ -36,7 +36,7 @@ export const all: Same<typeof Before.all, typeof After.all> = true
 export const partial: Same<typeof Before.partial, typeof After.partial> = true
 export const unmarked: Same<typeof Before.unmarked, typeof After.unmarked> = true
 `
-for (const scope of [["--fix", "--fix-migration-only"], ["--fix"]]) {
+for (const scope of [[]]) {
   project(({ put, read, invoke, stock, run }) => {
     put("tsconfig.json", { compilerOptions: { ...baseOptions(), declaration: true }, include: ["main.vibe"] })
     put("main.vibe", source)

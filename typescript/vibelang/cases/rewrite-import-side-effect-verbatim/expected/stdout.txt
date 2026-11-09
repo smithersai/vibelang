@@ -1,1 +1,1 @@
-rewrite preserves import-side-effect-verbatim
+["adapter","type-adapter"] 1

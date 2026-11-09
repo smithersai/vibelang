@@ -1,1 +1,2 @@
-rewrite preserves void-match-arm
+["undefined","undefined","undefined","undefined","undefined","undefined"]
+["undefined","1","undefined"]

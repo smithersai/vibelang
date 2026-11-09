@@ -101,7 +101,7 @@ try {
   // plugins, after the existing entries; comments and severities stay. The
   // repaired build matches the legacy build except for EK3012, with no per-rule
   // suppression; a second run changes nothing and reports no EK3012.
-  for (const scope of [["--fix"], ["--fix", "--fix-migration-only"], ["--fix-vip-only", "--fix"]]) {
+  for (const scope of [[]]) {
     for (const [value, noEmitOnError] of [["off", false], ["error", true], ["warning", true], ["suggestion", false]]) {
       {
         const label = JSON.stringify({ scope, value, noEmitOnError })

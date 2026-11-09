@@ -1,3 +1,0 @@
-// run-seconds: 180 (six compareRewrite stages, 30 s each)
-import { compareRewrite } from "../../rewrite-preservation.mjs"
-await compareRewrite(import.meta.url, "ok\n", { mode: "fix", present: ['class Bad<T /* extends */>'], absent: ["error Bad<"] })

@@ -1,1 +1,1 @@
-rewrite preserves import-side-effect
+["adapter"] 1

@@ -26,7 +26,7 @@ export function generic<Scope>(s: Scope): Scope { return s }
 `
 const config = { compilerOptions: { ...baseOptions(), noEmit: true }, files: ["main.vibe", "local.vibe"] }
 
-for (const flags of [["--fix"], ["--fix", "--fix-migration-only"], ["--fix-vip-only", "--fix"]]) project(({ put, read, invoke }) => {
+for (const flags of [[]]) project(({ put, read, invoke }) => {
   put("tsconfig.json", config)
   put("main.vibe", legacy)
   put("local.vibe", local)

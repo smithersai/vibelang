@@ -15,7 +15,7 @@ const run=(bin,args,cwd)=>{
  return {status:r.status,text:(r.stdout??"")+(r.stderr??"")}
 }
 for(const form of ["error","schema error"]) {
- for(const flags of [[],["--fix-vip-only"],["--fix-migration-only"]]) {
+ for(const flags of [[]]) {
   const dir=path.join(root,form.replaceAll(" ","-")+"-"+flags.join("").replaceAll("-",""))
   fs.mkdirSync(dir)
   fs.writeFileSync(path.join(dir,"package.json"),'{"type":"module"}\n')
@@ -56,4 +56,4 @@ for(const form of ["error","schema error"]) {
  }
 }
 fs.rmSync(root,{recursive:true})
-console.log("inherited error migration retains tag matching, extraction and declarations; TypeScript twin passes")
+console.log("inherited error matching retains extraction and declarations; TypeScript twin passes")

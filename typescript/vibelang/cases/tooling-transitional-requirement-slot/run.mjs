@@ -14,7 +14,7 @@ const observe = `import { Effect } from "effect"
 import { main } from "./out/main.js"
 console.log(JSON.stringify(await Effect.runPromise(main())))
 `
-for (const scope of [["--fix"], ["--fix", "--fix-migration-only"]]) {
+for (const scope of [[]]) {
   project(({ put, read, invoke, run }) => {
     put("tsconfig.json", { compilerOptions: { ...baseOptions(), declaration: true }, include: ["main.vibe"] })
     put("main.vibe", source)

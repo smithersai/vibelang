@@ -10,8 +10,8 @@ const root = path.join(here, ".cache", "class-upgrades-" + process.pid)
 fs.mkdirSync(root, { recursive: true })
 const variants = [
   { name: "Gone", prefix: "", extras: "[]", expected: [], flags: [] },
-  { name: "Gone", prefix: "const $schemaErrorMatcher = 0; const $ErrorMatcher = 1; const $ErrorMatcher2 = 2;", extras: "[$schemaErrorMatcher, $ErrorMatcher, $ErrorMatcher2]", expected: [0, 1, 2], flags: ["--fix-migration-only"] },
-  { name: "GoneΩ", prefix: "", extras: "[]", expected: [], flags: ["--fix-vip-only"] },
+  { name: "Gone", prefix: "const $schemaErrorMatcher = 0; const $ErrorMatcher = 1; const $ErrorMatcher2 = 2;", extras: "[$schemaErrorMatcher, $ErrorMatcher, $ErrorMatcher2]", expected: [0, 1, 2], flags: [] },
+  { name: "GoneΩ", prefix: "", extras: "[]", expected: [], flags: [] },
   { name: "Gone", prefix: "", extras: "[]", expected: [], flags: [], extra: true }
 ]
 for (const [index, variant] of variants.entries()) {

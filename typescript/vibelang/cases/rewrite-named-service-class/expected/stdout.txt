@@ -1,1 +1,1 @@
-rewrite preserves named-service-class
+["BetterAuth.Database",7]

@@ -4,7 +4,7 @@ import assert from "node:assert/strict"
 import { project, baseOptions, diagnostics } from "../_tooling-witness.mjs"
 
 const options = { compilerOptions: { ...baseOptions(), declaration: true }, include: ["*.vibe"] }
-const scopes = [["--fix"], ["--fix", "--fix-migration-only"]]
+const scopes = [[]]
 const located = (text, code) => text.split("\n").filter(line => line.includes(" " + code + ":")).map(line => line.replace(/: .*$/, ""))
 
 // EK4854: the abstract-class spelling becomes a service with the same key and shape.
@@ -43,7 +43,7 @@ const exit = await Effect.runPromiseExit(m.needs())
 console.log(JSON.stringify({ load: m.madeAtLoad, first: m.report(), bumped: m.bump(), again: m.report(), typed: m.typed,
   exit: exit._tag, cause: Exit.isFailure(exit) ? Cause.pretty(exit.cause).split("\\n")[0] : null }))
 `
-for (const scope of [["--fix"]]) {
+for (const scope of [[]]) {
   project(({ put, read, invoke, run }) => {
     put("tsconfig.json", options)
     put("main.vibe", defaultSource)

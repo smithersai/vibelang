@@ -8,6 +8,7 @@ Specification: `docs/design/src/`. Process: CONTRIBUTING.md.
 
 - Work on one accepted issue. Add a test that fails without your change; compiler semantics get a case in `typescript/vibelang/cases/`.
 - Run `sh scripts/e2e.sh` for install, compiler, runtime or starter changes. Report exact results, including failures and checks you couldn't run.
+- VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
 - A file that says it is generated changes only through its source.
 - Match nearby code, format Go with gofmt, and don't reformat unrelated code.
 - Never put credentials or private user content in fixtures, logs or issues.
@@ -24,4 +25,4 @@ Work happens on `vibe`, and `main` is the productionized version. Treat `vibe` a
 
 `main` only moves forward, to green commits, and is never rewritten. Base new work on `vibe`. Build toolchains from `main` unless you need a commit that's only on `vibe`, and say so when you do.
 
-<sub>461 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>491 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

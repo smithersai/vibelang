@@ -22,9 +22,9 @@ for (const [variant, prefix, suffix, raw] of [
   ["suffix", "", "tag", "_"]
 ]) {
   for (const [mode, flags] of [
-    ["ordinary", ["--fix"]],
-    ["vip", ["--fix", "--fix-vip-only"]],
-    ["migration", ["--fix", "--fix-migration-only"]]
+    ["ordinary", []],
+    ["vip", []],
+    ["migration", []]
   ]) {
     const work = path.join(evidence, variant + "-" + mode)
     fs.mkdirSync(work, { recursive: true })

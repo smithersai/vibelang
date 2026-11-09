@@ -11,7 +11,7 @@ import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { encodeFrame, FrameDecoder } from "./lsp-framing.mjs"
 
-export async function compareRewrite(url, expected, { mode = "fix", present = [], absent = [], editorClass = "Bad" } = {}) {
+export async function compareRewrite(url, expected, { present = [], absent = [], editorClass = "Bad" } = {}) {
   const dir = path.dirname(fileURLToPath(url))
   assert.match(fs.readFileSync(fileURLToPath(url), "utf8"), /^\/\/ run-seconds: 180\b/m, "run.mjs must declare `// run-seconds: 180`: six stages of 30 s")
   const compiler = process.env.VIBELANG_REWRITE_BINARY || fileURLToPath(new URL("../built/local/tsc", import.meta.url))
@@ -36,15 +36,7 @@ export async function compareRewrite(url, expected, { mode = "fix", present = []
   command("compile-before", compiler, ["-p", ".", "--pretty", "false"])
   const before = command("run-before", process.execPath, ["out/main.js"])
   assert.equal(before, expected, "original behavior")
-  if (mode === "editor") {
-    fs.writeFileSync(source, await editorRewrite(compiler, work, source, original, editorClass))
-  } else if (mode === "format") {
-    // Exercise the actual process plugin with an import-sorting host. The
-    // minimal host obeys the plugin's per-request TypeScript overrides.
-    fs.writeFileSync(source, await formatRewrite(compiler, work, original))
-  } else {
-    command("fix", compiler, ["-p", ".", "--fix", "--pretty", "false"])
-  }
+  fs.writeFileSync(source, await editorRewrite(compiler, work, source, original, editorClass))
   const rewritten = fs.readFileSync(source, "utf8")
   fs.writeFileSync(path.join(work, "before.vibe.txt"), original)
   fs.writeFileSync(path.join(work, "after.vibe.txt"), rewritten)
@@ -53,13 +45,6 @@ export async function compareRewrite(url, expected, { mode = "fix", present = []
   assert.equal(after, before, "rewrite changed application output")
   for (const text of present) assert.ok(rewritten.includes(text), "rewrite lost " + text)
   for (const text of absent) assert.ok(!rewritten.includes(text), "rewrite left " + text)
-  if (mode === "format") {
-    assert.equal(await formatRewrite(compiler, work, rewritten), rewritten, "format is not idempotent")
-  } else {
-    const second = command("fix-again", compiler, ["-p", ".", "--fix", "--pretty", "false"])
-    assert.equal(fs.readFileSync(source, "utf8"), rewritten, "fix is not idempotent")
-    assert.match(second, /0 fixes in 0 files/, "second fix did work")
-  }
   process.stdout.write("rewrite preserves " + path.basename(dir).slice("rewrite-".length) + "\n")
 }
 
@@ -109,71 +94,3 @@ async function editorRewrite(compiler, cwd, file, source, className) {
   }
 }
 
-// dprint process-plugin protocol, with an intentionally sorting TypeScript
-// formatter. There are no VibeLang-only forms in this import-order fixture.
-async function formatRewrite(compiler, cwd, source) {
-  const child = spawn(compiler, ["--parent-pid", String(process.pid)], { cwd, stdio: ["pipe", "pipe", "pipe"] })
-  let buffer = Buffer.alloc(0)
-  let wake
-  const stderr = []
-  child.stderr.on("data", (chunk) => stderr.push(chunk))
-  child.stdout.on("data", (data) => { buffer = Buffer.concat([buffer, data]); wake?.() })
-  child.on("exit", () => wake?.())
-  const read = async (n) => {
-    while (buffer.length < n) {
-      if (child.exitCode !== null) throw new Error("formatter exited: " + Buffer.concat(stderr))
-      await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error("formatter protocol timeout")), 25_000)
-        wake = () => { clearTimeout(timer); wake = undefined; resolve() }
-      })
-    }
-    const value = buffer.subarray(0, n); buffer = buffer.subarray(n); return value
-  }
-  const num = (n) => { const b = Buffer.alloc(4); b.writeUInt32BE(n); return b }
-  const word = async () => (await read(4)).readUInt32BE()
-  const sized = (s) => { const b = Buffer.from(s); return Buffer.concat([num(b.length), b]) }
-  const text = async () => (await read(await word())).toString()
-  const success = Buffer.from([255,255,255,255])
-  const send = (...parts) => child.stdin.write(Buffer.concat(parts))
-  const transcript = []
-  try {
-    send(num(0))
-    assert.equal(await word(), 0)
-    assert.equal(await word(), 5)
-    send(num(1), num(7), num(1), sized("{}"), sized("{}"), success)
-    await word(); assert.equal(await word(), 0); assert.equal(await word(), 1)
-    assert.deepEqual(await read(4), success)
-    send(num(2), num(13), sized("main.vibe"), num(0), num(Buffer.byteLength(source)), num(1), sized("{}"), sized(source), success)
-    const hostID = await word()
-    assert.equal(await word(), 16)
-    assert.equal(await word(), 2)
-    await text() // host path
-    assert.equal(await word(), 0)
-    await word() // range end
-    const overrides = JSON.parse(await text())
-    const encoded = await text()
-    assert.deepEqual(await read(4), success)
-    transcript.push({ overrides, encoded })
-    let formatted = encoded
-    if (overrides["module.sortImportDeclarations"] !== "maintain") {
-      const lines = encoded.split("\n")
-      const imports = lines.filter((line) => line.startsWith("import "))
-      const sorted = [...imports].sort()
-      let i = 0
-      formatted = lines.map((line) => line.startsWith("import ") ? sorted[i++] : line).join("\n")
-    }
-    send(num(3), num(14), num(hostID), num(1), sized(formatted), success)
-    await word()
-    const kind = await word()
-    assert.equal(await word(), 2)
-    if (kind === 2) throw new Error(await text())
-    assert.equal(kind, 14)
-    const changed = await word()
-    const result = changed ? await text() : source
-    assert.deepEqual(await read(4), success)
-    return result
-  } finally {
-    fs.writeFileSync(path.join(cwd, "format-transcript.json"), JSON.stringify(transcript, null, 2))
-    child.kill()
-  }
-}
