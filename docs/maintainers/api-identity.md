@@ -84,7 +84,7 @@ that TypeScript selected, including their dependencies. Their module names stay
 in the proof because different ambient modules can share one declaration file.
 A missing module remains unresolved and cannot establish equivalent closures.
 A changed dependency
-invalidates that proof. Separate installations with the same package name and
+invalidates that proof. Compare both snapshots of a package against one dependency tree: a dependency on its sources on one side and its emitted headers on the other is a changed dependency, so the deferred exports that reach it are reported even when the package itself is unchanged. Separate installations with the same package name and
 version remain separate until proved equivalent. Peer-qualified pnpm store slots
 retain their installation context in ambient keys and dependency origins.
 Several peer variants of one package can coexist in a self-comparison without

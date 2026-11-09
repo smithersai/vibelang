@@ -1,0 +1,16 @@
+{
+  "source": "t3code provider-core against @t3tools/contracts, before on the dependency's sources and after on its emitted headers",
+  "consumer": "import type { Elem } from \"dep\";\nexport type Use<C> = Elem<C>;\nexport declare const read: <C>(c: C) => Elem<C>;\n",
+  "manifest": {
+    "name": "dep",
+    "version": "1.0.0",
+    "types": "index.d.ts"
+  },
+  "sourceManifest": {
+    "name": "dep",
+    "version": "1.0.0",
+    "types": "index.ts"
+  },
+  "declarations": "export type Elem<C> = C extends (infer I)[] ? I : never;\nexport declare const one: () => number;\n",
+  "sources": "export type Elem<C> = C extends (infer I)[] ? I : never;\nexport const one = (): number => 1;\n"
+}
