@@ -8752,6 +8752,11 @@ typescript/vibelang/cases/super-assignment-targets/child.vibe:55:11 lambda effec
 typescript/vibelang/cases/super-assignment-targets/child.vibe:55:52 lambda plain table
 typescript/vibelang/cases/super-assignment-targets/child.vibe:9:34 lambda plain table
 typescript/vibelang/cases/super-update-generator/counter.vibe:11:34 lambda plain table
+typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:16:13 lambda effectFn keyword
+typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:22:28 lambda choice fallback
+typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:26:10 lambda program keyword
+typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:35:10 lambda program keyword
+typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:38:10 lambda program keyword
 typescript/vibelang/cases/tagged-known-throws.fail/main.vibe:5:20 lambda plain fallback
 typescript/vibelang/cases/tagged-template-contexts.fail/main.vibe:11:18 lambda plain table
 typescript/vibelang/cases/tagged-template-runs/main.vibe:15:34 byname program table

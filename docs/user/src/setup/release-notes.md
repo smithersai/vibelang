@@ -17,6 +17,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A local matcher named `Function` could accept a non-boolean predicate or a value that was not callable. It now follows the same `EK0702` checks as other local matchers.
 
+- Migrating an `Effect.fn` generator with default arguments could capture stale values or reuse an object across program executions. Migration now refuses these defaults before rewriting them, so their execution-time bindings can be preserved.
+
 - V8 coverage could count generated `match` cleanup as an uncovered statement inside an Effect handler, despite every authored arm running. It now counts authored statements while keeping unvisited source code uncovered.
 
 - An esbuild bundle could create separate copies of a native module when a generated module map used an absolute import. Absolute and relative imports now share the same exports and state.

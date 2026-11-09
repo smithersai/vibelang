@@ -1,0 +1,6 @@
+{
+  "state": "export const make = Effect.fn(function* (value = state.value) { return value });",
+  "argument": "export const make = Effect.fn(function* (input: { branch: string }, value = input.branch) { return value });",
+  "allocation": "export const make = Effect.fnUntraced(function* (options: { seen?: number } = {}) { options.seen = (options.seen ?? 0) + 1; return options.seen; });",
+  "namespace": "import * as Root from \"effect\"; export const make = Root.Effect.fn(function* (value = state.value) { return value });"
+}

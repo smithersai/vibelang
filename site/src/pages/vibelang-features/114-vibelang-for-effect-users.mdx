@@ -254,6 +254,8 @@ Legacy `: infer _` annotations in plain callbacks checked as TypeScript by `Effe
 
 A bare `return` in an `Effect.fn` generator must satisfy its written `Effect.fn.Return<A>` success type. If it does not, `--fix` leaves the generator unchanged and reports the incompatible return; `void`, `undefined` and success types that include `undefined` remain eligible for conversion.
 
+Generator parameter defaults need separate treatment: `Effect.fn` evaluates them on every program execution, whereas native `effect` parameters bind at the call. The migration flow refuses these legacy generator defaults before an older compiler can move them. Keep execution-time bindings inside an `effect { … }` block, in their original order; see [Generator parameter bindings](/setup/migrating-retired-forms#generator-parameter-bindings).
+
 For `Effect.fn` generators with a written `Effect.fn.Return<A, E, R>` annotation and later pipeline stages, `--fix` keeps that annotation on the cold inner program. The stages keep their order and may change the final success or error type without changing the generator's return contract.
 
 When converting an Effect generator, `--fix` preserves a native constructor hidden by an implicit Effect namespace: `new Headers(input)` becomes `new globalThis.Headers(input)`. Local and imported constructors keep their bindings. This qualification does not permit host APIs in VibeLang: a banned constructor still reports `EK4402` and belongs in a TypeScript adapter. If a local `globalThis` prevents safe qualification, the generator stays unchanged.

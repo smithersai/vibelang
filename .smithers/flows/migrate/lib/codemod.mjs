@@ -16,6 +16,7 @@ import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { isFixtureFile, isTestFile } from "./inventory.mjs"
 import { isDeclarationFile, quote, run } from "./util.mjs"
 import { fixProgramFiles, withFixFiles } from "./fix-scope.mjs"
+import { effectFnDefaultSites } from "./default-argument-timing.mjs"
 import { fixProgressStream } from "./fix-progress.mjs"
 import { Minimatch } from "./vendor/minimatch.mjs"
 
@@ -207,7 +208,7 @@ export function sidecarPlanOf(root, dir) {
   const home = resolve(root, dir)
   const config = sidecarConfigIn(home)
   if (!config) return null
-  const ts = loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url))])
+  const ts = loadTypeScript([root, fileURLToPath(new URL("../../../", import.meta.url)), fileURLToPath(new URL("../../../../docs/tools/", import.meta.url))])
   const settings = sidecarSettings(config, ts, undefined, { sourceRootOnly: true })
   return settings ? {
     owner: posix.normalize(dir),
@@ -910,7 +911,22 @@ async function fixToFixedPointUnscoped(options) {
       writeFileSync(selectionFile, [...new Set(options.only.map(file => realpathSync(resolve(root, file))))].join("\n") + "\n")
       if (options.log) appendFileSync(`${options.log}.scope.log`, `# fix scope ${JSON.stringify({ stage: "selected", files: options.only.length, selected: options.only })}\n`)
     }
-    return await withFixFiles(files, () => fixToFixedPointInScope({ ...options, selectionFile }, files), options.log)
+    return await withFixFiles(files, () => {
+      const selected = options.only && new Set(options.only.map(file => realpathSync(resolve(snippetRoot, file))))
+      const candidates = files.filter(file => !selected || selected.has(realpathSync(file)))
+      // No parser dependency is needed for a program without legacy wrappers.
+      const sources = candidates.map(file => ({ file, text: readFileSync(file, "utf8") }))
+        .filter(({ text }) => /fn|effect/.test(text))
+      if (sources.length) {
+        const ts = loadTypeScript([snippetRoot, resolve(options.compiler ?? ".", ".."), fileURLToPath(new URL("../../../", import.meta.url)), fileURLToPath(new URL("../../../../docs/tools/", import.meta.url))])
+        const sites = sources.flatMap(({ file, text }) => effectFnDefaultSites(ts, text, relative(snippetRoot, file)))
+        if (sites.length) {
+          if (options.log) appendFileSync(options.log + ".scope.log", JSON.stringify({ stage: "default-argument-timing-refused", sites }) + "\n")
+          throw new Error(sites.map(site => site.file + ":" + site.line + ":" + site.column + ": Effect.fn parameter default must stay inside each program execution; retain the TypeScript module or move the binding inside an effect block before migration").join("\n"))
+        }
+      }
+      return fixToFixedPointInScope({ ...options, selectionFile }, files)
+    }, options.log)
   } finally {
     if (directory) rmSync(directory, { recursive: true, force: true })
     refreshSourceSnippets(snippetRoot, snippets, { ts: snippetTs })

@@ -28,6 +28,22 @@ A converted generator returned from an array's `map` callback remains a stored p
 
 ## Generator parameter bindings
 
+A default on an `Effect.fn` or `Effect.fnUntraced` generator runs each time the returned Effect executes. A native `effect` function instead binds defaults once when called, as an ordinary TypeScript function does. Moving a generator default onto an `effect` parameter can capture stale state or share an allocated object across executions. The migration flow refuses these generators before invoking an older compiler's `--fix`, with a file, line and column for each default. Retain the module as TypeScript, or preserve the binding inside a cold `effect { … }` block. Initialize dependent defaults in parameter order and test repeated executions as well as repeated calls.
+
+For example, `Effect.fn(function* (input, value = input.branch) { return value })` can be written with an optional argument and an execution-time binding:
+
+```vibe
+function read(input: { branch: string }, value?: string) {
+  return effect {
+    const resolved = value === undefined ? input.branch : value
+    return resolved
+  }
+}
+```
+
+An object default follows the same rule: allocate `{}` inside the block when the argument is `undefined`. Each execution then gets its own object. An explicit argument, including its identity, stays shared as in the original. Ordinary native `effect` parameters keep call-time initialization; they are suitable when the original plain factory bound its defaults before returning an Effect.
+
+
 An `Effect.fn` generator binds its parameters when its program runs. The
 converter keeps supported destructuring and pattern defaults inside that cold program,
 including repeated executions. A plain factory that binds its parameters

@@ -1175,3 +1175,5 @@ A bare filename held as data is not a source reference; rewriting it requires a 
 API comparison batches retain the nominal identities established by every published export path. A private declaration reached through a generated helper keeps the same identity when its public re-export falls in another batch. Batching still checks member mutations and distinct public aliases.
 
 Referenced declaration projects use separate bounded output and log identities, so `config/build.json` and `config__build.json` cannot overwrite each other's evidence. Verification rejects ambiguous legacy project snapshots with all conflicting config paths named and asks for a fresh setup. Single-project and unambiguous legacy snapshots remain readable.
+
+Before legacy compiler repairs, migration refuses `Effect.fn` and `Effect.fnUntraced` generator parameter defaults with located diagnostics. Those defaults belong to each program execution; native `effect` parameters bind at the call. Retain TypeScript or preserve the defaults inside a cold block before retrying.
