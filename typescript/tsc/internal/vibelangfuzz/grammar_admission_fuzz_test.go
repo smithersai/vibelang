@@ -347,6 +347,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"type-query-reserved-head", grammarTypeQueryReservedHeads[0]},
 	{"import-meta-callee-name", grammarImportMetaCalleeName},
 	{"retired-await-operation", grammarRetiredAwaitOperation},
+	{"unhomed-pattern-grammar-reserved-binding", grammarUnhomedPatternGaps[len(grammarUnhomedPatternGaps)-4]},
+	{"module-redeclared-body", grammarModuleRedeclaredWitness},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1398,6 +1400,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarUnhomedPatternGrammar(source, file) {
 		return "admission:unhomed-pattern-grammar"
+	}
+	if grammarModuleRedeclared(file) {
+		return "admission:module-redeclared-body"
 	}
 	if grammarPatternMemberLineBreak(source, forms) {
 		return "admission:pattern-member-line-break"

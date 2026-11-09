@@ -93,6 +93,7 @@ FuzzGrammarAdmission admission:unhomed-pattern-grammar compiler VIP-7: the pinne
 FuzzGrammarAdmission corpus:unhomed-pattern-grammar compiler VIP-7: `xs is [let first, ... => ...]` in a var-initialized for condition reports only `EK0107` and `EK4703`
 FuzzGrammarAdmission corpus:unhomed-pattern-grammar-rest-not-last compiler VIP-7: an element after the rest of a binding pattern in a var-initialized for condition reports only `EK0107` and `EK4703`
 FuzzGrammarAdmission corpus:unhomed-pattern-grammar-parameter compiler VIP-7: an element after the rest of a binding pattern in a parameter default reports only `EK0705`
+FuzzGrammarAdmission corpus:unhomed-pattern-grammar-reserved-binding compiler VIP-7: `xs is [let let, ...]` in a var-initialized for condition reports only `EK0107` and `EK4703`; the binder's `TS1214` for the reserved binding name is lost behind the placement marker
 FuzzGrammarAdmission admission:fiber-type-name compiler VIP-17 and Appendix A: a BindingIdentifier can't be `fork` or `join` in effect code; a type alias, interface, enum or type parameter with that name there compiles with no `EK1702`, where TypeScript rejects the `await` twins (`TS2457`, `TS2427`, `TS1003`, `TS1139`)
 FuzzGrammarAdmission corpus:fiber-type-name compiler VIP-17 and Appendix A: `type fork = 1` in an effect function compiles with no diagnostic
 FuzzGrammarAdmission corpus:fiber-type-name-enum compiler VIP-17 and Appendix A: `enum fork { }` in an effect function compiles with no diagnostic
@@ -108,3 +109,6 @@ FuzzGrammarAdmission corpus:declaration-decorators-export compiler Appendix A: E
 FuzzGrammarAdmission corpus:declaration-decorators-schema-error compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
 FuzzGrammarAdmission corpus:declaration-decorators-service compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
 FuzzGrammarAdmission corpus:effect-type-callback-trailing-bang compiler VIP-3 and Appendix A: a callback return type ending in A!E! omits the required final operand before its parameter boundary
+
+FuzzGrammarAdmission admission:module-redeclared-body compiler VIP-40 and Appendix A: a module declaration that redeclares a name of its file reports `EK4005` and its body is never compiled, so the body's native grammar errors (a doubled modifier, `TS1030`) are lost
+FuzzGrammarAdmission corpus:module-redeclared-body compiler VIP-40 and Appendix A: `module twice { export export const b = 2 }` after another `module twice` reports `EK4005` alone

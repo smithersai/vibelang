@@ -74,6 +74,27 @@ func grammarUnhomedPatternGrammar(source string, file *ast.SourceFile) bool {
 				return true
 			}
 		}
+		if grammarPatternReservedBinding(source[marker.pos:marker.end]) {
+			return true
+		}
+	}
+	return false
+}
+
+// grammarPatternReservedBinding reports a let or const binding in a pattern
+// whose name is a strict-mode reserved word (`xs is [let let, ...]`). The
+// binder, not the parser, rejects such a name (TS1214, with TS2480 for
+// `let`), so a homed copy carries no parser marker; behind the placement
+// marker the compiler reports EK4703 alone.
+func grammarPatternReservedBinding(pattern string) bool {
+	ts := grammarLexSource(pattern)
+	for i := 0; i+1 < len(ts); i++ {
+		if ts[i].kind == 'w' && (ts[i].text == "let" || ts[i].text == "const") && ts[i+1].kind == 'w' {
+			switch ts[i+1].text {
+			case "let", "static", "implements", "interface", "package", "private", "protected", "public", "yield":
+				return true
+			}
+		}
 	}
 	return false
 }
@@ -98,6 +119,12 @@ var grammarUnhomedPatternGaps = []string{
 	"export default xs is [let first, ..., 1];",
 	"const b = match (xs is [let first, ..., 1]) { default: 0; };",
 	"effect function f(xs) { return xs is [let first, ..., 1] catch () => 1 }",
+	// A strict-mode reserved word as a binding name: the binder's TS1214,
+	// which the placement marker hides.
+	"for ( var i\n= 0 ; xs is [ let let , ... ] ; i ++ ) { }",
+	"for (var i = 0; xs is [let static]; i++) {}",
+	"for (var i = 0; xs is { a: const yield }; i++) {}",
+	"function g(a = xs is [let let]) {}",
 }
 
 func TestGrammarAdmissionUnhomedPatternKeys(t *testing.T) {
@@ -127,6 +154,9 @@ func TestGrammarAdmissionUnhomedPatternKeys(t *testing.T) {
 		"const b = match (y) { when [let first, ..., 1]: 1; default: 0; };",
 		// No binding, so no marker.
 		"for (var i = 0; xs is [1, ..., 1]; i++) {}",
+		// A reserved word as a property name or a literal is not a binding.
+		"for (var i = 0; xs is { let: 1 }; i++) {}",
+		"for (var i = 0; xs is [let first, \"let\"]; i++) {}",
 		// Text that only spells the form.
 		"const s = 'for (var i = 0; xs is [let first, ..., 1]; i++) {}';",
 		"$patternError(4703); if ($patternError(707)) {}",

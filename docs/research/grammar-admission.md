@@ -932,6 +932,18 @@ inventory's `admission:legacy-await` hooks) to report `EK1802` and drive
 `--fix`; the form has no production, so `EK1802` now counts as syntax
 rejection, as the retired declaration codes `EK0909` and `EK2121` do.
 
+Two more campaign shapes followed. `xs is [let let, ...]` behind a
+placement marker: the binder, not the parser, rejects a strict-mode reserved
+word as a binding name (`TS1214`, with `TS2480` for `let`), so the homed copy
+the `admission:unhomed-pattern-grammar` classifier compiles carries no parser
+marker; the classifier now also reads the marked pattern's own tokens for a
+`let` or `const` followed by such a word. And `module twice { export export
+const b = 2 }` after another `module twice`: alone the body reports `TS1030`,
+but a module that redeclares a name reports `EK4005` and its body is never
+compiled, so the body's native grammar errors are lost. That compiler gap is
+keyed `admission:module-redeclared-body`, with its registry row on
+`Parser.parseVibeLangModuleDeclaration`, until the compiler checks the body.
+
 One gap the probes found was outside what the lab can show. TypeScript parses
 a lexical declaration as a loop body for recovery and rejects it with
 `TS1156`, and the lab derives that recovery, so `if (c) const y = 1;` reads

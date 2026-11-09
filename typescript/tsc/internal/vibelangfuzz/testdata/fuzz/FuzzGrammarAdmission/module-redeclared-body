@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:module-redeclared-body\nmodule twice { export const a = 1 }\nmodule twice { export export const b = 2 }")
