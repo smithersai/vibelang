@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `this` parameter in an imported function could shift `@rethrows` checks onto the wrong callback. Callback checks now follow the function’s runtime argument positions.
 
+- The TypeScript interop guide did not explain how to keep predicate narrowing in effect code. It now shows a direct call to a `.ts` predicate declared `@throws {never}`.
+
 - The migration's API identity check reported a new entry, such as `./scripts/helper.d.vibe.ts`, for a native helper inside a package but outside its `rootDir`, so the converted helper never compared identical with its TypeScript original. The helper now counts through the package modules that re-export it, as the TypeScript helper does, and a changed type is still reported.
 
 - A `try` before a `match` expression, a parenthesized `do` block, `try.race` or `try.any` could leave the Effect it gives unrun, and `try try do { … }` ran one layer too few. Each `try` now runs the value the form gives, and reports `EK0502` when that value is not an Effect.
@@ -78,7 +80,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `tsdown` or Rolldown declaration build could report missing interface exports from an imported native module. The plugin now supplies the module’s declarations to the type graph, preserving its type exports and runtime JavaScript.
 
-- The migration's API identity check could not finish comparing a package that lists a helper above its own directory, such as `../scripts/lib/helper.vibe`, when that helper keeps its code in a `module` body: it reported `TS2307` for the body's generated `helper.vibe.platform.js` and a missing export for each function the helper re-exports. A native helper there, with or without a body, was also reported as a new entry point of a package without `exports`. The check now keeps the body's generated declaration with the helper and reads the helper only through the package modules that re-export it, so such a helper compares identical to the TypeScript file it replaced; a changed type or a function the helper stops exporting still differs.
+- The migration's API identity check could not finish comparing a package that lists a helper above its own directory, such as `../scripts/lib/helper.vibe`, when that helper keeps its code in a `module` body: it reported `TS2307` for the body's generated `helper.vibe.platform.js` and a missing export for each function the helper re-exports. A native helper there, with or without a body, was also reported as a new entry point of a package without `exports`. The check now keeps the body's generated declaration with the helper and reads the helper only through the package modules that re-export it, so such a helper compares identical to the TypeScript file it replaced; a changed type or a function the helper stops exporting still differs. A TypeScript helper above the package that no package module re-exports now also compares identical when its type changes and no `outDir` is set, because API identity checks the package’s exports.
 - Linting a migrated file could reject a type assertion despite its preceding `SAFETY:` comment. Oxlint JS plugin rules now receive the source offsets needed to recognize that comment.
 
 - Formatting with locally installed compiler tarballs could fail because their version was not yet on npm. The formatter now uses the installed native compiler without changing its package files.

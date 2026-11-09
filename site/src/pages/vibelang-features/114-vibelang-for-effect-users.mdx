@@ -157,6 +157,28 @@ A library’s composite consumers also read its TypeScript `module` body declara
 
 For non-effectful foreign calls, `@throws {never}` permits a direct call. Other written bounds require `try Effect.try(() => call())` (`EK0403`), including through aliases and the selected overload. A callable returning an `Effect`, `Stream` or `Layer` is effectful: call it directly, regardless of `@throws`. Run an Effect result with `try`; bridging its factory with `Effect.try` returns the cold program instead of its success value. For calls that previously converted listed exception classes into typed failures, write an explicit bridge that preserves those failures and leaves other exceptions as defects.
 
+A `.ts` type predicate declared `@throws {never}` keeps TypeScript’s narrowing when called directly from an `effect` function or block:
+
+```ts
+// predicates.ts
+/** @throws {never} */
+export function isNumber(value: unknown): value is number {
+  return typeof value === "number"
+}
+```
+
+```vibe
+// increment.vibe
+import { isNumber } from "./predicates.ts"
+
+export effect function incrementIfNumber(value: unknown): number!! {
+  if (isNumber(value)) return value + 1
+  return 0
+}
+```
+
+Inside the `if` branch, `value` is a `number`, so `value + 1` is checked with that narrowed type.
+
 When upgrading existing `.vibe` modules from the former readonly defaults, make unmarked schema fields and service shape properties explicitly `readonly` and preserve legacy nested service types. Error and data fields remain shallow readonly properties; write the old nested payload modifiers explicitly to retain published declarations. Ordinary classes, interfaces and object types retain their written modifiers.
 
 ### Keep a throwing helper in a TypeScript body
