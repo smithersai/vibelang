@@ -47,6 +47,8 @@ For a custom compiler, set `VIBELANG_BINARY` to its native executable. Selecting
 
 Imports between `.vibe` modules preserve Unicode, spaces and literal `%` in file names through bundler builds. Use the original source name in the import. Literal JavaScript import names retain TypeScript's filename meaning. Importing `./créé.vibe` and `./cr%C3%A9%C3%A9.js` in the same module keeps the source and literal JavaScript file distinct.
 
+A `.vibe` module's compiled JavaScript imports a TypeScript module by its emitted name, such as `./dep.js` for `./dep.ts`. With Rollup, Rolldown, Vite, esbuild, webpack and Rspack, plugins placed after `vibelang-unplugin` resolve the name the module wrote, such as `./dep.ts`, `./dep.tsx` or `./dep.mts`, as they do for a `.ts` importer, so a plugin that externalizes or replaces `./dep.ts` keeps working when its importer becomes `.vibe`. Bun plugins cannot pass a resolution on, so Bun's later plugins still see `./dep.js`.
+
 For programmatic Rolldown builds, `vibelang-unplugin/rolldown` uses
 Rolldown's `cwd` as its default compiler root. A plugin `project` path is
 relative to that root. An explicit plugin `root` can select a different

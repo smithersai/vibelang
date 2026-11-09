@@ -1,0 +1,9 @@
+{
+  "property": "later-plugin-native-imports",
+  "key": "bun-later-plugin-emitted-name",
+  "rule": "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "input": { "bundler": "bun", "extension": ".ts", "name": "dep", "layout": "sibling", "form": "import", "later": "virtual" },
+  "knownFailure": true,
+  "errorPattern": "'\\./dep\\.js'",
+  "reason": "A Bun plugin after VibeLang's sees ./dep.js where the .ts twin shows ./dep.ts. Bun's onResolve cannot pass a resolution on to later plugins, and the served module keeps the compiler's emitted names, so no resolver change reaches them."
+}

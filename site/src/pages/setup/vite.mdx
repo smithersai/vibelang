@@ -13,7 +13,7 @@ The project must provide Vite 7 or 8. Yarn does not install that peer automatica
 
 The recording uses a live published-package project: it introduces a type error, displays the compiler diagnostic and recovers after an edit. Displayed paths are relative to the project.
 
-Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning. Source diagnostics retain their excerpts without appending compiler file-list output.
+Unicode file names and diagnostic text are preserved, including in large compiler output. Imports between `.vibe` modules also preserve Unicode, spaces and literal `%` in file names. Literal JavaScript import names retain TypeScript's filename meaning. Plugins that run before Vite's resolver see a `.vibe` module's imports of TypeScript files under the names it wrote, such as `./dep.ts`, as they do for a `.ts` importer. Source diagnostics retain their excerpts without appending compiler file-list output.
 
 Creating a missing source file clears the development error overlay and updates its importers. Deleting an imported source reports the compiler error, and restoring it recovers without restarting the server.
 

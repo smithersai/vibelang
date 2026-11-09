@@ -156,6 +156,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - V8 coverage could count generated `match` cleanup as an uncovered statement inside an Effect handler, despite every authored arm running. It now counts authored statements while keeping unvisited source code uncovered.
 
 - An esbuild bundle could create separate copies of a native module when a generated module map used an absolute import. Absolute and relative imports now share the same exports and state.
+- A bundler plugin placed after VibeLang's could not see a `.vibe` module's `./dep.ts` import under that name: Rollup and Rolldown hid it, and esbuild, webpack, Rspack and Vite showed `./dep.js` or an absolute path, so a plugin that externalized or replaced `./dep.ts` skipped the module. A `./dep.mts` import failed to resolve under Rollup and Rspack. With those bundlers, later plugins now resolve the import as written, as they do for a `.ts` module, and `.mts` imports resolve. Bun's later plugins still see `./dep.js`.
 
 - Lint rules against runtime `typeof` could report checks generated for a record or extractor pattern. They now report only `typeof` operators written in the source.
 

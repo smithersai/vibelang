@@ -325,10 +325,22 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     return work
   }
 
+  // The names compiled modules wrote for TypeScript modules they emit as .js:
+  // file -> Map(./dep.js -> ./dep.ts). Filled as each module loads.
+  const writtenNames = new Map()
+  function writtenImport(source, importer) {
+    if (!importer || !source.startsWith(".")) return
+    const original = cleanId(source)
+    const written = writtenNames.get(cleanId(importer))?.get(original)
+    return written === undefined ? undefined : written + source.slice(original.length)
+  }
+
   async function loadModule(id) {
     const file = cleanId(id)
     const compiled = await (await loaded()).load(file)
     const result = relativeOutput(compiled, file, backend, compilerPath, debug)
+    if (result.writtenImports?.size) writtenNames.set(file, result.writtenImports)
+    else writtenNames.delete(file)
     debug(`load ${file} from ${result.project}`)
     const missing = missingRelativeInputs(result.errors)
     if (missing.length) debug(`watch missing relative inputs: ${missing.join(", ")}`)
@@ -401,6 +413,20 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     for (const extension of sources) if (existsSync(stem + extension)) return stem + extension + query
   }
 
+  // webpack and Rspack resolve each request through every resolver plugin, so
+  // the written name replaces the emitted one before resolution starts. A
+  // module declaration's output is not on disk and keeps the emitted name.
+  function writtenRequests(compiler) {
+    compiler.hooks.normalModuleFactory.tap("vibelang-written-imports", (factory) => {
+      factory.hooks.beforeResolve.tap("vibelang-written-imports", (data) => {
+        const issuer = data.contextInfo?.issuer
+        if (!issuer || !isVibeLangFile(cleanId(issuer)) || !existsSync(cleanId(issuer))) return
+        const written = writtenImport(data.request, issuer)
+        if (written !== undefined) data.request = written
+      })
+    })
+  }
+
   let missingWatcher, watchClosed = false, buildNumber = 0
   return {
     name: "vibelang",
@@ -438,7 +464,13 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     // import once a plugin's onLoad matches every file, even when the hooks
     // return nothing. unplugin's Bun adapter registers both for every path, so
     // under Bun the plugin registers its own hooks, filtered to what it serves.
-    resolveId: meta.framework === "bun" ? undefined : resolveId,
+    resolveId: meta.framework === "bun" ? undefined : function (source, importer, options) {
+      // Plugins after this one see a compiled module's written TypeScript
+      // import, ./dep.ts rather than its emitted ./dep.js, as for a .ts twin.
+      const written = ["rollup", "rolldown", "vite"].includes(meta.framework) ? writtenImport(source, importer) : undefined
+      if (written === undefined) return resolveId(source, importer)
+      return this.resolve(written, importer, { ...options, skipSelf: true }).then(resolved => resolved ?? resolveId(source, importer))
+    },
     loadInclude: meta.framework === "bun" ? undefined : id => declarations?.has(cleanId(id)) || isCompiled(id),
     load: meta.framework === "bun" ? undefined : async function load(id) {
       if (declarations?.has(cleanId(id))) {
@@ -530,6 +562,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     vite: { config: sourceConditionConfig, configResolved(config) { viteCommand = config.command; configure(config.root) } },
     webpack(compiler) {
       configure(compiler.context)
+      writtenRequests(compiler)
       compiler.options.resolve ??= {}
       compiler.options.resolve.conditionNames = sourceConditions(compiler.options.resolve.conditionNames ?? ["..."])
       compiler.hooks.shutdown.tapPromise("vibelang-backend", close)
@@ -544,6 +577,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     },
     rspack(compiler) {
       configure(compiler.context)
+      writtenRequests(compiler)
       compiler.options.resolve ??= {}
       compiler.options.resolve.conditionNames = sourceConditions(compiler.options.resolve.conditionNames ?? ["..."])
       compiler.hooks.shutdown.tapPromise("vibelang-backend", close)
@@ -560,7 +594,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       onResolveFilter: /a^/,
       setup(build) {
         build.onDispose?.(close)
-        build.onResolve({ filter: /^\.\.?(?:\/|$)|\.vibex?(?:\?.*)?$/ }, (args) => {
+        build.onResolve({ filter: /^\.\.?(?:\/|$)|\.vibex?(?:\?.*)?$/ }, async (args) => {
           // Generated module maps can import a source by absolute path.
           // Give it the same namespace as relative imports so it runs once.
           const absolute = cleanId(args.path)
@@ -568,6 +602,14 @@ export const unplugin = createUnplugin((options = {}, meta) => {
             ? resolve(absolute) + args.path.slice(absolute.length)
             : resolveFrom(args.path, args.kind === "entry-point" ? undefined : args.importer, args.resolveDir)
           if (id === undefined) {
+            // Plugins after this one see the written TypeScript import, as for a .ts twin.
+            const written = args.kind === "entry-point" ? undefined : writtenImport(args.path, args.importer)
+            if (written !== undefined) {
+              const resolved = await build.resolve(written, {
+                importer: args.importer, resolveDir: args.resolveDir, kind: args.kind, namespace: "file", pluginData: args.pluginData, with: args.with
+              })
+              if (!resolved.errors.length) return resolved
+            }
             const path = outputPath(args.path, args.importer, writtenOutput)
             if (path !== args.path) return build.resolve(path, {
               importer: args.importer, resolveDir: args.resolveDir, kind: args.kind, namespace: "file"

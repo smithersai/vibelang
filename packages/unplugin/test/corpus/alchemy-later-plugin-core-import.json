@@ -1,0 +1,5 @@
+{
+  "key": "alchemy-later-plugin-core-import",
+  "input": { "bundler": "rolldown", "extension": ".ts", "name": "Assets", "layout": "parent", "form": "import", "later": "external" },
+  "reason": "A Vite asset module converted to .vibe imports a core module by its .ts name; a later Rolldown plugin that externalizes core modules must see that import as it does for the .ts original."
+}

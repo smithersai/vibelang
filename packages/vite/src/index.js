@@ -306,10 +306,16 @@ export default function vibelang(options = {}) {
     }
   }
 
+  // The names compiled modules wrote for TypeScript modules they emit as .js:
+  // file -> Map(./dep.js -> ./dep.ts). Filled as each module loads.
+  const writtenNames = new Map()
   async function loadModule(file) {
     const result = await (await loaded()).load(file)
     rememberContracts(result)
-    return relativeOutput(result, file, backend, () => backend.findCompiler(root, options.compiler), debug)
+    const output = relativeOutput(result, file, backend, () => backend.findCompiler(root, options.compiler), debug)
+    if (output.writtenImports?.size) writtenNames.set(file, output.writtenImports)
+    else writtenNames.delete(file)
+    return output
   }
 
   function diagnostics(errors, file) {
@@ -465,24 +471,31 @@ export default function vibelang(options = {}) {
         })
         return
       }
-      const vibe = extensionlessVibe(dirname(cleanId(importer)), file)
-      if (vibe !== undefined) return serve(vibe)
-      // Emitted imports keep the original source in Vite's module graph.
-      if (!/\.jsx?$/.test(file)) return
-      const target = resolve(dirname(cleanId(importer)), file)
-      if (existsSync(target)) {
-        if (isCompiled(cleanId(importer)) && /%[\da-f]{2}/i.test(original)) {
-          debug(`relative existing file: original=${original}, selected=${file}, target=${target}`)
+      const relative = () => {
+        const vibe = extensionlessVibe(dirname(cleanId(importer)), file)
+        if (vibe !== undefined) return serve(vibe)
+        // Emitted imports keep the original source in Vite's module graph.
+        if (!/\.jsx?$/.test(file)) return
+        const target = resolve(dirname(cleanId(importer)), file)
+        if (existsSync(target)) {
+          if (isCompiled(cleanId(importer)) && /%[\da-f]{2}/i.test(original)) {
+            debug(`relative existing file: original=${original}, selected=${file}, target=${target}`)
+          }
+          return file !== original ? this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true }) : undefined
         }
-        return file !== original ? this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true }) : undefined
+        if (isModuleOutput(target)) return slash(target) + query
+        const stem = target.replace(/\.jsx?$/, "")
+        for (const extension of file.endsWith(".jsx") ? [".vibex"] : [".vibe", ".vibex"]) {
+          const source = stem + extension
+          if (existsSync(source)) return serve(source)
+        }
+        if (file !== original) return this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true })
       }
-      if (isModuleOutput(target)) return slash(target) + query
-      const stem = target.replace(/\.jsx?$/, "")
-      for (const extension of file.endsWith(".jsx") ? [".vibex"] : [".vibe", ".vibex"]) {
-        const source = stem + extension
-        if (existsSync(source)) return serve(source)
-      }
-      if (file !== original) return this.resolve(file + query, importer, { ...resolveOptions, skipSelf: true })
+      // Plugins after this one see a compiled module's written TypeScript
+      // import, ./dep.ts rather than its emitted ./dep.js, as for a .ts twin.
+      const written = writtenNames.get(sourceFile(cleanId(importer)))?.get(original)
+      if (written === undefined || !this.resolve) return relative()
+      return this.resolve(written + query, importer, { ...resolveOptions, skipSelf: true }).then(resolved => resolved ?? relative())
     },
     // Source modules and module declarations share the owning project compile.
     async load(id) {

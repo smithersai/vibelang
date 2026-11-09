@@ -14,6 +14,17 @@ function needsOriginalImports(code, file) {
   }
   return false
 }
+// The TypeScript sources a missing JavaScript output name can stand for.
+const nativeSources = { ".js": [".ts", ".tsx"], ".jsx": [".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] }
+const nativeSuffix = /\.(?:[cm]?ts|tsx)$/
+function importsNativeSource(code, file) {
+  for (const match of code.matchAll(relativeOutputs)) {
+    const target = resolve(dirname(file), match[1])
+    const extension = outputSuffix.exec(target)[0]
+    if (!existsSync(target) && nativeSources[extension].some(source => existsSync(target.slice(0, -extension.length) + source))) return true
+  }
+  return false
+}
 const cache = new WeakMap()
 
 function lineStarts(text) {
@@ -61,9 +72,14 @@ function moduleSource(node) {
 // identical. Restore each source import from its mapped original syntax before
 // the bundler resolves it. Ordinary strings and authored .js imports keep their
 // exact meaning; composing the edits retains the original source positions.
+// Otherwise the output stays the compiler's, and writtenImports maps each
+// emitted name of a TypeScript module to the name the source wrote, such as
+// ./dep.js to ./dep.ts, for the plugins that resolve after this one.
 export function relativeOutput(result, file, backend, compiler, debug) {
   const { code, map } = result
-  if (result.errors?.length || !map?.sourcesContent || !needsOriginalImports(code, file)) return result
+  if (result.errors?.length || !map?.sourcesContent) return result
+  const restore = needsOriginalImports(code, file)
+  if (!restore && !importsNativeSource(code, file)) return result
   const previous = cache.get(map)
   if (previous?.code === code) return { ...result, ...previous.output }
 
@@ -86,6 +102,7 @@ export function relativeOutput(result, file, backend, compiler, debug) {
   const ast = parse(code, file + ".vibex")
   const sourceMap = new SourceMap(map), lines = lineStarts(code), originals = new Map(), edits = new MagicString(code)
   let count = 0
+  const writtenImports = new Map()
   for (const node of nodes(ast)) {
     const source = moduleSource(node), emitted = stringValue(source)
     if (typeof emitted !== "string" || !/^\.\.?\//.test(emitted) || !outputSuffix.test(emitted)) continue
@@ -102,6 +119,10 @@ export function relativeOutput(result, file, backend, compiler, debug) {
     const literal = original.nodes.find(candidate => candidate.range && stringValue(candidate) !== undefined && candidate.range[0] <= offset && candidate.range[1] > offset)
     const written = stringValue(literal)
     if (typeof written !== "string" || written === emitted || !/^\.\.?\//.test(written) || !sourceSuffix.test(written)) continue
+    if (!restore) {
+      if (nativeSuffix.test(written)) writtenImports.set(emitted, written)
+      continue
+    }
     edits.overwrite(source.range[0], source.range[1], text.slice(...literal.range))
     count++
   }
@@ -109,7 +130,11 @@ export function relativeOutput(result, file, backend, compiler, debug) {
     code: edits.toString(),
     map: remapping([edits.generateMap({ file, source: file, includeContent: true, hires: true }), map], () => null)
   } : { code, map }
-  debug(`imports restored: ${file}; count=${count}`)
+  if (restore) debug(`imports restored: ${file}; count=${count}`)
+  else {
+    output.writtenImports = writtenImports
+    debug(`imports written: ${file}; ${writtenImports.size} TypeScript names`)
+  }
   cache.set(map, { code, output })
   return { ...result, ...output }
 }
