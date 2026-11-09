@@ -191,6 +191,9 @@ func (p *Parser) forkBraceIsObjectOperand() bool {
 func (p *Parser) parseVibeLangFork() *ast.Node {
 	pos := p.nodePos()
 	keyword := p.tokenRange()
+	if p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape() {
+		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
+	}
 	callee := p.parseIdentifier()
 	callee.Flags |= ast.NodeFlagsVibeLangIntrinsic
 	if !p.vibelangFiberContext {
@@ -251,6 +254,9 @@ func (p *Parser) nextTokenStartsLegacyJoinOperand() bool {
 func (p *Parser) parseVibeLangJoin() *ast.Node {
 	pos := p.nodePos()
 	anchor := p.tokenRange()
+	if p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape() {
+		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
+	}
 	p.nextToken() // join
 	operand := p.parseSimpleUnaryExpression()
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: anchor, Range: core.NewTextRange(anchor.Pos(), operand.End())})

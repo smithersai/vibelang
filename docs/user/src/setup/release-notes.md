@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Escaped `fork` and `join` operator keywords could compile without an error. They now report `TS1260`, while ordinary escaped names keep their TypeScript meaning.
+
 - Passing a throwing callback to a tagged template could bypass its parameter’s throw contract. Tagged substitutions now enforce the same callback checks as an ordinary call.
 
 - The editor's missing-name import fix could write `./dep.vibe` or `./dep.vibex` in a project without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`, so applying it produced `TS5097`. The fix now writes the same module path as a `.ts` or `.tsx` file would get, such as `./dep.js`, and keeps the VibeLang suffix only where those options allow it.

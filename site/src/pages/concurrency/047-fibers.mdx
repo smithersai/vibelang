@@ -15,6 +15,8 @@ The reservation also covers constructor and base-class references: `new join.C()
 
 Pattern references follow the same rule: `value is join`, `when fork.C:` and `value is instanceof join.C` report `EK1702` in effect code. Use an import alias or another binding name; property names such as `value is tools.join` remain valid.
 
+The `fork` and `join` operator keywords must be written literally. A Unicode escape in either keyword reports `TS1260`, as for TypeScript's `await`. Ordinary names in plain code, and property names in any context, may still contain escapes.
+
 ## Forking and awaiting
 
 ```vibe

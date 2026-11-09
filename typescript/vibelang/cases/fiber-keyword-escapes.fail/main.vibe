@@ -1,0 +1,8 @@
+// expect: TS1260 TS1260 TS1260 TS1260 TS1260
+export const f\u006frk = 1
+export const j\u006fin = 2
+export effect function start(e: any) { return f\u006frk e }
+export effect function scoped(e: any) { return \u{66}ork.scoped e }
+export effect function detached(e: any) { return fo\u0072k.detached e }
+export effect function owned(e: any, scope: any) { return f\u{6f}rk.in(scope) e }
+export effect function wait(e: any) { return joi\u006e e }
