@@ -1,0 +1,11 @@
+// expect: EK1901 EK1901 EK1901 EK1901
+// The item of a rejected operand has the error type: no error is derived
+// from it in the head pattern or the body, as in a TypeScript for...of.
+declare const value: unknown
+declare const maybe: number[][] | undefined
+declare const probe: unknown
+
+export effect function arrayPattern() { for concurrent (const [item = 0] of value) { void item } }
+export effect function objectPattern() { for concurrent (const { length } of maybe) { void length } }
+export effect function bodyDestructure() { for concurrent (const item of value) { const [z] = item; void z } }
+export effect function isHead() { for concurrent (const [item = (probe is [let first]) ? first : 0] of maybe) { void item } }

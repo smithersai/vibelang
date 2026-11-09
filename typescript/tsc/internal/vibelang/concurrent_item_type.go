@@ -43,6 +43,10 @@ func concurrentItemType(c *checker.Checker, node *ast.Node, fallback *checker.Ty
 		if element := c.IteratedType(iterated); element != nil {
 			return element
 		}
+		// The operand is not an Iterable, which EK1901 reports. TypeScript gives
+		// the element of such a for...of the error type, so the head pattern and
+		// the body add no error derived from an unknown item.
+		return c.GetErrorType()
 	}
 	return fallback
 }

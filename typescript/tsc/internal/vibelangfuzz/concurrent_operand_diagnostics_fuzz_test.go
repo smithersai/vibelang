@@ -16,6 +16,18 @@ func TestConcurrentOperandQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("002-running.md"), concurrentOperandQuote) {
 		t.Fatalf("stale concurrent operand quote: %s", concurrentOperandQuote)
 	}
+	chapterSays(t, "007-tooling.md", "Native lexical, syntax and static errors keep their \x60TS\x60 codes, as in TypeScript")
+}
+
+// A rejected operand reports EK1901 once. TypeScript gives the element of a
+// for...of over a rejected operand the error type, so a head pattern or a
+// body read of the item adds no error (chapter 7: native static errors are
+// as in TypeScript). The second byte after the key selects the head shape.
+var concurrentOperandHeads = []struct{ head, body string }{
+	{"const item", ""},
+	{"const [item = 0]", "void item"},
+	{"const { length }", "void length"},
+	{"const item", "const [z] = item; void z"},
 }
 
 func FuzzConcurrentOperandDiagnostics(f *testing.F) {
@@ -51,6 +63,11 @@ func FuzzConcurrentOperandDiagnostics(f *testing.F) {
 	for _, rule := range rules {
 		f.Add(rule.key)
 		f.Add(rule.key + ":2")
+		if !rule.allowed {
+			for shape := 1; shape < len(concurrentOperandHeads); shape++ {
+				f.Add(fmt.Sprintf("%s:0%d", rule.key, shape))
+			}
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string) {
@@ -73,7 +90,11 @@ func FuzzConcurrentOperandDiagnostics(f *testing.F) {
 		}
 		rule := rules[index]
 		operand := strings.Repeat("(", depth) + "input" + strings.Repeat(")", depth)
-		source := fmt.Sprintf("import { Stream } from \"effect\"\nexport effect function probe(input: %s) { for concurrent (const item of %s) { } }", rule.typ, operand)
+		shape := concurrentOperandHeads[0]
+		if len(tail) > 1 && !rule.allowed {
+			shape = concurrentOperandHeads[int(tail[1])%len(concurrentOperandHeads)]
+		}
+		source := fmt.Sprintf("import { Stream } from \"effect\"\nexport effect function probe(input: %s) { for concurrent (%s of %s) { %s } }", rule.typ, shape.head, operand, shape.body)
 		r, err := w.Compile(t.Context(), Single(source))
 		if err != nil {
 			t.Fatal(err)
@@ -95,7 +116,7 @@ func FuzzConcurrentOperandDiagnostics(f *testing.F) {
 			Gap(t, concurrentOperandTarget, "compile:"+rule.key, "%s; a valid Iterable must compile\n%s\n%v", concurrentOperandQuote, source, Keys(r.Dir, r.Diagnostics))
 		}
 		if !rule.allowed && (!hasOperandError || errorCount != 1) {
-			Gap(t, concurrentOperandTarget, rule.key, "%s; expected exactly one EK1901\n%s\n%v", concurrentOperandQuote, source, Keys(r.Dir, r.Diagnostics))
+			Gap(t, concurrentOperandTarget, rule.key, "%s; expected exactly one EK1901, and no error derived from the item, as in TypeScript\n%s\n%v", concurrentOperandQuote, source, Keys(r.Dir, r.Diagnostics))
 		}
 		ExpectPending(t, concurrentOperandTarget, "classification:"+rule.key)
 		ExpectPending(t, concurrentOperandTarget, "compile:"+rule.key)
