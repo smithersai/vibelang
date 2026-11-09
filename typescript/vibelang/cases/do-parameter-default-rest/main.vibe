@@ -1,0 +1,31 @@
+// expect-result: [0,0,["default","producer-default"],[2,3,1],[2,3,1,1],9,[7,6],[[4,5,1]],[[4,5,1,1]],[],["default","producer-default","body:true","body:true","default","body:true","producer-body","producer-body","producer-default"]]
+// VIP-2: returning defaults precede a rest binding. Closures and repeated
+// Effect or Stream execution share the rest array created for that call.
+import { Stream } from "effect"
+const log: string[] = []
+
+effect function f(read: () => number[] = () => rest, stop = false, a: number = do { log.push("default"); if (stop) return 9; 1 }, ...rest: number[]) {
+  rest = [...rest, a]
+  log.push("body:" + (read() === rest))
+  return rest.slice()
+}
+
+effect function* p(stop = false, a: number = do { log.push("producer-default"); if (stop) return; 1 }, ...rest: number[]) {
+  log.push("producer-body")
+  rest.push(a)
+  yield rest.slice()
+}
+
+export effect function main() {
+  const built = f(undefined, false, undefined, 2, 3)
+  const stream = p(false, undefined, 4, 5)
+  const before = log.slice()
+  const first = try built
+  const second = try built
+  const early = try f(undefined, true, undefined, 8)
+  const supplied = try f(undefined, false, 6, 7)
+  const streamFirst = try Stream.runCollect(stream)
+  const streamSecond = try Stream.runCollect(stream)
+  const streamEarly = try Stream.runCollect(p(true, undefined, 8))
+  return [f.length, p.length, before, first, second, early, supplied, [...streamFirst], [...streamSecond], [...streamEarly], log]
+}

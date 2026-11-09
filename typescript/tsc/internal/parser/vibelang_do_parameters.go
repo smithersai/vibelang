@@ -42,8 +42,9 @@ import (
 // of a returned value (vibelang/effect_parameters_lower.go,
 // VibeLangHasMovedDefaults); a producer's lowering likewise returns an empty
 // Stream (vibelang/producers.go). Generators, constructors, a
-// parameter list with a binding pattern or a rest parameter from the
-// returning default on, and a default that suspends (try, await or yield,
+// parameter list with a binding pattern from the returning default on or
+// combining a binding pattern with a rest parameter, and a default that
+// suspends (try, await or yield,
 // which a parameter list cannot do) keep the do expression as a function and
 // its EK0204.
 var movedParameterDefaultsKey = ast.NewSourceFileDataKey[map[*ast.Node]*ast.Node]()
@@ -189,9 +190,21 @@ func movableDefaults(fn *ast.Node, from int) bool {
 	if fn.Body() == nil || isGeneratorFunction(fn) && fn.Flags&ast.NodeFlagsVibeLangEffect == 0 {
 		return false // a native generator binds its parameters when it is called, before its first next
 	}
+	hasRest := false
 	for _, parameter := range fn.Parameters()[from:] {
-		if parameter.AsParameterDeclaration().DotDotDotToken != nil || !ast.IsIdentifier(parameter.Name()) || defaultSuspends(parameter.Initializer()) {
+		if !ast.IsIdentifier(parameter.Name()) || defaultSuspends(parameter.Initializer()) {
 			return false
+		}
+		hasRest = hasRest || parameter.AsParameterDeclaration().DotDotDotToken != nil
+	}
+	if hasRest {
+		// A rest array moves with the identifier bindings. A preceding
+		// pattern still owns its native parameter environment; it cannot
+		// capture the moved rest binding yet.
+		for _, parameter := range fn.Parameters() {
+			if !ast.IsIdentifier(parameter.Name()) {
+				return false
+			}
 		}
 	}
 	return true

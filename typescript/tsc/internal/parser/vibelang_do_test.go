@@ -32,7 +32,7 @@ func TestVibeLangDoEarlyErrors(t *testing.T) {
 		{"function* g(a = do { return 1 }) {}", "return 1", parser.DoBoundaryCode},
 		{"effect function e(a = do { try g(); return 1 }) {}", "return 1", parser.DoBoundaryCode},
 		{"function f(a = do { return 1 }, { b } = {}) {}", "return 1", parser.DoBoundaryCode},
-		{"function f(a = do { return 1 }, ...rest) {}", "return 1", parser.DoBoundaryCode},
+		{"function f({ read = () => rest } = {}, a = do { return 1 }, ...rest) {}", "return 1", parser.DoBoundaryCode},
 		{"class C { constructor(a = do { return 1 }) {} }", "return 1", parser.DoBoundaryCode},
 		{"class C { x = do { var y = 1; y } }", "var y = 1", parser.DoBoundaryCode},
 	} {
@@ -63,6 +63,9 @@ func TestVibeLangDoEarlyErrors(t *testing.T) {
 		"function f() { g(do { var n = 3; n }); return n }",
 		"function f() { return x.map((y) => do { if (y) { return 1 } 2 }) }",
 		"function f(a = do { return 1 }) {}",
+		"function f(a = do { return 1 }, ...rest) {}",
+		"effect function e(a = do { return 1 }, ...rest) {}",
+		"effect function* p(a = do { return }, ...rest) {}",
 		"function f(a: number = do { return 1 }, b = (a, 2), c) { return a + b + c }",
 		"const f = (a = do { return 1 }, b = 2) => a + b",
 		"const o = { m(a = do { return 1 }) { return a } }",

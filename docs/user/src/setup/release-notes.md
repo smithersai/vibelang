@@ -18,6 +18,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - An `import` alias could copy `globalThis.globalThis` without a diagnostic. It now reports `EK0107`, as other copies of the global object do.
 - An invalid `import type` alias could report `EK0107` alongside TypeScript's error. It now keeps the native `TS1392` diagnostic.
 - An `import` alias of `globalThis.eval` or `globalThis.Function` was accepted without the diagnostic shown for a direct read. Both forms now report `EK0107`.
+- A returning `do` in a parameter default could be rejected before a rest parameter. Identifier parameter lists now support it while preserving rest array sharing, default order and the function signature.
 - A returning `do` in a parameter default could incorrectly allow a body declaration to reuse a parameter name. The compiler now reports TypeScript's declaration errors while allowing shadowing in nested blocks.
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
@@ -150,7 +151,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migration's API identity check reported an unchanged exported constant whose type uses `infer`, such as `export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never`, as changed whenever another export in its file changed, for example a function moved behind `export { g } from "./helper.js"`. The constant's own type now decides, so it stays identical; a real change to that type still differs.
 
-- A `return` in a `do` expression in a parameter default of a plain, `async` or `effect` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run (an `effect` function's call gives an Effect that succeeds with the value), keeping the parameter order, the function's `length` and its declaration output; generators, constructors, a default that uses `try`, `await` or `yield`, and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.
+- A `return` in a `do` expression in a parameter default of a plain, `async` or `effect` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run (an `effect` function's call gives an Effect that succeeds with the value), keeping the parameter order, the function's `length` and its declaration output.
 - Misspelled names could lose TypeScript's suggestion for a project-defined global named `process`, `fetch` or another host-global name. Those suggestions now follow the binding's actual declaration.
 
 - Hints for an unresolved experimental name could suggest a nonexistent module method. They now show an explicit service lookup, run its Effect and name the provider layer; pure helpers remain direct calls.

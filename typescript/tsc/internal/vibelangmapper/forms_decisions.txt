@@ -3217,6 +3217,7 @@ typescript/vibelang/cases/do-parameter-default-context/main.vibe:3:11 lambda pla
 typescript/vibelang/cases/do-parameter-default-context/main.vibe:3:3 lambda plain annotation
 typescript/vibelang/cases/do-parameter-default-context/main.vibe:5:35 lambda effectFn annotation
 typescript/vibelang/cases/do-parameter-default-names/main.vibe:2:26 lambda plain fallback
+typescript/vibelang/cases/do-parameter-default-rest/main.vibe:7:42 lambda plain fallback
 typescript/vibelang/cases/do-parameter-default-return-effect/main.vibe:9:15 lambda effectFn keyword
 typescript/vibelang/cases/do-parameter-default-return/main.vibe:11:15 lambda plain fallback
 typescript/vibelang/cases/do-parameter-default-return/main.vibe:16:28 lambda plain annotation

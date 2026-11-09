@@ -706,3 +706,81 @@ func init() {
 		Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
 	})
 }
+
+// A trailing rest binding is initialized after the moved defaults. Earlier
+// closures and the body share that array; an early return skips the body.
+// Reusing an Effect or Stream reruns its body with the call's same rest cell.
+func init() {
+	for _, home := range []string{"function", "expression", "arrow", "method", "effect-function", "effect-arrow", "effect-method", "effect-producer"} {
+		effect := strings.HasPrefix(home, "effect-")
+		producer := home == "effect-producer"
+		marker, early := "", "return 9"
+		if effect {
+			marker = "effect "
+		}
+		if producer {
+			early = "return"
+		}
+		params := "read: () => number[] = () => rest, stop = false, a: number = do { log.push(\"default\"); if (stop) " + early + "; 1 }, ...rest: number[]"
+		nativeParams := "read = () => rest, stop = false, a = undefined, ...rest"
+		work := "rest = [...rest, a]; log.push(\"body:\" + (read() === rest)); "
+		body := "{ " + work + "return [...rest] }"
+		first := "if (a === undefined) { log.push(\"default\"); if (stop) return 9; a = 1 }; "
+		nativeBody := "{ " + first + work + "return [...rest] }"
+		if effect {
+			nativeBody = "{ " + strings.ReplaceAll(first, "return 9", "return Effect.succeed(9)") + "return Effect.gen(function* () { " + work + "return [...rest] }) }"
+		}
+		if producer {
+			body = "{ " + work + "yield [...rest] }"
+			nativeBody = "{ " + strings.ReplaceAll(first, "return 9", "return Stream.empty") + "return Stream.suspend(() => { " + work + "return Stream.make([...rest]) }) }"
+		}
+		callable := func(params, body, marker string) string {
+			switch strings.TrimPrefix(home, "effect-") {
+			case "expression":
+				return "const f = " + marker + "function(" + params + ") " + body
+			case "arrow":
+				return "const f = " + marker + "(" + params + ") => " + body
+			case "method":
+				return "const box = { " + marker + "read(" + params + ") " + body + " }; const f = box.read"
+			case "producer":
+				if marker != "" {
+					return "effect function* f(" + params + ") " + body
+				}
+			}
+			return marker + "function f(" + params + ") " + body
+		}
+		declaration, reference := callable(params, body, marker), callable(nativeParams, nativeBody, "")
+		witness := ChapterWitness{
+			Key:     "vip02.do-parameter-rest-" + home + "-plain",
+			Chapter: "../vips/0002-effect-blocks-and-do.md",
+			Quote:   "A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body:",
+			Vibe:    "function witness() { const log: string[] = []; " + declaration + "; const result = [f.length, f(undefined,false,undefined,2,3), f(undefined,true,undefined,2,3), f(undefined,false,4,5)]; return [result,log] }",
+			Effect:  "function witness() { const log = []; " + reference + "; const result = [f.length, f(undefined,false,undefined,2,3), f(undefined,true,undefined,2,3), f(undefined,false,4,5)]; return [result,log] }",
+			Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+		}
+		if effect {
+			witness.Key = "vip02.do-parameter-rest-" + home
+			witness.Requires = []string{"vip01.effect-function", "vip05.try"}
+			witness.ReturnsEffect = true
+			vibeRun, nativeRun := "try ", "yield* "
+			if producer {
+				witness.Requires = append(witness.Requires, "vip21.producer")
+				witness.Modules = []string{"Stream"}
+				vibeRun, nativeRun = "try Stream.runCollect(", "yield* Stream.runCollect("
+			}
+			run := func(prefix, value string) string {
+				if producer {
+					return prefix + value + ")"
+				}
+				return prefix + value
+			}
+			values := func(prefix string) string {
+				return "[f.length,before," + run(prefix, "built") + "," + run(prefix, "built") + "," + run(prefix, "f(undefined,true,undefined,2,3)") + "," + run(prefix, "f(undefined,false,4,5)") + "]"
+			}
+			setup := "; const built = f(undefined,false,undefined,2,3); const before = log.slice(); "
+			witness.Vibe = "effect function witness() { const log: string[] = []; " + declaration + setup + "return [" + values(vibeRun) + ",log] }"
+			witness.Effect = "function witness() { return Effect.gen(function* () { const log = []; " + reference + setup + "return [" + values(nativeRun) + ",log] }) }"
+		}
+		registerWitness(2, witness)
+	}
+}

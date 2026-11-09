@@ -48,6 +48,68 @@ func TestDoParameterDefaultReturn(t *testing.T) {
 		declaration        string   // text out/main.d.ts must hold
 	}{
 		{
+			name:   "rest function plain",
+			source: "export function run() { const log: string[] = []; function f(stop: boolean, a: number = do { log.push(\"default\"); if (stop) return -1; 1 }, ...rest: number[]) { log.push(\"body:\" + rest.join(\":\")); return a + rest.reduce((sum, n) => sum + n, 0) }; return [f(false, undefined, 2, 3), f(true, undefined, 2, 3), f(false, 4, 2, 3), f.length, log] }",
+			want:   "[6,-1,9,1,[\"default\",\"body:2:3\",\"default\",\"body:2:3\"]]",
+		},
+		{
+			name:   "rest function async",
+			source: "export async function run() { const log: string[] = []; async function f(stop: boolean, a: number = do { log.push(\"default\"); if (stop) return -1; 1 }, ...rest: number[]) { log.push(\"body:\" + rest.join(\":\")); return a + rest.reduce((sum, n) => sum + n, 0) }; return [await f(false, undefined, 2, 3), await f(true, undefined, 2, 3), await f(false, 4, 2, 3), f.length, log] }",
+			want:   "[6,-1,9,1,[\"default\",\"body:2:3\",\"default\",\"body:2:3\"]]",
+		},
+		{
+			name:   "rest expression plain",
+			source: "export function run() { const log: string[] = []; const f = function(stop: boolean, a: number = do { log.push(\"default\"); if (stop) return -1; 1 }, ...rest: number[]) { log.push(\"body:\" + rest.join(\":\")); return a + rest.reduce((sum, n) => sum + n, 0) }; return [f(false, undefined, 2, 3), f(true, undefined, 2, 3), f(false, 4, 2, 3), f.length, log] }",
+			want:   "[6,-1,9,1,[\"default\",\"body:2:3\",\"default\",\"body:2:3\"]]",
+		},
+		{
+			name:   "rest expression async",
+			source: "export async function run() { const log: string[] = []; const f = async function(stop: boolean, a: number = do { log.push(\"default\"); if (stop) return -1; 1 }, ...rest: number[]) { log.push(\"body:\" + rest.join(\":\")); return a + rest.reduce((sum, n) => sum + n, 0) }; return [await f(false, undefined, 2, 3), await f(true, undefined, 2, 3), await f(false, 4, 2, 3), f.length, log] }",
+			want:   "[6,-1,9,1,[\"default\",\"body:2:3\",\"default\",\"body:2:3\"]]",
+		},
+		{
+			name:   "rest arrow plain",
+			source: "export function run() { const log: string[] = []; const f = (stop: boolean, a: number = do { log.push(\"default\"); if (stop) return -1; 1 }, ...rest: number[]) => { log.push(\"body:\" + rest.join(\":\")); return a + rest.reduce((sum, n) => sum + n, 0) }; return [f(false, undefined, 2, 3), f(true, undefined, 2, 3), f(false, 4, 2, 3), f.length, log] }",
+			want:   "[6,-1,9,1,[\"default\",\"body:2:3\",\"default\",\"body:2:3\"]]",
+		},
+		{
+			name:   "rest arrow async",
+			source: "export async function run() { const log: string[] = []; const f = async (stop: boolean, a: number = do { log.push(\"default\"); if (stop) return -1; 1 }, ...rest: number[]) => { log.push(\"body:\" + rest.join(\":\")); return a + rest.reduce((sum, n) => sum + n, 0) }; return [await f(false, undefined, 2, 3), await f(true, undefined, 2, 3), await f(false, 4, 2, 3), f.length, log] }",
+			want:   "[6,-1,9,1,[\"default\",\"body:2:3\",\"default\",\"body:2:3\"]]",
+		},
+		{
+			name:   "rest method plain",
+			source: "export function run() { const log: string[] = []; const box = { read(stop: boolean, a: number = do { log.push(\"default\"); if (stop) return -1; 1 }, ...rest: number[]) { log.push(\"body:\" + rest.join(\":\")); return a + rest.reduce((sum, n) => sum + n, 0) } }; const f = box.read; return [f(false, undefined, 2, 3), f(true, undefined, 2, 3), f(false, 4, 2, 3), f.length, log] }",
+			want:   "[6,-1,9,1,[\"default\",\"body:2:3\",\"default\",\"body:2:3\"]]",
+		},
+		{
+			name:   "rest method async",
+			source: "export async function run() { const log: string[] = []; const box = { async read(stop: boolean, a: number = do { log.push(\"default\"); if (stop) return -1; 1 }, ...rest: number[]) { log.push(\"body:\" + rest.join(\":\")); return a + rest.reduce((sum, n) => sum + n, 0) } }; const f = box.read; return [await f(false, undefined, 2, 3), await f(true, undefined, 2, 3), await f(false, 4, 2, 3), f.length, log] }",
+			want:   "[6,-1,9,1,[\"default\",\"body:2:3\",\"default\",\"body:2:3\"]]",
+		},
+		{
+			name:   "rest earlier closure follows reassignment",
+			source: "export function run() { function f(read = () => rest, a: number = do { if (false) return -1; 1 }, ...rest: number[]) { const initial = rest; rest = [...rest, a]; return [read() === rest, read() === initial, read().slice(), read.name] }; return [f(undefined, undefined, 2, 3), f(undefined, 4, 5)] }",
+			want:   "[[true,false,[2,3,1],\"read\"],[true,false,[5,4],\"read\"]]",
+		},
+		{
+			name:   "rest temporal dead zone through closure",
+			source: "export function run() { function f(read = () => rest, a: number = do { read(); if (false) return -1; 1 }, ...rest: number[]) { return rest.length }; try { return f() } catch(e) { return (e as Error).constructor.name } }",
+			want:   "\"ReferenceError\"",
+		},
+		{
+			name:        "rest generic declaration",
+			source:      "export function collect<T>(value: T, seed: number = do { if (false) return [value]; 0 }, ...rest: T[]) { return [value, ...rest] }\nexport function run() { return [collect(\"a\", undefined, \"b\"), collect(1, 3, 2), collect.length] }",
+			want:        "[[\"a\",\"b\"],[1,2],1]",
+			declaration: "collect<T>(value: T, seed?: number, ...rest: T[]): T[]",
+		},
+		{
+			name:        "rest contextual arrow type",
+			source:      "export const f: (stop?: boolean, ...rest: number[]) => number = (stop = do { if (false) return 8; false }, ...rest) => rest.reduce((sum, n) => sum + n, 0)\nexport function run() { return [f(undefined, 2, 3), f(true, 4), f.length] }",
+			want:        "[5,4,0]",
+			declaration: "(stop?: boolean, ...rest: number[]) => number",
+		},
+		{
 			name:   "earlier closure function plain read",
 			source: "export function run() { function f(read = () => a, a: number = do { if (false) return -1; 1 }) { return [a, read()] }; return [f(), f(undefined, 5), f(() => 7)] }",
 			want:   "[[1,1],[5,5],[1,7]]",
