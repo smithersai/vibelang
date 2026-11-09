@@ -15,6 +15,14 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Callback throws could be missed when `@rethrows` named a Unicode parameter. Those names now keep the same throw checks as other TypeScript parameter names.
 
+- Upgrade instructions could fail with an unknown compiler option because they still called retired repair commands. The current upgrade table now gives source edits and editor steps.
+
+- A `this` parameter in an imported function could shift `@rethrows` checks onto the wrong callback. Callback checks now follow the function’s runtime argument positions.
+
+- The TypeScript interop guide did not explain how to keep predicate narrowing in effect code. It now shows a direct call to a `.ts` predicate declared `@throws {never}`.
+
+- Published types that named `Symbol.customMatcher` could fail in ordinary TypeScript consumers. Declaration output now imports the runtime symbol when the public API needs it.
+
 - The migration's API identity check reported a new entry, such as `./scripts/helper.d.vibe.ts`, for a native helper inside a package but outside its `rootDir`, so the converted helper never compared identical with its TypeScript original. The helper now counts through the package modules that re-export it, as the TypeScript helper does, and a changed type is still reported.
 
 - A `try` before a `match` expression, a parenthesized `do` block, `try.race` or `try.any` could leave the Effect it gives unrun, and `try try do { … }` ran one layer too few. Each `try` now runs the value the form gives, and reports `EK0502` when that value is not an Effect.
@@ -79,7 +87,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `tsdown` or Rolldown declaration build could report missing interface exports from an imported native module. The plugin now supplies the module’s declarations to the type graph, preserving its type exports and runtime JavaScript.
 
-- The migration's API identity check could not finish comparing a package that lists a helper above its own directory, such as `../scripts/lib/helper.vibe`, when that helper keeps its code in a `module` body: it reported `TS2307` for the body's generated `helper.vibe.platform.js` and a missing export for each function the helper re-exports. A native helper there, with or without a body, was also reported as a new entry point of a package without `exports`. The check now keeps the body's generated declaration with the helper and reads the helper only through the package modules that re-export it, so such a helper compares identical to the TypeScript file it replaced; a changed type or a function the helper stops exporting still differs.
+- The migration's API identity check could not finish comparing a package that lists a helper above its own directory, such as `../scripts/lib/helper.vibe`, when that helper keeps its code in a `module` body: it reported `TS2307` for the body's generated `helper.vibe.platform.js` and a missing export for each function the helper re-exports. A native helper there, with or without a body, was also reported as a new entry point of a package without `exports`. The check now keeps the body's generated declaration with the helper and reads the helper only through the package modules that re-export it, so such a helper compares identical to the TypeScript file it replaced; a changed type or a function the helper stops exporting still differs. A TypeScript helper above the package that no package module re-exports now also compares identical when its type changes and no `outDir` is set, because API identity checks the package’s exports.
 - Linting a migrated file could reject a type assertion despite its preceding `SAFETY:` comment. Oxlint JS plugin rules now receive the source offsets needed to recognize that comment.
 
 - Formatting with locally installed compiler tarballs could fail because their version was not yet on npm. The formatter now uses the installed native compiler without changing its package files.
@@ -1014,17 +1022,19 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Upgrade from 0.0.12
 
+The compiler provides no automatic source repairs. Review and apply the changes below; use an editor action when it preserves the contract.
+
 | Before | After and repair |
 | --- | --- |
-| A mutated `const` destructuring initializer in a `for` head containing an `is` binding | `TS2588`: run `vibelang --fix` to write `let`, preserving the emitted loop behavior. Unrelated `const` declarations keep their existing checks. |
-| `import "vibelang/platform/node"`, `bun` or `browser` | `EK2601`, and no implicit startup: run `vibelang --fix`, then write the `runMain` call it names, such as `NodeRuntime.runMain(main())`, in the file that starts your program. |
-| An `effect` function whose written return type is a union of different Effect types, such as `(number!!) \| (string!Refused)` | `EK0106`: run `vibelang --fix` to write the one Effect of the joined channels, `(string \| number)!Refused`. |
-| Implicit service keys in a package with `"name": ""` | Keys now begin with `/`. Run `vibelang --fix --fix-legacy-service-keys` on existing source to retain its earlier directory-prefixed keys explicitly. |
+| A mutated `const` destructuring initializer in a `for` head containing an `is` binding | `TS2588`: write `let` for the mutated binding, preserving the emitted loop behavior. Leave unrelated `const` declarations unchanged. |
+| `import "vibelang/platform/node"`, `bun` or `browser` | `EK2601`, and no implicit startup: remove the marker import and write the platform's explicit `runMain` call, with any required layers, in the file that starts your program. |
+| An `effect` function whose written return type is a union of different Effect types, such as `(number!!) \| (string!Refused)` | `EK0106`: write one Effect with the joined channels, `(string \| number)!Refused`. |
+| Implicit service keys in a package with `"name": ""` | Keys now begin with `/`. Preserve each service's earlier directory-prefixed key by writing it explicitly as `static readonly key`. |
 | A plain function that returns an Effect, an `Exit`, a `Stream` or a `Layer` and calls a `.ts` function with no `@throws` tag, or constructs a `.ts` class or calls a `.ts` tag with a `@throws` tag or none, including in parameter defaults | `EK0401`: make the function `effect` and run the call with `try Effect.try(() => …)`, declare `@throws {never}` on a callee that cannot throw, or keep the code in a `.ts` file. In effect code the same `new` expression or tagged template is `EK0403`. |
-| `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it, or `vibelang --fix` to retain the unrun Effect and native suspension. |
-| An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms, or run `vibelang --fix` to add a default preserving the previous no-match `TypeError`. |
-| `new join.C()` or `class extends fork.C {}` inside effect code | `EK1702`: rename the reserved binding, or run `vibelang --fix` to preserve the reference without renaming the binding. Member names such as `tools.join` remain allowed. |
-| `value is join` or `when fork.C:` inside effect code | `EK1702`: use another binding name. `vibelang --fix` aliases imports; a valid outer class or function is left for manual repair to preserve its observable `name`. |
+| `await program` in an async generator with a written iterator return type, where `program` is an Effect | `EK0103`: use `await runPromise(program)` to run it. Keep the native suspension in a TypeScript boundary when the Effect must remain unrun. |
+| An incomplete finite match over primitive literals whose wrapper interface declares `_tag` | `EK4701`: add the missing primitive arms or an explicit default. Preserve the previous no-match `TypeError` when that is part of the contract. |
+| `new join.C()` or `class extends fork.C {}` inside effect code | `EK1702`: use a nonreserved binding or import alias, preserving a class or function's observable `name` during a local repair. Member names such as `tools.join` remain allowed. |
+| `value is join` or `when fork.C:` inside effect code | `EK1702`: use a nonreserved import alias. Repair a reference to a local class or function by hand while preserving its observable `name`. |
 
 ## 0.0.12
 
