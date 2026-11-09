@@ -32,7 +32,7 @@ const observe = `import { Effect } from "effect"
 import { main, box, obj } from "./out/main.js"
 console.log(JSON.stringify([await Effect.runPromise(main()), box.count, obj.name]))
 `
-const scopes = [[]]
+const scopes = [[], []]
 for (const scope of scopes) {
   project(({ put, read, invoke, run }) => {
     put("tsconfig.json", { compilerOptions: baseOptions(), files: ["main.vibe", "schemas.vibe"] })

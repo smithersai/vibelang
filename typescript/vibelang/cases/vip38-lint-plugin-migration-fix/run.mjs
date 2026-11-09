@@ -52,7 +52,7 @@ try {
       output: compiler.output,
     }
   }
-  const scopes = [[]]
+  const scopes = [[], [], []]
   let round = 0
   for (const severity of ["warning", "error", "suggestion", "off"]) {
     for (const inherited of [false, true]) {

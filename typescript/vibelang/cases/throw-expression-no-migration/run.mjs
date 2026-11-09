@@ -21,9 +21,8 @@ const observe = async (dir, out) => {
   return Effect.runPromise(m.main())
 }
 try {
-  for (const flags of [[]]) {
-    const dir = path.join(root, flags.join("").replaceAll("-", "") || "fix")
-    fs.mkdirSync(dir)
+  for (const flags of [[], [], []]) {
+    const dir = fs.mkdtempSync(path.join(root, "ordinary-"))
     fs.writeFileSync(path.join(dir, "package.json"), "{\"type\":\"module\"}\n")
     fs.writeFileSync(path.join(dir, "main.vibe"), source)
     const config = { compilerOptions: { target: "es2022", module: "nodenext", strict: true, skipLibCheck: true, types: [], outDir: "before" }, include: ["main.vibe"] }
