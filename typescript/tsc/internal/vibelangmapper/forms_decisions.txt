@@ -8617,6 +8617,16 @@ typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:22:28 lambda
 typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:26:10 lambda program keyword
 typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:35:10 lambda program keyword
 typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:38:10 lambda program keyword
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:18:61 lambda choice fallback
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:18:91 lambda choice fallback
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:5:18 lambda plain table
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:5:51 lambda plain table
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:6:18 lambda plain table
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:6:50 lambda plain table
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:7:18 lambda plain table
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:7:53 lambda plain table
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:8:18 lambda plain table
+typescript/vibelang/cases/tagged-callback-contracts/main.vibe:8:56 lambda plain table
 typescript/vibelang/cases/tagged-known-throws.fail/main.vibe:5:20 lambda plain fallback
 typescript/vibelang/cases/tagged-template-contexts.fail/main.vibe:11:18 lambda plain table
 typescript/vibelang/cases/tagged-template-runs/main.vibe:15:34 byname program table

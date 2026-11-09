@@ -145,7 +145,7 @@ func checkExplicitThisRethrows(t *testing.T, w *Workspace, key string, choice ui
 		Gap(t, explicitThisRethrowsTarget, key, "%q: got %v, want EK%04d", explicitThisRethrowsQuotes[1], got, want)
 	}
 
-	if want == 402 {
+	if want == 402 && strings.HasPrefix(key, "fixed-spread:") {
 		ExpectPending(t, explicitThisRethrowsTarget, key)
 	}
 }

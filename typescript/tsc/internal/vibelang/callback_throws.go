@@ -84,6 +84,9 @@ func isContextualValue(expr *ast.Node) bool {
 	switch p.Kind {
 	case ast.KindCallExpression, ast.KindNewExpression:
 		return p.Arguments() != nil && slices.Contains(p.Arguments(), node)
+	case ast.KindTemplateSpan:
+		return p.AsTemplateSpan().Expression == node && p.Parent != nil &&
+			p.Parent.Kind == ast.KindTemplateExpression && ast.IsTaggedTemplateExpression(p.Parent.Parent)
 	case ast.KindSatisfiesExpression:
 		return p.Expression() == node
 	case ast.KindShorthandPropertyAssignment:
@@ -412,6 +415,10 @@ func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 		node = node.Parent
 	}
 	call := node.Parent
+	if call != nil && call.Kind == ast.KindTemplateSpan && call.Parent != nil &&
+		call.Parent.Kind == ast.KindTemplateExpression && ast.IsTaggedTemplateExpression(call.Parent.Parent) {
+		call = call.Parent.Parent
+	}
 	if ast.IsPropertyAssignment(call) && declarationName(call) == "try" && ast.IsObjectLiteralExpression(call.Parent) {
 		options := call.Parent
 		if p := options.Parent; p != nil && ast.IsCallExpression(p) && slices.Contains(p.Arguments(), options) {
@@ -419,10 +426,10 @@ func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 		}
 		return false
 	}
-	if call == nil || !(ast.IsCallExpression(call) || ast.IsNewExpression(call)) || call.Arguments() == nil {
+	if call == nil || !(ast.IsCallExpression(call) || ast.IsNewExpression(call) || ast.IsTaggedTemplateExpression(call)) {
 		return false
 	}
-	index := slices.Index(call.Arguments(), node)
+	index := slices.Index(rethrowsCallArguments(call), node)
 	if index < 0 {
 		return false
 	}

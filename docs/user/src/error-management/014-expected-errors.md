@@ -56,6 +56,8 @@ VibeLang annotates `JSON.parse` as throwing `SyntaxError`. Intrinsic calls with 
 
 The parameter name in a `@rethrows` tag is matched as a complete identifier, including Unicode letters and continuation characters. The complete name distinguishes parameters that share an ASCII prefix.
 
+A tagged template checks each substitution against its callback parameter’s throw contract, just as an ordinary call checks an argument. A parameter without `@throws` admits only `never`; a written bound and a parameter named by `@rethrows` keep their usual admission rules.
+
 A TypeScript `this` parameter describes the receiver and does not occupy a runtime argument position. A `@rethrows` callback is matched after that erased parameter, including in methods, tagged templates, rest arguments and fixed tuple spreads. Other callback parameters keep their own throw contracts.
 
 Fixed tuple spreads at a `@rethrows` call retain the callback contracts in each argument position, including spreads before a later callback. An inline callback supplied directly in a tuple literal keeps the invocation boundary too: `invoke(...[() => JSON.parse(text)] as const)` is handled by catching `invoke` or wrapping it with `Effect.try`. Nested literal spreads and fixed prefix spreads retain native argument order. A callback stored in a tuple has its own source scope; storing it does not permit known throwing calls in its body. Handle a throwing callback through `Effect.try`.

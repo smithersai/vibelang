@@ -1,0 +1,19 @@
+// expect-result: [0,true,true,true,true,true,true,true,true,16,true,true]
+import {Effect} from "effect"
+import {admits,typed,rethrows,host,risky} from "./foreign.js"
+export const programs=[
+ Effect.try({try:()=>admits`value ${risky}`,catch:(error:unknown)=>error}),
+ Effect.try({try:()=>typed`value ${risky}`,catch:(error:unknown)=>error}),
+ Effect.try({try:()=>rethrows`value ${risky}`,catch:(error:unknown)=>error}),
+ Effect.try({try:()=>host.admits`value ${risky}`,catch:(error:unknown)=>error})
+]
+import {events,templates,receivers,sentinel} from "./foreign.js"
+const construction=events.length
+export effect function main(){
+ const same:boolean[]=[]
+ for(let repeat=0;repeat<2;repeat++){for(const program of programs){
+  const result=try exit(program)
+  same.push(result._tag==="Failure"&&result.cause.reasons[0]?._tag==="Fail"&&result.cause.reasons[0].error===sentinel)
+ }}
+ return [construction,...same,events.length,templates.every(value=>value),receivers.every(value=>value)]
+}

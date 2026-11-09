@@ -392,6 +392,8 @@ A generator callback's parameter defaults run at the invoking `@rethrows` call, 
 
 The parameter name in a `@rethrows` tag is matched as a complete identifier, including Unicode letters and continuation characters. The complete name distinguishes parameters that share an ASCII prefix.
 
+A tagged template checks each substitution against its callback parameter’s throw contract, just as an ordinary call checks an argument. A parameter without `@throws` admits only `never`; a written bound and a parameter named by `@rethrows` keep their usual admission rules.
+
 A TypeScript `this` parameter describes the receiver and does not occupy a runtime argument position. A `@rethrows` callback is matched after that erased parameter, including in methods, tagged templates, rest arguments and fixed tuple spreads. Other callback parameters keep their own throw contracts.
 
 Promise-producing native invocations in effect code require an explicit boundary, even when their result is assigned to a variable and never awaited (`EK0404`). This includes constructors, tagged templates and calls whose result is a union containing a Promise or thenable. Use `try Effect.tryPromise(() => load())` to wait for a Promise. To retain the native Promise as unawaited data, write a synchronous `Effect.try` boundary with `Effect.orDie`, preserving the original invocation, evaluation order and synchronous defects. Plain and `async` function bodies retain TypeScript behavior.
