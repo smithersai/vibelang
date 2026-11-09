@@ -243,7 +243,7 @@ An importer, whether `.ts`, `.tsx`, `.vibe` or `.vibex`, that names a live `.ts`
 
 Declaration emit imports a prelude module whose name the source uses when an inferred type needs it: for example, `Layer.empty` declares a value of `Layer.Layer<never, never, never>` through an import from `effect`. This also applies with `module: Preserve` and `moduleResolution: Bundler`.
 
-The `vibelang/bun` preload loads `.vibex` modules as well as `.vibe`, including extensionless imports, directory indexes, `paths` aliases, and relative `.js` or `.jsx` output names. Preserved JSX is passed to Bun's JSX loader.
+The `vibelang/bun` preload loads `.vibex` modules as well as `.vibe`, including extensionless imports, directory indexes, `paths` aliases, and relative `.js` or `.jsx` output names. Preserved JSX is passed to Bun's JSX loader. The `vibelang-unplugin/bun` build plugin also compiles explicit `.vibex` imports and keeps their named exports. Preserved JSX uses Bun's JSX loader, following the build's JSX configuration.
 
 A native `module view { ... }` body in `main.vibex` uses TSX syntax. Its emitted file is `main.vibex.view.jsx` under `jsx: preserve` and `main.vibex.view.js` in other JSX modes. Generated imports and re-exports name that actual output independently of `rewriteRelativeImportExtensions`; its declarations remain `main.vibex.view.d.ts`.
 

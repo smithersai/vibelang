@@ -508,13 +508,13 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           return id === undefined ? undefined : { path: id }
         })
         // Bun.build ignores a plugin's source map, so the module is its JavaScript alone.
-        build.onLoad({ filter: /\.vibe(?:\.[^./\\]+\.js)?(?:\?.*)?$/ }, async ({ path }) => {
+        build.onLoad({ filter: /\.vibex?(?:\.[^./\\]+\.js)?(?:\?.*)?$/ }, async ({ path }) => {
           if (!isCompiled(path)) return undefined
           const { code, errors, warnings, error } = await loadModule(path)
           if (errors.length) throw new Error(errors.map(backend.formatDiagnostic).join("\n"))
           if (!errors.length) for (const warning of warnings) console.warn(backend.formatDiagnostic(warning))
           if (error) throw new Error(error.message)
-          return { contents: code, loader: "js" }
+          return { contents: code, loader: cleanId(path).endsWith(".vibex") ? "jsx" : "js" }
         })
       }
     },

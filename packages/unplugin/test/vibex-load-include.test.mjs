@@ -234,3 +234,78 @@ for (const framework of ["rollup", "webpack", "rspack"]) test(framework + " buil
     assert.ok(stack.stderr.includes("View.vibex:3:" + (source.split("\n")[2].indexOf("toUpperCase") + 1)), stack.stderr)
   } finally { await bundle?.close(); await rm(root, { recursive: true, force: true }) }
 })
+
+test("Bun registers both VibeLang source kinds without matching lookalikes", () => {
+  let hook
+  unplugin.raw({}, { framework: "bun" }).bun.setup({
+    config: {}, onResolve() {}, onLoad(options, load) { hook = { ...options, load } }
+  })
+  assert.ok(hook)
+  fc.assert(fc.property(
+    fc.constantFrom("src/", "/components/", "C:/app/"),
+    fc.array(fc.constantFrom("a", "Z", "0", "雪", " ", "-", "_"), { minLength: 1, maxLength: 16 }),
+    fc.constantFrom(".vibe", ".vibex", ".vibex.map", ".vibexx", ".d.vibex.ts", ".tsx"),
+    fc.constantFrom("", "?import", "?v=1"),
+    (directory, letters, suffix, query) => {
+      assert.equal(hook.filter.test(directory + letters.join("") + suffix + query),
+        suffix === ".vibe" || suffix === ".vibex")
+    }
+  ), { numRuns: 120, seed: 480739 })
+})
+
+test("Bun builds JSX module named exports like native TypeScript JSX", async () => {
+  const { mkdir, mkdtemp, rm, writeFile } = await import("node:fs/promises")
+  const { spawnSync } = await import("node:child_process")
+  const { join } = await import("node:path")
+  const { fileURLToPath } = await import("node:url")
+  const root = fileURLToPath(new URL("./.fixtures/", import.meta.url))
+  await mkdir(root, { recursive: true })
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-prompt-history-vibex.json", import.meta.url), "utf8"))
+  async function check({ name, jsx, value, label }) {
+    const fixture = await mkdtemp(join(root, "bun-vibex-"))
+    try {
+      await mkdir(join(fixture, "src"))
+      await writeFile(join(fixture, "package.json"), '{"type":"module"}')
+      await writeFile(join(fixture, "tsconfig.json"), JSON.stringify({
+        compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler",
+          strict: true, skipLibCheck: true, types: [], jsx, jsxFactory: "h",
+          allowImportingTsExtensions: true, rewriteRelativeImportExtensions: true }, include: ["src"]
+      }))
+      await writeFile(join(fixture, "src/jsx.d.ts"),
+        "declare namespace JSX { interface IntrinsicElements { span: {children?: unknown} } }")
+      const source = 'function h(tag: string, _props: unknown, ...children: unknown[]) { return {tag, children} }\n'
+        + 'export function emptyPrompt() { return ' + JSON.stringify(value) + ' }\n'
+        + 'export function view() { return (<span>{' + JSON.stringify(label) + '}</span>).children[0] }\n'
+      for (const extension of [".tsx", ".vibex"])
+        await writeFile(join(fixture, "src", name + (extension === ".tsx" ? "-native" : "-vibe") + extension), source)
+      const buildSource = [
+        'import assert from "node:assert/strict"',
+        'import vibelang from "vibelang-unplugin/bun"',
+        'for (const extension of [".tsx", ".vibex"]) {',
+        'const result = await Bun.build({entrypoints:["./src/entry" + extension + ".ts"],target:"bun",jsx:{runtime:"classic",factory:"h"},plugins:extension === ".vibex" ? [vibelang({root:process.cwd()})] : []})',
+        'assert.equal(result.success, true, result.logs.map(String).join("\\n"))',
+        'const output = "./out" + extension + ".mjs"',
+        'await Bun.write(output, result.outputs[0])',
+        'const loaded = await import(output)',
+        'assert.equal(loaded.emptyPrompt(), ' + JSON.stringify(value) + ')',
+        'assert.equal(loaded.view(), ' + JSON.stringify(label) + ')',
+        '}'
+      ].join("\n")
+      await writeFile(join(fixture, "build.ts"), buildSource)
+      for (const extension of [".tsx", ".vibex"])
+        await writeFile(join(fixture, "src", "entry" + extension + ".ts"),
+          'export {emptyPrompt, view} from ' + JSON.stringify("./" + name + (extension === ".tsx" ? "-native" : "-vibe") + extension) + "\n")
+      const result = spawnSync("bun", ["run", "build.ts"], {
+        cwd: fixture, encoding: "utf8", timeout: 120000,
+        env: {...process.env, VIBELANG_PROJECT: "", VIBELANG_CACHE_DIR: join(fixture, ".cache")}
+      })
+      assert.ifError(result.error)
+      assert.equal(result.status, 0, result.stdout + "\n" + result.stderr)
+    } finally { await rm(fixture, {recursive: true, force: true}) }
+  }
+  await check({name: "history", jsx: corpus.jsx, value: corpus.expected, label: "prompt"})
+  await fc.assert(fc.asyncProperty(
+    fc.record({name: fc.constantFrom("View", "with space", "雪-view"), jsx: fc.constantFrom("react", "preserve"),
+      value: fc.integer({min: -50, max: 50}), label: fc.constantFrom("hello", "資料", "😀")}), check
+  ), {numRuns: 8, seed: 480740})
+})

@@ -1,0 +1,7 @@
+{
+  "source": "export function emptyPrompt() { return 42 }",
+  "import": "export { emptyPrompt } from \"./history.vibex\"",
+  "jsx": "preserve",
+  "expected": 42,
+  "oracle": "VIP-39: A .vibex file is a .vibe file read with TypeScript JSX syntax."
+}
