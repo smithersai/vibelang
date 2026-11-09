@@ -19,9 +19,10 @@ func checkServiceLiteralKey(c *checker.Checker, class, member *ast.Node) bool {
 	if !ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) ||
 		member.Initializer() == nil || !ast.IsStringLiteral(member.Initializer()) {
 		report(c, member, serviceLiteralKeyDiagnostic)
-		// The header to write has no definite marker either: EK0901 explains it,
-		// so TypeScript's TS1255 for a written ! adds nothing.
-		coverCodes(c, member, 1255)
+		// The header to write has a string-literal initializer and no definite
+		// marker: EK0901 explains it, so TypeScript's TS7008 for the implicit any
+		// of a missing initializer and TS1255 for a written ! add nothing.
+		coverCodes(c, member, 7008, 1255)
 		// The rejected key can also invalidate the generated base static side.
 		coverExactCodes(c, class.Name(), 2417)
 	}
