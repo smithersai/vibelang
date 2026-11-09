@@ -1,0 +1,1 @@
+{"compilerOptions":{"strict":true,"skipLibCheck":true,"target":"ESNext","module":"NodeNext","moduleResolution":"NodeNext","types":[],"rewriteRelativeImportExtensions":true,"outDir":"out"},"files":["main.vibe","foreign.ts"]}

@@ -1,0 +1,18 @@
+import * as Effect from "effect/Effect"
+import { makeAuthenticate } from "./foreign.ts"
+export const program = Effect.cached(effect {
+  return try Effect.orDie(Effect.try({
+    try: () => makeAuthenticate(),
+    catch: (error) => error,
+  }))
+})
+
+// expect-result: ["token",null,true]
+export effect function main() {
+  const cached = try program
+  const authenticate = try cached
+  const again = try cached
+  const token = try Effect.tryPromise(() => authenticate("token"))
+  const missing = try Effect.tryPromise(() => authenticate(null))
+  return [token, missing ?? null, authenticate === again]
+}
