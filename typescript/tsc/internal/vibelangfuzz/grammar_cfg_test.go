@@ -441,7 +441,7 @@ func grammarSplitLookahead(set string) []string {
 // grammarTsSubset is the TypeScript the search embeds: ECMAScript 2025's
 // statements and expressions and TypeScript 5.9's types, cut to what the
 // VibeLang productions and the specification's examples touch (regular-expression literals validated independently,
-// templates as one token, no JSX, no decorators). Each rule is ECMAScript's or
+// templates as one token, no JSX). Each rule is ECMAScript's or
 // TypeScript's own, with four liberties: helper names; ASI as an explicit
 // symbol (see earley); the restrictions the TypeScript parser puts on line
 // breaks (before "as", "!", "[]" and after a modifier, "readonly" in a
@@ -480,7 +480,7 @@ ScriptItem = Statement
 Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | ForStatement | ForInStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration | DoWhileStatement | DeclareExpressionStatement
 SwitchStatement = "switch" "(" Expression ")" "{" CaseClause* "}"
 CaseClause = "case" Expression ":" Statement* | "default" ":" Statement*
-Declaration = HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ImportEqualsDeclaration | ExportDeclaration | "declare" [no LineTerminator here] DeclareDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | NamespaceDeclaration | EnumDeclaration
+Declaration = DecoratorList DecoratedClassExport | DecoratorList "abstract" [no LineTerminator here] ClassDeclaration | HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ImportEqualsDeclaration | ExportDeclaration | "declare" [no LineTerminator here] DeclareDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | NamespaceDeclaration | EnumDeclaration
 DeclareDeclaration = VariableStatement | FunctionDeclaration | ClassDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | NamespaceDeclaration | EnumDeclaration | "module" StringLiteral "{" ModuleBody? "}" | "module" StringLiteral StatementEnd | "global" "{" ModuleBody? "}"
 NamespaceDeclaration = "namespace" [no LineTerminator here] TypeName "{" ModuleBody? "}"
 EnumDeclaration = "const"? "enum" BindingIdentifier "{" "}" | "const"? "enum" BindingIdentifier "{" EnumMemberList ","? "}"
@@ -506,7 +506,7 @@ BindingElement = BindingIdentifier Initializer? | BindingPattern Initializer?
 BindingRestElement = "..." BindingIdentifier | "..." BindingPattern
 BindingElision = "," | BindingElision ","
 EmptyStatement = ";"
-ExpressionStatement = [lookahead ∉ { "{", "function", "class", "let" "[", "async" [no LineTerminator here] "function", "effect" [no LineTerminator here] "function", "do", "throw" }] Expression StatementEnd
+ExpressionStatement = [lookahead ∉ { "{", "function", "class", "@", "let" "[", "async" [no LineTerminator here] "function", "effect" [no LineTerminator here] "function", "do", "throw" }] Expression StatementEnd
 StatementEnd = ";" | ASI
 IfStatement = "if" "(" Expression ")" Statement "else" Statement | "if" "(" Expression ")" Statement [lookahead ∉ { "else" }]
 WhileStatement = "while" "(" Expression ")" Statement
@@ -530,9 +530,15 @@ LabelledStatement = LabelIdentifier ":" Statement
 BreakStatement = "break" StatementEnd | "break" [no LineTerminator here] LabelIdentifier StatementEnd
 ContinueStatement = "continue" StatementEnd | "continue" [no LineTerminator here] LabelIdentifier StatementEnd
 FunctionDeclaration = "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" ReturnAnnotation? (Block | StatementEnd) | "async" [no LineTerminator here] "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" ReturnAnnotation? (Block | StatementEnd)
-ClassDeclaration = "class" BindingIdentifier TypeParameters? ClassHeritage? "{" ClassElement* "}"
+ClassDeclaration = DecoratorList? "class" BindingIdentifier TypeParameters? ClassHeritage? "{" ClassElement* "}"
 ClassHeritage = "extends" LeftHandSideExpression | "extends" LeftHandSideExpression [no LineTerminator here] TypeArguments | "implements" TypeList | "extends" LeftHandSideExpression "implements" TypeList | "extends" LeftHandSideExpression [no LineTerminator here] TypeArguments "implements" TypeList
-ClassElement = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? OptionalClassMethod | FieldDefinition | "static" Block | ";" | ClassMemberModifiers? IndexSignature StatementEnd
+ClassElement = DecoratedClassMethod | DecoratorList? FieldDefinition | "static" Block | ";" | ClassMemberModifiers? IndexSignature StatementEnd
+DecoratorList = Decorator | DecoratorList Decorator
+Decorator = "@" DecoratorExpression
+DecoratorExpression = DecoratorMemberExpression | DecoratorCallExpression | "(" Expression ")"
+DecoratorMemberExpression = IdentifierReference | DecoratorMemberExpression "." IdentifierName | DecoratorMemberExpression "." "#" IdentifierName | DecoratorMemberExpression [no LineTerminator here] "!" | DecoratorMemberExpression [no LineTerminator here] TypeArguments
+DecoratorCallExpression = DecoratorMemberExpression Arguments | DecoratorCallExpression [no LineTerminator here] "!" | DecoratorCallExpression [no LineTerminator here] TypeArguments
+DecoratedClassMethod = DecoratorList? ClassMemberModifiers? MethodDefinition | DecoratorList? ClassMemberModifiers? OptionalClassMethod
 OptionalClassMethod = "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd | "async" [no LineTerminator here] "*" PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd | "async" [no LineTerminator here] PropertyName "?" TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd
 ClassMemberModifiers = ClassMemberModifier | ClassMemberModifiers ClassMemberModifier
 ClassMemberModifier = "static" | "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here] | "override" [no LineTerminator here] | "abstract" [no LineTerminator here] | "declare" [no LineTerminator here] | "accessor" [no LineTerminator here]
@@ -557,6 +563,7 @@ NamedImports = "{" "}" | "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
 ImportSpecifier = BindingIdentifier | ModuleExportName "as" BindingIdentifier | "type" BindingIdentifier | "type" ModuleExportName "as" BindingIdentifier
 ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" ImportEqualsDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd | "export" "declare" [no LineTerminator here] DeclareDeclaration | "export" "abstract" [no LineTerminator here] ClassDeclaration | "export" NamespaceDeclaration | "export" EnumDeclaration | "export" "default" "abstract" [no LineTerminator here] ClassDeclaration | "export" "default" InterfaceDeclaration
+DecoratedClassExport = "export" ClassDeclaration | "export" "abstract" [no LineTerminator here] ClassDeclaration | "export" "default" "abstract"? ClassExpression
 DefaultExportDeclaration = FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression
 ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral WithClause? StatementEnd
 ExportFromClause = "*" | "*" "as" IdentifierName | NamedExports
@@ -615,7 +622,7 @@ PropertyDefinitionList = PropertyDefinition | PropertyDefinitionList "," Propert
 PropertyDefinition = IdentifierReference | PropertyName ":" AssignmentExpression | MethodDefinition | "..." AssignmentExpression
 PropertyName = IdentifierName | StringLiteral | NumericLiteral | "[" AssignmentExpression "]"
 FunctionExpression = "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block
-ClassExpression = "class" BindingIdentifier? TypeParameters? ClassHeritage? "{" ClassElement* "}"
+ClassExpression = DecoratorList? "class" BindingIdentifier? TypeParameters? ClassHeritage? "{" ClassElement* "}"
 ParenthesizedExpression = "(" Expression ")"
 ArrowFunction = ArrowParameters [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody | TypeParameters "(" FormalParameters ")" [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" ":" "(" Type ")" [no LineTerminator here] "=>" ConciseBody
 ArrowParameters = BindingIdentifier | "(" FormalParameters ")"
@@ -768,9 +775,10 @@ var grammarSubsetHooks = []struct{ at, name string }{
 	{"UnaryExpression", "JoinExpression"},
 	{"ShortCircuitExpression", "CatchExpression"},
 	{"ClassElement", "EffectMethod"},
+	{"ClassElement", "EffectAccessor"},
 	{"ClassElement", "ProducerMethod"},
-	{"PropertyDefinition", "EffectMethod"},
-	{"PropertyDefinition", "ProducerMethod"},
+	{"PropertyDefinition", "EffectObjectMethod"},
+	{"PropertyDefinition", "ProducerObjectMethod"},
 	{"Type", "EffectType"},
 	{"Statement", "ForConcurrent"},
 	{"Statement", "ForTry"},
@@ -808,7 +816,7 @@ var grammarProseMeanings = []struct {
 	note    string
 }{
 	{regexp.MustCompile(`^(a type at TypeScript.s type-operator level|an ordinary TypeScript source type at the type-operator level)`), "PostfixType", "TypeScript type-operator level"},
-	{regexp.MustCompile(`^an ordinary TypeScript class MethodDeclaration`), "MethodDefinition", "TypeScript class method or accessor"},
+	{regexp.MustCompile(`^an ordinary TypeScript class MethodDeclaration`), "DecoratedClassMethod", "TypeScript class method or accessor with its decorators and modifiers"},
 	{regexp.MustCompile(`^a ClassElement \(an EffectAccessor included\) that is not`), "ClassElement", "parses, then a static rule rejects it; the exclusions are not modeled"},
 	{regexp.MustCompile(`^a ClassElement or a TypeScript TypeMember`), "RejectedMemberShape", "parses, then a static rule rejects it; the exclusions are not modeled"},
 	{regexp.MustCompile(`^a Type that is not an unparenthesized EffectType`), "TypeNoEffect", "Type without the EffectType alternative"},
@@ -1055,6 +1063,35 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		d.source = a.file
 		defs = append(defs, d)
 		defined["AssertedIsTest"] = true
+	}
+	// Appendix A's ProducerMethod comment narrows its object-literal form:
+	// no decorators or modifiers, a PropertyName, and a required block. Clone
+	// its parsed production so the Effect head and parameter grammar stay
+	// coupled to Appendix A instead of maintaining a second handwritten rule.
+	for _, d := range slices.Clone(defs) {
+		if d.name != "ProducerMethod" || !strings.Contains(strings.Join(d.comments, " "), grammarJoinNotation(grammarLexNotation(grammarObjectProducerQuote))) {
+			continue
+		}
+		d.name = "ProducerObjectMethod"
+		d.alts = slices.Clone(d.alts)
+		for i, alt := range d.alts {
+			var object []grammarNelem
+			for _, e := range alt {
+				switch e.name {
+				case "DecoratorList", "Modifiers":
+					continue
+				case "ClassElementName":
+					e.name = "PropertyName"
+				}
+				if len(e.alts) == 2 && len(e.alts[0]) == 1 && e.alts[0][0].name == "Block" {
+					e = grammarNelem{name: "Block"}
+				}
+				object = append(object, e)
+			}
+			d.alts[i] = object
+		}
+		defs = append(defs, d)
+		defined[d.name] = true
 	}
 	// Appendix A admits ordinary exports of its custom declarations through
 	// ECMAScript's ExportDeclaration. Keep default exports on their native
@@ -1354,7 +1391,7 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 					if s.kind == grammarSymNT {
 						s.eff = child
 						symbolAwait := childAwait
-						// Computed names precede their callable/initializer context:
+						// Decorators and computed names precede their callable/initializer context:
 						// ECMAScript's ClassElementName carries the enclosing Yield
 						// and Await, and Appendix A's Effect follows them, so
 						// `[try k()]() { }` in an effect function keeps `try`.
@@ -1365,7 +1402,7 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 							s.eff = false
 							symbolAwait = grammarAwaitNone
 						}
-						if s.text == "PropertyName" || s.text == "ClassElementName" {
+						if s.text == "PropertyName" || s.text == "ClassElementName" || s.text == "DecoratorList" || s.text == "DecoratorList?" {
 							symbolAwait = await
 							s.eff = effect
 						}

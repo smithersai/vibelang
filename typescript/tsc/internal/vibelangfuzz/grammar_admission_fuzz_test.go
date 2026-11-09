@@ -331,6 +331,10 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-type-argument-list-empty", grammarSchemaTypeArgumentsGaps[1]},
 	{"schema-type-argument-list-campaign", grammarSchemaTypeArgumentsCampaign},
 	{"try-match-statement-line-break", grammarTryMatchStatementLineBreak},
+	{"native-decorator-class", "@dec class C { }"},
+	{"native-decorator-member", "class C { @dec m() { } }"},
+	{"production-decorator-effect-method", "class C { @dec effect m() { return 1; } }"},
+	{"production-decorator-producer", "class C { @dec effect *g() { yield 1; } }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -2076,7 +2080,7 @@ func TestGrammarAdmissionCore(t *testing.T) {
 		}
 	}
 	for _, name := range lab.g.unresolved {
-		if name != "DecoratorList" && name != "RegularExpressionLiteral" {
+		if name != "RegularExpressionLiteral" {
 			t.Errorf("Appendix A name %s resolves to nothing; define it in the subset", name)
 		}
 	}

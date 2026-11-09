@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:production-decorator-effect-method\nclass C { @dec effect m() { return 1; } }")

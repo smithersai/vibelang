@@ -1171,3 +1171,5 @@ supplies absent callees and unchecked runtime results. This satisfies the
 static Effect and throwing-call checks before comparing `try e` with
 `yield* e`; the assertions erase, so receiver, key and argument evaluation
 and the native delegation outcome remain the oracle's observations.
+
+The grammar admission lab derives TypeScript class decorators, including class exports, fields, ordinary methods and the Appendix A Effect methods, producers and accessor recovery. Decorator expressions keep the enclosing source context; callable bodies retain their own context. Keyed seeds cover decorated declarations and members, while controls exclude object-literal decorators, malformed expressions and reserved Effect names.
