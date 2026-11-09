@@ -882,6 +882,15 @@ on a `for`...`of` head, `TS1228` for a type predicate outside a return type,
 expression that needs parentheses. Each now counts, as the other grammar
 checks TypeScript runs on a recovered parse do.
 
+The same probes measured the lab's subset against inherited forms the
+compiler accepts. Four were one production each and now derive: the bitwise
+NOT operator `~`, import attributes (`with { type: "json" }` on an import or
+a re-export), a default-exported interface, and a `MetaProperty` at the start
+of a member pattern, which the pinned `PatternMatchingMemberExpression`
+lists beside `this` (`x is import.meta`). The lab still has no decorators,
+variance modifiers or template literal types; a program that uses one reads
+as a mismatch and is not evidence about the compiler.
+
 The generated-error migration counterpart continues to test the guarantee
 that a foreign plain object with the recognized tag is covered. Its quote
 includes the chapter's additional `instanceof` fallback; the existing

@@ -543,8 +543,11 @@ NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" Ret
 InterfaceDeclaration = "interface" BindingIdentifier DeclarationTypeParameters? InterfaceExtends? ObjectType
 InterfaceExtends = "extends" TypeReference | InterfaceExtends "," TypeReference
 TypeAliasDeclaration = "type" [no LineTerminator here] BindingIdentifier DeclarationTypeParameters? "=" Type StatementEnd
-ImportDeclaration = "import" ImportClause "from" StringLiteral StatementEnd | "import" StringLiteral StatementEnd
-TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier StatementEnd | "import" ModuleSpecifier StatementEnd
+ImportDeclaration = "import" ImportClause "from" StringLiteral WithClause? StatementEnd | "import" StringLiteral WithClause? StatementEnd
+WithClause = "with" "{" "}" | "with" "{" WithEntries ","? "}"
+WithEntries = WithEntry | WithEntries "," WithEntry
+WithEntry = IdentifierName ":" StringLiteral | StringLiteral ":" StringLiteral
+TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier WithClause? StatementEnd | "import" ModuleSpecifier WithClause? StatementEnd
 ImportEqualsDeclaration = "import" BindingIdentifier "=" ModuleReference StatementEnd | "import" "type" BindingIdentifier "=" ModuleReference StatementEnd
 ModuleReference = "require" "(" StringLiteral ")" | TypeName
 ModuleBody = Statement | ModuleBody Statement
@@ -553,9 +556,9 @@ NamespaceImport = "*" "as" BindingIdentifier
 NamedImports = "{" "}" | "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
 ImportSpecifier = BindingIdentifier | ModuleExportName "as" BindingIdentifier | "type" BindingIdentifier | "type" ModuleExportName "as" BindingIdentifier
-ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" ImportEqualsDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd | "export" "declare" [no LineTerminator here] DeclareDeclaration | "export" "abstract" [no LineTerminator here] ClassDeclaration | "export" NamespaceDeclaration | "export" EnumDeclaration | "export" "default" "abstract" [no LineTerminator here] ClassDeclaration
+ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" ImportEqualsDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd | "export" "declare" [no LineTerminator here] DeclareDeclaration | "export" "abstract" [no LineTerminator here] ClassDeclaration | "export" NamespaceDeclaration | "export" EnumDeclaration | "export" "default" "abstract" [no LineTerminator here] ClassDeclaration | "export" "default" InterfaceDeclaration
 DefaultExportDeclaration = FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression
-ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral StatementEnd
+ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral WithClause? StatementEnd
 ExportFromClause = "*" | "*" "as" IdentifierName | NamedExports
 NamedExports = "{" "}" | "{" ExportSpecifiers ","? "}"
 ExportSpecifiers = ExportSpecifier | ExportSpecifiers "," ExportSpecifier
@@ -583,7 +586,7 @@ AdditiveExpression = MultiplicativeExpression | AdditiveExpression "+" Multiplic
 MultiplicativeExpression = ExponentiationExpression | MultiplicativeExpression MultiplicativeOperator ExponentiationExpression
 MultiplicativeOperator = "*" | "/" | "%"
 ExponentiationExpression = UnaryExpression | UpdateExpression "**" ExponentiationExpression
-UnaryExpression = "<" Type ">" UnaryExpression | UpdateExpression | "!" UnaryExpression | "-" UnaryExpression | "+" UnaryExpression | "typeof" UnaryExpression | "void" UnaryExpression | "delete" UnaryExpression | AwaitExpression
+UnaryExpression = "<" Type ">" UnaryExpression | UpdateExpression | "!" UnaryExpression | "-" UnaryExpression | "+" UnaryExpression | "typeof" UnaryExpression | "void" UnaryExpression | "delete" UnaryExpression | "~" UnaryExpression | AwaitExpression
 AwaitExpression = "await" UnaryExpression
 YieldExpression = "yield" [lookahead ∉ { "*" }] | "yield" [no LineTerminator here] AssignmentExpression | "yield" [no LineTerminator here] "*" AssignmentExpression
 UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTerminator here] "++" | "++" UnaryExpression | UpdateExpression [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | UpdateExpression [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }] | LeftHandSideExpression [no LineTerminator here] "--" | "--" UnaryExpression
@@ -684,7 +687,7 @@ MatchPrimaryPattern = "(" MatchPattern ")" | PrimitivePattern | VariableDeclarat
 PrimitivePattern = Literal | TemplateLiteral
 VariableDeclarationPattern = LetOrConst BindingIdentifier
 MemberExpressionPattern = PatternMatchingMemberExpression | PatternMatchingMemberExpression "(" MatchList ")"
-PatternMatchingMemberExpression = "this" | IdentifierReference | "super" "." IdentifierName | PatternMatchingMemberExpression "." IdentifierName | PatternMatchingMemberExpression "." "#" IdentifierName | PatternMatchingMemberExpression "[" Expression "]"
+PatternMatchingMemberExpression = "this" | MetaProperty | IdentifierReference | "super" "." IdentifierName | PatternMatchingMemberExpression "." IdentifierName | PatternMatchingMemberExpression "." "#" IdentifierName | PatternMatchingMemberExpression "[" Expression "]"
 ObjectPattern = "{" "}" | "{" MatchRestProperty "}" | "{" MatchPropertyList "}" | "{" MatchPropertyList "," "}" | "{" MatchPropertyList "," MatchRestProperty "}"
 MatchList = MatchElision? MatchRestElement? | MatchElementList | MatchElementList "," MatchElision? MatchRestElement?
 MatchElision = "," | MatchElision ","
@@ -997,7 +1000,7 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 	// VIP-40 keeps native re-export syntax and extends its specifier to an
 	// IdentifierReference. Native TypeScript keeps its StringLiteral boundary.
 	if defined["ModuleSpecifier"] {
-		tsDefs["ReExportDeclaration"] = grammarParseDef("ReExportDeclaration", `"export" "type"? ExportFromClause "from" ModuleSpecifier StatementEnd`, 0)
+		tsDefs["ReExportDeclaration"] = grammarParseDef("ReExportDeclaration", `"export" "type"? ExportFromClause "from" ModuleSpecifier WithClause? StatementEnd`, 0)
 	}
 	for _, l := range strings.Split(grammarTsSubset, "\n") {
 		if m := production.FindStringSubmatch(l); m != nil && !defined[m[1]] {
