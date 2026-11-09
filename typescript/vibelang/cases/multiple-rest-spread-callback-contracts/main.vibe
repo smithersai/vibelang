@@ -1,0 +1,25 @@
+// expect-result: [0,true,true,true,true,true,true,true,true,true,true,38,true]
+import {Effect} from "effect"
+import {admits,typed,rethrows,host,risky,args,AllowedBox,empty} from "./foreign.js"
+const saved=args
+function admitted(){return admits(...empty,...args)}
+function selected(){return typed(...([risky]),...empty)}
+function receiver(){return host.admits(...args,...empty)}
+function constructed(){return new AllowedBox(...empty,...args).value}
+export const programs=[
+ Effect.try({try:admitted,catch:(error:unknown)=>error}),
+ Effect.try({try:selected,catch:(error:unknown)=>error}),
+ Effect.try({try:()=>rethrows(...empty,...saved),catch:(error:unknown)=>error}),
+ Effect.try({try:receiver,catch:(error:unknown)=>error}),
+ Effect.try({try:constructed,catch:(error:unknown)=>error})
+]
+import {events,receivers,sentinel} from "./foreign.js"
+const construction=events.length
+export effect function main(){
+ const same:boolean[]=[]
+ for(let repeat=0;repeat<2;repeat++){for(const program of programs){
+  const result=try exit(program)
+  same.push(result._tag==="Failure"&&result.cause.reasons[0]?._tag==="Fail"&&result.cause.reasons[0].error===sentinel)
+ }}
+ return [construction,...same,events.length,receivers.every(value=>value)]
+}

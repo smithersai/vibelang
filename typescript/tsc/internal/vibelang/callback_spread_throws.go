@@ -39,23 +39,27 @@ func checkInvocationSpreadCallbacks(c *checker.Checker, call *ast.Node) {
 		return
 	}
 	position := 0
+	unknownPosition := false
 	for raw, argument := range call.Arguments() {
 		if !ast.IsSpreadElement(argument) {
 			position++
 			continue
 		}
+		unknownWidth := false
 		elements, fixed := fixedRethrowsSpreadTypes(c, argument)
 		if !fixed && raw == len(call.Arguments())-1 {
 			elements, fixed = trailingOptionalRethrowsSpreadTypes(c, argument)
 		}
 		if !fixed {
-			// An unknown-length final array has one element contract when all
+			// An unknown-length array has one element contract when all
 			// remaining arguments enter the same array rest parameter.
 			element, uniform := uniformRestSpreadElement(c, signature, argument, position)
-			if raw != len(call.Arguments())-1 || !uniform {
+			if !uniform {
 				return
 			}
 			elements = []*checker.Type{element}
+			unknownWidth = true
+			unknownPosition = true
 		}
 		for offset, source := range elements {
 			slot := position + offset
@@ -65,12 +69,18 @@ func checkInvocationSpreadCallbacks(c *checker.Checker, call *ast.Node) {
 			target := c.GetTypeAtPosition(signature, slot)
 			if fits, rejected := writtenSpreadCallbacksFit(c, source, target); !fits {
 				d := report(c, argument, EK0402)
-				note(d, "The callback supplied at argument position {0} is declared @throws {{1}}; the receiving function type does not admit that thrown type.", slot+1, thrownText(c, rejected))
+				if unknownPosition {
+					note(d, "The callback supplied through this spread is declared @throws {{0}}; the receiving rest parameter does not admit that thrown type.", thrownText(c, rejected))
+				} else {
+					note(d, "The callback supplied at argument position {0} is declared @throws {{1}}; the receiving function type does not admit that thrown type.", slot+1, thrownText(c, rejected))
+				}
 				note(d, "Pass a callback that handles the throw or declare a compatible @throws contract on the receiving function type.")
 				break
 			}
 		}
-		position += len(elements)
+		if !unknownWidth {
+			position += len(elements)
+		}
 	}
 }
 

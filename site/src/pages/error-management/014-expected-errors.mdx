@@ -73,6 +73,8 @@ An array spread into a `@rethrows` rest parameter keeps each element’s written
 
 A final array spread into a callback rest parameter keeps each element’s written `@throws` contract. Saving the array, using a `readonly` array type or supplying fixed arguments before it keeps the same callback check. A rest parameter named by `@rethrows` admits its callbacks as usual.
 
+Passing several arrays to the same callback rest parameter applies the written throw check to each array. An earlier array can have an unknown length; it does not remove the checks from later spreads or arguments.
+
 Optional callback parameters and `undefined` or `null` alternatives retain a supplied callback’s written `@throws` contract at a rethrowing invocation. `Array.prototype.sort` follows the same rule. Omitting an optional callback contributes no callback throw.
 
 The array callback rule also covers typed arrays, their `from` functions, and `forEach` on `Map`, `ReadonlyMap`, `Set` and `ReadonlySet`: `entries.forEach(parse)` can throw whatever `parse` declares, so plain code reports `EK0401` and effect code reports `EK0403`. Other built-in methods keep an ordinary callback parameter even when they share a method name: `query.forEach(parse)` on a `URLSearchParams`, or `iterator.map(parse)`, reports `EK0402` for a callback with a throwing contract.

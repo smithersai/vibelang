@@ -1,0 +1,3 @@
+go test fuzz v1
+string("saved:same:risky:after")
+byte(8)

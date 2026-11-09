@@ -414,6 +414,8 @@ A fixed tuple spread checks each callable’s written `@throws` contract against
 
 A final array spread into a callback rest parameter keeps each element’s written `@throws` contract. Saving the array, using a `readonly` array type or supplying fixed arguments before it keeps the same callback check. A rest parameter named by `@rethrows` admits its callbacks as usual.
 
+Passing several arrays to the same callback rest parameter applies the written throw check to each array. An earlier array can have an unknown length; it does not remove the checks from later spreads or arguments.
+
 Named tuple labels inside an `effect` function, arrow or method are type-only names, as in TypeScript. They do not count as writes to an enclosing parameter; actual writes retain the parameter binding created when the function was called.
 
 ## Trace and debug calls

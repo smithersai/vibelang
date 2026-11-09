@@ -1,0 +1,7 @@
+// expect: EK0402
+import {strict,risky} from "./foreign.js"
+const args=[risky]
+const other=[risky]
+export const invalid=strict(...args,...other)
+export effect function effectHost(){return strict(...args,...other)}
+export function caughtHost(){try{return strict(...args,...other)}catch{return 0}}
