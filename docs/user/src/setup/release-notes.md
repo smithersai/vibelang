@@ -15,6 +15,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - TypeScript projections imported an unavailable helper module, so source inspection reported `TS2307` and lost body-local types. The helper declarations now ship with `vibelang`, and projections preserve those types in stock TypeScript.
 
 - `static readonly key!: string` in a `service`, with no initializer, reported `EK0901` and TypeScript's `TS1255` for the `!`. It now reports `EK0901` alone, which says to write `static readonly key = "app/Service"`. A static index signature in a `service` reported two `EK0902` and a `TS2411` on the key; it now reports one `EK0902`.
+- `effect` written before another modifier, as in `effect static load()` or `effect export function load()`, written twice, or written on a field or class reported only `TS1434`, an unexpected keyword. It now reports what TypeScript reports for `async` there, naming `effect`: `TS1029` for the order, `TS1030` for the repeat and `TS1042` for a declaration that takes no such modifier.
 - Indexed, aliased or destructured reads of `Symbol.customMatcher` could see the property before it was initialized. VibeLang modules now initialize it before those value reads; type-only references stay type-only.
 
 - Escaped `fork` and `join` operator keywords could compile without an error. They now report `TS1260`, while ordinary escaped names keep their TypeScript meaning.

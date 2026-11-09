@@ -1,0 +1,9 @@
+// expect: EK0108 TS1024 TS1275 EK0108
+// VIP-1, modifier placement: a misplaced effect before a modifier that an
+// Effect function or method cannot have keeps that modifier's diagnostic.
+export abstract class Store {
+  effect abstract read(): number!!
+  effect readonly size() { return 1 }
+  effect accessor count() { return 2 }
+}
+effect declare function ambientRead(): number!!

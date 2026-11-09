@@ -1,0 +1,18 @@
+// expect-result: [1,2,3,4,5,6,7]
+// A method named as a modifier keeps its name after effect, and effect stays
+// a field name before =, : or ;.
+class Named {
+  effect static() { return 1 }
+  effect public() { return 2 }
+  effect readonly<T>(x: T) { return x }
+  effect effect() { return 4 }
+  static effect declare() { return 5 }
+}
+class Fields {
+  effect = 6; size = 7
+}
+export effect function main() {
+  const named = new Named()
+  const fields = new Fields()
+  return [try named.static(), try named.public(), try named.readonly(3), try named.effect(), try Named.declare(), fields.effect, fields.size]
+}

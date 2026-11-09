@@ -118,6 +118,8 @@ type Parser struct {
 	vibelangFieldBody        bool                           // an error, service, or control body supports recoverable field commas (vibelang_errors.go)
 	vibelangFieldComma       bool                           // a comma follows the field just parsed in such a body (vibelang_errors.go)
 	vibelangNoSeparator      bool                           // a member follows the one just parsed in such a body on its line, with no separator (vibelang_errors.go)
+	misplacedEffect          core.TextRange                 // an effect written before its place among a declaration's modifiers (vibelang_effect_misplaced.go)
+	hasMisplacedEffect       bool                           // that effect modifies the function or method about to be parsed
 	vibelangSelects          int                            // select statements parsed so far, which number their labels (vibelang_fibers.go)
 	vibelangNoBlockParams    bool                           // a { after an expression is not a block param here: heritage clauses and provide's providers (vibelang_blocks.go)
 	vibelangMatchTemps       int                            // names written for match and is, numbered per file (vibelang_match.go)
@@ -1277,7 +1279,7 @@ func (p *Parser) parseDeclaration() *ast.Statement {
 	// not reusable in that context.
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
-	modifiers := p.parseModifiersEx( /*allowDecorators*/ true, false /*permitConstAsModifier*/, false /*stopOnStartOfClassStaticBlock*/)
+	modifiers := p.parseVibeLangModifiers(false /*member*/) // with a misplaced effect (vibelang_effect_misplaced.go)
 	isAmbient := modifiers != nil && core.Some(modifiers.Nodes, isDeclareModifier)
 	if isAmbient {
 		// !!! incremental parsing
@@ -1299,6 +1301,9 @@ func (p *Parser) parseDeclaration() *ast.Statement {
 }
 
 func (p *Parser) parseDeclarationWorker(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Statement {
+	if word, ok := p.takeMisplacedEffect(); ok {
+		return p.markEffect(p.parseFunctionDeclaration(pos, jsdoc, modifiers, true /*effect*/), word) // effect export function f() { … } (vibelang_effect_misplaced.go)
+	}
 	if p.isStartOfAsyncShorthand(modifiers) {
 		return p.parseShorthandFunctionDeclaration(pos, jsdoc, modifiers, false /*effect*/) // async get(url) { … } (vibelang_effect.go)
 	}
@@ -2162,7 +2167,10 @@ func (p *Parser) parseClassElement() *ast.Node {
 		p.withJSDoc(result, jsdoc)
 		return result
 	}
-	modifiers := p.parseModifiersEx(true /*allowDecorators*/, true /*permitConstAsModifier*/, true /*stopOnStartOfClassStaticBlock*/)
+	modifiers := p.parseVibeLangModifiers(true /*member*/) // with a misplaced effect (vibelang_effect_misplaced.go)
+	if word, ok := p.takeMisplacedEffect(); ok {
+		return p.vibelangEffectMember(p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, true /*effect*/), word) // effect static m() { … }
+	}
 	if member := p.tryParseVibeLangRestrictedEffectMember(pos, jsdoc, modifiers, true /*class*/); member != nil {
 		return member
 	}

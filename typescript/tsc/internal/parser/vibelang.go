@@ -49,7 +49,8 @@ func (p *Parser) scanStartOfVibeLangDeclarationInContext(ambient bool) bool {
 	}
 	word := p.scanner.TokenValue()
 	if word == "effect" {
-		return p.scanStartOfEffectDeclaration() // effect function f(), effect f() (vibelang_effect.go)
+		// effect function f(), effect f() (vibelang_effect.go); effect export function f() (vibelang_effect_misplaced.go)
+		return p.lookAhead((*Parser).scanStartOfEffectDeclaration) || p.scanStartOfMisplacedEffectDeclaration()
 	}
 	if !isVibeLangDeclarationWord(word) {
 		return false
@@ -83,6 +84,9 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	}
 	switch word {
 	case "effect":
+		if !p.lookAhead((*Parser).scanStartOfEffectDeclaration) {
+			return nil // a misplaced effect, which parseVibeLangModifiers reads (vibelang_effect_misplaced.go)
+		}
 		return p.parseEffectDeclaration(pos, jsdoc, modifiers) // vibelang_effect.go
 	case "error":
 		return p.parseErrorDeclaration(pos, jsdoc, modifiers, false /*schema*/)

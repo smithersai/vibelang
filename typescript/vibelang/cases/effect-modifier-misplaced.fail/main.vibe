@@ -1,0 +1,15 @@
+// expect: TS1029 TS1029 TS1030 TS1042 TS1042 TS1029 TS1042 TS1042
+// VIP-1, modifier placement: a recognized effect modifier follows the
+// diagnostic recovery positions of TypeScript's async, so effect written
+// before another modifier, twice, or on a declaration that takes none gets
+// the diagnostic TypeScript gives async there.
+export class Users {
+  effect static load() { return 1 }
+  effect private find() { return 2 }
+  effect effect both() { return 3 }
+  effect size = 1
+  static effect count = 2
+}
+effect export function load() { return 1 }
+effect class Model { }
+effect const limit = 1

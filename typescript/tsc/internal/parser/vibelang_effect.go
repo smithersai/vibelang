@@ -310,18 +310,7 @@ const EffectAsyncMemberDiagnosticText = EffectAsyncConflictDiagnosticText
 func (p *Parser) tryParseVibeLangRestrictedEffectMember(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, class bool) *ast.Node {
 	if !p.isVibeLangEffectWord() || !p.lookAhead(func(p *Parser) bool {
 		p.nextToken()
-		if p.hasPrecedingLineBreak() {
-			return false
-		}
-		if p.parseContextualModifier(ast.KindGetKeyword) || p.parseContextualModifier(ast.KindSetKeyword) {
-			return true
-		}
-		return class && (p.token == ast.KindConstructorKeyword || p.token == ast.KindStringLiteral && p.scanner.TokenValue() == "constructor") &&
-			p.lookAhead(func(p *Parser) bool {
-				unquoted := p.token == ast.KindConstructorKeyword
-				p.nextToken()
-				return p.token == ast.KindOpenParenToken || unquoted && p.token == ast.KindLessThanToken
-			})
+		return !p.hasPrecedingLineBreak() && p.scanStartOfRestrictedMember(class)
 	}) {
 		return nil
 	}
@@ -339,6 +328,20 @@ func (p *Parser) tryParseVibeLangRestrictedEffectMember(pos int, jsdoc jsdocScan
 		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, word, "EK", diagnostics.CategoryError, EffectAsyncMemberDiagnosticCode, EffectAsyncMemberDiagnosticText))
 	}
 	return member
+}
+
+// scanStartOfRestrictedMember reports whether the current token starts a
+// getter, a setter or, in a class, a constructor. It moves the scanner.
+func (p *Parser) scanStartOfRestrictedMember(class bool) bool {
+	if p.parseContextualModifier(ast.KindGetKeyword) || p.parseContextualModifier(ast.KindSetKeyword) {
+		return true
+	}
+	return class && (p.token == ast.KindConstructorKeyword || p.token == ast.KindStringLiteral && p.scanner.TokenValue() == "constructor") &&
+		p.lookAhead(func(p *Parser) bool {
+			unquoted := p.token == ast.KindConstructorKeyword
+			p.nextToken()
+			return p.token == ast.KindOpenParenToken || unquoted && p.token == ast.KindLessThanToken
+		})
 }
 
 // Recover a recognized forbidden modifier as one type member, so EK0108
