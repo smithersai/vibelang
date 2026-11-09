@@ -106,6 +106,9 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	for _, file := range sources {
 		sidecar, _ := p.vibeSidecarPaths(string(file.FileName()))
 		selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(sidecar))] = true
+		if native, ok := p.nativeDeclarationTarget(file); ok {
+			selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(native))] = true
+		}
 	}
 	bodies := map[string]*ast.SourceFile{} // a body's file name, without its extension
 	for _, file := range sources {
@@ -153,6 +156,68 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	fs := p.Host().FS()
 	resolver := p.newResolver()
 	var blocked atomic.Bool
+	var nativeDiagnostics []*ast.Diagnostic
+	// emitNative writes or keeps the native declaration of a module whose
+	// sidecar text is text, and prunes the copy this project owns at the other
+	// layout's place, stale. Like the sidecar, it publishes the replacement
+	// before pruning, and prunes only what this project generated.
+	emitNative := func(file *ast.SourceFile, stale string, text string) error {
+		source := string(file.FileName())
+		specifier := nativeDeclarationSpecifier(source)
+		staleNative := NativeDeclarationPath(stale)
+		prune := func(path string) error {
+			if output == nil || path == "" || selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(path))] || p.GetSourceFile(tspath.RootedFilePathFromNormalized(path)) != nil && !p.isOwnNativeDeclaration(file, path) {
+				return nil
+			}
+			return p.pruneOwnedSidecar(path, output)
+		}
+		native, ok := p.nativeDeclarationTarget(file)
+		if native == "" {
+			return nil
+		}
+		if !ok {
+			// A sibling now answers the lookups, or the project's own declaration
+			// output is written here: a copy this project wrote is stale.
+			if p.emitsDeclarationAt(file, native) {
+				return publish(func() error { return prune(staleNative) })
+			}
+			return publish(func() error {
+				if err := prune(native); err != nil {
+					return err
+				}
+				return prune(staleNative)
+			})
+		}
+		if p.IsEmitBlocked(tspath.RootedFilePathFromNormalized(native)) {
+			blocked.Store(true)
+			return nil
+		}
+		want := NativeDeclarationText(specifier, text)
+		if existing, exists := fs.ReadFile(tspath.RootedFilePathFromNormalized(native)); exists && existing != want && !isNativeDeclarationText(existing, specifier) {
+			// A hand-written declaration: keep its bytes and name both files.
+			diagnostic := ast.NewCompilerDiagnostic(diagnostics.Cannot_write_file_0_because_it_would_overwrite_input_file, native)
+			diagnostic.AddMessageChain(ast.NewCompilerDiagnostic(diagnostics.Output_file_0_has_not_been_built_from_source_file_1, native, source))
+			mutex.Lock()
+			nativeDiagnostics = append(nativeDiagnostics, diagnostic)
+			mutex.Unlock()
+			blocked.Store(true)
+			return nil
+		}
+		return publish(func() error {
+			if existing, exists := fs.ReadFile(tspath.RootedFilePathFromNormalized(native)); !exists || existing != want {
+				if err := write(native, want); err != nil {
+					return err
+				}
+			}
+			if output == nil {
+				return nil
+			}
+			if err := p.recordSidecarOwner(native, want, output); err != nil {
+				return err
+			}
+			return prune(staleNative)
+		})
+	}
 	emit := func(targets []*ast.SourceFile) *EmitResult {
 		return p.Emit(ctx, EmitOptions{
 			VibeDeclarationSidecar: true,
@@ -209,7 +274,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				if isBody && p.emitsDeclarationAt(data.SourceFile, sidecar) {
 					return nil
 				}
-				return publish(func() error {
+				if err := publish(func() error {
 					// Publish the replacement before pruning its old layout. A
 					// failed write must leave the previous declaration available.
 					if existing, ok := fs.ReadFile(tspath.RootedFilePathFromNormalized(sidecar)); !ok || existing != text {
@@ -227,7 +292,13 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 						return p.pruneOwnedSidecar(stale, output)
 					}
 					return nil
-				})
+				}); err != nil {
+					return err
+				}
+				if isBody {
+					return nil
+				}
+				return emitNative(data.SourceFile, stale, text)
 			},
 		})
 	}
@@ -249,6 +320,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	if !p.Options().GetEmitDeclarations() {
 		result.Diagnostics = p.sidecarReaderDiagnostics(result.Diagnostics, sources)
 	}
+	result.Diagnostics = append(result.Diagnostics, nativeDiagnostics...)
 	result.EmitSkipped = result.EmitSkipped || blocked.Load()
 	if projectSidecarOptions {
 		if ctx.Err() != nil || result.EmitSkipped || diagnosticsAffectBuild(result.Diagnostics) {

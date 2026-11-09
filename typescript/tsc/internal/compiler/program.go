@@ -1500,6 +1500,15 @@ func (p *Program) verifyCompilerOptions() {
 		for _, source := range p.declarationSidecarSources() {
 			sidecar, _ := p.vibeSidecarPaths(string(source.FileName()))
 			verifyEmitFilePath(tspath.RootedFilePathFromNormalized(sidecar))
+			// So is its native declaration, unless the project's own
+			// declaration output claimed that path, or an import reached the
+			// native declaration emit wrote before.
+			if native, ok := p.nativeDeclarationTarget(source); ok {
+				path := tspath.RootedFilePathFromNormalized(native)
+				if !emitFilesSeen.Has(p.PathKeyForFileName(path)) && !p.isOwnNativeDeclaration(source, native) {
+					verifyEmitFilePath(path)
+				}
+			}
 			// So is each body's declaration, which may be the path its ordinary
 			// declaration output already claimed.
 			for _, body := range source.EmbeddedModules() {
