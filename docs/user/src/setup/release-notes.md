@@ -35,6 +35,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `when Function:` and `value is Function` reported `EK0107` twice at the same place. They now report it once, with the advice to test the value with a `typeof` guard; `when globalThis.Function:` gives the same advice.
 
+- Declaration files could reorder inferred object members depending on which unrelated function was checked first. Synthesized optional properties now retain their own source, keeping member order and metadata stable.
+
 - Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
 
 - Migration API checks could lose one referenced project's declarations when config paths shared an output name. Each project now keeps separate declarations and compiler logs, and ambiguous older snapshots require fresh setup.

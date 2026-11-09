@@ -381,6 +381,8 @@ A TypeScript `module parse { … }` body in `src/main.vibe` also gets `main.vibe
 
 A project reference that reads a built `.vibe` or `.vibex` source also reads its named bodies from that project’s declaration output. Type re-exports and inherited interface members remain available with `outDir` or `declarationDir`; a written declaration input keeps its own identity. With `--generateTrace`, `vibeProjectReferenceBodyOutput` records each selected body output, its source kind and whether a previous body declaration was present.
 
+Inferred object unions keep the source of each synthesized optional property. Inferring an unrelated union first does not change their declaration member order, `readonly` flags or source metadata.
+
 A `schema` declaration's JSDoc is emitted on its constant only; the generated `typeof Name.Type` alias has no comment. This includes visibility and deprecation tags, following ordinary TypeScript declaration emit. One written, nongeneric `type Name = typeof Name.Type` beside either ordinary `schema Name` form replaces the generated alias in the same scope, in either order. The written declarations keep their own comments, order and exports; `removeComments` and `stripInternal` apply as on the native pair. `vibelang --fix` keeps such a documented type when it rewrites the native pair to a `schema` declaration, and removes an undocumented one.
 
 A compatibility declaration keeps an explicit `./tag.vibe` import bound to that source when `tag.ts` is also present. The same applies to inferred import types: sidecar resolution preserves the selected source before computing its output-relative path.
