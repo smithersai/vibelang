@@ -73,6 +73,8 @@ An `async` function's `throw` rejects its Promise, as in TypeScript, and its dec
 
 A return type counts as a `Stream` only when it is assignable to `Stream.Stream<any, any, any>`. A foreign function returning a partial view that has only `~effect/Stream`, or omits `channel` or `pipe`, keeps its written `@throws` contract, or `unknown` without one. Wrap the call when that contract may throw (`EK0403`). Ordinary plain-code rules apply to a function returning only such a partial view.
 
+A foreign interface named `Effect` does not become Effect’s own interface by copying its marker and type parameters. Its return type must satisfy the full Effect shape to be effectful; otherwise the foreign function keeps its written throw contract.
+
 Optional reference syntax does not change the selected callable’s own return contract. A foreign function returning `Effect.Effect<A> | undefined` is non-effectful, so `read?.()` keeps its written `@throws` contract, or `unknown` without one, and needs a bridge when it may throw (`EK0403`). An optional reference to a function returning wholly an `Effect`, `Stream` or `Layer` keeps that function’s non-throwing contract.
 
 An inline callback keeps a written admitting throw contract when its parameter also accepts a non-function value, including `undefined` or an options object. Fixed tuple-rest parameters keep that contract too. A function alternative without `@throws`, or with `@throws {never}`, still admits only non-throwing calls.

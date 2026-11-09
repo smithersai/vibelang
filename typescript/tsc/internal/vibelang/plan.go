@@ -588,20 +588,36 @@ func isEffectType(c *checker.Checker, t *checker.Type) bool {
 
 // effectInterfaceSymbol returns the symbol of the interface named Effect that
 // declares t's `~effect/Effect` property, or nil if t has no such property.
-// Only an interface with the three channel parameters A, E and R is the
-// Effect interface: a non-generic one that copies the marker has no channels
-// to instantiate, so its values are at most Effect-shaped.
+// The interface belongs to the Effect module and has three channel
+// parameters. A foreign interface that copies the name, marker and generic
+// slots has no deferred channels unless it satisfies the structural contract.
 func effectInterfaceSymbol(c *checker.Checker, t *checker.Type) *ast.Symbol {
 	property := c.GetPropertyOfType(t, effectTypeID)
 	if property == nil {
 		return nil
 	}
 	for _, decl := range property.Declarations() {
-		if parent := decl.Parent; parent != nil && ast.IsInterfaceDeclaration(parent) && parent.Name().Text() == "Effect" && len(parent.TypeParameters()) == 3 {
+		if parent := decl.Parent; parent != nil && ast.IsInterfaceDeclaration(parent) && parent.Name().Text() == "Effect" && len(parent.TypeParameters()) == 3 &&
+			isEffectInterfaceModule(c, ast.GetSourceFileOfNode(parent)) {
 			return c.GetSymbolOfDeclaration(parent)
 		}
 	}
 	return nil
+}
+
+// isEffectInterfaceModule accepts the package module in both current and
+// root-level declaration layouts. The package identity protects a foreign
+// Effect interface whose name and variance marker happen to look the same.
+func isEffectInterfaceModule(c *checker.Checker, file *ast.SourceFile) bool {
+	if isEffectModuleFile(c, file, "Effect") {
+		return true
+	}
+	if file == nil {
+		return false
+	}
+	root, name := packageRootOf(c, file.FileName().Directory())
+	return name == "effect" && (file.FileName().AsString() == root.AsString()+"/Effect.d.ts" ||
+		file.FileName().AsString() == root.AsString()+"/Effect.ts")
 }
 
 // isEffectAnnotation reports whether the type node t names an Effect.
@@ -618,14 +634,27 @@ func (a *analyzer) programEffectInterface() *checker.Type {
 		return a.programEffect
 	}
 	a.programEffectSearched = true
-	for _, file := range a.checker.Program().SourceFiles() {
-		if !isEffectModuleFile(a.checker, file, "Effect") || file.Symbol == nil {
-			continue
-		}
-		for _, export := range a.checker.GetExportsOfModule(file.Symbol) {
-			if export.Name() == "Effect" && export.Flags()&ast.SymbolFlagsInterface != 0 {
-				a.programEffect = a.checker.GetDeclaredTypeOfSymbol(export)
-				return a.programEffect
+	// Preserve the current module target when another installed copy uses
+	// root-level declarations; consult that layout only as a fallback.
+	for _, rootLayout := range []bool{false, true} {
+		for _, file := range a.checker.Program().SourceFiles() {
+			if file.Symbol == nil {
+				continue
+			}
+			currentLayout := isEffectModuleFile(a.checker, file, "Effect")
+			if !rootLayout && !currentLayout || rootLayout && (currentLayout || !isEffectInterfaceModule(a.checker, file)) {
+				continue
+			}
+			for _, export := range a.checker.GetExportsOfModule(file.Symbol) {
+				if export.Name() != "Effect" || export.Flags()&ast.SymbolFlagsInterface == 0 {
+					continue
+				}
+				for _, declaration := range export.Declarations() {
+					if ast.IsInterfaceDeclaration(declaration) && len(declaration.TypeParameters()) == 3 {
+						a.programEffect = a.checker.GetDeclaredTypeOfSymbol(export)
+						return a.programEffect
+					}
+				}
 			}
 		}
 	}

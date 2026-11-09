@@ -1,0 +1,21 @@
+// expect-result: [0,true,true,true,true,6]
+import {Effect} from "effect"
+import {make,safe} from "./foreign.js"
+export const programs=[
+ Effect.try({try:()=>make(),catch:(error:unknown)=>error}),
+ Effect.sync(()=>{try{return make()}catch{return safe()}})
+]
+import {events,sentinel} from "./foreign.js"
+const construction=events.length
+export effect function main(){
+ const checks:boolean[]=[]
+ for(let repeat=0;repeat<2;repeat++){
+  for(let index=0;index<programs.length;index++){
+   const result=try exit(programs[index])
+   checks.push(index===0
+    ?result._tag==="Failure"&&result.cause.reasons[0]?._tag==="Fail"&&result.cause.reasons[0].error===sentinel
+    :result._tag==="Success"&&result.value.value===7)
+  }
+ }
+ return [construction,...checks,events.length]
+}
