@@ -53,6 +53,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The Bun and Node loaders could refuse a module the project compile accepts: a call into a referenced project, such as `users.getByName(id)` after `const users = try Users`, reported `EK0403` because a loader reads the referenced project's TypeScript sources where the project compile reads its declaration output. The loaders now classify those sources as that output, so both compiles report the same calls.
 
+- A misspelled host type such as `FileReader` lost TypeScript’s spelling suggestion in annotations or `implements` clauses. Erased type references now keep native suggestions while value expressions still follow the platform rules.
 - A misspelled name could suggest a host global such as `screen` or `MutationObserver` that VibeLang rejects. Suggestions in value expressions now exclude every banned host binding and retain allowed utilities and project-defined names.
 - A misspelled host-global name in an erased `typeof` type query lost TypeScript’s spelling suggestion. The compiler now suggests the valid type reference while keeping host globals out of value-expression suggestions.
 - Inside `namespace` blocks, unresolved experimental names could suggest banned host globals or omit service guidance. Diagnostics now follow the surrounding VibeLang rules.

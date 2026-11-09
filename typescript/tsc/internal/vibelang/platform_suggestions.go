@@ -26,10 +26,10 @@ func init() {
 // A declaration of the program's own with such a name may be.
 func suggestsNoPlatformGlobal(c *checker.Checker, location *ast.Node, candidate *ast.Symbol) bool {
 	name := candidate.Name()
-	if _, ok := platformGlobals[name]; !ok && (!isUnlistedHostGlobal(c, candidate) || isErasedPlatformSpellingReference(location)) {
+	if _, ok := platformGlobals[name]; !ok && !isUnlistedHostGlobal(c, candidate) {
 		return true
 	}
-	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || inHatch(location) || ast.IsPartOfTypeQuery(location) {
+	if !isVibeLangFile(ast.GetSourceFileOfNode(location)) || inHatch(location) || isErasedPlatformSpellingReference(location) {
 		return true
 	}
 	return !isPlatformGlobalBinding(c, candidate)
