@@ -474,12 +474,7 @@ func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 	}
 	form.Range = core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), p.nodePos())
 	p.recordVibeSyntax(form)
-	abstract := p.vibelangSynthesized(p.factory.NewModifier(ast.KindAbstractKeyword), word)
-	if modifiers == nil {
-		modifiers = p.newModifierList(word, []*ast.Node{abstract})
-	} else {
-		modifiers = p.newModifierList(core.NewTextRange(modifiers.Pos(), word.End()), append(append([]*ast.Node{}, modifiers.Nodes...), abstract))
-	}
+	modifiers = p.vibelangServiceModifiers(modifiers, word)
 	result := p.factory.NewClassDeclaration(modifiers, name, typeParameters, heritage, members)
 	p.finishNode(result, pos)
 	p.withJSDoc(result, jsdoc)

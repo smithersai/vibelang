@@ -59,12 +59,7 @@ func (p *Parser) parseServiceShapeDeclaration(pos int, jsdoc jsdocScannerInfo, m
 	factory := p.vibelangIntrinsic(ServiceShapeFactory, colon)
 	base := p.vibelangSpanning(p.factory.NewExpressionWithTypeArguments(factory, p.newNodeList(shape.Loc, []*ast.Node{shape})), span)
 	clause := p.vibelangSpanning(p.factory.NewHeritageClause(ast.KindExtendsKeyword, p.newNodeList(span, []*ast.Node{base})), span)
-	abstract := p.vibelangSynthesized(p.factory.NewModifier(ast.KindAbstractKeyword), word)
-	if modifiers == nil {
-		modifiers = p.newModifierList(word, []*ast.Node{abstract})
-	} else {
-		modifiers = p.newModifierList(core.NewTextRange(modifiers.Pos(), word.End()), append(append([]*ast.Node{}, modifiers.Nodes...), abstract))
-	}
+	modifiers = p.vibelangServiceModifiers(modifiers, word)
 	result := p.factory.NewClassDeclaration(modifiers, name, typeParameters, p.newNodeList(span, []*ast.Node{clause}), members)
 	p.finishNode(result, pos)
 	p.withJSDoc(result, jsdoc)

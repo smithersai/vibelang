@@ -1,0 +1,9 @@
+// expect: TS1042
+// Chapter 005: a service is already a contract; ServiceStart takes no
+// modifier, so a written abstract reports TypeScript's modifier error at the
+// modifier, not a duplicate against the declaration's own abstract class.
+abstract service S {
+  static readonly key = "abstract-modifier/S"
+  n: number
+}
+export { S }
