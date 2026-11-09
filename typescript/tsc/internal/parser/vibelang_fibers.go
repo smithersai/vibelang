@@ -661,6 +661,9 @@ func (p *Parser) nextTokenStartsConcurrentDeclaration() bool {
 // writes is EK1904 (both reported by the checker).
 func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	anchor := p.tokenRange()
+	if p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape() {
+		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
+	}
 	p.nextToken() // concurrent
 	var limit, assignmentHead *ast.Node
 	var head core.TextRange

@@ -1529,6 +1529,10 @@ typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:3:32 lambda e
 typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:4:35 lambda effectFn table
 typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:5:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:6:30 lambda effectFn table
+typescript/vibelang/cases/concurrent-keyword-escapes.fail/main.vibe:10:30 lambda effectFn table
+typescript/vibelang/cases/concurrent-keyword-escapes.fail/main.vibe:14:16 lambda effectFn table
+typescript/vibelang/cases/concurrent-keyword-escapes.fail/main.vibe:4:30 lambda effectFn table
+typescript/vibelang/cases/concurrent-keyword-escapes.fail/main.vibe:7:33 lambda effectFn table
 typescript/vibelang/cases/concurrent-labeled-break-local/main.vibe:14:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-labeled-break-local/main.vibe:15:15 lambda plain fallback
 typescript/vibelang/cases/concurrent-labeled-break-local/main.vibe:19:34 lambda effectFn table

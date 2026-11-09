@@ -1,0 +1,15 @@
+// expect: TS1260 TS1260 TS1260 TS1260
+export const con\u0063urrent = 1
+export effect function unlimited() {
+  for \u0063oncurrent (const x of [1]) {}
+}
+export effect function limited() {
+  for con\u0063urrent(2) (const x of [1]) {}
+}
+export effect function extended() {
+  for concurre\u{6e}t (const x of [1]) {}
+}
+export effect function trivia() {
+  for /* header */ concurren\u0074
+    (2) (const x of [1]) {}
+}

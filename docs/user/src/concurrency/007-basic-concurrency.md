@@ -133,7 +133,7 @@ effect function cancelBatch() {
 // Output: true
 ```
 
-The tokens in `for concurrent` use ordinary whitespace: a line break or multiline comment may separate `concurrent` from its limit or loop head.
+The tokens in `for concurrent` use ordinary whitespace: a line break or multiline comment may separate `concurrent` from its limit or loop head. The `concurrent` keyword must be written literally; a Unicode escape reports `TS1260`, as in TypeScript's loop keywords. Ordinary identifiers may still contain Unicode escapes.
 
 Omitting the limit means unbounded concurrency. Local bindings, including a binding named `undefined`, do not change that default.
 
