@@ -18,6 +18,16 @@ func checkGlobalThisEscapes(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsImportEqualsDeclaration(node) && node.AsImportEqualsDeclaration().IsTypeOnly {
 			return false // The erased reference keeps TypeScript's native diagnostics.
 		}
+		// Internal import aliases use QualifiedName nodes rather than member
+		// expressions. A repeated global-object target still copies the object.
+		if ast.IsImportEqualsDeclaration(node) {
+			reference := node.AsImportEqualsDeclaration().ModuleReference
+			if ast.IsQualifiedName(reference) && staticGlobalMemberName(reference) == "globalThis" && globalPlatformObject(c, reference) != nil {
+				report(c, reference, globalThisEscapeDiagnostic)
+				cover(c, reference)
+				return false
+			}
+		}
 		if !ast.IsIdentifier(node) || node.Text() != "globalThis" {
 			return node.ForEachChild(visit)
 		}

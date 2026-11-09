@@ -1,0 +1,3 @@
+go test fuzz v1
+string("copy:2:used")
+byte(0)

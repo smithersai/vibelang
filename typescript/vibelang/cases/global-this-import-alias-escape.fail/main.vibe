@@ -1,0 +1,3 @@
+// expect: EK0107
+import escaped = globalThis.globalThis;
+export const copy = escaped;

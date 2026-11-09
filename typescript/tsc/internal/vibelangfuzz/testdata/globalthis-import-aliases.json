@@ -1,0 +1,164 @@
+[
+  {
+    "Key": "copy:2:used",
+    "Source": "import held = globalThis.globalThis; export const copy=held;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:2:unused",
+    "Source": "import held = globalThis.globalThis; export const marker=7;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:2:exported",
+    "Source": "export import held = globalThis.globalThis;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:2:namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis; } export const copy=N.held;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:3:used",
+    "Source": "import held = globalThis.globalThis.globalThis; export const copy=held;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:3:unused",
+    "Source": "import held = globalThis.globalThis.globalThis; export const marker=7;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:3:exported",
+    "Source": "export import held = globalThis.globalThis.globalThis;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:3:namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis.globalThis; } export const copy=N.held;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:4:used",
+    "Source": "import held = globalThis.globalThis.globalThis.globalThis; export const copy=held;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:4:unused",
+    "Source": "import held = globalThis.globalThis.globalThis.globalThis; export const marker=7;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:4:exported",
+    "Source": "export import held = globalThis.globalThis.globalThis.globalThis;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:4:namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis.globalThis.globalThis; } export const copy=N.held;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:5:used",
+    "Source": "import held = globalThis.globalThis.globalThis.globalThis.globalThis; export const copy=held;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:5:unused",
+    "Source": "import held = globalThis.globalThis.globalThis.globalThis.globalThis; export const marker=7;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:5:exported",
+    "Source": "export import held = globalThis.globalThis.globalThis.globalThis.globalThis;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:5:namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis.globalThis.globalThis.globalThis; } export const copy=N.held;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:direct",
+    "Source": "import held = globalThis; export const copy=held;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "copy:ordinary",
+    "Source": "export const held=globalThis;",
+    "Codes": [
+      "EK0107"
+    ]
+  },
+  {
+    "Key": "member:direct",
+    "Source": "import held = globalThis.URL; export const copy=held;",
+    "Codes": []
+  },
+  {
+    "Key": "member:repeated",
+    "Source": "import held = globalThis.globalThis.URL; export const copy=held;",
+    "Codes": []
+  },
+  {
+    "Key": "member:deep",
+    "Source": "import held = globalThis.globalThis.globalThis.URL; export const copy=held;",
+    "Codes": []
+  },
+  {
+    "Key": "local:namespace",
+    "Source": "namespace local { export namespace globalThis { export const value=7; } } import held = local.globalThis; export const copy=held.value;",
+    "Codes": []
+  },
+  {
+    "Key": "local:shadow",
+    "Source": "namespace globalThis { export namespace globalThis { export const value=7; } } import held = globalThis.globalThis; export const copy=held.value;",
+    "Codes": []
+  },
+  {
+    "Key": "type:query",
+    "Source": "export type Held=typeof globalThis.globalThis;",
+    "Codes": []
+  },
+  {
+    "Key": "module:copy",
+    "Source": "module bridge { import held = globalThis.globalThis; export const copy=held; } import {copy} from bridge; export const marker=copy;",
+    "NativeSource": "import held = globalThis.globalThis; export const copy=held;",
+    "Codes": []
+  }
+]
