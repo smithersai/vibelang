@@ -5704,7 +5704,7 @@ typescript/vibelang/cases/match-extractor-errors/main.vibe:6:56 lambda dual fall
 typescript/vibelang/cases/match-extractor-errors/main.vibe:7:13 lambda dual fallback
 typescript/vibelang/cases/match-extractor-errors/main.vibe:8:20 lambda dual fallback
 typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:10:5 lambda choice fallback
-typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:15:17 lambda plain fallback
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:15:17 lambda plain protocol
 typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:16:20 lambda plain fallback
 typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:17:19 lambda dual fallback
 typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:18:19 lambda dual fallback
@@ -6071,7 +6071,7 @@ typescript/vibelang/cases/match-subject-once/main.vibe:72:20 lambda plain fallba
 typescript/vibelang/cases/match-subject-once/main.vibe:76:20 lambda plain fallback
 typescript/vibelang/cases/match-subject-shadow/main.vibe:12:22 lambda dual fallback
 typescript/vibelang/cases/match-subject-shadow/main.vibe:29:29 lambda plain table
-typescript/vibelang/cases/match-symbol-custom-matcher/main.vibe:12:3 lambda plain fallback
+typescript/vibelang/cases/match-symbol-custom-matcher/main.vibe:12:3 lambda plain protocol
 typescript/vibelang/cases/match-tagged-error-guards/guard0.vibe:1:225 lambda dual fallback
 typescript/vibelang/cases/match-tagged-error-guards/guard0.vibe:1:285 lambda dual fallback
 typescript/vibelang/cases/match-tagged-error-guards/guard0.vibe:1:345 lambda dual fallback
@@ -8820,6 +8820,10 @@ typescript/vibelang/cases/super-assignment-targets/child.vibe:55:11 lambda effec
 typescript/vibelang/cases/super-assignment-targets/child.vibe:55:52 lambda plain table
 typescript/vibelang/cases/super-assignment-targets/child.vibe:9:34 lambda plain table
 typescript/vibelang/cases/super-update-generator/counter.vibe:11:34 lambda plain table
+typescript/vibelang/cases/symbol-custom-matcher-bindings-commonjs/main.vibe:10:17 lambda plain annotation
+typescript/vibelang/cases/symbol-custom-matcher-bindings-commonjs/main.vibe:12:5 lambda plain annotation
+typescript/vibelang/cases/symbol-custom-matcher-bindings/main.vibe:10:17 lambda plain annotation
+typescript/vibelang/cases/symbol-custom-matcher-bindings/main.vibe:12:5 lambda plain annotation
 typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:16:13 lambda effectFn keyword
 typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:22:28 lambda choice fallback
 typescript/vibelang/cases/t3code-effect-fn-default-timing/main.vibe:26:10 lambda program keyword
@@ -10428,7 +10432,7 @@ typescript/vibelang/cases/w01-003-retained-zero-extractor/main.vibe:96:6 lambda 
 typescript/vibelang/cases/w01-003-retained-zero-extractor/main.vibe:97:19 lambda dual fallback
 typescript/vibelang/cases/w01-003-retained-zero-extractor/main.vibe:97:6 lambda plain fallback
 typescript/vibelang/cases/w01-004-array-extract-typing/main.vibe:25:22 lambda plain table
-typescript/vibelang/cases/w01-004-custom-matcher-ambient/main.vibe:17:3 lambda plain fallback
+typescript/vibelang/cases/w01-004-custom-matcher-ambient/main.vibe:17:3 lambda plain protocol
 typescript/vibelang/cases/w01-004-custom-matcher-ambient/main.vibe:23:22 lambda plain table
 typescript/vibelang/cases/w01-004-custom-matcher-declaration/main.vibe:13:100 lambda dual fallback
 typescript/vibelang/cases/w01-004-custom-matcher-declaration/main.vibe:13:22 lambda plain table

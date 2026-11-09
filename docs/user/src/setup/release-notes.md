@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Reading `customMatcher` from a parameter named `Symbol` could read the global protocol symbol instead, skipping the parameter's getter or causing a type error. The access now uses the parameter's property, as TypeScript does.
+
 - Inline `try` methods in `Effect.try` and `Effect.tryPromise` options could report `EK0401` for calls the wrapper catches. Method syntax now keeps the same thunk contract as an arrow or function expression.
 
 - Migration verification could reject an unchanged ambient registration after its inline type moved into a platform module. Closed structural aliases now compare with the original inline type, and changed contracts remain rejected.

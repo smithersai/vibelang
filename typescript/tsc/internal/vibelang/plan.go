@@ -13,6 +13,8 @@ const effectTypeID = "~effect/Effect"
 
 // plan records what the lowering does to one .vibe file.
 type plan struct {
+	matcherInitialization bool // initialize the runtime before a global Symbol.customMatcher value read
+
 	isBindingDeclarations map[*ast.Node]bool
 	isBindingReferences   map[*ast.Node]*ast.Node
 
@@ -92,6 +94,13 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if ast.IsPropertyAccessExpression(node) && node.Name().Text() == "customMatcher" &&
+			!ast.IsPartOfTypeNode(node) && !inModuleBlock(node) &&
+			ast.IsIdentifier(node.Expression()) && node.Expression().Text() == "Symbol" &&
+			c.GetSymbolAtLocation(node.Expression()) == c.GlobalSymbol("Symbol", ast.SymbolFlagsValue) {
+			p.matcherInitialization = true
+		}
+
 		if replacement := schemaOptionalReplacement(c, node); replacement != nil {
 			p.schemaGenerics[node] = replacement
 		}

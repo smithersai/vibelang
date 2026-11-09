@@ -2398,3 +2398,9 @@ typescript/vibelang/cases/smithers-flow-binding-nested-handler/main.vibe:25:30 l
 typescript/vibelang/cases/cov2-002b-parameter-return-producer-value.fail/main.vibe:2:32 lambda: plain fallback -> removed # VIP-2: a returning producer default runs in the call-time prologue, so its synthetic do callback is removed.
 typescript/vibelang/cases/cov2-002b-parameter-return-producer/main.vibe:2:31 lambda: plain fallback -> removed # VIP-2: a returning producer default runs in the call-time prologue, so its synthetic do callback is removed.
 typescript/vibelang/cases/vip1-coverage-default-return/main.vibe:5:31 lambda: plain fallback -> removed # VIP-2: a returning producer default runs in the call-time prologue, so its synthetic do callback is removed.
+
+typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:15:17 lambda: plain fallback -> plain protocol # Preserving the native computed Symbol.customMatcher key identifies this plain matcher method as a protocol member.
+
+typescript/vibelang/cases/match-symbol-custom-matcher/main.vibe:12:3 lambda: plain fallback -> plain protocol # The native Symbol.customMatcher member retains its protocol context; its plain function kind is unchanged.
+
+typescript/vibelang/cases/w01-004-custom-matcher-ambient/main.vibe:17:3 lambda: plain fallback -> plain protocol # The ambiently declared well-known symbol remains a computed protocol key instead of a parser intrinsic; the method stays plain.

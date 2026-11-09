@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -666,21 +665,6 @@ func (p *Parser) parseMatchListPattern(result *pattern, close ast.Kind) {
 	}
 	p.parseExpected(close)
 }
-
-// isVibeLangSymbolCustomMatcher reports whether Symbol.customMatcher, written in
-// a .vibe file, names the proposal's well-known symbol. No engine defines it yet,
-// so the file imports the runtime's, which is that symbol (chapter 004, Class
-// patterns: "the runtime-provided Symbol.customMatcher key"). A file that declares
-// its own Symbol keeps its own property.
-func (p *Parser) isVibeLangSymbolCustomMatcher(expression, name *ast.Node) bool {
-	if !p.isVibeLangFile() || !ast.IsIdentifier(expression) || expression.Text() != "Symbol" || !ast.IsIdentifier(name) || name.Text() != "customMatcher" {
-		return false
-	}
-	return !vibelangDeclaresSymbol.MatchString(p.sourceText)
-}
-
-// vibelangDeclaresSymbol matches a declaration or an import of the name Symbol.
-var vibelangDeclaresSymbol = regexp.MustCompile(`\b(?:const|let|var|function|class|enum|namespace|type|interface)\s+Symbol\b|\bimport\b[^;\n]*\bSymbol\b[^;\n]*\bfrom\b`)
 
 // misplacedRest is the invalid pattern for what follows a rest pattern.
 func misplacedRest(at core.TextRange) *pattern {

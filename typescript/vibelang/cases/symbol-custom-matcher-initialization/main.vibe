@@ -1,0 +1,2 @@
+const protocol = Symbol.customMatcher
+export function main(): unknown[] { return [typeof protocol, protocol === Symbol.customMatcher] }

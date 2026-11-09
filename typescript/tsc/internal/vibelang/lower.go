@@ -343,6 +343,12 @@ func (tx *lowering) visitSourceFile(file *ast.SourceFile) *ast.Node {
 	visited := tx.reachIntrinsics(tx.Visitor().VisitEachChild(file.AsNode()))
 	tx.markProgramArrows(visited)
 	imports := preludeImports(&tx.Factory().NodeFactory, tx.plan.prelude)
+	if tx.plan.matcherInitialization {
+		f := tx.Factory()
+		initialization := f.NewImportDeclaration(nil, nil, f.NewStringLiteral(generatedRuntimeModule, ast.TokenFlagsNone), nil)
+		imports = append([]*ast.Node{initialization}, imports...)
+	}
+
 	if tx.effect != nil {
 		imports = append(imports, tx.namespaceImport(tx.effect, "effect/Effect"))
 	}

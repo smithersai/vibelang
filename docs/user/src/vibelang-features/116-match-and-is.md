@@ -221,6 +221,8 @@ The global `Function` is not a class pattern: `when Function:`, `value is Functi
 
 A computed member named `customMatcher` provides the matcher protocol only when its key resolves to the runtime's actual symbol. A string, number or unrelated symbol does not make a non-callable object a matcher, even when the key's variable is named `customMatcher`; using that object as a pattern is `EK0702`.
 
+A local binding named `Symbol`, including a parameter or a destructured parameter, keeps its normal TypeScript meaning: `Symbol.customMatcher` reads that binding's property. An unshadowed global `Symbol.customMatcher` value read initializes the runtime first.
+
 The runtime installs `Symbol.customMatcher` on engines that lack it. VibeLang source files see its protocol types through their compiler-loaded runtime prelude. Published declarations preserve the Effect TypeScript API: generated matcher members and runtime type-reference directives are omitted, while the matcher remains in JavaScript. User-written matcher members keep their native declarations.
 
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
