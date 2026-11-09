@@ -26,6 +26,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Checking a root project could delete a nested project's declaration files and break package aliases. Sidecar cleanup now preserves other projects' declarations and removes only the compiling project's own stale outputs.
 
+- The migration rules named `EK2007` for an old `Stream` loop spelling. No such diagnostic exists; the rules now name `EK0102`, which a `for await` in effect code reports.
 - The Effect-users guide said its 0.0.9 runtime-cost measurements ran on the current Effect pin. Pin bumps had rewritten that record; it again names Effect `4.0.5`, the version 0.0.9 pinned.
 - Seven setup, editor and testing guides still said that support for the new forms arrives with the compiler's VIP implementation. That sentence is removed: the compiler, its language server and the formatter handle those forms.
 - The pattern-matching guide and the migration rules said Effect `4.1.0` retains thirty-three tagged error patterns. They now name Effect `4.1.1` and its thirty-four patterns, which include `JoseError.JoseError`.

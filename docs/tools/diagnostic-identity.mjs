@@ -491,7 +491,10 @@ function inventory(root) {
     ...files(join(root, "docs/user/src"), ".md").filter(path => !/(?:release-notes|diagnostic-code-map)\.md$/.test(path)),
     ...files(join(root, "docs/design/src"), ".md").filter(path => !path.endsWith("900-appendices.md")),
     join(root, "docs/user/llms-essentials.md"), join(root, "packages/compiler/skills/vibelang/SKILL.md"),
-    join(root, "templates/app/AGENTS.md")
+    join(root, "templates/app/AGENTS.md"),
+    // The migration rules and the agent context generated from them tell an
+    // agent which diagnostic to expect, so they cite current identities too.
+    join(root, ".smithers/flows/migrate/rules.md"), join(root, ".smithers/flows/migrate/context.md")
   ]
   const documents = paths.map(path => ({ path: relative(root, path), text: readFileSync(path, "utf8") }))
   const appendixText = readFileSync(join(root, "docs/design/src/900-appendices.md"), "utf8")

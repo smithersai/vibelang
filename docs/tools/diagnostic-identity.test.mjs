@@ -601,7 +601,7 @@ test("one process inventories each root once and keeps roots apart", async () =>
  const root=code=>{
   const dir=mkdtempSync(join(tmpdir(),"identity-root-"))
   write(dir,compiler,"package parser\nconst FixtureCode = "+code+"\n")
-  for(const path of ["docs/user/src/guide.md","docs/user/llms-essentials.md","packages/compiler/skills/vibelang/SKILL.md","templates/app/AGENTS.md"]) write(dir,path,"")
+  for(const path of ["docs/user/src/guide.md","docs/user/llms-essentials.md","packages/compiler/skills/vibelang/SKILL.md","templates/app/AGENTS.md",".smithers/flows/migrate/rules.md",".smithers/flows/migrate/context.md"]) write(dir,path,"")
   write(dir,"docs/design/src/900-appendices.md","## Appendix B. Diagnostics\n\n| `EK"+code+"` | error: fixture |\n")
   return dir
  }
@@ -649,4 +649,59 @@ test("generated forwarded mapper parameters ignore foreign numeric assignments a
    assert.deepEqual([...compilerCodes(fixture).keys()],["EK9003"])
   }
  ),{seed:47059003,numRuns:160,examples:[["code",4705,"field",false,false]]})
+})
+
+// The migration rules, and the agent context generated from them, tell an agent
+// which diagnostic to expect. A retired identity there sends it looking for a
+// report the compiler never prints.
+const migrationGuidance=[".smithers/flows/migrate/rules.md",".smithers/flows/migrate/context.md"]
+const identityRoot=(rules,context=rules)=>{
+ const dir=mkdtempSync(join(tmpdir(),"identity-migrate-"))
+ const write=(path,text)=>{mkdirSync(dirname(join(dir,path)),{recursive:true});writeFileSync(join(dir,path),text)}
+ write("typescript/tsc/internal/parser/vibelang_fixture.go","package parser\nconst FixtureCode = 2002\n")
+ for(const path of ["docs/user/src/guide.md","docs/user/llms-essentials.md","packages/compiler/skills/vibelang/SKILL.md","templates/app/AGENTS.md"]) write(path,"")
+ write("docs/design/src/900-appendices.md","## Appendix B. Diagnostics\n\n| `EK2002` | error: fixture |\n")
+ write(migrationGuidance[0],rules);write(migrationGuidance[1],context)
+ return dir
+}
+
+test("the migration rules and their generated context are audited, and cite only current identities", async () => {
+ const {loadIdentity}=await import("./diagnostic-identity.mjs")
+ const audit=loadIdentity(repository)
+ for(const path of migrationGuidance) assert.ok(audit.documents.some(document=>document.path===path),path+" is an audited document")
+ assert.deepEqual(audit.findings.filter(finding=>finding.path.startsWith(".smithers/flows/migrate/")),[])
+})
+
+test("a retired identity in the migration rules or their context is reported with its line", async () => {
+ const {loadIdentity}=await import("./diagnostic-identity.mjs")
+ const former="A body `return` is `EK2002`: use `break` and return after the loop.\n`EK2007` marks the old loop spelling to rewrite.\n"
+ const stale=identityRoot(former,"<!-- Generated -->\n"+former),current=identityRoot("A body `return` is `EK2002`.\n")
+ try {
+  assert.deepEqual(loadIdentity(stale).findings.map(finding=>[finding.kind,finding.code,finding.path,finding.line]),[
+   ["cited-unknown","EK2007",migrationGuidance[1],3],["cited-unknown","EK2007",migrationGuidance[0],2]
+  ])
+  assert.deepEqual(loadIdentity(current).findings,[])
+ } finally {
+  rmSync(stale,{recursive:true,force:true});rmSync(current,{recursive:true,force:true})
+ }
+})
+
+test("fast-check: migration guidance reports exactly its citations that have no registration and no row", () => {
+ fc.assert(fc.property(
+  fc.uniqueArray(fc.integer({min:1000,max:9989}),{minLength:1,maxLength:6}),
+  fc.array(fc.boolean(),{minLength:6,maxLength:6}),
+  fc.constantFrom(...migrationGuidance),
+  fc.constantFrom("`","","**"),
+  (numbers,known,path,quote)=>{
+   const codes=numbers.map(number=>"EK"+number)
+   // EK9990 keeps the registry and the appendix nonempty when no cited code is known.
+   const current=["EK9990",...codes.filter((_,index)=>known[index])]
+   const registered=compilerCodes(source(current.map(code=>"var "+code+" = message("+code.slice(2)+", errorCategory, \"fixture\")").join("\n")))
+   const rows=appendixCodes(appendix(current.map(code=>"| `"+code+"` | error: fixture | 34 | Tooling |").join("\n")))
+   const text=codes.map(code=>"Expect "+quote+code+quote+" here.").join("\n")
+   const cited=auditIdentity(registered,rows,[{path,text}]).filter(finding=>finding.kind==="cited-unknown")
+   assert.deepEqual(cited.map(finding=>[finding.code,finding.path,finding.line]).sort(),
+    codes.map((code,index)=>[code,path,index+1]).filter((_,index)=>!known[index]).sort())
+  }
+ ),{seed:2007,numRuns:300})
 })
