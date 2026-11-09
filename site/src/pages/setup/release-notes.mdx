@@ -18,6 +18,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A `try` before a `match` expression, a parenthesized `do` block, `try.race` or `try.any` could leave the Effect it gives unrun, and `try try do { … }` ran one layer too few. Each `try` now runs the value the form gives, and reports `EK0502` when that value is not an Effect.
 
 - DOM constructor names in `Effect.tryPromise` callbacks could be confused with implicit Effect namespaces. The platform guide now explains their `globalThis` spellings and the TypeScript boundary those host calls still need.
+- Invalid import meta-properties could be reported as platform access instead of syntax errors. They now retain TypeScript's syntax diagnostics.
+- Using `try` outside effect code could report that an Effect was used as a string or number, alongside `EK0501`. The compiler now checks the success value during error recovery, matching TypeScript's `await` and preserving independent errors.
 
 - Native phase imports could crash the compiler instead of producing diagnostics. They now complete checking and report any applicable errors.
 

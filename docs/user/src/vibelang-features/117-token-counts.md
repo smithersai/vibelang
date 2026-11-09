@@ -217,7 +217,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
 | [Cause](../data-types/071-cause.md) | 1,200 |
 | [Chunk](../data-types/072-chunk.md) | 930 |
-| [Data](../data-types/073-data.md) | 4,100 |
+| [Data](../data-types/073-data.md) | 4,000 |
 | [DateTime](../data-types/074-datetime.md) | 3,100 |
 | [Duration](../data-types/075-duration.md) | 1,300 |
 | [Result](../data-types/076-result.md) | 1,600 |
@@ -259,7 +259,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,500 |
 | [Terminal](../platform/110-terminal.md) | 1,700 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 11,000 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 12,000 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,600 |
 | **All 101 pages** | **190,000** |
