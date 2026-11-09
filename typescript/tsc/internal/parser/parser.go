@@ -2169,7 +2169,7 @@ func (p *Parser) parseClassElement() *ast.Node {
 	}
 	modifiers := p.parseVibeLangModifiers(misplacedEffectClassMember) // with a misplaced effect (vibelang_effect_misplaced.go)
 	if word, ok := p.takeMisplacedEffect(); ok {
-		return p.vibelangEffectMember(p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, true /*effect*/), word) // effect static m() { … }
+		return p.parseVibeLangDeclaredEffectMember(pos, jsdoc, modifiers, word) // effect static m() { … }
 	}
 	if member := p.tryParseVibeLangRestrictedEffectMember(pos, jsdoc, modifiers, true /*class*/); member != nil {
 		return member
@@ -2198,7 +2198,7 @@ func (p *Parser) parseClassElement() *ast.Node {
 		if accessor := p.parseEffectAccessor(pos, jsdoc, modifiers, word); accessor != nil {
 			return accessor
 		}
-		return p.vibelangEffectMember(p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, true /*effect*/), word) // effect m() { … } (vibelang_effect.go)
+		return p.parseVibeLangDeclaredEffectMember(pos, jsdoc, modifiers, word) // effect m() { … } (vibelang_effect.go)
 	}
 	// It is very important that we check this *after* checking indexers because
 	// the [ token can start an index signature or a computed property name

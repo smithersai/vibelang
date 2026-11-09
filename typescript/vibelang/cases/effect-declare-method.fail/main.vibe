@@ -1,0 +1,8 @@
+// expect: EK0108 TS1031
+class Direct { declare effect read(): number!! }
+class Reordered { effect declare read(): number!! }
+class Public { public declare effect read(): number!! }
+class Static { static declare effect read(): number!! }
+class Computed { declare effect ["read"](): number!! }
+class Generic { declare effect read<T>(value: T): T!! }
+export {}

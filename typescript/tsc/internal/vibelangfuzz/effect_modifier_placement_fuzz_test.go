@@ -71,8 +71,16 @@ var effectPlacementOnly = map[string][]string{
 // The forms chapter 1 assigns EK0108, with their async twins' TS1243 and
 // TS1040.
 var effectPlacementForbidden = map[string]string{
-	"abstract-method:forbidden":  "export abstract class Home { M abstract load(): R }",
-	"declare-function:forbidden": "M declare function load(): R",
+	"abstract-method:forbidden":          "export abstract class Home { M abstract load(): R }",
+	"declare-function:forbidden":         "M declare function load(): R",
+	"declare-method:forbidden":           "export class Home { declare M load(): R }",
+	"declare-method-reordered:forbidden": "export class Home { M declare load(): R }",
+	"declare-method-public:forbidden":    "export class Home { public declare M load(): R }",
+	"declare-method-static:forbidden":    "export class Home { static declare M load(): R }",
+	"declare-method-computed:forbidden":  "export class Home { declare M [\"load\"](): R }",
+	"declare-method-generic:forbidden":   "export class Home { declare M load<T>(x: T): R }",
+	"declare-class-method:forbidden":     "export declare class Home { M load(): R }",
+	"declare-namespace-method:forbidden": "declare namespace Home { class C { M load(): R } }",
 }
 
 func effectPlacementKeys() []string {
@@ -150,6 +158,14 @@ func FuzzEffectModifierPlacement(f *testing.F) {
 			return errors
 		}
 		want := check("main.ts", program("async", "Promise<void>"))
+		// A direct declare modifier has its own native TS1031, which can
+		// prevent TypeScript from checking async at all. Chapter 1 still
+		// requires EK0108 for effect in that ambient context. Compare the
+		// remaining native declaration with its unmodified TypeScript twin.
+		if strings.HasPrefix(key, "declare-method") {
+			want = append(check("main.ts", program("", "void")), "EK0108")
+			slices.Sort(want)
+		}
 		got := check("main.vibe", program("effect", "void!!"))
 		if !slices.Equal(got, want) {
 			Gap(t, effectPlacementTarget, key, "%s\n%s\nasync twin, effect named: %v\neffect: %v", effectPlacementQuote, program("effect", "void!!"), want, got)

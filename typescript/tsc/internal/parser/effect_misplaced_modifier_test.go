@@ -201,3 +201,43 @@ func TestMisplacedEffectModifierControls(t *testing.T) {
 		})
 	}
 }
+
+func TestEffectDeclaredClassMemberContext(t *testing.T) {
+	for _, source := range []string{
+		"class C { declare effect read(): number!! }",
+		"class C { effect declare read(): number!! }",
+		"class C { public declare effect read(): number!! }",
+		"class C { static declare effect read(): number!! }",
+		"class C { declare effect [key](): number!! }",
+		"class C { declare effect read<T>(x: T): T!! }",
+		"declare class C { effect read(): number!! }",
+		"declare namespace API { class C { effect read(): number!! } }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			file := parseMisplaced(source)
+			if len(file.Diagnostics()) != 0 {
+				t.Fatalf("unexpected parser diagnostics: %v", misplacedCodes(file))
+			}
+			count := 0
+			var visit func(*ast.Node) bool
+			visit = func(n *ast.Node) bool {
+				if n.Kind == ast.KindMethodDeclaration && n.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+					count++
+					if n.Flags&ast.NodeFlagsAmbient == 0 {
+						t.Error("declared Effect method lost its ambient context")
+					}
+					for _, modifier := range n.ModifierNodes() {
+						if modifier.Flags&ast.NodeFlagsAmbient == 0 {
+							t.Error("declared Effect method modifier lost its ambient context")
+						}
+					}
+				}
+				return n.ForEachChild(visit)
+			}
+			file.AsNode().ForEachChild(visit)
+			if count != 1 {
+				t.Fatalf("want one Effect method, got %d", count)
+			}
+		})
+	}
+}

@@ -52,3 +52,33 @@ func TestEffectBodylessControls(t *testing.T) {
 		})
 	}
 }
+
+// VIP-1 assigns EK0108 independently of native errors on the declare modifier.
+func TestEffectDeclaredClassMemberAdmission(t *testing.T) {
+	for _, source := range []string{
+		"class C { declare effect read(): number!! }; export {};",
+		"class C { effect declare read(): number!! }; export {};",
+		"class C { public declare effect read(): number!! }; export {};",
+		"class C { static declare effect read(): number!! }; export {};",
+		"class C { declare effect [\"read\"](): number!! }; export {};",
+		"class C { declare effect read<T>(x: T): T!! }; export {};",
+	} {
+		t.Run(source, func(t *testing.T) {
+			program, file, _, _ := editorProgram(t, source)
+			effect, native := 0, 0
+			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+				switch {
+				case d.Source() == diagnosticSource && d.Code() == 108:
+					effect++
+				case d.Source() == "" && d.Code() == 1031:
+					native++
+				case d.Category() == diagnostics.CategoryError:
+					t.Errorf("unexpected error: %s", d.String())
+				}
+			}
+			if effect != 1 || native != 1 {
+				t.Fatalf("want one EK0108 and native TS1031, got %d and %d", effect, native)
+			}
+		})
+	}
+}

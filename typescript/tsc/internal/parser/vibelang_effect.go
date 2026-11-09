@@ -496,3 +496,19 @@ func (p *Parser) isStartOfMixedEffectAccessor(modifiers *ast.ModifierList) bool 
 		return p.parseContextualModifier(ast.KindGetKeyword) || p.parseContextualModifier(ast.KindSetKeyword)
 	})
 }
+
+// parseVibeLangDeclaredEffectMember retains the ambient context that native
+// class-member parsing establishes for a written declare modifier. Inherited
+// ambient contexts already live in contextFlags. Without this, a bodyless
+// Effect method is mistaken for an overload missing its implementation.
+func (p *Parser) parseVibeLangDeclaredEffectMember(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, word core.TextRange) *ast.Node {
+	if modifiers != nil && core.Some(modifiers.Nodes, isDeclareModifier) {
+		for _, modifier := range modifiers.Nodes {
+			modifier.Flags |= ast.NodeFlagsAmbient
+		}
+		saveContextFlags := p.contextFlags
+		p.setContextFlags(ast.NodeFlagsAmbient, true)
+		defer func() { p.contextFlags = saveContextFlags }()
+	}
+	return p.vibelangEffectMember(p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, true /*effect*/), word)
+}
