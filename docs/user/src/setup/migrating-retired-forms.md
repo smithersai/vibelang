@@ -29,6 +29,8 @@ An object default follows the same rule: allocate `{}` inside the block when the
 
 A relative `./user.ts` is stale when its native target is gone and the migrated `user.vibe` exists; the same applies to a `.tsx` name for a migrated `.vibex` module. With `rewriteRelativeImportExtensions`, write `./user.vibe` or `./user.vibex`; a type-only project allowing source extensions can also use those names. Otherwise write the actual runtime output, `./user.js` (or `.jsx` for a JSX-preserving target). A matching native TypeScript implementation keeps its name. Replace stale names before upgrading to the resolver that rejects stale native extensions.
 
+Package declarations preserve the TypeScript twin's spelling: `./user.vibe` becomes `./user.ts`, while a written `./user.js` remains `./user.js`. Neither `allowImportingTsExtensions` nor `rewriteRelativeImportExtensions` rewrites declaration specifiers. The retired `declarationImportStyle` setting cannot restore an original package's spelling. When a migration requires byte-identical declarations, preserve that spelling at the source or a native declaration boundary, then compare actual output with stock TypeScript using the package's options.
+
 ## Trailing blocks
 
 A legacy trailing block reports `EK1101`. Write the block as an explicit argument of the kind and position the legacy call used: an Effect program uses `effect { ... }`, an Effect callback uses `effect () => { ... }`, and a plain callback uses `() => { ... }`. These destinations have different execution behavior, and the callee's parameter type alone cannot decide the kind (VIP-34).

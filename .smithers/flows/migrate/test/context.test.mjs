@@ -39,3 +39,11 @@ test("a plain TypeScript call keeps its defect and trusts nothing it did not rea
   }
   assert.ok(!context.includes("needs a hatch, `trusted(...)`, or the package"), "the context still offers trust as the way to silence EK4401")
 })
+
+test("migration declaration advice agrees with native spelling and retired setup options", () => {
+  const context = buildContext()
+  assert.ok(!context.includes('setup sets `vibelang.declarationImportStyle`'), "setup removes this retired option; it cannot restore published spelling")
+  assert.ok(context.includes('Neither `allowImportingTsExtensions` nor `rewriteRelativeImportExtensions` rewrites declaration specifiers.'))
+  assert.ok(context.includes('write `./leaf.vibe` as `./leaf.ts`'))
+  assert.ok(context.includes('preserve the original spelling at a source or native declaration boundary'))
+})

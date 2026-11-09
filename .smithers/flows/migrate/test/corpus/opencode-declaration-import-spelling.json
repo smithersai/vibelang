@@ -1,0 +1,7 @@
+{
+  "key": "declaration-import-spelling",
+  "original": "import type { Input } from \"./model.js\"; export type Output = Input;",
+  "migrated": "import type { Input } from \"./model.vibe\"; export type Output = Input;",
+  "twin": "import type { Input } from \"./model.ts\"; export type Output = Input;",
+  "rewriteRelativeImportExtensions": true
+}
