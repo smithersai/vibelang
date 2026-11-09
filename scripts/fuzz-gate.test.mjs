@@ -282,6 +282,18 @@ test("trusted-wrapper repairs select their unit, declaration and forwarding regr
   assert.deepEqual(select(["typescript/tsc/internal/vibelang/fix_trusted_empty_test.go"]), ["//:trusted-empty-forwarding"])
 })
 
+test("form repair changes select the tests that pin their sidecar rules", () => {
+  for (const path of [
+    "typescript/tsc/internal/vibelang/tsforms_errors.go",
+    "typescript/tsc/internal/vibelang/tsforms_schemas.go",
+    "typescript/tsc/internal/vibelang/tsforms_types.go",
+    "typescript/tsc/internal/vibelang/fix_declared_imports.go",
+    "typescript/tsc/internal/vibelang/native_error_class_shapes_test.go",
+    "packages/compiler/test/fix.test.mjs",
+  ]) assert.deepEqual(select([path]), ["//:form-repair-sidecars"], path)
+  assert.deepEqual(select(["typescript/tsc/internal/vibelang/tsforms_errors.go.backup"]), [])
+})
+
 
 test("own-signature and module-loader paths select the fuzz targets their changes broke", () => {
   assert.deepEqual(select(["typescript/tsc/internal/vibelang/default_callback_throws.go"]), ["//scripts/fuzz-gate:forwarded-callbacks"])
