@@ -249,7 +249,11 @@ func TestPlatformIntroductionTableMutations(t *testing.T) {
 			if strings.HasPrefix(effect, "try ") {
 				changedEffect = strings.TrimPrefix(effect, "try ")
 			}
-			changed := strings.Replace(page, row.effect, "\x60"+changedEffect+"\x60 "+prose, 1)
+			// Replace the row, not the first mention: prose above the table names the same calls.
+			changed := strings.Replace(page, line, "| "+row.call+" | \x60"+changedEffect+"\x60 "+prose+" | "+row.layer+" |", 1)
+			if changed == page {
+				t.Fatal("the row was not changed")
+			}
 			if len(platformIntroductionProblems(changed)) == 0 {
 				t.Fatal("changed Effect execution was not rejected")
 			}
