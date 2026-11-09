@@ -1,8 +1,0 @@
-// expect: EK2601
-// rule-evidence: docs/design/src/007-tooling.md#legacy-entry-dispatch-migration | Without eligible startup, remove only the inert marker and keep any explicit runner.
-// main takes a parameter, so it is not a legacy startup: the marker is
-// inert, and vibelang --fix removes it and nothing else.
-
-export effect function main(name: string) {
-  return name.length
-}

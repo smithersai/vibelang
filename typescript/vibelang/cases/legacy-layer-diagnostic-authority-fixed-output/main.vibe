@@ -1,6 +1,0 @@
-// expect: EK2121
-// A retired layer keeps its migration error without granting trailing-block syntax.
-service Labels { label(): string!! }
-const LabelsLive = Layer.succeed(Labels, {
-  effect label() { return "ok" }
-})

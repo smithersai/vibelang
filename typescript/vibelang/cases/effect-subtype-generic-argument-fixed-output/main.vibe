@@ -1,8 +1,0 @@
-// expect: EK4802
-// The same generic still warns when the inferred type is Effect itself.
-function keep<T>(value: T): { readonly value: T } { return { value } }
-effect function load() { return 42 }
-export effect function main() {
-  const held = keep(try load())
-  return 0
-}

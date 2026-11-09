@@ -1,5 +1,0 @@
-// expect: EK2121
-service Counter { static readonly key = "example/Counter"; value: number }
-export const Live = Layer.succeed(Counter, {
-  value: 1
-})

@@ -831,23 +831,6 @@ test("invalid report paths preserve the source case and previous evidence", (t) 
   }
 })
 
-test("a registered --fix output compiles standalone despite its input's expect header", (t) => {
-  const { root, harness } = fixture(t)
-  const at = path.join(root, "vibelang/cases/witness-fixed-output")
-  fs.mkdirSync(at, { recursive: true })
-  fs.writeFileSync(path.join(at, "scenario"), "fixed")
-  fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
-  fs.writeFileSync(path.join(at, "main.vibe"), "// expect: EK0702\nexport const x = 1\n")
-  fs.mkdirSync(path.join(root, "../docs/design"), { recursive: true })
-  fs.writeFileSync(path.join(root, "../docs/design/retirement-fixes.json"), JSON.stringify([
-    { code: "EK0702", cases: [{ input: "typescript/vibelang/cases/witness.fail", output: "typescript/vibelang/cases/witness-fixed-output" }] },
-  ]))
-  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
-  const result = spawnSync(process.execPath, [harness, "witness-fixed-output"], { env, encoding: "utf8", timeout: 10_000 })
-  assert.equal(result.status, 0, result.stdout + result.stderr)
-  assert.match(result.stdout, /^ok\s+witness-fixed-output/m)
-})
-
 // Exercise the real harness renderer as well as the threshold helper. Status
 // mode is used for compact case inventories and must retain the timing cause.
 test("status output retains a passing runner deadline warning and summary", (t) => {

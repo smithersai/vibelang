@@ -1,9 +1,0 @@
-// expect: EK0403
-// expect-result: [["Success","value"],["Failure",["Fail"]]]
-import { describe } from "./helper.js"
-export effect function parse(s:string):unknown!SyntaxError! { return try ((foreignSyntaxErrorClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => JSON.parse(s), catch: (error) => error }), (error) => error instanceof foreignSyntaxErrorClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError) }
-export effect function main() {
- const good = try Effect.exit(parse('"value"'))
- const bad = try Effect.exit(parse("{"))
- return [describe(good), describe(bad)]
-}

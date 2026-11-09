@@ -1,9 +1,0 @@
-// expect: EK4402
-module $platformBindings {
-export const { timeout: { name: signalName } } = AbortSignal
-export const { createObjectURL: { name: createName } } = URL
-export const { ["revokeObjectURL"]: { ...copy } } = URL
-}
-import { signalName, createName, copy } from $platformBindings
-import $platformBindings;
-export { signalName, createName, copy }

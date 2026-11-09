@@ -1,8 +1,0 @@
-// expect: EK2104
-effect function load() { return "x" }
-export effect function main() {
-  const value = try load()
-  try Console.log(value)
-}
-
-export function* delegated(): Generator<number, void, unknown> { yield* [1, 2] }

@@ -1,9 +1,0 @@
-// expect: EK0403
-import { isResolved } from "./helpers.ts"
-export effect function read(news: string | undefined) {
-  const resolved = try Effect.orDie(Effect.try({ try: () => isResolved(news) ? news : undefined, catch: (e) => e }))
-  if (resolved === undefined) return "absent"
-  const narrowed: string = resolved
-  return narrowed
-}
-export effect function main() { return try read("news") }

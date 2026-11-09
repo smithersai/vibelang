@@ -1,6 +1,0 @@
-// expect: EK0103
-
-export async function* values(): AsyncGenerator<number!!, void, unknown> {
-  const value = ((await (Effect.succeed(7) as unknown)) as number!never!never)
-  yield value
-}

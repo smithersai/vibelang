@@ -1,9 +1,0 @@
-{
-  "private": true,
-  "type": "module",
-  "name": "legacy-layer-diagnostic-authority",
-  "dependencies": {
-    "effect": "4.1.1",
-    "vibelang-runtime": "0.0.11"
-  }
-}

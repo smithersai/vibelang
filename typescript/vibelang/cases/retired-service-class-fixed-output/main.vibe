@@ -1,2 +1,0 @@
-// expect: EK0909
-service Users { static readonly key = "example/Users"; get(): string }

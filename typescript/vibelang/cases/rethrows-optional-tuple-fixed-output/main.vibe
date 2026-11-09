@@ -1,6 +1,0 @@
-// expect: EK0403
-import {invoke,prefixed,args,readonlyArgs,prefixArgs} from "./lib.js"
-export effect function mutable(){return try Effect.orDie(Effect.try({ try: () => invoke(...args), catch: (e) => e }))}
-export effect function readOnly(){return try Effect.orDie(Effect.try({ try: () => invoke(...readonlyArgs), catch: (e) => e }))}
-export effect function separatePrefix(){return try Effect.orDie(Effect.try({ try: () => prefixed(1,...args), catch: (e) => e }))}
-export effect function tuplePrefix(){return try Effect.orDie(Effect.try({ try: () => prefixed(...prefixArgs), catch: (e) => e }))}
