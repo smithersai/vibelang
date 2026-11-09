@@ -358,7 +358,8 @@ func serviceKeyMisuseName(c *checker.Checker, expr *ast.Node) (string, bool) {
 // serviceNamedBy returns the declaration of the service or control class
 // that expr denotes, following imports and typed value aliases, or nil.
 func serviceNamedBy(c *checker.Checker, expr *ast.Node) *ast.Node {
-	if expr == nil {
+	// Native phase-import callees have no independent value type to query.
+	if expr == nil || ast.IsImportPhaseMetaProperty(expr) {
 		return nil
 	}
 	symbol := c.GetSymbolAtLocation(expr)

@@ -228,6 +228,8 @@ fail for exit 1, or interrupt for exit 130.
 
 `globalThis.eval` and `globalThis.Function` follow the same `EK0107` rule as the bare names. The `Function` exemptions also apply: `x instanceof globalThis.Function` and `globalThis.Function.prototype` are allowed.
 
+Native `import.source(...)` and `import.defer(...)` calls retain TypeScript's option and argument checks during service checking; their callees are import syntax rather than service-key values.
+
 `import.meta` gives a `.vibe` file only `import.meta.url`, its module identity (VIP-33, amended). `import.meta.dirname`, `import.meta.filename` and `import.meta.env` read host state, as `__dirname`, `__filename` and `process.env` do, and take the same replacements. In the specification's explicit module spelling, first read `try Path.Path`, then call `fromFileUrl` and `dirname` on that service. Every other member, `import.meta.resolve` included, and every other use of `import.meta` as a value reports `EK4402`. Aliases, destructuring, computed keys, arguments and spreads are rejected, including inside `Effect.try`, `tryPromise` or `sync` callbacks. Direct `import.meta.url` reads keep working. Parentheses and erased TypeScript wrappers such as `as`, `satisfies` and non-null assertions preserve this URL read, as in `(import.meta as ImportMeta).url`. Put module resolution in a TypeScript helper:
 
 ```ts
