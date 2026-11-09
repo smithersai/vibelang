@@ -1,0 +1,602 @@
+[
+  {
+    "Key": "plus/unwrapped",
+    "Head": "layer += next",
+    "Provide": false
+  },
+  {
+    "Key": "plus/comma-first",
+    "Head": "layer += next, other",
+    "Provide": false
+  },
+  {
+    "Key": "plus/comma-last",
+    "Head": "other, layer += next",
+    "Provide": false
+  },
+  {
+    "Key": "plus/parenthesized",
+    "Head": "(layer += next)",
+    "Provide": true
+  },
+  {
+    "Key": "plus/parenthesized-list",
+    "Head": "(layer += next), other",
+    "Provide": true
+  },
+  {
+    "Key": "plus/conditional",
+    "Head": "flag ? layer += next : other",
+    "Provide": true
+  },
+  {
+    "Key": "plus/key-value",
+    "Head": "Key = layer += next",
+    "Provide": true
+  },
+  {
+    "Key": "plus/nested-parentheses",
+    "Head": "((layer += next))",
+    "Provide": true
+  },
+  {
+    "Key": "minus/unwrapped",
+    "Head": "layer -= next",
+    "Provide": false
+  },
+  {
+    "Key": "minus/comma-first",
+    "Head": "layer -= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "minus/comma-last",
+    "Head": "other, layer -= next",
+    "Provide": false
+  },
+  {
+    "Key": "minus/parenthesized",
+    "Head": "(layer -= next)",
+    "Provide": true
+  },
+  {
+    "Key": "minus/parenthesized-list",
+    "Head": "(layer -= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "minus/conditional",
+    "Head": "flag ? layer -= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "minus/key-value",
+    "Head": "Key = layer -= next",
+    "Provide": true
+  },
+  {
+    "Key": "minus/nested-parentheses",
+    "Head": "((layer -= next))",
+    "Provide": true
+  },
+  {
+    "Key": "multiply/unwrapped",
+    "Head": "layer *= next",
+    "Provide": false
+  },
+  {
+    "Key": "multiply/comma-first",
+    "Head": "layer *= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "multiply/comma-last",
+    "Head": "other, layer *= next",
+    "Provide": false
+  },
+  {
+    "Key": "multiply/parenthesized",
+    "Head": "(layer *= next)",
+    "Provide": true
+  },
+  {
+    "Key": "multiply/parenthesized-list",
+    "Head": "(layer *= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "multiply/conditional",
+    "Head": "flag ? layer *= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "multiply/key-value",
+    "Head": "Key = layer *= next",
+    "Provide": true
+  },
+  {
+    "Key": "multiply/nested-parentheses",
+    "Head": "((layer *= next))",
+    "Provide": true
+  },
+  {
+    "Key": "divide/unwrapped",
+    "Head": "layer /= next",
+    "Provide": false
+  },
+  {
+    "Key": "divide/comma-first",
+    "Head": "layer /= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "divide/comma-last",
+    "Head": "other, layer /= next",
+    "Provide": false
+  },
+  {
+    "Key": "divide/parenthesized",
+    "Head": "(layer /= next)",
+    "Provide": true
+  },
+  {
+    "Key": "divide/parenthesized-list",
+    "Head": "(layer /= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "divide/conditional",
+    "Head": "flag ? layer /= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "divide/key-value",
+    "Head": "Key = layer /= next",
+    "Provide": true
+  },
+  {
+    "Key": "divide/nested-parentheses",
+    "Head": "((layer /= next))",
+    "Provide": true
+  },
+  {
+    "Key": "remainder/unwrapped",
+    "Head": "layer %= next",
+    "Provide": false
+  },
+  {
+    "Key": "remainder/comma-first",
+    "Head": "layer %= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "remainder/comma-last",
+    "Head": "other, layer %= next",
+    "Provide": false
+  },
+  {
+    "Key": "remainder/parenthesized",
+    "Head": "(layer %= next)",
+    "Provide": true
+  },
+  {
+    "Key": "remainder/parenthesized-list",
+    "Head": "(layer %= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "remainder/conditional",
+    "Head": "flag ? layer %= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "remainder/key-value",
+    "Head": "Key = layer %= next",
+    "Provide": true
+  },
+  {
+    "Key": "remainder/nested-parentheses",
+    "Head": "((layer %= next))",
+    "Provide": true
+  },
+  {
+    "Key": "power/unwrapped",
+    "Head": "layer **= next",
+    "Provide": false
+  },
+  {
+    "Key": "power/comma-first",
+    "Head": "layer **= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "power/comma-last",
+    "Head": "other, layer **= next",
+    "Provide": false
+  },
+  {
+    "Key": "power/parenthesized",
+    "Head": "(layer **= next)",
+    "Provide": true
+  },
+  {
+    "Key": "power/parenthesized-list",
+    "Head": "(layer **= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "power/conditional",
+    "Head": "flag ? layer **= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "power/key-value",
+    "Head": "Key = layer **= next",
+    "Provide": true
+  },
+  {
+    "Key": "power/nested-parentheses",
+    "Head": "((layer **= next))",
+    "Provide": true
+  },
+  {
+    "Key": "left-shift/unwrapped",
+    "Head": "layer <<= next",
+    "Provide": false
+  },
+  {
+    "Key": "left-shift/comma-first",
+    "Head": "layer <<= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "left-shift/comma-last",
+    "Head": "other, layer <<= next",
+    "Provide": false
+  },
+  {
+    "Key": "left-shift/parenthesized",
+    "Head": "(layer <<= next)",
+    "Provide": true
+  },
+  {
+    "Key": "left-shift/parenthesized-list",
+    "Head": "(layer <<= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "left-shift/conditional",
+    "Head": "flag ? layer <<= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "left-shift/key-value",
+    "Head": "Key = layer <<= next",
+    "Provide": true
+  },
+  {
+    "Key": "left-shift/nested-parentheses",
+    "Head": "((layer <<= next))",
+    "Provide": true
+  },
+  {
+    "Key": "right-shift/unwrapped",
+    "Head": "layer >>= next",
+    "Provide": false
+  },
+  {
+    "Key": "right-shift/comma-first",
+    "Head": "layer >>= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "right-shift/comma-last",
+    "Head": "other, layer >>= next",
+    "Provide": false
+  },
+  {
+    "Key": "right-shift/parenthesized",
+    "Head": "(layer >>= next)",
+    "Provide": true
+  },
+  {
+    "Key": "right-shift/parenthesized-list",
+    "Head": "(layer >>= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "right-shift/conditional",
+    "Head": "flag ? layer >>= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "right-shift/key-value",
+    "Head": "Key = layer >>= next",
+    "Provide": true
+  },
+  {
+    "Key": "right-shift/nested-parentheses",
+    "Head": "((layer >>= next))",
+    "Provide": true
+  },
+  {
+    "Key": "unsigned-shift/unwrapped",
+    "Head": "layer >>>= next",
+    "Provide": false
+  },
+  {
+    "Key": "unsigned-shift/comma-first",
+    "Head": "layer >>>= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "unsigned-shift/comma-last",
+    "Head": "other, layer >>>= next",
+    "Provide": false
+  },
+  {
+    "Key": "unsigned-shift/parenthesized",
+    "Head": "(layer >>>= next)",
+    "Provide": true
+  },
+  {
+    "Key": "unsigned-shift/parenthesized-list",
+    "Head": "(layer >>>= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "unsigned-shift/conditional",
+    "Head": "flag ? layer >>>= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "unsigned-shift/key-value",
+    "Head": "Key = layer >>>= next",
+    "Provide": true
+  },
+  {
+    "Key": "unsigned-shift/nested-parentheses",
+    "Head": "((layer >>>= next))",
+    "Provide": true
+  },
+  {
+    "Key": "bit-and/unwrapped",
+    "Head": "layer &= next",
+    "Provide": false
+  },
+  {
+    "Key": "bit-and/comma-first",
+    "Head": "layer &= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "bit-and/comma-last",
+    "Head": "other, layer &= next",
+    "Provide": false
+  },
+  {
+    "Key": "bit-and/parenthesized",
+    "Head": "(layer &= next)",
+    "Provide": true
+  },
+  {
+    "Key": "bit-and/parenthesized-list",
+    "Head": "(layer &= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "bit-and/conditional",
+    "Head": "flag ? layer &= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "bit-and/key-value",
+    "Head": "Key = layer &= next",
+    "Provide": true
+  },
+  {
+    "Key": "bit-and/nested-parentheses",
+    "Head": "((layer &= next))",
+    "Provide": true
+  },
+  {
+    "Key": "bit-or/unwrapped",
+    "Head": "layer |= next",
+    "Provide": false
+  },
+  {
+    "Key": "bit-or/comma-first",
+    "Head": "layer |= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "bit-or/comma-last",
+    "Head": "other, layer |= next",
+    "Provide": false
+  },
+  {
+    "Key": "bit-or/parenthesized",
+    "Head": "(layer |= next)",
+    "Provide": true
+  },
+  {
+    "Key": "bit-or/parenthesized-list",
+    "Head": "(layer |= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "bit-or/conditional",
+    "Head": "flag ? layer |= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "bit-or/key-value",
+    "Head": "Key = layer |= next",
+    "Provide": true
+  },
+  {
+    "Key": "bit-or/nested-parentheses",
+    "Head": "((layer |= next))",
+    "Provide": true
+  },
+  {
+    "Key": "bit-xor/unwrapped",
+    "Head": "layer ^= next",
+    "Provide": false
+  },
+  {
+    "Key": "bit-xor/comma-first",
+    "Head": "layer ^= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "bit-xor/comma-last",
+    "Head": "other, layer ^= next",
+    "Provide": false
+  },
+  {
+    "Key": "bit-xor/parenthesized",
+    "Head": "(layer ^= next)",
+    "Provide": true
+  },
+  {
+    "Key": "bit-xor/parenthesized-list",
+    "Head": "(layer ^= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "bit-xor/conditional",
+    "Head": "flag ? layer ^= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "bit-xor/key-value",
+    "Head": "Key = layer ^= next",
+    "Provide": true
+  },
+  {
+    "Key": "bit-xor/nested-parentheses",
+    "Head": "((layer ^= next))",
+    "Provide": true
+  },
+  {
+    "Key": "logical-and/unwrapped",
+    "Head": "layer &&= next",
+    "Provide": false
+  },
+  {
+    "Key": "logical-and/comma-first",
+    "Head": "layer &&= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "logical-and/comma-last",
+    "Head": "other, layer &&= next",
+    "Provide": false
+  },
+  {
+    "Key": "logical-and/parenthesized",
+    "Head": "(layer &&= next)",
+    "Provide": true
+  },
+  {
+    "Key": "logical-and/parenthesized-list",
+    "Head": "(layer &&= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "logical-and/conditional",
+    "Head": "flag ? layer &&= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "logical-and/key-value",
+    "Head": "Key = layer &&= next",
+    "Provide": true
+  },
+  {
+    "Key": "logical-and/nested-parentheses",
+    "Head": "((layer &&= next))",
+    "Provide": true
+  },
+  {
+    "Key": "logical-or/unwrapped",
+    "Head": "layer ||= next",
+    "Provide": false
+  },
+  {
+    "Key": "logical-or/comma-first",
+    "Head": "layer ||= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "logical-or/comma-last",
+    "Head": "other, layer ||= next",
+    "Provide": false
+  },
+  {
+    "Key": "logical-or/parenthesized",
+    "Head": "(layer ||= next)",
+    "Provide": true
+  },
+  {
+    "Key": "logical-or/parenthesized-list",
+    "Head": "(layer ||= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "logical-or/conditional",
+    "Head": "flag ? layer ||= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "logical-or/key-value",
+    "Head": "Key = layer ||= next",
+    "Provide": true
+  },
+  {
+    "Key": "logical-or/nested-parentheses",
+    "Head": "((layer ||= next))",
+    "Provide": true
+  },
+  {
+    "Key": "nullish/unwrapped",
+    "Head": "layer ??= next",
+    "Provide": false
+  },
+  {
+    "Key": "nullish/comma-first",
+    "Head": "layer ??= next, other",
+    "Provide": false
+  },
+  {
+    "Key": "nullish/comma-last",
+    "Head": "other, layer ??= next",
+    "Provide": false
+  },
+  {
+    "Key": "nullish/parenthesized",
+    "Head": "(layer ??= next)",
+    "Provide": true
+  },
+  {
+    "Key": "nullish/parenthesized-list",
+    "Head": "(layer ??= next), other",
+    "Provide": true
+  },
+  {
+    "Key": "nullish/conditional",
+    "Head": "flag ? layer ??= next : other",
+    "Provide": true
+  },
+  {
+    "Key": "nullish/key-value",
+    "Head": "Key = layer ??= next",
+    "Provide": true
+  },
+  {
+    "Key": "nullish/nested-parentheses",
+    "Head": "((layer ??= next))",
+    "Provide": true
+  }
+]

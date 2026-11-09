@@ -667,8 +667,23 @@ func (p *Parser) scanStartOfVibeLangProvide() bool {
 	}
 	saveNoBlockParams := p.vibelangNoBlockParams
 	p.vibelangNoBlockParams = true // the { after the providers opens the block (vibelang_blocks.go)
-	p.parseExpression()
+	providers := []*ast.Node{p.parseExpression()}
 	p.vibelangNoBlockParams = saveNoBlockParams
+	// Each comma-separated provider has its own top level. A compound
+	// assignment is an AssignmentExpression, so a Layer needs parentheses.
+	for len(providers) != 0 {
+		provider := providers[len(providers)-1]
+		providers = providers[:len(providers)-1]
+		if !ast.IsBinaryExpression(provider) {
+			continue
+		}
+		binary := provider.AsBinaryExpression()
+		if binary.OperatorToken.Kind == ast.KindCommaToken {
+			providers = append(providers, binary.Left, binary.Right)
+		} else if ast.IsCompoundAssignmentOperator(binary.OperatorToken.Kind) {
+			return false
+		}
+	}
 	return p.token == ast.KindOpenBraceToken && !p.hasPrecedingLineBreak()
 }
 

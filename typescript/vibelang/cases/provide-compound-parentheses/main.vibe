@@ -1,0 +1,21 @@
+// expect-result: [[1,2,1,1,3],[1,2,1,1,3]]
+import { nativeMain } from "./native.js"
+service Value {
+  static readonly key = "provider-compound/Value"
+  n: number
+}
+export effect function main() {
+  const values: number[] = []
+  const first = Layer.succeed(Value, { n: 1 })
+  const next = Layer.succeed(Value, { n: 2 })
+  let layer = first
+  provide (layer ||= next) { values.push((try Value).n) }
+  provide (layer &&= next) { values.push((try Value).n) }
+  let optional: Layer.Layer<Value> | undefined
+  provide (optional ??= first) { values.push((try Value).n) }
+  const flag = true
+  provide flag ? layer = first : next { values.push((try Value).n) }
+  let value = 0
+  provide Value = { n: value ||= 3 } { values.push((try Value).n) }
+  return [values, try nativeMain()]
+}

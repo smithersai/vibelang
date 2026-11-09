@@ -1,0 +1,16 @@
+// expect: TS1434 EK1101
+// Chapter 005, provide syntax: a compound assignment is no Provider, so each
+// head keeps the identifier reading of provide and its TypeScript errors.
+const provide = 0
+export effect function logicalOr() {
+  let layer = Layer.empty
+  provide layer ||= Layer.empty { return 1 }
+}
+export effect function logicalAnd() {
+  let layer = Layer.empty
+  provide layer &&= Layer.empty { return 1 }
+}
+export effect function nullish() {
+  let layer = Layer.empty
+  provide layer ??= Layer.empty { return 1 }
+}

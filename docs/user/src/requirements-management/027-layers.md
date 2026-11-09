@@ -275,3 +275,5 @@ A line break before or after a provider-separating comma keeps the `provide` rea
 For an old compiler-intrinsic `wire(A, B)` call, write the resolved `Layer.provideMerge` composition explicitly.
 
 To update an old `with Live { … }` provider block, replace `with` with `provide` in effect code. The old header reports ordinary syntax errors, including when the provider is conditional (`with cond ? A : B { … }`) or a binding (`with Service = value { … }`).
+
+A compound assignment, such as `||=`, `&&=`, `??=` or `+=`, is not a provider by itself: write it in parentheses, as in `provide (live ||= fallback) { … }`. Without them the line is not a `provide` statement and reports TypeScript's syntax errors. Assignments inside a conditional branch or a `Key = value` right-hand side keep their ordinary expression meaning.
