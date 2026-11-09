@@ -228,6 +228,17 @@ const migrateSourceChildNative = S.Shell.Test({
   timeout: "4m"
 })
 
+// The Vite plugin vendors the compiler's alias resolver; only the full
+// vite-test compared the two copies.
+const vitePathsImportsCopy = S.Shell.Test({
+  summary: "The Vite plugin's vendored alias resolver matches the compiler's.",
+  shell: "node --test --test-name-pattern 'copy of paths-imports' packages/vite/test/paths.test.mjs",
+  data: [S.glob("vite/src/**"), S.file("vite/test/paths.test.mjs"), S.file("vite/package.json"), S.file("compiler/paths-imports.mjs"), ...install],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "1m"
+})
+
 const migrateToolchainBaseline = S.Shell.Test({
   summary: "Reject toolchain regressions after valid target dependency probes.",
   shell: "node --test .smithers/flows/migrate/test/toolchain-baseline.property.test.mjs",
@@ -333,6 +344,7 @@ export const Package = S.Package({
     "compiler-test-4": compilerTest(4),
     "migrate-helper-identity": migrateHelperIdentity,
     "migrate-source-child-native": migrateSourceChildNative,
+    "vite-paths-imports-copy": vitePathsImportsCopy,
     "migrate-test": migrateTest,
     "migrate-lost-wrapper": migrateLostWrapper,
     "migrate-record-provenance": migrateRecordProvenance,

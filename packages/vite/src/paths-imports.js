@@ -24,7 +24,15 @@ function parseConfig(text) {
   return JSON.parse(out.replace(/,(\s*[}\]])/g, "$1"))
 }
 
-const isFile = (path) => statSync(path, { throwIfNoEntry: false })?.isFile() === true
+const isFile = (path) => {
+  try {
+    return statSync(path, { throwIfNoEntry: false })?.isFile() === true
+  } catch (error) {
+    // Bun throws when a directory probe descends through an existing asset.
+    if (error.code === "ENOTDIR") return false
+    throw error
+  }
+}
 
 // The file an extends entry names: a path relative to the config, or a
 // package's file, with tsconfig's `.json` and `/tsconfig.json` defaults.
