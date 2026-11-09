@@ -18,7 +18,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,282 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,922 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,972 |
 | The skill and the user guide (145 pages) | 590,000 |
 | The user guide alone | 590,000 |
 | The specification (11 chapters) | 280,000 |
@@ -206,12 +206,12 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Leftovers](../sink/062-leftovers.md) | 680 |
 | **Testing** | **1,400** |
 | [TestClock](../testing/063-testclock.md) | 1,400 |
-| **Code Style** | **8,600** |
+| **Code Style** | **8,700** |
 | [Guidelines](../code-style/064-guidelines.md) | 810 |
 | [Dual APIs](../code-style/065-dual.md) | 1,000 |
 | [Branded Types](../code-style/066-branded-types.md) | 1,200 |
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,900 |
-| [Excessive Nesting](../code-style/068-do.md) | 1,800 |
+| [Excessive Nesting](../code-style/068-do.md) | 1,900 |
 | [Control Flow Operators](../code-style/069-control-flow.md) | 1,900 |
 | **Data Types** | **20,000** |
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
@@ -269,7 +269,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 280 |
-| [Producers](112-producers.md) | 4,300 |
+| [Producers](112-producers.md) | 4,400 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 13,000 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
@@ -277,7 +277,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Diagnostic code map](diagnostic-code-map.md) | 5,400 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 11,000 |
-| **All 9 pages** | **73,000** |
+| **All 9 pages** | **74,000** |
 
 ### Specification
 
