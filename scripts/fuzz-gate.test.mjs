@@ -16,7 +16,7 @@ test("changed paths select the regression neighbourhood and no unrelated suite",
     ["typescript/tsc/internal/vibelangfmt/format.go", ["format"]],
     ["typescript/tsc/internal/parser/vibelang_match.go", ["syntax"]],
     ["typescript/tsc/internal/parser/vibelang_fibers.go", ["concurrent-heads", "syntax"]],
-    ["typescript/tsc/internal/parser/vibelang_do.go", ["concurrent-heads", "syntax"]],
+    ["typescript/tsc/internal/parser/vibelang_do.go", ["concurrent-heads", "do-default-returns", "syntax"]],
     ["typescript/tsc/internal/vibelang/fibers.go", ["concurrent-heads"]],
     ["typescript/tsc/internal/vibelang/do_head.go", ["concurrent-heads"]],
     ["typescript/tsc/internal/vibelang/lower.go", ["concurrent-heads"]],
@@ -291,4 +291,13 @@ test("own-signature and module-loader paths select the fuzz targets their change
   assert.deepEqual(select(["typescript/tsc/internal/compiler/fileloader.go.backup"]), [])
 })
 
-
+test("parameter-default return changes select outward-return admission and pending controls", () => {
+  for (const path of [
+    "typescript/tsc/internal/parser/vibelang_do.go",
+    "typescript/tsc/internal/vibelang/effect_parameters_lower.go",
+    "typescript/tsc/internal/vibelangfuzz/migration_do_return_test.go",
+    "typescript/tsc/internal/vibelangfuzz/testdata/pending/migration-do-return.txt",
+    "typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzMigrationDoReturn/parameter-async-depth-0",
+  ]) assert.ok(select([path]).includes(label("do-default-returns")), path)
+  assert.deepEqual(select(["typescript/tsc/internal/vibelang/effect_parameters_lower.go.backup"]), [])
+})
