@@ -1,4 +1,4 @@
-import { splitImportMeta, privateResolverExports, isWritten } from "./import-meta-platform.mjs"
+import { isWritten } from "./import-meta-platform.mjs"
 // Platform code in a module the batch migrates (spec 005, EK4402: "The quick
 // fix and the codemod move the code into a sibling `.ts` module, or point to
 // the Effect service"). A .vibe file does not import a Node or Bun builtin as
@@ -215,40 +215,7 @@ export const platformPath = (file) => file.replace(/\.(m?ts|tsx|vibex)$/, (_, ex
  * (platformGlobalsOf).
  */
 export function splitPlatform(text, file, ts, { globals = [], returnsAvoid } = {}) {
-  let meta = splitImportMeta(text, file, platformPath(file), ts)
-  if (!meta) return splitDeclarationsPlatform(text, file, ts, { globals, returnsAvoid })
-  if (meta.refused) return meta
-  const declarations = splitDeclarationsPlatform(meta.module, file, ts, { globals, returnsAvoid })
-  if (declarations?.refused) return declarations
-  // Only names copied into the companion compete with its metadata namespace.
-  // Bindings retained in the caller or a native module body have another scope.
-  if (declarations) {
-    const source = ts.createSourceFile(platformPath(file), declarations.platform, ts.ScriptTarget.Latest, true,
-      /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
-    const bindings = source.statements.flatMap(statement => ts.isImportDeclaration(statement)
-      ? bindingsOf(statement, ts).map(binding => binding.name)
-      : ts.isImportEqualsDeclaration(statement) ? [statement.name.text] : [...declaredNames(statement, ts)])
-    if (bindings.includes("NodeURL")) {
-      // A value namespace from the same builtin is already the binding the
-      // helpers need. Keep that import and its comments in their original place.
-      const namespace = source.statements.find(statement => ts.isImportDeclaration(statement) &&
-        ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === "node:url" &&
-        !statement.importClause?.isTypeOnly && statement.importClause?.namedBindings &&
-        ts.isNamespaceImport(statement.importClause.namedBindings) && statement.importClause.namedBindings.name.text === "NodeURL")
-      meta = splitImportMeta(text, file, platformPath(file), ts, { companionBindings: bindings, urlNamespace: namespace ? "NodeURL" : undefined })
-    }
-  }
-  const directives = fileDirectives(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), ts)
-  meta.platform = [...directives, meta.platform].join("\n")
-  if (!declarations) return meta
-  // Both repairs share the fresh companion. Moved declarations call its local
-  // helpers instead of importing the companion from itself.
-  const companion = posix.basename(platformPath(file))
-  const self = new RegExp("^import \\{[^}\\n]*\\} from \"\\./" + escapeRegExp(companion) + "\"\\n?", "m")
-  const moved = declarations.platform.replace(self, "")
-  return { ...declarations, importMeta: meta.importMeta, importText: meta.importText,
-    platform: meta.platform + "\n" + moved,
-    moved: [...meta.moved, ...declarations.moved] }
+  return splitDeclarationsPlatform(text, file, ts, { globals, returnsAvoid })
 }
 
 // The identifiers a split moves the readers of, for the globals the messages
@@ -664,35 +631,15 @@ export function splitBatchPlatform(root, files, ts, {
 } = {}) {
   const splits = []
   const refused = []
-  // A body cannot hold import.meta (EK4009): the import.meta reads the
-  // companion serves keep it beside the body, private as for the sibling split.
-  const bodySplit = (file, sibling) => {
-    const text = read(file)
-    const meta = splitImportMeta(text, file, sibling, ts)
-    if (meta?.refused) return meta
-    const body = splitPlatformToModule(meta ? meta.module : text, file, ts, { globals: globalsOf(file), throws: throwBodies, throwing: throwsOf(file) })
-    if (!body || body.refused || !meta) return body
-    const risk = publishedSiblingRisk(root, file, { exists, read })
-    const privateExports = risk && meta.importMeta ? privateResolverExports(root, file, sibling, { exists, read }) : null
-    if (risk && !privateExports) return { refused: file + ": refusing " + sibling + " for the import.meta helpers beside module " + body.name + ": " + risk }
-    const directives = fileDirectives(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), ts)
-    return { ...body, platform: [...directives, meta.platform].join("\n"), privateExports, moved: [...meta.moved, ...body.moved] }
-  }
-  const writeBody = (file, sibling, body) => {
-    if (body.platform && exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); return }
+  // Metadata remains in its original module; only actual platform operations move.
+  const bodySplit = (file) => splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies, throwing: throwsOf(file) })
+  const writeBody = (file, body) => {
     write(file, body.module)
-    if (body.platform) write(sibling, body.platform)
-    if (body.privateExports) {
-      const pkg = JSON.parse(read(body.privateExports.manifest))
-      for (const key of body.privateExports.keys) pkg.exports[key] = null
-      write(body.privateExports.manifest, JSON.stringify(pkg, null, 2) + "\n")
-    }
-    splits.push({ file, platform: body.platform ? sibling : null, ...(body.privateExports ? { privateExports: body.privateExports } : {}), module: body.name, moved: body.moved, wrapped: [], ...(body.throwing.length ? { throwing: body.throwing } : {}) })
+    splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: [], ...(body.throwing.length ? { throwing: body.throwing } : {}) })
   }
   for (const file of files) {
     if (!/\.(?:m?ts|tsx|vibex)$/.test(file) || /\.d\.(?:m?ts|tsx|vibex)$/.test(file)) continue
     const sibling = platformPath(file)
-    if (!moduleBodies && exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
     let result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
     // A split whose sibling exports private types only because an inferred
     // return type might name them is retried with a type checker that proves
@@ -717,16 +664,13 @@ export function splitBatchPlatform(root, files, ts, {
       continue
     }
     const risk = result.refused ? null : publishedSiblingRisk(root, file, { exists, read })
-    const privateExports = risk && result.importMeta ? privateResolverExports(root, file, sibling, { exists, read }) : null
-    const refusal = result.refused ?? (risk && !privateExports && file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript")
+    const refusal = result.refused ?? (risk && file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript")
     // Every module of a private package is an API entry, so a sibling adds one;
     // a VIP-40 body adds none. With moduleBodies, prefer it and keep the sibling as fallback.
     // A sibling that re-exports a moved value takes the value out of the
     // module; a body that moves only the host operations keeps it (alchemy's
     // dual value/type resources), so it is preferred there too.
-    // A body cannot hold import.meta (EK4009), so a module whose import.meta
-    // reads need the companion's helpers keeps the sibling.
-    if (!refusal && moduleBodies && !result.importText && (result.reexported?.length || owningManifest(root, file, { exists, read })?.private === true)) {
+    if (!refusal && moduleBodies && (result.reexported?.length || owningManifest(root, file, { exists, read })?.private === true)) {
       const body = splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies, throwing: throwsOf(file), wrap: true })
       if (body && !body.refused) {
         write(file, body.module)
@@ -736,9 +680,9 @@ export function splitBatchPlatform(root, files, ts, {
     }
     if (refusal) {
       // A sibling cannot serve this module. With moduleBodies, a VIP-40 body may.
-      const body = moduleBodies ? bodySplit(file, sibling) : null
+      const body = moduleBodies ? bodySplit(file) : null
       if (!body || body.refused) { refused.push(body?.refused ? refusal + "; " + body.refused : refusal); continue }
-      writeBody(file, sibling, body)
+      writeBody(file, body)
       continue
     }
     // Body-only routes do not write this path. The sibling fallback still
@@ -749,12 +693,7 @@ export function splitBatchPlatform(root, files, ts, {
     const kept = body && !body.refused ? body : null
     write(file, kept ? kept.module : result.module)
     write(sibling, result.platform)
-    if (privateExports) {
-      const pkg = JSON.parse(read(privateExports.manifest))
-      for (const key of privateExports.keys) pkg.exports[key] = null
-      write(privateExports.manifest, JSON.stringify(pkg, null, 2) + "\n")
-    }
-    splits.push({ file, platform: sibling, ...(privateExports ? { privateExports } : {}), moved: result.moved, wrapped: result.wrapped, ...(result.exportedForInference?.length ? { exportedForInference: result.exportedForInference } : {}), ...(kept ? { module: kept.name, throwing: kept.throwing } : {}) })
+    splits.push({ file, platform: sibling, moved: result.moved, wrapped: result.wrapped, ...(result.exportedForInference?.length ? { exportedForInference: result.exportedForInference } : {}), ...(kept ? { module: kept.name, throwing: kept.throwing } : {}) })
   }
   return { splits, refused }
 }
@@ -1782,11 +1721,13 @@ const calleeName = (callee, ts) => ts.isIdentifier(callee) ? callee.text
 // import.meta.url as the base of new URL(<a path that drops the file name>, ...),
 // the argument of createRequire, whose resolution starts from the module's
 // directory, or what names that directory in a sibling beside it too: the
-// directory of fileURLToPath(import.meta.url), and the companion's
-// $importMetaDirname and $importMetaResolve helpers given import.meta.url.
+// directory of fileURLToPath(import.meta.url), and historical migration
+// helpers given import.meta.url. New migrations do not create those helpers.
 function namesModule(node, ts, requires) {
   if (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword) {
     const url = node.parent
+    // A sibling shares the directory; filename and arbitrary metadata stay put.
+    if (ts.isPropertyAccessExpression(url) && url.expression === node && !url.questionDotToken && url.name.text === "dirname") return false
     if (!ts.isPropertyAccessExpression(url) || url.expression !== node || url.questionDotToken || url.name.text !== "url") return true
     const use = url.parent
     if (ts.isCallExpression(use) && use.arguments.length === 1 && use.arguments[0] === url && ts.isIdentifier(use.expression) && requires.has(use.expression.text)) return false

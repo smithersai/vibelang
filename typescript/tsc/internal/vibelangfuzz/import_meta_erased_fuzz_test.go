@@ -52,7 +52,7 @@ var importMetaErasedRules = []struct {
 	{"nested-resolve", "export const result=(((import.meta as unknown) as ImportMeta)!).resolve;export const invalid:number=\"wrong\";", false},
 }
 
-const importMetaErasedQuote = "`import.meta` may appear only as the object of `.url`."
+const importMetaErasedQuote = "Members are checked against the program's `ImportMeta` declarations."
 
 func importMetaErasedChapter(t testing.TB) {
 	t.Helper()
@@ -106,10 +106,17 @@ func FuzzImportMetaErasedWrappers(f *testing.F) {
 		}
 		ok := len(codes) == 0
 		if !r.allowed {
-			ok = len(codes) == 2 && codes[4402] == 1 && codes[2322] == 1
+			ok = codes[2322] == 1 && codes[4402] == 0
+			// Undeclared members keep TypeScript's ordinary error through erased wrappers.
+			missing := strings.HasSuffix(r.key, "-env") && !strings.HasPrefix(r.key, "any-")
+			if missing {
+				ok = ok && len(codes) == 2 && codes[2339] == 1
+			} else {
+				ok = ok && len(codes) == 1
+			}
 		}
 		if !ok {
-			Gap(t, "FuzzImportMetaErasedWrappers", r.key, "chapter 5: %s; allowed URL=%t, got %v", importMetaErasedQuote, r.allowed, codes)
+			Gap(t, "FuzzImportMetaErasedWrappers", r.key, "chapter 5: %s; well-typed control=%t, got %v", importMetaErasedQuote, r.allowed, codes)
 			return
 		}
 		ExpectPending(t, "FuzzImportMetaErasedWrappers", r.key)

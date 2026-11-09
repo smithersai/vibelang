@@ -104,12 +104,13 @@ func TestGrammarAdmissionImportMetaSpecifierRegression(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			platform := false
+			platform, syntax := false, false
 			for _, d := range result.Diagnostics {
 				platform = platform || IsEK(d) && d.Code() == 4402
+				syntax = syntax || !IsEK(d) && d.Code() == 1141
 			}
-			if !platform || !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("static specifier lost the observed syntax diagnostic gap; diagnostics=%v", result.Diagnostics)
+			if platform || !syntax || grammarAdmissionVerdict(t, w, source) {
+				t.Fatalf("static specifier must retain TypeScript TS1141 without a platform diagnostic; diagnostics=%v", result.Diagnostics)
 			}
 		})
 	}

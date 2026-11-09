@@ -6,7 +6,7 @@ import (
 )
 
 func TestIncrementalArtifactIdentityQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("005-services.md"), "`import.meta` may appear only as the object of `.url`") {
-		t.Fatal("Chapter5 metadata boundary changed; review the real incremental artifact corpus")
+	if !strings.Contains(SpecText("005-services.md"), "Members are checked against the program's `ImportMeta` declarations.") {
+		t.Fatal("Chapter 5 metadata typing changed; review the real incremental artifact corpus")
 	}
 }

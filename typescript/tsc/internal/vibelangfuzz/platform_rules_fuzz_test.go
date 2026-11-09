@@ -18,7 +18,10 @@ var platformRules = []struct {
 	{"node-private", "Node's `module.builtinModules`", `import type {} from "_http_common"; export const n = 1`, `import "_http_common"; export const n = 1`, 4402},
 	{"node-import-dynamic", "an `import(…)` call with a string-literal specifier", `const s: string = "node:fs"; export const load = () => import(s)`, `export const load = () => import("node:fs")`, 4402},
 	{"node-import-template", "a template with no substitutions", `const s: string = "node:fs"; export const load = () => import(s)`, "export const load = () => import(`node:fs`)", 4402},
-	{"import-meta", "`import.meta` may appear only as the object of `.url`", `export const url = import.meta.url`, `export const meta = import.meta`, 4402},
+	{"import-meta", "Members are checked against the program's `ImportMeta` declarations.", `export const meta: ImportMeta = import.meta; export const value: string = meta.extension`, `export const value = import.meta.undeclaredMember`, 2339},
+	{"import-meta-computed", "Members are checked against the program's `ImportMeta` declarations.", `export const value: string = import.meta["extension"]`, `export const value: number = import.meta.extension`, 2322},
+	{"import-meta-destructure", "Members are checked against the program's `ImportMeta` declarations.", `export const { extension } = import.meta`, `export const { undeclaredMember } = import.meta`, 2339},
+	{"import-meta-spread", "Members are checked against the program's `ImportMeta` declarations.", `export const value: ImportMeta = { ...import.meta }`, `export const value: number = import.meta.extension`, 2322},
 	{"global-this-alias", "an alias (`const g = globalThis`)", `export const value = globalThis.URL`, `export const value = globalThis`, 107},
 	{"global-this-dynamic", "a computed key (`globalThis[k]`)", `export const value = globalThis["URL"]`, `const k: string = "URL"; export const value = globalThis[k]`, 107},
 	{"data-import", "a `data:` or `blob:` specifier is `EK0107`", `const s: string = "data:text/javascript,export default 1"; export const load = () => import(s)`, `import "data:text/javascript,export default 1"`, 107},
@@ -124,7 +127,8 @@ func FuzzPlatformRules(f *testing.F) {
 			lib = `["ES2022"]`
 		}
 		config := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"skipLibCheck":true,"verbatimModuleSyntax":true,"noEmit":true,"types":[],"lib":` + lib + `}}`
-		extra := `declare module "_http_common" {}
+		extra := `interface ImportMeta { readonly extension: string }
+declare module "_http_common" {}
 declare module "node:fs" { export interface Stats { size: number } }
 declare module "data:*" {}
 declare module "blob:*" {}
@@ -149,10 +153,10 @@ declare module "blob:*" {}
 					continue
 				}
 				errors = append(errors, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))
-				if d.Code() == want && (IsEK(d) == (want != 2304)) {
+				if d.Code() == want && (IsEK(d) == (want != 2304 && want != 2339 && want != 2322)) {
 					found = true
 				}
-				if want == 2304 && IsEK(d) && d.Code() == 4402 {
+				if (want == 2304 || want == 2339 || want == 2322) && IsEK(d) && d.Code() == 4402 {
 					wrongPlatform = true
 				}
 			}

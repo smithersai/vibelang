@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A binding joined to a literal pattern with `and` could keep its original wide type and reject a valid return. Bindings now retain the type narrowed by the conjunction, in either order and inside array or object patterns.
 
+- Vite metadata such as `import.meta.glob`, `env` and `hot`, and Node metadata such as `import.meta.dirname`, were rejected as host access. They now use the host's `ImportMeta` declarations and TypeScript diagnostics, and migration preserves them in the original module.
+
 - Open and proposed VIPs could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
 
 - An instance method body or property initializer in a `service` could hide errors on its other static members. Each rejected member now reports its own `EK0902`.
@@ -545,7 +547,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Calls that could throw inside a `Promise` executor were wrongly rejected when its native constructor was parenthesized, aliased or accessed through a property, or called with `super(...)`. Those forms now allow executor exceptions to reject the promise.
 
-- The platform guides said an `import.meta.dirname` read had to stay in the entry module. They now explain that a declaration can move to a sibling with the same directory, while `import.meta.filename` retains the entry's identity.
 
 - Go test progress could crash when its output reader closed and leave tests running in the background. It now cancels those tests and reports why output stopped.
 
@@ -587,8 +588,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration reported a documentation difference, one comment block fewer, when a module's first exported constant moved to its `.platform.ts` companion: the module's header comment, which TypeScript's declaration output stacks above that constant, stayed at the top of the converted module. A header kept verbatim at the head of the converted module now counts as kept, and a changed, removed or duplicated header still fails.
 - Migration could discard an original declaration oracle solely because its inferred output layout reported `TS5011`. It now keeps the diagnostic and requires the complete stock/native API comparison before qualifying the migration.
 - The migration's API identity check reported an unchanged generic type alias as changed when the alias used a mapped type with an `as` clause, such as `{ [K in keyof A as K extends string ? K : never]: A[K] }`, and anything else in its declaration file changed, for example a declaration moved behind a re-export; the module then stayed TypeScript. The check now proves such an alias identical, and still reports a change to its `as` type, template, key constraint or modifiers.
-- A generated `import.meta.dirname` companion named a different directory than Node for some Windows network paths, such as `\\server\a\\` for `file://server/a//x.ts` where Node names `\\server\a\`. The companion now computes the directory with Node's own `path.dirname` steps, still without importing `node:path`.
-- Generated `import.meta.dirname` companions could fail projects that reject named Node imports or `node:path`. They now use a namespace `node:url` import and preserve directory names, including drive and network-share roots.
 - Migration could report a returned Effect as lost after a plain identity pipeline stage. Its wrapper check now follows unchanged arguments through proven identity returns, while still rejecting discarded programs and async results.
 - Migrating an executable script could move its shebang into a platform companion and cause a parse error. The shebang now stays at the start of the entry module.
 - The migration's platform split turned a kept declaration's `fetch.bind(globalThis)` into a helper typed `typeof fetch.bind`, whose call returns `void`, so the converted module failed with `TS2322` (for example against a `typeof fetch` default parameter) and stayed TypeScript. `bind`, `call` and `apply` on a host function now move only the function, `$fetch().bind(globalThis)`, and keep their types.
@@ -898,7 +897,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The editor's move-module refactor was titled for `.ts` files only and always appended `export {}` to a body without imports or exports, even where the copied file was already a module. It is now **Move module to a TypeScript file**, as it also writes `.tsx` files, and adds `export {}` only when the copy would otherwise be a script.
 
-- The migrate flow sent a module back to TypeScript with `EK4402` when it read `import.meta.filename`, `import.meta.dirname` or `import.meta.env`, or called `import.meta.resolve` with a computed or second argument. It now serves these reads from the `.platform.ts` companion, passing the module's own `import.meta.url` where the value names the module, so `main: import.meta.filename` still names the module after migration.
 
 - A migrated lint runner could drop JSX files in its extension filter before linting them. Setup now includes JSX source, preserves directory scope, and repairs filters from earlier setup runs.
 
@@ -1108,12 +1106,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The migrate flow kept a factory in TypeScript when its platform code read a private type of the module, even when the factory's return type never mentioned that type. The flow now checks the return type with the module's own tsconfig, and a factory whose result does not expose the private type converts; one that exposes it, or whose type it cannot fully resolve, still stays in TypeScript.
 - After the migrate flow moved a `crypto.randomUUID()`, `crypto.getRandomValues()` or `performance.now()` call into a module body, the module still failed `EK4402` on the helper call that replaced it. Those reads now get a helper with a signature of its own, so the module compiles.
 
-- `EK4402` on an `import.meta` member other than `url` told you to use "the Path or Config service" without naming the call that reads configuration. It now names the Path service or `Config.String`, or moving the use to a `.ts` file.
-- Wrapping a recursive reverse-mapped value in a returned object could truncate its inferred declaration too early. Declarations now preserve the TypeScript 5.9 and 7.0 structure before eliding the cycle.
-
-- The platform globals guide omitted `Buffer.byteLength` and could drift from diagnostic advice. It now shows UTF-8 byte counts and checks every replacement while retaining native-behavior caveats.
-
-- The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.
 
 - An Electron app built with electron-vite failed to build a web worker that imported a migrated `.vibe` module, with a parse error, because the migrate flow added the VibeLang plugin to the app's main, preload and renderer builds but not to the renderer's worker build. The flow now also adds it to the renderer's `worker.plugins` when the app or a workspace package it bundles starts a worker, including in a config it wired earlier.
 
@@ -1125,6 +1117,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A plain `catch` handler with a written return type, such as `x catch (): number => 0` or `x catch (): Effect.Effect<number> => Effect.succeed(7)`, was rejected with `TS2322`, `TS2345` or `EK0502`: the compiler read the annotation as an `effect` function's Effect type. The annotation now types what the handler returns, as on any plain function, and the `catch` gives that value, an Effect included, unrun.
 
 - The migrate flow kept a module in TypeScript when its platform code built a URL beside the module from a path written without `./`, such as `new URL("results/", import.meta.url)`, because it read the path as naming the module's file. Paths such as these drop the file name and name the same URL from the `.platform.ts` companion, so such code now moves. References with leading whitespace or C0 control characters, empty paths, query-only and fragment-only references, and computed paths remain in TypeScript.
+
+- Wrapping a recursive reverse-mapped value in a returned object could truncate its inferred declaration too early. Declarations now preserve the TypeScript 5.9 and 7.0 structure before eliding the cycle.
+
+- The platform globals guide omitted `Buffer.byteLength` and could drift from diagnostic advice. It now shows UTF-8 byte counts and checks every replacement while retaining native-behavior caveats.
+
+- The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.
 
 ### Upgrade from 0.0.12
 

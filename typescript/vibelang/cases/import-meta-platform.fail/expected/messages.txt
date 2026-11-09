@@ -1,2 +1,1 @@
-Only import.meta.url is available in a .vibe file; use the Path service or Config.String for host state, or move this import.meta use to a .ts file.
 Property 'notAProperty' does not exist on type 'string'.

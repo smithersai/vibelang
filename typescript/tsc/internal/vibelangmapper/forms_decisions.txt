@@ -5306,6 +5306,7 @@ typescript/vibelang/cases/hygiene-region-names/main.vibe:21:11 lambda program ke
 typescript/vibelang/cases/hygiene-region-names/main.vibe:21:5 lambda effectFn table
 typescript/vibelang/cases/import-meta-platform.fail/main.vibe:21:24 lambda plain annotation
 typescript/vibelang/cases/import-meta-platform.fail/main.vibe:26:59 lambda plain table
+typescript/vibelang/cases/import-meta-platform/main.vibe:19:24 lambda plain annotation
 typescript/vibelang/cases/infer-deduplicated-channels/main.vibe:17:134 lambda effectFn table
 typescript/vibelang/cases/infer-deduplicated-channels/main.vibe:17:140 lambda program keyword
 typescript/vibelang/cases/infer-deduplicated-channels/main.vibe:17:62 lambda program table

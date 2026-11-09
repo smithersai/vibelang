@@ -12,7 +12,7 @@ import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
 const binary = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/" + (process.platform === "win32" ? "vibelang.exe" : "vibelang"), import.meta.url))
 const fixtures = ["url", "hot", "env"].map(key => JSON.parse(readFileSync(new URL("./property-regressions/foldkit-incremental-artifact-" + key + ".json", import.meta.url), "utf8")))
 test("real cache fixtures retain their source and artifact provenance", () => {
-  assert.ok(readFileSync(SpecPath("005-services.md"), "utf8").includes("`import.meta` may appear only as the object of `.url`"))
+  assert.ok(readFileSync(SpecPath("005-services.md"), "utf8").includes("Members are checked against the program's `ImportMeta` declarations."))
   for (const fixture of fixtures) {
     assert.equal(fixture.previousNativeSHA256, "3abff0ef3caa0a028adbe18264c4c574b2ae649e93918cb83b7f7a086e312eaf")
     assert.notEqual(fixture.previousNativeSHA256, fixture.captureNativeSHA256)
@@ -45,9 +45,8 @@ function check(fixture, mutation) {
     }
     const warm = compile([])
     const fresh = compile(["--composite", "false", "--incremental", "false"])
-    assert.deepEqual(fresh, fixture.key === "url" ? { status: 0, codes: [] } : { status: 2, codes: ["EK4402"] }, "the chapter boundary remains active in a fresh check")
-    // 644226993380 (foldkit-123): a build info written by another compiler
-    // build is not reused, so the earlier compiler's cache cannot hide EK4402.
+    assert.deepEqual(fresh, { status: 0, codes: [] }, "declared metadata follows TypeScript in a fresh check")
+    // A historical build info and a fresh compilation must agree under the current metadata rule.
     assert.deepEqual(warm, fresh, "unchanged source must not change diagnostics when the cache is present")
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
