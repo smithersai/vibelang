@@ -578,6 +578,8 @@ In the options overload, a computed key that resolves to `"try"`, such as `["try
 
 An inline options method such as `try() { return parse(text) }` keeps that thunk contract too, including quoted and computed method names and native `call` or `apply`. Its `catch` method and any function nested inside it keep their own plain-code checks. A getter or a method stored in a separate options object keeps its own source scope.
 
+A TypeScript `as` or angle-bracket assertion, `satisfies`, or non-null assertion around an inline thunk or options object keeps the enclosing wrapper’s contract. The same applies to an inline single-element argument array for native `apply`. A function stored separately keeps its own source scope.
+
 An optional call returning `any` still follows its callee's thrown contract. A callable declared in `.vibe` outside a `module` body throws `never`, including when its result is `any`; calling a value itself typed `any` needs an explicit failure boundary in effect code.
 
 An `effect` callback's parameter defaults keep their strict no-throw contract inside `Effect.try`, including an options object's `try` callback. A tracked throwing default is `EK0401`; the wrapper does not relax initialization before the callback's Effect or Stream exists.

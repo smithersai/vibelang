@@ -18,7 +18,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,273 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,936 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,024 |
 | The skill and the user guide (145 pages) | 570,000 |
 | The user guide alone | 570,000 |
 | The specification (11 chapters) | 270,000 |
@@ -145,9 +145,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,300 |
-| **Error Management** | **24,000** |
-| [Expected Errors](../error-management/014-expected-errors.md) | 12,000 |
-| [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,800 |
+| **Error Management** | **25,000** |
+| [Expected Errors](../error-management/014-expected-errors.md) | 13,000 |
+| [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,900 |
 | [Fallback](../error-management/016-fallback.md) | 2,800 |
 | [Matching](../error-management/017-matching.md) | 790 |
 | [Retrying](../error-management/018-retrying.md) | 780 |
@@ -217,7 +217,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
 | [Cause](../data-types/071-cause.md) | 1,200 |
 | [Chunk](../data-types/072-chunk.md) | 930 |
-| [Data](../data-types/073-data.md) | 4,000 |
+| [Data](../data-types/073-data.md) | 4,100 |
 | [DateTime](../data-types/074-datetime.md) | 3,100 |
 | [Duration](../data-types/075-duration.md) | 1,300 |
 | [Result](../data-types/076-result.md) | 1,600 |

@@ -5899,6 +5899,8 @@ typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output/main.vibe:14:
 typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output/main.vibe:15:101 lambda dual fallback
 typescript/vibelang/cases/match-primitive-wrapper-tag-fixed-output/main.vibe:16:113 lambda dual fallback
 typescript/vibelang/cases/match-primitive-wrappers/main.vibe:49:22 lambda plain table
+typescript/vibelang/cases/match-private-name-key.fail/main.vibe:14:9 lambda effectFn fallback
+typescript/vibelang/cases/match-private-name-key.fail/main.vibe:22:28 lambda dual fallback
 typescript/vibelang/cases/match-property-cache-neighborhood/main.vibe:101:19 lambda effectFn fallback
 typescript/vibelang/cases/match-property-cache-neighborhood/main.vibe:10:19 lambda plain fallback
 typescript/vibelang/cases/match-property-cache-neighborhood/main.vibe:112:23 lambda dual fallback

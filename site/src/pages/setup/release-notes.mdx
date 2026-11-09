@@ -13,8 +13,29 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Native phase imports could crash the compiler instead of producing diagnostics. They now complete checking and report any applicable errors.
+
+- Extractors named `String`, `Number`, `Boolean`, `BigInt` or `Symbol` could reject a local callable or read the subject instead of the custom matcher's result. Local bindings now use their own extractor protocol, while built-in constructors keep unboxing primitive values.
+
+- Misspelled names inside Effect wrapper callbacks could suggest host globals that the language disallows. Suggestions now respect the platform boundary inside callbacks too.
+
+- A decorator before `schema` or `data` could crash compilation and the editor. These declarations now report `TS1206`, as TypeScript does for constants and type aliases.
+
+- A callback created by an earlier parameter default could read a stale value after a later default used a returning `do` expression. Earlier defaults in the same group of simple parameters now share their bindings with the body, so callback reads and writes observe body changes. Function and class defaults also keep their inferred names and TypeScript's contextual callback parameter types.
+
+- Inline `Effect.try` and `Effect.tryPromise` callbacks could report `EK0401` when surrounded by a TypeScript assertion or `satisfies`. These expressions now keep the wrapper’s thunk contract.
+
+- Reading `customMatcher` from a parameter named `Symbol` could read the global protocol symbol instead, skipping the parameter's getter or causing a type error. The access now uses the parameter's property, as TypeScript does.
+
+- Inline `try` methods in `Effect.try` and `Effect.tryPromise` options could report `EK0401` for calls the wrapper catches. Method syntax now keeps the same thunk contract as an arrow or function expression.
+
+- Migration verification could reject an unchanged ambient registration after its inline type moved into a platform module. Closed structural aliases now compare with the original inline type, and changed contracts remain rejected.
+
 - Migration verification could reject an unchanged Effect factory returned inside a tuple. Array and tuple elements now keep their own function identities, while changed callback timing still fails verification.
 
+- A Vite or Rolldown watch build could stay failed after a missing directory index was created. Creating the source now rebuilds its importers without another edit.
+- Cached declaration comparisons could miss changes to the rules their fixtures read. Editing those rules now refreshes the comparison.
+- A private name used as a pattern key, such as `{ #a: 1 }`, crashed the compiler. It now reports `EK0707`.
 - A Bun package build could report success while omitting native JavaScript entry files, leaving consumers with missing modules. Existing native entries now stay under Bun’s resolver and keep their outputs.
 - An object with a computed member named `customMatcher` could pass pattern checks even when its key was a different symbol or a string. It now reports `EK0702`; aliases of the actual matcher symbol remain valid.
 
