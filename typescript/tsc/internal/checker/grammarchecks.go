@@ -1356,6 +1356,24 @@ func (c *Checker) checkGrammarTypeOperatorNode(node *ast.TypeOperatorNode) bool 
 			return c.grammarErrorOnNode(innerType, diagnostics.X_0_expected, scanner.TokenToString(ast.KindSymbolKeyword))
 		}
 		parent := ast.WalkUpParenthesizedTypes(node.Parent)
+		if parent.Kind == ast.KindSatisfiesExpression && parent.Flags&ast.NodeFlagsVibeLang != 0 && parent.Parent.Kind == ast.KindVoidExpression {
+			statement := parent.Parent.Parent
+			if ast.IsExpressionStatement(statement) && statement.Flags&ast.NodeFlagsVibeLang != 0 && ast.IsBlock(statement.Parent) {
+				statements := statement.Parent.AsBlock().Statements.Nodes
+				for i, entry := range statements {
+					if entry != statement || i == 0 || !ast.IsVariableStatement(statements[i-1]) {
+						continue
+					}
+					// The source head immediately precedes its inert type check;
+					// is-binding declarations may precede both.
+					head := statements[i-1].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+					if head.Name().Kind != ast.KindIdentifier {
+						return c.grammarErrorOnNode(node.AsNode(), diagnostics.X_unique_symbol_types_may_not_be_used_on_a_variable_declaration_with_a_binding_name)
+					}
+					return c.grammarErrorOnNode(node.AsNode(), diagnostics.X_unique_symbol_types_are_only_allowed_on_variables_in_a_variable_statement)
+				}
+			}
+		}
 		switch parent.Kind {
 		case ast.KindVariableDeclaration:
 			decl := parent.AsVariableDeclaration()
