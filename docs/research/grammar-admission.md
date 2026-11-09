@@ -318,8 +318,12 @@ call arity and import-specifier type errors remain outside syntax rejection.
 
 Native `MetaProperty` syntax includes `import.meta` and `new.target`.
 The lab derives them and their property-access continuations. Bad native
-meta-property names report `TS17012`, and native target placement reports
-`TS17013`; error-category diagnostics reject syntax.
+meta-property names report `TS17012`, or `TS18061` when the misspelled
+import property is a callee (`import.require(x)`, the TypeScript 5.9 message
+that names `import.defer` and `import.source`), and native target placement
+reports `TS17013`; error-category diagnostics reject syntax. An uncalled
+`import.defer` or `import.source` gets the checker's `'(' expected`
+(`TS1005`), which already counts.
 VibeLang's platform check instead covers `import.x` before its native
 grammar check, leaving only `EK4402`. That exact bad-name/incomplete-phase
 family remains pending under `admission:import-meta-property`. Ordinary
@@ -907,6 +911,15 @@ name with `try` read as a mismatch. It now takes any reserved word but
 `import` as the first name, and the compiler agrees on every reserved word.
 In effect code `fork` and `join` stay outside it: VIP-17 reserves them, and
 the compiler's acceptance there is the keyed `admission:fiber-type-name` gap.
+
+A Cases campaign mutation of `await.race [a, b]` into `await.race 1 [a, b]`
+showed the retired VIP-18 await operations. `await.race [a, b]` derives as a
+member expression indexed by a comma expression, so the oracle never saw the
+form; with `1` between them nothing derives, and the compiler reported only
+`EK1802`. The parser still reads `await . <operation> <operand>` (the
+inventory's `admission:legacy-await` hooks) to report `EK1802` and drive
+`--fix`; the form has no production, so `EK1802` now counts as syntax
+rejection, as the retired declaration codes `EK0909` and `EK2121` do.
 
 One gap the probes found was outside what the lab can show. TypeScript parses
 a lexical declaration as a loop body for recovery and rejects it with

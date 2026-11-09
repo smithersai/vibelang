@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:retired-await-operation\neffect function load ( ) : number ! ! {\nreturn 1\n}\nexport effect function retired ( ) {\nreturn await . race 1 [ load ( ) , load ( ) ]\n}")

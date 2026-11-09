@@ -341,6 +341,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"declaration-decorators-service", "@dec service S { value: number }"},
 	{"effect-type-callback-trailing-bang", grammarCallbackTrailingEffectWitness},
 	{"type-query-reserved-head", grammarTypeQueryReservedHeads[0]},
+	{"import-meta-callee-name", grammarImportMetaCalleeName},
+	{"retired-await-operation", grammarRetiredAwaitOperation},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -2186,6 +2188,11 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 909, 2121: // Retired declaration recovery supports only diagnosis and migration.
 		return true
+	// VIP-18 retired await.all, await.race, await.any and await.allSettled. The
+	// parser still reads `await . <operation> <operand>` to report EK1802 and
+	// drive the migration; the form has no production, so the error rejects it.
+	case 1802:
+		return true
 	case 9207: // RejectedMember: a service element that parses, then a static rule rejects.
 		return true
 	// Appendix B's current numbers for the same VIP-9 rules: EK0902 rejects a
@@ -2269,8 +2276,11 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// keeps that recovery diagnostic outside syntax rejection.
 	case 1325, 1326, 1450:
 		return true
-	// Native MetaProperty spelling and new.target placement.
-	case 17012, 17013:
+	// Native MetaProperty spelling and new.target placement. TS18061 is the
+	// spelling error when the misspelled import meta-property is a callee
+	// (`import.require(x)`), the TypeScript 5.9 message that names
+	// `import.defer` and `import.source`.
+	case 17012, 17013, 18061:
 		return true
 	// checkGrammarBindingElement: a rest element that is not last (TS2462),
 	// followed by a trailing comma (TS1013), with a property name (TS2566) or
@@ -2389,6 +2399,12 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-for-of-async-ek-collision", "EK", diagnostics.CategoryError, 1106, false},
 		{"native-meta-name-error", "", diagnostics.CategoryError, 17012, true},
 		{"native-meta-context-error", "", diagnostics.CategoryError, 17013, true},
+		{"native-meta-callee-name-error", "", diagnostics.CategoryError, 18061, true},
+		{"native-meta-callee-name-warning", "", diagnostics.CategoryWarning, 18061, false},
+		{"native-meta-callee-name-foreign", "other", diagnostics.CategoryError, 18061, false},
+		{"retired-await-operation-error", "EK", diagnostics.CategoryError, 1802, true},
+		{"retired-await-operation-warning", "EK", diagnostics.CategoryWarning, 1802, false},
+		{"native-retired-await-code-collision", "", diagnostics.CategoryError, 1802, false},
 		{"native-meta-name-warning", "", diagnostics.CategoryWarning, 17012, false},
 		{"native-meta-name-message", "", diagnostics.CategoryMessage, 17012, false},
 		{"native-meta-name-foreign", "other", diagnostics.CategoryError, 17012, false},

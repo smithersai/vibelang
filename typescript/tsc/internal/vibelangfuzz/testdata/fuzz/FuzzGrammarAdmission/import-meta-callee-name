@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-meta-callee-name\n1\nimport . require ( join\n)")
