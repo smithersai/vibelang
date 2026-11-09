@@ -911,8 +911,13 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
         if ((manifest.publishConfig?.exports ?? manifest.exports) == null) {
           // A module body's companion is emitted support (VIP-40), not a deep entry.
           const internal = new Set(saved?.apiMetadata?.companions ?? [])
+          // A compatibility declaration stands for a native source whose emit
+          // the project layout refused. The TypeScript source saved in the
+          // same place is no deep entry, so this is none either: both count
+          // through the package modules that re-export them.
+          const refused = new Set(Object.values(saved?.apiMetadata?.nativeDeclarations ?? {}).map(({ stored }) => stored))
           for (const stored of saved?.roots ?? []) {
-            if (internal.has(stored)) continue
+            if (internal.has(stored) || refused.has(stored)) continue
             // A paired .d.mts -> .d.ts rename keeps its original entry name.
             const source = originalName.get(stored)
             const logical = source ? aSurface?.apiMetadata?.logicalPaths?.[source] ?? source

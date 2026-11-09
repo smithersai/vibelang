@@ -1,0 +1,20 @@
+{
+  "property": "in-package-native-helper-entry",
+  "rule": "moving it to a sibling `.ts` file (`.tsx` for a body in `.vibex`) with its external-module classification preserved and replacing `from name` with that file's specifier changes no diagnostic, type, emitted statement, declaration or run-time observation.",
+  "input": {
+    "dir": "scripts",
+    "helper": "helper",
+    "body": "platform",
+    "returns": "number"
+  },
+  "pattern": {
+    "package": "consumer",
+    "helper": "scripts/helper.vibe",
+    "include": [
+      "src/index.ts",
+      "scripts/helper.vibe"
+    ],
+    "rootDir": "src",
+    "rewriteRelativeImportExtensions": true
+  }
+}
