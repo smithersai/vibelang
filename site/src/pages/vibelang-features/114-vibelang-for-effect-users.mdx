@@ -1,9 +1,11 @@
 ---
 title: "VibeLang for Effect users"
-description: "Keep Effect's runtime, libraries, layers, and error channels; in .vibe files, write sequential work as effect functions and statements. The cheat sheet shows every change beside its Effect code,..."
+description: "An effect block keeps contextual return typing when the expected type also accepts a plain value, such as Plugin | Effect.Effect<Plugin>. Callback parameters inside the returned Plugin receive its..."
 ---
 
 # VibeLang for Effect users
+
+An `effect` block keeps contextual return typing when the expected type also accepts a plain value, such as `Plugin | Effect.Effect<Plugin>`. Callback parameters inside the returned `Plugin` receive its declared types. Invalid property reads follow TypeScript even when `noImplicitAny` is `false`.
 
 Keep Effect's runtime, libraries, layers, and error channels; in `.vibe` files, write sequential work as effect functions and statements. The [cheat sheet](/vibelang-features/115-cheat-sheet) shows every change beside its Effect code, and the [specification](/spec/000-intro) gives the rules behind each.
 

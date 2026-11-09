@@ -1,0 +1,10 @@
+{
+  "property": "ContextualEffectUnion",
+  "rule": "Anything TypeScript or the pinned TC39 proposal already defines (evaluation order, binding, types, modules, resolution, declaration emit) is as in TypeScript and is not restated.",
+  "input": {
+    "field": "queueName",
+    "union": "Plugin | Effect.Effect<Plugin>",
+    "context": "argument",
+    "newline": "\n"
+  }
+}

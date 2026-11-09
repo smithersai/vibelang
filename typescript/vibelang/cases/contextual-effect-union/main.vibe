@@ -1,0 +1,26 @@
+import { Effect, Context } from "effect"
+type Plugin = {
+  api: { registerProducer: (props: { queueName: string }) => Effect.Effect<{ name: string }> }
+  start?: (ports: Record<string, number>) => Effect.Effect<void>
+}
+class Queue extends Context.Service<Queue, Plugin>()("Queue") {}
+const consume = (builder: Plugin | Effect.Effect<Plugin>): Effect.Effect<string> =>
+  Effect.flatMap(Effect.isEffect(builder) ? builder : Effect.succeed(builder),
+    plugin => Effect.map(plugin.api.registerProducer({ queueName: "ready" }), result => result.name))
+
+// expect-result: "ready"
+export effect function main() {
+  const typed: Plugin | Effect.Effect<Plugin> = effect {
+    return Queue.of({
+      api: { registerProducer: props => Effect.succeed({ name: props.queueName }) },
+      start: ports => Effect.sync(() => { const port: number = ports.worker; void port })
+    })
+  }
+  const first = try consume(typed)
+  return try consume(effect {
+    return {
+      api: { registerProducer: props => Effect.succeed({ name: first + props.queueName.slice(5) }) },
+      start: ports => Effect.sync(() => { const port: number = ports.worker; void port })
+    }
+  })
+}

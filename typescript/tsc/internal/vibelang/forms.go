@@ -287,12 +287,33 @@ func contextualReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type, get
 			return nil
 		}
 		if contextual := getContextual(); contextual != nil && len(c.GetSignaturesOfType(contextual, checker.SignatureKindCall)) == 0 {
-			return successType(c, contextual)
+			return contextualEffectSuccessType(c, contextual)
 		}
 		return nil
 	}
-	if success := successType(c, t); success != nil {
+	if success := contextualEffectSuccessType(c, t); success != nil {
 		return success
 	}
 	return t
+}
+
+// A block builds an Effect even when its context also admits a plain value.
+// Only Effect alternatives supply a contextual success value for its return.
+func contextualEffectSuccessType(c *checker.Checker, t *checker.Type) *checker.Type {
+	if t == nil {
+		return nil
+	}
+	if t.Flags()&checker.TypeFlagsUnion == 0 {
+		return successType(c, t)
+	}
+	var successes []*checker.Type
+	for _, member := range t.Types() {
+		if success := successType(c, member); success != nil {
+			successes = append(successes, success)
+		}
+	}
+	if len(successes) == 0 {
+		return nil
+	}
+	return c.GetUnionType(successes)
 }

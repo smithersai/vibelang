@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A producer with a returning `do` expression in a parameter default reported `EK0204`. Its call now returns an empty `Stream` before later defaults or its body run.
 
+- An `effect` block accepted alongside a plain value could lose its callback parameter types. The callbacks now use the expected Effect success type, and invalid property reads report the same errors as TypeScript.
+
 - V8 coverage could count generated `match` cleanup as an uncovered statement inside an Effect handler, despite every authored arm running. It now counts authored statements while keeping unvisited source code uncovered.
 
 - An esbuild bundle could create separate copies of a native module when a generated module map used an absolute import. Absolute and relative imports now share the same exports and state.
