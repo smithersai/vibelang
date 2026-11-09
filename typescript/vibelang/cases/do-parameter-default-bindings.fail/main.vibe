@@ -1,0 +1,7 @@
+// expect: TS2300 TS2567
+// Native parameter/body declaration exclusions survive moved defaults.
+export function variable(a: number = do { if (false) return; 1 }) { let a = 2 }
+export function constant(a: number = do { if (false) return; 1 }) { const a = 2 }
+export function constructorName(a: number = do { if (false) return; 1 }) { class a {} }
+export function enumName(a: number = do { if (false) return; 1 }) { enum a { value } }
+export function pattern(a: number = do { if (false) return; 1 }) { let { a } = { a: 2 } }

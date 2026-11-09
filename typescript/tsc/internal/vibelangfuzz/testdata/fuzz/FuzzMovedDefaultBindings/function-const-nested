@@ -1,0 +1,3 @@
+go test fuzz v1
+string("function:const:nested")
+byte(1)

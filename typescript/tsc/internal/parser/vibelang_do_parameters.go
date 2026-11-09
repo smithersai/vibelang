@@ -63,6 +63,18 @@ func VibeLangHasMovedDefaults(fn *ast.Node) bool {
 	return file.GetOrComputeData(movedDefaultFunctionsKey, func(*ast.SourceFile) map[*ast.Node]bool { return nil })[fn]
 }
 
+// VibeLangMovedDefaultsSourceBody returns the source body nested after moved
+// defaults, or nil when fn has no moved defaults. Native declaration checks
+// still compare its bindings with the source parameters.
+func VibeLangMovedDefaultsSourceBody(fn *ast.Node) *ast.Node {
+	if !VibeLangHasMovedDefaults(fn) {
+		return nil
+	}
+	outer := fn.Body().AsBlock().Statements.Nodes
+	middle := outer[len(outer)-1].AsBlock().Statements.Nodes
+	return middle[len(middle)-1]
+}
+
 // VibeLangMovedParameterDefault returns the expression whose type parameter
 // takes when its default moved into the body: the lowered default, or nil.
 func VibeLangMovedParameterDefault(parameter *ast.Node) *ast.Node {

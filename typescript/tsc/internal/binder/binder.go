@@ -11,6 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/debug"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -1270,6 +1271,7 @@ func (b *Binder) bindAnonymousDeclaration(node *ast.Node, symbolFlags ast.Symbol
 }
 
 func (b *Binder) bindBlockScopedDeclaration(node *ast.Node, symbolFlags ast.SymbolFlags, symbolExcludes ast.SymbolFlags) {
+	b.checkMovedDefaultParameterCollision(node, symbolFlags, symbolExcludes)
 	switch b.blockScopeContainer.Kind {
 	case ast.KindModuleDeclaration:
 		b.declareModuleMember(node, symbolFlags, symbolExcludes)
@@ -1282,6 +1284,27 @@ func (b *Binder) bindBlockScopedDeclaration(node *ast.Node, symbolFlags ast.Symb
 	default:
 		b.declareSymbol(ast.GetLocals(b.blockScopeContainer), nil /*parent*/, node, symbolFlags, symbolExcludes)
 	}
+}
+
+// Moving defaults creates separate scopes for the parameter cells and source
+// body. Validate a body's declarations against its source parameters using
+// native exclusion flags and diagnostics, without merging their runtime scopes.
+func (b *Binder) checkMovedDefaultParameterCollision(node *ast.Node, includes, excludes ast.SymbolFlags) {
+	if parser.VibeLangMovedDefaultsSourceBody(b.container) != b.blockScopeContainer {
+		return
+	}
+	name := b.getDeclarationName(node)
+	parameter := ast.GetLocals(b.container)[name]
+	if parameter == nil || parameter.Flags()&excludes == 0 || !slices.ContainsFunc(parameter.Declarations(), func(declaration *ast.Node) bool {
+		return ast.GetRootDeclaration(declaration).Kind == ast.KindParameter
+	}) {
+		return
+	}
+	// declareSymbol may replace or merge the symbol it checks. A detached copy
+	// keeps the parameter and body symbols in their own native binding tables.
+	copy := b.newSymbol(parameter.Flags(), name)
+	copy.SetDeclarations(parameter.Declarations())
+	b.declareSymbol(ast.SymbolTable{name: copy}, nil, node, includes, excludes)
 }
 
 func (b *Binder) bindTypeParameter(node *ast.Node) {
