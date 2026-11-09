@@ -143,7 +143,10 @@ func checkSchemaValue(c *checker.Checker, file *ast.SourceFile, value *ast.Node,
 		if !isSchemaValue(c, c.GetTypeAtLocation(value)) {
 			d := report(c, value, EK2109.With("{0} is not a schema: a field's type names a schema declaration or a schema constant."), entityText(value))
 			note(d, "Declare {0} with schema, or name a schema constant, such as const When = Schema.DateTimeUtc.", entityText(value))
-			cover(c, declaration) // TypeScript's errors about the struct's argument
+			// TypeScript's type errors about the struct's argument. The
+			// declaration's grammar errors, such as a modifier on another
+			// field, stay: the Field grammar does not depend on this type.
+			coverTypeErrors(c, declaration)
 		}
 	}
 }

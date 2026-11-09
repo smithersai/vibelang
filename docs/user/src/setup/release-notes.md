@@ -110,6 +110,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A decorator before `schema` or `data` could crash compilation and the editor. These declarations now report `TS1206`, as TypeScript does for constants and type aliases.
 - A schema field written with `effect`, as in `schema S { effect id: string }`, compiled without an error. It now reports `EK0108`, as the same member of an interface or type literal does.
+- A `schema` whose field type was not a schema reported only `EK2109` and hid the grammar errors of its fields: `schema S { async id: Missing }` lost its `TS1070`. The modifier, repeated `readonly` and initializer errors (`TS1070`, `TS1030`, `TS1247`) now appear beside `EK2109`, on that field and on its siblings.
 - In the TypeScript view of a `.vibe` file, a value bound by `String(let text)`, `Number`, `Boolean`, `BigInt` or `Symbol` had the type `string | String` and so on, so returning it as the primitive reported `TS2322`. The binding now has the primitive type there too, as the compiler already gives it.
 
 - A callback created by an earlier parameter default could read a stale value after a later default used a returning `do` expression. Earlier defaults in the same group of simple parameters now share their bindings with the body, so callback reads and writes observe body changes. Function and class defaults also keep their inferred names and TypeScript's contextual callback parameter types.

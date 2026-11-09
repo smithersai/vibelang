@@ -409,9 +409,10 @@ func checkSourceFile(c *checker.Checker, file *ast.SourceFile) {
 
 // diagnosticsState is what one checker remembers about diagnostics.
 type diagnosticsState struct {
-	covered   map[*ast.SourceFile][]core.TextRange
-	arguments map[*ast.SourceFile][]int          // the starts of arguments whose type error an EK diagnostic explains
-	codes     map[*ast.SourceFile][]coveredCodes // TypeScript codes that an EK diagnostic explains, each in one node
+	covered    map[*ast.SourceFile][]core.TextRange
+	typeErrors map[*ast.SourceFile][]core.TextRange // ranges whose TypeScript type errors an EK diagnostic explains
+	arguments  map[*ast.SourceFile][]int            // the starts of arguments whose type error an EK diagnostic explains
+	codes      map[*ast.SourceFile][]coveredCodes   // TypeScript codes that an EK diagnostic explains, each in one node
 }
 
 // coveredCodes are TypeScript diagnostic codes hidden inside one range.
@@ -425,7 +426,7 @@ type diagnosticsStateKey struct{}
 
 func diagnosticsStateOf(c *checker.Checker) *diagnosticsState {
 	return c.ExtensionState(diagnosticsStateKey{}, func() any {
-		return &diagnosticsState{covered: map[*ast.SourceFile][]core.TextRange{}, arguments: map[*ast.SourceFile][]int{}, codes: map[*ast.SourceFile][]coveredCodes{}}
+		return &diagnosticsState{covered: map[*ast.SourceFile][]core.TextRange{}, typeErrors: map[*ast.SourceFile][]core.TextRange{}, arguments: map[*ast.SourceFile][]int{}, codes: map[*ast.SourceFile][]coveredCodes{}}
 	}).(*diagnosticsState)
 }
 
@@ -436,6 +437,16 @@ func cover(c *checker.Checker, node *ast.Node) {
 	file := ast.GetSourceFileOfNode(node)
 	state := diagnosticsStateOf(c)
 	state.covered[file] = append(state.covered[file], core.NewTextRange(scanner.SkipTrivia(file.Text(), node.Pos()), node.End()))
+}
+
+// coverTypeErrors hides TypeScript's type errors inside node, the semantic
+// diagnostics numbered from 2000, because an EK diagnostic reported for node
+// explains them. Unlike cover, it keeps TypeScript's grammar errors inside
+// node, numbered below 2000, such as a modifier a type member cannot have.
+func coverTypeErrors(c *checker.Checker, node *ast.Node) {
+	file := ast.GetSourceFileOfNode(node)
+	state := diagnosticsStateOf(c)
+	state.typeErrors[file] = append(state.typeErrors[file], core.NewTextRange(scanner.SkipTrivia(file.Text(), node.Pos()), node.End()))
 }
 
 // coverCodes hides TypeScript's diagnostics with one of codes inside node,
@@ -495,8 +506,8 @@ func filterCoveredDiagnostics(c *checker.Checker, file *ast.SourceFile, diagnost
 		return diagnostics
 	}
 	state := diagnosticsStateOf(c)
-	covered, arguments, codes := state.covered[file], state.arguments[file], state.codes[file]
-	if len(covered) == 0 && len(arguments) == 0 && len(codes) == 0 {
+	covered, typeErrors, arguments, codes := state.covered[file], state.typeErrors[file], state.arguments[file], state.codes[file]
+	if len(covered) == 0 && len(typeErrors) == 0 && len(arguments) == 0 && len(codes) == 0 {
 		return diagnostics
 	}
 	isCovered := func(d *ast.Diagnostic) bool {
@@ -511,9 +522,11 @@ func filterCoveredDiagnostics(c *checker.Checker, file *ast.SourceFile, diagnost
 		}) {
 			return true
 		}
-		return slices.ContainsFunc(covered, func(r core.TextRange) bool {
-			return r.Pos() <= d.Pos() && d.End() <= r.End()
-		})
+		inside := func(r core.TextRange) bool { return r.Pos() <= d.Pos() && d.End() <= r.End() }
+		if d.Code() >= 2000 && slices.ContainsFunc(typeErrors, inside) {
+			return true
+		}
+		return slices.ContainsFunc(covered, inside)
 	}
 	if !slices.ContainsFunc(diagnostics, isCovered) {
 		return diagnostics

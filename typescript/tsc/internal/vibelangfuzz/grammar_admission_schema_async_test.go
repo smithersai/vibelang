@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 func TestGrammarAdmissionSchemaAsyncQuoted(t *testing.T) {
@@ -256,6 +258,17 @@ func TestGrammarAdmissionSchemaAsyncKeys(t *testing.T) {
 	}
 }
 
+// grammarAdmissionHasCode reports whether the compilation has a TypeScript
+// error with code.
+func grammarAdmissionHasCode(result *Result, code int32) bool {
+	for _, d := range result.Diagnostics {
+		if d.Source() == "" && d.Code() == code && d.Category() == diagnostics.CategoryError {
+			return true
+		}
+	}
+	return false
+}
+
 func TestGrammarAdmissionSchemaAsyncRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range []string{
@@ -280,8 +293,13 @@ func TestGrammarAdmissionSchemaAsyncRegression(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("async schema property no longer exposes an admission gap; diagnostics=%v", result.Diagnostics)
+			// EK2109 for the unresolved type explains TypeScript's type errors
+			// only; the modifier's TS1070 stays, so this is no admission gap.
+			if grammarAdmissionVerdict(t, w, source) {
+				t.Fatalf("an async schema field with an unresolved type is an admission gap; diagnostics=%v", result.Diagnostics)
+			}
+			if !grammarAdmissionHasCode(result, 1070) {
+				t.Fatalf("missing TS1070 for the async modifier; diagnostics=%v", result.Diagnostics)
 			}
 		})
 	}

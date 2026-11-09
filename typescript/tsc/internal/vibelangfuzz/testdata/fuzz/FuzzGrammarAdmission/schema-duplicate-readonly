@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("key:schema-duplicate-readonly\nschema S { readonly readonly id : Missing }")

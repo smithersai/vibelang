@@ -336,10 +336,12 @@ Phase-import calls remain outside the generated subset.
 
 An `async` modifier on a schema field is also outside Appendix A's
 `Field` production. An unresolved schema reference reports `EK2109`
-and covers its declaration, hiding the native modifier diagnostic. Primitive
-field types still report native syntax rejection. The exact `admission:schema-async-field` family remains
-pending, with ordinary fields named `async`, computed expressions,
-native members and schema-error methods as separate controls.
+and used to cover its whole declaration, hiding the native modifier
+diagnostic. The cover now hides TypeScript's type errors only, so the
+modifier's `TS1070` stays beside `EK2109`, as it does for a primitive field
+type, and the `admission:schema-async-field` family is no longer pending; its
+seeds stay as regression inputs, with ordinary fields named `async`,
+computed expressions, native members and schema-error methods as controls.
 
 The same mapped-type gap includes JSDoc's postfix `?`, as in
 `schema C { id: string? }`. Its keyed corpus uses
@@ -402,20 +404,22 @@ metadata expressions, dynamic imports and `import.meta.url` reads remain
 separate controls; `EK4402` remains a platform error, not syntax rejection.
 
 
-The `schema-async-field` pending family includes a leading or interleaved
+The `schema-async-field` family includes a leading or interleaved
 `static` modifier before the written field name and type, including repeated
-`async` modifiers. A field named `async`, a static method and a schema-error
-member remain separate controls. The classifier still requires an actual
-`async` modifier; a static property alone does not enter this family.
+`async` modifiers; all of them now report `TS1070`. A field named `async`, a
+static method and a schema-error member remain separate controls. The
+classifier still requires an actual `async` modifier; a static property
+alone does not enter this family.
 
 
 A static schema field without an `async` modifier has its own
 `admission:schema-static-field` key. `SchemaDeclaration` contains only
 `Field` members, whose sole admitted modifier is `readonly`. An unresolved
-field type can cover the independent static-modifier rejection with
-`EK2109`. Named bodies and object-type aliases retain separate keyed
-witnesses. Fields named `static`, static methods, schema-error bodies and
-async-modified fields remain controls or their existing families.
+field type used to cover the independent static-modifier rejection with
+`EK2109`; the modifier's `TS1070` now stays, in named bodies and in
+object-type aliases, so the key is no longer pending and its witnesses are
+regression inputs. Fields named `static`, static methods, schema-error bodies
+and async-modified fields remain controls or their existing families.
 
 The concurrent array-operation inventory includes `coverTryOperationOperand`
 under `TryAll`. That diagnostic helper preserves native errors inside a
@@ -452,11 +456,11 @@ boundary, including anonymous declarations and a following statement on
 the same line. Their dedicated default-export branches have no expression
 statement terminator; ordinary default expressions keep theirs.
 
-The existing `admission:schema-static-field` key includes a line break
+The `admission:schema-static-field` key includes a line break
 after `static`, as native class modifiers allow. The modifier scan keeps
 `async` and `readonly` line restrictions and separates a field named
 `static`, methods and schema-error members. The exact multiline witness is
-a pending corpus case in that same diagnostic gap.
+a corpus case that now reports `TS1070`.
 
 Native structural modifier rejection also includes an export assignment
 with modifiers (`export export default {};`, `TS1120`) and a modified
@@ -592,8 +596,10 @@ the compiler already did. Checker grammar errors TS1091, TS1097, TS1098,
 TS1188, TS1189, TS1190 and TS5086 count as syntax rejections. The remaining
 programs belonged to known families whose keys were narrower than the family,
 and they keep those keys. Two forms are new.
-`admission:schema-field-initializer` is a field initializer whose unresolved
-type reports only `EK2109` and covers TS1247.
+`admission:schema-field-initializer` was a field initializer whose unresolved
+type reported only `EK2109` and covered TS1247; a typed field now keeps
+TS1247, and the key stays pending for the untyped and modifier-prefixed
+optional alias members below, whose initializer the mapping erases.
 `admission:throw-assertion-lookahead` is `throw e as T` before a
 `ThrowExpressionInvalidPunctuator`, which VIP-41 forbids and the compiler
 misses because its lookahead stops at the assertion. `error is` before a line
@@ -604,9 +610,10 @@ the lab no longer holds that statement open.
 A sweep that stacks up to two mutations on every seed and keyed program found
 four more kinds of result. A repeated `readonly` on a schema field is
 `admission:schema-duplicate-readonly`: `Field` admits one `readonly`, and an
-unresolved field type reports only `EK2109`, which covers TS1030. In an
-object-type alias the family includes an untyped name, a method signature
-and an object type behind a type operator such as `readonly { … }`. An
+unresolved field type reported only `EK2109`, which covered TS1030. A field
+of a schema body or of an object-type alias now keeps TS1030; the key stays
+pending for an untyped name, a method signature and an object type behind a
+type operator such as `readonly { … }`, whose members the mapping erases. An
 object-type alias field written `async async` before a line break is an
 untyped field named `async` with an `async` modifier, and joins
 `admission:schema-async-field`. The key scanner had read the line after an

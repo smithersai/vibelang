@@ -104,7 +104,6 @@ func TestGrammarAdmissionSchemaSignatureRegression(t *testing.T) {
 	for _, source := range []string{
 		"schema S = { async readonly (\n) }",
 		"schema S = { readonly; (static static) }",
-		"schema S = { fork:\nasync\nasync Missing\n}",
 	} {
 		t.Run(source, func(t *testing.T) {
 			if !grammarAdmissionVerdict(t, w, source) {
@@ -114,6 +113,15 @@ func TestGrammarAdmissionSchemaSignatureRegression(t *testing.T) {
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
+	// A typed field after an untyped async member keeps its TS1070 beside
+	// the EK2109 of its unresolved type: no admission gap.
+	t.Run("typed last alias field", func(t *testing.T) {
+		source := "schema S = { fork:\nasync\nasync Missing\n}"
+		if grammarAdmissionVerdict(t, w, source) {
+			r, _ := w.Compile(context.Background(), Single(source))
+			t.Fatalf("a rejected alias field is an admission gap: %v", r.Diagnostics)
+		}
+	})
 }
 
 func TestGrammarAdmissionSchemaStaticMethodKeys(t *testing.T) {

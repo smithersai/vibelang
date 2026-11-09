@@ -1,0 +1,16 @@
+// expect: EK2109 TS1070 TS1030 TS1247
+// Chapter 006: a field type outside the mapping is EK2109, which explains
+// the type errors TypeScript reports about the value written for it. The
+// Field grammar does not depend on that type, so the grammar errors of the
+// declaration stay beside EK2109: a class-only modifier is TS1070, a repeated
+// readonly TS1030 and an initializer TS1247, as on a type literal member, on
+// the same field, on a sibling field, in a nested object type and in the
+// object type of a schema alias.
+schema Async { async id: Missing }
+schema Static { static id: Missing }
+schema Repeated { readonly readonly id: Missing }
+schema Initialized { key: Missing = "k" }
+schema Sibling { a: Missing; async id: string }
+schema Nested { a: { static b: Missing } }
+schema Alias = { async id: Missing }
+export {}

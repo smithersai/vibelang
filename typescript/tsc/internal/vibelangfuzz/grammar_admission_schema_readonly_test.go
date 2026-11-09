@@ -73,24 +73,39 @@ func TestGrammarAdmissionSchemaAsyncUntypedAliasKeys(t *testing.T) {
 
 func TestGrammarAdmissionSchemaDuplicateReadonlyRegression(t *testing.T) {
 	w := NewWorkspace(t)
+	// A field of a schema body or of an object-type alias keeps TS1030 or
+	// TS1070 beside the EK2109 of its unresolved type: no admission gap.
 	for _, source := range []string{
 		"schema S { readonly readonly id : Missing }",
 		"schema S { readonly readonly id?: Missing }",
 		"schema S = { readonly readonly id: Missing };",
 		"schema S = {\nreadonly readonly readonly\nid\nid : Missing } ;",
+		"schema S = { async async\nid : Missing\n}",
+		"schema S = { async async ;\nid :\nMissing\n}",
+		"schema S = { async async, id: Missing };",
+	} {
+		t.Run(source, func(t *testing.T) {
+			if grammarAdmissionVerdict(t, w, source) {
+				result, _ := w.Compile(context.Background(), Single(source))
+				t.Fatalf("a rejected schema field is an admission gap; diagnostics=%v", result.Diagnostics)
+			}
+		})
+	}
+	// A type operator or an Effect type over the object type, and a method,
+	// map to an unsupported member that erases the written modifiers: still
+	// pending under the same key.
+	for _, source := range []string{
 		"schema S = readonly { readonly readonly readonly id : Missing } ;",
 		"schema S = join ! { readonly readonly id : Missing } ;",
 		"schema S = readonly { readonly readonly Missing }",
 		"schema S\n= { readonly readonly readonly id ( )\n}",
-		"schema S = { async async\nid : Missing\n}",
-		"schema S = { async async ;\nid :\nMissing\n}",
-		"schema S = { async async, id: Missing };",
 	} {
 		t.Run(source, func(t *testing.T) {
 			if !grammarAdmissionVerdict(t, w, source) {
 				result, _ := w.Compile(context.Background(), Single(source))
 				t.Fatalf("schema modifier witness no longer exposes an admission gap; diagnostics=%v", result.Diagnostics)
 			}
+			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 	// With a resolved field type the native rejection is visible.
@@ -109,7 +124,7 @@ func TestGrammarAdmissionSchemaDuplicateReadonlyRegression(t *testing.T) {
 		})
 	}
 	for key, source := range map[string]string{
-		"admission:schema-duplicate-readonly": "schema S { readonly readonly id : Missing }",
+		"admission:schema-duplicate-readonly": "schema S = readonly { readonly readonly id : Missing } ;",
 	} {
 		t.Run(key, func(t *testing.T) { checkGrammarAdmission(t, w, key, source) })
 	}

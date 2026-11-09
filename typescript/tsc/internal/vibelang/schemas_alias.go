@@ -69,7 +69,7 @@ func checkSchemaAliasValue(c *checker.Checker, file *ast.SourceFile, value *ast.
 		if !isSchemaValue(c, c.GetTypeAtLocation(value)) {
 			d := report(c, value, EK2109.With("{0} is not a schema: a schema's type names a schema declaration or a schema constant."), entityText(value))
 			note(d, "Declare {0} with schema, or name a schema constant, such as const When = Schema.DateTimeUtc.", entityText(value))
-			cover(c, declaration) // TypeScript's error about typeof Name.Type
+			coverTypeErrors(c, declaration) // TypeScript's type error about typeof Name.Type
 		}
 	}
 }

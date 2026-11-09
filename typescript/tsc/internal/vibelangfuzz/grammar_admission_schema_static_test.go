@@ -94,8 +94,13 @@ func TestGrammarAdmissionSchemaStaticRegression(t *testing.T) {
 			for _, d := range result.Diagnostics {
 				seen = seen || IsEK(d) && d.Code() == 2109
 			}
-			if !seen || !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("static schema field lost the observed syntax diagnostic gap: %v", result.Diagnostics)
+			if !seen {
+				t.Fatalf("control did not exercise EK2109: %v", result.Diagnostics)
+			}
+			// EK2109 explains TypeScript's type errors only; the static
+			// modifier keeps its TS1070, so this is no admission gap.
+			if grammarAdmissionVerdict(t, w, source) || !grammarAdmissionHasCode(result, 1070) {
+				t.Fatalf("a static schema field with an unresolved type lost its TS1070: %v", result.Diagnostics)
 			}
 		})
 	}
