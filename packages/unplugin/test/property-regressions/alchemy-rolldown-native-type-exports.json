@@ -1,0 +1,11 @@
+{
+  "key": "native-type-exports",
+  "input": {
+    "extension": "vibe",
+    "directory": "src",
+    "sidecarDir": ".vibe/declarations",
+    "hook": "Hook",
+    "provider": "Provider"
+  },
+  "source": "export interface Hook { value: string }; export class Provider { readonly value = 1; }"
+}

@@ -285,6 +285,8 @@ With `allowJs`, edits to JavaScript dependencies recheck their VibeLang importer
 
 ## Generated declarations
 
+Rolldown declaration builds, including `tsdown` with `dts: true`, receive the compiler's declarations for imported `.vibe` and `.vibex` modules. Interfaces and other type exports remain available in the declaration graph, while the runtime graph receives JavaScript. The plugin keeps its declaration output private, follows native dependencies and package exports, and discards it after the build.
+
 While serving a `.vibe` module, the compiler can write its `.d.vibe.ts`
 declaration beside it. The plugin ignores watcher events for that generated
 file while its owning `.vibe` source exists, keeping the served module and its

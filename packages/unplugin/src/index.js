@@ -1,3 +1,4 @@
+import { declarationEmitter } from "./declarations.js"
 import { relativeOutput } from "./relative-output.js"
 import { missingSourceWatcher } from "./missing-watcher.js"
 import { jsxConfigReader } from "./jsx-config.js"
@@ -283,17 +284,17 @@ export const unplugin = createUnplugin((options = {}, meta) => {
   }
 
   let jsxReader
-  const jsxImports = new Map()
-  function competingJsxSource(path, importer) {
+  const sourceImports = new Map()
+  function resolvedSourceImport(path, importer) {
     const file = cleanId(importer)
     const selected = current?.projectOf?.(file) ?? backend.nearestProject(file) ?? project
     const text = readFileSync(file, "utf8")
-    let entry = jsxImports.get(file)
+    let entry = sourceImports.get(file)
     if (entry?.project !== selected || entry.text !== text) {
       const result = backend.projectImports({ project: selected, compiler: compilerPath() })
       const canonical = path => { try { return realpathSync(path) } catch { return resolve(path) } }
       entry = { project: selected, text, imports: result.imports.filter(item => canonical(item.importer) === canonical(file)) }
-      jsxImports.set(file, entry)
+      sourceImports.set(file, entry)
     }
     // A written JavaScript import keeps the compiler's source priority.
     // An explicit source import instead names its rewritten output.
@@ -301,13 +302,16 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     const rewritten = entry.imports.find(item => {
       const specifier = cleanId(item.specifier)
       return /\.(?:vibex?|tsx?)$/.test(specifier) &&
-        resolve(dirname(file), specifier.replace(/\.(?:vibex?|tsx?)$/, "")) === resolve(dirname(file), path.replace(/\.jsx?$/, ""))
+        resolve(dirname(file), specifier.replace(/\.(?:vibex?|tsx?)$/, "")) === resolve(dirname(file), path.replace(/\.[cm]?[jt]sx?$/, ""))
     })
     return (exact ?? rewritten)?.file
   }
+  let declarations
   function close() {
+    const declarationClosing = declarations?.close()
+    declarations = undefined
     writtenImports.clear()
-    jsxImports.clear()
+    sourceImports.clear()
     const jsxClosing = jsxReader?.close()
     const pending = modules
     modules = undefined
@@ -315,7 +319,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     const work = Promise.resolve(closing).then(async () => {
       // A backend that failed to load failed its build already; it has nothing to close.
       const projects = await pending?.catch(() => undefined)
-      await Promise.all([projects?.close(), jsxClosing])
+      await Promise.all([projects?.close(), jsxClosing, declarationClosing])
     })
     closing = work
     return work
@@ -340,7 +344,27 @@ export const unplugin = createUnplugin((options = {}, meta) => {
   // Bun's working directory or Rolldown's cwd for entry points, or the compiler root otherwise.
   // unplugin passes hook options third, so resolveId supplies the directory.
   function resolveId(source, importer) {
+    if (meta.framework === "rolldown" && importer && /\.d\.[cm]?ts$/.test(cleanId(importer))) {
+      return resolveDeclaration(source, importer)
+    }
     return resolveFrom(source, importer, importer ? undefined : entryDirectory)
+  }
+
+  async function resolveDeclaration(source, importer) {
+    await loaded()
+    const resolved = resolveFrom(source, importer)
+    let sourceFile = resolved ?? (isAbsolute(cleanId(source)) ? source : undefined)
+    if (!sourceFile || !/\.vibex?$/.test(cleanId(sourceFile))) {
+      const original = declarations?.sourceOf(cleanId(importer)) ??
+        [importer.replace(/\.d\.([cm]?)ts$/, ".$1ts"), importer.replace(/\.d\.ts$/, ".tsx")].find(existsSync)
+      if (original) sourceFile = resolvedSourceImport(source, original)
+    }
+    if (!sourceFile || !/\.vibex?$/.test(cleanId(sourceFile))) return resolved
+    const result = await loadModule(sourceFile)
+    if (result.errors.length) throw new Error(result.errors.map(backend.formatDiagnostic).join("\n"))
+    if (result.error) throw result.error
+    declarations ??= declarationEmitter({ backend: () => backend, compiler: compilerPath, debug })
+    return declarations.resolve(cleanId(sourceFile), result.project, result.inputs)
   }
 
   function resolveFrom(source, importer, directory) {
@@ -362,7 +386,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     if (isModuleOutput(target)) return target + query
     const stem = target.replace(/\.jsx?$/, "")
     if (existsSync(stem + ".vibex") && [".ts", ".tsx", ".vibe"].some(extension => existsSync(stem + extension))) {
-      const selected = isCompiled(importer) ? competingJsxSource(path, importer) : undefined
+      const selected = isCompiled(importer) ? resolvedSourceImport(path, importer) : undefined
       if (selected && /\.vibex?$/.test(selected)) return selected + query
       // Keep ordinary TypeScript in the host's native namespace.
       if (meta.framework === "esbuild" || meta.framework === "bun") return
@@ -415,8 +439,17 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     // return nothing. unplugin's Bun adapter registers both for every path, so
     // under Bun the plugin registers its own hooks, filtered to what it serves.
     resolveId: meta.framework === "bun" ? undefined : resolveId,
-    loadInclude: meta.framework === "bun" ? undefined : isCompiled,
+    loadInclude: meta.framework === "bun" ? undefined : id => declarations?.has(cleanId(id)) || isCompiled(id),
     load: meta.framework === "bun" ? undefined : async function load(id) {
+      if (declarations?.has(cleanId(id))) {
+        const declaration = await declarations.load(cleanId(id))
+        for (const file of declaration.inputs) {
+          let watched = file
+          while (!existsSync(watched) && dirname(watched) !== watched) watched = dirname(watched)
+          this.addWatchFile(watched)
+        }
+        return { code: declaration.code, map: null }
+      }
       const { project, code, map, inputs, errors, warnings, error } = await loadModule(id)
       // Any project source or the tsconfig can change the contracts this module compiles against.
       const rollupWatch = meta.framework === "rollup" && this.meta?.watchMode && !watchClosed
