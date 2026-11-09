@@ -16,8 +16,11 @@ func init() {
 
 func checkSchemaTypeMemberModifiers(c *checker.Checker, file *ast.SourceFile) {
 	for _, repair := range schemaTypeMemberRepairs(file) {
-		if repair.code == 1070 {
+		switch repair.code {
+		case 1070:
 			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_0_modifier_cannot_appear_on_a_type_member, repair.name))
+		case 1024:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_readonly_modifier_can_only_appear_on_a_property_declaration_or_index_signature))
 		}
 	}
 }

@@ -1,0 +1,18 @@
+// expect: EK2109 EK1505 EK0108 TS1070 TS1024
+// Chapter 006 and Appendix A: a member of a schema body that is not a Field is
+// EK1505, and a member of a schema alias object type with no schema form is
+// EK2109. The mapping replaces the member, but its modifiers keep the errors
+// TypeScript gives them on a type literal member: TS1070 for async or static,
+// TS1024 for readonly on a method, accessor or signature, and EK0108 for
+// effect (Functions, static rules). A member named after a modifier is an
+// ordinary member.
+schema AsyncMethod = { async m(): string }
+schema StaticMethod = { static m(): string }
+schema ReadonlyMethod = { readonly m(): string }
+schema EffectMethod = { effect m(): string }
+schema AfterField = { a: string; async m(): string }
+schema BodyAsync { async m(): string }
+schema BodyReadonly { readonly m(): string }
+schema BodyEffect { effect m(): string }
+schema Named = { async(): string; readonly(): string; effect(): string; static (): string }
+export {}

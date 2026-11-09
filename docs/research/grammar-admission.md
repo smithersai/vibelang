@@ -635,7 +635,8 @@ without the instantiation alternatives of `MemberExpression`.
 The next sweep keyed three more programs into existing families and found one
 new form. A `readonly` method signature in a schema object-type alias is
 `admission:schema-readonly-method`: TypeScript rejects `readonly` on a method
-with TS1024, and the alias's `EK2109` for the method covers it. An untyped
+with TS1024, which the alias's `EK2109` for the method used to cover; the
+method now keeps TS1024. An untyped
 alias member with `=`, such as `{ id? = Missing }`, is TS1247 and joins
 `admission:schema-field-initializer`. An angle-bracket assertion and a type
 argument list hold an `EffectType` too, so `<A!E!>x` and `f<A!E!>` join
@@ -651,7 +652,8 @@ property names in its classifier. A member named `readonly` is separate:
 `readonly()` carries no modifier. The field-initializer family likewise
 recognizes numeric, string and computed names, such as `{ 1? = Missing }`. String-literal initializers that already
 produce native parse errors remain rejection controls.
-These programs stay pending; the classifier changes no compiler admission.
+The initializer programs stay pending; the method programs now report their
+modifier errors.
 
 Native accessor diagnostics also reject grammar: getters cannot have value
 parameters, setters require one value parameter, accessors have no type
@@ -702,15 +704,17 @@ The compiler is unchanged and the known witnesses remain pending.
 An `effect` method signature in a schema alias is
 `admission:schema-effect-method`. Appendix A rejects an interface or
 type-literal member written with that modifier with `EK0108`, and
-`type S = { effect id() }` reports it. `schema S = { effect id() }`
-reports only `EK2109` for the unsupported member, which covers that
-rejection, as it covers `TS1024` and `TS1070` for the `readonly`, `async`
-and `static` method families. An untyped `async` property ended by a line
-break does not change the cover. A method named `effect`, an `effect`
-modifier ended by a line break and the named-body `EK1505` rejection stay
-outside the family. An optional `effect id?()` signature is a method in
-this family, not the field form that `EK0108` now rejects. The
-compiler is unchanged for methods and the witnesses remain pending.
+`type S = { effect id() }` reports it. `schema S = { effect id() }` used to
+report only `EK2109` for the unsupported member, which covered that
+rejection, as it covered `TS1024` and `TS1070` for the `readonly`, `async`
+and `static` method families. The compiler now reads the modifiers of a
+method, an accessor and a call or construct signature from the source of the
+object type, as it does for fields, and reports `EK0108`, `TS1024` or
+`TS1070` beside `EK2109`; the four families are no longer pending and their
+witnesses are regression inputs. An untyped `async` property ended by a line
+break does not change that. A method named `effect`, an `effect` modifier
+ended by a line break and the named-body `EK1505` rejection stay outside the
+family. An optional `effect id?()` signature is a method in this family.
 
 A `fork` or `join` that heads a `new` callee or an `extends` clause in
 Effect code is `admission:fiber-primary-reference`. Appendix A reserves

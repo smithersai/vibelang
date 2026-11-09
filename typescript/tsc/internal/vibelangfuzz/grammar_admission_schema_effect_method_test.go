@@ -8,8 +8,8 @@ import (
 
 // Appendix A rejects an interface or type-literal member written with the
 // effect modifier with EK0108. A schema object-type alias maps an effect
-// method signature to an unsupported member and reports only EK2109, which
-// covers that rejection. A method named effect and an effect modifier ended
+// method signature to an unsupported member (EK2109) and reports EK0108 for
+// the modifier beside it. A method named effect and an effect modifier ended
 // by a line break are separate members.
 func grammarSchemaEffectMethod(ts []grammarToken) bool {
 	return grammarSchemaModifiedMethod(ts, "effect")
@@ -56,11 +56,12 @@ func TestGrammarAdmissionSchemaEffectMethodRegression(t *testing.T) {
 		"schema S =\n{ async\neffect effect (\n) }",
 	} {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			// The effect modifier is EK0108 beside the EK2109 of the
+			// unsupported member: no admission gap.
+			if grammarAdmissionVerdict(t, w, source) {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("a rejected effect method is an admission gap: %v", r.Diagnostics)
 			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 	// The same members outside a schema alias keep their EK0108 or EK1505

@@ -83,6 +83,7 @@ func TestGrammarAdmissionSchemaDuplicateReadonlyRegression(t *testing.T) {
 		"schema S = { async async\nid : Missing\n}",
 		"schema S = { async async ;\nid :\nMissing\n}",
 		"schema S = { async async, id: Missing };",
+		"schema S\n= { readonly readonly readonly id ( )\n}",
 	} {
 		t.Run(source, func(t *testing.T) {
 			if grammarAdmissionVerdict(t, w, source) {
@@ -91,14 +92,13 @@ func TestGrammarAdmissionSchemaDuplicateReadonlyRegression(t *testing.T) {
 			}
 		})
 	}
-	// A type operator or an Effect type over the object type, and a method,
-	// map to an unsupported member that erases the written modifiers: still
-	// pending under the same key.
+	// A type operator or an Effect type over the object type maps to an
+	// unsupported member that erases the written modifiers: still pending
+	// under the same key.
 	for _, source := range []string{
 		"schema S = readonly { readonly readonly readonly id : Missing } ;",
 		"schema S = join ! { readonly readonly id : Missing } ;",
 		"schema S = readonly { readonly readonly Missing }",
-		"schema S\n= { readonly readonly readonly id ( )\n}",
 	} {
 		t.Run(source, func(t *testing.T) {
 			if !grammarAdmissionVerdict(t, w, source) {

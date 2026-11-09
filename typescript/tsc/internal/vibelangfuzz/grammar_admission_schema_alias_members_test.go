@@ -47,9 +47,20 @@ func TestGrammarAdmissionSchemaAliasMemberKeys(t *testing.T) {
 
 func TestGrammarAdmissionSchemaAliasMemberRegression(t *testing.T) {
 	w := NewWorkspace(t)
+	// A readonly method keeps TS1024 beside the EK2109 of the unsupported
+	// member: no admission gap.
 	for _, source := range []string{
 		"schema S = { readonly id ( ) }",
 		"schema S\n= { readonly id ( )\n}",
+	} {
+		t.Run(source, func(t *testing.T) {
+			if grammarAdmissionVerdict(t, w, source) {
+				result, _ := w.Compile(context.Background(), Single(source))
+				t.Fatalf("a rejected alias method is an admission gap; diagnostics=%v", result.Diagnostics)
+			}
+		})
+	}
+	for _, source := range []string{
 		"schema S = { id ? = Missing }",
 		"schema S = { async ? =\nMissing\n}",
 		"< number ! string ! > y",
@@ -62,10 +73,5 @@ func TestGrammarAdmissionSchemaAliasMemberRegression(t *testing.T) {
 				t.Fatalf("witness no longer exposes an admission gap; diagnostics=%v", result.Diagnostics)
 			}
 		})
-	}
-	for key, source := range map[string]string{
-		"admission:schema-readonly-method": "schema S = { readonly id ( ) }",
-	} {
-		t.Run(key, func(t *testing.T) { checkGrammarAdmission(t, w, key, source) })
 	}
 }

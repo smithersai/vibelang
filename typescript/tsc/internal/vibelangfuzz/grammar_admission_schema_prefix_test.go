@@ -58,10 +58,21 @@ func TestGrammarAdmissionSchemaLiteralInitializerKeys(t *testing.T) {
 
 func TestGrammarAdmissionSchemaPrefixRegression(t *testing.T) {
 	w := NewWorkspace(t)
+	// A modifier prefix on an alias method keeps TS1070, TS1024 or EK0108
+	// beside the EK2109 of the unsupported member: no admission gap.
 	for _, source := range []string{
 		"schema S = { static readonly id() }",
 		"schema S = { async readonly id() }",
 		"schema S = { readonly effect fork() }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			if grammarAdmissionVerdict(t, w, source) {
+				r, _ := w.Compile(context.Background(), Single(source))
+				t.Fatalf("a rejected alias method is an admission gap: %v", r.Diagnostics)
+			}
+		})
+	}
+	for _, source := range []string{
 		"schema S = { 1 ? = Missing }",
 	} {
 		t.Run(source, func(t *testing.T) {
@@ -101,8 +112,15 @@ func TestGrammarAdmissionSchemaSignatureKeys(t *testing.T) {
 
 func TestGrammarAdmissionSchemaSignatureRegression(t *testing.T) {
 	w := NewWorkspace(t)
+	// A readonly call signature keeps TS1024 beside EK2109: no admission gap.
+	t.Run("readonly call signature", func(t *testing.T) {
+		source := "schema S = { async readonly (\n) }"
+		if grammarAdmissionVerdict(t, w, source) {
+			r, _ := w.Compile(context.Background(), Single(source))
+			t.Fatalf("a rejected alias signature is an admission gap: %v", r.Diagnostics)
+		}
+	})
 	for _, source := range []string{
-		"schema S = { async readonly (\n) }",
 		"schema S = { readonly; (static static) }",
 	} {
 		t.Run(source, func(t *testing.T) {
@@ -147,10 +165,10 @@ func TestGrammarAdmissionSchemaStaticMethodKeys(t *testing.T) {
 
 func TestGrammarAdmissionSchemaStaticMethodRegression(t *testing.T) {
 	w := NewWorkspace(t)
+	// A static alias method keeps TS1070 beside EK2109: no admission gap.
 	const source = "schema S =\n{ static id() }"
-	if !grammarAdmissionVerdict(t, w, source) {
+	if grammarAdmissionVerdict(t, w, source) {
 		r, _ := w.Compile(context.Background(), Single(source))
-		t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+		t.Fatalf("a rejected alias method is an admission gap: %v", r.Diagnostics)
 	}
-	checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 }
