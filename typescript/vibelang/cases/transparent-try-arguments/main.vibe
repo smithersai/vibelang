@@ -1,0 +1,28 @@
+// expect-result: [0,true,true,true,true,true,true,true,true,16]
+import { Effect } from "effect"
+import { events, risky, later, sentinel } from "./foreign.js"
+type Options = {try:()=>number,catch:(error:unknown)=>unknown}
+type AsyncOptions = {try:()=>Promise<number>,catch:(error:unknown)=>unknown}
+export const programs = [
+ Effect.try((()=>risky("function-as",true)) as ()=>number),
+ Effect.try(({try:()=>risky("object-satisfies",true),catch:(error:unknown)=>error}) satisfies Options),
+ Effect.tryPromise((()=>later("function-nonnull",true))!),
+ Effect.tryPromise(({try:()=>later("object-as",true),catch:(error:unknown)=>error}) as AsyncOptions),
+ Effect.try.call(undefined, {try:<(()=>number)>(()=>risky("function-angle",true)),catch:(error:unknown)=>error}),
+ Effect.try.apply(undefined, ([{try:()=>risky("array-satisfies",true),catch:(error:unknown)=>error}] satisfies [Options])),
+ Effect.tryPromise.call(undefined, {try:(()=>later("property-as",true)) as ()=>Promise<number>,catch:(error:unknown)=>error}),
+ Effect.tryPromise.apply(undefined, ([{try:()=>later("array-as",true),catch:(error:unknown)=>error}] as [AsyncOptions]))
+]
+const construction = events.length
+export effect function main() {
+ const same: boolean[] = []
+ for (const [index, program] of programs.entries()) {
+  const result = try exit(program)
+  const reason = result._tag === "Failure" ? result.cause.reasons[0] : undefined
+  const error = reason?._tag === "Fail" ? reason.error : undefined
+  const wrapped = typeof error === "object" && error !== null && "_tag" in error && error._tag === "UnknownError" && "cause" in error && error.cause === sentinel
+  same.push(index === 0 || index === 2 ? wrapped : error === sentinel)
+ }
+ for (const program of programs) { try exit(program) }
+ return [construction, ...same, events.length]
+}

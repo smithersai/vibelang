@@ -258,7 +258,7 @@ func isAdmittingTryForwarding(c *checker.Checker, call *ast.Node, path []pathSte
 	}
 	thunk := path[1:]
 	if method == "apply" {
-		array := ast.SkipParentheses(call.Arguments()[1])
+		array := ast.SkipOuterExpressions(call.Arguments()[1], ast.OEKParentheses|ast.OEKAssertions)
 		if !ast.IsArrayLiteralExpression(array) || len(array.AsArrayLiteralExpression().Elements.Nodes) != 1 ||
 			len(thunk) == 0 || !thunk[0].element {
 			return false

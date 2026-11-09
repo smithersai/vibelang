@@ -1,0 +1,3 @@
+go test fuzz v1
+string("tryPromise:direct:object:thunk")
+byte(1)

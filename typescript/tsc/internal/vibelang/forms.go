@@ -196,6 +196,11 @@ func ownerCallWithPropertyName(fn *ast.Node, resolve func(*ast.Node) (string, bo
 		switch parent.Kind {
 		case ast.KindParenthesizedExpression, ast.KindObjectLiteralExpression:
 			continue
+		case ast.KindAsExpression, ast.KindTypeAssertionExpression, ast.KindSatisfiesExpression, ast.KindNonNullExpression:
+			if resolve == nil {
+				return nil, nil
+			}
+			continue
 		case ast.KindArrayLiteralExpression:
 			path = append(path, pathStep{element: true})
 			continue

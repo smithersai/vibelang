@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Inline `Effect.try` and `Effect.tryPromise` callbacks could report `EK0401` when surrounded by a TypeScript assertion or `satisfies`. These expressions now keep the wrapper’s thunk contract.
+
 - Reading `customMatcher` from a parameter named `Symbol` could read the global protocol symbol instead, skipping the parameter's getter or causing a type error. The access now uses the parameter's property, as TypeScript does.
 
 - Inline `try` methods in `Effect.try` and `Effect.tryPromise` options could report `EK0401` for calls the wrapper catches. Method syntax now keeps the same thunk contract as an arrow or function expression.
