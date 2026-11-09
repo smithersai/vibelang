@@ -1,6 +1,7 @@
 import * as Option from "effect/Option";
-import { $noMatch } from "vibelang-runtime/internal";
+import { $extract, $noMatch } from "vibelang-runtime/internal";
 import * as Effect from "effect/Effect";
+import * as runtime from "vibelang-runtime/internal";
 // expect-result: {"phases":["Draft","Review","Published"],"widths":[5,6,9],"logged":["draft","review","published"],"failures":["no user 7","retry","denied Ada"],"greetings":["Hello","Hello, Ada"],"announced":"published","text":"text: hi"}
 // A match without default that D209 proves exhaustive tests its last arm
 // with a check that adds no branch (D405): no final if and no $noMatch,
@@ -14,11 +15,9 @@ function text(value) {
     {
         const $match3 = value;
         {
-            if (typeof $match3 === "string" || $match3 instanceof String) {
-                const $primitive4 = typeof $match3 === "string" ?
-                    $match3
-                    : $match3.valueOf();
-                let s = $primitive4;
+            const $extracted4 = runtime.$extract(String, $match3, null, true, "construct");
+            if ($extracted4 !== false && $extracted4.length === 1) {
+                let s = $extracted4[0];
                 return `text: ${s}`;
             }
         }
