@@ -1,0 +1,21 @@
+// expect-result: [0,true,true,true,true,8]
+import { Effect } from "effect"
+import { events, risky, later, sentinel } from "./foreign.js"
+const bridge = (Effect.try)!
+const promise = (Effect.tryPromise)!
+export const programs = [
+ bridge({ try: () => risky("sync", true), catch: (error) => error }),
+ ({ run: Effect.try })!.run({ try: () => risky("object", true), catch: (error) => error }),
+ promise({ try: () => later("promise", true), catch: (error) => error }),
+ ({ run: Effect.tryPromise })!.run({ try: () => later("object-promise", true), catch: (error) => error })
+]
+const construction = events.length
+export effect function main() {
+ const same: boolean[] = []
+ for (const program of programs) {
+  const result = try exit(program)
+  same.push(result._tag === "Failure" && result.cause.reasons[0]?._tag === "Fail" && result.cause.reasons[0].error === sentinel)
+ }
+ for (const program of programs) { try exit(program) }
+ return [construction, ...same, events.length]
+}

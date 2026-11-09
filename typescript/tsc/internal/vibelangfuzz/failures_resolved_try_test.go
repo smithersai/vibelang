@@ -39,6 +39,11 @@ func resolvedTryKeys() []string {
 			keys = append(keys, api+":"+spelling+":thunk")
 		}
 	}
+	for _, api := range []string{"try", "tryPromise"} {
+		for _, spelling := range []string{"nonnull-mixed-sync", "nonnull-mixed-foreign", "nonnull-admitting", "nonnull-object-mixed", "nonnull-object-admitting", "nonnull-nullish"} {
+			keys = append(keys, api+":"+spelling+":thunk")
+		}
+	}
 	return keys
 }
 func checkResolvedTrySignature(t *testing.T, w *Workspace, key string, choice uint8) {
@@ -73,7 +78,7 @@ export declare function tag(parts:TemplateStringsArray):number
 		expression = "JSON.parse(\"1\") as number"
 		contract = "RangeError"
 	}
-	if strings.HasPrefix(spelling, "admitting-") {
+	if strings.HasPrefix(spelling, "admitting-") || spelling == "nonnull-admitting" || spelling == "nonnull-object-admitting" {
 		expression = "(" + expression + ") as 0"
 	}
 	callbackExpression := expression
@@ -156,6 +161,39 @@ export declare function tag(parts:TemplateStringsArray):number
 		callee = "bridge"
 	case "admitting-union":
 		decl = "const bridge=flag?Effect." + api + "<0>:Effect." + api + "<number>\n"
+		callee = "bridge"
+	case "nonnull-mixed-sync", "nonnull-mixed-foreign", "nonnull-admitting", "nonnull-object-mixed", "nonnull-object-admitting", "nonnull-nullish":
+		allowed := "Effect." + api + "<number>"
+		denied := "Effect.sync<number>"
+		if api == "tryPromise" {
+			denied = "Effect.promise<number>"
+		}
+		value := "flag?" + denied + ":" + allowed
+		switch spelling {
+		case "nonnull-mixed-foreign":
+			denied = "strict"
+			if api == "tryPromise" {
+				denied = "asyncStrict"
+			}
+			value = "flag?" + denied + ":" + allowed
+		case "nonnull-admitting":
+			value = "flag?Effect." + api + "<0>:" + allowed
+		case "nonnull-object-mixed":
+			value = "flag?{run:" + denied + "}:{run:" + allowed + "}"
+		case "nonnull-object-admitting":
+			value = "flag?{run:Effect." + api + "<0>}:{run:" + allowed + "}"
+		case "nonnull-nullish":
+			value = "flag?" + allowed + ":undefined"
+		}
+		if strings.Contains(spelling, "mixed") && contract != "never" {
+			want = 1
+		}
+		if strings.Contains(spelling, "object") {
+			value = "(" + value + ")!.run"
+		} else {
+			value = "(" + value + ")!"
+		}
+		decl = "const bridge=" + value + "\n"
 		callee = "bridge"
 	case "computed":
 		callee = "Effect[\"" + api + "\"]"

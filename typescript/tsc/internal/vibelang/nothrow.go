@@ -254,7 +254,7 @@ func isAdmittingTryValue(c *checker.Checker, expression *ast.Node, properties []
 	}
 	seen[expression] = true
 	defer delete(seen, expression)
-	if ast.IsSatisfiesExpression(expression) || ast.IsExpressionWithTypeArguments(expression) {
+	if ast.IsNonNullExpression(expression) || ast.IsSatisfiesExpression(expression) || ast.IsExpressionWithTypeArguments(expression) {
 		return isAdmittingTryValue(c, expression.Expression(), properties, seen)
 	}
 	if ast.IsConditionalExpression(expression) {

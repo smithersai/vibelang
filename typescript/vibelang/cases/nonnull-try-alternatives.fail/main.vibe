@@ -1,0 +1,11 @@
+// expect: EK0401
+import { Effect } from "effect"
+import { risky, later } from "./foreign.js"
+declare const flag: boolean
+const mixed = (flag ? Effect.sync<number> : Effect.try<number>)!
+const twice = ((flag ? Effect.sync<number> : Effect.try<number>)!)!
+const mixedAsync = (flag ? Effect.promise<number> : Effect.tryPromise<number>)!
+export const a = mixed(() => risky("sync", true))
+export const b = twice(() => risky("twice", true))
+export const c = mixedAsync(() => later("promise", true))
+export const d = (flag ? { run: Effect.sync<number> } : { run: Effect.try<number> })!.run(() => risky("object", true))

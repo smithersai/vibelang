@@ -37,6 +37,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Declaration files could reorder inferred object members depending on which unrelated function was checked first. Synthesized optional properties now retain their own source, keeping member order and metadata stable.
 
+- Adding `!` to a choice between `sync` and `Effect.try`, or between `promise` and `tryPromise`, could hide a throwing call in a strict thunk. The compiler now reports `EK0401`.
+
 - Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
 
 - Migration API checks could lose one referenced project's declarations when config paths shared an output name. Each project now keeps separate declarations and compiler logs, and ambiguous older snapshots require fresh setup.
