@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:declaration-decorators-export\nexport @dec error E { }")

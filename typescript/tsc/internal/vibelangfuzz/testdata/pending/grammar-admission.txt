@@ -124,3 +124,9 @@ FuzzGrammarAdmission admission:schema-type-argument-list compiler VIP-15 and App
 FuzzGrammarAdmission corpus:schema-type-argument-list compiler VIP-15 and Appendix A: a trailing comma in a mapped schema field type's argument list compiles with no diagnostic
 FuzzGrammarAdmission corpus:schema-type-argument-list-empty compiler VIP-15 and Appendix A: an empty type argument list in a schema field type reports only `EK2109`
 FuzzGrammarAdmission corpus:schema-type-argument-list-campaign compiler VIP-15 and Appendix A: a trailing comma in an unmapped schema field type's argument list reports only `EK2109`
+
+FuzzGrammarAdmission admission:declaration-decorators compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
+FuzzGrammarAdmission corpus:declaration-decorators compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
+FuzzGrammarAdmission corpus:declaration-decorators-export compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
+FuzzGrammarAdmission corpus:declaration-decorators-schema-error compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
+FuzzGrammarAdmission corpus:declaration-decorators-service compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList

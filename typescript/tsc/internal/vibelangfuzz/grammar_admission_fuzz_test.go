@@ -335,6 +335,10 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-decorator-member", "class C { @dec m() { } }"},
 	{"production-decorator-effect-method", "class C { @dec effect m() { return 1; } }"},
 	{"production-decorator-producer", "class C { @dec effect *g() { yield 1; } }"},
+	{"declaration-decorators", "@dec error E { }"},
+	{"declaration-decorators-export", "export @dec error E { }"},
+	{"declaration-decorators-schema-error", "@dec schema error E { }"},
+	{"declaration-decorators-service", "@dec service S { value: number }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1158,6 +1162,9 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	if grammarDeclarationDecorators(source) {
+		return "admission:declaration-decorators"
+	}
 	if grammarSecondBangLineBreak(ts) {
 		return "admission:effect-type-line-break"
 	}

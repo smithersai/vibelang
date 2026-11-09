@@ -1173,3 +1173,5 @@ static Effect and throwing-call checks before comparing `try e` with
 and the native delegation outcome remain the oracle's observations.
 
 The grammar admission lab derives TypeScript class decorators, including class exports, fields, ordinary methods and the Appendix A Effect methods, producers and accessor recovery. Decorator expressions keep the enclosing source context; callable bodies retain their own context. Keyed seeds cover decorated declarations and members, while controls exclude object-literal decorators, malformed expressions and reserved Effect names.
+
+Decorators before an `error`, `schema error` or `service` declaration are tracked separately from inherited class and member decorators. The declaration's own source modifier span selects the precise pending key; keyed corpus inputs retain export positions and declaration kinds, with native classes, members, strings and comments as controls.

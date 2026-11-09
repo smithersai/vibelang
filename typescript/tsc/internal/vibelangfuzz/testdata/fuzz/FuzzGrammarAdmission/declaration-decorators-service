@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:declaration-decorators-service\n@dec service S { value: number }")
