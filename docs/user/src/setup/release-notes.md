@@ -159,6 +159,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An esbuild bundle could create separate copies of a native module when a generated module map used an absolute import. Absolute and relative imports now share the same exports and state.
 - A bundler plugin placed after VibeLang's could not see a `.vibe` module's `./dep.ts` import under that name: Rollup and Rolldown hid it, and esbuild, webpack, Rspack and Vite showed `./dep.js` or an absolute path, so a plugin that externalized or replaced `./dep.ts` skipped the module. A `./dep.mts` import failed to resolve under Rollup and Rspack. With those bundlers, later plugins now resolve the import as written, as they do for a `.ts` module, and `.mts` imports resolve. Bun's later plugins still see `./dep.js`.
+- A Bun build of a `.vibe` module that imported both `./créé.vibe` and the literal file `./cr%C3%A9%C3%A9.js` loaded the JavaScript file for both imports, because Bun's `SourceMap.findOrigin` returns no position and the build plugin could not tell the imports apart. Each import now loads its own file under Bun, as with the other bundlers.
 
 - Lint rules against runtime `typeof` could report checks generated for a record or extractor pattern. They now report only `typeof` operators written in the source.
 

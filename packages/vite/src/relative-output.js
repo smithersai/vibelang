@@ -107,15 +107,17 @@ export function relativeOutput(result, file, backend, compiler, debug) {
     const source = moduleSource(node), emitted = stringValue(source)
     if (typeof emitted !== "string" || !/^\.\.?\//.test(emitted) || !outputSuffix.test(emitted)) continue
     const [line, column] = position(lines, source.range[0])
-    const origin = sourceMap.findOrigin(line, column)
-    const index = map.sources.indexOf(origin.fileName), text = map.sourcesContent[index]
+    // findEntry, as Node's findOrigin does: Bun 1.4.2's findOrigin returns {}.
+    const entry = sourceMap.findEntry(line - 1, column - 1)
+    if (entry.originalSource === undefined) continue
+    const index = map.sources.indexOf(entry.originalSource), text = map.sourcesContent[index]
     if (typeof text !== "string") continue
     let original = originals.get(index)
     if (!original) {
       original = { lines: lineStarts(text), nodes: nodes(parse(text, map.sources[index])) }
       originals.set(index, original)
     }
-    const offset = original.lines[origin.lineNumber - 1] + origin.columnNumber - 1
+    const offset = original.lines[entry.originalLine + line - 1 - entry.generatedLine] + entry.originalColumn + column - 1 - entry.generatedColumn
     const literal = original.nodes.find(candidate => candidate.range && stringValue(candidate) !== undefined && candidate.range[0] <= offset && candidate.range[1] > offset)
     const written = stringValue(literal)
     if (typeof written !== "string" || written === emitted || !/^\.\.?\//.test(written) || !sourceSuffix.test(written)) continue
