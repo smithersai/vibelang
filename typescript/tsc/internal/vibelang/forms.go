@@ -174,6 +174,12 @@ func (a *analyzer) effectTypeOf(fn *ast.Node, success *checker.Type) *checker.Ty
 // directly or as an element of an array literal or the value of an object
 // literal property there, with the path from the argument down to fn.
 func ownerCall(fn *ast.Node) (*ast.Node, []pathStep) {
+	return ownerCallWithPropertyName(fn, nil)
+}
+
+// ownerCallWithPropertyName lets throw-contract analysis resolve a computed
+// property without changing the syntactic paths used to select call forms.
+func ownerCallWithPropertyName(fn *ast.Node, resolve func(*ast.Node) (string, bool)) (*ast.Node, []pathStep) {
 	var path []pathStep
 	node := fn
 	for parent := node.Parent; parent != nil; node, parent = parent, parent.Parent {
@@ -191,10 +197,22 @@ func ownerCall(fn *ast.Node) (*ast.Node, []pathStep) {
 			continue
 		case ast.KindPropertyAssignment:
 			name := parent.Name()
-			if parent.Initializer() != node || !(ast.IsIdentifier(name) || ast.IsStringLiteral(name) || ast.IsNumericLiteral(name)) {
+			if parent.Initializer() != node {
 				return nil, nil
 			}
-			path = append(path, pathStep{property: name.Text()})
+			property := ""
+			if ast.IsIdentifier(name) || ast.IsStringLiteral(name) || ast.IsNumericLiteral(name) {
+				property = name.Text()
+			} else if resolve != nil {
+				var ok bool
+				property, ok = resolve(name)
+				if !ok {
+					return nil, nil
+				}
+			} else {
+				return nil, nil
+			}
+			path = append(path, pathStep{property: property})
 			continue
 		case ast.KindCallExpression, ast.KindNewExpression:
 			for i, arg := range parent.Arguments() {

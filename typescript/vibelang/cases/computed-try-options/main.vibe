@@ -1,0 +1,26 @@
+// expect-result: [0,true,true,true,true,true,true,true,true,true,true,20]
+import { Effect } from "effect"
+import { events, risky, later, sentinel } from "./foreign.js"
+const name = "try" as const
+export const programs = [
+ Effect.try({ ["try"]: () => risky("literal", true), catch: (error) => error }),
+ Effect.try({ [("try")]: () => risky("grouped", true), catch: (error) => error }),
+ Effect.try({ [name]: () => risky("constant", true), catch: (error) => error }),
+ Effect.tryPromise({ ["try"]: () => later("literal-async", true), catch: (error) => error }),
+ Effect.tryPromise({ [("try")]: () => later("grouped-async", true), catch: (error) => error }),
+ Effect.tryPromise({ [name]: () => later("constant-async", true), catch: (error) => error }),
+ Effect.try.call(undefined, { ["try"]: () => risky("call", true), catch: (error) => error }),
+ Effect.try.apply(undefined, [{ [name]: () => risky("apply", true), catch: (error) => error }]),
+ Effect.tryPromise.call(undefined, { ["try"]: () => later("call-async", true), catch: (error) => error }),
+ Effect.tryPromise.apply(undefined, [{ [name]: () => later("apply-async", true), catch: (error) => error }])
+]
+const construction = events.length
+export effect function main() {
+ const same: boolean[] = []
+ for (const program of programs) {
+  const result = try exit(program)
+  same.push(result._tag === "Failure" && result.cause.reasons[0]?._tag === "Fail" && result.cause.reasons[0].error === sentinel)
+ }
+ for (const program of programs) { try exit(program) }
+ return [construction, ...same, events.length]
+}

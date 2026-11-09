@@ -161,13 +161,13 @@ func (a *analyzer) throwsBelongToCall(home, site *ast.Node) bool {
 // callback contract, including callable alternatives and options properties.
 // The name Effect alone supplies no contract.
 func isAdmittedWrappedCode(c *checker.Checker, fn *ast.Node) bool {
-	if call, path := ownerCall(fn); call != nil && isAdmittingTryForwarding(c, call, path) {
+	if call, path := throwingCallbackOwner(c, fn); call != nil && isAdmittingTryForwarding(c, call, path) {
 		return true
 	}
 
 	// Resolve the invoked API before inspecting its spelling. Only its thunk
 	// position admits throws; a catch mapper keeps its plain-code contract.
-	if call, path := ownerCall(fn); call != nil && len(path) != 0 && path[0].argument == 0 &&
+	if call, path := throwingCallbackOwner(c, fn); call != nil && len(path) != 0 && path[0].argument == 0 &&
 		(len(path) == 1 || len(path) == 2 && path[1].property == "try") &&
 		ast.IsCallExpression(call) && isAdmittingTryCall(c, call) {
 		return true
@@ -196,6 +196,21 @@ func isAdmittedWrappedCode(c *checker.Checker, fn *ast.Node) bool {
 		}
 	}
 	return false
+}
+
+// throwingCallbackOwner retains statically named computed options properties.
+// The key expression still executes in its own surrounding code.
+func throwingCallbackOwner(c *checker.Checker, fn *ast.Node) (*ast.Node, []pathStep) {
+	return ownerCallWithPropertyName(fn, func(name *ast.Node) (string, bool) {
+		if !ast.IsComputedPropertyName(name) {
+			return "", false
+		}
+		key := c.GetTypeAtLocation(name.AsComputedPropertyName().Expression)
+		if key == nil || !checker.IsTypeUsableAsPropertyName(key) {
+			return "", false
+		}
+		return checker.GetPropertyNameFromType(key), true
+	})
 }
 
 // isAdmittingTryCall retains source alternatives before TypeScript can reduce

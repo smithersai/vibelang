@@ -27,6 +27,8 @@ true
 
 An explicit `throw` in an effect function, even `throw new Error(...)`, is a typed failure. A `throw` in a plain function is `EK0401`; make the function `effect` for a typed failure. In an `async` function, `throw` rejects the Promise. Wrap a synchronous call that may throw with `Effect.try` to expose its exception as a typed failure. The thunk keeps this contract through parentheses, computed access, constant aliases and bound references to `Effect.try` or `Effect.tryPromise`. Native `call` and `apply` also keep the genuine wrapper’s thunk contract, including the options `try` callback. Their `catch` mappers and functions nested inside a thunk keep their own plain-code checks. A local `Effect.try` or `Effect.tryPromise` property that refers to `sync` or `promise` keeps that API's non-throwing thunk contract. A tracked throwing callback is not assignable to `sync`'s non-throwing thunk; use `orDie(Effect.try(() => call()))` when that exception should be a defect. A non-null assertion preserves the callable alternatives: a choice between `sync` and `Effect.try`, or between `promise` and `tryPromise`, still requires a thunk valid for either API.
 
+In the options overload, a computed key that resolves to `"try"`, such as `["try"]` or `[key]` with `const key = "try" as const`, keeps the same thunk contract. Evaluating the key stays in the surrounding code. Native `call` and `apply` forward that computed-key callback contract too.
+
 ```vibe
 effect function firstLabel(labels: ReadonlyArray<string>) {
   return fromOption(Option.fromNullishOr(labels[0])) catch () => "No label"

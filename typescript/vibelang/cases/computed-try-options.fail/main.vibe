@@ -1,0 +1,9 @@
+// expect: EK0401
+import { Effect } from "effect"
+import { risky } from "./foreign.js"
+export const mapper = Effect.try({ ["try"]: () => 1, catch: () => risky("catch", true) })
+export const nested = Effect.try({ ["try"]: () => (() => risky("nested", true))(), catch: (error) => error })
+export const explicit = Effect.try({ ["try"]: () => { throw new RangeError("explicit") }, catch: (error) => error })
+export const forwardedMapper = Effect.try.call(undefined, { ["try"]: () => 1, catch: () => risky("forwarded-catch", true) })
+export const forwardedNested = Effect.try.apply(undefined, [{ ["try"]: () => (() => risky("forwarded-nested", true))(), catch: (error) => error }])
+export const forwardedThrow = Effect.tryPromise.call(undefined, { ["try"]: () => { throw new RangeError("forwarded") }, catch: (error) => error })
