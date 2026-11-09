@@ -1,0 +1,5 @@
+// expect: EK0403
+import {tagCjk,tagJoiner,tagLatin,risky} from "./foreign.js"
+export effect function cjk() {return tagCjk`${risky}`}
+export effect function joiner() {return tagJoiner`${risky}`}
+export effect function latin() {return tagLatin`${risky}`}

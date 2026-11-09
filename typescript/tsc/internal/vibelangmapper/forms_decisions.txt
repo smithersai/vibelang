@@ -9623,6 +9623,15 @@ typescript/vibelang/cases/typeof-effect-signature/a.vibe:3:20 lambda effectFn ke
 typescript/vibelang/cases/typeof-effect-signature/a.vibe:5:24 lambda plain annotation
 typescript/vibelang/cases/typeof-effect-signature/chain.vibe:10:20 lambda effectFn keyword
 typescript/vibelang/cases/typeof-effect-signature/chain.vibe:11:22 lambda effectFn keyword
+typescript/vibelang/cases/unicode-rethrows-parameters/main.vibe:20:61 lambda choice fallback
+typescript/vibelang/cases/unicode-rethrows-parameters/main.vibe:5:18 lambda plain table
+typescript/vibelang/cases/unicode-rethrows-parameters/main.vibe:5:47 lambda plain table
+typescript/vibelang/cases/unicode-rethrows-parameters/main.vibe:6:18 lambda plain table
+typescript/vibelang/cases/unicode-rethrows-parameters/main.vibe:6:48 lambda plain table
+typescript/vibelang/cases/unicode-rethrows-parameters/main.vibe:7:18 lambda plain table
+typescript/vibelang/cases/unicode-rethrows-parameters/main.vibe:7:45 lambda plain table
+typescript/vibelang/cases/unicode-rethrows-parameters/main.vibe:8:18 lambda plain table
+typescript/vibelang/cases/unicode-rethrows-parameters/main.vibe:8:48 lambda plain table
 typescript/vibelang/cases/uninterruptible-using/main.vibe:11:47 byname program table
 typescript/vibelang/cases/uninterruptible-using/main.vibe:11:72 lambda effectFn keyword
 typescript/vibelang/cases/uninterruptible-using/main.vibe:25:22 lambda program table

@@ -273,8 +273,8 @@ func proveNeverCallbacks(c *checker.Checker, caller *ast.SourceFile, call, decl 
 	} else {
 		for _, host := range jsdocHosts(decl) {
 			for _, doc := range host.JSDoc(nil) {
-				for _, match := range rethrowsTag.FindAllStringSubmatch(file.Text()[doc.Pos():doc.End()], -1) {
-					named[match[1]] = true
+				for _, parameterName := range rethrowsParameterNames(file.Text()[doc.Pos():doc.End()]) {
+					named[parameterName] = true
 				}
 			}
 		}

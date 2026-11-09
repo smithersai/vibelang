@@ -3,6 +3,7 @@ package vibelang
 import (
 	"regexp"
 	"slices"
+	"unicode/utf8"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -365,9 +366,31 @@ func thrownText(c *checker.Checker, src throwContract) string {
 	return c.TypeToString(c.GetUnionType(src.types))
 }
 
-// rethrowsTag matches a @rethrows tag and the parameter it names, wherever
-// it sits in a JSDoc comment, on its own line or after a @throws tag.
-var rethrowsTag = regexp.MustCompile(`@rethrows\s+([A-Za-z_$][\w$]*)`)
+// rethrowsParameterNames reads complete TypeScript identifiers from JSDoc.
+// A Unicode continuation belongs to the name, rather than to a shorter ASCII
+// prefix that could accidentally name a different parameter.
+var rethrowsTagStart = regexp.MustCompile("@rethrows\\s+")
+
+func rethrowsParameterNames(comment string) []string {
+	var names []string
+	for _, span := range rethrowsTagStart.FindAllStringIndex(comment, -1) {
+		text := comment[span[1]:]
+		first, width := utf8.DecodeRuneInString(text)
+		if !scanner.IsIdentifierStart(first) {
+			continue
+		}
+		end := width
+		for end < len(text) {
+			next, width := utf8.DecodeRuneInString(text[end:])
+			if !scanner.IsIdentifierPart(next) {
+				break
+			}
+			end += width
+		}
+		names = append(names, text[:end])
+	}
+	return names
+}
 
 // shippedRethrows maps each lib method Appendix E annotates @rethrows to
 // the parameter it rethrows.
@@ -435,8 +458,8 @@ func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 	}
 	for _, host := range jsdocHosts(decl) {
 		for _, jsdoc := range host.JSDoc(nil) {
-			for _, m := range rethrowsTag.FindAllStringSubmatch(declFile.Text()[jsdoc.Pos():jsdoc.End()], -1) {
-				if m[1] == parameter {
+			for _, parameterName := range rethrowsParameterNames(declFile.Text()[jsdoc.Pos():jsdoc.End()]) {
+				if parameterName == parameter {
 					return rethrowAdmitted
 				}
 			}

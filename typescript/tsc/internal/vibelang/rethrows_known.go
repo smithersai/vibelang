@@ -79,8 +79,8 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 				continue
 			}
 			for _, doc := range host.JSDoc(nil) {
-				for _, match := range rethrowsTag.FindAllStringSubmatch(file.Text()[doc.Pos():doc.End()], -1) {
-					named[match[1]] = true
+				for _, parameterName := range rethrowsParameterNames(file.Text()[doc.Pos():doc.End()]) {
+					named[parameterName] = true
 				}
 			}
 		}
@@ -341,8 +341,8 @@ func rethrowsNames(c *checker.Checker, decl *ast.Node) map[string]bool {
 			continue
 		}
 		for _, doc := range host.JSDoc(nil) {
-			for _, match := range rethrowsTag.FindAllStringSubmatch(file.Text()[doc.Pos():doc.End()], -1) {
-				named[match[1]] = true
+			for _, parameterName := range rethrowsParameterNames(file.Text()[doc.Pos():doc.End()]) {
+				named[parameterName] = true
 			}
 		}
 	}
