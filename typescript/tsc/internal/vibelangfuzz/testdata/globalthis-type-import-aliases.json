@@ -1,0 +1,185 @@
+[
+  {
+    "Key": "native-type:direct:plain",
+    "Source": "import type Held = globalThis; export type Copy=typeof Held;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:direct:trivia",
+    "Source": "// type alias trivia\r\nimport type /* target */ Held = globalThis; export type Copy=typeof Held;\r\n",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:direct:escaped",
+    "Source": "import type Held = global\\u0054his; export type Copy=typeof Held;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:direct:unicode",
+    "Source": "import type Captur\u00e9 = globalThis; export type Copy=typeof Captur\u00e9;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:exported:plain",
+    "Source": "export import type Held = globalThis;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:exported:trivia",
+    "Source": "// type alias trivia\r\nexport import type /* target */ Held = globalThis;\r\n",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:exported:escaped",
+    "Source": "export import type Held = global\\u0054his;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:exported:unicode",
+    "Source": "export import type Captur\u00e9 = globalThis;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:namespace:plain",
+    "Source": "namespace N { import type Held=globalThis; export type Copy=typeof Held; } export type Copy=N.Copy;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:namespace:trivia",
+    "Source": "// type alias trivia\r\nnamespace N { import type /* target */ Held=globalThis; export type Copy=typeof Held; } export type Copy=N.Copy;\r\n",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:namespace:escaped",
+    "Source": "namespace N { import type Held=global\\u0054his; export type Copy=typeof Held; } export type Copy=N.Copy;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:namespace:unicode",
+    "Source": "namespace N { import type Captur\u00e9=globalThis; export type Copy=typeof Captur\u00e9; } export type Copy=N.Copy;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:repeated",
+    "Source": "import type Held=globalThis.globalThis; export type Copy=typeof Held;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:member",
+    "Source": "import type Held=globalThis.URL; export type Copy=typeof Held;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:shadow",
+    "Source": "namespace globalThis { export const value=7; } import type Held=globalThis; export type Copy=typeof Held;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "native-type:module",
+    "Source": "module Native { import type Held=globalThis; export type Copy=typeof Held; } export {};",
+    "NativeSource": "import type Held=globalThis; export type Copy=typeof Held;",
+    "Codes": [
+      "TS1392"
+    ],
+    "NativeCodes": [
+      "TS1392"
+    ]
+  },
+  {
+    "Key": "type:query",
+    "Source": "export type Copy=typeof globalThis;",
+    "Codes": [],
+    "NativeCodes": []
+  },
+  {
+    "Key": "value:alias",
+    "Source": "import Held=globalThis; export const copy=Held;",
+    "Codes": [
+      "EK0107"
+    ],
+    "NativeCodes": []
+  },
+  {
+    "Key": "value:copy",
+    "Source": "export const copy=globalThis;",
+    "Codes": [
+      "EK0107"
+    ],
+    "NativeCodes": []
+  }
+]

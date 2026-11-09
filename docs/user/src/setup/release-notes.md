@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Passing a throwing callback to a tagged template could bypass its parameter’s throw contract. Tagged substitutions now enforce the same callback checks as an ordinary call.
 
 - The editor's missing-name import fix could write `./dep.vibe` or `./dep.vibex` in a project without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`, so applying it produced `TS5097`. The fix now writes the same module path as a `.ts` or `.tsx` file would get, such as `./dep.js`, and keeps the VibeLang suffix only where those options allow it.
+- An invalid `import type` alias could report `EK0107` alongside TypeScript's error. It now keeps the native `TS1392` diagnostic.
 - An `import` alias of `globalThis.eval` or `globalThis.Function` was accepted without the diagnostic shown for a direct read. Both forms now report `EK0107`.
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.

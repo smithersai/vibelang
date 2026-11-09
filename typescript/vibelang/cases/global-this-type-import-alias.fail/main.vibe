@@ -1,0 +1,3 @@
+// expect: TS1392
+import type Held = globalThis;
+export type Copy = typeof Held;

@@ -926,6 +926,8 @@ fail for exit 1, or interrupt for exit 130.
 
 `globalThis` is available only as the object of a statically named member access: `.name`, `?.name`, a string-literal key or a template key without substitutions. Copying the object, destructuring it, passing or spreading it, using it with `in` or value-level `typeof`, or reading a nonliteral key reports `EK0107`; move that code to a `.ts` file. A repeated `globalThis.globalThis` also has to be a static member's object. Type queries and local bindings with the name `globalThis` keep their TypeScript meaning. Static access still follows the platform and dynamic-code rules.
 
+Type-only import aliases keep TypeScript's native diagnostics, including `TS1392` when the internal alias form does not support `import type`.
+
 `globalThis.eval` and `globalThis.Function` follow the same `EK0107` rule as the bare names. The `Function` exemptions also apply: `x instanceof globalThis.Function` and `globalThis.Function.prototype` are allowed. An import alias of either global, such as `import E = globalThis.eval`, is a value reference and reports `EK0107` as well.
 
 Native `import.source(...)` and `import.defer(...)` calls retain TypeScript's option and argument checks during service checking; their callees are import syntax rather than service-key values.

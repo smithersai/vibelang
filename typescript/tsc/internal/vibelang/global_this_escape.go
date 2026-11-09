@@ -15,6 +15,9 @@ func init() { fileChecks = append(fileChecks, checkGlobalThisEscapes) }
 func checkGlobalThisEscapes(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if ast.IsImportEqualsDeclaration(node) && node.AsImportEqualsDeclaration().IsTypeOnly {
+			return false // The erased reference keeps TypeScript's native diagnostics.
+		}
 		if !ast.IsIdentifier(node) || node.Text() != "globalThis" {
 			return node.ForEachChild(visit)
 		}
