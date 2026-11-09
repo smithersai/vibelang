@@ -38,41 +38,48 @@ func grammarAdmissionVerdict(t *testing.T, w *Workspace, source string) bool {
 }
 
 // EK0108 rejects a recognized effect modifier on an interface or type literal
-// member. A schema field has no modifier at all, yet the compiler accepts one
-// written with effect: that form stays a pending admission gap. A field named
-// effect and a native readonly field are derived controls.
+// member. A schema field has no modifier at all: Appendix A gives a field
+// written with effect no derivation, and the compiler rejects it too, so it
+// is no admission gap. A field named effect and a native readonly field are
+// derived controls.
 func TestGrammarAdmissionEffectMember(t *testing.T) {
+	if !strings.Contains(SpecText(grammarAppendix), grammarSchemaFieldTypeQuote) {
+		t.Fatalf("Appendix A Field changed: %s", grammarSchemaFieldTypeQuote)
+	}
 	w := NewWorkspace(t)
 	for _, c := range []struct {
-		source   string
-		mismatch bool
+		source     string
+		underived  bool
+		unmodified bool
 	}{
-		{"type T = { effect id : string }", false},
-		{"interface I { effect id : string }", false},
-		{"schema S { effect id : string }", true},
-		{"schema S { effect id ?: string }", true},
-		{"schema S = { effect id : string }", true},
-		{"schema S { effect : string }", false},
-		{"schema S { readonly id : string }", false},
-		{"schema S { id : string }", false},
+		{"type T = { effect id : string }", false, false},
+		{"interface I { effect id : string }", false, false},
+		{"schema S { effect id : string }", true, false},
+		{"schema S { effect id ?: string }", true, false},
+		{"schema S = { effect id : string }", true, false},
+		{"schema S { readonly effect id : string }", false, false},
+		{"schema S { a : { effect id : string } }", false, false},
+		{"schema S = { effect id : string } | { other : number }", false, false},
+		{"schema S = [ { effect id : string } ]", false, false},
+		{"schema S { effect id : Missing }", false, false},
+		{"schema S { effect : string }", false, true},
+		{"schema S { readonly id : string }", false, true},
+		{"schema S { id : string }", false, true},
 	} {
 		t.Run(c.source, func(t *testing.T) {
-			if got := grammarAdmissionVerdict(t, w, c.source); got != c.mismatch {
-				t.Fatalf("mismatch=%v, want %v", got, c.mismatch)
+			if grammarAdmissionVerdict(t, w, c.source) {
+				t.Fatalf("the compiler accepts a program Appendix A does not derive: %s", c.source)
 			}
-			if form := grammarAdmissionForm(c.source); c.mismatch != (form == "admission:schema-effect-field") {
-				t.Fatalf("form %q for mismatch=%v", form, c.mismatch)
+			mismatch, detail := grammarAdmissionMismatch(c.source)
+			if c.underived && !mismatch {
+				t.Fatalf("the grammar lab derives a schema field with an effect modifier: %s", c.source)
+			}
+			if c.unmodified && mismatch {
+				t.Fatalf("an ordinary field lost its derivation: %s: %s", c.source, detail)
+			}
+			if form := grammarAdmissionForm(c.source); form != "" {
+				t.Fatalf("form %q for a program with no admission gap", form)
 			}
 		})
-	}
-	for _, source := range []string{
-		"type T = { effect id : string }",
-		"schema S { effect : string }",
-		"schema S { a : { effect id : string } }",
-		"const effect = 1; schema S { id : string }",
-	} {
-		if grammarSchemaEffectField(grammarLexSource(source)) {
-			t.Errorf("schema-effect-field key for %q", source)
-		}
 	}
 }

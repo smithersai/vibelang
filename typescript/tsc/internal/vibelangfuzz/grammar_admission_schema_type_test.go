@@ -8,7 +8,8 @@ import (
 
 // Appendix B distinguishes the schema mapping's type/value restrictions from
 // the grammar's Field production. A missing schema value cannot excuse an
-// unrelated modifier that Appendix A does not admit.
+// unrelated modifier that Appendix A does not admit: a field written with
+// effect reports EK0108 beside EK2109, so it is no admission gap.
 const grammarSchemaTypeQuote = "a `schema` field type outside the mapping"
 const grammarSchemaReferenceQuote = "A reference with no suitable Schema value is `EK2109`: declare a schema or name a Schema value."
 
@@ -31,9 +32,9 @@ func TestGrammarAdmissionSchemaTypeDiagnostic(t *testing.T) {
 		{"ordinary-field", "schema S { id: Missing }", false},
 		{"optional-field", "schema S { id?: Missing }", false},
 		{"readonly-field", "schema S { readonly id: Missing }", false},
-		{"effect-field", "schema S { effect id: Missing }", true},
-		{"optional-effect-field", "schema S { effect id?: Missing }", true},
-		{"alias-effect-field", "schema S = { effect id: Missing }", true},
+		{"effect-field", "schema S { effect id: Missing }", false},
+		{"optional-effect-field", "schema S { effect id?: Missing }", false},
+		{"alias-effect-field", "schema S = { effect id: Missing }", false},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			result, err := w.Compile(context.Background(), Single(c.source))
@@ -54,11 +55,6 @@ func TestGrammarAdmissionSchemaTypeDiagnostic(t *testing.T) {
 			}
 			if got := grammarAdmissionVerdict(t, w, c.source); got != c.mismatch {
 				t.Fatalf("mismatch=%v, want %v: %s", got, c.mismatch, c.source)
-			}
-			if c.mismatch {
-				if key := grammarAdmissionForm(c.source); key != "admission:schema-effect-field" {
-					t.Fatalf("existing pending family must cover the modifier: %q", key)
-				}
 			}
 		})
 	}

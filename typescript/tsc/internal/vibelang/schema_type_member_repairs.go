@@ -1,6 +1,8 @@
 package vibelang
 
 import (
+	"strings"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
@@ -12,17 +14,36 @@ type schemaTypeMemberRepair struct {
 	primary core.TextRange
 	name    string
 	tokens  []core.TextRange
+	// effect marks a field written with a recognized effect modifier
+	// (EK0108); primary is then the field, and code is 0.
+	effect bool
 }
 
 // TypeScript reports the first modifier error on a field. Repair every ignored
 // class-only modifier and repeated readonly token together, so the guarded fix
 // does not merely expose the next pre-existing grammar error.
 func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
-	var bodies []core.TextRange
+	// A type with no schema form keeps no struct call. Its source is read
+	// for effect modifiers only: EK2109 already rejects the type.
+	type sourceType struct {
+		span       core.TextRange
+		effectOnly bool
+	}
+	var bodies []sourceType
 	var collect func(*ast.Node) bool
 	collect = func(node *ast.Node) bool {
 		if isSchemaStruct(node) {
-			bodies = append(bodies, node.Arguments()[0].Loc)
+			bodies = append(bodies, sourceType{span: node.Arguments()[0].Loc})
+			return false
+		}
+		if isUnsupportedSchema(node) && !isNonFieldSchema(node) {
+			span := node.Loc
+			if span.Pos() >= 0 && span.End() >= span.Pos() && span.End() <= len(file.Text()) {
+				text := file.Text()[span.Pos():span.End()]
+				if strings.Contains(text, "effect") || strings.Contains(text, "\\u") {
+					bodies = append(bodies, sourceType{span: span, effectOnly: true})
+				}
+			}
 			return false
 		}
 		return node.ForEachChild(collect)
@@ -31,17 +52,22 @@ func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
 	var repairs []schemaTypeMemberRepair
 	const prefix = "type $SchemaFields = "
 	for _, body := range bodies {
-		if body.Pos() < 0 || body.End() > len(file.Text()) {
+		span := body.span
+		if span.Pos() < 0 || span.End() > len(file.Text()) {
 			continue
 		}
-		raw := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/schema-modifiers.vibe", PathKey: "/schema-modifiers.vibe"}, prefix+file.Text()[body.Pos():body.End()], core.ScriptKindTS)
-		offset := body.Pos() - len(prefix)
+		raw := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/schema-modifiers.vibe", PathKey: "/schema-modifiers.vibe"}, prefix+file.Text()[span.Pos():span.End()], core.ScriptKindTS)
+		offset := span.Pos() - len(prefix)
 		var visit func(*ast.Node) bool
 		visit = func(node *ast.Node) bool {
 			if ast.IsPropertySignatureDeclaration(node) {
 				repair := schemaTypeMemberRepair{}
 				readonly := false
-				for _, modifier := range node.ModifierNodes() {
+				modifiers := node.ModifierNodes()
+				if body.effectOnly {
+					modifiers = nil
+				}
+				for _, modifier := range modifiers {
 					if modifier.Flags&ast.NodeFlagsReparsed != 0 {
 						continue
 					}
@@ -69,6 +95,10 @@ func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
 				}
 				if repair.code != 0 {
 					repairs = append(repairs, repair)
+				}
+				if isMarkedEffect(node) {
+					span := core.NewTextRange(scanner.SkipTrivia(raw.Text(), node.Pos())+offset, node.End()+offset)
+					repairs = append(repairs, schemaTypeMemberRepair{primary: span, effect: true})
 				}
 			}
 			return node.ForEachChild(visit)

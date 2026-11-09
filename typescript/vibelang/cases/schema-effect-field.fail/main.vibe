@@ -1,0 +1,19 @@
+// expect: EK0108
+// Appendix A: a schema Field is an optional readonly, a name, an optional ?,
+// a colon and a Type. A recognized effect modifier on a field is EK0108, as
+// on an interface or type literal member (Functions, static rules), in a
+// schema body, in an object type of a schema alias and in a nested object
+// type. A field named effect is an ordinary field.
+schema Plain { effect id: string }
+schema Optional { effect id?: number }
+schema Readonly { readonly effect id: string }
+schema Nested { child: { effect id: string } }
+schema Alias = { effect id: string }
+schema Union = { effect id: string } | { other: number }
+schema List = Array<{ effect id: string }>
+schema Tuple = [{ effect id: string }]
+schema Named { effect: string }
+schema NamedOptional { readonly effect?: number }
+interface Member { effect id: string }
+type Literal = { effect id: string }
+export {}

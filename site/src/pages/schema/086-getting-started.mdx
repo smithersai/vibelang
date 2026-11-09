@@ -77,7 +77,7 @@ An explicitly `readonly` field requires a referenced codec whose decoded key is 
 
 Write `readonly` once per field. Repeating it reports TypeScript’s `TS1030`.
 
-Schema fields use TypeScript type-member modifiers. Class-only modifiers such as `public`, `private`, `static` or `override` report `TS1070`. Keywords used as field names remain valid.
+Schema fields use TypeScript type-member modifiers. Class-only modifiers such as `public`, `private`, `static` or `override` report `TS1070`. An `effect` modifier, as in `schema S { effect id: string }`, reports `EK0108`, in a schema body and in an object type of a schema alias; remove the modifier. Keywords used as field names remain valid, `effect` included.
 
 Schema fields describe codecs and do not have JavaScript initializers. An initializer such as `value: number = 42` reports `TS1247`. Use an explicit Effect schema default combinator when a default is intended.
 Schema references keep TypeScript’s declaration order and temporal dead zone. Forward and cyclic schema initializers receive TypeScript’s own initialization diagnostics; the compiler does not reorder them or insert `Schema.suspend`.

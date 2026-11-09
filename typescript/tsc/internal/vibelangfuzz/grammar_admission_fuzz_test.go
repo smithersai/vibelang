@@ -271,6 +271,10 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-async-method", "schema S = { async readonly (\n) }"},
 	{"schema-signature-parameter-modifier", "schema S = { readonly; (static static) }"},
 	{"schema-async-last-alias-field", "schema S = { fork:\nasync\nasync Missing\n}"},
+	{"schema-effect-field-readonly", "schema S { readonly effect id : string }"},
+	{"schema-effect-field-nested", "schema S { a : { effect id : string } }"},
+	{"schema-effect-field-alias-union", "schema S = { effect id : string } | { other : number }"},
+	{"schema-effect-field-tuple", "schema S = [ { effect id : string } ]"},
 	{"native-static-schema-error", "schema error S { static async async\nid: Missing }"},
 	{"schema-static-method", "schema S = { static id() }"},
 	{"schema-signature-reserved-binding", "schema S = { readonly; (static) }"},
@@ -1511,9 +1515,6 @@ func grammarAdmissionForm(source string) string {
 	if grammarIsOperandPrecedence(ts) {
 		return "admission:is-operand-precedence"
 	}
-	if grammarSchemaEffectField(ts) {
-		return "admission:schema-effect-field"
-	}
 	return ""
 }
 
@@ -2699,46 +2700,6 @@ func grammarThrowCommaWarning(ts []grammarToken) bool {
 				break operand
 			}
 			first = false
-		}
-	}
-	return false
-}
-
-// grammarSchemaEffectField reports a schema body field written with the
-// effect modifier, as in schema S { effect id: string }. SchemaDeclaration's
-// Field has no modifier, and the same member in a type literal is EK0108.
-func grammarSchemaEffectField(ts []grammarToken) bool {
-	for i, tok := range ts {
-		if tok.kind != 'w' || tok.text != "schema" {
-			continue
-		}
-		open := i + 1
-		for open < len(ts) && ts[open].text != "{" && ts[open].text != ";" {
-			open++
-		}
-		depth := 0
-		for k := open; k < len(ts); k++ {
-			switch ts[k].text {
-			case "{", "(", "[":
-				depth++
-			case "}", ")", "]":
-				depth--
-			}
-			if depth == 0 {
-				break
-			}
-			if depth != 1 || ts[k].kind != 'w' || ts[k].text != "effect" || k+2 >= len(ts) {
-				continue
-			}
-			// A readonly or static prefix keeps the field's effect modifier.
-			first := k
-			for first > open+1 && !ts[first].nl && (ts[first-1].text == "readonly" || ts[first-1].text == "static") {
-				first--
-			}
-			start := ts[first].nl || ts[first-1].text == "{" || ts[first-1].text == ";" || ts[first-1].text == ","
-			if start && ts[k+1].kind != 'p' && !ts[k+1].nl && (ts[k+2].text == ":" || ts[k+2].text == "?") {
-				return true
-			}
 		}
 	}
 	return false

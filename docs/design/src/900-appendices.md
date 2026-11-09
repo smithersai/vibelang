@@ -1002,7 +1002,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1065 records)</summary>
+<summary>Parser and lowering hooks (1064 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1862,7 +1862,6 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang.go:Parser.nextIsDanglingVibeLangBang ` | ` admission:effect-type ` | ` 900-appendices.md#EffectType `, ` 001-functions.md ` | ` recovery ` | VIP-3: a lone trailing bang or a slot starting on another line is native postfix-type syntax rejected with TS17019 |
 | ` parser/vibelang.go:Parser.parseSchemaDeclaration@schema-type-parameters ` | ` admission:schema-type-parameters ` | ` 006-data.md `, ` 900-appendices.md#SchemaDeclaration ` | ` recovery ` | VIP-15: forbidden schema type parameters recover the header and report EK1502 before the body or alias |
 | ` parser/vibelang_fibers.go:Parser.isVibeLangConcurrentFor@for-concurrent-line-break ` | ` admission:for-concurrent-line-break ` | ` - ` | ` pending ` | Appendix A: `concurrent` is a keyword only before `(` on the same line; a line break after `concurrent` still compiles as the loop |
-| ` parser/vibelang_effect.go:Parser.isStartOfVibeLangEffectTypeMember@schema-effect-field ` | ` admission:schema-effect-field ` | ` - ` | ` pending ` | VIP-1: a schema field written with effect compiles with no diagnostic; SchemaDeclaration's Field has no modifier, and EK0108 rejects the same member in a type literal |
 | ` parser/vibelang_default_error_export.go:Parser.isVibeLangDefaultNamedExport ` | ` admission:error ` | ` 900-appendices.md#ErrorDeclaration `, ` 900-appendices.md#ServiceDeclaration `, ` 003-failures.md `, ` 005-services.md `, ` 900-appendices.md#SchemaDeclaration `, ` 900-appendices.md#DataDeclaration `, ` 006-data.md ` | ` recovery ` | VIP-13/9/15/16 and native ExportDeclaration: recover default named custom declarations with EK1305/EK0905/EK1501/EK1603 |
 | ` parser/vibelang_default_error_export.go:Parser.parseVibeLangDefaultErrorExport ` | ` admission:error ` | ` 900-appendices.md#ErrorDeclaration `, ` 900-appendices.md#ServiceDeclaration `, ` 003-failures.md `, ` 005-services.md `, ` 900-appendices.md#SchemaDeclaration `, ` 900-appendices.md#DataDeclaration `, ` 006-data.md ` | ` recovery ` | VIP-13/9/15/16 and native ExportDeclaration: recover default named custom declarations with EK1305/EK0905/EK1501/EK1603 |
 | ` parser/vibelang_data.go:dataPayloadTypeScript ` | ` admission:data ` | ` 900-appendices.md#DataDeclaration `, ` 006-data.md ` | ` support ` | VIP-16: TaggedEnum owns variant-field readonlyness; nested payload types preserve written TypeScript mutability |

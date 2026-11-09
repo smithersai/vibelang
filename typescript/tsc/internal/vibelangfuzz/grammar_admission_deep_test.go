@@ -147,8 +147,6 @@ func TestGrammarAdmissionDeepKeys(t *testing.T) {
 	w := NewWorkspace(t)
 	for source, want := range map[string]string{
 		"class C { effect g ? ( ) }":                               "admission:effect-optional-class-member",
-		"schema S { readonly effect id : string }":                 "admission:schema-effect-field",
-		"schema S { readonly effect id\n: string }":                "admission:schema-effect-field",
 		"schema S = { static id\nid : Missing }":                   "admission:schema-static-field",
 		"schema S = { static id , id : Missing }":                  "admission:schema-static-field",
 		"schema S { id : readonly ? string }":                      "admission:schema-jsdoc-field-type",
@@ -194,10 +192,9 @@ func TestGrammarAdmissionDeepKeys(t *testing.T) {
 		})
 	}
 	for source, not := range map[string]string{
-		"const b = x!\nschema C":      "admission:is-operand-precedence",
-		"class C { g ? ( ) { } }":     "admission:effect-optional-class-member",
-		"schema S { readonly a : A }": "admission:schema-effect-field",
-		"x is y and z":                "admission:is-operand-precedence",
+		"const b = x!\nschema C":  "admission:is-operand-precedence",
+		"class C { g ? ( ) { } }": "admission:effect-optional-class-member",
+		"x is y and z":            "admission:is-operand-precedence",
 	} {
 		if got := grammarAdmissionForm(source); got == not {
 			t.Errorf("%q gained key %s", source, not)

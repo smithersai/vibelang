@@ -37,12 +37,23 @@ func checkEffectBodyless(c *checker.Checker, file *ast.SourceFile) {
 	if !isVibeLangFile(file) {
 		return
 	}
+	seen := map[int]bool{}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if forbiddenEffectDeclaration(node) {
-			reportAt(c, file, tsFormSpan(file, node), EK0108)
+			span := tsFormSpan(file, node)
+			reportAt(c, file, span, EK0108)
+			seen[span.Pos()] = true
 		}
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+	// A schema maps its fields to codecs, which erases their type members:
+	// read the modifier from the source of each field.
+	for _, repair := range schemaTypeMemberRepairs(file) {
+		if repair.effect && !seen[repair.primary.Pos()] {
+			seen[repair.primary.Pos()] = true
+			reportAt(c, file, repair.primary, EK0108)
+		}
+	}
 }

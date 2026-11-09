@@ -97,10 +97,11 @@ errors retain their TypeScript derivation.
 
 `EK2109` is a schema type/value error, including a missing Schema value or
 incompatible decoded-key flags. It does not reject syntax: a schema field
-with an unadmitted `effect` modifier remains an admission mismatch when its
-type also reports `EK2109`. The keyed unsupported-field witness shares the
-existing `admission:schema-effect-field` pending family; ordinary, optional
-and readonly fields with unsupported types remain grammar-derived controls.
+with an unadmitted `effect` modifier used to remain an admission mismatch
+when its type also reported `EK2109`. The compiler now reports `EK0108` for
+that field beside `EK2109`, so the keyed unsupported-field witness is an
+ordinary regression seed; ordinary, optional and readonly fields with
+unsupported types remain grammar-derived controls.
 
 Schema types with a leading JSDoc `?`, `??`, `!` or `*` are a separate
 `admission:schema-jsdoc-field-type` gap. The native parser recovers a
@@ -242,11 +243,14 @@ Operator-left `EK1010` violations stay errors and remain syntax rejection.
 error. Appendix A recognizes `effect` in TypeScript's `async` recovery
 positions and rejects it with `EK0108` on an `interface` or type literal
 member, an `abstract` declaration or an ambient context. A schema field has no
-modifier at all, yet `schema S { effect id: string }` compiles with no
+modifier at all, and `schema S { effect id: string }` used to compile with no
 diagnostic: the schema body parses through the type-member path, but its
 members are not children of a type literal or interface, so the `EK0108` rule
-never sees them. The `schema-effect-field` seed, corpus and inventory alias
-row keep that gap pending until the compiler rejects it.
+never saw them. The compiler now reads the modifier from the source of each
+schema field and reports `EK0108`, in a schema body, in an object type of a
+schema alias and in a nested object type. The `schema-effect-field` seeds and
+corpus files stay as regression inputs; the pending lines and the inventory
+alias row are gone.
 
 The oracle compiles with module `NodeNext`, an ES module. There
 TypeScript's checker rejects an export assignment (`export = 1;`) with the
@@ -553,8 +557,8 @@ block retain their ordinary syntax.
 Interruption keys follow recorded interruption statements. A declaration
 named `uninterruptible`, `interruptible` or `restore`, or the same spelling in
 a comment or literal, does not introduce such a statement. A schema with
-one of those names and a field with an `effect` modifier retains the existing
-`admission:schema-effect-field` gap. The full grammar and diagnostics still
+one of those names and a field with an `effect` modifier reports `EK0108`,
+as any schema field with that modifier does. The full grammar and diagnostics still
 decide whether the source is an admission mismatch; a recorded form selects
 only its pending key.
 
@@ -698,8 +702,8 @@ and `static` method families. An untyped `async` property ended by a line
 break does not change the cover. A method named `effect`, an `effect`
 modifier ended by a line break and the named-body `EK1505` rejection stay
 outside the family. An optional `effect id?()` signature is a method in
-this family, not the `admission:schema-effect-field` field form. The
-compiler is unchanged and the witnesses remain pending.
+this family, not the field form that `EK0108` now rejects. The
+compiler is unchanged for methods and the witnesses remain pending.
 
 A `fork` or `join` that heads a `new` callee or an `extends` clause in
 Effect code is `admission:fiber-primary-reference`. Appendix A reserves

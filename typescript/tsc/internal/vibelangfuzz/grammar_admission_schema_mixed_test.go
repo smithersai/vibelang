@@ -11,8 +11,9 @@ import (
 // TestGrammarAdmissionSchemaAsyncQuoted and SchemaTypeQuoted pin those rules.
 func TestGrammarAdmissionSchemaMixedModifierKeys(t *testing.T) {
 	// Cross modifier order, duplicate async, readonly/static, field spellings
-	// and declaration/alias bodies. The mismatch remains the existing async
-	// family regardless of which modifier hides behind another one.
+	// and declaration/alias bodies. The key remains the existing async
+	// family regardless of which modifier hides behind another one; a field
+	// whose effect modifier the compiler rejects is no mismatch and needs none.
 	for _, prefix := range []string{
 		"async effect", "effect async", "async async effect",
 		"async effect async", "effect async async",
@@ -79,8 +80,13 @@ func TestGrammarAdmissionSchemaMixedModifierRegression(t *testing.T) {
 					}
 				}
 			}
-			if !seen || !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("mixed modifier no longer exposes the known schema field gap: %v", result.Diagnostics)
+			if !seen {
+				t.Fatalf("control did not exercise EK2109: %v", result.Diagnostics)
+			}
+			// The effect modifier on the field is EK0108, a syntax rejection
+			// beside EK2109: the mixed prefix is no admission gap.
+			if grammarAdmissionVerdict(t, w, source) {
+				t.Fatalf("a field with an effect modifier is an admission gap: %v", result.Diagnostics)
 			}
 			checkGrammarAdmission(t, w, "mixed-modifier-control", source)
 		})

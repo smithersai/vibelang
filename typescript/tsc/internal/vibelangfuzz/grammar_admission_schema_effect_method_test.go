@@ -36,7 +36,7 @@ func TestGrammarAdmissionSchemaEffectMethodKeys(t *testing.T) {
 		"schema error E { effect id() }":            "",
 		"type S = { effect id() }":                  "",
 		"interface I { effect id() }":               "",
-		"schema S = { effect id: Missing }":         "admission:schema-effect-field",
+		"schema S = { effect id: Missing }":         "",
 		"schema S = { readonly effect fork() }":     "admission:schema-readonly-method",
 		"schema S = { static effect id() }":         "admission:schema-static-method",
 		"schema S = { async effect id() }":          "admission:schema-async-method",

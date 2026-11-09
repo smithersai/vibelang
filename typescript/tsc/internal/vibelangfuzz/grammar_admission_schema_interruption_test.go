@@ -29,8 +29,8 @@ var grammarSchemaInterruptionSources = []string{
 func TestGrammarAdmissionSchemaInterruptionKeys(t *testing.T) {
 	TestGrammarAdmissionSchemaInterruptionQuoted(t)
 	for _, source := range grammarSchemaInterruptionSources {
-		if got := grammarAdmissionForm(source); got != "admission:schema-effect-field" {
-			t.Errorf("schema field keyed %q instead of its existing pending family: %s", got, source)
+		if got := grammarAdmissionForm(source); got != "" {
+			t.Errorf("schema field keyed %q; its name starts no interruption statement: %s", got, source)
 		}
 	}
 	for _, word := range []string{"uninterruptible", "interruptible", "restore"} {
@@ -74,13 +74,17 @@ func TestGrammarAdmissionSchemaInterruptionRegression(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			// A field written with effect has no derivation, whatever the
+			// schema is named, and the compiler rejects it with EK0108.
+			rejected := false
 			for _, d := range result.Diagnostics {
-				if grammarAdmissionSyntaxDiagnostic(d) {
-					t.Fatalf("known schema-field gap gained syntax rejection: %v", result.Diagnostics)
-				}
+				rejected = rejected || grammarAdmissionSyntaxDiagnostic(d)
 			}
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatal("known schema-field gap lost its mismatch")
+			if !rejected {
+				t.Fatalf("a schema field with an effect modifier has no syntax rejection: %v", result.Diagnostics)
+			}
+			if grammarAdmissionVerdict(t, w, source) {
+				t.Fatal("a rejected schema field is an admission gap")
 			}
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
