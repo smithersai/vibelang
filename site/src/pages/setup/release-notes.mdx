@@ -13,11 +13,22 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `for concurrent` loop over a value that is not an `Iterable` reported `EK1901` and then extra TypeScript errors from its item, such as `Type 'unknown' must have a '[Symbol.iterator]()' method`, when the head destructured or the body read the item. It now reports `EK1901` once, as TypeScript reports one error for such a `for…of`.
+
+- TypeScript’s error for an `unknown` or possibly missing loop operand could name a compiler-generated variable such as `$forTryHead1`, `$isItems1` or `$do1`. This affected `for try`, a `for…of` head with an `is` binding and a `do` expression operand. The error now names the operand you wrote, or says `Object` for an expression, as TypeScript does.
+
+- Unicode escapes in `try.any` and `fork.in` names could be rejected with `TS1260`. The names after the dot now follow TypeScript's `new.target` and `import.meta` rules.
+
+- Escaped spellings of `uninterruptible`, `restore` and `interruptible` were accepted as block headers. These headers now require literal spellings and report `TS1260`.
+
+- Generated declaration ownership files could break Istanbul coverage and make migration recording refuse its own outputs. The metadata is now inert when parsed as JavaScript, and recording accepts receipts only for declarations in the batch.
+
 - Optional matcher-symbol properties could be read before their runtime key was installed. Optional access and destructuring now initialize the key before use.
 
 - TypeScript projections imported an unavailable helper module, so source inspection reported `TS2307` and lost body-local types. The helper declarations now ship with `vibelang`, and projections preserve those types in stock TypeScript.
 
 - `static readonly key!: string` in a `service`, with no initializer, reported `EK0901` and TypeScript's `TS1255` for the `!`. It now reports `EK0901` alone, which says to write `static readonly key = "app/Service"`. A static index signature in a `service` reported two `EK0902` and a `TS2411` on the key; it now reports one `EK0902`.
+- `effect` written before another modifier, as in `effect static load()` or `effect export function load()`, written twice, or written on a field or class reported only `TS1434`, an unexpected keyword. It now reports what TypeScript reports for `async` there, naming `effect`: `TS1029` for the order, `TS1030` for the repeat and `TS1042` for a declaration that takes no such modifier.
 - Indexed, aliased or destructured reads of `Symbol.customMatcher` could see the property before it was initialized. VibeLang modules now initialize it before those value reads; type-only references stay type-only.
 
 - Escaped `fork` and `join` operator keywords could compile without an error. They now report `TS1260`, while ordinary escaped names keep their TypeScript meaning.

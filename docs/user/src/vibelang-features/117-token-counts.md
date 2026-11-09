@@ -277,7 +277,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 11,000 |
-| **All 9 pages** | **72,000** |
+| **All 9 pages** | **73,000** |
 
 ### Specification
 
