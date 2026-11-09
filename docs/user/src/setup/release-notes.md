@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.12
 
 - Stock `tsc` and `bun check` reported `TS2307` for a `.ts` file's `./x.js` or `./x` import once `x` became a `.vibe` module, though `vibelang` accepted it. The compiler now also writes `x.d.ts`, which re-exports `x.d.vibe.ts`, so those imports resolve and the importer's published declarations are unchanged.
+- `effect` written before an object-literal property, as in `{ effect size: 1 }`, or before a parameter name, as in `function f(effect x: number)`, reported a missing comma. They now report what TypeScript reports for `async` there: `TS1042` and `TS1090`, naming `effect`.
 - Source-location validation could reject nested `do` expressions after a bundler inlined them. It now follows copies between generated temporaries to the expression's mapped reads.
 
 - A `for concurrent` loop over a value that is not an `Iterable` reported `EK1901` and then extra TypeScript errors from its item, such as `Type 'unknown' must have a '[Symbol.iterator]()' method`, when the head destructured or the body read the item. It now reports `EK1901` once, as TypeScript reports one error for such a `for…of`.

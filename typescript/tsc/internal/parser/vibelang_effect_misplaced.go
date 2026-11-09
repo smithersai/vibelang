@@ -27,13 +27,24 @@ import (
 // these forms was a syntax error before; effect followed by a line break,
 // =, :, ;, ( or < stays the identifier it was.
 
+// The declaration homes whose modifiers parseVibeLangModifiers reads.
+type misplacedEffectHome int
+
+const (
+	misplacedEffectStatement    misplacedEffectHome = iota // a statement-level declaration
+	misplacedEffectClassMember                             // a class member
+	misplacedEffectObjectMember                            // an object literal member
+)
+
 // parseVibeLangModifiers parses the modifiers of a statement-level
-// declaration or of a class member, together with an effect written before
-// its place among them.
-func (p *Parser) parseVibeLangModifiers(member bool) *ast.ModifierList {
+// declaration, a class member or an object literal member, together with an
+// effect written before its place among them.
+func (p *Parser) parseVibeLangModifiers(home misplacedEffectHome) *ast.ModifierList {
 	p.misplacedEffect, p.hasMisplacedEffect = core.TextRange{}, false
-	modifiers := p.parseModifiersEx(true /*allowDecorators*/, member /*permitConstAsModifier*/, member /*stopOnStartOfClassStaticBlock*/)
-	if !p.isStartOfMisplacedEffect(member) {
+	member := home != misplacedEffectStatement
+	class := home == misplacedEffectClassMember
+	modifiers := p.parseModifiersEx(true /*allowDecorators*/, class /*permitConstAsModifier*/, class /*stopOnStartOfClassStaticBlock*/)
+	if !p.isStartOfMisplacedEffect(home) {
 		return modifiers
 	}
 	pos := p.nodePos()
@@ -45,7 +56,7 @@ func (p *Parser) parseVibeLangModifiers(member bool) *ast.ModifierList {
 	var word core.TextRange
 	var first *ast.Node
 	seen, reported := false, false
-	for p.isStartOfMisplacedEffect(member) {
+	for p.isStartOfMisplacedEffect(home) {
 		current := p.consumeVibeLangEffectWord()
 		if seen {
 			if !reported {
@@ -55,7 +66,7 @@ func (p *Parser) parseVibeLangModifiers(member bool) *ast.ModifierList {
 		} else {
 			word, seen = current, true
 		}
-		rest := p.parseModifiersEx(true /*allowDecorators*/, member /*permitConstAsModifier*/, member /*stopOnStartOfClassStaticBlock*/)
+		rest := p.parseModifiersEx(true /*allowDecorators*/, class /*permitConstAsModifier*/, class /*stopOnStartOfClassStaticBlock*/)
 		if rest == nil {
 			continue
 		}
@@ -82,17 +93,17 @@ func (p *Parser) parseVibeLangModifiers(member bool) *ast.ModifierList {
 		if !reported {
 			p.parseErrorAtCurrentToken(diagnostics.X_0_modifier_already_seen, "effect")
 		}
-	case !member && p.token == ast.KindFunctionKeyword || member && p.lookAhead((*Parser).scanStartOfMethodMember):
+	case !member && p.token == ast.KindFunctionKeyword || member && p.lookAhead(func(p *Parser) bool { return p.scanStartOfMethodMember(class) }):
 		p.misplacedEffect, p.hasMisplacedEffect = word, true
 		if !reported && (first == nil || !checkerRejectsModifier(first.Kind)) {
 			p.parseErrorAtRange(word, diagnostics.X_0_modifier_cannot_be_used_here, "effect")
 		}
 	case reported:
-	case member && p.lookAhead(func(p *Parser) bool { return p.scanStartOfRestrictedMember(true /*class*/) }):
+	case member && p.lookAhead(func(p *Parser) bool { return p.scanStartOfRestrictedMember(class) }):
 		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, word, "EK", diagnostics.CategoryError, EffectRestrictedMemberDiagnosticCode, EffectRestrictedMemberDiagnosticText))
-	case member && p.isIndexSignature():
+	case class && p.isIndexSignature():
 		p.parseErrorAtRange(word, diagnostics.X_0_modifier_cannot_appear_on_an_index_signature, "effect")
-	case member && p.token == ast.KindStaticKeyword && p.lookAhead((*Parser).nextTokenIsOpenBrace):
+	case class && p.token == ast.KindStaticKeyword && p.lookAhead((*Parser).nextTokenIsOpenBrace):
 		p.parseErrorAtRange(word, diagnostics.Modifiers_cannot_appear_here)
 	default:
 		p.parseErrorAtRange(word, diagnostics.X_0_modifier_cannot_be_used_here, "effect")
@@ -132,15 +143,16 @@ func checkerRejectsModifier(kind ast.Kind) bool {
 // isStartOfMisplacedEffect reports whether the current token is an effect
 // that TypeScript would read as a modifier were it async, and that starts no
 // Effect form of its own.
-func (p *Parser) isStartOfMisplacedEffect(member bool) bool {
+func (p *Parser) isStartOfMisplacedEffect(home misplacedEffectHome) bool {
 	if !p.isVibeLangEffectWord() {
 		return false
 	}
-	if !member {
+	if home == misplacedEffectStatement {
 		return !p.lookAhead((*Parser).scanStartOfEffectDeclaration) && p.lookAhead((*Parser).scanStartOfMisplacedEffectDeclaration)
 	}
+	class := home == misplacedEffectClassMember
 	// Declaration bodies with their own member separators keep their rules.
-	if p.vibelangFieldBody || p.vibelangServiceShapeBody || p.vibelangAbstractMembers || p.vibelangControlMembers {
+	if class && (p.vibelangFieldBody || p.vibelangServiceShapeBody || p.vibelangAbstractMembers || p.vibelangControlMembers) {
 		return false
 	}
 	if p.isStartOfVibeLangEffectMember() || p.isStartOfMixedEffectAccessor(nil) {
@@ -149,7 +161,7 @@ func (p *Parser) isStartOfMisplacedEffect(member bool) bool {
 	return p.lookAhead(func(p *Parser) bool {
 		p.nextToken()
 		// effect async and async effect keep their own recovery (EK0105).
-		if p.hasPrecedingLineBreak() || p.token == ast.KindAsyncKeyword || p.scanStartOfRestrictedMemberHere(true /*class*/) {
+		if p.hasPrecedingLineBreak() || p.token == ast.KindAsyncKeyword || p.scanStartOfRestrictedMemberHere(class) {
 			return false
 		}
 		return tokenIsIdentifierOrKeyword(p.token) || p.token == ast.KindStringLiteral || p.token == ast.KindNumericLiteral || p.token == ast.KindBigIntLiteral || p.token == ast.KindPrivateIdentifier || p.token == ast.KindOpenBracketToken
@@ -177,11 +189,11 @@ func (p *Parser) scanStartOfMisplacedEffectDeclaration() bool {
 
 // scanStartOfMethodMember reports whether the current token starts a method:
 // * or a member name, then ( or <. It moves the scanner.
-func (p *Parser) scanStartOfMethodMember() bool {
+func (p *Parser) scanStartOfMethodMember(class bool) bool {
 	if p.token == ast.KindAsteriskToken {
 		return true
 	}
-	if p.scanStartOfRestrictedMemberHere(true /*class*/) {
+	if p.scanStartOfRestrictedMemberHere(class) {
 		return false
 	}
 	if p.token == ast.KindOpenBracketToken {
@@ -200,4 +212,19 @@ func (p *Parser) scanStartOfMethodMember() bool {
 // moving the scanner.
 func (p *Parser) scanStartOfRestrictedMemberHere(class bool) bool {
 	return p.lookAhead(func(p *Parser) bool { return p.scanStartOfRestrictedMember(class) })
+}
+
+// skipMisplacedEffectParameter reads an effect written before a parameter
+// name, as TypeScript reads async there, and reports TS1090: 'effect'
+// modifier cannot appear on a parameter. A parameter named effect, followed
+// by :, ?, =, , or ), is untouched.
+func (p *Parser) skipMisplacedEffectParameter() {
+	if !p.isVibeLangEffectWord() || !p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		return !p.hasPrecedingLineBreak() && (p.isBindingIdentifier() || p.token == ast.KindThisKeyword || p.token == ast.KindOpenBracketToken || p.token == ast.KindOpenBraceToken || p.token == ast.KindDotDotDotToken)
+	}) {
+		return
+	}
+	word := p.consumeVibeLangEffectWord()
+	p.parseErrorAtRange(word, diagnostics.X_0_modifier_cannot_appear_on_a_parameter, "effect")
 }

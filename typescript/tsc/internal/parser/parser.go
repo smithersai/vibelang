@@ -1279,7 +1279,7 @@ func (p *Parser) parseDeclaration() *ast.Statement {
 	// not reusable in that context.
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
-	modifiers := p.parseVibeLangModifiers(false /*member*/) // with a misplaced effect (vibelang_effect_misplaced.go)
+	modifiers := p.parseVibeLangModifiers(misplacedEffectStatement) // with a misplaced effect (vibelang_effect_misplaced.go)
 	isAmbient := modifiers != nil && core.Some(modifiers.Nodes, isDeclareModifier)
 	if isAmbient {
 		// !!! incremental parsing
@@ -2167,7 +2167,7 @@ func (p *Parser) parseClassElement() *ast.Node {
 		p.withJSDoc(result, jsdoc)
 		return result
 	}
-	modifiers := p.parseVibeLangModifiers(true /*member*/) // with a misplaced effect (vibelang_effect_misplaced.go)
+	modifiers := p.parseVibeLangModifiers(misplacedEffectClassMember) // with a misplaced effect (vibelang_effect_misplaced.go)
 	if word, ok := p.takeMisplacedEffect(); ok {
 		return p.vibelangEffectMember(p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, true /*effect*/), word) // effect static m() { … }
 	}
@@ -3780,6 +3780,7 @@ func (p *Parser) parseParameterEx(inOuterAwaitContext bool, allowAmbiguity bool)
 	p.setContextFlags(ast.NodeFlagsAwaitContext, inOuterAwaitContext)
 	modifiers := p.parseModifiersEx(true /*allowDecorators*/, false /*permitConstAsModifier*/, false /*stopOnStartOfClassStaticBlock*/)
 	p.contextFlags = saveContextFlags
+	p.skipMisplacedEffectParameter() // function f(effect x) (vibelang_effect_misplaced.go)
 	if p.token == ast.KindThisKeyword {
 		result := p.factory.NewParameterDeclaration(
 			modifiers,
@@ -6264,7 +6265,13 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 		p.withJSDoc(result, jsdoc)
 		return result
 	}
-	modifiers := p.parseModifiersEx(true /*allowDecorators*/, false /*permitConstAsModifier*/, false /*stopOnStartOfClassStaticBlock*/)
+	modifiers := p.parseVibeLangModifiers(misplacedEffectObjectMember) // with a misplaced effect (vibelang_effect_misplaced.go)
+	if word, ok := p.takeMisplacedEffect(); ok {
+		asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
+		name := p.parsePropertyName()
+		questionToken := p.parseOptionalToken(ast.KindQuestionToken)
+		return p.vibelangEffectMember(p.parseMethodDeclaration(pos, jsdoc, modifiers, asteriskToken, name, questionToken, nil /*diagnosticMessage*/, true /*effect*/, false /*allowComma*/), word) // { effect static m() { … } }
+	}
 	if member := p.tryParseVibeLangRestrictedEffectMember(pos, jsdoc, modifiers, false /*class*/); member != nil {
 		return member
 	}

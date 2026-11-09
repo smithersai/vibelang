@@ -39,6 +39,9 @@ var effectPlacementHomes = []struct {
 	{"type", "%s type Size = 1", false},
 	{"enum", "%s enum Kind { a }", false},
 	{"namespace", "%s namespace Space { export const a = 1 }", false},
+	{"object-property", "export const home = { %s size: 1 }", false},
+	{"object-method", "export const home = { %s load() {} }", false},
+	{"parameter", "export function home(%s size: number) { return size }", false},
 }
 
 var effectPlacementOrders = []struct {
@@ -56,6 +59,15 @@ var effectPlacementOrders = []struct {
 	{"after-export", "export M", false, true},
 }
 
+// Object members take the single-modifier orders; a parameter takes one.
+// TypeScript reports each repeated async on an object property separately
+// (TS1042 twice), so that order stays out of the comparison.
+var effectPlacementOnly = map[string][]string{
+	"object-property": {"alone"},
+	"object-method":   {"alone", "repeated"},
+	"parameter":       {"alone"},
+}
+
 // The forms chapter 1 assigns EK0108, with their async twins' TS1243 and
 // TS1040.
 var effectPlacementForbidden = map[string]string{
@@ -67,7 +79,11 @@ func effectPlacementKeys() []string {
 	var keys []string
 	for _, home := range effectPlacementHomes {
 		for _, order := range effectPlacementOrders {
-			if home.member && order.member || !home.member && order.statement {
+			if only, ok := effectPlacementOnly[home.key]; ok {
+				if slices.Contains(only, order.key) {
+					keys = append(keys, home.key+":"+order.key)
+				}
+			} else if home.member && order.member || !home.member && order.statement {
 				keys = append(keys, home.key+":"+order.key)
 			}
 		}

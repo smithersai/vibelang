@@ -88,6 +88,17 @@ func TestMisplacedEffectModifier(t *testing.T) {
 		{"export effect const x = 1", "TS1042", "effect", "'effect' modifier cannot be used here.", 0},
 		{"export effect class C { }", "TS1042", "effect", "'effect' modifier cannot be used here.", 0},
 		{"effect export const x = 1", "TS1029", "export", "'export' modifier must precede 'effect' modifier.", 0},
+		{"export const o = { effect size: 1 }", "TS1042", "effect", "'effect' modifier cannot be used here.", 0},
+		{"const size = 1; export const o = { effect size }", "TS1042", "effect", "'effect' modifier cannot be used here.", 0},
+		{"export const o = { effect 'size': 1 }", "TS1042", "effect", "'effect' modifier cannot be used here.", 0},
+		{"export const o = { effect [key]: 1 }", "TS1042", "effect", "'effect' modifier cannot be used here.", 0},
+		{"export const o = { effect effect load() { return 1 } }", "TS1030", "effect load", "'effect' modifier already seen.", 1},
+		{"export const o = { effect get size() { return 1 } }", "EK104", "effect", "", 0},
+		{"export function f(effect x: number) { return x }", "TS1090", "effect", "'effect' modifier cannot appear on a parameter.", 0},
+		{"export function f(effect ...xs: number[]) { return xs }", "TS1090", "effect", "'effect' modifier cannot appear on a parameter.", 0},
+		{"export function f(effect { x }: { x: number }) { return x }", "TS1090", "effect", "'effect' modifier cannot appear on a parameter.", 0},
+		{"export class C { m(effect x: number) { return x } }", "TS1090", "effect", "'effect' modifier cannot appear on a parameter.", 0},
+		{"export class C { effect m(effect x: number) { return x } }", "TS1090", "effect x", "'effect' modifier cannot appear on a parameter.", 1},
 	} {
 		t.Run(test.source, func(t *testing.T) {
 			file := parseMisplaced(test.source)
@@ -165,6 +176,17 @@ func TestMisplacedEffectModifierControls(t *testing.T) {
 		{"export default effect function () { return 1 }", 1},
 		{"declare const effect: { type: number }\nconst x = effect.type", 0},
 		{"const effect = 1, y = effect as number", 0},
+		{"const effect = 1; export const o = { effect }", 0},
+		{"const effect = 1; export const o = { effect, size: 2 }", 0},
+		{"export const o = { effect: 1 }", 0},
+		{"export const o = { effect() { return 1 } }", 0},
+		{"export const o = { effect static() { return 1 } }", 1},
+		{"export const o = { effect\n size: 1 }", 0},
+		{"export function f(effect: number) { return effect }", 0},
+		{"export function f(effect?: number, x = 1) { return [effect, x] }", 0},
+		{"export function f(effect = 1) { return effect }", 0},
+		{"export const g = (effect: number) => effect", 0},
+		{"export type F = (effect: number) => number", 0},
 	} {
 		t.Run(test.source, func(t *testing.T) {
 			file := parseMisplaced(test.source)
