@@ -1,0 +1,7 @@
+{
+  "name": "value",
+  "extension": "js",
+  "receipt": "header",
+  "sibling": true,
+  "shebang": false
+}
