@@ -402,9 +402,15 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 	// are inserted. Apply that insertion and replacement as one edit;
 	// otherwise the insertion shifts the replacement's original offsets.
 	edits = joinEditsAt(edits)
+	rewrite := &formRewrite{edits: edits, description: "schema error " + name + " { … }"}
+	// Source unused checks take priority over declaration preservation
+	// (declarationImportKeys), so noUnusedLocals removes the import now unread.
+	if c.CompilerOptions().NoUnusedLocals.IsTrue() {
+		return withImportRemovals(c, file, rewrite)
+	}
 	// Imports stay for the declaration-aware cleanup (keepDeclaredImports):
 	// the sidecar may still print a name the rewrite no longer reads.
-	return &formRewrite{edits: edits, description: "schema error " + name + " { … }"}
+	return rewrite
 }
 
 // A moved JSDoc must document the same node. In particular a comment on
