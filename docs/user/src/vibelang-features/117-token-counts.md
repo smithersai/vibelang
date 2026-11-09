@@ -111,17 +111,17 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 2,100 |
 | [Known limitations](../setup/known-limitations.md) | 710 |
-| [Source maps](../setup/source-maps.md) | 920 |
+| [Source maps](../setup/source-maps.md) | 960 |
 | **Start a project** | **11,000** |
 | [New project](../setup/new-project.md) | 690 |
 | [Existing project](../setup/existing-project.md) | 4,600 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,800 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 5,900 |
 | **Build and test** | **27,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 22,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,700 |
 | **Format and lint** | **15,000** |
 | [Format with dprint](../setup/formatting.md) | 3,600 |
-| [Developer tools](../setup/developer-tools.md) | 11,000 |
+| [Developer tools](../setup/developer-tools.md) | 12,000 |
 | **Frameworks** | **11,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 490 |
@@ -145,7 +145,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,300 |
-| **Error Management** | **25,000** |
+| **Error Management** | **26,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 13,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,700 |
 | [Fallback](../error-management/016-fallback.md) | 3,100 |
