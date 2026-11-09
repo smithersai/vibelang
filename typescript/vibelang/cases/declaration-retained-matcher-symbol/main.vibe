@@ -1,0 +1,2 @@
+export type Key=typeof Symbol.customMatcher
+export function main():boolean{return true}

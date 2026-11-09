@@ -225,7 +225,7 @@ A local binding named `Symbol`, including a parameter or a destructured paramete
 
 Extractor names resolve to their actual bindings. A local function or class named `String`, `Number`, `Boolean`, `BigInt` or `Symbol` uses its own extractor protocol; the built-in constructors keep their primitive recognition and unboxing rules.
 
-The runtime installs `Symbol.customMatcher` on engines that lack it. VibeLang source files see its protocol types through their compiler-loaded runtime prelude. Published declarations preserve the Effect TypeScript API: generated matcher members and runtime type-reference directives are omitted, while the matcher remains in JavaScript. User-written matcher members keep their native declarations.
+The runtime installs `Symbol.customMatcher` on engines that lack it. VibeLang source files see its protocol types through their compiler-loaded runtime prelude. Published declarations preserve the Effect TypeScript API: generated matcher members and runtime type-reference directives are omitted, while the matcher remains in JavaScript. User-written matcher members keep their native declarations. Published declarations import the runtime’s `customMatcher` when their API uses that key, including `typeof Symbol.customMatcher` aliases.
 
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
 

@@ -100,7 +100,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 	}
 	return func(declarations *ast.SourceFile) *ast.SourceFile {
 		rewriter := &specifierRewriter{sourceDirectory: tspath.GetDirectoryPath(string(sourceFile.FileName()))}
-		keys := &computedKeyRewriter{keys: map[string]computedKey{}, bound: map[string]bool{}}
+		keys := &computedKeyRewriter{keys: map[string]computedKey{}, bound: map[string]bool{}, globals: map[*ast.Node]string{}, globalMembers: map[core.TextRange]string{}, globalNames: map[*ast.Node]string{}}
 		r.WithChecker(func(c *checker.Checker) {
 			if namespace := preludeSymbol(c, preludeStateOf(c), sourceFile, "Effect"); namespace != nil {
 				if effect := effectInterfaceOfModule(c, namespace); effect != nil {
@@ -116,6 +116,9 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 				}
 				if ast.IsComputedPropertyName(n) {
 					keys.add(c, sourceFile, n.Expression())
+				}
+				if ast.IsTypeQueryNode(n) && ast.IsQualifiedName(n.AsTypeQueryNode().ExprName) {
+					keys.add(c, sourceFile, n.AsTypeQueryNode().ExprName)
 				}
 				return n.ForEachChild(visit)
 			}
@@ -1169,9 +1172,12 @@ func (tx *specifierRewriter) outputSpecifier(f *printer.NodeFactory, specifier *
 // the prelude, and it never asks preludeNameVisible.
 type computedKeyRewriter struct {
 	transformers.Transformer
-	keys    map[string]computedKey // by the declared name of the key's symbol
-	bound   map[string]bool        // names the declaration file declares at its top level
-	written []*ast.Node            // the first identifier of each key it wrote
+	keys          map[string]computedKey    // by the declared name of the key's symbol
+	bound         map[string]bool           // names the declaration file declares at its top level
+	written       []*ast.Node               // the first identifier of each key it wrote
+	globals       map[*ast.Node]string      // written global matcher keys and type queries
+	globalMembers map[core.TextRange]string // inferred members retain source comment ranges
+	globalNames   map[*ast.Node]string
 }
 
 // computedKey is a key the source writes, such as Inspectable.NodeInspectSymbol.
@@ -1185,37 +1191,93 @@ type computedKey struct {
 // add records key, a computed property name's expression in file, when its
 // first name resolves to the prelude or effect's root.
 func (tx *computedKeyRewriter) add(c *checker.Checker, file *ast.SourceFile, key *ast.Node) {
-	if !ast.IsEntityNameExpression(key) {
-		return
+	var receiver, member *ast.Node
+	if ast.IsPropertyAccessExpression(key) {
+		receiver, member = key.Expression(), key.Name()
+	} else if ast.IsQualifiedName(key) {
+		receiver, member = key.AsQualifiedName().Left, key.AsQualifiedName().Right
 	}
-	first := ast.GetFirstIdentifier(key)
-	_, isPrelude := preludeModules[first.Text()]
-	if !isPrelude && !isEffectExportName(first.Text()) {
-		return
+	global := c.GlobalSymbol("Symbol", ast.SymbolFlagsValue)
+	wellKnown := receiver != nil && member.Text() == "customMatcher" && global != nil && c.GetSymbolAtLocation(receiver) == global
+	expression := key
+	var symbol *ast.Symbol
+	if wellKnown {
+		typeNode := key
+		if key.Parent != nil && ast.IsTypeQueryNode(key.Parent) {
+			typeNode = key.Parent
+		}
+		t := c.GetTypeAtLocation(typeNode)
+		if t == nil || t.Flags()&checker.TypeFlagsUniqueESSymbol == 0 || t.Symbol() == nil {
+			return
+		}
+		symbol = t.Symbol()
+		expression = member
+		tx.globals[key] = symbol.Name()
+	} else {
+		if !ast.IsEntityNameExpression(key) {
+			return
+		}
+		first := ast.GetFirstIdentifier(key)
+		_, isPrelude := preludeModules[first.Text()]
+		if !isPrelude && !isEffectExportName(first.Text()) {
+			return
+		}
+		if prelude := preludeSymbol(c, preludeStateOf(c), file, first.Text()); prelude == nil || c.GetSymbolAtLocation(first) != prelude {
+			return
+		}
+		symbol = c.GetSymbolAtLocation(key)
+		if symbol == nil {
+			return
+		}
+		if symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
 	}
-	if prelude := preludeSymbol(c, preludeStateOf(c), file, first.Text()); prelude == nil || c.GetSymbolAtLocation(first) != prelude {
-		return
-	}
-	symbol := c.GetSymbolAtLocation(key)
-	if symbol == nil {
-		return
-	}
-	if symbol.Flags()&ast.SymbolFlagsAlias != 0 {
-		symbol = c.GetAliasedSymbol(symbol)
+	if key.Parent != nil && ast.IsComputedPropertyName(key.Parent) && key.Parent.Parent != nil {
+		tx.globalMembers[key.Parent.Parent.Loc] = symbol.Name()
 	}
 	if existing, ok := tx.keys[symbol.Name()]; ok {
 		existing.ambiguous = existing.ambiguous || existing.symbol != symbol
 		tx.keys[symbol.Name()] = existing
 		return
 	}
-	tx.keys[symbol.Name()] = computedKey{expression: key, symbol: symbol}
+	tx.keys[symbol.Name()] = computedKey{expression: expression, symbol: symbol}
 }
 
 // visit rewrites a key printed as a bare name that the declaration file does
 // not declare, so a local binding with the same name keeps its key.
 func (tx *computedKeyRewriter) visit(node *ast.Node) *ast.Node {
+	switch node.Kind {
+	case ast.KindMethodSignature, ast.KindMethodDeclaration, ast.KindPropertySignature, ast.KindPropertyDeclaration, ast.KindPropertyAssignment, ast.KindGetAccessor, ast.KindSetAccessor:
+		if name := node.Name(); name != nil && ast.IsComputedPropertyName(name) {
+			global := tx.globalMembers[tx.EmitContext().MostOriginal(node).Loc]
+			if global == "" {
+				global = tx.globalMembers[tx.EmitContext().CommentRange(node)]
+			}
+			if global != "" {
+				tx.globalNames[name] = global
+			}
+		}
+	}
+	if ast.IsTypeQueryNode(node) {
+		query := node.AsTypeQueryNode()
+		if name := tx.globals[tx.EmitContext().MostOriginal(query.ExprName)]; name != "" {
+			if key, ok := tx.keys[name]; ok && !key.ambiguous {
+				return tx.Factory().UpdateTypeQueryNode(query, tx.entityExpression(key.expression), query.TypeArguments)
+			}
+		}
+	}
 	if ast.IsComputedPropertyName(node) {
 		name := node.Expression()
+		global := tx.globals[tx.EmitContext().MostOriginal(name)]
+		if global == "" {
+			global = tx.globalNames[node]
+		}
+		if global != "" {
+			if key, ok := tx.keys[global]; ok && !key.ambiguous {
+				return tx.Factory().UpdateComputedPropertyName(node.AsComputedPropertyName(), tx.entityExpression(key.expression))
+			}
+		}
 		if !ast.IsIdentifier(name) || tx.bound[name.Text()] {
 			return node
 		}

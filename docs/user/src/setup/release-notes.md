@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The TypeScript interop guide did not explain how to keep predicate narrowing in effect code. It now shows a direct call to a `.ts` predicate declared `@throws {never}`.
 
+- Published types that named `Symbol.customMatcher` could fail in ordinary TypeScript consumers. Declaration output now imports the runtime symbol when the public API needs it.
+
 - The migration's API identity check reported a new entry, such as `./scripts/helper.d.vibe.ts`, for a native helper inside a package but outside its `rootDir`, so the converted helper never compared identical with its TypeScript original. The helper now counts through the package modules that re-export it, as the TypeScript helper does, and a changed type is still reported.
 
 - A `try` before a `match` expression, a parenthesized `do` block, `try.race` or `try.any` could leave the Effect it gives unrun, and `try try do { … }` ran one layer too few. Each `try` now runs the value the form gives, and reports `EK0502` when that value is not an Effect.
