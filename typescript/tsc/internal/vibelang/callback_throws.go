@@ -434,7 +434,7 @@ func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 	if decl == nil || !ast.IsFunctionLike(decl) {
 		return false
 	}
-	parameters := decl.Parameters()
+	parameters := rethrowsRuntimeParameters(decl)
 	if index >= len(parameters) {
 		if len(parameters) == 0 || parameters[len(parameters)-1].AsParameterDeclaration().DotDotDotToken == nil {
 			return false

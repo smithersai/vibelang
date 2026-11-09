@@ -1,0 +1,4 @@
+FuzzExplicitThisRethrows tag:forbidden-sibling compiler VIP-4: tagged template substitutions omit strict callback value checks
+FuzzExplicitThisRethrows corpus:tagged-forbidden-sibling compiler VIP-4: tagged template substitutions omit strict callback value checks
+FuzzExplicitThisRethrows fixed-spread:forbidden-sibling compiler VIP-4: fixed tuple spreads omit strict callback value checks
+FuzzExplicitThisRethrows corpus:spread-forbidden-sibling compiler VIP-4: fixed tuple spreads omit strict callback value checks

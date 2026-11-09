@@ -12,6 +12,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Upgrade instructions could fail with an unknown compiler option because they still called retired repair commands. The current upgrade table now gives source edits and editor steps.
 
+- A `this` parameter in an imported function could shift `@rethrows` checks onto the wrong callback. Callback checks now follow the function’s runtime argument positions.
+
 - The migration's API identity check reported a new entry, such as `./scripts/helper.d.vibe.ts`, for a native helper inside a package but outside its `rootDir`, so the converted helper never compared identical with its TypeScript original. The helper now counts through the package modules that re-export it, as the TypeScript helper does, and a changed type is still reported.
 
 - A `try` before a `match` expression, a parenthesized `do` block, `try.race` or `try.any` could leave the Effect it gives unrun, and `try try do { … }` ran one layer too few. Each `try` now runs the value the form gives, and reports `EK0502` when that value is not an Effect.

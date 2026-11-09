@@ -1,0 +1,5 @@
+// expect: EK0402 EK0403
+import {first,tag,host,risky,safe} from "./foreign.js"
+export effect function plainTag(){return tag`${risky}`}
+export effect function methodTag(){return host.tag`${risky}`}
+export function forbiddenSibling(){try{return first(safe,risky)}catch{return 0}}

@@ -318,7 +318,7 @@ func proveNeverCallbacks(c *checker.Checker, caller *ast.SourceFile, call, decl 
 		}
 		return true
 	}
-	for index, parameter := range decl.Parameters() {
+	for index, parameter := range rethrowsRuntimeParameters(decl) {
 		if !named[declarationName(parameter)] {
 			continue
 		}

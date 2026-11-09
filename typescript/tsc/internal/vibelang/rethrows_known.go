@@ -33,6 +33,16 @@ func checkKnownRethrows(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
+// TypeScript erases a leading this parameter before matching runtime arguments.
+// Callback contracts use the same positions for calls, tags and fixed spreads.
+func rethrowsRuntimeParameters(decl *ast.Node) []*ast.Node {
+	parameters := decl.Parameters()
+	if len(parameters) != 0 && ast.IsThisParameter(parameters[0]) {
+		return parameters[1:]
+	}
+	return parameters
+}
+
 // knownRethrownTypes retains explicit callback contracts at a plain invocation.
 // The callee's own never does not erase a named callback's thrown type (VIP-4).
 // Untagged callback values are not evidence of a known throw in plain code.
@@ -90,7 +100,7 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 	}
 	arguments := knownRethrowsArguments(c, call)
 	var thrown []*checker.Type
-	for index, parameter := range decl.Parameters() {
+	for index, parameter := range rethrowsRuntimeParameters(decl) {
 		if !named[declarationName(parameter)] {
 			continue
 		}
@@ -309,7 +319,7 @@ func rethrowsRuntimeArgument(c *checker.Checker, call *ast.Node, index int) bool
 	if decl == nil || !ast.IsFunctionLike(decl) {
 		return false
 	}
-	parameters := decl.Parameters()
+	parameters := rethrowsRuntimeParameters(decl)
 	if index >= len(parameters) {
 		if len(parameters) == 0 || parameters[len(parameters)-1].AsParameterDeclaration().DotDotDotToken == nil {
 			return false
