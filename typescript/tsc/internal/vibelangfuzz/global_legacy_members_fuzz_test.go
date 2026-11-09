@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -33,7 +34,8 @@ type globalLegacyCase struct {
 	want        int
 }
 
-func globalLegacyCases() []globalLegacyCase {
+func globalLegacyCases(t testing.TB) []globalLegacyCase {
+	t.Helper()
 	var out []globalLegacyCase
 	for _, member := range []string{"eval", "Function"} {
 		for _, access := range []struct{ key, format string }{
@@ -58,6 +60,20 @@ func globalLegacyCases() []globalLegacyCase {
 	} {
 		out = append(out, c)
 	}
+	data, err := os.ReadFile("testdata/global-legacy-import-aliases.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var aliases []struct {
+		Key, Source string
+		Want        int
+	}
+	if err = json.Unmarshal(data, &aliases); err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range aliases {
+		out = append(out, globalLegacyCase{row.Key, row.Source, row.Want})
+	}
 	return out
 }
 
@@ -68,7 +84,7 @@ func globalLegacyCases() []globalLegacyCase {
 func FuzzGlobalLegacyMembers(f *testing.F) {
 	startShortBudget(f)
 	requireGlobalLegacyMemberQuotes(f)
-	cases := globalLegacyCases()
+	cases := globalLegacyCases(f)
 	w := NewWorkspace(f)
 	for _, c := range cases {
 		f.Add(c.key)
@@ -90,14 +106,22 @@ func FuzzGlobalLegacyMembers(f *testing.F) {
 		}
 		c := cases[selected]
 		key = c.key
-		for _, name := range []string{"main.vibe", "main.ts"} {
+		names := []string{"main.vibe", "main.ts"}
+		if strings.Contains(c.key, "import-alias") {
+			names = append(names, "main.vibex")
+		}
+		for _, name := range names {
 			// VIP-40's module body is VibeLang syntax; its native counterpart is a
 			// namespace with the same unmodified TypeScript declarations.
 			source := c.source
-			if name == "main.ts" && c.key == "module" {
+			if name == "main.ts" && strings.HasPrefix(c.key, "module") {
 				source = strings.Replace(source, "module Native", "namespace Native", 1)
 			}
-			r, err := w.Compile(context.Background(), Project{Files: map[string]string{name: source}})
+			project := Project{Files: map[string]string{name: source}}
+			if name == "main.vibex" {
+				project.Config = fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"skipLibCheck":true,"types":[],"lib":["ES2022","DOM"],"jsx":"preserve","noEmit":true},"files":[%q]}`, name)
+			}
+			r, err := w.Compile(context.Background(), project)
 			if err != nil {
 				t.Fatal(err)
 			}

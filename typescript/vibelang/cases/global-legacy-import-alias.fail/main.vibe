@@ -1,0 +1,4 @@
+// expect: EK0107
+import Evaluate = globalThis.eval;
+import Construct = globalThis.globalThis.Function;
+export const values = [Evaluate, Construct];

@@ -1,0 +1,207 @@
+[
+  {
+    "Key": "eval/import-alias/1/used",
+    "Source": "import held = globalThis.eval; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/1/unused",
+    "Source": "import held = globalThis.eval; export const marker=7;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/1/exported",
+    "Source": "export import held = globalThis.eval;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/1/namespace",
+    "Source": "namespace N { export import held = globalThis.eval; } export const copy=N.held;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/2/used",
+    "Source": "import held = globalThis.globalThis.eval; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/2/unused",
+    "Source": "import held = globalThis.globalThis.eval; export const marker=7;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/2/exported",
+    "Source": "export import held = globalThis.globalThis.eval;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/2/namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis.eval; } export const copy=N.held;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/3/used",
+    "Source": "import held = globalThis.globalThis.globalThis.eval; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/3/unused",
+    "Source": "import held = globalThis.globalThis.globalThis.eval; export const marker=7;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/3/exported",
+    "Source": "export import held = globalThis.globalThis.globalThis.eval;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/3/namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis.globalThis.eval; } export const copy=N.held;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/4/used",
+    "Source": "import held = globalThis.globalThis.globalThis.globalThis.eval; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/4/unused",
+    "Source": "import held = globalThis.globalThis.globalThis.globalThis.eval; export const marker=7;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/4/exported",
+    "Source": "export import held = globalThis.globalThis.globalThis.globalThis.eval;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/4/namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis.globalThis.globalThis.eval; } export const copy=N.held;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/escaped",
+    "Source": "import held = global\\u0054his.globalThis.eval; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "eval/import-alias/trivia",
+    "Source": "// retained alias\r\nimport /* target */ held = globalThis.eval;\r\nexport const copy=held;\r\n",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/1/used",
+    "Source": "import held = globalThis.Function; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/1/unused",
+    "Source": "import held = globalThis.Function; export const marker=7;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/1/exported",
+    "Source": "export import held = globalThis.Function;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/1/namespace",
+    "Source": "namespace N { export import held = globalThis.Function; } export const copy=N.held;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/2/used",
+    "Source": "import held = globalThis.globalThis.Function; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/2/unused",
+    "Source": "import held = globalThis.globalThis.Function; export const marker=7;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/2/exported",
+    "Source": "export import held = globalThis.globalThis.Function;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/2/namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis.Function; } export const copy=N.held;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/3/used",
+    "Source": "import held = globalThis.globalThis.globalThis.Function; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/3/unused",
+    "Source": "import held = globalThis.globalThis.globalThis.Function; export const marker=7;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/3/exported",
+    "Source": "export import held = globalThis.globalThis.globalThis.Function;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/3/namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis.globalThis.Function; } export const copy=N.held;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/4/used",
+    "Source": "import held = globalThis.globalThis.globalThis.globalThis.Function; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/4/unused",
+    "Source": "import held = globalThis.globalThis.globalThis.globalThis.Function; export const marker=7;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/4/exported",
+    "Source": "export import held = globalThis.globalThis.globalThis.globalThis.Function;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/4/namespace",
+    "Source": "namespace N { export import held = globalThis.globalThis.globalThis.globalThis.Function; } export const copy=N.held;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/escaped",
+    "Source": "import held = global\\u0054his.globalThis.Function; export const copy=held;",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/trivia",
+    "Source": "// retained alias\r\nimport /* target */ held = globalThis.Function;\r\nexport const copy=held;\r\n",
+    "Want": 1
+  },
+  {
+    "Key": "Function/import-alias/local-shadow",
+    "Source": "namespace globalThis { export const Function=7; } import held = globalThis.Function; export const copy=held;",
+    "Want": 0
+  },
+  {
+    "Key": "ordinary/import-alias/namespace",
+    "Source": "namespace local { export function read(){return 7} } import held = local.read; export const copy=held;",
+    "Want": 0
+  },
+  {
+    "Key": "Function/import-alias/type-query",
+    "Source": "export type Held=typeof globalThis.Function;",
+    "Want": 0
+  },
+  {
+    "Key": "URL/import-alias/pure-member",
+    "Source": "import held = globalThis.URL; export const copy=held;",
+    "Want": 0
+  },
+  {
+    "Key": "module-import-alias",
+    "Source": "module Native { import Evaluate = globalThis.eval; import Construct = globalThis.Function; export const values=[Evaluate,Construct]; } export {};",
+    "Want": 0
+  }
+]

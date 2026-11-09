@@ -12,7 +12,13 @@ func init() { fileChecks = append(fileChecks, checkGlobalLegacyMembers) }
 func checkGlobalLegacyMembers(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node) {
+		// Only an alias's complete qualified target is a value reference;
+		// its qualifier prefixes and native type references keep their roles.
+		aliasTarget := ast.IsQualifiedName(node) && node.Parent != nil &&
+			ast.IsImportEqualsDeclaration(node.Parent) &&
+			node.Parent.AsImportEqualsDeclaration().ModuleReference == node &&
+			isValueImportAliasReference(c, node)
+		if ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node) || aliasTarget {
 			switch globalPlatformName(c, node) {
 			case "eval":
 				report(c, node, EK0107.With("globalThis.eval runs a string as code and is not allowed in a .vibe file. Move the code to a .ts or .js file."))

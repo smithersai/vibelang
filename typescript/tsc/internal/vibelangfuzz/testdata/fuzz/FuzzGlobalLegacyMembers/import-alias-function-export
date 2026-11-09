@@ -1,0 +1,2 @@
+go test fuzz v1
+string("Function/import-alias/2/exported")
