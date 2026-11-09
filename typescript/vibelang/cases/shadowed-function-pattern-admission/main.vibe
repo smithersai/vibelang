@@ -1,0 +1,3 @@
+export function classify(s: unknown, Function: (s: unknown) => boolean) { return s is Function }
+export function arm(s: unknown, Function: (s: unknown) => boolean) { return match (s) { when Function: true; default: false; } }
+export const main = () => [classify(1, x => typeof x === "number"), classify("x", x => typeof x === "number"), arm("x", x => typeof x === "string"), arm(1, x => typeof x === "string")]

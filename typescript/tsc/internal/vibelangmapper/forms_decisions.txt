@@ -8626,6 +8626,11 @@ typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:10:21 lambda ch
 typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:13:21 lambda choice fallback
 typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:4:21 lambda choice fallback
 typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:7:28 lambda choice fallback
+typescript/vibelang/cases/shadowed-function-pattern-admission/main.vibe:3:121 lambda effectFn annotation
+typescript/vibelang/cases/shadowed-function-pattern-admission/main.vibe:3:157 lambda effectFn annotation
+typescript/vibelang/cases/shadowed-function-pattern-admission/main.vibe:3:21 lambda choice fallback
+typescript/vibelang/cases/shadowed-function-pattern-admission/main.vibe:3:40 lambda effectFn annotation
+typescript/vibelang/cases/shadowed-function-pattern-admission/main.vibe:3:83 lambda effectFn annotation
 typescript/vibelang/cases/sidecar-literal-directives/main.vibe:3:26 lambda plain annotation
 typescript/vibelang/cases/smithers-flow-binding-nested-handler/main.vibe:12:14 lambda plain annotation
 typescript/vibelang/cases/smithers-flow-binding-nested-handler/main.vibe:13:16 lambda plain fallback

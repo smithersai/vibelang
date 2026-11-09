@@ -1,0 +1,7 @@
+// expect: EK0702
+export function numeric(s: unknown, Function: (s: unknown) => number) { return s is Function }
+export function voidPredicate(s: unknown, Function: (s: unknown) => void) { return match (s) { when Function: 1; default: 0; } }
+export function objectResult(s: unknown, Function: (s: unknown) => {}) { return match (s) { when Function(let x): x; default: 0; } }
+export function unknownMatcher(s: unknown, Function: unknown) { return s is Function }
+export function anyMatcher(s: unknown, Function: any) { return s is Function }
+export function objectMatcher(s: unknown, Function: {}) { return s is Function }

@@ -41,8 +41,8 @@ func checkClassPatternDispatch(c *checker.Checker, matcher *ast.Node, extractor 
 		// from the legacy JavaScript check, so the span reports it once.
 		if symbol := c.GetSymbolAtLocation(matcher); symbol != nil && isGlobal(c, symbol) {
 			cover(c, matcher)
+			return
 		}
-		return
 	}
 	if _, known := extractedLength(c, matcher); known {
 		return // an error declaration or a fixed pattern, whose matcher is known
