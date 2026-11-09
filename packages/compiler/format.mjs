@@ -1,4 +1,5 @@
 // All formatter entry points use the shipped dprint process plugin.
+import { findBinary } from "./binary.mjs"
 import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { fileHasVibeDirective, hasVibeDirective } from "./source.mjs"
@@ -92,6 +93,39 @@ export function repositoryStyle(filePath) {
 const unreadable = (path, why) =>
   new Error(`${path}: vibelang-format reads the quote style and print width from JSON configurations only (${why}); format .vibe files with Prettier's vibelang/prettier plugin, which reads every Prettier configuration`)
 
+// Published descriptors use registry tarballs. A locally installed compiler
+// can prepare the same checked process plugin without publishing that version.
+// Keep generated archives outside immutable installs and reuse them per process.
+const preparedPlugins = new Map()
+process.once("exit", () => {
+  for (const manifest of preparedPlugins.values()) rmSync(dirname(manifest), { recursive: true, force: true })
+})
+function processPlugin() {
+  const shipped = fileURLToPath(new URL("./dprint-plugin.json", import.meta.url))
+  const manifest = JSON.parse(readFileSync(shipped, "utf8"))
+  if (!Object.values(manifest).some(entry => entry?.reference?.startsWith("npm:"))) return shipped
+  const executable = process.platform === "win32" ? "vibelang.exe" : "vibelang"
+  if (!process.env.VIBELANG_BINARY && !existsSync(new URL("./native/" + executable, import.meta.url))) {
+    const target = process.platform + "-" + process.arch
+    const name = process.platform === "win32" ? "@smthrs/cli-" + target : "vibelang-" + target
+    try { createRequire(import.meta.url).resolve(name + "/package.json") }
+    catch { return shipped }
+  }
+  const binary = findBinary()
+  let stamp
+  try { const stat = statSync(binary); stamp = [stat.size, stat.mtimeMs, stat.ctimeMs] } catch {}
+  const key = JSON.stringify([binary, stamp])
+  if (preparedPlugins.has(key)) return preparedPlugins.get(key)
+  const dir = mkdtempSync(join(tmpdir(), "vibelang-format-plugin-"))
+  try {
+    const result = spawnSync(binary, ["--write-dprint-plugin", dir], { encoding: "utf8" })
+    if (result.error || result.status !== 0) throw new Error("vibelang-format: preparing the installed native plugin: " + (result.error?.message ?? result.stderr + result.stdout))
+    const prepared = join(dir, "dprint-plugin.json")
+    preparedPlugins.set(key, prepared)
+    return prepared
+  } catch (error) { rmSync(dir, { recursive: true, force: true }); throw error }
+}
+
 function withConfig(style, filePath, action) {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-format-"))
   try {
@@ -100,6 +134,8 @@ function withConfig(style, filePath, action) {
     mkdirSync(join(dir, "node_modules"))
     symlinkSync(fileURLToPath(new URL(".", import.meta.url)), join(dir, "node_modules", "vibelang"), process.platform === "win32" ? "junction" : "dir")
     const config = join(dir, "dprint.json")
+    const plugin = processPlugin()
+    const reference = plugin === fileURLToPath(new URL("./dprint-plugin.json", import.meta.url)) ? "npm:vibelang/dprint-plugin.json" : plugin
     const tsx = /\.(?:vibex|tsx)$/i.test(filePath)
     // The two pinned plugins spell the semicolon option differently; a
     // configuration may use either. Without one, VibeLang writes "asi".
@@ -107,7 +143,7 @@ function withConfig(style, filePath, action) {
     writeFileSync(config, JSON.stringify({
       ...style.globals,
       lineWidth: style.lineWidth,
-      plugins: [tsx ? tsxTypescriptPlugin : typescriptPlugin, "npm:vibelang/dprint-plugin.json@" + createHash("sha256").update(readFileSync(new URL("./dprint-plugin.json", import.meta.url))).digest("hex")],
+      plugins: [tsx ? tsxTypescriptPlugin : typescriptPlugin, reference + "@" + createHash("sha256").update(readFileSync(plugin)).digest("hex")],
       typescript: { ...typescript, [tsx ? "semiColons" : "semicolons"]: semicolons ?? semiColons ?? "asi", quoteStyle: style.quoteStyle }
     }))
     return action(config)
@@ -158,7 +194,7 @@ function cleanTexts() {
   if (!location) return none
   try {
     prepare(location)
-    const plugin = readFileSync(new URL("./dprint-plugin.json", import.meta.url))
+    const plugin = readFileSync(processPlugin())
     const file = join(location.path, `format-clean-${createHash("sha256").update(plugin).update(typescriptPlugin).update(tsxTypescriptPlugin).update(process.cwd()).digest("hex").slice(0, 32)}.txt`)
     let text = ""
     try { text = readFileSync(file, "utf8") } catch {}
