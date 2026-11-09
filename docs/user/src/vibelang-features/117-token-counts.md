@@ -145,7 +145,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,300 |
-| **Error Management** | **24,000** |
+| **Error Management** | **25,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 13,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,800 |
 | [Fallback](../error-management/016-fallback.md) | 2,700 |
@@ -271,7 +271,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 150 |
 | [Producers](112-producers.md) | 4,200 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
-| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 12,000 |
+| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 13,000 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 13,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |

@@ -13,7 +13,35 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Indexed, aliased or destructured reads of `Symbol.customMatcher` could see the property before it was initialized. VibeLang modules now initialize it before those value reads; type-only references stay type-only.
+
+- Escaped `fork` and `join` operator keywords could compile without an error. They now report `TS1260`, while ordinary escaped names keep their TypeScript meaning.
+
+- Passing a throwing callback to a tagged template could bypass its parameter’s throw contract. Tagged substitutions now enforce the same callback checks as an ordinary call.
+
 - The editor's missing-name import fix could write `./dep.vibe` or `./dep.vibex` in a project without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`, so applying it produced `TS5097`. The fix now writes the same module path as a `.ts` or `.tsx` file would get, such as `./dep.js`, and keeps the VibeLang suffix only where those options allow it.
+- An `import` alias could copy `globalThis.globalThis` without a diagnostic. It now reports `EK0107`, as other copies of the global object do.
+- An invalid `import type` alias could report `EK0107` alongside TypeScript's error. It now keeps the native `TS1392` diagnostic.
+- An `import` alias of `globalThis.eval` or `globalThis.Function` was accepted without the diagnostic shown for a direct read. Both forms now report `EK0107`.
+- A returning `do` in a parameter default could be rejected before a rest parameter. Identifier parameter lists now support it while preserving rest array sharing, default order and the function signature.
+- A returning `do` in a parameter default could incorrectly allow a body declaration to reuse a parameter name. The compiler now reports TypeScript's declaration errors while allowing shadowing in nested blocks.
+- Bun builds could report missing named exports from a `.vibex` module. The build plugin now compiles JSX VibeLang modules and passes preserved JSX to Bun.
+
+- Unicode escapes in `@rethrows` parameter names could miss the callback or track a shorter name. Escaped and literal names now identify the same complete parameter.
+
+- Checking a root project could delete a nested project's declaration files and break package aliases. Sidecar cleanup now preserves other projects' declarations and removes only the compiling project's own stale outputs.
+
+- The migration rules still told agents to qualify Effect's functions and to avoid `fork.scoped`, `fork.in` and `fork.detached` because the toolchain lacked them. The compiler accepts those forms, so both rows are removed.
+- The migration rules named `EK2007` for an old `Stream` loop spelling. No such diagnostic exists; the rules now name `EK0102`, which a `for await` in effect code reports.
+- The Effect-users guide said its 0.0.9 runtime-cost measurements ran on the current Effect pin. Pin bumps had rewritten that record; it again names Effect `4.0.5`, the version 0.0.9 pinned.
+- Seven setup, editor and testing guides still said that support for the new forms arrives with the compiler's VIP implementation. That sentence is removed: the compiler, its language server and the formatter handle those forms.
+- The pattern-matching guide and the migration rules said Effect `4.1.0` retains thirty-three tagged error patterns. They now name Effect `4.1.1` and its thirty-four patterns, which include `JoseError.JoseError`.
+- A foreign interface named `Effect` could hide known throws or crash checking of a wrapped call. Foreign lookalikes now keep their own throw contracts and check without that crash.
+
+- A `get` or `set` accessor without a body in a `service`, such as `get value(): number`, reported TypeScript's `'{' expected`, and `abstract get value(): number` compiled without an error into an ordinary class. Each now reports `EK0902`, which says to declare a property or a method.
+- A dynamic import whose specifier is a template without substitutions, such as ``import(`node:fs`)``, loaded a Node builtin without the `EK4402` that a string literal reports. It now reports `EK4402`.
+- Spreading an array of throwing callbacks into a `@rethrows` rest parameter hid their throws. The call now reports `EK0401` in plain code and `EK0403` in effect code.
+
 - Building from source after the editor fixes were removed could still require their deleted tests. The build now selects the remaining tests.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
 - A `for concurrent` header accepted Unicode escapes in its keyword. Escaped spellings now report `TS1260`, as TypeScript does for escaped loop keywords.
@@ -145,7 +173,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The migration's API identity check reported an unchanged exported constant whose type uses `infer`, such as `export declare const f: <C>(c: C) => C extends (infer I)[] ? I : never`, as changed whenever another export in its file changed, for example a function moved behind `export { g } from "./helper.js"`. The constant's own type now decides, so it stays identical; a real change to that type still differs.
 
-- A `return` in a `do` expression in a parameter default of a plain, `async` or `effect` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run (an `effect` function's call gives an Effect that succeeds with the value), keeping the parameter order, the function's `length` and its declaration output; generators, constructors, a default that uses `try`, `await` or `yield`, and a parameter list with a pattern or rest parameter after the returning default still report `EK0204`.
+- A `return` in a `do` expression in a parameter default of a plain, `async` or `effect` function, arrow or method reported `EK0204`. It now returns from that function before later defaults and the body run (an `effect` function's call gives an Effect that succeeds with the value), keeping the parameter order, the function's `length` and its declaration output.
 - Misspelled names could lose TypeScript's suggestion for a project-defined global named `process`, `fetch` or another host-global name. Those suggestions now follow the binding's actual declaration.
 
 - Hints for an unresolved experimental name could suggest a nonexistent module method. They now show an explicit service lookup, run its Effect and name the provider layer; pure helpers remain direct calls.
@@ -486,6 +514,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Building the compiler could succeed with unregistered parser or lowering hooks, leaving the grammar check to fail later. The developer build now checks the grammar inventory before generating or replacing compiler artifacts.
 
+- A program started through `vibelang/register` on a cold cache compiled every workspace project one after another, so a large workspace took tens of seconds to start. The remaining projects now compile at once into the cache.
 - Migration API checks could lose an existing native sibling of a saved TypeScript source outside the declaration output root. They now retain its compatibility declaration and compare the frozen types.
 
 - Converting an Effect generator could leave an intentionally discarded program rejected as a floating Effect. The repair now makes the discard explicit and keeps that program unrun.
