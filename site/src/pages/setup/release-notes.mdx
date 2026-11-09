@@ -39,6 +39,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Native phase imports could crash the compiler instead of producing diagnostics. They now complete checking and report any applicable errors.
 
+- Building from source could fail while checking `import.source` and `import.defer` output. That check now declares its time limit and bounds its compiler subprocess.
+
 - Extractors named `String`, `Number`, `Boolean`, `BigInt` or `Symbol` could reject a local callable or read the subject instead of the custom matcher's result. Local bindings now use their own extractor protocol, while built-in constructors keep unboxing primitive values.
 
 - Misspelled names inside Effect wrapper callbacks could suggest host globals that the language disallows. Suggestions now respect the platform boundary inside callbacks too.

@@ -957,6 +957,8 @@ comparisons still reject mismatched environments; see the
 
 The harness sets `VIBELANG_BINARY` to the absolute compiler executable it used when launching every custom runner, including an isolated case. A runner's nested compiler calls therefore check the same build as the case.
 
+The `native-phase-import-emit` runner keeps the default 60-second overall budget. Its reference compiler subprocess has a 30-second deadline, so a reference-compile timeout is reported before the outer runner's deadline.
+
 A case's custom `run.mjs` has 60 seconds unless one of its lines says
 `// run-seconds: N`. The twelve `rewrite-*` runners call `compareRewrite`, a
 pipeline of six stages (two compiles, two runs, two `--fix` passes) that each
