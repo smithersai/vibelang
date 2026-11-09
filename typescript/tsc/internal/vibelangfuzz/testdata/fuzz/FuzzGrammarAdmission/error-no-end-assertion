@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:error-no-end-assertion\ndeclare const error: unknown\nerror as Error;")

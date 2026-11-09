@@ -146,11 +146,6 @@ func TestGrammarAdmissionDeepRejected(t *testing.T) {
 func TestGrammarAdmissionDeepKeys(t *testing.T) {
 	w := NewWorkspace(t)
 	for source, want := range map[string]string{
-		"export error E 1":                                         "admission:error-no-end",
-		"export error async async":                                 "admission:error-no-end",
-		"export error value from":                                  "admission:error-no-end",
-		"function x ( ) { for\n( x of [ ] ) error x x }":           "admission:error-no-end",
-		"/ /\nerror concurrent not":                                "admission:error-no-end",
 		"class C { effect g ? ( ) }":                               "admission:effect-optional-class-member",
 		"schema S { readonly effect id : string }":                 "admission:schema-effect-field",
 		"schema S { readonly effect id\n: string }":                "admission:schema-effect-field",

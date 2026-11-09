@@ -164,6 +164,11 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 		}
 		p.parseExpected(ast.KindCloseBraceToken)
 		d.body = core.NewTextRange(start, p.nodePos())
+	} else if !p.canParseSemicolon() {
+		// Appendix A: a bodyless error declaration ends as a TypeScript
+		// statement does. Another token on its line needs a separator, so
+		// `error as T;` does not declare `as` and then evaluate `T`.
+		p.parseErrorAtCurrentToken(diagnostics.X_0_expected, ";")
 	}
 	if d.base == nil {
 		vibelangErrorPayloadSeparators(elements)

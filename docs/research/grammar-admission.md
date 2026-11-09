@@ -793,6 +793,8 @@ head `fork` or `join`. The case-seeded campaign found
 its second minute: a bodyless error declaration with a heritage clause ends,
 and the compiler starts another expression on the same line. It joins
 `admission:error-no-end`, whose classifier now reads past a heritage clause.
+The compiler now ends a bodyless error declaration as a statement and reports
+`';' expected` at the next token on its line, so that key is no longer pending.
 
 Two of the survey's open items are now read by the lab. TypeScript's parser
 reports nothing after a bare `declare` identifier expression, so

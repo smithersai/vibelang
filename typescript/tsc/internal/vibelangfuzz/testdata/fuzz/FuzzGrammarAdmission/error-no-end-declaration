@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:error-no-end-declaration\nschema error S const t = 1")

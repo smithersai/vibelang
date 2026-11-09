@@ -1,0 +1,9 @@
+// expect: TS1005
+// Appendix A, Declaration keywords: a bodyless error declaration ends as a
+// TypeScript statement does. Each line below continues on the same line.
+declare const error: unknown
+
+error as Error;
+error Missing 1
+schema error Invalid const next = 2
+export error Gone extends Missing Other
