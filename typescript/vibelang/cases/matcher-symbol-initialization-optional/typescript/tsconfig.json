@@ -1,0 +1,1 @@
+{"compilerOptions": {"target": "ES2022", "module": "NodeNext", "strict": true, "skipLibCheck": true, "types": [], "declaration": true, "outDir": "out"}, "files": ["main.ts", "optional-alias.ts", "nullable-alias.ts", "optional-property.ts", "optional-binding.ts", "optional-unrelated.ts", "optional-type-only.ts"]}

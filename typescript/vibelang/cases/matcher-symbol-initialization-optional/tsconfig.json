@@ -1,0 +1,1 @@
+{"compilerOptions": {"target": "ES2022", "module": "NodeNext", "strict": true, "skipLibCheck": true, "types": [], "declaration": true, "outDir": "out"}, "files": ["main.vibe", "optional-alias.vibe", "nullable-alias.vibe", "optional-property.vibe", "optional-binding.vibe", "optional-unrelated.vibe", "optional-type-only.vibe"]}

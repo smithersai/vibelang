@@ -1,0 +1,1 @@
+import type {customMatcher as Protocol} from "vibelang-runtime";export type Key=typeof Protocol;function read(S:typeof Symbol|undefined){return typeof S?.customMatcher==="symbol"};export function inspect():boolean{return read(Symbol)}

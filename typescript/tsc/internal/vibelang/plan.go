@@ -148,6 +148,9 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 			if t == nil {
 				t = c.GetTypeAtLocation(node)
 			}
+			if t != nil {
+				t = c.GetNonNullableType(t)
+			}
 			if t != nil && t.Flags()&checker.TypeFlagsUniqueESSymbol != 0 {
 				name, _ := checker.PropertyNameOfType(t)
 				matcherName := customMatcherPropertyName(c)

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Optional matcher-symbol properties could be read before their runtime key was installed. Optional access and destructuring now initialize the key before use.
+
 - TypeScript projections imported an unavailable helper module, so source inspection reported `TS2307` and lost body-local types. The helper declarations now ship with `vibelang`, and projections preserve those types in stock TypeScript.
 
 - `static readonly key!: string` in a `service`, with no initializer, reported `EK0901` and TypeScript's `TS1255` for the `!`. It now reports `EK0901` alone, which says to write `static readonly key = "app/Service"`. A static index signature in a `service` reported two `EK0902` and a `TS2411` on the key; it now reports one `EK0902`.
