@@ -4721,6 +4721,9 @@ typescript/vibelang/cases/foreign-thunk-defect-bridge/main.vibe:8:94 lambda plai
 typescript/vibelang/cases/foreign-thunk-defect-bridge/main.vibe:9:36 byname program table
 typescript/vibelang/cases/foreign-thunk-defect-bridge/main.vibe:9:54 lambda plain table
 typescript/vibelang/cases/foreign-thunk-defect-bridge/main.vibe:9:75 lambda plain table
+typescript/vibelang/cases/foreign-typeof-callable-alias/main.vibe:5:24 lambda effectFn keyword
+typescript/vibelang/cases/foreign-typeof-callable-alias/main.vibe:6:27 byname program table
+typescript/vibelang/cases/foreign-typeof-callable-alias/main.vibe:6:38 lambda plain table
 typescript/vibelang/cases/foreign-validation-defect-bridge/main.vibe:6:27 byname program table
 typescript/vibelang/cases/foreign-validation-defect-bridge/main.vibe:7:10 lambda plain table
 typescript/vibelang/cases/foreign-validation-defect-bridge/main.vibe:8:12 lambda plain table

@@ -1,0 +1,12 @@
+import * as Effect from "effect/Effect"
+import { describe as foreign } from "./foreign.ts"
+
+const describe: typeof foreign = foreign
+export const program = effect (value: unknown) => {
+  return try Effect.orDie(Effect.try(() => describe(value)))
+}
+
+// expect-result: "ready"
+export effect function main() {
+  return try program("ready")
+}
