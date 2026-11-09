@@ -1,0 +1,4 @@
+const customMatcher=1
+const {customMatcher:key}=Symbol
+class P{static [Symbol.customMatcher](s:unknown):boolean{return typeof s==="number"}}
+export function inspect():boolean{return P[Symbol.customMatcher](2)&&typeof Symbol["customMatcher"]==="symbol"&&key===Symbol.customMatcher}

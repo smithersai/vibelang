@@ -12,6 +12,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Bun could fail with `ENOTDIR` when a migrated module imported a CSS or other asset through a `paths` alias. Asset imports now keep native loading, and alias lookup continues to later source substitutions.
 - A `for concurrent` header accepted Unicode escapes in its keyword. Escaped spellings now report `TS1260`, as TypeScript does for escaped loop keywords.
 - Migration instructions could suggest a retired setting to restore published import paths. They now explain the declaration spelling TypeScript emits and how to preserve the original package boundary.
+- Using `Symbol.customMatcher` beside a local `customMatcher` binding, in destructuring, or through an indexed property could report a missing property. Its protocol types now remain available, including when Effect prelude names are disabled.
 
 - Callback throws could be missed when `@rethrows` named a Unicode parameter. Those names now keep the same throw checks as other TypeScript parameter names.
 

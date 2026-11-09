@@ -232,8 +232,22 @@ func mayUsePrelude(file *ast.SourceFile) (prelude bool, root bool, barrels []str
 	loaded := map[string]bool{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		// An indexed protocol name also needs the ambient provider. Discovery
+		// runs before binding; this only loads types, not a runtime import.
+		if ast.IsStringLiteral(node) && node.Text() == "customMatcher" {
+			prelude = true
+		}
 		if ast.IsIdentifier(node) {
 			name := node.Text()
+			// A local binding cannot shadow the property in Symbol.customMatcher.
+			// Load its ambient provider before the checker resolves the receiver.
+			if name == "customMatcher" && node.Parent != nil &&
+				(ast.IsPropertyAccessExpression(node.Parent) && node.Parent.Name() == node ||
+					ast.IsQualifiedName(node.Parent) && node.Parent.AsQualifiedName().Right == node ||
+					ast.IsBindingElement(node.Parent) && (node.Parent.AsBindingElement().PropertyName == node ||
+						node.Parent.AsBindingElement().PropertyName == nil && node.Parent.Name() == node)) {
+				prelude = true
+			}
 			if declared[name] && node.Flags&ast.NodeFlagsVibeLangIntrinsic == 0 {
 				return false
 			}
