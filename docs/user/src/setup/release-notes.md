@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A callback created by an earlier parameter default could read a stale value after a later default used a returning `do` expression. Earlier defaults in the same group of simple parameters now share their bindings with the body, so callback reads and writes observe body changes. Function and class defaults also keep their inferred names and TypeScript's contextual callback parameter types.
+
 - Inline `Effect.try` and `Effect.tryPromise` callbacks could report `EK0401` when surrounded by a TypeScript assertion or `satisfies`. These expressions now keep the wrapper’s thunk contract.
 
 - Reading `customMatcher` from a parameter named `Symbol` could read the global protocol symbol instead, skipping the parameter's getter or causing a type error. The access now uses the parameter's property, as TypeScript does.

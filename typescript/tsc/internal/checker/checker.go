@@ -30273,13 +30273,20 @@ func (c *Checker) getContextualType(node *ast.Node, contextFlags ContextFlags) *
 		// We cannot answer semantic questions within a with block, do not proceed any further
 		return nil
 	}
+	parent := node.Parent
+	// A moved default keeps its source context before a generated binding
+	// can cache an empty one. Detached nodes still use their cached context.
+	if parent != nil && (parent.Kind == ast.KindConditionalExpression || parent.Kind == ast.KindBindingElement) {
+		if parameter := parser.VibeLangParameterForMovedDefault(node); parameter != nil {
+			return c.getContextualTypeForVariableLikeDeclaration(parameter, contextFlags)
+		}
+	}
 	// Cached contextual types are obtained with no ContextFlags, so we can only consult them for
 	// requests with no ContextFlags.
 	index := c.findContextualNode(node, contextFlags == ContextFlagsNone /*includeCaches*/)
 	if index >= 0 {
 		return c.contextualInfos[index].t
 	}
-	parent := node.Parent
 	switch parent.Kind {
 	case ast.KindVariableDeclaration, ast.KindParameter, ast.KindPropertyDeclaration, ast.KindPropertySignature, ast.KindBindingElement:
 		return c.getContextualTypeForInitializerExpression(node, contextFlags)

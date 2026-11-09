@@ -48,6 +48,121 @@ func TestDoParameterDefaultReturn(t *testing.T) {
 		declaration        string   // text out/main.d.ts must hold
 	}{
 		{
+			name:   "earlier closure function plain read",
+			source: "export function run() { function f(read = () => a, a: number = do { if (false) return -1; 1 }) { return [a, read()] }; return [f(), f(undefined, 5), f(() => 7)] }",
+			want:   "[[1,1],[5,5],[1,7]]",
+		},
+		{
+			name:   "earlier closure function plain mutation",
+			source: "export function run() { function f(read = () => a, a: number = do { if (false) return -1; 1 }) { a = 9; return [a, read()] }; return [f(), f(undefined, 5), f(() => 7)] }",
+			want:   "[[9,9],[9,9],[9,7]]",
+		},
+		{
+			name:   "earlier closure function async read",
+			source: "export async function run() { async function f(read = () => a, a: number = do { if (false) return -1; 1 }) { return [a, read()] }; return [await f(), await f(undefined, 5), await f(() => 7)] }",
+			want:   "[[1,1],[5,5],[1,7]]",
+		},
+		{
+			name:   "earlier closure function async mutation",
+			source: "export async function run() { async function f(read = () => a, a: number = do { if (false) return -1; 1 }) { a = 9; return [a, read()] }; return [await f(), await f(undefined, 5), await f(() => 7)] }",
+			want:   "[[9,9],[9,9],[9,7]]",
+		},
+		{
+			name:   "earlier closure expression plain read",
+			source: "export function run() { const f = function(read = () => a, a: number = do { if (false) return -1; 1 }) { return [a, read()] }; return [f(), f(undefined, 5), f(() => 7)] }",
+			want:   "[[1,1],[5,5],[1,7]]",
+		},
+		{
+			name:   "earlier closure expression plain mutation",
+			source: "export function run() { const f = function(read = () => a, a: number = do { if (false) return -1; 1 }) { a = 9; return [a, read()] }; return [f(), f(undefined, 5), f(() => 7)] }",
+			want:   "[[9,9],[9,9],[9,7]]",
+		},
+		{
+			name:   "earlier closure expression async read",
+			source: "export async function run() { const f = async function(read = () => a, a: number = do { if (false) return -1; 1 }) { return [a, read()] }; return [await f(), await f(undefined, 5), await f(() => 7)] }",
+			want:   "[[1,1],[5,5],[1,7]]",
+		},
+		{
+			name:   "earlier closure expression async mutation",
+			source: "export async function run() { const f = async function(read = () => a, a: number = do { if (false) return -1; 1 }) { a = 9; return [a, read()] }; return [await f(), await f(undefined, 5), await f(() => 7)] }",
+			want:   "[[9,9],[9,9],[9,7]]",
+		},
+		{
+			name:   "earlier closure arrow plain read",
+			source: "export function run() { const f = (read = () => a, a: number = do { if (false) return -1; 1 }) => { return [a, read()] }; return [f(), f(undefined, 5), f(() => 7)] }",
+			want:   "[[1,1],[5,5],[1,7]]",
+		},
+		{
+			name:   "earlier closure arrow plain mutation",
+			source: "export function run() { const f = (read = () => a, a: number = do { if (false) return -1; 1 }) => { a = 9; return [a, read()] }; return [f(), f(undefined, 5), f(() => 7)] }",
+			want:   "[[9,9],[9,9],[9,7]]",
+		},
+		{
+			name:   "earlier closure arrow async read",
+			source: "export async function run() { const f = async (read = () => a, a: number = do { if (false) return -1; 1 }) => { return [a, read()] }; return [await f(), await f(undefined, 5), await f(() => 7)] }",
+			want:   "[[1,1],[5,5],[1,7]]",
+		},
+		{
+			name:   "earlier closure arrow async mutation",
+			source: "export async function run() { const f = async (read = () => a, a: number = do { if (false) return -1; 1 }) => { a = 9; return [a, read()] }; return [await f(), await f(undefined, 5), await f(() => 7)] }",
+			want:   "[[9,9],[9,9],[9,7]]",
+		},
+		{
+			name:   "earlier closure method plain read",
+			source: "export function run() { const box = { f(read = () => a, a: number = do { if (false) return -1; 1 }) { return [a, read()] } }; const f = (...args: Parameters<typeof box.f>) => box.f(...args); return [f(), f(undefined, 5), f(() => 7)] }",
+			want:   "[[1,1],[5,5],[1,7]]",
+		},
+		{
+			name:   "earlier closure method plain mutation",
+			source: "export function run() { const box = { f(read = () => a, a: number = do { if (false) return -1; 1 }) { a = 9; return [a, read()] } }; const f = (...args: Parameters<typeof box.f>) => box.f(...args); return [f(), f(undefined, 5), f(() => 7)] }",
+			want:   "[[9,9],[9,9],[9,7]]",
+		},
+		{
+			name:   "earlier closure method async read",
+			source: "export async function run() { const box = { async f(read = () => a, a: number = do { if (false) return -1; 1 }) { return [a, read()] } }; const f = (...args: Parameters<typeof box.f>) => box.f(...args); return [await f(), await f(undefined, 5), await f(() => 7)] }",
+			want:   "[[1,1],[5,5],[1,7]]",
+		},
+		{
+			name:   "earlier closure method async mutation",
+			source: "export async function run() { const box = { async f(read = () => a, a: number = do { if (false) return -1; 1 }) { a = 9; return [a, read()] } }; const f = (...args: Parameters<typeof box.f>) => box.f(...args); return [await f(), await f(undefined, 5), await f(() => 7)] }",
+			want:   "[[9,9],[9,9],[9,7]]",
+		},
+		{
+			name:   "earlier closure observes the later initializer's temporal dead zone",
+			source: "export function run() { function f(read: () => number = () => a, a: number = do { if (false) return -1; read() }) { return a }; try { return f() } catch (e) { return (e as Error).constructor.name } }",
+			want:   "\"ReferenceError\"",
+		},
+		{
+			name:   "earlier value read by returning default",
+			source: "export function run() { function f(x = 3, a: number = do { return x }) { return a }; return f() }",
+			want:   "3",
+		},
+		{
+			name:   "earlier closure writes later binding",
+			source: "export function run() { function f(write = (n: number) => a = n, a: number = do { if (false) return -1; 1 }) { write(8); return a }; return f() }",
+			want:   "8",
+		},
+		{
+			name:   "anonymous callback keeps its parameter name",
+			source: "export function run() { function f(read = () => a, a: number = do { if (false) return -1; 1 }) { return read.name }; return f() }",
+			want:   "\"read\"",
+		},
+		{
+			name:   "anonymous class observes its parameter name during initialization",
+			source: "export function run() { function f(C = class { static observed = this.name }, a: number = do { if (false) return -1; 1 }) { return [C.name,C.observed] }; return f() }",
+			want:   "[\"C\",\"C\"]",
+		},
+		{
+			name:   "contextual callback default keeps its parameter type",
+			source: "export function run() { const f: (read?: (n: number) => number, a?: number) => number = (read = n => n + a, a: number = do { if (false) return -1; 1 }) => read(2); return f() }",
+			want:   "3",
+		},
+		{
+			name:   "written callback default keeps its parameter type",
+			source: "export function run() { function f(read: (n: number) => number = n => n + a, a: number = do { if (false) return -1; 1 }) { return read(2) }; return f() }",
+			want:   "3",
+		},
+		{
 			name:        "length and declaration output",
 			source:      "export function first(a: number = do { return 1 }, b = 2) { return a + b }\nexport function second(x: number, a = do { return x }) { return a }\nexport function run() { return [first.length, second.length, first(), first(1), second(3)] }",
 			want:        "[0,1,1,3,3]",

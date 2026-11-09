@@ -709,6 +709,8 @@ Erased TypeScript callee wrappers (`!`, `as`, `satisfies` and type assertions) k
 
 Logical assignments with a `do` right operand (`&&=`, `||=`, `??=`) read the target once. A skipped assignment returns that read; a taken assignment returns the right operand's value, even when a global accessor's setter stores a different value. Testing the result preserves TypeScript's narrowing of the target.
 
+When a returning `do` appears in a parameter default, earlier defaults in the same group of simple parameters keep sharing the body's parameter bindings. A callback created by an earlier default sees assignments in the body, and a callback called while a later parameter is still initializing gets JavaScript's temporal-dead-zone error. Function and class defaults keep their inferred names before class static initializers run, and callback defaults keep TypeScript's contextual parameter types.
+
 A `break` or `continue` whose target is outside an `effect { }` block is `EK0202`; the block runs as its own Effect. Class decorators, computed member names and `extends` expressions keep that enclosing block context. A `do` in those positions reports `EK0202` when its jump would leave the block; written method bodies keep their own targets.
 
 **Effect blocks as arguments**. Pass `effect { ... }` as an ordinary argument. A test API takes a callback that returns the Effect, such as `it.live("name", () => effect { ... })`.

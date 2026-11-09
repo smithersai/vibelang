@@ -1,0 +1,10 @@
+// expect-result: ["read",["C","C"]]
+function callback(read = () => value, value: number = do { if (false) return -1; 1 }) {
+  return read.name
+}
+function constructorName(C = class { static observed = this.name }, value: number = do { if (false) return -1; 1 }) {
+  return [C.name, C.observed]
+}
+export effect function main() {
+  return [callback(), constructorName()]
+}

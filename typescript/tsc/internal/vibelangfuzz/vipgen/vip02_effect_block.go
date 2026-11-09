@@ -647,3 +647,62 @@ func init() {
 		}
 	}
 }
+
+// Earlier defaults and the body share the same parameter cells, including
+// when a later default contains an outward return that is not taken.
+func init() {
+	for _, home := range []string{"function", "expression", "arrow", "method"} {
+		for _, mutation := range []bool{false, true} {
+			form := "read"
+			body := "{ return [a, read(), read.name] }"
+			if mutation {
+				form = "write"
+				body = "{ a += 4; return [a, read(), read.name] }"
+			}
+			params := "read: () => number = () => a, a: number = do { if (false) return -1; 1 }"
+			nativeParams := "read = () => a, a = 1"
+			callable := func(params string) string {
+				switch home {
+				case "expression":
+					return "const f = function(" + params + ") " + body
+				case "arrow":
+					return "const f = (" + params + ") => " + body
+				case "method":
+					wrapper := "(...args: Parameters<typeof box.f>) => box.f(...args)"
+					if params == nativeParams {
+						wrapper = "(...args) => box.f(...args)"
+					}
+					return "const box = { f(" + params + ") " + body + " }; const f = " + wrapper
+				}
+				return "function f(" + params + ") " + body
+			}
+			registerWitness(2, ChapterWitness{
+				Key:     "vip02.do-parameter-closure-" + home + "-" + form + "-plain",
+				Chapter: "../vips/0002-effect-blocks-and-do.md",
+				Quote:   "including its temporal-dead-zone exception: JavaScript has none, so VibeLang has none.",
+				Vibe:    "function witness() { " + callable(params) + "; return [f(), f(undefined, 5), f(() => 7)] }",
+				Effect:  "function witness() { " + callable(nativeParams) + "; return [f(), f(undefined, 5), f(() => 7)] }",
+				Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+			})
+		}
+	}
+}
+
+func init() {
+	registerWitness(2, ChapterWitness{
+		Key:     "vip02.do-parameter-default-class-name-plain",
+		Chapter: "001-functions.md",
+		Quote:   "The naming context must be preserved or suppressed before creation, rather than repairing `.name` afterward: a class static initializer may already have observed it.",
+		Vibe:    "function witness() { function f(C = class { static observed = this.name }, a: number = do { if (false) return -1; 1 }) { return [C.name, C.observed] }; return [f(), f(undefined,5), f(class Named { static observed = this.name })] }",
+		Effect:  "function witness() { function f(C = class { static observed = this.name }, a = 1) { return [C.name, C.observed] }; return [f(), f(undefined,5), f(class Named { static observed = this.name })] }",
+		Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+	})
+	registerWitness(2, ChapterWitness{
+		Key:     "vip02.do-parameter-default-context-plain",
+		Chapter: "../vips/0002-effect-blocks-and-do.md",
+		Quote:   "A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body:",
+		Vibe:    "function witness() { const f: (read?: (n: number) => number, a?: number) => number = (read = n => n + a, a: number = do { if (false) return -1; 1 }) => read(2); return [f(), f(undefined,5), f(n => n * 3)] }",
+		Effect:  "function witness() { const f = (read = n => n + a, a = 1) => read(2); return [f(), f(undefined,5), f(n => n * 3)] }",
+		Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+	})
+}

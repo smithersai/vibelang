@@ -1,0 +1,38 @@
+// expect-result: [[9,9],10,11,12,[9,14],[[10],[16]]]
+import { Stream } from "effect"
+
+function plain(read: () => number = () => value, value: number = do { if (false) return -1; 1 }) {
+  value = 9
+  return [value, read()]
+}
+const arrow = (read: () => number = () => value, value: number = do { if (false) return -1; 2 }) => {
+  value = 10
+  return read()
+}
+async function asynchronous(read: () => number = () => value, value: number = do { if (false) return -1; 3 }) {
+  value = 11
+  return read()
+}
+class Box {
+  read(read: () => number = () => value, value: number = do { if (false) return -1; 4 }) {
+    value = 12
+    return read()
+  }
+}
+effect function task(read: () => number = () => value, value: number = do { if (false) return -1; 4 }) {
+  value += 5
+  return read()
+}
+effect function* producer(read: () => number = () => value, value: number = do { if (false) return; 4 }) {
+  value += 6
+  yield read()
+}
+export effect function main() {
+  const built = task()
+  const stream = producer()
+  const first = try built
+  const second = try built
+  const items = try Stream.runCollect(stream)
+  const more = try Stream.runCollect(stream)
+  return [plain(), arrow(), try promise(() => asynchronous()), new Box().read(), [first, second], [[...items], [...more]]]
+}

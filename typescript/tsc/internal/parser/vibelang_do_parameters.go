@@ -18,9 +18,9 @@ import (
 // binding.
 //
 // The parameter list stays the function's signature, so its length and its
-// declaration output do not change, and the defaults from the first one that
-// returns move into the body, one let declaration per parameter, whose do
-// expressions the statement lowering lifts:
+// declaration output do not change. Defaults in its simple-parameter suffix
+// move together, including earlier defaults that can capture a later
+// parameter. The statement lowering lifts their do expressions:
 //
 //	function f(a: number = do { return 9 }, b = g()) { body }
 //
@@ -47,6 +47,7 @@ import (
 // which a parameter list cannot do) keep the do expression as a function and
 // its EK0204.
 var movedParameterDefaultsKey = ast.NewSourceFileDataKey[map[*ast.Node]*ast.Node]()
+var movedDefaultParametersKey = ast.NewSourceFileDataKey[map[*ast.Node]*ast.Node]()
 var movedDefaultFunctionsKey = ast.NewSourceFileDataKey[map[*ast.Node]bool]()
 
 // VibeLangHasMovedDefaults reports whether fn's body begins with moved
@@ -73,6 +74,20 @@ func VibeLangMovedParameterDefault(parameter *ast.Node) *ast.Node {
 		return nil
 	}
 	return file.GetOrComputeData(movedParameterDefaultsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return nil })[parameter]
+}
+
+// VibeLangParameterForMovedDefault returns the source parameter of an
+// initializer moved into the body, so its contextual type stays the source
+// parameter's written or contextual type.
+func VibeLangParameterForMovedDefault(value *ast.Node) *ast.Node {
+	if value == nil {
+		return nil
+	}
+	file := ast.GetSourceFileOfNode(value)
+	if file == nil {
+		return nil
+	}
+	return file.GetOrComputeData(movedDefaultParametersKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return nil })[value]
 }
 
 // moveParameterDefaults rewrites every function whose parameter default holds
@@ -102,8 +117,20 @@ func (p *Parser) moveParameterDefaults() map[*ast.Node]*ast.Node {
 	}
 	moved := map[*ast.Node]*ast.Node{}
 	for _, fn := range functions {
-		if movableDefaults(fn, first[fn]) {
-			p.moveDefaults(fn, first[fn], moved)
+		from := first[fn]
+		// Earlier defaults must close over the same cells as the body.
+		// Keep a preceding binding pattern in its original parameter scope.
+		for i := from - 1; i >= 0; i-- {
+			parameter := fn.Parameters()[i]
+			if !ast.IsIdentifier(parameter.Name()) || parameter.AsParameterDeclaration().DotDotDotToken != nil {
+				break
+			}
+			if parameter.Initializer() != nil {
+				from = i
+			}
+		}
+		if movableDefaults(fn, from) {
+			p.moveDefaults(fn, from, moved)
 		}
 	}
 	return moved
@@ -218,13 +245,32 @@ func (p *Parser) moveDefaults(fn *ast.Node, from int, moved map[*ast.Node]*ast.N
 			value = p.vibelangSpanning(p.factory.NewConditionalExpression(test, p.mToken(ast.KindQuestionToken, at), p.mTemp(temp, at), p.mToken(ast.KindColonToken, at), init), loc)
 		}
 		shadow := p.mConst(p.mIdent(name.Text(), name.Loc), ast.NodeFlagsLet, value, at)
+		if init := moved[parameter]; anonymousDoValue(init) {
+			// Native binding defaults preserve inferred function/class names,
+			// including what a class's static initializers observe.
+			field := p.vibelangSpanning(p.factory.NewBindingElement(nil, p.mIdent("value", at), p.mIdent(name.Text(), name.Loc), init), parameter.Loc)
+			pattern := p.vibelangSpanning(p.factory.NewBindingPattern(ast.KindObjectBindingPattern, p.newNodeList(parameter.Loc, []*ast.Node{field})), parameter.Loc)
+			property := p.vibelangSpanning(p.factory.NewPropertyAssignment(nil, p.mIdent("value", at), nil, nil, p.mTemp(temp, at)), at)
+			object := p.vibelangSpanning(p.factory.NewObjectLiteralExpression(p.newNodeList(at, []*ast.Node{property}), false), at)
+			shadow = p.mConst(pattern, ast.NodeFlagsLet, object, at)
+		}
+		// A moved earlier parameter remains declared before the source
+		// defaults that read it, even though its statement runs in the body.
+		declaration := shadow.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+		declaration.Loc = core.NewTextRange(parameter.Pos(), declaration.End())
+
 		if parameter.Type() != nil {
 			// A written type constrains the moved default as it did in the
 			// parameter list. An untyped parameter's type comes from the
 			// default (VibeLangMovedParameterDefault), so an annotation here
 			// would make the default its own contextual type.
 			declaration := shadow.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
-			declaration.AsVariableDeclaration().Type = p.vibelangSynthesized(p.factory.NewTypeQueryNode(p.mTemp(temp, at), nil), at)
+			typeNode := p.vibelangSynthesized(p.factory.NewTypeQueryNode(p.mTemp(temp, at), nil), at)
+			if anonymousDoValue(moved[parameter]) {
+				member := p.vibelangSynthesized(p.factory.NewPropertySignatureDeclaration(nil, p.mIdent("value", at), nil, typeNode, nil), at)
+				typeNode = p.vibelangSynthesized(p.factory.NewTypeLiteralNode(p.newNodeList(at, []*ast.Node{member})), at)
+			}
+			declaration.AsVariableDeclaration().Type = typeNode
 			p.overrideParentInImmediateChildren(declaration)
 		}
 		shadows = append(shadows, shadow)
@@ -271,6 +317,7 @@ func (p *Parser) recordMovedParameterDefaults(file *ast.SourceFile, l *doLowerin
 		return
 	}
 	values := map[*ast.Node]*ast.Node{}
+	parameters := map[*ast.Node]*ast.Node{}
 	functions := map[*ast.Node]bool{}
 	for parameter, init := range moved {
 		value := l.bindingDefaultValues[init]
@@ -278,8 +325,11 @@ func (p *Parser) recordMovedParameterDefaults(file *ast.SourceFile, l *doLowerin
 			value = init
 		}
 		values[parameter] = value
+		parameters[value] = parameter
+		parameters[init] = parameter
 		functions[parameter.Parent] = true
 	}
 	file.GetOrComputeData(movedParameterDefaultsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return values })
+	file.GetOrComputeData(movedDefaultParametersKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return parameters })
 	file.GetOrComputeData(movedDefaultFunctionsKey, func(*ast.SourceFile) map[*ast.Node]bool { return functions })
 }

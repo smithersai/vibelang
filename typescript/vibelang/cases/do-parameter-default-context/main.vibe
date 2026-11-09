@@ -1,0 +1,6 @@
+// expect-result: [3,7,6]
+const f: (read?: (n: number) => number, a?: number) => number =
+  (read = n => n + a, a: number = do { if (false) return -1; 1 }) => read(2)
+export effect function main() {
+  return [f(), f(undefined, 5), f(n => n * 3)]
+}
