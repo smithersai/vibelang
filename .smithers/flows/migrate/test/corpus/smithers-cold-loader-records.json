@@ -1,0 +1,7 @@
+{
+  "key": "register:cold-serial-projects",
+  "edges": [[1, 2], [2], []],
+  "order": [0, 1, 2],
+  "manifestIndent": 4,
+  "note": "A cold CLI import reaches several projects whose records include each other's package manifests. Final export routing and manifest formatting must finish before records are saved."
+}

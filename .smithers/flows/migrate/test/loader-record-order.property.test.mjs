@@ -114,3 +114,19 @@ test("loader-record-order: records hold for any package order and import graph a
     }
   }), { seed: 2026110221, numRuns: 5 })
 })
+
+test("Smithers cold CLI records hold after transitive package routing and manifest formatting", { skip }, async t => {
+  const witness = JSON.parse(readFileSync(new URL("./corpus/smithers-cold-loader-records.json", import.meta.url)))
+  const files = generated(witness.edges)
+  for (const file of Object.keys(files).filter(file => file.endsWith("package.json"))) {
+    files[file] = JSON.stringify(JSON.parse(files[file]), null, witness.manifestIndent) + "\n"
+  }
+  for (const sequence of [witness.order, [...witness.order].reverse()]) {
+    const results = await emitAndLookUp(t, files, sequence.map(index => "packages/p" + index))
+    for (const result of results) {
+      assert.equal(result.miss, undefined, JSON.stringify(result))
+      assert.equal(result.receipt.length, 1, JSON.stringify(result))
+      assert.equal(result.receipt[0].miss, undefined, JSON.stringify(result))
+    }
+  }
+})
