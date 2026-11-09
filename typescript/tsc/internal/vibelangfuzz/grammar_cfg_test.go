@@ -633,7 +633,8 @@ TypePredicate = IdentifierReference [no LineTerminator here] "is" Type | "this" 
 TypeParameters = "<" TypeParameterList ","? ">"
 DeclarationTypeParameters = TypeParameters | "<" ">"
 TypeParameterList = TypeParameter | TypeParameterList "," TypeParameter
-TypeParameter = "const"? BindingIdentifier | "const"? BindingIdentifier "extends" Type | "const"? BindingIdentifier "=" Type | "const"? BindingIdentifier "extends" Type "=" Type
+TypeParameter = TypeParameterModifier* BindingIdentifier | TypeParameterModifier* BindingIdentifier "extends" Type | TypeParameterModifier* BindingIdentifier "=" Type | TypeParameterModifier* BindingIdentifier "extends" Type "=" Type
+TypeParameterModifier = "const" | "in" | "out"
 TypeArguments = "<" TypeList ">"
 TypeList = Type | TypeList "," Type
 Type = UnionType | FunctionType | ConstructorType | ConditionalType
@@ -643,7 +644,7 @@ ConstructorType = "abstract"? "new" TypeParameters? "(" FormalParameters ")" "=>
 UnionType = "|"? IntersectionType | UnionType "|" IntersectionType
 IntersectionType = "&"? PostfixType | IntersectionType "&" PostfixType
 PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" PostfixType | "keyof" PostfixType | "infer" BindingIdentifier | "infer" BindingIdentifier "extends" Type | "unique" PostfixType
-PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" TypeQueryName | "typeof" TypeQueryName [no LineTerminator here] TypeArguments | "typeof" ImportType | ImportType | "this" | "-" NumericLiteral | MappedType
+PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | TemplateLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" TypeQueryName | "typeof" TypeQueryName [no LineTerminator here] TypeArguments | "typeof" ImportType | ImportType | "this" | "-" NumericLiteral | MappedType
 TypeQueryName = IdentifierReference | "this" | TypeQueryName "." IdentifierName
 ImportType = "import" "(" StringLiteral ")" | "import" "(" StringLiteral ")" "." TypeName | ImportType [no LineTerminator here] TypeArguments
 MappedType = "{" MappedReadonly? "[" IdentifierName "in" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}" | "{" MappedReadonly? "[" IdentifierName "in" Type "as" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}"

@@ -887,9 +887,13 @@ compiler accepts. Four were one production each and now derive: the bitwise
 NOT operator `~`, import attributes (`with { type: "json" }` on an import or
 a re-export), a default-exported interface, and a `MetaProperty` at the start
 of a member pattern, which the pinned `PatternMatchingMemberExpression`
-lists beside `this` (`x is import.meta`). The lab still has no decorators,
-variance modifiers or template literal types; a program that uses one reads
-as a mismatch and is not evidence about the compiler.
+lists beside `this` (`x is import.meta`). Variance modifiers and template
+literal types followed: TypeScript's parser reads `in` and `out` on any type
+parameter and its checker rejects them outside a class, interface or type
+alias (`TS1274`), so the lab reads them on every type parameter and the
+oracle counts the checker's rejection, as it does for a misplaced `const`.
+The lab still has no decorators; a program that uses one reads as a mismatch
+and is not evidence about the compiler.
 
 One gap the probes found is outside what the lab can show. TypeScript parses
 a lexical declaration as a loop body for recovery and rejects it with
