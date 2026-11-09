@@ -168,6 +168,11 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 		// written key still has its independent VIP-9 member rule.
 		if declarationWord(class) == "service" {
 			for _, member := range class.Members() {
+				if serviceStaticMemberRejected(class, member) {
+					report(c, member, serviceStaticMemberDiagnostic)
+					coverCodes(c, member, 7008, 2391, 1255)
+					continue
+				}
 				checkServiceLiteralKey(c, class, member)
 			}
 			if class.TypeParameters() != nil {
