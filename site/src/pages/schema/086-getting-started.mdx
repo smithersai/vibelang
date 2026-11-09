@@ -1,9 +1,11 @@
 ---
 title: "Getting Started"
-description: "Schema uses the same descriptions and interpreters as in Effect. Start with a struct, extract its types, then pick a parser whose failure behavior fits the caller. The call rules apply to the..."
+description: "Decorators are not admitted on a schema declaration (TS1206), as on its native TypeScript constant or type alias."
 ---
 
 # Getting Started
+
+Decorators are not admitted on a `schema` declaration (`TS1206`), as on its native TypeScript constant or type alias.
 
 `Schema` uses the same descriptions and interpreters as in Effect. Start with a struct, extract its types, then pick a parser whose failure behavior fits the caller. The [call rules](/schema/085-introduction#configuring-compiler-prerequisites) apply to the plain builders below.
 

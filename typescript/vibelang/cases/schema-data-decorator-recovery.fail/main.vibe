@@ -1,0 +1,8 @@
+// expect: TS1206 TS1206 TS1206 TS1206 TS1206 TS1206
+declare const dec: unknown
+@dec schema Struct { n: number }
+@dec schema Alias = number
+export @dec schema Exported { n: number }
+@dec data Union { A }
+@dec export data ExportedUnion { A }
+@dec data Generic<T> { A { value: T } }

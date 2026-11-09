@@ -92,6 +92,10 @@ func (p *Parser) vibelangSchemaType(keyword core.TextRange, name *ast.Node, modi
 	if modifiers != nil {
 		var copies []*ast.Node
 		for _, modifier := range modifiers.Nodes {
+			// Decorators stay on the source declaration for its native grammar error.
+			if ast.IsDecorator(modifier) {
+				continue
+			}
 			copies = append(copies, p.vibelangSynthesized(p.factory.NewModifier(modifier.Kind), keyword))
 		}
 		aliasModifiers = p.newModifierList(keyword, copies)

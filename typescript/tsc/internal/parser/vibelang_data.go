@@ -353,6 +353,10 @@ func (p *Parser) dataModifiers(modifiers *ast.ModifierList, keyword core.TextRan
 	}
 	copies := make([]*ast.Node, 0, len(modifiers.Nodes))
 	for _, modifier := range modifiers.Nodes {
+		// Decorators stay on the source declaration for its native grammar error.
+		if ast.IsDecorator(modifier) {
+			continue
+		}
 		copies = append(copies, p.vibelangSynthesized(p.factory.NewModifier(modifier.Kind), keyword))
 	}
 	return p.newModifierList(keyword, copies)
