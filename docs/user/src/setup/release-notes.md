@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A `tsdown` or Rolldown declaration build could report missing interface exports from an imported native module. The plugin now supplies the module’s declarations to the type graph, preserving its type exports and runtime JavaScript.
 
 - The migration's API identity check could not finish comparing a package that lists a helper above its own directory, such as `../scripts/lib/helper.vibe`, when that helper keeps its code in a `module` body: it reported `TS2307` for the body's generated `helper.vibe.platform.js` and a missing export for each function the helper re-exports. A native helper there, with or without a body, was also reported as a new entry point of a package without `exports`. The check now keeps the body's generated declaration with the helper and reads the helper only through the package modules that re-export it, so such a helper compares identical to the TypeScript file it replaced; a changed type or a function the helper stops exporting still differs.
+- Linting a migrated file could reject a type assertion despite its preceding `SAFETY:` comment. Oxlint JS plugin rules now receive the source offsets needed to recognize that comment.
 
 - Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
 

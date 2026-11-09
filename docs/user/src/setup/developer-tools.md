@@ -345,6 +345,10 @@ rule aliases they name. It adapts parsed comments without changing the user
 file, string literals or source locations; unused directives remain quiet,
 as in Oxlint by default.
 
+The ESLint pass exposes Oxlint's `start` and `end` source offsets on nodes,
+tokens and comments. JS plugin rules that associate a `SAFETY:` comment with
+a type assertion therefore read the same positions as in TypeScript.
+
 The ESLint configuration carries applicable core, TypeScript and JS plugin
 rules. It also supplies `oxc/no-accumulating-spread`, checked against upstream
 Oxlint's reducer and loop behavior. A file-list runner fails with the names of

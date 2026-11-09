@@ -1,0 +1,4 @@
+{
+  "key": "lint:safety-comment-projection",
+  "source": "type Context = { auxData: { frameId?: string; isDefault?: boolean } | undefined }\n\nexport function frame(context: Context) {\n  // SAFETY: auxData already has exactly the asserted shape in the declared Context contract.\n  const aux = context.auxData as { frameId?: string; isDefault?: boolean } | undefined\n\n  return aux?.frameId\n}\n"
+}
