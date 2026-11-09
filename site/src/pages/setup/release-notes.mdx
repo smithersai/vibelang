@@ -90,6 +90,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Misspelled names inside Effect wrapper callbacks could suggest host globals that the language disallows. Suggestions now respect the platform boundary inside callbacks too.
 
 - A decorator before `schema` or `data` could crash compilation and the editor. These declarations now report `TS1206`, as TypeScript does for constants and type aliases.
+- In the TypeScript view of a `.vibe` file, a value bound by `String(let text)`, `Number`, `Boolean`, `BigInt` or `Symbol` had the type `string | String` and so on, so returning it as the primitive reported `TS2322`. The binding now has the primitive type there too, as the compiler already gives it.
 
 - A callback created by an earlier parameter default could read a stale value after a later default used a returning `do` expression. Earlier defaults in the same group of simple parameters now share their bindings with the body, so callback reads and writes observe body changes. Function and class defaults also keep their inferred names and TypeScript's contextual callback parameter types.
 

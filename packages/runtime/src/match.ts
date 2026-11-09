@@ -227,13 +227,6 @@ type PrimitiveForConstructor<C> =
   | (typeof Symbol extends C ? symbol : never)
 
 type PrimitiveConstructor = typeof String | typeof Number | typeof Boolean | typeof BigInt | typeof Symbol
-type BoxForConstructor<C> =
-  | (typeof String extends C ? String : never)
-  | (typeof Number extends C ? Number : never)
-  | (typeof Boolean extends C ? Boolean : never)
-  | (typeof BigInt extends C ? BigInt : never)
-  | (typeof Symbol extends C ? Symbol : never)
-
 
 /**
  * Runs an extractor pattern's matcher: its values, or false when it does not
@@ -255,8 +248,10 @@ export function $extract<C extends TypedArrayClass<unknown>>(matcher: C, subject
 export function $extract<T>(matcher: TypedArrayClass<T>, subject: unknown, receiver?: unknown): T | false
 export function $extract<R>(matcher: CustomMatcher<R>, subject: unknown, receiver?: unknown): Extracted<R> | false
 export function $extract(matcher: RegExp, subject: unknown, receiver?: unknown): ReadonlyArray<RegExpMatchArray> | false
+// A primitive class extracts the primitive: [subject] for a primitive and
+// [subject.valueOf()] for its boxed object (Chapter 004), never the box.
+export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: unknown, receiver?: unknown): readonly [PrimitiveForConstructor<C>] | false
 export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown, receiver?: unknown): readonly [InstanceType<C> | PrimitiveForConstructor<C>] | false
-export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: unknown, receiver?: unknown): readonly [PrimitiveForConstructor<C> | BoxForConstructor<C>] | false
 export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown, receiver?: unknown): Extracted<R> | false
 export function $extract(matcher: unknown, subject: unknown, receiver?: unknown): ReadonlyArray<any> | false
 export function $extract(matcher: unknown, subject: unknown, receiver: unknown = null, ownClassOnly = false, dispatch: "" | "call" | "construct" = ""): unknown {
