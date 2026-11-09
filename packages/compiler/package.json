@@ -31,7 +31,10 @@
       "default": "./emit.mjs"
     },
     "./binary": "./binary.mjs",
-    "./register": "./register.mjs",
+    "./register": {
+      "types": "./register.d.mts",
+      "default": "./register.mjs"
+    },
     "./eslint": "./eslint.mjs",
     "./oxlint": "./oxlint.mjs",
     "./knip": "./knip.mjs",
@@ -79,6 +82,7 @@
     "metro.cjs",
     "babel.cjs",
     "register.mjs",
+    "register.d.mts",
     "register-prefill.mjs",
     "bun.mjs",
     "bun-export-surface.mjs",

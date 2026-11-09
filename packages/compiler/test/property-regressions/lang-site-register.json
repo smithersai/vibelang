@@ -1,0 +1,8 @@
+{
+  "property": "packed-register-types",
+  "rule": "The documented register entry is a typed side-effect module with no value exports.",
+  "input": {
+    "source": "await import(\"vibelang/register\")",
+    "resolution": "Bundler"
+  }
+}
