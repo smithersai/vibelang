@@ -1,20 +1,8 @@
 package vibelang
 
-// D376/D382: a block param is always its call's last argument. Through
-// VibeLang 0.0.10, D188 placed a block after an Effect dual where the dual
-// takes its program: f(block, args) for a data-first signature, and
-// f(args)(block) for a data-last or curried one. This file keeps that rule
-// as a recorder that reads declared signatures only. No answer from it takes
-// part in expression typing, form selection or emit.
-//
-// Where the appended call no longer type-checks, TypeScript's own error stays
-// and explainDualBlock adds a note with the effect block spelling. Where it
-// still type-checks, the block now means something else, which is EK1023.
-// --fix writes the program first where a data-first signature exists, and the
-// curried call otherwise: the two calls D188's lowering emitted,
-// f(block, args) and f(args)(block), with the block written as effect { … },
-// the Effect itself (VIP-2). An arrow there would be a plain function, which
-// never becomes a program at an Effect parameter (VIP-2).
+// Retired dual trailing blocks retain declared-signature analysis solely for
+// diagnostics; it does not select expression types, forms or emitted code.
+// A changed meaning reports EK1023; independent TypeScript errors remain.
 
 import (
 	"slices"

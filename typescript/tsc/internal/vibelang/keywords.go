@@ -291,10 +291,8 @@ func keywordWhat(call *ast.Node) string {
 	return "fork's new fiber"
 }
 
-// checkKeywordOperands reports EK1703 at a fork operand that is not an
-// Effect: fork e forks the Effect e evaluates to (VIP-17). Retired await
-// operations keep only their old typing recorder for --fix; EK1802 rejects the
-// syntax.
+// checkKeywordOperands reports EK1703 for a fork operand that is not an Effect.
+// Retired await syntax retains its typing recorder and reports EK1802.
 func checkKeywordOperands(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
 	var visit func(*ast.Node) bool

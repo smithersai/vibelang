@@ -25,7 +25,7 @@ import (
 )
 
 // The tools area's targets (FuzzFormat, FuzzFix, FuzzEditor and
-// FuzzIncremental) check the tooling of Chapter 28: the formatter, --fix and
+// FuzzIncremental) check the tooling of Chapter 28: the formatter and
 // quick fixes, and the language server. This file holds the text helpers they
 // share: seeds, parsing, comments, and LSP positions and edits. Every name in
 // it starts with "tools" so that it cannot collide with another area's

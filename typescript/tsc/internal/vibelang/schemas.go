@@ -7,27 +7,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// Schema declarations (D133).
-//
-//	schema User { id: string; role: "admin" | "member"; home: Address }
-//
-// declares the constant `User = Schema.Struct({ ... })` and the interface
-// `User`, the struct's decoded type (internal/parser/vibelang.go). The checker
-// reads both as written. This file reports EK2109 at a field whose type has
-// no schema form, which the parser wrote as Schema.Unknown flagged
-// NodeFlagsVibeLang, and at a field whose type names a value that is not a
-// schema, such as Date. It reports EK1505 (D247) at a member of a schema body
-// that is not a field, a method, a signature, an accessor or a property
-// without a type, which the parser wrote as Schema.Never flagged
-// NodeFlagsVibeLang.
-//
-// VIP-15 maps only primitives among the keyword types. unknown, any, never,
-// object and void have no schema form; their quick fix, which vibelang --fix
-// applies, writes the Schema constant the field meant, which the struct
-// refers to by name:
-//
-//	schema Event { payload: unknown }
-//	schema Event { payload: Schema.Unknown }
+// Schema keyword eligibility analysis retains EK2109 and its explicit
+// Schema-constant guidance. Existing declaration lowering remains unchanged.
 
 // EK1505: a member of a schema body that is not a field. {0} is the member.
 var EK1505 = message(1505, errorCategory, "{0} is not a field: a schema body holds only fields, each written name: Type or name?: Type.")
@@ -47,9 +28,8 @@ var schemaKeywordConstants = map[string]string{
 	"void":    "Schema.Void",
 }
 
-// noteSchemaKeyword adds to d, EK2109 at text, the Schema constant that the
-// quick fix writes, when text is a keyword type the mapping leaves out, and
-// reports whether it did.
+// Schema keyword eligibility analysis retains EK2109 and its explicit
+// Schema-constant guidance. Existing declaration lowering remains unchanged.
 func noteSchemaKeyword(d *ast.Diagnostic, text string) bool {
 	constant, ok := schemaKeywordConstants[text]
 	if ok {

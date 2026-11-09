@@ -300,11 +300,7 @@ func boundaryInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node, ke
 		taken[chosen] = true
 		in.param = chosen
 	}
-	// The consts join the enclosing function's scope, so they must not
-	// shadow or redeclare a name written anywhere in it. --fix plans every
-	// call of a round on one tree and applies them together, so the consts
-	// of the calls before this one are taken too: two calls that each named
-	// their operand a2 refused each other with TS2451 (Smithers: setup, files).
+	// Temporary names must not shadow or redeclare names in the enclosing function.
 	if fn := enclosingFunction(call); fn != nil {
 		var names func(n *ast.Node) bool
 		names = func(n *ast.Node) bool {

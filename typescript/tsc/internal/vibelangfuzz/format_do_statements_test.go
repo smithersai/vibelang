@@ -43,7 +43,7 @@ var formatDoStatementForms = []struct{ key, source string }{
 	{"postfix-member", "(do { ({ value: 1 }); }).value++;\n"},
 	// The same statement inside do, effect and arrow bodies: at a body's start
 	// and end, and after a declaration or another statement, whose semicolon
-	// a formatter with an asi style drops. --fix writes Option.match this way,
+	// a formatter with an asi style drops. The explicit Option.match spelling,
 	// as `do { const $optionInput = ...; (do { ... }); }`.
 	{"smithers-code-storage-minimal", "export const g = (x: number) => do { (do { x * 2 }); }\n"},
 	{"smithers-option-match-temporary", "export const g = (x: number) => do { const $optionInput = x + 1; (do { $optionInput * 2; }); };\n"},
@@ -63,7 +63,7 @@ var formatDoStatementForms = []struct{ key, source string }{
 }
 
 // formatDoStatementSmithers names the Smithers witnesses: the minimized
-// CodeStorage program and the --fix Option.match temporary it came from.
+// CodeStorage program and its explicit Option.match temporary.
 var formatDoStatementSmithers = map[string]string{
 	"smithers-code-storage-minimal":   "export const g = (x: number) => do { (do { x * 2 }); }\n",
 	"smithers-option-match-temporary": "const $optionInput = x + 1; (do { $optionInput * 2; });",

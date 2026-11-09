@@ -8,7 +8,7 @@ import (
 
 // Chapter 004, decided detail 245: two top-level patterns that bind one name
 // in one home report TS2451 (TS2300 beside a parameter); the diagnostic
-// offers to rename the later binding and its uses, and --fix applies it.
+// retains the same duplicate-binding report and ordinary source behavior.
 var bindingRenameTests = []struct{ name, source, want string }{
 	{"explicit keys", `export function pick(a: unknown, b: unknown) {
   if (a is { id: let id }) return id

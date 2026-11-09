@@ -12,36 +12,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// Data declarations (D307). The parser writes
-//
-//	data Delivery { Waiting; Sent { tracking: string } }
-//
-// as Effect's own Data.TaggedEnum type and Data.taggedEnum constructors
-// (parser/vibelang_data.go), so construction, $is, $match, equality and
-// hashing are Effect's. What VibeLang adds is checked here:
-//
-//   - the declaration's rules: no name
-//     Data.taggedEnum reserves (EK1602), no _tag field (EK1601), only fields in
-//     a variant, or a variant written with a parenthesized list (EK1606), at most four type parameters (EK2801)
-//     and no constraints (EK2126). A comma separates variants and fields,
-//     as ; and a line break do (Appendix A, Separator);
-//   - Name.Variant naming no variant, in a call, a pattern or anywhere else
-//     (EK2127, in place of TypeScript's TS2339);
-//   - patterns. A variant constructor is a value, not a class: a class
-//     pattern naming one, when Delivery.Sent, when Delivery.Sent { let
-//     tracking } or when Delivery.Sent(let t), is EK0702 (reportValuePattern),
-//     and its quick fix writes the tag object pattern, when { _tag: "Sent" }
-//     (data_variant_pattern_fix.go). The parser still reads the retired form
-//     as a call of $is whose matcher is the constructor, so the checker keeps
-//     narrowing it by the variant's tag (narrowDataVariant) and the lowering
-//     keeps writing it as Delivery.$is("Sent")(d) (data_lower.go), which lets
-//     the rest of a file with that error check as it did. A field list after
-//     anything but a variant is EK0707.
-//
-// What makes Name a data type is its value's type, not its declaration:
-// Effect's constructors object, with the $is and $match that
-// Data.TaggedEnum.Constructor declares, so a data type a .ts file declares
-// with Data.taggedEnum matches the same way.
+// Data declarations use Effect constructors and tagged patterns. Rejected class
+// patterns retain their historical narrowing and lowering for diagnostic recovery.
 
 var (
 	// EK1601: a variant field named _tag.
@@ -490,7 +462,8 @@ func reportValuePattern(c *checker.Checker, matcher *ast.Node) bool {
 	}
 	if tag, _, variant := dataVariantOf(c, matcher); variant {
 		if isPatternCall(matcher.Parent, "$extract") {
-			// An argument list after a variant was never valid: no quick fix.
+			// Data declarations use Effect constructors and tagged patterns. Rejected class
+			// patterns retain their historical narrowing and lowering for diagnostic recovery.
 			report(c, matcher, dataExtractorDiagnostic, scanner.GetTextOfNode(matcher))
 		} else {
 			report(c, matcher, ek0702Variant, scanner.GetTextOfNode(matcher), tag)

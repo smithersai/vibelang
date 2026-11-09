@@ -6,14 +6,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// try runs an Effect only in effect code (VIP-1, VIP-5): the body of the
-// innermost enclosing function, when that function is marked effect, is an
-// effect block, or is a producer. A plain function nested in an effect
-// function is plain, as an arrow nested in an async function cannot await,
-// and a parameter default runs when the function is called, outside its
-// Effect. Anywhere else try is EK0501. Its quick fix marks the function
-// effect; vibelang --fix leaves it alone, because the callers of a marked
-// function get its Effect unrun instead of its value.
+// try runs an Effect only in effect code (VIP-1, VIP-5). A plain nested
+// function and parameter defaults remain outside that Effect; other uses are EK0501.
 
 // EK0501: try outside effect code. {0} says where the try stands.
 var EK0501 = message(501, errorCategory, "try runs an Effect only in effect code, but {0}.")

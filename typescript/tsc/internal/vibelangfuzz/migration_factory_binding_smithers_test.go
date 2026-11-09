@@ -1,9 +1,7 @@
 package vibelangfuzz
 
-// Pin19's frozen Smithers conversions moved plain factory construction into
-// generators. Fresh full --fix already preserves these witnesses. Chapter 7's
-// quoted preservation rule is the oracle; the unconverted TypeScript observer
-// detects captured identities and input snapshots instead of inspecting syntax.
+// Frozen factory-construction patterns retain independent TypeScript observers
+// for captured identities and input snapshots.
 const smithersFactorySource = `import { Effect, Schema, Redacted } from "effect"
 class ProbeError extends Schema.TaggedError<ProbeError>()("ProbeError", {message: Schema.String}) {}
 export const namespace = (bank: string) => Effect.succeed({namespace: {kind: "flow", id: bank}, bank})

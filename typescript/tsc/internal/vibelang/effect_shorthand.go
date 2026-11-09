@@ -8,13 +8,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// effect goes exactly where TypeScript allows async (VIP-39), so a function
-// declaration keeps its function keyword: effect function load(id) and
-// async function get(url). The parser still reads the shorthand that VIP-39
-// removed, effect load(id) { … } or async get(url) { … }, as the declaration
-// it was meant to be, and EK0101 reports it, with the quick fix, which
-// vibelang --fix applies, that writes function before the name. A method
-// keeps effect find() { … }, as TypeScript keeps async find() { … }.
+// effect occupies the same modifier position as TypeScript async (VIP-39).
+// A function declaration keeps function; the retired shorthand reports EK0101.
+// Methods retain their normal method spelling.
 
 func init() {
 	fileChecks = append(fileChecks, checkShorthands)

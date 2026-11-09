@@ -29,7 +29,6 @@ func checkGeneratorArguments(c *checker.Checker, file *ast.SourceFile) {
 					api := apiName(node)
 					d := report(c, api, EK1002, scanner.GetSourceTextOfNodeFromSourceFile(file, api, false))
 					note(d, "Write the body as an ordinary function: remove {0}, function*, and yield*.", scanner.GetSourceTextOfNodeFromSourceFile(file, api, false))
-					noteEffectGenFix(c, file, d, node)
 					cover(c, arg) // a function expression's body has no VibeLang meaning
 					if decl := generatorDeclaration(c, arg); decl != nil && ast.GetSourceFileOfNode(decl) == file {
 						cover(c, decl) // nor has the body of a producer written for it

@@ -11,26 +11,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// `try e` runs the Effect e where it stands and gives its success value
-// (VIP-5). Before a call, the parser returns the call itself, flagged
-// NodeFlagsVibeLangTry (parser/vibelang_try.go), so the checker, the
-// analyzer, and the lowering see the call they see without try: while a
-// call still runs where it stands without try, try before it means the call,
-// and it is accepted exactly where the call runs (runsWhereItStands). Before
-// any other operand, try p is $try(p), the runtime's identity on Effects,
-// which the checker gives p's success type and the lowering writes as
-// yield* p, or p itself where $try(p) is passed by name. Anything else, a
-// call passed or held unrun or a value that is not an Effect, is EK0502.
-//
-// try(…) was a hatch, Effect.try with its inputs after its function (D148).
-// It now parses as try applied to the parenthesized operand, and EK4616
-// reports it, with the quick fix, which vibelang --fix applies, that writes
-// Effect's own wrapper:
-//
-//	try((text) => JSON.parse(text), text)        try Effect.try(() => JSON.parse(text))
-//	try((text) => JSON.parse(text), "1")         try Effect.try(() => { let text = "1"; return JSON.parse(text) })
-//	try(() => parse(text), (e) => new Bad({ e }))  try Effect.try({ try: () => parse(text), catch: (e) => new Bad({ e }) })
-//	try(async (signal) => load(signal))           try Effect.tryPromise(async (signal) => load(signal))
+// The retired try hatch reports EK4616. Use an explicit Effect.try or
+// Effect.tryPromise wrapper and run the resulting Effect with try.
 
 var (
 	// EK0502: try before something that is not an Effect. {0} is the operand, {1} its type.

@@ -92,9 +92,8 @@ func deniedTrailingBlockDiagnostics(ctx context.Context, program *compiler.Progr
 	}
 	migration := trailingBlockMigrationProgram(program)
 	legacy := migration.GetSourceFile(file.FileName())
-	// VIP-39: native JSX container errors keep their TypeScript diagnostics.
-	// Private decoding still recognizes these calls for --fix, but its
-	// callback interpretation must not add EK1101 to native TSX recovery.
+	// Private compatibility decoding retains native JSX diagnostic recovery.
+	// Its callback interpretation must not add EK1101 to native TSX errors.
 	jsxBraces := map[int]bool{}
 	for _, call := range trailingBlockCalls(legacy) {
 		if trailingBlockInJsxContainer(call) {

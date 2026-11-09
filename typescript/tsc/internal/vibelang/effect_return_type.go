@@ -7,13 +7,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// An effect function returns an Effect, as an async function returns a
-// Promise (VIP-1), so a return type written on one is an Effect type:
-// effect function load(id): User!NotFound. A return type that is not an
-// Effect, effect function load(id): User, is EK0106. Its quick fix writes
-// the Effect of that type, User!!. For a broad any/unknown annotation on
-// a body, omit the annotation instead, retaining the inferred channels.
-// vibelang --fix applies these repairs through its error-preserving gate.
+// An effect function's written return annotation is an Effect type (VIP-1).
+// A non-Effect return annotation reports EK0106; an omitted annotation infers
+// the function's existing channels.
 
 // EK0106: an effect function's return type that is not an Effect. {0} is
 // the written type, {1} the Effect type to write instead.

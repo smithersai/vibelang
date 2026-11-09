@@ -13,25 +13,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// A catch handler is a plain or effect arrow or function expression, possibly
-// parenthesized, so its syntax alone decides its kind (VIP-5, amended
-// 2026-10-29). Anything else after catch is EK0509: a name, a call, any other
-// value, an effect { … } block, a class expression, or an async or generator
-// function. The quick fix wraps a value in a function literal, so the
-// handler's kind stays visible, and removes async or * from a function:
-//
-//	x catch guest                x catch () => guest
-//	x catch onErr                x catch (e) => onErr(e)        (onErr a function)
-//	x catch Effect.succeed(1)    x catch effect () => try Effect.succeed(1)
-//	x catch throw e              x catch effect () => throw e
-//	x catch effect { … }         x catch effect () => { … }
-//	x catch async (e) => 7       x catch (e) => 7
-//	x catch function* (e) { }    x catch function (e) { }
-//
-// An Effect value gets an effect handler that runs it, as the legacy fallback
-// did; a plain () => effect would hold it as data (EK0508). A throw
-// expression gets an effect handler too, so it fails with its value, typed,
-// as the legacy fallback did; in a plain handler it would be a defect.
+// Catch handlers must be plain or effect function expressions (VIP-5).
+// Other values, async functions and generators report EK0509. An explicit
+// effect handler runs an Effect; a plain handler may hold it as data.
 
 // EK0509: a catch handler that is no function literal.
 var EK0509 = message(509, errorCategory, parser.VibeLangCatchHandlerMessage)

@@ -12,15 +12,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// The rules of Effect's language service (@effect/language-service 0.87.5,
-// D240). VibeLang's syntax and call semantics make most of them impossible to
-// break: there is no Effect.gen to misuse, a call already runs, and catch
-// already catches. The rules that still apply are the EK48xx diagnostics
-// below, each named after the Effect rules it stands for. Every one but
-// EK4813 is adjustable (D241), and those marked off by default report
-// nothing until compilerOptions.vibelang or an @vibelang-diagnostics comment
-// turns them on. The editor's quick fixes for them are in lsrules_fixes.go,
-// and the rules that also apply to .ts files in lsrules_ts.go.
+// Effect language-service rules retained as EK48xx diagnostics. Rules that
+// also apply to TypeScript files are implemented in lsrules_ts.go.
 
 var (
 	// EK4801 (floatingEffect): a statement that discards an Effect value. {0} is the expression.

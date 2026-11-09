@@ -7,42 +7,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// Legacy platform entry markers (VIP-26, chapter 7).
-//
-//	import "vibelang/platform/node"
-//
-//	export effect function main() {
-//	  try Console.log("Hello")
-//	}
-//
-// The retired side-effect imports vibelang/platform/node, bun and browser
-// once made the compiler start an exported main when the host started the
-// module. Each marker now reports EK2601, with or without main, and the
-// compiler adds no startup: main is an ordinary function, and a program
-// starts where its source calls a runner, as in Effect TypeScript.
-//
-// vibelang --fix reads the marker as the legacy compiler did, to decide what
-// the marker meant (fix_entry_marker.go). A marker in a module without an
-// eligible startup is inert, and the fix removes it. An eligible startup is
-// an exported, non-default function declaration main with no parameters and
-// a body, in a module that calls no runner at its top level
-// (entryMain). The legacy compiler started it only when the host started its
-// module, never on import, and no admitted source can test which module the
-// host started, so the fix refuses it: the marker stays, and the refusal
-// names the runner call and the layers the legacy compiler selected for main
-// (entryBundles), for the program's owner to write where the program starts.
-//
-// The legacy selection: node and bun ran main with @effect/platform-node's
-// NodeRuntime, browser with @effect/platform-browser's BrowserRuntime. When
-// main needed services that the named platform's bundle provides, such as
-// FileSystem and Path, it ran under that bundle's layer: node names
-// @effect/platform-node's NodeServices, bun @effect/platform-bun's
-// BunServices, and browser @effect/platform-browser's BrowserServices. When
-// main needed a service that only the platform's experimental bundle
-// provides (D313), it ran under that bundle instead, since its layer holds
-// Effect's; Effect's came outside it only when main needed a service the
-// experimental bundle does not declare, or its layer needed services itself.
-// A marker alone selected no layer.
+// Legacy platform markers report EK2601 without adding startup.
+// Programs explicitly call their runner and provide the required layers.
 
 // platformNodeModule is the package whose NodeRuntime runs an entry module.
 const platformNodeModule = "@effect/platform-node"

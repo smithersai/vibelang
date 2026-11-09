@@ -9,15 +9,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// The current spelling of services, controls, and layers (D223, D221).
-//
-//	service Users { find(id: string): User!NotFound }
-//	control Approval { approve(request: string): boolean!! }
-//	const UsersLive = Layer.effect(Users, effect { const seen = new Set<string>(); return { find(id) { ... } } })
-//
-// Retired service class and layer declarations report errors naming --fix.
-// Control class retains its existing warning. Legacy lowering remains available
-// so --fix can preserve declaration APIs and execution before removing syntax.
+// Retired service class and layer declarations retain their existing errors.
+// Control class retains its existing warning and legacy lowering is unchanged.
 
 var (
 	EK0909 = message(909, errorCategory, "service class declarations are retired: write service without class.")

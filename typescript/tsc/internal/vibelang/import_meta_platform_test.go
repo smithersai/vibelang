@@ -33,7 +33,7 @@ export class Ordinary { constructor() { new.target.name } }
 			continue
 		}
 		spans = append(spans, source[d.Pos():d.End()])
-		// rule-evidence: docs/design/vips/0033-platform-stdlib.md#62d8805f69f4827a | The quick fix names the Effect service (`Path`, `Config.String`) or moves the code to a `.ts` file.
+		// rule-evidence: docs/design/src/007-tooling.md#explicit-source-changes | Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.
 		for _, repair := range []string{"Path service", "Config.String", "move this import.meta use to a .ts file"} {
 			if !strings.Contains(diagnosticWithNotes(d), repair) {
 				t.Errorf("diagnostic lacks its repair %q: %s", repair, d.String())

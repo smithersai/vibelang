@@ -9,31 +9,15 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
-// Two top-level is patterns that bind one name in one lexical home redeclare
-// it, as two let declarations do, and TypeScript reports what such a let
-// reports: TS2451 beside another lexical declaration, TS2300 beside a
-// parameter (chapter 004, decided detail 245). The parser hoists each binding
-// as a let of its home (parser.hoistDeclaration), so the binder reports the
-// duplicate where the pattern wrote the name. The diagnostic offers to rename
-// the later binding and its uses, and vibelang --fix applies that rename:
-// under the previous release each if head was its own scope, so code written
-// for it migrates mechanically (007 Codemods).
-//
-// A positive if head used to own a statement-local binding: its condition
-// tail and then branch read that binding, while its else branch and following
-// statements still read an outer parameter or local. Recover that ownership
-// before renaming; current symbol resolution alone sees the duplicate home
-// declarations and cannot distinguish these reads. A shorthand binding, { let id },
-// keeps its key: it becomes { id: let id2 }. The new name is the name with the
-// smallest number that no identifier of the file uses.
+// Lexical is-pattern bindings share their enclosing home. The binder reports
+// duplicate names using the same TS2451 or TS2300 diagnostic as TypeScript.
 
 func init() {
 	checker.RegisterBindDiagnosticsFilterHook(explainBindingRename)
 }
 
-// bindingRenameNote is the line under TypeScript's redeclaration report at an
-// is binding: the report points at the quick fix (chapter 004, decided detail
-// 245). {0} is the name.
+// Lexical is-pattern bindings share their enclosing home. The binder reports
+// duplicate names using the same TS2451 or TS2300 diagnostic as TypeScript.
 const bindingRenameNote = "Two is patterns bind {0} in one block: the quick fix renames the later binding and its uses; or use distinct names or separate blocks."
 
 // explainBindingRename adds bindingRenameNote under each TS2451 or TS2300 at

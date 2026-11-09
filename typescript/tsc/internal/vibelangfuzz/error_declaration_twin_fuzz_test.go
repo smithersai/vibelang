@@ -23,7 +23,7 @@ import (
 // declarations of the .vibe and of the twin under stock tsc must agree under
 // the migration identity gate's canonicalization, as FuzzDeclarationIdentity
 // compares them. alchemy declares 171 fieldless Data.TaggedError classes, so
-// `--fix` writing them as `error X` must keep their declarations (corpus
+// Writing the equivalent `error X` must keep their declarations (corpus
 // alchemy-fieldless-tagged-error). The `schema` key picks the other form:
 // "`schema error Name { fields }` combines `error` and the field mapping of
 // `schema` declarations", whose twin is `Schema.TaggedError<Name>()("Name",

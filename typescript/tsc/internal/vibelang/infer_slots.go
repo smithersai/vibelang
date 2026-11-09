@@ -5,17 +5,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// Effect slots written `infer` (VIP-3, amended 2026-11-02).
-//
-// An effect function's return annotation means what the same annotation
-// means on the equivalent Effect.fn or Effect.gen TypeScript. TypeScript has
-// no `infer` outside a conditional type's extends clause (TS1338), so
-// Effect<A, infer E, R> has no Effect TypeScript twin and is retired through
-// the legacy path: EK4857 reports it, and its fix, which vibelang --fix
-// applies, writes the type the checker infers for each such slot, or removes
-// an effect function's annotation when every slot is `infer`, which declares
-// the same type. The checker still fills the slots in (annotatedReturnType),
-// so the fix and the program's types agree until the form is removed.
+// Retired infer slots report EK4857. The checker still fills their types
+// through annotatedReturnType, preserving the existing program contract.
 
 var EK4857 = message(4857, errorCategory, "An Effect slot written infer has no Effect TypeScript spelling; write the type the body gives it, or leave out the whole return annotation.")
 
@@ -70,9 +61,8 @@ func inferSlotRewrite(c *checker.Checker, file *ast.SourceFile, annotation *ast.
 	}
 	declared := c.GetReturnTypeOfSignature(c.GetSignatureFromDeclaration(fn))
 	if !isMarkedEffect(fn) {
-		// A plain callable returns its body's Effect unrun. Filling an infer
-		// slot cannot repair a written channel that conflicts with that Effect;
-		// withhold the quick fix under VIP-34's preservation rule.
+		// Retired infer slots report EK4857. The checker still fills their types
+		// through annotatedReturnType, preserving the existing program contract.
 		returned := plainReturnedEffect(c, fn)
 		if returned == nil {
 			return nil

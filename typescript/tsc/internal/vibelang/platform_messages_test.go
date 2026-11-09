@@ -75,7 +75,7 @@ export const run = () => execFileSync("git", ["status"])`, []string{
 			"Use the ChildProcessSpawner service:   try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))",
 			provideNodeServices,
 		}},
-		// rule-evidence: docs/design/vips/0033-platform-stdlib.md#af700d45440d7ea1 | Its quick fix and the codemod move the body into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`).
+		// rule-evidence: docs/design/src/007-tooling.md#explicit-source-changes | Diagnostics retain their existing codes, categories and eligibility; compiling a file does not apply a source rewrite.
 		{"http client inside tryPromise", `export const run = (url: string) => Effect.tryPromise(() => fetch(url))`, []string{
 			"fetch is platform code, which VibeLang code does not use directly.",
 			"Use HttpClient:   try HttpClient.get(url)",

@@ -82,7 +82,7 @@ func FuzzMigrationImportMetaPolicy(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)
 	binary := cliBuild(f, w.Dir)
-	// Every key once, so the ignore-exit and --fix observations run without fuzzing.
+	// Every key once, so ordinary diagnostic observations run without fuzzing.
 	for _, key := range importMetaPolicyKeys {
 		f.Add(key, uint8(0))
 	}

@@ -341,7 +341,7 @@ func isSource(name string) bool {
 	return false
 }
 
-// workspaceSourceFS lets real --fix invocations reuse the same dependency
+// workspaceSourceFS lets compiler invocations reuse the same dependency
 // trees as Compile. The fixer validates text and parse options, so no program,
 // diagnostics, gate decision or runtime result is cached across inputs.
 type workspaceSourceFS struct {

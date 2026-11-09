@@ -15,23 +15,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// Move module to a TypeScript file (VIP-40) turns
-//
-//	module text {
-//	  export function clean(value: string): string { return value.trim() }
-//	}
-//	import { clean } from text
-//
-// in main.vibe into text.ts, holding the body, and
-//
-//	import { clean } from "./text.js"
-//
-// The body is already a TypeScript module of its own, so the move is a copy.
-// The file is name.ts, or main.name.ts when anything named name exists beside
-// the .vibe file, in any case and with any extension. The specifier ends in the
-// file's extension where the project imports .ts files by their names
-// (rewriteRelativeImportExtensions or allowImportingTsExtensions), and in .js
-// otherwise. It is only ever a requested edit; --fix never moves a body.
+// Move module to a TypeScript file is an explicit requested refactor. It
+// copies the module body and preserves the project's import-extension policy.
 
 const moveModuleTitle = "Move module to a TypeScript file"
 

@@ -7,40 +7,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// After the quick fixes, vibelang --fix writes what the prelude makes
-// shorter (D310, D311):
-//
-//	import * as Console from "effect/Console"           removed: the prelude has Console
-//	import { HttpRouter } from "effect/http"             removed: the prelude has HttpRouter
-//	import { FileSystem } from "effect/FileSystem"       removed: the module's name names its export
-//	Layer.succeed(FileSystem, impl)                      Layer.succeed(FileSystem.FileSystem, impl), once that import goes
-//	FileSystem.FileSystem.readFileString(path)           FileSystem.readFileString(path)
-//	FileSystem.FileSystem()                              FileSystem()
-//	(fs: FileSystem.FileSystem) => …                     (fs: FileSystem) => …
-//	Option.Option<number>                                Option<number>
-//
-// An import goes only when it binds one of effect's modules under the
-// module's own name, from that module, effect's root, or the module's
-// subpath package, or a module's export of the module's own name from the
-// module, and no JavaScript or shared web global takes the name (D264,
-// D310). M.M becomes M only where M reaches the module through the prelude,
-// or through an import this removes, and D311 gives M that meaning. As with
-// the quick fixes, a file's rewrites are kept only when the program then
-// reports no error it did not report before.
-//
-// Every .vibe module has a declaration, including a sidecar with noEmit or
-// declaration:false. Unless noUnusedLocals requires source cleanup, an import stays when its spelling
-// is not the one the declaration file would write for the prelude's name and
-// the file's declaration file keeps it, so the declaration file keeps the
-// import its TypeScript wrote (D501): with import * as Schema from
-// "effect/Schema" and an export typed Schema.Codec, the declaration keeps
-// import * as Schema from "effect/Schema" rather than import { Schema } from
-// "effect", and import type keeps its modifier. The declaration file prints types as the source writes them, so
-// the emitted declaration decides, not the exports' types: a local
-// type NonNull<V> = V extends DateTime.Utc ? … that an export names, or an
-// export typed keyof DateTime.Utc, keeps import * as DateTime.
+// Checked prelude-name and declaration-spelling analysis remains available
+// to ordinary diagnostics and explicit refactors.
 
-// The kinds of rewrite, as the --fix report names them.
+// Checked prelude-name and declaration-spelling analysis remains available
+// to ordinary diagnostics and explicit refactors.
 const ()
 
 // preludeModulePath returns the module that holds the effect module named

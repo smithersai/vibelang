@@ -17,11 +17,11 @@ parser/vibelang.go:Parser.parseVibeLangEffectType	admission:effect-type	900-appe
 parser/vibelang.go:Parser.parseVibeLangSlot	admission:effect-type	900-appendices.md#EffectOperand	support	Appendix A: EffectOperand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang.go:Parser.parseVibeLangSlotType	admission:effect-type	900-appendices.md#EffectOperand	support	Appendix A: EffectOperand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang.go:Parser.parseServiceDeclaration	admission:service	900-appendices.md#ServiceDeclaration	admitted	VIP-9 member-body and written whole-shape services; legacy control branches remain pending
-parser/vibelang.go:Parser.parseLayerDeclaration	admission:layer-declaration	007-tooling.md,900-appendices.md	recovery	Retired layer declarations report EK2121; recovery retains only the preserving migration
+parser/vibelang.go:Parser.parseLayerDeclaration	admission:layer-declaration	007-tooling.md,900-appendices.md	recovery	Retired layer declarations report `EK2121`; recovery retains existing diagnostics and lowering
 parser/vibelang.go:Parser.parseVibeLangEntityExpression	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
-parser/vibelang.go:Parser.scanLayerValueStart	admission:layer-declaration	007-tooling.md,900-appendices.md	recovery	Retired layer declarations report EK2121; recovery retains only the preserving migration
-parser/vibelang.go:Parser.parseLayerValue	admission:layer-declaration	007-tooling.md,900-appendices.md	recovery	Retired layer declarations report EK2121; recovery retains only the preserving migration
-parser/vibelang.go:Parser.scanLayerMethodStart	admission:layer-declaration	007-tooling.md,900-appendices.md	recovery	Retired layer declarations report EK2121; recovery retains only the preserving migration
+parser/vibelang.go:Parser.scanLayerValueStart	admission:layer-declaration	007-tooling.md,900-appendices.md	recovery	Retired layer declarations report `EK2121`; recovery retains existing diagnostics and lowering
+parser/vibelang.go:Parser.parseLayerValue	admission:layer-declaration	007-tooling.md,900-appendices.md	recovery	Retired layer declarations report `EK2121`; recovery retains existing diagnostics and lowering
+parser/vibelang.go:Parser.scanLayerMethodStart	admission:layer-declaration	007-tooling.md,900-appendices.md	recovery	Retired layer declarations report `EK2121`; recovery retains existing diagnostics and lowering
 parser/vibelang.go:Parser.isStartOfVibeLangProvide	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 provider parsing and support
 parser/vibelang.go:Parser.scanStartOfVibeLangProvide	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 provider parsing and support
 parser/vibelang.go:Parser.scanVibeLangProvideArguments	admission:provide	900-appendices.md#ProvideStatement	support	VIP-12 provider parsing and support
@@ -322,7 +322,7 @@ parser/vibelang_try.go:Parser.parseVibeLangTryOperation	admission:try	900-append
 parser/vibelang_try.go:isVibeLangTry	admission:try	900-appendices.md#TryExpression	support	VIP-5: try (try e) runs both layers; the inner try stays the operand
 parser/vibelang_try.go:holdsVibeLangTry	admission:try	900-appendices.md#TryExpression	support	VIP-5: try (try (e)) runs both layers; parentheses around the inner try keep it the operand
 parser/vibelang_try.go:isVibeLangFormCall	admission:try	900-appendices.md#TryExpression	support	VIP-5: try do { e }, try match and try try.race [a, b] run the value the form gives; the form stays the operand
-parser/vibelang_retired_controls.go:Parser.retiredControlForm	admission:retired-control-forms	000-intro.md	recovery	First-release handler retirement reports EK3501/EK4607 and names --fix; recovery supports diagnostics and migration, never admission of open VIP-35 forms.
+parser/vibelang_retired_controls.go:Parser.retiredControlForm	admission:retired-control-forms	000-intro.md	recovery	First-release handler retirement reports `EK3501`/`EK4607`; recovery retains diagnostics and existing lowering, never admission of open VIP-35 forms.
 vibelang/catches.go:init	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately
 vibelang/catches.go:isFailureTest	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately
 vibelang/catches.go:failureTags	admission:catch-tests	003-failures.md	support	Failure test support; legacy typed catch syntax audited separately

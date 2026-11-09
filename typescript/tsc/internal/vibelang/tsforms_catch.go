@@ -94,7 +94,7 @@ func catchCombinatorOf(c *checker.Checker, call *ast.Node) string {
 
 // catchCombinatorName is catchCombinatorOf for any position of call. EK4835
 // reports only the direct operand of bare try (detail 254); catchStageRewrite
-// also reads a pipeline's last stage, which --fix rewrites and nothing reports.
+// also reads a pipeline's last stage for the retained diagnostic analysis.
 func catchCombinatorName(c *checker.Checker, call *ast.Node) string {
 	if !ast.IsCallExpression(call) || !inLowerableBody(call) || inHatch(call) {
 		return ""

@@ -6,21 +6,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
-// fork and join are reserved words under [+Effect] (VIP-17, amended; Appendix
-// A), so effect code never calls a binding of those names: fork(x) there is a
-// fiber operation. The parser reports a binding of either name in effect code
-// as EK1702. vibelang --fix renames, before it rewrites anything else:
-//
-//   - a binding EK1702 reports, with the uses in its scope, which the parser
-//     read as operations. They meant the binding, as the .ts twin reads them.
-//   - a binding an Effect.gen or Effect.fn program reads or declares. Its
-//     rewrite to effect code would otherwise turn fork(x) into the operation
-//     with no error to show for it, so planEffectGen refuses until the rename
-//     has landed.
-//
-// A rename keeps every name a reader outside the binding sees: an object key
-// stays ({ fork: fork2 }), an import keeps its source name, and an exported
-// binding keeps its exported name through export { fork2 as fork }.
+// fork and join are reserved in effect code (VIP-17). Checked binding
+// ownership analysis preserves ordinary diagnostics and explicit refactors.
 
 // reservedFiberName is EK1702 as the parser reports it for a binding in effect
 // code, including an Effect expression's own name (VIP-17; Appendix A).
@@ -72,71 +59,4 @@ func fiberNameSymbol(c *checker.Checker, id *ast.Node) *ast.Symbol {
 // operation's own name, which a rewrite to effect code keeps meaning.
 func isPreludeFiberName(c *checker.Checker, symbol *ast.Symbol, name string) bool {
 	return isRuntimeSymbol(c, symbol, name)
-}
-
-// generatorRegionFiberNames returns the identifiers spelled fork or join that
-// would stand in effect code once call, an Effect.gen or Effect.fn, is rewritten
-// and that name a program's own binding: the generator's parameters and body,
-// and the parameters of a function whose body is only that call.
-func generatorRegionFiberNames(c *checker.Checker, call *ast.Node) []*ast.Node {
-	var found []*ast.Node
-	g, why := readGeneratorCall(c, ast.GetSourceFileOfNode(call), call)
-	if g == nil || why != "" {
-		return nil
-	}
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		switch {
-		case ast.IsIdentifier(node):
-			if isFiberWord(node.Text()) && node.Flags&ast.NodeFlagsReparsed == 0 && !isFiberMemberName(node) {
-				if symbol := fiberNameSymbol(c, node); symbol != nil && !isPreludeFiberName(c, symbol, node.Text()) {
-					found = append(found, node)
-				}
-			}
-			return false
-		case ast.IsFunctionLike(node) && !isMarkedEffect(node):
-			// A plain arrow's head inherits the reservation; its body and any
-			// other plain callable do not (Appendix A).
-			if ast.IsArrowFunction(node) {
-				for _, parameter := range node.Parameters() {
-					visit(parameter)
-				}
-			}
-			return false
-		case node.Kind == ast.KindPropertyDeclaration || node.Kind == ast.KindEnumMember:
-			if name := node.Name(); name != nil && name.Kind == ast.KindComputedPropertyName {
-				visit(name)
-			}
-			return false // a field or enum initializer resets to [~Effect]
-		}
-		return node.ForEachChild(visit)
-	}
-	for _, parameter := range g.generator.Parameters() {
-		visit(parameter)
-	}
-	visit(g.generator.Body())
-	outer := call
-	for ast.IsParenthesizedExpression(outer.Parent) {
-		outer = outer.Parent
-	}
-	parent := outer.Parent
-	if ast.IsReturnStatement(parent) && ast.IsBlock(parent.Parent) && len(parent.Parent.Statements()) == 1 {
-		parent = parent.Parent.Parent
-	}
-	if ast.IsFunctionLike(parent) && !g.isFn {
-		for _, parameter := range parent.Parameters() {
-			visit(parameter)
-		}
-	}
-	return found
-}
-
-// generatorFiberNameRefusal says why call's rewrite must wait for a rename, or
-// returns "".
-func generatorFiberNameRefusal(c *checker.Checker, call *ast.Node) string {
-	names := generatorRegionFiberNames(c, call)
-	if len(names) == 0 {
-		return ""
-	}
-	return names[0].Text() + " is reserved in effect code, and this generator reaches a binding of that name; rename that binding first"
 }
