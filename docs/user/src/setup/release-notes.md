@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- An esbuild bundle could create separate copies of a native module when a generated module map used an absolute import. Absolute and relative imports now share the same exports and state.
+
 - Lint rules against runtime `typeof` could report checks generated for a record or extractor pattern. They now report only `typeof` operators written in the source.
 
 - Debuggers could lose the source position of `new.target` inside Effect code. Captured reads now keep their written location.

@@ -1,0 +1,7 @@
+{
+  "key": "unplugin:esbuild-default-reexport-identity",
+  "source": "export default { value: 1 }\n",
+  "name": "program",
+  "extension": "vibe",
+  "note": "A native barrel imports a VibeLang default relatively, while a generated shared-module map imports the same file by absolute path. Both routes must expose the same default object."
+}

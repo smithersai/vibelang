@@ -558,7 +558,12 @@ export const unplugin = createUnplugin((options = {}, meta) => {
       setup(build) {
         build.onDispose?.(close)
         build.onResolve({ filter: /^\.\.?(?:\/|$)|\.vibex?(?:\?.*)?$/ }, (args) => {
-          const id = resolveFrom(args.path, args.kind === "entry-point" ? undefined : args.importer, args.resolveDir)
+          // Generated module maps can import a source by absolute path.
+          // Give it the same namespace as relative imports so it runs once.
+          const absolute = cleanId(args.path)
+          const id = isAbsolute(absolute) && isCompiled(absolute) && existsSync(absolute)
+            ? resolve(absolute) + args.path.slice(absolute.length)
+            : resolveFrom(args.path, args.kind === "entry-point" ? undefined : args.importer, args.resolveDir)
           if (id === undefined) {
             const path = outputPath(args.path, args.importer, writtenOutput)
             if (path !== args.path) return build.resolve(path, {
