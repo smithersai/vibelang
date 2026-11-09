@@ -130,3 +130,4 @@ FuzzGrammarAdmission admission:schema-type-argument-list compiler VIP-15 and App
 FuzzGrammarAdmission corpus:schema-type-argument-list compiler VIP-15 and Appendix A: a trailing comma in a mapped schema field type's argument list compiles with no diagnostic
 FuzzGrammarAdmission corpus:schema-type-argument-list-empty compiler VIP-15 and Appendix A: an empty type argument list in a schema field type reports only `EK2109`
 FuzzGrammarAdmission corpus:schema-type-argument-list-campaign compiler VIP-15 and Appendix A: a trailing comma in an unmapped schema field type's argument list reports only `EK2109`
+FuzzGrammarAdmission corpus:try-match-statement-line-break compiler VIP-1 and Chapter 2: a try on the line before a match statement in a plain function compiles with no `EK0501`

@@ -915,6 +915,13 @@ the mapping does not know reports `EK2109` alone, as in the other schema
 families above. Both list shapes are pending under
 `admission:schema-type-argument-list`.
 
+A campaign then broke the line between `try` and a `match` statement in a
+plain function. A `TryExpression` has no line-break restriction, so the
+`match` on the next line is still the operand, and the statement lowering
+drops the `try` as it does on one line. The classifier for
+`admission:try-match-statement` required the two words on one line; it reads
+the pair across a line break now.
+
 The generated-error migration counterpart continues to test the guarantee
 that a foreign plain object with the recognized tag is covered. Its quote
 includes the chapter's additional `instanceof` fallback; the existing

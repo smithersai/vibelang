@@ -18,10 +18,12 @@ func TestGrammarAdmissionTryMatchStatementQuoted(t *testing.T) {
 }
 
 // grammarTryMatchStatement reports `try match (` as a return operand or at a
-// statement start, the positions the parser lowers to statements.
+// statement start, the positions the parser lowers to statements. A
+// TryExpression has no line-break restriction, so the match may start the
+// next line.
 func grammarTryMatchStatement(ts []grammarToken) bool {
 	for i := 0; i+2 < len(ts); i++ {
-		if ts[i].kind != 'w' || ts[i].text != "try" || ts[i+1].text != "match" || ts[i+1].nl || ts[i+2].text != "(" {
+		if ts[i].kind != 'w' || ts[i].text != "try" || ts[i+1].text != "match" || ts[i+2].text != "(" {
 			continue
 		}
 		if i == 0 || ts[i].nl {
@@ -40,11 +42,15 @@ const grammarTryMatchStatementWitness = "import { Effect } from \"effect\"\nexpo
 // The case-seeded campaign put try before a returned match of an error case.
 const grammarTryMatchStatementCampaign = "error Plain { code : number ; label ( ) : number { return this . code } }\nschema error Encoded { get label ( ) : number { return this . code } ; code : number }\nexport function plainZero ( s : unknown ) { return try match ( s ) { when Plain ( ) : 1 ; default : 0 ; } }\nexport function plainTwo ( s : unknown ) { return match ( s ) { when Plain ( let a , let b ) : 1 ; default : 0 ; } }\nexport function schemaZero ( s : unknown ) { return match ( s ) { when Encoded ( ) : 1 ; default : 0 ; } }\nexport function schemaTwo ( s : unknown ) { return match ( s ) { when Encoded ( let a , let b ) : 1 ; default : 0 ; } }"
 
+// A later campaign broke the line between try and the match statement.
+const grammarTryMatchStatementLineBreak = "export function f(s: unknown) { try\nmatch (s) { when 1: 1; default: 0; } }"
+
 var grammarTryMatchStatementGaps = []string{
 	grammarTryMatchStatementWitness,
 	grammarTryMatchStatementCampaign,
 	"export function f(s: unknown) { return try match (s) { when 1: 1; default: 0; } }",
 	"export function f(s: unknown) { try match (s) { when 1: 1; default: 0; } }",
+	grammarTryMatchStatementLineBreak,
 	"export function f(s: unknown) { if (s) return try match (s) { when 1: 1; default: 0; }; return 2 }",
 }
 

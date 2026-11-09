@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:try-match-statement-line-break\nexport function f(s: unknown) { try\nmatch (s) { when 1: 1; default: 0; } }")

@@ -330,6 +330,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-type-argument-list", grammarSchemaTypeArgumentsWitness},
 	{"schema-type-argument-list-empty", grammarSchemaTypeArgumentsGaps[1]},
 	{"schema-type-argument-list-campaign", grammarSchemaTypeArgumentsCampaign},
+	{"try-match-statement-line-break", grammarTryMatchStatementLineBreak},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
