@@ -28,7 +28,7 @@ test("property: match and is patterns hide generated type tests while preserving
   fc.assert(fc.property(
     fc.constantFrom("", "// café 😀\n", "/* 😀 */\r\n"),
     fc.constantFrom("vibe", "vibex"),
-    fc.constantFrom('{ tag: "ok", let value }', '{ nested: { let value } }', "String(let value)", "Number(let value)", '{ [typeof subject]: let value }'),
+    fc.constantFrom('{ tag: "ok", let value }', '{ nested: { let value } }', "String(let value)", "Number(let value)", "Boolean(let value)", "BigInt(let value)", "Symbol(let value)", '{ [typeof subject]: let value }'),
     fc.boolean(), fc.boolean(),
     (prefix, extension, pattern, isExpression, explicit) => {
       const result = explicit ? "typeof value" : "value"
@@ -41,11 +41,37 @@ test("property: match and is patterns hide generated type tests while preserving
       assert.equal(written.length, expected, source)
       for (const node of written) assert.match(source.slice(...node.range), /^typeof\b/)
       const hidden = nodes(tree).filter(node => node.type === "VibePatternTypeTest")
-      assert.ok(hidden.length > 0, source)
+      if (pattern.startsWith("{")) assert.ok(hidden.length > 0, source)
+      else {
+        assert.deepEqual(hidden, [], source)
+        const matcher = pattern.slice(0, pattern.indexOf("("))
+        assert.ok(nodes(tree).some(node => node.type === "Identifier" && node.name === matcher &&
+          node.synthesized !== true && source.slice(...node.range) === matcher), source)
+      }
       assert.deepEqual(vibeVisitorKeys.VibePatternTypeTest, ["argument"])
       assert.ok(nodes(tree).some(node => node.type === "Identifier" && node.name === "value" && node.synthesized !== true))
     }
-  ), { seed: 811085, numRuns: 100 })
+  ), { seed: 811085, numRuns: 400 })
+})
+
+test("primitive-named extractors retain their authored matcher references", () => {
+  for (const matcher of ["String", "Number", "Boolean", "BigInt", "Symbol"]) {
+    for (const extension of ["vibe", "vibex"]) for (const isExpression of [false, true]) {
+      for (const local of [false, true]) {
+        const parameters = "subject" + (local ? ", " + matcher : "")
+        const pattern = matcher + "(let value)"
+        const source = "// café 😀\nexport function f(" + parameters + ") { " + (isExpression
+          ? "if (subject is " + pattern + ") return value; return null;"
+          : "return match (subject) { when " + pattern + ": value; default: null; }") + " }"
+        const tree = parseESTree(source, "/probe." + extension)
+        assert.deepEqual(operators(tree), [], source)
+        assert.deepEqual(nodes(tree).filter(node => node.type === "VibePatternTypeTest"), [], source)
+        const references = nodes(tree).filter(node => node.type === "Identifier" && node.name === matcher &&
+          node.synthesized !== true && source.slice(...node.range) === matcher)
+        assert.equal(new Set(references.map(node => node.range.join(":"))).size, local ? 2 : 1, source)
+      }
+    }
+  }
 })
 
 test("ordinary TypeScript typeof remains a unary expression, including inside a module body", () => {

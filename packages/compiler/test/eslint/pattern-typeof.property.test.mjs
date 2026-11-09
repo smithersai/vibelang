@@ -20,3 +20,32 @@ test("a runtime typeof policy ignores record pattern guards and reports only aut
   assert.equal(messages[0].nodeType, "UnaryExpression")
   assert.deepEqual([messages[0].line, messages[0].column], [4, 45])
 })
+
+test("source lint visits primitive-spelled matcher references without generated typeof operators", () => {
+  for (const matcher of ["String", "Number", "Boolean", "BigInt", "Symbol"]) {
+    const rules = {
+      "no-restricted-syntax": ["error",
+        { selector: "UnaryExpression[operator='typeof']", message: "generated operator" },
+        { selector: "Identifier[name='" + matcher + "']", message: "authored matcher" }
+      ]
+    }
+    for (const extension of ["vibe", "vibex"]) for (const isExpression of [false, true]) {
+      for (const local of [false, true]) {
+        const parameters = "subject" + (local ? ", " + matcher : "")
+        const pattern = matcher + "(let value)"
+        const source = "// café 😀\nexport function f(" + parameters + ") { " + (isExpression
+          ? "if (subject is " + pattern + ") return value; return null;"
+          : "return match (subject) { when " + pattern + ": value; default: null; }") + " }"
+        const messages = new Linter({ cwd: "/" }).verify(source, [{ ...config[0], rules }], {
+          filename: new URL("./probe." + extension, import.meta.url).pathname
+        })
+        assert.equal(messages.length, local ? 2 : 1, source)
+        for (const message of messages) {
+          assert.equal(message.ruleId, "no-restricted-syntax", source)
+          assert.equal(message.message, "authored matcher", source)
+          assert.equal(message.nodeType, "Identifier", source)
+        }
+      }
+    }
+  }
+})
