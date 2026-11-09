@@ -18,13 +18,5 @@ FuzzForeignLazyThunks Effect.sync/local/untagged compiler VIP-4: a LazyArg thunk
 FuzzForeignLazyThunks sync/reference/untagged compiler VIP-4: the global sync admits a throwing foreign function value that Effect.sync rejects; lane settled-vip4
 FuzzForeignLazyThunks sync/reference/error compiler VIP-4: the global sync admits a throwing foreign function value that Effect.sync rejects; lane settled-vip4
 FuzzForeignLazyThunks sync/reference/unknown compiler VIP-4: the global sync admits a throwing foreign function value that Effect.sync rejects; lane settled-vip4
-FuzzForeignLazyThunks tryPromise/arrow/error compiler VIP-4: the global tryPromise reports EK0401 for a tagged throwing call in its thunk, which Effect.tryPromise admits; lane settled-vip4
-FuzzForeignLazyThunks tryPromise/arrow/unknown compiler VIP-4: the global tryPromise reports EK0401 for a tagged throwing call in its thunk, which Effect.tryPromise admits; lane settled-vip4
-FuzzForeignLazyThunks tryPromise/block/error compiler VIP-4: the global tryPromise reports EK0401 for a tagged throwing call in its thunk, which Effect.tryPromise admits; lane settled-vip4
-FuzzForeignLazyThunks tryPromise/block/unknown compiler VIP-4: the global tryPromise reports EK0401 for a tagged throwing call in its thunk, which Effect.tryPromise admits; lane settled-vip4
-FuzzForeignLazyThunks tryPromise/function/error compiler VIP-4: the global tryPromise reports EK0401 for a tagged throwing call in its thunk, which Effect.tryPromise admits; lane settled-vip4
-FuzzForeignLazyThunks tryPromise/function/unknown compiler VIP-4: the global tryPromise reports EK0401 for a tagged throwing call in its thunk, which Effect.tryPromise admits; lane settled-vip4
-FuzzForeignLazyThunks tryPromise/local/error compiler VIP-4: the global tryPromise reports EK0401 for a tagged throwing call in its thunk, which Effect.tryPromise admits; lane settled-vip4
-FuzzForeignLazyThunks tryPromise/local/unknown compiler VIP-4: the global tryPromise reports EK0401 for a tagged throwing call in its thunk, which Effect.tryPromise admits; lane settled-vip4
 FuzzForeignLazyThunks corpus:opencode-stat-sync-promise-arrow compiler VIP-4: minimized stat-sync Effect.promise arrow over an untagged foreign function is accepted; lane settled-vip4
 FuzzForeignLazyThunks witness:opencode-foreign-lazy-thunks compiler VIP-4: minimized foreign thunk witness accepts the three arrow forms; lane settled-vip4
