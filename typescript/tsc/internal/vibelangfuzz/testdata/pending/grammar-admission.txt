@@ -125,3 +125,4 @@ FuzzGrammarAdmission admission:fiber-type-name compiler VIP-17 and Appendix A: a
 FuzzGrammarAdmission corpus:fiber-type-name compiler VIP-17 and Appendix A: `type fork = 1` in an effect function compiles with no diagnostic
 FuzzGrammarAdmission corpus:fiber-type-name-enum compiler VIP-17 and Appendix A: `enum fork { }` in an effect function compiles with no diagnostic
 FuzzGrammarAdmission corpus:fiber-type-name-parameter compiler VIP-17 and Appendix A: a class type parameter named `join` in an effect function compiles with no diagnostic
+FuzzGrammarAdmission admission:for-concurrent-declaration-body compiler Appendix A: the ForConcurrent body is a Statement; a `const` or `let` declaration as the body compiles with no diagnostic, where `for try` and a native loop report `TS1156`
