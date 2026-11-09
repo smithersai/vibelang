@@ -70,8 +70,17 @@ test("property: setup cleanup matches native mode-switch cleanup and protects se
         [sources[1]]: "export type B = number\n",
         "orphan.d.vibe.ts": "export declare const orphan: 1;\n"
       }
-      for (const source of sources) files[source.replace(/\.vibe$/, ".d.vibe.ts")] = "export type Stale = never;\n"
-      for (const [file, text] of Object.entries(files)) for (const copy of ["setup", "native"]) put(join(root, copy), file, text)
+      for (const copy of ["setup", "native"]) {
+        const directory = join(root, copy)
+        for (const [file, text] of Object.entries(files)) put(directory, file, text)
+        // A mode switch starts with declarations this project actually emitted.
+        // Handwritten lookalikes have no ownership and the compiler preserves them.
+        put(directory, "tsconfig.json", JSON.stringify({ compilerOptions: { noEmit: true }, files: sources }))
+        const seeded = compiler(directory, ["-p", "tsconfig.json", "--pretty", "false"])
+        assert.equal(seeded.status, 0, seeded.stdout + seeded.stderr)
+        for (const source of sources) assert.ok(existsSync(join(directory, source.replace(/\.vibe$/, ".d.vibe.ts"))))
+        put(directory, "tsconfig.json", files["tsconfig.json"])
+      }
       const before = compiler(join(root, "native"), ["-p", "tsconfig.json", "--pretty", "false"])
       assert.equal(before.status, 0, before.stdout + before.stderr)
       const removed = removeSupersededSidecars(join(root, "setup"), Object.keys(files), ["tsconfig.json"], ts)

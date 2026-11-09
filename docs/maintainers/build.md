@@ -128,7 +128,7 @@ from an installer refusal.
 
 The `//:api-identity-test` target checks [published declaration identity](api-identity.md), including harmless rewrites and semantic mutations. Its bounded-heap scale probes retain the child exit status, signal, process error, elapsed time and unchanged heap and timeout budgets on failure, together with comparator stage and memory records. `scripts/api-identity-scale-failures.test.mjs` injects process outcomes into those same probes and verifies both failure diagnostics and complete successful receipts.
 
-Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run.
+Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run. Sidecar layout-switch comparisons first emit the adjacent declarations with the compiler in both trees, then select the new output directory. Handwritten lookalikes have no project ownership, so they cannot stand in for previously generated outputs. The comparison still protects orphan declarations and selected outputs in overlapping layouts.
 
 Compiler lifecycle fixtures wait for complete JSON receipts within their
 `15`-second guard. The poller handles a file that is created before its write
