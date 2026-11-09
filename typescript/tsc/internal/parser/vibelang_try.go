@@ -148,7 +148,7 @@ func (p *Parser) parseVibeLangTryOperation() *ast.Node {
 		p.hasParseError = true
 		helper = "$try"
 	}
-	p.nextToken()
+	p.nextTokenWithoutCheck()
 	word := core.NewTextRange(anchor.Pos(), p.nodePos())
 	operand := p.parseSimpleUnaryExpression()
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: word, Range: core.NewTextRange(anchor.Pos(), operand.End())})

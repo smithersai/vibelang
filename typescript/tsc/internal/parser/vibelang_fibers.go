@@ -132,10 +132,10 @@ func (p *Parser) parseVibeLangForkOwner(callee *ast.Node, keyword core.TextRange
 	if !ok {
 		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.tokenRange(), "EK", diagnostics.CategoryError, 1705, fmt.Sprintf(ForkOwnerMessage, name)))
 		p.hasParseError = true
-		p.nextToken()
+		p.nextTokenWithoutCheck()
 		return callee, nil, core.NewTextRange(keyword.Pos(), end)
 	}
-	p.nextToken()
+	p.nextTokenWithoutCheck()
 	var scope *ast.Node
 	if helper == "$forkIn" {
 		p.parseExpected(ast.KindOpenParenToken)

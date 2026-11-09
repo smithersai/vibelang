@@ -1,0 +1,11 @@
+// expect-result: [7,9]
+import { Effect, Exit, Scope } from "effect"
+
+export effect function main() {
+  const scope = try Scope.make()
+  const first = try.a\u006ey [Effect.succeed(7)]
+  const child = fork.\u{69}n(scope) Effect.succeed(9)
+  const second = join child
+  try Scope.close(scope, Exit.succeed(undefined))
+  return [first, second]
+}

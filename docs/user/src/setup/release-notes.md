@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Unicode escapes in `try.any` and `fork.in` names could be rejected with `TS1260`. The names after the dot now follow TypeScript's `new.target` and `import.meta` rules.
+
 - Escaped spellings of `uninterruptible`, `restore` and `interruptible` were accepted as block headers. These headers now require literal spellings and report `TS1260`.
 
 - Generated declaration ownership files could break Istanbul coverage and make migration recording refuse its own outputs. The metadata is now inert when parsed as JavaScript, and recording accepts receipts only for declarations in the batch.

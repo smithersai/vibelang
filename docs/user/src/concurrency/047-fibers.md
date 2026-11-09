@@ -12,6 +12,8 @@ Pattern references follow the same rule: `value is join`, `when fork.C:` and `va
 
 The `fork` and `join` operator keywords must be written literally. A Unicode escape in either keyword reports `TS1260`, as for TypeScript's `await`. Ordinary names in plain code, and property names in any context, may still contain escapes.
 
+In `fork.in`, `fork.scoped` and `fork.detached`, the name after the dot follows TypeScript's `new.target` naming rules. For example, `fork.\u0069n(scope) job` means `fork.in(scope) job`.
+
 ## Forking and awaiting
 
 ```vibe
