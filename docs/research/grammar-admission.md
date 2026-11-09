@@ -873,6 +873,15 @@ under `admission:fiber-type-name`. The form classifier read `enum fork { }` as
 a bare `fork` block until now, because `fork` stands before `{` there; it
 asks the parser for the declaration first.
 
+The probes also showed six native grammar diagnostics the oracle did not
+count as syntax rejection, so a correctly rejected program read as a
+mismatch: `TS1101` for a `with` statement in strict code, `TS1035` for a
+quoted module name outside an ambient context, `TS2483` for a type annotation
+on a `for`...`of` head, `TS1228` for a type predicate outside a return type,
+`TS1206` for a decorator where none can stand and `TS1497` for a decorator
+expression that needs parentheses. Each now counts, as the other grammar
+checks TypeScript runs on a recovered parse do.
+
 The generated-error migration counterpart continues to test the guarantee
 that a foreign plain object with the recognized tag is covered. Its quote
 includes the chapter's additional `instanceof` fallback; the existing

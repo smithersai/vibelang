@@ -2338,6 +2338,13 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// checkGrammarProperty: an initializer on a type literal member (TS1247).
 	case 1247:
 		return true
+	// More native grammar rejections of a parsed form: a `with` statement in
+	// strict code (TS1101), a quoted module name outside an ambient context
+	// (TS1035), a decorator expression that needs parentheses (TS1497) or
+	// stands where no decorator can (TS1206), a type annotation on a for-of
+	// head (TS2483) and a type predicate outside a return type (TS1228).
+	case 1101, 1035, 1497, 1206, 2483, 1228:
+		return true
 	}
 	return false
 }
@@ -2526,6 +2533,15 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"fiber-type-error", "EK", diagnostics.CategoryError, 1704, false},
 		{"trailing-block-error", "EK", diagnostics.CategoryError, 1101, true},
 		{"trailing-block-warning", "EK", diagnostics.CategoryWarning, 1101, false},
+		{"native-with-statement", "", diagnostics.CategoryError, 1101, true},
+		{"native-with-statement-warning", "", diagnostics.CategoryWarning, 1101, false},
+		{"native-quoted-module-name", "", diagnostics.CategoryError, 1035, true},
+		{"native-decorator-parentheses", "", diagnostics.CategoryError, 1497, true},
+		{"native-decorator-position", "", diagnostics.CategoryError, 1206, true},
+		{"native-for-of-type-annotation", "", diagnostics.CategoryError, 2483, true},
+		{"native-type-predicate-position", "", diagnostics.CategoryError, 1228, true},
+		{"ek-for-of-type-annotation-code-collision", "EK", diagnostics.CategoryError, 2483, false},
+		{"foreign-with-statement-code-collision", "other", diagnostics.CategoryError, 1101, false},
 		{"topic-outside-pipe-error", "EK", diagnostics.CategoryError, 2301, true},
 		{"topic-outside-pipe-warning", "EK", diagnostics.CategoryWarning, 2301, false},
 		{"native-topic-code-collision", "", diagnostics.CategoryError, 2301, false},
