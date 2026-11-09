@@ -25,6 +25,9 @@ func TestRetainedMatcherSymbolDeclarations(t *testing.T) {
 		{"private-query", "type Key=typeof Symbol.customMatcher;export const n=1", false},
 		{"private-key", "const P={[Symbol.customMatcher](s:unknown):boolean{return true}};export const n=1", false},
 		{"local-Symbol", "const own=globalThis.Symbol('own');declare const Symbol:{readonly customMatcher:typeof own};export interface P{[Symbol.customMatcher](s:unknown):boolean}", false},
+		{"constructor-alias-query", "const S=Symbol;export type Key=typeof S.customMatcher", true},
+		{"constructor-alias-key", "const S=Symbol;export interface P{[S.customMatcher](s:unknown):boolean}", true},
+		{"destructured-query", "const {customMatcher:key}=Symbol;export type Key=typeof key", true},
 		{"ordinary-symbol", "export interface P{[Symbol.iterator]():Iterator<number>}", false},
 	}
 	for _, linked := range []bool{false, true} {

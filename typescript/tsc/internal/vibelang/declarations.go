@@ -100,7 +100,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 	}
 	return func(declarations *ast.SourceFile) *ast.SourceFile {
 		rewriter := &specifierRewriter{sourceDirectory: tspath.GetDirectoryPath(string(sourceFile.FileName()))}
-		keys := &computedKeyRewriter{keys: map[string]computedKey{}, bound: map[string]bool{}, globals: map[*ast.Node]string{}, globalMembers: map[core.TextRange]string{}, globalNames: map[*ast.Node]string{}}
+		keys := &computedKeyRewriter{keys: map[string]computedKey{}, bound: map[string]bool{}, globals: map[*ast.Node]string{}, globalMembers: map[core.TextRange]string{}, globalNames: map[*ast.Node]string{}, bindings: map[*ast.Node]bool{}}
 		r.WithChecker(func(c *checker.Checker) {
 			if namespace := preludeSymbol(c, preludeStateOf(c), sourceFile, "Effect"); namespace != nil {
 				if effect := effectInterfaceOfModule(c, namespace); effect != nil {
@@ -116,6 +116,15 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 				}
 				if ast.IsComputedPropertyName(n) {
 					keys.add(c, sourceFile, n.Expression())
+				}
+				if ast.IsBindingElement(n) {
+					t := c.GetTypeAtLocation(n)
+					if t != nil && t.Flags()&checker.TypeFlagsUniqueESSymbol != 0 {
+						name, _ := checker.PropertyNameOfType(t)
+						if name != "" && name == customMatcherPropertyName(c) {
+							keys.bindings[n] = true
+						}
+					}
 				}
 				if ast.IsTypeQueryNode(n) && ast.IsQualifiedName(n.AsTypeQueryNode().ExprName) {
 					keys.add(c, sourceFile, n.AsTypeQueryNode().ExprName)
@@ -152,7 +161,7 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		// VIP-27 (2026-11-04): generated error matchers belong to JavaScript,
 		// not the Effect TypeScript declaration surface. VibeLang consumers
 		// resolve the runtime protocol through their own prelude.
-		if len(keys.keys) > 0 {
+		if len(keys.keys) > 0 || len(keys.bindings) > 0 {
 			for _, statement := range declarations.Statements.Nodes {
 				forEachTopLevelName(statement, func(name string) { keys.bound[name] = true })
 			}
@@ -1178,6 +1187,7 @@ type computedKeyRewriter struct {
 	globals       map[*ast.Node]string      // written global matcher keys and type queries
 	globalMembers map[core.TextRange]string // inferred members retain source comment ranges
 	globalNames   map[*ast.Node]string
+	bindings      map[*ast.Node]bool // retained destructuring names that read the runtime symbol
 }
 
 // computedKey is a key the source writes, such as Inspectable.NodeInspectSymbol.
@@ -1197,20 +1207,24 @@ func (tx *computedKeyRewriter) add(c *checker.Checker, file *ast.SourceFile, key
 	} else if ast.IsQualifiedName(key) {
 		receiver, member = key.AsQualifiedName().Left, key.AsQualifiedName().Right
 	}
-	global := c.GlobalSymbol("Symbol", ast.SymbolFlagsValue)
-	wellKnown := receiver != nil && member.Text() == "customMatcher" && global != nil && c.GetSymbolAtLocation(receiver) == global
-	expression := key
-	var symbol *ast.Symbol
-	if wellKnown {
+	var matcherType *checker.Type
+	if receiver != nil && member.Text() == "customMatcher" {
 		typeNode := key
 		if key.Parent != nil && ast.IsTypeQueryNode(key.Parent) {
 			typeNode = key.Parent
 		}
 		t := c.GetTypeAtLocation(typeNode)
-		if t == nil || t.Flags()&checker.TypeFlagsUniqueESSymbol == 0 || t.Symbol() == nil {
-			return
+		if t != nil && t.Flags()&checker.TypeFlagsUniqueESSymbol != 0 && t.Symbol() != nil {
+			name, _ := checker.PropertyNameOfType(t)
+			if name != "" && name == customMatcherPropertyName(c) {
+				matcherType = t
+			}
 		}
-		symbol = t.Symbol()
+	}
+	expression := key
+	var symbol *ast.Symbol
+	if matcherType != nil {
+		symbol = matcherType.Symbol()
 		expression = member
 		tx.globals[key] = symbol.Name()
 	} else {
@@ -1247,6 +1261,11 @@ func (tx *computedKeyRewriter) add(c *checker.Checker, file *ast.SourceFile, key
 // visit rewrites a key printed as a bare name that the declaration file does
 // not declare, so a local binding with the same name keeps its key.
 func (tx *computedKeyRewriter) visit(node *ast.Node) *ast.Node {
+	if ast.IsBindingElement(node) && tx.bindings[tx.EmitContext().MostOriginal(node)] {
+		// A retained binding pattern can read the ambient member even when
+		// the local binding's inferred type widens to plain symbol.
+		tx.written = append(tx.written, tx.Factory().NewIdentifier("customMatcher"))
+	}
 	switch node.Kind {
 	case ast.KindMethodSignature, ast.KindMethodDeclaration, ast.KindPropertySignature, ast.KindPropertyDeclaration, ast.KindPropertyAssignment, ast.KindGetAccessor, ast.KindSetAccessor:
 		if name := node.Name(); name != nil && ast.IsComputedPropertyName(name) {

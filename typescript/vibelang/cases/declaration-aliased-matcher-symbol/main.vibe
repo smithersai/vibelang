@@ -1,0 +1,6 @@
+const S=Symbol
+const {customMatcher:key}=Symbol
+export type AliasKey=typeof S.customMatcher
+export type DestructuredKey=typeof key
+export interface P{[S.customMatcher](s:unknown):boolean}
+export function main():boolean{return true}
