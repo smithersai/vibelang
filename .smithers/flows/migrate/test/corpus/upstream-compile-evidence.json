@@ -1,0 +1,6 @@
+{
+  "key": "baseline:missing-upstream-compile-checks",
+  "quote": "A toolchain switch must not turn new test failures or compiler errors into the next baseline.",
+  "packages": [".", "packages/core", "packages__core", "space δ", "a%b", "constructor", "toString", "__proto__"],
+  "source": "export const value: number = 1\n"
+}

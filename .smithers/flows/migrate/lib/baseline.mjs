@@ -108,7 +108,14 @@ export function assertBaselineSafe(p, { includeSetup = true } = {}) {
   for (const failed of refused.values()) compile.push({ stage: "vip-finish", ...failed, ok: false })
   const original = read("upstream-checks.json") ?? {}, current = read("upgraded-checks.json") ?? {}
   const completedSetup = includeSetup && readJsonIf(p.setup)
-  for (const [pkg, before] of Object.entries(original)) {
+  const packages = new Set([...Object.keys(original), ...Object.keys(current), ...Object.keys(completedSetup?.compile ?? {})])
+  for (const pkg of packages) {
+    const before = original[pkg]
+    if (!Object.hasOwn(original, pkg) || !before) {
+      compile.push({ stage: "upgrade", package: pkg, state: "unverified", receipt: "upstream-checks.json",
+        reason: "original compiler check is missing", ok: false })
+      continue
+    }
     if (current[pkg]) compile.push({ stage: "upgrade", package: pkg, ...compilerAdmission(before, current[pkg]) })
     const candidate = includeSetup && readSetupCompile(p, pkg, Object.keys(original))
     // Compare actual exits: an Effect diagnostic printed as an error can

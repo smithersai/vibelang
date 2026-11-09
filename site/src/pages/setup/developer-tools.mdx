@@ -532,6 +532,8 @@ reports the declaration files and every affected module, including targets of
 routes retained from an earlier emit, so the modules its tests bundle stay
 TypeScript.
 
+Migration verification also needs each checked package's original compiler result. A missing original report or package entry is unverified, even when current builds pass; the package and missing report are named. Retain the remaining evidence and start fresh setup from the original source.
+
 Setup records every selected source, output and alias in
 `setup.json`'s `wired.emittedImports.modules`. It uses exact entries instead
 of wildcard selectors and leaves tests, fixtures, test scripts, type-only

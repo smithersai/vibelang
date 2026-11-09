@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { makeConfig, paths, setup, verify } from "../lib/steps.mjs"
 import * as Baseline from "../lib/baseline.mjs"
+import { check } from "../lib/diagnostics.mjs"
 import { declarationNames, unprovenMigrations } from "../lib/oracle.mjs"
 import { packRepository } from "../lib/pack-policy.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -47,6 +48,16 @@ test("real setup and verification retain each referenced project's declarations"
     writeJson(p.config, config)
     writeJson(p.upgrade, { jj: { initialized: true, commit: revision, baseCommit: revision }, effect: { to: "4.1.1" }, changed: [], tests: {} })
     writeJson(join(p.baseline, "upgraded-tests.json"), { code: 0, tests: {} })
+    const originalCheck = { compiler: "original", code: 0, diagnostics: [] }
+    for (const [index, tsconfig] of corpus.projects.entries()) {
+      const checked = await check({ compiler: native, tsconfig, cwd: target, root: target,
+        log: join(run, "original-compile-" + index + ".log") })
+      originalCheck.code ||= checked.code
+      originalCheck.diagnostics.push(...checked.diagnostics)
+    }
+    assert.equal(originalCheck.code, 0, JSON.stringify(originalCheck))
+    writeJson(join(p.baseline, "upstream-checks.json"), { ".": originalCheck })
+    writeJson(join(p.baseline, "upgraded-checks.json"), { ".": originalCheck })
     writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(run, "packs")))
     const original = await setup({ run })
     assert.deepEqual(original.declarationOracle["."], { compiler: "tsc", unproven: 0 },

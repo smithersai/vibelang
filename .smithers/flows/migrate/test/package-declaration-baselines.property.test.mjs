@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { makeConfig, paths, setup, verify } from "../lib/steps.mjs"
 import * as Baseline from "../lib/baseline.mjs"
+import { check } from "../lib/diagnostics.mjs"
 import { compareDeclarations } from "../lib/declarations.mjs"
 import { packRepository } from "../lib/pack-policy.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -47,6 +48,14 @@ test("real setup and verification preserve each colliding package's original API
     writeJson(p.config, config)
     writeJson(p.upgrade, { jj: { initialized: true, commit: revision, baseCommit: revision }, effect: { to: "4.1.1" }, changed: [], tests: {} })
     writeJson(join(p.baseline, "upgraded-tests.json"), { code: 0, tests: {} })
+    const checks = {}
+    for (const [index, dir] of corpus.packages.entries()) checks[dir] = { compiler: "original", ...await check({
+      compiler: native, tsconfig: "tsconfig.json", cwd: join(target, dir), root: target,
+      log: join(run, "original-compile-" + index + ".log")
+    }) }
+    assert.ok(Object.values(checks).every(result => result.code === 0), JSON.stringify(checks))
+    writeJson(join(p.baseline, "upstream-checks.json"), checks)
+    writeJson(join(p.baseline, "upgraded-checks.json"), checks)
     writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(run, "packs")))
     const original = await setup({ run })
     for (const dir of corpus.packages) assert.deepEqual(original.declarationOracle[dir],

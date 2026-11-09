@@ -192,4 +192,6 @@ parameters when they describe those channels.
 
 ## Retaining validation evidence
 
+Keep the original compiler-check reports as well. Losing a report or a checked package's entry cannot remove that package from verification. The run names the package and missing evidence and refuses to resume.
+
 Keep the migration run directory until the migration finishes. A completed setup must retain its compiler diagnostics and exit receipts for every checked package. If both files are missing, resuming the run stops with the package named, even when an earlier admission record said it was accepted. Current setup records its compiler-receipt format, so losing those files or their directory cannot select an older successful result. Legacy-only runs remain readable when their package identities are unambiguous. Retain the remaining evidence and start a fresh setup from the original source.

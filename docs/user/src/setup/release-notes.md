@@ -29,6 +29,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Hovering over a generic schema type, such as `Array<number>`, could fail in the language server. It now shows the written type’s information, including in schema aliases and nested declarations.
 
+- Migration verification could treat a missing original compiler report as no packages to check. It now keeps the package list and refuses verification when the report or a package entry is missing.
+
 - Packed migrated modules could load separate copies of the same module, breaking private symbols, class checks or shared state. Publication now maps public and private routes to the same built module while preserving declaration paths.
 
 - Migration API checks could lose one referenced project's declarations when config paths shared an output name. Each project now keeps separate declarations and compiler logs, and ambiguous older snapshots require fresh setup.
