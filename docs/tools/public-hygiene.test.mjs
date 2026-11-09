@@ -71,10 +71,11 @@ test("retired scratch rules preserve path, content and prefix boundaries", () =>
   assert.deepEqual(publicHygiene("packages/compiler/README.md", "Ordinary public documentation."), [])
 })
 
-test("receiver retirement publishes its prerequisites without internal attribution", () => {
+test("the prerelease repair policy preserves native TypeScript fixes without internal attribution", () => {
   const tooling = readFileSync(resolve(root, "docs/design/src/007-tooling.md"), "utf8")
   const appendix = readFileSync(resolve(root, "docs/design/src/900-appendices.md"), "utf8")
-  assert.match(tooling, /enforcement waits until preserving codemods ship and every migration repository has zero remaining uses\./)
+  const toolingVip = readFileSync(resolve(root, "docs/design/vips/0034-compiler-and-tooling.md"), "utf8")
+  assert.match(toolingVip, /VibeLang ships no codemods or quick fixes of its own before its first release; TypeScript's own code fixes stay/)
   assert.deepEqual(publicHygiene("docs/design/src/007-tooling.md", tooling), [])
   assert.deepEqual(publicHygiene("docs/design/src/900-appendices.md", appendix), [])
 })

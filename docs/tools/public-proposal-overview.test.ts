@@ -28,3 +28,13 @@ test("the attribution check preserves public proposal references and dates", () 
     expect(internalAttributions("A public model (claude-opus-4-1) is named here.")).toEqual([])
   }), { numRuns: 200 })
 })
+
+test("rendered proposal checks quote the current public overview", () => {
+  const checks = readFileSync(resolve(import.meta.dir, "../../site/scripts/proposal-overview.test.mjs"), "utf8")
+  const patterns = [...checks.matchAll(/assert\.match\(text, \/(.*)\/([a-z]*)\)/g)]
+  expect(patterns.length).toBeGreaterThanOrEqual(2)
+  for (const file of ["docs/design/vips/README.md", "site/src/pages/vips/index.mdx"]) {
+    const source = readFileSync(resolve(import.meta.dir, "../..", file), "utf8")
+    for (const [, pattern, flags] of patterns) expect(source).toMatch(new RegExp(pattern, flags))
+  }
+})

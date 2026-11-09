@@ -17,8 +17,8 @@ test('the proposal overview states its retirement rule without internal review m
       await page.goto('https://vibelang.sh/vips', { waitUntil: 'networkidle' })
       const text = await page.getByRole('main').innerText()
       assert.doesNotMatch(text, /\([^()\n]*\b(?:effectscript|smithers|claude)-\d+[a-z]?\b[^()\n]*\)/iu)
-      assert.match(text, /codemod first, then the error/)
-      assert.match(text, /vibelang --fix/)
+      assert.match(text, /VibeLang ships no quick fixes or codemods of its own before its first release/)
+      assert.match(text, /TypeScript's own code fixes stay/)
       await context.close()
     }
   } finally { await browser.close() }
