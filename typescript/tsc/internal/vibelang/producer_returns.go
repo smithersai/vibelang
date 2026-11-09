@@ -6,6 +6,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // A producer's Stream has no return value (VIP-21): `return value` in a
@@ -17,7 +18,10 @@ import (
 // yield*, so rewriting its return would lose data with nothing to flag it.
 
 // EK2128: `return value` in a producer. {0} is the value.
-var EK2128 = message(2128, errorCategory, "A producer returns a Stream, which has no return value, so {0} would be dropped; write return alone to end the stream.")
+// The parser reports the same code for a valued return in a do expression it
+// still compiles to a function (parser.doProducerValuedReturn), which this
+// file's walk does not enter.
+var EK2128 = message(parser.ProducerReturnValueCode, errorCategory, parser.ProducerReturnValueMessage)
 
 func init() {
 	registry[EK2128.Code] = EK2128

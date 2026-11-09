@@ -7563,6 +7563,12 @@ typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:13:28 lambda e
 typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:16:28 lambda effectFn table
 typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:20:28 lambda effectFn table
 typescript/vibelang/cases/producer-for-concurrent-yield/main.vibe:8:19 lambda plain fallback
+typescript/vibelang/cases/producer-head-return-value.fail/main.vibe:13:17 lambda plain fallback
+typescript/vibelang/cases/producer-head-return-value.fail/main.vibe:18:17 lambda plain fallback
+typescript/vibelang/cases/producer-head-return-value.fail/main.vibe:23:22 lambda plain fallback
+typescript/vibelang/cases/producer-head-return-value.fail/main.vibe:28:18 lambda plain fallback
+typescript/vibelang/cases/producer-head-return-value.fail/main.vibe:33:23 lambda plain fallback
+typescript/vibelang/cases/producer-head-return-value.fail/main.vibe:8:14 lambda plain fallback
 typescript/vibelang/cases/producer-inferred-scope/main.vibe:23:50 lambda plain table
 typescript/vibelang/cases/producer-inferred-scope/main.vibe:23:59 lambda plain table
 typescript/vibelang/cases/producer-inferred-scope/main.vibe:24:51 lambda plain table

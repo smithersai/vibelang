@@ -1,0 +1,44 @@
+// expect: EK2128
+// VIP-21: a producer returns a Stream, which has no return value, so
+// `return value` in one is EK2128 wherever the return is written. A `do` in a
+// computed member name, a heritage clause or a decorator returns from the
+// producer too. The compiler still compiles those positions to a function,
+// and it reported that gap (EK0204) instead of the producer rule. The
+// producer's own valued return is reported in the same run.
+const mark = (value: unknown, context: unknown) => {}
+
+class Base {}
+
+effect function* methodKey() {
+  class C { [do { return "method"; "m" }]() {} }
+  yield C
+}
+
+effect function* fieldKey() {
+  class C { [do { return "field"; "n" }] = 0 }
+  yield C
+}
+
+effect function* heritage() {
+  class C extends do { return Base; Base } {}
+  yield C
+}
+
+effect function* decorator() {
+  class C { @(do { return mark; mark }) m() {} }
+  yield C
+}
+
+effect function* objectKey() {
+  const o = { get [do { return "object"; "n" }]() { return 0 } }
+  yield o
+}
+
+effect function* ordinary() {
+  yield 1
+  return "ordinary"
+}
+
+export effect function main() {
+  return [methodKey, fieldKey, heritage, decorator, objectKey, ordinary].length
+}

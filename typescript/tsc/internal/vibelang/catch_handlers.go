@@ -44,12 +44,15 @@ var EK0509 = message(509, errorCategory, parser.VibeLangCatchHandlerMessage)
 // diagnostics, as tsc does for its modifier grammar errors. Catch arrows and
 // provider separators keep their recovered bodies. A rejected effect
 // accessor, constructor or effect/async pair keeps its native member, and the
-// error-body rules skip it (restrictedEffectMember).
+// error-body rules skip it (restrictedEffectMember). A producer's valued
+// return in a retained do keeps its statement, so the producer's other
+// returns are still reported with it.
 var recoverableSyntaxCodes = map[int32]bool{
 	EK0509.Code: true,
 	EK1202.Code: true,
 	EK0104.Code: true,
 	EK0105.Code: true,
+	EK2128.Code: true,
 }
 
 func init() {

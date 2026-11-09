@@ -762,7 +762,7 @@ func (p *Parser) checkDoBoundary(d *doExpression, boundary *ast.Node, what strin
 			keyword = "yield"
 		}
 		if keyword != "" {
-			if p.doForTryItemJump(boundary, n) || p.doConcurrentItemJump(boundary, n) || p.doEffectBlockJump(n) {
+			if p.doForTryItemJump(boundary, n) || p.doConcurrentItemJump(boundary, n) || p.doEffectBlockJump(n) || p.doProducerValuedReturn(n) {
 				return // The source construct owns its language diagnostic, once.
 			}
 			p.doError(p.skipRangeTrivia(n.Loc), DoBoundaryCode, DoBoundaryMessage, keyword, what)
