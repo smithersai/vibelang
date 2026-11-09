@@ -366,6 +366,11 @@ The mapped `no-unused-vars` rule counts `typeof` reads as Oxlint does,
 including erased `declare const` symbol brands, while retaining configured
 options and reporting unused declarations.
 
+Record and primitive-extractor patterns expose their generated type checks as
+pattern tests to source lint rules. A rule against runtime `typeof` therefore
+reports only operators written in the source, including in pattern guards and
+computed keys.
+
 ESLint's control-flow rules keep `match` arm exits inside the match. A
 `do` expression that completes through a match does not produce a false
 `no-unreachable` report; unreachable statements written in the source still

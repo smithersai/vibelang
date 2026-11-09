@@ -23,6 +23,7 @@ import (
 //	x |> f(%)              VibePipeExpression { left, right }, TopicReference
 //	x catch (e) => y       VibeCatchExpression { expression, handler }
 //	pattern binding step   VibePatternAssignment { expression: AssignmentExpression }
+//	pattern type test      VibePatternTypeTest { argument }
 //	provide L, K = v { }   VibeProvideStatement { providers, body },
 //	                       VibeServiceProvider { key, value }
 //	uninterruptible { }    VibeMaskStatement { kind, body }
@@ -98,6 +99,13 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 	case ast.KindExpressionStatement:
 		if result := c.concurrentStatement(n); result != nil {
 			return result, true
+		}
+	case ast.KindTypeOfExpression:
+		// Record and primitive-extractor patterns synthesize typeof tests at
+		// the pattern's token. Source lint rules must see the pattern test,
+		// while an authored typeof (including in a guard or key) stays unary.
+		if _, kind := c.tokenAfter(c.start(n)); kind != ast.KindTypeOfKeyword {
+			return c.node(n, "VibePatternTypeTest").set("argument", c.convertChild(n.Expression(), n)), true
 		}
 	case ast.KindIdentifier:
 		if n.Flags&ast.NodeFlagsVibeLang != 0 && n.Text() == "%" {

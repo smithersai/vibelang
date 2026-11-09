@@ -1,0 +1,4 @@
+{
+  "key": "lint:match-generated-typeof",
+  "source": "type State = { status: \"ready\"; version: string } | { status: \"idle\" }\nexport function read(state: State) {\n  return match (state) {\n    when { status: \"ready\" } and let ready: ready.version;\n    default: \"idle\";\n  }\n}\n"
+}

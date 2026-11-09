@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Lint rules against runtime `typeof` could report checks generated for a record or extractor pattern. They now report only `typeof` operators written in the source.
+
 - Debuggers could lose the source position of `new.target` inside Effect code. Captured reads now keep their written location.
 
 - A `tsdown` or Rolldown declaration build could report missing interface exports from an imported native module. The plugin now supplies the module’s declarations to the type graph, preserving its type exports and runtime JavaScript.
