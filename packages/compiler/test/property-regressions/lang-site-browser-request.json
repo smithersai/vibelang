@@ -1,0 +1,9 @@
+{
+  "property": "browser-layer-tree-shaking",
+  "rule": "Selecting one browser layer retains that service without unrelated browser services.",
+  "input": {
+    "selected": ["Request"],
+    "namespace": false,
+    "minify": false
+  }
+}
