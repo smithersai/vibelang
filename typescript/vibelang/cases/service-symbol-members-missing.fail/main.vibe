@@ -1,0 +1,9 @@
+// expect: TS2741
+// Chapter 005: an implementation that lacks a symbol-keyed member is not a
+// Name.Shape, as for the shape of the Effect TypeScript counterpart.
+service Numbers {
+  static readonly key = "symbol-members-missing/Numbers";
+  [Symbol.iterator](): Iterator<number>;
+  size: number
+}
+export const incomplete: Numbers.Shape = { size: 0 }

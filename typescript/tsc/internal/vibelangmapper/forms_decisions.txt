@@ -8494,6 +8494,7 @@ typescript/vibelang/cases/service-shape-separators/main.vibe:8:33 lambda plain f
 typescript/vibelang/cases/service-shape-types/main.vibe:10:99 lambda plain fallback
 typescript/vibelang/cases/service-shape-types/main.vibe:11:118 lambda plain fallback
 typescript/vibelang/cases/service-static-contract/main.vibe:2:69 lambda plain fallback
+typescript/vibelang/cases/service-symbol-members/main.vibe:13:22 lambda plain protocol
 typescript/vibelang/cases/service-try-exported/main.vibe:7:26 lambda effectFn keyword
 typescript/vibelang/cases/service-try-exported/main.vibe:7:59 lambda effectFn keyword
 typescript/vibelang/cases/service-value-lambdas.fail/main.vibe:4:17 lambda plain table

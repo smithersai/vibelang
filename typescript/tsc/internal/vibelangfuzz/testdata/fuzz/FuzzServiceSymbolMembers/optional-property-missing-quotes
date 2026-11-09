@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("optional-property/missing\x00\x02")

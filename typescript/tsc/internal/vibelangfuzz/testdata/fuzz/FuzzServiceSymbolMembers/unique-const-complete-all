@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("unique-const/complete\x00\x03")

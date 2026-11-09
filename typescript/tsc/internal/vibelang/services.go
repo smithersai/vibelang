@@ -405,7 +405,8 @@ func (s *services) shapeOf(class *ast.Node) *checker.Type {
 	} else {
 		symbol := c.GetSymbolOfDeclaration(class)
 		members := ast.SymbolTable{}
-		for name, member := range symbol.Members() {
+		// The resolved members include those keyed by a unique symbol.
+		for name, member := range c.MembersOfSymbol(symbol) {
 			if member.Flags()&(ast.SymbolFlagsProperty|ast.SymbolFlagsMethod|ast.SymbolFlagsAccessor) != 0 {
 				members[name] = member
 			}

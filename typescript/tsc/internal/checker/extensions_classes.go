@@ -110,6 +110,12 @@ func (c *Checker) NewObjectType(members ast.SymbolTable) *Type {
 	return c.newAnonymousType(nil, members, nil, nil, nil)
 }
 
+// MembersOfSymbol returns symbol's members, including the late-bound ones
+// whose names are unique symbols, such as [Symbol.iterator].
+func (c *Checker) MembersOfSymbol(symbol *ast.Symbol) ast.SymbolTable {
+	return c.getMembersOfSymbol(symbol)
+}
+
 // NewTypeAliasSymbol returns a type alias symbol named name whose declared
 // type is t and whose parent is parent. It is declared nowhere: a hook
 // resolves the name.

@@ -43,6 +43,8 @@ Bodyless properties and methods use interface syntax. Class-only modifiers such 
 
 For an Effect-returning operation, write `read(): number!!`. A signature written as `effect read(): number!!` reports one `EK0902`; its manual change removes `effect` and preserves the return contract and comments. Supply the implementation in a layer.
 
+A member can have a symbol key, such as `[Symbol.iterator](): Iterator<number>`. It is part of `Name.Shape`, as in a TypeScript interface; end the member before it with `;`, because `[` otherwise continues that member.
+
 `Users.Shape` names the written member object directly, so service contracts can refer to their own or another service's `.Shape`. A service cannot declare type parameters or capture an enclosing type parameter in a member contract (`EK3005`): different specializations would share one runtime key. A rejected member does not hide `EK3005` on the declaration's type parameters. Use a concrete contract or a member-local generic method independent of outer parameters. An unused argument does not capture a type parameter: `Phantom<T>` is allowed when `interface Phantom<U> { n: number }` never uses `U`. A foreign callable's written `@throws` contract also counts when checking captures. Explicit `this` parameter types count too, including in callable properties, nested types, aliases and whole-shape annotations; a member-local generic receiver remains allowed. Conditional branches count too: `U extends string ? T : number` captures an enclosing `T` even when `U` belongs to the member.
 
 Type guards and assertion signatures also retain their result contract: `value is T` and `asserts value is T` capture an enclosing `T`, even though their ordinary return types are `boolean` or `void`.

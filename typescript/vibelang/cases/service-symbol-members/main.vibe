@@ -1,0 +1,22 @@
+// expect-result: [[1,2],"Numbers",7]
+// Chapter 005: Name.Shape is the written member object, so a member keyed by
+// a unique symbol, such as Symbol.iterator, belongs to it as in a TypeScript
+// interface.
+const tag: unique symbol = Symbol("tag")
+service Numbers {
+  static readonly key = "symbol-members/Numbers";
+  [Symbol.iterator](): Iterator<number>;
+  [Symbol.toStringTag]: string;
+  [tag]: number
+}
+const live: Numbers.Shape = {
+  [Symbol.iterator]: () => [1, 2][Symbol.iterator](),
+  [Symbol.toStringTag]: "Numbers",
+  [tag]: 7,
+}
+export effect function main() {
+  provide Numbers = live {
+    const numbers = try Numbers
+    return [[...numbers], numbers[Symbol.toStringTag], numbers[tag]]
+  }
+}
