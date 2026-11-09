@@ -45,7 +45,11 @@ VibeLang ships no quick fixes or codemods of its own before its first release; t
 
 Will personally approves each VIP. An agent review never accepts a VIP.
 
-The specification as a whole is accepted when four reviewers, Codex Astra, Codex Sol, Claude Fable and Claude Opus, each answer LGTM with an A grade. VibeLang's specification has passed this gate. After acceptance, work continues by keeping the specification self-consistent, building it optimistically and fuzz testing it.
+The specification as a whole is accepted when four reviewers, Codex Astra, Codex Sol, Claude Fable and Claude Opus, each answer LGTM with a grade of A- or better on the same revision. Will's acceptance rule counts A-.
+
+The specification passed this gate at panel v6 on 2026-10-29 UTC: Codex Astra gave A, Codex Sol A, Claude Fable A- and Claude Opus A-. The round records revision 2d7d13086e6dd64480b60de7dbb1cf2aeac520c7; all four reviewers graded the same specification snapshot. Panels v9, v10 and v11 passed again with the same four grades.
+
+After acceptance, later specification changes need only the automated checks to keep it self-consistent while it is built optimistically and fuzz tested. A full panel reviews the specification again before each release.
 
 ## Denied
 
