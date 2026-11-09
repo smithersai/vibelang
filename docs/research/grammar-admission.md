@@ -841,6 +841,26 @@ with a `let` initializer receives `EK0707`. The witness remains pending under
 `is` patterns and `match` arm heads; ordinary spread expressions,
 comments, strings and regular-expression literals do not acquire that key.
 
+A later campaign put `=>` between the two rest markers and found the same
+loss with a different malformed element: `xs is [let first, ... => ...]`.
+The parser defers several pattern syntax errors to the checker: a missing
+pattern, an element after the rest, a relational pattern that compares with a
+call. An `is` pattern that binds names waits behind a placement marker until a
+lexical home claims it, and a pattern no home claims is never compiled, so the
+placement error (`EK4703`, or `EK0705` in a parameter default or an enum
+initializer) is the only diagnostic. The pinned `MatchList` puts its one rest
+element last, and a `MatchProperty` colon takes a `MatchPattern`. Directed
+probes found the loss in every position that has no home: a `for` head whose
+initializer is a `var` or `using` list, a `switch` discriminant or case, a
+parameter default, an enum initializer, a computed class member name, a class
+heritage, an `export default` operand, a `match` subject and a `catch`
+expression head. These witnesses are pending under
+`admission:unhomed-pattern-grammar`. The classifier reads the placement marker
+the parser wrote, then parses the marked text again as an `if` condition and
+keys the witness only when that reading carries a deferred pattern syntax
+error, so a well-formed pattern in the same position keeps its ordinary
+verdict.
+
 The generated-error migration counterpart continues to test the guarantee
 that a foreign plain object with the recognized tag is covered. Its quote
 includes the chapter's additional `instanceof` fallback; the existing

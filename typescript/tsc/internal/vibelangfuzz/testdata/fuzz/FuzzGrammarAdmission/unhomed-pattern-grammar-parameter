@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:unhomed-pattern-grammar-parameter\nfunction g(a = xs is [let first, ..., 1]) {}")

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:unhomed-pattern-grammar\nfor (\nvar i = 0 ; xs is [ let first , ... => ... ] ; i ++ ) { }")

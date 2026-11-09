@@ -321,6 +321,9 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"initializer-context", "effect function f() { class C { value = join ?? 7; } enum E { A = fork(1) } service S { static readonly defaultValue = join ?? 7; value: number } }"},
 	{"try-in-hatch-effect-try", grammarTryInHatchWrapperWitness},
 	{"try-in-hatch-own-signature-target", grammarTryInHatchWrapperCaseWitness},
+	{"unhomed-pattern-grammar", grammarUnhomedPatternWitness},
+	{"unhomed-pattern-grammar-rest-not-last", grammarUnhomedPatternGaps[1]},
+	{"unhomed-pattern-grammar-parameter", grammarUnhomedPatternGaps[2]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1362,6 +1365,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarPatternRestEllipsis(source, forms) {
 		return "admission:pattern-rest-ellipsis"
+	}
+	if grammarUnhomedPatternGrammar(source, file) {
+		return "admission:unhomed-pattern-grammar"
 	}
 	if grammarPatternMemberLineBreak(source, forms) {
 		return "admission:pattern-member-line-break"
