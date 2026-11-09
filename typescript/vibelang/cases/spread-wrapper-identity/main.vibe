@@ -1,0 +1,20 @@
+import { Effect as Original } from "effect"
+import { risky, later } from "./foreign.js"
+
+const copied = { ...Original }
+const explicitLast = { ...{}, try: Original.try, tryPromise: Original.tryPromise }
+const unrelatedLast = { try: Original.try, tryPromise: Original.tryPromise, ...{} }
+const spreadLast = { ...{ try: Original.sync, tryPromise: Original.promise }, ...Original }
+
+export function make(bad: boolean) {
+  return [
+    copied.try(() => risky("sync", bad)),
+    explicitLast.try(() => risky("sync", bad)),
+    unrelatedLast.try({ try: () => risky("sync", bad), catch: (error: unknown) => error }),
+    spreadLast.try({ try: () => risky("sync", bad), catch: (error: unknown) => error }),
+    copied.tryPromise(() => later("promise", bad)),
+    explicitLast.tryPromise(() => later("promise", bad)),
+    unrelatedLast.tryPromise({ try: () => later("promise", bad), catch: (error: unknown) => error }),
+    spreadLast.tryPromise({ try: () => later("promise", bad), catch: (error: unknown) => error })
+  ]
+}

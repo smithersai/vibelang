@@ -294,11 +294,7 @@ func isAdmittingTryValue(c *checker.Checker, expression *ast.Node, properties []
 		}
 	}
 	if ast.IsObjectLiteralExpression(expression) && len(properties) != 0 {
-		for _, property := range expression.AsObjectLiteralExpression().Properties.Nodes {
-			if ast.IsSpreadAssignment(property) {
-				return false
-			}
-		}
+		return isAdmittingTryObjectProperty(c, expression, properties, seen)
 	}
 	if ast.IsPropertyAccessExpression(expression) || ast.IsElementAccessExpression(expression) {
 		name := ""
@@ -360,6 +356,60 @@ func isAdmittingTryValue(c *checker.Checker, expression *ast.Node, properties []
 		}
 	}
 	return isAdmittingTryType(c, c.GetTypeAtLocation(expression), properties, seen)
+}
+
+// Follow the last possible writer of an object property. A spread preserves
+// the wrapper's contract when it supplies that property; an unrelated spread
+// cannot erase it. Optional and indexed writers may overwrite an earlier
+// value, so they cannot establish an unconditional wrapper origin.
+func isAdmittingTryObjectProperty(c *checker.Checker, object *ast.Node, properties []string, seen map[*ast.Node]bool) bool {
+	members := object.AsObjectLiteralExpression().Properties.Nodes
+	for index := len(members) - 1; index >= 0; index-- {
+		member := members[index]
+		if ast.IsSpreadAssignment(member) {
+			value := c.GetTypeAtLocation(member.Expression())
+			if value == nil {
+				return false
+			}
+			if property := c.GetPropertyOfType(c.GetApparentType(value), properties[0]); property != nil {
+				if property.Flags()&ast.SymbolFlagsOptional != 0 {
+					return false
+				}
+				return isAdmittingTryValue(c, member.Expression(), properties, seen)
+			}
+			if value.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 || len(c.GetIndexInfosOfType(value)) != 0 {
+				return false
+			}
+			continue
+		}
+		name := member.Name()
+		if name == nil {
+			return false
+		}
+		key := ""
+		if ast.IsIdentifier(name) || ast.IsStringLiteral(name) || ast.IsNumericLiteral(name) {
+			key = name.Text()
+		} else if ast.IsComputedPropertyName(name) {
+			typeOfKey := c.GetTypeAtLocation(name.AsComputedPropertyName().Expression)
+			if typeOfKey == nil || !checker.IsTypeUsableAsPropertyName(typeOfKey) {
+				return false
+			}
+			key = checker.GetPropertyNameFromType(typeOfKey)
+		} else {
+			return false
+		}
+		if key != properties[0] {
+			continue
+		}
+		if ast.IsPropertyAssignment(member) {
+			return isAdmittingTryValue(c, member.Initializer(), properties[1:], seen)
+		}
+		if ast.IsShorthandPropertyAssignment(member) {
+			return isAdmittingTryValue(c, member.Name(), properties[1:], seen)
+		}
+		return false
+	}
+	return false
 }
 
 func isAdmittingTryType(c *checker.Checker, value *checker.Type, properties []string, seen map[*ast.Node]bool) bool {

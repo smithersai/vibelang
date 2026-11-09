@@ -1,0 +1,3 @@
+go test fuzz v1
+string("spread-explicit-after:try:RangeError")
+byte(4)

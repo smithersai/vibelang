@@ -1,0 +1,14 @@
+// expect: EK0401
+import { Effect as Original } from "effect"
+import { risky, later } from "./foreign.js"
+
+const copied = { ...Original }
+const replaced = { ...Original, ...{ try: Original.sync, tryPromise: Original.promise } }
+export const strictSync = replaced.try(() => risky("sync", false))
+export const strictPromise = replaced.tryPromise(() => later("promise", false))
+export const catchMapper = copied.try({
+  try: () => 1,
+  catch: (_error: unknown) => risky("sync", false)
+})
+export const nested = copied.try(() => (() => risky("sync", false))())
+export const explicit = copied.try(() => { throw new RangeError() })

@@ -29,7 +29,7 @@ func TestWrapperSignatureIdentityQuoted(t *testing.T) { assertWrapperIdentityRul
 
 func wrapperIdentityKeys() []string {
 	var keys []string
-	for _, binding := range []string{"implicit", "named", "namespace", "alias", "constant", "parameter", "imported", "admitting", "forbidding", "sync-alias", "promise-alias", "mixed-sync-alias", "mixed-promise-alias"} {
+	for _, binding := range []string{"implicit", "named", "namespace", "alias", "constant", "parameter", "imported", "admitting", "forbidding", "sync-alias", "promise-alias", "mixed-sync-alias", "mixed-promise-alias", "spread-copy", "spread-empty-after", "spread-empty-before", "spread-explicit-before", "spread-explicit-after", "spread-overwritten-safe", "spread-overwritten-unsafe", "spread-mixed", "spread-computed"} {
 		for _, api := range []string{"try", "tryPromise"} {
 			for _, contract := range []string{"RangeError", "never", "builtin"} {
 				keys = append(keys, binding+":"+api+":"+contract)
@@ -73,6 +73,29 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 	case "alias":
 		imports += "import {Effect as Original} from \"effect\"\n"
 		declaration = "const Effect=Original\n"
+	case "spread-copy", "spread-empty-after", "spread-empty-before", "spread-explicit-before", "spread-explicit-after", "spread-overwritten-safe", "spread-overwritten-unsafe", "spread-mixed", "spread-computed":
+		imports += "import {Effect as Original} from \"effect\"\n"
+		object := "{...Original}"
+		switch binding {
+		case "spread-empty-after":
+			object = "{...Original,...{}}"
+		case "spread-empty-before":
+			object = "{...{},...Original}"
+		case "spread-explicit-before":
+			object = "{" + api + ":Original." + api + ",...{}}"
+		case "spread-explicit-after":
+			object = "{...{}," + api + ":Original." + api + "}"
+		case "spread-overwritten-safe":
+			object = "{...{" + api + ":Fake." + api + "},...Original}"
+		case "spread-overwritten-unsafe":
+			object = "{...Original,...{" + api + ":Fake." + api + "}}"
+		case "spread-mixed":
+			declaration = "declare const flag:boolean\n"
+			object = "{...Original,...(flag?{" + api + ":Fake." + api + "}:{" + api + ":Original." + api + "})}"
+		case "spread-computed":
+			object = "{...{},[\"" + api + "\"]:Original." + api + "}"
+		}
+		declaration += "const Effect=" + object + "\n"
 	case "sync-alias", "promise-alias":
 		imports += "import {Effect as Original} from \"effect\"\n"
 		actual := "sync"
@@ -128,7 +151,7 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 	}
 	defer result.Remove()
 	want := 0
-	if (binding == "constant" || binding == "parameter" || binding == "imported" || binding == "forbidding" || binding == "sync-alias" || binding == "promise-alias" || binding == "mixed-sync-alias" || binding == "mixed-promise-alias") && contract != "never" {
+	if (binding == "constant" || binding == "parameter" || binding == "imported" || binding == "forbidding" || binding == "sync-alias" || binding == "promise-alias" || binding == "mixed-sync-alias" || binding == "mixed-promise-alias" || binding == "spread-overwritten-unsafe" || binding == "spread-mixed") && contract != "never" {
 		want = 1
 	}
 	var errors []string
