@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.12
 
 - A Bun package build could report success while omitting native JavaScript entry files, leaving consumers with missing modules. Existing native entries now stay under Bun’s resolver and keep their outputs.
+- An object with a computed member named `customMatcher` could pass pattern checks even when its key was a different symbol or a string. It now reports `EK0702`; aliases of the actual matcher symbol remain valid.
 
 - An Effect package stored in a numbered directory could make valid `try` operands report that they were not Effects. The compiler now recognizes the resolved package regardless of its storage directory.
 - Returning from a `provide` block could count an extra uncovered branch even when every authored path ran. Coverage now excludes the generated completion check and keeps authored statements visible.
