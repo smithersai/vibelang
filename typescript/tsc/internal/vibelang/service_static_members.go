@@ -15,6 +15,10 @@ func serviceStaticMemberRejected(class, member *ast.Node) bool {
 	if legacyDefault(member) {
 		return false
 	}
+	// A static index signature is already the nameless-member rule's report.
+	if member.Kind == ast.KindIndexSignature {
+		return false
+	}
 	if ast.IsPropertyDeclaration(member) && member.Name() != nil && ast.IsIdentifier(member.Name()) {
 		name := member.Name().Text()
 		return name != "key" && name != "defaultValue"

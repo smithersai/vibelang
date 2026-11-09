@@ -35,6 +35,10 @@ func checkServiceNamelessMembers(c *checker.Checker, file *ast.SourceFile) {
 				}
 				report(c, member, diagnostic, what)
 				cover(c, member)
+				if member.Kind == ast.KindIndexSignature && ast.IsStatic(member) {
+					// The key and default headers would otherwise report TS2411 against it.
+					coverCodes(c, node, 2411)
+				}
 			}
 		}
 		return node.ForEachChild(visit)
