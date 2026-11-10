@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:pattern-member-line-break-trailing\nx is C\n[key,]")

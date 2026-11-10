@@ -1,0 +1,10 @@
+// expect-result: [true,false]
+// Computed matcher access has the same meaning across a line break.
+const Matchers = { Number };
+function check(value: unknown) {
+  return value is Matchers
+  ["Number"];
+}
+export effect function main() {
+  return [check(1), check("a")];
+}

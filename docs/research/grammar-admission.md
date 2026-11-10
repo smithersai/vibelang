@@ -478,14 +478,20 @@ Local names stay `BindingIdentifier` positions, and a type-only clause
 does not combine default and named/namespace bindings.
 
 The pinned matching grammar's computed member access has no line restriction
-and requires an `Expression` inside `[ ]`. The parser currently splits
+and requires an `Expression` inside `[ ]`. The parser used to split
 `value is Matcher` followed by a new-line empty or elided array into two
-statements, reporting only semantic errors. The exact
-`admission:pattern-member-line-break` family stays pending; explicit
-semicolons, nonempty computed members and non-member patterns stay separate.
-`EK0702` is a class-pattern type error and does not reject syntax.
+statements, reporting only semantic errors. It now continues the member
+access through the line break, preserving the native syntax error for
+empty, elided, spread or trailing-comma access expressions.
+The `admission:pattern-member-line-break` family is no longer pending.
+Explicit semicolons, extractor tails, array patterns and valid computed
+members remain separate controls. `EK0702` remains a class-pattern type error.
 
-Combined patterns retain the same computed-member continuation: `and`, `or` and `not` can end with a member followed by a new-line access. The pending classifier follows top-level pattern operators while retaining parenthesized, extractor, binding, array and object tails as separate controls. These witnesses share `admission:pattern-member-line-break`; no new language form is admitted.
+Combined patterns retain the same computed-member continuation: `and`,
+`or` and `not` can end with a member followed by a new-line access.
+The keyed classifier recognizes both the formerly split parse and the
+continued access, keeping existing corpus stable. Commented line breaks
+and trailing commas have separate keyed witnesses.
 
 A bare `async` identifier in a native `for … of` head already reports `TS1106`. The oracle counts that native error as syntax rejection, while preserving warning, suggestion, message and diagnostic-source boundaries. A declaration named `async`, a property target and a native `for … in` head remain separate deriving controls.
 

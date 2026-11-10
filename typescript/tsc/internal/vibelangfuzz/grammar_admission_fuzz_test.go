@@ -169,6 +169,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"production-match-combined", "const v = match (x) { when not 1 and 2: 3; when (> 1 or < 0): 4; when if (y): 5; when P(let a): a; default: 6; };"},
 	{"production-is", "const b = x is [let a];"},
 	{"pattern-member-line-break", "is is join\n[ ]"},
+	{"pattern-member-line-break-comment", "x is C /*\n*/ []"},
+	{"pattern-member-line-break-trailing", "x is C\n[key,]"},
 	{"pattern-member-logical-line-break", "is is is and join\n[ ]"},
 	{"production-effect-type", "type T = number!string!boolean;"},
 	{"production-effect-type-omitted", "type T = number!!;"},

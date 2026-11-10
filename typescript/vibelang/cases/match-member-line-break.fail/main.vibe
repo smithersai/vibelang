@@ -1,0 +1,14 @@
+// expect: TS1109 TS1005
+// Computed matcher members require an expression across a line break too.
+declare const value: unknown;
+declare const Matcher: { [key: string]: typeof Number };
+declare const key: string;
+const empty = value is Matcher
+[];
+const elided = value is Matcher
+[,];
+const spread = value is Matcher
+[...key];
+const trailing = value is Matcher
+[key,];
+export {}

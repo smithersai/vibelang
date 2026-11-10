@@ -39,6 +39,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Invalid global object accesses could hide errors in computed keys and type assertions; those errors are now reported alongside the access diagnostic.
 
+- A computed matcher member after a line break could be split into a separate array expression. It now continues the matcher lookup, and empty or malformed brackets keep their syntax errors.
+
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.

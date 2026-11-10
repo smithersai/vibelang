@@ -34,7 +34,33 @@ func grammarPatternMemberLineBreak(source string, forms []parser.VibeSyntax) boo
 			continue
 		}
 		pattern := grammarLexSource(source[start:end])
+
 		whole := grammarLexSource(source[start:])
+		// The corrected parser includes a continued access in Right. Keep its
+		// original key as well as the old split-form reading below.
+		for i, tok := range pattern {
+			if tok.text != "[" || !tok.nl || !grammarPatternMemberTail(pattern[:i]) || i+1 >= len(whole) {
+				continue
+			}
+			if slices.Contains([]string{"]", ",", "..."}, whole[i+1].text) {
+				return true
+			}
+			depth := 0
+			for j := i; j < len(whole); j++ {
+				switch whole[j].text {
+				case "[", "(", "{":
+					depth++
+				case "]", ")", "}":
+					depth--
+				}
+				if depth == 0 {
+					if j > i && whole[j-1].text == "," {
+						return true
+					}
+					break
+				}
+			}
+		}
 		if !grammarPatternMemberTail(pattern) || len(whole) <= len(pattern)+1 {
 			continue
 		}
@@ -159,19 +185,17 @@ func TestGrammarAdmissionPatternMemberRegression(t *testing.T) {
 		"const b = x is ns.C\n[];",
 		"x is C[key]\n[,];",
 		"x is C\n[...items];",
+		"x is y\n[ [ ] , ]",
+		"x is > y\n[ ]",
+		"is is < and\n[ ]",
 	} {
 		t.Run(source, func(t *testing.T) {
 			result, err := w.Compile(context.Background(), Single(source))
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, d := range result.Diagnostics {
-				if grammarAdmissionSyntaxDiagnostic(d) {
-					t.Fatalf("member line-break witness gained syntax rejection: %v", result.Diagnostics)
-				}
-			}
-			if !grammarAdmissionVerdict(t, w, source) {
-				t.Fatal("computed member line break lost its observed admission gap")
+			if grammarAdmissionVerdict(t, w, source) {
+				t.Fatalf("computed member access needs an expression: %v", result.Diagnostics)
 			}
 		})
 	}
@@ -223,12 +247,12 @@ func TestGrammarAdmissionPatternMemberLogicalRegression(t *testing.T) {
 		"x is (C or D) and E\n[];",
 	} {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			if grammarAdmissionVerdict(t, w, source) {
 				result, err := w.Compile(context.Background(), Single(source))
 				if err != nil {
 					t.Fatal(err)
 				}
-				t.Fatalf("combined member line break lost its observed admission gap: diagnostics=%v", result.Diagnostics)
+				t.Fatalf("combined computed member access needs an expression: %v", result.Diagnostics)
 			}
 		})
 	}

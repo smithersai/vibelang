@@ -583,7 +583,7 @@ func (p *Parser) parseMatchValueExpression() *ast.Node {
 			p.nextToken()
 			name := p.parseRightSideOfDot(true /*allowIdentifierNames*/, true /*allowPrivateIdentifiers*/, true /*allowUnicodeEscapeSequenceInIdentifierName*/)
 			expr = p.finishNode(p.factory.NewPropertyAccessExpression(expr, nil, name, ast.NodeFlagsNone), pos)
-		case p.token == ast.KindOpenBracketToken && !p.hasPrecedingLineBreak():
+		case p.token == ast.KindOpenBracketToken:
 			p.nextToken()
 			argument := p.parseExpressionAllowIn()
 			p.parseExpected(ast.KindCloseBracketToken)

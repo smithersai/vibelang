@@ -1,0 +1,6 @@
+main.vibe(7,2): error TS1109
+main.vibe(9,2): error TS1109
+main.vibe(9,3): error TS1109
+main.vibe(11,2): error TS1109
+main.vibe(11,8): error TS1005
+main.vibe(13,6): error TS1109
