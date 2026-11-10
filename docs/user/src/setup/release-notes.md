@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
+- A program had no way to tell whether a model-driven answer got better or worse than last time: a test can only assert equality. `Experimental.Eval` runs a suite of cases against a target and grades each answer with `Experimental.Scorer` scorers (`exact`, `contains`, `checks` or your own), writes the scores as a baseline to commit, and compares a later run with it; `Experimental.Eval.gate` exits 0 when every case cleared the gate, 1 on a regression, a moved or missing score or a failed target, and 5 when it could not decide.
+
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
 
 - The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.

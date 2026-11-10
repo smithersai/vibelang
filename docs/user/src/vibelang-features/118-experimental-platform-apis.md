@@ -23,6 +23,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
+| `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code | none (pure) |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
@@ -739,6 +740,99 @@ export effect function forkAt(run: string, seq: number) {
 ```
 
 `fork`, `rewind` and `replay` fail with `Experimental.Durable.TimeTravelError`, whose `code` is one of Smithers' twelve. This engine raises `not_found` for an unknown run, `invalid` for a position outside the journal, `busy` when this engine is running the run, `irreversible` when a rewind would remove an irreversible task's step, because no engine can unsend an email, and `compensation_failed` when it would remove a compensable one, because undoing a step is not built yet. A rewind claims the run, so another engine still driving it dies with `FenceLost` at its next write. Note that `fork` is a reserved word in Effect code: name the result `copy`, as above.
+
+## Evals and scorers
+
+A test asserts that an answer equals something. A model's answer rarely equals anything; it is better or worse than the last one. `Experimental.Eval` runs a fixed set of cases against a target, `Experimental.Scorer` grades each answer from 0 to 1, and a gate compares the scores with a committed baseline and returns an exit code. Both modules are pure: no layer, no platform. They port Smithers' `@smthrs/evals` and `@smthrs/scorers`, and a baseline is the same versioned JSON (VIP-69).
+
+```text
+ cases ──► target ──► output ──► scorers ──► scores in [0, 1] ──► compare with baseline ──► gate
+                                  │ exact, contains, checks                │ regressed?       │ 0  pass
+                                  │ yours: Scorer.make                     │ moved? missing?  │ 1  failed
+                                                                                              │ 5  could not decide
+```
+
+```vibe
+// run: try Console.log(try nightly())
+effect function greet(name: string) {
+  return `Hello, ${name}`
+}
+
+const polite = Experimental.Scorer.make({
+  name: "polite",
+  version: "1",
+  score: (run: { output: string; expected: string }) => run.output === run.expected ? 1 : 0
+})
+
+export const greeting = Experimental.Eval.suite("greet", {
+  target: greet,
+  cases: [{ name: "ada", input: ["Ada"], expected: "Hello, Ada" }],
+  scorers: [polite],
+  gate: { min: 1, tolerance: 0 }
+})
+
+export effect function nightly() {
+  const run = try Experimental.Eval.run(greeting)
+  const committed = Experimental.Eval.write(try Experimental.Eval.baseline(run))
+  const report = try Experimental.Eval.compare(try Experimental.Eval.load(committed), run)
+  return Experimental.Eval.gate(report, greeting.gate).summary
+}
+// Output: passed
+```
+
+A case's `input` is the array of the target's arguments, typed from the target, and `expected` is what a scorer compares with. A scorer grades `{ input, output, expected }`; a case with no `expected` passes `undefined`.
+
+| Call | Meaning |
+| --- | --- |
+| `Experimental.Eval.suite(name, { target, cases, scorers, trials?, concurrency?, gate? })` | Declares a suite. Runs nothing and never throws. |
+| `Experimental.Eval.run(suite, { runId?, trials?, k? })` | Runs every case `trials` times and grades every answer with every scorer. Fails with `invalid_suite`, naming the field, before running anything if the suite is malformed. |
+| `Experimental.Eval.baseline(run)` | A baseline from the run's successful scores. |
+| `Experimental.Eval.write(baseline)`, `Experimental.Eval.load(text)` | A baseline as text to commit, one record per line, and back. `load` also reads Smithers' baselines. |
+| `Experimental.Eval.compare(baseline, run, { absolute?, relative? }?)` | Regressions, nondeterminism and missing scores, as a value. |
+| `Experimental.Eval.gate(report, { mean?, min?, perCase?, tolerance? })` | A pure function from a report to `{ verdict, exitCode, summary }`. |
+| `Experimental.Eval.fromJsonLines(text, { name, target, scorers, … })` | A suite whose cases are JSON Lines, one `{ "name", "input", "expected"? }` per line. |
+| `Experimental.Eval.passAtK(n, c, k)` | The chance at least one of `k` trials passes, from `c` passes in `n`; `NaN` for impossible counts. |
+
+A suite holds at most 10,000 cases and runs at most 1,024 at once (`Experimental.Eval.limits`). Trials run one after another; a trial passes when its target succeeded and every scorer gave 1, and each case reports `passAt1`, `passAtK` and `passHatK`.
+
+The outcomes stay distinct all the way to the exit code:
+
+| Outcome | What it is | Exit |
+| --- | --- | --- |
+| Regression | A score dropped and the target gave a different answer: the output's hash, its step key, changed | `1` |
+| Nondeterminism | A score moved and the answer did not: the same output graded differently twice | `1` |
+| Missing | A score on one side only, such as a new case, or a scorer whose version changed | `1` |
+| Failed target | The target failed or died; the case has no scores, and the run continues | `1` |
+| Inconclusive | A scorer failed or returned something other than a finite number in `[0, 1]`; it records a code and a reason, never a score of zero | `5` |
+
+A gate exits `0` only when every case cleared it, `1` when anything above failed or a score fell below `min`, `mean` or a `perCase` threshold, and `5` when it could not decide: an inconclusive scorer, no scores at all, or an invalid threshold. A `5` is a broken harness, not a result. `tolerance` ignores a move no larger than it, which a model-graded score needs.
+
+A baseline never updates itself. `Experimental.Eval.baseline` records scores only, and writing the file is a separate act with a diff to review.
+
+### Scorers
+
+| Scorer | Grades |
+| --- | --- |
+| `Experimental.Scorer.exact` | Equality with `expected`: text after trimming and collapsing whitespace, any other value by its canonical JSON |
+| `Experimental.Scorer.contains(text?)` | Whether the output text contains `text`, or the case's `expected` text |
+| `Experimental.Scorer.checks([...])` | The fraction of text checks that pass |
+| `Experimental.Scorer.make({ name, version, config?, score })` | Your function from the run record to a number, `{ score, reason?, meta? }`, or an Effect of either |
+
+A scorer has an identity. Its name, version and `config` hash into a `scorerKey`, SHA-256 of their canonical JSON, which every observation carries, so a score recorded a month ago still names the exact grader. Change what a scorer does, bump its `version`. Declaring a scorer never throws: a blank name or version, or a `config` that is not plain JSON, such as one holding a function or a `Date`, is kept as `scorer.problem`, and `run` refuses a suite that uses it. Two scorers with one identity in a suite are refused too.
+
+A scorer's Effect may need services, such as a model it asks. The suite's requirements are its target's and its scorers', and a scorer whose service fails is inconclusive.
+
+Each check of `Experimental.Scorer.checks` is plain data, so the list is the scorer's configuration and part of its identity:
+
+| Check | Passes when |
+| --- | --- |
+| `{ includes: [...] }` | every entry appears. An entry is a case-insensitive whole word or phrase, a stem such as `"refund*"`, or a regular expression written `"/source/flags"`; an array entry passes when any member appears |
+| `{ excludes: [...] }` | no entry appears, matched the same way |
+| `{ words: { min?, max? } }` | the word count is within the bounds; a link counts as its label's words |
+| `{ excludesOpener: [...] }` | the text does not open with one of the phrases |
+| `{ complete: true }` | no unclosed code fence and no ellipsis cuts the text off |
+
+`Experimental.Scorer.rubric`, a model judge, and `Experimental.Scorer.bind`, which scores a workflow's live runs, are not built yet.
 
 ## Testing agentic programs
 

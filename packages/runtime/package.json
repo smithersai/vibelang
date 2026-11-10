@@ -186,6 +186,16 @@
       "import": "./dist/experimental/Encoding.js",
       "default": "./dist/experimental/Encoding.js"
     },
+    "./experimental/Eval": {
+      "types": "./dist/experimental/Eval.d.ts",
+      "import": "./dist/experimental/Eval.js",
+      "default": "./dist/experimental/Eval.js"
+    },
+    "./experimental/Scorer": {
+      "types": "./dist/experimental/Scorer.d.ts",
+      "import": "./dist/experimental/Scorer.js",
+      "default": "./dist/experimental/Scorer.js"
+    },
     "./experimental/platform-worker": {
       "types": "./dist/experimental/platform-worker/index.d.ts",
       "import": "./dist/experimental/platform-worker/index.js",

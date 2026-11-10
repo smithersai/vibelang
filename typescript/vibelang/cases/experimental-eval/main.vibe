@@ -1,0 +1,66 @@
+// expect-result: {"scores":[1,1],"passed":0,"regressed":1,"regression":true,"undecided":5,"keyLength":64}
+// VIP-69: Experimental.Eval runs a suite's cases against its target,
+// Experimental.Scorer grades every answer from 0 to 1, and a gate compares
+// the scores with a committed baseline and returns an exit code.
+effect function greet(name: string) {
+  return `Hello, ${name}`
+}
+
+effect function rude(name: string) {
+  return `Go away, ${name}`
+}
+
+const polite = Experimental.Scorer.make({
+  name: "polite",
+  version: "1",
+  score: (run: { output: string; expected: string }) => run.output === run.expected ? 1 : 0
+})
+
+const greeting = Experimental.Eval.suite("greet", {
+  target: greet,
+  cases: [{ name: "ada", input: ["Ada"], expected: "Hello, Ada" }],
+  scorers: [polite, Experimental.Scorer.exact],
+  gate: { min: 1, tolerance: 0 }
+})
+
+const rudeGreeting = Experimental.Eval.suite("greet", {
+  target: rude,
+  cases: [{ name: "ada", input: ["Ada"], expected: "Hello, Ada" }],
+  scorers: [polite, Experimental.Scorer.exact]
+})
+
+// A judge that cannot be reached is inconclusive, never a score of zero.
+const unreachable = Experimental.Scorer.make({
+  name: "judge",
+  version: "1",
+  score: (run: { output: string }) => Effect.fail(`no judge for ${run.output}`)
+})
+
+const judged = Experimental.Eval.suite("judged", {
+  target: greet,
+  cases: [{ name: "ada", input: ["Ada"] }],
+  scorers: [unreachable]
+})
+
+effect function grade(committed: string, suite: Experimental.Eval.Suite<[name: string], string>) {
+  const run = try Experimental.Eval.run(suite)
+  const report = try Experimental.Eval.compare(try Experimental.Eval.load(committed), run)
+  return Experimental.Eval.gate(report, suite.gate)
+}
+
+export effect function main() {
+  const first = try Experimental.Eval.run(greeting, { runId: "first" })
+  const committed = Experimental.Eval.write(try Experimental.Eval.baseline(first))
+  const passed = try grade(committed, greeting)
+  const regressed = try grade(committed, rudeGreeting)
+  const inconclusive = try Experimental.Eval.run(judged)
+  const undecided = Experimental.Eval.gate(try Experimental.Eval.compare(try Experimental.Eval.baseline(inconclusive), inconclusive))
+  return {
+    scores: first.observations.map((observation) => observation.kind === "score" ? observation.score : -1),
+    passed: passed.exitCode,
+    regressed: regressed.exitCode,
+    regression: regressed.summary.includes("regression for ada/polite"),
+    undecided: undecided.exitCode,
+    keyLength: polite.scorerKey.length,
+  }
+}
