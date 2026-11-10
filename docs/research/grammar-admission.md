@@ -968,11 +968,6 @@ controls with name-resolution errors only; malformed lists and the
 corresponding type reference remain rejections. The lab removes the
 extra line-break guard from `ClassHeritage` alone.
 
-A recovered non-null assertion, type assertion or type-argument list around
-`import.meta` still cannot be a static module specifier. The native
-`TS1141` rejection survives for each wrapper, so their former pending-key
-assertions are rejection regressions with exact keyed corpus inputs.
-
 An import type's type arguments followed. TypeScript's parser reads them as a
 bracketed list that may be empty or end in a comma, and the checker's
 TypeArguments grammar check (`TS1099`, `TS1009`) runs on type references and
