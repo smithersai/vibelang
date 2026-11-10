@@ -1,8 +1,8 @@
-# Seconds each test or fuzz target took, slowest run of each name (2026-11-08, four processes on a 4-vCPU box, the one-process host file of 2026-10-31 replaced), for
+# Seconds each test or fuzz target took, slowest run of each name (2026-11-10, short seed corpus; timestamped parallel work and current option matrices), for
 # scripts/go-test-shards.sh, which spreads the slowest across its processes. Names not listed count 1 s; a stale
-# line only unbalances the processes. Refresh: node scripts/go-shard-seconds.mjs <package dir> <go test -v log>...
-654 TestMigrationManagedTypeRoutesNeighborhood
+# line only unbalances the processes. Refresh: node scripts/go-shard-seconds.mjs <package dir> <go test -json -count=1 log>...
 357 TestCaseCorpusCompilerTemporaryDiagnostics
+270 FuzzDeclarationIdentity
 239 FuzzMigrationForeignCallPositions
 211 TestDeclarationUnnameableBaseline
 201 FuzzImplicitGeneratorDefectBridge
@@ -14,6 +14,7 @@
 125 FuzzMigrationForeignCallbackCalls
 119 FuzzFix
 114 TestDeclarationIdentityWorkerRegisteredParity
+113 TestDeclarationIdentityAdmission
 109 FuzzDataSpecRules
 109 FuzzDeclarationPreludeModes
 99 FuzzErrorDeclarationTwin
@@ -23,6 +24,7 @@
 80 FuzzVIP3InferSlotMigrationOrder
 80 TestEffectAliasRepairWitnesses
 78 FuzzFixCases
+77 TestComputedTryOptionsVariants
 71 TestVIPConstructs
 70 FuzzMigrationDeclarationFix
 66 FuzzIncremental
@@ -38,6 +40,7 @@
 47 TestDeclarationIdentityPreflightWorkerParity
 46 FuzzInferredEffectDeclaration
 44 FuzzLegacyJavaScript
+44 TestTryOptionsMethodsVariants
 41 FuzzServiceReadonlyConversion
 38 FuzzDoCompletion
 38 FuzzMapperErrorRegistrationMembers

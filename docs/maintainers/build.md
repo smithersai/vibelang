@@ -1063,9 +1063,16 @@ It runs its test binary through `scripts/go-test-shards.sh` like
 `internal/vibelang/testdata/shard-seconds.txt`: 339 s as one process, 153 s as
 six, on the same host at load 75 (2026-11-01). A name the file does not list
 counts 1 s, so the dealing is only as good as the file is current: refresh it
-from a `go test -v` log of the package with
+from an uncached `go test -json -count=1` log of the package with
 `node scripts/go-shard-seconds.mjs typescript/tsc/internal/vibelang <log>...`,
-which keeps the slowest top-level time of each name at five seconds or more.
+which keeps the slowest observed cost of each name at five seconds or more.
+JSON event timestamps include time spent waiting for parallel subtests; Go's
+reported top-level `Elapsed` and verbose duration can omit that work. The
+reader excludes a top-level test's own `pause` to `cont` interval, rejects
+cached or incomplete JSON timings, and refuses verbose logs with parallel
+descendants. Use the same `-short` mode as the target being measured.
+Add `--update` to retain unobserved names while replacing newly measured
+costs; an observed zero-cost skip removes its old full-run weight.
 
 A compiler case's `pending` file must start with its owner's lane. An empty or
 whitespace-only file fails that case before installing dependencies or compiling;
