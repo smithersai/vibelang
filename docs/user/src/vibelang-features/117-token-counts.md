@@ -116,10 +116,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 690 |
 | [Existing project](../setup/existing-project.md) | 4,300 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,400 |
-| **Build and test** | **22,000** |
+| **Build and test** | **23,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 18,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,800 |
-| **Format and lint** | **15,000** |
+| **Format and lint** | **16,000** |
 | [Format with dprint](../setup/formatting.md) | 3,700 |
 | [Developer tools](../setup/developer-tools.md) | 12,000 |
 | **Frameworks** | **11,000** |
@@ -273,7 +273,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 13,000 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
-| [Pattern matching with match and is](116-match-and-is.md) | 13,000 |
+| [Pattern matching with match and is](116-match-and-is.md) | 14,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 11,000 |
