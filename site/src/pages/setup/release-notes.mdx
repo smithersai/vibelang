@@ -364,6 +364,7 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Calls that may throw inside `Effect.try` or `Effect.tryPromise` options could report `EK0401` when the `try` key was computed. These keys now keep the same thunk contract.
 
+- An unknown function or method name could hide the error for returning a value from a producer. Both errors are now reported.
 - A producer’s binding default could reject `yield` inside `do` with `EK0204`. It now emits from the enclosing producer and resumes the binding in order.
 - A producer’s `return value` inside a `do` in a computed member name, a heritage clause or a decorator reported `EK0204`, which describes a compiler limitation. It now reports `EK2128`, the producer rule, together with the producer’s other valued returns.
 

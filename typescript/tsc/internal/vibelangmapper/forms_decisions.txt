@@ -8065,6 +8065,7 @@ typescript/vibelang/cases/producer-scope-unions/main.vibe:46:45 lambda plain tab
 typescript/vibelang/cases/producer-scope-unions/main.vibe:46:54 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:47:42 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:47:51 lambda plain table
+typescript/vibelang/cases/producer-unresolved-callee-return.fail/main.vibe:2:9 lambda plain fallback
 typescript/vibelang/cases/producer-written-return-parity.fail/main.vibe:5:25 lambda plain annotation
 typescript/vibelang/cases/producer-written-return-parity/main.vibe:14:27 lambda plain annotation
 typescript/vibelang/cases/producer-written-return-parity/main.vibe:17:59 lambda plain table

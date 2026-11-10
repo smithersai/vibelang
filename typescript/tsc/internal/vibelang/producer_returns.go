@@ -26,9 +26,9 @@ func init() {
 }
 
 // producerReturns calls f with each `return value` of each producer in file and
-// the producer it returns from, except a function* written for an API that takes
-// a JavaScript generator, which is EK1002 (generators.go), and one given to a
-// callee that does not resolve, where nothing yet says which it is.
+// the producer it returns from, except a producer written for a native
+// generator API, which is EK1002 (generators.go). An unresolved callee cannot
+// change the explicit producer marker or hide the producer's own errors.
 func producerReturns(c *checker.Checker, file *ast.SourceFile, f func(producer, ret *ast.Node)) {
 	generators := generatorArguments(c, file)
 	var visit func(n *ast.Node) bool
@@ -52,16 +52,16 @@ func producerReturns(c *checker.Checker, file *ast.SourceFile, f func(producer, 
 }
 
 // generatorArguments returns the function* expressions and declarations of
-// file that are passed where a JavaScript generator is expected, or to a callee
-// that does not resolve: with effect not installed, Effect.gen is such a callee,
-// and rewriting its generator's return as a producer's would lose the value.
+// file that are passed where a JavaScript generator is expected. Their API
+// diagnostic owns the body. Plain JavaScript generators are never producers,
+// and unresolved calls do not supply a generator context for explicit producers.
 func generatorArguments(c *checker.Checker, file *ast.SourceFile) map[*ast.Node]bool {
 	found := map[*ast.Node]bool{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsCallExpression(node) {
 			for _, arg := range node.Arguments() {
-				if isGeneratorFunction(c, arg) && (expectsGenerator(c, arg) || c.GetTypeAtLocation(node.Expression()) == c.GetErrorType()) {
+				if isGeneratorFunction(c, arg) && expectsGenerator(c, arg) {
 					found[arg] = true
 					if decl := generatorDeclaration(c, arg); decl != nil {
 						found[decl] = true

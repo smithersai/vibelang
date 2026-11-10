@@ -1,0 +1,3 @@
+// expect: TS2304 EK2128
+missing(effect function* () { return 7 })
+export {}
