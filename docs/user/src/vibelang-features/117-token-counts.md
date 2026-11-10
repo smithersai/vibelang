@@ -146,7 +146,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,300 |
 | **Error Management** | **25,000** |
-| [Expected Errors](../error-management/014-expected-errors.md) | 13,000 |
+| [Expected Errors](../error-management/014-expected-errors.md) | 14,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,800 |
 | [Fallback](../error-management/016-fallback.md) | 2,700 |
 | [Matching](../error-management/017-matching.md) | 790 |
@@ -158,7 +158,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,200 |
 | **Requirements Management** | **13,000** |
-| [Managing Services](../requirements-management/025-services.md) | 6,300 |
+| [Managing Services](../requirements-management/025-services.md) | 6,400 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
 | [Managing Layers](../requirements-management/027-layers.md) | 3,900 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |
@@ -233,7 +233,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Order](../behaviour/084-order.md) | 1,400 |
 | **Schema** | **36,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
-| [Getting Started](../schema/086-getting-started.md) | 3,700 |
+| [Getting Started](../schema/086-getting-started.md) | 3,800 |
 | [Basic Usage](../schema/087-basic-usage.md) | 5,400 |
 | [Filters](../schema/088-filters.md) | 1,500 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 3,000 |
