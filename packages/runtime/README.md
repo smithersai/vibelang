@@ -328,6 +328,7 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/Stdio` | Effect standard I/O plus `awaitInputClosed` |
 | `vibelang-runtime/experimental/Dns` | Typed DNS resolution |
 | `vibelang-runtime/experimental/Durable` | A journaled engine for Effect's `Workflow` and `Activity`: crashed runs resume and skip finished steps |
+| `vibelang-runtime/experimental/Test` | Test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording |
 | `vibelang-runtime/experimental/Encoding` | Pure `decodeBase64Lenient`, requiring no layer |
 | `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns` layer |
 

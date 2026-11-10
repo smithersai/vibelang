@@ -131,6 +131,11 @@
       "import": "./dist/experimental/ResizeObserver.js",
       "default": "./dist/experimental/ResizeObserver.js"
     },
+    "./experimental/Test": {
+      "types": "./dist/experimental/Test.d.ts",
+      "import": "./dist/experimental/Test.js",
+      "default": "./dist/experimental/Test.js"
+    },
     "./experimental/Window": {
       "types": "./dist/experimental/Window.d.ts",
       "import": "./dist/experimental/Window.js",

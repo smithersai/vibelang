@@ -1,0 +1,31 @@
+// expect-result: {"label":"bug","unused":0,"again":"UnrecordedCall","unknown":"UnrecordedCall"}
+// Experimental.Test.replay (VIP-71) is a LanguageModel that answers from a
+// recording and never calls a provider. Each recorded call is claimed once,
+// and a request the recording does not describe is a defect.
+import recorded from "./label.json" with { type: "json" }
+
+schema Label { type: "bug" | "feature" | "question" | "chore" }
+
+effect function label(title: string) {
+  const reply = try LanguageModel.generateObject({ prompt: `Label this issue: ${title}`, schema: Label })
+  return reply.value
+}
+
+const defectName = (defect: unknown) => defect instanceof Experimental.Test.UnrecordedCall ? defect._tag : String(defect)
+
+effect function outcome(title: string) {
+  return try label(title).pipe(
+    Effect.map((value) => value.type),
+    Effect.catchDefect((defect) => Effect.succeed(defectName(defect)))
+  )
+}
+
+export effect function main() {
+  provide Experimental.Test.replay(recorded) {
+    const result = try label("Crash on start")
+    const unused = try Experimental.Test.unconsumed
+    const again = try outcome("Crash on start")
+    const unknown = try outcome("Slow build")
+    return { label: result.type, unused: unused.length, again, unknown }
+  }
+}

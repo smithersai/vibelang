@@ -22,6 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
+| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider | the doubles are layers; they need nothing and run in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -737,3 +738,55 @@ export effect function forkAt(run: string, seq: number) {
 ```
 
 `fork`, `rewind` and `replay` fail with `Experimental.Durable.TimeTravelError`, whose `code` is one of Smithers' twelve. This engine raises `not_found` for an unknown run, `invalid` for a position outside the journal, `busy` when this engine is running the run, `irreversible` when a rewind would remove an irreversible task's step, because no engine can unsend an email, and `compensation_failed` when it would remove a compensable one, because undoing a step is not built yet. A rewind claims the run, so another engine still driving it dies with `FenceLost` at its next write. Note that `fork` is a reserved word in Effect code: name the result `copy`, as above.
+
+## Testing agentic programs
+
+A test of an agentic program needs a model that holds still. `Experimental.Test` (VIP-71) adds doubles for what Effect has none of, each a layer the test provides in place of the production one. Tests stay `@effect/vitest` tests, and Effect's `TestClock` and `TestConsole` stay as they are.
+
+`Experimental.Test.replay(fixture)` is a `LanguageModel` that answers from a recording and never calls a provider, so a test runs with no key and no network. A program asks through whatever `LanguageModel` is in scope, so the test changes no line of it:
+
+```vibe
+// run: try Console.log(try labelCrash())
+schema Label { type: "bug" | "feature" | "question" | "chore" }
+
+const recorded = {
+  calls: [{
+    request: { prompt: "Label this issue: Crash on start" },
+    response: [{ type: "text", text: `{"type":"bug"}` }]
+  }]
+}
+
+effect function label(title: string) {
+  const reply = try LanguageModel.generateObject({ prompt: `Label this issue: ${title}`, schema: Label })
+  return reply.value
+}
+
+export effect function labelCrash() {
+  provide Experimental.Test.replay(recorded) {
+    const result = try label("Crash on start")
+    return result.type
+  }
+}
+// Output: bug
+```
+
+A fixture is JSON, usually a file beside the test imported with `import recorded from "./fixtures/label.json" with { type: "json" }`. Each entry of `calls` is one model call:
+
+| Field | Holds |
+| --- | --- |
+| `request.prompt` | the prompt, as `Prompt.make` accepts it: a string, or messages in their encoded form |
+| `request.tools`, `request.responseFormat`, `request.toolChoice` | compared only when present: the tools' names, descriptions and JSON Schema parameters, the response format with its JSON Schema, and the tool choice |
+| `response` | the encoded response parts `generateText` and `generateObject` decode, such as `{ "type": "text", "text": "..." }` or a `tool-call` |
+| `stream` | the encoded stream parts `streamText` decodes, such as `text-delta` |
+| `failure` | an encoded `AiError` the call fails with, such as a recorded rate limit |
+
+Replay keeps these rules:
+
+| Rule | Consequence |
+| --- | --- |
+| Each recorded call is claimed once | Two equal requests need two recordings. Concurrent requests never share one. |
+| A request no unclaimed recording matches is a defect | The fiber dies with `Experimental.Test.UnrecordedCall`, which names the method, the message count, the tools and the end of the last message. A missing recording is a failed test, never a network call. |
+| Matching never reads a model id | A recording made with one model replays under another, so a test does not break when the model changes. |
+| A malformed fixture is a defect | Building the layer dies with `Experimental.Test.InvalidFixture`. |
+
+The layer also provides `Experimental.Test.Recording`. `try Experimental.Test.unconsumed` is the list of recorded calls the run has not used, for a test that must use its whole recording.

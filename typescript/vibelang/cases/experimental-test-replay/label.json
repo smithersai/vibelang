@@ -1,0 +1,8 @@
+{
+  "calls": [
+    {
+      "request": { "prompt": "Label this issue: Crash on start" },
+      "response": [{ "type": "text", "text": "{\"type\":\"bug\"}" }]
+    }
+  ]
+}
