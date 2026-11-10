@@ -1,0 +1,37 @@
+// expect-result: {"name":"demo","status":" M src/a.ts\n","written":"demo: 1 changed","missingFile":"NotFound","missingCommand":"NotFound"}
+// Experimental.Test.host (VIP-71) is a deterministic machine: Effect's
+// FileSystem over files held in memory, and a ChildProcessSpawner that
+// answers from a table of commands. A file it does not hold and a command it
+// does not script both fail with NotFound, as on a real machine.
+const machine = Experimental.Test.host({
+  files: { "/repo/package.json": `{"name":"demo"}` },
+  commands: { "git status --short": { stdout: " M src/a.ts\n" } }
+})
+
+const reason = (error: PlatformError.PlatformError) => error.reason._tag
+
+effect function summarize() {
+  const fs = try FileSystem.FileSystem
+  const spawner = try ChildProcessSpawner.ChildProcessSpawner
+  const text = try fs.readFileString("/repo/package.json")
+  const manifest = try Effect.try(() => JSON.parse(text))
+  const status = try spawner.string(ChildProcess.make("git", ["status", "--short"]))
+  const changed = status.split("\n").filter((line) => line !== "").length
+  try fs.writeFileString("/repo/summary.txt", `${manifest.name}: ${changed} changed`)
+  return { name: manifest.name, status }
+}
+
+export effect function main() {
+  provide machine {
+    const result = try summarize()
+    const fs = try FileSystem.FileSystem
+    const spawner = try ChildProcessSpawner.ChildProcessSpawner
+    const written = try fs.readFileString("/repo/summary.txt")
+    const missingFile = try fs.readFileString("/repo/README.md").pipe(Effect.as("read"), Effect.catch((error) => Effect.succeed(reason(error))))
+    const missingCommand = try spawner.string(ChildProcess.make("rm", ["-rf", "/repo"])).pipe(
+      Effect.as("ran"),
+      Effect.catch((error) => Effect.succeed(reason(error)))
+    )
+    return { ...result, written, missingFile, missingCommand }
+  }
+}

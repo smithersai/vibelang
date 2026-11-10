@@ -22,7 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash` | the doubles are layers; `replay` and the engines need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
+| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands | the doubles are layers; `replay`, `host` and the engines need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -811,6 +811,38 @@ export effect function labelLive(seat: Layer.Layer<LanguageModel.LanguageModel>)
 | Nothing for a call that holds a credential | the call dies with `Experimental.Test.CredentialInRecording`, naming the rule that matched, such as `api-key` or `jwt` |
 
 `record` builds the `live` layer at the first miss, so a test whose recording answers every request runs with no key. Each append rewrites the file through a temporary file and a rename, so a crash leaves the old recording or the new one. A relative `path` resolves from the working directory, as Effect's `FileSystem` resolves it, and `record` needs a `FileSystem` layer such as `NodeFileSystem.layer`.
+
+### A machine of fixed files and commands
+
+`Experimental.Test.host({ files, commands })` provides Effect's `FileSystem`, `Path` and `ChildProcessSpawner` for a machine described in the test: the files that exist, by path, and what each command prints. Nothing reaches the operating system, so the test runs the same on every machine.
+
+```vibe
+// run: try Console.log(try changedFiles())
+const machine = Experimental.Test.host({
+  files: { "/repo/package.json": `{"name":"demo"}` },
+  commands: { "git status --short": { stdout: " M src/a.ts\n M src/b.ts\n" } }
+})
+
+export effect function changedFiles() {
+  provide machine {
+    const fs = try FileSystem.FileSystem
+    const spawner = try ChildProcessSpawner.ChildProcessSpawner
+    const manifest = try fs.readFileString("/repo/package.json")
+    const status = try spawner.lines(ChildProcess.make("git", ["status", "--short"]))
+    return `${manifest}: ${status.length} changed`
+  }
+}
+// Output: {"name":"demo"}: 2 changed
+```
+
+| Part | Behavior |
+| --- | --- |
+| `files` | Each file exists with its text, and so do its parent directories. Paths are POSIX; a relative path starts at `/`. |
+| File system members | Reading, writing, appending, `makeDirectory`, `readDirectory`, `stat`, `remove`, `rename` and `copyFile` behave as on Node, failures included: a path below a file fails with `BadResource`, as `ENOTDIR` does. Other members fail with `NotFound`, as Effect's `FileSystem.makeNoop` does. File times are fixed. |
+| `commands` | Keyed by command line, the command and its arguments joined by spaces. Each gives `stdout`, `stderr` and `exitCode`, all optional. |
+| An unscripted command | Fails to spawn with a `NotFound` `PlatformError`, as a missing binary does. A piped command fails with `BadArgument`; script each command on its own. |
+
+Each build of the layer starts from its options again.
 
 ### Crash tests for durable workflows
 

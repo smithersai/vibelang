@@ -59,6 +59,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A durable workflow killed during a long `DurableClock.sleep` slept the whole duration again when it resumed. The engine now journals when the clock is due, and the resumed run waits only for the time left.
 
+- A test of code that reads files or runs commands depended on the machine it ran on. `Experimental.Test.host({ files, commands })` provides Effect's `FileSystem`, `Path` and `ChildProcessSpawner` for a machine described in the test, and an unscripted command fails as a missing binary does.
+
 - A test could not show that a durable workflow recovers from a crash without building engines over a shared store by hand. `Experimental.Test.restartable` is an engine a test kills with `Experimental.Test.crash`; the next execution resumes the run, serving finished steps and running the unfinished one again.
 
 - Refreshing a recorded model fixture meant writing the provider's answers out by hand. `Experimental.Test.record(path, { live })` replays the file and sends only a request it is missing to the named live model, appending the answer; it never writes an interrupted call or a call that holds a credential.

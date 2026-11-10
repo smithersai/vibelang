@@ -4327,6 +4327,11 @@ typescript/vibelang/cases/experimental-resize-observer/main.vibe:14:14 lambda ef
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:20:23 byname program table
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:20:43 lambda effectFn annotation
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:6:33 lambda choice fallback
+typescript/vibelang/cases/experimental-test-host/main.vibe:11:16 lambda plain fallback
+typescript/vibelang/cases/experimental-test-host/main.vibe:17:35 lambda plain table
+typescript/vibelang/cases/experimental-test-host/main.vibe:19:45 lambda plain fallback
+typescript/vibelang/cases/experimental-test-host/main.vibe:30:103 lambda effectFn table
+typescript/vibelang/cases/experimental-test-host/main.vibe:33:20 lambda effectFn table
 typescript/vibelang/cases/experimental-test-record/main.vibe:10:19 lambda effectFn table
 typescript/vibelang/cases/experimental-test-record/main.vibe:11:20 lambda effectFn table
 typescript/vibelang/cases/experimental-test-record/main.vibe:11:48 lambda plain table

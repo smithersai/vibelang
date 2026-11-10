@@ -34,6 +34,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as Path from "effect/Path"
 import type { PlatformError } from "effect/PlatformError"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
@@ -41,10 +42,12 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
 import { AiError, LanguageModel, Prompt, Response, Tool, Toolkit } from "effect/ai"
+import { ChildProcessSpawner } from "effect/process"
 import { WorkflowEngine } from "effect/workflow"
 import type { Workflow } from "effect/workflow"
 import * as Durable from "./Durable.js"
 import * as canonical from "./internal/canonical.js"
+import * as testHost from "./internal/testHost.js"
 
 /**
  * @category type ids
@@ -716,3 +719,55 @@ export const restartable: Layer.Layer<WorkflowEngine.WorkflowEngine | Durable.Du
       Context.add(Restartable, Restartable.of({ crash: crashNow }))
     )
   }))
+
+// -----------------------------------------------------------------------------
+// Host
+// -----------------------------------------------------------------------------
+
+/**
+ * The machine {@link host} provides.
+ *
+ * - `files`: the files that exist, by path, with their text. Their parent
+ *   directories exist too.
+ * - `commands`: what each command prints and the code it exits with, keyed
+ *   by its command line, the command and its arguments joined by spaces,
+ *   such as `"git status --short"`.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface HostOptions {
+  readonly files?: Readonly<Record<string, string>> | undefined
+  readonly commands?: Readonly<Record<string, testHost.ScriptedCommand>> | undefined
+}
+
+/**
+ * A deterministic machine: Effect's `FileSystem` over the files in
+ * `options`, held in memory, Effect's POSIX `Path`, and a
+ * `ChildProcessSpawner` that answers from a table of commands. Nothing
+ * reaches the operating system, so the test runs the same on any machine and
+ * in a browser.
+ *
+ * - Paths are POSIX; a relative path starts at `/`. Reading, writing,
+ *   appending, directories, `stat`, `remove`, `rename` and `copyFile` work;
+ *   other members fail with `NotFound`, as Effect's `FileSystem.makeNoop`
+ *   does. File times are fixed.
+ * - A command the table does not list fails to spawn with a `NotFound`
+ *   `PlatformError`, as a missing binary does. A piped command fails with
+ *   `BadArgument`.
+ * - Each build of the layer starts from `options` again.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const host = (
+  options: HostOptions = {}
+): Layer.Layer<FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner> =>
+  Layer.mergeAll(
+    Layer.effect(FileSystem.FileSystem, Effect.sync(() => testHost.makeMemoryFileSystem(options.files ?? {}))),
+    Path.layer,
+    Layer.effect(
+      ChildProcessSpawner.ChildProcessSpawner,
+      Effect.sync(() => testHost.makeScriptedSpawner(options.commands ?? {}))
+    )
+  )
