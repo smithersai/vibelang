@@ -984,6 +984,11 @@ controls with name-resolution errors only; malformed lists and the
 corresponding type reference remain rejections. The lab removes the
 extra line-break guard from `ClassHeritage` alone.
 
+A recovered non-null assertion, type assertion or type-argument list around
+`import.meta` still cannot be a static module specifier. The native
+`TS1141` rejection survives for each wrapper, so their former pending-key
+assertions are rejection regressions with exact keyed corpus inputs.
+
 An import type's type arguments followed. TypeScript's parser reads them as a
 bracketed list that may be empty or end in a comma, and the checker's
 TypeArguments grammar check (`TS1099`, `TS1009`) runs on type references and
@@ -1136,8 +1141,6 @@ service defaults, with plain and nested Effect controls.
 A case mutation ended a callback return type in `Disposable!E!` immediately before the enclosing parameter list's `)`. The compiler reports only a warning. This joins `admission:effect-type-trailing-bang`: parentheses also contain parameter lists, not only parenthesized aliases. Removing the dangling bang must restore a complete Appendix A derivation, including at a comma or a parameter default, so unrelated gaps and ordinary non-null assertions keep their own classification. Keyed corpus inputs retain the minimized callback program independently of the compiler-case list's order.
 
 The second effect-type bang also retains its no-line-terminator restriction in callback return types and other annotations, not only in type aliases. A callback returning `Disposable!E` followed on the next line by `!1` remains `admission:effect-type-line-break`. Classification removes only the recorded line break and requires a complete Appendix A derivation; ordinary non-null assertions and an independent syntax gap remain controls. Keyed corpus retains the exact callback witness independently of deep-mutation seed ordering.
-
-Recovered static `import.meta` specifiers wrapped in a non-null assertion, type assertion or type-argument list remain in `admission:import-meta-specifier` while a platform diagnostic masks native `TS1141`. Their keyed corpus and explicit wrapper regressions retain the gap rather than treating that platform diagnostic as syntax rejection. Once native rejection is preserved, the existing pending-corpus check reports XPASS.
 
 
 Deferred pattern syntax errors now survive an unsupported binding home. The placement marker retains the grammar calls until a supported home compiles the pattern, where the holder is replaced so each error appears once. The `admission:pattern-rest-ellipsis` family and the missing-pattern/rest-position witnesses of `admission:unhomed-pattern-grammar` are no longer pending. Strict-mode reserved identifiers still need native binder recovery; bindings and references retain corpus under the narrower `admission:unhomed-pattern-reserved-identifier` key.

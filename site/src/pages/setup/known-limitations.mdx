@@ -36,4 +36,3 @@ Mapper failures `EK9001` through `EK9006` have [repair guidance in the diagnosti
 The specification marks each example the compiler does not pass yet with `// compiler-gap: pending VIP-N`, and the docs check fails as soon as such an example passes, so this list stays current:
 
 - VIP-4: in effect code, `JSON.stringify(v)` and `s.repeat(n)` compile without `EK0403`, although the specification gives them the thrown types `TypeError` and `RangeError` ([Thrown types](/spec/003-failures#thrown-types)). Wrap them yourself: `try Effect.try(() => JSON.stringify(v))`.
-- VIP-33: every use of `import.meta` other than `import.meta.url`, such as `import.meta.dirname`, `const { url } = import.meta` or `import.meta["url"]`, reports `EK4402`, although the specification says `import.meta` follows TypeScript ([Services](/spec/005-services)). Read those members in a `.ts` file.

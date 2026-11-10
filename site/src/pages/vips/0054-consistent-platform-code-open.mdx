@@ -16,7 +16,7 @@ title: "VIP-54: One consistent model for platform-specific code (open)"
 
 **One sentence.** One rule decides every platform-specific form in Vibe code (`import.meta` members, platform globals, build-tool transforms and host APIs), keeps each dependence explicit, and accepts what TypeScript accepts for the platforms a project targets.
 
-**One paragraph.** Today VibeLang handles platform code through separate rules in [VIP-33](/vips/0033-platform-stdlib): its seven platform amendments of 2026-10-29 through 2026-11-07 cover banned globals, their derivation from library declarations, static accesses through `globalThis`, bare `Worker`, `import.meta.url`, platform members and members of an injected page. The later ruling, “Vibelang should allow it if it's using vite. Same as ts”, calls for `import.meta` to follow TypeScript; its separate VIP-33 amendment and compiler implementation are being prepared for `0.0.14`. These rules and that ruling are the ad hoc policies this proposal seeks to replace with one model. None is superseded while this VIP remains open.
+**One paragraph.** Today VibeLang handles platform code through separate rules in [VIP-33](/vips/0033-platform-stdlib): its seven platform amendments of 2026-10-29 through 2026-11-07 cover banned globals, their derivation from library declarations, static accesses through `globalThis`, bare `Worker`, `import.meta.url`, platform members and members of an injected page. The later ruling, “Vibelang should allow it if it's using vite. Same as ts”, makes `import.meta` follow TypeScript; VIP-33's amendment records it, and the compiler implements it. These rules and that ruling are the ad hoc policies this proposal seeks to replace with one model. None is superseded while this VIP remains open.
 
 ## Existing rules to reconcile
 
@@ -28,7 +28,7 @@ The seven platform amendments are recorded in [VIP-33](/vips/0033-platform-stdli
 | Amended 2026-10-29: the banned globals are derived, not listed | The restriction follows the resolved symbol's library declarations, including `lib.dom*`, `lib.webworker*` and `@types/node`, with a closed allowlist. |
 | Amended 2026-10-29: `globalThis` and `import()` | `globalThis` is restricted to statically named member access; computed imports and literal `data:` or `blob:` imports have separate rules. |
 | Amended 2026-10-29: bare `Worker` | Bare `Worker` resolves to Effect's namespace; host `Worker` bindings remain restricted. |
-| Amended 2026-10-29: `import.meta` is limited to `import.meta.url` | Other members and uses are rejected with `EK4402`; the later TypeScript-parity ruling is intended to replace this restriction. |
+| Amended 2026-10-29: `import.meta` is limited to `import.meta.url` | Superseded by the TypeScript-parity amendment of 2026-11-09: members follow the program's `ImportMeta` declarations. |
 | Amended 2026-10-30: one rule for platform members | Statically named members are classified by whether their resolved symbols reach the host. |
 | Amended 2026-11-07: members of an injected page | Members reached through an injected value are distinguished from members reached through a host global. |
 
@@ -47,7 +47,7 @@ error EK4402: Only import.meta.url is available in a .vibe file; use the Path or
 for host state, or move this import.meta use to a .ts file.
 ```
 
-The TypeScript twin is accepted in a Vite project with the corresponding `ImportMeta` declarations. Vite replaces it with static imports at build time, as it does the `?raw` imports Vibe already accepts.
+The compiler reported this before the TypeScript-parity amendment. The TypeScript twin is accepted in a Vite project with the corresponding `ImportMeta` declarations. Vite replaces it with static imports at build time, as it does the `?raw` imports Vibe already accepts.
 
 ## Requirements to evaluate
 

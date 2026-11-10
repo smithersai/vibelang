@@ -372,6 +372,7 @@
     "vite/test/dep-scan.test.mjs",
     "vite/test/dev-urls.property.test.mjs",
     "vite/test/generated-sidecars.test.mjs",
+    "vite/test/import-meta.test.mjs",
     "vite/test/javascript-contract.property.test.mjs",
     "vite/test/lifecycle.test.mjs",
     "vite/test/missing-source.property.test.mjs",

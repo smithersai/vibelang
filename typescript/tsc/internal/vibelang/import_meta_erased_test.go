@@ -61,12 +61,25 @@ func TestImportMetaErasedWrappers(t *testing.T) {
 					codes[d.Code()]++
 				}
 			}
+			// import.meta follows TypeScript: no wrapper, alias, computed key or
+			// member read reports EK4402. An undeclared member is TypeScript's TS2339.
+			if codes[4402] != 0 {
+				t.Fatalf("import.meta reports EK4402: %v", codes)
+			}
 			if tc.allowed {
 				if len(codes) != 0 {
-					t.Fatalf("permitted URL read reports %v", codes)
+					t.Fatalf("URL read reports %v", codes)
 				}
-			} else if len(codes) != 2 || codes[4402] != 1 || codes[2322] != 1 {
-				t.Fatalf("want platform boundary and unrelated TS2322 once; got %v", codes)
+				return
+			}
+			for code, n := range codes {
+				if code == 2322 && n == 1 || code == 2339 && n == 1 {
+					continue
+				}
+				t.Fatalf("want the unrelated TS2322 once and at most TypeScript's TS2339; got %v", codes)
+			}
+			if codes[2322] != 1 {
+				t.Fatalf("unrelated TS2322 missing: %v", codes)
 			}
 		})
 	}

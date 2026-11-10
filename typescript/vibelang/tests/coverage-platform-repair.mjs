@@ -25,12 +25,19 @@ export async function verifyPlatformRepair(caseURL, kind, Effect) {
   let reference = nativeCheck(p, "native.json")
   assert.equal(reference.status, 0, reference.output)
   const before = check(p)
-  assert.match(before.output, /error EK4402:/)
-  // The owner writes a TypeScript boundary and explicitly exports its API.
+  if (kind === "meta") assert.equal(before.status, 0, before.output)
+  else assert.match(before.output, /error EK4402:/)
+  // Declared metadata stays in its original module (chapter 5, import.meta).
+  // Host operations still require an explicit TypeScript boundary.
   for (const [name, text] of Object.entries(reserved)) assert.equal(p.read(name), text)
   assert.equal(p.read("baseline.ts"), native)
-  p.write("manual.ts", native)
-  p.write("main.vibe", 'export { ' + (kind === "method" ? "Client" : kind === "meta" ? "main" : "load") + ' } from "./manual.js"\n')
+  if (kind === "meta") {
+    assert.equal(p.read("main.vibe"), source)
+    assert.equal(fs.existsSync(path.join(p.dir, "manual.ts")), false)
+  } else {
+    p.write("manual.ts", native)
+    p.write("main.vibe", 'export { ' + (kind === "method" ? "Client" : "load") + ' } from "./manual.js"\n')
+  }
   const after = check(p)
   assert.equal(after.status, 0, after.output)
   assert.ok(fs.existsSync(path.join(p.dir, "main.d.vibe.ts")), "the explicit API needs its sidecar")

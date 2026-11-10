@@ -43,20 +43,35 @@ test("a disabled body route retains the sibling collision refusal without writes
   assert.equal(result.splits.length, 0); assert.match(result.refused.join(" "), /already exists/)
   assert.deepEqual(result.files, result.before); assert.deepEqual(result.writes, [])
 })
-test("a metadata helper that needs the physical sibling never overwrites an existing export", () => {
-  const source = corpus.source + 'export function directory(): string | undefined { return import.meta.dirname; }\n'
-  const absent = mapped({ source, existing: false }), present = mapped({ source })
-  assert.equal(absent.splits.length, 1); assert.equal(absent.splits[0].platform, absent.sibling)
-  assert.equal(present.splits.length, 0); assert.ok(present.refused.length)
-  assert.deepEqual(present.files, present.before); assert.deepEqual(present.writes, [])
+const metadataExpressions = ["import.meta", "import.meta.url", "import.meta.dirname", "import.meta.filename",
+  'import.meta["dirname"]', 'import.meta.resolve("./input")', "import.meta.env.MODE", "import.meta.hot",
+  'import.meta.glob("./*.md")']
+test("declared metadata stays in the original module beside an existing platform sibling", () => {
+  for (const expression of metadataExpressions) {
+    const metadata = "export const metadata = " + expression + ";\n"
+    const source = corpus.source + metadata
+    const absent = mapped({ source, existing: false }), present = mapped({ source })
+    for (const result of [absent, present]) {
+      assert.deepEqual(result.refused, [])
+      assert.equal(result.splits.length, 1)
+      assert.equal(result.splits[0].platform, null)
+      assert.ok(result.files[result.file].includes(metadata), expression)
+      assert.deepEqual(result.writes, [result.file])
+      assert.equal(result.files["package.json"], result.before["package.json"])
+    }
+    assert.equal(present.files[present.file], absent.files[absent.file])
+    assert.equal(present.files[present.sibling], present.before[present.sibling])
+  }
 })
 test("property: an existing sibling changes neither a body-only result nor the authored package", async () => {
   await checkProperty(fc, { name: corpus.key, rule: corpus.quote,
     command: "node --test .smithers/flows/migrate/test/platform-existing-module-body.property.test.mjs", numRuns: 50,
     arbitrary: fc.record({ directory: fc.constantFrom("src", "nested/src", "source with spaces", "src/δ"),
+      metadata: fc.option(fc.constantFrom(...metadataExpressions)),
       collisions: fc.integer({ min: 0, max: 3 }), crlf: fc.boolean(), isPrivate: fc.boolean(), comment: fc.boolean() }),
     check: settings => {
       let source = Array.from({ length: settings.collisions }, (_, i) => "export const platform" + (i || "") + " = " + i + ";\n").join("") + corpus.source
+      if (settings.metadata) source += "export const metadata = " + settings.metadata + ";\n"
       if (settings.comment) source = "/** Module documentation. */\n" + source
       if (settings.crlf) source = source.replaceAll("\n", "\r\n")
       const absent = mapped({ ...settings, source, existing: false }), present = mapped({ ...settings, source })
@@ -64,6 +79,7 @@ test("property: an existing sibling changes neither a body-only result nor the a
       assert.equal(present.splits[0].platform, null)
       assert.equal(present.files[present.file], absent.files[absent.file])
       assert.deepEqual(present.writes, [present.file])
+      if (settings.metadata) assert.ok(present.files[present.file].includes(settings.metadata))
       assert.equal(present.files[present.sibling], present.before[present.sibling])
       assert.equal(present.files["package.json"], present.before["package.json"])
     } })

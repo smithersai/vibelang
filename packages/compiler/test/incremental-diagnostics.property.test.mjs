@@ -22,8 +22,10 @@ function check(input) {
     mkdirSync(join(root, "src"))
     writeFileSync(join(root, "package.json"), '{"type":"module"}')
     const property = input.member
+    // import.meta follows TypeScript (VIP-33, amended), so the declared metadata member the foldkit
+    // witness reads is valid in .vibe. The host read keeps one EK4402 for the warm cache to retain.
     const source = input.boundary
-      ? "export const " + input.name + " = (): boolean => Boolean(import.meta." + property + ");\n"
+      ? "export const " + input.name + " = (): boolean => Boolean(import.meta." + property + ") && Boolean(globalThis.localStorage);\n"
       : "export const " + input.name + " = (): boolean => true;\n"
     writeFileSync(join(root, "src", "index." + input.kind), source)
     writeFileSync(join(root, "src", "vite-env.d.ts"), "interface ImportMeta { readonly " + property + ": object | undefined }\n")
@@ -47,6 +49,8 @@ function check(input) {
     if (input.boundary && input.kind === "vibe") {
       assert.equal(cold.status, 2, cold.output)
       assert.deepEqual(cold.diagnostics.map(d => d[3]), ["EK4402"], cold.output)
+      assert.match(cold.output, /localStorage/, cold.output)
+      assert.doesNotMatch(cold.output, /import\.meta/, cold.output)
     } else {
       assert.equal(cold.status, 0, cold.output)
       assert.deepEqual(cold.diagnostics, [], cold.output)

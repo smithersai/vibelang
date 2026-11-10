@@ -40,7 +40,8 @@ func checkExistingPlatformBody(t *testing.T, key string, mode uint8) {
 	if !a.SiblingUnchanged || !a.ManifestUnchanged {
 		t.Fatalf("existing public helper or manifest changed:\n%s", out)
 	}
-	if key == "body-existing" || key == "body-absent" {
+	// A declared import.meta member stays in the module (chapter 5), so a metadata read takes the inline route too.
+	if key == "body-existing" || key == "body-absent" || key == "metadata-existing" {
 		c := model.Control
 		if !c.Inline || !c.CopyPreserved || !c.OnlySourceWritten || len(c.Result.Refused) != 0 {
 			t.Fatalf("the sibling-free control must support a preserving inline route:\n%s", out)

@@ -16,8 +16,8 @@ func TestGrammarAdmissionImportMetaSpecifierQuoted(t *testing.T) {
 }
 
 // Static module specifiers are strings or identifier references. This key
-// follows an unsupported import.meta value occupying the complete specifier,
-// where its platform diagnostic covers the native grammar diagnostic.
+// follows the historical import.meta specifier family for keyed corpus.
+// Native TS1141 now rejects these values and their recovered wrappers.
 func grammarImportMetaSpecifier(file *ast.SourceFile) bool {
 	unwrap := func(n *ast.Node) *ast.Node {
 		for n != nil {
@@ -104,12 +104,13 @@ func TestGrammarAdmissionImportMetaSpecifierRegression(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			platform := false
+			platform, syntax := false, false
 			for _, d := range result.Diagnostics {
 				platform = platform || IsEK(d) && d.Code() == 4402
+				syntax = syntax || !IsEK(d) && d.Code() == 1141
 			}
-			if !platform || !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("static specifier lost the observed syntax diagnostic gap; diagnostics=%v", result.Diagnostics)
+			if platform || !syntax || grammarAdmissionVerdict(t, w, source) {
+				t.Fatalf("static specifier must retain TypeScript TS1141 without a platform diagnostic; diagnostics=%v", result.Diagnostics)
 			}
 		})
 	}
@@ -133,8 +134,7 @@ func TestGrammarAdmissionImportMetaSpecifierRegression(t *testing.T) {
 }
 
 // Recovered wrappers still occupy a static ModuleSpecifier, whose syntax is
-// a StringLiteral or IdentifierReference. The platform check currently masks
-// native TS1141, just as it does for an unwrapped import.meta specifier.
+// a StringLiteral or IdentifierReference. They must retain native TS1141.
 var grammarImportMetaSpecifierWrappers = []string{
 	"import import . meta !",
 	"import import . meta as meta",
@@ -154,8 +154,8 @@ func TestGrammarAdmissionImportMetaSpecifierWrappers(t *testing.T) {
 				native = native || !IsEK(d) && d.Code() == 1141
 				platform = platform || IsEK(d) && d.Code() == 4402
 			}
-			if native || !platform || !grammarAdmissionVerdict(t, w, source) {
-				t.Fatalf("static specifier wrapper lost the observed syntax diagnostic gap: %v", result.Diagnostics)
+			if !native || platform || grammarAdmissionVerdict(t, w, source) {
+				t.Fatalf("static specifier wrapper must retain native TS1141: %v", result.Diagnostics)
 			}
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})

@@ -110,6 +110,9 @@ func TestGrammarAdmissionDeepRejected(t *testing.T) {
 		"schema S = ?? { static id : Missing } ;",
 		"schema S = ! { readonly readonly id : Missing } ;",
 		"schema S = ?? { id : Missing = 1 } ;",
+		"import import . meta !",
+		"import import . meta as meta",
+		"import import . meta <\nmeta\n. url > ;",
 		"class C < > { }",
 		"function f < > ( ) { }",
 		"error C < >",
@@ -168,9 +171,6 @@ func TestGrammarAdmissionDeepKeys(t *testing.T) {
 		"x is >\n1 as & 2 + 3":                                     "admission:is-operand-precedence",
 		"b = throw\nschema is 1 + 1":                               "admission:is-operand-precedence",
 		"!\nschema is type + 1":                                    "admission:is-operand-precedence",
-		"import import . meta !":                                   "admission:import-meta-specifier",
-		"import import . meta as meta":                             "admission:import-meta-specifier",
-		"import import . meta <\nmeta\n. url > ;":                  "admission:import-meta-specifier",
 		"! import < value":                                         "admission:import-relational-recovery",
 	} {
 		t.Run(source, func(t *testing.T) {

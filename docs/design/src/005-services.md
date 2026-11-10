@@ -709,7 +709,6 @@ const program = Effect.gen(function* () {
 VibeLang imposes no additional restriction on `import.meta` syntax. Members are checked against the program's `ImportMeta` declarations. With `vite/client`, `glob`, `env` and `hot` have Vite's declared types; with `@types/node`, Node's metadata such as `dirname` has Node's declared type. An undeclared member receives TypeScript's ordinary diagnostic, not `EK4402`. Aliases, destructuring, computed access, arguments and spreads follow TypeScript too. `import.meta.url` keeps its ordinary module identity. The bundler or host supplies the behavior, as it does for TypeScript; migration preserves these expressions in their original module.
 
 ```vibe es
-// compiler-gap: pending VIP-33
 export const metadata: ImportMeta = import.meta
 export const { url } = import.meta
 export const computed: string = import.meta["url"]

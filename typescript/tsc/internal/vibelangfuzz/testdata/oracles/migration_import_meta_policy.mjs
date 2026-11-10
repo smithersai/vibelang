@@ -68,8 +68,8 @@ try {
     console.log(JSON.stringify({key,mode,original,candidate,refused:result.refused,unchanged,stockCodes:[],guard,before,after:null}))
   } else {
     const split = result.splits[0]
-    if (member === "url") assert.equal(result.splits.length, 0)
-    else assert.ok(split, JSON.stringify(result))
+    // import.meta follows TypeScript (chapter 5): a declared member stays in the module, so no member needs a helper.
+    assert.equal(result.splits.length, 0, JSON.stringify(result))
     const native = file.replace(/\.ts$/, ".vibe")
     delete candidate[file]
     candidate[native] = readFileSync(join(root, file), "utf8")

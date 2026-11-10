@@ -10,11 +10,6 @@ import fc from "fast-check"
 import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
 
 const binary = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/" + (process.platform === "win32" ? "vibelang.exe" : "vibelang"), import.meta.url))
-// Chapter 5 checks metadata members against the program's ImportMeta declarations
-// (VIP-33's amendment). The compiler still reports EK4402 for declared host members:
-// the FuzzModuleMetadataBounds gap in vibelangfuzz/testdata/pending/import-meta-typescript.txt.
-// Set this to false in the change that deletes that file.
-const hostMetadataPending = true
 const fixtures = ["url", "hot", "env"].map(key => JSON.parse(readFileSync(new URL("./property-regressions/foldkit-incremental-artifact-" + key + ".json", import.meta.url), "utf8")))
 test("real cache fixtures retain their source and artifact provenance", () => {
   assert.ok(readFileSync(SpecPath("005-services.md"), "utf8").includes("Members are checked against the program's `ImportMeta` declarations."))
@@ -50,9 +45,8 @@ function check(fixture, mutation) {
     }
     const warm = compile([])
     const fresh = compile(["--composite", "false", "--incremental", "false"])
-    assert.deepEqual(fresh, fixture.key === "url" || !hostMetadataPending ? { status: 0, codes: [] } : { status: 2, codes: ["EK4402"] }, "a fresh check reports what the compiler's metadata rule reports")
-    // 644226993380 (foldkit-123): a build info written by another compiler
-    // build is not reused, so the earlier compiler's cache cannot hide EK4402.
+    assert.deepEqual(fresh, { status: 0, codes: [] }, "declared metadata follows TypeScript in a fresh check")
+    // A historical build info and a fresh compilation must agree under the current metadata rule.
     assert.deepEqual(warm, fresh, "unchanged source must not change diagnostics when the cache is present")
   } finally { rmSync(root, { recursive: true, force: true }) }
 }

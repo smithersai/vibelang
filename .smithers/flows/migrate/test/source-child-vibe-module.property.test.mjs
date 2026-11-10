@@ -87,14 +87,16 @@ test("property: a generated helper whose loader cannot resolve keeps the authore
       }),{seed:4401,numRuns:24})
   }finally{f.dispose()}
 })
-test("an authored resolver beside a generated helper keeps its private sibling and null export",()=>{
+test("an authored resolver beside a generated helper stays in the module, and the helper converts",()=>{
+ // import.meta follows TypeScript: the resolver needs no sibling, so nothing blocks the helper's conversion.
  fc.assert(fc.property(fc.constantFrom("node","bun"),fc.constantFrom("./a.js","./nested/b.js"),(runtime,specifier)=>{
   const f=fixture({runtime,suffix:'\nexport const located = () => import.meta.resolve("'+specifier+'")\n'})
   try{
    const state=f.plan()
-   assert.ok(state.writes.some(w=>w.file==="src/Trace.platform.ts"))
-   assert.equal(JSON.parse(state.writes.find(w=>w.file==="package.json").after).exports["./Trace.platform"],null)
-   assert.deepEqual(state.sourceChildModules.converted,[])
+   assert.ok(!state.writes.some(w=>w.file==="src/Trace.platform.ts"))
+   assert.equal(JSON.parse(state.writes.find(w=>w.file==="package.json").after).exports["./Trace.platform"],undefined)
+   assert.ok(f.result(state).includes('import.meta.resolve("'+specifier+'")'))
+   assert.equal(state.sourceChildModules.converted.length,1)
   }finally{f.dispose()}
  }),{seed:561174,numRuns:8})
 })

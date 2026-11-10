@@ -296,7 +296,7 @@ test("a killed codemod's journal carries its Vite build entries for resume and r
   }
 })
 
-test("opencode import.meta companion and private export survive replay and revert", async () => {
+test("an opencode import.meta read stays in its module through replay and revert", async () => {
   const sample = readJson(new URL("./corpus/opencode-provider-import-meta.json", import.meta.url))
   const f = await fixture({ "src/provider.ts": sample.minimal }, ["src/provider.ts"], {
     type: "module", name: "provider-fixture", exports: { "./*": "./src/*.ts" },
@@ -309,10 +309,13 @@ test("opencode import.meta companion and private export survive replay and rever
     durableWrite(join(f.target, manifest.file), manifest.after, manifest.mode)
     f.put("continue", "")
     const result = await codemod({ run: f.run })
-    assert.equal(result.platform.splits.length, 1)
-    assert.equal(readJson(join(f.target, "package.json")).exports["./provider.platform"], null)
-    assert.ok(existsSync(join(f.target, "src/provider.platform.ts")))
-    await Jj.commit(f.target, "generated resolver companion")
+    // import.meta follows TypeScript: the resolver stays in the converted module,
+    // so the replay writes no companion and no private export.
+    assert.equal(result.platform.splits.length, 0)
+    assert.equal(readJson(join(f.target, "package.json")).exports["./provider.platform"], undefined)
+    assert.equal(existsSync(join(f.target, "src/provider.platform.ts")), false)
+    assert.match(readFileSync(join(f.target, "src/provider.vibe"), "utf8"), /import\.meta\.resolve\(specifier\)/)
+    await Jj.commit(f.target, "converted provider")
     await revert({ run: f.run, batch: "01", file: "src/provider.vibe", reason: "test preserving revert" })
     assert.equal(readFileSync(join(f.target, "src/provider.ts"), "utf8"), sample.minimal)
     assert.equal(existsSync(join(f.target, "src/provider.platform.ts")), false)

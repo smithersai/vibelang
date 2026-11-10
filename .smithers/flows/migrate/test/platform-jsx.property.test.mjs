@@ -53,11 +53,9 @@ test("JSX module-body fallback keeps the source JSX parse kind", () => {
   }
 })
 
-test("JSX import.meta callbacks keep their native parser and companion kind", () => {
+test("JSX import.meta callbacks stay in the original module", () => {
+  // import.meta follows TypeScript, so a callback that only reads metadata has no platform code to move.
   for (const extension of ["tsx", "vibex"]) {
-    const result = splitPlatform('export const view = <span>{() => import.meta.resolve("./x")}</span>\n', "src/view." + extension, ts)
-    assert.ok(result && !result.refused, JSON.stringify(result))
-    assert.match(result.module, /<span>/)
-    assert.match(result.module, /view.platform.tsx/)
+    assert.equal(splitPlatform('export const view = <span>{() => import.meta.resolve("./x")}</span>\n', "src/view." + extension, ts), null)
   }
 })

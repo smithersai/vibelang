@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -178,7 +178,7 @@ test("the sibling split never moves a read of the module's URL", () => {
   }
 })
 
-test("a wildcard package keeps the module with its body and a private companion for import.meta helpers", () => {
+test("a wildcard package keeps the module with its body, and its import.meta reads in place", () => {
   const source = 'import * as Effect from "effect/Effect";\nconst options = { main: import.meta.url, token: process.env.TOKEN };\nexport const program = Effect.succeed(options);\nexport const loader = () => import.meta.resolve("vibelang/register");\n'
   for (const moduleBodies of [true, false]) {
     const root = mkdtempSync(join(tmpdir(), "host-operations-batch-"))
@@ -193,17 +193,19 @@ test("a wildcard package keeps the module with its body and a private companion 
         assert.equal(readFileSync(join(root, "src/input.ts"), "utf8"), source)
         continue
       }
+      // import.meta follows TypeScript: only the host read moves into the body; the
+      // metadata reads stay in the module, with no companion or private export.
       assert.equal(result.splits.length, 1, JSON.stringify(result))
-      assert.equal(result.splits[0].platform, "src/input.platform.ts")
+      assert.equal(result.splits[0].platform, null)
       assert.equal(result.splits[0].module, "platform")
       const written = readFileSync(join(root, "src/input.ts"), "utf8")
       const { body, module } = materialize(written)
       assert.doesNotMatch(body, /import\.meta/)
-      assert.doesNotMatch(module.replaceAll("import.meta.url", ""), /import\.meta/)
       assert.match(module, /^const options = \{ main: import\.meta\.url, token: \$process_env_TOKEN\(\) \};$/m)
-      assert.match(module, /^import \{ \$importMetaResolve \} from "\.\/input\.platform\.ts"$/m)
-      assert.match(readFileSync(join(root, "src/input.platform.ts"), "utf8"), /return import\.meta\.resolve\(specifier\)/)
-      assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).exports["./input.platform"], null)
+      assert.match(module, /^export const loader = \(\) => import\.meta\.resolve\("vibelang\/register"\);$/m)
+      assert.doesNotMatch(written, /\$importMeta/)
+      assert.deepEqual(readdirSync(join(root, "src")), ["input.ts"])
+      assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).exports["./input.platform"], undefined)
     } finally { rmSync(root, { recursive: true, force: true }) }
   }
 })
@@ -259,13 +261,11 @@ test("alchemy corpus: each moved-declaration witness keeps its module and moves 
       // its URL; a sibling alone serves code that no longer reads import.meta.
       const { body, module } = written.includes("module platform {\n") ? materialize(written) : { body: "", module: written }
       assert.doesNotMatch(body, /import\.meta/, key)
-      assert.doesNotMatch(module.replaceAll("import.meta.url", ""), /import\.meta/, key)
       assert.doesNotMatch(module, /^import (?!type)[^\n]* from "node:/m, key)
+      // import.meta follows TypeScript: every metadata read the source had stays in the module, in order.
+      assert.deepEqual(module.match(/import\.meta\.\w+/g) ?? [], text.match(/import\.meta\.\w+/g) ?? [], key + ": every import.meta read stays in the module")
       const sibling = result.splits[0].platform ? readFileSync(join(root, result.splits[0].platform), "utf8") : ""
-      for (const line of sibling.split("\n").filter((l) => l.includes("import.meta"))) {
-        assert.match(line, /^export function \$importMeta\w+\(/, key + ": only the import.meta helpers read import.meta in the companion")
-      }
-      if (body) assert.equal((module.match(/import\.meta\.url/g) ?? []).length, (text.match(/import\.meta\.url/g) ?? []).length, key + ": every module URL read stays")
+      assert.doesNotMatch(sibling, /import\.meta/, key + ": no companion reads import.meta")
     } finally { rmSync(root, { recursive: true, force: true }) }
   }
 })

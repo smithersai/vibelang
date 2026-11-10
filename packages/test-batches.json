@@ -421,6 +421,7 @@
       "vite/test/dep-scan.test.mjs",
       "vite/test/dev-urls.property.test.mjs",
       "vite/test/generated-sidecars.test.mjs",
+      "vite/test/import-meta.test.mjs",
       "vite/test/lifecycle.test.mjs",
       "vite/test/options.test.mjs",
       "vite/test/paths-neighbourhood.property.test.mjs",

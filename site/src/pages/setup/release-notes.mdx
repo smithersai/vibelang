@@ -33,6 +33,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.
 
+- A `.vibe` file in a Vite project failed with `EK4402` on `import.meta.glob`, `import.meta.env` or `import.meta.hot`, and in a Node project on `import.meta.dirname` or `import.meta.filename`, although TypeScript accepts them. `import.meta` now follows TypeScript: a member the project's `ImportMeta` declarations provide compiles with its declared type, and an undeclared one gets TypeScript's ordinary error. [Known limitations](/setup/known-limitations#specification-examples-the-compiler-does-not-pass-yet) no longer lists this gap.
+
 - The parcel conversion example tried to catch a string and failed with `EK0506`. Its recovery now wraps the fallible work in an `effect` block and returns the same results as the TypeScript original.
 
 - The `preferSchemaOverJson` diagnostic (`EK4818`, or `EK3889` when the Effect plugin sets its severity) on `JSON.stringify` suggested decoding text with `Schema.decodeUnknownEffect`. It now suggests encoding the value with `Schema.encodeEffect(Schema.fromJsonString(User))(user)`; `JSON.parse` keeps the decode suggestion.
@@ -560,7 +562,6 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Calls that could throw inside a `Promise` executor were wrongly rejected when its native constructor was parenthesized, aliased or accessed through a property, or called with `super(...)`. Those forms now allow executor exceptions to reject the promise.
 
-- The platform guides said an `import.meta.dirname` read had to stay in the entry module. They now explain that a declaration can move to a sibling with the same directory, while `import.meta.filename` retains the entry's identity.
 
 - A labeled `break` that left a `for concurrent` body or its head, such as `break outer` to an enclosing loop or `break own` to the loop's own label, reported TypeScript's `TS1107` ("Jump target cannot cross function boundary"). It now reports `EK1903`, as an unlabeled `break` does.
 
@@ -591,8 +592,6 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - Migration reported a documentation difference, one comment block fewer, when a module's first exported constant moved to its `.platform.ts` companion: the module's header comment, which TypeScript's declaration output stacks above that constant, stayed at the top of the converted module. A header kept verbatim at the head of the converted module now counts as kept, and a changed, removed or duplicated header still fails.
 - Migration could discard an original declaration oracle solely because its inferred output layout reported `TS5011`. It now keeps the diagnostic and requires the complete stock/native API comparison before qualifying the migration.
 - The migration's API identity check reported an unchanged generic type alias as changed when the alias used a mapped type with an `as` clause, such as `{ [K in keyof A as K extends string ? K : never]: A[K] }`, and anything else in its declaration file changed, for example a declaration moved behind a re-export; the module then stayed TypeScript. The check now proves such an alias identical, and still reports a change to its `as` type, template, key constraint or modifiers.
-- A generated `import.meta.dirname` companion named a different directory than Node for some Windows network paths, such as `\\server\a\\` for `file://server/a//x.ts` where Node names `\\server\a\`. The companion now computes the directory with Node's own `path.dirname` steps, still without importing `node:path`.
-- Generated `import.meta.dirname` companions could fail projects that reject named Node imports or `node:path`. They now use a namespace `node:url` import and preserve directory names, including drive and network-share roots.
 - Migration could report a returned Effect as lost after a plain identity pipeline stage. Its wrapper check now follows unchanged arguments through proven identity returns, while still rejecting discarded programs and async results.
 - Migrating an executable script could move its shebang into a platform companion and cause a parse error. The shebang now stays at the start of the entry module.
 - The migration's platform split turned a kept declaration's `fetch.bind(globalThis)` into a helper typed `typeof fetch.bind`, whose call returns `void`, so the converted module failed with `TS2322` (for example against a `typeof fetch` default parameter) and stayed TypeScript. `bind`, `call` and `apply` on a host function now move only the function, `$fetch().bind(globalThis)`, and keep their types.
@@ -839,7 +838,6 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The editor's move-module refactor was titled for `.ts` files only and always appended `export {}` to a body without imports or exports, even where the copied file was already a module. It is now **Move module to a TypeScript file**, as it also writes `.tsx` files, and adds `export {}` only when the copy would otherwise be a script.
 
-- The migrate flow sent a module back to TypeScript with `EK4402` when it read `import.meta.filename`, `import.meta.dirname` or `import.meta.env`, or called `import.meta.resolve` with a computed or second argument. It now serves these reads from the `.platform.ts` companion, passing the module's own `import.meta.url` where the value names the module, so `main: import.meta.filename` still names the module after migration.
 
 - A migrated lint runner could drop JSX files in its extension filter before linting them. Setup now includes JSX source, preserves directory scope, and repairs filters from earlier setup runs.
 
@@ -1022,7 +1020,6 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - The migrate flow kept a factory in TypeScript when its platform code read a private type of the module, even when the factory's return type never mentioned that type. The flow now checks the return type with the module's own tsconfig, and a factory whose result does not expose the private type converts; one that exposes it, or whose type it cannot fully resolve, still stays in TypeScript.
 - After the migrate flow moved a `crypto.randomUUID()`, `crypto.getRandomValues()` or `performance.now()` call into a module body, the module still failed `EK4402` on the helper call that replaced it. Those reads now get a helper with a signature of its own, so the module compiles.
 
-- `EK4402` on an `import.meta` member other than `url` told you to use "the Path or Config service" without naming the call that reads configuration. It now names the Path service or `Config.String`, or moving the use to a `.ts` file.
 
 - An Electron app built with electron-vite failed to build a web worker that imported a migrated `.vibe` module, with a parse error, because the migrate flow added the VibeLang plugin to the app's main, preload and renderer builds but not to the renderer's worker build. The flow now also adds it to the renderer's `worker.plugins` when the app or a workspace package it bundles starts a worker, including in a config it wired earlier.
 
