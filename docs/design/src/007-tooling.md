@@ -372,6 +372,10 @@ Only a marked module is migration input. An eligible legacy startup is an export
 
 Use a listed service layer only when the pinned legacy compiler selected it; preserve selected experimental layers and nesting order. A marker does not by itself add a layer. Pass `main()` for an Effect function, otherwise `Effect.sync(main)`, retaining the declaration's callable kind and public types. Without eligible startup, remove only the inert marker and keep any explicit runner. CommonJS does not justify retaining the retired dispatcher; introducing `import.meta.main` requires proof that the original host supports the same entry test; availability in `ImportMeta` declarations alone is insufficient. Preserve entry-only execution and import-only behavior. Refuse an unavailable runner or layer, an entry test not expressible in admitted source, or any other loss of types, behavior or declarations. No retired dispatcher or fallback runner is a migration target. A remaining marker keeps `EK2601`; `main` alone is ordinary source, gets no entry diagnostic and causes no implicit startup ([VIP-26](../vips/0026-top-level-and-main.md#decision), [VIP-34](../vips/0034-compiler-and-tooling.md#decision)).
 
+### Retired layer declarations
+
+Legacy `layer Live: Service { … }` has no declaration production. Its transitional `EK2121` is an error naming `vibelang --fix`. The repair emits `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit. A captured or type-only `Layer` binding prevents an automatic repair. Lowering of rejected source remains available only for migration and its equivalence checks.
+
 ### Selecting ordinary fix files
 
 `--only <files>` limits ordinary `--fix` to the listed modules ([VIP-34, amended](../vips/0034-compiler-and-tooling.md#decision)). `<files>` is a comma-separated list of paths relative to the current directory, or `@list.txt`, a file of such paths, one per line; the flag can repeat. An empty list, or a path that is not a `.vibe` or `.vibex` module of the project, stops the invocation before it writes anything. The repairs write no other file, a config included, even when they are interrupted; the compilation after them still writes what any compilation writes, such as declaration sidecars. A fix that would edit another file is not applied. Only an error in a listed module refuses a fix: a fix that breaks an unlisted module is kept, and the compilation after `--fix` reports the error. The result is a partial repair and its report says so: a clean run does not verify the project. `--only` cannot be combined with `--fix-migration-only` or `--fix-vip-only`, because a project-wide migration changes what other modules mean. Alone, it is an unknown compiler option (`TS5023`).
@@ -614,6 +618,3 @@ When `--fix-vip-only` refused any call, it sets `"vibe": { "severities": { "EK48
 
 These commands have no Effect TypeScript runtime translation.
 
-### Retired layer declarations
-
-Legacy `layer Live: Service { … }` has no declaration production. Its transitional `EK2121` is an error naming `vibelang --fix`. The repair emits `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit. A captured or type-only `Layer` binding prevents an automatic repair. Lowering of rejected source remains available only for migration and its equivalence checks.
