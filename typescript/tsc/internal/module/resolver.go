@@ -1382,16 +1382,8 @@ func (r *resolutionState) createResolvedModuleHandlingSymlink(resolved *resolved
 // sidecar both ways, so it sees one module too. A published package keeps its
 // declarations, and a relative import or a module suffix that names the
 // sidecar keeps it.
-//
-// A relative ./x.vibe written in a file under vibe.sidecarDir, such as a
-// module's native declaration x.d.ts re-exporting its sidecar, names the
-// source too: through rootDirs it lands on the relocated x.d.vibe.ts first,
-// where beside the source it reaches x.vibe itself (VIP-27).
 func (r *resolutionState) preferVibeSource(resolved *resolved) {
-	if resolved == nil || !resolved.isResolved() {
-		return
-	}
-	if tspath.IsExternalModuleNameRelative(r.name) && !r.namesRelocatedSidecarSource(resolved) {
+	if resolved == nil || !resolved.isResolved() || tspath.IsExternalModuleNameRelative(r.name) {
 		return
 	}
 	sidecar := string(resolved.path)
@@ -1430,17 +1422,6 @@ func (r *resolutionState) preferVibeSource(resolved *resolved) {
 	}
 	resolved.path = source
 	resolved.extension = tspath.VibeLangSourceExtension(string(source))
-}
-
-// namesRelocatedSidecarSource reports whether a relative specifier written
-// with a VibeLang source extension resolved to a sidecar under
-// vibe.sidecarDir.
-func (r *resolutionState) namesRelocatedSidecarSource(resolved *resolved) bool {
-	options := r.compilerOptions.VibeLang
-	if options == nil || options.SidecarDir == "" || !strings.HasSuffix(r.name, tspath.ExtensionVibe) && !strings.HasSuffix(r.name, tspath.ExtensionVibex) {
-		return false
-	}
-	return tspath.ContainsPath(options.SidecarDir, string(resolved.path), r.resolver.fs.CaseSensitivity())
 }
 
 func (r *resolutionState) createResolvedModule(resolved *resolved, isExternalLibraryImport bool) *ResolvedModule {

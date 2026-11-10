@@ -100,10 +100,7 @@ test("compatibility sidecarDir is independent of native public declarationDir an
     const publicText = readFileSync(join(root, "public/src/main.d.ts"), "utf8")
     assert.equal(readFileSync(join(root, "types/src/main.d.vibe.ts"), "utf8"), publicText)
     assert.equal(existsSync(join(root, "src/main.d.vibe.ts")), false)
-    // The relocated sidecar's native declaration re-exports it; the public
-    // declaration stays in declarationDir only.
-    assert.equal(readFileSync(join(root, "types/src/main.d.ts"), "utf8"), 'export * from "./main.vibe";\n')
-    assert.equal(existsSync(join(root, "src/main.d.ts")), false)
+    assert.equal(existsSync(join(root, "types/src/main.d.ts")), false)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 

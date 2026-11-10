@@ -20,16 +20,10 @@ const emitted = /(?:^|\/)\.vibelang\/js\//
 /** Every path the batch may touch, repository-relative. */
 export function batchScope({ files, codemod, testDiff, manifestSnapshots, sidecar = () => null }) {
   const scope = new Set()
-  // A VibeLang module's native declaration, x.d.ts re-exporting its sidecar,
-  // sits beside that sidecar, wherever it is written (VIP-27).
   const withSidecars = (path) => {
     if (/\.(?:[cm]?ts|tsx|vibex?)$/.test(path) && !/\.d\.(?:vibex?\.)?[cm]?ts$/.test(path)) scope.add(path.replace(/\.(?:[cm]?ts|tsx|vibex?)$/, extension => /x$/.test(extension) ? ".d.vibex.ts" : ".d.vibe.ts"))
-    if (/\.vibex?$/.test(path)) scope.add(path.replace(/\.vibex?$/, ".d.ts"))
     const located = sidecar(path)
-    if (located) {
-      scope.add(located)
-      if (/\.vibex?$/.test(path) && /\.d\.vibex?\.ts$/.test(located)) scope.add(located.replace(/\.d\.vibex?\.ts$/, ".d.ts"))
-    }
+    if (located) scope.add(located)
   }
   for (const f of files) {
     for (const path of [f.planned, f.path]) {

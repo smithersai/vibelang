@@ -2045,23 +2045,6 @@ func getFileNamesFromConfigSpecs(
 				return false
 			}
 		}
-		// A module's native declaration, x.d.ts beside its sidecar, is an
-		// output too: beside x.vibe or x.vibex, or at its mirror under
-		// vibe.sidecarDir.
-		if stem, ok := strings.CutSuffix(name, tspath.ExtensionDts); ok && !strings.HasSuffix(name, suffix) {
-			stems := []string{stem}
-			if sidecarDir := options.VibeLang; sidecarDir != nil && sidecarDir.SidecarDir != "" && root != "" && tspath.ContainsPath(sidecarDir.SidecarDir, name, host.CaseSensitivity()) {
-				stems = append(stems, tspath.CombinePaths(root, tspath.GetRelativePathFromDirectory(sidecarDir.SidecarDir, stem, host.CaseSensitivity())))
-			}
-			for _, stem := range stems {
-				for _, source := range []string{tspath.ExtensionVibe, tspath.ExtensionVibex} {
-					if host.FileExists(tspath.RootedFilePathFromNormalized(stem + source)) {
-						return false
-					}
-				}
-			}
-			return true
-		}
 		if !strings.HasSuffix(name, suffix) {
 			return true
 		}

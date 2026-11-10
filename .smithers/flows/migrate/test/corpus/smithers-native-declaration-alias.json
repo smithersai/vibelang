@@ -1,5 +1,0 @@
-{
-  "key": "smithers-native-declaration-alias",
-  "quote": "each export's type identical to `tsc`'s in both directions",
-  "pattern": "After a source becomes Cli.vibe, the compiler writes Cli.d.ts forwarding to Cli.d.vibe.ts. Declaration snapshots must attribute both files to the emitted Cli.d.ts instead of retaining the forwarding declaration as a handwritten package entry."
-}

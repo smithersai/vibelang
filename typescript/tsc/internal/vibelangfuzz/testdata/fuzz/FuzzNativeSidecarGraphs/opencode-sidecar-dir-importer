@@ -1,3 +1,0 @@
-go test fuzz v1
-string("bundler:sidecarDir")
-[]byte("\x01\x05\xa5<\xf0\x99")
