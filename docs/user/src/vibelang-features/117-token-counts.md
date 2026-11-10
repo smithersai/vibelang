@@ -276,7 +276,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 14,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
-| [Experimental platform APIs](118-experimental-platform-apis.md) | 21,000 |
+| [Experimental platform APIs](118-experimental-platform-apis.md) | 22,000 |
 | [Durable tasks and workflows](119-tasks-and-workflows.md) | 1,200 |
 | **All 10 pages** | **85,000** |
 

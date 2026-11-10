@@ -4341,6 +4341,8 @@ typescript/vibelang/cases/experimental-resize-observer/main.vibe:6:33 lambda cho
 typescript/vibelang/cases/experimental-scorer-bind/main.vibe:10:10 lambda plain fallback
 typescript/vibelang/cases/experimental-scorer-bind/main.vibe:13:35 lambda plain fallback
 typescript/vibelang/cases/experimental-scorer-bind/main.vibe:25:98 lambda plain fallback
+typescript/vibelang/cases/experimental-scorer-retention/main.vibe:10:10 lambda plain fallback
+typescript/vibelang/cases/experimental-scorer-retention/main.vibe:13:35 lambda plain fallback
 typescript/vibelang/cases/experimental-scorer-rubric/main.vibe:10:17 lambda plain table
 typescript/vibelang/cases/experimental-scorer-rubric/main.vibe:14:61 byname program table
 typescript/vibelang/cases/experimental-scorer-rubric/main.vibe:8:52 byname program table

@@ -1,0 +1,32 @@
+// expect-result: {"scored":2,"swept":2,"keptAfterSweep":2,"pruned":2,"left":0}
+// VIP-69 follow-up question 4: scores are kept apart from run history.
+// Experimental.Durable.sweep deletes finished runs and leaves their scores;
+// only the score store's prune({ olderThan }) deletes observations.
+const Double = Experimental.Durable.workflow("case#Double", { payload: { n: Schema.Number }, success: Schema.Number })
+
+const doubled = Experimental.Scorer.make({
+  name: "doubled",
+  version: "1",
+  score: (run: { input: { readonly n: number }; output: number }) => run.output === run.input.n * 2 ? 1 : 0
+})
+
+const DoubleLive = Double.toLayer(({ n }) => Effect.succeed(n * 2)).pipe(
+  Layer.provide(Experimental.Scorer.bind(doubled, Double, { sampling: "all" })),
+  Layer.provideMerge(Experimental.Durable.memory),
+  Layer.provideMerge(Experimental.Scorer.memory)
+)
+
+export effect function main() {
+  provide DoubleLive {
+    try Double.execute({ n: 2 })
+    try Double.execute({ n: 3 })
+    const store = try Experimental.Scorer.ScoreStore
+    const scored = (try store.observations({ workflow: "case#Double" })).length
+    try Effect.sleep("5 millis")
+    const swept = try Experimental.Durable.sweep({ olderThan: "0 millis" })
+    const keptAfterSweep = (try store.observations({ workflow: "case#Double" })).length
+    const pruned = try store.prune({ olderThan: "0 millis" })
+    const left = (try store.observations({ workflow: "case#Double" })).length
+    return { scored, swept, keptAfterSweep, pruned, left }
+  }
+}
