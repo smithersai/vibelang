@@ -1,0 +1,10 @@
+// expect: TS1308
+export class Holder{
+ static{
+  void(()=>{await Promise.resolve(1)})
+  void(function(){await Promise.resolve(1)})
+  void(function*(){await Promise.resolve(1)})
+  void({read(){await Promise.resolve(1)}})
+  void(class Inner{read(){await Promise.resolve(1)}})
+ }
+}

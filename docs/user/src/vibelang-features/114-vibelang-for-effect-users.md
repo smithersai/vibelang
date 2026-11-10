@@ -4,6 +4,8 @@
 
 An `async` function's parameter defaults keep TypeScript's `TS2524` error for `await`, including an Effect-valued operand. A nested `async` callback has its own body and can await a Promise; awaiting an Effect in that callback still requires `await runPromise(program)`.
 
+`await` in a plain function or callback nested in a class `static` block keeps TypeScript's native diagnostic: `TS1308`, or `TS2311` for a parenthesized call. Make that callback `async` to await a Promise; the surrounding block does not give it permission to wait.
+
 An `effect` block keeps contextual return typing when the expected type also accepts a plain value, such as `Plugin | Effect.Effect<Plugin>`. Callback parameters inside the returned `Plugin` receive its declared types. Invalid property reads follow TypeScript even when `noImplicitAny` is `false`.
 
 Keep Effect's runtime, libraries, layers, and error channels; in `.vibe` files, write sequential work as effect functions and statements. The [cheat sheet](115-cheat-sheet.md) shows every change beside its Effect code, and the [specification](../../../design/src/000-intro.md) gives the rules behind each.

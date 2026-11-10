@@ -1185,6 +1185,8 @@ Source `var` declarations are `EK0107` everywhere in a `.vibe` file, including `
 
 The schema and schema-error examples use TypeScript's default optional-property setting. With `exactOptionalPropertyTypes: true`, `name?: T` uses `Schema.optionalKey`; write `name?: T | undefined` for `Schema.optional`. Optional tuple elements follow the same setting.
 
+**Callbacks in static blocks.** `await` in a plain function or callback nested in a class `static` block keeps TypeScript's native diagnostic: `TS1308`, or `TS2311` for a parenthesized call. Make that callback `async` to await a Promise; the surrounding block does not give it permission to wait.
+
 **Async parameters.** An `async` function's parameter defaults keep TypeScript's `TS2524` error for `await`, including an Effect-valued operand. A nested `async` callback has its own body and can await a Promise; awaiting an Effect in that callback still requires `await runPromise(program)`.
 
 **Await in match arms.** `await` in a `match` arm follows its written context. A class `static` block rejects it with `TS18037`; a nested `async` callback can await a Promise.

@@ -1,0 +1,17 @@
+// expect-result: [3,4,5]
+import {Effect} from "effect"
+function fork(){return 1}
+function join(){return 2}
+class Value{
+ static prefix: number
+ static ready: Promise<number>
+ static program: Effect.Effect<number>
+ static{
+  this.prefix=(()=>fork()+join())()
+  this.ready=(async()=>await Promise.resolve(4))()
+  this.program=(effect()=>{return try Effect.succeed(5)})()
+ }
+}
+export effect function main(){
+ return [Value.prefix,try Effect.tryPromise(()=>Value.ready),try Value.program]
+}

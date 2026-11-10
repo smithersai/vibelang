@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- `await` in a plain callback inside a class `static` block could report obsolete advice about Effect code. It now reports TypeScript's native error for the written form.
+
 - An invalid `await` in a class field initializer could report an obsolete waiting error. It now keeps TypeScript’s native diagnostics and the contexts of nested callables.
 
 - An Effect-valued `await` in an `async` parameter default could hide the error that forbids waiting there. It now keeps TypeScript's `TS2524` diagnostic, including destructuring defaults.

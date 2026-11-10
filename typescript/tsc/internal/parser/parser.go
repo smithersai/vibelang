@@ -2242,6 +2242,10 @@ func (p *Parser) parseClassStaticBlockDeclaration(pos int, jsdoc jsdocScannerInf
 
 func (p *Parser) parseClassStaticBlockBody() *ast.Node {
 	saveContextFlags := p.contextFlags
+	// Nested plain callables keep native await syntax without gaining suspension.
+	saveNativeAwaitContext := p.vibelangNativeAwaitContext
+	p.vibelangNativeAwaitContext = true
+	defer func() { p.vibelangNativeAwaitContext = saveNativeAwaitContext }()
 	p.setContextFlags(ast.NodeFlagsYieldContext, false)
 	p.setContextFlags(ast.NodeFlagsAwaitContext, true)
 	body := p.parseBlock(false /*ignoreMissingOpenBrace*/, nil /*diagnosticMessage*/)
