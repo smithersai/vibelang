@@ -327,6 +327,8 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/Request` | Experimental request compatibility helpers |
 | `vibelang-runtime/experimental/Stdio` | Effect standard I/O plus `awaitInputClosed` |
 | `vibelang-runtime/experimental/Dns` | Typed DNS resolution |
+| `vibelang-runtime/experimental/Fuzz` | Feedback-guided fuzzing over a Schema or an Effect `Arbitrary`: shrunk, replayable findings and a corpus store |
+| `vibelang-runtime/experimental/FuzzSimulation` | An execution mode for `Fuzz` that makes fiber scheduling and virtual time part of the input |
 | `vibelang-runtime/experimental/Durable` | A journaled engine for Effect's `Workflow` and `Activity`: crashed runs resume and skip finished steps |
 | `vibelang-runtime/experimental/Eval` | Eval suites, runs, baselines, regression comparison and a gate with a CI exit code |
 | `vibelang-runtime/experimental/Test` | Test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording, `decisions`, the same for a `DecisionModel`, `record`, which records what the file is missing, `modelServer`, the recording served over HTTP, `durable` and `restartable` engines with `crash`, `host`, a machine of fixed files and scripted commands, `journal` and `divergence` assertions over a durable run, and `conformance.engine()`, nine cases that certify a workflow engine |

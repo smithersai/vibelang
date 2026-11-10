@@ -5,6 +5,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | Module | Adds | Layers |
 | --- | --- | --- |
 | `Experimental.Encoding` | pure lenient base64 decode returning a typed result | none |
+| `Experimental.Fuzz`, `Experimental.FuzzSimulation` | feedback-guided fuzzing and fiber-schedule simulation; see [Fuzzing](120-fuzzing.md) | none |
 | `Experimental.NetAddress` | pure `isIPv6` with Node-compatible zones | none (pure) |
 | `Experimental.Dns` | Effect Dns extended only with direct authoritative-server TXT queries | Node; Worker TCP, or typed `Unsupported` |
 | `Experimental.FileSystem` | `access(path, { executable })`, `open(path, { nonBlocking })`, `File.chmod` | Node, Bun |

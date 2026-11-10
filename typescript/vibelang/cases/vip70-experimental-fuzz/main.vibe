@@ -1,0 +1,195 @@
+// Experimental.Fuzz and Experimental.FuzzSimulation from a .vibe program, with
+// no import: a schema is accepted where an Arbitrary is, a needle behind two
+// observations is found and shrunk, a finding replays from its token, a corpus
+// store keeps confirmed failures, a store that fails is a FuzzError, and the
+// simulation finds a lost update and a deadlock.
+
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#summary | This VIP ports it unchanged and adds one convenience: a Vibe `schema` is accepted where an `Arbitrary` is.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | `Experimental.Fuzz` and `Experimental.FuzzSimulation`, in scope with no import.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | Their code is `vibelang-runtime/experimental/Fuzz`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | | `Fuzz.run(input, property, options?)` | Run a campaign.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | `input` is a schema or an `Arbitrary`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | | `Fuzz.target(input, property, { id, revision, codec? })`, `Fuzz.runTarget(target, options)` | A property with a stable identity, so a corpus store can keep its failures between runs |
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | | `Fuzz.observe(label)` | Record that execution reached a stage.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | | `Fuzz.score(label, value)` | A number to maximize, which turns a needle into a hill |
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | | `Fuzz.formatReport(report)` | A printable diagnostic, or `undefined` when the run passed |
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | | `Fuzz.Corpus` | The service that stores inputs and confirmed failures |
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | | `FuzzSimulation.execution()` | An execution mode in which fiber scheduling and time are fuzzed |
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#module | Options of `Fuzz.run`: `seed`, `executions`, `duration`, `plateau`, `maxFindings`, `feedback`, `execution`, `replay`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#rules | **The property contract is `Arbitrary.checkEffect`'s.** Return `true`, or an Effect of `true`, to pass.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#rules | **A run stops at the first of** `duration` (10 seconds when no budget is given), `executions`, `plateau` and `maxFindings` (1 by default).
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#rules | **Feedback comes from five sources**: spans, on by default; the exit tag and each error tag; `Fuzz.observe` labels; `Fuzz.score` values; and the structure of the generated input.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#rules | **A finding has a signature**: `ReturnedFalse`, `PropertyError:<tag>`, `Died:<constructor>` or `Deadlock`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#rules | **A finding replays.** `finding.replay` is a token holding the generator tape, the schedule tape and the shrink path.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#rules | `Fuzz.run(input, property, { replay })` reproduces it.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#rules | Kept inputs are a search cache tied to `revision`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#rules | **Simulation is a closed world.** Under `FuzzSimulation.execution()`, each execution has its own scheduler and a virtual clock that jumps to the next timer when nothing can run.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#rules | A program with nothing runnable, no pending timer and an unfinished property is a `Deadlock` finding.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | `Experimental.Fuzz` and `Experimental.FuzzSimulation`, in scope with no import.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Their code is `vibelang-runtime/experimental/Fuzz`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Call `Fuzz.run(input, property, options?)`: Meaning: Run a campaign.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | `input` is a schema or an `Arbitrary`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Call `Fuzz.target(input, property, { id, revision, codec? })`, `Fuzz.runTarget(target, options)`: Meaning: A property with a stable identity, so a corpus store can keep its failures between runs.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Call `Fuzz.observe(label)`: Meaning: Record that execution reached a stage.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Call `Fuzz.score(label, value)`: Meaning: A number to maximize, which turns a needle into a hill.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Call `Fuzz.formatReport(report)`: Meaning: A printable diagnostic, or `undefined` when the run passed.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Call `Fuzz.Corpus`: Meaning: The service that stores inputs and confirmed failures.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Call `FuzzSimulation.execution()`: Meaning: An execution mode in which fiber scheduling and time are fuzzed.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Options of `Fuzz.run`: `seed`, `executions`, `duration`, `plateau`, `maxFindings`, `feedback`, `execution`, `replay`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | **The property contract is `Arbitrary.checkEffect`'s.** Return `true`, or an Effect of `true`, to pass.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | **A run stops at the first of** `duration` (10 seconds when no budget is given), `executions`, `plateau` and `maxFindings` (1 by default).
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | **Feedback comes from five sources**: spans, on by default; the exit tag and each error tag; `Fuzz.observe` labels; `Fuzz.score` values; and the structure of the generated input.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | **A finding has a signature**: `ReturnedFalse`, `PropertyError:<tag>`, `Died:<constructor>` or `Deadlock`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | **A finding replays.** `finding.replay` is a token holding the generator tape, the schedule tape and the shrink path.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | `Fuzz.run(input, property, { replay })` reproduces it.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | Kept inputs are a search cache tied to `revision`.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | **Simulation is a closed world.** Under `FuzzSimulation.execution()`, each execution has its own scheduler and a virtual clock that jumps to the next timer when nothing can run.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#claudes-decisions | A program with nothing runnable, no pending timer and an unfinished property is a `Deadlock` finding.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#what-this-changes | `Experimental.Fuzz` and `Experimental.FuzzSimulation` are new.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#what-this-changes | `Fuzz.run` accepts a schema directly.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#what-this-changes | Smithers' takes an `Arbitrary`; the port adds one overload that calls `Arbitrary.schema`.
+
+schema Bytes = ReadonlyArray<number>
+
+effect function parse(bytes: Bytes) {
+  try Experimental.Fuzz.observe(`length:${Math.min(bytes.length, 4)}`)
+  return bytes.length
+}
+
+// The VIP's own example, with a budget a test can afford.
+export effect function campaign() {
+  const report = try Experimental.Fuzz.run(Bytes, (bytes) => as(parse(bytes), true), { seed: 1, executions: 2_000 })
+  return { tag: report._tag, executions: report.stats.executions, text: Experimental.Fuzz.formatReport(report), observations: report.stats.features.observations ?? 0 }
+}
+
+const Byte = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 255 }))
+const Header = Schema.Array(Byte)
+
+// A two-byte magic header that random arrays almost never start with. Each
+// matched byte is an observation, so the search keeps inputs that get closer.
+effect function header(bytes: ReadonlyArray<number>) {
+  if (bytes[0] !== 0x7f) return true
+  try Experimental.Fuzz.observe("magic 1")
+  if (bytes[1] !== 0x45) return true
+  try Experimental.Fuzz.observe("magic 2")
+  return false
+}
+
+export effect function magic(seed: number) {
+  const report = try Experimental.Fuzz.run(Header, header, { seed, executions: 50_000 })
+  if (report._tag !== "Falsified") return { tag: report._tag }
+  const finding = report.findings[0]
+  return { tag: report._tag, signature: finding.signature, input: finding.input, replay: finding.replay, text: Experimental.Fuzz.formatReport(report) ?? "" }
+}
+
+export effect function replay(token: string) {
+  const report = try Experimental.Fuzz.run(Header, header, { replay: token })
+  return report._tag === "Falsified" ? { tag: report._tag, input: report.findings[0].input, stoppedBy: report.stats.stoppedBy } : { tag: report._tag }
+}
+
+// A token for one generator is a mismatch, not a pass, against another.
+export effect function replayElsewhere(token: string) {
+  const report = try Experimental.Fuzz.run(Schema.Literal(1), (n) => n === 1, { replay: token })
+  return report._tag
+}
+
+error Boom { n: number }
+
+export effect function signatures() {
+  const small = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 100 }))
+  const failed = try Experimental.Fuzz.run(small, effect (n) => {
+    if (n > 10) throw new Boom({ n })
+    return true
+  }, { seed: 1, executions: 2_000 })
+  const died = try Experimental.Fuzz.run(small, effect (n) => {
+    if (n > 10) return try Effect.die(new RangeError("too big"))
+    return true
+  }, { seed: 1, executions: 2_000 })
+  const passed = try Experimental.Fuzz.run(small, (n) => n >= 0, { seed: 1, executions: 500 })
+  return {
+    failed: failed._tag === "Falsified" ? [failed.findings[0].signature, failed.findings[0].input] : failed._tag,
+    died: died._tag === "Falsified" ? [died.findings[0].signature, died.findings[0].input] : died._tag,
+    passed: [passed._tag, passed.stats.executions, passed.stats.stoppedBy, Experimental.Fuzz.formatReport(passed) === undefined],
+  }
+}
+
+const target = Experimental.Fuzz.target(Header, header, { id: "header", revision: "1" })
+
+// A confirmed failure is saved as a value; the next run replays it first, as
+// execution 0, before any search.
+export effect function corpus() {
+  const store = Experimental.Fuzz.memoryCorpus()
+  provide Layer.succeed(Experimental.Fuzz.Corpus, store) {
+    const first = try Experimental.Fuzz.runTarget(target, { seed: 1, executions: 50_000 })
+    const second = try Experimental.Fuzz.runTarget(target, { seed: 2, executions: 10 })
+    const saved = try store.load("header")
+    return {
+      first: first._tag === "Falsified" ? first.findings[0].saved : first._tag,
+      second: second._tag === "Falsified" ? [second.findings[0].execution, second.findings[0].input, second.stats.regressions] : second._tag,
+      failures: saved.filter((entry) => entry.kind === "Failure").length,
+    }
+  }
+}
+
+// The injected fault: a store whose every save fails. The run fails with a
+// FuzzError of reason Corpus, never a passing report.
+export effect function brokenStore() {
+  const broken = {
+    load: (_target: string) => Effect.succeed([]),
+    save: (_target: string, _entry: Experimental.Fuzz.StoredEntry) => Effect.fail(new Experimental.Fuzz.FuzzError({ reason: "Corpus", message: "disk full" })),
+  }
+  provide Layer.succeed(Experimental.Fuzz.Corpus, broken) {
+    return Experimental.Fuzz.runTarget(target, { seed: 1, executions: 50_000 }) catch (error) => [error._tag, error.reason, error.message]
+  }
+}
+
+export effect function scored(climb: boolean) {
+  const wide = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1_000_000_000 }))
+  const report = try Experimental.Fuzz.run(wide, effect (n) => {
+    if (climb) try Experimental.Fuzz.score("closeness", -Math.abs(n - 777_777_777))
+    return n !== 777_777_777
+  }, { seed: 1, executions: 100_000, feedback: [] })
+  return report._tag === "Falsified" ? report.findings[0].input : report._tag
+}
+
+// Reads, checks, then writes: a preemption between the read and the write
+// loses an update and pays out more than the account held.
+effect function withdraw(balance: Ref<number>, paid: Ref<number>, amount: number) {
+  const current = try Ref.get(balance)
+  if (current < amount) return
+  try Ref.set(balance, current - amount)
+  try Ref.update(paid, (total) => total + amount)
+}
+
+const Amount = Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 }))
+
+effect function conserved(amounts: readonly [number, number]) {
+  const balance = try Ref.make(100)
+  const paid = try Ref.make(0)
+  try Effect.all([withdraw(balance, paid, amounts[0]), withdraw(balance, paid, amounts[1])], { concurrency: 2 })
+  return (try Ref.get(balance)) + (try Ref.get(paid)) === 100
+}
+
+export effect function race(simulated: boolean) {
+  const options = simulated ? { seed: 1, executions: 2_000, execution: Experimental.FuzzSimulation.execution() } : { seed: 1, executions: 2_000 }
+  const report = try Experimental.Fuzz.run(Schema.Tuple([Amount, Amount]), conserved, options)
+  return report._tag === "Falsified" ? { tag: report._tag, signature: report.findings[0].signature, input: report.findings[0].input, replay: report.findings[0].replay } : { tag: report._tag }
+}
+
+export effect function replayRace(token: string) {
+  const report = try Experimental.Fuzz.run(Schema.Tuple([Amount, Amount]), conserved, { replay: token, execution: Experimental.FuzzSimulation.execution() })
+  return report._tag === "Falsified" ? report.findings[0].input : report._tag
+}
+
+export effect function deadlock() {
+  const report = try Experimental.Fuzz.run(Schema.Literal(1), effect (_n) => {
+    const never = try Deferred.make<boolean>()
+    try sleep("1 hour")
+    return try Deferred.await(never)
+  }, { seed: 1, executions: 10, execution: Experimental.FuzzSimulation.execution() })
+  return report._tag === "Falsified" ? report.findings[0].signature : report._tag
+}
+
+export function fuzzModule() {
+  return Experimental.Fuzz.run
+}

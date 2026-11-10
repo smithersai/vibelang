@@ -96,6 +96,16 @@
       "import": "./dist/experimental/FileSystem.js",
       "default": "./dist/experimental/FileSystem.js"
     },
+    "./experimental/Fuzz": {
+      "types": "./dist/experimental/Fuzz.d.ts",
+      "import": "./dist/experimental/Fuzz.js",
+      "default": "./dist/experimental/Fuzz.js"
+    },
+    "./experimental/FuzzSimulation": {
+      "types": "./dist/experimental/FuzzSimulation.d.ts",
+      "import": "./dist/experimental/FuzzSimulation.js",
+      "default": "./dist/experimental/FuzzSimulation.js"
+    },
     "./experimental/Headers": {
       "types": "./dist/experimental/Headers.d.ts",
       "import": "./dist/experimental/Headers.js",

@@ -121,6 +121,7 @@ This is the decision record for the design above, including each API signature, 
 - None. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 - The package runs in a browser, a Worker, Node and Bun. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 - A file-backed corpus needs `FileSystem` and lives with the test integration. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `Experimental.FuzzSimulation` has its own subpath, `vibelang-runtime/experimental/FuzzSimulation`, beside `vibelang-runtime/experimental/Fuzz`, as every `Experimental` module does; the upstream copy keeps it under `testing/`. Author: vip-std-fuzz (Claude Opus 5.5). [Design](#module).
 
 ### Adopted review answers
 

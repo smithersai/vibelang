@@ -24,6 +24,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
 
+- A failure that random property checks rarely reach, such as a magic header, a precise sequence of calls or one interleaving of two fibers, passed `Arbitrary.checkEffect` unnoticed. The new experimental fuzzing module takes a schema, keeps the inputs that reach new spans, error tags or observed stages, and reports a shrunk failure with a replay token. Its simulation mode makes fiber scheduling and time part of the input, so it finds lost updates and deadlocks. See [the fuzzing guide](../vibelang-features/120-fuzzing.md).
+
 - The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.
 
 - The parcel conversion example tried to catch a string and failed with `EK0506`. Its recovery now wraps the fallible work in an `effect` block and returns the same results as the TypeScript original.

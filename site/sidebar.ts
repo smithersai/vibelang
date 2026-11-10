@@ -772,6 +772,10 @@ export const sidebar = [
       {
         "text": "Durable tasks and workflows",
         "link": "/vibelang-features/119-tasks-and-workflows"
+      },
+      {
+        "text": "Fuzzing with Experimental.Fuzz",
+        "link": "/vibelang-features/120-fuzzing"
       }
     ],
     "collapsed": false
