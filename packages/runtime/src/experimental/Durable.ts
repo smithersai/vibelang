@@ -43,10 +43,11 @@ import * as Random from "effect/Random"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import type { SqlClient } from "effect/sql"
-import { Activity, Workflow, WorkflowEngine } from "effect/workflow"
+import { Activity, DurableDeferred, Workflow, WorkflowEngine } from "effect/workflow"
 import * as canonical from "./internal/canonical.js"
 import * as engineInternal from "./internal/durableEngine.js"
 import * as sqlStore from "./internal/durableSql.js"
+import * as steps from "./internal/durableSteps.js"
 import * as store from "./internal/durableStore.js"
 
 /**
@@ -217,7 +218,7 @@ export const identity = <S extends Schema.Top>(schema: S): (value: S["Type"]) =>
  * @category constructors
  * @since 0.0.13
  */
-export const workflow = <
+const declareWorkflow = <
   const Tag extends string,
   Payload extends Schema.Struct.Fields,
   Success extends Schema.Top = Schema.Void,
@@ -410,17 +411,10 @@ const backoff = (policy: RetryPolicy): Effect.Effect<void> =>
     yield* Effect.sleep(Math.max(0, delay * (1 + (random * 2 - 1) * ratio)))
   })
 
-const occurrences = new WeakMap<object, Map<string, number>>()
-const nextOccurrence = (instance: object, key: string): number => {
-  let counts = occurrences.get(instance)
-  if (counts === undefined) {
-    counts = new Map()
-    occurrences.set(instance, counts)
-  }
-  const n = (counts.get(key) ?? 0) + 1
-  counts.set(key, n)
-  return n
-}
+// A task's calls are numbered within the named race they run in, so a call
+// inside a race and a call after it are two steps on every replay.
+const nextOccurrence = (instance: WorkflowEngine.WorkflowInstance["Service"], key: string): string =>
+  steps.nextOccurrence(instance, key, `Task ${key}`)
 
 /**
  * Declares a task: a recorded step with a payload, a result and a typed
@@ -519,6 +513,83 @@ export const task = <
   })
   return self as unknown as Task<Key, Payload, Success, Error>
 }
+
+/**
+ * Declares a durable workflow: Effect's `Workflow.make` with run identity
+ * from VIP-44, so equal payloads name one run. Unless `idempotencyKey` is
+ * given, payloads are compared by {@link identity}, and the body receives
+ * the payload as it was hashed. The body's instance is marked as the run's
+ * own, which is how a step the run numbers tells the body from the copy
+ * Effect's `DurableDeferred.raceAll` runs its effects on.
+ *
+ * @category constructors
+ * @since 0.0.13
+ */
+export const workflow: typeof declareWorkflow = (tag, options) => steps.rooted(declareWorkflow(tag, options))
+
+/**
+ * A step whose number would change on a replay: a task call or an unnamed
+ * timer inside Effect's own `DurableDeferred.raceAll` or `into`. The step
+ * dies with it. Race with {@link race} instead, or name the timer.
+ *
+ * @category errors
+ * @since 0.0.13
+ */
+export const UnstableStep = steps.UnstableStep
+
+/**
+ * @category errors
+ * @since 0.0.13
+ */
+export type UnstableStep = steps.UnstableStep
+
+/**
+ * Races `effects` and records the winner: Effect's `DurableDeferred.raceAll`
+ * with a scope of its own. The first effect to finish decides the result,
+ * the result is journaled under `name`, and every replay returns it without
+ * running the effects again, so a run that took one branch never takes the
+ * other. Use it to bound a step, `race({ name, success, effects: [Step(x),
+ * sleep("30 seconds")] })`, or to wait for whichever comes first.
+ *
+ * `name` is unique among the races of its scope. Task calls and unnamed
+ * timers inside the race are numbered within it, as `<name>/1`, so what the
+ * race runs never changes the number of a step outside it. `success` and
+ * `error` are the schemas the recorded result is stored with.
+ *
+ * @category waits
+ * @since 0.0.13
+ */
+export const race = <
+  const Effects extends readonly [Effect.Effect<any, any, any>, ...Array<Effect.Effect<any, any, any>>],
+  Success extends Schema.Top,
+  Error extends Schema.Top = Schema.Never
+>(options: {
+  readonly name: string
+  readonly success: Success
+  readonly error?: Error | undefined
+  readonly effects: Effects
+}): Effect.Effect<
+  Effect.Success<Effects[number]>,
+  Effect.Error<Effects[number]>,
+  Effect.Services<Effects[number]> | WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance
+> =>
+  Effect.gen(function*() {
+    const outer = yield* WorkflowEngine.WorkflowInstance
+    const path = `${steps.scopeOf(outer)}${steps.encodeName(options.name)}`
+    // The arms run on a copy of the instance, which this marks with the
+    // race's scope before any of them counts a step.
+    const scoped = (effect: Effect.Effect<any, any, any>) =>
+      Effect.flatMap(Effect.service(WorkflowEngine.WorkflowInstance), (copy) => {
+        steps.enterScope(copy, `${path}/`)
+        return effect
+      })
+    return yield* DurableDeferred.raceAll({
+      name: path,
+      success: options.success as Schema.Top as Schema.Schema<any>,
+      error: (options.error ?? Schema.Never) as Schema.Top as Schema.Schema<any>,
+      effects: options.effects.map(scoped) as unknown as readonly [Effect.Effect<any, any, any>]
+    })
+  }) as ReturnType<typeof race<Effects, Success, Error>>
 
 /**
  * A position in history: a run and a sequence number in its journal.

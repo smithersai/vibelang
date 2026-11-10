@@ -36,6 +36,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Under Vite 7, a `.vibex` module served from another package failed with `Failed to resolve import` for a package only its own package depends on, where its `.tsx` twin resolved, as in a Storybook root that renders components from other workspace packages. Its bare imports now resolve from the module's own directory.
 
+- A durable task called inside `DurableDeferred.raceAll` or `DurableDeferred.into` and called again afterwards returned the first call's recorded result, because a race's steps shared numbers with the steps around it. `Experimental.Durable.race` now records a race's winner and numbers its own steps, and a task call inside Effect's own `raceAll` or `into` stops with `Experimental.Durable.UnstableStep` instead of reading another step's result.
+
 - `Experimental.Durable.spawn`, `start` and `run` rejected every declared workflow with `TS2345`, because their parameter type fixed the payload type. They now take any declared workflow, and a handle's `result` has the workflow's success and error types.
 
 - Stock `tsc`, and `bun check` scripts that invoke TypeScript, reported `TS2307` for a `.ts` file's `./x.js`, `./x` or `./x.ts` import once `x` became a `.vibe` module, though `vibelang` accepted it. The compiler now also writes `x.d.ts`, which re-exports `x.d.vibe.ts`, so those imports resolve and the importer's published declarations are unchanged.
