@@ -43,6 +43,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Invalid service signatures and constructors could hide unknown names and type errors in their types or bodies. These independent errors now appear alongside `EK0902`.
 
+- A durable workflow killed during a long `DurableClock.sleep` slept the whole duration again when it resumed. The engine now journals when the clock is due, and the resumed run waits only for the time left.
+
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.

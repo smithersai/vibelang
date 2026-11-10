@@ -94,7 +94,9 @@ export type RunStatus = store.RunStatus
  *
  * Event types: `RunStarted`, `StepStarted` (`step`, `attempt`, and the task's
  * `tier`), `StepCompleted` (`step`, `attempt`, `exit`), `DeferredDone`
- * (`name`, `exit`), `RunSuspended` and `RunCompleted` (`status`, `result`).
+ * (`name`, `exit`), `ClockScheduled` (`name`, `wakeAt`), `RunSuspended`,
+ * `RunCompleted` (`status`, `result`), `RunForked` (`from`) and `RunRewound`
+ * (`to`).
  * A step's `exit` is Effect's JSON encoding of an `Exit` of the step's
  * encoded result.
  *

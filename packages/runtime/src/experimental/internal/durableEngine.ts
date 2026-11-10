@@ -12,6 +12,7 @@ import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
@@ -77,6 +78,8 @@ interface Execution {
   readonly steps: Map<string, unknown>
   /** Deferred name to its encoded exit. */
   readonly deferreds: Map<string, unknown>
+  /** Durable clock name to the time it wakes, in epoch milliseconds. */
+  readonly clocks: Map<string, number>
 }
 
 interface Registered {
@@ -99,11 +102,17 @@ export interface EngineInternals {
 const isUnwakeable = (result: Workflow.Result<unknown, unknown>, mode: ResumeMode) =>
   result._tag === "Complete" || (mode === "automatic" && result.failed === true)
 
-const indexEntries = (entries: ReadonlyArray<JournalEntry>, steps: Map<string, unknown>, deferreds: Map<string, unknown>) => {
+const indexEntries = (
+  entries: ReadonlyArray<JournalEntry>,
+  steps: Map<string, unknown>,
+  deferreds: Map<string, unknown>,
+  clocks: Map<string, number>
+) => {
   for (const entry of entries) {
     const payload = entry.payload as Record<string, unknown>
     if (entry.eventType === "StepCompleted") steps.set(`${payload.step}/${payload.attempt}`, payload.exit)
     else if (entry.eventType === "DeferredDone" && !deferreds.has(payload.name as string)) deferreds.set(payload.name as string, payload.exit)
+    else if (entry.eventType === "ClockScheduled" && !clocks.has(payload.name as string)) clocks.set(payload.name as string, payload.wakeAt as number)
   }
 }
 
@@ -151,7 +160,7 @@ export const make = (store: Store) =>
         return
       }
       // A signal written by another process is in the journal, not in memory.
-      indexEntries(yield* store.entries(executionId), state.steps, state.deferreds)
+      indexEntries(yield* store.entries(executionId), state.steps, state.deferreds, state.clocks)
       const entry = workflows.get(state.workflow._tag)!
       const instance = WorkflowInstance.initial(state.workflow, executionId, { scope: Scope.forkUnsafe(state.scope) })
       state.instance = instance
@@ -198,7 +207,8 @@ export const make = (store: Store) =>
         const fence = yield* Effect.orDie(store.claim(executionId, owner, at))
         const steps = new Map<string, unknown>()
         const deferreds = new Map<string, unknown>()
-        indexEntries(yield* store.entries(executionId), steps, deferreds)
+        const clocks = new Map<string, number>()
+        indexEntries(yield* store.entries(executionId), steps, deferreds, clocks)
         const state: Execution = {
           // The body sees the stored snapshot, so the hash covers exactly what it reads.
           payload: decodePayload(entry.workflow, row.payload),
@@ -214,7 +224,8 @@ export const make = (store: Store) =>
           parent: row.parent,
           fence,
           steps,
-          deferreds
+          deferreds,
+          clocks
         }
         executions.set(executionId, state)
         return state
@@ -370,17 +381,30 @@ export const make = (store: Store) =>
             yield* wake
           }
         }),
+      // A clock's wake time is journaled once, so a run resumed after a
+      // crash waits only for what is left of it.
       scheduleClock: (workflow, options) =>
-        engine.deferredDone(options.clock.deferred, {
-          workflowName: workflow._tag,
-          executionId: options.executionId,
-          deferredName: options.clock.deferred.name,
-          exit: Exit.void
-        }).pipe(
-          Effect.delay(options.clock.duration),
-          FiberMap.run(clocks, `${options.executionId}/${options.clock.name}`, { onlyIfMissing: true }),
-          Effect.asVoid
-        )
+        Effect.gen(function*() {
+          const state = executions.get(options.executionId)
+          const at = yield* now
+          let wakeAt = state?.clocks.get(options.clock.name)
+          if (wakeAt === undefined) {
+            wakeAt = at + Duration.toMillis(options.clock.duration)
+            if (state) {
+              yield* commit(state, options.executionId, [{ eventType: "ClockScheduled", payload: { name: options.clock.name, wakeAt } }])
+              state.clocks.set(options.clock.name, wakeAt)
+            }
+          }
+          yield* engine.deferredDone(options.clock.deferred, {
+            workflowName: workflow._tag,
+            executionId: options.executionId,
+            deferredName: options.clock.deferred.name,
+            exit: Exit.void
+          }).pipe(
+            Effect.delay(Math.max(0, wakeAt - at)),
+            FiberMap.run(clocks, `${options.executionId}/${options.clock.name}`, { onlyIfMissing: true })
+          )
+        })
     } as WorkflowEngine.Encoded)
 
     const internals: EngineInternals = {

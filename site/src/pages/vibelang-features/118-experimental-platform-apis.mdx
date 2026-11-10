@@ -698,6 +698,8 @@ A task may cache its successful result: `cache: { ttlMs?, scope? }`, Smithers' `
 
 Reuse across runs is opt-in: `"flow"` and `"shared"` need an `implementationVersion`, so a result is never served to different code, and declaring one without it throws. Only a `"sealed"` task may cache, because a cache hit skips the handler and its outside effects. An entry may expire after `ttlMs`. A run's committed result never depends on an entry: the hit is journaled as the step's result, and a finished run answers from its journal.
 
+Effect's `DurableClock.sleep` and `DurableDeferred` work inside these workflows. A sleep longer than its `inMemoryThreshold`, a minute by default, journals `ClockScheduled` with the time it is due, so a run killed while it sleeps and executed again waits only for what is left. A shorter sleep is an ordinary step, and a crash repeats it whole. A run waiting on a clock or a deferred resumes only when something executes or resumes it.
+
 `Experimental.Durable.history(run)` is the run's journal as a `Stream` of `{ run, seq, eventType, payload, at }`, read through the `Experimental.Durable.Durable` service the engine layers provide. A run's id is Effect's execution id, `Order.executionId(payload)`.
 
 ### Runs and time travel
