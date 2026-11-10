@@ -1,0 +1,20 @@
+# Gaps between Chapter 1 source names and the compiler, found by
+# FuzzParenthesizedSourceNames. Chapter 1: "Parentheses alone do not suppress
+# source name inference"; Chapter 7: formatting never changes function names.
+# The compiler names the function it generates for an effect block after a
+# const binding or an object property, but not when the block is wrapped in
+# parentheses or in an as or satisfies operator that TypeScript erases to
+# them. vibelang-format removes those parentheses, so formatting renames the
+# block. A key <wrapper>/<context> covers every host (top level, plain
+# function, effect function, do expression). Function values (effect arrows,
+# effect function expressions, arrows, classes) keep their names everywhere.
+# target                       key                                       owner     what is missing
+FuzzParenthesizedSourceNames  block/paren/const  compiler  Chapter 1: const target = (effect { ... }) runs anonymously, while the bare block runs as target; lane migfix-alchemy
+FuzzParenthesizedSourceNames  block/paren/property  compiler  Chapter 1: the object property target: (effect { ... }) runs anonymously, while the bare block runs as target; lane migfix-alchemy
+FuzzParenthesizedSourceNames  block/double-paren/const  compiler  Chapter 1: const target = ((effect { ... })) runs anonymously, while the bare block runs as target; lane migfix-alchemy
+FuzzParenthesizedSourceNames  block/double-paren/property  compiler  Chapter 1: the object property target: ((effect { ... })) runs anonymously, while the bare block runs as target; lane migfix-alchemy
+FuzzParenthesizedSourceNames  block/as/const  compiler  Chapter 1: const target = (effect { ... }) as T runs anonymously, while the bare block runs as target; lane migfix-alchemy
+FuzzParenthesizedSourceNames  block/as/property  compiler  Chapter 1: the object property target: (effect { ... }) as T runs anonymously, while the bare block runs as target; lane migfix-alchemy
+FuzzParenthesizedSourceNames  block/satisfies/const  compiler  Chapter 1: const target = (effect { ... }) satisfies T runs anonymously, while the bare block runs as target; lane migfix-alchemy
+FuzzParenthesizedSourceNames  block/satisfies/property  compiler  Chapter 1: the object property target: (effect { ... }) satisfies T runs anonymously, while the bare block runs as target; lane migfix-alchemy
+FuzzParenthesizedSourceNames  witness:alchemy-paren-effect-block-name  compiler  Chapter 7: alchemy prisma const catchProgram = (effect { ... }) runs anonymously, and as vibelang-format writes it, without parentheses, as catchProgram; lane migfix-alchemy
