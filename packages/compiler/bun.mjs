@@ -419,8 +419,11 @@ Bun.plugin({
       let imports, rewritten
       try {
         code ??= readFileSync(file, "utf8")
-        rewritten = esImports(code, loader)
-        imports = [...importPaths(new Bun.Transpiler({ loader }).scanImports(code)), ...rewritten]
+        // Bun 1.4.2's scanImports() rejects a #! line ("Unexpected #!") that
+        // its loader and scan() accept, so both scan a hashbang as a comment.
+        const scanned = code.startsWith("#!") ? "//" + code.slice(2) : code
+        rewritten = esImports(scanned, loader)
+        imports = [...importPaths(new Bun.Transpiler({ loader }).scanImports(scanned)), ...rewritten]
       } catch { return }
       const needsRewrite = rewritten.some((entry) =>
         registeredImport(dirname(file), entry.path) !== undefined || vibeImport(dirname(file), entry.path) !== undefined ||

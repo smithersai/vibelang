@@ -414,6 +414,23 @@ test("extensionless imports keep native CommonJS .js interop through nested Type
   }
 })
 
+// Bun 1.4.2's import scanner rejects a #! line that its loader accepts.
+// opencode's CLI entry starts with one, and the preload left every
+// extensionless import of a .vibe module below that line unresolved.
+test("a native module with a #! line reaches a .vibe module by an extensionless import", { skip }, (t) => {
+  const { bun } = project(t, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true }, include: ["src/**/*"] }),
+    "src/leaf.vibe": 'export const leaf: string = "leaf"\n',
+    "src/cli.ts": '#!/usr/bin/env bun\nimport { leaf } from "./leaf"\nexport const cli = leaf + "-cli"\nconsole.log(cli)\n',
+    "src/outer.ts": 'import { cli } from "./cli"\nconsole.log("outer", cli)\n'
+  })
+  for (const [entry, expected] of [["src/cli.ts", "leaf-cli\n"], ["src/outer.ts", "leaf-cli\nouter leaf-cli\n"]]) {
+    const result = bun(["--preload", preload, entry])
+    assert.equal(result.status, 0, result.stderr)
+    assert.equal(result.stdout, expected)
+  }
+})
+
 // opencode's plugin runtime require()s src/effect/index.ts, a native barrel
 // whose schema modules became .vibe. Bun makes a module whose onLoad returns a
 // pending Promise async, and require() of an async module throws, so the
