@@ -16,9 +16,10 @@ import (
 
 // FuzzLibOriginThrows checks that a web global's thrown type follows the
 // declaration TypeScript selects for the call. A project's lib and types
-// decide where btoa and atob come from: lib.dom.d.ts, whose intrinsic
-// annotation is DOMException, or an npm package such as @types/node or
-// @cloudflare/workers-types, whose untagged signature throws unknown.
+// decide where btoa, atob and structuredClone come from: lib.dom.d.ts,
+// whose intrinsic annotation is DOMException, or an npm package such as
+// @types/node or @cloudflare/workers-types, whose untagged signature
+// throws unknown.
 // encodeURIComponent comes from lib.es5.d.ts in every project, so its
 // verdict never depends on the lib. Each cell compiles one .vibe program
 // under one project and expects the diagnostic Chapter 3 gives for the
@@ -30,7 +31,8 @@ import (
 // VibeLang's. A cell's key names the project, the callee, the call's form
 // and its host. A gap's key names the contract (a lib row such as
 // btoa@lib.dom.d.ts, or an untagged package such as @types/node), whether
-// the callee is called or passed, and the host: @types/node/call/effect.
+// the callee is called, passed or called in a passed literal, and the
+// host: @types/node/call/effect.
 
 const libOriginTarget = "FuzzLibOriginThrows"
 
@@ -42,6 +44,7 @@ var libOriginQuotes = []struct{ chapter, text string }{
 	{"003-failures.md", "tracked with its class when reachable from any input admitted by the selected signature's receiver and parameter types under TypeScript `strict`."},
 	{"003-failures.md", "Its callee has a written `@throws {T}` other than `@throws {never}` (`@throws {unknown}` included), or has a `@rethrows` parameter given a callback known to throw."},
 	{"003-failures.md", "and a parameter named by `@rethrows` admits anything"},
+	{"003-failures.md", "or passed to a `@rethrows` parameter, may contain calls known to throw: they belong to the enclosing call."},
 	{"003-failures.md", "A call whose throwing is unknown, such as an unannotated `.ts` function, stays an ordinary call"},
 	{"003-failures.md", "unless it sits in the `try` block of a `try` statement with a `catch` clause in the same function"},
 	{"003-failures.md", "A plain function whose return type is wholly effectful, and an effectful function's parameter list, are stricter: any thrown type other than `never` is `EK0401`"},
@@ -66,12 +69,15 @@ var libOriginProjects = []libOriginProject{
 	{name: "dom+workers", lib: []string{"ES2022", "DOM", "DOM.Iterable"}, types: []string{"@cloudflare/workers-types"}},
 }
 
-var libOriginCallees = []string{"btoa", "atob", "encodeURIComponent"}
+var libOriginCallees = []string{"btoa", "atob", "structuredClone", "encodeURIComponent"}
 
 // The call's form: called directly, in a conditional's branch as the
-// migrated OAuth client writes it, or passed to Array.prototype.map, whose
-// rethrows contract carries the callee's thrown type to the map call.
-var libOriginForms = []string{"call", "conditional", "map"}
+// migrated OAuth client writes it, passed to Array.prototype.map, whose
+// rethrows contract carries the callee's thrown type to the map call, or
+// called in a function literal passed to map, whose calls belong to the map
+// call. structuredClone's second parameter takes no array index, so it is
+// never passed to map.
+var libOriginForms = []string{"call", "conditional", "map", "literal"}
 
 var libOriginHosts = []string{"plain", "try", "effectful", "effect", "top"}
 
@@ -85,13 +91,29 @@ declare global {
 }
 `
 
+// @types/node declares structuredClone in web-globals/messaging.d.ts.
+const libOriginNodeMessaging = `import * as worker_threads from "worker_threads";
+declare global {
+    function structuredClone<T = any>(value: T, options?: worker_threads.StructuredSerializeOptions): T;
+}
+`
+
 const libOriginWorkersTypes = `/* [MDN Reference](https://developer.mozilla.org/docs/Web/API/Window/btoa) */
 declare function btoa(data: string): string;
 /* [MDN Reference](https://developer.mozilla.org/docs/Web/API/Window/atob) */
 declare function atob(data: string): string;
+/* [MDN Reference](https://developer.mozilla.org/docs/Web/API/Window/structuredClone) */
+declare function structuredClone<T>(
+  value: T,
+  options?: StructuredSerializeOptions,
+): T;
+interface StructuredSerializeOptions {
+  transfer?: any[];
+}
 `
 
 const libOriginBuffer = `declare module "buffer" { export class Blob {} }
+declare module "worker_threads" { export interface StructuredSerializeOptions { transfer?: readonly unknown[] } }
 `
 
 type libOriginCase struct {
@@ -107,6 +129,9 @@ func libOriginCases() []libOriginCase {
 	for _, p := range libOriginProjects {
 		for _, callee := range libOriginCallees {
 			for _, form := range libOriginForms {
+				if callee == "structuredClone" && form == "map" {
+					continue
+				}
 				for _, host := range libOriginHosts {
 					cases = append(cases, libOriginCase{key: p.name + "/" + callee + "/" + form + "/" + host, project: p, callee: callee, form: form, host: host})
 				}
@@ -122,6 +147,8 @@ func (c libOriginCase) expression(arg string) string {
 		return arg + `.length === 0 ? "" : ` + c.callee + "(" + arg + ")"
 	case "map":
 		return "[" + arg + ", " + arg + "].map(" + c.callee + `).join(":")`
+	case "literal":
+		return "[" + arg + ", " + arg + "].map((x) => " + c.callee + `(x)).join(":")`
 	}
 	return c.callee + "(" + arg + ")"
 }
@@ -152,9 +179,10 @@ func (c libOriginCase) files() map[string]string {
 		"twin.ts":                                             "export const twin = " + c.callee + "(\"QQ\")\n",
 		"package.json":                                        `{"type":"module"}`,
 		"node_modules/@types/node/package.json":               `{"name":"@types/node","version":"26.6.5","types":"index.d.ts"}`,
-		"node_modules/@types/node/index.d.ts":                 "/// <reference path=\"buffer.d.ts\" />\n/// <reference path=\"web-globals/blob.d.ts\" />\n",
+		"node_modules/@types/node/index.d.ts":                 "/// <reference path=\"buffer.d.ts\" />\n/// <reference path=\"web-globals/blob.d.ts\" />\n/// <reference path=\"web-globals/messaging.d.ts\" />\n",
 		"node_modules/@types/node/buffer.d.ts":                libOriginBuffer,
 		"node_modules/@types/node/web-globals/blob.d.ts":      libOriginNodeTypes,
+		"node_modules/@types/node/web-globals/messaging.d.ts": libOriginNodeMessaging,
 		"node_modules/@cloudflare/workers-types/package.json": `{"name":"@cloudflare/workers-types","version":"5.20261027.1","types":"index.d.ts"}`,
 		"node_modules/@cloudflare/workers-types/index.d.ts":   libOriginWorkersTypes,
 	}
@@ -272,6 +300,9 @@ func checkLibOrigin(t *testing.T, w *Workspace, inventory []libOriginEntry, c li
 	// between known to throw and untagged, plain code may report EK0401 or
 	// nothing. Both throw something other than never.
 	class, either := "call", false
+	if c.form == "literal" {
+		class = "literal"
+	}
 	if c.form == "map" {
 		class = "callback"
 		if len(origins) > 1 {
