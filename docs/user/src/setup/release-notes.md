@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Under the Bun preload, a native module whose first line is a `#!` line could not import a `.vibe` module by an extensionless path and stopped with `Cannot find module`. The preload now rewrites that module's imports like any other native module's.
 
+- Executing a workflow twice with equal sets or maps built in different orders started two runs, because Effect hashes the `idempotencyKey` text as written. `Experimental.Durable.workflow` derives that key from the payload's identity, with sets, maps and object keys sorted, so equal inputs join one run, and its body sees the sorted payload.
+
 - A durable step recomputed a result an equal call had already produced, such as a second lookup of one price. An `Experimental.Durable.task` with `cache: { scope, ttlMs }` now returns the stored result within a run, a workflow or the whole store, and reuse across runs requires an `implementationVersion`.
 
 - A workflow's runs were lost when its process exited, because Effect's only local workflow engine keeps them in memory. `Experimental.Durable` journals each step: a crashed run resumes on its next execution, finished steps return their recorded results, and a step that never finished runs again.

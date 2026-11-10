@@ -39,7 +39,7 @@ import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import { Activity, WorkflowEngine } from "effect/workflow"
+import { Activity, Workflow, WorkflowEngine } from "effect/workflow"
 import * as canonical from "./internal/canonical.js"
 import * as engineInternal from "./internal/durableEngine.js"
 import * as store from "./internal/durableStore.js"
@@ -169,6 +169,55 @@ export const layerStore = (store: Store): Layer.Layer<WorkflowEngine.WorkflowEng
 export const memory: Layer.Layer<WorkflowEngine.WorkflowEngine | Durable> = /* @__PURE__ */ Layer.unwrap(
   /* @__PURE__ */ Effect.sync(() => layerStore(store.makeMemory()))
 )
+
+/**
+ * VIP-44 identity: a function that writes a value of `schema` as text that is
+ * equal exactly when the values are equal. Sets and maps are sorted first, the
+ * value is encoded with the schema's JSON codec, and the result is RFC 8785
+ * canonical JSON, so the order sets, maps and object keys were built in does
+ * not matter. Array order does. Use it as a workflow's `idempotencyKey`, as
+ * {@link workflow} does by default.
+ *
+ * @category identity
+ * @since 0.0.13
+ */
+export const identity = <S extends Schema.Top>(schema: S): (value: S["Type"]) => string => (value) =>
+  canonical.identity(schema, value)
+
+/**
+ * Effect's `Workflow.make`, with run identity from VIP-44: unless
+ * `idempotencyKey` is given, equal payloads, compared by {@link identity},
+ * name one run. Executing the workflow again with an equal payload joins
+ * that run, so a program that crashed and starts again resumes it with no
+ * saved id. The body receives the payload as it was hashed: its sets and
+ * maps iterate in sorted order.
+ *
+ * @category constructors
+ * @since 0.0.13
+ */
+export const workflow = <
+  const Tag extends string,
+  Payload extends Schema.Struct.Fields,
+  Success extends Schema.Top = Schema.Void,
+  Error extends Schema.Top = Schema.Never
+>(tag: Tag, options: {
+  readonly payload: Payload
+  readonly success?: Success | undefined
+  readonly error?: Error | undefined
+  readonly idempotencyKey?: ((payload: Schema.Struct.Type<Payload>) => string) | undefined
+  readonly suspendedRetrySchedule?: Parameters<typeof Workflow.make>[1]["suspendedRetrySchedule"]
+  readonly annotations?: Context.Context<never> | undefined
+}): Workflow.Workflow<Tag, Schema.Struct<Payload>, Success, Error> => {
+  const payload = Schema.Struct(options.payload)
+  return Workflow.make(tag, {
+    payload: options.payload,
+    success: options.success as Success,
+    error: options.error as Error,
+    idempotencyKey: options.idempotencyKey ?? identity(payload),
+    suspendedRetrySchedule: options.suspendedRetrySchedule,
+    annotations: options.annotations
+  }) as unknown as Workflow.Workflow<Tag, Schema.Struct<Payload>, Success, Error>
+}
 
 /**
  * A run's journal, in order.

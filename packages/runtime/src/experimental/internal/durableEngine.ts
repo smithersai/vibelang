@@ -22,6 +22,7 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import { Workflow, WorkflowEngine } from "effect/workflow"
 import type { Activity } from "effect/workflow"
+import { sortCollections } from "./canonical.js"
 import { isTerminal, type JournalEntry, type NewEvent, type RunRow, type RunStatus, type Store } from "./durableStore.js"
 
 const WorkflowInstance = WorkflowEngine.WorkflowInstance
@@ -41,7 +42,9 @@ const resultCodec = (workflow: Workflow.Any) =>
 const payloadCodec = (workflow: Workflow.Any) =>
   Schema.toCodecJson(workflow.payloadSchema) as unknown as Schema.Codec<object, unknown>
 
-export const encodePayload = (workflow: Workflow.Any, payload: object): unknown => Schema.encodeSync(payloadCodec(workflow))(payload)
+/** The payload as VIP-44 hashes it: sets and maps sorted, then encoded. */
+export const encodePayload = (workflow: Workflow.Any, payload: object): unknown =>
+  Schema.encodeSync(payloadCodec(workflow))(sortCollections(payload))
 export const decodePayload = (workflow: Workflow.Any, json: unknown): object => Schema.decodeUnknownSync(payloadCodec(workflow))(json)
 
 const statusOf = (result: Workflow.Result<unknown, unknown>): RunStatus => {
@@ -197,7 +200,8 @@ export const make = (store: Store) =>
         const deferreds = new Map<string, unknown>()
         indexEntries(yield* store.entries(executionId), steps, deferreds)
         const state: Execution = {
-          payload: payload ?? decodePayload(entry.workflow, row.payload),
+          // The body sees the stored snapshot, so the hash covers exactly what it reads.
+          payload: decodePayload(entry.workflow, row.payload),
           workflow: entry.workflow,
           execute: entry.execute,
           instance: WorkflowInstance.initial(entry.workflow, executionId),
