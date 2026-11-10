@@ -1,8 +1,6 @@
-// expect-result: {"result":"ran","seen":["Plan(abc, 0)"]}
+// expect-result: "n=7"
 // The forms a workflow body admits (VIP-55): durable steps, try.all over
-// them, pure code over results and branches on them.
-import { DurableEngine } from "vibelang-runtime"
-
+// them, pure code over results and branches on them, run on Experimental.Durable.
 const limit = 3
 const label = (n: number) => `n=${n}`
 
@@ -12,7 +10,7 @@ task Fetch {
 }
 
 export workflow Child {
-  effect call(id: string): number!string { return try Fetch(id) }
+  effect call(id: string): number!string { return try Fetch(`${id}!`) }
 }
 
 export workflow Plan {
@@ -20,20 +18,13 @@ export workflow Plan {
   effect call(id: string, attempt: number): string!string {
     const n = try Fetch(id)
     const [a, b] = try.all [Fetch(id), Child(id)]
-    if (n + a + b > limit && attempt < 2) return label(attempt)
-    return label(n + a + b)
+    if (n + a + b > 100 && attempt < 2) return label(attempt)
+    return label(n + a + b - limit)
   }
 }
 
 export effect function main() {
-  const seen: Array<string> = []
-  provide DurableEngine = {
-    execute: (workflow, args) => sync(() => {
-      seen.push(`${workflow.key}(${args.join(", ")})`)
-      return "ran"
-    })
-  } {
-    const result: string = try Plan("abc", 0)
-    return { result, seen }
+  provide Layer.provideMerge(Plan.layer, Experimental.Durable.memory) {
+    return try Plan("abc", 0)
   }
 }

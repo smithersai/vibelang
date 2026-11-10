@@ -175,12 +175,22 @@ func (p *Parser) parseDurableDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 			p.vibelangSpanning(fn, call.Loc)
 			fn.Flags |= ast.NodeFlagsVibeLangEffect
 			arguments = append(arguments, fn)
+			if workflow {
+				tasks, others := p.durableReached(method.Body, name.Text(), parameters, call.Name().Loc)
+				arguments = append(arguments, tasks, others)
+			}
 		}
 	} else {
 		arguments = append(arguments, p.durableSchemas(p.newNodeList(name.Loc, nil), nil, name.Loc))
 		if !workflow {
 			callee = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, nil, p.newNodeList(word, nil), ast.NodeFlagsNone), word)
 		}
+	}
+	if !workflow {
+		if p.vibelangDurableTasks == nil {
+			p.vibelangDurableTasks = map[string]bool{}
+		}
+		p.vibelangDurableTasks[name.Text()] = true
 	}
 	span := core.NewTextRange(name.Pos(), p.nodePos())
 	expression = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, p.newNodeList(span, arguments), ast.NodeFlagsNone), span)
@@ -341,4 +351,68 @@ func (p *Parser) durableSelfHandoffs(body *ast.Node, name string, parameters *as
 		return false
 	}
 	body.ForEachChild(visit)
+}
+
+// durableReached returns two thunks of the names a workflow's body calls, as
+// A(…), A.child(…) or A.to(…), that the body does not declare itself and that
+// are not the workflow's own: () => [T, …] for tasks declared earlier in this
+// file, whose types give W.layer's requirements, and
+// (): ReadonlyArray<unknown> => [B, …] for the rest. The runtime composes
+// W.layer from the tasks and workflows among them. The second thunk's
+// written return type keeps its names out of W's type, so workflows that
+// reach each other do not make their types depend on each other (TS7022).
+func (p *Parser) durableReached(body *ast.Node, name string, parameters *ast.NodeList, anchor core.TextRange) (*ast.Node, *ast.Node) {
+	declared := map[string]bool{name: true}
+	for _, parameter := range parameters.Nodes {
+		if parameter.Name() != nil && ast.IsIdentifier(parameter.Name()) {
+			declared[parameter.Name().Text()] = true
+		}
+	}
+	var order []string
+	var uses = map[string]*ast.Node{}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		switch {
+		case ast.IsBindingElement(node) || ast.IsVariableDeclaration(node) || ast.IsParameterDeclaration(node) || ast.IsFunctionDeclaration(node) || ast.IsClassDeclaration(node):
+			if node.Name() != nil && ast.IsIdentifier(node.Name()) {
+				declared[node.Name().Text()] = true
+			}
+		case ast.IsCallExpression(node):
+			callee := node.AsCallExpression().Expression
+			if ast.IsPropertyAccessExpression(callee) && (callee.Name().Text() == "child" || callee.Name().Text() == "to") {
+				callee = callee.Expression()
+			}
+			if ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsVibeLangIntrinsic == 0 {
+				if _, seen := uses[callee.Text()]; !seen {
+					uses[callee.Text()] = callee
+					order = append(order, callee.Text())
+				}
+			}
+		}
+		node.ForEachChild(visit)
+		return false
+	}
+	if body != nil {
+		body.ForEachChild(visit)
+	}
+	var tasks, others []*ast.Node
+	for _, used := range order {
+		if declared[used] {
+			continue
+		}
+		id := p.vibelangSynthesized(p.factory.NewIdentifier(used), uses[used].Loc)
+		if p.vibelangDurableTasks[used] {
+			tasks = append(tasks, id)
+		} else {
+			others = append(others, id)
+		}
+	}
+	taskArray := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(anchor, tasks), false /*multiLine*/), anchor)
+	otherArray := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(anchor, others), false /*multiLine*/), anchor)
+	otherThunk := p.vibelangProgramArrow(nil, otherArray, anchor)
+	unknown := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindUnknownKeyword), anchor)
+	readonlyArray := p.vibelangSynthesized(p.factory.NewIdentifier("ReadonlyArray"), anchor)
+	otherThunk.AsArrowFunction().Type = p.vibelangSynthesized(p.factory.NewTypeReferenceNode(readonlyArray, p.newNodeList(anchor, []*ast.Node{unknown})), anchor)
+	p.overrideParentInImmediateChildren(otherThunk)
+	return p.vibelangProgramArrow(nil, taskArray, anchor), otherThunk
 }

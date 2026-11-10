@@ -1,0 +1,46 @@
+// expect-result: {"result":"o1 shipped","effects":["reserve o1","ship o1 (crashed)","ship o1"]}
+// A crash mid-run, then a restart over the same store: the finished step is
+// not repeated, and the run resumes (VIP-55, VIP-60).
+const effects: Array<string> = []
+let crashing = true
+let started: Deferred.Deferred<void> | undefined = undefined
+
+task Reserve {
+  effect call(id: string): number!never {
+    try sync(() => { effects.push(`reserve ${id}`) })
+    return 1
+  }
+}
+
+task Ship {
+  effect call(id: string): string!never {
+    if (crashing) {
+      try sync(() => { effects.push(`ship ${id} (crashed)`) })
+      try Deferred.succeed(started!, undefined)
+      return try Effect.never
+    }
+    try sync(() => { effects.push(`ship ${id}`) })
+    return `${id} shipped`
+  }
+}
+
+export workflow Order {
+  effect call(id: string): string!never {
+    try Reserve(id)
+    return try Ship(id)
+  }
+}
+
+export effect function main() {
+  const store = Experimental.Durable.makeMemoryStore()
+  const engine = () => Layer.provideMerge(Order.layer, Experimental.Durable.layerStore(store))
+  started = try Deferred.make<void>()
+  const first = fork Effect.provide(Order("o1"), engine())
+  try Deferred.await(started!)
+  try Fiber.interrupt(first)
+  crashing = false
+  provide engine() {
+    const result = try Order("o1")
+    return { result, effects }
+  }
+}

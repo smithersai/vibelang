@@ -611,7 +611,7 @@ Where `Effect` is the compiler's implicit binding, `Effect.M`, where `M` is a mo
 
 ## `task` and `workflow` declarations
 
-A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks (VIP-55). Both are written as `service` is: a class-shaped body with one `effect call` method and `static readonly` options.
+A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks ([VIP-55](/vips/0055-durable-tasks-workflows)). Both are written as `service` is: a class-shaped body with one `effect call` method and `static readonly` options.
 
 ### Durable syntax
 
@@ -646,9 +646,10 @@ The grammar is [TaskDeclaration](/spec/900-appendices#taskdeclaration) and [Work
 - A `call` with no body declares a step whose implementation is supplied separately.
 - Each declaration carries its boundary's schemas, derived from the written types as a `schema` field's are ([VIP-44](/vips/0044-durable-values#what-the-compiler-generates)): `schemas.payload` holds one schema per parameter, keyed by the parameter's name, and `schemas.success` and `schemas.error` are the schemas of a written `A!E`'s `A` and `E`. `never` maps to `Schema.Never` and `void` to `Schema.Void`.
 - Each `static readonly` member is one option of the declaration, passed through under its own name.
-- A `workflow` declares a constant of the runtime's type `Workflow<P, A, E>`, with `A` and `E` from its `call`, written or inferred. `try W(a)` runs the workflow to completion and needs the durable engine, the service `DurableEngine`: a program that runs a workflow without one has a missing requirement.
+- A `workflow` declares a constant of the runtime's type `Workflow<P, A, E>`, with `A` and `E` from its `call`, written or inferred. Declarations run on `Experimental.Durable` ([VIP-60](/vips/0060-std-durable)): a task is a `Durable.task` and a workflow a `Durable.workflow`, each tagged with its key, whose payload is the call's arguments keyed by parameter name. `try W(a)` executes the workflow and needs Effect's `WorkflowEngine`, which `Experimental.Durable.memory`, `layerStore` and `layerSql` provide: a program that runs a workflow without one has a missing requirement. An equal payload joins the run that payload already started (VIP-44).
+- `T.layer` is the implementation of a task whose `call` has a body, and `T.toLayer(implementation)` supplies one for a task without. `W.layer` is the workflow's handler with the layers of the tasks and workflows its body calls; its requirements are the services those implementations read, so a program runs a workflow inside `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { … }`.
 - In a workflow's `call`, `try T(a)` is a step of the workflow's plan and gives the task's success.
-- `return W.to(a)` ends this round of the workflow and starts the next with the arguments `a`, checked against `W`'s parameters. The workflow's success type leaves the handoff out. In `W`'s own body the compiler types the handoff from `W`'s written parameters, so a workflow that hands off to itself needs no return type.
+- `return W.to(a)` ends this round of the workflow and starts the next, in the same run, with the arguments `a`, checked against `W`'s parameters; a written `static readonly maxRounds` bounds the rounds, and a handoff after the last one is a defect. The workflow's success type leaves the handoff out. In `W`'s own body the compiler types the handoff from `W`'s written parameters, so a workflow that hands off to itself needs no return type.
 - In a workflow's `call`, `try W.child(a)` runs `W` as a separate run and waits for it.
 
 ### Durable static rules

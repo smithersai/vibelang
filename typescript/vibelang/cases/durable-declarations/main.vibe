@@ -1,16 +1,16 @@
-// expect-result: {"keys":["FetchIssues","billing/Charge","Triage"],"options":[{"retryPolicy":{"initialMs":1000,"factor":2,"maxMs":4000,"maxAttempts":3}},{"key":"billing/Charge"},{"maxRounds":2}],"count":7,"runs":["Triage(smithersai/smithers)"],"words":["chore","chore",2]}
-import { DurableEngine } from "vibelang-runtime"
-
+// expect-result: {"keys":["FetchIssues","billing/Charge","Triage"],"options":[{"retryPolicy":{"initialMs":1000,"factor":2,"maxMs":4000,"maxAttempts":3}},{"key":"billing/Charge"},{"maxRounds":2}],"counts":[1,1,1],"calls":["fetch smithersai/smithers","fetch effect/effect"],"words":["chore","chore",2]}
+// Tasks and a workflow run on Experimental.Durable; the same input joins the recorded run (VIP-55, VIP-44).
 schema Issue { number: number; title: string }
 
-// A task's A!E annotation is its durable boundary; the services its body
-// reads belong to its implementation.
+const calls: Array<string> = []
+
+// A task's A!E annotation is its durable boundary.
 task FetchIssues {
   static readonly retryPolicy = { initialMs: 1000, factor: 2, maxMs: 4000, maxAttempts: 3 }
   effect call(repo: string): ReadonlyArray<Issue>!string {
     if (repo === "") throw "no repository"
-    const path = try Path.Path
-    return [{ number: 1, title: path.basename(repo) }]
+    try sync(() => { calls.push(`fetch ${repo}`) })
+    return [{ number: 1, title: repo }]
   }
 }
 
@@ -34,19 +34,15 @@ const workflow = task as { name: string }
 const spawn = (n: number) => n + 1
 
 export effect function main() {
-  const runs: Array<string> = []
-  provide DurableEngine = {
-    execute: (workflow, args) => sync(() => {
-      runs.push(`${workflow.key}(${args.join(", ")})`)
-      return 7
-    })
-  } {
-    const count: number = try Triage("smithersai/smithers")
+  provide Layer.provideMerge(Triage.layer, Experimental.Durable.memory) {
+    const first = try Triage("smithersai/smithers")
+    const again = try Triage("smithersai/smithers")
+    const other = try Triage("effect/effect")
     return {
       keys: [FetchIssues.key, Charge.key, Triage.key],
       options: [FetchIssues.options, Charge.options, Triage.options],
-      count,
-      runs,
+      counts: [first, again, other],
+      calls,
       words: [task.name, workflow.name, spawn(1)]
     }
   }

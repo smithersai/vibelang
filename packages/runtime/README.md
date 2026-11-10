@@ -142,7 +142,6 @@ or runtime references valid in first-release `.vibe` source.
 | `$join` | Join a fiber or collection of fibers | — |
 | `$task` | Build a `task` declaration's value from its boundary signature, options, schemas and implementation | VIP-55 |
 | `$workflow` | Build a `workflow` declaration's value from its options, schemas and body | VIP-55 |
-| `DurableEngine` | The service a workflow runs on; `try W(a)` requires it | VIP-55 |
 | `DurableOptions` | Type of a declaration's `static readonly` options | VIP-55 |
 | `Task` | Type of a `task` declaration's value | VIP-55 |
 | `Workflow` | Type of a `workflow` declaration's value | VIP-55 |

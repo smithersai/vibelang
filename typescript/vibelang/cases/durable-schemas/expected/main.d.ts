@@ -5,7 +5,7 @@ export declare const Triage: import("vibelang-runtime").Workflow<[repo: string],
     };
     readonly success: Schema.Number;
     readonly error: Schema.String;
-}>;
+}, never>;
 export declare function main(): Effect.Effect<{
     fields: string[][];
     since: string;

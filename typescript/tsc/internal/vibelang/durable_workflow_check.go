@@ -99,7 +99,7 @@ func checkWorkflowBodies(c *checker.Checker, file *ast.SourceFile) {
 			if len(node.Arguments()) >= 2 {
 				checkRetryPolicy(c, node.Arguments()[1])
 			}
-			if kind == "workflow" && len(node.Arguments()) == 4 {
+			if kind == "workflow" && len(node.Arguments()) >= 4 {
 				checkWorkflowBody(c, file, node.Arguments()[3])
 			}
 		}
@@ -259,7 +259,7 @@ func reaches(c *checker.Checker, call *ast.Node, self *ast.Node, seen map[*ast.N
 		return false
 	}
 	declared := symbol.ValueDeclaration().Initializer()
-	if declared == nil || durableKind(declared) != "workflow" || len(declared.Arguments()) != 4 {
+	if declared == nil || durableKind(declared) != "workflow" || len(declared.Arguments()) < 4 {
 		return false
 	}
 	if declared == self {

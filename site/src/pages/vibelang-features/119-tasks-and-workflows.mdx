@@ -5,7 +5,7 @@ description: "A task is one recorded step of a durable run, and a workflow is a 
 
 # Durable tasks and workflows
 
-A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks. Both are written like a `service`: a class-shaped body with one `effect call` method and `static readonly` options. They are experimental: declarations parse, type-check and format, and running a workflow needs a durable engine, the `DurableEngine` service, which no package provides yet.
+A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks. Both are written like a `service`: a class-shaped body with one `effect call` method and `static readonly` options. They run on `Experimental.Durable`, which journals each step: a run that crashes resumes where it stopped, and a finished step never runs twice.
 
 ```vibe
 schema Issue { number: number; title: string }
@@ -26,6 +26,30 @@ export workflow Triage {
 }
 ```
 
+Run a workflow inside its layer and an engine. A second run with an equal input joins the first, so nothing calls the task again:
+
+```vibe
+schema Ticket { number: number; title: string }
+
+task ListIssues {
+  effect call(repo: string): ReadonlyArray<Ticket>!string { return [{ number: 1, title: repo }] }
+}
+
+export workflow CountIssues {
+  effect call(repo: string) { return (try ListIssues(repo)).length }
+}
+
+export effect function main() {
+  provide Layer.provideMerge(CountIssues.layer, Experimental.Durable.memory) {
+    const first = try CountIssues("smithersai/smithers")
+    const again = try CountIssues("smithersai/smithers")
+    return first + again
+  }
+}
+```
+
+`Experimental.Durable.memory` keeps runs in the process; `layerSql` keeps them in a database, so a restarted program resumes its runs.
+
 ## Tasks
 
 - A task's `call` writes a type for every parameter and an `A!E` return type. That annotation is the step's boundary: the body is checked against `A` and `E`, and the services the body reads belong to the task's implementation, not to its callers. The `R` slot is never written.
@@ -40,9 +64,9 @@ export workflow Triage {
 - A workflow's `call` may leave out its return type: its success and error come from the steps it runs.
 - A workflow's `call` is a plan, built before anything runs. In it, `try` runs only steps: a task, another workflow, `W.child(…)`, or `try.all`, `try.race` or `try.any` over them (`EK5504`). It reads no clock, randomness or module-level `let` (`EK5505`), has no loops or reassignments (`EK5506`), and never reaches itself through its steps (`EK5507`). Work that needs any of these is a task.
 - A `retryPolicy` with neither `maxAttempts` nor `expirationMs` never gives up, and draws the warning `EK5509`.
-- `return Fix.to(issue, attempt + 1)` ends this round and starts the next, as a loop would; `static readonly maxRounds` bounds the rounds. A handoff stands only after `return` (`EK5508`), and a workflow that hands off to itself needs no return type.
+- `return Fix.to(issue, attempt + 1)` ends this round and starts the next in the same run, as a loop would; `static readonly maxRounds` bounds the rounds. A handoff stands only after `return` (`EK5508`), and a workflow that hands off to itself needs no return type.
 - `try Review.child(patch)` in a workflow runs `Review` as a separate run and waits for it.
-- `try Triage("smithersai/smithers")` runs the workflow to completion. Its type requires `DurableEngine`, so a program that runs a workflow without an engine has a missing requirement.
+- `try Triage("smithersai/smithers")` runs the workflow to completion. Its type requires Effect's `WorkflowEngine`, which `Experimental.Durable.memory` provides, so a program that runs a workflow without an engine has a missing requirement. `Triage.layer` holds the workflow and the tasks it calls; a task without a body gets its implementation from `Charge.toLayer(effect (order) => …)`.
 
 ## Rules
 

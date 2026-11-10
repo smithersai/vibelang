@@ -3,11 +3,11 @@ export declare const Triage: import("vibelang-runtime").Workflow<[repo: string],
     readonly payload: {
         repo: Schema.String;
     };
-}>;
+}, never>;
 export declare function main(): Effect.Effect<{
     keys: string[];
     options: import("vibelang-runtime").DurableOptions[];
-    count: number;
-    runs: string[];
+    counts: number[];
+    calls: string[];
     words: (string | number)[];
 }, string, never>;

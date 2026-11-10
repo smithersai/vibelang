@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Adding `vibelang()` from `vibelang-unplugin/bun` to `Bun.build` made `.tsx` modules ignore the `jsxImportSource` in `tsconfig.json`, so a Solid or Preact build failed with `Could not resolve: "react/jsx-dev-runtime"`. The plugin now matches only extensionless imports whose name is a `.vibe` file or a directory with an `index.vibe`, so Bun keeps the JSX settings of every other `.tsx` module.
 
+- A declared `task` or `workflow` could not run: calling a workflow needed an engine nothing provided. Declarations now run on `Experimental.Durable`: `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { try W(a) }` journals each step, an equal input joins the recorded run, and a crashed run resumes without repeating finished steps.
+
 - Two tasks or workflows of one package could share a tag, and so the same recorded runs. That is now `EK5503`, naming both declarations.
 
 - A workflow had no way to repeat work or run another workflow separately. `return W.to(…)` now starts the next round, `try W.child(…)` runs a separate run, and a handoff written anywhere but after `return` is `EK5508`.
@@ -22,7 +24,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `task` or `workflow` could declare a parameter, success or error type that cannot be stored, such as `Set<string>` or `unknown`. Each boundary type now needs a schema form, or it is `EK2109`, and the derived schemas are on the declaration as `schemas`.
 
-- `task` and `workflow` declarations were syntax errors. They now parse, type-check and format: a task's `A!E` annotation is its boundary, a task called outside a workflow is `EK5502`, and running a workflow requires a `DurableEngine`.
+- `task` and `workflow` declarations were syntax errors. They now parse, type-check and format: a task's `A!E` annotation is its boundary, and a task called outside a workflow is `EK5502`.
 
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 

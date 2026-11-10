@@ -44,7 +44,7 @@ func durableKind(call *ast.Node) string {
 // isWorkflowBody reports whether fn is a workflow declaration's effect call.
 func isWorkflowBody(fn *ast.Node) bool {
 	call := fn.Parent
-	return call != nil && durableKind(call) == "workflow" && len(call.Arguments()) == 4 && call.Arguments()[3] == fn
+	return call != nil && durableKind(call) == "workflow" && len(call.Arguments()) >= 4 && call.Arguments()[3] == fn
 }
 
 // isTaskValue reports whether expression's type is a task, the runtime's Task.

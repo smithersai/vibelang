@@ -82,7 +82,6 @@ export const {
   $handoff,
   $task,
   $workflow,
-  DurableEngine,
   $schemaErrorMember,
   $schemaErrorMatcher,
   $select,

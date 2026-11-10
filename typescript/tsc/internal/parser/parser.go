@@ -112,6 +112,7 @@ type Parser struct {
 	vibelangMutableMember    bool                           // the type member being parsed was written with mutable (vibelang.go)
 	vibelangImplicitReadonly bool                           // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
 	vibelangSchemaBody       bool                           // declaration body (including nested object types) reports non-fields as EK1505
+	vibelangDurableTasks     map[string]bool                // task declarations parsed so far in this file (vibelang_durable.go)
 	vibelangControlMembers   bool                           // legacy control properties keep their readonly default (vibelang.go)
 	vibelangServiceShapeBody bool                           // annotated service bodies use interface member separators
 	vibelangAbstractMembers  bool                           // bodiless class members become abstract: a service or control body (vibelang.go)
@@ -360,6 +361,7 @@ func (p *Parser) initializeState(opts ast.SourceFileParseOptions, sourceText str
 	p.sourceText = sourceText
 	p.scriptKind = scriptKind
 	p.vibelangSource = opts.FileName.IsVibeLangSource() || ast.HasVibeLangDirective(string(opts.FileName), sourceText)
+	p.vibelangDurableTasks = nil
 	p.languageVariant = getLanguageVariant(p.scriptKind)
 	switch p.scriptKind {
 	case core.ScriptKindJS, core.ScriptKindJSX:
