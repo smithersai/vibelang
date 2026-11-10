@@ -38,7 +38,7 @@ export function canonical(text: string): string {
 // Authority comes from the proposal's own metadata, including at each revision
 // of an acceptance transition. Missing or unknown statuses keep the gate closed.
 function nonNormativeVip(path: string, markdown: string): boolean {
-  if (!/^docs\/design\/vips\/\d+[^/]*\.md$/.test(path)) return false
+  if (!/^docs\/design\/vips\/(?:\d+[^/]*|reviews\/.+)\.md$/.test(path)) return false
   const status = sentences("", markdown).find(s => /^\*\*Status:\*\*/.test(s.text))
   return !!status && /^\*\*Status:\*\*\s*(?:open|proposed)(?=[\s,.]|$)/i.test(status.text)
 }

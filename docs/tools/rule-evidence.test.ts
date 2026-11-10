@@ -627,3 +627,32 @@ test("status text inside examples or comments cannot exempt accepted or unknown 
     expect(changedRules([proposalChange(proposal("accepted") + "\n\n" + fake)]).length).toBeGreaterThan(0)
   }
 })
+
+for (const path of [
+  "docs/design/vips/reviews/2026-11-09-built-in-set.md",
+  "docs/design/vips/reviews/2026-11-09-built-in-set-index.md"
+]) test("proposed supporting document is non-normative: " + path, async () => {
+  const result = await checkEntry(entry({ path, before: "", after: proposal("proposed") }), okTwin)
+  expect(result.rules).toBe(0)
+  expect(result.findings).toEqual([])
+})
+
+test("fast-check: supporting reviews preserve status authority and acceptance evidence", async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.constantFrom("open", "proposed"),
+    fc.constantFrom("review", "index", "nested/review"),
+    fc.integer({ min: 1, max: 9999 }),
+    async (status, suffix, code) => {
+      const path = "docs/design/vips/reviews/set-" + code + "-" + suffix + ".md"
+      const before = proposal(status, "`form" + code + "` must compile.")
+      expect((await checkEntry(entry({ path, before: "", after: before }), okTwin)).rules).toBe(0)
+      const accepted = await checkEntry(entry({ path, before, after: before.replace("**Status:** " + status, "**Status:** accepted") }), okTwin)
+      expect(accepted.rules).toBe(1)
+      expect(accepted.findings).toHaveLength(1)
+      for (const fake of ["<!-- **Status:** proposed -->", "```md\n**Status:** proposed\n```", ""]) {
+        const unknown = await checkEntry(entry({ path, before: "", after: fake + "\n\n`form` must compile." }), okTwin)
+        expect(unknown.findings).toHaveLength(1)
+      }
+    }
+  ), { numRuns: 100 })
+})

@@ -25,7 +25,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `match` could silently omit a case when its union used `kind`, `type` or another literal field instead of `_tag`. It now warns with the missing cases, including nested unions, while keeping compilation and runtime matching unchanged.
 
-- Open and proposed VIPs could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
+- Open and proposed VIPs and their supporting reviews could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
 
 - An instance method body or property initializer in a `service` could hide errors on its other static members. Each rejected member now reports its own `EK0902`.
 - Extracting `Effect.try` or `Effect.tryPromise` through nested object or array bindings could reject valid callbacks with `EK0401`. These bindings now retain the wrapper's callback contract.
