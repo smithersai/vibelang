@@ -17,7 +17,6 @@ const js = text => ts.transpileModule(text, { compilerOptions: { target: ts.Scri
 const quotes = [
   "Move the code to a TypeScript boundary",
   "while preserving run phase, captures, receiver and public types",
-  "\u0060import.meta\u0060 may appear only as the object of \u0060.url\u0060.",
 ]
 // VIP-40's rule for code that needs module metadata.
 const vipQuote = "A body that needs metadata receives it as an argument or lives in a \u0060.ts\u0060 file."
