@@ -154,7 +154,39 @@ func checkShapeDeclarationMembers(c *checker.Checker, class *ast.Node, shape *as
 			continue
 		}
 		report(c, member, EK0902.With("A service with a written shape admits only static readonly key and static readonly defaultValue; the annotation supplies the whole shape."))
-		cover(c, member)
+		coverServiceRejectedMemberErrors(c, member)
+	}
+}
+
+// coverServiceRejectedMemberErrors removes only native reports for the
+// rejected member itself. Nested native declarations keep the same error codes.
+func coverServiceRejectedMemberErrors(c *checker.Checker, member *ast.Node) {
+	coverExactErrorCodes(c, member, 7008, 2391)
+	// The member's own modifiers belong to its rejected header: a written
+	// shape lowers each instance member with abstract, so an authored private,
+	// public, protected or async modifier reports against that modifier, and
+	// override names no base member. Modifiers of nested declarations keep theirs.
+	for _, modifier := range member.ModifierNodes() {
+		if modifier.Flags&ast.NodeFlagsReparsed == 0 {
+			coverExactCodes(c, modifier, 1029, 1243)
+		}
+	}
+	coverExactErrorCodes(c, member, 4112, 4113, 4117)
+	if ast.IsPropertyDeclaration(member) && member.PostfixToken() != nil {
+		coverExactCodes(c, member.PostfixToken(), 1255, 1263, 1264)
+	}
+	if ast.IsPropertyDeclaration(member) && ast.HasSyntacticModifier(member, ast.ModifierFlagsAmbient) && member.Initializer() != nil {
+		// Removing the rejected declare modifier removes this initializer restriction.
+		coverExactErrorCodes(c, member.Initializer(), 1039, 1254)
+	}
+	if ast.IsAccessor(member) && member.Body() == nil {
+		// The native accessor check requires a body at this final token.
+		// Other missing-token errors inside the signature are independent.
+		file := ast.GetSourceFileOfNode(member)
+		state := diagnosticsStateOf(c)
+		state.codes[file] = append(state.codes[file], coveredCodes{
+			loc: core.NewTextRange(member.End()-1, member.End()), codes: []int32{1005}, exact: true,
+		})
 	}
 }
 
@@ -170,7 +202,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 			for _, member := range class.Members() {
 				if serviceStaticMemberRejected(class, member) {
 					report(c, member, serviceStaticMemberDiagnostic)
-					coverCodes(c, member, 7008, 2391, 1255)
+					coverServiceRejectedMemberErrors(c, member)
 					continue
 				}
 				checkServiceLiteralKey(c, class, member)
@@ -234,7 +266,7 @@ func checkServiceDeclaration(c *checker.Checker, class *ast.Node) {
 	for _, member := range class.Members() {
 		if serviceShape(class) == nil && serviceStaticMemberRejected(class, member) {
 			report(c, member, serviceStaticMemberDiagnostic)
-			cover(c, member)
+			coverServiceRejectedMemberErrors(c, member)
 			continue
 		}
 		memberName := member.Name()

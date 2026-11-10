@@ -1,0 +1,75 @@
+export service S1 { static readonly key = "native/S1"; n: number;static helper = Missing }
+export service S2 { static readonly key = "native/S2"; n: number;static helper: number = "bad" }
+export service S3 { static readonly key = "native/S3"; n: number;static helper = ({}).missing }
+export service S4 { static readonly key = "native/S4"; n: number;static helper = ((n: number) => n)("bad") }
+export service S5 { static readonly key = "native/S5"; n: number;static helper: Missing = 1 }
+export service S6 { static readonly key = "native/S6"; n: number;static helper(): number { return Missing } }
+export service S7 { static readonly key = "native/S7"; n: number;static get helper(): number { return Missing } }
+export service S8 { static readonly key = "native/S8"; n: number;static helper }
+export service S9 { static readonly key = "native/S9"; n: number;static helper(): void }
+export service S10 { static readonly key = "native/S10"; n: number;static helper!: number }
+export service S11: { n: number } { static readonly key = "native/S11"; static helper = Missing }
+export service S12: { n: number } { static readonly key = "native/S12"; static helper: number = "bad" }
+export service S13: { n: number } { static readonly key = "native/S13"; static helper = ({}).missing }
+export service S14: { n: number } { static readonly key = "native/S14"; static helper = ((n: number) => n)("bad") }
+export service S15: { n: number } { static readonly key = "native/S15"; static helper: Missing = 1 }
+export service S16: { n: number } { static readonly key = "native/S16"; static helper(): number { return Missing } }
+export service S17: { n: number } { static readonly key = "native/S17"; static get helper(): number { return Missing } }
+export service S18: { n: number } { static readonly key = "native/S18"; static helper }
+export service S19: { n: number } { static readonly key = "native/S19"; static helper(): void }
+export service S20: { n: number } { static readonly key = "native/S20"; static helper!: number }
+export service S21 { n: number;private static readonly key: Missing = "native/S21" }
+export service S22 { n: number;protected static readonly key: number = "native/S22" }
+export service S23 { n: number;static readonly key?: Missing = "native/S23" }
+export service S24 { static readonly key = "native/S24";n: number;private static readonly defaultValue = Missing }
+export service S25 { static readonly key = "native/S25";n: number;static defaultValue: Missing = () => ({ n: 1 }) }
+export service S26 { static readonly key = "native/S26";n: number;static readonly defaultValue? = () => ({ n: ({}).missing }) }
+export service S27 { static readonly key = "native/S27";n: number;static defaultValue }
+export service S28 { static readonly key = "native/S28";n: number;static readonly defaultValue!: () => { n: number } }
+export service S29: { n: number } { private static readonly key: Missing = "native/S29" }
+export service S30: { n: number } { protected static readonly key: number = "native/S30" }
+export service S31: { n: number } { static readonly key?: Missing = "native/S31" }
+export service S32: { n: number } { static readonly key = "native/S32";private static readonly defaultValue = Missing }
+export service S33: { n: number } { static readonly key = "native/S33";static defaultValue: Missing = () => ({ n: 1 }) }
+export service S34: { n: number } { static readonly key = "native/S34";static readonly defaultValue? = () => ({ n: ({}).missing }) }
+export service S35: { n: number } { static readonly key = "native/S35";static defaultValue }
+export service S36: { n: number } { static readonly key = "native/S36";static readonly defaultValue!: () => { n: number } }
+export service S37 { static readonly key = "native/S37";n: number;static get helper(): number }
+export service S38 { static readonly key = "native/S38";n: number;static set helper(value: number) }
+export service S39 { static readonly key = "native/S39";n: number;static helper!: number = 1 }
+export service S40 { static readonly key = "native/S40";n: number;static helper! }
+export service S41 { n: number;static readonly key!: string = "native/S41" }
+export service S42 { static readonly key = "native/S42";n: number;static readonly defaultValue!: () => { n: number } = () => ({ n: 1 }) }
+export service S43 { static readonly key = "native/S43";n: number;static helper(): void { class Inner { field } } }
+export service S44 { static readonly key = "native/S44";n: number;static helper(): void { function inner(): void; } }
+export service S45 { static readonly key = "native/S45";n: number;static helper = class Inner { static field!: number } }
+export service S46 { static readonly key = "native/S46";n: number;static helper = class Inner { field!: number = 1 } }
+export service S47 { static readonly key = "native/S47";n: number;static helper(): void { class Inner { get value(): number; } } }
+export service S48 { static readonly key = "native/S48";n: number;static defaultValue = () => { class Inner { field }; return { n: 1 } } }
+export service S49 { static readonly key = "native/S49";n: number;static defaultValue = () => { function inner(): void; return { n: 1 } } }
+export service S50: { n: number } { static readonly key = "native/S50";static get helper(): number }
+export service S51: { n: number } { static readonly key = "native/S51";static set helper(value: number) }
+export service S52: { n: number } { static readonly key = "native/S52";static helper!: number = 1 }
+export service S53: { n: number } { static readonly key = "native/S53";static helper! }
+export service S54: { n: number } { static readonly key!: string = "native/S54" }
+export service S55: { n: number } { static readonly key = "native/S55";static readonly defaultValue!: () => { n: number } = () => ({ n: 1 }) }
+export service S56: { n: number } { static readonly key = "native/S56";static helper(): void { class Inner { field } } }
+export service S57: { n: number } { static readonly key = "native/S57";static helper(): void { function inner(): void; } }
+export service S58: { n: number } { static readonly key = "native/S58";static helper = class Inner { static field!: number } }
+export service S59: { n: number } { static readonly key = "native/S59";static helper = class Inner { field!: number = 1 } }
+export service S60: { n: number } { static readonly key = "native/S60";static helper(): void { class Inner { get value(): number; } } }
+export service S61: { n: number } { static readonly key = "native/S61";static defaultValue = () => { class Inner { field }; return { n: 1 } } }
+export service S62: { n: number } { static readonly key = "native/S62";static defaultValue = () => { function inner(): void; return { n: 1 } } }
+export service S63 { static readonly key = "native/S63"; n: number;declare static readonly defaultValue = () => ({ n: 1 }) }
+export service S64 { static readonly key = "native/S64"; n: number;declare static defaultValue = () => ({ n: 1 }) }
+export service S65 { static readonly key = "native/S65"; n: number;declare static readonly defaultValue = () => ({ n: Missing }) }
+export service S66 { static readonly key = "native/S66"; n: number;declare static readonly defaultValue: () => { n: number } = () => ({ n: ({}).missing }) }
+export service S67: { n: number } { static readonly key = "native/S67"; declare static readonly defaultValue = () => ({ n: 1 }) }
+export service S68: { n: number } { static readonly key = "native/S68"; declare static defaultValue = () => ({ n: 1 }) }
+export service S69: { n: number } { static readonly key = "native/S69"; declare static readonly defaultValue = () => ({ n: Missing }) }
+export service S70: { n: number } { static readonly key = "native/S70"; declare static readonly defaultValue: () => { n: number } = () => ({ n: ({}).missing }) }
+export service S71: { n: number } { static readonly key = "native/S71"; private value: number }
+export service S72: { n: number } { static readonly key = "native/S72"; async read(): Promise<void> }
+export service S73 { static readonly key = "native/S73"; n: number;static private helper = 1 }
+export service S74: { n: number } { static readonly key = "native/S74"; static override helper = 1 }
+export service S75 { static readonly key = "native/S75"; n: number;static helper = class Inner { static private x = 1 } }

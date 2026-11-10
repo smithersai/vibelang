@@ -26,6 +26,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `task` and `workflow` declarations were syntax errors. They now parse, type-check and format: a task's `A!E` annotation is its boundary, and a task called outside a workflow is `EK5502`.
 
+- Rejected static members in a `service` could hide unknown names and type errors inside them. Those independent TypeScript errors now appear alongside `EK0902`, for services with member signatures and services with a written whole shape.
+
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.

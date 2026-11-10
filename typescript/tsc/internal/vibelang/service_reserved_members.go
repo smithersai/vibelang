@@ -48,7 +48,7 @@ func checkReservedServiceMembers(c *checker.Checker, file *ast.SourceFile) {
 			for _, member := range node.Members() {
 				if message := serviceReservedMemberError(member); message != nil {
 					report(c, member, message)
-					cover(c, member)
+					coverServiceRejectedMemberErrors(c, member)
 					if member.Name().Text() == serviceKeyName {
 						// The source header is rejected above. Its private,
 						// protected or optional key can also invalidate the

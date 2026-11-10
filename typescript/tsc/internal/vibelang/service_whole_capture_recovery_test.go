@@ -24,6 +24,8 @@ func TestWholeShapeServiceRejectedMemberCapture(t *testing.T) {
 		for _, member := range []struct{ name, text string }{
 			{"field", "value: T"}, {"method", "read(): T"}, {"parameter", "read(value: T): number"},
 			{"initializer", "value: T = undefined!"}, {"private", "private value: T"},
+			{"protected", "protected value: T"}, {"public", "public value: T"},
+			{"async", "async read(): Promise<T>"}, {"override", "override value: T"},
 			{"bound", "read<U extends T>(value: U): U"}, {"body", "read(value: T): T { return value }"},
 		} {
 			t.Run(shape.name+"/"+member.name, func(t *testing.T) {
