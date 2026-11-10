@@ -207,6 +207,24 @@ This is the decision record for the design above, including each API signature, 
 - Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
 - Signals are library values recognized by the compiler; there is no signal keyword. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review decision](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#6-is-a-signal-worth-a-keyword).
 
+### Decisions made while building
+
+The implementation settled these points, which the design above left open or stated in Smithers' terms. Author of each: vip-durable-waits (Fable 5.2), 2026-11-10, under the pre-alpha standing approval. Will has not reviewed them and may overturn them.
+
+- The waits run on Effect's `DurableClock` and `DurableDeferred` under the `Experimental.Durable` engine ([VIP-60](/vips/0060-std-durable)), not on Smithers' `Sleep`, `WaitFor` and `HumanTask` actions, because that engine is Effect's `WorkflowEngine`. A wait needs no layer, so the compiler adds none to `W.layer`.
+- Each wait is one recorded step whose start carries its waiting reason. `Experimental.Durable.waiting(run)` reads a run's open waits from its journal: `{ reason, name, seq, since, wakeAt?, token?, attempt?, request? }`. This is the waiting row `Human.answer` reads the attempt from.
+- A wait point is the optional last argument of both ends: `try paid.wait("second")` and `try paid.send(W, run, value, "second")`.
+- A delivery made before the run reaches the wait is kept and returned when it does. The run must exist: `send` to an unknown run is a defect.
+- `send` and `Human.answer` resume the run after they record, so an engine started after a crash wakes it.
+- `Experimental.Durable.sleep` and `until` take `{ name }`. A named timer's identity does not depend on which concurrent branch reaches it first; an unnamed timer is numbered in the order its run reaches it.
+- `Experimental.Durable.until` takes a `Date` or epoch milliseconds. A wake time that is not an instant, such as `NaN`, dies with `Experimental.Durable.TimerInvalid`.
+- `Human.answer` fails with `Human.AnswerInvalid`, whose `code` is `answer_invalid` (the value is not JSON, or is larger than 256 KiB) or `answer_not_open` (the run is not parked on that question). These are Smithers' `HumanAnswerInvalid` codes.
+- `Human.answer` records the value as it is, and the run validates it. `Human.validate(value, request)` takes `{ kind, choices?, schema? }`, where `schema` is the question's own schema. The JSON Schema derived from it is published for display and validates nothing.
+- `Human.Failed` carries `code`, `question`, `attempts`, `rejections` and `message`. `question` is Smithers' `task` field under the name of the call's first argument.
+- A race over waits is `Experimental.Durable.race({ name, success, error?, effects })`: Effect's `DurableDeferred.raceAll` with a scope of its own, which is what `try.race` in a workflow body lowers to. The winner is journaled under `name`, and task calls and unnamed timers inside the race are numbered within it. A task call or an unnamed timer inside Effect's own `DurableDeferred.raceAll` or `into` dies with `Experimental.Durable.UnstableStep`, because a recorded race skips its body on a replay and the numbers after it would shift.
+- `Human.answer` can be sent again after a crash: an equal answer already in the journal is not recorded twice, and the run is woken.
+- A question's deadline is journaled once, when it is first asked. An answer already recorded wins over a deadline that passed while the run was down.
+
 ## Compared
 
 The first example in Smithers 1.x. It type-checks against `@smthrs/flow` and `@smthrs/plan` 1.0.0-rc.16.

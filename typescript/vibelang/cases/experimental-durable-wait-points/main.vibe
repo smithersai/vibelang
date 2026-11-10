@@ -1,0 +1,71 @@
+// expect-result: {"result":"n1:early:late:4:timer","waits":["Durable.signal/note/wait","Durable.signal/note#second/wait","Durable.sleep/cooldown","Durable.sleep#1","Durable.signal/note#third/wait","Durable.sleep#third/1","Human/verdict#1/asked","Human/verdict#2/asked"],"fits":[false,true],"codes":["answer_invalid","answer_not_open"]}
+// VIP-56, the decisions made while building: a wait point is the last
+// argument of wait and send, an early delivery is kept, a named timer and
+// until park the run, a recorded race numbers its own timer, validate takes
+// the question's own schema, and answer says why it recorded nothing.
+schema Note { text: string }
+schema Verdict { score: number }
+export const note = Experimental.Durable.signal("note", Note)
+
+export const Notes = Experimental.Durable.workflow("case#Notes", {
+  payload: { id: Schema.String, at: Schema.Number },
+  success: Schema.String,
+  error: Experimental.Human.Failed
+})
+
+const NotesLive = Notes.toLayer(effect ({ id, at }) => {
+  const first = try note.wait()
+  const second = try note.wait("second")
+  try Experimental.Durable.sleep("10 millis", { name: "cooldown" })
+  try Experimental.Durable.until(at)
+  // A recorded race: the timer wins, since nothing is sent to the third wait point.
+  const winner = try Experimental.Durable.race({
+    name: "third",
+    success: Schema.String,
+    effects: [Effect.as(note.wait("third"), "note"), Effect.as(Experimental.Durable.sleep("5 millis"), "timer")]
+  })
+  const verdict = try Experimental.Human.json("verdict", "Score it", Verdict, { maxAttempts: 2 })
+  return `${id}:${first.text}:${second.text}:${verdict.score}:${winner}`
+}).pipe(Layer.provideMerge(Experimental.Durable.memory))
+
+// Waits until the run asks "verdict" on this attempt.
+effect function asked(run: string, attempt: number) {
+  while (true) {
+    const waits = try Experimental.Durable.waiting(run)
+    if (waits.some((wait) => wait.reason === "approval" && wait.attempt === attempt)) return
+    try Effect.sleep("2 millis")
+  }
+}
+
+const code = (error: Experimental.Human.AnswerInvalid) => Effect.succeed(error.code)
+
+export effect function main() {
+  provide NotesLive {
+    const now = try Clock.currentTimeMillis
+    const handle = try Experimental.Durable.spawn(Notes, { id: "n1", at: now + 20 })
+    // The second wait point gets its value before the run reaches it.
+    try note.send(Notes, handle.id, { text: "late" }, "second")
+    try note.send(Notes, handle.id, { text: "early" })
+    try asked(handle.id, 1)
+
+    const fits = [
+      Experimental.Human.validate({ score: "high" }, { kind: "json", schema: Verdict }) === undefined,
+      Experimental.Human.validate({ score: 4 }, { kind: "json", schema: Verdict }) === undefined
+    ]
+    const notJson = try Experimental.Human.answer(Notes, handle.id, "verdict", undefined).pipe(Effect.as("recorded"), Effect.catch(code))
+    const notOpen = try Experimental.Human.answer(Notes, handle.id, "other", true).pipe(Effect.as("recorded"), Effect.catch(code))
+
+    // The run validates what answer records: this one is refused and asked again.
+    try Experimental.Human.answer(Notes, handle.id, "verdict", { score: "high" })
+    try asked(handle.id, 2)
+    try Experimental.Human.answer(Notes, handle.id, "verdict", { score: 4 })
+    const result = try handle.result
+
+    const entries = try Stream.runCollect(Experimental.Durable.history(handle.id))
+    const waits = Array.from(entries).flatMap((entry) => {
+      const payload = entry.payload as { readonly step?: string; readonly wait?: unknown }
+      return entry.eventType === "StepStarted" && payload.wait !== undefined && payload.step !== undefined ? [payload.step] : []
+    })
+    return { result, waits, fits, codes: [notJson, notOpen] }
+  }
+}
