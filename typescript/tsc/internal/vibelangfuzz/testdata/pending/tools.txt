@@ -7,8 +7,6 @@
 FuzzEditor  editor:quickfix-error:EK9100*  superseded  VIP-1: a keyword, effect or async, decides a function's form, so EK9100's annotation quick fix for an inferred form is obsolete
 FuzzEditor crash:ls.getContainingArgumentInfo:VariableStatement:Block compiler VIP-34 existing tools work: signature help in an array match arm reaches a variable statement outside its synthetic block; distinct from the fixed error payload type span; lane conf-lsp (coverage classification only)
 FuzzEditor corpus:signature-help-match-array-block compiler VIP-34: existing editor tools must work; minimized VariableStatement/Block signature-help containment gap; lane conf-lsp
-FuzzEditor crash:ls.getContainingArgumentInfo:Identifier:CallExpression compiler VIP-34 existing tools work: signature help with the cursor in the extractor of a match arm, such as `NotFound` in `when NotFound(): 1`, finds the identifier outside the span of the call the pattern parses to; distinct from the array-arm block span; lane vip-durable-waits
-FuzzEditor corpus:signature-help-match-extractor-call compiler VIP-34: existing editor tools must work; minimized Identifier/CallExpression signature-help containment gap in an extractor pattern; lane vip-durable-waits
 
 FuzzFormat format:refusal:dotted-operation-comments compiler VIP-34: the formatter refuses admitted comments in dotted try and fork operation headers (VIP-17 and VIP-18)
 FuzzFormat corpus:format-dotted-operation-comments compiler VIP-34: a try.any header comment is admitted but cannot yet be formatted

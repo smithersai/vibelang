@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nfunction read(value: unknown) {\n  return match (value) {\n    when Matchers.pick(let item): item;\n    default: undefined;\n  }\n}\n")
+[]byte("\x00\x44")

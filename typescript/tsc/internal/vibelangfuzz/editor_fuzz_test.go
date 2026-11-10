@@ -39,6 +39,10 @@ import (
 // file modulo its length.
 func FuzzEditor(f *testing.F) {
 	startShortBudget(f)
+	editorMatchExtractorSpansQuoted(f)
+	for _, source := range editorMatchExtractorSpanSources() {
+		f.Add(Archive(map[string]string{"main.vibe": source}), editorMatchExtractorSpanOffsets(source))
+	}
 	seeds := append(toolsSample(CaseSeeds(), 22, 400, func(s Seed) bool { return strings.HasPrefix(s.Name, "tsforms-") }), toolsSample(SnippetSeeds(), 16, 300, nil)...)
 	for _, seed := range seeds {
 		main := toolsMainFile(seed.Files)

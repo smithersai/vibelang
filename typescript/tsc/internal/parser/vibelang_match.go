@@ -1414,7 +1414,13 @@ func (p *Parser) mExtractCall(matcher, subject *ast.Node, at core.TextRange) *as
 			typeArguments = p.newNodeList(at, []*ast.Node{p.vibelangSynthesized(p.factory.NewLiteralTypeNode(p.mString("g", at)), at)})
 		}
 	}
-	return p.vibelangSpanning(p.factory.NewCallExpression(p.vibelangIntrinsic("$extract", at), nil, typeArguments, p.newNodeList(at, []*ast.Node{matcher, subject}), ast.NodeFlagsNone), at)
+	// The written matcher and subject stay inside the generated call for
+	// positional language-service queries, including signature help.
+	span := testsSpan(at, matcher)
+	if subject.Flags&ast.NodeFlagsReparsed == 0 {
+		span = testsSpan(span, subject)
+	}
+	return p.vibelangSpanning(p.factory.NewCallExpression(p.vibelangIntrinsic("$extract", at), nil, typeArguments, p.newNodeList(span, []*ast.Node{matcher, subject}), ast.NodeFlagsNone), span)
 }
 
 func (p *Parser) mProperty(expr *ast.Node, name string, at core.TextRange) *ast.Node {
@@ -1880,7 +1886,8 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		matcher := pat.expr
 		p.vibelangMatchTemps++
 		name := "$extracted" + strconv.Itoa(p.vibelangMatchTemps)
-		declaration := p.mConst(p.mTemp(name, at), ast.NodeFlagsConst, p.mExtractCall(matcher, path(), at), at)
+		extraction := p.mExtractCall(matcher, path(), at)
+		declaration := p.mConst(p.mTemp(name, at), ast.NodeFlagsConst, extraction, extraction.Loc)
 		if ctx.inline {
 			test(p.hoistDeclaration(declaration, at))
 		} else {
