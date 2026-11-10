@@ -51,6 +51,8 @@ A bare `return` ends a producer. `return value` is an error (`EK2128`) because a
 
 A `yield` belongs to its own source activation. In a nonproducer `effect` function, arrow or `effect { }` block, it reports `EK2104`, even inside an outer producer. Directly evaluated parameter defaults and destructuring of Effect callables and producers also report `EK2104`: parameter initialization is outside the suspended body. Nested native generators keep TypeScript's own `yield` rules. An enum member initializer also keeps TypeScript's own `yield` rules and diagnostics; enclosing it in a producer does not make it emit.
 
+Class field initializers and static blocks keep TypeScript's own placement diagnostics and inferred `yield` types. Written return contracts keep their ordinary assignment checks.
+
 For legacy Effect delegation in a nonproducer body, which reports `EK2104`, write `try e` for `yield* e` when `e` is an Effect. If the operand already runs and returns an ordinary value, write `try load()` for `yield* try load()`; if it returns another Effect, keep both runs as `try (try load())`. Bare yields, producer delegation and parameter initializers need an explicit source change.
 
 ## Call services between yields

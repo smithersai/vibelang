@@ -16,11 +16,16 @@ func init() {
 		}
 		// Names, formal initialization and enum members are outside this source body.
 		// In particular a computed method name runs in its enclosing scope.
-		for node := yield.Parent; node != nil && node != fn; node = node.Parent {
+		for node, child := yield.Parent, yield; node != nil && node != fn; child, node = node, node.Parent {
 			if node.Kind == ast.KindEnumDeclaration {
 				return nil
 			}
 			if node.Kind == ast.KindParameter {
+				return nil
+			}
+			// Field initializers and static blocks retain native yield typing.
+			if node.Kind == ast.KindClassStaticBlockDeclaration ||
+				node.Kind == ast.KindPropertyDeclaration && child == node.Initializer() {
 				return nil
 			}
 			if node == fn.Body() {

@@ -1,0 +1,20 @@
+// expect: TS1163 TS1163 TS7057 TS1163 TS1163 TS7057 TS1163 TS1163 TS7057 TS1163 TS1163 TS7057 TS1163 TS2322 TS1163 TS1163 TS2322 TS1163 TS1163 TS2322 TS1163 TS1163 TS2322 TS1163
+
+export effect function* run0(){class C{value:number=(yield 1)}}
+export effect function* run1(){class C{value=(yield 1)}}
+export effect function* run2(){class C{static value:number=(yield 1)}}
+export effect function* run3(){class C{static value=(yield 1)}}
+export effect function* run4(){class C{accessor value:number=(yield 1)}}
+export effect function* run5(){class C{accessor value=(yield 1)}}
+export effect function* run6(){class C{static{const value:number=(yield 1)}}}
+export effect function* run7(){class C{static{const value=(yield 1)}}}
+export effect function* run8():Stream.Stream<number>{class C{value:number=(yield 1)}}
+export effect function* run9():Stream.Stream<number>{class C{value=(yield 1)}}
+export effect function* run10():Stream.Stream<number>{class C{static value:number=(yield 1)}}
+export effect function* run11():Stream.Stream<number>{class C{static value=(yield 1)}}
+export effect function* run12():Stream.Stream<number>{class C{accessor value:number=(yield 1)}}
+export effect function* run13():Stream.Stream<number>{class C{accessor value=(yield 1)}}
+export effect function* run14():Stream.Stream<number>{class C{static{const value:number=(yield 1)}}}
+export effect function* run15():Stream.Stream<number>{class C{static{const value=(yield 1)}}}
+export effect function* computed(){class C{[((yield 1),"method")](){}}}
+export effect function* checkedComputed():Stream.Stream<number>{class C{[((yield 1),"method")](){}}}

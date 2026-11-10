@@ -34,6 +34,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Editors could ask you to choose between a plain and Effect callback for `ensures` inside a proof. Erased proof clauses no longer show runtime callback choices.
 
+- `yield` in a class field or static block inside a producer could add a misleading assignment error or hide an implicit `any` error. TypeScript's own checks now apply.
+
 - A `yield` in an enum initializer inside a producer could receive extra numeric-type errors. It now keeps TypeScript's own diagnostics.
 
 - Passing a producer to a value-taking overload could report a generator mismatch, including with tuple rest parameters or spread arguments. Producers now keep their `Stream` factory type when TypeScript accepts the call.

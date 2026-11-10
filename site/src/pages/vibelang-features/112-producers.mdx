@@ -51,9 +51,12 @@ A producer expression cannot use `fork` or `join` as its own name (`EK1702`), ju
 
 A plain synchronous generator follows the no-throw rule: a written `throw` in its body is `EK0401`. Keep JavaScript code that throws in a `.ts` helper.
 
+A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value. This also applies when the producer is passed to `Effect.gen` or another JavaScript generator API. These APIs take a plain `function*`, which keeps its JavaScript return value. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
 A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value. An unknown function or method receiving that producer does not hide this error; the unresolved name or property is reported too. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
 
 A `yield` belongs to its own source activation. In a nonproducer `effect` function, arrow or `effect { }` block, it reports `EK2104`, even inside an outer producer. Directly evaluated parameter defaults and destructuring of Effect callables and producers also report `EK2104`: parameter initialization is outside the suspended body. Nested native generators keep TypeScript's own `yield` rules. An enum member initializer also keeps TypeScript's own `yield` rules and diagnostics; enclosing it in a producer does not make it emit.
+
+Class field initializers and static blocks keep TypeScript's own placement diagnostics and inferred `yield` types. Written return contracts keep their ordinary assignment checks.
 
 For legacy Effect delegation in a nonproducer body, which reports `EK2104`, write `try e` for `yield* e` when `e` is an Effect. If the operand already runs and returns an ordinary value, write `try load()` for `yield* try load()`; if it returns another Effect, keep both runs as `try (try load())`. Bare yields, producer delegation and parameter initializers need an explicit source change.
 
@@ -182,6 +185,8 @@ A producer binds parameters and evaluates defaults once at the call. Each consum
 A producer method retains its receiver without reading a user-modified `Function.prototype.bind`. Its body reads receiver properties when the stream is consumed, including on later consumptions.
 
 A plain `function*` retains JavaScript iterator behavior and may return a value. Pass a plain generator to `Effect.gen` or other native generator APIs; only `effect function*` creates a producer Stream.
+
+A producer function is also an ordinary value. An overload accepting `unknown`, `object` or another compatible value type accepts that function when TypeScript accepts the complete call, including optional parameters, variadic tuples and spread arguments. Another overload that expects a generator does not change the producer's type. Receiver and callback forms of an API stay separate: `Option.gen(producer, function* () { return yield* Option.some(1) })` uses the producer as its receiver value, while `Option.gen(producer)` requires a native generator callback.
 
 Overloads and callback unions follow TypeScript's assignability rules. A parameter that accepts a function returning a `Stream` also accepts an `effect function*` producer, even when another branch expects a JavaScript generator. A generator-only parameter still requires a plain `function*`.
 
