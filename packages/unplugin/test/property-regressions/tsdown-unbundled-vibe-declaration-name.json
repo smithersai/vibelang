@@ -1,0 +1,16 @@
+{
+  "property": "tsdown-vibe-declarations",
+  "key": "tsdown-unbundled-vibe-declaration-name",
+  "rule": "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "input": {
+    "layout": "importer",
+    "unbundle": true,
+    "annotation": "explicit",
+    "form": "named",
+    "typeForm": "interface",
+    "dir": "internal"
+  },
+  "knownFailure": true,
+  "errorPattern": "declaration outputs differ from the \\.ts twin: [^\\n]*system\\.vibe\\.d\\.mts",
+  "reason": "With unbundle, internal/system.vibe emits internal/system.mjs beside internal/system.vibe.d.mts, so a consumer of dist/internal/system.mjs finds no declaration; the .ts twin emits internal/system.d.mts. Output names follow the native twin."
+}

@@ -1,0 +1,16 @@
+{
+  "property": "tsdown-vibe-declarations",
+  "key": "tsdown-inferred-vibe-type-any",
+  "rule": "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "input": {
+    "layout": "importer",
+    "unbundle": false,
+    "annotation": "inferred",
+    "form": "named",
+    "typeForm": "interface",
+    "dir": "internal"
+  },
+  "knownFailure": true,
+  "errorPattern": "consumer types differ from the \\.ts twin[\\s\\S]*=> any",
+  "reason": "A .ts module's declaration of a type it infers from a .vibe import is any (export declare const layer: (port: number) => any), where the .ts twin's names System."
+}

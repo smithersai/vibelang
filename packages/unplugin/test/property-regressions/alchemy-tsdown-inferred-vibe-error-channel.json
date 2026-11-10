@@ -1,0 +1,16 @@
+{
+  "property": "tsdown-vibe-declarations",
+  "key": "alchemy-tsdown-inferred-vibe-error-channel",
+  "rule": "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "input": {
+    "layout": "importer",
+    "unbundle": false,
+    "annotation": "inferred",
+    "form": "namespace",
+    "typeForm": "effect",
+    "dir": "deep"
+  },
+  "knownFailure": true,
+  "errorPattern": "consumer types differ from the \\.ts twin[\\s\\S]*=> any",
+  "reason": "Alchemy's cloudflare-runtime RuntimeServices.ts inferred its Layer's error and requirement channels from core/internal/System.vibe; once System.ts became .vibe, tsdown's declaration pass wrote unknown for both, and the frontend build failed with TS2345. The minimum, a .ts module whose inferred return type is an Effect made by a .vibe module read through a namespace import, declares the whole return type any."
+}

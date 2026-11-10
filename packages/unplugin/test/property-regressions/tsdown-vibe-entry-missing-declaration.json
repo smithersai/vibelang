@@ -1,0 +1,16 @@
+{
+  "property": "tsdown-vibe-declarations",
+  "key": "tsdown-vibe-entry-missing-declaration",
+  "rule": "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "input": {
+    "layout": "entries",
+    "unbundle": false,
+    "annotation": "explicit",
+    "form": "named",
+    "typeForm": "interface",
+    "dir": "internal"
+  },
+  "knownFailure": true,
+  "errorPattern": "declaration outputs differ from the \\.ts twin: services\\.d\\.mts against internal/system\\.d\\.mts, services\\.d\\.mts",
+  "reason": "A bundled build that names internal/system.vibe as an entry emits internal/system.mjs with no declaration; the .ts twin emits internal/system.d.mts. A published package carries JavaScript and ordinary .d.ts files."
+}
