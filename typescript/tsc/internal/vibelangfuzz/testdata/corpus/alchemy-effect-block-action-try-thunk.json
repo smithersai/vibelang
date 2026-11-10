@@ -1,0 +1,4 @@
+{
+  "Source": "alchemy drizzle examples: Alchemy.Action(name, effect { ... }) inside the try thunk of the required Effect.try wrapper",
+  "Main": "import * as Effect from \"effect/Effect\"\nconst action = <A>(name: string, body: A): A => body\nexport effect function bootstrap() {\n  const built = try Effect.orDie(Effect.try({ try: () => action(\"bootstrap\", effect { const n: number = try Effect.succeed(1); return n + 1 }), catch: (e) => e }))\n  const result: number = try built\n  return result\n}\n"
+}
