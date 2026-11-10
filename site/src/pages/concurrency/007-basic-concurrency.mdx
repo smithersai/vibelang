@@ -216,8 +216,6 @@ Each operation runs its elements on separate fibers. Provide their service requi
 
 Both a braced body and a single statement support the same head patterns and `is` bindings in the TypeScript projection.
 
-A type annotation in a `for concurrent` head reports `TS2483`, as in TypeScript’s `for…of`; omit it and let the iterable determine the item’s type. Independent errors in the written type, operand or body are still reported.
-
 The head of `for concurrent` must declare its item with `const` or `let`. A `var`, `using`, `await using`, or assignment head reports `EK1906`, including with `--noCheck`. To assign an existing variable, declare a fresh item and assign inside the body: `for concurrent (const item of items) { current = item }`.
 
 ---

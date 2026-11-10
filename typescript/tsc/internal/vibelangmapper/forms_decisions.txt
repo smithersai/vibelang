@@ -4617,12 +4617,6 @@ typescript/vibelang/cases/for-concurrent-coverage-pulling/main.vibe:8:19 lambda 
 typescript/vibelang/cases/for-concurrent-coverage-pulling/main.vibe:8:20 lambda program keyword
 typescript/vibelang/cases/for-concurrent-coverage-pulling/main.vibe:9:35 lambda effectFn table
 typescript/vibelang/cases/for-concurrent-coverage-unbounded/main.vibe:5:37 lambda effectFn table
-typescript/vibelang/cases/for-concurrent-head-annotation.fail/main.vibe:10:25 lambda effectFn table
-typescript/vibelang/cases/for-concurrent-head-annotation.fail/main.vibe:13:28 lambda effectFn table
-typescript/vibelang/cases/for-concurrent-head-annotation.fail/main.vibe:17:25 lambda effectFn table
-typescript/vibelang/cases/for-concurrent-head-annotation.fail/main.vibe:21:25 lambda effectFn table
-typescript/vibelang/cases/for-concurrent-head-annotation.fail/main.vibe:4:25 lambda effectFn table
-typescript/vibelang/cases/for-concurrent-head-annotation.fail/main.vibe:7:26 lambda effectFn table
 typescript/vibelang/cases/for-concurrent-operand-diagnostics.fail/main.vibe:12:25 lambda effectFn table
 typescript/vibelang/cases/for-concurrent-operand-diagnostics.fail/main.vibe:15:25 lambda effectFn table
 typescript/vibelang/cases/for-concurrent-operand-diagnostics.fail/main.vibe:4:25 lambda effectFn table

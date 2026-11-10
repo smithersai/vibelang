@@ -695,7 +695,7 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	forKeyword := scanner.SkipTrivia(p.sourceText, pos)
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxForConcurrent, Word: core.NewTextRange(forKeyword, forKeyword+len("for")), Head: core.NewTextRange(anchor.Pos(), p.nodePos()), Range: core.NewTextRange(forKeyword, p.nodePos())})
 	declarationKind := ast.NodeFlagsConst
-	var binding, bindingType *ast.Node
+	var binding *ast.Node
 	if assignmentHead != nil {
 		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, head, "EK", diagnostics.CategoryError, ConcurrentHeadDiagnosticCode, ConcurrentHeadDiagnosticText))
 		binding = assignmentHead
@@ -719,7 +719,6 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 			}
 			p.nextToken()
 			binding = p.parseIdentifierOrPattern()
-			bindingType = p.parseTypeAnnotation()
 		} else {
 			binding = p.parseLeftHandSideExpressionOrHigher()
 			if binding.Kind != ast.KindIdentifier {
@@ -794,28 +793,7 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	// The generated block also owns the source head. Navigation must be able
 	// to descend to that declaration before the written body begins.
 	body.Loc = core.NewTextRange(binding.Pos(), body.End())
-	headStatements := []*ast.Node{headStatement}
-	if bindingType != nil {
-		// A native for...of checks a rejected annotation but infers the item
-		// from its iterable. Check the type without adding a declaration that
-		// could appear in a spelling suggestion. Never satisfies every type,
-		// including with strictNullChecks off; the emitted void 0 is inert.
-		span := core.NewTextRange(binding.Pos(), bindingType.End())
-		zero := p.vibelangSynthesized(p.factory.NewNumericLiteral("0", ast.TokenFlagsNone), binding.Loc)
-		never := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindNeverKeyword), binding.Loc)
-		value := p.vibelangSynthesized(p.factory.NewAsExpression(zero, never), binding.Loc)
-		check := p.vibelangSpanning(p.factory.NewSatisfiesExpression(value, bindingType), span)
-		check.Flags |= ast.NodeFlagsVibeLang
-		void := p.vibelangSpanning(p.factory.NewVoidExpression(check), span)
-		statement := p.vibelangSpanning(p.factory.NewExpressionStatement(void), span)
-		statement.Flags |= ast.NodeFlagsVibeLang
-		for _, node := range []*ast.Node{value, check, void, statement} {
-			p.overrideParentInImmediateChildren(node)
-		}
-		statement.Parent = body
-		headStatements = append(headStatements, statement)
-	}
-	body.AsBlock().Statements = p.newNodeList(body.Loc, append(headStatements, bodyStatements.Nodes...))
+	body.AsBlock().Statements = p.newNodeList(body.Loc, append([]*ast.Node{headStatement}, bodyStatements.Nodes...))
 	parameter := p.vibelangSpanning(p.factory.NewParameterDeclaration(nil, nil, name, nil, nil, nil), binding.Loc)
 	// The item's binding keeps the kind its head declares: a const binding,
 	// destructured or not, is a constant, so assigning it is TS2588, as in

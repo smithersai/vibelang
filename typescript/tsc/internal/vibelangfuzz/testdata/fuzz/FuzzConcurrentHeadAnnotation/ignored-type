@@ -1,2 +1,0 @@
-go test fuzz v1
-[]byte("ignored-type:\x03")

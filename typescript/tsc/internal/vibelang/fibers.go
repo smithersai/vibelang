@@ -3,7 +3,6 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -142,19 +141,6 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 				}
 			}
 			if args := node.Arguments(); len(args) == 3 {
-				// Head annotations are native grammar errors, checked with the
-				// file's other static rules and skipped by noCheck. The parser
-				// retains the type in a marked, inert expression, not on the item.
-				for _, statement := range args[2].Body().AsBlock().Statements.Nodes {
-					if !ast.IsExpressionStatement(statement) || statement.Flags&ast.NodeFlagsVibeLang == 0 || statement.Expression().Kind != ast.KindVoidExpression {
-						continue
-					}
-					check := statement.Expression().Expression()
-					if check.Kind == ast.KindSatisfiesExpression && check.Flags&ast.NodeFlagsVibeLang != 0 && check.Expression().Kind == ast.KindAsExpression {
-						binding := check.Expression().Expression()
-						c.AddDiagnostic(ast.NewDiagnostic(file, scanner.GetErrorRangeForNode(file, binding), diagnostics.The_left_hand_side_of_a_for_of_statement_cannot_use_a_type_annotation))
-					}
-				}
 				checkConcurrentOperand(c, args[0])
 				checkConcurrentLimit(c, file, args[1])
 				checkConcurrentBody(c, args[2].Body())
