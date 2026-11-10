@@ -131,3 +131,33 @@ func TestGrammarAdmissionImportMetaSpecifierRegression(t *testing.T) {
 		})
 	}
 }
+
+// Recovered wrappers still occupy a static ModuleSpecifier, whose syntax is
+// a StringLiteral or IdentifierReference. The platform check currently masks
+// native TS1141, just as it does for an unwrapped import.meta specifier.
+var grammarImportMetaSpecifierWrappers = []string{
+	"import import . meta !",
+	"import import . meta as meta",
+	"import import . meta <\nmeta\n. url > ;",
+}
+
+func TestGrammarAdmissionImportMetaSpecifierWrappers(t *testing.T) {
+	w := NewWorkspace(t)
+	for _, source := range grammarImportMetaSpecifierWrappers {
+		t.Run(source, func(t *testing.T) {
+			result, err := w.Compile(context.Background(), Single(source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			native, platform := false, false
+			for _, d := range result.Diagnostics {
+				native = native || !IsEK(d) && d.Code() == 1141
+				platform = platform || IsEK(d) && d.Code() == 4402
+			}
+			if native || !platform || !grammarAdmissionVerdict(t, w, source) {
+				t.Fatalf("static specifier wrapper lost the observed syntax diagnostic gap: %v", result.Diagnostics)
+			}
+			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
+		})
+	}
+}

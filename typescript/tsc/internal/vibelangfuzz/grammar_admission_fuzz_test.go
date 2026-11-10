@@ -359,6 +359,9 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"import-type-empty-type-arguments", grammarImportTypeArgumentForms[0]},
 	{"unhomed-pattern-reserved-reference", grammarUnhomedPatternReservedReference},
 	{"class-heritage-type-argument-line-break", grammarHeritageLineBreakForms[3]},
+	{"import-meta-specifier-non-null", grammarImportMetaSpecifierWrappers[0]},
+	{"import-meta-specifier-assertion", grammarImportMetaSpecifierWrappers[1]},
+	{"import-meta-specifier-type-arguments", grammarImportMetaSpecifierWrappers[2]},
 	{"pattern-member-line-break-comment", "x is C /*\n*/ []"},
 	{"pattern-member-line-break-trailing", "x is C\n[key,]"},
 }

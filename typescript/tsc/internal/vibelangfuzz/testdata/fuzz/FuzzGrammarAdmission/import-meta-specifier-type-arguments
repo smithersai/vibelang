@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-meta-specifier-type-arguments\nimport import . meta <\nmeta\n. url > ;")
