@@ -55,7 +55,9 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 			}
 			if operand := node.Expression(); holdsEffectValue(c, c.GetTypeAtLocation(operand)) {
 				// Keep the native placement error before advising how to run an Effect.
-				container := ast.FindAncestor(node.Parent, ast.IsFunctionLikeOrClassStaticBlockDeclaration)
+				container := ast.FindAncestor(node.Parent, func(n *ast.Node) bool {
+					return ast.IsFunctionLikeOrClassStaticBlockDeclaration(n) && !isCalledInPlace(n)
+				})
 				if container != nil && ast.IsClassStaticBlockDeclaration(container) {
 					break
 				}

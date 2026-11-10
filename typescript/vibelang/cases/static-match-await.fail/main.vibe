@@ -1,0 +1,15 @@
+// expect: TS18037
+import {Effect} from "effect"
+export class Value{
+ static{void(match(1){default:await Promise.resolve(1);})}
+}
+export effect function read(){
+ class Value{static{void(match(1){default:await Promise.resolve(1);})}}
+ return 1
+}
+export async function native(){
+ class Value{static{void(match(1){default:await Promise.resolve(1);})}}
+ return 1
+}
+
+export class EffectValue{static{void(match(1){default:await Effect.succeed(1);})}}

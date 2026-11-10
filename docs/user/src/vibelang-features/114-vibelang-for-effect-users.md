@@ -1,5 +1,7 @@
 # VibeLang for Effect users
 
+`await` in a `match` arm follows its written context. A class `static` block rejects it with `TS18037`; a nested `async` callback can await a Promise.
+
 An `effect` block keeps contextual return typing when the expected type also accepts a plain value, such as `Plugin | Effect.Effect<Plugin>`. Callback parameters inside the returned `Plugin` receive its declared types. Invalid property reads follow TypeScript even when `noImplicitAny` is `false`.
 
 Keep Effect's runtime, libraries, layers, and error channels; in `.vibe` files, write sequential work as effect functions and statements. The [cheat sheet](115-cheat-sheet.md) shows every change beside its Effect code, and the [specification](../../../design/src/000-intro.md) gives the rules behind each.

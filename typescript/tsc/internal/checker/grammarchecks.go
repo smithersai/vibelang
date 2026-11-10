@@ -1664,6 +1664,9 @@ func (c *Checker) checkGrammarAwaitOrAwaitUsing(node *ast.Node) bool {
 	// Grammar checking
 	hasError := false
 	container := getContainingFunctionOrClassStaticBlock(node)
+	for container != nil && isLabelTransparentFunction(container) {
+		container = getContainingFunctionOrClassStaticBlock(container)
+	}
 	if container != nil && ast.IsClassStaticBlockDeclaration(container) {
 		// NOTE: We report this regardless as to whether there are parse diagnostics.
 		var message *diagnostics.Message

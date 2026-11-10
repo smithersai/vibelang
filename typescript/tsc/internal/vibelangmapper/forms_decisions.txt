@@ -9149,6 +9149,14 @@ typescript/vibelang/cases/spread-wrapper-identity/main.vibe:17:37 lambda choice 
 typescript/vibelang/cases/spread-wrapper-identity/main.vibe:17:73 lambda plain fallback
 typescript/vibelang/cases/spread-wrapper-identity/main.vibe:18:34 lambda choice fallback
 typescript/vibelang/cases/spread-wrapper-identity/main.vibe:18:70 lambda plain fallback
+typescript/vibelang/cases/static-match-await-context/main.vibe:11:44 lambda plain table
+typescript/vibelang/cases/static-match-await-context/main.vibe:6:19 lambda plain fallback
+typescript/vibelang/cases/static-match-await-context/main.vibe:7:13 lambda choice fallback
+typescript/vibelang/cases/static-match-await-context/main.vibe:7:40 lambda plain fallback
+typescript/vibelang/cases/static-match-await.fail/main.vibe:11:31 lambda dual fallback
+typescript/vibelang/cases/static-match-await.fail/main.vibe:15:43 lambda dual fallback
+typescript/vibelang/cases/static-match-await.fail/main.vibe:4:19 lambda dual fallback
+typescript/vibelang/cases/static-match-await.fail/main.vibe:7:31 lambda dual fallback
 typescript/vibelang/cases/stream-jump-concurrent-boundary.fail/main.vibe:13:32 lambda effectFn table
 typescript/vibelang/cases/stream-jump-concurrent-boundary.fail/main.vibe:3:29 lambda effectFn table
 typescript/vibelang/cases/stream-jump-concurrent-boundary.fail/main.vibe:8:41 lambda effectFn table

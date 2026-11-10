@@ -1,0 +1,4 @@
+go test fuzz v1
+string("effect-expression")
+byte(7)
+byte(0)

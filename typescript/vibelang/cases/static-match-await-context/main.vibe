@@ -1,0 +1,12 @@
+// expect-result: [1,3]
+class Value{
+ static value: number
+ static read: ()=>Promise<number>
+ static{
+  this.value=match(1){default:1;}
+  this.read=async()=>{const value=match(1){default:3;};return await Promise.resolve(value)}
+ }
+}
+export effect function main(){
+ return [Value.value,try Effect.tryPromise(()=>Value.read())]
+}

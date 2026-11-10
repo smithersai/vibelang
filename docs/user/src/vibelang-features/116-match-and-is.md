@@ -1,5 +1,7 @@
 # Pattern matching with match and is
 
+`await` in a `match` arm follows its written context. A class `static` block rejects it with `TS18037`; a nested `async` callback can await a Promise.
+
 `match` picks the first arm whose pattern fits a value. `is` tests a value against one pattern. Both come from the TC39 [pattern matching](https://github.com/tc39/proposal-pattern-matching) proposal (stage 1) and compile to plain conditionals, tested in order. Patterns narrow the subject as their TypeScript counterparts do. Bindings take the types of the values those counterparts extract. An arm can run Effects with `try` inside an effect function or block.
 
 **`match` is exhaustive.** A match without a `default` arm over a finite union, such as a data type's variants, `error` classes or literals, must handle every case, or the compiler reports EK4701: `This match does not handle every case of Delivery: Delivery.Rejected is left.` See [Exhaustiveness](#exhaustiveness).
