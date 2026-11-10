@@ -3,6 +3,7 @@
 // All publication goes to the script's throwaway loopback registry.
 import assert from "node:assert/strict"
 import { execFileSync, spawnSync } from "node:child_process"
+import { createHash } from "node:crypto"
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -22,13 +23,17 @@ test("rehearsal publishes both scoped Windows packages to its isolated registry"
   for (const dir of [scripts, tarballs, source]) mkdirSync(dir, { recursive: true })
   for (const file of ["rehearse.sh", "repack.mjs"]) copyFileSync(join(repo, "scripts/release", file), join(scripts, file))
   // This fixture checks registry routing; the real starter is exercised by rehearse.sh.
-  writeFileSync(join(scripts, "check-app.sh"), "#!/bin/sh\necho registry-fixture-app-check\n")
+  writeFileSync(join(scripts, "check-app.sh"), '#!/bin/sh\necho "registry-fixture-app-check $VIBELANG_REHEARSAL_FORMAT_SHA256"\n')
   writeFileSync(join(scripts, "check-typescript-shim.sh"), '#!/bin/sh\necho "registry-fixture-shim-check $2 $3"\n')
   const names = ["@smthrs/cli-win32-x64", "@smthrs/cli-win32-arm64", "vibelang", "vibelang-typescript"]
   const version = "0.0.0"
+  const formatter = "export const fixture = \"registry\"\n"
   const packages = names.map(name => {
     const packageVersion = name === "vibelang-typescript" ? "7.1.0" : version
     writeFileSync(join(source, "package.json"), JSON.stringify({ name, version: packageVersion }))
+    // rehearse.sh hashes the compiler package's formatter so each app proves it installed the candidate's bytes.
+    if (name === "vibelang") writeFileSync(join(source, "format.mjs"), formatter)
+    else rmSync(join(source, "format.mjs"), { force: true })
     const file = name.replace("@", "").replace("/", "-") + "-" + packageVersion + ".tgz"
     execFileSync("tar", ["-czf", join(tarballs, file), "-C", join(root, "source"), "package"])
     return { name, version: packageVersion, file }
@@ -42,5 +47,6 @@ test("rehearsal publishes both scoped Windows packages to its isolated registry"
   assert.equal(result.status, 0, evidence + String(result.error ?? ""))
   for (const pkg of packages) assert.ok(evidence.includes("rehearse: published " + pkg.name + "@" + pkg.version), evidence)
   assert.match(evidence, /registry-fixture-shim-check 0\.0\.0 7\.1\.0/)
+  assert.ok(evidence.includes("registry-fixture-app-check " + createHash("sha256").update(formatter).digest("hex")), evidence)
   assert.match(evidence, /rehearse: PASS/)
 })
