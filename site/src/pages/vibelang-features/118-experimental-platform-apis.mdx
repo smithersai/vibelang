@@ -806,6 +806,7 @@ A baseline never updates itself. `Experimental.Eval.baseline` records scores onl
 | `Experimental.Scorer.exact` | Equality with `expected`: text after trimming and collapsing whitespace, any other value by its canonical JSON |
 | `Experimental.Scorer.contains(text?)` | Whether the output text contains `text`, or the case's `expected` text |
 | `Experimental.Scorer.checks([...])` | The fraction of text checks that pass |
+| `Experimental.Scorer.rubric(criteria, { model, layer })` | A model judge scores written criteria from 1 to 5 |
 | `Experimental.Scorer.make({ name, version, config?, score })` | Your function from the run record to a number, `{ score, reason?, meta? }`, or an Effect of either |
 
 A scorer has an identity. Its name, version and `config` hash into a `scorerKey`, SHA-256 of their canonical JSON, which every observation carries, so a score recorded a month ago still names the exact grader. Change what a scorer does, bump its `version`. Declaring a scorer never throws: a blank name or version, or a `config` that is not plain JSON, such as one holding a function or a `Date`, is kept as `scorer.problem`, and `run` refuses a suite that uses it. Two scorers with one identity in a suite are refused too.
@@ -822,7 +823,36 @@ Each check of `Experimental.Scorer.checks` is plain data, so the list is the sco
 | `{ excludesOpener: [...] }` | the text does not open with one of the phrases |
 | `{ complete: true }` | no unclosed code fence and no ellipsis cuts the text off |
 
-`Experimental.Scorer.rubric`, a model judge, is not built yet.
+### Model judges
+
+`Experimental.Scorer.rubric(criteria, { model, layer, examples?, rule?, instructions? })` asks a model, the judge, to score an answer against written criteria. Each criterion is a question the judge answers with an integer from 1 (`low`) to 5 (`high`). The score is the mean mapped onto `[0, 1]`, and `meta` holds each criterion's score, `pass` under the rule (default: every criterion at least 3 and their mean at least 3.8), and the judge's seat.
+
+`model` is the judge's seat, such as `"anthropic:claude-sonnet-5-5"`, and is part of the scorer's identity, so a different judge is a different scorer. `layer` is the Effect `LanguageModel` that answers for that seat: a provider's layer in production, a scripted model in a test. Nothing defaults to the model under test, which would grade itself.
+
+```vibe
+import * as LanguageModel from "effect/ai/LanguageModel"
+
+// A scripted judge stands in for a provider in this example.
+const judge = Layer.effect(LanguageModel.LanguageModel, LanguageModel.make({
+  generateText: () => Effect.succeed([{ type: "text", text: "{\"scores\": {\"polite\": 5}, \"reason\": \"Kind.\"}" }] as any),
+  streamText: () => Stream.empty,
+}))
+
+const polite = Experimental.Scorer.rubric(
+  [{ id: "polite", question: "Is the reply polite?", low: "rude", high: "courteous" }],
+  { model: "anthropic:claude-sonnet-5-5", layer: judge }
+)
+
+export effect function judged() {
+  const result = try polite.score({ input: "Greet Ada", output: "Hello, Ada" })
+  return result.score
+}
+// Output: 1
+```
+
+The judge reads the case input as context, or `{ context, focus }` when the input is one, and everything it reads is fenced as data it must not follow. A judge that cannot be reached, or whose reply holds no integer score for every criterion, is inconclusive: the observation records why, and the gate exits `5`. Model scores move, so give a suite with a rubric a gate `tolerance`.
+
+`Experimental.Scorer.calibrate(scorer, labelled)` measures a judge before you trust it: it grades answers whose verdict is known, `{ input?, output, verdict: "pass" | "fail" }`, and returns how often the judge agreed, with true and false passes and fails and the inconclusive count.
 
 ### Scoring live runs
 

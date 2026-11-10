@@ -332,7 +332,7 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/Test` | Test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording, `decisions`, the same for a `DecisionModel`, `record`, which records what the file is missing, `modelServer`, the recording served over HTTP, `durable` and `restartable` engines with `crash`, `host`, a machine of fixed files and scripted commands, `journal` and `divergence` assertions over a durable run, and `conformance.engine()`, nine cases that certify a workflow engine |
 | `vibelang-runtime/experimental/Memory` | Facts that outlive a run, recalled by query within a byte budget |
 | `vibelang-runtime/experimental/Encoding` | Pure `decodeBase64Lenient`, requiring no layer |
-| `vibelang-runtime/experimental/Scorer` | Scorers with a stable identity: `exact`, `contains`, `checks` and `make`; `bind` scores a durable workflow's live runs into a memory or SQL score store |
+| `vibelang-runtime/experimental/Scorer` | Scorers with a stable identity: `exact`, `contains`, `checks`, `rubric` (a model judge) and `make`; `bind` scores a durable workflow's live runs into a memory or SQL score store |
 | `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns` layer |
 
 ### Browser conformance tests

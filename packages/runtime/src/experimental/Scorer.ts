@@ -17,12 +17,14 @@
  * attempts fails with `invalid_declaration`, and `Experimental.Eval.run`
  * refuses a suite that uses it.
  *
- * {@link bind} scores a durable workflow's live runs: each finished run of
+ * {@link rubric} asks a model, the judge, to grade an answer against written
+ * criteria; {@link calibrate} measures a judge on answers whose verdict is
+ * known. {@link bind} scores a durable workflow's live runs: each finished run of
  * the workflow is graded once, sampled by a rule a replay repeats, and kept
  * in a {@link ScoreStore}, in memory or in a SQL database.
  *
  * Ported from Smithers' `@smthrs/scorers` (`Scorer`, `Scorers`, `Checks`,
- * `Binding`, `Sampling`, `ScoreStore`, `SqlScoreStore`).
+ * `Rubric`, `Binding`, `Sampling`, `ScoreStore`, `SqlScoreStore`).
  *
  * @experimental
  * @since 0.0.13
@@ -34,10 +36,12 @@ import * as Data from "effect/Data"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as LanguageModel from "effect/ai/LanguageModel"
 import type { SqlClient } from "effect/sql"
 import { type Workflow, WorkflowEngine } from "effect/workflow"
 import * as canonical from "./internal/canonical.js"
 import * as text from "./internal/evalText.js"
+import * as rubricText from "./internal/rubric.js"
 import * as scoreStore from "./internal/scoreStore.js"
 import { sha256Hex } from "./internal/sha256.js"
 
@@ -676,3 +680,191 @@ export const bind = <W extends Workflow.Any, R = never>(
       } as WorkflowEngine.WorkflowEngine["Service"])
     })
   )
+
+// ---------------------------------------------------------------------------
+// Model judges
+// ---------------------------------------------------------------------------
+
+/**
+ * One rubric criterion: a question the judge answers with an integer from
+ * 1 (`low`) to 5 (`high`).
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type Criterion = rubricText.Criterion
+
+/**
+ * A labelled answer shown to the judge as an example.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type RubricExample = rubricText.Example
+
+/**
+ * When a judgement passes: every criterion at least `minEach` and their
+ * mean at least `minMean`. Default `{ minEach: 3, minMean: 3.8 }`.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type RubricRule = rubricText.Rule
+
+/**
+ * Options of {@link rubric}.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface RubricOptions<E, R> {
+  /** The judge's seat, such as `"anthropic:claude-sonnet-5-5"`. Part of the scorer's identity. */
+  readonly model: string
+  /** The `LanguageModel` that answers for the seat. A test passes a scripted model here. */
+  readonly layer: Layer.Layer<LanguageModel.LanguageModel, E, R>
+  readonly name?: string | undefined
+  readonly version?: string | undefined
+  readonly examples?: ReadonlyArray<RubricExample> | undefined
+  readonly rule?: RubricRule | undefined
+  readonly instructions?: string | undefined
+}
+
+const withProblem = <In, R>(scorer: Scorer<In, R>, problem: string): Scorer<In, R> =>
+  Object.freeze({
+    ...scorer,
+    scorerKey: "",
+    problem,
+    score: () => Effect.fail(new ScorerError({ code: "invalid_declaration", message: problem }))
+  })
+
+/**
+ * A scorer whose judge is a model. The judge scores each criterion from 1
+ * to 5; the score is their mean mapped onto `[0, 1]`, and `meta` holds the
+ * criterion scores, whether the {@link RubricRule} passed, and the judge's
+ * seat. The seat is part of the scorer's identity, so a different judge is a
+ * different scorer. Nothing defaults to the model under test.
+ *
+ * The case input is the context the judge reads; an input `{ context, focus }`
+ * also tells the judge what ideal behaviour is. Everything the judge reads
+ * is fenced as data. A judge that cannot be reached, or whose reply holds no
+ * score for every criterion, is inconclusive: it never passes.
+ *
+ * @category scorers
+ * @since 0.0.13
+ */
+export const rubric = <E = never, R = never>(
+  criteria: ReadonlyArray<Criterion>,
+  options: RubricOptions<E, R>
+): Scorer<{ readonly input: unknown; readonly output: unknown }, R> => {
+  const rule = options.rule ?? rubricText.defaultRule
+  const examples = options.examples ?? []
+  const seat = options.model
+  const scorer = make({
+    name: options.name ?? "rubric",
+    version: options.version ?? "1",
+    config: { model: seat, criteria, examples, rule, instructions: options.instructions ?? null },
+    score: ({ input, output }: { readonly input: unknown; readonly output: unknown }) =>
+      Effect.gen(function*() {
+        const { context, focus } = rubricText.subject(input)
+        const request = rubricText.render({
+          criteria,
+          examples,
+          instructions: options.instructions,
+          context,
+          focus,
+          output: rubricText.asText(output)
+        })
+        const reply = yield* LanguageModel.generateText({
+          prompt: [{ role: "system", content: request.system }, { role: "user", content: request.prompt }]
+        }).pipe(
+          Effect.provide(options.layer),
+          Effect.mapError((cause) => inconclusive(`The judge ${seat} could not answer: ${describe(cause)}`, cause))
+        )
+        const judgement = rubricText.parse(reply.text, criteria)
+        if (typeof judgement === "string") {
+          return yield* Effect.fail(new ScorerError({ code: "invalid_score", message: `The judge ${seat} replied without a usable score: ${judgement}` }))
+        }
+        return {
+          score: rubricText.normalized(judgement.scores),
+          reason: judgement.reason,
+          meta: { scores: judgement.scores, pass: rubricText.decide(judgement.scores, rule), judge: seat }
+        }
+      })
+  })
+  const problem = typeof seat !== "string" || seat.trim().length === 0
+    ? "A rubric must name its judge's seat"
+    : rubricText.criteriaProblem(criteria, rule)
+  return problem === undefined ? scorer : withProblem(scorer, problem)
+}
+
+/**
+ * How often a judge agreed with known verdicts. A judgement passes when its
+ * `meta.pass` is `true`, or, for a scorer without one, when its score is at
+ * least the threshold. An inconclusive judgement agrees with nothing.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface Agreement {
+  readonly total: number
+  readonly agree: number
+  readonly accuracy: number
+  readonly truePass: number
+  readonly trueFail: number
+  readonly falsePass: number
+  readonly falseFail: number
+  readonly inconclusive: number
+}
+
+/**
+ * One answer whose verdict is known.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface Labelled {
+  readonly input?: unknown
+  readonly output: unknown
+  readonly verdict: "pass" | "fail"
+}
+
+/**
+ * Measures a judge: grades answers whose verdict is known and counts how
+ * often the judge agreed. Run it before trusting a rubric's scores.
+ *
+ * @category scorers
+ * @since 0.0.13
+ */
+export const calibrate = <R>(
+  scorer: Scorer<{ readonly input: unknown; readonly output: unknown }, R>,
+  labelled: ReadonlyArray<Labelled>,
+  options: { readonly threshold?: number | undefined; readonly concurrency?: number | undefined } = {}
+): Effect.Effect<Agreement, never, R> =>
+  Effect.forEach(labelled, (item) =>
+    Effect.suspend(() => scorer.score({ input: item.input, output: item.output })).pipe(
+      Effect.map((result) => {
+        const pass = (result.meta as { readonly pass?: unknown } | undefined)?.pass
+        return typeof pass === "boolean" ? pass : result.score >= (options.threshold ?? 1)
+      }),
+      Effect.map((pass) => ({ expected: item.verdict, actual: pass ? "pass" as const : "fail" as const })),
+      Effect.catchCause((cause) =>
+        Cause.hasInterrupts(cause) ? Effect.interrupt : Effect.succeed({ expected: item.verdict, actual: "inconclusive" as const })
+      )
+    ), { concurrency: options.concurrency ?? 1 }).pipe(
+      Effect.map((pairs): Agreement => {
+        const tally = (expected: "pass" | "fail", actual: "pass" | "fail") =>
+          pairs.filter((pair) => pair.expected === expected && pair.actual === actual).length
+        const truePass = tally("pass", "pass"), trueFail = tally("fail", "fail")
+        const agree = truePass + trueFail
+        return {
+          total: pairs.length,
+          agree,
+          accuracy: pairs.length === 0 ? 0 : agree / pairs.length,
+          truePass,
+          trueFail,
+          falsePass: tally("fail", "pass"),
+          falseFail: tally("pass", "fail"),
+          inconclusive: pairs.filter((pair) => pair.actual === "inconclusive").length
+        }
+      })
+    )

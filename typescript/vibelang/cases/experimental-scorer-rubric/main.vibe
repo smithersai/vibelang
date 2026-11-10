@@ -1,0 +1,53 @@
+// expect-result: {"score":0.875,"pass":true,"judge":"anthropic:claude-sonnet-5-5","exitCode":0,"down":5}
+// VIP-69 rule 8: a rubric names its judge, a model, and records it in the
+// scorer's identity. The judge here is a scripted LanguageModel; a judge
+// that cannot be reached is inconclusive and never passes.
+import * as LanguageModel from "effect/ai/LanguageModel"
+
+function scriptedJudge(reply: string) {
+  return Layer.effect(LanguageModel.LanguageModel, LanguageModel.make({
+    generateText: () => Effect.succeed([{ type: "text", text: reply }] as any),
+    streamText: () => Stream.empty,
+  }))
+}
+
+const downJudge = Layer.effect(LanguageModel.LanguageModel, Effect.fail("judge unreachable"))
+
+const criteria = [
+  { id: "polite", question: "Is the reply polite?", low: "rude", high: "courteous" },
+  { id: "correct", question: "Does it greet the person by name?", low: "no", high: "yes" },
+]
+
+effect function greet(name: string) {
+  return `Hello, ${name}`
+}
+
+function politeness(layer: Layer.Layer<LanguageModel.LanguageModel, string>) {
+  return Experimental.Eval.suite("politeness", {
+    target: greet,
+    cases: [{ name: "ada", input: ["Ada"] }],
+    scorers: [Experimental.Scorer.rubric(criteria, { model: "anthropic:claude-sonnet-5-5", layer })],
+    gate: { min: 0.75, tolerance: 0.25 },
+  })
+}
+
+effect function gated(layer: Layer.Layer<LanguageModel.LanguageModel, string>) {
+  const suite = politeness(layer)
+  const run = try Experimental.Eval.run(suite)
+  const report = try Experimental.Eval.compare(try Experimental.Eval.baseline(run), run)
+  return { run, grade: Experimental.Eval.gate(report, suite.gate) }
+}
+
+export effect function main() {
+  const good = try gated(scriptedJudge("{\"scores\": {\"polite\": 5, \"correct\": 4}, \"reason\": \"Kind.\"}"))
+  const down = try gated(downJudge)
+  const observation = good.run.observations[0]
+  const meta = observation.kind === "score" ? observation.meta as { pass: boolean; judge: string } : { pass: false, judge: "" }
+  return {
+    score: observation.kind === "score" ? observation.score : -1,
+    pass: meta.pass,
+    judge: meta.judge,
+    exitCode: good.grade.exitCode,
+    down: down.grade.exitCode,
+  }
+}
