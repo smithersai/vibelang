@@ -59,6 +59,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A durable workflow killed during a long `DurableClock.sleep` slept the whole duration again when it resumed. The engine now journals when the clock is due, and the resumed run waits only for the time left.
 
+- A program under test that reaches its model over HTTP, such as an agent run as a child process, could not use a recorded model. `Experimental.Test.modelServer({ fixture })` answers Chat Completions requests from a recording and answers `501` for a request it does not hold.
+
 - A fork of the workflow engine had no way to show it still behaves like the standard one. `Experimental.Test.conformance.engine()` gives nine black-box cases, for run identity, interruption, replay after a restart and races, that run against any `WorkflowEngine` layer.
 
 - A test of a program that asks a `DecisionModel` for a decision needed a provider. `Experimental.Test.decisions(fixture)` answers from a recording, validating each answer as Effect validates a provider's, and a request the recording does not describe fails the test.

@@ -22,7 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
+| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -834,6 +834,25 @@ export effect function triageCrash() {
   }
 }
 ```
+
+### A model in another process
+
+A layer replaces a model only inside one process. A program under test that reaches its model over HTTP, such as a coding agent run as a child process, needs a server. `Experimental.Test.modelServer({ fixture })` answers Chat Completions requests, `POST /v1/chat/completions`, from a recording: point the program's OpenAI-compatible base URL at it.
+
+```vibe
+import { ExperimentalNodeHttpServer } from "vibelang-runtime/experimental/platform-node"
+
+const recorded = { calls: [{ request: { prompt: "hello" }, response: [{ type: "text", text: "hi there" }] }] }
+
+export effect function withModelServer() {
+  provide Experimental.Test.modelServer({ fixture: recorded }).pipe(Layer.provideMerge(ExperimentalNodeHttpServer.layer({ port: 0 }))) {
+    const server = try HttpServer.HttpServer
+    return "port" in server.address ? `http://127.0.0.1:${server.address.port}/v1` : ""
+  }
+}
+```
+
+The server reads a request's messages as the prompt Effect's `LanguageModel` sends a provider, so a recording made in-process with `Experimental.Test.record` replays over HTTP, and a hand-written one names its prompt as text. It matches tools, the response format and the tool choice as `replay` does, never the model, and claims each recording once. It answers a `chat.completion`, or `chat.completion.chunk` server-sent events when the request streams. A request it does not hold is answered `501` with an error of type `unrecorded`; a recorded `AiError` is answered with its status, such as `429` for a rate limit.
 
 ### A machine of fixed files and commands
 

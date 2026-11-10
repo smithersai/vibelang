@@ -1,0 +1,48 @@
+// expect-result: {"answer":"hi there","model":"gpt-anything","again":501,"unrecorded":"unrecorded"}
+// Experimental.Test.modelServer (VIP-71) is a model in another process: an
+// HTTP server that answers Chat Completions requests from a recording, for
+// a program that reaches its model over HTTP. It matches the request as
+// Test.replay does, never by model, claims each recording once, and answers
+// 501 unrecorded for a request it does not hold.
+import { FetchHttpClient } from "effect/http"
+import { ExperimentalNodeHttpServer } from "vibelang-runtime/experimental/platform-node"
+
+const recorded = {
+  calls: [{ request: { prompt: "hello" }, response: [{ type: "text", text: "hi there" }] }]
+}
+
+const ServerLive = Experimental.Test.modelServer({ fixture: recorded }).pipe(
+  Layer.provideMerge(ExperimentalNodeHttpServer.layer({ port: 0 })),
+  Layer.provideMerge(FetchHttpClient.layer)
+)
+
+interface Completion {
+  readonly model: string
+  readonly choices: ReadonlyArray<{ readonly message: { readonly content: string } }>
+  readonly error: { readonly type: string }
+}
+
+effect function ask(url: string) {
+  const request = HttpClientRequest.post(url).pipe(
+    HttpClientRequest.bodyJsonUnsafe({ model: "gpt-anything", messages: [{ role: "user", content: "hello" }] })
+  )
+  const response = try HttpClient.execute(request)
+  const body = (try response.json) as unknown as Completion
+  return { status: response.status, body }
+}
+
+export effect function main() {
+  provide ServerLive {
+    const server = try HttpServer.HttpServer
+    const port = "port" in server.address ? server.address.port : 0
+    const url = `http://127.0.0.1:${port}/v1/chat/completions`
+    const first = try ask(url)
+    const again = try ask(url)
+    return {
+      answer: first.body.choices[0]!.message.content,
+      model: first.body.model,
+      again: again.status,
+      unrecorded: again.body.error.type
+    }
+  }
+}

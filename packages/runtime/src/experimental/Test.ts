@@ -43,6 +43,8 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
 import { AiError, DecisionModel, LanguageModel, Prompt, Response, Tool, Toolkit } from "effect/ai"
+import type { HttpServer, HttpServerRequest } from "effect/http"
+import { HttpRouter, HttpServerResponse } from "effect/http"
 import { ChildProcessSpawner } from "effect/process"
 import { WorkflowEngine } from "effect/workflow"
 import type { Workflow } from "effect/workflow"
@@ -1194,3 +1196,262 @@ export const conformance: {
 } = {
   engine: () => engineConformance.engineCases
 }
+
+// -----------------------------------------------------------------------------
+// Model server
+// -----------------------------------------------------------------------------
+
+/**
+ * What {@link modelServer} serves.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface ModelServerOptions {
+  readonly fixture: Fixture
+}
+
+interface ChatMessage {
+  readonly role?: unknown
+  readonly content?: unknown
+  readonly tool_calls?: ReadonlyArray<{ readonly id?: unknown; readonly function?: { readonly name?: unknown; readonly arguments?: unknown } }>
+  readonly tool_call_id?: unknown
+}
+
+interface ChatBody {
+  readonly model?: unknown
+  readonly messages?: ReadonlyArray<ChatMessage>
+  readonly tools?: ReadonlyArray<{ readonly function?: { readonly name?: unknown; readonly description?: unknown; readonly parameters?: unknown } }>
+  readonly tool_choice?: unknown
+  readonly response_format?: { readonly type?: unknown; readonly json_schema?: { readonly name?: unknown; readonly schema?: unknown } }
+  readonly stream?: unknown
+}
+
+const parseArguments = (text: unknown): unknown => {
+  if (typeof text !== "string") return text ?? {}
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+const textOf = (content: unknown): string =>
+  typeof content === "string"
+    ? content
+    : Array.isArray(content)
+    ? content.map((part) => (typeof part?.text === "string" ? part.text : "")).join("")
+    : ""
+
+// A Chat Completions body as the provider request a LanguageModel call makes:
+// messages as an Effect prompt, tools by name, description and parameters,
+// the response format and the tool choice.
+const chatRequest = (body: ChatBody): CanonicalRequest => {
+  const names = new Map<string, string>()
+  const messages = (body.messages ?? []).map((message): unknown => {
+    switch (message.role) {
+      case "system":
+      case "developer":
+        return { role: "system", content: textOf(message.content) }
+      case "assistant": {
+        const parts: Array<unknown> = []
+        const text = textOf(message.content)
+        if (text !== "") parts.push({ type: "text", text })
+        for (const call of message.tool_calls ?? []) {
+          const id = String(call.id ?? "")
+          const name = String(call.function?.name ?? "")
+          names.set(id, name)
+          parts.push({ type: "tool-call", id, name, params: parseArguments(call.function?.arguments), providerExecuted: false })
+        }
+        return { role: "assistant", content: parts }
+      }
+      case "tool": {
+        const id = String(message.tool_call_id ?? "")
+        return {
+          role: "tool",
+          content: [{ type: "tool-result", id, name: names.get(id) ?? "", isFailure: false, result: parseArguments(textOf(message.content)) }]
+        }
+      }
+      default:
+        return { role: "user", content: [{ type: "text", text: textOf(message.content) }] }
+    }
+  })
+  const format = body.response_format
+  const choice = body.tool_choice as { readonly function?: { readonly name?: unknown } } | string | undefined
+  return {
+    prompt: promptJson(Prompt.make(messages as Prompt.RawInput)),
+    tools: canonical.canonicalJson(plain((body.tools ?? []).map((tool) => ({
+      name: tool.function?.name,
+      description: tool.function?.description,
+      parameters: tool.function?.parameters
+    })))),
+    responseFormat: canonical.canonicalJson(plain(
+      format?.type === "json_schema"
+        ? { type: "json", objectName: format.json_schema?.name, schema: format.json_schema?.schema }
+        : { type: "text" }
+    )),
+    toolChoice: canonical.canonicalJson(plain(
+      choice === undefined ? (body.tools?.length ? "auto" : "none") : typeof choice === "string" ? choice : { tool: choice.function?.name }
+    ))
+  }
+}
+
+type AnyPart = { readonly type: string; readonly [key: string]: unknown }
+
+const finishReason = (parts: ReadonlyArray<AnyPart>, hasToolCalls: boolean): string => {
+  const finish = parts.find((part) => part.type === "finish")
+  switch (finish?.reason) {
+    case "length":
+      return "length"
+    case "content-filter":
+      return "content_filter"
+    case "tool-calls":
+      return "tool_calls"
+    case "stop":
+      return "stop"
+    default:
+      return hasToolCalls ? "tool_calls" : "stop"
+  }
+}
+
+const usageOf = (parts: ReadonlyArray<AnyPart>) => {
+  const usage = parts.find((part) => part.type === "finish")?.usage as
+    | { readonly inputTokens?: { readonly total?: number }; readonly outputTokens?: { readonly total?: number } }
+    | undefined
+  if (usage === undefined) return undefined
+  const prompt = usage.inputTokens?.total ?? 0
+  const completion = usage.outputTokens?.total ?? 0
+  return { prompt_tokens: prompt, completion_tokens: completion, total_tokens: prompt + completion }
+}
+
+// A recorded answer's text, tool calls and finish, from response parts or,
+// for a recording made with streamText, from stream parts.
+const answerOf = (call: RecordedCall) => {
+  const parts: ReadonlyArray<AnyPart> = (call.response ?? call.stream ?? []) as ReadonlyArray<AnyPart>
+  const text = parts
+    .map((part) => (part.type === "text" ? String(part.text ?? "") : part.type === "text-delta" ? String(part.delta ?? "") : ""))
+    .join("")
+  const toolCalls = parts.filter((part) => part.type === "tool-call").map((part) => ({
+    id: String(part.id),
+    type: "function" as const,
+    function: { name: String(part.name), arguments: JSON.stringify(part.params ?? {}) }
+  }))
+  const id = parts.find((part) => part.type === "response-metadata")?.id
+  return {
+    id: typeof id === "string" ? id : undefined,
+    text,
+    toolCalls,
+    finish: finishReason(parts, toolCalls.length > 0),
+    usage: usageOf(parts)
+  }
+}
+
+const failureStatus = (error: AiError.AiError): number => {
+  switch (error.reason._tag) {
+    case "RateLimitError":
+    case "QuotaExhaustedError":
+      return 429
+    case "AuthenticationError":
+      return 401
+    case "InvalidRequestError":
+    case "ContentPolicyError":
+      return 400
+    default:
+      return 500
+  }
+}
+
+const sse = (chunks: ReadonlyArray<unknown>) =>
+  Stream.fromIterable([...chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`), "data: [DONE]\n\n"]).pipe(
+    Stream.map((line) => new TextEncoder().encode(line))
+  )
+
+/**
+ * A model in another process: an HTTP server that answers Chat Completions
+ * requests (`POST /v1/chat/completions`) from a recording, for a program
+ * under test that reaches its model over HTTP, such as a coding agent run as
+ * a child process. Point its OpenAI-compatible base URL at the server.
+ *
+ * A request is matched as {@link replay} matches a `LanguageModel` request:
+ * its messages as a prompt, its tools, response format and tool choice,
+ * never its model. Each recording is claimed once. The answer is a
+ * `chat.completion`, or `chat.completion.chunk` server-sent events when the
+ * request asks to stream. A request the recording does not hold is answered
+ * `501` with an error of type `unrecorded`; a recorded `AiError` is answered
+ * with its status, such as `429` for a rate limit.
+ *
+ * The layer needs an `HttpServer`, such as Node's
+ * `NodeHttpServer.layer(createServer, { port: 0 })`.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const modelServer = (options: ModelServerOptions): Layer.Layer<never, never, HttpServer.HttpServer> =>
+  Layer.unwrap(Effect.sync(() => {
+    const recorded = decodeFixture(options.fixture)
+    const keys = recorded.calls.map(recordedKey)
+    const used = recorded.calls.map(() => false)
+    let served = 0
+    const handler = (request: HttpServerRequest.HttpServerRequest) =>
+      Effect.gen(function*() {
+        const body = (yield* Effect.orElseSucceed(request.json, () => ({}))) as ChatBody
+        const wanted = chatRequest(body)
+        const index = keys.findIndex((key, i) => !used[i] && matches(key, wanted))
+        if (index < 0) {
+          return yield* HttpServerResponse.json({
+            error: {
+              type: "unrecorded",
+              message: `no unclaimed recording matches this request (${body.messages?.length ?? 0} messages)`
+            }
+          }, { status: 501 })
+        }
+        used[index] = true
+        const call = recorded.calls[index]!
+        if (call.failure !== undefined) {
+          const error = recordedFailure(call, index)
+          return yield* HttpServerResponse.json(
+            { error: { type: error.reason._tag, message: error.message } },
+            { status: failureStatus(error) }
+          )
+        }
+        const answer = answerOf(call)
+        const id = answer.id ?? `chatcmpl-test-${++served}`
+        const model = typeof body.model === "string" ? body.model : "recorded"
+        if (body.stream === true) {
+          const delta = (value: Record<string, unknown>, finish: string | null) => ({
+            id,
+            object: "chat.completion.chunk",
+            created: 0,
+            model,
+            choices: [{ index: 0, delta: value, finish_reason: finish }]
+          })
+          const chunks = [
+            delta({ role: "assistant", content: answer.text }, null),
+            ...answer.toolCalls.map((toolCall, i) => delta({ tool_calls: [{ index: i, ...toolCall }] }, null)),
+            delta({}, answer.finish),
+            ...(answer.usage === undefined ? [] : [{ id, object: "chat.completion.chunk", created: 0, model, choices: [], usage: answer.usage }])
+          ]
+          return HttpServerResponse.stream(sse(chunks), { contentType: "text/event-stream" })
+        }
+        return yield* HttpServerResponse.json({
+          id,
+          object: "chat.completion",
+          created: 0,
+          model,
+          choices: [{
+            index: 0,
+            message: {
+              role: "assistant",
+              content: answer.toolCalls.length > 0 && answer.text === "" ? null : answer.text,
+              ...(answer.toolCalls.length > 0 ? { tool_calls: answer.toolCalls } : {})
+            },
+            finish_reason: answer.finish
+          }],
+          ...(answer.usage === undefined ? {} : { usage: answer.usage })
+        })
+      }).pipe(Effect.orDie)
+    return HttpRouter.serve(HttpRouter.add("POST", "/v1/chat/completions", handler), {
+      disableLogger: true,
+      disableListenLog: true
+    })
+  }))
