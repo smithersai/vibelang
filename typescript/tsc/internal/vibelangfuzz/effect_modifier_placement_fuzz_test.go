@@ -83,6 +83,25 @@ var effectPlacementForbidden = map[string]string{
 	"declare-namespace-method:forbidden": "declare namespace Home { class C { M load(): R } }",
 }
 
+// A type member has no async function return contract. Its native TS1070
+// becomes EK0108, while its written return type keeps its TypeScript meaning.
+var effectPlacementTypeMemberReturns = map[string]string{
+	"interface-return-void":     "export interface Home { M load(): void }",
+	"interface-return-number":   "export interface Home { M load?(): number }",
+	"interface-return-any":      "export interface Home { M load(): any }",
+	"interface-return-unknown":  "export interface Home { M load(): unknown }",
+	"interface-return-never":    "export interface Home { M load(): never }",
+	"interface-return-generic":  "export interface Home { M load<T>(value: T): T }",
+	"interface-return-computed": "export interface Home { M [Symbol.iterator](): Iterator<number> }",
+	"literal-return-void":       "export type Home = { M load(): void }",
+	"literal-return-number":     "export type Home = { M load?(): number }",
+	"literal-return-any":        "export type Home = { M load(): any }",
+	"literal-return-unknown":    "export type Home = { M load(): unknown }",
+	"literal-return-never":      "export type Home = { M load(): never }",
+	"literal-return-generic":    "export type Home = { M load<T>(value: T): T }",
+	"literal-return-union":      "export type Home = { M load(): string | number }",
+}
+
 func effectPlacementKeys() []string {
 	var keys []string
 	for _, home := range effectPlacementHomes {
@@ -96,6 +115,9 @@ func effectPlacementKeys() []string {
 			}
 		}
 	}
+	for key := range effectPlacementTypeMemberReturns {
+		keys = append(keys, key)
+	}
 	for key := range effectPlacementForbidden {
 		keys = append(keys, key)
 	}
@@ -104,6 +126,9 @@ func effectPlacementKeys() []string {
 }
 
 func effectPlacementSource(key string) string {
+	if source, ok := effectPlacementTypeMemberReturns[key]; ok {
+		return source
+	}
 	if source, ok := effectPlacementForbidden[key]; ok {
 		return source
 	}
@@ -146,9 +171,9 @@ func FuzzEffectModifierPlacement(f *testing.F) {
 				if d.Category() != diagnostics.CategoryError {
 					continue
 				}
-				// async on an abstract or ambient declaration (TS1243, TS1040), and
+				// async on an abstract, ambient or type member declaration (TS1243, TS1040, TS1070), and
 				// effect there (EK0108). A TypeScript diagnostic carries no source here.
-				if d.Source() == "EK" && d.Code() == 108 || d.Source() != "EK" && (d.Code() == 1243 || d.Code() == 1040) {
+				if d.Source() == "EK" && d.Code() == 108 || d.Source() != "EK" && (d.Code() == 1243 || d.Code() == 1040 || d.Code() == 1070) {
 					errors = append(errors, "EK0108")
 					continue
 				}

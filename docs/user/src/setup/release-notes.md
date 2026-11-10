@@ -32,6 +32,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Extending a service key could hide unknown names and type errors in the base expression or its type arguments. Those independent errors now appear alongside `EK3002`.
 
+- An `effect` modifier on an `interface` or type literal method could also report a misleading return-type error. It now reports `EK0108` while keeping the signature's written return type.
+
+
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.

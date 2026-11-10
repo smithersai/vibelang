@@ -35,10 +35,12 @@ func init() {
 
 // isWrittenReturnTypeOfEffectFunction reports whether node is the return
 // type written on an effect function. An effect function* returns a Stream
-// (VIP-21), so its return type is not one.
+// (VIP-21), so its return type is not one. A type member recovers the
+// forbidden modifier without acquiring an Effect function return contract,
+// just as TypeScript reports TS1070 there without checking TS1064.
 func isWrittenReturnTypeOfEffectFunction(node *ast.Node) bool {
 	fn := node.Parent
-	return fn != nil && ast.IsFunctionLike(fn) && fn.Type() == node && isMarkedEffect(fn) && !isEffectBlock(fn) && ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator == 0
+	return fn != nil && ast.IsFunctionLike(fn) && !ast.IsMethodSignatureDeclaration(fn) && fn.Type() == node && isMarkedEffect(fn) && !isEffectBlock(fn) && ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator == 0
 }
 
 // checkEffectReturnTypes reports EK0106 at each effect function of file

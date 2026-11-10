@@ -1,0 +1,15 @@
+// expect: EK0108
+export interface Plain {
+ effect read(): number
+ effect readAny(): any
+ effect readUnknown(): unknown
+ effect readNever(): never
+ effect generic<T>(value: T): T
+ effect [Symbol.iterator](): Iterator<number>
+}
+export type Literal = {
+ effect read(): void
+ effect optional?(): number
+ effect "readUnion"(): string | number
+ effect readEffects(): (number!!) | (string!!)
+}
