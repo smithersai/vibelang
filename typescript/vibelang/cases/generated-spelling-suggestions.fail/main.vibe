@@ -1,0 +1,8 @@
+// expect: TS2304 TS2552
+export effect function missing(xs: number[]) {
+  for concurrent (const x of xs) { void $concurrentIte }
+}
+export effect function sourceCandidate(xs: number[]) {
+  const $concurrentItems = 1
+  for concurrent (const x of xs) { void $concurrentIte }
+}

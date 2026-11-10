@@ -1911,6 +1911,12 @@ func (c *Checker) getSuggestionForSymbolNameLookup(symbols ast.SymbolTable, name
 //     for every 5 characters, and 1 insertion/deletion at 3 characters)
 func (c *Checker) getSpellingSuggestionForName(name string, symbols iter.Seq[*ast.Symbol], meaning ast.SymbolFlags) *ast.Symbol {
 	getCandidateName := func(candidate *ast.Symbol) string {
+		// Private compiler bindings are not source spelling candidates.
+		for _, declaration := range candidate.Declarations() {
+			if name := declaration.Name(); name != nil && name.Flags&ast.NodeFlagsVibeLangTemporary != 0 {
+				return ""
+			}
+		}
 		candidateName := ast.SymbolName(candidate)
 		if len(candidateName) == 0 || candidateName[0] == '"' || candidateName[0] == '\xFE' {
 			return ""

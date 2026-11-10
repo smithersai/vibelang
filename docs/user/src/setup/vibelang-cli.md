@@ -64,7 +64,7 @@ A service needs a stable identity during migration. For a standalone source file
 
 The `vibelang` entry in `--help` describes legacy diagnostics configuration. Use `vibe.severities` for new settings; the former package-trust settings are ignored.
 
-TypeScript's own lexical, syntax and static errors keep their `TS` codes, including errors inside embedded expressions and types. VibeLang's productions, placement rules and adopted proposal restrictions use the owning VIP's `EK` codes, regardless of the parser helper used. A specific diagnostic takes priority for the same rejection; independent native errors still report.
+TypeScript's own lexical, syntax and static errors keep their `TS` codes, including errors inside embedded expressions and types. VibeLang's productions, placement rules and adopted proposal restrictions use the owning VIP's `EK` codes, regardless of the parser helper used. A specific diagnostic takes priority for the same rejection; independent native errors still report. Spelling suggestions name declarations available to source code, including library exports and local bindings.
 
 Set `vibe.severities` in any supported project config:
 

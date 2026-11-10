@@ -32,6 +32,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A workflow's runs were lost when its process exited, because Effect's only local workflow engine keeps them in memory. `Experimental.Durable` journals each step: a crashed run resumes on its next execution, finished steps return their recorded results, and a step that never finished runs again.
 
+- A misspelled name inside a `for concurrent` body could suggest an internal compiler binding. Suggestions now use source names and still offer a matching name declared by the program.
+
 - Migration setup generated Effect lint commands with unsupported Oxlint flags, so linting stopped with an unknown-option error. Setup now uses compiler project options and repairs those commands when repeated.
 
 - A binding joined to a literal pattern with `and` could keep its original wide type and reject a valid return. Bindings now retain the type narrowed by the conjunction, in either order and inside array or object patterns.

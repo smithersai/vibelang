@@ -5098,6 +5098,8 @@ typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:2:4 lam
 typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:3:4 lambda plain fallback
 typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:4:4 lambda plain fallback
 typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:5:4 lambda plain fallback
+typescript/vibelang/cases/generated-spelling-suggestions.fail/main.vibe:3:25 lambda effectFn table
+typescript/vibelang/cases/generated-spelling-suggestions.fail/main.vibe:7:25 lambda effectFn table
 typescript/vibelang/cases/generator-admitted-throws.fail/main.vibe:3:35 lambda plain table
 typescript/vibelang/cases/generator-admitted-throws.fail/main.vibe:4:32 lambda choice fallback
 typescript/vibelang/cases/generator-admitted-throws.fail/main.vibe:5:42 lambda plain table
