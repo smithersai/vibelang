@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:unhomed-pattern-subject-prefix\nfunction g ( a = join xs is [ let first , ... 1 ] ) { }")

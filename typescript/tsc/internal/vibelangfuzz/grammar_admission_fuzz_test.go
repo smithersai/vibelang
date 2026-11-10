@@ -358,6 +358,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-jsdoc-alias-static-field", "schema S = ?? { static id : Missing } ;"},
 	{"import-type-empty-type-arguments", grammarImportTypeArgumentForms[0]},
 	{"unhomed-pattern-reserved-reference", grammarUnhomedPatternReservedReference},
+	{"unhomed-pattern-subject-prefix", grammarUnhomedOperandWitness},
 	{"class-heritage-type-argument-line-break", grammarHeritageLineBreakForms[3]},
 	{"import-meta-specifier-non-null", grammarImportMetaSpecifierWrappers[0]},
 	{"import-meta-specifier-assertion", grammarImportMetaSpecifierWrappers[1]},
@@ -1513,6 +1514,14 @@ func grammarAdmissionForm(source string) string {
 			outside := "admission:" + word + "-outside-effect"
 			if grammarAdmissionPlainGeneratorAt(file, start) {
 				outside = "admission:fiber-in-generator"
+			}
+			// An unhomed binding discards its subject too. Keep a lost
+			// subject rejection in the placement-marker family.
+			for _, marker := range grammarPatternMarkers(file) {
+				if marker.code == 4703 && marker.pos <= start && end <= marker.end {
+					outside = "admission:unhomed-pattern-subject"
+					break
+				}
 			}
 			// A same-line name/literal juxtaposition cannot be an inherited
 			// TS call, member, binary expression, tagged template or ASI.

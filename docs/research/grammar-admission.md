@@ -964,6 +964,8 @@ keyed `admission:module-redeclared-body`, with its registry row on
 The redeclared-module pending family takes precedence over forms inside its unchecked body. A duplicate module reports only `EK4005`, so a nested plain arrow containing `try`, a malformed arrow or an invalid schema field must retain `admission:module-redeclared-body`. Keyed corpus and regression mutations cover these overlaps; single modules, distinct module names, nested declarations, strings and comments remain controls. The compiler still needs to check the duplicate body's syntax.
 
 
+An unhomed `is` binding can discard its subject independently of deferred pattern syntax errors. The valid pattern `[let first, ...1]` in a parameter default hides an outside-Effect `join` or `fork` in that subject behind `EK0705`. A recorded fiber prefix inside the generated placement marker keeps the separate `admission:unhomed-pattern-subject` key. Keyed corpus, quoted `[+Effect]` productions, parameter-default and enum mutations, and native-prefix, ordinary-call, homed and inert-text controls preserve that boundary.
+
 A reserved reference inside the same unhomed pattern is also a member of
 `admission:unhomed-pattern-grammar`: `function g(a = xs is [let first,
 static, 1]) {}` reports only `EK0705`, while an `if` condition exposes the

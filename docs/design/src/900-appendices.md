@@ -1034,7 +1034,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1078 records)</summary>
+<summary>Parser and lowering hooks (1079 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1212,6 +1212,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.parseMatchListPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.parseMatchListPattern@pattern-rest-ellipsis ` | ` admission:pattern-rest-ellipsis ` | ` - ` | ` pending ` | VIP-7 pinned `MatchRestElement` admits one ellipsis and an optional `MatchPattern`; a repeated ellipsis with a binding in a `var` loop condition reports only checker errors |
 | ` parser/vibelang_match.go:Parser.parseVibeLangIs@unhomed-pattern-grammar ` | ` admission:unhomed-pattern-grammar ` | ` - ` | ` pending ` | VIP-7 pinned `MatchList` puts its rest element last and a `MatchProperty` colon takes a `MatchPattern`; a binding `is` pattern with no lexical home reports only its placement error, which covers the `EK0707` of a missing pattern or of an element after the rest |
+| ` parser/vibelang_match.go:Parser.parseVibeLangIs@unhomed-pattern-subject ` | ` admission:unhomed-pattern-subject ` | ` - ` | ` pending ` | VIP-7 and VIP-17: a binding `is` pattern with no lexical home discards an outside-Effect `fork` or `join` subject before its context rejection; independent deferred pattern syntax errors retain their diagnostics |
 | ` parser/vibelang_match.go:Parser.parseMatchObjectPattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:Parser.isVibeLangIs ` | ` admission:match ` | ` 900-appendices.md#MatchExpression ` | ` support ` | VIP-7 pinned matcher parsing and lowering helpers |
 | ` parser/vibelang_match.go:VibeLangIsRecoveryBindingDeclaration ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 004-match.md ` | ` recovery ` | VIP-7: identifies a rejected duplicate is binding so the binder gives it a recovery symbol; introduces no syntax (6a741ef0) |
