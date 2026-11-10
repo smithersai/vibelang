@@ -2392,3 +2392,4 @@ typescript/vibelang/cases/w01-004-custom-matcher-ambient/main.vibe:17:3 lambda: 
 # rules 12: local type declarations named Effect retain their own type meaning (VIP-14).
 typescript/vibelang/cases/witness-legacy-infer-slot-admission.fail/shadow.vibe:3:25 lambda: effectFn annotation -> plain annotation # The local Effect type shadows the prelude, so the arrow keeps its plain return contract.
 typescript/vibelang/cases/reserved-fiber-type-controls/main.vibe:15:30 lambda: plain fallback -> plain annotation # The lexical Callable alias supplies the arrow's plain function annotation; its function kind stays plain.
+typescript/vibelang/cases/effect-parameter-decorator-await.fail/main.vibe:3:18 lambda: plain fallback -> plain keyword # VIP-1: this unmarked source callable keeps its plain kind when the mapper classifies function literals.

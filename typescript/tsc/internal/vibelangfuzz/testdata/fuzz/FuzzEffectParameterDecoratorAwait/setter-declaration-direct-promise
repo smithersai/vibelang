@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("setter:declaration:direct:promise")

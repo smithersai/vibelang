@@ -97,6 +97,14 @@ func inEffectCode(node *ast.Node) bool {
 // callables and class/enum contexts own their own await restrictions.
 func inEffectParameterInitialization(node *ast.Node) bool {
 	for child, parent := node, node.Parent; parent != nil; child, parent = parent, parent.Parent {
+		// Decorator expressions run where their class is defined.
+		if classDecoratorChild(parent, child) && ast.IsClassLike(parent) {
+			continue
+		}
+		if classDecoratorChild(parent, child) {
+			parent = parent.Parent
+			continue
+		}
 		// A class base evaluates where the class is defined, including in a default.
 		if classExtendsChild(parent, child) {
 			continue
