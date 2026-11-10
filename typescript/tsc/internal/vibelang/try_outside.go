@@ -109,6 +109,15 @@ func inEffectParameterInitialization(node *ast.Node) bool {
 		if classExtendsChild(parent, child) {
 			continue
 		}
+		// Computed names evaluate before their member callable or field exists.
+		if classMemberNameChild(parent, child) {
+			parent = parent.Parent
+			continue
+		}
+		if ast.IsComputedPropertyName(child) && ast.IsFunctionLike(parent) &&
+			parent.Parent != nil && ast.IsObjectLiteralExpression(parent.Parent) {
+			continue
+		}
 		if !isFunctionBoundary(parent) || isCalledInPlace(parent) || isCatchLeftFunction(parent) {
 			continue
 		}

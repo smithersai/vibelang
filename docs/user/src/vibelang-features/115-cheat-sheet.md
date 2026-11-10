@@ -714,6 +714,8 @@ When a returning `do` appears in a parameter default, earlier defaults in the sa
 
 Directly evaluated `await` in an Effect callable's parameter default reports `EK0102`. This includes a class's `extends` expression in that default, including after an earlier returning `do`. Move Promise work into an appropriate callable body; a nested `async` callable keeps its own native rules.
 
+Directly evaluated `await` in an Effect callable's parameter default reports `EK0102`, including computed class element names and object method or getter names. This also applies after an earlier returning `do`; a nested `async` callable keeps its own native rules.
+
 A `break` or `continue` whose target is outside an `effect { }` block is `EK0202`; the block runs as its own Effect. Class decorators, computed member names and `extends` expressions keep that enclosing block context. A `do` in those positions reports `EK0202` when its jump would leave the block; written method bodies keep their own targets.
 
 **Effect blocks as arguments**. Pass `effect { ... }` as an ordinary argument. A test API takes a callback that returns the Effect, such as `it.live("name", () => effect { ... })`.

@@ -1,0 +1,123 @@
+// expect: EK0102 TS1166
+import { Effect } from "effect"
+
+export effect function read1(base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read2(base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read3(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read4(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read5 = effect function(base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read6 = effect function(base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read7 = effect function(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read8 = effect function(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read9 = effect (base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) => 0
+export const read10 = effect (base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) => 0
+export const read11 = effect (early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) => 0
+export const read12 = effect (early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) => 0
+export class read13 { effect read(base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read14 { effect read(base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read15 { effect read(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read16 { effect read(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read17 = { effect read(base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read18 = { effect read(base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read19 = { effect read(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read20 = { effect read(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export effect function* read21(base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read22(base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read23(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read24(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function read25(base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { return 0 }
+export effect function read26(base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { return 0 }
+export effect function read27(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { return 0 }
+export effect function read28(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { return 0 }
+export const read29 = effect function(base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { return 0 }
+export const read30 = effect function(base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { return 0 }
+export const read31 = effect function(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { return 0 }
+export const read32 = effect function(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { return 0 }
+export const read33 = effect (base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) => 0
+export const read34 = effect (base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) => 0
+export const read35 = effect (early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) => 0
+export const read36 = effect (early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) => 0
+export class read37 { effect read(base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { return 0 } }
+export class read38 { effect read(base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { return 0 } }
+export class read39 { effect read(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { return 0 } }
+export class read40 { effect read(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { return 0 } }
+export const read41 = { effect read(base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { return 0 } }
+export const read42 = { effect read(base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { return 0 } }
+export const read43 = { effect read(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { return 0 } }
+export const read44 = { effect read(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { return 0 } }
+export effect function* read45(base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { yield 0 }
+export effect function* read46(base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { yield 0 }
+export effect function* read47(early = do { if (false) return; 0 }, base = class { [((await Promise.resolve("read")) as unknown as "read")] = 1 }) { yield 0 }
+export effect function* read48(early = do { if (false) return; 0 }, base = class { [((await (undefined as any)) as unknown as "read")] = 1 }) { yield 0 }
+export effect function read49(base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read50(base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read51(early = do { if (false) return; 0 }, base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read52(early = do { if (false) return; 0 }, base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read53 = effect function(base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read54 = effect function(base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read55 = effect function(early = do { if (false) return; 0 }, base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read56 = effect function(early = do { if (false) return; 0 }, base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read57 = effect (base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) => 0
+export const read58 = effect (base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) => 0
+export const read59 = effect (early = do { if (false) return; 0 }, base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) => 0
+export const read60 = effect (early = do { if (false) return; 0 }, base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) => 0
+export class read61 { effect read(base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read62 { effect read(base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read63 { effect read(early = do { if (false) return; 0 }, base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read64 { effect read(early = do { if (false) return; 0 }, base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read65 = { effect read(base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read66 = { effect read(base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read67 = { effect read(early = do { if (false) return; 0 }, base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read68 = { effect read(early = do { if (false) return; 0 }, base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export effect function* read69(base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read70(base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read71(early = do { if (false) return; 0 }, base = class { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read72(early = do { if (false) return; 0 }, base = class { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function read73(base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read74(base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read75(early = do { if (false) return; 0 }, base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read76(early = do { if (false) return; 0 }, base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read77 = effect function(base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read78 = effect function(base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read79 = effect function(early = do { if (false) return; 0 }, base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read80 = effect function(early = do { if (false) return; 0 }, base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read81 = effect (base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) => 0
+export const read82 = effect (base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) => 0
+export const read83 = effect (early = do { if (false) return; 0 }, base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) => 0
+export const read84 = effect (early = do { if (false) return; 0 }, base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) => 0
+export class read85 { effect read(base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read86 { effect read(base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read87 { effect read(early = do { if (false) return; 0 }, base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read88 { effect read(early = do { if (false) return; 0 }, base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read89 = { effect read(base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read90 = { effect read(base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read91 = { effect read(early = do { if (false) return; 0 }, base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read92 = { effect read(early = do { if (false) return; 0 }, base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export effect function* read93(base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read94(base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read95(early = do { if (false) return; 0 }, base = { [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read96(early = do { if (false) return; 0 }, base = { [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function read97(base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read98(base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read99(early = do { if (false) return; 0 }, base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export effect function read100(early = do { if (false) return; 0 }, base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read101 = effect function(base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read102 = effect function(base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read103 = effect function(early = do { if (false) return; 0 }, base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read104 = effect function(early = do { if (false) return; 0 }, base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 }
+export const read105 = effect (base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) => 0
+export const read106 = effect (base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) => 0
+export const read107 = effect (early = do { if (false) return; 0 }, base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) => 0
+export const read108 = effect (early = do { if (false) return; 0 }, base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) => 0
+export class read109 { effect read(base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read110 { effect read(base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read111 { effect read(early = do { if (false) return; 0 }, base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export class read112 { effect read(early = do { if (false) return; 0 }, base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read113 = { effect read(base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read114 = { effect read(base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read115 = { effect read(early = do { if (false) return; 0 }, base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { return 0 } }
+export const read116 = { effect read(early = do { if (false) return; 0 }, base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { return 0 } }
+export effect function* read117(base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read118(base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read119(early = do { if (false) return; 0 }, base = { get [((await Promise.resolve("read")) as unknown as "read")]() { return 1 } }) { yield 0 }
+export effect function* read120(early = do { if (false) return; 0 }, base = { get [((await (undefined as any)) as unknown as "read")]() { return 1 } }) { yield 0 }
