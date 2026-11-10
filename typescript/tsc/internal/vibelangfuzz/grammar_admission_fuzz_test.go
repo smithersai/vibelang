@@ -282,6 +282,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-signature-reserved-rest", "schema S = { (...static: Missing[]): Missing }"},
 	{"effect-type-second-bang-line-break", "{ type T = (\nnumber ! string\n! 1 )\nboolean }"},
 	{"effect-type-second-bang-nested", "type T = [number, (number!string\n!boolean)];"},
+	{"effect-type-callback-second-bang-line-break", grammarCallbackSecondBangWitness},
 	{"schema-effect-method", "schema S = { effect id() }"},
 	{"schema-effect-method-line-break", "schema S =\n{ async\neffect effect (\n) }"},
 	{"fiber-primary-reference", "effect function f() { return new join.target; }"},

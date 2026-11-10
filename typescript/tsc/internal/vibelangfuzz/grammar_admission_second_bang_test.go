@@ -6,7 +6,8 @@ import (
 )
 
 // Removing only the line terminator before a second bang must restore a full
-// Appendix A derivation. Delimiter scopes keep nested operands independent.
+// Appendix A derivation, in an alias or any other type annotation.
+// Delimiter scopes keep nested operands independent.
 func grammarSecondBangLineBreak(ts []grammarToken) bool {
 	type scope struct {
 		open     string
@@ -31,7 +32,7 @@ func grammarSecondBangLineBreak(ts []grammarToken) bool {
 			scopes[at].lastBang = -1
 		case "!":
 			last := scopes[at].lastBang
-			if tok.nl && last >= 0 && last != i-1 && grammarInTypeAlias(ts, i) {
+			if tok.nl && last >= 0 && last != i-1 {
 				marks[i] = true
 			}
 			scopes[at].lastBang = i
