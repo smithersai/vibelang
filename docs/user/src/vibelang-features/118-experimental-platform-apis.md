@@ -21,7 +21,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
-| `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, `history` | `memory`, `layerStore(store)`, in any runtime |
+| `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `history`, `replay`, `fork`, `rewind` | `memory`, `layerStore(store)`, in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -707,3 +707,18 @@ A task may cache its successful result: `cache: { ttlMs?, scope? }`, Smithers' `
 Reuse across runs is opt-in: `"flow"` and `"shared"` need an `implementationVersion`, so a result is never served to different code, and declaring one without it throws. Only a `"sealed"` task may cache, because a cache hit skips the handler and its outside effects. An entry may expire after `ttlMs`. A run's committed result never depends on an entry: the hit is journaled as the step's result, and a finished run answers from its journal.
 
 `Experimental.Durable.history(run)` is the run's journal as a `Stream` of `{ run, seq, eventType, payload, at }`, read through the `Experimental.Durable.Durable` service the engine layers provide. A run's id is Effect's execution id, `Order.executionId(payload)`.
+
+### Runs and time travel
+
+A run's handle is a value over its id: `Experimental.Durable.run(W, id)` gives `result`, which waits for the run and resumes it if it stopped, `poll`, `cancel` and `resume`. `Experimental.Durable.spawn(W, payload)` starts or joins the run equal input names and returns its handle at once. `Experimental.Durable.start(W, payload)` always starts a new run, for work that must happen again. `Experimental.Durable.runs({ status?, workflow? })` streams the stored runs.
+
+A position is `{ run, seq }`: a run and a sequence number in its journal.
+
+| Call | Meaning |
+| --- | --- |
+| `Experimental.Durable.replay(at, { initial, reduce })` | Folds the journal through `at`. Runs nothing and needs no workflow registered. |
+| `Experimental.Durable.fork(at)` | A new run that reuses every step finished before `at`; run it with `Experimental.Durable.run(W, copy.run).result`. The original is unchanged. |
+| `Experimental.Durable.rewind(at)` | Truncates the run to the entries before `at` and leaves it suspended; the next execution runs the removed steps again. |
+| `Experimental.Durable.sweep({ olderThan })` | Deletes finished runs older than `olderThan`, and expired cache entries. Nothing is deleted on a schedule the program did not set. |
+
+`fork`, `rewind` and `replay` fail with `Experimental.Durable.TimeTravelError`, whose `code` is one of Smithers' twelve. This engine raises `not_found` for an unknown run, `invalid` for a position outside the journal, `busy` when this engine is running the run, `irreversible` when a rewind would remove an irreversible task's step, because no engine can unsend an email, and `compensation_failed` when it would remove a compensable one, because undoing a step is not built yet. A rewind claims the run, so another engine still driving it dies with `FenceLost` at its next write. Note that `fork` is a reserved word in Effect code: name the result `copy`, as above.

@@ -33,7 +33,10 @@
  */
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
+import * as Data from "effect/Data"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Random from "effect/Random"
@@ -483,3 +486,240 @@ export const task = <
   })
   return self as unknown as Task<Key, Payload, Success, Error>
 }
+
+/**
+ * A position in history: a run and a sequence number in its journal.
+ *
+ * @category time travel
+ * @since 0.0.13
+ */
+export interface Position {
+  readonly run: string
+  readonly seq: number
+}
+
+/**
+ * Why {@link fork} or {@link rewind} refused, from Smithers' closed list.
+ * This engine raises `not_found`, `invalid`, `busy`, `irreversible` and
+ * `compensation_failed`; the others are reserved for engines that need them.
+ *
+ * @category errors
+ * @since 0.0.13
+ */
+export type TimeTravelErrorCode =
+  | "busy"
+  | "live_parent"
+  | "live_child"
+  | "not_found"
+  | "invalid"
+  | "already_crossed"
+  | "rate_limited"
+  | "compensation_failed"
+  | "irreversible"
+  | "fence_lost"
+  | "limit_exceeded"
+  | "unknown"
+
+/**
+ * @category errors
+ * @since 0.0.13
+ */
+export class TimeTravelError extends Data.TaggedError("TimeTravelError")<{
+  readonly code: TimeTravelErrorCode
+  readonly message: string
+}> {}
+
+const refuse = (code: TimeTravelErrorCode, message: string) => Effect.fail(new TimeTravelError({ code, message }))
+
+const journalOf = (durable: Durable, run: string) =>
+  Effect.gen(function*() {
+    const row = yield* durable.internals.store.get(run)
+    if (Option.isNone(row)) return yield* refuse("not_found", `No run ${run}`)
+    const entries = yield* durable.internals.store.entries(run)
+    return { row: row.value, entries }
+  })
+
+/**
+ * Folds the run's journal from its first entry through `at.seq`. It reads
+ * only the journal: it runs nothing, needs no workflow registered, and
+ * changes nothing.
+ *
+ * @category time travel
+ * @since 0.0.13
+ */
+export const replay = <S>(at: Position, fold: {
+  readonly initial: S
+  readonly reduce: (state: S, entry: JournalEntry) => S
+}): Effect.Effect<S, TimeTravelError, Durable> =>
+  Effect.gen(function*() {
+    const durable = yield* Durable
+    const { entries } = yield* journalOf(durable, at.run)
+    if (!Number.isInteger(at.seq) || at.seq < 1 || at.seq > entries.length) {
+      return yield* refuse("invalid", `Run ${at.run} has entries 1 to ${entries.length}, not ${at.seq}`)
+    }
+    let state = fold.initial
+    for (const entry of entries) {
+      if (entry.seq > at.seq) break
+      state = fold.reduce(state, entry)
+    }
+    return state
+  })
+
+/**
+ * A new run that starts as `at.run` was just before `at.seq`: it reuses
+ * every step the journal finished before that position and runs the rest
+ * when it is resumed or executed, with {@link run}. The original run is
+ * unchanged. A fork's first event after the copied ones is `RunForked`.
+ *
+ * @category time travel
+ * @since 0.0.13
+ */
+export const fork = (at: Position): Effect.Effect<{ readonly run: string }, TimeTravelError, Durable> =>
+  Effect.gen(function*() {
+    const durable = yield* Durable
+    const { entries } = yield* journalOf(durable, at.run)
+    if (!Number.isInteger(at.seq) || at.seq < 2 || at.seq > entries.length + 1) {
+      return yield* refuse("invalid", `A fork of run ${at.run} starts at 2 to ${entries.length + 1}, not ${at.seq}`)
+    }
+    const store = durable.internals.store
+    const target = (yield* canonical.sha256(`fork:${at.run}:${at.seq}:${globalThis.crypto.randomUUID()}`)).slice(0, 32)
+    const now = yield* Clock.currentTimeMillis
+    yield* Effect.orDie(store.fork(at.run, at.seq, target, now))
+    yield* Effect.orDie(store.append(target, [{ eventType: "RunForked", payload: { from: { run: at.run, seq: at.seq } } }], now))
+    return { run: target }
+  })
+
+/**
+ * Truncates the run to the entries before `at.seq` and leaves it suspended:
+ * the next execution replays the kept steps and runs the rest again. The
+ * engine claims the run, so another engine still driving it dies with
+ * `FenceLost` at its next write. Refuses with `busy` while this engine is
+ * running it, and with `irreversible` when a removed step was an
+ * irreversible task's, because no engine can unsend an email. Undoing a
+ * compensable step is not built, so crossing one is `compensation_failed`.
+ *
+ * @category time travel
+ * @since 0.0.13
+ */
+export const rewind = (at: Position): Effect.Effect<void, TimeTravelError, Durable> =>
+  Effect.gen(function*() {
+    const durable = yield* Durable
+    const { entries } = yield* journalOf(durable, at.run)
+    if (!Number.isInteger(at.seq) || at.seq < 2 || at.seq > entries.length + 1) {
+      return yield* refuse("invalid", `A rewind of run ${at.run} keeps entries before 2 to ${entries.length + 1}, not ${at.seq}`)
+    }
+    if (durable.internals.isLive(at.run)) return yield* refuse("busy", `Run ${at.run} is running`)
+    for (const entry of entries) {
+      if (entry.seq < at.seq || entry.eventType !== "StepStarted") continue
+      const { step, tier } = entry.payload as { readonly step: string; readonly tier?: Tier }
+      if (tier === "irreversible") return yield* refuse("irreversible", `Step ${step} at ${entry.seq} is irreversible`)
+      if (tier === "compensable") {
+        return yield* refuse("compensation_failed", `Step ${step} at ${entry.seq} is compensable, and compensation is not built`)
+      }
+    }
+    const store = durable.internals.store
+    const now = yield* Clock.currentTimeMillis
+    durable.internals.evict(at.run)
+    const fence = yield* Effect.orDie(store.truncate(at.run, at.seq, durable.internals.owner, now))
+    yield* Effect.orDie(store.commit(at.run, { fence, events: [{ eventType: "RunRewound", payload: { to: at.seq } }] }, now))
+  })
+
+/**
+ * Stored runs, optionally only those with a status or of one workflow.
+ *
+ * @category runs
+ * @since 0.0.13
+ */
+export const runs = (filter: { readonly status?: RunStatus; readonly workflow?: string } = {}): Stream.Stream<RunRow, never, Durable> =>
+  Stream.unwrap(Effect.map(Effect.service(Durable), (durable) => Stream.fromIterableEffect(durable.internals.store.list(filter))))
+
+/**
+ * Deletes finished runs last changed more than `olderThan` ago, and expired
+ * cache entries. Returns how many runs it deleted. Nothing is deleted on a
+ * schedule the program did not set.
+ *
+ * @category runs
+ * @since 0.0.13
+ */
+export const sweep = (options: { readonly olderThan: Duration.Input }): Effect.Effect<number, never, Durable> =>
+  Effect.gen(function*() {
+    const durable = yield* Durable
+    const now = yield* Clock.currentTimeMillis
+    return yield* durable.internals.store.sweep(now - Duration.toMillis(Duration.fromInputUnsafe(options.olderThan)), now)
+  })
+
+/**
+ * A handle on a stored run of `W`. It is a value over the id: build one again
+ * from the id at any time.
+ *
+ * @category runs
+ * @since 0.0.13
+ */
+export interface Run<A, E> {
+  readonly id: string
+  /** Waits for the run, resuming it if it is stopped. A finished run gives its recorded result. */
+  readonly result: Effect.Effect<A, E, WorkflowEngine.WorkflowEngine | Durable>
+  /** The exit once the run has finished; none while it runs or waits. */
+  readonly poll: Effect.Effect<Option.Option<Exit.Exit<A, E>>, never, WorkflowEngine.WorkflowEngine>
+  /** Interrupts the run. */
+  readonly cancel: Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>
+  /** Drives a stopped run again, without waiting. */
+  readonly resume: Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>
+}
+
+type AnyWorkflow = Workflow.Workflow<string, Workflow.AnyStructSchema, Schema.Top, Schema.Top>
+
+/**
+ * The handle of run `id` of `W`.
+ *
+ * @category runs
+ * @since 0.0.13
+ */
+export const run = <W extends AnyWorkflow>(W: W, id: string): Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]> => ({
+  id,
+  result: Effect.gen(function*() {
+    const durable = yield* Durable
+    const row = yield* durable.internals.store.get(id)
+    if (Option.isNone(row)) return yield* Effect.die(new TimeTravelError({ code: "not_found", message: `No run ${id}` }))
+    const engine = yield* WorkflowEngine.WorkflowEngine
+    const payload = engineInternal.decodePayload(W, row.value.payload)
+    return yield* engine.execute(W, { executionId: id, payload })
+  }) as Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]>["result"],
+  poll: Effect.map(W.poll(id), (result) =>
+    Option.flatMap(result, (result) => result._tag === "Complete" ? Option.some(result.exit) : Option.none())) as Run<
+      W["successSchema"]["Type"],
+      W["errorSchema"]["Type"]
+    >["poll"],
+  cancel: W.interrupt(id),
+  resume: W.resume(id)
+})
+
+/**
+ * Starts the run `W` would run for `payload`, or joins it if it exists, and
+ * returns its handle at once.
+ *
+ * @category runs
+ * @since 0.0.13
+ */
+export const spawn = <W extends AnyWorkflow>(W: W, payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>) =>
+  Effect.gen(function*() {
+    const id = yield* W.executionId(payload)
+    yield* W.execute(payload, { discard: true })
+    return run(W, id)
+  })
+
+/**
+ * Always starts a new run of `W`, even when an equal payload already has one,
+ * and returns its handle. Use it for work that must happen again, such as a
+ * scheduled occurrence.
+ *
+ * @category runs
+ * @since 0.0.13
+ */
+export const start = <W extends AnyWorkflow>(W: W, payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>) =>
+  Effect.gen(function*() {
+    const engine = yield* WorkflowEngine.WorkflowEngine
+    const id = (yield* canonical.sha256(`start:${W._tag}:${globalThis.crypto.randomUUID()}`)).slice(0, 32)
+    yield* engine.execute(W, { executionId: id, payload: W.payloadSchema.make(payload), discard: true })
+    return run(W, id)
+  })
