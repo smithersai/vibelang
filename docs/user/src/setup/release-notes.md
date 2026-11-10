@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Vite metadata such as `import.meta.glob`, `env` and `hot`, and Node metadata such as `import.meta.dirname`, were rejected as host access. They now use the host's `ImportMeta` declarations and TypeScript diagnostics, and migration preserves them in the original module.
 
+- Converting a package module could stop API checking with `Conflicting declaration snapshot alias`. The check now recognizes the compiler's `x.d.ts` forwarding file as the same module and keeps authored declarations separate.
+
 - Open and proposed VIPs could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
 
 - An instance method body or property initializer in a `service` could hide errors on its other static members. Each rejected member now reports its own `EK0902`.

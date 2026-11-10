@@ -494,6 +494,25 @@ function commonDirectory(files) {
   return parts.join(sep) || sep
 }
 
+// Native .d.ts output forwards to the compatibility sidecar. Accept only that
+// forwarding shape, so an authored declaration keeps its own snapshot identity.
+function nativeDeclarationForwarder(ts, text, specifier) {
+  const file = ts.createSourceFile("native.d.ts", text, ts.ScriptTarget.Latest, true)
+  if (file.parseDiagnostics.length || !file.statements.length) return false
+  const statements = file.statements
+  if (statements.length === 2 && ts.isImportEqualsDeclaration(statements[0]) && ts.isExportAssignment(statements[1])) {
+    const imported = statements[0], assigned = statements[1], reference = imported.moduleReference
+    return !imported.isTypeOnly && ts.isExternalModuleReference(reference) &&
+      reference.expression && ts.isStringLiteral(reference.expression) && reference.expression.text === specifier &&
+      assigned.isExportEquals && ts.isIdentifier(assigned.expression) && assigned.expression.text === imported.name.text
+  }
+  return statements.every(statement => ts.isExportDeclaration(statement) &&
+    !statement.isTypeOnly && !statement.attributes && statement.moduleSpecifier &&
+    ts.isStringLiteral(statement.moduleSpecifier) && statement.moduleSpecifier.text === specifier &&
+    (!statement.exportClause || ts.isNamedExports(statement.exportClause) &&
+      statement.exportClause.elements.every(element => !element.isTypeOnly && !element.propertyName && element.name.text === "default")))
+}
+
 /** Snapshot entry-point aliases while the original package manifest and tsconfigs still exist. */
 const absentSourceDir = ".migrate-absent-sources"
 // Project errors for a source outside the declaration output root.
@@ -520,6 +539,7 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
     if (config.error) throw new Error("cannot read declaration project " + tsconfig)
     const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, posix.dirname(path), { allowNonTsExtensions: true }, path,
       undefined, [{ extension: ".vibe", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }, { extension: ".vibex", isMixedContent: false, scriptKind: ts.ScriptKind.Deferred }])
+    let nativeSettings, nativeSettingsRead = false
     const layout = { prefix: posix.normalize(prefix) }
     const configuredOutput = parsed.options.declarationDir ?? parsed.options.outDir ?? parsed.options.rootDir
     if (configuredOutput) layout.directory = rel(packageDir, configuredOutput) || "."
@@ -640,6 +660,18 @@ export function recordDeclarationSurface(ts, dir, packageDir, projects, manifest
         for (const ext of [".ts", ".vibe", ".d.vibe.ts"]) aliases[rel(packageDir, source).replace(/\.(ts|vibe)$/, ext)] = declaration
       } else if (/\.(tsx|vibex)$/.test(source)) {
         for (const ext of [".tsx", ".vibex", ".d.vibex.ts"]) aliases[rel(packageDir, source).replace(/\.(tsx|vibex)$/, ext)] = declaration
+      }
+      // The native lookup declaration and its sidecar represent one source,
+      // including under sidecarDir. Do not retain the forwarding file as a
+      // separate handwritten entry when the package tree is snapshotted.
+      if (/\.vibex?$/.test(source)) {
+        if (!nativeSettingsRead) {
+          nativeSettings = sidecarSettings(path, ts)
+          nativeSettingsRead = true
+        }
+        const native = sidecarPath(source, nativeSettings).replace(/\.d\.vibex?\.ts$/, ".d.ts")
+        if (existsSync(native) && nativeDeclarationForwarder(ts, readFileSync(native, "utf8"), "./" + basename(source)))
+          aliases[rel(packageDir, native)] = declaration
       }
       // A rootDirs mirror can publish the compiler-owned sidecar directly.
       // Bind it only when one existing mirror has the exact emitted bytes.
