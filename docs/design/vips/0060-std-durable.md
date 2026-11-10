@@ -1,0 +1,231 @@
+# VIP-60: `Experimental.Durable`, the durable runtime: journal, replay, run state, step cache and time travel
+
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+
+## Will's words
+
+> Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
+
+> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+
+## Summary
+
+**One sentence.** `Experimental.Durable` is the standard-library module that runs what `task` and `workflow` declare: it journals each step, replays a run after a crash, caches results, and reads, forks or rewinds a run's past.
+
+**One paragraph.** The language VIPs emit Smithers declarations. This module is the engine under them, and it is Smithers' engine, ported behind one namespace. A program picks a store with one layer: `Durable.memory` for tests, `Durable.sqlite` or `Durable.postgres` for a server. Everything else is a function over a run id. The module wraps eight Smithers packages (`engine`, `engine-store`, `journal`, `run-store`, `step-cache`, `time-travel`, `keys`, `canonical`) and adds no behavior of its own. Three things stay separate throughout: a run's progress, its committed history, and the cache of reusable results.
+
+```text
+ workflow Triage ──► Durable ──► journal      append-only events, one order per run
+                        │   ──► run store    one row per run: status, owner, heartbeat
+                        │   ──► step cache   results by content key, shared across runs
+                        ▼
+                  time travel:   replay(at)  read the past       changes nothing
+                                 fork(at)    branch a new run    reuses steps before `at`
+                                 rewind(at)  truncate the run    undoes compensable steps
+```
+
+## Decision
+
+```ts
+// proposed
+export effect function main() {
+  provide Layer.provideMerge(Triage.layer, Experimental.Durable.sqlite({ filename: ".vibe/runs.db" })) {
+    return try Triage("smithersai/smithers")     // kill the process mid-run; the next start resumes the same run
+  }
+}
+```
+
+```ts
+// proposed
+export effect function forkAt(run: string, seq: number) {
+  const events = try Stream.runCollect(Stream.map(Experimental.Durable.history(run), (entry) => entry.eventType))
+  const copy = try Experimental.Durable.fork({ run, seq })
+  return { events, copy }
+}
+```
+
+### Module
+
+`Experimental.Durable`, in scope with no import, as [VIP-33](0033-platform-stdlib.md) rules. Its code is `vibelang-runtime/experimental/Durable`. The timers and signals of [durable-waits](0056-durable-waits.md) live in the same module.
+
+**Engines.** Each is a layer that provides the runtime a workflow's layer needs. None is a default: a workflow with no engine has a missing requirement, and the compiler says so.
+
+| Layer | Store | Smithers |
+| --- | --- | --- |
+| `Durable.memory` | In process, gone at exit. A real engine, not a mock | `FlowEngine.layerMemory` |
+| `Durable.sqlite({ filename, workspace?, owner? })` | One SQLite file | `NodeRuntime.layerHost` in `@smthrs/platform-node`, `BunRuntime.layerHost` in `@smthrs/platform-bun` |
+| `Durable.postgres({ url, owner? })` | PostgreSQL | The same runtimes over `@effect/sql-pg` |
+
+**Runs.**
+
+| Call | Meaning | Smithers |
+| --- | --- | --- |
+| `Durable.run(W, id)` | A `Run<A, E>` handle for a stored run | `W.poll`, `W.execute`, `W.interrupt`, `W.resume` behind it |
+| `Durable.runs({ status?, workflow? })` | A stream of run rows | `RunStore` |
+| `Durable.plan(W, ...args)` | The plan `W` would run for these arguments: nodes, edges, keys, a digest | `Graph.build(flow, payload, { callbackIdentity: "stable" })`, `Graph.drafts`, `Plan.compile` |
+| `Durable.diff(planA, planB)` | Added, removed and re-keyed nodes | `PlanDiff` |
+
+**History and time travel.** A position is `{ run, seq }`: a run and a sequence number in its journal.
+
+| Call | Meaning | Smithers |
+| --- | --- | --- |
+| `Durable.history(run)` | The run's journal, as a stream of `{ seq, eventType, payload }` | `Journal.entries`, paged |
+| `Durable.replay(at, { initial, reduce })` | Fold the journal up to `at`. Runs nothing, and needs only the journal and the cache | `ReadOnlyTimeTravel.replay` |
+| `Durable.fork(at)` | A new run that reuses every step before `at` | `TimeTravel.fork` |
+| `Durable.rewind(at)` | Truncate the run to `at`, undoing compensable steps | `TimeTravel.rewind` |
+
+`fork` and `rewind` fail with `Durable.TimeTravelError`, whose `code` is Smithers' closed list of twelve: `busy`, `live_parent`, `live_child`, `not_found`, `invalid`, `already_crossed`, `rate_limited`, `compensation_failed`, `irreversible`, `fence_lost`, `limit_exceeded`, `unknown`. A rewind refuses to cross an irreversible step: no engine can unsend an email.
+
+**Cache.** A task opts in with `static readonly cache = { ttlMs?, scope? }`, which is `Action.withCache`. `scope` is `"run"`, `"flow"` or `"shared"`. `Durable.remoteCache({ url })` adds a shared tier that speaks the action-cache half of Bazel's remote cache protocol (`RemoteCacheStore`). A cache entry may expire or be evicted; a run's committed result never depends on one.
+
+**Retention.** `Durable.sweep({ olderThan })` deletes old run history and unreferenced artifacts. Nothing is deleted on a schedule the program did not set.
+
+### Guarantees the port keeps
+
+1. **A finished step never runs twice in one run.** A step opens a row before its body and settles it after. A restart reads the record.
+2. **A step that did not finish can run again.** A crash after an outside effect and before the record repeats the handler. Delivery is at-least-once, so an irreversible task carries an idempotency key and the destination deduplicates it.
+3. **One owner per run.** Every durable write is fenced against the owner that claimed the run. A process that came back from the dead fails with `fence_lost`.
+4. **A step's event and its state commit together**, in one transaction, so history has no holes.
+5. **Reuse across runs is opt-in.** It needs an `idempotencyKey`, an `implementationVersion` and a hard file boundary. A memoized model answer is never promoted to the shared cache.
+6. **A changed plan is refused, not rerun.** A resume that rebuilds a different plan than the run recorded fails with `plan_changed`. Nothing repairs a divergence by running under a new key.
+7. **Credentials never reach the journal.** Payloads are scrubbed before they are encoded (`flows/journal/README.md`).
+8. **Identity and representation** follow [VIP-44](0044-durable-values.md): canonical JSON and SHA-256 for identity, an injected `RpcSerialization` for stored bytes.
+
+### What must change in Smithers
+
+- VIP-44's identity rows landed at `main@origin` `bcf8076a4ff4` on 2026-11-09. Its storage rows have not: stored results still use a fixed `Schema.toCodecJson`, not `RpcSerialization.codecFor`.
+- Published `@smthrs/*` 1.0.0-rc.16 requires `effect` 4.0.5, and Vibe 0.0.13 pins 4.1.1. Smithers `main` is on 4.1.1. This module needs the next Smithers release.
+
+### Host needs
+
+| Need | Why |
+| --- | --- |
+| A SQL client | SQLite or PostgreSQL. Browser hosts use SQLite on OPFS in a worker; Cloudflare uses one Durable Object per run. |
+| Effect's `Crypto` digest | Keys and plan digests |
+| `jj` 0.39.0 or later on `PATH` | Only for a compensable task, a fork, and a rewind that crosses a compensable step. A host builds without it, and the first jj operation fails with `not_installed`. |
+
+Which host supplies them is VIP-54's question.
+
+## Claude's decisions
+
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+
+- `Experimental.Durable`, in scope with no import, as [VIP-33](0033-platform-stdlib.md) rules. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Its code is `vibelang-runtime/experimental/Durable`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- The timers and signals of [durable-waits](0056-durable-waits.md) live in the same module. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Engines.** Each is a layer that provides the runtime a workflow's layer needs. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- None is a default: a workflow with no engine has a missing requirement, and the compiler says so. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Layer `Durable.memory`: Store: In process, gone at exit. A real engine, not a mock; Smithers: `FlowEngine.layerMemory`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- A real engine, not a mock | `FlowEngine.layerMemory` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Layer `Durable.sqlite({ filename, workspace?, owner? })`: Store: One SQLite file; Smithers: `NodeRuntime.layerHost` in `@smthrs/platform-node`, `BunRuntime.layerHost` in `@smthrs/platform-bun`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Layer `Durable.postgres({ url, owner? })`: Store: PostgreSQL; Smithers: The same runtimes over `@effect/sql-pg`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Runs.** Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Durable.run(W, id)`: Meaning: A `Run<A, E>` handle for a stored run; Smithers: `W.poll`, `W.execute`, `W.interrupt`, `W.resume` behind it. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Durable.runs({ status?, workflow? })`: Meaning: A stream of run rows; Smithers: `RunStore`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Durable.plan(W, ...args)`: Meaning: The plan `W` would run for these arguments: nodes, edges, keys, a digest; Smithers: `Graph.build(flow, payload, { callbackIdentity: "stable" })`, `Graph.drafts`, `Plan.compile`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Durable.diff(planA, planB)`: Meaning: Added, removed and re-keyed nodes; Smithers: `PlanDiff`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **History and time travel.** A position is `{ run, seq }`: a run and a sequence number in its journal. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Durable.history(run)`: Meaning: The run's journal, as a stream of `{ seq, eventType, payload }`; Smithers: `Journal.entries`, paged. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Durable.replay(at, { initial, reduce })`: Meaning: Fold the journal up to `at`. Runs nothing, and needs only the journal and the cache; Smithers: `ReadOnlyTimeTravel.replay`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Runs nothing, and needs only the journal and the cache | `ReadOnlyTimeTravel.replay` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Durable.fork(at)`: Meaning: A new run that reuses every step before `at`; Smithers: `TimeTravel.fork`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Durable.rewind(at)`: Meaning: Truncate the run to `at`, undoing compensable steps; Smithers: `TimeTravel.rewind`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- `fork` and `rewind` fail with `Durable.TimeTravelError`, whose `code` is Smithers' closed list of twelve: `busy`, `live_parent`, `live_child`, `not_found`, `invalid`, `already_crossed`, `rate_limited`, `compensation_failed`, `irreversible`, `fence_lost`, `limit_exceeded`, `unknown`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- A rewind refuses to cross an irreversible step: no engine can unsend an email. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Cache.** A task opts in with `static readonly cache = { ttlMs?, scope? }`, which is `Action.withCache`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- `scope` is `"run"`, `"flow"` or `"shared"`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Durable.remoteCache({ url })` adds a shared tier that speaks the action-cache half of Bazel's remote cache protocol (`RemoteCacheStore`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- A cache entry may expire or be evicted; a run's committed result never depends on one. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Retention.** `Durable.sweep({ olderThan })` deletes old run history and unreferenced artifacts. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Nothing is deleted on a schedule the program did not set. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A finished step never runs twice in one run.** A step opens a row before its body and settles it after. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- A restart reads the record. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A step that did not finish can run again.** A crash after an outside effect and before the record repeats the handler. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- Delivery is at-least-once, so an irreversible task carries an idempotency key and the destination deduplicates it. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- **One owner per run.** Every durable write is fenced against the owner that claimed the run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- A process that came back from the dead fails with `fence_lost`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A step's event and its state commit together**, in one transaction, so history has no holes. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Reuse across runs is opt-in.** It needs an `idempotencyKey`, an `implementationVersion` and a hard file boundary. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- A memoized model answer is never promoted to the shared cache. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A changed plan is refused, not rerun.** A resume that rebuilds a different plan than the run recorded fails with `plan_changed`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- Nothing repairs a divergence by running under a new key. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Credentials never reach the journal.** Payloads are scrubbed before they are encoded (`flows/journal/README.md`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Identity and representation** follow [VIP-44](0044-durable-values.md): canonical JSON and SHA-256 for identity, an injected `RpcSerialization` for stored bytes. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#guarantees-the-port-keeps) · [Review](reviews/2026-11-09-built-in-set.md).
+- VIP-44's identity rows landed at `main@origin` `bcf8076a4ff4` on 2026-11-09. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-change-in-smithers) · [Review](reviews/2026-11-09-built-in-set.md).
+- Its storage rows have not: stored results still use a fixed `Schema.toCodecJson`, not `RpcSerialization.codecFor`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-change-in-smithers) · [Review](reviews/2026-11-09-built-in-set.md).
+- Published `@smthrs/*` 1.0.0-rc.16 requires `effect` 4.0.5, and Vibe 0.0.13 pins 4.1.1. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-change-in-smithers) · [Review](reviews/2026-11-09-built-in-set.md).
+- Smithers `main` is on 4.1.1. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-change-in-smithers) · [Review](reviews/2026-11-09-built-in-set.md).
+- This module needs the next Smithers release. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-change-in-smithers) · [Review](reviews/2026-11-09-built-in-set.md).
+- Need A SQL client: Why: SQLite or PostgreSQL. Browser hosts use SQLite on OPFS in a worker; Cloudflare uses one Durable Object per run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Browser hosts use SQLite on OPFS in a worker; Cloudflare uses one Durable Object per run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Need Effect's `Crypto` digest: Why: Keys and plan digests. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Need `jj` 0.39.0 or later on `PATH`: Why: Only for a compensable task, a fork, and a rewind that crosses a compensable step. A host builds without it, and the first jj operation fails with `not_installed`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- A host builds without it, and the first jj operation fails with `not_installed`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Which host supplies them is VIP-54's question. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+
+### Adopted review answers
+
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- Repeat calls with the same input join the first run, per VIP-44. Triggers and `W.start` are the two ways to create a second run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review decision](reviews/2026-11-09-built-in-set.md#2-does-running-a-workflow-twice-with-the-same-input-run-it-twice).
+- The `jj` requirement applies only to fork and compensable tasks, including a rewind that restores a compensable task's workspace. Replay, sealed and irreversible tasks need no `jj`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review decision](reviews/2026-11-09-built-in-set.md#5-is-jj-an-acceptable-requirement).
+
+## Compared
+
+The second example in Smithers 1.x. It type-checks against `@smthrs/time-travel` and `@smthrs/flows` 1.0.0-rc.16.
+
+```ts
+import { Engine } from "@smthrs/flows"
+import { TimeTravel } from "@smthrs/time-travel"
+import { Effect } from "effect"
+
+export const forkAt = (runId: string, seq: number) =>
+  Effect.gen(function*() {
+    const timeTravel = yield* TimeTravel
+    const position = { runId, frame: { lineageId: Engine.FlowEngine.Lineage.root(runId), seq } }
+    const events = yield* timeTravel.inspect<ReadonlyArray<string>>(position, {
+      initial: [],
+      reduce: (seen, entry) => [...seen, entry.eventType]
+    })
+    const fork = yield* timeTravel.fork(position)
+    return { events, fork }
+  })
+```
+
+| Program | Tokens (o200k_base) | Lines |
+| --- | --- | --- |
+| Vibe, proposed | 62 | 5 |
+| Smithers 1.x | 153 | 15 |
+
+**Checked.** The `forkAt` example uses only existing syntax and compiles under `vibelang` 0.0.13 against a declaration of the proposed module. The first example uses `workflow`, which is new. The Smithers program type-checks as shown. One trap found while checking: `const fork = …` is `EK1702` in Effect code, because `fork` is reserved.
+
+## Principles
+
+- **TypeScript-first.** A namespace of functions. No syntax.
+- **Effect-second.** Bends, as [durable-tasks-workflows](0055-durable-tasks-workflows.md) says: Effect ships `WorkflowEngine`, and this module is Smithers' engine instead. Every surface is still an Effect, a Layer or a Stream.
+- **Optimized for agentic programs.** A crashed agent resumes without paying for a finished model call. `fork` reruns a run from the step that went wrong.
+- **Highly forkable.** A fork swaps the store by providing another layer. The seam Smithers calls `FlowEngine.Encoded` stays: everything that decides behavior sits above it.
+- **Factory-first.** The factory's runs are `Durable` runs, and their journals are the public record.
+
+## What this changes
+
+- `Experimental.Durable` is new.
+- A Vibe program depends on `@smthrs/flows` when it uses `Durable`, `task` or `workflow`. VIP-44 already made that dependency.
+- Effect's `WorkflowEngine` stays in scope and is unrelated.
+
+## Alternatives
+
+- **Effect's `WorkflowEngine` and `ClusterWorkflowEngine`.** In scope today. No static plan, no step cache, no time travel, and a different identity pipeline from the one VIP-44 accepted.
+- **Expose the eight packages under their own names.** `Journal`, `RunStore`, `CacheStore` and `TimeTravel` are engine parts. A program asks about runs, so the module is organized by run.
+- **A memory engine when nothing is provided.** A durable program would then lose its runs silently. A missing engine is a compile error.
+- **Put time travel in a product.** `smthrs runs replay/fork/rewind` exists and stays. A program that repairs its own runs needs the calls.
+
+## Follow-up questions
+
+1. **`jj` as a requirement.** Decided for v1: only fork and compensable tasks require `jj`, including rewinds that restore those tasks' workspace. `replay`, sealed and irreversible tasks do not.
+2. **How much of the journal is public?** `Durable.history` returns raw entries, whose event types are Smithers' internal vocabulary. Recommendation: publish entries as they are, versioned, and document only the step and wait events.
+3. **Schema changes under a parked run.** A run recorded with one schema and resumed with another is refused today (`payload_changed`). Which changes, such as an added optional field, may resume? Recommendation: refuse all in the first release.
+
+## Depends on
+
+- [VIP-44](0044-durable-values.md), accepted.
+- [capabilities](0058-capabilities.md): the guarded host an engine runs steps on.

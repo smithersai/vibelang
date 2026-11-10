@@ -1,0 +1,189 @@
+# VIP-67: `Experimental.Sandbox`: provisioned machines behind the ordinary platform services
+
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+
+## Will's words
+
+> Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
+
+> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+
+## Summary
+
+**One sentence.** A sandbox is a layer: `provide Experimental.Sandbox.container({ image }) { … }` makes the `ChildProcessSpawner`, `FileSystem` and `Path` inside the block belong to another machine, and the code in the block does not change.
+
+**One paragraph.** An agent that runs commands needs somewhere to run them that is not the developer's laptop. Smithers' `@smthrs/sandbox` adapts ten providers, from a scratch directory to a Kubernetes Pod, to one contract, and from that contract it derives Effect's ordinary platform services. This VIP ports it. Because Vibe code reaches the platform through injected services ([VIP-33](0033-platform-stdlib.md)), a sandbox needs no API of its own at the call site: the same `spawner.string(…)`, the same `Experimental.Tools.bash`, the same `Experimental.Agent.cli` run inside it. The module "implements no isolation of its own". What a sandbox prevents is the provider's property, and the table below says which.
+
+```text
+ provide Experimental.Sandbox.container({ image: "node:22" }) {     this machine          the container
+   const spawner = try ChildProcessSpawner.ChildProcessSpawner       ───────────         ─────────────
+   try spawner.string(ChildProcess.make("node", ["--version"]))       docker exec  ──►   node --version
+   try Experimental.Tools.read({ path: "/workspace/package.json" })   file transfer ──►  /workspace/package.json
+ }                                                                  scope closes ──►     container removed
+```
+
+## Decision
+
+```ts
+// proposed
+export effect function nodeVersion() {
+  provide Experimental.Sandbox.container({ image: "node:22" }) {
+    const spawner = try ChildProcessSpawner.ChildProcessSpawner
+    return try spawner.string(ChildProcess.make("node", ["--version"]))
+  }
+}
+```
+
+### Module
+
+`Experimental.Sandbox`, in scope with no import, as VIP-33 rules. Its code is `vibelang-runtime/experimental/Sandbox`. It ports `@smthrs/sandbox`.
+
+Each provider is a layer that provides `ChildProcessSpawner`, `FileSystem` and `Path` on the machine it holds.
+
+| Layer | Machine | Isolation it gives | Smithers |
+| --- | --- | --- | --- |
+| `Sandbox.directory(root)` | A scratch directory on this machine | None. A separate workspace in the host's own security domain | `DirectorySandbox` |
+| `Sandbox.command(prefix)` | Whatever the prefix reaches: `ssh host`, `docker exec id` | The target's | `CommandSandbox` |
+| `Sandbox.container({ image, network? })` | A container this call starts and removes | The container engine's, as configured. No network unless `network` is set | `ContainerSandbox` |
+| `Sandbox.kubernetes({ image, namespace? })` | One Pod per session | The cluster's | `KubernetesSandbox` |
+| `Sandbox.interpreter()` | An in-process shell interpreter, for hosts that cannot spawn | No real processes exist | `JustBashSandbox` |
+
+Functions:
+
+| Call | Meaning | Smithers |
+| --- | --- | --- |
+| `Sandbox.run(provider, effect)` | Hold one machine for one unit of work. Gives the result and the work its checkout gained, as a git diff | `Sandbox.run` |
+| `Sandbox.supervised(provider, { interval, tolerance })` | Probe the session and retire it when it is dead, so a hung command fails and a retry lands on a fresh one | `SandboxSupervision.layer` |
+| `Sandbox.job(command, { key })` | A command as durable work: start once by key, probe, collect, cancel | `SandboxCommand` |
+| `Sandbox.check(provider)` | Run the conformance suite a provider must pass | `SandboxConformance.check`, `ProviderConformance.check` |
+
+### Rules
+
+1. **Opening is scoped.** The machine lives as long as the `provide` block. Interruption closes the scope and runs the provider's cleanup. A cleanup that fails is reported; it is never counted as done.
+2. **The default is closed.** `Sandbox.container` passes `--network none` unless `network` names a mode.
+3. **The environment is replaced, not inherited.** A child sees `PATH`, `HOME`, `USER`, `LANG`, `LC_*`, `TERM`, `TMPDIR`, `SHELL` and what the caller declares.
+4. **Unsupported process features fail loudly.** Extra file descriptors, `stdin: "inherit"`, detached processes and custom shells fail with a `BadArgument` `PlatformError`. Standard input is delivered whole or refused before the spawn; it is never dropped.
+5. **"Sandbox" is three different claims.** A directory separates a workspace. A container or a virtual machine confines a process. QuickJS, in [std-agent](0063-std-agent.md), confines JavaScript and no process at all. Each provider row states which it is.
+6. **A sandbox and a policy stack.** `provide Experimental.Sandbox.container(…) { provide Experimental.Capability.guard(policy) { … } }` checks each operation and confines the process. Neither replaces the other.
+7. **A process handle is not durable.** A command that must outlive the host that started it is `Sandbox.job`. A provider that cannot tell whether a command ran reports it as lost; the runtime does not rerun it under a new key.
+8. **A new provider proves itself.** A provider adapts its SDK to one of two seams, a command runner or a full machine lifecycle, and passes `Sandbox.check`.
+9. **Failures** are `PlatformError` for an operation and `Sandbox.SandboxError` for the machine.
+
+### Host needs
+
+| Provider | Needs on the host |
+| --- | --- |
+| `directory`, `command`, `container`, `kubernetes` | `ChildProcessSpawner`, and `sh`, `docker` or `kubectl` on `PATH` |
+| `interpreter` | Nothing. Runs in a browser and a Worker |
+
+The module is browser-bundleable: it "adapts a provider a caller hands it and owns no host access of its own".
+
+## Claude's decisions
+
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+
+- `Experimental.Sandbox`, in scope with no import, as VIP-33 rules. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Its code is `vibelang-runtime/experimental/Sandbox`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- It ports `@smthrs/sandbox`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Each provider is a layer that provides `ChildProcessSpawner`, `FileSystem` and `Path` on the machine it holds. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Layer `Sandbox.directory(root)`: Machine: A scratch directory on this machine; Isolation it gives: None. A separate workspace in the host's own security domain; Smithers: `DirectorySandbox`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- A separate workspace in the host's own security domain | `DirectorySandbox` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Layer `Sandbox.command(prefix)`: Machine: Whatever the prefix reaches: `ssh host`, `docker exec id`; Isolation it gives: The target's; Smithers: `CommandSandbox`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Layer `Sandbox.container({ image, network? })`: Machine: A container this call starts and removes; Isolation it gives: The container engine's, as configured. No network unless `network` is set; Smithers: `ContainerSandbox`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- No network unless `network` is set | `ContainerSandbox` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Layer `Sandbox.kubernetes({ image, namespace? })`: Machine: One Pod per session; Isolation it gives: The cluster's; Smithers: `KubernetesSandbox`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Layer `Sandbox.interpreter()`: Machine: An in-process shell interpreter, for hosts that cannot spawn; Isolation it gives: No real processes exist; Smithers: `JustBashSandbox`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Functions: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Sandbox.run(provider, effect)`: Meaning: Hold one machine for one unit of work. Gives the result and the work its checkout gained, as a git diff; Smithers: `Sandbox.run`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Gives the result and the work its checkout gained, as a git diff | `Sandbox.run` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Sandbox.supervised(provider, { interval, tolerance })`: Meaning: Probe the session and retire it when it is dead, so a hung command fails and a retry lands on a fresh one; Smithers: `SandboxSupervision.layer`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Sandbox.job(command, { key })`: Meaning: A command as durable work: start once by key, probe, collect, cancel; Smithers: `SandboxCommand`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Sandbox.check(provider)`: Meaning: Run the conformance suite a provider must pass; Smithers: `SandboxConformance.check`, `ProviderConformance.check`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Opening is scoped.** The machine lives as long as the `provide` block. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Interruption closes the scope and runs the provider's cleanup. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A cleanup that fails is reported; it is never counted as done. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The default is closed.** `Sandbox.container` passes `--network none` unless `network` names a mode. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The environment is replaced, not inherited.** A child sees `PATH`, `HOME`, `USER`, `LANG`, `LC_*`, `TERM`, `TMPDIR`, `SHELL` and what the caller declares. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Unsupported process features fail loudly.** Extra file descriptors, `stdin: "inherit"`, detached processes and custom shells fail with a `BadArgument` `PlatformError`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Standard input is delivered whole or refused before the spawn; it is never dropped. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **"Sandbox" is three different claims.** A directory separates a workspace. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A container or a virtual machine confines a process. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- QuickJS, in [std-agent](0063-std-agent.md), confines JavaScript and no process at all. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Each provider row states which it is. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A sandbox and a policy stack.** `provide Experimental.Sandbox.container(…) { provide Experimental.Capability.guard(policy) { … } }` checks each operation and confines the process. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Neither replaces the other. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A process handle is not durable.** A command that must outlive the host that started it is `Sandbox.job`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A provider that cannot tell whether a command ran reports it as lost; the runtime does not rerun it under a new key. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A new provider proves itself.** A provider adapts its SDK to one of two seams, a command runner or a full machine lifecycle, and passes `Sandbox.check`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Failures** are `PlatformError` for an operation and `Sandbox.SandboxError` for the machine. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Provider `directory`, `command`, `container`, `kubernetes`: Needs on the host: `ChildProcessSpawner`, and `sh`, `docker` or `kubectl` on `PATH`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Provider `interpreter`: Needs on the host: Nothing. Runs in a browser and a Worker. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Runs in a browser and a Worker | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- The module is browser-bundleable: it "adapts a provider a caller hands it and owns no host access of its own". Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+
+### Adopted review answers
+
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- Sandbox provisioning has no `jj` requirement; only durable fork and compensable tasks require it. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review decision](reviews/2026-11-09-built-in-set.md#5-is-jj-an-acceptable-requirement).
+
+## Compared
+
+The same program in Smithers 1.x. It type-checks against `@smthrs/sandbox` 1.0.0-rc.16.
+
+```ts
+import { ContainerSandbox, Sandbox } from "@smthrs/sandbox"
+import { Effect } from "effect"
+import * as ChildProcess from "effect/process/ChildProcess"
+import { ChildProcessSpawner } from "effect/process/ChildProcessSpawner"
+
+export const nodeVersion = Effect.gen(function*() {
+  const spawner = yield* ChildProcessSpawner
+  const provider = ContainerSandbox.make({ spawner, image: "node:22" })
+  const inside = Effect.gen(function*() {
+    const sandboxed = yield* ChildProcessSpawner
+    return yield* sandboxed.string(ChildProcess.make("node", ["--version"]))
+  })
+  return yield* inside.pipe(Effect.provide(Sandbox.layerHost(provider, { session: "run:demo" })))
+})
+```
+
+| Program | Tokens (o200k_base) | Lines |
+| --- | --- | --- |
+| Vibe, proposed | 56 | 6 |
+| Smithers 1.x | 160 | 14 |
+
+`Sandbox.container` reads the outer `ChildProcessSpawner` from context and names the session itself. Smithers passes both by hand.
+
+**Checked.** The Vibe example uses only existing syntax and compiles under `vibelang` 0.0.13 against a declaration of `Experimental.Sandbox.container`. The Smithers program type-checks as shown.
+
+## Principles
+
+- **TypeScript-first.** A layer and a block.
+- **Effect-second.** A sandbox provides Effect's own service tags. No sandbox-shaped API appears in user code.
+- **Optimized for agentic programs.** An agent's shell runs in a container with one line, and its work comes back as a diff.
+- **Highly forkable.** Two seams and a conformance suite. A fork adds a provider without touching a caller.
+- **Factory-first.** The factory's agents run in sandboxes anyone can reproduce from its source.
+
+## What this changes
+
+- `Experimental.Sandbox` is new. No grammar changes.
+- The proposals page's `TypeScriptSandbox` for model-written code is not this module. That is QuickJS, in [std-agent](0063-std-agent.md). This module is machines.
+
+## Alternatives
+
+- **A `sandbox { … }` block.** It is `provide Experimental.Sandbox.container(…) { … }` with a keyword, and it could not name a provider.
+- **All ten providers.** Smithers also adapts Microsandbox, Vercel, Daytona, AWS and Cloudflare. A standard library that ships four vendors maintains four vendors. They are packages that pass `Sandbox.check`.
+- **`Sandbox.apply`**, Smithers' `SandboxMerge.Apply`, which lands a session's diff in a host repository with jj. `Sandbox.run` already returns the diff. Landing it is a repository workflow, and it would make jj a requirement of this module.
+- **Isolation in the compiler**, by refusing code that could escape. A compiler cannot confine a spawned `npm install`.
+- **Run tasks in sandboxes by a `task` member**, `static readonly sandbox = …`. Where a step runs is `placement` ([durable-tasks-workflows](0055-durable-tasks-workflows.md)); which machine that is stays with the host.
+
+## Follow-up questions
+
+1. **A default.** Should `Experimental.Agent.cli` refuse to run outside a sandbox? Recommendation: no refusal, and a compiler warning when `Agent.cli` is reached with no `Sandbox` layer in a `provide` above it.
+2. **Which providers ship.** This VIP ships five and leaves the vendors as packages. Is a microVM provider needed in the box for untrusted model-written commands? Recommendation: not in the first release; `container` with no network is the floor.
+3. **Secrets in a sandbox.** A guest's outbound requests should leave through [std-secrets](0068-std-secrets.md)'s egress, which needs the provider to route them. Only some providers can. Recommendation: make it a field of the conformance report.
+
+## Depends on
+
+- [capabilities](0058-capabilities.md): the policy that stacks with a sandbox.
+- [VIP-33](0033-platform-stdlib.md), accepted: platform access through injected services.

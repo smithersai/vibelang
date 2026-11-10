@@ -1,0 +1,229 @@
+# VIP-63: `Experimental.Agent`: the agent loop, model-written scripts and coding-agent CLIs
+
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+
+## Will's words
+
+> Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
+
+> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+
+## Summary
+
+**One sentence.** `Experimental.Agent.run` runs a model in a loop until it produces a typed answer, with the model writing short scripts that call the tools it was handed, and `Experimental.Agent.cli` runs Claude Code, Codex or OpenCode as one step.
+
+**One paragraph.** Vibe has three ways to run an agent, and only two need new code. A tool-call loop is Effect's, in scope today: `LanguageModel.generateText({ prompt, toolkit })` resolves tool calls while the model answers. A code-mode loop is Smithers': each turn the model emits a small JavaScript program, a "cell", which runs in a QuickJS sandbox and reaches the world through one function. That loop is `Agent.run`. A coding-agent CLI is an external program that speaks the Agent Client Protocol on its stdio; `Agent.cli` drives one. The two differ in what a crash costs. A cell's tool calls are recorded one by one, so a resumed run repeats none that finished. A CLI is recorded as one session: its work is its diff, and its transcript is not replayable execution.
+
+```text
+ Experimental.Agent.run({ prompt, tools, output })
+
+   model ──► cell (JavaScript) ──► QuickJS realm ──► tools.read(…)   each call: permission check, journal entry
+     ▲                                  │            tools.bash(…)
+     └──────── results, next turn ◄─────┘
+                                        └─► done(answer) ──► decode with `output` ──► Result
+```
+
+## Decision
+
+```ts
+// proposed
+schema Review { approved: boolean; issues: readonly string[] }
+
+export effect function review(diff: string) {
+  const result = try Experimental.Agent.run({
+    system: "You are a strict code reviewer.",
+    prompt: `Review this diff:\n${diff}`,
+    tools: Experimental.Tools.filesystem,
+    output: Review
+  })
+  return result.output
+}
+```
+
+```ts
+// proposed
+export effect function fix(issue: string) {
+  provide Experimental.Sandbox.container({ image: "node:22" }) {
+    return try Experimental.Agent.cli("claude", { prompt: `Fix: ${issue}`, cwd: "/workspace" })
+  }
+}
+```
+
+### Module
+
+`Experimental.Agent`, in scope with no import, as [VIP-33](0033-platform-stdlib.md) rules. Its code is `vibelang-runtime/experimental/Agent`.
+
+| Call | Meaning | Built on |
+| --- | --- | --- |
+| `Agent.run(options)` | Run the cell loop to a typed answer. Gives `{ output, turns, usage }` | `Agent.Agent` and `AgentAction` in `@smthrs/agent`, `CellTurn` and `QuickJSSandbox` in `@smthrs/harness` |
+| `Agent.stream(options)` | The same run as a `Stream` of events: text deltas, cells, calls, the final answer | `Agent.run`'s `Stream<AgentEvent>`, `EventSink` |
+| `Agent.cli(profile, options)` | Drive a coding-agent CLI through one task. Gives `{ summary, changed }` | `Acp.make` in `@smthrs/agent`, over `ChildProcessSpawner` |
+| `Agent.detect()` | Which CLIs this machine has, their versions and whether each is signed in | `@smthrs/harness-detect` |
+
+Options of `Agent.run`:
+
+| Option | Meaning | Default |
+| --- | --- | --- |
+| `prompt` | The task | Required |
+| `output` | A schema. The answer is decoded with it | Required |
+| `system` | Instructions | None |
+| `tools` | A `Toolkit`: the functions a cell may call | None |
+| `maxTurns` | Frames before the run fails | Smithers' `maxFrames` |
+| `corrections` | Re-prompts after an answer that fails `output` | 1 |
+| `limits` | Per cell: 64 calls, 30 seconds of compute, 120 seconds for one call. Per run: 128 MiB | Smithers' `Sandbox.defaultLimits` |
+| `judge` | How many completion claims a decision model checks | 0 |
+
+### Rules
+
+1. **The model is a requirement.** `Agent.run` needs `LanguageModel` in context. `provide Experimental.Model.use(seat)` chooses it ([std-model](0062-std-model.md)).
+2. **A cell has one authority.** It can call the tools it was handed and nothing else. It has no file system, no network and no globals from the host. The sandbox is the boundary, not the type checker. A call to a tool that was not handed over fails before the host sees it.
+3. **Every tool call is its own durable step.** Inside a task, a crash mid-cell re-runs the cell from the top; calls that settled replay their recorded values, and the run reaches the call that did not. A call whose effect landed before its record can run again, so a tool that cannot repeat carries an idempotency key.
+4. **A cell is bounded.** A caller may raise a limit. No option turns one off.
+5. **The answer is typed.** A miss against `output` spends one correction: the task is repeated with the validation issues appended. A spent budget fails with `Agent.AgentFailed`.
+6. **`judge` is off by default.** When positive, a decision model checks that a completion claim matches the run's evidence. It needs `DecisionModel` in context. A judge that cannot be reached fails the run; it never approves.
+7. **`Agent.cli` names no vendor.** `profile` selects a command, configured on the host, that speaks ACP on stdio. The CLI runs in whatever `ChildProcessSpawner` is in context, so `provide Experimental.Sandbox.container(…)` puts it in a container. The client offers the agent no file system and no terminal; the agent uses its own tools.
+8. **A CLI session is one step.** `changed` lists the files it touched. Its transcript is not journaled, and its output is untrusted text. After a crash the step resumes the session only where the CLI's protocol can; otherwise it reports the session as lost. It never invents a per-tool replay.
+9. **`Agent.detect` grants nothing.** It reports what is installed and signed in, and reads no token.
+
+### What must be built
+
+- **A `Toolkit` for the cell loop.** Smithers' loop takes `FlowBinding` sources: flow declarations with handlers. An adapter from an Effect `Tool` to a `FlowBinding.Binding` does not exist at `main@origin` `bcf8076a4ff4`. [std-tools](0064-std-tools.md) needs the same adapter.
+- **Effect's `LanguageModel` for the cell loop.** Smithers' loop takes a resolved `Seat` holding Smithers' own `Model`, a stream of `ModelEvent`s. The port needs `Model.stream` written over `LanguageModel.streamText`.
+- **`Agent.cli` as a local call.** Smithers runs external agents on a separate runner machine through `ExternalAgent.make` and the `AgentJobs` port, which are on `main` and not in 1.0.0-rc.16. The protocol client they use, `Acp.make`, is platform-neutral and takes a transport built from a child process's stdio.
+- **A smaller dependency cut.** `@smthrs/agent` exports the loop beside registry, plugin and session products. The port takes `Agent`, `AgentAction`, `Budget`, `QuotaPolicy` and the harness, and leaves the rest.
+
+### Host needs
+
+| Call | Needs |
+| --- | --- |
+| `Agent.run` | `LanguageModel`; WebAssembly for QuickJS. On Cloudflare `workerd` the build is `QuickJSWorkerd.variant` |
+| `Agent.cli`, `Agent.detect` | `ChildProcessSpawner`, `FileSystem`. Node, Bun or a sandbox. Not a browser |
+
+## Claude's decisions
+
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+
+- `Experimental.Agent`, in scope with no import, as [VIP-33](0033-platform-stdlib.md) rules. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Its code is `vibelang-runtime/experimental/Agent`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Agent.run(options)`: Meaning: Run the cell loop to a typed answer. Gives `{ output, turns, usage }`; Built on: `Agent.Agent` and `AgentAction` in `@smthrs/agent`, `CellTurn` and `QuickJSSandbox` in `@smthrs/harness`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Gives `{ output, turns, usage }` | `Agent.Agent` and `AgentAction` in `@smthrs/agent`, `CellTurn` and `QuickJSSandbox` in `@smthrs/harness` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Agent.stream(options)`: Meaning: The same run as a `Stream` of events: text deltas, cells, calls, the final answer; Built on: `Agent.run`'s `Stream<AgentEvent>`, `EventSink`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Agent.cli(profile, options)`: Meaning: Drive a coding-agent CLI through one task. Gives `{ summary, changed }`; Built on: `Acp.make` in `@smthrs/agent`, over `ChildProcessSpawner`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Gives `{ summary, changed }` | `Acp.make` in `@smthrs/agent`, over `ChildProcessSpawner` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Agent.detect()`: Meaning: Which CLIs this machine has, their versions and whether each is signed in; Built on: `@smthrs/harness-detect`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Options of `Agent.run`: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Option `prompt`: Meaning: The task; Default: Required. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Option `output`: Meaning: A schema. The answer is decoded with it; Default: Required. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- The answer is decoded with it | Required | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Option `system`: Meaning: Instructions; Default: None. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Option `tools`: Meaning: A `Toolkit`: the functions a cell may call; Default: None. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Option `maxTurns`: Meaning: Frames before the run fails; Default: Smithers' `maxFrames`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Option `corrections`: Meaning: Re-prompts after an answer that fails `output`; Default: 1. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Option `limits`: Meaning: Per cell: 64 calls, 30 seconds of compute, 120 seconds for one call. Per run: 128 MiB; Default: Smithers' `Sandbox.defaultLimits`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Per run: 128 MiB | Smithers' `Sandbox.defaultLimits` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Option `judge`: Meaning: How many completion claims a decision model checks; Default: 0. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The model is a requirement.** `Agent.run` needs `LanguageModel` in context. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- `provide Experimental.Model.use(seat)` chooses it ([std-model](0062-std-model.md)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A cell has one authority.** It can call the tools it was handed and nothing else. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- It has no file system, no network and no globals from the host. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- The sandbox is the boundary, not the type checker. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A call to a tool that was not handed over fails before the host sees it. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Every tool call is its own durable step.** Inside a task, a crash mid-cell re-runs the cell from the top; calls that settled replay their recorded values, and the run reaches the call that did not. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A call whose effect landed before its record can run again, so a tool that cannot repeat carries an idempotency key. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A cell is bounded.** A caller may raise a limit. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- No option turns one off. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The answer is typed.** A miss against `output` spends one correction: the task is repeated with the validation issues appended. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A spent budget fails with `Agent.AgentFailed`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **`judge` is off by default.** When positive, a decision model checks that a completion claim matches the run's evidence. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- It needs `DecisionModel` in context. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A judge that cannot be reached fails the run; it never approves. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **`Agent.cli` names no vendor.** `profile` selects a command, configured on the host, that speaks ACP on stdio. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- The CLI runs in whatever `ChildProcessSpawner` is in context, so `provide Experimental.Sandbox.container(…)` puts it in a container. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- The client offers the agent no file system and no terminal; the agent uses its own tools. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A CLI session is one step.** `changed` lists the files it touched. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Its transcript is not journaled, and its output is untrusted text. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- After a crash the step resumes the session only where the CLI's protocol can; otherwise it reports the session as lost. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- It never invents a per-tool replay. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **`Agent.detect` grants nothing.** It reports what is installed and signed in, and reads no token. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A `Toolkit` for the cell loop.** Smithers' loop takes `FlowBinding` sources: flow declarations with handlers. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](reviews/2026-11-09-built-in-set.md).
+- An adapter from an Effect `Tool` to a `FlowBinding.Binding` does not exist at `main@origin` `bcf8076a4ff4`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](reviews/2026-11-09-built-in-set.md).
+- [std-tools](0064-std-tools.md) needs the same adapter. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Effect's `LanguageModel` for the cell loop.** Smithers' loop takes a resolved `Seat` holding Smithers' own `Model`, a stream of `ModelEvent`s. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](reviews/2026-11-09-built-in-set.md).
+- The port needs `Model.stream` written over `LanguageModel.streamText`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](reviews/2026-11-09-built-in-set.md).
+- **`Agent.cli` as a local call.** Smithers runs external agents on a separate runner machine through `ExternalAgent.make` and the `AgentJobs` port, which are on `main` and not in 1.0.0-rc.16. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](reviews/2026-11-09-built-in-set.md).
+- The protocol client they use, `Acp.make`, is platform-neutral and takes a transport built from a child process's stdio. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A smaller dependency cut.** `@smthrs/agent` exports the loop beside registry, plugin and session products. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](reviews/2026-11-09-built-in-set.md).
+- The port takes `Agent`, `AgentAction`, `Budget`, `QuotaPolicy` and the harness, and leaves the rest. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Agent.run`: Needs: `LanguageModel`; WebAssembly for QuickJS. On Cloudflare `workerd` the build is `QuickJSWorkerd.variant`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- On Cloudflare `workerd` the build is `QuickJSWorkerd.variant` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Agent.cli`, `Agent.detect`: Needs: `ChildProcessSpawner`, `FileSystem`. Node, Bun or a sandbox. Not a browser. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Node, Bun or a sandbox. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Not a browser | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+
+### Adopted review answers
+
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+
+## Compared
+
+The first example in Smithers 1.x. It type-checks against `@smthrs/agent` 1.0.0-rc.16.
+
+```ts
+import { AgentAction } from "@smthrs/agent"
+import { Schema } from "effect"
+
+export const Review = AgentAction.make("review/Diff", {
+  payload: { diff: Schema.String },
+  output: Schema.Struct({ approved: Schema.Boolean, issues: Schema.Array(Schema.String) }),
+  seat: "anthropic:claude-sonnet-5-5",
+  system: ["You are a strict code reviewer."],
+  prompt: ({ diff }) => `Review this diff:\n${diff}`,
+  corrections: 2
+})
+```
+
+| Program | Tokens (o200k_base) | Lines |
+| --- | --- | --- |
+| Vibe, proposed | 75 | 11 |
+| Smithers 1.x, the declaration alone | 114 | 11 |
+
+The two differ in kind. Smithers declares a step: its tools are the flows the host registered, and running it takes the composition in `agent/README.md`, eight layers including `AgentAction.layerHost`, `SeatResolver.layer`, `Agent.layer`, `QuotaPolicy`, `Budget`, `Agent.layerDefaults` and `Evaluator`. The Vibe call is the whole program apart from one `provide Experimental.Model.use(…)`.
+
+**Checked.** Both Vibe examples use only existing syntax and compile under `vibelang` 0.0.13 against a declaration of `Agent.run`, `Agent.cli`, `Tools.filesystem` and `Sandbox.container`, with `result.output` typed by the schema. The Smithers declaration type-checks as shown. `ExternalAgent` is not exported by the published 1.0.0-rc.16; its description here is from `agent/src/ExternalAgent.ts` and `agent/src/Acp.ts` on `main`.
+
+## Principles
+
+- **TypeScript-first.** THESIS 1: "code mode, where agents call tools by writing TypeScript, will matter more". The cell loop is code mode.
+- **Effect-second.** The tool-call loop is Effect's and is not rebuilt. Tools are Effect `Tool`s. The model is Effect's `LanguageModel`.
+- **Optimized for agentic programs.** One call runs an agent, typed at both ends.
+- **Highly forkable.** The loop sits behind one service, as Smithers' `Agent.Service` does: "a future agent that drives a foreign CLI is another implementation", not a second loop.
+- **Factory-first.** The factory's agents are `Agent.run` and `Agent.cli` calls inside its workflows.
+
+## What this changes
+
+- `Experimental.Agent` is new. No grammar changes.
+- The proposals page's coding-agent library is replaced: its `CodingAgent.make`, `TypeScriptSandbox` and function table are `Agent.run`, QuickJS and a `Toolkit`.
+- Two adapters and one local runner are built, as listed.
+
+## Alternatives
+
+- **Only Effect's tool-call loop.** It exists and costs nothing. Smithers deleted its own: "The provider-tool-call loop is gone", in favor of cells. Vibe keeps both because Effect's is already in scope.
+- **`agent` as a declaration keyword.** An agent has no schema or tag the compiler must derive beyond what `task` derives. An agent as a durable step is a `task` whose body calls `Agent.run`, and a detached sub-agent is `spawn W(input)`.
+- **`AgentAction.make` as the surface**, a declared step with a seat string. It is the Smithers form, and it needs the eight-layer composition to run. A call is shorter and needs one `provide`.
+- **Cells written in Vibe.** The model would write `.vibe` and the host would compile it each turn. It is the right end state for a language agents write well. It needs the compiler inside the loop. See open question 1.
+- **`@smthrs/chain`**, Smithers' second crash-safe loop with its own journal. Two loops with two journals would make replay unpredictable. This VIP ports the cell loop and uses Chain as evidence only.
+
+## Follow-up questions
+
+1. **What language does a cell use?** JavaScript today, in QuickJS. A Vibe cell would be type-checked against its tools before it runs, which the earlier design asked for. Recommendation: JavaScript in the first release; measure Vibe cells with an eval before switching.
+2. **Is `Agent.cli` in a language's standard library?** It runs other companies' products and reads whether they are signed in. It is also how most coding work is done today. Recommendation: keep `Agent.cli`, over ACP only, with `Agent.detect` read-only.
+3. **Which loop does `Agent.run` mean?** This VIP makes it the cell loop and leaves the tool-call loop as `LanguageModel.generateText`. One name with a `mode` option is the alternative. Recommendation: as written; the two loops have different safety properties.
+4. **Sub-agents a model starts.** Smithers lets a cell start a child run (`ChildFlows`, `EngineChildren`), and a parent reaches only the children it started. Should a workflow be usable as a tool? Recommendation: yes, in a follow-up, once [std-durable](0060-std-durable.md) is built.
+
+## Depends on
+
+- [std-model](0062-std-model.md): the model.
+- [std-tools](0064-std-tools.md): what an agent may call.
+- [std-sandbox](0067-std-sandbox.md): where a CLI runs.
+- [capabilities](0058-capabilities.md): the check in front of each call.
+- [std-durable](0060-std-durable.md): recorded calls.

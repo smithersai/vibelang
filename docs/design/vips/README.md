@@ -39,7 +39,10 @@ VibeLang ships no quick fixes or codemods of its own before its first release; t
 | [39](0039-vibex.md) | `.vibex`: VibeLang with JSX | accepted 2026-10-31 |
 | [40](0040-module-declarations.md) | `module` declarations: TypeScript inside a `.vibe` file | accepted 2026-11-03 |
 | [41](0041-throw-expressions.md) | TC39 throw expressions | accepted 2026-11-02 |
+| [43](0043-theorems.md) | `theorem` and `spec`, proofs in TypeScript's own syntax | accepted 2026-11-07 |
+| [44](0044-durable-values.md) | Durable values | accepted 2026-11-06 |
 
+The [built-in set index](reviews/2026-11-09-built-in-set-index.md) and [comparative review and adopted decisions](reviews/2026-11-09-built-in-set.md) accompany optimistically accepted VIPs 55–72. Each records Claude's decisions separately from Will's words.
 
 ## Acceptance
 
@@ -76,7 +79,32 @@ Listed for a future decision; not part of the language.
 | [36](0036-manifest-open.md) | The declaration manifest | open 2026-10-29 |
 | [37](0037-effectify-the-universe-open.md) | Effectify the universe | open 2026-10-29 |
 | [42](0042-vibelang-in-ts-files-open.md) | VibeLang in `.ts` files | open 2026-11-05 |
-| [43](0043-theorems-open.md) | `theorem` and `spec`, proofs in TypeScript's own syntax | open 2026-11-06 |
+| [53](0053-rename-smithersscript-open.md) | Renaming VibeLang to SmithersScript | open 2026-11-07 |
 | [54](0054-consistent-platform-code-open.md) | One consistent model for platform-specific code | open 2026-11-09 |
 | — | From the proposals page (`site/src/pages/proposals.mdx`), each to get its own VIP: [Durable execution](../../../site/src/pages/proposals.mdx#durable-execution), [Compile-time evaluation (`comptime`)](../../../site/src/pages/proposals.mdx#compile-time-evaluation), [Build-time host selection](../../../site/src/pages/proposals.mdx#build-time-host-selection), [Validators derived from types](../../../site/src/pages/proposals.mdx#validators-derived-from-types), [Typed asset imports](../../../site/src/pages/proposals.mdx#typed-asset-imports), [Custom loaders](../../../site/src/pages/proposals.mdx#custom-loaders), [Rust and Zig source imports](../../../site/src/pages/proposals.mdx#rust-and-zig-source-imports), [Coding-agent library](../../../site/src/pages/proposals.mdx#coding-agent-library), [Typed workers](../../../site/src/pages/proposals.mdx#typed-workers), [Shared structs](../../../site/src/pages/proposals.mdx#shared-structs), [Declarations in conditionals](../../../site/src/pages/proposals.mdx#declarations-in-conditionals), [Toolchain commands](../../../site/src/pages/proposals.mdx#toolchain-commands), [Bundler plugins](../../../site/src/pages/proposals.mdx#bundler-plugins), [Mandatory compiler options](../../../site/src/pages/proposals.mdx#mandatory-compiler-options), [TC39 adopt-early list](../../../site/src/pages/proposals.mdx#tc39-adopt-early-list) | open 2026-10-29 |
 
+
+## Optimistically accepted built-ins
+
+These VIPs are accepted under the pre-alpha standing approval. Their decisions are attributed to the authors, merger and adopter; Will has not reviewed the individual choices.
+
+| VIP | Title | Status |
+| --- | --- | --- |
+| [55](0055-durable-tasks-workflows.md) | `task` and `workflow`, durable steps and the plan the compiler derives | accepted optimistically 2026-11-09 |
+| [56](0056-durable-waits.md) | Durable waits: timers, signals and human answers | accepted optimistically 2026-11-09 |
+| [57](0057-workers-remote.md) | `schema service` and worker imports | accepted optimistically 2026-11-09 |
+| [58](0058-capabilities.md) | Capabilities: a permission kernel in the standard library | accepted optimistically 2026-11-09 |
+| [59](0059-eval-declarations.md) | Eval declarations: a file kind and a function, no syntax | accepted optimistically 2026-11-09 |
+| [60](0060-std-durable.md) | `Experimental.Durable`, the durable runtime | accepted optimistically 2026-11-09 |
+| [61](0061-std-triggers.md) | `Experimental.Trigger` and `Experimental.WorkQueue` | accepted optimistically 2026-11-09 |
+| [62](0062-std-model.md) | `Experimental.Model`: language models and decision models with no SDK | accepted optimistically 2026-11-09 |
+| [63](0063-std-agent.md) | `Experimental.Agent`: the agent loop, model-written scripts and coding-agent CLIs | accepted optimistically 2026-11-09 |
+| [64](0064-std-tools.md) | `Experimental.Tools`: the standard tools | accepted optimistically 2026-11-09 |
+| [65](0065-std-mcp.md) | `Experimental.McpClient`: MCP servers as toolkits | accepted optimistically 2026-11-09 |
+| [66](0066-std-memory.md) | `Experimental.Memory`: durable facts, notes, history and recall | accepted optimistically 2026-11-09 |
+| [67](0067-std-sandbox.md) | `Experimental.Sandbox`: provisioned machines | accepted optimistically 2026-11-09 |
+| [68](0068-std-secrets.md) | `Experimental.Secrets`: secrets a step uses without holding them | accepted optimistically 2026-11-09 |
+| [69](0069-std-eval.md) | `Experimental.Eval` and `Experimental.Scorer` | accepted optimistically 2026-11-09 |
+| [70](0070-std-fuzz.md) | `Experimental.Fuzz`: fuzzing and deterministic fiber simulation | accepted optimistically 2026-11-09 |
+| [71](0071-std-test.md) | `Experimental.Test`: doubles, assertions and conformance | accepted optimistically 2026-11-09 |
+| [72](0072-std-observe.md) | `Experimental.Otlp`: logs, metrics and traces over OTLP | accepted optimistically 2026-11-09 |

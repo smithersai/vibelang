@@ -1,0 +1,191 @@
+# VIP-53: Renaming VibeLang to SmithersScript (open)
+
+**Status:** open, 2026-11-07. Will, 2026-11-06: "We are renaming vibelang to smithersscript. This is a very large change". Will, 2026-11-07: "we are keeping name vibelang for now don't change name leave it as an open VIP". Listed for a decision; nothing is renamed.
+
+**One sentence.** VibeLang becomes SmithersScript, either in name only with `.vibe` kept (variant A) or everywhere including the file extension (variant B, `.smts`).
+
+**One paragraph.** A read-only study ran a rename codemod on throwaway copies of `main` at `e75b8bed1e56`. The codemod takes about 14 s, the whole mechanical step about 4 minutes, and the renamed tree builds in both variants. Neither tree passes: under 1% of post-merge labels fail, from seven causes. The dangerous result is what passed. Tests are rewritten with the code, so they stay green while compatibility dies: after a plain rename the compiler ignores an old `// @vibelang-diagnostics` comment and the suppressed warning returns. One mechanical commit cannot do the rename today. After five prep commits it should, which no run has proved yet. Variant B fails in the same places, and in the five example repositories it costs 8 times the file edits and 220 times the file renames of variant A.
+
+## The two variants
+
+| Aspect | A: name only | B: everything |
+| --- | --- | --- |
+| Renamed | Product name, npm packages, CLIs, `VIBELANG_` variables, Go packages, repository directories, directives, runtime import, editor extension id, site, GitHub repository | All of A, plus extensions, sidecars, config key and file, `// @vibe`, language ids |
+| Kept | `.vibe`, `.vibex`, `.d.vibe.ts`, `// @vibe` ([VIP-42](0042-vibelang-in-ts-files-open.md)), the `"vibe"` key and `vibe.config.json` ([VIP-30](0030-config-files.md)), editor language ids | Only the branch `vibe` |
+| New extensions | None | `.smts`, `.smtsx` |
+| Files rewritten / renamed, this repository | 5,905 / 38,194 | 11,816 / 38,389 |
+| Files rewritten / renamed, five example repositories | 2,151 / 88 | 17,520 / 19,395 |
+| Codemod time | 11.0 to 14.5 s | 12.6 to 13.2 s |
+| Builds | Yes | Yes |
+| Full post-merge | 17 failed, 4 skipped of 3,220 | 19 failed, 4 skipped; also `//:spec-tables`, `//:docs-check` |
+| User cost | Change dependencies, directives and environment names | All of A, plus rename every source and sidecar |
+
+`.smts` has the length of `.vibe`, so columns and line wrapping in diagnostics do not move. `.smithersscript` has 14 characters, and `.smithers/` already names the orchestrator's directory.
+
+## What changes
+
+Counts are occurrences / files on `main`. "Silent" means no error tells the user that anything changed.
+
+| Surface | Count | Breaks | A | B |
+| --- | --- | --- | --- | --- |
+| Brand prose | 7,899 / 1,728; docs 2,848 / 382 | Tests that quote it | Rewrite | Rewrite |
+| npm packages: `vibelang`, `create-vibelang`, `-runtime`, `-ts-mapper`, `-typescript`, `-unplugin`, `-vite`, four platform packages | 3,509 / 1,528; 778 keys in 746 `package.json` | Install, `npm create`, every pin | Rename | Rename |
+| CLIs: `vibelang`, `vibelang-format`, `vibelang-ast-grep`, `create-vibelang` | 2,103 / 492 | Scripts and CI in user repositories | Rename | Rename |
+| Package subpaths: `vibelang/register`, `/eslint`, `/oxlint`, `/knip`, `/bun`, `/metro`, `/babel`, `/prettier` | 933 / 183 | User build config, `node --import vibelang/register` | Rename | Rename |
+| `VIBELANG_` variables | 158 names, 8 documented for users | **Silent:** an old name is ignored | Rename, read the 8 old names | Same |
+| Directives: `@vibelang-diagnostics`, `@vibelang trusted`, `@vibelang leakable` | 121 / 54; 101 / 62 | **Silent:** the old directive is ignored | Rename, read old | Same |
+| Runtime import `vibelang-runtime`, emitted `__vibelang*` | 2,824 / 1,468; 211 / 31 | `TS2307`, exit 2. Published libraries import the old name forever | Rename | Same |
+| Go packages, 5 under `internal/`, 3 under `cmd/` | 2,383 clauses, 311 imports | `init()` order, see R1 | Rename | Rename |
+| Repository directories | 18, holding 79% of tracked paths | Every unlanded patch | Rename | Rename |
+| `.vibe`, `.vibex` | 3,736 files; 301 sites in 33 Go files; 30 shipped JavaScript files | Everything | Keep | Rename |
+| `.d.vibe.ts` sidecars | 1,277 / 397; 9,624 in example repositories | Stock `tsc` consumers | Keep | Rename |
+| `"vibe"`, `vibe.config.json`, `.vibe/declarations` | 333 / 224; 174 / 80; 207 / 83 | User config | Keep | Rename, read old |
+| Retired key `"vibelang"`, `compilerOptions.vibelang` | 207 / 140; 119 / 54 | **Silent if rewritten:** real configs stop migrating | Keep spelling | Keep spelling |
+| `// @vibe` | 139 / 51 | `.ts` files stop being language sources | Keep | Rename |
+| Output directories `.vibelang/js`, `.vibelang-toolchain`, `.vibelang/eslint` | 609 / 160 | User `.gitignore` | Rename | Rename |
+| dprint plugin key `"vibelang"`, `dprint-plugin-vibelang-*` | 142 / 99 | User `dprint.json` | Rename | Rename |
+| VS Code: id `vibelang.vibelang`, 2 language ids, 4 grammars, 3 settings, 3 commands | 52 / 11 | Under A, old and new extensions both claim `.vibe` and two servers run. Settings stop applying | New id | New id, new language ids |
+| Tree-sitter, Neovim | `tree_sitter_vibe`, `editors/nvim/vibelang.lua` | Copied editor config | Rename files | Rename all |
+| Site `vibelang.sh` | 263 / 120 | Inbound links | Rename, redirect | Same |
+| GitHub `smithersai/vibelang` | 145 / 86 | GitHub redirects web and git | Rename | Same |
+| `@smthrs/cli-win32-*` | 51 / 22 | npm refused unscoped Windows names | Keep names | Keep names |
+| Skill `packages/compiler/skills/vibelang/SKILL.md`, `llms.txt`, generated `AGENTS.md` | Path named in 47 files | Agent instructions | Rename, regenerate | Same |
+| Digest pins: `docs/design/diagnostic-identity-allocation.json`, `docs/site/converter/hero.json` | 2 files | Identity tests | Re-pin | Re-pin |
+| Brand assets | 52 images and videos, 5 SVGs | Text inside PNG and MP4 cannot be searched | Review by hand | Same |
+| Prefixes `VIP`, `EK` | 18,446 / 2,800; 23,242 / 3,773 | Stable citations | **Keep** | **Keep** |
+| Branch `vibe` | 37 lines | Nothing if left alone | **Keep** | **Keep** |
+
+## Compatibility
+
+Each old spelling stays readable. Probes on a plainly renamed compiler show which ones break today:
+
+| Old spelling | Plain rename | Required |
+| --- | --- | --- |
+| `// @vibelang-diagnostics EK4804:off` | **Ignored, the warning returns** | Read beside the new spelling (593 files in the example repositories) |
+| `import … from "vibelang-runtime"` | `TS2307`, exit 2 | Rewrite (37 language files in the example repositories) |
+| `compilerOptions.vibelang` | Still works, `EK3009` | Keep spelling |
+| 8 documented `VIBELANG_` names | Ignored | Read beside the new names |
+| Package names in `package.json` | Install fails | Rewrite |
+| `.vibe`, `.vibex`, `"vibe"` (B only) | Not sources, not config | Loaders, editors, Knip, ESLint and Prettier read both until the last repository moves |
+
+Under B, a repository pinned to a `0.0.11` toolchain cannot read `.smts`, so each repository's rename lands with its toolchain switch. Only probes written in the old spelling found these breaks, so the compatibility tests must keep the old spelling.
+
+## What must not be rewritten
+
+| Keep | How the codemod avoids it |
+| --- | --- |
+| Published release notes, `## 0.0.12` and below | Stops at that heading. Link targets alone are rewritten, or `sync-user-docs` fails |
+| History | Writes the working tree only |
+| `docs/design/history/` | Path exemption. The spec reader still reads it and tests quote it, so those oracles accept both names first |
+| `artifacts/`, `docs/research/`, `docs/upstream/`, dated files | Path exemption, 60 paths |
+| Will's words in VIPs | Frozen by heading. Exempting every blockquote broke a test that quotes normative VIP text |
+| "the earlier VibeLang project" | Masked: prior art, a different project |
+| Retired `"vibelang"` key | Named constants or `brand-gate: allow` markers, from P2. A regular expression cannot tell its uses apart |
+| Third-party TypeScript | A matches only spellings of the name, which upstream never contains. B needs a comparison with an upstream checkout |
+
+A matches five spellings: `vibelang` (39,436), `VibeLang` (7,794), `VIBELANG` (1,771), `Vibelang` (147) and `vibeLang` (89). `vibe`, `vibes` and `vibex` stay out of reach. A raw replacement of `vibelang.sh` would hit `build-vibelang.sh` 72 times, so the domain is never a separate string rule. B must match bare `vibe` and mask the branch.
+
+The retired spelling `"vibelang"` has at least five meanings: retired config key, npm dependency, dprint plugin key, agent server key and Prettier parser name. Shape masks took named migration failures from 50 to 122 when they over-fired, and tighter masks brought them to 47.
+
+## Failures in the renamed tree
+
+| Cause | Named failures | Fix |
+| --- | --- | --- |
+| R1. Go `init()` order. Hooks append in file-name order: `vibelang.go` sorts after `try_settled_types.go`, and `smithersscript.go` sorts before it | 15 cases, including `vip18-try-operations`, `allsettled-*`, `tryop-elements-native`; `FuzzVIPDifferential`, `TestVIPConstructs` | P1. Moving the one file back cleared all 15 |
+| R2. Retired key half-rewritten | `sidecars.test.mjs`, `show-config.test.mjs`, `TestSidecarConfig*`, `declaration-output-retired-option` | P2 |
+| R3. `"vibelang"` overloaded, masks over-fire | 47 to 122 `//packages:migrate-test` tests, `//packages:vite-test`, `TestPluginAnswersDprint`, `prettier.test.mjs` | P2 |
+| R4. Tests read frozen text | `TestCommandLineFlagsCoverSpec`, `FuzzCommandLine`, 9 `docs-tools` release-note and upstream tests | P4 |
+| R5. Digest pins | 2 `spec-diagnostic-identity` tests | Re-pin |
+| R6. Tests read npm | `//:site-contrast`, 5 `docs-tools` install tests | P4, then flip after publish |
+| R7. Unexplained | `t3code:babel-empty-tuple-consumer` XPASS, `coverage-appendix-outcomes`, `parseDiagnostics`, `make-packages`, `starter app`, 2 `law` tests | Investigate in P4 |
+
+| Run | Rule set | Passed | Failed | Skipped |
+| --- | --- | ---: | ---: | ---: |
+| Control | `main`, not renamed | 3,330 | 0 | 0 |
+| Pass 1 | Plain brand rule | 3,029 | 32 | 2 |
+| Pass 2 | Hook order fixed, shape masks | 3,199 | 17 | 4 |
+| Variant B | As pass 2 | 3,196 | 19 | 4 |
+| Pass 3 | Tighter masks, failed targets only | 41 | 16 | 1 |
+| Pass 3b | Labels pass 2 did not run | 122 | 1 | 0 |
+
+A second codemod run changes 0 files in both variants. Every lockfile passes `--frozen-lockfile`, and regeneration converges.
+
+## Prep steps
+
+Each lands through the queue and keeps `main` green.
+
+| Step | Change | Fixes | Needs Will |
+| --- | --- | --- | --- |
+| P1 | One explicit hook registration list in `internal/vibelang`, with a test that pins the order | R1 | No |
+| P2 | Every legacy spelling named: constants or `brand-gate: allow` on the 326 retired-key sites | R2, R3 | No |
+| P3 | New directive spellings beside the old; the 8 old variable names read | Silent breaks | **Yes** |
+| P4 | Oracles accept both names in frozen text; a re-pin script for digests; one constant for the last published package name | R4, R5, R6 | No |
+| P5 | `scripts/rename-to-smithersscript.mjs` with its test and brand gate, replacing `scripts/rename-to-vibelang.mjs` | | No |
+
+P1 fixes a defect whatever this VIP decides: compiler behavior must not depend on Go file names.
+
+## Order
+
+```
+ P1..P5 land        drain queue       one commit        post-merge      publish
+ ──────────────►  ──────────────►  ───────────────►  ─────────────►  ──────────►
+ main stays green  vibe == main     codemod + regen   ~66 min, green  0.0.13, site
+```
+
+1. Rename the GitHub repository and register the domain, so links in the commit resolve.
+2. Drain the queue until `vibe` equals a green `main`. A rename above unverified commits breaks the green-cut path, because `jj duplicate` meets the same conflicts as a rebase.
+3. Run the codemod, `gofmt`, the build, `scripts/check-forms-table.sh --write` and the doc regeneration.
+4. Commit once with a raised `snapshot.max-new-file-size`: the tree-sitter `parser.c` is 29 MiB, and jj refuses new files over 1 MiB.
+5. Push it directly. The queue refuses it: 3 added lines match its private-path pattern, and the retirement gate treats every moved `.fail` case as widened.
+6. Swap the CI scripts between post-merge runs, from a staged copy. Their labels differ across the rename commit.
+7. Warm the Go cache, then run one post-merge. Package paths moved, so a cold run timed out `//:go-module-highlights` at 601 s and `//:go-error-inheritance` at 901 s.
+8. Fix on top. `main` advances at green.
+
+jj does not follow renames. An edit to `typescript/vibelang/cases/x/main.vibe` rebased over the rename gives "2-sided conflict including 1 deletion" and keeps both paths. A stack carries across by running the codemod on each commit's tree, 14 s per commit, not by `jj rebase`.
+
+| Step | Measured |
+| --- | ---: |
+| Codemod, A | 11.0 to 14.5 s |
+| `gofmt`, 2,665 files | 1.1 s |
+| Compiler build, renamed paths | 139 to 187 s cold, 44 s warm |
+| `check-forms-table.sh --write` | 9.5 to 10.9 s |
+| Doc regeneration, 46 files | 10 to 15 s |
+| jj snapshot | 3.5 s |
+| **Mechanical step** | **about 4 min** |
+| Full post-merge, control / A / B | 68 / 66 / 57 min |
+| npm publish, 11 packages | 139 s |
+
+## Release
+
+- **First release.** `0.0.12` is published, so `0.0.13` is the first SmithersScript release, and the version line continues.
+- **Old packages.** Deprecate the 9 published unscoped names; never unpublish. Exact pins keep working. `vibelang-typescript` and `vibelang-ts-mapper` were never published. One last `create-vibelang` points to the new command, or `npm create vibelang@latest` keeps scaffolding the old name.
+- **Platform packages.** Every `smithersscript*` name returned 404. npm refused unscoped Windows names before, so `smithersscript-darwin-arm64` may be refused too; `@smthrs/cli-<os>-<cpu>` is free as a fallback. Publish one platform package first to learn this.
+- **Publish before the site.** `deploy-docs.sh` reads npm `latest`.
+- **Redirects.** Reuse `docs/redirect`. A custom domain has one owner, so the old site stack is removed or repointed first. Keep the `/vibelang-features/*` mappings.
+- **Marketplace.** No VS Code Marketplace listing exists. The publisher `vibelang` belongs to an unrelated project; `smithersscript` returns no results.
+
+## Prior art
+
+| Rename | What carried users across |
+| --- | --- |
+| BuckleScript to ReScript | The npm package moved from `bs-platform` to `rescript` in 9.1, 2021. ReScript 11, 2024, renamed `bsconfig.json` to `rescript.json` and still reads the old name with a deprecation warning |
+| Rome to Biome, 2023 | New package and CLI. Biome 1 still accepted `rome.json` beside `biome.json`; Biome 2 dropped it. A variant A |
+| io.js and Node.js, 2015 | One version line continued under the surviving name, as `0.0.13` does here |
+
+## Open questions
+
+- A or B, the casing `SmithersScript`, and the domain. `.sh`, `.com`, `.org` and `.ai` returned not found on whois; `.dev` is unknown.
+- Whether P3 is approved: old spellings readable.
+- How long old spellings stay readable, and whether reading one warns.
+- Whether npm accepts `smithersscript-<os>-<cpu>`.
+- Two runtimes in one graph: an app on the new runtime with a library that imports `vibelang-runtime`. Not tested against `match-package-copies.fail`.
+- Two editor extensions installed side by side.
+- Not verified: a zero-failure tree; the seven causes as a complete list; P1 to P5 themselves; a real publish under the new names; any example repository building after the rename.
+
+## Recommendation
+
+Variant A. It renames every surface that says VibeLang and keeps every surface that says `vibe`, which no user must change. B can be decided later as a separate question, but its cost grows with every converted file, not with time. A is wrong if no public surface may say `vibe`, because A keeps `.vibe`, `.vibex`, `// @vibe`, the `"vibe"` key and `vibe.config.json`. P1 lands first under either variant.
+
+## What this changes
+
+Nothing, while open. If accepted as A, VIP-30's `"vibe"` key, VIP-39's `.vibex` and VIP-42's `// @vibe` stay as written, and the rename changes names only. If accepted as B, it amends VIP-30, VIP-39 and VIP-42.

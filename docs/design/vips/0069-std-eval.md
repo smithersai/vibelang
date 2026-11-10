@@ -1,0 +1,219 @@
+# VIP-69: `Experimental.Eval` and `Experimental.Scorer`: suites, scorers, judges, baselines and gates
+
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+
+## Will's words
+> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+
+## Summary
+
+THESIS 8 also applies: "Agentic behavior is probabilistic, so evals become as basic as tests."
+
+**One sentence.** `Experimental.Eval` runs a fixed set of cases against a target, `Experimental.Scorer` grades each answer from 0 to 1, and a gate compares the scores with a committed baseline and returns an exit code.
+
+**One paragraph.** A test asserts that an answer equals something. An answer from a model rarely equals anything; it is better or worse than the last one. Smithers' `@smthrs/evals` and `@smthrs/scorers` score the answer, compare the score with a committed baseline, and turn the comparison into a CI result. This VIP ports both behind two namespaces. [eval-declarations](0059-eval-declarations.md) says where an eval lives and how it is run. This VIP says what runs: the suite, the scorers, model-graded rubrics, baselines, regression comparison, the gate, and scoring of live runs. Five outcomes stay distinct all the way to the exit code: a target that failed, a scorer that could not decide, a score that regressed, a score that moved for no stated reason, and a score that is missing.
+
+```text
+ cases ──► target ──► output ──► scorers ──► scores in [0, 1] ──► compare with baseline ──► gate
+                                  │ exact, contains, checks                │ regressed?       │ 0  pass
+                                  │ rubric: a model grades                 │ moved? missing?  │ 1  regressed
+                                  │ yours: Scorer.make                     │ only noise?      │ 5  could not decide
+```
+
+## Decision
+
+```ts
+// proposed
+effect function greet(name: string) {
+  return `Hello, ${name}`
+}
+
+const polite = Experimental.Scorer.make({
+  name: "polite",
+  version: "1",
+  score: (run: { output: string; expected: string }) => run.output === run.expected ? 1 : 0
+})
+
+export default Experimental.Eval.suite("greet", {
+  target: greet,
+  cases: [{ name: "ada", input: ["Ada"], expected: "Hello, Ada" }],
+  scorers: [polite],
+  gate: { min: 1, tolerance: 0 }
+})
+```
+
+### Module
+
+`Experimental.Eval` and `Experimental.Scorer`, in scope with no import, as [VIP-33](0033-platform-stdlib.md) rules. Their code is `vibelang-runtime/experimental/Eval` and `…/Scorer`. They port `@smthrs/evals` and `@smthrs/scorers`.
+
+| Call | Meaning | Smithers |
+| --- | --- | --- |
+| `Eval.suite(name, { target, cases, scorers, trials?, concurrency?, gate? })` | Declare a suite. Runs nothing | `Suite.make`, `Binding.make` |
+| `Eval.run(suite, { runId? })` | Run every case, score every output | `Runner.run`, with a `CaseExecutor` built from `target` |
+| `Eval.baseline(run)`, `Eval.write`, `Eval.load` | A baseline from a run, as text to commit, and back | `Baseline.fromRun`, `Baseline.write`, `Baseline.load` |
+| `Eval.compare(baseline, run, tolerances?)` | Regressions, nondeterminism and missing observations, as a value | `Regression.compare` |
+| `Eval.gate(report, { mean?, min? })` | A verdict and a CI grade | `Gate.check`, `Gate.ciGrade`, `ScoreGate` |
+| `Eval.fromJsonLines(text, options)` | Cases from a JSONL file | `Suite.fromJsonLines` |
+| `Eval.passAtK(n, c, k)` | The chance at least one of `k` trials passes, from `c` passes in `n` | `Trials.passAtK` |
+
+| Scorer | Grades | Smithers |
+| --- | --- | --- |
+| `Scorer.exact` | Normalized equality with `expected` | `Scorers` |
+| `Scorer.contains(text)` | Containment | `Scorers` |
+| `Scorer.checks([...])` | A list of pure text and action checks | `Checks` |
+| `Scorer.rubric(criteria, { model })` | A model grades the output against written criteria | `Rubric` |
+| `Scorer.make({ name, version, config?, score })` | Your own function from `{ input, output, expected }` to a number or an Effect of one | `Scorer.make` |
+| `Scorer.bind(scorer, W, { sampling })` | Score a workflow's live runs | `Binding.make`, `Sampling` |
+
+### Rules
+
+1. **A score is a finite number in `[0, 1]`.** Anything else is refused.
+2. **A scorer has an identity.** Its name, version and configuration hash into a `scorerKey` that is written on every score it produces. A score recorded a month ago still names the exact grader. Change the grader, bump `version`.
+3. **A scorer that fails does not fail the suite.** It records an inconclusive observation with a reason and a code. A target that fails is a failed case. Neither becomes a score of zero.
+4. **Regression and noise are different facts.** The comparison separates a score that dropped from a case whose step key changed, which means the target took a different path. `trials` runs a case several times to measure the spread. A trial is a new call: replaying one recorded answer measures the recording.
+5. **A baseline never updates itself.** `Eval.baseline` records successful scores only, and writing one is a separate act with a diff to review.
+6. **A gate is pure.** It takes a report and options and returns a verdict. `min` is the lowest passing score, `mean` the lowest passing average, and `tolerance` how far a score may fall below its baseline.
+7. **Three exit codes.** `0` when every case cleared the gate, `1` when a score regressed or an observation went missing, `5` when the gate could not decide. A `5` is a broken harness, not a result. A partial pass never exits `0`.
+8. **Rubric judges are models.** `Scorer.rubric` names its judge, `{ model: seat }`, and records it in the scorer's identity. It does not default to the model under test, which would grade itself. A judge that cannot be reached is inconclusive; it never passes. Judge calibration, grading known answers to measure the judge, is part of `Rubric`.
+9. **Live runs can be scored.** Sampling is `"all"`, `"none"`, or a ratio strictly between 0 and 1 with a seed, so a replay samples the same runs. Scores persist as observations (`SqlScoreStore`).
+10. **Limits.** A suite holds at most 10,000 cases and runs at most 1,024 at once (`Suite.limits`).
+
+### Host needs
+
+None for scoring. A rubric needs a model ([std-model](0062-std-model.md)). Persisted observations need the SQL store [std-durable](0060-std-durable.md) provides.
+
+## Claude's decisions
+
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+
+- `Experimental.Eval` and `Experimental.Scorer`, in scope with no import, as [VIP-33](0033-platform-stdlib.md) rules. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Their code is `vibelang-runtime/experimental/Eval` and `…/Scorer`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- They port `@smthrs/evals` and `@smthrs/scorers`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Eval.suite(name, { target, cases, scorers, trials?, concurrency?, gate? })`: Meaning: Declare a suite. Runs nothing; Smithers: `Suite.make`, `Binding.make`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Runs nothing | `Suite.make`, `Binding.make` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Eval.run(suite, { runId? })`: Meaning: Run every case, score every output; Smithers: `Runner.run`, with a `CaseExecutor` built from `target`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Eval.baseline(run)`, `Eval.write`, `Eval.load`: Meaning: A baseline from a run, as text to commit, and back; Smithers: `Baseline.fromRun`, `Baseline.write`, `Baseline.load`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Eval.compare(baseline, run, tolerances?)`: Meaning: Regressions, nondeterminism and missing observations, as a value; Smithers: `Regression.compare`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Eval.gate(report, { mean?, min? })`: Meaning: A verdict and a CI grade; Smithers: `Gate.check`, `Gate.ciGrade`, `ScoreGate`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Eval.fromJsonLines(text, options)`: Meaning: Cases from a JSONL file; Smithers: `Suite.fromJsonLines`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Eval.passAtK(n, c, k)`: Meaning: The chance at least one of `k` trials passes, from `c` passes in `n`; Smithers: `Trials.passAtK`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Scorer `Scorer.exact`: Grades: Normalized equality with `expected`; Smithers: `Scorers`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Scorer `Scorer.contains(text)`: Grades: Containment; Smithers: `Scorers`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Scorer `Scorer.checks([...])`: Grades: A list of pure text and action checks; Smithers: `Checks`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Scorer `Scorer.rubric(criteria, { model })`: Grades: A model grades the output against written criteria; Smithers: `Rubric`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Scorer `Scorer.make({ name, version, config?, score })`: Grades: Your own function from `{ input, output, expected }` to a number or an Effect of one; Smithers: `Scorer.make`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Scorer `Scorer.bind(scorer, W, { sampling })`: Grades: Score a workflow's live runs; Smithers: `Binding.make`, `Sampling`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A score is a finite number in `[0, 1]`.** Anything else is refused. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A scorer has an identity.** Its name, version and configuration hash into a `scorerKey` that is written on every score it produces. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A score recorded a month ago still names the exact grader. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Change the grader, bump `version`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A scorer that fails does not fail the suite.** It records an inconclusive observation with a reason and a code. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A target that fails is a failed case. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Neither becomes a score of zero. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Regression and noise are different facts.** The comparison separates a score that dropped from a case whose step key changed, which means the target took a different path. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- `trials` runs a case several times to measure the spread. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A trial is a new call: replaying one recorded answer measures the recording. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A baseline never updates itself.** `Eval.baseline` records successful scores only, and writing one is a separate act with a diff to review. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A gate is pure.** It takes a report and options and returns a verdict. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- `min` is the lowest passing score, `mean` the lowest passing average, and `tolerance` how far a score may fall below its baseline. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Three exit codes.** `0` when every case cleared the gate, `1` when a score regressed or an observation went missing, `5` when the gate could not decide. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A `5` is a broken harness, not a result. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A partial pass never exits `0`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Rubric judges are models.** `Scorer.rubric` names its judge, `{ model: seat }`, and records it in the scorer's identity. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- It does not default to the model under test, which would grade itself. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A judge that cannot be reached is inconclusive; it never passes. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Judge calibration, grading known answers to measure the judge, is part of `Rubric`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Live runs can be scored.** Sampling is `"all"`, `"none"`, or a ratio strictly between 0 and 1 with a seed, so a replay samples the same runs. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Scores persist as observations (`SqlScoreStore`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Limits.** A suite holds at most 10,000 cases and runs at most 1,024 at once (`Suite.limits`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- None for scoring. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- A rubric needs a model ([std-model](0062-std-model.md)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Persisted observations need the SQL store [std-durable](0060-std-durable.md) provides. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+
+### Adopted review answers
+
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+
+## Compared
+
+A suite, a custom scorer, a baseline comparison and a gate in Smithers 1.x. It type-checks against `@smthrs/evals` and `@smthrs/scorers` 1.0.0-rc.16.
+
+```ts
+import { Baseline, CaseExecutor, Gate, Regression, Runner, Suite } from "@smthrs/evals"
+import { Binding, Scorer } from "@smthrs/scorers"
+import { Effect, Layer } from "effect"
+
+const greet = (name: string) => Effect.succeed(`Hello, ${name}`)
+
+const exactMatch = Scorer.make({
+  id: "example/exact-match",
+  version: "1",
+  name: "exact-match",
+  score: ({ groundTruth, output }) => Effect.succeed({ score: output === groundTruth ? 1 : 0 })
+})
+
+const executor = CaseExecutor.make((suiteCase) =>
+  Effect.map(greet((suiteCase.input as { readonly name: string }).name), (output) => ({
+    output,
+    stepKey: suiteCase.name,
+    latencyMs: 0,
+    target: { name: "greet" }
+  }))
+)
+
+export const gate = (committed: string) =>
+  Effect.gen(function*() {
+    const suite = yield* Suite.make({
+      name: "greet",
+      cases: [{ name: "ada", input: { name: "Ada" }, expected: "Hello, Ada" }],
+      bindings: [Binding.make({ scorer: exactMatch, appliesTo: { name: "greet" }, groundTruth: "Hello, Ada" })],
+      concurrency: 1
+    })
+    const run = yield* Runner.run(suite, { runId: "nightly-2026-11-09", at: "2026-11-09T00:00:00.000Z" })
+    const report = yield* Regression.compare(yield* Baseline.load(committed), run)
+    return Gate.ciGrade(yield* Gate.check(report))
+  }).pipe(Effect.provide(Layer.succeed(CaseExecutor.CaseExecutor)(executor)))
+```
+
+| Program | Tokens (o200k_base) | Lines |
+| --- | --- | --- |
+| Vibe, proposed | 130 | 16 |
+| Smithers 1.x | 392 | 34 |
+
+The Smithers program loads the baseline and runs the gate by hand. In Vibe, `vibelang eval` does both for a suite that declares `gate` ([eval-declarations](0059-eval-declarations.md)).
+
+**Checked.** The Vibe example uses only existing syntax and compiles under `vibelang` 0.0.13 against a declaration of `Eval` and `Scorer`. The Smithers program type-checks as shown. No `eval-agent` package exists at `main@origin` `bcf8076a4ff4`. The nearest sources are `agent/regression`, which runs agent cases through `Suite`, `Runner` and `Trials`, and `packages/smithers/evals`.
+
+## Principles
+
+- **TypeScript-first.** A call with a record, the shape Evalite and Vitest set.
+- **Effect-second.** A target, a scorer and a run are Effects. Effect has no eval module to reuse.
+- **Optimized for agentic programs.** GOAL measures Vibe itself by evals. The same module measures a user's agent.
+- **Highly forkable.** A scorer is a function. A gate is a pure function. A fork replaces either.
+- **Factory-first.** Each release's eval baseline is a committed file, and the comparison that passed it is reproducible.
+
+## What this changes
+
+- `Experimental.Eval` and `Experimental.Scorer` are new. No grammar changes.
+
+## Alternatives
+
+- **Evalite or another npm framework.** One import away, and it stays available. It has no step keys, so it cannot tell a regression from a different path, and it does not score a durable run.
+- **Evals as tests with a threshold**, `expect(score).toBeGreaterThan(0.8)`. A fixed threshold fails on noise and hides a slow decline. A baseline comparison does neither.
+- **Smithers' names as they are**: `Suite`, `Runner`, `Baseline`, `Regression`, `Gate`, `CaseExecutor`. Six namespaces and an executor service for what one call declares. The port keeps their behavior and their file formats.
+- **One namespace, `Eval.scorer`.** A scorer is used outside eval files, on live runs. It earns its own name.
+- **Scores in the journal.** Smithers keeps them in their own tables with their own identity, because nothing in a run reads a score back.
+
+## Follow-up questions
+
+1. **Baseline format.** Smithers' baseline is versioned JSON (`Baseline.version` is 1). Vibe commits it beside the eval file. Keep the format as it is, so Smithers tools read Vibe baselines? Recommendation: yes.
+2. **Decision models as judges.** Smithers' agent checks completions with Jev, not a rubric. Should `Scorer.decide(decision)` exist, over `DecisionModel`? Recommendation: yes; it is cheaper and typed.
+3. **A default tolerance.** With `tolerance: 0`, any lower score on a model-graded case is a regression, and model scores move. Recommendation: no default; a suite with a rubric scorer and no `tolerance` is a warning.
+4. **Retention.** Nothing prunes Smithers' score tables. Decide with [std-durable](0060-std-durable.md)'s `Durable.sweep`.
+
+## Depends on
+
+- [std-model](0062-std-model.md): rubric judges.
+- [std-durable](0060-std-durable.md): persisted scores of live runs. A suite run needs neither.
+
+[eval-declarations](0059-eval-declarations.md) builds on this VIP: it defines the file kind and the command.

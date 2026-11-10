@@ -1,0 +1,286 @@
+# VIP-56: Durable waits: timers, signals and human answers
+
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+
+## Will's words
+
+> Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
+
+## Summary
+
+**One sentence.** Inside a workflow a wait parks the run instead of holding a fiber, and the compiler turns three library calls into plan nodes: `Experimental.Durable.sleep` for time, a signal's `wait()` for a typed value from outside, and `Experimental.Human` for a person.
+
+**One paragraph.** A workflow that waits a week for an approval must not keep a process alive for a week. Smithers records the wait in the journal and releases the run; a timer, a token or an answer wakes it later, on any machine. This VIP gives those waits Vibe forms and adds no keyword. It is a language VIP because the compiler must recognize each call, by the binding it resolves to, and lower it to a node in the workflow's plan ([durable-tasks-workflows](0055-durable-tasks-workflows.md)). It must also refuse a fiber wait in a workflow body, where `sleep` would hold a process and vanish on a restart.
+
+```text
+ Release("build-42")
+   │
+   ├─ Human.confirm("ship", …)   park: approval   no process held   ◄── Human.answer(Release, run, "ship", true)
+   ├─ Durable.sleep("1 minute")  park: timer      wake time is in the journal
+   └─ Deploy("build-42")         runs once
+```
+
+## Decision
+
+```ts
+// proposed
+task Deploy {
+  static readonly tier = "irreversible"
+  static readonly idempotencyKey = (build: string) => `deploy:${build}`
+  effect call(build: string): string
+}
+
+export workflow Release {
+  effect call(build: string) {
+    const approved = try Experimental.Human.confirm("ship", `Ship ${build}?`, { timeout: "6 hours" })
+    if (!approved) return "held"
+    try Experimental.Durable.sleep("1 minute")
+    return try Deploy(build)
+  }
+}
+
+export effect function approve(run: string) {
+  try Experimental.Human.answer(Release, run, "ship", true)
+}
+```
+
+A signal carries a typed value into a run. Both ends import one value:
+
+```ts
+// proposed
+schema Paid { amount: number }
+export const paid = Experimental.Durable.signal("paid", Paid)
+
+export workflow Checkout {
+  effect call(order: string) {
+    const payment = try.race [paid.wait(), Experimental.Durable.sleep("1 day")]
+    return payment ? try Ship(order, payment.amount) : try Cancel(order)
+  }
+}
+
+export effect function onWebhook(run: string, amount: number) {
+  try paid.send(Checkout, run, { amount })
+}
+```
+
+### Signals
+
+- `Experimental.Durable.signal(name, schema)` declares a wait point. The schema is a durable boundary (VIP-44), and the value crosses in its JSON form.
+- `name` is local to a run. The address of a wait is the workflow, the run and the name, so two workflows may both use `"paid"`.
+- `try paid.wait()` in a workflow body waits for the value. `try paid.wait("second")` names a second wait point on the same signal in one run.
+- `try paid.send(W, run, value)` in Effect code delivers a value to run `run` of workflow `W`. `try handle.send(paid, value)` does the same through a `Run` handle.
+- **The first delivery wins.** A later one does not replace it (`flow/docs/guides/wait-for-an-external-signal.md`).
+- **An address is not a credential.** Anyone who knows the workflow and the run id can rebuild it, so the endpoint that calls `send` authorizes the caller first.
+- A parked run decodes with the schema it parked under. Change a signal's schema and you change its name.
+
+### Timers
+
+| Call | Meaning | Smithers |
+| --- | --- | --- |
+| `try Experimental.Durable.sleep("7 days")` | Park for a duration | `Sleep.action.call({ millis })` |
+| `try Experimental.Durable.until(date)` | Park until an instant | `Sleep.action.call({ until })` |
+| `static readonly deadline = "1 hour"` on a workflow | Bound the whole run, across restarts | `Flow.make`'s `deadline` |
+| `try.race [Step(), Experimental.Durable.sleep("30 seconds")]` | Bound one step; the winner is recorded | `Node.race` |
+
+- A timer writes its absolute wake time before it parks, so a restart does not restart the delay.
+- A deadline that has already passed settles the node at once.
+- Two sleeps of the same length are two waits.
+
+### `Experimental.Human`
+
+| Call | The person supplies | Result type |
+| --- | --- | --- |
+| `Human.confirm(name, prompt, options?)` | Yes or no | `boolean` |
+| `Human.ask(name, prompt, options?)` | Prose | `string` |
+| `Human.select(name, prompt, choices, options?)` | One of `choices` | The union of `choices` |
+| `Human.json(name, prompt, Schema, options?)` | A value the schema accepts | The schema's type |
+
+- `options` is `{ timeout?, maxAttempts? }`. `maxAttempts` defaults to 10, Smithers' `HumanTask.defaultMaxAttempts`.
+- A refused answer is recorded, and the run parks on the next attempt. Refusing is an answer; it is not a failure of the transport.
+- The call fails with `Human.Failed`, whose `code` is `request_invalid`, `rejected` or `timeout`.
+- `Human.answer(W, run, name, value)` records an answer. It reads the current attempt from the engine's waiting row. `Human.validate(value, request)` checks an answer before it is sent.
+- `Human.json` takes one schema. Smithers takes two descriptions of the answer, a JSON Schema for the question and an Effect Schema for `HumanTask.decode`, and "a disagreement surfaces as a defect" (`flow/docs/guides/ask-a-person.md`). The library derives the first from the second.
+- **An answer approves the workflow's question and nothing else.** It grants no file, network or process permission. A permission prompt is the kernel's, in [capabilities](0058-capabilities.md).
+
+### What a wait is in the plan
+
+| Wait | Waiting reason | Wakes on |
+| --- | --- | --- |
+| `Durable.sleep`, `Durable.until` | `timer`, with `wakeAt` | The clock |
+| a signal's `wait()` | `event`, with the token | `send` |
+| `Human.*` | `approval`, with the attempt's token | `Human.answer` |
+
+The reasons are Smithers' `WaitingAnnotation` (`flow/docs/concepts/suspension-and-replay.md`). An operator reads them off a parked run.
+
+### What the compiler emits
+
+The compiler recognizes a wait by the declaration its callee resolves to. An alias keeps the meaning, and a local function named `sleep` gains none.
+
+| In a workflow body | Emitted |
+| --- | --- |
+| `try Experimental.Durable.sleep(d)` | `Sleep.action.call({ millis })` |
+| `try paid.wait()` | `WaitFor.action.call({ name: "paid" })`, then `Node.map` with the schema's decoder |
+| `try Experimental.Human.confirm(name, prompt, { timeout })` | `HumanTask.action.call({ name, kind: "confirm", prompt, timeoutMs })` |
+
+| In Effect code | Emitted |
+| --- | --- |
+| `paid.send(Checkout, run, v)` | `DurableDeferred.succeed(gate, { token, value })`, with `gate = WaitFor.deferred("paid")` and `token = DurableDeferred.tokenFromExecutionId(gate, { flow: Checkout, executionId: run })` |
+| `Experimental.Human.answer(W, run, name, v)` | `HumanTask.answer({ token, value })`, the token built from `HumanTask.deferred(name, attempt)` |
+
+The signal value and `Human` are thin library code over `WaitFor`, `DurableDeferred` and `HumanTask`. The compiler adds `Sleep.layer`, `WaitFor.layer` and `HumanTask.layer` to `W.layer` for a workflow that uses them, because Smithers' system actions "push no layer obligation onto callers" and fail at run time when the layer is missing.
+
+### Diagnostics
+
+Codes are assigned when this VIP is built.
+
+| Slug | When | The message names |
+| --- | --- | --- |
+| `workflow-try` | `try sleep(…)`, `timeout(…)` or another fiber wait in a workflow body | `Experimental.Durable.sleep`, or `try.race` with it |
+| `wait-outside-workflow` | A signal's `wait()`, a `Human` question or `Durable.sleep` in Effect code that is not a workflow body | `sleep`, or moving the wait into a workflow |
+
+## Claude's decisions
+
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+
+- A signal carries a typed value into a run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
+- Both ends import one value: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Experimental.Durable.signal(name, schema)` declares a wait point. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- The schema is a durable boundary (VIP-44), and the value crosses in its JSON form. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- `name` is local to a run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- The address of a wait is the workflow, the run and the name, so two workflows may both use `"paid"`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- `try paid.wait()` in a workflow body waits for the value. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- `try paid.wait("second")` names a second wait point on the same signal in one run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- `try paid.send(W, run, value)` in Effect code delivers a value to run `run` of workflow `W`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- `try handle.send(paid, value)` does the same through a `Run` handle. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The first delivery wins.** A later one does not replace it (`flow/docs/guides/wait-for-an-external-signal.md`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- **An address is not a credential.** Anyone who knows the workflow and the run id can rebuild it, so the endpoint that calls `send` authorizes the caller first. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- A parked run decodes with the schema it parked under. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- Change a signal's schema and you change its name. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#signals) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `try Experimental.Durable.sleep("7 days")`: Meaning: Park for a duration; Smithers: `Sleep.action.call({ millis })`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#timers) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `try Experimental.Durable.until(date)`: Meaning: Park until an instant; Smithers: `Sleep.action.call({ until })`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#timers) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `static readonly deadline = "1 hour"` on a workflow: Meaning: Bound the whole run, across restarts; Smithers: `Flow.make`'s `deadline`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#timers) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `try.race [Step(), Experimental.Durable.sleep("30 seconds")]`: Meaning: Bound one step; the winner is recorded; Smithers: `Node.race`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#timers) · [Review](reviews/2026-11-09-built-in-set.md).
+- A timer writes its absolute wake time before it parks, so a restart does not restart the delay. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#timers) · [Review](reviews/2026-11-09-built-in-set.md).
+- A deadline that has already passed settles the node at once. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#timers) · [Review](reviews/2026-11-09-built-in-set.md).
+- Two sleeps of the same length are two waits. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#timers) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Human.confirm(name, prompt, options?)`: The person supplies: Yes or no; Result type: `boolean`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Human.ask(name, prompt, options?)`: The person supplies: Prose; Result type: `string`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Human.select(name, prompt, choices, options?)`: The person supplies: One of `choices`; Result type: The union of `choices`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Human.json(name, prompt, Schema, options?)`: The person supplies: A value the schema accepts; Result type: The schema's type. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- `options` is `{ timeout?, maxAttempts? }`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- `maxAttempts` defaults to 10, Smithers' `HumanTask.defaultMaxAttempts`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- A refused answer is recorded, and the run parks on the next attempt. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- Refusing is an answer; it is not a failure of the transport. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- The call fails with `Human.Failed`, whose `code` is `request_invalid`, `rejected` or `timeout`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Human.answer(W, run, name, value)` records an answer. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- It reads the current attempt from the engine's waiting row. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Human.validate(value, request)` checks an answer before it is sent. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Human.json` takes one schema. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- Smithers takes two descriptions of the answer, a JSON Schema for the question and an Effect Schema for `HumanTask.decode`, and "a disagreement surfaces as a defect" (`flow/docs/guides/ask-a-person.md`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- The library derives the first from the second. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- **An answer approves the workflow's question and nothing else.** It grants no file, network or process permission. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- A permission prompt is the kernel's, in [capabilities](0058-capabilities.md). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalhuman) · [Review](reviews/2026-11-09-built-in-set.md).
+- Wait `Durable.sleep`, `Durable.until`: Waiting reason: `timer`, with `wakeAt`; Wakes on: The clock. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-a-wait-is-in-the-plan) · [Review](reviews/2026-11-09-built-in-set.md).
+- Wait a signal's `wait()`: Waiting reason: `event`, with the token; Wakes on: `send`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-a-wait-is-in-the-plan) · [Review](reviews/2026-11-09-built-in-set.md).
+- Wait `Human.*`: Waiting reason: `approval`, with the attempt's token; Wakes on: `Human.answer`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-a-wait-is-in-the-plan) · [Review](reviews/2026-11-09-built-in-set.md).
+- The reasons are Smithers' `WaitingAnnotation` (`flow/docs/concepts/suspension-and-replay.md`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-a-wait-is-in-the-plan) · [Review](reviews/2026-11-09-built-in-set.md).
+- An operator reads them off a parked run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-a-wait-is-in-the-plan) · [Review](reviews/2026-11-09-built-in-set.md).
+- The compiler recognizes a wait by the declaration its callee resolves to. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- An alias keeps the meaning, and a local function named `sleep` gains none. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- In a workflow body `try Experimental.Durable.sleep(d)`: Emitted: `Sleep.action.call({ millis })`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- In a workflow body `try paid.wait()`: Emitted: `WaitFor.action.call({ name: "paid" })`, then `Node.map` with the schema's decoder. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- In a workflow body `try Experimental.Human.confirm(name, prompt, { timeout })`: Emitted: `HumanTask.action.call({ name, kind: "confirm", prompt, timeoutMs })`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- In Effect code `paid.send(Checkout, run, v)`: Emitted: `DurableDeferred.succeed(gate, { token, value })`, with `gate = WaitFor.deferred("paid")` and `token = DurableDeferred.tokenFromExecutionId(gate, { flow: Checkout, executionId: run })`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- In Effect code `Experimental.Human.answer(W, run, name, v)`: Emitted: `HumanTask.answer({ token, value })`, the token built from `HumanTask.deferred(name, attempt)`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- The signal value and `Human` are thin library code over `WaitFor`, `DurableDeferred` and `HumanTask`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- The compiler adds `Sleep.layer`, `WaitFor.layer` and `HumanTask.layer` to `W.layer` for a workflow that uses them, because Smithers' system actions "push no layer obligation onto callers" and fail at run time when the layer is missing. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- Codes are assigned when this VIP is built. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
+- Slug `workflow-try`: When: `try sleep(…)`, `timeout(…)` or another fiber wait in a workflow body; The message names: `Experimental.Durable.sleep`, or `try.race` with it. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
+- Slug `wait-outside-workflow`: When: A signal's `wait()`, a `Human` question or `Durable.sleep` in Effect code that is not a workflow body; The message names: `sleep`, or moving the wait into a workflow. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
+
+### Adopted review answers
+
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- Signals are library values recognized by the compiler; there is no signal keyword. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review decision](reviews/2026-11-09-built-in-set.md#6-is-a-signal-worth-a-keyword).
+
+## Compared
+
+The first example in Smithers 1.x. It type-checks against `@smthrs/flow` and `@smthrs/plan` 1.0.0-rc.16.
+
+```ts
+import { Action, DurableDeferred, Flow, HumanTask, Sleep } from "@smthrs/flow"
+import { Node } from "@smthrs/plan"
+import { Schema } from "effect"
+
+export const Deploy = Action.make("release/Deploy", {
+  payload: { build: Schema.String },
+  success: Schema.String,
+  tier: "irreversible",
+  idempotencyKey: ({ build }) => `deploy:${build}`
+})
+
+export const Release = Flow.make("release/Release", {
+  payload: { build: Schema.String },
+  success: Schema.String,
+  error: Schema.Union([HumanTask.HumanTaskFailed, Sleep.SleepRequestInvalid]),
+  body: ({ build }) =>
+    HumanTask.action.call({ name: "ship", kind: "confirm", prompt: `Ship ${build}?`, timeoutMs: 6 * 60 * 60 * 1000 }).pipe(
+      Node.branch({
+        if: (approved) => approved === true,
+        then: () => Sleep.action.call({ millis: 60_000 }).pipe(Node.andThen(Deploy.call({ build }))),
+        else: () => Node.succeed("held")
+      })
+    )
+})
+
+export const approve = (executionId: string, attempt: number) =>
+  HumanTask.answer({
+    token: DurableDeferred.tokenFromExecutionId(HumanTask.deferred("ship", attempt), { flow: Release, executionId }),
+    value: true
+  })
+```
+
+| Program | Tokens (o200k_base) | Lines |
+| --- | --- | --- |
+| Vibe, proposed | 133 | 18 |
+| Smithers 1.x | 299 | 30 |
+
+The signal example is 97 tokens in 13 lines.
+
+**Checked.** The Smithers program type-checks as shown. The three calls, `Human.confirm`, `Durable.sleep` and a signal's `wait` and `send`, compile under `vibelang` 0.0.13 in an `effect function` against a declaration of the proposed module. `task` and `workflow` are new. Effect's own `DurableClock.sleep({ name: "cooldown", duration: "1 minute" })` compiles today, which is the name clash the Principles section describes.
+
+## Principles
+
+- **TypeScript-first.** No new syntax. Three plain calls and one exported value.
+- **Effect-second.** Bends with [durable-tasks-workflows](0055-durable-tasks-workflows.md). Effect's `DurableClock` and `DurableDeferred` are in scope and belong to Effect's replay engine. Smithers has modules with the same names for its own engine. A Vibe program writes neither name.
+- **Optimized for agentic programs.** An agent's run stops for a person and costs nothing while it waits.
+- **Highly forkable.** The recognized calls are one table. A fork that wants Temporal's per-workflow signals changes one row.
+- **Factory-first.** The factory's own approvals are `Human.confirm` calls in its workflows.
+- **One meaning per form.** `sleep` stays `Effect.sleep` everywhere. A durable timer has its own name, and a workflow refuses the fiber one.
+- **Hand-written Effect.** Each form lowers to the Smithers call in the table.
+
+## What this changes
+
+- The workflow lowering table gains three rows. The grammar does not change.
+- `vibelang-runtime/experimental/Durable` exports `sleep`, `until` and `signal`. `Experimental.Human` is new.
+- The proposals page's `sleep` and `waitSignal<T>` spellings are replaced. `waitSignal<T>` derived a schema from a type argument at a call, which no TypeScript form does.
+
+## Alternatives
+
+- **A `signal Paid { amount: number }` declaration.** It saves about 13 tokens a signal (8 against 20 to declare one, 3 against 4 to wait) and derives a tag. The tag is not needed: a wait's address already holds the workflow and the run. The keyword would also sit on TC39's Signals proposal, which gives `Signal` a different meaning.
+- **`waitSignal<T>("name")`**, the earlier design. The sender has no value to import, so nothing ties its payload to the waiter's type.
+- **Let `sleep` mean a durable timer inside a workflow.** Fewer names, and one form with two behaviors. Refused by principle 6.
+- **A human question as a signal with a prompt.** `HumanTask` adds validation, re-asking and a rejection record. It is its own call.
+- **Every approval inside an opaque task.** The plan would no longer show where a run can stop.
+
+## Follow-up questions
+
+1. **Waits inside a task body.** This VIP allows waits in workflow bodies only. Smithers offers `DurableClock.sleep` and `DurableDeferred.await` to an implementation. Decide with question 3 of durable-tasks-workflows.
+2. **Who may answer.** Smithers leaves authorization to the endpoint. Should `Human.answer` and `send` require a capability, such as `human:answer:<name>`? Recommendation: yes, in a later revision. It adds two actions to a closed list in [capabilities](0058-capabilities.md).
+3. **Notifications.** `@smthrs/notifications` tells a run's launcher, by email or Telegram, that someone is waiting. It is a product surface, and a notification is never the answer. This VIP leaves it out.
+
+## Depends on
+
+- [durable-tasks-workflows](0055-durable-tasks-workflows.md): workflow bodies, the plan, `Run`.
+- [std-durable](0060-std-durable.md): the engine that parks and wakes a run.
+- [VIP-44](0044-durable-values.md), accepted.

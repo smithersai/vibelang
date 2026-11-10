@@ -1,0 +1,188 @@
+# VIP-59: Eval declarations: a file kind and a function, no syntax
+
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+
+## Will's words
+> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+
+## Summary
+
+THESIS 8 also applies: "Agentic behavior is probabilistic, so evals become as basic as tests."
+
+**One sentence.** An eval is declared with one function call, `Experimental.Eval.suite`, in a file named `*.eval.vibe`, and it gets exactly the standing a test has: a file kind, a runner command and an exit code, with no new syntax.
+
+**One paragraph.** This proposal gives evals no syntax, and the reason is the thesis itself: evals are as basic as tests, and a Vibe test has no syntax. A test is `it.effect(…)` in a `*.test.vibe` file. An eval is `Experimental.Eval.suite(…)` in a `*.eval.vibe` file. The compiler understands nothing about either, and TypeScript's inference already types an eval's cases against its target. What evals need from the toolchain is what tests have: discovery by file name, a command that runs them, and exclusion from production bundles. One thing differs: an eval can spend money, so the command calls no model unless it is told to. The runtime, with scorers, judges, baselines and gates, is [std-eval](0069-std-eval.md).
+
+```text
+              a test                               an eval
+ file         src/greet.test.vibe                  src/greet.eval.vibe
+ declares     it.effect("…", () => effect { … })   export default Experimental.Eval.suite("greet", { target, cases, scorers })
+ asserts      equal, or it fails                   a score in [0, 1], compared with a committed baseline
+ command      vitest                               vibelang eval            replays recordings, spends nothing
+                                                   vibelang eval --live     calls models, writes recordings
+ exit code    0 pass, 1 fail                       0 pass, 1 regressed, 5 could not decide
+```
+
+## Decision
+
+```ts
+// proposed: src/greet.eval.vibe
+effect function greet(name: string) {
+  return `Hello, ${name}`
+}
+
+export default Experimental.Eval.suite("greet", {
+  target: greet,
+  cases: [{ name: "ada", input: ["Ada"], expected: "Hello, Ada" }],
+  scorers: [Experimental.Scorer.exact]
+})
+```
+
+```text
+$ vibelang eval
+greet  ada  exact 1.00  (baseline 1.00)
+1 suite, 1 case, 0 regressed. 0 model calls.
+```
+
+### Rules
+
+1. **File kind.** A file named `*.eval.vibe` or `*.eval.vibex` is an eval file. Its default export is one suite or an array of suites.
+2. **Declaration.** `Experimental.Eval.suite(name, { target, cases, scorers, trials?, gate? })` builds a suite and runs nothing. Importing an eval file never spends a token.
+3. **Typing.** `target` is any function that returns an Effect: an `effect function`, a `task` or a `workflow`. `input` is the target's parameter tuple and `expected` is its success type. Both are inferred; a wrong case is an ordinary type error.
+4. **Identity.** A case's baseline key is the suite name, the case name and the target's tag. A `task` or `workflow` supplies its derived tag. A plain function supplies its name.
+5. **Discovery is static.** `vibelang eval --list` imports each eval file and prints suites and cases. It calls no target.
+6. **The default run spends nothing.** `vibelang eval` provides a model that replays recordings ([std-test](0071-std-test.md)). A call with no recording is not sent: the case is undecided and the run exits `5`. `vibelang eval --live` calls models and writes recordings. No environment variable changes which of the two runs.
+7. **Baselines.** A run compares scores with the committed baseline file beside the eval file (`greet.eval.baseline.json`) and exits `0`, `1` or `5`, the codes of Smithers' `Gate.ciGrade`. `--update` rewrites the baseline, and never when a case failed or went undecided.
+8. **Bundles.** An eval file is never reachable from an application entry. The bundler plugins refuse an import of one from a non-eval file.
+9. **No keyword.** `eval` stays what it is in JavaScript, and what [VIP-1](0001-effect-and-async-functions.md) bans.
+
+### Why no syntax
+
+| A keyword would have to earn | Does it? |
+| --- | --- |
+| Something the compiler must derive | No. `Parameters` and the success type come from inference. |
+| Something the compiler must erase | No. A file kind keeps evals out of bundles, as it does tests. |
+| Fewer tokens | About 8 per suite, for `export default Experimental.Eval.suite(` against `eval greet {`. |
+| A TypeScript or TC39 precedent | None. The precedent in TypeScript is Evalite: `evalite("name", { data, task, scorers })` in `*.eval.ts`. |
+
+`theorem` earned syntax in [VIP-43](0043-theorems.md) because the compiler lowers and erases it. An eval is run, not lowered. A sampled score also proves nothing universal, so evals and theorems stay separate.
+
+## Claude's decisions
+
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+
+- **File kind.** A file named `*.eval.vibe` or `*.eval.vibex` is an eval file. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Its default export is one suite or an array of suites. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Declaration.** `Experimental.Eval.suite(name, { target, cases, scorers, trials?, gate? })` builds a suite and runs nothing. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Importing an eval file never spends a token. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Typing.** `target` is any function that returns an Effect: an `effect function`, a `task` or a `workflow`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- `input` is the target's parameter tuple and `expected` is its success type. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Both are inferred; a wrong case is an ordinary type error. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Identity.** A case's baseline key is the suite name, the case name and the target's tag. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A `task` or `workflow` supplies its derived tag. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A plain function supplies its name. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Discovery is static.** `vibelang eval --list` imports each eval file and prints suites and cases. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- It calls no target. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The default run spends nothing.** `vibelang eval` provides a model that replays recordings ([std-test](0071-std-test.md)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A call with no recording is not sent: the case is undecided and the run exits `5`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- `vibelang eval --live` calls models and writes recordings. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- No environment variable changes which of the two runs. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Baselines.** A run compares scores with the committed baseline file beside the eval file (`greet.eval.baseline.json`) and exits `0`, `1` or `5`, the codes of Smithers' `Gate.ciGrade`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- `--update` rewrites the baseline, and never when a case failed or went undecided. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Bundles.** An eval file is never reachable from an application entry. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- The bundler plugins refuse an import of one from a non-eval file. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **No keyword.** `eval` stays what it is in JavaScript, and what [VIP-1](0001-effect-and-async-functions.md) bans. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A keyword would have to earn Something the compiler must derive: Does it?: No. `Parameters` and the success type come from inference. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Parameters` and the success type come from inference. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+- A keyword would have to earn Something the compiler must erase: Does it?: No. A file kind keeps evals out of bundles, as it does tests. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+- A file kind keeps evals out of bundles, as it does tests. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+- A keyword would have to earn Fewer tokens: Does it?: About 8 per suite, for `export default Experimental.Eval.suite(` against `eval greet {`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+- A keyword would have to earn A TypeScript or TC39 precedent: Does it?: None. The precedent in TypeScript is Evalite: `evalite("name", { data, task, scorers })` in `*.eval.ts`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+- The precedent in TypeScript is Evalite: `evalite("name", { data, task, scorers })` in `*.eval.ts`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+- `theorem` earned syntax in [VIP-43](0043-theorems.md) because the compiler lowers and erases it. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+- An eval is run, not lowered. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+- A sampled score also proves nothing universal, so evals and theorems stay separate. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#why-no-syntax) · [Review](reviews/2026-11-09-built-in-set.md).
+
+### Adopted review answers
+
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+
+## Compared
+
+The same suite in Smithers 1.x. It type-checks against `@smthrs/evals` and `@smthrs/scorers` 1.0.0-rc.16.
+
+```ts
+import { CaseExecutor, Runner, Suite } from "@smthrs/evals"
+import { Binding, Scorer } from "@smthrs/scorers"
+import { Effect, Layer } from "effect"
+
+const greet = (name: string) => Effect.succeed(`Hello, ${name}`)
+
+const exact = Scorer.make({
+  id: "example/exact",
+  version: "1",
+  name: "exact",
+  score: ({ groundTruth, output }) => Effect.succeed({ score: output === groundTruth ? 1 : 0 })
+})
+
+const executor = CaseExecutor.make((suiteCase) =>
+  Effect.map(greet(suiteCase.input as string), (output) => ({
+    output,
+    stepKey: suiteCase.name,
+    latencyMs: 0,
+    target: { name: "greet" }
+  }))
+)
+
+export const program = Effect.gen(function*() {
+  const suite = yield* Suite.make({
+    name: "greet",
+    cases: [{ name: "ada", input: "Ada", expected: "Hello, Ada" }],
+    bindings: [Binding.make({ scorer: exact, appliesTo: { name: "greet" }, groundTruth: "Hello, Ada" })],
+    concurrency: 1
+  })
+  return yield* Runner.run(suite, { runId: "local", at: "2026-11-09T00:00:00.000Z" })
+}).pipe(Effect.provide(Layer.succeed(CaseExecutor.CaseExecutor)(executor)))
+```
+
+| Program | Tokens (o200k_base) | Lines |
+| --- | --- | --- |
+| Vibe, proposed | 69 | 9 |
+| Smithers 1.x | 320 | 31 |
+
+In Smithers a case's `input` is `unknown`, so the executor casts it. The cast is the type error rule 3 removes.
+
+**Checked.** The Vibe example uses only existing syntax. It compiles under `vibelang` 0.0.13 against a declaration of the proposed `Eval.suite` and `Scorer.exact`, including the inferred `input` and `expected` types. The Smithers program type-checks as shown.
+
+## Principles
+
+- **TypeScript-first.** A call and a file name, the pattern Vitest and Evalite set.
+- **Effect-second.** A target is an Effect. A suite run is an Effect. Nothing new.
+- **Optimized for agentic programs.** GOAL asks that a program with evals be shorter in Vibe than in TypeScript: 69 tokens against 320.
+- **Highly forkable.** A fork replaces the runner or the baseline format in the library.
+- **Factory-first.** The factory's own evals, which measure how well agents write Vibe, are `*.eval.vibe` files anyone can run for nothing.
+
+## What this changes
+
+- The toolchain learns one file kind and one command, `vibelang eval`, with `--list`, `--live`, `--update` and `--trials`.
+- The bundler plugins refuse to bundle an eval file into an application.
+- No grammar changes.
+
+## Alternatives
+
+- **An `eval Name { case … }` declaration.** It clashes with JavaScript's `eval`, has no precedent, saves about 8 tokens and gives the compiler nothing to do.
+- **Live by default, replay by flag.** A plain `vibelang eval` in CI or in an agent's loop would then spend. An unguarded live eval can start many coding-agent sessions before anyone stops it.
+- **Evals inside test files, `it.eval(…)`.** One file kind fewer. A test run must be free and fast; a live eval run calls models. Separate commands keep `vitest` from spending.
+- **`eval` as a member of a `task`**, so a step carries its own cases. It welds test data to production code and into the plan's identity.
+- **No standing at all: evals are scripts.** That is today, and each project invents discovery, baselines and exit codes.
+
+## Follow-up questions
+
+1. **Command or Vitest?** `vibelang eval` is a new command. The alternative runs evals as a Vitest project with a reporter. Recommendation: the command, because exit code `5` and `--update` have no Vitest equivalent.
+2. **Where baselines and recordings live.** Beside the eval file, or in one directory. Recommendation: beside the file, so a review shows the score change next to the code change.
+3. **Trials.** Declared on the suite, chosen per run with `--trials`, or both? Recommendation: both, and the flag wins. Replaying one recorded answer many times measures replay, so `--trials` above 1 requires `--live`.
+
+## Depends on
+
+- [std-eval](0069-std-eval.md): `Eval`, `Scorer`, baselines, gates.
+- [std-test](0071-std-test.md): the recorded model behind the default run.
