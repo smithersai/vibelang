@@ -36,6 +36,8 @@ A service has no superclass or type parameters, and every instance member is abs
 
 Service contracts also work with `noUnusedLocals` and `noUnusedParameters`. Their bodyless signatures describe an implementation; unused checks still apply to actual private implementation members.
 
+Rejected call and construct signatures, constructors and index signatures retain independent TypeScript errors in their types and bodies.
+
 Service methods and properties accept semicolons, commas or line breaks between members. Formatting accepts these separators and preserves the member types and comments, including commas inside tuple, generic and function types.
 
 

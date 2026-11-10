@@ -34,10 +34,15 @@ func checkServiceNamelessMembers(c *checker.Checker, file *ast.SourceFile) {
 					diagnostic = diagnostic.With("A service with a whole shape cannot declare {0}. Put signatures in the shape type and implementation code in a layer.")
 				}
 				report(c, member, diagnostic, what)
-				cover(c, member)
+				coverExactErrorCodes(c, member, 2377, 2390)
+				if member.Kind == ast.KindIndexSignature {
+					coverExactErrorCodes(c, member, 2411)
+				}
 				if member.Kind == ast.KindIndexSignature && ast.IsStatic(member) {
 					// The key and default headers would otherwise report TS2411 against it.
-					coverCodes(c, node, 2411)
+					for _, other := range node.Members() {
+						coverExactErrorCodes(c, other, 2411)
+					}
 				}
 			}
 		}

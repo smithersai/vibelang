@@ -1,0 +1,36 @@
+export service S0 { static readonly key = "signature/S0"; (value: Missing): number }
+export service S1 { static readonly key = "signature/S1"; (): Missing }
+export service S2 { static readonly key = "signature/S2"; <T extends Missing>(value:T): T }
+export service S3 { static readonly key = "signature/S3"; (): {value:Missing} }
+export service S4 { static readonly key = "signature/S4"; (): number }
+export service S5 { static readonly key = "signature/S5"; new(value: Missing): number }
+export service S6 { static readonly key = "signature/S6"; new(): Missing }
+export service S7 { static readonly key = "signature/S7"; new<T extends Missing>(value:T): T }
+export service S8 { static readonly key = "signature/S8"; new(): {value:Missing} }
+export service S9 { static readonly key = "signature/S9"; new(): number }
+export service S10 { static readonly key = "signature/S10"; constructor() { Missing } }
+export service S11 { static readonly key = "signature/S11"; constructor(value:Missing) {} }
+export service S12 { static readonly key = "signature/S12"; constructor() { ({}).missing } }
+export service S13 { static readonly key = "signature/S13"; constructor() { ((n:number)=>n)("bad") } }
+export service S14 { static readonly key = "signature/S14"; constructor() {} }
+export service S15: {value:number} { static readonly key = "signature/S15"; constructor() { Missing } }
+export service S16: {value:number} { static readonly key = "signature/S16"; constructor(value:Missing) {} }
+export service S17: {value:number} { static readonly key = "signature/S17"; constructor() { ({}).missing } }
+export service S18: {value:number} { static readonly key = "signature/S18"; constructor() { ((n:number)=>n)("bad") } }
+export service S19: {value:number} { static readonly key = "signature/S19"; constructor() {} }
+export service S20 { static readonly key = "signature/S20"; [key:string]: Missing }
+export service S21 { static readonly key = "signature/S21"; [key:Missing]: number }
+export service S22 { static readonly key = "signature/S22"; [key:string]: {value:Missing} }
+export service S23 { static readonly key = "signature/S23"; static [key:string]: Missing }
+export service S24 { static readonly key = "signature/S24"; [key:string]: number }
+export service S25: {value:number} { static readonly key = "signature/S25"; [key:string]: Missing }
+export service S26: {value:number} { static readonly key = "signature/S26"; [key:Missing]: number }
+export service S27: {value:number} { static readonly key = "signature/S27"; [key:string]: {value:Missing} }
+export service S28: {value:number} { static readonly key = "signature/S28"; static [key:string]: Missing }
+export service S29: {value:number} { static readonly key = "signature/S29"; [key:string]: number }
+export service S30 { static readonly key = "signature/S30"; static [key:string]: { [key:string]: string; field:number } }
+export service S31: {value:number} { static readonly key = "signature/S31"; static [key:string]: { [key:string]: string; field:number } }
+export service S32 { static readonly key = "signature/S32"; () }
+export service S33 { static readonly key = "signature/S33"; new() }
+export service S34 { static readonly key = "signature/S34"; (): { () } }
+export service S35 { static readonly key = "signature/S35"; new(): { () } }

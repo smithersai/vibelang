@@ -14,7 +14,7 @@ func init() {
 
 // checkServiceCallSignatures reports EK0902 at each call signature of a
 // service or control body, which the parser keeps as a member so the rest of
-// the body still checks (VIP-9). Its type-only TypeScript errors are covered.
+// the body still checks (VIP-9). Independent native errors in member types remain visible.
 func checkServiceCallSignatures(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -23,7 +23,7 @@ func checkServiceCallSignatures(c *checker.Checker, file *ast.SourceFile) {
 				// Whole-shape declarations own every non-reserved body member.
 				if ast.IsCallSignatureDeclaration(member) && serviceShape(node) == nil {
 					report(c, member, serviceCallSignatureDiagnostic)
-					cover(c, member)
+					coverExactErrorCodes(c, member, 2391, 7010, 7013, 7020)
 				}
 			}
 		}

@@ -40,7 +40,7 @@ func checkServiceConstructSignatures(c *checker.Checker, file *ast.SourceFile) {
 			for _, member := range node.Members() {
 				if isServiceConstructSignature(node, member) {
 					report(c, member.Name(), serviceConstructSignatureDiagnostic)
-					cover(c, member)
+					coverExactErrorCodes(c, member, 2391, 7010, 7013, 7020)
 				}
 			}
 		}

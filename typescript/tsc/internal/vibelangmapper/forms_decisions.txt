@@ -8810,6 +8810,8 @@ typescript/vibelang/cases/service-shape-separators/main.vibe:3:70 lambda plain f
 typescript/vibelang/cases/service-shape-separators/main.vibe:8:33 lambda plain fallback
 typescript/vibelang/cases/service-shape-types/main.vibe:10:99 lambda plain fallback
 typescript/vibelang/cases/service-shape-types/main.vibe:11:118 lambda plain fallback
+typescript/vibelang/cases/service-signature-native-errors/input/main.vibe:14:78 lambda plain fallback
+typescript/vibelang/cases/service-signature-native-errors/input/main.vibe:19:94 lambda plain fallback
 typescript/vibelang/cases/service-static-contract/main.vibe:2:69 lambda plain fallback
 typescript/vibelang/cases/service-static-native-errors/input/main.vibe:14:90 lambda plain fallback
 typescript/vibelang/cases/service-static-native-errors/input/main.vibe:25:98 lambda plain fallback
