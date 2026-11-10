@@ -8703,6 +8703,7 @@ typescript/vibelang/cases/service-value-lambdas/main.vibe:23:21 lambda effectFn 
 typescript/vibelang/cases/service-value-lambdas/main.vibe:25:21 lambda effectFn keyword
 typescript/vibelang/cases/service-value-lambdas/main.vibe:4:17 lambda plain table
 typescript/vibelang/cases/service-value-lambdas/main.vibe:4:23 lambda effectFn keyword
+typescript/vibelang/cases/service-written-shape-identity/main.vibe:7:23 lambda plain annotation
 typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:10:21 lambda choice fallback
 typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:13:21 lambda choice fallback
 typescript/vibelang/cases/shadowed-effect-wrapper.fail/main.vibe:4:21 lambda choice fallback

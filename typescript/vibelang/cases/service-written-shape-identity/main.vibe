@@ -1,0 +1,14 @@
+// expect-result: 7
+export service Direct: Direct { static readonly key = "identity/Direct" }
+export service List: List[] { static readonly key = "identity/List" }
+type Shape = { readonly self: Aliased }
+export service Aliased: Shape { static readonly key = "identity/Aliased" }
+export service Node: { next?: Node } { static readonly key = "identity/Node" }
+export const direct = (value: Direct): Context.Service.Shape<typeof Direct> => value
+
+export effect function main() {
+  provide Node = {} {
+    const node = try Node
+    return node.next === undefined ? 7 : 0
+  }
+}

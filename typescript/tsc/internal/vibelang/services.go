@@ -124,8 +124,8 @@ func serviceShape(class *ast.Node) *ast.Node {
 	return nil
 }
 
-// serviceShapeSelfReference finds a reference to the service key in its
-// implementation shape. Resolve names, not types: asking for typeof the key
+// serviceShapeSelfReference finds a value or shape-projection lookup of the
+// service key while constructing its implementation shape. Resolve names, not types: asking for typeof the key
 // while constructing its base type re-enters the same base resolution.
 // Follow named shapes too, while preserving local type and value bindings.
 func serviceShapeSelfReference(c *checker.Checker, class *ast.Node) *ast.Node {
@@ -157,6 +157,11 @@ func serviceShapeSelfReference(c *checker.Checker, class *ast.Node) *ast.Node {
 		if name != nil && ast.IsIdentifier(name) {
 			symbol := c.ResolveName(name.Text(), name, meaning, false)
 			if symbol == class.Symbol() {
+				// The bare identifier type is the requirement, not a read of
+				// the key or a projection of its not-yet-resolved shape.
+				if !hasDefaultValue(class) && ast.IsTypeReferenceNode(node) && ast.IsIdentifier(node.AsTypeReferenceNode().TypeName) {
+					return false
+				}
 				found = node
 				return true
 			}

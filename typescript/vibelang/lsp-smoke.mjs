@@ -185,10 +185,12 @@ try {
     assert(items.some((d) => d.code === 1109), `diagnostics ${JSON.stringify(items)}`)
   })
 
-  await check("diagnostics: self-referential service shapes report EK9207", async () => {
+  await check("diagnostics: service value cycles are rejected and identity shapes compile", async () => {
     open("src/service-self.vibe", "vibe")
     const items = await diagnostics("src/service-self.vibe")
-    assert(items.filter((d) => d.source === "EK" && d.code === 9207).length === 4, `diagnostics ${JSON.stringify(items)}`)
+    const cycles = items.filter((d) => d.source === "EK" && d.code === 9207)
+    assert(cycles.length === 3 && cycles.map((d) => d.range.start.line).sort().join(",") === "0,1,2", `diagnostics ${JSON.stringify(items)}`)
+    assert(!items.some((d) => d.severity === 1 && d.range.start.line === 3), `direct identity rejected: ${JSON.stringify(items)}`)
   })
 
   await check("diagnostics: main.vibe, opened as vibe, checks clean", async () => {
