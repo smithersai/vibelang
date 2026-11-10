@@ -1,0 +1,10 @@
+// expect-result: [1,2,3,4,5,6]
+import {Effect} from "effect"
+function numberOf(_f:()=>unknown){return 4}
+function fork(){return 5}
+function join(){return 6}
+enum ModuleValue{await=1,callback=numberOf(async()=>await Promise.resolve(1)),forked=fork(),joined=join()}
+export effect function main(){
+ enum Value{first=2,second=3,callback=numberOf(effect()=>{return try Effect.succeed(1)})}
+ return try Effect.sync((): number[]=>[ModuleValue.await,Value.first,Value.second,Value.callback,ModuleValue.forked,ModuleValue.joined])
+}

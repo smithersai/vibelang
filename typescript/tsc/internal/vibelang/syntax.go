@@ -48,6 +48,11 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 				cover(c, node)
 			}
 		case ast.KindAwaitExpression:
+			// Native placement diagnostics apply before an Effect operand check.
+			// Async callables retain the context needed for that operand rule.
+			if node.Flags&ast.NodeFlagsAwaitContext == 0 {
+				break
+			}
 			if operand := node.Expression(); holdsEffectValue(c, c.GetTypeAtLocation(operand)) {
 				text := nodeText(file, operand)
 				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK0103, shortText(text, "the operand")), "Run it to a promise first: await runPromise({0}).", text)

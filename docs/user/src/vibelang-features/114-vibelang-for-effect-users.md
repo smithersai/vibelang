@@ -508,6 +508,8 @@ Optional schema fields, schema-error payload fields and optional tuple elements 
 
 `await` directly evaluated in an Effect function, arrow, method or producer parameter default reports `EK0102`, including destructuring defaults and computed binding keys. This includes a class's `extends` expression in the default, even when an earlier default contains an outward `return`. Class and member decorator expressions in a parameter default also keep that parameter context. Computed class element names and object method or getter names in the default also keep that parameter context. Parameter initialization runs when the callable is called and is outside effect code, so `try` there remains `EK0501`. Move Promise work into an appropriate callable body; a nested `async` callable keeps its native `await` rules. A producer parameter default keeps its `EK2104` restriction on `yield` in class heritage, computed names and decorators after an earlier returning default. A nested native generator still owns its own `yield`.
 
+Enum member initializers retain native TypeScript `await` placement errors, even inside `async`, `effect` or producer functions. A nested callable keeps its own function kind; a `const enum` also retains its constant-expression check.
+
 A native `Effect.gen(function* () { ... })` with JavaScript `try/catch` keeps that boundary when no equivalent teaching rewrite exists. It remains valid native code and does not create a refused repair site.
 
 Option migration preserves comments and writes the qualified `Option.Option` type.

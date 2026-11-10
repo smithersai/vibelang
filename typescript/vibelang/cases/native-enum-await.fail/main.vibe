@@ -1,0 +1,8 @@
+// expect: TS1308 TS2311 TS2474 TS2304
+import {Effect} from "effect"
+declare const promiseValue:Promise<number>
+export enum ModuleValue{value=((await promiseValue) as unknown as number)}
+export const enum ConstantValue{value=((await 1) as unknown as number)}
+export effect function read(){enum Value{value=((await Effect.succeed(1)) as unknown as number)};return (Value.value as number)}
+export effect function* produce(){enum Value{value=((await (undefined as any)) as unknown as number)};yield (Value.value as number)}
+export async function native(){enum Value{value=((await missingValue) as unknown as number)};return (Value.value as number)}

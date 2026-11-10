@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- `await` in an enum member initializer could produce an unrelated Effect error. It now reports the native TypeScript placement error, including inside an `effect` function.
+
 - A producer parameter default containing a class or computed method could accept `yield` after an earlier returning default. It now reports `EK2104` and keeps nested native generators valid.
 
 - An `await` in a computed method, getter or field name inside an Effect parameter default could report an unrelated Promise error. It now reports `EK0102`, while retaining native property-name checks.

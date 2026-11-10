@@ -6897,6 +6897,9 @@ typescript/vibelang/cases/native-callback-direct/main.vibe:16:72 byname program 
 typescript/vibelang/cases/native-callback-direct/main.vibe:5:31 lambda plain hatch
 typescript/vibelang/cases/native-callback-direct/main.vibe:9:39 lambda plain hatch
 typescript/vibelang/cases/native-delegation-contexts/main.vibe:6:16 lambda effectFn keyword
+typescript/vibelang/cases/native-enum-await-context/main.vibe:6:44 lambda effectFn annotation
+typescript/vibelang/cases/native-enum-await-context/main.vibe:8:48 lambda effectFn keyword
+typescript/vibelang/cases/native-enum-await-context/main.vibe:9:25 lambda plain table
 typescript/vibelang/cases/native-generator-admission/main.vibe:6:21 lambda plain table
 typescript/vibelang/cases/native-generator-admission/main.vibe:9:21 lambda plain table
 typescript/vibelang/cases/native-stream-protocols-guard/main.vibe:17:28 lambda plain table

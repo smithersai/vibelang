@@ -294,6 +294,10 @@ func (p *Parser) vibelangValueArrow(body *ast.Node, anchor core.TextRange) *ast.
 // granting NodeFlagsAwaitContext. Namespace bodies and their plain functions
 // retain TypeScript's syntax errors; effect code keeps its legacy recovery.
 func (p *Parser) inNativeAwaitContext() bool {
+	// Enum initializers use native syntax without granting suspension permission.
+	if p.parsingContexts&(1<<PCEnumMembers) != 0 && !p.vibelangFiberContext {
+		return true
+	}
 	return p.inAwaitContext() || p.vibelangNamespaceContext && !p.vibelangFiberContext
 }
 
