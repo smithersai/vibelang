@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Migration setup generated Effect lint commands with unsupported Oxlint flags, so linting stopped with an unknown-option error. Setup now uses compiler project options and repairs those commands when repeated.
+
 - Formatting collapsed blank lines inside JSDoc comments and changed published documentation. Comment interiors now keep their text and blank-line structure while following the surrounding indentation.
 
 - A binding joined to a literal pattern with `and` could keep its original wide type and reject a valid return. Bindings now retain the type narrowed by the conjunction, in either order and inside array or object patterns.

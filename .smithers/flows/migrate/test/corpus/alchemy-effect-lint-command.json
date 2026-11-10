@@ -1,0 +1,3 @@
+{
+  "script": "(oxlint -c oxlint.config.ts && vibelang lint -c oxlint.config.ts --deny-warnings packages/a) && echo done"
+}

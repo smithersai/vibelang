@@ -1,3 +1,4 @@
+import { shellCommands } from "./shell-commands.mjs"
 import { wireKnipCompiledOutputs } from "./knip-tools.mjs"
 import { replaceBunCheck } from "./bun-check.mjs"
 import { bunProgramScope } from "./bun-scope.mjs"
@@ -214,36 +215,75 @@ const stagedSpec = /^(?:file|link):(?!\/)(?:\.\.?\/)*\.vibelang-toolchain\/[^/]+
 // Oxlint options that take a value, so a path after one is not a lint target.
 const oxlintValueOptions = new Set(["-c", "--config", "--tsconfig", "-A", "--allow", "-W", "--warn", "-D", "--deny", "--ignore-path", "--ignore-pattern", "-f", "--format", "--max-warnings", "--threads", "--import-plugin"])
 
-/**
- * Runs Effect's lint rules on .vibe files where a script runs them on .ts files
- * (VIP-38): after each oxlint command whose configuration enables effecttsgo/*
- * rules, adds `vibelang lint` with the same configuration, --deny-warnings and
- * paths. readConfig(path) returns a configuration file's text, or undefined.
- */
-export function addEffectLint(scripts = {}, readConfig) {
-  const next = {}
-  for (const [name, command] of Object.entries(scripts)) {
-    if (/\bvibelang lint\b/.test(command)) { next[name] = command; continue }
-    next[name] = command.split(/(&&|\|\||;)/).map((part) => {
-      const words = part.trim().split(/\s+/)
-      if (words[0] !== "oxlint") return part
-      let config = ".oxlintrc.json"
-      let deny = false
-      const paths = []
-      for (let i = 1; i < words.length; i++) {
-        const word = words[i]
-        if (word === "-c" || word === "--config") config = words[++i]
-        else if (word.startsWith("--config=")) config = word.slice("--config=".length)
-        else if (word === "--deny-warnings") deny = true
-        else if (oxlintValueOptions.has(word)) i++
-        else if (!word.startsWith("-")) paths.push(word)
-      }
-      if (!readConfig(config)?.includes("effecttsgo/")) return part
-      const lint = ["vibelang lint -c", config, ...(deny ? ["--deny-warnings"] : []), ...paths].join(" ")
-      return part.replace(/\s*$/, (end) => ` && ${lint}${end}`)
-    }).join("")
+// Split shell command positions without treating quoted punctuation as a separator.
+function lintCommandParts(command) {
+  const parts = []
+  let start = 0, quoted = null
+  for (let i = 0; i < command.length; i++) {
+    const char = command[i]
+    if (char === "\\" && quoted !== "'") { i++; continue }
+    if (quoted) { if (char === quoted) quoted = null; continue }
+    if (char === "'" || char === '"') { quoted = char; continue }
+    if (!/[;&|()]/.test(char)) continue
+    parts.push(command.slice(start, i))
+    const end = command[i + 1] === char && /[&|]/.test(char) ? i + 2 : i + 1
+    parts.push(command.slice(i, end))
+    i = end - 1
+    start = end
   }
-  return next
+  parts.push(command.slice(start))
+  return parts
+}
+
+const lintArgument = value => /^[\w./-]+$/.test(value) ? value : quote(value)
+
+/**
+ * VIP-38 runs Effect lint with compiler project options. Oxlint configuration,
+ * warning policy and source selectors remain on the separate Oxlint passes.
+ * Projects are relative to the script's working directory.
+ */
+export function addEffectLint(scripts = {}, readConfig, projects = [{ dir: ".", tsconfig: "tsconfig.json" }]) {
+  const lintFor = words => {
+    let config = ".oxlintrc.json", project
+    const paths = []
+    for (let i = 1; i < words.length; i++) {
+      const word = words[i]
+      if (word === "-c" || word === "--config") config = words[++i]
+      else if (word.startsWith("--config=")) config = word.slice("--config=".length)
+      else if (word === "--tsconfig") project = words[++i]
+      else if (word.startsWith("--tsconfig=")) project = word.slice("--tsconfig=".length)
+      else if (oxlintValueOptions.has(word)) i++
+      else if (!word.startsWith("-")) paths.push(word)
+    }
+    const overlaps = (dir, path) => {
+      const scope = posix.normalize(path.split(/[*?{]/)[0] || ".").replace(/\/$/, "")
+      return dir === "." || scope === "." || dir === scope || dir.startsWith(scope + "/") || scope.startsWith(dir + "/")
+    }
+    const selected = project ? [project] : projects.filter(p => !paths.length || paths.some(path => overlaps(p.dir, path))).map(p => posix.join(p.dir, p.tsconfig))
+    return { config, command: [...new Set(selected)].map(file => "vibelang lint -p " + lintArgument(file)).join(" && ") }
+  }
+  return Object.fromEntries(Object.entries(scripts).map(([name, command]) => {
+    const parts = lintCommandParts(command)
+    const wordsOf = part => {
+      try { return shellCommands(part.trim())[0].words } catch { return [] }
+    }
+    // Refresh the exact obsolete form setup used to generate, including groups.
+    for (let i = 0; i < parts.length; i += 2) {
+      const words = wordsOf(parts[i])
+      if (words[0] !== "vibelang" || words[1] !== "lint" || !words.some(word => word === "-c" || word === "--config" || word.startsWith("--config="))) continue
+      const fixed = lintFor(words.slice(1)).command
+      if (fixed) parts[i] = parts[i].replace(/\S[\s\S]*?\s*$/, fixed + (parts[i].match(/\s*$/)?.[0] ?? ""))
+    }
+    for (let i = 0; i < parts.length; i += 2) {
+      const words = wordsOf(parts[i])
+      if (words[0] !== "oxlint") continue
+      if (parts[i + 1] === "&&" && /^vibelang\s+lint(?:\s|$)/.test(parts[i + 2]?.trim() ?? "")) continue
+      const lint = lintFor(words)
+      if (!lint.command || !readConfig(lint.config)?.includes("effecttsgo/")) continue
+      parts[i] = parts[i].replace(/\s*$/, end => " && " + lint.command + end)
+    }
+    return [name, parts.join("")]
+  }))
 }
 
 /** Adds what a migrated package needs: the runtime as a dependency and the compiler as a dev dependency. The package that owns a Vite config also gets the plugin (addVibeLangPlugin). */

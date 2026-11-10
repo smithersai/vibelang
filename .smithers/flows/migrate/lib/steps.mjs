@@ -920,7 +920,7 @@ export async function wireTarget(config, log) {
     const root = JSON.parse(before)
     const readConfig = (file) => existsSync(join(t, file)) ? readFileSync(join(t, file), "utf8") : undefined
     const next = Wire.addCompilerScripts(root, specsFor(".").vibelang)
-    const scripts = Wire.addEffectLint(next.scripts, readConfig)
+    const scripts = Wire.addEffectLint(next.scripts, readConfig, config.packages.flatMap(pkg => Wire.projectsOf(ts, join(t, pkg.dir), pkg.tsconfig ?? "tsconfig.json").map(tsconfig => ({ dir: pkg.dir, tsconfig }))))
     if (JSON.stringify(scripts) !== JSON.stringify(next.scripts ?? {})) next.scripts = scripts
     if (JSON.stringify(next) !== JSON.stringify(root)) writeIfChanged(rootPackage, before, JSON.stringify(next, null, 2) + "\n")
   }

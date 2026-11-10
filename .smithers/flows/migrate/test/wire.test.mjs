@@ -34,10 +34,10 @@ test("lint scripts: vibelang lint follows each oxlint run whose config enables e
     test: "vitest run"
   }
   assert.deepEqual(addEffectLint(scripts, (path) => configs[path]), {
-    lint: "oxlint -c oxlint.config.ts && vibelang lint -c oxlint.config.ts",
-    "lint:effect": "effect-tsgo patch --no-typescript --oxlint && oxlint --config .oxlintrc.effect.json --disable-nested-config --deny-warnings packages examples scripts && vibelang lint -c .oxlintrc.effect.json --deny-warnings packages examples scripts",
+    lint: "oxlint -c oxlint.config.ts && vibelang lint -p tsconfig.json",
+    "lint:effect": "effect-tsgo patch --no-typescript --oxlint && oxlint --config .oxlintrc.effect.json --disable-nested-config --deny-warnings packages examples scripts && vibelang lint -p tsconfig.json",
     "lint:ci": "oxlint --disable-nested-config && pnpm lint:effect",
-    done: "oxlint -c oxlint.config.ts && vibelang lint -c oxlint.config.ts",
+    done: "oxlint -c oxlint.config.ts && vibelang lint -p tsconfig.json",
     test: "vitest run"
   })
 })
