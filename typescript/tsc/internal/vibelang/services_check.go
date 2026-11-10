@@ -360,7 +360,7 @@ func checkExtendsService(c *checker.Checker, class *ast.Node) {
 		note(d, "Implement it instead: class {0} implements {1}.Shape { … }", name, service.Name().Text())
 	}
 	// TypeScript's complaints about inherited abstract members restate this.
-	cover(c, extends.Parent)
+	coverExactErrorCodes(c, extends, 2507, 2510)
 	if class.Name() != nil {
 		cover(c, class.Name())
 	}

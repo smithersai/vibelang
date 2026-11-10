@@ -1,0 +1,16 @@
+export service S0 { static readonly key = "heritage/S0"; value:number }; export class X0 extends S0<Missing> {}
+export service S1 { static readonly key = "heritage/S1"; value:number }; export class X1 extends (S1 as typeof S1 & { n: Missing }) {}
+export service S2 { static readonly key = "heritage/S2"; value:number }; export class X2 extends (S2 satisfies typeof S2 & { n: Missing }) {}
+export service S3 { static readonly key = "heritage/S3"; value:number }; export class X3 extends (Missing, S3) {}
+export service S4 { static readonly key = "heritage/S4"; value:number }; export class X4 extends (Missing ? S4 : S4) {}
+export service S5 { static readonly key = "heritage/S5"; value:number }; export class X5 extends ((class Inner { n: Missing }), S5) {}
+export service S6 { static readonly key = "heritage/S6"; value:number }; export class X6 extends ((class Inner { value = ({}).missing }), S6) {}
+export service S7 { static readonly key = "heritage/S7"; value:number }; export class X7 extends (((n: number) => n)("bad"), S7) {}
+export service S8 { static readonly key = "heritage/S8"; static readonly defaultValue = () => ({value:1}); value:number }; export class X8 extends S8<Missing> {}
+export service S9 { static readonly key = "heritage/S9"; static readonly defaultValue = () => ({value:1}); value:number }; export class X9 extends (S9 as typeof S9 & { n: Missing }) {}
+export service S10 { static readonly key = "heritage/S10"; static readonly defaultValue = () => ({value:1}); value:number }; export class X10 extends (S10 satisfies typeof S10 & { n: Missing }) {}
+export service S11 { static readonly key = "heritage/S11"; static readonly defaultValue = () => ({value:1}); value:number }; export class X11 extends (Missing, S11) {}
+export service S12 { static readonly key = "heritage/S12"; static readonly defaultValue = () => ({value:1}); value:number }; export class X12 extends (Missing ? S12 : S12) {}
+export service S13 { static readonly key = "heritage/S13"; static readonly defaultValue = () => ({value:1}); value:number }; export class X13 extends ((class Inner { n: Missing }), S13) {}
+export service S14 { static readonly key = "heritage/S14"; static readonly defaultValue = () => ({value:1}); value:number }; export class X14 extends ((class Inner { value = ({}).missing }), S14) {}
+export service S15 { static readonly key = "heritage/S15"; static readonly defaultValue = () => ({value:1}); value:number }; export class X15 extends (((n: number) => n)("bad"), S15) {}

@@ -8698,6 +8698,16 @@ typescript/vibelang/cases/service-default-try-context.fail/main.vibe:6:54 lambda
 typescript/vibelang/cases/service-empty-literal-key/input/reference/main.vibe:3:34 lambda plain annotation
 typescript/vibelang/cases/service-empty-package-key/main.vibe:6:67 lambda plain fallback
 typescript/vibelang/cases/service-empty-package-key/main.vibe:9:46 lambda program table
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:10:89 lambda plain fallback
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:11:91 lambda plain fallback
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:12:91 lambda plain fallback
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:13:91 lambda plain fallback
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:14:91 lambda plain fallback
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:15:91 lambda plain fallback
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:16:153 lambda plain fallback
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:16:91 lambda plain fallback
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:8:100 lambda plain fallback
+typescript/vibelang/cases/service-extends-native-errors/input/main.vibe:9:89 lambda plain fallback
 typescript/vibelang/cases/service-identity-dts/consumer/src/use.vibe:14:55 lambda effectFn keyword
 typescript/vibelang/cases/service-identity-dts/consumer/src/use.vibe:25:53 lambda effectFn keyword
 typescript/vibelang/cases/service-identity-dts/main.vibe:18:9 lambda effectFn keyword
