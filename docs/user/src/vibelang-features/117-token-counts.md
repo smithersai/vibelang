@@ -19,7 +19,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,302 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 17,169 |
-| The skill and the user guide (145 pages) | 570,000 |
+| The skill and the user guide (145 pages) | 580,000 |
 | The user guide alone | 570,000 |
 | The specification (11 chapters) | 270,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
@@ -276,8 +276,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 14,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
-| [Experimental platform APIs](118-experimental-platform-apis.md) | 11,000 |
-| **All 9 pages** | **74,000** |
+| [Experimental platform APIs](118-experimental-platform-apis.md) | 13,000 |
+| **All 9 pages** | **76,000** |
 
 ### Specification
 
