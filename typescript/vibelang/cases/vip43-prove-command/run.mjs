@@ -1,9 +1,10 @@
 // run-seconds: 120
+// VIP-43: proof directory containment and one transparency diagnostic per helper.
 // vibelang prove's protocol, with a stand-in LemmaScript and Dafny: the
 // checks before any proof, the files it writes, the lsc run it starts and how
 // it reads LemmaScript's run log. The real toolchain proves this program.
 import assert from "node:assert/strict"
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { proveWorkspace } from "../_vip43-prove.mjs"
@@ -59,6 +60,29 @@ try {
   assert.equal(r.status, 1, r.text)
   assert.match(r.text, /error EK4316: .*holds files vibelang prove did not write/)
   console.log("a foreign proof directory: EK4316")
+
+  // Reject an included proof root outside the selected config before writing.
+  const outside = project("outside-root", {
+    "main.vibe": "export function inside(n: number): number { return n }\n",
+  })
+  writeFileSync(join(outside, "../outside.vibe"),
+    "export function outside(n: number): number { proof { ensures((r) => r === n) } return n }\n")
+  const outsideConfig = JSON.parse(readFileSync(join(outside, "tsconfig.json"), "utf8"))
+  outsideConfig.include = ["main.vibe", "../outside.vibe"]
+  outsideConfig.compilerOptions.rootDir = ".."
+  writeFileSync(join(outside, "tsconfig.json"), JSON.stringify(outsideConfig))
+  r = prove(outside)
+  assert.equal(r.status, 1, r.text)
+  assert.match(r.text, /error EK4316:.*outside the selected config's directory/)
+  assert.equal(existsSync(join(outside, "proofs")), false)
+
+  // The first helper has several rejected constructs; report its first once.
+  const transparent = project("transparency", {
+    "main.vibe": readFileSync(join(here, "../vip43-ek4314-transparent.fail/main.vibe"), "utf8"),
+  })
+  r = prove(transparent)
+  assert.equal(r.status, 1, r.text)
+  assert.equal((r.text.match(/error EK4314:/g) ?? []).length, 3, r.text)
 
   // --strict refuses implicit trust (EK4319); a declare function stays trusted.
   const strict = project("strict", {
