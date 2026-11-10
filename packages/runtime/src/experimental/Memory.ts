@@ -8,8 +8,9 @@
  * `agent-reviewer`). A bank with no kind prefix is a `flow` bank.
  *
  * The store and the ranking are chosen by a layer. {@link test} keeps facts
- * in this process; {@link layerStore} runs over any {@link Store}, which is
- * how a host brings its own database. There is no default store: a program
+ * in this process; {@link layerSql} keeps them in a SQL database through
+ * Effect's `SqlClient`; {@link layerStore} runs over any {@link Store}, which
+ * is how a host brings its own database. There is no default store: a program
  * that calls {@link remember} with none provided has a missing requirement.
  *
  * Guarantees:
@@ -32,7 +33,9 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import type { SqlClient } from "effect/sql"
 import * as inProcess from "./internal/memoryStore.js"
+import * as sqlStore from "./internal/memorySql.js"
 
 /**
  * @category type ids
@@ -383,6 +386,29 @@ export const capRecalled = (rows: ReadonlyArray<Recalled>, maxBytes: number): Ar
  */
 export const layerStore = (store: Store, options?: { readonly recall?: Recall | undefined }): Layer.Layer<Memory> =>
   Layer.succeed(Memory)({ [TypeId]: TypeId, store, recall: options?.recall ?? keyword })
+
+/**
+ * Memory in a SQL database, through Effect's `SqlClient`: provide one of
+ * Effect's clients, such as `SqliteClient.layer({ filename })` from
+ * `@effect/sql-sqlite-node` or `@effect/sql-sqlite-bun`, or `PgClient.layer`
+ * from `@effect/sql-pg`. Facts outlive the process, so a later run recalls
+ * what an earlier one remembered. The table is `@smthrs/memory`'s
+ * `memory_facts`, created if missing, so a Smithers store and this one read
+ * each other's facts. A SQL failure is a {@link MemoryError} with the code
+ * `store`.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const layerSql = (
+  options?: { readonly recall?: Recall | undefined }
+): Layer.Layer<Memory, MemoryError, SqlClient.SqlClient> =>
+  Layer.unwrap(
+    Effect.map(
+      sqlStore.make((message, cause) => new MemoryError({ code: "store", message, cause })),
+      (store) => layerStore(store, options)
+    )
+  )
 
 /**
  * Memory over a fresh {@link makeMemoryStore}, with keyword ranking. Facts
