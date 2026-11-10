@@ -48,6 +48,7 @@ import { WorkflowEngine } from "effect/workflow"
 import type { Workflow } from "effect/workflow"
 import * as Durable from "./Durable.js"
 import * as canonical from "./internal/canonical.js"
+import * as engineConformance from "./internal/engineConformance.js"
 import * as testHost from "./internal/testHost.js"
 
 /**
@@ -1130,3 +1131,66 @@ export const decisions = (fixture: DecisionFixture): Layer.Layer<DecisionModel.D
       })
     })
   )
+
+// -----------------------------------------------------------------------------
+// Conformance
+// -----------------------------------------------------------------------------
+
+/**
+ * A conformance case that does not hold: the case's name, what it requires,
+ * and the values it compared.
+ *
+ * @category errors
+ * @since 0.0.13
+ */
+export const ConformanceViolation = engineConformance.ConformanceViolation
+
+/**
+ * @category errors
+ * @since 0.0.13
+ */
+export type ConformanceViolation = engineConformance.ConformanceViolation
+
+/**
+ * An engine a conformance suite certifies. Running it allocates fresh
+ * storage and returns the engine's `WorkflowEngine` layer over that storage.
+ * Each build of the layer is one engine process: a case stops a process by
+ * closing its scope and starts another over the same storage.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type EngineSubject = engineConformance.EngineSubject
+
+/**
+ * A black-box conformance case: a name and an Effect that runs it against a
+ * subject, failing with {@link ConformanceViolation}. Cases are values, so
+ * they run under any runner.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type ConformanceCase = engineConformance.ConformanceCase
+
+/**
+ * Conformance suites a fork runs to show its engine or host behaves like the
+ * standard one.
+ *
+ * `conformance.engine()` is nine cases, observed only through Effect's
+ * `WorkflowEngine` API, each activity's invocation count and each run's
+ * result: `identity/distinct`, `identity/idempotent`,
+ * `identity/activity-name`, `interrupt/in-flight`,
+ * `replay/completed-prefix`, `replay/suspended-frontier`,
+ * `race/loser-interrupted`, `race/recorded-winner` and
+ * `race/recorded-loser`. The replay and race cases restart the engine over
+ * its storage, so only a durable engine passes them. A promise these cases
+ * do not test needs its own case before a fork may claim it.
+ *
+ * @category conformance
+ * @since 0.0.13
+ */
+export const conformance: {
+  readonly engine: () => ReadonlyArray<ConformanceCase>
+} = {
+  engine: () => engineConformance.engineCases
+}

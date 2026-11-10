@@ -1,0 +1,31 @@
+// expect-result: {"standard":[],"forgetful":["replay/completed-prefix","replay/suspended-frontier"]}
+// Experimental.Test.conformance.engine() (VIP-71) is nine black-box cases a
+// fork runs against its engine. The standard journaled engine passes them
+// all; a store that loses step results, injected here, fails the cases that
+// replay steps after a restart. Its races still replay, because a race's
+// winner is recorded through a durable deferred, not a step result.
+const standard = Effect.sync(() => Experimental.Durable.layerStore(Experimental.Durable.makeMemoryStore()))
+
+const forgetful = Effect.sync(() => {
+  const store = Experimental.Durable.makeMemoryStore()
+  return Experimental.Durable.layerStore({
+    ...store,
+    commit: (run, update, at) =>
+      store.commit(run, { ...update, events: update.events.filter((event) => event.eventType !== "StepCompleted") }, at)
+  })
+})
+
+effect function failing(subject: Experimental.Test.EngineSubject) {
+  const failed: Array<string> = []
+  for (const conformanceCase of Experimental.Test.conformance.engine()) {
+    const exit = try Effect.exit(conformanceCase.run(subject))
+    if (Exit.isFailure(exit)) {
+      failed.push(conformanceCase.name)
+    }
+  }
+  return failed
+}
+
+export effect function main() {
+  return { standard: try failing(standard), forgetful: try failing(forgetful) }
+}

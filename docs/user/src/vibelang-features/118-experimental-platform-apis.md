@@ -22,7 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
+| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -939,3 +939,31 @@ export effect function checkOrder(run: string) {
 ```
 
 `try Experimental.Test.divergence(runA, runB)` is the first difference between two runs' journals, `Option.none()` when they record the same events: the position `seq`, counted from 1, the `field` that differs (`"entry"` when one journal is shorter, `"eventType"` or `"payload"`), and the two values. Entry times and run ids are not compared.
+
+### Certifying an engine
+
+`Experimental.Test.conformance.engine()` is nine black-box cases a fork runs to show its workflow engine behaves like the standard one. A case is a value, `{ name, run }`, and `run(subject)` is an Effect that fails with `Experimental.Test.ConformanceViolation`, so the cases run under any runner. The subject is an Effect that allocates fresh storage and returns the engine's `WorkflowEngine` layer over it; each build of that layer is one engine process, which a case kills by closing its scope before it starts another over the same storage. The cases observe only Effect's `WorkflowEngine` API, how often each activity ran, and each run's result.
+
+| Case | The engine must |
+| --- | --- |
+| `identity/distinct` | run different payloads as different runs |
+| `identity/idempotent` | join an equal payload to its run instead of starting another |
+| `identity/activity-name` | identify an activity by its name within a run, so a second activity of that name returns the recorded result |
+| `interrupt/in-flight` | end a run aborted in flight as interrupted, interrupt the activity running, and start nothing after it |
+| `replay/completed-prefix` | after a restart, serve finished activities and run the unfinished one again |
+| `replay/suspended-frontier` | after a restart, resume a run suspended on a durable deferred at that deferred |
+| `race/loser-interrupted` | interrupt a race's losing activity once the winner finishes |
+| `race/recorded-winner` | after a restart, take the race's recorded winner rather than race again |
+| `race/recorded-loser` | after a restart, leave the recorded loser lost |
+
+```vibe
+const subject = Effect.sync(() => Experimental.Durable.layerStore(Experimental.Durable.makeMemoryStore()))
+
+export effect function certify() {
+  for (const conformanceCase of Experimental.Test.conformance.engine()) {
+    try conformanceCase.run(subject)
+  }
+}
+```
+
+`Experimental.Durable` passes all nine over a memory store and over SQLite. Effect's `WorkflowEngine.layerMemory` keeps runs in one process's memory, so it passes the five cases that run in one process and fails the four that restart it. A promise these cases do not test, such as signal delivery, needs its own case before a fork may claim it.
