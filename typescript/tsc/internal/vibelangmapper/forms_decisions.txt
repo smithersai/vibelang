@@ -4332,6 +4332,13 @@ typescript/vibelang/cases/experimental-test-host/main.vibe:17:35 lambda plain ta
 typescript/vibelang/cases/experimental-test-host/main.vibe:19:45 lambda plain fallback
 typescript/vibelang/cases/experimental-test-host/main.vibe:30:103 lambda effectFn table
 typescript/vibelang/cases/experimental-test-host/main.vibe:33:20 lambda effectFn table
+typescript/vibelang/cases/experimental-test-journal/main.vibe:18:16 lambda plain fallback
+typescript/vibelang/cases/experimental-test-journal/main.vibe:18:50 lambda effectFn table
+typescript/vibelang/cases/experimental-test-journal/main.vibe:26:33 lambda effectFn keyword
+typescript/vibelang/cases/experimental-test-journal/main.vibe:30:33 lambda dual fallback
+typescript/vibelang/cases/experimental-test-journal/main.vibe:31:32 lambda plain fallback
+typescript/vibelang/cases/experimental-test-journal/main.vibe:45:20 lambda effectFn table
+typescript/vibelang/cases/experimental-test-journal/main.vibe:52:37 lambda plain fallback
 typescript/vibelang/cases/experimental-test-record/main.vibe:10:19 lambda effectFn table
 typescript/vibelang/cases/experimental-test-record/main.vibe:11:20 lambda effectFn table
 typescript/vibelang/cases/experimental-test-record/main.vibe:11:48 lambda plain table

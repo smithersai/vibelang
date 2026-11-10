@@ -34,6 +34,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import type { PlatformError } from "effect/PlatformError"
 import * as Ref from "effect/Ref"
@@ -771,3 +772,212 @@ export const host = (
       Effect.sync(() => testHost.makeScriptedSpawner(options.commands ?? {}))
     )
   )
+
+// -----------------------------------------------------------------------------
+// Journal assertions
+// -----------------------------------------------------------------------------
+
+/**
+ * A journal assertion that does not hold. `expected` and `actual` are the
+ * values compared.
+ *
+ * @category errors
+ * @since 0.0.13
+ */
+export class JournalMismatch extends Data.TaggedError("JournalMismatch")<{
+  readonly message: string
+  readonly expected: unknown
+  readonly actual: unknown
+}> {}
+
+/**
+ * A run's status as its journal records it: `"running"` until the run
+ * completes or suspends.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type JournalStatus = "running" | "suspended" | "succeeded" | "failed" | "interrupted"
+
+/**
+ * One step of a run, as its journal records it.
+ *
+ * - `step` is the step's journal name, a task key and its occurrence in the
+ *   run, such as `"shop#Charge/1"`; `task` is the key alone.
+ * - `attempts` counts the retry attempts the step was started with.
+ * - `starts` counts every `StepStarted` entry, so a step that ran again
+ *   after a crash starts more often than it has attempts.
+ * - `outcome` is the last recorded result, or `undefined` when the step
+ *   never finished.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface JournalStep {
+  readonly step: string
+  readonly task: string
+  readonly attempts: number
+  readonly starts: number
+  readonly outcome: "success" | "failure" | undefined
+}
+
+/**
+ * A run's journal and assertions over it. Each assertion is an Effect that
+ * fails with {@link JournalMismatch}.
+ *
+ * A step name matches a {@link JournalStep} by its `step`, such as
+ * `"shop#Charge/2"`, or by its `task`, such as `"shop#Charge"`, which
+ * matches every occurrence.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface Journal {
+  readonly run: string
+  readonly entries: ReadonlyArray<Durable.JournalEntry>
+  /** The steps in the order they first started. */
+  readonly steps: ReadonlyArray<JournalStep>
+  /** The run's last recorded status; `"running"` until it completes or suspends. */
+  readonly status: JournalStatus
+  /** Some step named `step` finished successfully. */
+  readonly executed: (step: string) => Effect.Effect<void, JournalMismatch>
+  /** Steps named `steps` started in this relative order; other steps may come between. */
+  readonly executedInOrder: (steps: ReadonlyArray<string>) => Effect.Effect<void, JournalMismatch>
+  /** The steps named `step` were started with `count` attempts in total. */
+  readonly attempts: (step: string, count: number) => Effect.Effect<void, JournalMismatch>
+  /** The run's status is `status`. */
+  readonly terminal: (status: JournalStatus) => Effect.Effect<void, JournalMismatch>
+}
+
+const named = (name: string) => (step: JournalStep) => step.step === name || step.task === name
+
+const payloadOf = (entry: Durable.JournalEntry): Record<string, unknown> =>
+  typeof entry.payload === "object" && entry.payload !== null ? entry.payload as Record<string, unknown> : {}
+
+const readJournal = (run: string, entries: ReadonlyArray<Durable.JournalEntry>): Journal => {
+  const ordered = [...entries].sort((a, b) => a.seq - b.seq)
+  const steps = new Map<string, { attempts: Set<number>; starts: number; outcome: JournalStep["outcome"] }>()
+  let status: JournalStatus = "running"
+  for (const entry of ordered) {
+    const payload = payloadOf(entry)
+    const step = typeof payload.step === "string" ? payload.step : undefined
+    if (entry.eventType === "StepStarted" && step !== undefined) {
+      const record = steps.get(step) ?? { attempts: new Set<number>(), starts: 0, outcome: undefined }
+      record.attempts.add(typeof payload.attempt === "number" ? payload.attempt : 1)
+      record.starts += 1
+      steps.set(step, record)
+    } else if (entry.eventType === "StepCompleted" && step !== undefined) {
+      const record = steps.get(step) ?? { attempts: new Set<number>(), starts: 0, outcome: undefined }
+      const exit = payload.exit as { readonly _tag?: unknown } | undefined
+      record.outcome = exit?._tag === "Success" ? "success" : "failure"
+      steps.set(step, record)
+    } else if (entry.eventType === "RunCompleted") {
+      status = (payload.status as JournalStatus | undefined) ?? "succeeded"
+    } else if (entry.eventType === "RunSuspended") {
+      status = "suspended"
+    } else if (entry.eventType === "RunStarted" || entry.eventType === "RunRewound") {
+      status = "running"
+    }
+  }
+  const list: ReadonlyArray<JournalStep> = [...steps].map(([step, record]) => ({
+    step,
+    task: step.replace(/\/\d+$/, ""),
+    attempts: record.attempts.size,
+    starts: record.starts,
+    outcome: record.outcome
+  }))
+  const mismatch = (message: string, expected: unknown, actual: unknown) =>
+    Effect.fail(new JournalMismatch({ message, expected, actual }))
+  return {
+    run,
+    entries: ordered,
+    steps: list,
+    status,
+    executed: (step) =>
+      list.some((record) => named(step)(record) && record.outcome === "success")
+        ? Effect.void
+        : mismatch(`expected step ${JSON.stringify(step)} to finish successfully in run ${run}`, step, list),
+    executedInOrder: (wanted) => {
+      let from = 0
+      for (const step of wanted) {
+        const index = list.findIndex((record, i) => i >= from && named(step)(record))
+        if (index < 0) {
+          return mismatch(
+            `expected steps ${JSON.stringify(wanted)} to start in this order in run ${run}; ${JSON.stringify(step)} did not follow`,
+            wanted,
+            list.map((record) => record.step)
+          )
+        }
+        from = index + 1
+      }
+      return Effect.void
+    },
+    attempts: (step, count) => {
+      const total = list.filter(named(step)).reduce((sum, record) => sum + record.attempts, 0)
+      return total === count
+        ? Effect.void
+        : mismatch(`expected step ${JSON.stringify(step)} to have ${count} attempts in run ${run}; it has ${total}`, count, total)
+    },
+    terminal: (expected) =>
+      status === expected
+        ? Effect.void
+        : mismatch(`expected run ${run} to be ${expected}; it is ${status}`, expected, status)
+  }
+}
+
+/**
+ * The journal of `run`, read through the engine's `Durable` service, with
+ * assertions over which steps ran, in what order and with how many attempts.
+ *
+ * @category assertions
+ * @since 0.0.13
+ */
+export const journal = (run: string): Effect.Effect<Journal, never, Durable.Durable> =>
+  Effect.map(Stream.runCollect(Durable.history(run)), (entries) => readJournal(run, Array.from(entries)))
+
+/**
+ * The first difference between two runs' journals: the position, counted
+ * from 1, and the field that differs (`"entry"` when one journal is
+ * shorter, `"eventType"`, or `"payload"`). Entry times and run ids are not
+ * compared, and payloads are compared as canonical JSON.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface Divergence {
+  readonly seq: number
+  readonly field: "entry" | "eventType" | "payload"
+  readonly expected: unknown
+  readonly actual: unknown
+}
+
+/**
+ * The first attributable difference between the journals of `expected` and
+ * `actual`, or `Option.none()` when they record the same events with the
+ * same payloads.
+ *
+ * @category assertions
+ * @since 0.0.13
+ */
+export const divergence = (
+  expected: string,
+  actual: string
+): Effect.Effect<Option.Option<Divergence>, never, Durable.Durable> =>
+  Effect.gen(function*() {
+    const left = (yield* journal(expected)).entries
+    const right = (yield* journal(actual)).entries
+    for (let index = 0; index < Math.max(left.length, right.length); index++) {
+      const a = left[index]
+      const b = right[index]
+      if (a === undefined || b === undefined) {
+        return Option.some({ seq: index + 1, field: "entry" as const, expected: a, actual: b })
+      }
+      if (a.eventType !== b.eventType) {
+        return Option.some({ seq: index + 1, field: "eventType" as const, expected: a.eventType, actual: b.eventType })
+      }
+      if (canonical.canonicalJson(plain(a.payload)) !== canonical.canonicalJson(plain(b.payload))) {
+        return Option.some({ seq: index + 1, field: "payload" as const, expected: a.payload, actual: b.payload })
+      }
+    }
+    return Option.none()
+  })

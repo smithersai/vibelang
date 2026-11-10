@@ -1,0 +1,55 @@
+// expect-result: {"steps":[["case#Reserve/1",1],["case#Charge/1",3]],"status":"succeeded","wrongOrder":"JournalMismatch","same":true,"firstDifference":[1,"payload"]}
+// Experimental.Test.journal (VIP-71) reads a run's journal as a value with
+// Effect-valued assertions: which steps ran, in what order, with how many
+// attempts. Test.divergence names the first entry where two runs differ.
+const failures = { charge: 2 }
+
+const Reserve = Experimental.Durable.task("case#Reserve", { payload: { order: Schema.String }, success: Schema.Number })
+const Charge = Experimental.Durable.task("case#Charge", {
+  payload: { order: Schema.String },
+  success: Schema.String,
+  error: Schema.String,
+  retryPolicy: { initialMs: 1, factor: 1, maxMs: 1, maxAttempts: 4 }
+})
+const Order = Experimental.Durable.workflow("case#Order", { payload: { order: Schema.String }, success: Schema.String, error: Schema.String })
+
+// Each attempt runs the handler's effect again, so the card's answer is
+// decided when the attempt runs, not when the effect is built.
+const charge = (order: string) => Effect.suspend(() => {
+  if (failures.charge > 0) {
+    failures.charge -= 1
+    return Effect.fail("card declined, try again")
+  }
+  return Effect.succeed(`receipt:${order}`)
+})
+
+const OrderLive = Order.toLayer(effect ({ order }) => {
+  try Reserve({ order })
+  return try Charge({ order })
+}).pipe(
+  Layer.provide(Reserve.toLayer(() => Effect.succeed(1))),
+  Layer.provide(Charge.toLayer(({ order }) => charge(order))),
+  Layer.provideMerge(Experimental.Test.durable)
+)
+
+export effect function main() {
+  provide OrderLive {
+    try Order.execute({ order: "A-1" })
+    const run = try Order.executionId({ order: "A-1" })
+    const journal = try Experimental.Test.journal(run)
+    try journal.executedInOrder(["case#Reserve", "case#Charge"])
+    try journal.attempts("case#Charge", 3)
+    try journal.terminal("succeeded")
+    const wrongOrder = try journal.executedInOrder(["case#Charge", "case#Reserve"]).pipe(
+      Effect.as("held"),
+      Effect.catch((error) => Effect.succeed(error._tag))
+    )
+    try Order.execute({ order: "A-2" })
+    const other = try Order.executionId({ order: "A-2" })
+    const same = Option.isNone(try Experimental.Test.divergence(run, run))
+    const difference = try Experimental.Test.divergence(run, other)
+    const firstDifference = Option.isSome(difference) ? [difference.value.seq, difference.value.field] : []
+    const steps = journal.steps.map((step) => [step.step, step.attempts])
+    return { steps, status: journal.status, wrongOrder, same, firstDifference }
+  }
+}

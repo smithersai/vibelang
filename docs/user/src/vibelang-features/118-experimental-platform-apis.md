@@ -22,7 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands | the doubles are layers; `replay`, `host` and the engines need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
+| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -892,3 +892,27 @@ export effect function crashMidStep() {
 ```
 
 Step 2 blocks before its effect, so the crash interrupts it unfinished. Step 1 is not repeated after the crash; step 2 runs again on the fresh engine.
+
+### Assertions over a run's journal
+
+`try Experimental.Test.journal(run)` reads a run's journal through the engine and returns it as a value: `steps`, each with its journal name (`step`, such as `"shop#Charge/1"`), its task key (`task`), `attempts`, `starts` and `outcome`, in the order they first started, and the run's `status`. Its assertions are Effects that fail with `Experimental.Test.JournalMismatch`, so they run under any runner:
+
+| Assertion | Holds when |
+| --- | --- |
+| `journal.executed(step)` | a step named `step` finished successfully |
+| `journal.executedInOrder(steps)` | the named steps started in this relative order; other steps may come between |
+| `journal.attempts(step, n)` | the named steps were started with `n` retry attempts in all |
+| `journal.terminal(status)` | the run's status is `status`: `"running"`, `"suspended"`, `"succeeded"`, `"failed"` or `"interrupted"` |
+
+A step name matches by its journal name or by its task key, which matches every occurrence. `attempts` counts retries; `starts` counts every time the step started, so a step that ran again after `Experimental.Test.crash` has two starts and one attempt.
+
+```vibe
+export effect function checkOrder(run: string) {
+  const journal = try Experimental.Test.journal(run)
+  try journal.executedInOrder(["shop#Reserve", "shop#Charge"])
+  try journal.attempts("shop#Charge", 1)
+  try journal.terminal("succeeded")
+}
+```
+
+`try Experimental.Test.divergence(runA, runB)` is the first difference between two runs' journals, `Option.none()` when they record the same events: the position `seq`, counted from 1, the `field` that differs (`"entry"` when one journal is shorter, `"eventType"` or `"payload"`), and the two values. Entry times and run ids are not compared.
