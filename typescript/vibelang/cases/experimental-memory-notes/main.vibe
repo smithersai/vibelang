@@ -1,0 +1,21 @@
+// expect-result: {"recalled":[["n2","tests take 9 minutes"]],"history":[["m1","user","hello"],["m2","assistant","hi"]],"conflict":["idempotency_conflict",["text"]]}
+// Experimental.Memory (VIP-66): a note is never edited, a correction
+// supersedes it; a thread appends each message once.
+export effect function main() {
+  provide Experimental.Memory.test {
+    try Experimental.Memory.note("agent-ci", "tests take 4 minutes", { id: "n1" })
+    try Experimental.Memory.note("agent-ci", "tests take 9 minutes", { id: "n2", supersedes: "n1" })
+    const rows = try Experimental.Memory.recall({ banks: ["agent-ci"], query: "minutes" })
+    const chat = Experimental.Memory.thread("chat")
+    try chat.append({ id: "m1", role: "user", text: "hello" })
+    try chat.append({ id: "m2", role: "assistant", text: "hi" })
+    try chat.append({ id: "m1", role: "user", text: "hello" })
+    const error = try Effect.flip(chat.append({ id: "m1", role: "user", text: "HELLO" }))
+    const messages = try chat.history({ limit: 5 })
+    return {
+      recalled: rows.map((row) => [row.key, row.text]),
+      history: messages.map((message) => [message.id, message.role, message.text]),
+      conflict: [error.code, error.path]
+    }
+  }
+}

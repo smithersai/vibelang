@@ -33,6 +33,7 @@ import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Random from "effect/Random"
 import type { SqlClient } from "effect/sql"
 import * as inProcess from "./internal/memoryStore.js"
 import * as sqlStore from "./internal/memorySql.js"
@@ -109,8 +110,15 @@ export class MemoryError extends /* @__PURE__ */ Data.TaggedError("MemoryError")
   readonly cause?: unknown
 }> {}
 
+const memoryError = (
+  code: MemoryErrorCode,
+  message: string,
+  options?: { readonly path?: ReadonlyArray<string> | undefined; readonly cause?: unknown }
+): MemoryError => new MemoryError({ code, message, path: options?.path, cause: options?.cause })
+
 /**
- * A row recall ranks: a fact's key, text and last update.
+ * A row recall ranks: a fact's key or a note's id, its text, and when it was
+ * last written.
  *
  * @category models
  * @since 0.0.13
@@ -122,9 +130,23 @@ export interface SearchRow {
 }
 
 /**
+ * One message of a thread.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface Message {
+  readonly id: string
+  readonly role: string
+  readonly text: string
+  readonly at: number
+}
+
+/**
  * The storage memory reads and writes. Implement it to keep memory in
  * another database. A store reports its own failures as a
- * {@link MemoryError} with the code `store`.
+ * {@link MemoryError} with the code `store`, and the conflicts each method
+ * names with theirs.
  *
  * @category models
  * @since 0.0.13
@@ -137,9 +159,47 @@ export interface Store {
     readonly text: string
     readonly at: number
   }) => Effect.Effect<void, MemoryError>
-  /** Every row recall may return from one namespace. */
+  /**
+   * Every row recall may return from one namespace: its facts that have not
+   * expired and its notes no other note supersedes.
+   */
   readonly searchRows: (namespace: Namespace) => Effect.Effect<ReadonlyArray<SearchRow>, MemoryError>
+  /**
+   * Adds a note that supersedes the notes `supersedes` names, which must be
+   * in its namespace (`supersede_conflict` otherwise). Writing a note again
+   * with the same id, namespace, text and superseded ids does nothing; the
+   * same id with another namespace or text fails with `idempotency_conflict`,
+   * and with other superseded ids with `supersede_conflict`. `supersedes` is
+   * sorted and has no repeats.
+   */
+  readonly putNote: (note: {
+    readonly namespace: Namespace
+    readonly id: string
+    readonly text: string
+    readonly supersedes: ReadonlyArray<string>
+    readonly at: number
+  }) => Effect.Effect<void, MemoryError>
+  /**
+   * Appends a message to a thread, creating the thread. Appending a message
+   * with the same id, role and text again does nothing; the same id with
+   * another role or text fails with `idempotency_conflict`.
+   */
+  readonly appendMessage: (message: Message & { readonly thread: string }) => Effect.Effect<void, MemoryError>
+  /**
+   * The newest `limit` messages of a thread (all of them when `limit` is
+   * undefined), oldest first, ordered by time and then by id.
+   */
+  readonly history: (thread: string, limit: number | undefined) => Effect.Effect<ReadonlyArray<Message>, MemoryError>
 }
+
+/**
+ * The order of a thread's history: by time, then by id.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export const compareMessages = (left: Message, right: Message): number =>
+  left.at - right.at || compareText(left.id, right.id)
 
 /**
  * A store in this process's memory, gone at exit. A real store, not a mock:
@@ -149,7 +209,7 @@ export interface Store {
  * @category constructors
  * @since 0.0.13
  */
-export const makeMemoryStore: () => Store = inProcess.makeMemory
+export const makeMemoryStore = (): Store => inProcess.makeMemory(memoryError, compareMessages)
 
 /**
  * One recalled row.
@@ -405,7 +465,7 @@ export const layerSql = (
 ): Layer.Layer<Memory, MemoryError, SqlClient.SqlClient> =>
   Layer.unwrap(
     Effect.map(
-      sqlStore.make((message, cause) => new MemoryError({ code: "store", message, cause })),
+      sqlStore.make(memoryError, compareMessages),
       (store) => layerStore(store, options)
     )
   )
@@ -418,7 +478,7 @@ export const layerSql = (
  * @since 0.0.13
  */
 export const test: Layer.Layer<Memory> = /* @__PURE__ */ Layer.unwrap(
-  /* @__PURE__ */ Effect.sync(() => layerStore(inProcess.makeMemory()))
+  /* @__PURE__ */ Effect.sync(() => layerStore(makeMemoryStore()))
 )
 
 /**
@@ -494,3 +554,115 @@ export const recall = (input: {
     const ranked = yield* memory.recall({ banks: [...unique.values()], query: input.query }, memory.store)
     return capRecalled(ranked, maxBytes)
   })
+
+const nonEmpty = (value: unknown, label: string, path: ReadonlyArray<string | number>) =>
+  typeof value === "string" && value.length > 0 && bytes(value) <= MAX_KEY_BYTES
+    ? Effect.void
+    : Effect.fail(invalid(`${label} must be a non-empty string of at most ${MAX_KEY_BYTES} UTF-8 bytes`, path))
+
+// 128 random bits from Effect's Random, so a seeded test is repeatable.
+const noteId = Effect.map(
+  Effect.all(Array.from({ length: 4 }, () => Random.nextIntBetween(0, 0xffff_ffff))),
+  (words) => `note-${words.map((word) => word.toString(16).padStart(8, "0")).join("")}`
+)
+
+/**
+ * Appends a note to `bank` and returns its id. A note is never edited: a
+ * correction is a new note that names the notes it replaces in
+ * `supersedes`, and a superseded note drops out of recall. Recall ranks a
+ * note as a row whose key is its id.
+ *
+ * Writing a note again with the same `id`, bank, text and `supersedes` does
+ * nothing, so a retried write is safe; without an `id` each call appends a
+ * new note. The same id with another bank or text fails with
+ * `idempotency_conflict`, and with other `supersedes` with
+ * `supersede_conflict`. A note that supersedes itself or a note not in its
+ * bank fails with `supersede_conflict`.
+ *
+ * @category operations
+ * @since 0.0.13
+ */
+export const note = (
+  bank: string,
+  text: string,
+  options?: {
+    readonly id?: string | undefined
+    readonly supersedes?: string | ReadonlyArray<string> | undefined
+  }
+): Effect.Effect<{ readonly id: string }, MemoryError, Memory> =>
+  Effect.gen(function*() {
+    const { namespace } = yield* resolveBank(bank, ["bank"])
+    if (typeof text !== "string") return yield* Effect.fail(invalid("note text must be a string", ["text"]))
+    if (bytes(text) > MAX_TEXT_BYTES) {
+      return yield* Effect.fail(invalid(`note text exceeds ${MAX_TEXT_BYTES} UTF-8 bytes`, ["text"]))
+    }
+    if (options?.id !== undefined) yield* nonEmpty(options.id, "note id", ["id"])
+    const listed = options?.supersedes === undefined ? [] : typeof options.supersedes === "string" ? [options.supersedes] : options.supersedes
+    if (!Array.isArray(listed)) return yield* Effect.fail(invalid("supersedes must be a note id or an array of them", ["supersedes"]))
+    yield* Effect.forEach(listed, (target, index) => nonEmpty(target, "superseded note id", ["supersedes", index]))
+    const supersedes = [...new Set(listed)].sort(compareText)
+    const id = options?.id ?? (yield* noteId)
+    if (supersedes.includes(id)) {
+      return yield* Effect.fail(memoryError("supersede_conflict", "a note cannot supersede itself", { path: ["supersedes"] }))
+    }
+    const memory = yield* Memory
+    const at = yield* Clock.currentTimeMillis
+    yield* memory.store.putNote({ namespace, id, text, supersedes, at })
+    return { id }
+  })
+
+/**
+ * One conversation's messages.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface Thread {
+  readonly id: string
+  /**
+   * Appends a message, stamped with the current time. Appending a message
+   * with the same id, role and text again does nothing; the same id with
+   * another role or text fails with `idempotency_conflict`.
+   */
+  readonly append: (message: {
+    readonly id: string
+    readonly role: string
+    readonly text: string
+  }) => Effect.Effect<void, MemoryError, Memory>
+  /** The newest `limit` messages (all unless given), oldest first. */
+  readonly history: (options?: { readonly limit?: number | undefined }) => Effect.Effect<ReadonlyArray<Message>, MemoryError, Memory>
+}
+
+/**
+ * The thread `id`: a conversation's messages, appended once each and read
+ * back newest last. A thread exists once a message is appended to it.
+ *
+ * Fails with `invalid_argument` for an empty thread id, message id or role,
+ * or a `limit` that is not a non-negative integer, before any I/O.
+ *
+ * @category operations
+ * @since 0.0.13
+ */
+export const thread = (id: string): Thread => ({
+  id,
+  append: (message) =>
+    Effect.gen(function*() {
+      yield* nonEmpty(id, "thread id", ["thread"])
+      yield* nonEmpty(message.id, "message id", ["id"])
+      yield* nonEmpty(message.role, "message role", ["role"])
+      if (typeof message.text !== "string") return yield* Effect.fail(invalid("message text must be a string", ["text"]))
+      const memory = yield* Memory
+      const at = yield* Clock.currentTimeMillis
+      yield* memory.store.appendMessage({ thread: id, id: message.id, role: message.role, text: message.text, at })
+    }),
+  history: (options) =>
+    Effect.gen(function*() {
+      yield* nonEmpty(id, "thread id", ["thread"])
+      const limit = options?.limit
+      if (limit !== undefined && (!Number.isInteger(limit) || limit < 0)) {
+        return yield* Effect.fail(invalid("limit must be a non-negative integer", ["limit"]))
+      }
+      const memory = yield* Memory
+      return yield* memory.store.history(id, limit)
+    })
+})

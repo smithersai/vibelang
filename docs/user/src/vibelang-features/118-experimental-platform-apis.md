@@ -22,7 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Memory` | facts that outlive a run: `remember` writes one to a bank, `recall` ranks a bank's facts for a query and cuts them to a byte budget | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
+| `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
@@ -1008,13 +1008,32 @@ A fact lives in a bank, the public spelling of a namespace: `kind-id`, where the
 | `Experimental.Memory.remember({ bank, key, text })` | Writes `text` under `key` in `bank`, replacing what that key held. Returns `{ key }`. |
 | `Experimental.Memory.recall({ banks, query, maxBytes? })` | Returns the rows of `banks` that match `query` as `{ bank, key, text, score, updatedAtMs }`, best first, cut to `maxBytes`. A bank named twice is read once. |
 
+A note is never edited. `Experimental.Memory.note(bank, text, { id?, supersedes? })` appends one and returns `{ id }`; a correction is a new note that names the notes it replaces in `supersedes`, an id or an array of ids, and a superseded note drops out of recall. Recall returns a note as a row whose key is its id. Writing a note again with the same `id`, bank, text and `supersedes` does nothing, so a retried write is safe; without an `id`, each call appends a new note.
+
+```vibe
+export effect function correct() {
+  try Experimental.Memory.note("agent-ci", "tests take 4 minutes", { id: "n1" })
+  try Experimental.Memory.note("agent-ci", "tests take 9 minutes", { id: "n2", supersedes: "n1" })
+  return try Experimental.Memory.recall({ banks: ["agent-ci"], query: "minutes" })
+}
+```
+
+`Experimental.Memory.thread(id)` is one conversation: `append({ id, role, text })` adds a message stamped with the current time, and `history({ limit? })` returns the newest `limit` messages, or all of them, oldest first, ordered by time and then by id. Appending a message with the same id, role and text again does nothing.
+
+| Conflict | Code | Path |
+| --- | --- | --- |
+| A note id written again with another bank or text | `idempotency_conflict` | `["id"]` |
+| A note id written again with other `supersedes` | `supersede_conflict` | `["supersedes"]` |
+| A note that supersedes itself, or a note not in its bank | `supersede_conflict` | `["supersedes"]` |
+| A message id appended again with another role or text | `idempotency_conflict` | `["role"]` or `["text"]` |
+
 Recall ranks by keyword unless the layer says otherwise: a row scores one for each query word its key or text contains, and a row that matches no word is left out. Ties go to the newest update, then the key, then the bank, so the order never depends on the order the banks were named in.
 
 Every recall has a byte budget, because recalled rows become part of a prompt. The answer is empty or, serialized as JSON, at most `maxBytes` UTF-8 bytes, 2,048 unless given. Rows are taken whole, best first, while they fit; the first row that does not fit is cut to the longest prefix of its text that does, and nothing after it is taken.
 
 Recalled text is data. It grants no capability, and a fact a model wrote is an assertion, not an instruction.
 
-Pick the store with one layer. `Experimental.Memory.test` keeps facts in a fresh store in this process. `Experimental.Memory.layerSql({ recall? })` keeps them in a SQL database through Effect's `SqlClient`: provide one of Effect's clients, such as `SqliteClient.layer({ filename })` from `@effect/sql-sqlite-node` or `@effect/sql-sqlite-bun`, or `PgClient.layer` from `@effect/sql-pg`, and a later run recalls what an earlier one remembered. Its table is `@smthrs/memory`'s `memory_facts`, created if missing, so a Smithers store and a VibeLang store read each other's facts. `Experimental.Memory.layerStore(store, { recall? })` runs over any `Experimental.Memory.Store`, which is how a host keeps memory in its own database; layers built over one store share its facts. `Experimental.Memory.makeMemoryStore()` makes a store in this process's memory, so a test can run one program, start another over the same store, and recall what the first remembered. `recall` replaces the ranking with any `Experimental.Memory.Recall`; `Experimental.Memory.keyword` is the default, and the byte budget applies to every ranking. There is no default store: a program that calls `remember` with none provided has a missing `Experimental.Memory.Memory` requirement.
+Pick the store with one layer. `Experimental.Memory.test` keeps facts in a fresh store in this process. `Experimental.Memory.layerSql({ recall? })` keeps them in a SQL database through Effect's `SqlClient`: provide one of Effect's clients, such as `SqliteClient.layer({ filename })` from `@effect/sql-sqlite-node` or `@effect/sql-sqlite-bun`, or `PgClient.layer` from `@effect/sql-pg`, and a later run recalls what an earlier one remembered. Its tables are `@smthrs/memory`'s (`memory_facts`, `memory_notes`, `memory_note_supersedes`, `memory_threads` and `memory_messages`), created if missing, so a Smithers store and a VibeLang store read each other's rows. `Experimental.Memory.layerStore(store, { recall? })` runs over any `Experimental.Memory.Store`, which is how a host keeps memory in its own database; layers built over one store share its facts. `Experimental.Memory.makeMemoryStore()` makes a store in this process's memory, so a test can run one program, start another over the same store, and recall what the first remembered. `recall` replaces the ranking with any `Experimental.Memory.Recall`; `Experimental.Memory.keyword` is the default, and the byte budget applies to every ranking. There is no default store: a program that calls `remember` with none provided has a missing `Experimental.Memory.Memory` requirement.
 
 Every failure is an `Experimental.Memory.MemoryError` with a stable `code` and, when an input field is at fault, its `path`. Input is checked before any read or write:
 
@@ -1023,7 +1042,9 @@ Every failure is an `Experimental.Memory.MemoryError` with a stable `code` and, 
 | An empty bank | `invalid_namespace` | `["bank"]`, or `["banks", "<index>"]` |
 | A bank longer than 128 characters | `invalid_argument` | the bank's |
 | An empty key, or one over 1,024 UTF-8 bytes | `invalid_argument` | `["key"]` |
-| A text or a query over 16,384 UTF-8 bytes | `invalid_argument` | `["text"]` or `["query"]` |
+| An empty note id, superseded id, thread id, message id or role, or one over 1,024 UTF-8 bytes | `invalid_argument` | `["id"]`, `["supersedes", "<index>"]`, `["thread"]` or `["role"]` |
+| A history `limit` that is not a non-negative integer | `invalid_argument` | `["limit"]` |
+| A fact's or a note's text, or a query, over 16,384 UTF-8 bytes | `invalid_argument` | `["text"]` or `["query"]` |
 | More than 16 banks in one recall | `invalid_argument` | `["banks"]` |
 | A `maxBytes` that is not an integer from 0 to 65,536 | `invalid_argument` | `["maxBytes"]` |
 

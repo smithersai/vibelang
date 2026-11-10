@@ -119,7 +119,10 @@ const faulty = () => {
   }
   const store: Memory.Store = {
     putFact: () => broken("putFact"),
-    searchRows: () => broken("searchRows")
+    searchRows: () => broken("searchRows"),
+    putNote: () => broken("putNote"),
+    appendMessage: () => broken("appendMessage"),
+    history: () => broken("history")
   }
   return { calls, layer: Memory.layerStore(store) }
 }
