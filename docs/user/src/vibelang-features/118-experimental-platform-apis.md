@@ -22,7 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `record`, which replays a file and records what it is missing | the doubles are layers; `replay` needs nothing and runs in any runtime, `record` needs Effect's `FileSystem` |
+| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash` | the doubles are layers; `replay` and the engines need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -811,3 +811,52 @@ export effect function labelLive(seat: Layer.Layer<LanguageModel.LanguageModel>)
 | Nothing for a call that holds a credential | the call dies with `Experimental.Test.CredentialInRecording`, naming the rule that matched, such as `api-key` or `jwt` |
 
 `record` builds the `live` layer at the first miss, so a test whose recording answers every request runs with no key. Each append rewrites the file through a temporary file and a rename, so a crash leaves the old recording or the new one. A relative `path` resolves from the working directory, as Effect's `FileSystem` resolves it, and `record` needs a `FileSystem` layer such as `NodeFileSystem.layer`.
+
+### Crash tests for durable workflows
+
+`Experimental.Test.durable` is a journaled engine over a fresh in-memory store, `Experimental.Durable.memory` under a test's name. Under `it.effect` its clock is Effect's `TestClock`. It proves what a workflow runs and journals, never that a run recovers: an engine that is never restarted never replays.
+
+`Experimental.Test.restartable` is the engine a crash test uses. Provide it where the program provides its engine. `try Experimental.Test.crash` kills the engine the way a killed process stops: every run it was driving stops at once, and a fresh engine starts over the same store with the program's workflows registered again. The next execution of a stopped run resumes it. A step that finished before the crash returns its recorded result, and a step that had not finished runs again.
+
+```vibe
+// run: try Console.log(try crashMidStep())
+const done: Array<string> = []
+const reached = Deferred.makeUnsafe<void>()
+const blocked = { step: 2 }
+
+const Step = Experimental.Durable.task("docs#Step", { payload: { n: Schema.Number }, success: Schema.Number })
+const Steps = Experimental.Durable.workflow("docs#Steps", { payload: { count: Schema.Number }, success: Schema.Number })
+
+const perform = (n: number) => {
+  if (blocked.step !== n) {
+    return Effect.sync(() => void done.push(`step ${n}`))
+  }
+  blocked.step = 0
+  return Effect.andThen(Deferred.succeed(reached, undefined), Effect.never)
+}
+
+const StepsLive = Steps.toLayer(effect ({ count }) => {
+  let total = 0
+  for (let n = 1; n <= count; n++) {
+    total += try Step({ n })
+  }
+  return total
+}).pipe(
+  Layer.provide(Step.toLayer(({ n }) => Effect.as(perform(n), n))),
+  Layer.provideMerge(Experimental.Test.restartable)
+)
+
+export effect function crashMidStep() {
+  provide StepsLive {
+    const first = try Effect.forkChild(Steps.execute({ count: 3 }))
+    try Deferred.await(reached)
+    try Experimental.Test.crash
+    const total = try Steps.execute({ count: 3 })
+    try Fiber.interrupt(first)
+    return `${total}: ${done.join(", ")}`
+  }
+}
+// Output: 6: step 1, step 2, step 3
+```
+
+Step 2 blocks before its effect, so the crash interrupts it unfinished. Step 1 is not repeated after the crash; step 2 runs again on the fresh engine.

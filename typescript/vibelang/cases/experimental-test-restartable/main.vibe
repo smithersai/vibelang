@@ -1,0 +1,44 @@
+// expect-result: {"total":6,"effects":["step:1","step:2","step:3"],"started":4}
+// Experimental.Test.restartable (VIP-71) is a journaled engine a test can
+// crash. The injected world blocks step 2 before its effect, Test.crash kills
+// the engine there, and the next execution resumes the run: step 1 is served
+// from the journal and step 2 runs again, so every effect happens once.
+const effects: Array<string> = []
+const gate = { blockAt: "step:2" }
+const reached = Deferred.makeUnsafe<void>()
+
+const Step = Experimental.Durable.task("case#Step", { payload: { n: Schema.Number }, success: Schema.Number })
+const Steps = Experimental.Durable.workflow("case#Steps", { payload: { count: Schema.Number }, success: Schema.Number })
+
+const perform = (name: string) => {
+  if (gate.blockAt !== name) {
+    return Effect.sync(() => void effects.push(name))
+  }
+  gate.blockAt = ""
+  return Effect.andThen(Deferred.succeed(reached, undefined), Effect.never)
+}
+
+const StepsLive = Steps.toLayer(effect ({ count }) => {
+  let total = 0
+  for (let n = 1; n <= count; n++) {
+    total += try Step({ n })
+  }
+  return total
+}).pipe(
+  Layer.provide(Step.toLayer(({ n }) => Effect.as(perform(`step:${n}`), n))),
+  Layer.provideMerge(Experimental.Test.restartable)
+)
+
+export effect function main() {
+  provide StepsLive {
+    const first = try Effect.forkChild(Steps.execute({ count: 3 }))
+    try Deferred.await(reached)
+    try Experimental.Test.crash
+    const total = try Steps.execute({ count: 3 })
+    try Fiber.interrupt(first)
+    const run = try Steps.executionId({ count: 3 })
+    const events = try Stream.runCollect(Experimental.Durable.history(run))
+    const started = Array.from(events).filter((entry) => entry.eventType === "StepStarted").length
+    return { total, effects, started }
+  }
+}

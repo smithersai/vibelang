@@ -37,10 +37,13 @@ import * as Layer from "effect/Layer"
 import type { PlatformError } from "effect/PlatformError"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
 import { AiError, LanguageModel, Prompt, Response, Tool, Toolkit } from "effect/ai"
+import { WorkflowEngine } from "effect/workflow"
+import type { Workflow } from "effect/workflow"
+import * as Durable from "./Durable.js"
 import * as canonical from "./internal/canonical.js"
 
 /**
@@ -595,4 +598,121 @@ export const record = <E, R>(
         }))
     }
     return yield* makeModel(state, miss)
+  }))
+
+// -----------------------------------------------------------------------------
+// Durable engines
+// -----------------------------------------------------------------------------
+
+/**
+ * A durable engine for tests: `Experimental.Durable.memory`, a journaled
+ * engine over a fresh in-memory store. Under `@effect/vitest`'s `it.effect`
+ * its clock is Effect's `TestClock`.
+ *
+ * It proves a plan and a journal, never recovery: a memory engine that is not
+ * restarted never replays. Use {@link restartable} for a crash test.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const durable: Layer.Layer<WorkflowEngine.WorkflowEngine | Durable.Durable> = Durable.memory
+
+/**
+ * The controls of a {@link restartable} engine.
+ *
+ * @category services
+ * @since 0.0.13
+ */
+export class Restartable extends /* @__PURE__ */ Context.Service<Restartable, {
+  readonly crash: Effect.Effect<void>
+}>()("vibelang/experimental/Test/Restartable") {}
+
+/**
+ * Kills the {@link restartable} engine as a process death and starts a fresh
+ * engine over the same store. Every run the old engine was driving stops at
+ * once, with no orderly suspension; the next execution of a stopped run
+ * resumes it, finished steps return their recorded results and an
+ * unfinished step runs again.
+ *
+ * @category accessors
+ * @since 0.0.13
+ */
+export const crash: Effect.Effect<void, never, Restartable> = Effect.gen(function*() {
+  const restartable = yield* Restartable
+  yield* restartable.crash
+})
+
+interface EngineInstance {
+  readonly scope: Scope.Closeable
+  readonly engine: WorkflowEngine.WorkflowEngine["Service"]
+  readonly durable: Durable.Durable
+}
+
+interface Registration {
+  readonly workflow: Workflow.Any
+  readonly execute: (payload: any, executionId: string) => Effect.Effect<any, any, any>
+  readonly context: Context.Context<never>
+}
+
+/**
+ * A journaled engine over one in-memory store that a test can crash with
+ * {@link crash}. Provide it where a program provides its engine:
+ * `W.toLayer(body).pipe(Layer.provide(tasks), Layer.provideMerge(Experimental.Test.restartable))`.
+ *
+ * The engine a program sees is a stable front for the current instance. A
+ * crash closes the current instance's scope, which stops its run fibers the
+ * way a killed process stops, then builds a fresh instance over the same
+ * store and registers on it every workflow the program registered. Only this
+ * engine, or a real store closed and reopened, proves recovery.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const restartable: Layer.Layer<WorkflowEngine.WorkflowEngine | Durable.Durable | Restartable> = Layer
+  .effectContext(Effect.gen(function*() {
+    const store = Durable.makeMemoryStore()
+    const build = Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const context = yield* Layer.buildWithScope(Durable.layerStore(store), scope)
+      return {
+        scope,
+        engine: Context.get(context, WorkflowEngine.WorkflowEngine),
+        durable: Context.get(context, Durable.Durable)
+      } satisfies EngineInstance
+    })
+    let current: EngineInstance = yield* build
+    yield* Effect.addFinalizer((exit) => Scope.close(current.scope, exit))
+    const registrations: Array<Registration> = []
+    const register = (workflow: Workflow.Any, execute: Registration["execute"]) =>
+      Effect.gen(function*() {
+        const context = yield* Effect.context<never>()
+        registrations.push({ workflow, execute, context })
+        yield* current.engine.register(workflow as any, execute)
+      })
+    // Each member is read from the current instance when it is used, so an
+    // engine captured before a crash talks to the instance after it.
+    const engine = new Proxy(current.engine, {
+      get: (_, key) => (key === "register" ? register : Reflect.get(current.engine, key))
+    }) as WorkflowEngine.WorkflowEngine["Service"]
+    const durableFront = new Proxy(current.durable, {
+      get: (_, key) => Reflect.get(current.durable, key)
+    })
+    const crashNow: Effect.Effect<void> = Effect.gen(function*() {
+      yield* Scope.close(current.scope, Exit.void)
+      current = yield* build
+      for (const registration of registrations) {
+        yield* current.engine.register(registration.workflow as any, registration.execute).pipe(
+          Effect.provideContext(
+            registration.context.pipe(
+              Context.add(WorkflowEngine.WorkflowEngine, engine),
+              Context.add(Scope.Scope, current.scope)
+            ) as Context.Context<any>
+          )
+        ) as Effect.Effect<void>
+      }
+    })
+    return Context.make(WorkflowEngine.WorkflowEngine, engine).pipe(
+      Context.add(Durable.Durable, durableFront),
+      Context.add(Restartable, Restartable.of({ crash: crashNow }))
+    )
   }))
