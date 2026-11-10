@@ -1,0 +1,4 @@
+{
+  "Source": "smithers packages/smithers/flows/sandbox/src/internal/rootedPath.ts: a module with a file doc, no imports and one documented export; its .vibe declaration repeats the file doc, so it stays TypeScript",
+  "Main": "/**\n * Resolve paths under a root.\n */\n\n/**\n * Joins a relative path to the root.\n */\nexport const rootedPath = (root: string, path: string): string => root + \"/\" + path\n"
+}

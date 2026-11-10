@@ -1,0 +1,22 @@
+# Gaps between Chapter 1 API identity and the compiler, found by
+# FuzzDeclarationFileDocs. Chapter 1: declaration output carries the same doc
+# comment on each export as tsc writes for the twin, and no other JSDoc
+# difference is allowed beyond the generated @throws {never}. A module with
+# no imports whose file comment is followed by a blank line and whose first
+# statement is an exported arrow or function repeats that comment in its
+# declaration: the generated @throws contract re-emits the detached file
+# comment. Without the blank line, with any import, or with an interface,
+# type, class or local first statement, the declaration matches the twin.
+# A key is <header>/<gap>/<imports>/<first>.
+# target                   key                               owner     what is missing
+FuzzDeclarationFileDocs  jsdoc-line/blank/none/const  compiler  Chapter 1: a jsdoc-line file comment, a blank line, no imports and an undocumented exported arrow: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  jsdoc-line/blank/none/const-doc  compiler  Chapter 1: a jsdoc-line file comment, a blank line, no imports and a documented exported arrow: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  jsdoc-line/blank/none/function  compiler  Chapter 1: a jsdoc-line file comment, a blank line, no imports and an exported function: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  jsdoc/blank/none/const  compiler  Chapter 1: a jsdoc file comment, a blank line, no imports and an undocumented exported arrow: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  jsdoc/blank/none/const-doc  compiler  Chapter 1: a jsdoc file comment, a blank line, no imports and a documented exported arrow: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  jsdoc/blank/none/function  compiler  Chapter 1: a jsdoc file comment, a blank line, no imports and an exported function: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  license/blank/none/const-doc  compiler  Chapter 1: a license file comment, a blank line, no imports and a documented exported arrow: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  two-jsdoc/blank/none/const  compiler  Chapter 1: a two-jsdoc file comment, a blank line, no imports and an undocumented exported arrow: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  two-jsdoc/blank/none/const-doc  compiler  Chapter 1: a two-jsdoc file comment, a blank line, no imports and a documented exported arrow: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  two-jsdoc/blank/none/function  compiler  Chapter 1: a two-jsdoc file comment, a blank line, no imports and an exported function: main.d.ts repeats the file comment, the twin has it once; lane migfix-smithers
+FuzzDeclarationFileDocs  witness:smithers-file-jsdoc-no-imports  compiler  Chapter 1: Smithers sandbox rootedPath: the declaration repeats the file doc; lane migfix-smithers
