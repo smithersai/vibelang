@@ -216,9 +216,17 @@ test("r14 OPUS-4 neighbourhood: a registry row cannot turn an open VIP into appr
   assert.ok(lintRegistry(root).some(f => f.message.includes("EK9901") && f.message.includes("open VIP") && f.severity === "warning"))
 }))
 test("fast-check: pending diagnostic authorities stay unresolved across the fresh VIP blocks", () => fixture((root) => {
+  // Published proposals can occupy the blocks that older fixtures treated as empty.
+  for (const id of [70, 71, 72]) {
+    if (!vipRegistry(root).has(id))
+      writeFileSync(join(root, "docs/design/vips/00" + id + "-published-fixture.md"), "# VIP-" + id + "\n\n**Status:** accepted\n")
+  }
   const source = read(root, appendix), original = read(root, chapter)
   const assigned = diagnosticRegistry(root)
-  fc.assert(fc.property(fc.integer({ min: 70, max: 99 }), id => {
+  const occupied = vipRegistry(root)
+  const fresh = Array.from({ length: 30 }, (_, i) => i + 70).filter(id => !occupied.has(id))
+  assert.ok(fresh.length > 0, "the fixture needs an unused VIP diagnostic block")
+  fc.assert(fc.property(fc.constantFrom(...fresh), id => {
     let suffix = 1
     while (assigned.has("EK" + id + String(suffix).padStart(2, "0"))) suffix++
     assert.ok(suffix < 100, "the proposal needs an unassigned code in its own block")
