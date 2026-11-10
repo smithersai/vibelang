@@ -26,7 +26,8 @@ const recorded = () => {
     searchRows: wrap("searchRows"),
     putNote: wrap("putNote"),
     appendMessage: wrap("appendMessage"),
-    history: wrap("history")
+    history: wrap("history"),
+    sweep: wrap("sweep")
   })
   const run = <A, E>(effect: Effect.Effect<A, E, Memory.Memory>) => Effect.runPromiseExit(Effect.provide(effect, layer))
   return { calls, run }

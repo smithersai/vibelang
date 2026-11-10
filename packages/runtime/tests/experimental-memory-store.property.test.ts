@@ -8,8 +8,8 @@ import { Memory } from "vibelang-runtime/experimental"
 import { layer as sqlite } from "./fixtures/bun-sqlite-client.ts"
 
 // The SQL store and the in-process store are two adapters of one seam: after
-// any sequence of facts, notes and messages, every operation succeeded or
-// failed with the same code in both, each namespace holds the same rows, each
+// any sequence of facts, notes, messages and sweeps, every operation returned
+// the same value or failed with the same code in both, each namespace holds the same rows, each
 // thread the same history, and recall over either gives the same answer.
 const scratch = mkdtempSync(join(tmpdir(), "memory-parity-"))
 afterAll(() => rmSync(scratch, { recursive: true, force: true }))
@@ -25,7 +25,14 @@ const operation = fc.oneof(
     namespace,
     key: fc.oneof(fc.constantFrom("k", "K", "k "), fc.string({ unit: "grapheme", minLength: 1, maxLength: 6 })),
     text,
-    at
+    at,
+    ttlMs: fc.constantFrom(undefined, 1, 1e15)
+  }),
+  fc.record({
+    op: fc.constant("sweep" as const),
+    now: fc.constantFrom(2, 3, 5),
+    writtenBefore: fc.constantFrom(undefined, 2, 3),
+    keep: fc.constantFrom(undefined, 0, 1, 2)
   }),
   fc.record({
     op: fc.constant("note" as const),
@@ -49,11 +56,12 @@ type Operation = typeof operation extends fc.Arbitrary<infer A> ? A : never
 
 const apply = (store: Memory.Store, operation: Operation) =>
   operation.op === "fact" ? store.putFact(operation)
+  : operation.op === "sweep" ? store.sweep(operation)
   : operation.op === "note" ? store.putNote(operation)
   : store.appendMessage(operation)
 
 const codeOf = (exit: Exit.Exit<unknown, Memory.MemoryError>): string => {
-  if (Exit.isSuccess(exit)) return "ok"
+  if (Exit.isSuccess(exit)) return `ok ${JSON.stringify(exit.value) ?? ""}`
   const error = Cause.findErrorOption(exit.cause)
   return error._tag === "Some" ? error.value.code : `defect: ${Cause.pretty(exit.cause)}`
 }

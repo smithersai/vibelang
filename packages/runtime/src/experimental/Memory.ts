@@ -31,6 +31,7 @@
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Random from "effect/Random"
@@ -154,12 +155,17 @@ export interface Message {
  * @since 0.0.13
  */
 export interface Store {
-  /** Writes a fact, replacing the one under the same namespace and key. */
+  /**
+   * Writes a fact, replacing the one under the same namespace and key. A
+   * fact with `ttlMs` expires `ttlMs` after `at`: it is no longer recalled,
+   * and a sweep deletes it.
+   */
   readonly putFact: (fact: {
     readonly namespace: Namespace
     readonly key: string
     readonly text: string
     readonly at: number
+    readonly ttlMs?: number | undefined
   }) => Effect.Effect<void, MemoryError>
   /**
    * Every row recall may return from one namespace: its facts that have not
@@ -192,6 +198,28 @@ export interface Store {
    * undefined), oldest first, ordered by time and then by id.
    */
   readonly history: (thread: string, limit: number | undefined) => Effect.Effect<ReadonlyArray<Message>, MemoryError>
+  /**
+   * Deletes the facts that expired by `now`, and those written before
+   * `writtenBefore` when it is given, and trims each thread to its newest
+   * `keep` messages when `keep` is given. Notes stay. Returns the number of
+   * facts and messages deleted.
+   */
+  readonly sweep: (options: {
+    readonly now: number
+    readonly writtenBefore: number | undefined
+    readonly keep: number | undefined
+  }) => Effect.Effect<SweepResult, MemoryError>
+}
+
+/**
+ * What a sweep deleted.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface SweepResult {
+  readonly facts: number
+  readonly messages: number
 }
 
 /**
@@ -519,6 +547,8 @@ export const test: Layer.Layer<Memory> = /* @__PURE__ */ Layer.unwrap(
 
 /**
  * Writes a fact: `text` under `key` in `bank`, replacing what that key held.
+ * With `ttlMs`, the fact expires that many milliseconds after the write: it
+ * is no longer recalled, and {@link sweep} deletes it.
  *
  * Fails with `invalid_namespace` for an empty bank, and `invalid_argument`
  * for an empty key, a key over {@link MAX_KEY_BYTES} or a text over
@@ -531,6 +561,7 @@ export const remember = (input: {
   readonly bank?: string | undefined
   readonly key: string
   readonly text: string
+  readonly ttlMs?: number | undefined
 }): Effect.Effect<{ readonly key: string }, MemoryError, Memory> =>
   Effect.gen(function*() {
     const { namespace } = yield* resolveBank(input.bank, ["bank"])
@@ -544,9 +575,12 @@ export const remember = (input: {
     if (bytes(input.text) > MAX_TEXT_BYTES) {
       return yield* Effect.fail(invalid(`memory text exceeds ${MAX_TEXT_BYTES} UTF-8 bytes`, ["text"]))
     }
+    if (input.ttlMs !== undefined && (!Number.isSafeInteger(input.ttlMs) || input.ttlMs < 0)) {
+      return yield* Effect.fail(invalid("ttlMs must be a non-negative integer", ["ttlMs"]))
+    }
     const memory = yield* Memory
     const at = yield* Clock.currentTimeMillis
-    yield* memory.store.putFact({ namespace, key: input.key, text: input.text, at })
+    yield* memory.store.putFact({ namespace, key: input.key, text: input.text, at, ttlMs: input.ttlMs })
     return { key: input.key }
   })
 
@@ -813,3 +847,42 @@ export const layerTools = (bank: string) =>
  * @since 0.0.13
  */
 export const tools = (bank: string) => Effect.provide(toolkit, layerTools(bank))
+
+/**
+ * Deletes what the program no longer wants: facts whose `ttlMs` has passed,
+ * facts not written within `ttl` when it is given, and each thread's
+ * messages beyond its newest `keep` when `keep` is given. Notes stay: a
+ * superseded note is already out of recall. Nothing is deleted on its own;
+ * this is a finite Effect the program runs or schedules, such as with
+ * `Effect.schedule`.
+ *
+ * It deletes rows only. A recorded step that recalled a row still holds
+ * what it recalled.
+ *
+ * Fails with `invalid_argument` for a `ttl` that is not a non-negative
+ * duration or a `keep` that is not a non-negative integer, before any I/O.
+ *
+ * @category operations
+ * @since 0.0.13
+ */
+export const sweep = (options?: {
+  readonly ttl?: Duration.Input | undefined
+  readonly keep?: number | undefined
+}): Effect.Effect<SweepResult, MemoryError, Memory> =>
+  Effect.gen(function*() {
+    let ttlMs: number | undefined
+    if (options?.ttl !== undefined) {
+      const ttl = Duration.fromInput(options.ttl)
+      if (ttl._tag === "None" || Duration.toMillis(ttl.value) < 0 || Number.isNaN(Duration.toMillis(ttl.value))) {
+        return yield* Effect.fail(invalid("ttl must be a non-negative duration", ["ttl"]))
+      }
+      ttlMs = Duration.toMillis(ttl.value)
+    }
+    const keep = options?.keep
+    if (keep !== undefined && (!Number.isSafeInteger(keep) || keep < 0)) {
+      return yield* Effect.fail(invalid("keep must be a non-negative integer", ["keep"]))
+    }
+    const memory = yield* Memory
+    const now = yield* Clock.currentTimeMillis
+    return yield* memory.store.sweep({ now, writtenBefore: ttlMs === undefined ? undefined : now - ttlMs, keep })
+  })

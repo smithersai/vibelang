@@ -24,7 +24,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Human` | questions a workflow asks a person: `confirm`, `ask`, `select`, `json`; `answer` and `validate` for the inbox that replies | the engine of `Experimental.Durable`, in any runtime |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, and `tools` gives a model `remember` and `recall` bound to its bank | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
+| `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
 
@@ -1238,7 +1238,7 @@ A fact lives in a bank, the public spelling of a namespace: `kind-id`, where the
 
 | Call | Does |
 | --- | --- |
-| `Experimental.Memory.remember({ bank, key, text })` | Writes `text` under `key` in `bank`, replacing what that key held. Returns `{ key }`. |
+| `Experimental.Memory.remember({ bank, key, text, ttlMs? })` | Writes `text` under `key` in `bank`, replacing what that key held. With `ttlMs`, the fact expires that many milliseconds after the write and is no longer recalled. Returns `{ key }`. |
 | `Experimental.Memory.recall({ banks, query, maxBytes? })` | Returns the rows of `banks` that match `query` as `{ bank, key, text, score, updatedAtMs }`, best first, cut to `maxBytes`. A bank named twice is read once. |
 
 A note is never edited. `Experimental.Memory.note(bank, text, { id?, supersedes? })` appends one and returns `{ id }`; a correction is a new note that names the notes it replaces in `supersedes`, an id or an array of ids, and a superseded note drops out of recall. Recall returns a note as a row whose key is its id. Writing a note again with the same `id`, bank, text and `supersedes` does nothing, so a retried write is safe; without an `id`, each call appends a new note.
@@ -1288,11 +1288,20 @@ Every failure is an `Experimental.Memory.MemoryError` with a stable `code` and, 
 | An empty key, or one over 1,024 UTF-8 bytes | `invalid_argument` | `["key"]` |
 | An empty note id, superseded id, thread id, message id or role, or one over 1,024 UTF-8 bytes | `invalid_argument` | `["id"]`, `["supersedes", "<index>"]`, `["thread"]` or `["role"]` |
 | A history `limit` that is not a non-negative integer | `invalid_argument` | `["limit"]` |
+| A `ttlMs` or a sweep's `keep` that is not a non-negative integer, or a `ttl` that is not a non-negative duration | `invalid_argument` | `["ttlMs"]`, `["keep"]` or `["ttl"]` |
 | A fact's or a note's text, or a query, over 16,384 UTF-8 bytes | `invalid_argument` | `["text"]` or `["query"]` |
 | More than 16 banks in one recall | `invalid_argument` | `["banks"]` |
 | A `maxBytes` that is not an integer from 0 to 65,536 | `invalid_argument` | `["maxBytes"]` |
 
-A store reports its own failures, such as a SQL error, with the code `store`. Nothing is deleted unless the program asks.
+A store reports its own failures, such as a SQL error, with the code `store`.
+
+Nothing is deleted unless the program asks. `Experimental.Memory.sweep({ ttl?, keep? })` deletes facts whose `ttlMs` has passed, facts not written within `ttl` (any Effect `Duration` input, such as `"30 days"`) when it is given, and each thread's messages beyond its newest `keep` when it is given, and returns `{ facts, messages }`, the number of each it deleted. Notes stay, because a superseded note is already out of recall. A sweep is a finite Effect: run it when the program chooses, or schedule it with `Effect.schedule`. It deletes rows only, so a recorded step that recalled a row still holds what it recalled.
+
+```vibe
+export effect function tidy() {
+  return try Experimental.Memory.sweep({ ttl: "30 days", keep: 200 })
+}
+```
 
 ### Waits: timers, signals and human answers
 

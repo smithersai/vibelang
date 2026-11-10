@@ -5,6 +5,7 @@
  *
  * @internal
  */
+import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
 import type { MemoryError, MemoryErrorCode, Message, Namespace, SearchRow, Store } from "../Memory.js"
 
@@ -31,21 +32,23 @@ export const newest = <A>(messages: ReadonlyArray<A>, limit: number | undefined)
 
 /** A store in this process's memory. Layers that share one see each other's rows. */
 export const makeMemory = (fail: Fail, compareMessages: (left: Message, right: Message) => number): Store => {
-  const facts = new Map<string, Map<string, SearchRow>>()
+  const facts = new Map<string, Map<string, SearchRow & { readonly ttlMs: number | undefined }>>()
   const notes = new Map<string, Note>()
   const superseded = new Set<string>()
   const threads = new Map<string, Map<string, Message>>()
   return {
-    putFact: ({ namespace, key, text, at }) =>
+    putFact: ({ namespace, key, text, at, ttlMs }) =>
       Effect.sync(() => {
         const id = identity(namespace)
         let bank = facts.get(id)
         if (bank === undefined) facts.set(id, bank = new Map())
-        bank.set(key, { key, text, updatedAtMs: at })
+        bank.set(key, { key, text, updatedAtMs: at, ttlMs })
       }),
     searchRows: (namespace) =>
-      Effect.sync(() => [
-        ...(facts.get(identity(namespace))?.values() ?? []),
+      Effect.map(Clock.currentTimeMillis, (now) => [
+        ...[...(facts.get(identity(namespace))?.values() ?? [])].flatMap(({ key, text, updatedAtMs, ttlMs }) =>
+          ttlMs !== undefined && updatedAtMs + ttlMs <= now ? [] : [{ key, text, updatedAtMs }]
+        ),
         ...[...notes].flatMap(([id, note]) =>
           sameNamespace(note.namespace, namespace) && !superseded.has(id)
             ? [{ key: id, text: note.text, updatedAtMs: note.createdAtMs }]
@@ -89,6 +92,30 @@ export const makeMemory = (fail: Fail, compareMessages: (left: Message, right: M
           : Effect.fail(fail("idempotency_conflict", `message id "${id}" already exists in thread "${thread}" with a different ${field}`, { path: [field] }))
       }),
     history: (thread, limit) =>
-      Effect.sync(() => newest([...(threads.get(thread)?.values() ?? [])].sort(compareMessages), limit))
+      Effect.sync(() => newest([...(threads.get(thread)?.values() ?? [])].sort(compareMessages), limit)),
+    sweep: ({ now, writtenBefore, keep }) =>
+      Effect.sync(() => {
+        let deletedFacts = 0
+        let deletedMessages = 0
+        for (const bank of facts.values()) {
+          for (const [key, fact] of bank) {
+            const expired = fact.ttlMs !== undefined && fact.updatedAtMs + fact.ttlMs <= now
+            if (expired || (writtenBefore !== undefined && fact.updatedAtMs < writtenBefore)) {
+              bank.delete(key)
+              deletedFacts++
+            }
+          }
+        }
+        if (keep !== undefined) {
+          for (const messages of threads.values()) {
+            const ordered = [...messages.values()].sort(compareMessages)
+            for (const message of ordered.slice(0, Math.max(0, ordered.length - keep))) {
+              messages.delete(message.id)
+              deletedMessages++
+            }
+          }
+        }
+        return { facts: deletedFacts, messages: deletedMessages }
+      })
   }
 }

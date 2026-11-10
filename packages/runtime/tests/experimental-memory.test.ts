@@ -122,7 +122,8 @@ const faulty = () => {
     searchRows: () => broken("searchRows"),
     putNote: () => broken("putNote"),
     appendMessage: () => broken("appendMessage"),
-    history: () => broken("history")
+    history: () => broken("history"),
+    sweep: () => broken("sweep")
   }
   return { calls, layer: Memory.layerStore(store) }
 }

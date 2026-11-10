@@ -136,11 +136,11 @@ export const make = (fail: Fail, compareMessages: (left: Message, right: Message
     )
 
     const store: Store = {
-      putFact: ({ namespace, key, text, at }) =>
+      putFact: ({ namespace, key, text, at, ttlMs }) =>
         sql`INSERT INTO memory_facts (
           namespace_kind, namespace_id, fact_key, value_json, tags_json, ttl_ms, provenance_json, created_at_ms, updated_at_ms
         ) VALUES (
-          ${namespace.kind}, ${namespace.id}, ${key}, ${JSON.stringify({ content: text })}, ${"[]"}, ${null}, ${"{}"}, ${at}, ${at}
+          ${namespace.kind}, ${namespace.id}, ${key}, ${JSON.stringify({ content: text })}, ${"[]"}, ${ttlMs ?? null}, ${"{}"}, ${at}, ${at}
         ) ON CONFLICT (namespace_kind, namespace_id, fact_key) DO UPDATE SET
           value_json = excluded.value_json,
           tags_json = excluded.tags_json,
@@ -248,7 +248,30 @@ export const make = (fail: Fail, compareMessages: (left: Message, right: Message
               WHERE thread_id = ${thread} AND at_ms >= ${cutoff[0]!.at}`
           const messages = rows.map((row): Message => ({ id: row.id, role: row.role, text: row.text, at: Number(row.at) }))
           return newest(messages.sort(compareMessages), limit)
-        }).pipe(Effect.mapError(failure("could not read memory messages")))
+        }).pipe(Effect.mapError(failure("could not read memory messages"))),
+
+      sweep: ({ now, writtenBefore, keep }) =>
+        sql.withTransaction(Effect.gen(function*() {
+          const due = writtenBefore === undefined
+            ? sql`ttl_ms IS NOT NULL AND updated_at_ms + ttl_ms <= ${now}`
+            : sql`(ttl_ms IS NOT NULL AND updated_at_ms + ttl_ms <= ${now}) OR updated_at_ms < ${writtenBefore}`
+          const [{ count }] = yield* sql<{ readonly count: number | string | bigint }>`SELECT COUNT(*) AS "count" FROM memory_facts WHERE ${due}`
+          yield* sql`DELETE FROM memory_facts WHERE ${due}`
+          let messages = 0
+          if (keep !== undefined) {
+            const threads = yield* sql<{ readonly thread: string }>`SELECT DISTINCT thread_id AS "thread" FROM memory_messages`
+            for (const { thread } of threads) {
+              const rows = yield* sql<MessageRecord>`SELECT id, role, text, at_ms AS "at" FROM memory_messages WHERE thread_id = ${thread}`
+              const ordered = rows.map((row): Message => ({ id: row.id, role: row.role, text: row.text, at: Number(row.at) })).sort(compareMessages)
+              const drop = ordered.slice(0, Math.max(0, ordered.length - keep)).map((message) => message.id)
+              for (let start = 0; start < drop.length; start += 500) {
+                yield* sql`DELETE FROM memory_messages WHERE thread_id = ${thread} AND ${sql.in("id", drop.slice(start, start + 500))}`
+              }
+              messages += drop.length
+            }
+          }
+          return { facts: Number(count), messages }
+        })).pipe(Effect.mapError(failure("could not sweep memory")))
     }
     return store
   })
