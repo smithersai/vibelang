@@ -50,11 +50,6 @@ FuzzGrammarAdmission corpus:schema-type-argument-list compiler VIP-15 and Append
 FuzzGrammarAdmission corpus:schema-type-argument-list-empty compiler VIP-15 and Appendix A: an empty type argument list in a schema field type reports only `EK2109`
 FuzzGrammarAdmission corpus:schema-type-argument-list-campaign compiler VIP-15 and Appendix A: a trailing comma in an unmapped schema field type's argument list reports only `EK2109`
 
-FuzzGrammarAdmission admission:declaration-decorators compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
-FuzzGrammarAdmission corpus:declaration-decorators compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
-FuzzGrammarAdmission corpus:declaration-decorators-export compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
-FuzzGrammarAdmission corpus:declaration-decorators-schema-error compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
-FuzzGrammarAdmission corpus:declaration-decorators-service compiler Appendix A: ErrorStart, SchemaErrorStart and ServiceStart have no decorator prefix; only class members and native classes inherit DecoratorList
 FuzzGrammarAdmission corpus:effect-type-callback-trailing-bang compiler VIP-3 and Appendix A: a callback return type ending in A!E! omits the required final operand before its parameter boundary
 
 FuzzGrammarAdmission admission:module-redeclared-body compiler VIP-40 and Appendix A: a module declaration that redeclares a name of its file reports `EK4005` and its body is never compiled, so the body's native grammar errors (a doubled modifier, `TS1030`) are lost

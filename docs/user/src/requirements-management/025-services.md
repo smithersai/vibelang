@@ -244,6 +244,8 @@ An instance method body, a value initializer, or an accessor is `EK0902`; declar
 
 Rejected static members, signatures, constructors and index signatures still report independent TypeScript errors in their written types, initializers and bodies, such as an unknown name or a wrong argument type. An instance implementation or initializer does not hide errors on other static members, and independent errors in a rejected call signature's key or type parameters are still reported. Independent TypeScript errors in an instance implementation remain visible alongside that member rejection. Rejected accessor signatures and member contracts with class-only modifiers keep independent TypeScript errors in their written types. The `EK0902` member error still explains the rejected header.
 
+Decorators are not admitted on a `service` declaration (`TS1206`), as before a TypeScript `type` declaration. Remove the decorator to compile the declaration.
+
 A member can have a symbol key, such as `[Symbol.iterator](): Iterator<number>`. It is part of `Name.Shape`, as in a TypeScript interface; end the member before it with `;`, because `[` otherwise continues that member.
 
 A service's shape may have properties named `key` or `defaultValue`. They are ordinary implementation members and can coexist with the service's `static readonly key` and `static readonly defaultValue`. Read them from the implementation returned by `try Effect.service(ServiceName)`.

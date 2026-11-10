@@ -27,6 +27,8 @@ To document the type separately, write `type Message = typeof Message.Type` besi
 
 Formatting accepts the schema and its separately written alias on one line. It preserves each declaration’s JSDoc and `export` modifier.
 
+Decorators are not admitted on a `schema` declaration (`TS1206`), as before a TypeScript `type` declaration. Remove the decorator to compile the declaration.
+
 ## Modeling primitives, symbols, literals, enums, and template strings
 
 ```vibe

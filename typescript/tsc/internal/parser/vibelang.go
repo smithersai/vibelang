@@ -90,12 +90,16 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 		(p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape()) {
 		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
 	}
-	switch word {
-	case "effect":
+	if word == "effect" {
 		if !p.lookAhead((*Parser).scanStartOfEffectDeclaration) {
 			return nil // a misplaced effect, which parseVibeLangModifiers reads (vibelang_effect_misplaced.go)
 		}
 		return p.parseEffectDeclaration(pos, jsdoc, modifiers) // vibelang_effect.go
+	}
+	if word == "error" || word == "schema" || word == "service" || word == "data" {
+		modifiers = p.vibelangDeclarationDecorators(modifiers) // TS1206 (vibelang_declaration_decorators.go)
+	}
+	switch word {
 	case "spec":
 		return p.parseSpecFunctionDeclaration(pos, jsdoc, modifiers) // VIP-43, vibelang_proofs.go
 	case "error":

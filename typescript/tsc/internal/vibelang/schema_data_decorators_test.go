@@ -23,7 +23,9 @@ func TestSchemaDataDecoratorRecovery(t *testing.T) {
 					}
 					p, f, _, _ := editorProgram(t, "declare const dec:unknown;"+source)
 					count := 0
-					for _, d := range p.GetSemanticDiagnostics(t.Context(), f) {
+					// Recovery may reject the decorator during parsing. Keep the exact
+					// native error count across the complete diagnostic set.
+					for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), f), p.GetSemanticDiagnostics(t.Context(), f)...) {
 						if d.Category() != diagnostics.CategoryError {
 							continue
 						}

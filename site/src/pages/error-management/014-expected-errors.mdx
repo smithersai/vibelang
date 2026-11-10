@@ -507,6 +507,8 @@ For a reserved `_tag` member, `EK2117` takes precedence over the generic body-me
 
 An `effect` modifier on an error getter, setter or constructor reports `EK0104`. The modifier diagnostic takes priority over error-member checks, including the reserved `_tag` name; combining `async` and `effect` also reports `EK0105`. Independent TypeScript errors in the member remain visible.
 
+Decorators are not admitted on an `error` declaration (`TS1206`), as before a TypeScript `type` declaration. Remove the decorator to compile the declaration.
+
 Empty `;` members are ignored in `error` and `schema error` bodies. The formatter can remove a member without JSDoc. A `;` with JSDoc stays, so the comment does not become the next member's contract.
 
 A typed field named `constructor` in `error` or `schema error`, such as `constructor: string` or `constructor?: string`, is ordinary payload. The constructor restriction applies to a `constructor(...) { ... }` method.

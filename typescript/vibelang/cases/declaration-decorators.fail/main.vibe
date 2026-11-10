@@ -1,0 +1,10 @@
+// expect: TS1206
+// A decorator before a custom declaration: Appendix A's DeclarationStart admits
+// no DecoratorList, as TypeScript's `type` does not, so each is TypeScript's
+// "Decorators are not valid here" at its `@`, as `@dec type T = 1` is.
+function dec(value: unknown, context: unknown) {}
+@dec service Users { static readonly key = "decorators/Users"; n: number }
+@dec error Missing { id: string }
+@dec schema error Invalid { id: Schema.String }
+export @dec service Flags { static readonly key = "decorators/Flags"; on: boolean }
+export {}
