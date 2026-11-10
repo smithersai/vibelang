@@ -32,7 +32,10 @@ func FuzzServiceCaptureWithRejectedMembers(f *testing.F) {
 	}
 	var probes []probe
 	source := func(contract, rejected string) string {
-		return "type Box<U> = { value: U }; type Phantom<U> = { n: number }; export function outer<T>() { service S { static readonly key = \"capture/S\"; " + contract + "; " + rejected + " } }; export const invalid: number = \"wrong\""
+		if contract != "" {
+			contract += "; "
+		}
+		return "type Box<U> = { value: U }; type Phantom<U> = { n: number }; export function outer<T>() { service S { static readonly key = \"capture/S\"; " + contract + rejected + " } }; export const invalid: number = \"wrong\""
 	}
 	for _, contract := range []struct {
 		key, text string

@@ -966,6 +966,7 @@ func (p *Parser) isListElement(parsingContext ParsingContext, inErrorRecovery bo
 		return p.isStartOfVibeLangModuleDeclaration() || // VIP-41: consume and diagnose misplaced modules
 			p.vibelangFieldComma && p.token == ast.KindCommaToken || p.vibelangNoSeparator || // vibelang_errors.go
 			p.isVibeLangServiceCallSignature() || // vibelang.go
+			p.isVibeLangServiceSeparator() && !inErrorRecovery || // vibelang_service_separators.go
 			p.lookAhead((*Parser).scanClassMemberStart) || p.token == ast.KindSemicolonToken && !inErrorRecovery
 	case PCEnumMembers:
 		// Include open bracket computed properties. This technically also lets in indexers,
@@ -2166,6 +2167,9 @@ func (p *Parser) parseClassElement() *ast.Node {
 	}
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
+	if p.isVibeLangServiceSeparator() {
+		return p.parseVibeLangServiceSeparator(pos, jsdoc) // a comma with no member before it (vibelang_service_separators.go)
+	}
 	if p.token == ast.KindSemicolonToken {
 		p.nextToken()
 		result := p.finishNode(p.factory.NewSemicolonClassElement(), pos)

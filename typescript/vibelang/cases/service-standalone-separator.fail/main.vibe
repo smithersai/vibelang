@@ -1,0 +1,9 @@
+// expect: TS1131
+// A separator with no member before it: the members of a service body are
+// separated as an interface's are, so each stray `;` or `,` is TypeScript's
+// "Property or signature expected", as in interface I { n: number; ; m: string }.
+service Users { static readonly key = "separator/Users"; region: string; ; find(id: string): number!! }
+service Flags { static readonly key = "separator/Flags"; a: number, , b: string }
+service Leading { static readonly key = "separator/Leading"; ; n: number }
+service Shape: { n: number } { ; static readonly key = "separator/Shape" }
+export {}

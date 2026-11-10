@@ -523,6 +523,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-jsdoc-dotted-generic", "schema S { a: Array.<string> }"},
 	{"schema-predicate-field-type", "schema S { a: asserts x }"},
 	{"experimental-gated-body", "workflow W { async static readonly maxRounds = 2; effect call(repo: string) { return 1 } }"},
+	{"service-separators-mixed", "service S { n : number ; , m : string }"},
+	{"service-separators-leading-comma", "service S { , n : number }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -2528,6 +2530,11 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// exact structural diagnostics (including TS1123's empty list) reject syntax; type/name/module errors
 	// such as TS1064, TS1192, TS2304 and TS2322 deliberately remain outside.
 	switch d.Code() {
+	// VIP-9: a service body separates members as an interface does, so a `;` or
+	// `,` with no member before it is the parser's TS1131, as in
+	// `interface I { n: number; ; m: string }`.
+	case 1131:
+		return true
 	// checkGrammarRegularExpressionLiteral rescans the recovered literal
 	// through scanner/regexp.go. Flag, pattern and early-error diagnostics
 	// reject native syntax. Target-version availability (TS1501/TS1503)

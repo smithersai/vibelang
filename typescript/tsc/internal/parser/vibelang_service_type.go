@@ -41,6 +41,7 @@ func (p *Parser) parseServiceShapeDeclaration(pos int, jsdoc jsdocScannerInfo, m
 		p.vibelangAbstractMembers, p.vibelangServiceMembers, p.vibelangControlMembers, p.vibelangFieldBody, p.vibelangServiceShapeBody = true, true, false, false, true
 		members = p.parseList(PCClassMembers, (*Parser).parseClassElement)
 		p.vibelangAbstractMembers, p.vibelangServiceMembers, p.vibelangControlMembers, p.vibelangFieldBody, p.vibelangServiceShapeBody = saveAbstract, saveService, saveControl, saveFieldBody, saveShapeBody
+		p.vibelangServiceSeparators(members) // TS1131 (vibelang_service_separators.go)
 		if p.token == ast.KindCloseBraceToken {
 			form.Close = p.tokenRange()
 		}

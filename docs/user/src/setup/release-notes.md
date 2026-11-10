@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- A `service` body accepted a separator with no member before it, such as the second `;` in `n: number; ; m: string` or a leading `;`, which an `interface` rejects. It now reports TypeScript’s `TS1131` at that separator, as an interface does.
+
 - Rejected service accessors and modified member contracts could hide unknown names and type errors in their annotations. Those independent errors now appear alongside the member rejection.
 
 - A compiler acceptance case that exceeded its run deadline could report only missing output or an exit code. It now names the deadline that killed the runner, including when its output matched.

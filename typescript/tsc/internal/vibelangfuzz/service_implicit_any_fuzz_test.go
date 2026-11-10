@@ -58,7 +58,9 @@ func FuzzServiceImplicitAny(f *testing.F) {
 		}
 		r := rules[i]
 		separator := []string{"\n", ";\n", ";"}[int(shape)%3]
-		source := "export service Reader { static readonly key = \"batch/Reader\";" + separator + r.member + separator + "}\n"
+		// The selected layout supplies each separator exactly once.
+		// A preterminated key would introduce an empty interface member.
+		source := "export service Reader { static readonly key = \"batch/Reader\"" + separator + r.member + separator + "}\n"
 		config := strings.Replace(DefaultConfig, "\"strict\": true,", "\"strict\": true, \"noImplicitAny\": "+fmt.Sprint(r.strict)+",", 1)
 		result, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}, Config: config})
 		if err != nil {

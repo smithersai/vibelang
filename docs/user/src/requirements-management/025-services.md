@@ -228,7 +228,7 @@ The rules below complete the sections above. Each names the diagnostic the compi
 
 A service has no superclass or type parameters, and every instance member is abstract. Methods and properties declare the service's shape as in a TypeScript `interface`. Write intended types; a default factory does not infer missing member types. An omitted member type follows TypeScript, as in an interface: under `noImplicitAny`, `read()` is `TS7010` and an untyped property is `TS7008`; with the option off they are `any`. Explicit `read(): any` is valid under strict checking. VibeLang adds no diagnostic of its own and infers no Effect contract; fix `TS7010` by writing the intended return type.
 
-Two members on one line need a separator: `a: number b: string` is `EK0908`. Insert `;` before the second member and its comments. A trailing comma is allowed. Formatting accepts every separator and preserves the member types and comments, including commas inside tuple, generic and function types.
+Two members on one line need a separator: `a: number b: string` is `EK0908`. Insert `;` before the second member and its comments. A trailing comma is allowed. Formatting accepts every separator and preserves the member types and comments, including commas inside tuple, generic and function types. One separator follows each member, as in an `interface`: a separator with no member before it, such as the second `;` in `n: number; ; m: string`, a doubled comma or a leading `;`, is TypeScript’s `TS1131`.
 
 An instance method body, a value initializer, or an accessor is `EK0902`; declare the member's contract and implement it in a layer. The same diagnostic covers:
 
