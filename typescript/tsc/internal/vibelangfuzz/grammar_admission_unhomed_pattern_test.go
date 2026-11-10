@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/binder"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
@@ -56,7 +57,7 @@ func grammarPatternMarkers(file *ast.SourceFile) []grammarPatternMarker {
 
 // grammarUnhomedPatternGrammar reports an is pattern that stays behind its
 // placement marker and whose own text, read in an if condition where the
-// compiler does compile the pattern, carries a deferred pattern syntax
+// compiler does compile the pattern, carries a parser or binder syntax
 // error. The compiler then reports the placement error alone (EK4703, or
 // EK0705 in a parameter default or enum initializer), which covers the
 // pattern's own rejection. A pattern the compiler would accept in the if
@@ -74,24 +75,12 @@ func grammarUnhomedPatternGrammar(source string, file *ast.SourceFile) bool {
 				return true
 			}
 		}
-		if grammarPatternReservedBinding(source[marker.pos:marker.end]) {
-			return true
-		}
-	}
-	return false
-}
-
-// grammarPatternReservedBinding reports a let or const binding in a pattern
-// whose name is a strict-mode reserved word (`xs is [let let, ...]`). The
-// binder, not the parser, rejects such a name (TS1214, with TS2480 for
-// `let`), so a homed copy carries no parser marker; behind the placement
-// marker the compiler reports EK4703 alone.
-func grammarPatternReservedBinding(pattern string) bool {
-	ts := grammarLexSource(pattern)
-	for i := 0; i+1 < len(ts); i++ {
-		if ts[i].kind == 'w' && (ts[i].text == "let" || ts[i].text == "const") && ts[i+1].kind == 'w' {
-			switch ts[i+1].text {
-			case "let", "static", "implements", "interface", "package", "private", "protected", "public", "yield":
+		// Reserved references and bindings are rejected by the binder. Reading
+		// the homed tree also preserves IdentifierName positions, so a property
+		// named static is distinct from a reference to static.
+		binder.BindSourceFile(homed)
+		for _, diagnostic := range homed.BindDiagnostics() {
+			if grammarAdmissionSyntaxDiagnostic(diagnostic) {
 				return true
 			}
 		}

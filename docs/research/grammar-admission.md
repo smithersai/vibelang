@@ -950,6 +950,14 @@ compiled, so the body's native grammar errors are lost. That compiler gap is
 keyed `admission:module-redeclared-body`, with its registry row on
 `Parser.parseVibeLangModuleDeclaration`, until the compiler checks the body.
 
+A reserved reference inside the same unhomed pattern is also a member of
+`admission:unhomed-pattern-grammar`: `function g(a = xs is [let first,
+static, 1]) {}` reports only `EK0705`, while an `if` condition exposes the
+binder's `TS1214`. The classifier binds its homed copy and reads native
+grammar diagnostics, including reserved binding names. Property names,
+member names and strings that spell the same word remain controls; they
+are not `IdentifierReference` positions.
+
 An import type's type arguments followed. TypeScript's parser reads them as a
 bracketed list that may be empty or end in a comma, and the checker's
 TypeArguments grammar check (`TS1099`, `TS1009`) runs on type references and

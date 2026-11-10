@@ -74,6 +74,7 @@ FuzzGrammarAdmission corpus:unhomed-pattern-grammar compiler VIP-7: `xs is [let 
 FuzzGrammarAdmission corpus:unhomed-pattern-grammar-rest-not-last compiler VIP-7: an element after the rest of a binding pattern in a var-initialized for condition reports only `EK0107` and `EK4703`
 FuzzGrammarAdmission corpus:unhomed-pattern-grammar-parameter compiler VIP-7: an element after the rest of a binding pattern in a parameter default reports only `EK0705`
 FuzzGrammarAdmission corpus:unhomed-pattern-grammar-reserved-binding compiler VIP-7: `xs is [let let, ...]` in a var-initialized for condition reports only `EK0107` and `EK4703`; the binder's `TS1214` for the reserved binding name is lost behind the placement marker
+FuzzGrammarAdmission corpus:unhomed-pattern-reserved-reference compiler VIP-7 and Appendix A: a reserved IdentifierReference behind a binding-pattern placement marker loses native TS1214 and reports only EK0705
 FuzzGrammarAdmission admission:fiber-type-name compiler VIP-17 and Appendix A: a BindingIdentifier can't be `fork` or `join` in effect code; a type alias, interface, enum or type parameter with that name there compiles with no `EK1702`, where TypeScript rejects the `await` twins (`TS2457`, `TS2427`, `TS1003`, `TS1139`)
 FuzzGrammarAdmission corpus:fiber-type-name compiler VIP-17 and Appendix A: `type fork = 1` in an effect function compiles with no diagnostic
 FuzzGrammarAdmission corpus:fiber-type-name-enum compiler VIP-17 and Appendix A: `enum fork { }` in an effect function compiles with no diagnostic
