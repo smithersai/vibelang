@@ -707,7 +707,7 @@ Effect's `DurableClock.sleep` and `DurableDeferred` work inside these workflows.
 
 ### Runs and time travel
 
-A run's handle is a value over its id: `Experimental.Durable.run(W, id)` gives `result`, which waits for the run and resumes it if it stopped, `poll`, `cancel` and `resume`. `Experimental.Durable.spawn(W, payload)` starts or joins the run equal input names and returns its handle at once. `Experimental.Durable.start(W, payload)` always starts a new run, for work that must happen again. `Experimental.Durable.runs({ status?, workflow? })` streams the stored runs.
+A run's handle is a value over its id: `Experimental.Durable.run(W, id)` gives `result`, which waits for the run and resumes it if it stopped, `poll`, `cancel` and `resume`. `Experimental.Durable.spawn(W, payload)` starts or joins the run equal input names and returns its handle at once. `Experimental.Durable.start(W, payload)` always starts a new run, for work that must happen again. `Experimental.Durable.runs({ status?, workflow? })` streams the stored runs, oldest first, in the same order from every store.
 
 A position is `{ run, seq }`: a run and a sequence number in its journal.
 

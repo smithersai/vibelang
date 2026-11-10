@@ -658,7 +658,8 @@ export const rewind = (at: Position): Effect.Effect<void, TimeTravelError, Durab
   })
 
 /**
- * Stored runs, optionally only those with a status or of one workflow.
+ * Stored runs, oldest first, optionally only those with a status or of one
+ * workflow.
  *
  * @category runs
  * @since 0.0.13

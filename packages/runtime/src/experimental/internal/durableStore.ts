@@ -92,6 +92,7 @@ export interface Store {
   /** Appends events with no fence: signals from outside the owner. */
   readonly append: (run: string, events: ReadonlyArray<NewEvent>, at: number) => Effect.Effect<ReadonlyArray<number>, RunNotFound>
   readonly get: (run: string) => Effect.Effect<Option.Option<RunRow>>
+  /** Runs in creation order, then by id. */
   readonly list: (filter: RunFilter) => Effect.Effect<ReadonlyArray<RunRow>>
   /** Entries with `from <= seq <= to`, in order. */
   readonly entries: (run: string, range?: { readonly from?: number; readonly to?: number }) => Effect.Effect<ReadonlyArray<JournalEntry>>
@@ -174,10 +175,12 @@ export const makeMemory = (): Store => {
     get: (run) => Effect.sync(() => Option.map(Option.fromNullishOr(runs.get(run)), (state) => state.row)),
     list: (filter) =>
       Effect.sync(() =>
-        Array.from(runs.values(), (state) => state.row).filter((row) =>
-          (filter.status === undefined || row.status === filter.status) &&
-          (filter.workflow === undefined || row.workflow === filter.workflow)
-        )
+        Array.from(runs.values(), (state) => state.row)
+          .filter((row) =>
+            (filter.status === undefined || row.status === filter.status) &&
+            (filter.workflow === undefined || row.workflow === filter.workflow)
+          )
+          .sort((left, right) => left.createdAt - right.createdAt || (left.run < right.run ? -1 : left.run > right.run ? 1 : 0))
       ),
     entries: (run, range) =>
       Effect.sync(() => {
