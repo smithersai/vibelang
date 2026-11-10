@@ -1,6 +1,9 @@
 package vibelangfuzz
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 // D266 requires ordinary TypeScript diagnostics to agree with the pinned
 // TypeScript compiler, including literal computed duplicate names.
@@ -17,7 +20,18 @@ func TestComputedLiteralDuplicateParity(t *testing.T) {
 		{"alias-incompatible", `[slot]: number; ["x"]: string`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			files := map[string]string{"main.ts": "const slot = x as const;\ntype Row = {" + test.fields + "};\nexport {}\n", "tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","types":[],"skipLibCheck":true},"files":["main.ts"]}`}
+			files := map[string]string{"main.ts": "const slot = \"x\" as const;\ntype Row = {" + test.fields + "};\nexport {}\n", "tsconfig.json": `{"compilerOptions":{"strict":true,"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","types":[],"skipLibCheck":true},"files":["main.ts"]}`}
+
+			project := ProjectFromArchive(Archive(files))
+			result, err := w.Compile(context.Background(), project)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, diagnostic := range result.Diagnostics {
+				if diagnostic.Source() == "" && diagnostic.Code() == 2304 {
+					t.Fatalf("computed-key fixture has an unresolved name: %s", diagnostic.MessageText())
+				}
+			}
 			CheckParity(t, w, stock, "FuzzTypeScriptParity", Archive(files))
 		})
 	}
