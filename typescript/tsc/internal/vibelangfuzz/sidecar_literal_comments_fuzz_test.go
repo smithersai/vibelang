@@ -57,7 +57,12 @@ func FuzzSidecarLiteralComments(f *testing.F) {
 		}
 		p := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, "/", nil, nil, nil)})
 		got := ""
-		p.EmitDeclarationSidecars(context.Background(), func(name, text string) error { got = text; return nil })
+		p.EmitDeclarationSidecars(context.Background(), func(name, text string) error {
+			if name == "/project/main.d.vibe.ts" {
+				got = text
+			}
+			return nil
+		})
 		nativeConfig, nativeErrors := tsoptions.GetParsedCommandLineOfConfigFile("/project/native.json", &core.CompilerOptions{}, nil, fs, nil)
 		if len(nativeErrors) != 0 || nativeConfig == nil || len(nativeConfig.Errors) != 0 {
 			t.Fatalf("native twin config: %v %v", nativeConfig, nativeErrors)

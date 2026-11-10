@@ -126,13 +126,14 @@ func FuzzPackageFileSet(f *testing.F) {
 			sidecars = append(sidecars, name)
 			return nil
 		})
-		if len(sidecars) != count {
-			Gap(t, "FuzzPackageFileSet", key, "VIP-27: got %d sidecars for %d sources", len(sidecars), count)
+		var expected []string
+		for i := 0; i < count; i++ {
+			expected = append(expected, fmt.Sprintf("/pkg/unit%d.d.vibe.ts", i), fmt.Sprintf("/pkg/unit%d.d.ts", i))
 		}
-		for _, name := range sidecars {
-			if !strings.HasSuffix(name, ".d.vibe.ts") {
-				Gap(t, "FuzzPackageFileSet", key, "unexpected extra output %s", name)
-			}
+		slices.Sort(sidecars)
+		slices.Sort(expected)
+		if !slices.Equal(sidecars, expected) {
+			Gap(t, "FuzzPackageFileSet", key, "unexpected declaration outputs: got %v, want %v", sidecars, expected)
 		}
 	})
 }

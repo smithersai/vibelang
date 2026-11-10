@@ -175,6 +175,25 @@ func FuzzSidecarSourceIdentity(f *testing.F) {
 		diagnostics := r.Program.EmitDeclarationSidecars(t.Context(), func(name, text string) error {
 			return os.WriteFile(name, []byte(text), 0644)
 		})
+		// An authored declaration is never replaced by a native forwarder.
+		// TypeScript source siblings yield the native name before this check.
+		if target == "vibe" && mask&2 != 0 && mask&5 == 0 {
+			protected := false
+			if diagnostics != nil {
+				for _, diagnostic := range diagnostics.Diagnostics {
+					if diagnostic.Code() == 5055 {
+						protected = true
+					} else if diagnostic.Code() != 6305 {
+						t.Fatalf("unexpected collision diagnostic: %v", diagnostic)
+					}
+				}
+			}
+			retained, err := os.ReadFile(filepath.Join(r.Dir, "model.d.ts"))
+			if !protected || err != nil || string(retained) != files["model.d.ts"] {
+				t.Fatalf("authored declaration must retain its bytes and report TS5055: protected=%v read=%v", protected, err)
+			}
+			return
+		}
 		if diagnostics != nil && HasError(diagnostics.Diagnostics) {
 			Gap(t, "FuzzSidecarSourceIdentity", key, "sidecar rejected: %v", SortedKeys(Keys(r.Dir, diagnostics.Diagnostics)))
 		}
