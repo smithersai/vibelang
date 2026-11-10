@@ -431,6 +431,36 @@ test("a native module with a #! line reaches a .vibe module by an extensionless 
   }
 })
 
+// The preload leaves a CommonJS module to Bun's own interop. CommonJS words
+// in an ES module's strings, templates, regular expressions and comments are
+// text: opencode's plugin tests embed bundle text such as `exports.default`.
+test("CommonJS text in an ES module's literals keeps its extensionless .vibe imports", { skip }, (t) => {
+  const { bun } = project(t, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true }, include: ["src/**/*"] }),
+    "src/core.vibe": 'export const core: string = "core"\n',
+    "main.ts": [
+      'import { core } from "./src/core"',
+      "const bundle = `",
+      "  exports.default = ${JSON.stringify(core)}",
+      "`",
+      'const text = "module.exports = 2" // exports.x = 3',
+      "/* module[\"exports\"] = 4 */",
+      "const pattern = /module\\.exports/",
+      "console.log(core, bundle.trim(), text.length, pattern.test(text))",
+      ""
+    ].join("\n"),
+    "legacy/package.json": '{"type":"commonjs"}',
+    "legacy/index.js": 'const note = "export const x = 1"\nmodule.exports = { legacy: note.length }\n',
+    "both.ts": 'import legacy from "./legacy/index.js"\nimport { core } from "./src/core"\nconsole.log(core, legacy.legacy)\n'
+  })
+  const result = bun(["--preload", preload, "main.ts"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, 'core exports.default = "core" 18 true\n')
+  const mixed = bun(["--preload", preload, "both.ts"])
+  assert.equal(mixed.status, 0, mixed.stderr)
+  assert.equal(mixed.stdout, "core 18\n")
+})
+
 // opencode's plugin runtime require()s src/effect/index.ts, a native barrel
 // whose schema modules became .vibe. Bun makes a module whose onLoad returns a
 // pending Promise async, and require() of an async module throws, so the

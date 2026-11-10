@@ -394,6 +394,62 @@ function withSourceMap({ contents, loader }, map, source) {
   return { contents: `// @bun\n${contents}\n${inlineSourceMap({ ...map, mappings: ";" + map.mappings })}\n`, loader: "js" }
 }
 
+// A module is CommonJS when its code names module.exports or exports, as Bun
+// reads it. The same words in a string, template, regular expression or
+// comment leave an ES module one: opencode's plugin tests embed CommonJS
+// bundle text in template literals. The text test is a prefilter; the
+// transpiler drops comments and types, and the scan below blanks literals.
+const commonJSText = /\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|\bexports\s*[.[]/
+const regexKeywords = new Set(["await", "case", "delete", "do", "else", "in", "instanceof", "new", "of", "return", "throw", "typeof", "void", "yield"])
+function codeOutsideLiterals(code, loader) {
+  try {
+    code = new Bun.Transpiler({ loader }).transformSync(code.startsWith("#!") ? "//" + code.slice(2) : code)
+  } catch { return code /* Unparsed text keeps the text test. */ }
+  let out = "", last = "", word = "", i = 0
+  const braces = [] // true where a } resumes a template
+  const template = () => { // i is past a backtick or a substitution's }
+    for (; i < code.length; i++) {
+      if (code[i] === "\\") i++
+      else if (code[i] === "`") { i++; return }
+      else if (code[i] === "$" && code[i + 1] === "{") { braces.push(true); i += 2; return }
+    }
+  }
+  while (i < code.length) {
+    const c = code[i]
+    if (c === '"' || c === "'") {
+      const start = i
+      for (i++; i < code.length && code[i] !== c; i++) if (code[i] === "\\") i++
+      i++
+      // module["exports"] names the binding; other strings are text.
+      out += code.slice(start + 1, i - 1) === "exports" ? c + "exports" + c : c + c; last = c; word = ""
+    } else if (c === "`") {
+      i++; template(); out += "``"; last = "`"; word = ""
+    } else if (c === "}" && braces.length > 0 && braces.at(-1)) {
+      braces.pop(); i++; template(); out += "``"; last = "`"; word = ""
+    } else if (c === "/" && code[i + 1] === "/") {
+      while (i < code.length && code[i] !== "\n") i++
+    } else if (c === "/" && code[i + 1] === "*") {
+      const end = code.indexOf("*/", i + 2); i = end < 0 ? code.length : end + 2; out += " "
+    } else if (c === "/" && (last === "" || /[(,=:[!&|?{};+\-*%<>~^]/.test(last) || regexKeywords.has(word))) {
+      let inClass = false
+      for (i++; i < code.length && (inClass || code[i] !== "/"); i++) {
+        if (code[i] === "\\") i++
+        else if (code[i] === "[") inClass = true
+        else if (code[i] === "]") inClass = false
+      }
+      for (i++; /[a-z]/i.test(code[i] ?? ""); i++);
+      out += "/./"; last = "/"; word = ""
+    } else {
+      if (c === "{") braces.push(false)
+      else if (c === "}") braces.pop()
+      out += c; i++
+      if (/[\w$]/.test(c)) { word = /[\w$]/.test(last) ? word + c : c; last = c }
+      else if (!/\s/.test(c)) { last = c; word = "" }
+    }
+  }
+  return out
+}
+
 Bun.plugin({
   name: "vibelang",
   setup(build) {
@@ -405,7 +461,7 @@ Bun.plugin({
     // changes Bun's native CommonJS export interop, even for dependencies
     // that never import a .vibe module.
     const commonJS = (file, code) => /\.(?:cjs|cts)$/.test(file) ||
-      /\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|\bexports\s*[.[]/.test(code)
+      commonJSText.test(code) && commonJSText.test(codeOutsideLiterals(code, loaderOf(file)))
     const exactly = (file, physical) => new RegExp("^(?:" + [...new Set([file, physical])].map(escapeRegExp).join("|") + ")$")
     function discover(file, code, loader = loaderOf(file)) {
       file = resolve(file)

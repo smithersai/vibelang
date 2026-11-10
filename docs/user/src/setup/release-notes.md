@@ -12,6 +12,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.
 
+- Under the Bun preload, an ES module that quoted CommonJS code such as `exports.default = 1` in a string, template literal, regular expression or comment was treated as CommonJS, so its extensionless imports of `.vibe` modules failed with `Cannot find module`. Only CommonJS code now changes how the preload loads a module.
+
 - Under the Bun preload, a native module whose first line is a `#!` line could not import a `.vibe` module by an extensionless path and stopped with `Cannot find module`. The preload now rewrites that module's imports like any other native module's.
 
 - Migration setup generated Effect lint commands with unsupported Oxlint flags, so linting stopped with an unknown-option error. Setup now uses compiler project options and repairs those commands when repeated.

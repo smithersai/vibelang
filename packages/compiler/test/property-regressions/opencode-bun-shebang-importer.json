@@ -1,0 +1,6 @@
+{
+  "property": "bun-native-importer-text",
+  "rule": "docs/design/src/007-tooling.md: output names follow the native twin; bundler plugins use the same names",
+  "input": { "shebang": true, "context": "none", "spelling": "exports.default = 1", "extension": "ts", "entry": false, "value": 1 },
+  "reason": "opencode CLI: a module whose first line is #! kept its extensionless import of a .vibe module unrewritten; Bun 1.4.2's scanImports() rejects the #! line."
+}
