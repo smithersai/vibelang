@@ -21,6 +21,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.ResizeObserver` | `observe` of an element, until the Scope closes | browser |
 | `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
+| `Experimental.Human` | questions a workflow asks a person: `confirm`, `ask`, `select`, `json`; `answer` and `validate` for the inbox that replies | the engine of `Experimental.Durable`, in any runtime |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, and `tools` gives a model `remember` and `recall` bound to its bank | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
@@ -1292,3 +1293,82 @@ Every failure is an `Experimental.Memory.MemoryError` with a stable `code` and, 
 | A `maxBytes` that is not an integer from 0 to 65,536 | `invalid_argument` | `["maxBytes"]` |
 
 A store reports its own failures, such as a SQL error, with the code `store`. Nothing is deleted unless the program asks.
+
+### Waits: timers, signals and human answers
+
+A workflow that waits a week for an approval must not keep a process alive for a week. Inside a workflow, these calls park the run instead of holding a fiber: the run is stored as `suspended`, no process waits, and the clock, a delivery or an answer wakes it on any engine over the same store.
+
+| Call | The run parks until | Waiting reason |
+| --- | --- | --- |
+| `try Experimental.Durable.sleep("7 days")` | the duration has passed | `timer` |
+| `try Experimental.Durable.until(date)` | the instant, a `Date` or epoch milliseconds | `timer` |
+| `try paid.wait()`, on a signal | `paid.send(W, run, value)` delivers a value | `event` |
+| `try Experimental.Human.confirm(name, prompt)`, and `ask`, `select`, `json` | `Experimental.Human.answer(W, run, name, value)` records an answer | `approval` |
+
+```vibe
+schema Paid { amount: number }
+export const paid = Experimental.Durable.signal("paid", Paid)
+
+export const Release = Experimental.Durable.workflow("shop#Release", {
+  payload: { build: Schema.String },
+  success: Schema.String,
+  error: Experimental.Human.Failed
+})
+
+export const ReleaseLive = Release.toLayer(effect ({ build }) => {
+  const approved = try Experimental.Human.confirm("ship", `Ship ${build}?`, { timeout: "6 hours" })
+  if (!approved) return "held"
+  const payment = try paid.wait()
+  try Experimental.Durable.sleep("1 minute")
+  return `${build} shipped for ${payment.amount}`
+})
+
+// Effect code outside the run: an inbox and a webhook.
+export effect function approve(run: string) {
+  try Experimental.Human.answer(Release, run, "ship", true)
+}
+
+export effect function onPaid(run: string, amount: number) {
+  try paid.send(Release, run, { amount })
+}
+```
+
+Each wait is thin code over Effect's own `DurableClock` and `DurableDeferred`, so it needs no layer beyond the engine. `sleep` stays `Effect.sleep` everywhere: it holds a fiber and is lost on a restart, so a workflow uses `Experimental.Durable.sleep`. `send` and `answer` wake the run on the engine that receives them, even one started after a crash that has not loaded the run yet.
+
+**Timers.** A timer journals its absolute wake time before the run parks, so a run that restarts waits only for what is left, whatever the host's clock did meanwhile. A wake time that has already passed settles at once. Timers are numbered in the order a run reaches them, so two sleeps of the same length are two waits. When branches that run at once each hold a timer, give each a name that is unique in its run, `Experimental.Durable.sleep("1 hour", { name: "cooldown" })`, so its identity does not depend on which branch reaches it first. A wake time that is not an instant, such as `NaN`, dies with `Experimental.Durable.TimerInvalid`.
+
+**Recorded races.** `Experimental.Durable.race({ name, success, effects })` races its effects and journals the winner under `name`, so every replay returns the recorded result and a run that took one branch never takes the other. Race a step against a sleep to bound it, or a signal against a sleep to wait for whichever comes first. `success`, and `error` when an effect can fail, are the schemas the result is stored with. Task calls and unnamed timers inside the race are numbered within it, so what the race runs never changes the number of a step outside it. Effect's own `DurableDeferred.raceAll` keeps no such scope: a task call or an unnamed timer inside it stops with `Experimental.Durable.UnstableStep`, because a recorded race skips its body on a replay and the numbers after it would shift.
+
+**Signals.** `Experimental.Durable.signal(name, schema)` declares a typed value that enters a run from outside. Both ends import the one signal, which ties the sender's value to the waiter's type.
+
+| Rule | Detail |
+| --- | --- |
+| The schema is a durable boundary | The value crosses in the schema's JSON form and is decoded on the workflow's side. A parked run decodes with the schema it parked under, so change a signal's schema and you change its name. |
+| A name is local to a run | The address of a wait is the workflow, the run and the name, so two workflows may both use `"paid"`. |
+| A signal has more than one wait point | `try paid.wait("second")` is another wait on the same signal in one run, and `paid.send(W, run, value, "second")` delivers to it. |
+| The first delivery wins | A later delivery to the same wait point changes nothing. |
+| An early delivery is kept | A value sent before the run reaches the wait is returned when it does. The run must exist. |
+| An address is not a credential | Whoever knows the workflow and the run id can rebuild it. The endpoint that calls `send` authorizes its caller first. |
+
+A run's handle sends too: `try handle.send(paid, value)`.
+
+**Human answers.** `Experimental.Human` asks a person. Each call takes a `name`, which addresses the question within its run, a `prompt`, and `options`: `{ timeout?, maxAttempts? }`.
+
+| Call | The person supplies | Result type |
+| --- | --- | --- |
+| `Experimental.Human.confirm(name, prompt, options?)` | Yes or no | `boolean` |
+| `Experimental.Human.ask(name, prompt, options?)` | Prose | `string` |
+| `Experimental.Human.select(name, prompt, choices, options?)` | One of `choices` | The union of `choices` |
+| `Experimental.Human.json(name, prompt, schema, options?)` | A value the schema accepts | The schema's type |
+
+`Experimental.Human.answer(W, run, name, value)` records an answer. It reads the open attempt from the run's waiting row, so the caller names no attempt, and it records the value as it is: the run validates it. A call whose process died after the answer reached the journal can be sent again: an equal answer is not recorded twice, and the run is woken.
+
+- An answer that does not fit is recorded and refused, and the run asks again on a new attempt. Refusing is an answer, not a failure of the transport. `maxAttempts` defaults to 10.
+- `timeout` bounds how long the question stays open. The deadline is journaled when the question is first asked, so neither asking again nor a restart extends it. An answer already recorded wins over a deadline that passed while the run was down.
+- A question fails with `Experimental.Human.Failed`, whose `code` is `request_invalid` (the question itself is wrong, such as a `select` with no choices, and nobody was asked), `rejected` (every attempt was refused; `rejections` lists why) or `timeout`.
+- `answer` fails with `Experimental.Human.AnswerInvalid`, whose `code` is `answer_invalid` (the value is not JSON, or is larger than 256 KiB) or `answer_not_open` (the run is not parked on that question).
+- `Experimental.Human.validate(value, request)` makes the run's own check, and returns why an answer is refused or `undefined`. An inbox calls it before `answer`, so a wrong answer costs no attempt. `request` is `{ kind, choices?, schema? }`.
+- `json` takes one schema. It validates the answer, types the result, and the JSON Schema an inbox shows is derived from it.
+- An answer approves the workflow's question and nothing else. It grants no file, network or process permission.
+
+**What a parked run waits for.** `Experimental.Durable.waiting(run)` lists the run's open waits, oldest first, read from its journal: `{ reason, name, seq, since, wakeAt?, token?, attempt?, request? }`. A `timer` has its `wakeAt`. An `event` has the `token` that addresses it. An `approval` has its `attempt`, its `token`, the deadline as `wakeAt`, and the question as `request`: `{ kind, prompt, maxAttempts, choices?, jsonSchema? }`, which is what an inbox needs to show it. A wait raced against another stays listed until it closes.

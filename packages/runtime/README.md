@@ -323,6 +323,7 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/Window` | Window operations |
 | `vibelang-runtime/experimental/ChildProcess` | Experimental child-process compatibility helpers |
 | `vibelang-runtime/experimental/Headers` | Experimental header compatibility helpers |
+| `vibelang-runtime/experimental/Human` | Questions a durable workflow asks a person, and the answers that wake it |
 | `vibelang-runtime/experimental/NodeStream` | Experimental Node stream compatibility helpers |
 | `vibelang-runtime/experimental/Request` | Experimental request compatibility helpers |
 | `vibelang-runtime/experimental/Stdio` | Effect standard I/O plus `awaitInputClosed` |

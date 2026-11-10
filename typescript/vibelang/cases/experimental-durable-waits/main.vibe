@@ -1,0 +1,62 @@
+// expect-result: {"parkedOn":["approval:ship","event:paid","timer"],"request":{"kind":"confirm","prompt":"Ship A-1?","maxAttempts":10},"refused":"The answer must be a boolean.","result":"A-1:12","held":"held","late":"answer_not_open"}
+// VIP-56 durable waits through the public Experimental surface: a human
+// question, a typed signal and a durable timer each park the run, and an
+// answer, a delivery and the clock wake it.
+schema Paid { amount: number }
+// Exported, so the program's own declarations name the public types.
+export const paid = Experimental.Durable.signal("paid", Paid)
+
+export const Release = Experimental.Durable.workflow("case#Release", {
+  payload: { build: Schema.String },
+  success: Schema.String,
+  error: Experimental.Human.Failed
+})
+
+const ReleaseLive = Release.toLayer(effect ({ build }) => {
+  const approved = try Experimental.Human.confirm("ship", `Ship ${build}?`, { timeout: "6 hours" })
+  if (!approved) return "held"
+  const payment = try paid.wait()
+  try Experimental.Durable.sleep("30 millis")
+  return `${build}:${payment.amount}`
+}).pipe(Layer.provideMerge(Experimental.Durable.memory))
+
+// Waits until the run is parked on a wait with this reason, and returns it.
+export effect function parkedOn(run: string, reason: "timer" | "event" | "approval") {
+  while (true) {
+    const waits = try Experimental.Durable.waiting(run)
+    const found = waits.find((wait) => wait.reason === reason)
+    if (found !== undefined) return found
+    try Effect.sleep("2 millis")
+  }
+}
+
+export effect function main() {
+  provide ReleaseLive {
+    const handle = try Experimental.Durable.spawn(Release, { build: "A-1" })
+    const question = try parkedOn(handle.id, "approval")
+    const refused = Experimental.Human.validate("yes", question.request as Experimental.Human.Request)
+    try Experimental.Human.answer(Release, handle.id, "ship", true)
+    const signal = try parkedOn(handle.id, "event")
+    try handle.send(paid, { amount: 12 })
+    const timer = try parkedOn(handle.id, "timer")
+    const result = try handle.result
+
+    // A second run: the person says no, and a late answer has nowhere to go.
+    const other = try Experimental.Durable.spawn(Release, { build: "B-2" })
+    try parkedOn(other.id, "approval")
+    try Experimental.Human.answer(Release, other.id, "ship", false)
+    const held = try other.result
+    const late = try Experimental.Human.answer(Release, other.id, "ship", true).pipe(
+      Effect.as("recorded"),
+      Effect.catch((error) => Effect.succeed(error.code))
+    )
+    return {
+      parkedOn: [`${question.reason}:${question.name}`, `${signal.reason}:${signal.name}`, timer.reason],
+      request: question.request,
+      refused,
+      result,
+      held,
+      late
+    }
+  }
+}

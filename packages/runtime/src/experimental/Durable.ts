@@ -49,6 +49,7 @@ import * as engineInternal from "./internal/durableEngine.js"
 import * as sqlStore from "./internal/durableSql.js"
 import * as steps from "./internal/durableSteps.js"
 import * as store from "./internal/durableStore.js"
+import * as waits from "./internal/durableWaits.js"
 
 /**
  * @category type ids
@@ -757,6 +758,156 @@ export const sweep = (options: { readonly olderThan: Duration.Input }): Effect.E
   })
 
 /**
+ * Parks the run for `duration`: a timer in a workflow. Unlike `Effect.sleep`
+ * it holds no fiber and no process. The absolute wake time is journaled
+ * before the run parks, so a run that restarts waits only for what is left,
+ * and a wake time that has already passed settles at once.
+ *
+ * Timers are numbered in the order a run reaches them, so two sleeps of the
+ * same length are two waits. Inside {@link race} they are numbered within
+ * the race. Give a timer a `name`, unique in its run, when branches that run
+ * at once each hold one: a name does not depend on which branch reaches its
+ * timer first. An unnamed timer reached both inside and outside Effect's own
+ * `DurableDeferred.raceAll` dies with {@link UnstableStep}.
+ *
+ * @category waits
+ * @since 0.0.13
+ */
+export const sleep: (
+  duration: Duration.Input,
+  options?: { readonly name?: string | undefined }
+) => Effect.Effect<void, never, WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance> = waits.sleep
+
+/**
+ * Parks the run until `instant`, a `Date` or epoch milliseconds. An instant
+ * that has passed settles at once. See {@link sleep}.
+ *
+ * @category waits
+ * @since 0.0.13
+ */
+export const until: (
+  instant: Date | number,
+  options?: { readonly name?: string | undefined }
+) => Effect.Effect<void, never, WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance> = waits.until
+
+/**
+ * A timer asked to wake at something that is not an instant, such as `NaN`.
+ * The wait dies with it.
+ *
+ * @category errors
+ * @since 0.0.13
+ */
+export const TimerInvalid = waits.TimerInvalid
+
+/**
+ * @category errors
+ * @since 0.0.13
+ */
+export type TimerInvalid = waits.TimerInvalid
+
+/**
+ * A typed value that enters a run from outside. Both ends import the one
+ * signal: the workflow calls `wait()`, and Effect code calls `send(W, run,
+ * value)`.
+ *
+ * @category waits
+ * @since 0.0.13
+ */
+export interface Signal<Name extends string, S extends Schema.Top> {
+  readonly name: Name
+  readonly schema: S
+  /**
+   * Waits in a workflow for the value. `point` names another wait point on
+   * this signal in the same run.
+   */
+  readonly wait: (
+    point?: string
+  ) => Effect.Effect<S["Type"], never, WorkflowEngine.WorkflowEngine | WorkflowEngine.WorkflowInstance | S["DecodingServices"]>
+  /**
+   * Delivers `value` to run `run` of `W`, and wakes the run. The first
+   * delivery to a wait point wins; a later one changes nothing.
+   */
+  readonly send: <W extends Workflow.Any>(
+    W: W,
+    run: string,
+    value: S["Type"],
+    point?: string
+  ) => Effect.Effect<void, never, WorkflowEngine.WorkflowEngine | S["EncodingServices"]>
+}
+
+/**
+ * Declares a signal. `schema` is a durable boundary (VIP-44): the value
+ * crosses in the schema's JSON form and is decoded on the workflow's side.
+ *
+ * - `name` is local to a run. The address of a wait is the workflow, the run
+ *   and the name, so two workflows may both use `"paid"`.
+ * - `wait()` in a workflow parks the run until the value arrives.
+ *   `wait("second")` is another wait point on the same signal in one run, and
+ *   `send(W, run, value, "second")` delivers to it.
+ * - The first delivery to a wait point wins. A later one changes nothing.
+ * - A delivery made before the run reaches the wait is kept, and the wait
+ *   returns it at once. The run must exist.
+ * - An address is not a credential: whoever knows the workflow and the run
+ *   id can rebuild it, so the endpoint that calls `send` authorizes its
+ *   caller first.
+ * - A parked run decodes with the schema it parked under. Change a signal's
+ *   schema and you change its name.
+ *
+ * @category waits
+ * @since 0.0.13
+ */
+export const signal: <const Name extends string, S extends Schema.Top>(name: Name, schema: S) => Signal<Name, S> = waits.signal
+
+/**
+ * Why a run waits: Smithers' waiting reasons.
+ *
+ * @category waits
+ * @since 0.0.13
+ */
+export type WaitReason = "timer" | "event" | "approval"
+
+/**
+ * One wait a run is parked on. `reason` is `timer` (with `wakeAt`), `event`
+ * (a signal, with its `token`) or `approval` (an `Experimental.Human`
+ * question, with its `attempt`, `token` and `request`).
+ *
+ * @category waits
+ * @since 0.0.13
+ */
+export interface Waiting {
+  readonly reason: WaitReason
+  /** The timer's key, the signal's name or the question's name. */
+  readonly name: string
+  /** The journal entry that recorded the wait. */
+  readonly seq: number
+  /** When the wait was recorded, in epoch milliseconds. */
+  readonly since: number
+  /** A timer's wake time or a question's deadline, in epoch milliseconds. */
+  readonly wakeAt?: number | undefined
+  /** The address of an `event` or `approval` wait. It is not a credential. */
+  readonly token?: string | undefined
+  /** An `approval` wait's attempt, from 1. */
+  readonly attempt?: number | undefined
+  /** An `approval` wait's question: its kind, prompt and what an answer must be. */
+  readonly request?: unknown
+}
+
+/**
+ * The waits run `run` is parked on, oldest first, read from its journal. A
+ * finished run and an unknown run have none.
+ *
+ * @category waits
+ * @since 0.0.13
+ */
+export const waiting = (run: string): Effect.Effect<ReadonlyArray<Waiting>, never, Durable> =>
+  Effect.gen(function*() {
+    const durable = yield* Durable
+    const row = yield* durable.internals.store.get(run)
+    if (Option.isNone(row)) return []
+    return waits.openWaits(row.value, yield* durable.internals.store.entries(run))
+  })
+
+/**
  * A handle on a stored run of `W`. It is a value over the id: build one again
  * from the id at any time.
  *
@@ -773,6 +924,12 @@ export interface Run<A, E> {
   readonly cancel: Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>
   /** Drives a stopped run again, without waiting. */
   readonly resume: Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>
+  /** Delivers `value` to this run's wait on `signal`, as `signal.send(W, id, value)` does. */
+  readonly send: <S extends Schema.Top>(
+    signal: Signal<string, S>,
+    value: S["Type"],
+    point?: string
+  ) => Effect.Effect<void, never, WorkflowEngine.WorkflowEngine | S["EncodingServices"]>
 }
 
 /**
@@ -814,7 +971,8 @@ export const run = <W extends AnyWorkflow>(W: W, id: string): Run<W["successSche
       W["errorSchema"]["Type"]
     >["poll"],
   cancel: W.interrupt(id),
-  resume: W.resume(id)
+  resume: W.resume(id),
+  send: (signal, value, point) => signal.send(W, id, value, point)
 })
 
 /**

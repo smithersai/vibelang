@@ -111,6 +111,11 @@
       "import": "./dist/experimental/Headers.js",
       "default": "./dist/experimental/Headers.js"
     },
+    "./experimental/Human": {
+      "types": "./dist/experimental/Human.d.ts",
+      "import": "./dist/experimental/Human.js",
+      "default": "./dist/experimental/Human.js"
+    },
     "./experimental/Locks": {
       "types": "./dist/experimental/Locks.d.ts",
       "import": "./dist/experimental/Locks.js",
