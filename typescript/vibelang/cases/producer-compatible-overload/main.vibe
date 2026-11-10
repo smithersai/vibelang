@@ -1,0 +1,23 @@
+import { Stream } from "effect"
+
+function streamFirst(f: () => Stream.Stream<number>): number
+function streamFirst(f: () => Generator<number, void, unknown>): string
+function streamFirst(f: () => Stream.Stream<number> | Generator<number, void, unknown>): number | string {
+  return 1
+}
+
+function generatorFirst(f: () => Generator<number, void, unknown>): string
+function generatorFirst(f: () => Stream.Stream<number>): number
+function generatorFirst(f: () => Stream.Stream<number> | Generator<number, void, unknown>): number | string {
+  return 2
+}
+
+effect function* values() { yield 1 }
+
+export const results: number[] = [
+  streamFirst(effect function* () { yield 1 }),
+  generatorFirst(effect function* () { yield 1 }),
+  streamFirst(values),
+  generatorFirst(values),
+  streamFirst((effect function* () { yield 1 })),
+]

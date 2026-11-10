@@ -1,0 +1,19 @@
+import { Stream } from "effect"
+
+function callableUnion(f: (() => Stream.Stream<number>) | (() => Generator<number, void, unknown>)) {
+  return 1
+}
+
+function returnUnion(f: () => Stream.Stream<number> | Generator<number, void, unknown>) {
+  return 2
+}
+
+effect function* values() { yield 1 }
+
+export const results: number[] = [
+  callableUnion(effect function* () { yield 1 }),
+  returnUnion(effect function* () { yield 1 }),
+  callableUnion(values),
+  returnUnion(values),
+  callableUnion((effect function* () { yield 1 })),
+]

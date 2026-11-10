@@ -7951,6 +7951,9 @@ typescript/vibelang/cases/producer-bind-observations/main.vibe:6:26 lambda choic
 typescript/vibelang/cases/producer-bind-observations/main.vibe:7:20 lambda plain fallback
 typescript/vibelang/cases/producer-bind-observations/main.vibe:8:27 lambda choice fallback
 typescript/vibelang/cases/producer-binding-dies/main.vibe:14:27 lambda plain fallback
+typescript/vibelang/cases/producer-compatible-overload/main.vibe:18:15 lambda effectFn annotation
+typescript/vibelang/cases/producer-compatible-overload/main.vibe:19:18 lambda effectFn annotation
+typescript/vibelang/cases/producer-compatible-overload/main.vibe:22:16 lambda effectFn annotation
 typescript/vibelang/cases/producer-compatible-callbacks.fail/main.vibe:5:18 lambda choice fallback
 typescript/vibelang/cases/producer-compatible-callbacks.fail/main.vibe:8:21 lambda choice fallback
 typescript/vibelang/cases/producer-compatible-callbacks.fail/main.vibe:9:8 lambda choice fallback
@@ -8069,6 +8072,9 @@ typescript/vibelang/cases/producer-scope-unions/main.vibe:46:45 lambda plain tab
 typescript/vibelang/cases/producer-scope-unions/main.vibe:46:54 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:47:42 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:47:51 lambda plain table
+typescript/vibelang/cases/producer-union-callback-contract/main.vibe:14:17 lambda effectFn annotation
+typescript/vibelang/cases/producer-union-callback-contract/main.vibe:15:15 lambda effectFn annotation
+typescript/vibelang/cases/producer-union-callback-contract/main.vibe:18:18 lambda effectFn annotation
 typescript/vibelang/cases/producer-value-contracts.fail/main.vibe:18:20 lambda plain table
 typescript/vibelang/cases/producer-value-contracts.fail/main.vibe:19:8 lambda choice fallback
 typescript/vibelang/cases/producer-value-contracts.fail/main.vibe:22:18 lambda choice fallback
