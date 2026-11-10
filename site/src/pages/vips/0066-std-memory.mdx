@@ -1,0 +1,186 @@
+---
+title: "VIP-66: Experimental.Memory: durable facts, notes, history and recall across runs"
+---
+
+# VIP-66: `Experimental.Memory`: durable facts, notes, history and recall across runs
+
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+
+## Will's words
+
+> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+
+## Summary
+
+**One sentence.** `Experimental.Memory` stores what the next run should still know, as facts, notes and message threads in a database, and recalls it by query within a byte budget.
+
+**One paragraph.** A model's context is gone when the process exits. The journal keeps what one run did; memory keeps what every later run needs. Smithers' `@smthrs/memory` stores rows in SQLite or PostgreSQL, scopes them by namespace, and makes recall a replaceable service: keyword matching, full-text search, or semantic search over embeddings. This VIP ports it. A program calls `Memory.remember` and `Memory.recall`. A model gets the same two operations as `Memory.tools`, bound to one namespace. The store is a layer, so a test swaps a file for an in-memory database with one line.
+
+```text
+ run 1:  Memory.remember({ bank: "global-notes", key: "release", text: "cut 0.1.0" })
+                                   │
+                              ┌────▼─────┐   facts      one row per bank and key
+                              │  Memory  │   notes      append-only, corrected by supersession
+                              │  store   │   threads    messages, appended once by id
+                              └────┬─────┘
+ run 2:  Memory.recall({ banks: ["global-notes"], query: "release" })
+                                   └─► ranked rows, cut to a byte budget, ready for a prompt
+```
+
+## Decision
+
+```ts
+// proposed
+export effect function notes() {
+  provide Experimental.Memory.test {
+    try Experimental.Memory.remember({ bank: "global-notes", key: "release", text: "cut 0.1.0" })
+    return try Experimental.Memory.recall({ banks: ["global-notes"], query: "release" })
+  }
+}
+```
+
+### Module
+
+`Experimental.Memory`, in scope with no import, as [VIP-33](/vips/0033-platform-stdlib) rules. Its code is `vibelang-runtime/experimental/Memory`. It ports `@smthrs/memory`.
+
+| Call | Meaning | Smithers |
+| --- | --- | --- |
+| `Memory.remember({ bank, key, text })` | Write a fact | `Flows.runRemember` |
+| `Memory.recall({ banks, query, maxBytes? })` | Ranked rows `{ bank, key, text, score, updatedAtMs }` | `Flows.runRecall`, `Recall` |
+| `Memory.note(bank, text, { supersedes? })` | Append a note; an obsolete one drops out of recall | `MemoryStore` notes |
+| `Memory.thread(id)` | `append(message)` and `history({ limit })` for one conversation | `MemoryStore` threads and messages |
+| `Memory.scoped(namespace)(effect)` | Limit every read and write inside to one namespace | `Flows.runRecallFor`, `Flows.runRememberFor` |
+| `Memory.tools(namespace)` | A `Toolkit` with `remember` and `recall`, bound to that namespace, for a model | `Flows.handlersFor` |
+| `Memory.sweep({ ttl, keep })` | Delete expired rows and trim history. A finite Effect the program schedules | `Maintenance` |
+
+Stores and recall, each a layer:
+
+| Layer | Meaning | Smithers |
+| --- | --- | --- |
+| `Memory.test` | A fresh in-memory database with keyword recall | `TestMemory.layer`, `RecallKeyword.layer` |
+| `Memory.sqlite({ filename, recall? })` | A SQLite file | `MemoryStore.layer` |
+| `Memory.postgres({ url, recall? })` | PostgreSQL | `MemoryStore.layer` over the PostgreSQL driver |
+| `recall: "keyword"` | Needs nothing beyond the store. The default | `RecallKeyword` |
+| `recall: "fts"` | Full-text search in the database | `RecallFts` |
+| `recall: "semantic"` | Embeddings, searched in process. Needs `EmbeddingModel` | `RecallSemantic`, `Embedding` |
+
+### Rules
+
+1. **A bank is a namespace written as a string.** There are four kinds: `flow`, `agent`, `user` and `global`. `Memory.scoped` binds one; a read or write that names another fails with `invalid_namespace` before any I/O.
+2. **A model's memory is always bound.** `Memory.tools` takes its namespace as an argument. No toolkit reaches every bank.
+3. **Every recall has a byte budget.** Recalled rows become part of a prompt, so the answer is cut to `maxBytes`.
+4. **Writes are idempotent.** Appending an identical message again does nothing. The same id with different content fails with `idempotency_conflict`.
+5. **Notes are never edited.** A correction is a new note that supersedes the old one.
+6. **Recalled text is data.** It grants no capability, and a fact a model wrote is an assertion, not an instruction.
+7. **Failures are one type**, `Memory.MemoryError`, with a stable `code` and an optional field path.
+8. **Nothing is deleted on its own.** `Memory.sweep` is a call the program makes. The module promises no erasure of a row's copies in recorded steps.
+9. **The permissions are `memory:read` and `memory:write`.** A write is irreversible in the tier table ([capabilities](/vips/0058-capabilities)).
+10. **Inside a task, recall is a recorded step.** A replay reads what the first run recalled, so a later write cannot change a finished step. New work reads the newer memory.
+
+### Host needs
+
+A SQL database. `recall: "semantic"` also needs `EmbeddingModel`, which is Effect's and in scope; `Experimental.Model.embed` provides it ([std-model](/vips/0062-std-model)). A browser or a Worker needs durable storage of its own or a remote store; a volatile store is named `Memory.test`.
+
+## Claude's decisions
+
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+
+- `Experimental.Memory`, in scope with no import, as [VIP-33](/vips/0033-platform-stdlib) rules. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Its code is `vibelang-runtime/experimental/Memory`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- It ports `@smthrs/memory`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Memory.remember({ bank, key, text })`: Meaning: Write a fact; Smithers: `Flows.runRemember`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Memory.recall({ banks, query, maxBytes? })`: Meaning: Ranked rows `{ bank, key, text, score, updatedAtMs }`; Smithers: `Flows.runRecall`, `Recall`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Memory.note(bank, text, { supersedes? })`: Meaning: Append a note; an obsolete one drops out of recall; Smithers: `MemoryStore` notes. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Memory.thread(id)`: Meaning: `append(message)` and `history({ limit })` for one conversation; Smithers: `MemoryStore` threads and messages. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Memory.scoped(namespace)(effect)`: Meaning: Limit every read and write inside to one namespace; Smithers: `Flows.runRecallFor`, `Flows.runRememberFor`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Memory.tools(namespace)`: Meaning: A `Toolkit` with `remember` and `recall`, bound to that namespace, for a model; Smithers: `Flows.handlersFor`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Memory.sweep({ ttl, keep })`: Meaning: Delete expired rows and trim history. A finite Effect the program schedules; Smithers: `Maintenance`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A finite Effect the program schedules | `Maintenance` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Stores and recall, each a layer: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Layer `Memory.test`: Meaning: A fresh in-memory database with keyword recall; Smithers: `TestMemory.layer`, `RecallKeyword.layer`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Layer `Memory.sqlite({ filename, recall? })`: Meaning: A SQLite file; Smithers: `MemoryStore.layer`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Layer `Memory.postgres({ url, recall? })`: Meaning: PostgreSQL; Smithers: `MemoryStore.layer` over the PostgreSQL driver. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Layer `recall: "keyword"`: Meaning: Needs nothing beyond the store. The default; Smithers: `RecallKeyword`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The default | `RecallKeyword` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Layer `recall: "fts"`: Meaning: Full-text search in the database; Smithers: `RecallFts`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Layer `recall: "semantic"`: Meaning: Embeddings, searched in process. Needs `EmbeddingModel`; Smithers: `RecallSemantic`, `Embedding`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Needs `EmbeddingModel` | `RecallSemantic`, `Embedding` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A bank is a namespace written as a string.** There are four kinds: `flow`, `agent`, `user` and `global`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `Memory.scoped` binds one; a read or write that names another fails with `invalid_namespace` before any I/O. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A model's memory is always bound.** `Memory.tools` takes its namespace as an argument. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- No toolkit reaches every bank. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Every recall has a byte budget.** Recalled rows become part of a prompt, so the answer is cut to `maxBytes`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Writes are idempotent.** Appending an identical message again does nothing. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The same id with different content fails with `idempotency_conflict`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Notes are never edited.** A correction is a new note that supersedes the old one. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Recalled text is data.** It grants no capability, and a fact a model wrote is an assertion, not an instruction. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Failures are one type**, `Memory.MemoryError`, with a stable `code` and an optional field path. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Nothing is deleted on its own.** `Memory.sweep` is a call the program makes. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The module promises no erasure of a row's copies in recorded steps. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **The permissions are `memory:read` and `memory:write`.** A write is irreversible in the tier table ([capabilities](/vips/0058-capabilities)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Inside a task, recall is a recorded step.** A replay reads what the first run recalled, so a later write cannot change a finished step. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- New work reads the newer memory. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A SQL database. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `recall: "semantic"` also needs `EmbeddingModel`, which is Effect's and in scope; `Experimental.Model.embed` provides it ([std-model](/vips/0062-std-model)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A browser or a Worker needs durable storage of its own or a remote store; a volatile store is named `Memory.test`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+
+### Adopted review answers
+
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+
+## Compared
+
+The same program in Smithers 1.x. It type-checks against `@smthrs/memory` 1.0.0-rc.16.
+
+```ts
+import * as Flows from "@smthrs/memory/Flows"
+import * as RecallKeyword from "@smthrs/memory/RecallKeyword"
+import * as TestMemory from "@smthrs/memory/test/TestMemory"
+import { Effect, Layer } from "effect"
+
+const memory = Layer.provideMerge(RecallKeyword.layer, TestMemory.layer)
+
+export const program = Effect.gen(function*() {
+  yield* Flows.runRemember({ bank: "global-notes", key: "release", text: "cut 0.1.0" })
+  return yield* Flows.runRecall({ banks: ["global-notes"], query: "release" })
+}).pipe(Effect.provide(memory))
+```
+
+| Program | Tokens (o200k_base) | Lines |
+| --- | --- | --- |
+| Vibe, proposed | 67 | 6 |
+| Smithers 1.x | 145 | 11 |
+
+**Checked.** The Vibe example uses only existing syntax and compiles under `vibelang` 0.0.13 against a declaration of `Experimental.Memory`. The Smithers program type-checks as shown.
+
+## Principles
+
+- **TypeScript-first.** Function calls over records.
+- **Effect-second.** The store and recall are Effect services chosen by a layer. `EmbeddingModel` is Effect's. Effect has `KeyValueStore` and `Persistence`; neither ranks, scopes or budgets.
+- **Optimized for agentic programs.** An agent that learns a repository's conventions on Monday uses them on Tuesday.
+- **Highly forkable.** Recall is a replaceable service. A fork adds a vector database by writing one layer.
+- **Factory-first.** What the factory's agents remember is a table anyone can read.
+
+## What this changes
+
+- `Experimental.Memory` is new. No grammar changes.
+
+## Alternatives
+
+- **Use `KeyValueStore`.** It stores. It does not recall by query, scope by namespace or cut to a budget.
+- **Make memory part of `Durable`.** The journal answers "what did this run do". Memory answers "what does any run know". One is append-only history; the other is current knowledge with deletion.
+- **A `remember` keyword or a durable variable.** A variable that outlives its program hides a database write behind an assignment.
+- **Read current memory on replay.** A finished step would then have a different input the second time.
+- **Leave it to a vector database SDK.** Then recall has no keyword fallback, no budget and no test layer.
+
+## Follow-up questions
+
+1. **Opening context.** Smithers selects memory for an agent's first prompt with a shortlist and a judged pick (`Opening`, `Source`, `SnapshotRecorder`). Should `Experimental.Agent.run` take `memory: banks` and do this? Recommendation: yes, in [std-agent](/vips/0063-std-agent), once `Memory` exists.
+2. **Namespace kinds.** `flow`, `agent`, `user`, `global` come from Smithers' product. Are they right for a language? Recommendation: keep all four as they are, so a Smithers store and a Vibe store read each other's rows.
+3. **Erasure.** A user who asks for deletion expects their facts gone, and a recorded step still holds what it recalled. Which wins? Recommendation: `sweep` deletes rows only, and the module's page says so. Scrubbing journals is [std-durable](/vips/0060-std-durable)'s retention question.
+
+## Depends on
+
+- [std-durable](/vips/0060-std-durable): the SQL store it shares, and recorded steps.
+- [std-model](/vips/0062-std-model): `EmbeddingModel` for semantic recall. Keyword and full-text recall need neither.
+- [capabilities](/vips/0058-capabilities): `memory:read`, `memory:write`.

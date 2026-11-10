@@ -211,6 +211,88 @@ export const vipsSidebar = [
           {
             "text": "53. Renaming VibeLang to SmithersScript",
             "link": "/vips/0053-rename-smithersscript-open"
+          },
+          {
+            "text": "54. One consistent model for platform-specific code",
+            "link": "/vips/0054-consistent-platform-code-open"
+          }
+        ]
+      },
+      {
+        "text": "Optimistically accepted built-ins",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "55. task and workflow, durable steps and the plan the compiler derives",
+            "link": "/vips/0055-durable-tasks-workflows"
+          },
+          {
+            "text": "56. Durable waits: timers, signals and human answers",
+            "link": "/vips/0056-durable-waits"
+          },
+          {
+            "text": "57. schema service and worker imports",
+            "link": "/vips/0057-workers-remote"
+          },
+          {
+            "text": "58. Capabilities: a permission kernel in the standard library",
+            "link": "/vips/0058-capabilities"
+          },
+          {
+            "text": "59. Eval declarations: a file kind and a function, no syntax",
+            "link": "/vips/0059-eval-declarations"
+          },
+          {
+            "text": "60. Experimental.Durable, the durable runtime",
+            "link": "/vips/0060-std-durable"
+          },
+          {
+            "text": "61. Experimental.Trigger and Experimental.WorkQueue",
+            "link": "/vips/0061-std-triggers"
+          },
+          {
+            "text": "62. Experimental.Model: language models and decision models with no SDK",
+            "link": "/vips/0062-std-model"
+          },
+          {
+            "text": "63. Experimental.Agent: the agent loop, model-written scripts and coding-agent CLIs",
+            "link": "/vips/0063-std-agent"
+          },
+          {
+            "text": "64. Experimental.Tools: the standard tools",
+            "link": "/vips/0064-std-tools"
+          },
+          {
+            "text": "65. Experimental.McpClient: MCP servers as toolkits",
+            "link": "/vips/0065-std-mcp"
+          },
+          {
+            "text": "66. Experimental.Memory: durable facts, notes, history and recall",
+            "link": "/vips/0066-std-memory"
+          },
+          {
+            "text": "67. Experimental.Sandbox: provisioned machines",
+            "link": "/vips/0067-std-sandbox"
+          },
+          {
+            "text": "68. Experimental.Secrets: secrets a step uses without holding them",
+            "link": "/vips/0068-std-secrets"
+          },
+          {
+            "text": "69. Experimental.Eval and Experimental.Scorer",
+            "link": "/vips/0069-std-eval"
+          },
+          {
+            "text": "70. Experimental.Fuzz: fuzzing and deterministic fiber simulation",
+            "link": "/vips/0070-std-fuzz"
+          },
+          {
+            "text": "71. Experimental.Test: doubles, assertions and conformance",
+            "link": "/vips/0071-std-test"
+          },
+          {
+            "text": "72. Experimental.Otlp: logs, metrics and traces over OTLP",
+            "link": "/vips/0072-std-observe"
           }
         ]
       }

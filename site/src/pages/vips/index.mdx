@@ -46,10 +46,17 @@ VibeLang ships no quick fixes or codemods of its own before its first release; t
 | [43](/vips/0043-theorems) | `theorem` and `spec`, proofs in TypeScript's own syntax | accepted 2026-11-07 |
 | [44](/vips/0044-durable-values) | Durable values | accepted 2026-11-06 |
 
+The [built-in set index](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set-index.md) and [comparative review and adopted decisions](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md) accompany optimistically accepted VIPs 55–72. Each records Claude's decisions separately from Will's words.
 
 ## Acceptance
 
 Will personally approves each VIP. An agent review never accepts a VIP.
+
+During pre-alpha, VIPs are accepted optimistically under Will's standing approval. Their Status line records the optimistic acceptance and says that Will has not reviewed the VIP's decisions. Each VIP separates his verbatim words from Claude's decisions and records which models and lanes decided each point, so Will can overturn any of Claude's choices. After alpha, each VIP again needs Will's own words of approval.
+
+Will's ruling 16, 2026-11-09 at 19:19 PST:
+
+> "16 yes we optimistically approve VIP now in pre alpha. This won't be true post alpha."
 
 The specification as a whole is accepted when four reviewers, Codex Astra, Codex Sol, Claude Fable and Claude Opus, each answer LGTM with a grade of A- or better on the same revision. Will's acceptance rule counts A-.
 
@@ -83,4 +90,31 @@ Listed for a future decision; not part of the language.
 | [37](/vips/0037-effectify-the-universe-open) | Effectify the universe | open 2026-10-29 |
 | [42](/vips/0042-vibelang-in-ts-files-open) | VibeLang in `.ts` files | open 2026-11-05 |
 | [53](/vips/0053-rename-smithersscript-open) | Renaming VibeLang to SmithersScript | open 2026-11-07 |
+| [54](/vips/0054-consistent-platform-code-open) | One consistent model for platform-specific code | open 2026-11-09 |
 | — | From the proposals page (`site/src/pages/proposals.mdx`), each to get its own VIP: [Durable execution](/proposals#durable-execution), [Compile-time evaluation (`comptime`)](/proposals#compile-time-evaluation), [Build-time host selection](/proposals#build-time-host-selection), [Validators derived from types](/proposals#validators-derived-from-types), [Typed asset imports](/proposals#typed-asset-imports), [Custom loaders](/proposals#custom-loaders), [Rust and Zig source imports](/proposals#rust-and-zig-source-imports), [Coding-agent library](/proposals#coding-agent-library), [Typed workers](/proposals#typed-workers), [Shared structs](/proposals#shared-structs), [Declarations in conditionals](/proposals#declarations-in-conditionals), [Toolchain commands](/proposals#toolchain-commands), [Bundler plugins](/proposals#bundler-plugins), [Mandatory compiler options](/proposals#mandatory-compiler-options), [TC39 adopt-early list](/proposals#tc39-adopt-early-list) | open 2026-10-29 |
+
+
+## Optimistically accepted built-ins
+
+These VIPs are accepted under the pre-alpha standing approval. Their decisions are attributed to the authors, merger and adopter; Will has not reviewed the individual choices.
+
+| VIP | Title | Status |
+| --- | --- | --- |
+| [55](/vips/0055-durable-tasks-workflows) | `task` and `workflow`, durable steps and the plan the compiler derives | accepted optimistically 2026-11-09 |
+| [56](/vips/0056-durable-waits) | Durable waits: timers, signals and human answers | accepted optimistically 2026-11-09 |
+| [57](/vips/0057-workers-remote) | `schema service` and worker imports | accepted optimistically 2026-11-09 |
+| [58](/vips/0058-capabilities) | Capabilities: a permission kernel in the standard library | accepted optimistically 2026-11-09 |
+| [59](/vips/0059-eval-declarations) | Eval declarations: a file kind and a function, no syntax | accepted optimistically 2026-11-09 |
+| [60](/vips/0060-std-durable) | `Experimental.Durable`, the durable runtime | accepted optimistically 2026-11-09 |
+| [61](/vips/0061-std-triggers) | `Experimental.Trigger` and `Experimental.WorkQueue` | accepted optimistically 2026-11-09 |
+| [62](/vips/0062-std-model) | `Experimental.Model`: language models and decision models with no SDK | accepted optimistically 2026-11-09 |
+| [63](/vips/0063-std-agent) | `Experimental.Agent`: the agent loop, model-written scripts and coding-agent CLIs | accepted optimistically 2026-11-09 |
+| [64](/vips/0064-std-tools) | `Experimental.Tools`: the standard tools | accepted optimistically 2026-11-09 |
+| [65](/vips/0065-std-mcp) | `Experimental.McpClient`: MCP servers as toolkits | accepted optimistically 2026-11-09 |
+| [66](/vips/0066-std-memory) | `Experimental.Memory`: durable facts, notes, history and recall | accepted optimistically 2026-11-09 |
+| [67](/vips/0067-std-sandbox) | `Experimental.Sandbox`: provisioned machines | accepted optimistically 2026-11-09 |
+| [68](/vips/0068-std-secrets) | `Experimental.Secrets`: secrets a step uses without holding them | accepted optimistically 2026-11-09 |
+| [69](/vips/0069-std-eval) | `Experimental.Eval` and `Experimental.Scorer` | accepted optimistically 2026-11-09 |
+| [70](/vips/0070-std-fuzz) | `Experimental.Fuzz`: fuzzing and deterministic fiber simulation | accepted optimistically 2026-11-09 |
+| [71](/vips/0071-std-test) | `Experimental.Test`: doubles, assertions and conformance | accepted optimistically 2026-11-09 |
+| [72](/vips/0072-std-observe) | `Experimental.Otlp`: logs, metrics and traces over OTLP | accepted optimistically 2026-11-09 |
