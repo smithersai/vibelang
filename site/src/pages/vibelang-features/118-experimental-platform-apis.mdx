@@ -26,7 +26,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
-| `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `task`, `history` | `memory`, `layerStore(store)`, in any runtime |
+| `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `task` with a result cache, `history` | `memory`, `layerStore(store)`, in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -689,5 +689,15 @@ The engine keeps these guarantees:
 | Equal input joins the run | `Order.execute` with the payload of a finished run returns its recorded result, runs nothing and journals nothing. |
 
 A `retryPolicy` is data, `{ initialMs, factor, maxMs, maxAttempts?, expirationMs?, jitterRatio? }`. With one, a typed failure is retried, and each attempt is its own journaled step. The delay before attempt `n` is `initialMs * factor ** (n - 2)`, at most `maxMs`, so it depends only on the attempt number the journal keeps, and a restart neither loses nor repeats a retry. `expirationMs` bounds the sum of those delays. With no policy, a typed failure is recorded and returned, not retried.
+
+A task may cache its successful result: `cache: { ttlMs?, scope? }`, Smithers' `Action.withCache`. An equal call within the scope returns the stored result without running the handler. Calls are equal when their payloads have the same identity, or their `idempotencyKey` values when the task sets one, under the same `implementationVersion`.
+
+| `scope` | Reuses a result |
+| --- | --- |
+| `"run"`, the default | within one run |
+| `"flow"` | across runs of the same workflow |
+| `"shared"` | across every workflow on the store |
+
+Reuse across runs is opt-in: `"flow"` and `"shared"` need an `implementationVersion`, so a result is never served to different code, and declaring one without it throws. Only a `"sealed"` task may cache, because a cache hit skips the handler and its outside effects. An entry may expire after `ttlMs`. A run's committed result never depends on an entry: the hit is journaled as the step's result, and a finished run answers from its journal.
 
 `Experimental.Durable.history(run)` is the run's journal as a `Stream` of `{ run, seq, eventType, payload, at }`, read through the `Experimental.Durable.Durable` service the engine layers provide. A run's id is Effect's execution id, `Order.executionId(payload)`.

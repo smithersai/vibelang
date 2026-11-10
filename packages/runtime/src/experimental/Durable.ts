@@ -31,13 +31,16 @@
  * @experimental
  * @since 0.0.13
  */
+import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import { Activity, WorkflowEngine } from "effect/workflow"
+import * as canonical from "./internal/canonical.js"
 import * as engineInternal from "./internal/durableEngine.js"
 import * as store from "./internal/durableStore.js"
 
@@ -219,6 +222,40 @@ export interface TaskOptions<Payload extends Schema.Struct.Fields, Success exten
   readonly retryPolicy?: RetryPolicy | undefined
   /** Bound each attempt. A timed-out attempt is a defect, which the journal records. */
   readonly attemptTimeoutMs?: number | undefined
+  /**
+   * What makes two calls equal for the cache: a value, or a function of the
+   * payload. By default the payload's VIP-44 identity.
+   */
+  readonly idempotencyKey?: unknown
+  /** Names the code that computes the result. A cached result is reused only under the same version. */
+  readonly implementationVersion?: string | undefined
+  /** Reuse a successful result for an equal call. See {@link CacheOptions}. */
+  readonly cache?: CacheOptions | undefined
+}
+
+/**
+ * Smithers' `Action.withCache`. A successful result is stored under a key
+ * made of the scope, the task's key, its `implementationVersion` and the
+ * call's idempotency key, and an equal call within the scope returns it
+ * without running the handler.
+ *
+ * - `scope: "run"` (the default) reuses within one run.
+ * - `scope: "flow"` reuses across runs of the same workflow.
+ * - `scope: "shared"` reuses across every workflow on the store.
+ *
+ * Reuse across runs is opt-in: `"flow"` and `"shared"` need an
+ * `implementationVersion`, so a result is never served to different code.
+ * Only a `"sealed"` task caches, because a cached call skips the handler and
+ * so its outside effects. A cache entry may expire after `ttlMs` or be
+ * swept. A run's committed result never depends on one: once a step
+ * finishes, the journal serves it.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface CacheOptions {
+  readonly ttlMs?: number | undefined
+  readonly scope?: "run" | "flow" | "shared" | undefined
 }
 
 /**
@@ -323,7 +360,42 @@ export const task = <
   const Handler = Context.Service<Handler>(`vibelang/experimental/Durable/Task/${key}`)
   const success = (options.success ?? Schema.Void) as Schema.Top
   const error = (options.error ?? Schema.Never) as Schema.Top
-  const info = { tier: options.tier ?? "sealed" }
+  const tier = options.tier ?? "sealed"
+  const info = { tier }
+  const cache = options.cache
+  if (cache !== undefined) {
+    if (tier !== "sealed") throw new globalThis.Error(`Task ${key}: only a sealed task caches; this one is ${tier}`)
+    if ((cache.scope === "flow" || cache.scope === "shared") && options.implementationVersion === undefined) {
+      throw new globalThis.Error(`Task ${key}: a ${cache.scope} cache reuses results across runs and needs an implementationVersion`)
+    }
+  }
+  const payloadSchema = Schema.Struct(options.payload)
+  const successJson = Schema.toCodecJson(success) as unknown as Schema.Codec<unknown, unknown>
+  const cacheKey = (payload: P, instance: WorkflowEngine.WorkflowInstance["Service"]) => {
+    const scope = cache?.scope ?? "run"
+    const within = scope === "run" ? instance.executionId : scope === "flow" ? instance.workflow._tag : ""
+    const equal = options.idempotencyKey === undefined
+      ? canonical.snapshot(payloadSchema, payload)
+      : typeof options.idempotencyKey === "function"
+      ? (options.idempotencyKey as (payload: P) => unknown)(payload)
+      : options.idempotencyKey
+    return canonical.sha256(canonical.canonicalJson([scope, within, key, options.implementationVersion ?? null, equal]))
+  }
+  const cached = (body: Effect.Effect<unknown, unknown>, cacheKey: string): Effect.Effect<unknown, unknown> =>
+    Effect.gen(function*() {
+      const durable = yield* Effect.serviceOption(Durable)
+      if (Option.isNone(durable)) return yield* body
+      const store = durable.value.internals.store
+      const hit = yield* store.cacheGet(cacheKey, yield* Clock.currentTimeMillis)
+      if (Option.isSome(hit)) return Schema.decodeUnknownSync(successJson)(hit.value)
+      const value = yield* body
+      const now = yield* Clock.currentTimeMillis
+      yield* store.cachePut(cacheKey, {
+        value: Schema.encodeSync(successJson)(value),
+        expiresAt: cache?.ttlMs === undefined ? undefined : now + cache.ttlMs
+      })
+      return value
+    })
   const call = (payload: P) =>
     Effect.gen(function*() {
       const instance = yield* WorkflowEngine.WorkflowInstance
@@ -337,6 +409,7 @@ export const task = <
           orElse: () => Effect.die(new globalThis.Error(`Task ${key} attempt timed out after ${ms} ms`))
         })
       }
+      if (cache !== undefined) body = cached(body, yield* cacheKey(payload, instance))
       const policy = options.retryPolicy
       if (policy !== undefined) body = Effect.andThen(backoff(policy), body)
       const activity = Activity.make({ name: `${key}/${n}`, success, error, execute: body })
