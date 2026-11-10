@@ -53,6 +53,10 @@ import (
 func FuzzFormat(f *testing.F) {
 	startShortBudget(f)
 	formatServiceSeparatorsQuoted(f)
+	formatNamedModuleBodySyntaxQuoted(f)
+	for _, key := range []string{"error-declaration", "effect-contract", "unfinished-initializer", "valid-function"} {
+		f.Add(formatNamedModuleBodyKey + key + "\x00\x00")
+	}
 	for _, rule := range formatServiceSeparatorRules {
 		f.Add(formatServiceSeparatorKey + rule.key)
 	}
@@ -84,6 +88,7 @@ func FuzzFormat(f *testing.F) {
 	w := NewWorkspace(f)
 	formatter := toolsFormatter(f)
 	f.Fuzz(func(t *testing.T, source string) {
+		source = formatNamedModuleBodySyntaxSource(source)
 		source = formatUnnamedModuleSource(formatServiceSeparatorSource(formatLabelSource(formatReturnTypesSource(formatIsLineSource(formatFoldkitSource(source))))))
 		toolsGuard(t, "FuzzFormat", func() {
 			if len(source) > 24<<10 || toolsLeftOut("FuzzFormat", map[string]string{"main.vibe": source}) {
@@ -373,9 +378,9 @@ func formatSyntaxError(source string) string {
 	if syntax := toolsSyntaxError("main.vibe", source); syntax != "" {
 		return syntax
 	}
-	// Missing-name recovery has no supplemental source file for toolsSyntaxError
-	// to inspect. Its body still follows TypeScript grammar, so check that
-	// grammar independently rather than calling its syntax errors refusals.
+	// Module bodies are separate TypeScript sources, so the outer VibeLang
+	// parser's diagnostics do not classify their native syntax errors.
+	// Parse each body independently before applying preservation oracles.
 	file := toolsParse("main.vibe", source)
 	seen := map[string]bool{}
 	for _, statement := range file.Statements.Nodes {
@@ -390,7 +395,6 @@ func formatSyntaxError(source string) string {
 				return "EK4005, module " + name + " is declared twice"
 			}
 			seen[suffix] = true
-			continue
 		}
 		r := parser.ModuleDeclarationBody(file, statement)
 		body := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/body.ts", PathKey: "/body.ts"}, source[r.Pos():r.End()], core.ScriptKindTS)
