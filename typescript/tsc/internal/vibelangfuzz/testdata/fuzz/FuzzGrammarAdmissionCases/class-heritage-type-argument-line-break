@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("case:minimized:class-heritage-type-argument-line-break\nimport { Data } from \"effect\"\nexport error ResourceNotAvailable { resource : string } 1\nexport error Timeout\nexport error Gone {\nget message ( ) : string {\nreturn \"gone\"\n}\n}\nexport class MissingBuildId extends Data . TaggedError ( \"MissingBuildId\" )\n< { } > { }\nexport error TimeoutWithBraces { }")

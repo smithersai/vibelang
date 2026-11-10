@@ -958,6 +958,16 @@ grammar diagnostics, including reserved binding names. Property names,
 member names and strings that spell the same word remain controls; they
 are not `IdentifierReference` positions.
 
+Class heritage is another inherited TypeScript distinction: `class C extends
+f("C")
+<{}> {}` permits a line break before the type arguments.
+TypeScript's `parseExpressionWithTypeArguments` reads that list without the
+line-break guard used by a type reference. Stock TypeScript 5.9.3 accepts
+the nine named, called, parenthesized, anonymous and implemented heritage
+controls with name-resolution errors only; malformed lists and the
+corresponding type reference remain rejections. The lab removes the
+extra line-break guard from `ClassHeritage` alone.
+
 An import type's type arguments followed. TypeScript's parser reads them as a
 bracketed list that may be empty or end in a comma, and the checker's
 TypeArguments grammar check (`TS1099`, `TS1009`) runs on type references and

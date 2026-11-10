@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:class-heritage-type-argument-line-break\nclass C extends f(\"C\")\n<{}> {}")
