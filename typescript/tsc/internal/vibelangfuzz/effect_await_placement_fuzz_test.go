@@ -52,6 +52,27 @@ func effectAwaitPlacementRules() []effectAwaitPlacementRule {
 			rules = append(rules, effectAwaitPlacementRule{operand.key + ":" + context.key, "import { Effect, Fiber, Deferred } from \"effect\";\n" + operand.prelude + "\n" + fmt.Sprintf(context.body, "await "+operand.value)})
 		}
 
+		for _, home := range []struct{ key, source string }{
+			{"declaration", "export effect function f(%s) { return 0 }"},
+			{"expression", "export const f = effect function(%s) { return 0 }"},
+			{"arrow", "export const f = effect (%s) => 0"},
+			{"method", "export class Home { effect f(%s) { return 0 } }"},
+			{"object", "export const home = { effect f(%s) { return 0 } }"},
+			{"producer", "export effect function* f(%s) { yield 0 }"},
+		} {
+			for _, shape := range []string{"direct", "moved"} {
+				parameter := "base = class extends ((await " + operand.value + ") as any) {}"
+				if shape == "moved" {
+					parameter = "early = do { if (false) return; 0 }, " + parameter
+				}
+				body := fmt.Sprintf(home.source, parameter)
+				rules = append(rules, effectAwaitPlacementRule{
+					operand.key + ":heritage-" + home.key + "-" + shape,
+					"import {Effect,Fiber,Deferred} from \"effect\";\n" + operand.prelude + "\n" + body,
+				})
+			}
+		}
+
 		if operand.key == "promise" || operand.key == "scalar" || operand.key == "any" || operand.key == "effect" {
 			for _, kind := range []string{"declaration", "arrow", "method", "producer"} {
 				for _, shape := range []string{"returning", "earlier", "later"} {

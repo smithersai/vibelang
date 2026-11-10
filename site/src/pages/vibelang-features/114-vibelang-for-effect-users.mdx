@@ -521,7 +521,7 @@ An inferred `effect` arrow or function expression may refer to its own callable 
 
 Optional schema fields, schema-error payload fields and optional tuple elements follow the project's `exactOptionalPropertyTypes`: `?: T` uses `Schema.optionalKey` when enabled and `Schema.optional` by default; `?: T | undefined` keeps `Schema.optional` under both settings. Native `data` payloads retain TypeScript's own optional properties.
 
-`await` in an Effect function, arrow, method or producer parameter default reports `EK0102`, including destructuring defaults and computed binding keys. Parameter initialization runs when the callable is called and is outside effect code, so `try` there remains `EK0501`. Move Promise work into an appropriate callable body; a nested `async` callable keeps its native `await` rules.
+`await` directly evaluated in an Effect function, arrow, method or producer parameter default reports `EK0102`, including destructuring defaults and computed binding keys. This includes a class's `extends` expression in the default, even when an earlier default contains an outward `return`. Parameter initialization runs when the callable is called and is outside effect code, so `try` there remains `EK0501`. Move Promise work into an appropriate callable body; a nested `async` callable keeps its native `await` rules.
 
 A native `Effect.gen(function* () { ... })` with JavaScript `try/catch` keeps that boundary when no equivalent teaching rewrite exists. It remains valid native code and does not create a refused repair site.
 

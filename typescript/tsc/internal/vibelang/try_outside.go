@@ -97,6 +97,10 @@ func inEffectCode(node *ast.Node) bool {
 // callables and class/enum contexts own their own await restrictions.
 func inEffectParameterInitialization(node *ast.Node) bool {
 	for child, parent := node, node.Parent; parent != nil; child, parent = parent, parent.Parent {
+		// A class base evaluates where the class is defined, including in a default.
+		if classExtendsChild(parent, child) {
+			continue
+		}
 		if !isFunctionBoundary(parent) || isCalledInPlace(parent) || isCatchLeftFunction(parent) {
 			continue
 		}

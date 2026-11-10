@@ -1,0 +1,25 @@
+// expect: EK0102
+export effect function read000(base = class extends ((await Promise.resolve(class {})) as any) {}) { return 0 }
+export effect function read001(early = do { if (false) return; 0 }, base = class extends ((await Promise.resolve(class {})) as any) {}) { return 0 }
+export effect function read010(base = class extends ((await (undefined as any)) as any) {}) { return 0 }
+export effect function read011(early = do { if (false) return; 0 }, base = class extends ((await (undefined as any)) as any) {}) { return 0 }
+export const read100 = effect function(base = class extends ((await Promise.resolve(class {})) as any) {}) { return 0 }
+export const read101 = effect function(early = do { if (false) return; 0 }, base = class extends ((await Promise.resolve(class {})) as any) {}) { return 0 }
+export const read110 = effect function(base = class extends ((await (undefined as any)) as any) {}) { return 0 }
+export const read111 = effect function(early = do { if (false) return; 0 }, base = class extends ((await (undefined as any)) as any) {}) { return 0 }
+export const read200 = effect (base = class extends ((await Promise.resolve(class {})) as any) {}) => 0
+export const read201 = effect (early = do { if (false) return; 0 }, base = class extends ((await Promise.resolve(class {})) as any) {}) => 0
+export const read210 = effect (base = class extends ((await (undefined as any)) as any) {}) => 0
+export const read211 = effect (early = do { if (false) return; 0 }, base = class extends ((await (undefined as any)) as any) {}) => 0
+export class read300 { effect read(base = class extends ((await Promise.resolve(class {})) as any) {}) { return 0 } }
+export class read301 { effect read(early = do { if (false) return; 0 }, base = class extends ((await Promise.resolve(class {})) as any) {}) { return 0 } }
+export class read310 { effect read(base = class extends ((await (undefined as any)) as any) {}) { return 0 } }
+export class read311 { effect read(early = do { if (false) return; 0 }, base = class extends ((await (undefined as any)) as any) {}) { return 0 } }
+export const read400 = { effect read(base = class extends ((await Promise.resolve(class {})) as any) {}) { return 0 } }
+export const read401 = { effect read(early = do { if (false) return; 0 }, base = class extends ((await Promise.resolve(class {})) as any) {}) { return 0 } }
+export const read410 = { effect read(base = class extends ((await (undefined as any)) as any) {}) { return 0 } }
+export const read411 = { effect read(early = do { if (false) return; 0 }, base = class extends ((await (undefined as any)) as any) {}) { return 0 } }
+export effect function* read500(base = class extends ((await Promise.resolve(class {})) as any) {}) { yield 0 }
+export effect function* read501(early = do { if (false) return; 0 }, base = class extends ((await Promise.resolve(class {})) as any) {}) { yield 0 }
+export effect function* read510(base = class extends ((await (undefined as any)) as any) {}) { yield 0 }
+export effect function* read511(early = do { if (false) return; 0 }, base = class extends ((await (undefined as any)) as any) {}) { yield 0 }
