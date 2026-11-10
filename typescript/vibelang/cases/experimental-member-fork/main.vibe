@@ -1,0 +1,23 @@
+// expect-result: {"events":["RunStarted","StepStarted","StepCompleted","RunCompleted"],"forked":true}
+// fork is reserved in Effect code, but a member named fork is a property
+// name and stays an ordinary name: Experimental.Durable.fork is a library
+// function, not the prelude's fork, so calling it is not EK4410.
+const Double = Experimental.Durable.task("case#Double", { payload: { n: Schema.Number }, success: Schema.Number })
+const Twice = Experimental.Durable.workflow("case#Twice", { payload: { n: Schema.Number }, success: Schema.Number })
+
+const TwiceLive = Twice.toLayer(effect ({ n }) => {
+  return try Double({ n })
+}).pipe(
+  Layer.provide(Double.toLayer(({ n }) => Effect.succeed(n * 2))),
+  Layer.provideMerge(Experimental.Durable.memory)
+)
+
+export effect function main() {
+  provide TwiceLive {
+    try Twice.execute({ n: 2 })
+    const run = try Twice.executionId({ n: 2 })
+    const events = try Stream.runCollect(Stream.map(Experimental.Durable.history(run), (entry) => entry.eventType))
+    const copy = try Experimental.Durable.fork({ run, seq: 2 })
+    return { events: Array.from(events), forked: copy.run !== run }
+  }
+}

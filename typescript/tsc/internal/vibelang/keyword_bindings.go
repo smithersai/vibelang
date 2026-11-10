@@ -1,6 +1,8 @@
 package vibelang
 
 import (
+	"strings"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
@@ -111,7 +113,19 @@ func isRuntimeSymbol(c *checker.Checker, symbol *ast.Symbol, name string) bool {
 	if symbol.Name() != name {
 		return false
 	}
-	return packageNameOf(c, ast.GetSourceFileOfNode(declaration)) == "vibelang-runtime"
+	file := ast.GetSourceFileOfNode(declaration)
+	return packageNameOf(c, file) == "vibelang-runtime" && !isExperimentalRuntimeFile(c, file)
+}
+
+// isExperimentalRuntimeFile reports whether file belongs to the runtime's
+// Experimental namespace, vibelang-runtime/experimental. Its modules are
+// libraries, and a member they export under a keyword's name, such as
+// Experimental.Durable.fork, is a property name, which stays an ordinary name
+// (D432): it is not the prelude's fork or join.
+func isExperimentalRuntimeFile(c *checker.Checker, file *ast.SourceFile) bool {
+	directory := string(c.Program().GetNearestAncestorDirectoryWithPackageJson(file.FileName().Directory()))
+	relative := strings.TrimPrefix(string(file.FileName()), strings.TrimSuffix(directory, "/")+"/")
+	return strings.HasPrefix(relative, "dist/experimental/") || strings.HasPrefix(relative, "src/experimental/")
 }
 
 // keywordBindingRepair says how to write a use of name, a keyword's

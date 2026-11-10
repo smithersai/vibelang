@@ -713,4 +713,14 @@ A position is `{ run, seq }`: a run and a sequence number in its journal.
 | `Experimental.Durable.rewind(at)` | Truncates the run to the entries before `at` and leaves it suspended; the next execution runs the removed steps again. |
 | `Experimental.Durable.sweep({ olderThan })` | Deletes finished runs older than `olderThan`, and expired cache entries. Nothing is deleted on a schedule the program did not set. |
 
+The std-durable VIP's example reads a run's events and forks it:
+
+```vibe
+export effect function forkAt(run: string, seq: number) {
+  const events = try Stream.runCollect(Stream.map(Experimental.Durable.history(run), (entry) => entry.eventType))
+  const copy = try Experimental.Durable.fork({ run, seq })
+  return { events, copy }
+}
+```
+
 `fork`, `rewind` and `replay` fail with `Experimental.Durable.TimeTravelError`, whose `code` is one of Smithers' twelve. This engine raises `not_found` for an unknown run, `invalid` for a position outside the journal, `busy` when this engine is running the run, `irreversible` when a rewind would remove an irreversible task's step, because no engine can unsend an email, and `compensation_failed` when it would remove a compensable one, because undoing a step is not built yet. A rewind claims the run, so another engine still driving it dies with `FenceLost` at its next write. Note that `fork` is a reserved word in Effect code: name the result `copy`, as above.

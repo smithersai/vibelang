@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Under the Bun preload, a native module whose first line is a `#!` line could not import a `.vibe` module by an extensionless path and stopped with `Cannot find module`. The preload now rewrites that module's imports like any other native module's.
 
+- Calling a library function named `fork`, such as `Experimental.Durable.fork({ run, seq })`, in Effect code was `EK4410`, as if it were the reserved `fork`. A member named `fork` or `join` in the `Experimental` namespace is now an ordinary property name; the prelude's `fork` and `join` keep their rule.
+
 - A program could not inspect, branch or repair a workflow run it had recorded. `Experimental.Durable.replay` folds a run's journal up to a position without running anything, `fork` starts a new run that reuses the steps before that position, and `rewind` truncates the run so its next execution repeats the later steps, refusing to cross an irreversible one.
 
 - Executing a workflow twice with equal sets or maps built in different orders started two runs, because Effect hashes the `idempotencyKey` text as written. `Experimental.Durable.workflow` derives that key from the payload's identity, with sets, maps and object keys sorted, so equal inputs join one run, and its body sees the sorted payload.
