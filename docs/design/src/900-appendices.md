@@ -658,6 +658,8 @@ WorkflowDeclaration = WorkflowStart "{" DurableMember* "}"   (VIP-55: exactly on
 ```
 
 <a id="durablemember"></a>
+<a id="callmember"></a>
+<a id="optionmember"></a>
 
 ```text
 DurableMember = CallMember | OptionMember | RejectedElement   (parsed as class elements; a RejectedElement, a second CallMember or a missing one is EK5501)
