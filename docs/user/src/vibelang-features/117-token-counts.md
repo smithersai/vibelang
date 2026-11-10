@@ -20,7 +20,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,308 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 17,175 |
 | The skill and the user guide (146 pages) | 580,000 |
-| The user guide alone | 570,000 |
+| The user guide alone | 580,000 |
 | The specification (11 chapters) | 280,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -136,8 +136,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Keep .ts file names** | **1,400** |
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |
-| **Upgrade** | **190,000** |
-| [Release notes](../setup/release-notes.md) | 190,000 |
+| **Upgrade** | **200,000** |
+| [Release notes](../setup/release-notes.md) | 200,000 |
 | **All 22 pages** | **260,000** |
 
 ### Guides
@@ -158,7 +158,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,200 |
 | **Requirements Management** | **13,000** |
-| [Managing Services](../requirements-management/025-services.md) | 6,400 |
+| [Managing Services](../requirements-management/025-services.md) | 6,500 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
 | [Managing Layers](../requirements-management/027-layers.md) | 3,900 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |
@@ -276,9 +276,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 14,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
-| [Experimental platform APIs](118-experimental-platform-apis.md) | 13,000 |
+| [Experimental platform APIs](118-experimental-platform-apis.md) | 17,000 |
 | [Durable tasks and workflows](119-tasks-and-workflows.md) | 1,200 |
-| **All 10 pages** | **77,000** |
+| **All 10 pages** | **81,000** |
 
 ### Specification
 

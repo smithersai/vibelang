@@ -25,6 +25,63 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Adding `vibelang()` from `vibelang-unplugin/bun` to `Bun.build` made `.tsx` modules ignore the `jsxImportSource` in `tsconfig.json`, so a Solid or Preact build failed with `Could not resolve: "react/jsx-dev-runtime"`. The plugin now matches only extensionless imports whose name is a `.vibe` file or a directory with an `index.vibe`, so Bun keeps the JSX settings of every other `.tsx` module.
 
+- A declared `task` or `workflow` could not run: calling a workflow needed an engine nothing provided. Declarations now run on `Experimental.Durable`: `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { try W(a) }` journals each step, an equal input joins the recorded run, and a crashed run resumes without repeating finished steps.
+
+- Two tasks or workflows of one package could share a tag, and so the same recorded runs. That is now `EK5503`, naming both declarations.
+
+- A workflow had no way to repeat work or run another workflow separately. `return W.to(…)` now starts the next round, `try W.child(…)` runs a separate run, and a handoff written anywhere but after `return` is `EK5508`.
+
+- A workflow body could run any Effect, loop, read the clock or call itself, none of which a plan built before the run can hold. These are now `EK5504` to `EK5507`, and a `retryPolicy` that never gives up warns with `EK5509`.
+
+- A `task` or `workflow` could declare a parameter, success or error type that cannot be stored, such as `Set<string>` or `unknown`. Each boundary type now needs a schema form, or it is `EK2109`, and the derived schemas are on the declaration as `schemas`.
+
+- `task` and `workflow` declarations were syntax errors. They now parse, type-check and format: a task's `A!E` annotation is its boundary, and a task called outside a workflow is `EK5502`.
+
+- Rejected static members in a `service` could hide unknown names and type errors inside them. Those independent TypeScript errors now appear alongside `EK0902`, for services with member signatures and services with a written whole shape.
+
+- Calling a service key with arguments could hide errors in nested calls; those argument errors are now reported alongside the service diagnostic.
+
+- Extending a service key could hide unknown names and type errors in the base expression or its type arguments. Those independent errors now appear alongside `EK3002`.
+
+- An `effect` modifier on an `interface` or type literal method could also report a misleading return-type error. It now reports `EK0108` while keeping the signature's written return type.
+
+
+- `data D<> { … }`, with an empty type parameter list, compiled silently where a class or an `error` reports `TS1098`. It now reports `TS1098` too; write a type parameter or remove the angle brackets.
+
+- Invalid global object accesses could hide errors in computed keys and type assertions; those errors are now reported alongside the access diagnostic.
+
+- A computed matcher member after a line break could be split into a separate array expression. It now continues the matcher lookup, and empty or malformed brackets keep their syntax errors.
+
+- Invalid service signatures and constructors could hide unknown names and type errors in their types or bodies. These independent errors now appear alongside `EK0902`.
+
+- Two resumes of one durable run at the same moment could both run its unfinished step, and an engine that had lost a run to another kept a stale copy of it. A run's resumes now take turns, an engine reloads a run another engine claimed, a run rewound to before its plan record records the plan again, and a workflow refused for a changed plan no longer takes the run from the engine driving it.
+
+- `Experimental.Durable.runs()` listed runs in insertion order from the memory store and by creation time from a SQL store. Both stores now list the oldest run first.
+
+- A `Redacted` credential in a durable workflow's payload or a step's result was written to the journal in plain text, because Effect's JSON codec encodes the secret. The engine now refuses such a value with a defect that names its path, before anything is written.
+
+- A durable run resumed under changed workflow code could mix steps recorded by the old code with steps computed by the new. A workflow that declares its `plan` now records the plan's digest when a run starts, and a resume that builds a different plan dies with `plan_changed`; `Experimental.Durable.plan` and `diff` show a plan and what changed before anything runs.
+
+- A durable workflow killed during a long `DurableClock.sleep` slept the whole duration again when it resumed. The engine now journals when the clock is due, and the resumed run waits only for the time left.
+
+- A program under test that reaches its model over HTTP, such as an agent run as a child process, could not use a recorded model. `Experimental.Test.modelServer({ fixture })` answers Chat Completions requests from a recording and answers `501` for a request it does not hold.
+
+- A fork of the workflow engine had no way to show it still behaves like the standard one. `Experimental.Test.conformance.engine()` gives nine black-box cases, for run identity, interruption, replay after a restart and races, that run against any `WorkflowEngine` layer.
+
+- A test of a program that asks a `DecisionModel` for a decision needed a provider. `Experimental.Test.decisions(fixture)` answers from a recording, validating each answer as Effect validates a provider's, and a request the recording does not describe fails the test.
+
+- Checking which steps a durable run took meant reading its raw history. `Experimental.Test.journal(run)` lists the run's steps in order with their attempts and outcome, with assertions that fail the test with `JournalMismatch`, and `Experimental.Test.divergence(runA, runB)` names the first entry where two runs differ.
+
+- A test of code that reads files or runs commands depended on the machine it ran on. `Experimental.Test.host({ files, commands })` provides Effect's `FileSystem`, `Path` and `ChildProcessSpawner` for a machine described in the test, and an unscripted command fails as a missing binary does.
+
+- A test could not show that a durable workflow recovers from a crash without building engines over a shared store by hand. `Experimental.Test.restartable` is an engine a test kills with `Experimental.Test.crash`; the next execution resumes the run, serving finished steps and running the unfinished one again.
+
+- Refreshing a recorded model fixture meant writing the provider's answers out by hand. `Experimental.Test.record(path, { live })` replays the file and sends only a request it is missing to the named live model, appending the answer; it never writes an interrupted call or a call that holds a credential.
+
+- A test of a program that calls a language model needed a provider key and a network, and answered differently on each run. `Experimental.Test.replay(fixture)` is a `LanguageModel` layer that answers from a recording and never calls a provider; a request the recording does not describe fails the test.
+
+- An invalid binding pattern in a parameter default or a `var`/`using` loop head could report only its placement error. It now also reports invalid pattern syntax, including repeated rest markers.
+
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.

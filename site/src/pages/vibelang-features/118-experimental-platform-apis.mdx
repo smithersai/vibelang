@@ -27,6 +27,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
+| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -729,3 +730,248 @@ export effect function forkAt(run: string, seq: number) {
 ```
 
 `fork`, `rewind` and `replay` fail with `Experimental.Durable.TimeTravelError`, whose `code` is one of Smithers' twelve. This engine raises `not_found` for an unknown run, `invalid` for a position outside the journal, `busy` when this engine is running the run, `irreversible` when a rewind would remove an irreversible task's step, because no engine can unsend an email, and `compensation_failed` when it would remove a compensable one, because undoing a step is not built yet. A rewind claims the run, so another engine still driving it dies with `FenceLost` at its next write. Note that `fork` is a reserved word in Effect code: name the result `copy`, as above.
+
+## Testing agentic programs
+
+A test of an agentic program needs a model that holds still. `Experimental.Test` (VIP-71) adds doubles for what Effect has none of, each a layer the test provides in place of the production one. Tests stay `@effect/vitest` tests, and Effect's `TestClock` and `TestConsole` stay as they are.
+
+`Experimental.Test.replay(fixture)` is a `LanguageModel` that answers from a recording and never calls a provider, so a test runs with no key and no network. A program asks through whatever `LanguageModel` is in scope, so the test changes no line of it:
+
+```vibe
+schema Label { type: "bug" | "feature" | "question" | "chore" }
+
+const recorded = {
+  calls: [{
+    request: { prompt: "Label this issue: Crash on start" },
+    response: [{ type: "text", text: `{"type":"bug"}` }]
+  }]
+}
+
+effect function label(title: string) {
+  const reply = try LanguageModel.generateObject({ prompt: `Label this issue: ${title}`, schema: Label })
+  return reply.value
+}
+
+export effect function labelCrash() {
+  provide Experimental.Test.replay(recorded) {
+    const result = try label("Crash on start")
+    return result.type
+  }
+}
+// Output: bug
+```
+
+A fixture is JSON, usually a file beside the test imported with `import recorded from "./fixtures/label.json" with { type: "json" }`. Each entry of `calls` is one model call:
+
+| Field | Holds |
+| --- | --- |
+| `request.prompt` | the prompt, as `Prompt.make` accepts it: a string, or messages in their encoded form |
+| `request.tools`, `request.responseFormat`, `request.toolChoice` | compared only when present: the tools' names, descriptions and JSON Schema parameters, the response format with its JSON Schema, and the tool choice |
+| `response` | the encoded response parts `generateText` and `generateObject` decode, such as `{ "type": "text", "text": "..." }` or a `tool-call` |
+| `stream` | the encoded stream parts `streamText` decodes, such as `text-delta` |
+| `failure` | an encoded `AiError` the call fails with, such as a recorded rate limit |
+
+Replay keeps these rules:
+
+| Rule | Consequence |
+| --- | --- |
+| Each recorded call is claimed once | Two equal requests need two recordings. Concurrent requests never share one. |
+| A request no unclaimed recording matches is a defect | The fiber dies with `Experimental.Test.UnrecordedCall`, which names the method, the message count, the tools and the end of the last message. A missing recording is a failed test, never a network call. |
+| Matching never reads a model id | A recording made with one model replays under another, so a test does not break when the model changes. |
+| A malformed fixture is a defect | Building the layer dies with `Experimental.Test.InvalidFixture`. |
+
+The layer also provides `Experimental.Test.Recording`. `try Experimental.Test.unconsumed` is the list of recorded calls the run has not used, for a test that must use its whole recording.
+
+`Experimental.Test.record(path, { live })` makes a recording. It replays the file at `path` as `replay` does, claiming each recorded call once; a request the file does not answer goes to the `live` model, such as a provider's layer, and the answer is appended to the file before the caller sees it. Recording and replaying are two calls, so a deleted fixture never turns a free test run into a paid one: switch a test to `record` to refresh its fixture, then back to `replay`.
+
+```vibe
+import { NodeFileSystem } from "@effect/platform-node"
+
+export effect function labelLive(seat: Layer.Layer<LanguageModel.LanguageModel>) {
+  provide Experimental.Test.record("fixtures/label.json", { live: seat }).pipe(Layer.provide(NodeFileSystem.layer)) {
+    return try LanguageModel.generateText({ prompt: "Label this issue: Crash on start" })
+  }
+}
+```
+
+| What `record` writes | Why |
+| --- | --- |
+| A finished call: the request as the provider received it, and its encoded `response` or `stream` parts | the file replays under `replay` with no live model |
+| A typed `AiError` the provider answered with, as `failure` | it replays as the same failure |
+| Nothing for an interrupted call or a defect | a truncated stream would replay as an aborted turn |
+| Nothing for a call that holds a credential | the call dies with `Experimental.Test.CredentialInRecording`, naming the rule that matched, such as `api-key` or `jwt` |
+
+`record` builds the `live` layer at the first miss, so a test whose recording answers every request runs with no key. Each append rewrites the file through a temporary file and a rename, so a crash leaves the old recording or the new one. A relative `path` resolves from the working directory, as Effect's `FileSystem` resolves it, and `record` needs a `FileSystem` layer such as `NodeFileSystem.layer`.
+
+`Experimental.Test.decisions(fixture)` is the same double for Effect's `DecisionModel`. Each recorded call holds the `request` a provider received, its encoded input as `state`, and the provider's `response`, its `answers` by decision name; `request.decisions` is compared only when present. Effect validates each recorded answer against the program's decision definition as it would a provider's, so a `Classify` answer carries its `probabilities`, a label the definition does not have is `Invalid`, and a `Refusal` is refused. Each recording is claimed once, and a request none matches dies with `Experimental.Test.UnrecordedDecision`.
+
+```vibe
+const recorded = {
+  calls: [{
+    request: { state: { title: "Crash on start" } },
+    response: { answers: { kind: { _tag: "Classify", label: "bug", probabilities: { bug: 0.9, feature: 0.1 } } } }
+  }]
+}
+
+const Triage = Decision.make({
+  input: Schema.Struct({ title: Schema.String }),
+  decisions: { kind: Decision.classify({ instructions: "What kind of issue is this?", criteria: { bug: null, feature: null } }) }
+})
+
+export effect function triageCrash() {
+  provide Experimental.Test.decisions(recorded) {
+    const response = try DecisionModel.decide(Triage, { input: { title: "Crash on start" } })
+    return response.answers.kind.label
+  }
+}
+```
+
+### A model in another process
+
+A layer replaces a model only inside one process. A program under test that reaches its model over HTTP, such as a coding agent run as a child process, needs a server. `Experimental.Test.modelServer({ fixture })` answers Chat Completions requests, `POST /v1/chat/completions`, from a recording: point the program's OpenAI-compatible base URL at it.
+
+```vibe
+import { ExperimentalNodeHttpServer } from "vibelang-runtime/experimental/platform-node"
+
+const recorded = { calls: [{ request: { prompt: "hello" }, response: [{ type: "text", text: "hi there" }] }] }
+
+export effect function withModelServer() {
+  provide Experimental.Test.modelServer({ fixture: recorded }).pipe(Layer.provideMerge(ExperimentalNodeHttpServer.layer({ port: 0 }))) {
+    const server = try HttpServer.HttpServer
+    return "port" in server.address ? `http://127.0.0.1:${server.address.port}/v1` : ""
+  }
+}
+```
+
+The server reads a request's messages as the prompt Effect's `LanguageModel` sends a provider, so a recording made in-process with `Experimental.Test.record` replays over HTTP, and a hand-written one names its prompt as text. It matches tools, the response format and the tool choice as `replay` does, never the model, and claims each recording once. It answers a `chat.completion`, or `chat.completion.chunk` server-sent events when the request streams. A request it does not hold is answered `501` with an error of type `unrecorded`; a recorded `AiError` is answered with its status, such as `429` for a rate limit.
+
+### A machine of fixed files and commands
+
+`Experimental.Test.host({ files, commands })` provides Effect's `FileSystem`, `Path` and `ChildProcessSpawner` for a machine described in the test: the files that exist, by path, and what each command prints. Nothing reaches the operating system, so the test runs the same on every machine.
+
+```vibe
+const machine = Experimental.Test.host({
+  files: { "/repo/package.json": `{"name":"demo"}` },
+  commands: { "git status --short": { stdout: " M src/a.ts\n M src/b.ts\n" } }
+})
+
+export effect function changedFiles() {
+  provide machine {
+    const fs = try FileSystem.FileSystem
+    const spawner = try ChildProcessSpawner.ChildProcessSpawner
+    const manifest = try fs.readFileString("/repo/package.json")
+    const status = try spawner.lines(ChildProcess.make("git", ["status", "--short"]))
+    return `${manifest}: ${status.length} changed`
+  }
+}
+// Output: {"name":"demo"}: 2 changed
+```
+
+| Part | Behavior |
+| --- | --- |
+| `files` | Each file exists with its text, and so do its parent directories. Paths are POSIX; a relative path starts at `/`. |
+| File system members | Reading, writing, appending, `makeDirectory`, `readDirectory`, `stat`, `remove`, `rename` and `copyFile` behave as on Node, failures included: a path below a file fails with `BadResource`, as `ENOTDIR` does. Other members fail with `NotFound`, as Effect's `FileSystem.makeNoop` does. File times are fixed. |
+| `commands` | Keyed by command line, the command and its arguments joined by spaces. Each gives `stdout`, `stderr` and `exitCode`, all optional. |
+| An unscripted command | Fails to spawn with a `NotFound` `PlatformError`, as a missing binary does. A piped command fails with `BadArgument`; script each command on its own. |
+
+Each build of the layer starts from its options again.
+
+### Crash tests for durable workflows
+
+`Experimental.Test.durable` is a journaled engine over a fresh in-memory store, `Experimental.Durable.memory` under a test's name. Under `it.effect` its clock is Effect's `TestClock`. It proves what a workflow runs and journals, never that a run recovers: an engine that is never restarted never replays.
+
+`Experimental.Test.restartable` is the engine a crash test uses. Provide it where the program provides its engine. `try Experimental.Test.crash` kills the engine the way a killed process stops: every run it was driving stops at once, and a fresh engine starts over the same store with the program's workflows registered again. The next execution of a stopped run resumes it. A step that finished before the crash returns its recorded result, and a step that had not finished runs again.
+
+```vibe
+const done: Array<string> = []
+const reached = Deferred.makeUnsafe<void>()
+const blocked = { step: 2 }
+
+const Step = Experimental.Durable.task("docs#Step", { payload: { n: Schema.Number }, success: Schema.Number })
+const Steps = Experimental.Durable.workflow("docs#Steps", { payload: { count: Schema.Number }, success: Schema.Number })
+
+const perform = (n: number) => {
+  if (blocked.step !== n) {
+    return Effect.sync(() => void done.push(`step ${n}`))
+  }
+  blocked.step = 0
+  return Effect.andThen(Deferred.succeed(reached, undefined), Effect.never)
+}
+
+const StepsLive = Steps.toLayer(effect ({ count }) => {
+  let total = 0
+  for (let n = 1; n <= count; n++) {
+    total += try Step({ n })
+  }
+  return total
+}).pipe(
+  Layer.provide(Step.toLayer(({ n }) => Effect.as(perform(n), n))),
+  Layer.provideMerge(Experimental.Test.restartable)
+)
+
+export effect function crashMidStep() {
+  provide StepsLive {
+    const first = try Effect.forkChild(Steps.execute({ count: 3 }))
+    try Deferred.await(reached)
+    try Experimental.Test.crash
+    const total = try Steps.execute({ count: 3 })
+    try Fiber.interrupt(first)
+    return `${total}: ${done.join(", ")}`
+  }
+}
+// Output: 6: step 1, step 2, step 3
+```
+
+Step 2 blocks before its effect, so the crash interrupts it unfinished. Step 1 is not repeated after the crash; step 2 runs again on the fresh engine.
+
+### Assertions over a run's journal
+
+`try Experimental.Test.journal(run)` reads a run's journal through the engine and returns it as a value: `steps`, each with its journal name (`step`, such as `"shop#Charge/1"`), its task key (`task`), `attempts`, `starts` and `outcome`, in the order they first started, and the run's `status`. Its assertions are Effects that fail with `Experimental.Test.JournalMismatch`, so they run under any runner:
+
+| Assertion | Holds when |
+| --- | --- |
+| `journal.executed(step)` | a step named `step` finished successfully |
+| `journal.executedInOrder(steps)` | the named steps started in this relative order; other steps may come between |
+| `journal.attempts(step, n)` | the named steps were started with `n` retry attempts in all |
+| `journal.terminal(status)` | the run's status is `status`: `"running"`, `"suspended"`, `"succeeded"`, `"failed"` or `"interrupted"` |
+
+A step name matches by its journal name or by its task key, which matches every occurrence. `attempts` counts retries; `starts` counts every time the step started, so a step that ran again after `Experimental.Test.crash` has two starts and one attempt.
+
+```vibe
+export effect function checkOrder(run: string) {
+  const journal = try Experimental.Test.journal(run)
+  try journal.executedInOrder(["shop#Reserve", "shop#Charge"])
+  try journal.attempts("shop#Charge", 1)
+  try journal.terminal("succeeded")
+}
+```
+
+`try Experimental.Test.divergence(runA, runB)` is the first difference between two runs' journals, `Option.none()` when they record the same events: the position `seq`, counted from 1, the `field` that differs (`"entry"` when one journal is shorter, `"eventType"` or `"payload"`), and the two values. Entry times and run ids are not compared.
+
+### Certifying an engine
+
+`Experimental.Test.conformance.engine()` is nine black-box cases a fork runs to show its workflow engine behaves like the standard one. A case is a value, `{ name, run }`, and `run(subject)` is an Effect that fails with `Experimental.Test.ConformanceViolation`, so the cases run under any runner. The subject is an Effect that allocates fresh storage and returns the engine's `WorkflowEngine` layer over it; each build of that layer is one engine process, which a case kills by closing its scope before it starts another over the same storage. The cases observe only Effect's `WorkflowEngine` API, how often each activity ran, and each run's result.
+
+| Case | The engine must |
+| --- | --- |
+| `identity/distinct` | run different payloads as different runs |
+| `identity/idempotent` | join an equal payload to its run instead of starting another |
+| `identity/activity-name` | identify an activity by its name within a run, so a second activity of that name returns the recorded result |
+| `interrupt/in-flight` | end a run aborted in flight as interrupted, interrupt the activity running, and start nothing after it |
+| `replay/completed-prefix` | after a restart, serve finished activities and run the unfinished one again |
+| `replay/suspended-frontier` | after a restart, resume a run suspended on a durable deferred at that deferred |
+| `race/loser-interrupted` | interrupt a race's losing activity once the winner finishes |
+| `race/recorded-winner` | after a restart, take the race's recorded winner rather than race again |
+| `race/recorded-loser` | after a restart, leave the recorded loser lost |
+
+```vibe
+const subject = Effect.sync(() => Experimental.Durable.layerStore(Experimental.Durable.makeMemoryStore()))
+
+export effect function certify() {
+  for (const conformanceCase of Experimental.Test.conformance.engine()) {
+    try conformanceCase.run(subject)
+  }
+}
+```
+
+`Experimental.Durable` passes all nine over a memory store and over SQLite. Effect's `WorkflowEngine.layerMemory` keeps runs in one process's memory, so it passes the five cases that run in one process and fails the four that restart it. A promise these cases do not test, such as signal delivery, needs its own case before a fork may claim it.
