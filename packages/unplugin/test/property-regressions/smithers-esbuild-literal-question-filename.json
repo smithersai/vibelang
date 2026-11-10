@@ -1,0 +1,13 @@
+{
+  "property": "literal-filenames-esbuild",
+  "key": "smithers-esbuild-literal-question-filename",
+  "rule": "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "input": {
+    "tool": "esbuild",
+    "name": "query?mark",
+    "form": "direct"
+  },
+  "knownFailure": true,
+  "errorPattern": "No loader is configured for \"\\.vibe\" files",
+  "reason": "esbuild bundles the .ts twin under its literal name. The plugin reads a module id as a URL and drops everything from the first ? (cleanId in src/index.js), so it does not serve the .vibe file and esbuild has no loader for it. When fixed, remove this file and the esbuild clause of literalGap in encoded-imports.property.test.mjs."
+}

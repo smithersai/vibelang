@@ -222,3 +222,97 @@ for (const tool of ["webpack", "rspack", "rollup", "esbuild", "vite", "vite7"]) 
     })
   })
 }
+
+// VIP-34: bundlers read .vibe; Chapter 7: bundler plugins use the same names.
+// A source file may have any name its file system allows. Where a bundler
+// loads x.ts under a literal name, imported from an entry or from another
+// module, it loads x.vibe through the plugin under the same name. The
+// neighbourhood is the characters URLs give meaning to: a plugin that reads a
+// module id as a URL loses part of a filename. Each known gap is excluded
+// from generation and pinned by a property-regressions file; when one is
+// fixed, delete its file and its literalGap clause.
+const literalRule = "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`."
+const literalCharacters = ["a", "é", " ", "?", "#", "&", "=", "+", "@", ",", ";", "%", "(", ")", "[", "]", "~", "$"]
+const literalGap = ({ tool, name }) => (tool === "esbuild" && name.includes("?")) || (["webpack", "rspack"].includes(tool) && name.includes("#"))
+const literalSeeds = { webpack: ["a&b=c", "plus+at@"], rspack: ["a&b=c", "plus+at@"], rollup: ["query?mark", "hash#tag"], esbuild: ["hash#tag", "a&b=c"], vite: ["hash#tag", "a&b=c"], vite7: ["query?mark", "hash#tag"] }
+
+async function literalBundle(tool, name, extension, form) {
+  const directory = join(repo, "packages/unplugin/test/.fixtures")
+  await mkdir(directory, { recursive: true })
+  const root = await mkdtemp(join(directory, "literal-name-"))
+  const output = join(root, "out", ["webpack", "rspack"].includes(tool) ? "main.cjs" : "main.mjs")
+  const vibe = extension === "vibe"
+  let close
+  try {
+    await mkdir(join(root, "src"))
+    await mkdir(join(root, "node_modules"))
+    await symlink(join(repo, "packages/compiler"), join(root, "node_modules/vibelang"))
+    await symlink(join(repo, "experiments/node_modules/effect"), join(root, "node_modules/effect"))
+    await writeFile(join(root, "package.json"), "{\"type\":\"module\"}")
+    await writeFile(join(root, "tsconfig.json"), JSON.stringify({
+      compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true, types: [] },
+      include: ["src"]
+    }))
+    await writeFile(join(root, "src", name + "." + extension), "export const value = 42\n")
+    let target = "./" + name + "." + extension
+    if (form === "imported") {
+      await writeFile(join(root, "src", "main." + extension), `import {value} from ${JSON.stringify(target)}\nexport {value}\n`)
+      target = "./main." + extension
+    }
+    const entry = join(root, "src/entry.mjs")
+    await writeFile(entry, `import {value} from ${JSON.stringify(target)}; console.log(value)\n`)
+    if (tool === "vite" || tool === "vite7") {
+      const { build } = tool === "vite" ? await import("vite") : await import(viteRequire.resolve("vite7"))
+      await build({ root, configFile: false, plugins: vibe ? [vitePlugin({ compiler: binary })] : [], logLevel: "silent",
+        build: { ssr: entry, outDir: join(root, "out"), minify: false, rollupOptions: { output: { entryFileNames: "main.mjs" } } } })
+    } else {
+      const plugin = (await import(`../src/${tool}.js`)).default
+      if (tool === "rollup") {
+        const bundle = await (await import("rollup")).rollup({ input: entry, plugins: vibe ? [plugin({ root, compiler: binary })] : [] })
+        close = () => bundle.close()
+        await bundle.write({ file: output, format: "es" })
+      } else if (tool === "esbuild") {
+        await (await import("esbuild")).build({ entryPoints: [entry], bundle: true, platform: "node", format: "esm", outfile: output, plugins: vibe ? [plugin({ root, compiler: binary })] : [], logLevel: "silent" })
+      } else {
+        const api = tool === "webpack" ? (await import("webpack")).default : (await import("@rspack/core")).rspack
+        const compiler = api({ context: root, mode: "none", target: "node", entry, output: { path: join(root, "out"), filename: "main.cjs" },
+          plugins: vibe ? [plugin({ compiler: binary })] : [], infrastructureLogging: { level: "error" } })
+        close = () => new Promise((accept, reject) => compiler.close(error => error ? reject(error) : accept()))
+        await new Promise((accept, reject) => compiler.run((error, stats) => error ? reject(error) : stats.hasErrors() ? reject(new Error(stats.toString({ all: false, errors: true }))) : accept()))
+      }
+    }
+    const run = spawnSync(process.execPath, [output], { encoding: "utf8" })
+    assert.equal(run.status, 0, run.stderr)
+    return run.stdout.trim()
+  } finally {
+    await close?.()
+    await rm(root, { recursive: true, force: true })
+  }
+}
+
+for (const tool of ["webpack", "rspack", "rollup", "esbuild", "vite", "vite7"]) {
+  test(`${tool}: a literal filename loads as .vibe wherever it loads as .ts`, async () => {
+    let compared = 0
+    async function check({ tool, name, form }) {
+      let twin
+      try { twin = await literalBundle(tool, name, "ts", form) } catch { return }
+      // The bundler itself cannot load this name as TypeScript: no claim.
+      if (twin !== "42") return
+      compared++
+      assert.equal(await literalBundle(tool, name, "vibe", form), "42", `${tool} bundles ${name}.ts (${form}); ${name}.vibe must bundle to the same program`)
+    }
+    for (const name of literalSeeds[tool]) await check({ tool, name, form: "imported" })
+    await checkProperty(fc, {
+      name: `literal-filenames-${tool}`,
+      rule: literalRule,
+      arbitrary: fc.record({
+        tool: fc.constant(tool),
+        name: fc.array(fc.constantFrom(...literalCharacters), { minLength: 1, maxLength: 6 }).map(chars => "m" + chars.join("")),
+        form: fc.constantFrom("direct", "imported")
+      }).filter(input => !literalGap(input)),
+      numRuns: 4, check, regressions: new URL("./property-regressions/", import.meta.url),
+      command: "node --test test/encoded-imports.property.test.mjs"
+    })
+    assert.ok(compared > 0, `${tool} loaded no literal name as TypeScript, so nothing was compared`)
+  })
+}

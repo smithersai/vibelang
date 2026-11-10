@@ -1,0 +1,13 @@
+{
+  "property": "literal-filenames-webpack",
+  "key": "webpack-literal-hash-filename",
+  "rule": "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "input": {
+    "tool": "webpack",
+    "name": "hash#tag",
+    "form": "direct"
+  },
+  "knownFailure": true,
+  "errorPattern": "#tag\\.vibe is not part of .*tsconfig\\.json",
+  "reason": "webpack bundles the .ts twin under its literal name. It escapes # in the module id with a zero-width space, and the plugin looks up that escaped id, which names no file in the program. When fixed, remove this file and the webpack and Rspack clause of literalGap in encoded-imports.property.test.mjs."
+}
