@@ -1,0 +1,26 @@
+[
+  {
+    "name": "MountVolume",
+    "source": "/**\n * Volume.\n *\n *\n * :::warning One disk\n * Keep the disk.\n * :::\n *\n * @binding\n * @product Volume\n */\nexport const value=1\n"
+  },
+  {
+    "name": "DynamoDBState",
+    "source": "/**\n * Bootstrap state.\n *\n * ```sh\n * tool state bootstrap\n * ```\n *\n */\nexport const value=1\n"
+  },
+  {
+    "name": "State",
+    "source": "/**\n * State.\n *\n *\n * Encryption options.\n */\nexport const value=1\n"
+  },
+  {
+    "name": "MicrovmImage",
+    "source": "/**\n * Image.\n *\n *\n * ```ts\n * const image = make()\n * ```\n *\n * @resource\n */\nexport const value=1\n"
+  },
+  {
+    "name": "Astro",
+    "source": "/**\n * Website.\n *\n *\n * ```ts\n * site({ rootDir: './docs' })\n * ```\n *\n * @resource\n */\nexport const value=1\n"
+  },
+  {
+    "name": "StaticSite",
+    "source": "/**\n * Static site.\n *\n *\n * Build the site.\n *\n * @resource\n * @product Website\n */\nexport const value=1\n"
+  }
+]

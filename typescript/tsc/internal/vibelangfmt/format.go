@@ -20,6 +20,12 @@ type TypeScriptFormatter func(text string) (string, error)
 // changes nothing, on a file with syntax errors, and when the result would not
 // parse to the program source parses to.
 func Format(fileName, source string, formatter TypeScriptFormatter) (string, error) {
+	host := formatter
+	kind := core.ScriptKindTS
+	if strings.HasSuffix(fileName, ".vibex") || strings.HasSuffix(fileName, ".tsx") {
+		kind = core.ScriptKindTSX
+	}
+	formatter = func(text string) (string, error) { return formatWithComments(text, kind, host) }
 	enc, err := encode(fileName, source)
 	if err != nil {
 		return "", prefix(fileName, err)
