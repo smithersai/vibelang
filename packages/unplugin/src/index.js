@@ -6,7 +6,7 @@ import { extensionlessImport, missingRelativeInputs } from "./relative-imports.j
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import { createRequire } from "node:module"
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { createUnplugin } from "unplugin"
 import { isVibeLangFile } from "./vibe-directive.js"
@@ -100,7 +100,17 @@ const projectFiles = ["vibe.config.json", "tsconfig.json", "jsconfig.json"]
  * directory named here: a project inside a dot directory keeps its own names.
  */
 export function vibeBasenames(...directories) {
+  return vibeNames(...directories).names
+}
+
+/**
+ * vibeBasenames' names, and the names of the directories that hold an
+ * index.vibe, by every name the walk reaches them: an extensionless import
+ * of a directory ends in its name.
+ */
+export function vibeNames(...directories) {
   const names = new Set()
+  const indexDirectories = new Set()
   const visited = new Set()
   const isDirectory = (path) => {
     try {
@@ -117,6 +127,7 @@ export function vibeBasenames(...directories) {
     }
   }
   const walk = (path) => {
+    if (existsSync(join(path, "index.vibe"))) indexDirectories.add(basename(path))
     let real
     try {
       real = realpathSync(path)
@@ -143,14 +154,18 @@ export function vibeBasenames(...directories) {
     }
   }
   for (const directory of directories) walk(directory)
-  return names
+  return { names, indexDirectories }
 }
 
 /**
  * The onResolve filter of the plugin's Bun hook: every specifier resolveId can
  * serve there. That is a .vibe name, a relative name with no extension
- * TypeScript removes (extensionlessImport), a module declaration's
- * ./x.vibe.text.js, and a relative ./x.js where names holds x. Bun 1.4.4
+ * TypeScript removes (extensionlessImport) whose last segment names x.vibe
+ * (names) or a directory with an index.vibe (indexDirectories), a module
+ * declaration's ./x.vibe.text.js, and a relative ./x.js where names holds x.
+ * Bun 1.4.2 and 1.4.4 compile a .tsx module against react/jsx-dev-runtime,
+ * ignoring its tsconfig's jsxImportSource, once a plugin's onResolve matches
+ * the import that reaches it, even when the hook returns nothing. Bun 1.4.4
  * miscompiles a CommonJS dependency (opencode's ws under
  * @effect/platform-node's NodeWS: "c is not defined") once a plugin's
  * onResolve matches the .js imports inside the packages it bundles, even when
@@ -158,10 +173,14 @@ export function vibeBasenames(...directories) {
  * .vibe file of that name exists, so only those names match. Bun maps a
  * compiled module's ./x.js to x.ts or x.tsx itself.
  */
-export function bunResolveFilter(names) {
+export function bunResolveFilter(names, indexDirectories = new Set()) {
   const escape = (name) => name.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")
   const relative = String.raw`^\.\.?(?:\/|$)`
-  const unnamed = relative + String.raw`(?!.*\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)(?:\?.*)?$)`
+  const named = [...new Set([...names, ...indexDirectories])].sort().map(escape)
+  // ".", "..", "./" and "../" name a directory's index by no name of their own.
+  const unnamed = String.raw`^\.\.?(?:\/\.\.?)*\/?(?:\?.*)?$|` + relative +
+    String.raw`(?!.*\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)(?:\?.*)?$)` +
+    (named.length ? String.raw`(?:.*\/)?(?:` + named.join("|") + String.raw`)\/?(?:\?.*)?$` : "(?!)")
   const declaration = relative + String.raw`.*\.vibe\.[^./\\]+\.js(?:\?.*)?$`
   const sources = names.size
     ? [relative + String.raw`(?:.*\/)?(?:` + [...names].sort().map(escape).join("|") + String.raw`)\.js(?:\?.*)?$`]
@@ -552,9 +571,9 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         entryDirectory = process.cwd()
         configure(entryDirectory)
         const repository = repositoryOf(root)
-        const names = vibeBasenames(repository, root)
+        const { names, indexDirectories } = vibeNames(repository, root)
         debug(`bun: entry directory=${entryDirectory}; .js imports resolve for ${names.size} .vibe names under ${repository}`)
-        build.onResolve({ filter: bunResolveFilter(names) }, (args) => {
+        build.onResolve({ filter: bunResolveFilter(names, indexDirectories) }, (args) => {
           const entry = args.kind === "entry-point-build" || args.kind === "entry-point-run"
           const id = resolveId(args.path, entry ? undefined : args.importer)
           return id === undefined ? undefined : { path: id }

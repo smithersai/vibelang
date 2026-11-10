@@ -10,13 +10,14 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
+import { fileURLToPath } from "node:url"
 import fc from "fast-check"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
-import { bunResolveFilter, repositoryOf, unplugin, vibeBasenames } from "../src/index.js"
+import { bunResolveFilter, repositoryOf, unplugin, vibeBasenames, vibeNames } from "../src/index.js"
 
 const hasBun = spawnSync("bun", ["--version"]).status === 0
 const regressions = new URL("./property-regressions/", import.meta.url)
-const rule = "packages/unplugin/README.md, Limitations: under Bun the plugin resolves `.vibe` names, extensionless relative names, and a relative `./x.js` only where an `x.vibe` exists"
+const rule = "packages/unplugin/README.md, Limitations: under Bun the plugin resolves `.vibe` names, and an extensionless relative name or a relative `./x.js` only where an `x.vibe` (or a directory `x` with an `index.vibe`) exists"
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8")
 
 function write(root, files) {
@@ -37,7 +38,7 @@ function bunHook(root) {
 }
 
 test("the README states the Bun resolve filter", () => {
-  assert.ok(readme.replace(/\s+/g, " ").includes("resolve for `.vibe` names, extensionless relative names, and a relative `./x.js` only where an `x.vibe` exists"), "update the quoted rule")
+  assert.ok(readme.replace(/\s+/g, " ").includes("resolve for `.vibe` names, and for an extensionless relative name or a relative `./x.js` only where an `x.vibe` (for an extensionless name, also a directory `x` with an `index.vibe`) exists"), "update the quoted rule")
 })
 
 // Minimized opencode-20: packages/cli bundles packages/ai's migrated
@@ -58,10 +59,11 @@ test("opencode-20: the Bun filter matches a migrated module's .js name and no de
     assert.equal(repositoryOf(join(root, "packages/cli")), root)
     assert.deepEqual([...vibeBasenames(root)], ["fal-queue"])
     const { filter, resolve } = bunHook(join(root, "packages/cli"))
-    for (const specifier of ["./utils/fal-queue.js", "../utils/fal-queue.js", "./fal-queue.vibe", "./utils/fal-queue", "./lib"]) {
+    for (const specifier of ["./utils/fal-queue.js", "../utils/fal-queue.js", "./fal-queue.vibe", "./utils/fal-queue"]) {
       assert.ok(filter.test(specifier), specifier)
     }
-    for (const specifier of ["./lib/websocket.js", "./internal/ws.js", "./fal-images.js", "ws/lib/websocket.js", "./x.mjs", "./x.json"]) {
+    // No lib.vibe or lib/index.vibe: Bun resolves ./lib itself.
+    for (const specifier of ["./lib", "./lib/websocket.js", "./internal/ws.js", "./fal-images.js", "ws/lib/websocket.js", "./x.mjs", "./x.json"]) {
       assert.ok(!filter.test(specifier), specifier)
     }
     assert.equal(resolve("./utils/fal-queue.js", join(root, "packages/ai/src/protocols/fal-images.ts")),
@@ -74,7 +76,7 @@ test("opencode-20: the Bun filter matches a migrated module's .js name and no de
 // A project inside a dot directory of its repository: the scan from the
 // repository skips dot directories, so without its own scan the project's
 // ./x.js never reaches the hook and Bun reports "Could not resolve".
-const dotProjectRule = "packages/unplugin/README.md, Limitations: a relative `./x.js` only where an `x.vibe` exists in the repository"
+const dotProjectRule = "packages/unplugin/README.md, Limitations: a relative `./x.js` only where an `x.vibe` (for an extensionless name, also a directory `x` with an `index.vibe`) exists in the repository"
 function checkDotProject({ parents, marker, name, sibling }) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-bun-filter-"))
   try {
@@ -97,7 +99,7 @@ function checkDotProject({ parents, marker, name, sibling }) {
 }
 
 test("a project inside a repository's dot directory resolves its own ./x.js", () => {
-  assert.ok(readme.replace(/\s+/g, " ").includes("a relative `./x.js` only where an `x.vibe` exists in the repository"), "update the quoted rule")
+  assert.ok(readme.replace(/\s+/g, " ").includes("a relative `./x.js` only where an `x.vibe` (for an extensionless name, also a directory `x` with an `index.vibe`) exists in the repository"), "update the quoted rule")
   checkDotProject({ parents: [".fixtures"], marker: ".git/HEAD", name: "leaf-雪", sibling: "hidden" })
 })
 
@@ -121,7 +123,48 @@ test("bunResolveFilter escapes names and matches only relative imports", () => {
   for (const specifier of ["./aXb.js", "./xxy.js", "./p.js", "pkg/a.b.js", "/abs/a.b.js", "./a.b.mjs"]) assert.ok(!filter.test(specifier), specifier)
   const empty = bunResolveFilter(new Set())
   assert.ok(!empty.test("./index.js"))
-  assert.ok(empty.test("./x.vibe") && empty.test("/abs/x.vibe") && empty.test("./dir") && empty.test("./m.vibe.text.js"))
+  assert.ok(empty.test("./x.vibe") && empty.test("/abs/x.vibe") && empty.test("./m.vibe.text.js") && empty.test("."))
+  assert.ok(!empty.test("./dir") && !empty.test("./view"), "an extensionless name matches only a .vibe name or an index.vibe directory")
+  const named = bunResolveFilter(new Set(["leaf", "a.b"]), new Set(["dir"]))
+  for (const specifier of ["./leaf", "../x/leaf", "./a.b", "./dir", "./dir/", "./leaf?raw", ".", "..", "./", "../"]) assert.ok(named.test(specifier), specifier)
+  for (const specifier of ["./view", "./x/view", "./dirx", "./leaf.ts", "pkg/leaf", "./leafy"]) assert.ok(!named.test(specifier), specifier)
+})
+
+// Bun 1.4.2 and 1.4.4 compile a .tsx module against react/jsx-dev-runtime,
+// ignoring its tsconfig's jsxImportSource, once a plugin's onResolve matches
+// the import that reaches it, even when the hook returns nothing. opencode's
+// CLI import-boundary bundles hit it at five Solid components once
+// vibelang() joined Bun.build: no .vibe module was involved.
+test("Bun.build with vibelang() keeps a .tsx module's tsconfig jsxImportSource", { skip: !hasBun && "bun is not on PATH" }, () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-bun-jsx-")))
+  try {
+    write(root, {
+      ".git/HEAD": "ref: refs/heads/main\n",
+      "package.json": '{"type":"module"}',
+      "node_modules/fakejsx/package.json": JSON.stringify({ name: "fakejsx", type: "module", exports: { "./jsx-runtime": "./rt.js", "./jsx-dev-runtime": "./rt.js" } }),
+      "node_modules/fakejsx/rt.js": 'export const jsx = (tag) => "fake:" + tag\nexport const jsxs = jsx, jsxDEV = jsx, Fragment = "fragment"\n',
+      "tsconfig.json": JSON.stringify({ compilerOptions: { jsx: "preserve", jsxImportSource: "fakejsx", module: "ESNext", moduleResolution: "Bundler" } }),
+      "src/view.tsx": "export const view = <div />\n",
+      "src/panel/index.tsx": "export const panel = <span />\n",
+      "src/main.ts": 'import { view } from "./view"\nimport { panel } from "./panel"\nconsole.log(view, panel)\n',
+      "build.mjs": [
+        "const { default: vibelang } = await import(process.env.PLUGIN)",
+        'const result = await Bun.build({ entrypoints: ["src/main.ts"], target: "bun", outdir: "out", plugins: [vibelang()] }).catch((error) => error)',
+        'if (!result.success) { console.error(String(result.errors ?? result.logs)); process.exit(1) }',
+        ""
+      ].join("\n")
+    })
+    // The plugin finds its compile backend through the project's vibelang package.
+    symlinkSync(fileURLToPath(new URL("../../compiler", import.meta.url)), join(root, "node_modules/vibelang"))
+    const plugin = new URL("../src/bun.js", import.meta.url).href
+    const build = spawnSync("bun", ["build.mjs"], { cwd: root, encoding: "utf8", env: { ...process.env, PLUGIN: plugin } })
+    assert.equal(build.status, 0, build.stderr)
+    const run = spawnSync("bun", ["out/main.js"], { cwd: root, encoding: "utf8" })
+    assert.equal(run.status, 0, run.stderr)
+    assert.equal(run.stdout, "fake:div fake:span\n")
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
 })
 
 // Generated layouts: colliding basenames across directories and packages,
@@ -172,6 +215,7 @@ function checkLayout(input) {
     const scanned = (file) => !file.directory.startsWith("node_modules/dep") || input.depProject
     const vibe = new Set(input.files.filter((file) => file.kind === ".vibe" && scanned(file)).map((file) => file.name))
     assert.deepEqual(vibeBasenames(root), vibe)
+    const { indexDirectories } = vibeNames(root)
     const { filter, resolve } = bunHook(root)
     const native = []
     for (const importer of input.importers) {
@@ -194,6 +238,10 @@ function checkLayout(input) {
         if (/\.js(?:\?.*)?$/.test(specifier) && !/\.vibe\.[^./]+\.js/.test(specifier) && filter.test(specifier)) {
           const base = (name + suffix).replace(/\?.*$/, "").split("/").at(-1).slice(0, -".js".length)
           assert.ok(vibe.has(base), `${specifier} matches without ${base}.vibe`)
+        }
+        // Every extensionless name the filter matches names a .vibe basename or a directory with an index.vibe.
+        if ((suffix === "" || suffix === "/") && filter.test(specifier)) {
+          assert.ok(vibe.has(name) || indexDirectories.has(name), `${specifier} matches without ${name}.vibe or ${name}/index.vibe`)
         }
       }
     }
