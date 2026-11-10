@@ -552,7 +552,8 @@ export function projectCache({ project, root, compiler, cache, debug = () => {},
       return { miss: "entry for another version" }
     }
     const identity = compilerIdentity(compiler)
-    if (JSON.stringify(entry.compiler) !== JSON.stringify(identity)) {
+    const restamped = JSON.stringify(entry.compiler) !== JSON.stringify(identity)
+    if (restamped) {
       const same = entry.compilerDigests !== undefined && entry.compiler.length === identity.length &&
         entry.compiler.every(([path], i) => path === identity[i][0]) &&
         JSON.stringify(entry.compilerDigests) === JSON.stringify(compilerDigests(identity))
@@ -568,12 +569,30 @@ export function projectCache({ project, root, compiler, cache, debug = () => {},
       const changed = list.find((record) => !fileHolds(record))
       if (changed) return { miss: `${changed.path} changed` }
     }
+    if (restamped) restamp(entry, identity)
     const outputs = new Map()
     for (const { paths, code, map } of entry.outputs) {
       const output = { code, map }
       for (const path of paths) outputs.set(path, output)
     }
     return { result: { outputs, inputs: entry.inputs, files: entry.files.map((record) => record.path), errors: [], warnings: entry.warnings } }
+  }
+
+  // A hit whose compiler kept its bytes under a new stamp (a hard link from
+  // another install, a chmod) records that stamp, so a later process checks
+  // the compiler by stat instead of reading and hashing it again. A stamp too
+  // recent to trust stays unrecorded, as in entryOf.
+  function restamp(entry, identity) {
+    const now = Date.now()
+    if (identity.some(([, stamp]) => stamp !== null && racy({ mtimeMs: stamp[1], ctimeMs: stamp[2] }, now, false))) return
+    const temporary = `${file}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`
+    try {
+      writeFileSync(temporary, JSON.stringify({ ...entry, compiler: identity }), { mode: 0o600 })
+      renameSync(temporary, file)
+    } catch (error) {
+      rmSync(temporary, { force: true })
+      debug(`not restamping ${project}: ${error.message}`)
+    }
   }
 
   function begin() {
