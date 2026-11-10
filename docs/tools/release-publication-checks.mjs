@@ -11,6 +11,11 @@ function assertEntriesExclude(entries, pattern) {
   assert.doesNotMatch(entry, pattern, "Release note contains internal bookkeeping:\n" + entry)
 }
 
+// `Experimental.Fuzz` and `Experimental.FuzzSimulation` are public runtime modules. A code span naming them, or a
+// member such as `Fuzz.observe(label)`, is a user-facing API, not fuzz bookkeeping; prose and every other code span,
+// such as `go-vibelangfuzz` or `fuzz`, stay checked.
+const withoutFuzzApi = text => text.replace(/`(?:Experimental\.)?Fuzz(?:Simulation)?(?:\.[A-Za-z_$][\w$]*)*(?:\([^`]*\))?`/g, "`API`")
+
 export function assertReleasePublication(notes, version) {
   const releases = notes.split(/^## /m).slice(1)
   const candidate = releases.findIndex(release => release.split("\n")[0].replace(/ \(unreleased\)$/, "") === version)
@@ -24,7 +29,7 @@ export function assertReleasePublication(notes, version) {
     release.match(/^- .*(?:\n(?!\n|[-*] |#{1,6} ).+)*/gm) ?? []
   ).join("\n")
   assertEntriesExclude(publicationNotes, /failures[- ]spec\s+check|synthetic\s+benchmark\s+imports|native\s+compiler\s+regression\s+suite|deployed[- ]release\s+check|built[- ]site\s+validation|example\s+validation\s+carried\s+an?\s+unused/i)
-  assertEntriesExclude(publicationNotes, /\bfuzz\b|go-vibelangfuzz|pre-merge|post-merge|grammar test engine|editor syntax property tests|test cache/i)
+  assertEntriesExclude(withoutFuzzApi(publicationNotes), /\bfuzz\b|go-vibelangfuzz|pre-merge|post-merge|grammar test engine|editor syntax property tests|test cache/i)
   assertEntriesExclude(publicationNotes, /merge\s+gate|bounded\s+hang\s+probes|stale\s+hang\s+marker/i)
   assertEntriesExclude(publicationNotes, /regression checks|migration checks|diagnostic golden|fixtures now verify|grammar tooling now sees/i)
   assertEntriesExclude(publicationNotes, /scripts\/ci\.sh|differential (?:checks|comparisons)|AST layout regression test|Repository validation|Arrow-body and heartbeat checks|named-region runtime checks/i)

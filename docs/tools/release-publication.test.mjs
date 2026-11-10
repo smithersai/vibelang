@@ -69,6 +69,19 @@ test("publication rejects hang-gate bookkeeping across case and whitespace varia
   ), { numRuns: 40, seed: 110018, examples: [["merge gate", " ", false, false], ["bounded hang probes", "  ", true, true], ["stale hang marker", "\t", false, false], ["fuzz splicer", "\n  ", false, true], ["LSP smoke test", " ", false, true]] })
 })
 
+test("publication accepts the public Fuzz modules named in code and still rejects fuzz bookkeeping", () => {
+  const inject = row => goodNotes.replace("<!-- injected-row -->", row).replace("<!-- intro-row -->", "")
+  const api = "- A lost update passed every property check. `Experimental.Fuzz.run` with `Experimental.FuzzSimulation.execution()` now finds it, guided by `Fuzz.observe(label)`."
+  assert.doesNotThrow(() => assertReleasePublication(inject(api), "0.0.11"))
+  for (const row of [
+    "- The fuzz splicer now keeps `Experimental.Fuzz` seeds.",
+    "- `go-vibelangfuzz` now runs `Experimental.Fuzz`.",
+    "- Experimental.Fuzz targets now run before merging.",
+    "- The `fuzz` target now passes.",
+    "- The `Experimental.Fuzz` fuzz campaign now passes."
+  ]) assert.throws(() => assertReleasePublication(inject(row), "0.0.11"), /internal bookkeeping/, row)
+})
+
 test("publication retains a user-visible compiler fix that mentions CI", t => {
   const result = fixture(t).check("- A compiler error in CI lost its source location; diagnostics now retain the location.")
   assert.equal(result.status, 0, result.stdout + result.stderr)
