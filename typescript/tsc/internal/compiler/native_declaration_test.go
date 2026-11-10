@@ -231,6 +231,38 @@ func TestNativeDeclarationExplicitInputReportsTS5055(t *testing.T) {
 	}
 }
 
+// The re-export emit wrote is still an input when it is listed: a listed
+// x.d.vibe.ts reports TS5055 whatever it holds, and so does x.d.ts.
+func TestNativeDeclarationExplicitReExportReportsTS5055(t *testing.T) {
+	t.Parallel()
+	for _, layout := range []string{"beside", "sidecarDir"} {
+		t.Run(layout, func(t *testing.T) {
+			t.Parallel()
+			native := "src/x.d.ts"
+			var options, vibe map[string]any
+			if layout == "sidecarDir" {
+				native = ".vibe/declarations/src/x.d.ts"
+				options = map[string]any{"rootDir": ".", "rootDirs": []string{".", ".vibe/declarations"}}
+				vibe = map[string]any{"sidecarDir": ".vibe/declarations"}
+			}
+			p, _ := nativeDeclarationProject(t, options, vibe, map[string]any{
+				"files":         []string{"src/x.vibe", native},
+				"/p/src/x.vibe": "export const answer: number = 42\n",
+				"/p/" + native:  "export * from \"./x.vibe\";\n",
+			})
+			var found bool
+			for _, d := range p.GetProgramDiagnostics() {
+				if d.Code() == diagnostics.Cannot_write_file_0_because_it_would_overwrite_input_file.Code() && strings.Contains(flatDiagnostic(d), "/p/"+native) {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("want TS5055 for the listed re-export %s, got %v", native, diagnosticStrings(p.GetProgramDiagnostics()))
+			}
+		})
+	}
+}
+
 // flatDiagnostic is a diagnostic's message with its chain.
 func flatDiagnostic(d *ast.Diagnostic) string {
 	text := d.String()
