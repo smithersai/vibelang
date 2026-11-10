@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- A producer parameter default containing a class or computed method could accept `yield` after an earlier returning default. It now reports `EK2104` and keeps nested native generators valid.
+
 - An `await` in a computed method, getter or field name inside an Effect parameter default could report an unrelated Promise error. It now reports `EK0102`, while retaining native property-name checks.
 
 - Class and member decorators in Effect parameter defaults now report `EK0102` for `await`, instead of advice to run a promise in a hatch.

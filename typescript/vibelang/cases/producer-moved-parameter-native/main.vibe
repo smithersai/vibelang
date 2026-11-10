@@ -1,0 +1,6 @@
+// expect-result: [[7],[8],[9],[10]]
+effect function* declared(early=do {if(false)return;0},value=class {*read(){yield 7}}){yield [...new value().read()][0]}
+const expressed=effect function*(early=do {if(false)return;0},value=class {*read(){yield 8}}){yield [...new value().read()][0]}
+class Home {effect *read(early=do {if(false)return;0},value=class {*read(){yield 9}}){yield [...new value().read()][0]}}
+const home={effect *read(early=do {if(false)return;0},value=class {*read(){yield 10}}){yield [...new value().read()][0]}}
+export effect function main(){return [try Stream.runCollect(declared()),try Stream.runCollect(expressed()),try Stream.runCollect(new Home().read()),try Stream.runCollect(home.read())]}

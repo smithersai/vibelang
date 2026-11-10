@@ -1,0 +1,53 @@
+// expect: EK2104 TS1166
+export effect function* read1(early=do {if(false)return;0}, value=class extends (((yield 1) as unknown as any)) {}) {yield 0}
+export const read2=effect function*(early=do {if(false)return;0}, value=class extends (((yield 1) as unknown as any)) {}) {yield 0}
+export class Home3 {effect *read(early=do {if(false)return;0}, value=class extends (((yield 1) as unknown as any)) {}) {yield 0}}
+export const home4={effect *read(early=do {if(false)return;0}, value=class extends (((yield 1) as unknown as any)) {}) {yield 0}}
+export effect function* read5(early=do {if(false)return;0}, value=class { [((yield 1) as unknown as string)]() {} }) {yield 0}
+export const read6=effect function*(early=do {if(false)return;0}, value=class { [((yield 1) as unknown as string)]() {} }) {yield 0}
+export class Home7 {effect *read(early=do {if(false)return;0}, value=class { [((yield 1) as unknown as string)]() {} }) {yield 0}}
+export const home8={effect *read(early=do {if(false)return;0}, value=class { [((yield 1) as unknown as string)]() {} }) {yield 0}}
+export effect function* read9(early=do {if(false)return;0}, value=class { [((yield 1) as unknown as "read9")] = 1 }) {yield 0}
+export const read10=effect function*(early=do {if(false)return;0}, value=class { [((yield 1) as unknown as "read10")] = 1 }) {yield 0}
+export class Home11 {effect *read(early=do {if(false)return;0}, value=class { [((yield 1) as unknown as "read")] = 1 }) {yield 0}}
+export const home12={effect *read(early=do {if(false)return;0}, value=class { [((yield 1) as unknown as "read")] = 1 }) {yield 0}}
+export effect function* read13(early=do {if(false)return;0}, value=class { get [((yield 1) as unknown as string)]() {return 1} }) {yield 0}
+export const read14=effect function*(early=do {if(false)return;0}, value=class { get [((yield 1) as unknown as string)]() {return 1} }) {yield 0}
+export class Home15 {effect *read(early=do {if(false)return;0}, value=class { get [((yield 1) as unknown as string)]() {return 1} }) {yield 0}}
+export const home16={effect *read(early=do {if(false)return;0}, value=class { get [((yield 1) as unknown as string)]() {return 1} }) {yield 0}}
+export effect function* read17(early=do {if(false)return;0}, value=class { set [((yield 1) as unknown as string)](value:number) {} }) {yield 0}
+export const read18=effect function*(early=do {if(false)return;0}, value=class { set [((yield 1) as unknown as string)](value:number) {} }) {yield 0}
+export class Home19 {effect *read(early=do {if(false)return;0}, value=class { set [((yield 1) as unknown as string)](value:number) {} }) {yield 0}}
+export const home20={effect *read(early=do {if(false)return;0}, value=class { set [((yield 1) as unknown as string)](value:number) {} }) {yield 0}}
+export effect function* read21(early=do {if(false)return;0}, value={ [((yield 1) as unknown as string)]() {} }) {yield 0}
+export const read22=effect function*(early=do {if(false)return;0}, value={ [((yield 1) as unknown as string)]() {} }) {yield 0}
+export class Home23 {effect *read(early=do {if(false)return;0}, value={ [((yield 1) as unknown as string)]() {} }) {yield 0}}
+export const home24={effect *read(early=do {if(false)return;0}, value={ [((yield 1) as unknown as string)]() {} }) {yield 0}}
+export effect function* read25(early=do {if(false)return;0}, value={ get [((yield 1) as unknown as string)]() {return 1} }) {yield 0}
+export const read26=effect function*(early=do {if(false)return;0}, value={ get [((yield 1) as unknown as string)]() {return 1} }) {yield 0}
+export class Home27 {effect *read(early=do {if(false)return;0}, value={ get [((yield 1) as unknown as string)]() {return 1} }) {yield 0}}
+export const home28={effect *read(early=do {if(false)return;0}, value={ get [((yield 1) as unknown as string)]() {return 1} }) {yield 0}}
+export effect function* read29(early=do {if(false)return;0}, value={ set [((yield 1) as unknown as string)](value:number) {} }) {yield 0}
+export const read30=effect function*(early=do {if(false)return;0}, value={ set [((yield 1) as unknown as string)](value:number) {} }) {yield 0}
+export class Home31 {effect *read(early=do {if(false)return;0}, value={ set [((yield 1) as unknown as string)](value:number) {} }) {yield 0}}
+export const home32={effect *read(early=do {if(false)return;0}, value={ set [((yield 1) as unknown as string)](value:number) {} }) {yield 0}}
+export effect function* read33(early=do {if(false)return;0}, value=@(((yield 1) as unknown as any)) class {}) {yield 0}
+export const read34=effect function*(early=do {if(false)return;0}, value=@(((yield 1) as unknown as any)) class {}) {yield 0}
+export class Home35 {effect *read(early=do {if(false)return;0}, value=@(((yield 1) as unknown as any)) class {}) {yield 0}}
+export const home36={effect *read(early=do {if(false)return;0}, value=@(((yield 1) as unknown as any)) class {}) {yield 0}}
+export effect function* read37(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) read37() {} }) {yield 0}
+export const read38=effect function*(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) read38() {} }) {yield 0}
+export class Home39 {effect *read(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) read() {} }) {yield 0}}
+export const home40={effect *read(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) read() {} }) {yield 0}}
+export effect function* read41(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) value=1 }) {yield 0}
+export const read42=effect function*(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) value=1 }) {yield 0}
+export class Home43 {effect *read(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) value=1 }) {yield 0}}
+export const home44={effect *read(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) value=1 }) {yield 0}}
+export effect function* read45(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) get read45(){return 1} }) {yield 0}
+export const read46=effect function*(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) get read46(){return 1} }) {yield 0}
+export class Home47 {effect *read(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) get read(){return 1} }) {yield 0}}
+export const home48={effect *read(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) get read(){return 1} }) {yield 0}}
+export effect function* read49(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) set read49(value:number){} }) {yield 0}
+export const read50=effect function*(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) set read50(value:number){} }) {yield 0}
+export class Home51 {effect *read(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) set read(value:number){} }) {yield 0}}
+export const home52={effect *read(early=do {if(false)return;0}, value=class { @(((yield 1) as unknown as any)) set read(value:number){} }) {yield 0}}
