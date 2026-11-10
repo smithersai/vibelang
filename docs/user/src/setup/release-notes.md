@@ -9,6 +9,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.13
 
 - A compiler acceptance case that exceeded its run deadline could report only missing output or an exit code. It now names the deadline that killed the runner, including when its output matched.
+- An implementation written inside a service member could hide its unknown names and type errors. Those independent TypeScript errors now appear alongside the member rejection.
 
 - `await` in a plain callback inside a class `static` block could report obsolete advice about Effect code. It now reports TypeScript's native error for the written form.
 

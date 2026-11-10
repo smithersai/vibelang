@@ -1,0 +1,8 @@
+export service S1 { static readonly key = "native/S1"; n: number;helper = Missing }
+export service S2 { static readonly key = "native/S2"; n: number;helper: number = "bad" }
+export service S3 { static readonly key = "native/S3"; n: number;helper = ({}).missing }
+export service S4 { static readonly key = "native/S4"; n: number;helper = ((n: number) => n)("bad") }
+export service S5 { static readonly key = "native/S5"; n: number;helper: Missing = 1 }
+export service S6 { static readonly key = "native/S6"; n: number;helper(): number { return Missing } }
+export service S7 { static readonly key = "native/S7"; n: number;get helper(): number { return Missing } }
+export service ReturnBody { static readonly key = "native/ReturnBody"; n: number; helper(): number!! { return 1 } }

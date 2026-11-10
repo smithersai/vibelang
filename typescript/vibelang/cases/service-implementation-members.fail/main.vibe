@@ -1,4 +1,4 @@
-// expect: EK0902
+// expect: EK0902 TS2322
 export service MethodBody {
  static readonly key = "implementation/method";
  run(): number!! { return 1 }

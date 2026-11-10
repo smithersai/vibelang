@@ -127,7 +127,7 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 			}
 			d := report(c, member.Name(), diagnostic, scanner.GetTextOfNode(member.Name()), word)
 			if word == "service" {
-				cover(c, member)
+				coverServiceRejectedMemberErrors(c, member)
 				note(d, "Implement it in a layer.")
 			} else {
 				note(d, "Implement it in a layer, or make it static to keep it on the class.")

@@ -3,18 +3,21 @@ package vibelang
 import "testing"
 
 func TestServiceImplementationMemberDiagnostic(t *testing.T) {
-	const source = "// expect: EK0902\nexport service MethodBody {\n static readonly key = \"implementation/method\";\n run(): number!! { return 1 }\n}\nexport service FieldBody {\n static readonly key = \"implementation/field\";\n value = 1\n}\nexport service GetterBody {\n static readonly key = \"implementation/getter\";\n get value(): number { return 1 }\n}\n"
+	const source = "// expect: EK0902 TS2322\nexport service MethodBody {\n static readonly key = \"implementation/method\";\n run(): number!! { return 1 }\n}\nexport service FieldBody {\n static readonly key = \"implementation/field\";\n value = 1\n}\nexport service GetterBody {\n static readonly key = \"implementation/getter\";\n get value(): number { return 1 }\n}\n"
 	p, file, _, _ := editorProgram(t, source)
-	count := 0
+	count, native := 0, 0
 	for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
-		if d.Source() != diagnosticSource || d.Code() != 902 {
-			t.Errorf("unexpected diagnostic: %s", d.String())
-		} else {
+		switch {
+		case d.Source() == diagnosticSource && d.Code() == 902:
 			count++
+		case d.Source() != diagnosticSource && d.Code() == 2322:
+			native++
+		default:
+			t.Errorf("unexpected diagnostic: %s", d.String())
 		}
 	}
-	if count != 3 {
-		t.Fatalf("want three implementation-member errors, got %d", count)
+	if count != 3 || native != 1 {
+		t.Fatalf("want three member errors and the independent return-type error, got %d and %d", count, native)
 	}
 }
 

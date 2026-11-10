@@ -1,2 +1,2 @@
-// expect: EK0902
+// expect: EK0902 TS2322
 service S { f(): number!! { return 1 } }

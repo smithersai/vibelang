@@ -9278,6 +9278,7 @@ typescript/vibelang/cases/service-identity/main.vibe:83:82 lambda program table
 typescript/vibelang/cases/service-identity/main.vibe:85:31 lambda program table
 typescript/vibelang/cases/service-identity/main.vibe:85:66 lambda program table
 typescript/vibelang/cases/service-implementation-valid/main.vibe:8:38 lambda effectFn keyword
+typescript/vibelang/cases/service-instance-native-errors/input/main.vibe:4:76 lambda plain fallback
 typescript/vibelang/cases/service-interface-commas-runtime/main.vibe:7:43 lambda effectFn annotation
 typescript/vibelang/cases/service-interface-commas-runtime/main.vibe:7:76 lambda effectFn annotation
 typescript/vibelang/cases/service-key-call-native-arguments/input/main.vibe:12:66 lambda plain fallback
