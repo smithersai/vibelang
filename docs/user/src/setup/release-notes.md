@@ -59,6 +59,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A durable workflow killed during a long `DurableClock.sleep` slept the whole duration again when it resumed. The engine now journals when the clock is due, and the resumed run waits only for the time left.
 
+- Refreshing a recorded model fixture meant writing the provider's answers out by hand. `Experimental.Test.record(path, { live })` replays the file and sends only a request it is missing to the named live model, appending the answer; it never writes an interrupted call or a call that holds a credential.
+
 - A test of a program that calls a language model needed a provider key and a network, and answered differently on each run. `Experimental.Test.replay(fixture)` is a `LanguageModel` layer that answers from a recording and never calls a provider; a request the recording does not describe fails the test.
 
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.

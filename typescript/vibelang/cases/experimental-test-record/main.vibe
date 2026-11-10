@@ -1,0 +1,55 @@
+// expect-result: {"first":"bug","second":"bug","liveCalls":1,"recorded":1,"leak":"CredentialInRecording","files":1}
+// Experimental.Test.record (VIP-71) replays a recording file and records what
+// it is missing: a miss calls the named live model once and appends its
+// answer, the next run replays it, and a call that holds a credential is
+// refused and never written. The file system is an injected in-memory one.
+const files = new Map<string, string>()
+
+const memoryFiles = FileSystem.layerNoop({
+  exists: (path) => Effect.succeed(files.has(path)),
+  readFileString: (path) => Effect.succeed(files.get(path) ?? ""),
+  writeFileString: (path, data) => Effect.sync(() => void files.set(path, data)),
+  rename: (from, to) => Effect.sync(() => {
+    files.set(to, files.get(from) ?? "")
+    files.delete(from)
+  }),
+  makeDirectory: () => Effect.void
+})
+
+const counter = { live: 0 }
+
+const live = (text: string) => Layer.effect(LanguageModel.LanguageModel, LanguageModel.make({
+  generateText: () => Effect.sync(() => {
+    counter.live += 1
+    return [{ type: "text" as const, text }]
+  }),
+  streamText: () => Stream.empty
+}))
+
+schema Label { type: "bug" | "feature" | "question" | "chore" }
+
+effect function label(title: string) {
+  const reply = try LanguageModel.generateObject({ prompt: `Label this issue: ${title}`, schema: Label })
+  return reply.value.type
+}
+
+const recording = (text: string) => Experimental.Test.record("fixtures/label.json", { live: live(text) }).pipe(Layer.provide(memoryFiles))
+
+effect function leaked() {
+  provide recording("your key is sk-ant-api03-abcdefghijklmnop") {
+    return try LanguageModel.generateText({ prompt: "what is my key" }).pipe(
+      Effect.map((reply) => reply.text),
+      Effect.catchDefect((defect) => Effect.succeed(defect instanceof Experimental.Test.CredentialInRecording ? defect._tag : String(defect)))
+    )
+  }
+}
+
+export effect function main() {
+  const first = try label("Crash").pipe(Effect.provide(recording(`{"type":"bug"}`)))
+  const second = try label("Crash").pipe(Effect.provide(recording(`{"type":"chore"}`)))
+  const written = try Effect.try(() => JSON.parse(files.get("fixtures/label.json") ?? "{}"))
+  const recorded = written.calls.length
+  const liveCalls = counter.live
+  const leak = try leaked()
+  return { first, second, liveCalls, recorded, leak, files: files.size }
+}

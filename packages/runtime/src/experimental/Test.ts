@@ -19,18 +19,28 @@
  *   the response format and the tool choice), never a model id, so a
  *   recording made with one model replays under another.
  *
+ * {@link record} makes recordings. It replays a file and sends a request the
+ * file is missing to a live model the test names, then appends the answer.
+ * Recording and replaying are two calls, so a deleted fixture never turns a
+ * free test run into a paid one.
+ *
  * @experimental
  * @since 0.0.13
  */
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
+import type { PlatformError } from "effect/PlatformError"
 import * as Ref from "effect/Ref"
 import * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
+import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
-import { AiError, LanguageModel, Prompt, Tool } from "effect/ai"
-import type { Response } from "effect/ai"
+import { AiError, LanguageModel, Prompt, Response, Tool, Toolkit } from "effect/ai"
 import * as canonical from "./internal/canonical.js"
 
 /**
@@ -287,28 +297,51 @@ export const unconsumed: Effect.Effect<ReadonlyArray<RecordedCall>, never, Recor
   return yield* recording.unconsumed
 })
 
+interface State {
+  readonly calls: ReadonlyArray<RecordedCall>
+  readonly keys: ReadonlyArray<RecordedKey>
+  readonly used: ReadonlyArray<boolean>
+}
+
 type Claim =
   | { readonly _tag: "Call"; readonly index: number; readonly call: RecordedCall }
   | { readonly _tag: "None" }
 
-const makeReplay = (fixture: Fixture) =>
+// What a model does with a request no unclaimed recording matches.
+interface Miss {
+  readonly generateText: (
+    options: LanguageModel.ProviderOptions
+  ) => Effect.Effect<Array<Response.PartEncoded>, AiError.AiError>
+  readonly streamText: (
+    options: LanguageModel.ProviderOptions
+  ) => Stream.Stream<Response.StreamPartEncoded, AiError.AiError>
+}
+
+const initialState = (fixture: Fixture): State => ({
+  calls: fixture.calls,
+  keys: fixture.calls.map(recordedKey),
+  used: fixture.calls.map(() => false)
+})
+
+const makeModel = (state: Ref.Ref<State>, miss: Miss) =>
   Effect.gen(function*() {
-    const keys = fixture.calls.map(recordedKey)
-    const used = yield* Ref.make<ReadonlyArray<boolean>>(fixture.calls.map(() => false))
     // The first unclaimed recording that matches, claimed in the same step
     // that finds it, so concurrent requests never share one.
     const claim = (options: LanguageModel.ProviderOptions) => {
       const request = canonicalRequest(options)
-      return Ref.modify(used, (claimed): readonly [Claim, ReadonlyArray<boolean>] => {
-        const index = keys.findIndex((key, i) => !claimed[i] && matches(key, request))
-        if (index < 0) return [{ _tag: "None" }, claimed]
-        return [{ _tag: "Call", index, call: fixture.calls[index]! }, claimed.map((value, i) => value || i === index)]
+      return Ref.modify(state, (current): readonly [Claim, State] => {
+        const index = current.keys.findIndex((key, i) => !current.used[i] && matches(key, request))
+        if (index < 0) return [{ _tag: "None" }, current]
+        return [
+          { _tag: "Call", index, call: current.calls[index]! },
+          { ...current, used: current.used.map((value, i) => value || i === index) }
+        ]
       })
     }
     const model = yield* LanguageModel.make({
       generateText: (options) =>
         Effect.flatMap(claim(options), (claimed) => {
-          if (claimed._tag === "None") return Effect.die(unrecorded("generateText", options))
+          if (claimed._tag === "None") return miss.generateText(options)
           const { call, index } = claimed
           if (call.failure !== undefined) return Effect.fail(recordedFailure(call, index))
           if (call.response === undefined) {
@@ -318,7 +351,7 @@ const makeReplay = (fixture: Fixture) =>
         }),
       streamText: (options) =>
         Stream.unwrap(Effect.map(claim(options), (claimed) => {
-          if (claimed._tag === "None") return Stream.die(unrecorded("streamText", options))
+          if (claimed._tag === "None") return miss.streamText(options)
           const { call, index } = claimed
           const parts = call.stream === undefined
             ? Stream.die(new InvalidFixture({ message: `calls[${index}] has no stream for streamText` }))
@@ -327,10 +360,15 @@ const makeReplay = (fixture: Fixture) =>
         }))
     })
     const recording = Recording.of({
-      unconsumed: Effect.map(Ref.get(used), (claimed) => fixture.calls.filter((_, i) => !claimed[i]))
+      unconsumed: Effect.map(Ref.get(state), (current) => current.calls.filter((_, i) => !current.used[i]))
     })
     return Context.make(LanguageModel.LanguageModel, model).pipe(Context.add(Recording, recording))
   })
+
+const strict: Miss = {
+  generateText: (options) => Effect.die(unrecorded("generateText", options)),
+  streamText: (options) => Stream.die(unrecorded("streamText", options))
+}
 
 /**
  * A `LanguageModel` that answers from a recording and never calls a
@@ -344,4 +382,217 @@ const makeReplay = (fixture: Fixture) =>
  * @since 0.0.13
  */
 export const replay = (fixture: Fixture): Layer.Layer<LanguageModel.LanguageModel | Recording> =>
-  Layer.effectContext(Effect.suspend(() => makeReplay(decodeFixture(fixture))))
+  Layer.effectContext(Effect.suspend(() => Effect.flatMap(Ref.make(initialState(decodeFixture(fixture))), (state) => makeModel(state, strict))))
+
+// -----------------------------------------------------------------------------
+// Record
+// -----------------------------------------------------------------------------
+
+/**
+ * A model call {@link record} would not write, because the call holds a
+ * credential: a recording is meant to be committed. The defect names the rule
+ * that matched, never the text. Nothing is written for the call.
+ *
+ * @category errors
+ * @since 0.0.13
+ */
+export class CredentialInRecording extends Data.TaggedError("CredentialInRecording")<{
+  readonly rule: string
+  readonly message: string
+}> {}
+
+// The token-shaped rules of a journal redactor: each matches a credential by
+// its own shape, not by a field name, so an ordinary schema field named
+// `token` or `maxTokens` never matches.
+const credentialRules: ReadonlyArray<{ readonly id: string; readonly pattern: RegExp }> = [
+  {
+    id: "private-key-block",
+    pattern: /-----BEGIN[^-]*PRIVATE KEY(?: BLOCK)?-----/
+  },
+  {
+    id: "jwt",
+    pattern:
+      /(?<![A-Za-z0-9_-])(?=[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-])([A-Za-z0-9_-]*?)\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/
+  },
+  { id: "api-key", pattern: /(?<![A-Za-z0-9])(?:sk|pk)[-_][A-Za-z0-9][A-Za-z0-9_-]{7,}/ },
+  { id: "github-token", pattern: /\bgh[pousr]_[A-Za-z0-9]{20,}(?![A-Za-z0-9])/ },
+  { id: "github-fine-grained-token", pattern: /\bgithub_pat_[A-Za-z0-9_]{20,}(?![A-Za-z0-9_])/ },
+  { id: "aws-access-key", pattern: /\bAKIA[0-9A-Z]{16}\b/ },
+  { id: "slack-token", pattern: /\bxox[baprs]-[A-Za-z0-9-]{10,}(?![A-Za-z0-9-])/ },
+  { id: "google-api-key", pattern: /\bAIza[0-9A-Za-z_-]{35,}(?![0-9A-Za-z_-])/ }
+]
+
+// A provider streams a few characters per delta, so a credential the model
+// emitted is split across parts. Each streamed text is joined in order and
+// scanned beside the serialized call.
+const streamedTexts = (parts: ReadonlyArray<{ readonly type: string; readonly [key: string]: unknown }>) => {
+  const joined = new Map<string, string>()
+  for (const part of parts) {
+    if (typeof part.delta === "string") {
+      const key = `${part.type}\u0000${String(part.id)}`
+      joined.set(key, (joined.get(key) ?? "") + part.delta)
+    }
+  }
+  return [...joined.values()]
+}
+
+const credentialIn = (call: RecordedCall): string | undefined => {
+  const texts = [JSON.stringify(call), ...streamedTexts(call.stream ?? [])]
+  return credentialRules.find((rule) => texts.some((text) => rule.pattern.test(text)))?.id
+}
+
+// The request as a provider received it, in the form a recording stores.
+const recordedRequest = (options: LanguageModel.ProviderOptions): RecordedCall["request"] =>
+  plain({
+    prompt: encodePrompt(options.prompt).content,
+    tools: options.tools.map((tool) => ({
+      name: tool.name,
+      description: Tool.getDescription(tool),
+      parameters: Tool.getJsonSchema(tool)
+    })),
+    responseFormat: options.responseFormat.type === "text"
+      ? { type: "text" }
+      : {
+        type: "json",
+        objectName: options.responseFormat.objectName,
+        schema: Tool.getJsonSchemaFromSchema(options.responseFormat.schema)
+      },
+    toolChoice: options.toolChoice
+  }) as RecordedCall["request"]
+
+const encodeFailure = (error: AiError.AiError): unknown => plain(Schema.encodeSync(AiError.AiError)(error))
+
+/**
+ * Options for {@link record}.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface RecordOptions<E, R> {
+  /** The model a miss calls, such as a provider's layer. It is built at the first miss. */
+  readonly live: Layer.Layer<LanguageModel.LanguageModel, E, R>
+}
+
+/**
+ * A `LanguageModel` that replays the recording at `path` and records what it
+ * is missing. A request an unclaimed recording matches is answered from it,
+ * as {@link replay} answers; a request none matches goes to the `live`
+ * model, and its answer is appended to the file before the caller sees it.
+ * A file that does not exist is an empty recording.
+ *
+ * What it writes:
+ *
+ * - A finished call: its request as the provider received it and its
+ *   encoded response parts or stream parts. A typed `AiError` the provider
+ *   answered with is written as `failure`.
+ * - Never an interrupted call or a defect: a truncated stream would replay
+ *   as an aborted turn.
+ * - Never a call that holds a credential: the call dies with
+ *   {@link CredentialInRecording} and nothing is written.
+ *
+ * Each append rewrites the file through a temporary file and a rename, so a
+ * crash leaves the old recording or the new one. The live layer is built at
+ * the first miss, so a complete recording runs without a key; a live layer
+ * that fails to build is a defect. The path is resolved as Effect's
+ * `FileSystem` resolves it, from the working directory.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const record = <E, R>(
+  path: string,
+  options: RecordOptions<E, R>
+): Layer.Layer<LanguageModel.LanguageModel | Recording, PlatformError, FileSystem.FileSystem | Exclude<R, Scope.Scope>> =>
+  Layer.effectContext(Effect.gen(function*() {
+    const fs = yield* FileSystem.FileSystem
+    const existing = (yield* fs.exists(path)) ? yield* fs.readFileString(path) : undefined
+    const fixture = existing === undefined ? { calls: [] } : yield* Effect.try({
+      try: () => decodeFixture(JSON.parse(existing)),
+      catch: (error) => error
+    }).pipe(Effect.orDie)
+    const state = yield* Ref.make(initialState(fixture))
+    const scope = yield* Effect.scope
+    const services = yield* Effect.context<Exclude<R, Scope.Scope>>()
+    const live = yield* Effect.cached(
+      Layer.buildWithScope(options.live, scope).pipe(
+        Effect.map((context) => Context.get(context, LanguageModel.LanguageModel)),
+        Effect.provideContext(services as Context.Context<R>),
+        Effect.orDie
+      )
+    )
+    const lock = yield* Semaphore.make(1)
+    const slash = path.lastIndexOf("/")
+    const directory = slash > 0 ? path.slice(0, slash) : undefined
+    const save = (call: RecordedCall) => {
+      const rule = credentialIn(call)
+      if (rule !== undefined) {
+        return Effect.die(
+          new CredentialInRecording({ rule, message: `the model call holds a credential (${rule}); it was not recorded` })
+        )
+      }
+      return lock.withPermits(1)(Effect.gen(function*() {
+        const current = yield* Ref.updateAndGet(state, (current) => ({
+          calls: [...current.calls, call],
+          keys: [...current.keys, recordedKey(call, current.calls.length)],
+          used: [...current.used, true]
+        }))
+        if (directory !== undefined) yield* fs.makeDirectory(directory, { recursive: true })
+        const temporary = `${path}.${Date.now()}.tmp`
+        yield* fs.writeFileString(temporary, `${JSON.stringify({ calls: current.calls }, null, 2)}\n`)
+        yield* fs.rename(temporary, path)
+      })).pipe(Effect.orDie)
+    }
+    const miss: Miss = {
+      generateText: (request) =>
+        Effect.gen(function*() {
+          const model = yield* live
+          const toolkit = Toolkit.make(...request.tools)
+          const generate = {
+            prompt: request.prompt,
+            toolkit,
+            toolChoice: request.toolChoice,
+            disableToolCallResolution: true
+          } as const
+          const response = request.responseFormat.type === "json"
+            ? model.generateObject({
+              ...generate,
+              objectName: request.responseFormat.objectName,
+              schema: request.responseFormat.schema as Schema.Codec<Record<string, unknown>, Record<string, unknown>>
+            } as never)
+            : model.generateText(generate as never)
+          const answered = yield* (response as Effect.Effect<LanguageModel.GenerateTextResponse<any>, AiError.AiError>).pipe(
+            Effect.tapError((error) => save({ request: recordedRequest(request), failure: encodeFailure(error) }))
+          )
+          const encode = Schema.encodeSync(Response.Part(toolkit) as unknown as Schema.Codec<unknown, Response.PartEncoded>)
+          const parts = answered.content.map((part) => plain(encode(part)) as Response.PartEncoded)
+          yield* save({ request: recordedRequest(request), response: parts as unknown as RecordedCall["response"] })
+          return parts
+        }),
+      streamText: (request) =>
+        Stream.unwrap(Effect.map(live, (model) => {
+          const toolkit = Toolkit.make(...request.tools)
+          const encode = Schema.encodeSync(
+            Response.StreamPart(toolkit) as unknown as Schema.Codec<unknown, Response.StreamPartEncoded>
+          )
+          const parts: Array<Response.StreamPartEncoded> = []
+          const stream = model.streamText({
+            prompt: request.prompt,
+            toolkit,
+            toolChoice: request.toolChoice,
+            disableToolCallResolution: true
+          } as never) as Stream.Stream<Response.AnyPart, AiError.AiError>
+          return stream.pipe(
+            Stream.map((part) => plain(encode(part)) as Response.StreamPartEncoded),
+            Stream.tap((part) => Effect.sync(() => void parts.push(part))),
+            Stream.onExit((exit) => {
+              const stored = { request: recordedRequest(request), stream: parts as unknown as RecordedCall["stream"] }
+              if (Exit.isSuccess(exit)) return save(stored)
+              if (Cause.hasInterrupts(exit.cause) || Cause.hasDies(exit.cause)) return Effect.void
+              const error = Cause.findErrorOption(exit.cause)
+              return error._tag === "Some" ? save({ ...stored, failure: encodeFailure(error.value) }) : Effect.void
+            })
+          )
+        }))
+    }
+    return yield* makeModel(state, miss)
+  }))
