@@ -1,0 +1,35 @@
+// expect-result: {"spawned":4,"joined":true,"started":4,"fresh":true,"polled":4}
+// Experimental.Durable.spawn, start and run take a declared workflow. The
+// payload is the workflow's own type, and the handle's result is the
+// workflow's success type.
+const Double = Experimental.Durable.task("handles#Double", { payload: { n: Schema.Number }, success: Schema.Number })
+export const Twice = Experimental.Durable.workflow("handles#Twice", {
+  payload: { n: Schema.Number },
+  success: Schema.Number,
+  error: Schema.String
+})
+
+const TwiceLive = Twice.toLayer(effect ({ n }) => {
+  return try Double({ n })
+}).pipe(
+  Layer.provide(Double.toLayer(({ n }) => Effect.succeed(n * 2))),
+  Layer.provideMerge(Experimental.Durable.memory)
+)
+
+export effect function main() {
+  provide TwiceLive {
+    const handle = try Experimental.Durable.spawn(Twice, { n: 2 })
+    const spawned: number = try handle.result
+    const again = try Experimental.Durable.spawn(Twice, { n: 2 })
+    const started = try Experimental.Durable.start(Twice, { n: 2 })
+    const fromStart: number = try started.result
+    const polled = try Experimental.Durable.run(Twice, handle.id).poll
+    return {
+      spawned,
+      joined: again.id === handle.id,
+      started: fromStart,
+      fresh: started.id !== handle.id,
+      polled: Option.isSome(polled) && Exit.isSuccess(polled.value) ? polled.value.value : null
+    }
+  }
+}

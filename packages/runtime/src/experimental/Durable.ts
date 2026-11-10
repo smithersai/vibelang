@@ -704,7 +704,22 @@ export interface Run<A, E> {
   readonly resume: Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>
 }
 
-type AnyWorkflow = Workflow.Workflow<string, Workflow.AnyStructSchema, Schema.Top, Schema.Top>
+/**
+ * Any workflow a run handle can drive: what the handle uses, with the
+ * payload left open. `Workflow<string, AnyStructSchema, …>` does not accept
+ * a declared workflow, because its `idempotencyKey` and `execute` take the
+ * payload, and a function of one payload type is not a function of every
+ * payload type.
+ */
+interface AnyWorkflow extends Workflow.Any {
+  readonly execute: (payload: any, options?: any) => Effect.Effect<any, any, any>
+  readonly poll: (executionId: string) => Effect.Effect<Option.Option<Workflow.Result<any, any>>, never, any>
+  readonly interrupt: (executionId: string) => Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>
+  readonly resume: (executionId: string) => Effect.Effect<void, never, WorkflowEngine.WorkflowEngine>
+}
+
+/** The same workflow as the engine's own calls type it. */
+type EngineWorkflow = Workflow.Workflow<string, Workflow.AnyStructSchema, Schema.Top, Schema.Top>
 
 /**
  * The handle of run `id` of `W`.
@@ -720,7 +735,7 @@ export const run = <W extends AnyWorkflow>(W: W, id: string): Run<W["successSche
     if (Option.isNone(row)) return yield* Effect.die(new TimeTravelError({ code: "not_found", message: `No run ${id}` }))
     const engine = yield* WorkflowEngine.WorkflowEngine
     const payload = engineInternal.decodePayload(W, row.value.payload)
-    return yield* engine.execute(W, { executionId: id, payload })
+    return yield* engine.execute(W as unknown as EngineWorkflow, { executionId: id, payload })
   }) as Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]>["result"],
   poll: Effect.map(W.poll(id), (result) =>
     Option.flatMap(result, (result) => result._tag === "Complete" ? Option.some(result.exit) : Option.none())) as Run<
@@ -738,12 +753,15 @@ export const run = <W extends AnyWorkflow>(W: W, id: string): Run<W["successSche
  * @category runs
  * @since 0.0.13
  */
-export const spawn = <W extends AnyWorkflow>(W: W, payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>) =>
+export const spawn = <W extends AnyWorkflow>(
+  W: W,
+  payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>
+): Effect.Effect<Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]>, never, WorkflowEngine.WorkflowEngine> =>
   Effect.gen(function*() {
     const id = yield* W.executionId(payload)
     yield* W.execute(payload, { discard: true })
     return run(W, id)
-  })
+  }) as Effect.Effect<Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]>, never, WorkflowEngine.WorkflowEngine>
 
 /**
  * Always starts a new run of `W`, even when an equal payload already has one,
@@ -753,11 +771,16 @@ export const spawn = <W extends AnyWorkflow>(W: W, payload: Schema.Struct.Type<W
  * @category runs
  * @since 0.0.13
  */
-export const start = <W extends AnyWorkflow>(W: W, payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>) =>
+export const start = <W extends AnyWorkflow>(
+  W: W,
+  payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>
+): Effect.Effect<Run<W["successSchema"]["Type"], W["errorSchema"]["Type"]>, never, WorkflowEngine.WorkflowEngine> =>
   Effect.gen(function*() {
     const engine = yield* WorkflowEngine.WorkflowEngine
     const id = (yield* canonical.sha256(`start:${W._tag}:${globalThis.crypto.randomUUID()}`)).slice(0, 32)
-    yield* engine.execute(W, { executionId: id, payload: W.payloadSchema.make(payload), discard: true })
+    const workflow = W as unknown as EngineWorkflow
+    // Under the engine's own workflow type the error and the requirements are open; a discarded start has neither.
+    yield* (engine.execute(workflow, { executionId: id, payload: workflow.payloadSchema.make(payload), discard: true }) as unknown as Effect.Effect<unknown>)
     return run(W, id)
   })
 
