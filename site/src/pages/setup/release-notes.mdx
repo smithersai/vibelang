@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.
+
 - The parcel conversion example tried to catch a string and failed with `EK0506`. Its recovery now wraps the fallible work in an `effect` block and returns the same results as the TypeScript original.
 
 - Stock `tsc`, and `bun check` scripts that invoke TypeScript, reported `TS2307` for a `.ts` file's `./x.js`, `./x` or `./x.ts` import once `x` became a `.vibe` module, though `vibelang` accepted it. The compiler now also writes `x.d.ts`, which re-exports `x.d.vibe.ts`, so those imports resolve and the importer's published declarations are unchanged.

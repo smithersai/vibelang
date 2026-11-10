@@ -591,7 +591,7 @@ VibeLang:
 export schema Shipment {
   tracking: string
   weight: number
-  note?: string
+  note?: string | undefined
   stage: "packed" | "sent" | "received"
 }
 
