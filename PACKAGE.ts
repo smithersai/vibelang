@@ -716,6 +716,13 @@ const targets = {
     [Packages["compiler-native"], Packages["runtime-dist"]],
     [bun, node]
   ),
+  "docs-convert-examples": check(
+    "Worked conversion examples compile, and generated parcel recoveries match their TypeScript counterparts.",
+    "bun test --timeout 180000 docs/tools/convert-examples.test.ts",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [bun, node],
+    "5m"
+  ),
   "effect-pin": check("Every manifest and version literal pins the runtime's Effect version.", "node scripts/effect-pin.mjs", [], [node]),
   // Fast targets the queue's build-only gate selects by changed path (the merge
   // queue's validate.sh), so a commit that breaks one stops at the queue, not in

@@ -400,7 +400,9 @@ effect function destination(tracking: string): string!MissingParcel {
 }
 
 export effect function route(tracking: string) {
-  return `Ship to ${try destination(tracking)}` catch (e) => match (e) {
+  return effect {
+    return `Ship to ${try destination(tracking)}`
+  } catch (e) => match (e) {
     when MissingParcel: `Investigate ${e.tracking}`;
   }
 }
