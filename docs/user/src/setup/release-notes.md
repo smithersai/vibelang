@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
+- A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.
+
 - Migration setup generated Effect lint commands with unsupported Oxlint flags, so linting stopped with an unknown-option error. Setup now uses compiler project options and repairs those commands when repeated.
 
 - Formatting collapsed blank lines inside JSDoc comments and changed published documentation. Comment interiors now keep their text and blank-line structure while following the surrounding indentation.

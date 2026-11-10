@@ -1,0 +1,6 @@
+// expect: EK0402 EK0402 EK0402 EK0402
+import {risky,direct,parenthesized,generic,ownNever} from "./foreign.js"
+export function directAlias(){return direct(risky)}
+export function parenthesizedAlias(){return parenthesized((risky))}
+export function genericAlias(){try{return generic(risky)}catch{return 0}}
+export function ownNeverAlias(){return ownNever(risky)}

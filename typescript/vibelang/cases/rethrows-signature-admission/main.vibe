@@ -1,0 +1,15 @@
+// expect-result: true
+import {calls,sentinel,risky,safe,invoke,documented} from "./foreign.js"
+function safeAlias() { return documented(safe) }
+export effect function main() {
+  const value = safeAlias()
+  const program = Effect.try({try:()=>invoke(risky),catch:(error:unknown)=>error})
+  const before = calls.length
+  const first = try exit(program)
+  const second = try exit(program)
+  return value === 7 && before === 0 && calls.length === 2 &&
+    first._tag === "Failure" && first.cause.reasons[0]?._tag === "Fail" &&
+    first.cause.reasons[0].error === sentinel &&
+    second._tag === "Failure" && second.cause.reasons[0]?._tag === "Fail" &&
+    second.cause.reasons[0].error === sentinel
+}

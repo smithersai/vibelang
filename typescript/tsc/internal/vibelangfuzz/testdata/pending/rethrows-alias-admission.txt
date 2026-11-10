@@ -1,0 +1,12 @@
+FuzzRethrowsAliasAdmission untagged:wrapped compiler VIP-4: wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission corpus:untagged-wrapper-contract compiler VIP-4: untagged:wrapped wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission alias:wrapped compiler VIP-4: wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission corpus:alias-wrapper-contract compiler VIP-4: alias:wrapped wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission parenthesized:wrapped compiler VIP-4: wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission corpus:parenthesized-wrapper-contract compiler VIP-4: parenthesized:wrapped wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission generic:wrapped compiler VIP-4: wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission corpus:generic-wrapper-contract compiler VIP-4: generic:wrapped wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission own-never:wrapped compiler VIP-4: wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission corpus:own-never-wrapper-contract compiler VIP-4: own-never:wrapped wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission object-alias:wrapped compiler VIP-4: wrapper thunk traversal skips nested callback assignment checks
+FuzzRethrowsAliasAdmission corpus:object-alias-wrapper-contract compiler VIP-4: object-alias:wrapped wrapper thunk traversal skips nested callback assignment checks

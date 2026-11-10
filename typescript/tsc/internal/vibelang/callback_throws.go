@@ -461,6 +461,9 @@ func admittedByShippedContract(c *checker.Checker, expr *ast.Node) bool {
 		return name != "" && name == parameter && rethrowAdmitted
 	}
 	for _, host := range jsdocHosts(decl) {
+		if ast.IsTypeAliasDeclaration(host) {
+			continue // Alias documentation does not annotate its call signature.
+		}
 		for _, jsdoc := range host.JSDoc(nil) {
 			for _, parameterName := range rethrowsParameterNames(declFile.Text()[jsdoc.Pos():jsdoc.End()]) {
 				if parameterName == parameter {
