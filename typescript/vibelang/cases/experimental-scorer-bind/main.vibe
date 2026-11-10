@@ -1,0 +1,27 @@
+// expect-result: {"results":[4,4,6],"scored":2,"mean":1,"kinds":["score","score"]}
+// VIP-69 rule 9: Experimental.Scorer.bind scores a durable workflow's live
+// runs. Each finished run is graded once, even when it is executed again,
+// and the observations persist in a score store.
+const Double = Experimental.Durable.workflow("case#Double", { payload: { n: Schema.Number }, success: Schema.Number })
+
+const doubled = Experimental.Scorer.make({
+  name: "doubled",
+  version: "1",
+  score: (run: { input: { readonly n: number }; output: number }) => run.output === run.input.n * 2 ? 1 : 0
+})
+
+const DoubleLive = Double.toLayer(({ n }) => Effect.succeed(n * 2)).pipe(
+  Layer.provide(Experimental.Scorer.bind(doubled, Double, { sampling: "all" })),
+  Layer.provideMerge(Experimental.Durable.memory),
+  Layer.provideMerge(Experimental.Scorer.memory)
+)
+
+export effect function main() {
+  provide DoubleLive {
+    const results = [try Double.execute({ n: 2 }), try Double.execute({ n: 2 }), try Double.execute({ n: 3 })]
+    const store = try Experimental.Scorer.ScoreStore
+    const observations = try store.observations({ workflow: "case#Double" })
+    const aggregate = try store.aggregate()
+    return { results, scored: observations.length, mean: aggregate.mean, kinds: observations.map((item) => item.kind) }
+  }
+}

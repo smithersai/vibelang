@@ -17,15 +17,28 @@
  * attempts fails with `invalid_declaration`, and `Experimental.Eval.run`
  * refuses a suite that uses it.
  *
- * Ported from Smithers' `@smthrs/scorers` (`Scorer`, `Scorers`, `Checks`).
+ * {@link bind} scores a durable workflow's live runs: each finished run of
+ * the workflow is graded once, sampled by a rule a replay repeats, and kept
+ * in a {@link ScoreStore}, in memory or in a SQL database.
+ *
+ * Ported from Smithers' `@smthrs/scorers` (`Scorer`, `Scorers`, `Checks`,
+ * `Binding`, `Sampling`, `ScoreStore`, `SqlScoreStore`).
  *
  * @experimental
  * @since 0.0.13
  */
+import * as Cause from "effect/Cause"
+import * as Clock from "effect/Clock"
+import * as Context from "effect/Context"
 import * as Data from "effect/Data"
+import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import type { SqlClient } from "effect/sql"
+import { type Workflow, WorkflowEngine } from "effect/workflow"
 import * as canonical from "./internal/canonical.js"
 import * as text from "./internal/evalText.js"
+import * as scoreStore from "./internal/scoreStore.js"
 import { sha256Hex } from "./internal/sha256.js"
 
 /**
@@ -81,11 +94,12 @@ export type Outcome = number | Result
  * - `invalid_declaration`: the scorer has no stable identity; see {@link Scorer.problem}.
  * - `invalid_score`: the score function returned something other than a finite number in `[0, 1]`.
  * - `inconclusive`: the score function failed, or the answer is not something it can grade.
+ * - `invalid_sampling`: a sampling policy other than `"all"`, `"none"` or `{ ratio, seed }` with `0 < ratio < 1`.
  *
  * @category models
  * @since 0.0.13
  */
-export type ScorerErrorCode = "invalid_declaration" | "invalid_score" | "inconclusive"
+export type ScorerErrorCode = "invalid_declaration" | "invalid_score" | "inconclusive" | "invalid_sampling"
 
 /**
  * @category errors
@@ -428,3 +442,237 @@ export const checks = (
       score: () => Effect.fail(new ScorerError({ code: "invalid_declaration", message: problem }))
     })
 }
+
+// ---------------------------------------------------------------------------
+// Live runs
+// ---------------------------------------------------------------------------
+
+/**
+ * Which live runs a bound scorer grades: every run, none, or a fraction
+ * chosen by a hash of the run id, the scorer's identity and `seed`. The
+ * choice depends on nothing else, so a replay samples the same runs.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type Sampling = "all" | "none" | { readonly ratio: number; readonly seed: string }
+
+const fnv = (input: string): number => {
+  let value = 2166136261
+  for (const byte of new TextEncoder().encode(input)) {
+    value ^= byte
+    value = Math.imul(value, 16777619)
+  }
+  return (value >>> 0) / 4294967296
+}
+
+const samplingProblem = (sampling: unknown): string | undefined => {
+  if (sampling === "all" || sampling === "none") return undefined
+  if (typeof sampling === "object" && sampling !== null) {
+    const { ratio, seed } = sampling as { readonly ratio?: unknown; readonly seed?: unknown }
+    if (typeof ratio === "number" && Number.isFinite(ratio) && ratio > 0 && ratio < 1 && typeof seed === "string" && seed.length > 0) {
+      return undefined
+    }
+  }
+  return "A sampling policy must be \"all\", \"none\", or { ratio, seed } with 0 < ratio < 1 and a non-empty seed"
+}
+
+/**
+ * Whether `sampling` selects the run `run` for the scorer `scorerKey`.
+ * Deterministic: the same arguments always give the same answer. `false`
+ * for a policy {@link bind} would refuse.
+ *
+ * @category live runs
+ * @since 0.0.13
+ */
+export const sampled = (sampling: Sampling, run: string, scorerKey: string): boolean => {
+  if (samplingProblem(sampling) !== undefined) return false
+  if (sampling === "all") return true
+  if (sampling === "none") return false
+  const material = [run, scorerKey, sampling.seed].map((part) => `${part.length}:${part}`).join("")
+  return fnv(material) < sampling.ratio
+}
+
+/**
+ * One persisted observation of a live run. `run` is the workflow's
+ * execution id and `scorer` the scorer's `scorerKey`.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type StoredObservation = scoreStore.StoredObservation
+
+/**
+ * Counts, mean and minimum of stored scores.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type Aggregate = scoreStore.Aggregate
+
+/**
+ * Selects stored observations by workflow name, run id and `scorerKey`.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type Filter = scoreStore.Filter
+
+/**
+ * Where live scores persist.
+ *
+ * - `recordOnce` keeps the first observation of an identity and answers
+ *   whether it was new.
+ * - `observations` and `aggregate` read what was kept, oldest first.
+ * - `prune` deletes observations older than a duration and answers how many.
+ *   Nothing else deletes them.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface ScoreStore {
+  readonly recordOnce: (observation: StoredObservation) => Effect.Effect<boolean>
+  readonly observations: (filter?: Filter) => Effect.Effect<ReadonlyArray<StoredObservation>>
+  readonly aggregate: (filter?: Filter) => Effect.Effect<Aggregate>
+  readonly prune: (options: { readonly olderThan: Duration.Input }) => Effect.Effect<number>
+}
+
+/**
+ * @category services
+ * @since 0.0.13
+ */
+export const ScoreStore: Context.Service<ScoreStore, ScoreStore> = /* @__PURE__ */ Context.Service<ScoreStore>(
+  "vibelang/experimental/Scorer/ScoreStore"
+)
+
+const fromStore = (store: scoreStore.Store): ScoreStore => ({
+  recordOnce: store.recordOnce,
+  observations: store.observations,
+  aggregate: (filter) => Effect.map(store.observations(filter), scoreStore.aggregate),
+  prune: ({ olderThan }) =>
+    Effect.flatMap(Clock.currentTimeMillis, (now) => store.prune(now - Duration.toMillis(Duration.fromInputUnsafe(olderThan))))
+})
+
+/**
+ * A score store in this process's memory.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const memory: Layer.Layer<ScoreStore> = /* @__PURE__ */ Layer.sync(ScoreStore, () => fromStore(scoreStore.makeMemory()))
+
+/**
+ * A score store over Effect's `SqlClient`: SQLite or PostgreSQL, through
+ * the client the program provides. It creates the table
+ * `score_observations` if it is missing. A SQL failure is a defect.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const layerSql: Layer.Layer<ScoreStore, never, SqlClient.SqlClient> = /* @__PURE__ */ Layer.effect(
+  ScoreStore,
+  /* @__PURE__ */ Effect.map(/* @__PURE__ */ Effect.orDie(scoreStore.makeSql), fromStore)
+)
+
+/**
+ * Options of {@link bind}.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface BindOptions {
+  /** Which runs to score. Default `"all"`. */
+  readonly sampling?: Sampling | undefined
+}
+
+type PayloadOf<W> = W extends Workflow.Workflow<any, infer P, any, any> ? P["Type"] : never
+type SuccessOf<W> = W extends Workflow.Workflow<any, any, infer S, any> ? S["Type"] : never
+
+/**
+ * Scores a workflow's live runs. The layer wraps the `WorkflowEngine` it is
+ * given: when a run of `workflow` finishes with a result, the scorer grades
+ * `{ input: payload, output: result }` and the {@link ScoreStore} keeps the
+ * observation under the run's execution id. A run that is executed again,
+ * joined or resumed records its score once. A run that fails is not scored.
+ *
+ * Scoring never changes a run's result: a scorer that fails records an
+ * inconclusive observation, and a store that fails logs a warning. A
+ * scorer with no stable identity, or an invalid sampling policy, fails the
+ * layer when it is built.
+ *
+ * @category live runs
+ * @since 0.0.13
+ */
+export const bind = <W extends Workflow.Any, R = never>(
+  scorer: Scorer<Run<PayloadOf<W>, SuccessOf<W>>, R>,
+  workflow: W,
+  options: BindOptions = {}
+): Layer.Layer<WorkflowEngine.WorkflowEngine, ScorerError, WorkflowEngine.WorkflowEngine | ScoreStore | R> =>
+  Layer.effect(
+    WorkflowEngine.WorkflowEngine,
+    Effect.gen(function*() {
+      const sampling = options.sampling ?? "all"
+      const problem = scorer.problem ?? samplingProblem(sampling)
+      if (problem !== undefined) {
+        return yield* Effect.fail(
+          new ScorerError({ code: scorer.problem === undefined ? "invalid_sampling" : "invalid_declaration", message: problem })
+        )
+      }
+      const engine = yield* WorkflowEngine.WorkflowEngine
+      const store = yield* ScoreStore
+      const services = yield* Effect.context<R>()
+      const grade = (payload: PayloadOf<W>, output: SuccessOf<W>, run: string) =>
+        Effect.gen(function*() {
+          if (!sampled(sampling, run, scorer.scorerKey)) return
+          const at = yield* Clock.currentTimeMillis
+          const base = {
+            identity: text.tupleKey("live", workflow._tag, run, scorer.scorerKey),
+            workflow: workflow._tag,
+            run,
+            scorer: scorer.scorerKey,
+            scorerName: scorer.name,
+            at
+          }
+          const observation = yield* Effect.suspend(() =>
+            scorer.score({ input: payload, output, expected: undefined as SuccessOf<W> })
+          ).pipe(
+            Effect.provideContext(services),
+            Effect.map((result): StoredObservation => ({
+              ...base,
+              kind: "score",
+              score: result.score,
+              ...(result.reason === undefined ? {} : { reason: result.reason }),
+              ...(result.meta === undefined ? {} : { meta: result.meta })
+            })),
+            Effect.catchCause((cause): Effect.Effect<StoredObservation> => {
+              if (Cause.hasInterrupts(cause)) return Effect.interrupt
+              const reason = Cause.squash(cause)
+              const failure = reason instanceof ScorerError ? reason : undefined
+              return Effect.succeed({
+                ...base,
+                kind: "inconclusive",
+                code: failure?.code === "invalid_sampling" ? "inconclusive" : failure?.code ?? "inconclusive",
+                reason: bounded(`Scorer ${scorer.name} could not decide: ${failure?.message ?? describe(reason)}`)
+              })
+            })
+          )
+          yield* store.recordOnce(observation).pipe(
+            Effect.catchCause((cause) =>
+              Cause.hasInterrupts(cause)
+                ? Effect.interrupt
+                : Effect.logWarning("Could not record a live score", Cause.squash(cause)).pipe(
+                  Effect.annotateLogs({ workflow: workflow._tag, run, scorer: scorer.scorerKey })
+                )
+            )
+          )
+        })
+      return WorkflowEngine.WorkflowEngine.of({
+        ...engine,
+        register: (registered: any, execute: any) =>
+          registered._tag !== workflow._tag
+            ? engine.register(registered, execute)
+            : engine.register(registered, (payload: any, run: string) =>
+              Effect.tap(execute(payload, run), (output: any) => grade(payload, output, run)))
+      } as WorkflowEngine.WorkflowEngine["Service"])
+    })
+  )

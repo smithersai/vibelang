@@ -23,7 +23,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code | none (pure) |
+| `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
@@ -832,7 +832,48 @@ Each check of `Experimental.Scorer.checks` is plain data, so the list is the sco
 | `{ excludesOpener: [...] }` | the text does not open with one of the phrases |
 | `{ complete: true }` | no unclosed code fence and no ellipsis cuts the text off |
 
-`Experimental.Scorer.rubric`, a model judge, and `Experimental.Scorer.bind`, which scores a workflow's live runs, are not built yet.
+`Experimental.Scorer.rubric`, a model judge, is not built yet.
+
+### Scoring live runs
+
+`Experimental.Scorer.bind(scorer, W, { sampling })` scores the live runs of a durable workflow `W`. It is a layer over the `WorkflowEngine`: when a run of `W` finishes with a result, the scorer grades `{ input: payload, output: result }`, and the score store keeps the observation under the run's execution id. A run executed again, joined or resumed records its score once. A run that fails is not scored.
+
+```vibe
+// run: try Console.log(try scoredRuns())
+const Double = Experimental.Durable.workflow("docs#Double", { payload: { n: Schema.Number }, success: Schema.Number })
+
+const doubled = Experimental.Scorer.make({
+  name: "doubled",
+  version: "1",
+  score: (run: { input: { readonly n: number }; output: number }) => run.output === run.input.n * 2 ? 1 : 0
+})
+
+const DoubleLive = Double.toLayer(({ n }) => Effect.succeed(n * 2)).pipe(
+  Layer.provide(Experimental.Scorer.bind(doubled, Double, { sampling: "all" })),
+  Layer.provideMerge(Experimental.Durable.memory),
+  Layer.provideMerge(Experimental.Scorer.memory)
+)
+
+export effect function scoredRuns() {
+  provide DoubleLive {
+    try Double.execute({ n: 2 })
+    try Double.execute({ n: 2 })
+    const store = try Experimental.Scorer.ScoreStore
+    return (try store.aggregate()).count
+  }
+}
+// Output: 1
+```
+
+| `sampling` | Scores |
+| --- | --- |
+| `"all"`, the default | every run |
+| `"none"` | no run |
+| `{ ratio, seed }`, `0 < ratio < 1` | the runs whose hash of run id, `scorerKey` and `seed` falls below `ratio`. The choice depends on nothing else, so a replay samples the same runs; `Experimental.Scorer.sampled(sampling, run, scorerKey)` answers it |
+
+Scoring never changes a run's result. A scorer that fails records an inconclusive observation, and a store that fails logs a warning. A scorer with no stable identity, or an invalid sampling policy, fails the layer with a `ScorerError` when it is built.
+
+Pick the store with one layer: `Experimental.Scorer.memory` keeps scores in this process; `Experimental.Scorer.layerSql` keeps them in a SQL database through the `SqlClient` the program provides, as `Experimental.Durable.layerSql` does, and creates the table `score_observations` if it is missing. The `Experimental.Scorer.ScoreStore` service reads them: `observations({ workflow?, run?, scorer? })`, oldest first, `aggregate(filter)` for the count, mean, minimum and inconclusive count, and `prune({ olderThan })`, which deletes older observations and answers how many. Nothing else deletes them.
 
 ## Testing agentic programs
 
