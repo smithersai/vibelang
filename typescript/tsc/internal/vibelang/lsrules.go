@@ -487,7 +487,11 @@ func (r *ruleCheck) checkCall(call *ast.Node) {
 	if callee := call.Expression(); ast.IsPropertyAccessExpression(callee) && ast.IsIdentifier(callee.Expression()) && callee.Expression().Text() == "JSON" {
 		if name := callee.Name().Text(); (name == "parse" || name == "stringify") && isGlobal(r.c, r.c.GetSymbolAtLocation(callee.Expression())) {
 			d := report(r.c, callee, EK4818, name)
-			note(d, "Decode with a schema instead: Schema.decodeUnknownEffect(Schema.fromJsonString(User))(text).")
+			if name == "stringify" {
+				note(d, "Encode with a schema instead: Schema.encodeEffect(Schema.fromJsonString(User))(user).")
+			} else {
+				note(d, "Decode with a schema instead: Schema.decodeUnknownEffect(Schema.fromJsonString(User))(text).")
+			}
 		}
 	}
 	if inLowerableBody(call) && r.a.runs(call) {

@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The parcel conversion example tried to catch a string and failed with `EK0506`. Its recovery now wraps the fallible work in an `effect` block and returns the same results as the TypeScript original.
 
+- The `preferSchemaOverJson` diagnostic (`EK4818`, or `EK3889` when the Effect plugin sets its severity) on `JSON.stringify` suggested decoding text with `Schema.decodeUnknownEffect`. It now suggests encoding the value with `Schema.encodeEffect(Schema.fromJsonString(User))(user)`; `JSON.parse` keeps the decode suggestion.
+
 - With the `@effect/language-service` plugin's `ignoreEffectErrorsInTscExitCode` set, an Effect lint error such as `EK3889` (`preferSchemaOverJson`) or `EK38122` (`unknownInEffectCatch`) still failed `vibelang/register`, `vibelang/bun`, the Vite and bundler plugins and `compileProjectSync`, though `vibelang -p` printed it and exited 0. The loaders and `vibelang/project` now fail a module only on the errors that fail the build, and report the ignored ones as warnings.
 
 - Stock `tsc`, and `bun check` scripts that invoke TypeScript, reported `TS2307` for a `.ts` file's `./x.js`, `./x` or `./x.ts` import once `x` became a `.vibe` module, though `vibelang` accepted it. The compiler now also writes `x.d.ts`, which re-exports `x.d.vibe.ts`, so those imports resolve and the importer's published declarations are unchanged.
