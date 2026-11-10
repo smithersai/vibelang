@@ -9012,6 +9012,8 @@ typescript/vibelang/cases/spec-900b-ek0512-catch-mixing.fail/main.vibe:9:15 lamb
 typescript/vibelang/cases/spec-900b-ek0512-catch-mixing.fail/main.vibe:9:28 lambda effectFn table
 typescript/vibelang/cases/spec-900t-ek4855-static-default-fixed/main.vibe:23:32 lambda program table
 typescript/vibelang/cases/spec-900t-ek4855-static-default/main.vibe:17:32 lambda program table
+typescript/vibelang/cases/spec-only-function/count.vibe:10:13 lambda plain fallback
+typescript/vibelang/cases/spec-only-function/count.vibe:19:13 lambda choice fallback
 typescript/vibelang/cases/spec-registry-vip-diagnostics.fail/main.vibe:6:37 lambda dual fallback
 typescript/vibelang/cases/spec-registry-vip-diagnostics.fail/main.vibe:9:10 lambda effectFn table
 typescript/vibelang/cases/spec-registry-vip-diagnostics.fail/main.vibe:9:31 lambda effectFn table

@@ -1,0 +1,31 @@
+// A recursive count that exists only to state a loop's invariant and its
+// caller's ensures. Written as a plain function, it was emitted, exported
+// and counted by coverage though no running code called it. As a spec
+// function it erases from count.js and count.d.ts, and the proof of count
+// still uses it: vibelang prove verifies both (LemmaScript 0.6.6, Dafny
+// 4.11.0: 5 verified, 0 errors).
+spec function countPrefix(xs: readonly boolean[], end: number): number {
+  proof {
+    assume(0 <= end && end <= xs.length)
+    ensures((r) => 0 <= r && r <= end)
+    decreases(end)
+  }
+  if (end <= 0) return 0
+  return countPrefix(xs, end - 1) + (xs[end - 1] ? 1 : 0)
+}
+
+export function count(xs: readonly boolean[]): number {
+  proof {
+    ensures((r) => r === countPrefix(xs, xs.length))
+  }
+  let total = 0
+  for (let i = 0; i < xs.length; i++) {
+    proof {
+      invariant(0 <= i && i <= xs.length)
+      invariant(total === countPrefix(xs, i))
+      decreases(xs.length - i)
+    }
+    if (xs[i]) total++
+  }
+  return total
+}

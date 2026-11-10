@@ -1,0 +1,7 @@
+# VIP-43 spec functions and proof blocks (Appendix F).
+FuzzProofErasure spec:block compiler VIP-43: rule 4301 (a spec function below the module top level) is not registered while EK4301 still names an interim rule, so this spec function compiles and erases; lane vip43-spec-function
+FuzzProofErasure corpus:proof-erasure-spec-block compiler VIP-43: minimized rule 4301 placement; lane vip43-spec-function
+FuzzProofErasure spec:function-body compiler VIP-43: rule 4301 (a spec function below the module top level) is not registered while EK4301 still names an interim rule, so this spec function compiles and erases; lane vip43-spec-function
+FuzzProofErasure corpus:proof-erasure-spec-function-body compiler VIP-43: minimized rule 4301 placement; lane vip43-spec-function
+FuzzProofErasure spec:namespace compiler VIP-43: rule 4301 (a spec function below the module top level) is not registered while EK4301 still names an interim rule, so this spec function compiles and erases; lane vip43-spec-function
+FuzzProofErasure corpus:proof-erasure-spec-namespace compiler VIP-43: minimized rule 4301 placement; lane vip43-spec-function

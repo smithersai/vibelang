@@ -3,55 +3,13 @@
 // checks before any proof, the files it writes, the lsc run it starts and how
 // it reads LemmaScript's run log. The real toolchain proves this program.
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { proveWorkspace } from "../_vip43-prove.mjs"
 
 const here = dirname(fileURLToPath(import.meta.url))
-const work = mkdtempSync(join(tmpdir(), "vip43-prove-"))
-const tools = join(work, "bin")
-mkdirSync(tools)
-writeFileSync(join(tools, "dafny"), "#!/bin/sh\necho 4.11.0+0000000\n")
-chmodSync(join(tools, "dafny"), 0o755)
-
-function project(name, sources, { lemmascript = true } = {}) {
-  const dir = join(work, name)
-  mkdirSync(dir)
-  for (const file of ["tsconfig.json", "package.json"]) cpSync(join(here, file), join(dir, file))
-  mkdirSync(join(dir, "node_modules"))
-  for (const pkg of ["effect", "vibelang-runtime"]) symlinkSync(join(here, "node_modules", pkg), join(dir, "node_modules", pkg))
-  for (const [file, text] of Object.entries(sources)) writeFileSync(join(dir, file), text)
-  if (lemmascript) {
-    const pkg = join(dir, "node_modules", "lemmascript")
-    mkdirSync(pkg)
-    writeFileSync(join(pkg, "package.json"), JSON.stringify({ name: "lemmascript", version: "0.6.6", bin: { lsc: "lsc.mjs" } }))
-    // lsc regen --backend=dafny P.ts: record the run as LemmaScript 0.6.6 does.
-    writeFileSync(join(pkg, "lsc.mjs"), `
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs"
-const [command, backend, file] = process.argv.slice(2)
-if (command !== "regen" || backend !== "--backend=dafny") process.exit(2)
-const stage = process.env.FAKE_STAGE ?? "ok"
-writeFileSync(file.replace(/\\.ts$/, ".dfy"), "function sumTo(xs: int): int\\n{\\n  0\\n}\\n\\nmethod total(n: int) returns (res: int)\\n  ensures res == sumTo(n)\\n{\\n}\\n")
-if (stage === "verify") console.log(file.replace(/\\.ts$/, ".dfy") + "(7,10): Error: a postcondition could not be proved on this return path")
-if (stage === "resolve") console.log(file.replace(/\\.ts$/, ".dfy") + "(2,3): Error: unresolved identifier: helper")
-mkdirSync(".lemmascript", { recursive: true })
-appendFileSync(".lemmascript/runs.jsonl", JSON.stringify({ v: 1, cmd: "regen", file, stage, partial: false, failed: stage === "verify" ? ["total"] : [] }) + "\\n")
-process.exit(stage === "ok" ? 0 : 1)
-`)
-  }
-  return dir
-}
-
-function prove(dir, args = [], env = {}) {
-  const r = spawnSync(process.env.VIBELANG_BINARY, ["prove", "-p", dir, ...args], {
-    encoding: "utf8", timeout: 60000,
-    env: { ...process.env, PATH: tools + ":" + process.env.PATH, ...env },
-  })
-  assert.ifError(r.error)
-  return { status: r.status, text: (r.stdout + r.stderr).split(dir).join("<project>").split(work).join("<work>") }
-}
+const { project, prove, cleanup } = proveWorkspace(here)
 
 const program = readFileSync(join(here, "main.vibe"), "utf8")
 try {
@@ -120,5 +78,5 @@ try {
   assert.equal(r.status, 1, r.text)
   console.log("file arguments: " + r.text.split("\n")[0])
 } finally {
-  rmSync(work, { recursive: true, force: true })
+  cleanup()
 }
