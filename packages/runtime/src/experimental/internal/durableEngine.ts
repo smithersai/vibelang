@@ -11,6 +11,7 @@
 import * as Cause from "effect/Cause"
 import * as Clock from "effect/Clock"
 import * as Context from "effect/Context"
+import * as Data from "effect/Data"
 import * as Deferred from "effect/Deferred"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -23,7 +24,7 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import { Workflow, WorkflowEngine } from "effect/workflow"
 import type { Activity } from "effect/workflow"
-import { sortCollections } from "./canonical.js"
+import { canonicalJson, sha256, sortCollections } from "./canonical.js"
 import { isTerminal, type JournalEntry, type NewEvent, type RunRow, type RunStatus, type Store } from "./durableStore.js"
 
 const WorkflowInstance = WorkflowEngine.WorkflowInstance
@@ -52,6 +53,31 @@ const statusOf = (result: Workflow.Result<unknown, unknown>): RunStatus => {
   if (result._tag === "Suspended") return "suspended"
   if (Exit.isSuccess(result.exit)) return "succeeded"
   return Cause.hasInterruptsOnly(result.exit.cause) ? "interrupted" : "failed"
+}
+
+/**
+ * A workflow's plan as a function of its payload, set by `Durable.workflow`'s
+ * `plan` option. The engine journals the plan's digest when a run starts.
+ */
+export class PlanOf extends Context.Reference<((payload: any) => unknown) | undefined>("vibelang/experimental/Durable/PlanOf", {
+  defaultValue: () => undefined
+}) {}
+
+/** A resume whose workflow now builds a different plan than the run recorded. */
+export class PlanChanged extends Data.TaggedError("PlanChanged")<{
+  readonly run: string
+  readonly recorded: string | null
+  readonly current: string | null
+}> {
+  override get message() {
+    return `plan_changed: run ${this.run} recorded plan ${this.recorded ?? "none"}, and the workflow now builds ${this.current ?? "none"}`
+  }
+}
+
+/** The digest of the plan `workflow` builds for `payload`, or null when it declares none. */
+export const planDigest = (workflow: Workflow.Any, payload: object): Effect.Effect<string | null> => {
+  const plan = Context.get(workflow.annotations, PlanOf)
+  return plan === undefined ? Effect.succeed(null) : sha256(canonicalJson(plan(payload)))
 }
 
 /** The step annotations the journal records with `StepStarted`. */
@@ -205,13 +231,27 @@ export const make = (store: Store) =>
           row = yield* store.open({ run: executionId, workflow: entry.workflow._tag, payload: encodePayload(entry.workflow, payload), parent, at })
         }
         const fence = yield* Effect.orDie(store.claim(executionId, owner, at))
+        const entries = yield* store.entries(executionId)
+        // The body sees the stored snapshot, so the hash covers exactly what it reads.
+        const snapshot = decodePayload(entry.workflow, row.payload)
+        // A changed plan is refused, not rerun: a new run records its plan's
+        // digest, and a resume must build the same one.
+        const current = yield* planDigest(entry.workflow, snapshot)
+        const recorded = entries.find((entry) => entry.eventType === "PlanRecorded")
+        if (recorded === undefined && entries.length === 1) {
+          if (current !== null) {
+            yield* Effect.orDie(store.commit(executionId, { fence, events: [{ eventType: "PlanRecorded", payload: { digest: current } }] }, at))
+          }
+        } else {
+          const digest = recorded === undefined ? null : (recorded.payload as { readonly digest: string }).digest
+          if (digest !== current) return yield* Effect.die(new PlanChanged({ run: executionId, recorded: digest, current }))
+        }
         const steps = new Map<string, unknown>()
         const deferreds = new Map<string, unknown>()
         const clocks = new Map<string, number>()
-        indexEntries(yield* store.entries(executionId), steps, deferreds, clocks)
+        indexEntries(entries, steps, deferreds, clocks)
         const state: Execution = {
-          // The body sees the stored snapshot, so the hash covers exactly what it reads.
-          payload: decodePayload(entry.workflow, row.payload),
+          payload: snapshot,
           workflow: entry.workflow,
           execute: entry.execute,
           instance: WorkflowInstance.initial(entry.workflow, executionId),

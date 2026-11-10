@@ -229,15 +229,25 @@ export const workflow = <
   readonly idempotencyKey?: ((payload: Schema.Struct.Type<Payload>) => string) | undefined
   readonly suspendedRetrySchedule?: Parameters<typeof Workflow.make>[1]["suspendedRetrySchedule"]
   readonly annotations?: Context.Context<never> | undefined
+  /**
+   * The plan the workflow runs for a payload, as JSON data: the steps it will
+   * take, for a person or a budget to read first. A run journals the plan's
+   * digest when it starts, and resuming it under a workflow that builds a
+   * different plan dies with {@link PlanChanged}.
+   */
+  readonly plan?: ((payload: Schema.Struct.Type<Payload>) => unknown) | undefined
 }): Workflow.Workflow<Tag, Schema.Struct<Payload>, Success, Error> => {
   const payload = Schema.Struct(options.payload)
+  const annotations = options.plan === undefined
+    ? options.annotations
+    : Context.add(options.annotations ?? Context.empty(), engineInternal.PlanOf, options.plan)
   return Workflow.make(tag, {
     payload: options.payload,
     success: options.success as Success,
     error: options.error as Error,
     idempotencyKey: options.idempotencyKey ?? identity(payload),
     suspendedRetrySchedule: options.suspendedRetrySchedule,
-    annotations: options.annotations
+    annotations
   }) as unknown as Workflow.Workflow<Tag, Schema.Struct<Payload>, Success, Error>
 }
 
@@ -742,3 +752,71 @@ export const start = <W extends AnyWorkflow>(W: W, payload: Schema.Struct.Type<W
     yield* engine.execute(W, { executionId: id, payload: W.payloadSchema.make(payload), discard: true })
     return run(W, id)
   })
+
+/**
+ * A resume refused because the workflow now builds a different plan than the
+ * run recorded when it started (`plan_changed`). Nothing repairs a
+ * divergence by running under a new key: start a new run, or rewind or fork
+ * this one under the code that recorded it.
+ *
+ * @category errors
+ * @since 0.0.13
+ */
+export const PlanChanged = engineInternal.PlanChanged
+
+/**
+ * @category errors
+ * @since 0.0.13
+ */
+export type PlanChanged = engineInternal.PlanChanged
+
+/**
+ * The plan `W` would run for `payload`, and its digest, without running
+ * anything. The plan is what `W`'s `plan` option returns for the payload as
+ * the body would see it; a workflow without one has the plan `null`.
+ *
+ * @category runs
+ * @since 0.0.13
+ */
+export const plan = <W extends AnyWorkflow>(
+  W: W,
+  payload: Schema.Struct.Type<W["payloadSchema"]["fields"]>
+): Effect.Effect<{ readonly plan: unknown; readonly digest: string | null }> =>
+  Effect.gen(function*() {
+    const snapshot = engineInternal.decodePayload(W, engineInternal.encodePayload(W, W.payloadSchema.make(payload) as object))
+    const build = Context.get(W.annotations, engineInternal.PlanOf)
+    return { plan: build === undefined ? null : build(snapshot), digest: yield* engineInternal.planDigest(W, snapshot) }
+  })
+
+/**
+ * A plan whose steps are listed as `nodes`, each with a `key`.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface PlanNodes {
+  readonly nodes: ReadonlyArray<{ readonly key: string }>
+}
+
+/**
+ * How plan `b` differs from plan `a`, by node key: the keys only `b` has,
+ * the keys only `a` has, and the keys whose nodes differ. A node whose key
+ * changed is removed under its old key and added under its new one, so its
+ * recorded steps and cache entries are not reused.
+ *
+ * @category runs
+ * @since 0.0.13
+ */
+export const diff = (a: PlanNodes, b: PlanNodes): {
+  readonly added: ReadonlyArray<string>
+  readonly removed: ReadonlyArray<string>
+  readonly changed: ReadonlyArray<string>
+} => {
+  const left = new Map(a.nodes.map((node) => [node.key, canonical.canonicalJson(node)]))
+  const right = new Map(b.nodes.map((node) => [node.key, canonical.canonicalJson(node)]))
+  return {
+    added: [...right.keys()].filter((key) => !left.has(key)),
+    removed: [...left.keys()].filter((key) => !right.has(key)),
+    changed: [...right.keys()].filter((key) => left.has(key) && left.get(key) !== right.get(key))
+  }
+}
