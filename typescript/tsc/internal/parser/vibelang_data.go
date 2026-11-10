@@ -79,6 +79,15 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 	p.nextToken() // data
 	name := p.parseBindingIdentifier()
 	typeParameters := p.parseTypeParameters()
+	if typeParameters != nil && len(typeParameters.Nodes) == 0 {
+		// Appendix A: DataDeclaration takes TypeScript's TypeParameters, whose
+		// list has at least one TypeParameter. The checker reports TS1098 on a
+		// class; a data declaration lowers to a type alias, which TypeScript
+		// leaves unchecked, so the parser reports it with the checker's range.
+		start := typeParameters.Pos() - len("<")
+		end := scanner.SkipTrivia(p.sourceText, typeParameters.End()) + len(">")
+		p.parseErrorAtRange(core.NewTextRange(start, end), diagnostics.Type_parameter_list_cannot_be_empty)
+	}
 	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: VibeSyntaxData, Head: core.NewTextRange(keyword.Pos(), name.End()), Ambient: p.isVibeLangAmbientService(modifiers)}
 	bodyStart := p.nodePos()
 	var variants []*ast.Node

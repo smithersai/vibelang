@@ -1,0 +1,5 @@
+// expect: TS1098
+// A data declaration's type parameter list needs a type parameter.
+data Box<> { Value { value: number } }
+export data Pair< > { Both }
+export {}

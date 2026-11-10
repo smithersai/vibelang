@@ -1074,8 +1074,11 @@ the compiler still rejects them with `TS1098`.
 A data declaration is not one of those two. `DataDeclaration` takes
 TypeScript's `TypeParameters`, whose list needs a `TypeParameter`, and a
 class, an error or a service with `<>` reports `TS1098`. A data declaration
-with `<>` compiles with no diagnostic, so `data D<> { Value { value: number } }`
-remains pending under `admission:data-empty-type-parameters`.
+with `<>` used to compile with no diagnostic: it lowers to a type alias, and
+TypeScript leaves an alias's empty list unchecked. The parser now reports
+`TS1098` on the data declaration's list itself, with the checker's range, so
+`data D<> { Value { value: number } }` is rejected and
+`admission:data-empty-type-parameters` is no longer pending.
 
 Another case mutation passed a producer to `Effect.gen` and left an empty
 `const` line in its body. A producer given to a native generator API

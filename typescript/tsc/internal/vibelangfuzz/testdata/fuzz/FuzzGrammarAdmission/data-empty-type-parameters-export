@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:data-empty-type-parameters-export\nexport data D< > { Value { value: number } }")

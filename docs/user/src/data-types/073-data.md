@@ -86,7 +86,7 @@ Keep `data` and its name on the same line. The type parameters and opening brace
 
 At a statement's start, an assertion on a binding named `data` needs parentheses when `as` or `satisfies` is followed by a generic function type on a later line. Parenthesize the original expression to preserve its behavior.
 
-A data type takes up to four unconstrained type parameters without defaults, which the constructors infer from their arguments. A default such as `data Box<A = string>` reports `EK2803`; put defaults on a separate type alias. A recursive data type, such as `data Tree<A> { Leaf { value: A }; Node { left: Tree<A>; right: Tree<A> } }`, works too.
+A data type takes up to four unconstrained type parameters without defaults, which the constructors infer from their arguments. A default such as `data Box<A = string>` reports `EK2803`; put defaults on a separate type alias. A recursive data type, such as `data Tree<A> { Leaf { value: A }; Node { left: Tree<A>; right: Tree<A> } }`, works too. An empty type parameter list, `data D<> { … }`, reports `TS1098`, as a class does; write a type parameter or remove the angle brackets.
 
 ## What data declares
 

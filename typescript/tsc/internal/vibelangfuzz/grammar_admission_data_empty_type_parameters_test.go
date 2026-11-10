@@ -7,8 +7,8 @@ import (
 )
 
 // DataDeclaration takes TypeScript's TypeParameters, whose list needs one
-// TypeParameter. A class, an error or a service with `<>` reports TS1098; a
-// data declaration reports nothing.
+// TypeParameter. A data declaration with `<>` reports TS1098, as a class, an
+// error or a service does.
 const grammarDataEmptyTypeParametersQuote = `DataDeclaration = DataStart TypeParameters? "{" (Variant (Separator Variant)* Separator?)? "}"`
 
 func TestGrammarAdmissionDataEmptyTypeParametersQuoted(t *testing.T) {
@@ -68,11 +68,10 @@ func TestGrammarAdmissionDataEmptyTypeParametersRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarDataEmptyTypeParametersGaps {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			if grammarAdmissionVerdict(t, w, source) {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("an empty data type parameter list is an admission gap: %v", r.Diagnostics)
 			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 	for _, source := range []string{

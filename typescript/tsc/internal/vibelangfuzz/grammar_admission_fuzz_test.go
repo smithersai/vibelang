@@ -321,6 +321,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"try-in-hatch-promise-shapes", grammarTryInHatchCaseWitness},
 	{"data-empty-type-parameters", grammarDataEmptyTypeParametersWitness},
 	{"data-empty-type-parameters-campaign", grammarDataEmptyTypeParametersCampaign},
+	{"data-empty-type-parameters-export", "export data D< > { Value { value: number } }"},
 	{"producer-cover-grammar", grammarProducerCoverWitness},
 	{"producer-cover-grammar-campaign", grammarProducerCoverCampaign},
 	{"try-match-statement", grammarTryMatchStatementWitness},

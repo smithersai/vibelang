@@ -1,0 +1,2 @@
+main.vibe(3,9): error TS1098
+main.vibe(4,17): error TS1098
