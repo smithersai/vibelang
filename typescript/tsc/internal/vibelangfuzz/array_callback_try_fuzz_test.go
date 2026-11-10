@@ -141,8 +141,8 @@ func TestArrayCallbackTry(t *testing.T) {
 }
 
 func FuzzArrayCallbackTry(f *testing.F) {
-	assertArrayCallbackTryRules(f)
 	startShortBudget(f)
+	assertArrayCallbackTryRules(f)
 	keys := arrayCallbackKeys()
 	for _, key := range keys {
 		f.Add(key, uint8(2))
