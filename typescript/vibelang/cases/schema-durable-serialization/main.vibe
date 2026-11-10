@@ -1,0 +1,12 @@
+// VIP-44's schema mapping is usable independently of durable declaration syntax.
+export schema Big = bigint
+export schema Missing = undefined
+export schema When = Date
+export schema Address = URL
+export schema Pattern = RegExp
+export schema Bytes = Uint8Array
+export schema Failure = Error
+export schema Tags = ReadonlySet<string>
+export schema Counts = ReadonlyMap<string, bigint>
+export schema Nested { readonly dates: ReadonlySet<Date>; readonly values: ReadonlyMap<string, ReadonlySet<bigint>> }
+export schema error Declined { readonly at: Date; readonly reason: string }

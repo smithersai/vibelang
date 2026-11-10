@@ -282,6 +282,8 @@ Schema aliases use the same mappings inside functions and namespaces. An unsuppo
 
 These mappings compose: `ReadonlyArray<ReadonlyMap<string, number>>` maps to `Schema.Array(Schema.ReadonlyMap(Schema.String, Schema.Number))`, and `ReadonlySet<Record<K, V>>` maps to `Schema.ReadonlySet` of the `Record`'s Schema. `Readonly<T>` maps only a `Record`, so `Readonly<ReadonlyMap<K, V>>` reports `EK2109`; write `ReadonlyMap<K, V>`. A `ReadonlyMap` key is any schema, so `ReadonlyMap<Date, number>` maps to `Schema.ReadonlyMap(Schema.Date, Schema.Number)`; a `Record` key must satisfy Effect's `Schema.Record.Key`, so `Record<Date, number>` reports `TS2345`, as its Effect TypeScript twin does.
 
+Effect's ordinary `Rpc.make` API takes explicit Schemas: pass the payload, success and error Schemas explicitly. A `schema` declaration supplies those Schema values, including the mapped types above. VibeLang has no separate `Rpc` declaration or `call` form that derives Schemas from a function signature.
+
 Hover and definition queries for mapped generic types use the written TypeScript binding, including type-only imports. The same queries work in schema aliases, functions and namespaces.
 
 Older compiler versions lowered unsupported keyword types in function-local or namespace `schema` aliases to `Schema.Unknown`. These aliases now report `EK2109`. Write `Schema.Unknown` explicitly when preserving that earlier codec and decoded type. Select a different schema explicitly when changing that contract.

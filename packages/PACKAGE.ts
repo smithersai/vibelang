@@ -101,6 +101,8 @@ const compilerTest = (shard: number) => S.Shell.Test({
     S.file("vite/src/vibe-directive.js"), S.file("unplugin/src/vibe-directive.js"),
     S.file("//typescript/vibelang/lsp-format-shape.mjs"), S.file("//typescript/vibelang/lsp-connection.mjs"),
     S.file("//typescript/vibelang/lsp-framing.mjs"),
+    S.file("//docs/design/vips/0044-durable-values.md"),
+    S.glob("//typescript/vibelang/cases/schema-durable-serialization/**"),
     S.file("//typescript/vibelang/cases/tsforms-schemas/main.vibe"),
     S.file("//typescript/vibelang/cases/tsforms-schemas-fixed/main.vibe"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
