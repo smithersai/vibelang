@@ -19,6 +19,7 @@ func checkServiceNamelessMembers(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsClassDeclaration(node) && declarationWord(node) == "service" {
+			coverServiceSuperDerivation(c, node)
 			for _, member := range node.Members() {
 				var what string
 				switch member.Kind {
@@ -49,4 +50,25 @@ func checkServiceNamelessMembers(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// coverServiceSuperDerivation hides TS2335 ('super' can only be referenced in
+// a derived class) for each super that refers to service. A service's twin
+// extends Context.Service, so TypeScript accepts super there; only the checked
+// class lacks the heritage clause. Every other super error, and any super of a
+// nested class, keeps its native code.
+func coverServiceSuperDerivation(c *checker.Checker, service *ast.Node) {
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsClassLike(node) {
+			return false
+		}
+		if node.Kind == ast.KindSuperKeyword {
+			coverExactErrorCodes(c, node, 2335)
+		}
+		return node.ForEachChild(visit)
+	}
+	for _, member := range service.Members() {
+		member.ForEachChild(visit)
+	}
 }
