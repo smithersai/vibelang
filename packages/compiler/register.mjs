@@ -3,7 +3,7 @@ import { rememberSourceMap } from "./source-map-frames.mjs"
 import { loaderMiss, loaderScope } from "./loader-scope.mjs"
 import { extensionlessImport } from "./relative-imports.mjs"
 import { sourceOfEmitted } from "./emitted-js.mjs"
-import { diagnosticsForFile } from "./diagnostics.mjs"
+import { diagnosticsForFile, reportWarnings } from "./diagnostics.mjs"
 import { fileHasVibeDirective } from "./source.mjs"
 // node --import vibelang/register: Node loads .vibe and .vibex modules from source.
 // A .vibex module runs when its project's jsx option emits JavaScript, such as
@@ -18,7 +18,8 @@ import { fileHasVibeDirective } from "./source.mjs"
 // its own package's tsconfig.json. A compile's result is cached on disk (vibelang/project), so
 // a later process reuses it while the project's inputs are unchanged. A failed
 // compile throws an Error with code ERR_VIBELANG_COMPILE and the diagnostics;
-// a module the project does not include, ERR_VIBELANG_PROJECT. Source maps are
+// a module the project does not include, ERR_VIBELANG_PROJECT. A warning the
+// build prints but does not fail on goes to standard error once per compile. Source maps are
 // turned on, so a stack frame names the .vibe line. A module declaration of a
 // .vibe module is a module of its own, main.vibe.text.js beside main.vibe for
 // module text (D403); its URL names that file, which is not on disk, and its
@@ -146,6 +147,7 @@ function emitted(file) {
     }
     throw failure("ERR_VIBELANG_PROJECT", `vibelang/register: ${project} does not include ${file}; set VIBELANG_PROJECT to a tsconfig that does`)
   }
+  reportWarnings(result, file, (text) => process.stderr.write(`vibelang/register: ${text}\n`))
   return output
 }
 

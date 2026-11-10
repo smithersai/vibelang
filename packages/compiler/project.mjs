@@ -214,10 +214,7 @@ function projectProgram({ project, root, compiler }) {
 }
 
 /** Formats a diagnostic as `file:line:column - error TS2322: text`. */
-export function formatDiagnostic(diagnostic) {
-  const where = diagnostic.file ? `${diagnostic.file}:${diagnostic.line}:${diagnostic.column} - ` : ""
-  return `${where}${diagnostic.category} ${diagnostic.code}: ${diagnostic.text}`
-}
+export { formatDiagnostic } from "./diagnostics.mjs"
 
 // Emit from the filesystem root because a project may include sources above
 // its directory. Public project results check every input; loader compiles

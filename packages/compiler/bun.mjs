@@ -5,7 +5,7 @@ import { inlineSourceMap } from "./inline-source-map.mjs"
 import { extensionlessImport, pathSpecifier } from "./relative-imports.mjs"
 import { reexportOf, sourceOfEmitted } from "./emitted-js.mjs"
 import { aliasImport } from "./paths-imports.mjs"
-import { diagnosticsForFile } from "./diagnostics.mjs"
+import { diagnosticsForFile, reportWarnings } from "./diagnostics.mjs"
 // bun --preload vibelang/bun: Bun loads .vibe modules from source.
 //
 // The Bun counterpart of vibelang/register, for `bun run`, `bun test`, and a
@@ -138,6 +138,7 @@ function emitted(file) {
   if (output === undefined) {
     throw new Error(`vibelang/bun: ${project} does not include ${file}; set VIBELANG_PROJECT to a tsconfig that does`)
   }
+  reportWarnings(result, file, (text) => process.stderr.write(`vibelang/bun: ${text}\n`))
   sourceMaps.set(file, output.map)
   return output
 }

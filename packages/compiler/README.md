@@ -107,7 +107,10 @@ the loader looks for the tsconfig of the package that holds it, as
 by both a TypeScript and a `.vibe` module loads once. A `module` declaration in
 `main.vibe` is a module of its own, `main.vibe.text.js` beside it, which is not
 on disk; the hook serves it from the same compile. Errors in the loaded source and project-wide errors are thrown at the import;
-unrelated source diagnostics do not block a clean module. The hook turns on Node's source-map support,
+unrelated source diagnostics do not block a clean module. Warnings in the loaded source and project-wide ones,
+including an Effect lint error that `ignoreEffectErrorsInTscExitCode` keeps out
+of the build's exit status, print once per compile on standard error,
+prefixed `vibelang/register:` (`vibelang/bun:` under Bun), and the module loads. The hook turns on Node's source-map support,
 so a stack trace names `.vibe` lines. It uses `module.registerHooks` (added in Node 22.15).
 Use Node 22.22.3 (22.x) or Node 24.11.1 or later for the synchronous loader fixes
 needed by the runtime bridge. `VIBELANG_REGISTER_DEBUG=1` prints each project's
