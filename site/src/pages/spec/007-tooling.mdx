@@ -353,7 +353,7 @@ Use a listed service layer only when the pinned legacy compiler selected it; pre
 
 ### Retired layer declarations
 
-Legacy `layer Live: Service { … }` has no declaration production. Its transitional `EK2121` is an error naming `vibelang --fix`. The repair emits `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit. A captured or type-only `Layer` binding prevents an automatic repair. Lowering of rejected source remains available only for migration and its equivalence checks.
+Legacy `layer Live: Service { … }` has no declaration production. Its transitional `EK2121` is an error. Write `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit. Retain a captured or type-only `Layer` binding when changing the source. Lowering of rejected source remains available only for migration and its equivalence checks.
 
 ### Selecting ordinary fix files
 
