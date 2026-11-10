@@ -7192,6 +7192,7 @@ typescript/vibelang/cases/retired-await-async.fail/main.vibe:8:24 lambda choice 
 typescript/vibelang/cases/retired-await-async.fail/main.vibe:8:45 byname program table
 typescript/vibelang/cases/retired-await-async.fail/main.vibe:9:23 lambda choice fallback
 typescript/vibelang/cases/retired-await-async.fail/main.vibe:9:43 byname program table
+typescript/vibelang/cases/retired-layer-guidance.fail/main.vibe:20:53 byname program table
 typescript/vibelang/cases/retry-effectful-predicate/main.vibe:13:14 lambda effectFn keyword
 typescript/vibelang/cases/retry-effectful-predicate/main.vibe:18:6 lambda effectFn keyword
 typescript/vibelang/cases/retry-effectful-predicate/main.vibe:27:17 lambda effectFn keyword

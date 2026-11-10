@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "type": "module",
+  "name": "retired-layer-guidance",
+  "dependencies": {
+    "effect": "4.1.1",
+    "vibelang-runtime": "0.0.11"
+  }
+}

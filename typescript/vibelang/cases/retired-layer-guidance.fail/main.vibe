@@ -1,0 +1,21 @@
+// expect: EK2121
+// rule-evidence: docs/design/src/007-tooling.md#retired-layer-declarations | Its transitional `EK2121` is an error.
+// rule-evidence: docs/design/src/007-tooling.md#retired-layer-declarations | Write `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit.
+// rule-evidence: docs/design/src/007-tooling.md#retired-layer-declarations | Retain a captured or type-only `Layer` binding when changing the source.
+import * as NativeLayer from "effect/Layer"
+
+service Counter {
+  static readonly key = "test/RetiredLayerGuidance"
+  readonly value: number
+}
+
+type Layer = { readonly retained: true }
+const Layer: Layer = { retained: true }
+
+layer Legacy: Counter {
+  readonly value = 1
+}
+
+export const eager = NativeLayer.succeed(Counter, { value: 1 })
+export const deferred = NativeLayer.effect(Counter, Effect.succeed({ value: 1 }))
+export const captured: Layer = Layer
