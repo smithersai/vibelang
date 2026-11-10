@@ -101,13 +101,12 @@ export const make = Effect.gen(function*() {
     sql<RunRecord>`SELECT run, workflow, payload, status, result, parent, owner, fence,
       created_at AS "createdAt", updated_at AS "updatedAt" FROM durable_runs WHERE run = ${run}`
 
-  // Reads the run's fence, locking its row where the database can.
+  // Reads the run's fence through a write, so the transaction holds the
+  // write lock before it reads anything: SQLite's database lock, PostgreSQL's
+  // row lock. Two engines then cannot interleave a read and an append.
   const lockRun = (run: string) =>
     Effect.flatMap(
-      sql.onDialectOrElse({
-        pg: () => sql<{ readonly fence: number | string }>`SELECT fence FROM durable_runs WHERE run = ${run} FOR UPDATE`,
-        orElse: () => sql<{ readonly fence: number | string }>`SELECT fence FROM durable_runs WHERE run = ${run}`
-      }),
+      sql<{ readonly fence: number | string }>`UPDATE durable_runs SET fence = fence WHERE run = ${run} RETURNING fence`,
       (rows) => rows.length === 0 ? Effect.fail(new RunNotFound({ run })) : Effect.succeed(Number(rows[0]!.fence))
     )
 
@@ -170,15 +169,21 @@ export const make = Effect.gen(function*() {
     append: (run, events, at) =>
       die(sql.withTransaction(Effect.andThen(lockRun(run), push(run, events, at)))),
     get: (run) => die(Effect.map(selectRun(run), (rows) => Option.map(Option.fromNullishOr(rows[0]), toRow))),
-    list: (filter: RunFilter) =>
-      die(Effect.map(
+    list: (filter: RunFilter) => {
+      // Only the filters that are set become conditions: a parameter used only
+      // in IS NULL has no type PostgreSQL can infer.
+      const conditions = [
+        ...(filter.status === undefined ? [] : [sql`status = ${filter.status}`]),
+        ...(filter.workflow === undefined ? [] : [sql`workflow = ${filter.workflow}`])
+      ]
+      return die(Effect.map(
         sql<RunRecord>`SELECT run, workflow, payload, status, result, parent, owner, fence,
           created_at AS "createdAt", updated_at AS "updatedAt" FROM durable_runs
-          WHERE (${filter.status ?? null} IS NULL OR status = ${filter.status ?? null})
-            AND (${filter.workflow ?? null} IS NULL OR workflow = ${filter.workflow ?? null})
+          WHERE ${sql.and(conditions)}
           ORDER BY created_at, run`,
         (rows) => rows.map(toRow)
-      )),
+      ))
+    },
     entries: (run, range) =>
       die(Effect.map(
         sql<EntryRecord>`SELECT run, seq, event_type AS "eventType", payload, at FROM durable_journal

@@ -637,11 +637,15 @@ export const fork = (at: Position): Effect.Effect<{ readonly run: string }, Time
 export const rewind = (at: Position): Effect.Effect<void, TimeTravelError, Durable> =>
   Effect.gen(function*() {
     const durable = yield* Durable
+    const store = durable.internals.store
+    yield* journalOf(durable, at.run)
+    if (durable.internals.isLive(at.run)) return yield* refuse("busy", `Run ${at.run} is running`)
+    // Claim first, so no other engine appends a step between the check and the truncate.
+    yield* Effect.orDie(store.claim(at.run, durable.internals.owner, yield* Clock.currentTimeMillis))
     const { entries } = yield* journalOf(durable, at.run)
     if (!Number.isInteger(at.seq) || at.seq < 2 || at.seq > entries.length + 1) {
       return yield* refuse("invalid", `A rewind of run ${at.run} keeps entries before 2 to ${entries.length + 1}, not ${at.seq}`)
     }
-    if (durable.internals.isLive(at.run)) return yield* refuse("busy", `Run ${at.run} is running`)
     for (const entry of entries) {
       if (entry.seq < at.seq || entry.eventType !== "StepStarted") continue
       const { step, tier } = entry.payload as { readonly step: string; readonly tier?: Tier }
@@ -650,9 +654,8 @@ export const rewind = (at: Position): Effect.Effect<void, TimeTravelError, Durab
         return yield* refuse("compensation_failed", `Step ${step} at ${entry.seq} is compensable, and compensation is not built`)
       }
     }
-    const store = durable.internals.store
     const now = yield* Clock.currentTimeMillis
-    durable.internals.evict(at.run)
+    yield* durable.internals.evict(at.run)
     const fence = yield* Effect.orDie(store.truncate(at.run, at.seq, durable.internals.owner, now))
     yield* Effect.orDie(store.commit(at.run, { fence, events: [{ eventType: "RunRewound", payload: { to: at.seq } }] }, now))
   })

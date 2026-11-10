@@ -108,6 +108,8 @@ interface Execution {
   readonly deferreds: Map<string, unknown>
   /** Durable clock name to the time it wakes, in epoch milliseconds. */
   readonly clocks: Map<string, number>
+  /** Serializes resumes, which read the store before they start the body. */
+  readonly lock: Semaphore.Semaphore
 }
 
 interface Registered {
@@ -122,8 +124,8 @@ export interface EngineInternals {
   readonly owner: string
   /** True while this engine is driving the run. */
   readonly isLive: (run: string) => boolean
-  /** Forgets a run that is not live, so the next execute reloads it from the store. */
-  readonly evict: (run: string) => void
+  /** Forgets a run that is not live, and its clocks, so the next execute reloads it from the store. */
+  readonly evict: (run: string) => Effect.Effect<void>
   readonly workflow: (tag: string) => Workflow.Any | undefined
 }
 
@@ -152,6 +154,7 @@ export const make = (store: Store) =>
     const executions = new Map<string, Execution>()
     const deferredState = WorkflowEngine.makeDeferredState()
     const loading = Semaphore.makeUnsafe(1)
+    const clocks = yield* FiberMap.make<string>()
     const now = Clock.currentTimeMillis
 
     const commit = (state: Execution, run: string, events: ReadonlyArray<NewEvent>, update?: { status: RunStatus; result?: unknown }) =>
@@ -162,13 +165,24 @@ export const make = (store: Store) =>
     const persistResult = (state: Execution, run: string, result: Workflow.Result<unknown, unknown>) => {
       const status = statusOf(result)
       if (result._tag === "Suspended") return commit(state, run, [{ eventType: "RunSuspended", payload: {} }], { status })
+      refuseRedacted(result.exit, `The result of workflow ${state.workflow._tag}`)
       const encoded = Schema.encodeSync(resultCodec(state.workflow))(result)
       return commit(state, run, [{ eventType: "RunCompleted", payload: { status, result: encoded } }], { status, result: encoded })
     }
 
-    const resume: (executionId: string, mode: ResumeMode) => Effect.Effect<void> = Effect.fnUntraced(function*(executionId: string, mode: ResumeMode) {
-      const state = executions.get(executionId)
-      if (!state) return
+    const resume = (executionId: string, mode: ResumeMode): Effect.Effect<void> =>
+      Effect.suspend(() => {
+        const state = executions.get(executionId)
+        // Two resumes must not both start the body: the store read below
+        // yields, so each run's resumes take turns.
+        return state ? state.lock.withPermits(1)(resumeLocked(state, executionId, mode)) : Effect.void
+      })
+
+    const resumeLocked: (state: Execution, executionId: string, mode: ResumeMode) => Effect.Effect<void> = Effect.fnUntraced(function*(
+      state: Execution,
+      executionId: string,
+      mode: ResumeMode
+    ) {
       const exit = state.fiber?.pollUnsafe()
       if (exit && exit._tag === "Success" && isUnwakeable(exit.value, mode)) {
         return
@@ -232,21 +246,23 @@ export const make = (store: Store) =>
           if (payload === undefined) return undefined
           row = yield* store.open({ run: executionId, workflow: entry.workflow._tag, payload: encodePayload(entry.workflow, payload), parent, at })
         }
-        const fence = yield* Effect.orDie(store.claim(executionId, owner, at))
         const entries = yield* store.entries(executionId)
         // The body sees the stored snapshot, so the hash covers exactly what it reads.
         const snapshot = decodePayload(entry.workflow, row.payload)
-        // A changed plan is refused, not rerun: a new run records its plan's
-        // digest, and a resume must build the same one.
+        // A changed plan is refused, not rerun: a run records its plan's digest
+        // before its first step, and a resume must build the same one. The
+        // check comes before the claim, so a refused engine takes nothing.
         const current = yield* planDigest(entry.workflow, snapshot)
         const recorded = entries.find((entry) => entry.eventType === "PlanRecorded")
-        if (recorded === undefined && entries.length === 1) {
-          if (current !== null) {
-            yield* Effect.orDie(store.commit(executionId, { fence, events: [{ eventType: "PlanRecorded", payload: { digest: current } }] }, at))
-          }
-        } else {
+        const started = entries.some((entry) => entry.eventType === "StepStarted")
+        const record = recorded === undefined && !started && current !== null
+        if (recorded !== undefined || started) {
           const digest = recorded === undefined ? null : (recorded.payload as { readonly digest: string }).digest
           if (digest !== current) return yield* Effect.die(new PlanChanged({ run: executionId, recorded: digest, current }))
+        }
+        const fence = yield* Effect.orDie(store.claim(executionId, owner, at))
+        if (record) {
+          yield* Effect.orDie(store.commit(executionId, { fence, events: [{ eventType: "PlanRecorded", payload: { digest: current } }] }, at))
         }
         const steps = new Map<string, unknown>()
         const deferreds = new Map<string, unknown>()
@@ -267,16 +283,41 @@ export const make = (store: Store) =>
           fence,
           steps,
           deferreds,
-          clocks
+          clocks,
+          lock: Semaphore.makeUnsafe(1)
         }
         executions.set(executionId, state)
         return state
       })
 
+    const isLive = (state: Execution) => state.fiber !== undefined && state.fiber.pollUnsafe() === undefined
+
+    /**
+     * This engine's state for a run, unless another engine claimed the run
+     * since: then the state is stale, and it is dropped so the run reloads.
+     */
+    const current = (executionId: string) =>
+      Effect.gen(function*() {
+        const known = executions.get(executionId)
+        if (!known || isLive(known)) return known
+        const row = yield* store.get(executionId)
+        if (Option.isSome(row) && row.value.fence === known.fence) return known
+        yield* forget(executionId)
+        return undefined
+      })
+
+    const forget = (executionId: string) =>
+      Effect.gen(function*() {
+        const state = executions.get(executionId)
+        if (!state) return
+        executions.delete(executionId)
+        for (const name of state.clocks.keys()) yield* FiberMap.remove(clocks, `${executionId}/${name}`)
+      })
+
     /** This engine's state for a stored, unfinished run, loading it when needed. */
     const ensure = (executionId: string) =>
       loading.withPermits(1)(Effect.gen(function*() {
-        const known = executions.get(executionId)
+        const known = yield* current(executionId)
         if (known) return known
         const row = yield* store.get(executionId)
         if (Option.isNone(row) || isTerminal(row.value.status)) return undefined
@@ -286,9 +327,7 @@ export const make = (store: Store) =>
         return state
       }))
 
-    const clocks = yield* FiberMap.make<string>()
-
-    const engine: WorkflowEngine.WorkflowEngine["Service"] = WorkflowEngine.makeUnsafe({
+    const base: WorkflowEngine.WorkflowEngine["Service"] = WorkflowEngine.makeUnsafe({
       register: Effect.fnUntraced(function*(workflow, execute) {
         workflows.set(workflow._tag, { workflow, execute: execute as Registered["execute"], scope: yield* Effect.scope })
       }),
@@ -298,7 +337,7 @@ export const make = (store: Store) =>
           return yield* Effect.die(`Workflow ${workflow._tag} is not registered`)
         }
         const started = yield* loading.withPermits(1)(Effect.gen(function*() {
-          const known = executions.get(options.executionId)
+          const known = yield* current(options.executionId)
           if (known) return { state: known, stored: undefined }
           const row = yield* store.get(options.executionId)
           if (Option.isSome(row) && isTerminal(row.value.status)) return { state: undefined, stored: row.value }
@@ -410,7 +449,8 @@ export const make = (store: Store) =>
           yield* Effect.orDie(Effect.flatMap(now, (at) =>
             store.append(options.executionId, [{ eventType: "DeferredDone", payload: { name: options.deferredName, exit } }], at)
           ))
-          if (!state) return
+          // A concurrent signal may have won; the journal keeps the first.
+          if (!state || state.deferreds.has(options.deferredName)) return
           state.deferreds.set(options.deferredName, exit)
           const wake = Effect.andThen(
             deferredState.deferredDone(options.executionId, options.deferredName),
@@ -449,6 +489,17 @@ export const make = (store: Store) =>
         })
     } as WorkflowEngine.Encoded)
 
+    // Effect encodes a deferred's exit before the engine sees it, and its JSON
+    // codec writes a Redacted secret as plain text, so refuse one first.
+    const engine: WorkflowEngine.WorkflowEngine["Service"] = {
+      ...base,
+      deferredDone: (deferred, options) =>
+        Effect.andThen(
+          Effect.sync(() => refuseRedacted(options.exit, `The result of deferred ${options.deferredName}`)),
+          base.deferredDone(deferred, options)
+        )
+    }
+
     const internals: EngineInternals = {
       store,
       owner,
@@ -456,10 +507,11 @@ export const make = (store: Store) =>
         const state = executions.get(run)
         return state !== undefined && state.fiber !== undefined && state.fiber.pollUnsafe() === undefined
       },
-      evict: (run) => {
-        const state = executions.get(run)
-        if (state && !(state.fiber !== undefined && state.fiber.pollUnsafe() === undefined)) executions.delete(run)
-      },
+      evict: (run) =>
+        Effect.suspend(() => {
+          const state = executions.get(run)
+          return state && !isLive(state) ? forget(run) : Effect.void
+        }),
       workflow: (tag) => workflows.get(tag)?.workflow
     }
     return { engine, internals } as const
