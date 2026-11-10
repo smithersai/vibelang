@@ -384,6 +384,8 @@ An object spread that copies `Effect.try` or `Effect.tryPromise` retains its thr
 
 Native `bind` accessed as `["bind"]`, a constant key or an escaped string key preserves the `Effect.try` and `Effect.tryPromise` callback contract, as `.bind` does. A local method named `bind` keeps its own callback contract.
 
+`const { api: { try: wrap } } = { api: Effect }` and `const [wrap] = [Effect.try]` retain the wrapper's callback contract. Nested object and array bindings and written root types preserve the selected signature; an extracted local API keeps its own callback contract.
+
 A TypeScript `as` or angle-bracket assertion, `satisfies`, or non-null assertion around an inline thunk or options object keeps the enclosing wrapper’s contract. The same applies to an inline single-element argument array for native `apply`. A function stored separately keeps its own source scope.
 
 The historical empty wrapper `trusted(predicate, [])` is retired with `EK0407`; passing a foreign predicate as its input does not also produce `EK0402`. Its callable type follows TypeScript, including generic predicates and explicitly annotated assertion targets. To keep predicate or assertion narrowing at a native boundary, put the guarded operation in a TypeScript function that returns an Effect, then call it with `try` from effect code. TypeScript requires an explicitly annotated assertion-call target (`TS2775`); an unannotated `const` wrapper cannot narrow in either language.

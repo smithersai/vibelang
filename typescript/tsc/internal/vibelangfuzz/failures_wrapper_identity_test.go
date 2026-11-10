@@ -36,7 +36,7 @@ func wrapperIdentityKeys() []string {
 			}
 		}
 	}
-	for _, binding := range []string{"element-bind", "key-bind", "fake-element-bind"} {
+	for _, binding := range []string{"element-bind", "key-bind", "fake-element-bind", "binding-nested", "binding-deep", "binding-array", "binding-object-array", "binding-array-object", "binding-written", "binding-fake", "binding-mixed"} {
 		for _, api := range []string{"try", "tryPromise"} {
 			for _, contract := range []string{"RangeError", "never", "builtin"} {
 				keys = append(keys, binding+":"+api+":"+contract)
@@ -130,6 +130,25 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 		if binding == "fake-element-bind" {
 			declaration = "const local={bind(_this:undefined){return Fake." + api + "}}\nconst Effect={" + api + ":local[\"bind\"](undefined)}\n"
 		}
+	case "binding-nested", "binding-deep", "binding-array", "binding-object-array", "binding-array-object", "binding-written", "binding-fake", "binding-mixed":
+		imports += "import {Effect as Original} from \"effect\"\n"
+		declaration = "const {box:{Effect}}={box:{Effect:Original}}\n"
+		switch binding {
+		case "binding-deep":
+			declaration = "const {one:{two:{Effect}}}={one:{two:{Effect:Original}}}\n"
+		case "binding-array":
+			declaration = "const [Effect]=[Original]\n"
+		case "binding-object-array":
+			declaration = "const {items:[Effect]}={items:[Original]}\n"
+		case "binding-array-object":
+			declaration = "const [{Effect}]=[{Effect:Original}]\n"
+		case "binding-written":
+			declaration = "const {box:{Effect}}:{box:{Effect:typeof Original}}={box:{Effect:Original}}\n"
+		case "binding-fake":
+			declaration = "const {box:{Effect}}={box:{Effect:Fake}}\n"
+		case "binding-mixed":
+			declaration = "declare const flag:boolean\nconst {box:{Effect}}={box:{Effect:flag?Fake:Original}}\n"
+		}
 	case "constant":
 		declaration = "const Effect=Fake\n"
 	case "imported":
@@ -170,7 +189,7 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 	if (binding == "constant" || binding == "parameter" || binding == "imported" || binding == "forbidding" || binding == "sync-alias" || binding == "promise-alias" || binding == "mixed-sync-alias" || binding == "mixed-promise-alias" || binding == "spread-overwritten-unsafe" || binding == "spread-mixed") && contract != "never" {
 		want = 1
 	}
-	if binding == "fake-element-bind" && contract != "never" {
+	if (binding == "fake-element-bind" || binding == "binding-fake" || binding == "binding-mixed") && contract != "never" {
 		want = 1
 	}
 	var errors []string

@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -293,6 +294,21 @@ func isAdmittingTryValue(c *checker.Checker, expression *ast.Node, properties []
 			return false
 		}
 	}
+	if ast.IsArrayLiteralExpression(expression) && len(properties) != 0 {
+		position, err := strconv.Atoi(properties[0])
+		if err != nil || position < 0 {
+			return false
+		}
+		for index, element := range expression.AsArrayLiteralExpression().Elements.Nodes {
+			if ast.IsSpreadElement(element) {
+				return false
+			}
+			if index == position {
+				return isAdmittingTryValue(c, element, properties[1:], seen)
+			}
+		}
+		return false
+	}
 	if ast.IsObjectLiteralExpression(expression) && len(properties) != 0 {
 		return isAdmittingTryObjectProperty(c, expression, properties, seen)
 	}
@@ -349,17 +365,28 @@ func isAdmittingTryValue(c *checker.Checker, expression *ast.Node, properties []
 				}
 				if ast.IsBindingElement(decl) {
 					root := ast.GetRootDeclaration(decl)
-					if !ast.IsVariableDeclaration(root) || !ast.IsVarConst(root) || root.Type() != nil || root.Initializer() == nil || decl.Parent.Parent != root {
+					if !ast.IsVariableDeclaration(root) || !ast.IsVarConst(root) || root.Initializer() == nil {
 						return false
 					}
-					name := decl.AsBindingElement().PropertyName
-					if name == nil {
-						name = decl.Name()
+					// Preserve the existing direct object-binding contract, including
+					// defaults whose source property already identifies the wrapper.
+					if root.Type() == nil && decl.Parent.Parent == root && ast.IsObjectBindingPattern(decl.Parent) {
+						name := decl.AsBindingElement().PropertyName
+						if name == nil {
+							name = decl.Name()
+						}
+						if ast.IsIdentifier(name) || ast.IsStringLiteral(name) {
+							return isAdmittingTryValue(c, root.Initializer(), append([]string{name.Text()}, properties...), seen)
+						}
 					}
-					if !ast.IsIdentifier(name) && !ast.IsStringLiteral(name) {
+					path, ok := admittingTryBindingPath(c, decl, root)
+					if !ok {
 						return false
 					}
-					return isAdmittingTryValue(c, root.Initializer(), append([]string{name.Text()}, properties...), seen)
+					if root.Type() != nil {
+						return isAdmittingTryType(c, c.GetTypeAtLocation(expression), properties, seen)
+					}
+					return isAdmittingTryValue(c, root.Initializer(), append(path, properties...), seen)
 				}
 			}
 		}
@@ -657,4 +684,44 @@ func typeListText(c *checker.Checker, types []*checker.Type) string {
 		return "never"
 	}
 	return c.TypeToString(c.GetUnionType(types))
+}
+
+// A nested constant binding follows its object keys and array positions back
+// to the root initializer. Defaults and rest bindings can select other values.
+func admittingTryBindingPath(c *checker.Checker, binding, root *ast.Node) ([]string, bool) {
+	var path []string
+	for binding != root {
+		if !ast.IsBindingElement(binding) || binding.Initializer() != nil || binding.AsBindingElement().DotDotDotToken != nil {
+			return nil, false
+		}
+		pattern := binding.Parent
+		if pattern == nil {
+			return nil, false
+		}
+		key := ""
+		if ast.IsArrayBindingPattern(pattern) {
+			key = strconv.Itoa(slices.Index(pattern.AsBindingPattern().Elements.Nodes, binding))
+		} else if ast.IsObjectBindingPattern(pattern) {
+			name := binding.AsBindingElement().PropertyName
+			if name == nil {
+				name = binding.Name()
+			}
+			if ast.IsIdentifier(name) || ast.IsStringLiteral(name) || ast.IsNumericLiteral(name) {
+				key = name.Text()
+			} else if ast.IsComputedPropertyName(name) {
+				value := c.GetTypeAtLocation(name.AsComputedPropertyName().Expression)
+				if value == nil || !checker.IsTypeUsableAsPropertyName(value) {
+					return nil, false
+				}
+				key = checker.GetPropertyNameFromType(value)
+			} else {
+				return nil, false
+			}
+		} else {
+			return nil, false
+		}
+		path = append([]string{key}, path...)
+		binding = pattern.Parent
+	}
+	return path, true
 }

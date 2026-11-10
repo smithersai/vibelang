@@ -98,6 +98,8 @@ An object spread that copies `Effect.try` or `Effect.tryPromise` retains its thr
 
 Native `bind` accessed as `["bind"]`, a constant key or an escaped string key preserves the `Effect.try` and `Effect.tryPromise` callback contract, as `.bind` does. A local method named `bind` keeps its own callback contract.
 
+`const { api: { try: wrap } } = { api: Effect }` and `const [wrap] = [Effect.try]` retain the wrapper's callback contract. Nested object and array bindings and written root types preserve the selected signature; an extracted local API keeps its own callback contract.
+
 The native `Promise` executor admits calls that may throw: their exceptions reject the Promise. Parenthesized, aliased and property references to the native constructor, and a subclass's `super(...)` call, keep that executor contract. A user-defined constructor named `Promise` does not gain it. Nested source functions and explicit `throw` statements retain the ordinary plain-code checks.
 
 An explicit `super(...)` call also keeps its base constructor's `@rethrows` contract: a callback known to throw makes the call `EK0401`, even when the constructor declares `@throws {never}`. A native `try`/`catch` around the call, or one inside the callback that handles its exception, keeps the usual caught-call exemption.
