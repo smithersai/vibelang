@@ -21,6 +21,12 @@ func checkSchemaTypeMemberModifiers(c *checker.Checker, file *ast.SourceFile) {
 			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_0_modifier_cannot_appear_on_a_type_member, repair.name))
 		case 1024:
 			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_readonly_modifier_can_only_appear_on_a_property_declaration_or_index_signature))
+		case 17019:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_0_at_the_end_of_a_type_is_not_valid_TypeScript_syntax_Did_you_mean_to_write_1, repair.name, repair.written))
+		case 17020:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_0_at_the_start_of_a_type_is_not_valid_TypeScript_syntax_Did_you_mean_to_write_1, repair.name, repair.written))
+		case 8020:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.JSDoc_types_can_only_be_used_inside_documentation_comments))
 		}
 	}
 }

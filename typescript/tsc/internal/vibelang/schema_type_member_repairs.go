@@ -14,6 +14,9 @@ type schemaTypeMemberRepair struct {
 	primary core.TextRange
 	name    string
 	tokens  []core.TextRange
+	// written is the TypeScript type a JSDoc type's diagnostic suggests
+	// (TS17019, TS17020), named from the written type.
+	written string
 	// effect marks a field written with a recognized effect modifier
 	// (EK0108); primary is then the field, and code is 0.
 	effect bool
@@ -25,7 +28,7 @@ type schemaTypeMemberRepair struct {
 // does not merely expose the next pre-existing grammar error.
 func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
 	// A type with no schema form keeps no struct call. Its source is read
-	// for effect modifiers only: EK2109 already rejects the type.
+	// for effect modifiers and JSDoc types only: EK2109 already rejects it.
 	type sourceType struct {
 		span       core.TextRange
 		effectOnly bool
@@ -40,10 +43,7 @@ func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
 		if isUnsupportedSchema(node) && !isNonFieldSchema(node) {
 			span := node.Loc
 			if span.Pos() >= 0 && span.End() >= span.Pos() && span.End() <= len(file.Text()) {
-				text := file.Text()[span.Pos():span.End()]
-				if strings.Contains(text, "effect") || strings.Contains(text, "\\u") {
-					bodies = append(bodies, sourceType{span: span, effectOnly: true})
-				}
+				bodies = append(bodies, sourceType{span: span, effectOnly: true})
 			}
 			return false
 		}
@@ -61,6 +61,35 @@ func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
 		offset := span.Pos() - len(prefix)
 		var visit func(*ast.Node) bool
 		visit = func(node *ast.Node) bool {
+			// A JSDoc type is no TypeScript type: TS17020 for a leading ? or !,
+			// TS17019 for a trailing ?, TS8020 for * and a JSDoc type literal,
+			// as the checker reports them on a type literal member.
+			switch node.Kind {
+			case ast.KindJSDocNullableType, ast.KindJSDocNonNullableType:
+				inner := node.Type()
+				postfix := node.Pos() == inner.Pos()
+				token := "?"
+				if node.Kind == ast.KindJSDocNonNullableType {
+					token = "!"
+				}
+				written := strings.TrimSpace(raw.Text()[scanner.SkipTrivia(raw.Text(), inner.Pos()):inner.End()])
+				if node.Kind == ast.KindJSDocNullableType {
+					if postfix {
+						written += " | undefined"
+					} else {
+						written += " | null | undefined"
+					}
+				}
+				code := int32(17020)
+				if postfix {
+					code = 17019
+				}
+				span := core.NewTextRange(scanner.SkipTrivia(raw.Text(), node.Pos())+offset, node.End()+offset)
+				repairs = append(repairs, schemaTypeMemberRepair{code: code, primary: span, name: token, written: written})
+			case ast.KindJSDocAllType, ast.KindJSDocTypeLiteral:
+				span := core.NewTextRange(scanner.SkipTrivia(raw.Text(), node.Pos())+offset, node.End()+offset)
+				repairs = append(repairs, schemaTypeMemberRepair{code: 8020, primary: span})
+			}
 			// A readonly belongs on a property or index signature; a method,
 			// an accessor and a call or construct signature reject it (TS1024).
 			readonlyMember := ast.IsPropertySignatureDeclaration(node) || ast.IsIndexSignatureDeclaration(node)

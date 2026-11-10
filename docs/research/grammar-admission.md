@@ -106,10 +106,12 @@ unsupported types remain grammar-derived controls.
 Schema types with a leading JSDoc `?`, `??`, `!` or `*` are a separate
 `admission:schema-jsdoc-field-type` gap. The native parser recovers a
 JSDoc type, which the schema mapping replaces before the native
-source-type diagnostic runs; only `EK2109` remains. The exact type-prefix
-family stays pending, with optional, readonly, schema-alias and schema-error
-controls. Native schema-error methods and computed property names stay outside
-the mapped-type family.
+source-type diagnostic runs, so only `EK2109` remained. The compiler now
+reads the written type back and reports TypeScript's `TS17020`, `TS17019`
+or `TS8020` beside `EK2109` in a schema body, in a schema alias and in a
+schema error's field, so the family is no longer pending and its witnesses
+are regression inputs. Native schema-error methods and computed property
+names stay outside the mapped-type family.
 A tuple containing the same prefix remains a native rejection control.
 Ordinary nullable unions and expression coalescing retain their own grammar.
 Syntax-only legacy recovery also counts as rejection; this grants no authority to the corresponding form. The grammar lab models a
@@ -343,7 +345,7 @@ type, and the `admission:schema-async-field` family is no longer pending; its
 seeds stay as regression inputs, with ordinary fields named `async`,
 computed expressions, native members and schema-error methods as controls.
 
-The same mapped-type gap includes JSDoc's postfix `?`, as in
+The same mapped-type gap included JSDoc's postfix `?`, as in
 `schema C { id: string? }`. Its keyed corpus uses
 `admission:schema-jsdoc-field-type` rather than a second exemption.
 Native optional tuple elements, optional property names and conditional

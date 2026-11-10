@@ -1,2 +1,2 @@
 go test fuzz v1
-[]byte("key:schema-jsdoc-field-type\nschema C { id: ?? string }")
+[]byte("key:schema-jsdoc-field-type-declaration\nschema C { id: ?? string }")

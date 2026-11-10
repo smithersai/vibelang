@@ -1,0 +1,16 @@
+// expect: EK2109 TS17020 TS17019 TS8020
+// Chapter 006 and Appendix A: a schema Field takes a source Type. A JSDoc type
+// is no TypeScript type: TypeScript rejects a leading ? or ! with TS17020, a
+// trailing ? with TS17019 and * with TS8020 on a type literal member. The field
+// reports EK2109 for a type with no schema form, and the written type keeps
+// TypeScript's rejection beside it, in a schema body, in a nested object type,
+// in a type argument and in a schema alias.
+schema Nullable { a: ?string }
+schema Postfix { a: string? }
+schema NonNullable { a: !string }
+schema All { a: * }
+schema Nested { a: { b: ?string } }
+schema Argument { a: Array<?string> }
+schema Alias = { a: ?string }
+schema Bare = string?
+export {}

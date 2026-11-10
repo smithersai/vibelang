@@ -147,8 +147,6 @@ func TestGrammarAdmissionDeepKeys(t *testing.T) {
 	w := NewWorkspace(t)
 	for source, want := range map[string]string{
 		"class C { effect g ? ( ) }":                               "admission:effect-optional-class-member",
-		"schema S { id : readonly ? string }":                      "admission:schema-jsdoc-field-type",
-		"schema S { id : readonly ?? string }":                     "admission:schema-jsdoc-field-type",
 		"schema T = ( number ! E ! )":                              "admission:effect-type-trailing-bang",
 		"{ schema T =\n(\nnumber ! E ! ) }":                        "admission:effect-type-trailing-bang",
 		"x is is and > 1 + 1":                                      "admission:is-operand-precedence",

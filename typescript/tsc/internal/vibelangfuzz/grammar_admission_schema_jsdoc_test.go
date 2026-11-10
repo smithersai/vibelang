@@ -213,33 +213,36 @@ func TestGrammarAdmissionSchemaJSDocKeys(t *testing.T) {
 	}
 }
 
+// A JSDoc type in a schema body, a schema alias or a schema error's field now
+// reports TypeScript's TS17020, TS17019 or TS8020 beside EK2109, so no row is
+// an admission gap; the rows pin that EK2109 still names the type.
 func TestGrammarAdmissionSchemaJSDocRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, c := range []struct {
 		source   string
 		mismatch bool
 	}{
-		{"schema C { id: string? }", true},
-		{"schema C { id?: string? }", true},
-		{"schema C { readonly id: string? }", true},
-		{"schema C = string?;", true},
-		{"schema error E { id: string? }", true},
+		{"schema C { id: string? }", false},
+		{"schema C { id?: string? }", false},
+		{"schema C { readonly id: string? }", false},
+		{"schema C = string?;", false},
+		{"schema error E { id: string? }", false},
 		{"schema C { id: [string?, number?] }", false},
-		{"schema error E { id: ?? string }", true},
-		{"schema error E { readonly id?: ? string }", true},
-		{"schema error E { id: * }", true},
-		{"schema error E { id: ! string }", true},
+		{"schema error E { id: ?? string }", false},
+		{"schema error E { readonly id?: ? string }", false},
+		{"schema error E { id: * }", false},
+		{"schema error E { id: ! string }", false},
 		{"schema error E { m() { return f(!value); } }", false},
 		{"schema error E { m(): number { return { a: !value }; } }", false},
 		{"schema error E { [!key](): number { return 1; } }", false},
-		{"schema C { id: ?? string }", true},
-		{"schema C { id: * }", true},
-		{"schema C { id: ! string }", true},
+		{"schema C { id: ?? string }", false},
+		{"schema C { id: * }", false},
+		{"schema C { id: ! string }", false},
 		{"schema C { id: [?? string] }", false},
-		{"schema C = ?? string;", true},
-		{"schema C { id: ? string }", true},
-		{"schema C { readonly id?: ?? number }", true},
-		{"schema C = { id: ?? string }", true},
+		{"schema C = ?? string;", false},
+		{"schema C { id: ? string }", false},
+		{"schema C { readonly id?: ?? number }", false},
+		{"schema C = { id: ?? string }", false},
 	} {
 		source := c.source
 		t.Run(source, func(t *testing.T) {
