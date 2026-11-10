@@ -48,6 +48,12 @@ The [built-in set index](reviews/2026-11-09-built-in-set-index.md) and [comparat
 
 Will personally approves each VIP. An agent review never accepts a VIP.
 
+During pre-alpha, VIPs are accepted optimistically under Will's standing approval. Their Status line records the optimistic acceptance and says that Will has not reviewed the VIP's decisions. Each VIP separates his verbatim words from Claude's decisions and records which models and lanes decided each point, so Will can overturn any of Claude's choices. After alpha, each VIP again needs Will's own words of approval.
+
+Will's ruling 16, 2026-11-09 at 19:19 PST:
+
+> "16 yes we optimistically approve VIP now in pre alpha. This won't be true post alpha."
+
 The specification as a whole is accepted when four reviewers, Codex Astra, Codex Sol, Claude Fable and Claude Opus, each answer LGTM with a grade of A- or better on the same revision. Will's acceptance rule counts A-.
 
 The specification passed this gate at panel v6 on 2026-10-29 UTC: Codex Astra gave A, Codex Sol A, Claude Fable A- and Claude Opus A-. The round records revision 2d7d13086e6dd64480b60de7dbb1cf2aeac520c7; all four reviewers graded the same specification snapshot. Panels v9, v10 and v11 passed again with the same four grades.
