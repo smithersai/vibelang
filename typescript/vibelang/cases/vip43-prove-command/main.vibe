@@ -1,0 +1,29 @@
+// rule-evidence: docs/design/src/900-appendices.md#appendix-f-theorems-and-proofs-vip-43 | `vibelang prove` proves their roots and reports `EK4315` to `EK4319`, but it does not yet run the audit of [Steps](#steps), step 6, or read `vibe.proofDir`: the proof directory is `proofs` in the selected config's directory.
+// The program run.mjs proves: a spec function, a contract and a loop invariant.
+spec function sumTo(n: number): number {
+  proof {
+    assume(0 <= n)
+    ensures((r) => r >= 0)
+    decreases(n)
+  }
+  return n === 0 ? 0 : n + sumTo(n - 1)
+}
+
+export function total(n: number): number {
+  proof {
+    assume(0 <= n)
+    ensures((r) => r === sumTo(n))
+  }
+  let sum = 0
+  let i = 0
+  while (i < n) {
+    proof {
+      invariant(0 <= i && i <= n)
+      invariant(sum === sumTo(i))
+      decreases(n - i)
+    }
+    i = i + 1
+    sum = sum + i
+  }
+  return sum
+}

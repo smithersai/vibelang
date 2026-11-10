@@ -286,8 +286,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Durable tasks and workflows](119-tasks-and-workflows.md) | 1,300 |
 | [Fuzzing with Experimental.Fuzz](120-fuzzing.md) | 2,800 |
-| [Spec functions and proofs](121-proofs.md) | 830 |
-| **All 3 pages** | **5,000** |
+| [Spec functions and proofs](121-proofs.md) | 1,300 |
+| **All 3 pages** | **5,400** |
 
 ### Specification
 

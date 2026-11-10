@@ -10477,6 +10477,8 @@ typescript/vibelang/cases/vip43-proof-statement-types.fail/main.vibe:6:13 lambda
 typescript/vibelang/cases/vip43-proof-words-stay-names/main.vibe:17:45 lambda plain annotation
 typescript/vibelang/cases/vip43-proof-words-stay-names/main.vibe:2:16 lambda plain annotation
 typescript/vibelang/cases/vip43-proof-words-stay-names/main.vibe:4:14 lambda plain annotation
+typescript/vibelang/cases/vip43-prove-command/main.vibe:15:13 lambda choice fallback
+typescript/vibelang/cases/vip43-prove-command/main.vibe:6:13 lambda plain fallback
 typescript/vibelang/cases/vip43-spec-function-erases/main.vibe:12:13 lambda choice fallback
 typescript/vibelang/cases/vip43-spec-function-erases/main.vibe:20:13 lambda plain fallback
 typescript/vibelang/cases/vip5-catch-closed-handler-access.fail/main.vibe:10:59 lambda effectFn table

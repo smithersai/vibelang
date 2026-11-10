@@ -46,6 +46,10 @@ func runMain() (status int) {
 			return runESTree(args[1:]) // VibeLang ESLint parser (estree.go)
 		case "--ts-projection":
 			return runTSProjection(args[1:]) // virtual TypeScript for vibelang/oxlint (tsprojection.go)
+		case "prove":
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			defer stop()
+			return vibelang.ProveCommand(ctx, newSystem(), args[1:]) // proofs for spec functions and proof blocks (VIP-43)
 		case "lint":
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()
