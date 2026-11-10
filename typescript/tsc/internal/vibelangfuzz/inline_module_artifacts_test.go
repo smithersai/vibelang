@@ -32,6 +32,9 @@ func inlineModuleArtifactConfig(t *testing.T, dir, source string, declaration, e
 	options := map[string]any{
 		"target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler",
 		"strict": true, "skipLibCheck": false, "types": []string{}, "jsx": "preserve",
+		// Ordinary package declarations use a separate output directory; adjacent
+		// native forwarders retain their own overwrite protection when flags change.
+		"outDir":      "out",
 		"declaration": declaration, "rewriteRelativeImportExtensions": true,
 	}
 	config := map[string]any{
