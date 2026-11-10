@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/binder"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -32,16 +33,19 @@ func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
 	// EK2109: a type operator or an Effect type over an object type, a
 	// generic type argument, a JSDoc type.
 	var bodies []core.TextRange
+	classSources := make(map[core.TextRange]bool)
 	var collect func(*ast.Node) bool
 	collect = func(node *ast.Node) bool {
 		if isSchemaStruct(node) {
 			bodies = append(bodies, node.Arguments()[0].Loc)
+			classSources[node.Arguments()[0].Loc] = ast.GetContainingClass(node) != nil
 			return false
 		}
 		if isUnsupportedSchema(node) && !isNonFieldSchema(node) {
 			span := node.Loc
 			if span.Pos() >= 0 && span.End() >= span.Pos() && span.End() <= len(file.Text()) {
 				bodies = append(bodies, span)
+				classSources[span] = ast.GetContainingClass(node) != nil
 			}
 			return false
 		}
@@ -56,8 +60,57 @@ func schemaTypeMemberRepairs(file *ast.SourceFile) []schemaTypeMemberRepair {
 		}
 		raw := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/schema-modifiers.vibe", PathKey: "/schema-modifiers.vibe"}, prefix+file.Text()[span.Pos():span.End()], core.ScriptKindTS)
 		offset := span.Pos() - len(prefix)
+
+		// The erased type keeps native binding diagnostics, including reserved
+		// parameter names. Preserve the original source's module context.
+		raw.ExternalModuleIndicator = file.ExternalModuleIndicator
+		binder.BindSourceFile(raw)
+		for _, diagnostic := range raw.BindDiagnostics() {
+			code := diagnostic.Code()
+			if code >= 1212 && code <= 1214 && classSources[span] {
+				code = 1213
+			}
+			switch diagnostic.Code() {
+			case 1212, 1213, 1214, 1262, 1359:
+				if len(diagnostic.MessageArgs()) == 1 && diagnostic.Pos() >= len(prefix) {
+					repairs = append(repairs, schemaTypeMemberRepair{
+						code:    code,
+						primary: core.NewTextRange(diagnostic.Pos()+offset, diagnostic.End()+offset),
+						name:    diagnostic.MessageArgs()[0],
+					})
+				}
+			}
+		}
 		var visit func(*ast.Node) bool
 		visit = func(node *ast.Node) bool {
+			if ast.IsParameterDeclaration(node) {
+				if ast.HasSyntacticModifier(node, ast.ModifierFlagsParameterPropertyModifier) {
+					r := scanner.GetErrorRangeForNode(raw, node)
+					repairs = append(repairs, schemaTypeMemberRepair{code: 2369,
+						primary: core.NewTextRange(r.Pos()+offset, r.End()+offset)})
+				}
+				seen := make(map[ast.Kind]bool)
+				for _, modifier := range node.ModifierNodes() {
+					if modifier.Flags&ast.NodeFlagsReparsed != 0 {
+						continue
+					}
+					code := int32(0)
+					if seen[modifier.Kind] {
+						code = 1030
+					} else if modifier.Kind == ast.KindStaticKeyword || modifier.Kind == ast.KindAsyncKeyword ||
+						modifier.Kind == ast.KindExportKeyword || modifier.Kind == ast.KindDeclareKeyword {
+						code = 1090
+					}
+					seen[modifier.Kind] = true
+					if code != 0 {
+						r := scanner.GetErrorRangeForNode(raw, modifier)
+						repairs = append(repairs, schemaTypeMemberRepair{code: code,
+							primary: core.NewTextRange(r.Pos()+offset, r.End()+offset),
+							name:    scanner.TokenToString(modifier.Kind)})
+						break
+					}
+				}
+			}
 			// A JSDoc type is no TypeScript type: TS17020 for a leading ? or !,
 			// TS17019 for a trailing ?, TS8020 for * and a JSDoc type literal,
 			// as the checker reports them on a type literal member.

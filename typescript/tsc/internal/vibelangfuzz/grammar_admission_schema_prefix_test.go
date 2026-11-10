@@ -121,11 +121,10 @@ func TestGrammarAdmissionSchemaSignatureRegression(t *testing.T) {
 		"schema S = { readonly; (static static) }",
 	} {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			if grammarAdmissionVerdict(t, w, source) {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("a rejected signature parameter is an admission gap: %v", r.Diagnostics)
 			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 	// A typed field after an untyped async member keeps its TS1070 beside

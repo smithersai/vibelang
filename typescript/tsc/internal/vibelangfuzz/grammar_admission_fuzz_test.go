@@ -280,6 +280,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-signature-reserved-binding", "schema S = { readonly; (static) }"},
 	{"schema-signature-reserved-destructure", "schema S = { ({p: static}: Missing): Missing }"},
 	{"schema-signature-reserved-rest", "schema S = { (...static: Missing[]): Missing }"},
+	{"schema-signature-class-reserved", "class C { method() { schema S = { (static: Missing): Missing } } }"},
+	{"schema-signature-duplicate-readonly-parameter", "schema S = { (readonly readonly value: Missing): Missing }"},
 	{"effect-type-second-bang-line-break", "{ type T = (\nnumber ! string\n! 1 )\nboolean }"},
 	{"effect-type-second-bang-nested", "type T = [number, (number!string\n!boolean)];"},
 	{"effect-type-callback-second-bang-line-break", grammarCallbackSecondBangWitness},
@@ -2260,6 +2262,10 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// return annotations, and optional/rest/initialized setter parameters.
 	case 1049, 1051, 1052, 1053, 1054, 1094, 1095, 2784:
 		return true
+	// TypeScript permits a parameter property only in a constructor
+	// implementation. This is a structural rejection, independent of types.
+	case 2369:
+		return true
 	// checkGrammarIndexSignatureParameters (checker/grammarchecks.go): an
 	// IndexSignature is "[" one BindingIdentifier TypeAnnotation "]"
 	// TypeAnnotation. The parser reads `{ [ ] }` or `[k?: string]` for
@@ -2494,6 +2500,10 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-cover-initialized-name", "", diagnostics.CategoryError, 1312, true},
 		{"native-trailing-bang", "", diagnostics.CategoryError, 17019, true},
 		{"native-const-initializer", "", diagnostics.CategoryError, 1155, true},
+		{"native-parameter-property", "", diagnostics.CategoryError, 2369, true},
+		{"native-parameter-property-warning", "", diagnostics.CategoryWarning, 2369, false},
+		{"ek-parameter-property-code-collision", "EK", diagnostics.CategoryError, 2369, false},
+		{"foreign-parameter-property-code-collision", "other", diagnostics.CategoryError, 2369, false},
 		{"native-strict-reserved", "", diagnostics.CategoryError, 1214, true},
 		{"native-strict-reserved-warning", "", diagnostics.CategoryWarning, 1214, false},
 		{"ek-strict-reserved-code-collision", "EK", diagnostics.CategoryError, 1214, false},

@@ -1,0 +1,18 @@
+// expect: EK2109 EK1505 TS1030 TS1090 TS1213 TS1214 TS2369
+// A schema type retains the native errors of its erased signatures.
+schema Static = { (static value: Missing): Missing }
+schema Async = { (async { p }: Missing): Missing }
+schema Readonly = { f(readonly value: Missing): Missing }
+schema Public = { (public value: Missing): Missing }
+schema Reserved = { (static: Missing): Missing }
+schema Destructure = { ({ p: static }: Missing): Missing }
+schema Rest = { (...static: Missing[]): Missing }
+schema FunctionType = { f: (static: Missing) => Missing }
+schema Repeated = { (readonly readonly value: Missing): Missing }
+schema Body { f(static value: Missing): Missing }
+class Container {
+  method() {
+    schema Local = { (static: Missing): Missing }
+  }
+}
+export {}

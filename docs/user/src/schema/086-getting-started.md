@@ -76,6 +76,8 @@ Write `readonly` once per field. Repeating it reports TypeScript’s `TS1030`.
 
 These grammar errors do not depend on the field’s type: a field whose type is not a schema reports `EK2109` for the type and keeps the `TS1070`, `TS1030` or `TS1247` of its spelling, as does a sibling field of the same declaration, a member of an object type under a type operator or an Effect type, and an untyped member with an initializer. A JSDoc type such as `?string`, `string?`, `!string` or `*` is not a TypeScript type: the field reports `EK2109` and TypeScript’s `TS17020`, `TS17019` or `TS8020`; write `string | null | undefined`, `string | undefined` or `string`.
 
+Methods and call signatures outside the schema field mapping keep their parameter errors beside `EK2109` or `EK1505`. A `static` or `async` parameter modifier reports `TS1090`; a parameter property reports `TS2369`, and a repeated modifier keeps `TS1030`. A reserved parameter binding keeps TypeScript’s `TS1214` for a module or `TS1213` inside a class. Remove the parameter modifier or choose an ordinary parameter name.
+
 Schema fields use TypeScript type-member modifiers. Class-only modifiers such as `public`, `private`, `static` or `override` report `TS1070`. An `effect` modifier, as in `schema S { effect id: string }`, reports `EK0108`, in a schema body and in an object type of a schema alias; remove the modifier. Keywords used as field names remain valid, `effect` included.
 
 Schema fields describe codecs and do not have JavaScript initializers. An initializer such as `value: number = 42` reports `TS1247`. Use an explicit Effect schema default combinator when a default is intended.

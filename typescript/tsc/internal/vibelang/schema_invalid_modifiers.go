@@ -17,6 +17,22 @@ func init() {
 func checkSchemaTypeMemberModifiers(c *checker.Checker, file *ast.SourceFile) {
 	for _, repair := range schemaTypeMemberRepairs(file) {
 		switch repair.code {
+		case 1090:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_0_modifier_cannot_appear_on_a_parameter, repair.name))
+		case 1030:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_0_modifier_already_seen, repair.name))
+		case 2369:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.A_parameter_property_is_only_allowed_in_a_constructor_implementation))
+		case 1212:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.Identifier_expected_0_is_a_reserved_word_in_strict_mode, repair.name))
+		case 1213:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.Identifier_expected_0_is_a_reserved_word_in_strict_mode_Class_definitions_are_automatically_in_strict_mode, repair.name))
+		case 1214:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.Identifier_expected_0_is_a_reserved_word_in_strict_mode_Modules_are_automatically_in_strict_mode, repair.name))
+		case 1262:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.Identifier_expected_0_is_a_reserved_word_at_the_top_level_of_a_module, repair.name))
+		case 1359:
+			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.Identifier_expected_0_is_a_reserved_word_that_cannot_be_used_here, repair.name))
 		case 1070:
 			c.AddDiagnostic(ast.NewDiagnostic(file, repair.primary, diagnostics.X_0_modifier_cannot_appear_on_a_type_member, repair.name))
 		case 1024:

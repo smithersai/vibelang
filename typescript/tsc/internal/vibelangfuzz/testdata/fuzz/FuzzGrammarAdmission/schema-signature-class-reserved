@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-signature-class-reserved\nclass C { method() { schema S = { (static: Missing): Missing } } }")

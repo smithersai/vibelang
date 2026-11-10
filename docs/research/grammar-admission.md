@@ -668,10 +668,15 @@ preserving the category and diagnostic-source boundaries.
 An `async` method signature in a schema alias is the separate
 `admission:schema-async-method` family. A call or method signature with an
 illegal parameter modifier is `admission:schema-signature-parameter-modifier`.
-Both report only `EK2109` for the unsupported member, covering native
-grammar rejection. Mapping an earlier unresolved field can also cover
-`TS1070` on the final untyped `async` member; it retains
-`admission:schema-async-field`.
+Both formerly reported only `EK2109` for the unsupported member. They
+now retain native grammar rejection too: `TS1070` on the member, `TS1090`
+on a parameter modifier, `TS2369` on a parameter property and `TS1030` on a
+repeated modifier. The parameter-property rejection is structural and counts
+as such in the admission oracle. A reserved parameter binding retains
+`TS1214` in a module or `TS1213` inside a class, so
+`admission:schema-signature-reserved-binding` is no longer pending either.
+Mapping an earlier unresolved field also retains `TS1070` on the final
+untyped `async` member; it keeps its `admission:schema-async-field` key.
 
 VIP-13's `EK1302` rejects user-written static error members and owns their
 recovered native shape diagnostics. The oracle counts that existing error,

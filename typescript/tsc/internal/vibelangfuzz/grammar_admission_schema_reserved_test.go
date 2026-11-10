@@ -216,13 +216,13 @@ func TestGrammarAdmissionSchemaReservedBindingRegression(t *testing.T) {
 		"schema S = { ({static}: Missing): Missing }",
 		"schema S = { ({p: static}: Missing): Missing }",
 		"schema S = { ([static]: Missing): Missing }",
+		"class C { method() { schema S = { (static: Missing): Missing } } }",
 	} {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			if grammarAdmissionVerdict(t, w, source) {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("a rejected reserved parameter is an admission gap: %v", r.Diagnostics)
 			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 }

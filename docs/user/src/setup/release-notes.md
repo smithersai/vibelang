@@ -175,6 +175,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Misspelled names inside Effect wrapper callbacks could suggest host globals that the language disallows. Suggestions now respect the platform boundary inside callbacks too.
 
 - A decorator before `schema` or `data` could crash compilation and the editor. These declarations now report `TS1206`, as TypeScript does for constants and type aliases.
+- A `schema` alias could hide invalid parameter modifiers or reserved parameter names behind `EK2109`. These signatures now keep TypeScript’s parameter errors, with their class or module context preserved.
 - A `schema` alias written as `readonly { … }` or `T ! { … }`, and an untyped member with an initializer such as `{ id? = 1 }`, reported only `EK2109` and lost the grammar errors of their members. The repeated `readonly`, class-only modifier and initializer errors (`TS1030`, `TS1070`, `TS1247`) now appear beside `EK2109` there too.
 - A `schema` field written with a JSDoc type, such as `a: ?string`, `a: string?` or `a: *`, reported only `EK2109`. It now also reports TypeScript’s `TS17020`, `TS17019` or `TS8020`, with the TypeScript type to write instead.
 - A method, accessor or signature in a `schema` alias or body lost the errors of its modifiers: `schema S = { readonly m(): string }` reported only `EK2109`. The `async`, `static`, `readonly` and `effect` modifiers now report `TS1070`, `TS1024` or `EK0108` beside `EK2109` or `EK1505`.

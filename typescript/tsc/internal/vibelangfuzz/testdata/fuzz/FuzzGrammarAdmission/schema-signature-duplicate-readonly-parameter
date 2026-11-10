@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-signature-duplicate-readonly-parameter\nschema S = { (readonly readonly value: Missing): Missing }")

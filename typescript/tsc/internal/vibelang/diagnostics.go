@@ -523,7 +523,9 @@ func filterCoveredDiagnostics(c *checker.Checker, file *ast.SourceFile, diagnost
 			return true
 		}
 		inside := func(r core.TextRange) bool { return r.Pos() <= d.Pos() && d.End() <= r.End() }
-		if d.Code() >= 2000 && slices.ContainsFunc(typeErrors, inside) {
+		// TS2369 rejects parameter properties outside constructor implementations;
+		// it is structural even though its code is in the type-error range.
+		if d.Code() >= 2000 && d.Code() != 2369 && slices.ContainsFunc(typeErrors, inside) {
 			return true
 		}
 		return slices.ContainsFunc(covered, inside)

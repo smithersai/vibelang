@@ -48,11 +48,10 @@ func TestGrammarAdmissionSignatureModifierRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarSignatureModifierGaps {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			if grammarAdmissionVerdict(t, w, source) {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("a rejected signature parameter is an admission gap: %v", r.Diagnostics)
 			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 	// The type-alias twin keeps TS1090 and the named body EK1505; a line
