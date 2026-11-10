@@ -1,0 +1,4 @@
+{
+  "Source": "alchemy packages/gcp/src/Compute/GlobalVmExtensionPolicy.ts: crypto.randomUUID() read in the callback of the prelude sync inside an effect function; kept as TypeScript because the compiler reported EK4402 as an error",
+  "Main": "import * as Effect from \"effect/Effect\"\n\n// A policy id for the extension, generated where the request is built.\nexport effect function uuidInSyncHatch() {\n  return try sync(() => crypto.randomUUID())\n}\n"
+}

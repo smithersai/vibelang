@@ -1,0 +1,19 @@
+# Gaps between Chapter 5's migration severity for EK4402 and the compiler,
+# found by FuzzPlatformHatchSymbols. Chapter 5 makes EK4402 a warning in a
+# formerly accepted sync, callback, Effect.try or Effect.tryPromise callback,
+# and Appendix B reports host clock and randomness reads as EK4402 by resolved
+# host origin. The compiler warns for console, setTimeout, localStorage,
+# navigator and fetch in those callbacks but keeps clock and randomness reads
+# errors. A key names the host access; <symbol>/hatch covers every wrapper
+# form (arrow, block, function, options object) and host (effect function,
+# plain function, top-level const).
+# target                  key                                   owner     what is missing
+FuzzPlatformHatchSymbols  crypto.randomUUID/hatch  compiler  Chapter 5: crypto.randomUUID(), the alchemy witness in a formerly accepted sync, callback, Effect.try or Effect.tryPromise callback is an EK4402 warning during migration; the compiler reports an EK4402 error; lane cv-alchemy-returns
+FuzzPlatformHatchSymbols  crypto.getRandomValues/hatch  compiler  Chapter 5: crypto.getRandomValues(new Uint8Array(4)) in a formerly accepted sync, callback, Effect.try or Effect.tryPromise callback is an EK4402 warning during migration; the compiler reports an EK4402 error; lane cv-alchemy-returns
+FuzzPlatformHatchSymbols  crypto-literal-member/hatch  compiler  Chapter 5: crypto["randomUUID"](), the same symbol through a literal member in a formerly accepted sync, callback, Effect.try or Effect.tryPromise callback is an EK4402 warning during migration; the compiler reports an EK4402 error; lane cv-alchemy-returns
+FuzzPlatformHatchSymbols  globalThis.crypto/hatch  compiler  Chapter 5: globalThis.crypto.randomUUID(), the same symbol through a host receiver in a formerly accepted sync, callback, Effect.try or Effect.tryPromise callback is an EK4402 warning during migration; the compiler reports an EK4402 error; lane cv-alchemy-returns
+FuzzPlatformHatchSymbols  performance.now/hatch  compiler  Chapter 5: performance.now(), a clock read in a formerly accepted sync, callback, Effect.try or Effect.tryPromise callback is an EK4402 warning during migration; the compiler reports an EK4402 error; lane cv-alchemy-returns
+FuzzPlatformHatchSymbols  witness:alchemy-sync-hatch-random-uuid  compiler  Chapter 5: alchemy GlobalVmExtensionPolicy's sync(() => crypto.randomUUID()) in an effect function; EK4402 error instead of a warning; lane cv-alchemy-returns
+FuzzPlatformHatchSymbols  corpus:crypto.randomUUID-sync-effect  compiler  Chapter 5: minimized reproduction of crypto.randomUUID/hatch; lane cv-alchemy-returns
+FuzzPlatformHatchSymbols  corpus:performance.now-Effect.tryPromise-options-plain  compiler  Chapter 5: minimized reproduction of performance.now/hatch; lane cv-alchemy-returns
+FuzzPlatformHatchSymbols  corpus:globalThis.crypto-callback-top  compiler  Chapter 5: minimized reproduction of globalThis.crypto/hatch; lane cv-alchemy-returns
