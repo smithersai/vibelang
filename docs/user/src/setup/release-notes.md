@@ -18,6 +18,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - With the `@effect/language-service` plugin's `ignoreEffectErrorsInTscExitCode` set, an Effect lint error such as `EK3889` (`preferSchemaOverJson`) or `EK38122` (`unknownInEffectCatch`) still failed `vibelang/register`, `vibelang/bun`, the Vite and bundler plugins and `compileProjectSync`, though `vibelang -p` printed it and exited 0. The loaders and `vibelang/project` now fail a module only on the errors that fail the build, and report the ignored ones as warnings.
 
+- Under Vite 7, a `.vibex` module served from another package failed with `Failed to resolve import` for a package only its own package depends on, where its `.tsx` twin resolved, as in a Storybook root that renders components from other workspace packages. Its bare imports now resolve from the module's own directory.
+
 - Stock `tsc`, and `bun check` scripts that invoke TypeScript, reported `TS2307` for a `.ts` file's `./x.js`, `./x` or `./x.ts` import once `x` became a `.vibe` module, though `vibelang` accepted it. The compiler now also writes `x.d.ts`, which re-exports `x.d.vibe.ts`, so those imports resolve and the importer's published declarations are unchanged.
 
 - Converting a package module could stop API checking with `Conflicting declaration snapshot alias`. The check now recognizes the compiler's `x.d.ts` forwarding file as the same module and keeps authored declarations separate.

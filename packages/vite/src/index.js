@@ -49,6 +49,15 @@ function jsxSource(file) {
   if (file.endsWith(".vibex.jsx") && !existsSync(file) && existsSync(file.slice(0, -4))) return file.slice(0, -4)
 }
 const sourceFile = (file) => jsxSource(file) ?? file
+// The file a served id stands for. A bare import resolves from its importer's
+// directory only when the importer exists on disk; otherwise Vite resolves it
+// from its root, which may be another package (as for a .tsx twin, it must not).
+function importerOnDisk(importer) {
+  const file = cleanId(importer)
+  if (existsSync(file)) return importer
+  const source = jsxSource(file) ?? (isModuleOutput(file) ? moduleOutputSource.exec(file)[1] : undefined)
+  return source === undefined ? importer : source + importer.slice(file.length)
+}
 const servedId = (file) => file.endsWith(".vibex") ? file + ".jsx" : file
 
 // Vite's own module queries: ?import on a JavaScript import of a non-JS
@@ -74,8 +83,9 @@ const slash = (path) => path.replaceAll("\\", "/")
 // (D403), and one in a .vibex file to .jsx under preserved JSX. Neither is on
 // disk: the project's compile serves it. The pattern is vibelang/project's
 // moduleDeclarationSource.
+const moduleOutputSource = /^(.+\.vibex?)\.[^./\\]+\.jsx?$/
 function isModuleOutput(path) {
-  const source = /^(.+\.vibex?)\.[^./\\]+\.jsx?$/.exec(path)?.[1]
+  const source = moduleOutputSource.exec(path)?.[1]
   return source !== undefined && !existsSync(path) && existsSync(source)
 }
 // A module whose JavaScript the plugin compiles: a .vibe module or one of its module declarations.
@@ -478,7 +488,7 @@ export default function vibelang(options = {}) {
           if (target !== undefined) return serve(target)
         }
         // A package's exports can name JSX source even when its import is bare.
-        if (this.resolve) return this.resolve(source, importer, { ...resolveOptions, skipSelf: true }).then(resolved => {
+        if (this.resolve) return this.resolve(source, importerOnDisk(importer), { ...resolveOptions, skipSelf: true }).then(resolved => {
           if (resolved && isModuleId(source) && cleanId(resolved.id).endsWith(".vibex")) return { ...resolved, id: servedId(cleanId(resolved.id)) + resolved.id.slice(cleanId(resolved.id).length) }
           return resolved
         })
