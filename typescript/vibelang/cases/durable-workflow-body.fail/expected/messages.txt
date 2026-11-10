@@ -1,0 +1,7 @@
+Users is not one; move this work into a task.
+succeed(1) is not one
+module-level let: counter.
+so Loops has no loops and no reassignments
+Again reaches itself through try Again(…)
+First reaches itself through try Second(…)
+This retryPolicy has neither maxAttempts nor expirationMs

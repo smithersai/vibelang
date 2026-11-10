@@ -148,6 +148,14 @@ func (p *Parser) parseDurableDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 		if method.Body != nil {
 			if workflow {
 				implementationType = returnType
+				// A workflow's body is a plan, not an Effect it runs: the
+				// workflows it calls need the engine, which runs them as
+				// steps. Its written A!E leaves R out, so R is not checked.
+				if _, _, requirements := durableEffectSlots(returnType); requirements != nil && requirements.Kind == ast.KindNeverKeyword && requirements.Flags&ast.NodeFlagsReparsed != 0 {
+					arguments := returnType.AsTypeReferenceNode().TypeArguments.Nodes
+					arguments[2] = p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindAnyKeyword), requirements.Loc)
+					arguments[2].Parent = returnType
+				}
 			}
 			fn := p.factory.NewFunctionExpression(nil /*modifiers*/, nil /*asteriskToken*/, call.Name(), method.TypeParameters, parameters, implementationType, nil /*fullSignature*/, method.Body)
 			p.vibelangSpanning(fn, call.Loc)

@@ -277,7 +277,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 13,000 |
-| [Durable tasks and workflows](119-tasks-and-workflows.md) | 690 |
+| [Durable tasks and workflows](119-tasks-and-workflows.md) | 820 |
 | **All 10 pages** | **76,000** |
 
 ### Specification

@@ -1,0 +1,62 @@
+// expect: EK5504 EK5505 EK5506 EK5507
+// A workflow's body is a plan: durable steps, pure code, no loops (VIP-55).
+let counter = 0
+
+task Fetch {
+  effect call(id: string): number!string { return id.length }
+}
+
+service Users { static readonly key = "app/Users"; find(id: string): string!never }
+
+workflow Steps {
+  effect call(id: string) {
+    const n = try Fetch(id)
+    const user = try Users
+    try sleep("1 second")
+    const both = try.all [Fetch(id), succeed(1)]
+    return n
+  }
+}
+
+workflow Impure {
+  effect call(id: string) {
+    const at = Date.now()
+    const roll = Math.random()
+    const made = new Date()
+    return counter + at + roll + made.getTime()
+  }
+}
+
+workflow Loops {
+  effect call(id: string, tries: number) {
+    let total = 0
+    for (let i = 0; i < tries; i++) {
+      total = total + (try Fetch(id))
+    }
+    while (total > 10) total--
+    return total
+  }
+}
+
+workflow Again {
+  effect call(id: string): number!string {
+    return try Again(id)
+  }
+}
+
+workflow First {
+  effect call(id: string): number!string {
+    return try Second(id)
+  }
+}
+
+workflow Second {
+  effect call(id: string): number!string {
+    return try First(id)
+  }
+}
+
+task Unbounded {
+  static readonly retryPolicy = { initialMs: 1000, factor: 2, maxMs: 4000 }
+  effect call(id: string): number!never { return 1 }
+}
