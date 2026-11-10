@@ -348,7 +348,7 @@ These original pages supplement the 110 mirrored Effect pages. They have no upst
 | [Token counts](src/vibelang-features/117-token-counts.md) | Tokens an agent loads: the skill, each page, and each cheat-sheet entry in Effect TypeScript and VibeLang |
 | [Diagnostic code map](src/vibelang-features/diagnostic-code-map.md) | Appendix B diagnostic code renumbering and repairs |
 | [Imported lint diagnostics](src/vibelang-features/imported-lint-diagnostics.md) | Imported Effect rule codes, categories and repair messages |
-| [Experimental platform APIs](src/vibelang-features/118-experimental-platform-apis.md) | What VibeLang adds where Effect lacks an API: `Experimental.FileSystem`, `Crypto`, `Process`, `Locks`, `Dns` and pure `Encoding`, their layers and guarantees, and how they leave |
+| [Experimental platform APIs](src/vibelang-features/118-experimental-platform-apis.md) | What VibeLang adds where Effect lacks an API: `Experimental.FileSystem`, `Crypto`, `Process`, `Locks`, `Dns`, `Durable` and pure `Encoding`, their layers and guarantees, and how they leave |
 
 ## Counts by sidebar section
 

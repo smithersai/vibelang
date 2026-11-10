@@ -166,6 +166,11 @@
       "import": "./dist/experimental/Dns.js",
       "default": "./dist/experimental/Dns.js"
     },
+    "./experimental/Durable": {
+      "types": "./dist/experimental/Durable.d.ts",
+      "import": "./dist/experimental/Durable.js",
+      "default": "./dist/experimental/Durable.js"
+    },
     "./experimental/Encoding": {
       "types": "./dist/experimental/Encoding.d.ts",
       "import": "./dist/experimental/Encoding.js",

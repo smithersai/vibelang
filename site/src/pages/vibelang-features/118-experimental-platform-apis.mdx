@@ -26,6 +26,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
+| `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `task`, `history` | `memory`, `layerStore(store)`, in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -643,3 +644,50 @@ effect function sampleRate() {
 `try audio.acquire` opens an `AudioContext` that closes when the Scope closes, unless the program closed it first. A close that rejects does not fail the scope. It fails with a `PlatformError` whose `description` is the browser's message, including on a host with no `AudioContext`. The context is the host's own object: build its graph of nodes in a `.ts` file or a named top-level `module` body.
 
 `ExperimentalBrowserAudioContext.layer`, also in `ExperimentalBrowserServices.layer`, uses the host's `AudioContext`. `Experimental.AudioContext.layerTest(context)` gives a fake, which still closes with the Scope.
+
+## Durable execution
+
+Effect defines durable workflows: `Workflow.make` declares a workflow and its payload, `Activity.make` a recorded step, and both run on Effect's `WorkflowEngine` service. Effect's one local engine, `WorkflowEngine.layerMemory`, forgets every run when the process exits. `Experimental.Durable` adds the engine that remembers. Each step's start and result go to an append-only journal, one per run. A run that stopped part way, because its process crashed or was killed, resumes the next time anything executes it with the same input: the body runs again, and each step the journal finished returns its recorded result instead of running.
+
+`Experimental.Durable.task(key, options)` declares a step with a payload. Its implementation is a layer, `Task.toLayer(handler)`, so a test swaps it by providing another. Inside a workflow, calling the task runs one step; two calls of one task are two steps. `key` names the step in the journal, so keep it while runs that used it are stored. Options keep Smithers' names: `payload`, `success`, `error`, `tier` (`"sealed"`, `"compensable"` or `"irreversible"`, recorded with the step), `retryPolicy` and `attemptTimeoutMs`.
+
+```vibe
+const Charge = Experimental.Durable.task("shop#Charge", { payload: { order: Schema.String }, success: Schema.Number })
+
+const Order = Workflow.make("shop#Order", {
+  payload: { order: Schema.String },
+  success: Schema.Number,
+  idempotencyKey: ({ order }) => order
+})
+
+const OrderLive = Order.toLayer(effect ({ order }) => {
+  const total = try Charge({ order })
+  return total * 2
+}).pipe(
+  Layer.provide(Charge.toLayer(({ order }) => Effect.succeed(order.length))),
+  Layer.provideMerge(Experimental.Durable.memory)
+)
+
+export effect function placeOrder(order: string) {
+  provide OrderLive {
+    return try Order.execute({ order })
+  }
+}
+// Output: 6
+```
+
+Pick the store with one layer. `Experimental.Durable.memory` journals into this process's memory. `Experimental.Durable.layerStore(store)` runs over any `Experimental.Durable.Store`; engines built over one store share its runs, which is how a test crashes one engine and resumes the run on another. There is no default engine: a workflow with no engine provided has a missing `WorkflowEngine` requirement.
+
+The engine keeps these guarantees:
+
+| Guarantee | How |
+| --- | --- |
+| A finished step never runs twice in one run | A step journals `StepStarted` before its body and `StepCompleted` with its encoded result after. A replay serves the recorded result, failures included. |
+| A step that did not finish can run again | A crash after an outside effect and before `StepCompleted` repeats the step. Delivery is at-least-once, so give an irreversible step an idempotency key that its destination deduplicates. |
+| One owner per run | An engine that loads a run claims it and raises its fence. Each write of the run's state is fenced, so an engine that lost the run dies with `Experimental.Durable.FenceLost` at its next write. |
+| No holes in history | A step's event and its state commit in one store operation. `seq` counts from 1 in each run. |
+| Equal input joins the run | `Order.execute` with the payload of a finished run returns its recorded result, runs nothing and journals nothing. |
+
+A `retryPolicy` is data, `{ initialMs, factor, maxMs, maxAttempts?, expirationMs?, jitterRatio? }`. With one, a typed failure is retried, and each attempt is its own journaled step. The delay before attempt `n` is `initialMs * factor ** (n - 2)`, at most `maxMs`, so it depends only on the attempt number the journal keeps, and a restart neither loses nor repeats a retry. `expirationMs` bounds the sum of those delays. With no policy, a typed failure is recorded and returned, not retried.
+
+`Experimental.Durable.history(run)` is the run's journal as a `Stream` of `{ run, seq, eventType, payload, at }`, read through the `Experimental.Durable.Durable` service the engine layers provide. A run's id is Effect's execution id, `Order.executionId(payload)`.
