@@ -2,11 +2,14 @@ error QueueBusy { queue: string }
 
 declare function enqueue(job: string): string!QueueBusy
 
-export effect function submit(job: string) {
-  return enqueue(job)
-    |> retry(%, Schedule.recurs(4))
-    |> timeout(%, "750 millis")
-    catch () => "pending"
+export function submit(job: string) {
+  const pending = enqueue(job)
+  return effect {
+    return pending
+      |> retry(%, Schedule.recurs(4))
+      |> timeout(%, "750 millis")
+      catch () => "pending"
+  }
 }
 
 export const heartbeat = effect {

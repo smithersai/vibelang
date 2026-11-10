@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
+
 - The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.
 
 - The parcel conversion example tried to catch a string and failed with `EK0506`. Its recovery now wraps the fallible work in an `effect` block and returns the same results as the TypeScript original.

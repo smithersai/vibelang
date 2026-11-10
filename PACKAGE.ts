@@ -717,7 +717,7 @@ const targets = {
     [bun, node]
   ),
   "docs-convert-examples": check(
-    "Worked conversion examples compile and preserve TypeScript recovery and schema optionality.",
+    "Worked conversion examples preserve TypeScript construction, recovery and schema optionality.",
     "bun test --timeout 180000 docs/tools/convert-examples.test.ts",
     [Packages["compiler-native"], Packages["runtime-dist"]],
     [bun, node],
