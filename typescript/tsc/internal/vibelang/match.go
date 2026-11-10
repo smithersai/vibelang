@@ -19,8 +19,6 @@ import (
 var (
 	// EK4701: a match over a finite union with no default arm misses a case. {0} is the subject's type, {1} the cases left.
 	EK4701 = message(4701, errorCategory, "This match does not handle every case of {0}: {1} is left.")
-	// EK0708: advisory coverage of other literal discriminants; emission is unchanged.
-	EK0708 = message(708, warningCategory, "This match does not handle every case of {0}: {1} is left.")
 	// EK4703: an is whose pattern binds names where the compiler gives them
 	// no home yet: a for head whose initializer is a var or using list, a
 	// for…in or for…of head, or a computed member key.
@@ -37,7 +35,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK4701, EK0708, EK4703, EK0702} {
+	for _, m := range []*Message{EK4701, EK4703, EK0702} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkPatterns)
@@ -77,9 +75,10 @@ func checkPatterns(c *checker.Checker, file *ast.SourceFile) {
 
 // checkExhaustive reports a match whose subject still has cases at the
 // $noMatch call that ends its arms. A subject that is a finite union is
-// covered when its arms leave nothing of it. Any other member, such as
-// string, number, an untagged object or class instance, unknown or any,
-// turns the check off for that match, which keeps TC39's run-time TypeError
+// covered when its arms leave nothing of it. Other literal-field domains
+// use checkLiteralDiscriminantMatch below. A broad member such as string,
+// number, an object with no finite discriminant, unknown or any turns the
+// check off; runtime matching keeps TC39's no-match TypeError
 // (VIP-7 amended; decided details 78 and 102; foldkit-71: slider's
 // { orientation, alignment } object over four arms).
 func checkExhaustive(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {

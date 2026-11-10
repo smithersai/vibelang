@@ -40,7 +40,7 @@ func dataGenericConstraintRules() []dataRule {
 		{"undefined-union", "undefined | true", "only:EK4701"},
 	} {
 		source := "function f(x:" + typ.source + ") { return match(x) { when let item and if(false): 0; } }"
-		rules = append(rules, dataRule{"exhaustive-domain-" + typ.key, chapter, "Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off", source, typ.code, "impl-hunt-data"})
+		rules = append(rules, dataRule{"exhaustive-domain-" + typ.key, chapter, "Any other member (`string`, `number`, an object or class instance with no finite discriminant, `unknown`, `any`) turns the check off", source, typ.code, "impl-hunt-data"})
 	}
 	return rules
 }

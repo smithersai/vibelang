@@ -1,3 +1,5 @@
+// expect: EK4701
+// rule-evidence: docs/design/src/004-match.md#exhaustiveness
 type Shape = { readonly kind: "circle"; readonly r: number } | { readonly kind: "square"; readonly side: number }
 
 export function area(shape: Shape): number {

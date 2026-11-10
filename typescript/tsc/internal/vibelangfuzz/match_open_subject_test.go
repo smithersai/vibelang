@@ -11,7 +11,7 @@ const matchOpenSubjectTarget = "FuzzMatchOpenSubject"
 
 // Chapter 4, "Subjects" (VIP-7, decided details 10, 78 and 102); foldkit-71.
 const matchOpenSubjectClosedQuote = "`EK4701` applies when every member is a literal type, `true`, `false`, `null`, `undefined`, an enum member, a `data` variant, an `error` or `schema error` instance, one of those six `Option`, `Exit` and `Result` cases, a retained Effect error ([Retained fixed patterns](#retained-fixed-patterns)), or a tagged member."
-const matchOpenSubjectOpenQuote = "Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off for that `match`, which keeps TC39's run-time `TypeError`."
+const matchOpenSubjectOpenQuote = "Any other member (`string`, `number`, an object or class instance with no finite discriminant, `unknown`, `any`) turns the check off for that `match`, which keeps TC39's run-time `TypeError`."
 
 func TestMatchOpenSubjectQuoted(t *testing.T) {
 	chapter := SpecText("004-match.md")
@@ -75,8 +75,8 @@ func matchOpenSubjectProgram(subject matchOpenSubject, full, withDefault, native
 	return prelude + subject.declare + "\nexport function probe(s: Subject): number { return match (s) { " + body + " } }\n"
 }
 
-// An untagged object subject stays outside the EK4701 error check. Literal
-// fields can still receive advisory EK0708. Optional properties leave an
+// Literal fields receive EK4701 even without an _tag property.
+// Optional properties leave an
 // absent-key case even when every present literal has an arm. Run-time
 // TypeError behaviour stays with the VIP-7 differential.
 func FuzzMatchOpenSubject(f *testing.F) {
@@ -102,7 +102,7 @@ func FuzzMatchOpenSubject(f *testing.F) {
 		full, withDefault := flags&1 != 0, flags&2 != 0
 		key := fmt.Sprintf("%s:%d", subject.name, flags)
 		expectGap := !subject.open && !full && !withDefault
-		expectAdvisory := !withDefault && (subject.name == "object-optional" || !full && (subject.name == "object-required" || subject.name == "class-instance"))
+		expectLiteralGap := !withDefault && (subject.name == "object-optional" || !full && (subject.name == "object-required" || subject.name == "class-instance"))
 		for _, native := range []bool{true, false} {
 			source := matchOpenSubjectProgram(subject, full, withDefault, native)
 			file := "main.vibe"
@@ -117,29 +117,22 @@ func FuzzMatchOpenSubject(f *testing.F) {
 			}
 			defer result.Remove()
 			exhaustive, other := false, false
-			advisory := 0
 			for _, diagnostic := range result.Diagnostics {
 				if IsEK(diagnostic) && diagnostic.Code() == 4701 {
 					exhaustive = true
-				} else if IsEK(diagnostic) && diagnostic.Code() == 708 {
-					advisory++
-					other = other || diagnostic.Category().Name() != "warning"
+					other = other || diagnostic.Category().Name() != "error"
 				} else if IsEK(diagnostic) || diagnostic.Category().Name() == "error" {
 					other = true
 				}
 			}
 			if native {
-				if other || exhaustive || advisory != 0 {
+				if other || exhaustive {
 					t.Fatalf("invalid native subject control: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 				}
 				continue
 			}
-			wantAdvisory := 0
-			if expectAdvisory {
-				wantAdvisory = 1
-			}
-			if exhaustive != expectGap || advisory != wantAdvisory || other {
-				Gap(t, matchOpenSubjectTarget, key, "Chapter 4 subjects rule: open=%t full=%t default=%t expects EK4701=%t EK0708=%d, got %v\n%s", subject.open, full, withDefault, expectGap, wantAdvisory, SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
+			if exhaustive != (expectGap || expectLiteralGap) || other {
+				Gap(t, matchOpenSubjectTarget, key, "Chapter 4 subjects rule: open=%t full=%t default=%t expects EK4701=%t, got %v\n%s", subject.open, full, withDefault, expectGap || expectLiteralGap, SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 			}
 		}
 		ExpectPending(t, matchOpenSubjectTarget, key)

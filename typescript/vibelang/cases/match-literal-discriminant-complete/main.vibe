@@ -1,0 +1,14 @@
+// rule-evidence: docs/design/src/004-match.md#exhaustiveness
+type Shape = {kind:"circle";r:number}|{kind:"square";side:number}
+export function complete(shape:Shape):number {
+ return match(shape){when {kind:"circle",let r}:r;when {kind:"square",let side}:side;}
+}
+export function fallback(shape:Shape):number {
+ return match(shape){when {kind:"circle",let r}:r;default:0;}
+}
+export function nested(s:{value:{type:"a"}|{type:"b"}}):number {
+ return match(s){when {value:{type:"a"}}:1;when {value:{type:"b"}}:2;}
+}
+export function mixed(s:{_tag:"a"}|{kind:"b"}):number {
+ return match(s){when {_tag:"a"}:1;when {kind:"b"}:2;}
+}

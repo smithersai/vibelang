@@ -1,3 +1,0 @@
-go test fuzz v1
-string("tagged-other-discriminant-disabled")
-uint8(0)

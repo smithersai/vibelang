@@ -29,9 +29,6 @@ func TestCategory(t *testing.T) {
 		want    diagnostics.Category
 		on      bool
 	}{
-		{"EK0708 is a warning", EK0708, nil, diagnostics.CategoryWarning, true},
-		{"EK0708 can be an error", EK0708, &core.CompilerOptions{VibeLang: &core.VibeLangOptions{Severities: map[string]string{"EK0708": "error"}}}, diagnostics.CategoryError, true},
-		{"EK0708 can be off", EK0708, &core.CompilerOptions{VibeLang: &core.VibeLangOptions{Severities: map[string]string{"EK0708": "off"}}}, 0, false},
 		{"EK9100 is a migration warning", EK9100, nil, diagnostics.CategoryWarning, true},
 		{"EK9100 can be an error", EK9100, with(map[string]string{"EK9100": "error"}), diagnostics.CategoryError, true},
 		{"EK9100 can be a warning", EK9100, with(map[string]string{"EK9100": "warning"}), diagnostics.CategoryWarning, true},

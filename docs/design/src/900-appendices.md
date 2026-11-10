@@ -2115,13 +2115,15 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_effect.go:Parser.scanStartOfRestrictedMember ` | ` admission:effect-restricted-members ` | ` 001-functions.md ` | ` recovery ` | VIP-1: getter, setter and constructor lookahead shared by the forbidden-prefix recovery for `EK0104`; admits no syntax |
 | ` parser/vibelang_effect_misplaced.go:Parser.skipMisplacedEffectParameter ` | ` admission:effect ` | ` 001-functions.md ` | ` recovery ` | VIP-1 modifier placement: read `effect` before a parameter name as TypeScript reads `async`, to report `TS1090`; diagnostic recovery, not language admission |
 | ` parser/vibelang_effect.go:Parser.parseVibeLangDeclaredEffectMember ` | ` admission:effect ` | ` 001-functions.md ` | ` recovery ` | VIP-1: retain a written class-member `declare` context while parsing an `effect` method so `EK0108` applies and native ambient recovery is preserved |
-| ` parser/vibelang_match_members.go:advisoryCoverageArm ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 004-match.md ` | ` support ` | Literal-discriminant warning metadata only; preserves executable pattern tests and existing finite-case proofs |
+| ` parser/vibelang_match_members.go:advisoryCoverageArm ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 004-match.md ` | ` support ` | Literal-discriminant coverage metadata only; preserves executable pattern tests and existing finite-case proofs |
 
 </details>
 
 <!-- grammar-admission:end -->
 
 ## Appendix B. Diagnostics
+
+The old `EK0708` is retired and will never be reassigned: VIP-7 reports incomplete literal-discriminated matches as error `EK4701`.
 
 The old `EK1001` is retired and will never be reassigned: VIP-26 makes module-level calls ordinary JavaScript that may construct cold Effects; explicit `try` and `catch` outside Effect code retain `EK0501` and `EK0504` in every compiler host.
 
@@ -2198,7 +2200,6 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0705` | an `is` lexical binding in an unbraced statement body (matching `TS1156`; add braces), or one that would need formal-parameter or catch-parameter initialization as its home; use an explicit local block preserving the intended result and call phase; also a binding in an `enum` member initializer, which has no lexical home | 7 | [Pattern matching](004-match.md#is-bindings-in-parameter-initialization) |
 | `EK0706` | a `return`, `break` or `continue` that leaves an `async match`; a nested function keeps its own `return` | 7 | [Pattern matching](004-match.md#async-match-jumps) |
 | `EK0707` | invalid `match`/`is` grammar or a pattern-specific early error without a more specific assigned diagnostic; includes an interpolated primitive template pattern | 7 | [Pattern matching](004-match.md#syntax-and-meaning) |
-| `EK0708` | warning: a `match` without `default` over other literal-discriminated objects misses a case; nested and mixed discriminants are checked without changing runtime matching | 7 | [Pattern matching](004-match.md#exhaustiveness) |
 | `EK0801` | warning: `using` in effect code; use `acquireDisposable` inside `scoped` | 34 | [Runtime](008-runtime.md) |
 | `EK0901` | a `static key` without `readonly`, or whose initializer is not a string literal | 9 | [Services](005-services.md#static-rules) |
 | `EK0902` | a service member that is not a `PropertySignature`, `MethodSignature`, `KeyMember` or `DefaultMember` | 9 | [Services](005-services.md#static-rules) |

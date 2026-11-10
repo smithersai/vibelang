@@ -8,8 +8,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
-// Advisory coverage never feeds matchRemainder or provenExhaustive: adding
-// this warning must not change result inference, narrowing or emitted tests.
+// Diagnostic coverage never feeds matchRemainder or provenExhaustive:
+// reporting a missing case must not change inference, narrowing or emitted tests.
 func checkLiteralDiscriminantMatch(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	captured := capturedSubject(c, call.Arguments()[0])
 	if captured == nil {
@@ -52,8 +52,8 @@ func checkLiteralDiscriminantMatch(c *checker.Checker, file *ast.SourceFile, cal
 	if len(left) == 0 {
 		return
 	}
-	d := reportAt(c, file, call.Expression().Loc, EK0708, diagnosticUnionText(c, domain, call), diagnosticUnionText(c, c.GetUnionType(left), call))
-	note(d, "Add an arm for each case that is left, or a default arm. This warning does not change runtime matching.")
+	d := reportAt(c, file, call.Expression().Loc, EK4701, diagnosticUnionText(c, domain, call), diagnosticUnionText(c, c.GetUnionType(left), call))
+	note(d, "Add an arm for each case that is left, or a default arm. Runtime matching is unchanged.")
 }
 
 type literalMatchCase struct {

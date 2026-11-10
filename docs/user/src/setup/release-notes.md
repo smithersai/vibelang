@@ -58,7 +58,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A binding joined to a literal pattern with `and` could keep its original wide type and reject a valid return. Bindings now retain the type narrowed by the conjunction, in either order and inside array or object patterns.
 
-- A `match` could silently omit a case when its union used `kind`, `type` or another literal field instead of `_tag`. It now warns with the missing cases, including nested unions, while keeping compilation and runtime matching unchanged.
+- A `match` could silently omit a case when its union used `kind`, `type` or another literal field instead of `_tag`. It now reports an exhaustiveness error naming the missing cases, including nested unions, while keeping runtime matching unchanged.
 
 - Open and proposed VIPs and their supporting reviews could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
 

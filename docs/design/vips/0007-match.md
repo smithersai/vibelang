@@ -246,6 +246,10 @@ No reviewer raised a `match` issue in round 11.
 
 The TC39 pattern-matching proposal; Effect's `Match.exhaustive`; Rust's and Swift's exhaustive `match` and `switch`.
 
+## Claude's decisions
+
+- **Amended 2026-11-10: literal discriminants.** Codex Sol, lane `fix-match-exhaustive`, extends `EK4701` to incomplete matches over unions discriminated by any literal-typed field, including nested unions and mixtures of `_tag` and other fields. This supersedes the earlier subject restriction to `_tag`; the bounded coverage rules are in [Exhaustiveness](../src/004-match.md#exhaustiveness). The old `EK0708` is retired. The controlled census observed zero affected files across the five example repositories and the documentation site (13,219 `.vibe` plus 56 `.vibex`, 1,909 candidates, 114 positive controls), subject to unresolved type contexts and the documented enumeration bounds. This decision uses the pre-alpha optimistic approval in ruling 16. Will may overturn it. The diagnostic changes no runtime tests, result inference or narrowing.
+
 ## Will's words
 
 > "Ok I accept it."

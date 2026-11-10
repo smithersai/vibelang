@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestMatchLiteralDiscriminantWarning(t *testing.T) {
+func TestMatchLiteralDiscriminantExhaustiveness(t *testing.T) {
 	for _, tc := range []struct{ name, domain, arms, missing string }{
 		{"missing-kind", `{kind:"circle";r:number}|{kind:"square";side:number}`, `when {kind:"circle",let r}:r;`, "square"},
 		{"boolean", `{kind:boolean}`, `when {kind:true}:1;`, "false"},
@@ -42,16 +42,16 @@ func TestMatchLiteralDiscriminantWarning(t *testing.T) {
 			p, f, _, _ := editorProgram(t, source)
 			count := 0
 			for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), f), p.GetSemanticDiagnostics(t.Context(), f)...) {
-				if d.Source() == "EK" && d.Code() == 708 {
+				if d.Source() == "EK" && d.Code() == 4701 {
 					count++
 					if tc.name == "missing-kind" && (strings.Count(d.MessageText(), "square") < 2 || strings.Count(d.MessageText(), "circle") != 1) {
-						t.Errorf("warning must name only the missing square case after its subject type: %s", d.MessageText())
+						t.Errorf("error must name only the missing square case after its subject type: %s", d.MessageText())
 					}
-					if d.Category() != diagnostics.CategoryWarning {
+					if d.Category() != diagnostics.CategoryError {
 						t.Errorf("category = %v", d.Category())
 					}
 					if tc.missing == "" || !strings.Contains(d.MessageText(), tc.missing) {
-						t.Errorf("unexpected warning: %s", d.String())
+						t.Errorf("unexpected error: %s", d.String())
 					}
 				} else {
 					t.Errorf("unexpected diagnostic: %s", d.String())
@@ -62,34 +62,20 @@ func TestMatchLiteralDiscriminantWarning(t *testing.T) {
 				want = 1
 			}
 			if count != want {
-				t.Errorf("warning count = %d, want %d", count, want)
+				t.Errorf("error count = %d, want %d", count, want)
 			}
 		})
 	}
 }
 
-// Modern severity configuration must change the diagnostic, independently of
-// the legacy configuration's adjustable-code list.
-func TestLiteralDiscriminantSeverity(t *testing.T) {
-	for _, severity := range []string{"warning", "error", "off"} {
-		t.Run(severity, func(t *testing.T) {
-			config := strings.TrimSuffix(editorTsconfig, "}") + `,"vibe":{"severities":{"EK0708":"` + severity + `"}}}`
-			p, f, _, _ := editorProgramConfig(t, `export function f(s:{kind:"a"}|{kind:"b"}){return match(s){when {kind:"a"}:1;}}`, editorPackageJSON, editorPackages, config)
-			ds := p.GetSemanticDiagnostics(t.Context(), f)
-			if severity == "off" {
-				if len(ds) != 0 {
-					t.Fatalf("off: %v", ds)
-				}
-				return
-			}
-			want := diagnostics.CategoryWarning
-			if severity == "error" {
-				want = diagnostics.CategoryError
-			}
-			if len(ds) != 1 || ds[0].Code() != 708 || ds[0].Category() != want {
-				t.Fatalf("%s: %v", severity, ds)
-			}
-		})
+// A retired warning code cannot silently restore the former advisory policy.
+func TestLiteralDiscriminantRetiredWarning(t *testing.T) {
+	for _, code := range []string{"EK0708", "EK4701"} {
+		config := `{"vibe":{"severities":{"` + code + `":"off"}},"files":["main.ts"]}`
+		category, count := configWarning(t, config, 3006)
+		if count != 1 || category != diagnostics.CategoryError {
+			t.Fatalf("%s severity configuration: category=%v count=%d", code, category, count)
+		}
 	}
 }
 
@@ -103,7 +89,7 @@ func TestLiteralDiscriminantLargeUnion(t *testing.T) {
 	}
 	p, f, _, _ := editorProgram(t, "export function f(s:"+strings.Join(domain, "|")+"){return match(s){"+strings.Join(arms, "")+"}}")
 	ds := p.GetSemanticDiagnostics(t.Context(), f)
-	if len(ds) != 1 || ds[0].Code() != 708 || !strings.Contains(ds[0].MessageText(), "299") {
+	if len(ds) != 1 || ds[0].Code() != 4701 || !strings.Contains(ds[0].MessageText(), "299") {
 		t.Fatalf("large union: %v", ds)
 	}
 }

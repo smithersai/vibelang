@@ -10,7 +10,7 @@ import (
 
 const computedCoverageTarget = "FuzzComputedKeyMatchCoverage"
 const computedCoverageQuote = "when every other property it tests is a bare key or a `let` or `const` binding that the member declares as required"
-const computedCoverageTagQuote = "Only `_tag` is a discriminant"
+const computedCoverageTagQuote = "Each of those literals is a case of the member"
 const computedCoverageGuardQuote = "Only an unguarded arm covers anything."
 const computedCoverageObjectQuote = "first rejects non-objects (functions are objects too)"
 

@@ -8,11 +8,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const literalDiscriminantWarningQuote = "A match without `default` over objects with literal-typed discriminant fields other than `_tag` reports warning `EK0708` when cases remain."
+const literalDiscriminantWarningQuote = "A match without `default` over objects with literal-typed discriminant fields other than `_tag` reports error `EK4701` when cases remain."
 
 func TestLiteralDiscriminantWarningQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("004-match.md"), literalDiscriminantWarningQuote) {
-		t.Fatal("literal discriminant warning rule changed")
+		t.Fatal("literal discriminant exhaustiveness rule changed")
 	}
 }
 
@@ -21,7 +21,7 @@ func TestLiteralDiscriminantWarningQuoted(t *testing.T) {
 func FuzzLiteralDiscriminantWarning(f *testing.F) {
 	startShortBudget(f)
 	if !strings.Contains(SpecText("004-match.md"), literalDiscriminantWarningQuote) {
-		f.Fatal("missing warning contract")
+		f.Fatal("missing exhaustiveness contract")
 	}
 	for _, key := range []string{"kind", "type", "phase", "nested", "mixed", "mixed-fixed", "open", "default", "generic", "union-field"} {
 		f.Add([]byte(key + "\x00\x04\x05"))
@@ -115,10 +115,10 @@ func FuzzLiteralDiscriminantWarning(f *testing.F) {
 		defer r.Remove()
 		got := 0
 		for _, d := range r.Diagnostics {
-			if d.Source() == "EK" && d.Code() == 708 {
+			if d.Source() == "EK" && d.Code() == 4701 {
 				got++
-				if d.Category() != diagnostics.CategoryWarning {
-					t.Fatalf("EK0708 category: %v", d)
+				if d.Category() != diagnostics.CategoryError {
+					t.Fatalf("EK4701 category: %v", d)
 				}
 			} else if d.Category() == diagnostics.CategoryError {
 				t.Fatalf("unexpected diagnostic: %v\n%s", d, source)
@@ -129,7 +129,7 @@ func FuzzLiteralDiscriminantWarning(f *testing.F) {
 			want = 1
 		}
 		if got != want {
-			Gap(t, "FuzzLiteralDiscriminantWarning", "literal-discriminant:"+key, "EK0708 count=%d want=%d\n%s", got, want, source)
+			Gap(t, "FuzzLiteralDiscriminantWarning", "literal-discriminant:"+key, "EK4701 count=%d want=%d\n%s", got, want, source)
 		}
 	})
 }
