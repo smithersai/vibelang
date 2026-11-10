@@ -59,6 +59,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A durable workflow killed during a long `DurableClock.sleep` slept the whole duration again when it resumed. The engine now journals when the clock is due, and the resumed run waits only for the time left.
 
+- A test of a program that asks a `DecisionModel` for a decision needed a provider. `Experimental.Test.decisions(fixture)` answers from a recording, validating each answer as Effect validates a provider's, and a request the recording does not describe fails the test.
+
 - Checking which steps a durable run took meant reading its raw history. `Experimental.Test.journal(run)` lists the run's steps in order with their attempts and outcome, with assertions that fail the test with `JournalMismatch`, and `Experimental.Test.divergence(runA, runB)` names the first entry where two runs differ.
 
 - A test of code that reads files or runs commands depended on the machine it ran on. `Experimental.Test.host({ files, commands })` provides Effect's `FileSystem`, `Path` and `ChildProcessSpawner` for a machine described in the test, and an unscripted command fails as a missing binary does.

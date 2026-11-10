@@ -42,7 +42,7 @@ import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
-import { AiError, LanguageModel, Prompt, Response, Tool, Toolkit } from "effect/ai"
+import { AiError, DecisionModel, LanguageModel, Prompt, Response, Tool, Toolkit } from "effect/ai"
 import { ChildProcessSpawner } from "effect/process"
 import { WorkflowEngine } from "effect/workflow"
 import type { Workflow } from "effect/workflow"
@@ -981,3 +981,152 @@ export const divergence = (
     }
     return Option.none()
   })
+
+// -----------------------------------------------------------------------------
+// Decision models
+// -----------------------------------------------------------------------------
+
+/**
+ * One recorded decision call: the request a `DecisionModel` provider
+ * received and its answer.
+ *
+ * - `request.state` is the encoded input, as the provider received it.
+ *   `request.decisions` and `request.images` are compared only when present.
+ * - `response` is the provider's answer: `answers` by decision name, such as
+ *   `{ "kind": { "_tag": "Classify", "label": "bug" } }`, and optionally
+ *   `usage`, `id`, `modelId` and `metadata`. `failure` is an encoded
+ *   `AiError` the call fails with instead.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface RecordedDecision {
+  readonly request: {
+    readonly state: unknown
+    readonly decisions?: unknown
+    readonly images?: unknown
+  }
+  readonly response?: {
+    readonly answers: { readonly [name: string]: unknown }
+    readonly usage?: { readonly inputTokens?: number | undefined; readonly outputTokens?: number | undefined }
+    readonly id?: string
+    readonly modelId?: string
+    readonly metadata?: { readonly [key: string]: unknown }
+  }
+  readonly failure?: unknown
+}
+
+/**
+ * A recording of decision calls.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface DecisionFixture {
+  readonly calls: ReadonlyArray<RecordedDecision>
+}
+
+/**
+ * A decision request that no unclaimed recording describes: a defect, as
+ * {@link UnrecordedCall} is for a language model.
+ *
+ * @category errors
+ * @since 0.0.13
+ */
+export class UnrecordedDecision extends Data.TaggedError("UnrecordedDecision")<{
+  readonly decisions: ReadonlyArray<string>
+  readonly message: string
+}> {}
+
+const DecisionFixtureSchema = Schema.Struct({
+  calls: Schema.Array(Schema.Struct({
+    request: Schema.Struct({ state: Json, decisions: Schema.optional(Json), images: Schema.optional(Json) }),
+    response: Schema.optional(Schema.Struct({
+      answers: Schema.Record(Schema.String, Json),
+      usage: Schema.optional(Schema.Struct({
+        inputTokens: Schema.optional(Schema.Number),
+        outputTokens: Schema.optional(Schema.Number)
+      })),
+      id: Schema.optional(Schema.String),
+      modelId: Schema.optional(Schema.String),
+      metadata: Schema.optional(Schema.Record(Schema.String, Json))
+    })),
+    failure: Schema.optional(Json)
+  }))
+})
+
+const decodeDecisionFixture = (fixture: unknown): DecisionFixture => {
+  const decoded = Schema.decodeUnknownExit(DecisionFixtureSchema)(fixture)
+  if (decoded._tag === "Failure") {
+    throw new InvalidFixture({ message: `not a decision recording: ${String(decoded.cause)}` })
+  }
+  return decoded.value as DecisionFixture
+}
+
+const canonicalOrUndefined = (value: unknown) => (value === undefined ? undefined : canonical.canonicalJson(plain(value)))
+
+/**
+ * A `DecisionModel` that answers from a recording and never calls a
+ * provider. It is built with Effect's `DecisionModel.make`, so each recorded
+ * answer is validated against the program's decision definition as a
+ * provider's would be: a recorded label the definition does not have is
+ * `Invalid`, and a `Refusal` answer is refused.
+ *
+ * Each recorded call is claimed once; a request no unclaimed recording
+ * matches dies with {@link UnrecordedDecision}. A malformed fixture dies with
+ * {@link InvalidFixture}.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const decisions = (fixture: DecisionFixture): Layer.Layer<DecisionModel.DecisionModel> =>
+  Layer.effect(
+    DecisionModel.DecisionModel,
+    Effect.suspend(() => {
+      const recorded = decodeDecisionFixture(fixture)
+      const keys = recorded.calls.map((call) => ({
+        state: canonical.canonicalJson(plain(call.request.state)),
+        decisions: canonicalOrUndefined(call.request.decisions),
+        images: canonicalOrUndefined(call.request.images)
+      }))
+      const used = recorded.calls.map(() => false)
+      return DecisionModel.make({
+        supportsImages: true,
+        decide: (options) =>
+          Effect.suspend(() => {
+            const state = canonical.canonicalJson(plain(options.state))
+            const asked = canonical.canonicalJson(plain(options.decisions))
+            const images = canonicalOrUndefined(options.images)
+            // Claimed in the same synchronous step that finds it.
+            const index = keys.findIndex((key, i) =>
+              !used[i] && key.state === state &&
+              (key.decisions === undefined || key.decisions === asked) &&
+              (key.images === undefined || key.images === images)
+            )
+            if (index < 0) {
+              const names = Object.keys(options.decisions)
+              return Effect.die(new UnrecordedDecision({
+                decisions: names,
+                message: `no unclaimed recording matches this decision request for [${names.join(", ")}]`
+              }))
+            }
+            used[index] = true
+            const call = recorded.calls[index]!
+            if (call.failure !== undefined) {
+              return Effect.fail(recordedFailure(call as unknown as RecordedCall, index))
+            }
+            if (call.response === undefined) {
+              return Effect.die(new InvalidFixture({ message: `calls[${index}] has no response` }))
+            }
+            const response = call.response
+            return Effect.succeed({
+              answers: response.answers as DecisionModel.ProviderResponse["answers"],
+              usage: { inputTokens: response.usage?.inputTokens, outputTokens: response.usage?.outputTokens },
+              ...(response.id === undefined ? {} : { id: response.id }),
+              ...(response.modelId === undefined ? {} : { modelId: response.modelId }),
+              ...(response.metadata === undefined ? {} : { metadata: response.metadata as DecisionModel.DecideResponseMetadata })
+            })
+          })
+      })
+    })
+  )

@@ -22,7 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
+| `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -811,6 +811,29 @@ export effect function labelLive(seat: Layer.Layer<LanguageModel.LanguageModel>)
 | Nothing for a call that holds a credential | the call dies with `Experimental.Test.CredentialInRecording`, naming the rule that matched, such as `api-key` or `jwt` |
 
 `record` builds the `live` layer at the first miss, so a test whose recording answers every request runs with no key. Each append rewrites the file through a temporary file and a rename, so a crash leaves the old recording or the new one. A relative `path` resolves from the working directory, as Effect's `FileSystem` resolves it, and `record` needs a `FileSystem` layer such as `NodeFileSystem.layer`.
+
+`Experimental.Test.decisions(fixture)` is the same double for Effect's `DecisionModel`. Each recorded call holds the `request` a provider received, its encoded input as `state`, and the provider's `response`, its `answers` by decision name; `request.decisions` is compared only when present. Effect validates each recorded answer against the program's decision definition as it would a provider's, so a `Classify` answer carries its `probabilities`, a label the definition does not have is `Invalid`, and a `Refusal` is refused. Each recording is claimed once, and a request none matches dies with `Experimental.Test.UnrecordedDecision`.
+
+```vibe
+const recorded = {
+  calls: [{
+    request: { state: { title: "Crash on start" } },
+    response: { answers: { kind: { _tag: "Classify", label: "bug", probabilities: { bug: 0.9, feature: 0.1 } } } }
+  }]
+}
+
+const Triage = Decision.make({
+  input: Schema.Struct({ title: Schema.String }),
+  decisions: { kind: Decision.classify({ instructions: "What kind of issue is this?", criteria: { bug: null, feature: null } }) }
+})
+
+export effect function triageCrash() {
+  provide Experimental.Test.decisions(recorded) {
+    const response = try DecisionModel.decide(Triage, { input: { title: "Crash on start" } })
+    return response.answers.kind.label
+  }
+}
+```
 
 ### A machine of fixed files and commands
 

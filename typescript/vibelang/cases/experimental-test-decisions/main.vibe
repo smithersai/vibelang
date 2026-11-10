@@ -1,0 +1,30 @@
+// expect-result: {"kind":"bug","refused":"Refused","unrecorded":"UnrecordedDecision"}
+// Experimental.Test.decisions (VIP-71) is a DecisionModel that answers from a
+// recording and never calls a provider. Effect validates each recorded
+// answer as it would a provider's, and a request the recording does not
+// describe is a defect.
+import recorded from "./triage.json" with { type: "json" }
+
+const Triage = Decision.make({
+  input: Schema.Struct({ title: Schema.String }),
+  decisions: {
+    kind: Decision.classify({ instructions: "What kind of issue is this?", criteria: { bug: null, feature: null } })
+  }
+})
+
+effect function triage(title: string) {
+  const response = try DecisionModel.decideSettled(Triage, { input: { title } })
+  const outcome = response.outcomes.kind
+  return Result.isSuccess(outcome) ? outcome.success.label : outcome.failure.reason
+}
+
+export effect function main() {
+  provide Experimental.Test.decisions(recorded) {
+    const kind = try triage("Crash on start")
+    const refused = try triage("Make it pink")
+    const unrecorded = try triage("Slow build").pipe(
+      Effect.catchDefect((defect) => Effect.succeed(defect instanceof Experimental.Test.UnrecordedDecision ? defect._tag : String(defect)))
+    )
+    return { kind, refused, unrecorded }
+  }
+}

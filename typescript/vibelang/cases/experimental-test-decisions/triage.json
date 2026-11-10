@@ -1,0 +1,12 @@
+{
+  "calls": [
+    {
+      "request": { "state": { "title": "Crash on start" } },
+      "response": { "answers": { "kind": { "_tag": "Classify", "label": "bug", "probabilities": { "bug": 0.92, "feature": 0.08 } } } }
+    },
+    {
+      "request": { "state": { "title": "Make it pink" } },
+      "response": { "answers": { "kind": { "_tag": "Refusal" } } }
+    }
+  ]
+}
