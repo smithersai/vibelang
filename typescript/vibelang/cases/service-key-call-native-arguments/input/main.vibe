@@ -1,0 +1,12 @@
+service S0 { static readonly key = "call/S0"; n: number }; S0((1)());
+service S1 { static readonly key = "call/S1"; n: number }; S1(((n: number) => n)());
+service S2 { static readonly key = "call/S2"; n: number }; S2(((n: number) => n)(1, 2));
+service S3 { static readonly key = "call/S3"; n: number }; S3(new (class { constructor(n: number) {} })());
+service S4 { static readonly key = "call/S4"; n: number }; S4(({ method(n: number) {} }).method());
+service S5 { static readonly key = "call/S5"; n: number }; S5(() => ((n: number) => n)());
+service S6 { static readonly key = "call/S6"; n: number }; S6(() => (1)());
+service S7 { static readonly key = "call/S7"; n: number }; S7(Missing);
+service S8 { static readonly key = "call/S8"; n: number }; S8(((n: number) => n)("bad"));
+service S9 { static readonly key = "call/S9"; n: number }; S9(({}).missing);
+service S10 { static readonly key = "call/S10"; n: number }; S10(1);
+service S11 { static readonly key = "call/S11"; n: number }; S11(() => 1);

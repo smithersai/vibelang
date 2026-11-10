@@ -291,3 +291,5 @@ For a class written as `class Database extends Context.Service<Database, Databas
 An ordinary native `class Key extends Context.Service<…>` declares no `Key.Shape` namespace. Extract its implementation with `Context.Service.Shape<typeof Key>`, or use an explicitly declared TypeScript namespace. A member-body `service` declaration supplies its public `Shape` alias. The editor replaces an invalid non-generic native-key shape reference with a type import of Effect's extractor, preserving local bindings and foreign source files. An explicit namespace or type arguments are left for the owner to check.
 
 Retired `service class Users { … }` declarations fail with `EK0909`. Remove only `class`, retaining the service key, shape and comments between the keywords.
+
+A rejected call to a service key keeps independent TypeScript errors in its arguments, such as a nested call with missing arguments.

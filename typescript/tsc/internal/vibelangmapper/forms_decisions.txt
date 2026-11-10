@@ -8716,6 +8716,14 @@ typescript/vibelang/cases/service-identity/main.vibe:85:66 lambda program table
 typescript/vibelang/cases/service-implementation-valid/main.vibe:8:38 lambda effectFn keyword
 typescript/vibelang/cases/service-interface-commas-runtime/main.vibe:7:43 lambda effectFn annotation
 typescript/vibelang/cases/service-interface-commas-runtime/main.vibe:7:76 lambda effectFn annotation
+typescript/vibelang/cases/service-key-call-native-arguments/input/main.vibe:12:66 lambda plain fallback
+typescript/vibelang/cases/service-key-call-native-arguments/input/main.vibe:2:64 lambda plain fallback
+typescript/vibelang/cases/service-key-call-native-arguments/input/main.vibe:3:64 lambda plain fallback
+typescript/vibelang/cases/service-key-call-native-arguments/input/main.vibe:5:66 lambda plain fallback
+typescript/vibelang/cases/service-key-call-native-arguments/input/main.vibe:6:63 lambda choice fallback
+typescript/vibelang/cases/service-key-call-native-arguments/input/main.vibe:6:70 lambda plain fallback
+typescript/vibelang/cases/service-key-call-native-arguments/input/main.vibe:7:63 lambda choice fallback
+typescript/vibelang/cases/service-key-call-native-arguments/input/main.vibe:9:64 lambda plain fallback
 typescript/vibelang/cases/service-key-member-reads/main.vibe:64:43 lambda plain table
 typescript/vibelang/cases/service-key-native-errors/input/main.vibe:5:37 lambda plain fallback
 typescript/vibelang/cases/service-key-no-implicit-override/main.vibe:15:34 lambda plain fallback

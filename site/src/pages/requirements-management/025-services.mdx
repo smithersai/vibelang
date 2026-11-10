@@ -288,6 +288,8 @@ An ordinary native `class Key extends Context.Service<…>` declares no `Key.Sha
 
 Retired `service class Users { … }` declarations fail with `EK0909`. Remove only `class`, retaining the service key, shape and comments between the keywords.
 
+A rejected call to a service key keeps independent TypeScript errors in its arguments, such as a nested call with missing arguments.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/requirements-management/services](https://effect.website/docs/v4/requirements-management/services/)

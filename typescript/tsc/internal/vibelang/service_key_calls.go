@@ -37,7 +37,10 @@ func checkServiceKeyCalls(c *checker.Checker, file *ast.SourceFile) {
 				}
 				// TS2348: the key is not callable (did you mean new); TS2349 and
 				// TS2554 for the same call through VibeLang's call hook.
-				coverCodes(c, node, 2348, 2349, 2554)
+				// Only the outer invocation is redundant; nested argument calls
+				// retain their own native call and arity diagnostics.
+				coverExactErrorCodes(c, node, 2348, 2554)
+				coverExactErrorCodes(c, node.Expression(), 2349)
 			}
 		}
 		return node.ForEachChild(visit)
