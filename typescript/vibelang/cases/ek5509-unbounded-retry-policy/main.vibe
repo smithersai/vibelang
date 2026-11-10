@@ -1,0 +1,6 @@
+// rule-evidence: docs/design/src/007-tooling.md#vibelang-warnings | | A written `retryPolicy` object literal sets neither `maxAttempts` nor `expirationMs`, so it never gives up ([VIP-55](../vips/0055-durable-tasks-workflows.md)) | `EK5509` | Bound the policy with `maxAttempts` or `expirationMs`. |
+// A retry policy with no attempt or time bound retries forever (VIP-55).
+task Unbounded {
+  static readonly retryPolicy = { initialMs: 1000, factor: 2, maxMs: 4000 }
+  effect call(id: string): number!never { return id.length }
+}

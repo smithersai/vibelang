@@ -404,6 +404,7 @@ The following own warnings default to `"warning"`; they are separate from import
 | An extractor's argument count cannot match its extraction list | `EK0703` | Use a bare class test or the matching number of subpatterns. |
 | `await` on a `Fiber` ([VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK4609` | `await runPromise(Fiber.join(fiber))` in `async` code; `join fiber` in effect code |
 | `await` on a `Deferred` ([VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK4610` | `await runPromise(Deferred.await(deferred))` in `async` code; `try Deferred.await(deferred)` in effect code |
+| A written `retryPolicy` object literal sets neither `maxAttempts` nor `expirationMs`, so it never gives up ([VIP-55](../vips/0055-durable-tasks-workflows.md)) | `EK5509` | Bound the policy with `maxAttempts` or `expirationMs`. |
 
 ### Imported code inventory
 
