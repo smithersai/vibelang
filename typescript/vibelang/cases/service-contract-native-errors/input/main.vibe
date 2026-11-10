@@ -1,0 +1,43 @@
+export service S0 { static readonly key = "contract/S0"; get value(): Missing }
+export service S1 { static readonly key = "contract/S1"; set value(next: Missing) }
+export service S2 { static readonly key = "contract/S2"; get value(): { inner: Missing } }
+export service S3 { static readonly key = "contract/S3"; set value(next: { inner: Missing }) }
+export service S4 { static readonly key = "contract/S4"; get value(): { [key: string]: string; n: number } }
+export service S5 { static readonly key = "contract/S5"; set value(next: { [key: string]: string; n: number }) }
+export service S6 { static readonly key = "contract/S6"; get value(): { readonly method(): void } }
+export service S7 { static readonly key = "contract/S7"; set value(next: (inner) => void) }
+export service S8 { static readonly key = "contract/S8"; abstract read(): Missing }
+export service S9 { static readonly key = "contract/S9"; abstract value: Missing }
+export service S10 { static readonly key = "contract/S10"; declare read(): Missing }
+export service S11 { static readonly key = "contract/S11"; declare value: Missing }
+export service S12 { static readonly key = "contract/S12"; private value: Missing }
+export service S13 { static readonly key = "contract/S13"; protected read(): Missing }
+export service S14 { static readonly key = "contract/S14"; public value: Missing }
+export service S15 { static readonly key = "contract/S15"; accessor value: Missing }
+export service S16 { static readonly key = "contract/S16"; override read(): Missing }
+export service S17 { static readonly key = "contract/S17"; readonly read(): Missing }
+export service S18 { static readonly key = "contract/S18"; #value: Missing }
+export service S19 { static readonly key = "contract/S19"; value!: Missing }
+export service S20 { static readonly key = "contract/S20"; effect read(): Missing!! }
+export service S21 { static readonly key = "contract/S21"; private value: { readonly method(): void } }
+export service S22 { static readonly key = "contract/S22"; private value: (inner) => void }
+export service S23 { static readonly key = "contract/S23"; get value(): number }
+export service S24 { static readonly key = "contract/S24"; set value(next: number) }
+export service S25 { static readonly key = "contract/S25"; get value() }
+export service S26 { static readonly key = "contract/S26"; set value(next) }
+export service S27 { static readonly key = "contract/S27"; declare get value(): number }
+export service S28 { static readonly key = "contract/S28"; readonly get value(): number }
+export service S29 { static readonly key = "contract/S29"; abstract read(): number }
+export service S30 { static readonly key = "contract/S30"; declare value: number }
+export service S31 { static readonly key = "contract/S31"; private value: number }
+export service S32 { static readonly key = "contract/S32"; readonly read(): number }
+export service S33 { static readonly key = "contract/S33"; value!: number }
+export abstract class Native34 { abstract get value(): Missing }
+export abstract class Native35 { abstract set value(next: Missing) }
+export service S36 { static readonly key = "contract/S36"; effect read(): Missing }
+export service S37 { static readonly key = "contract/S37"; #value: Missing }; abstract class Outside { abstract #value: number }
+export service S38 { static readonly key = "contract/S38"; async read(): Missing!! }
+export service S39 { static readonly key = "contract/S39"; async read(): Promise<Missing> }
+export service S40 { static readonly key = "contract/S40"; async read(): Promise<number> }
+export service S41 { static readonly key = "contract/S41"; async read(): number!! }
+export service S42 { static readonly key = "contract/S42"; async read(): number!! }; async function OutsideAsync(): number { return 1 }

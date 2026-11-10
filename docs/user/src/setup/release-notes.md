@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Rejected service accessors and modified member contracts could hide unknown names and type errors in their annotations. Those independent errors now appear alongside the member rejection.
+
 - A compiler acceptance case that exceeded its run deadline could report only missing output or an exit code. It now names the deadline that killed the runner, including when its output matched.
 - An implementation written inside a service member could hide its unknown names and type errors. Those independent TypeScript errors now appear alongside the member rejection.
 

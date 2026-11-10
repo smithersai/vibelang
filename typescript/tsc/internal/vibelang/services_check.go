@@ -112,12 +112,12 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 		// abstract modifier would otherwise silence altogether.
 		if word == "service" && ast.IsAccessor(member) && member.Body() == nil {
 			report(c, member, serviceAccessorSignatureDiagnostic)
-			cover(c, member)
+			coverServiceRejectedContractErrors(c, member)
 			continue
 		}
 		if serviceContractClassSyntax(member) {
 			report(c, member, serviceContractModifierDiagnostic)
-			cover(c, member)
+			coverServiceRejectedContractErrors(c, member)
 			continue
 		}
 		if member.Body() != nil || ast.IsPropertyDeclaration(member) && member.Initializer() != nil {
