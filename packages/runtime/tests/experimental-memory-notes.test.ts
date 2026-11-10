@@ -108,7 +108,7 @@ test("notes and threads: invalid input fails before any I/O", async () => {
     appendMessage: broken("appendMessage"),
     history: broken("history")
   })
-  const cases: Array<[Effect.Effect<unknown, Memory.MemoryError, Memory.Memory>, string, ReadonlyArray<string>]> = [
+  const cases: Array<[Effect.Effect<unknown, Memory.MemoryError, Memory.Memory>, Memory.MemoryErrorCode, ReadonlyArray<string>]> = [
     [Memory.note("", "t"), "invalid_namespace", ["bank"]],
     [Memory.note("global-n", "x".repeat(Memory.MAX_TEXT_BYTES + 1)), "invalid_argument", ["text"]],
     [Memory.note("global-n", "t", { id: "" }), "invalid_argument", ["id"]],

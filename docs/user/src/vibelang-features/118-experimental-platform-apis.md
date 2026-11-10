@@ -23,7 +23,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
-| `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
+| `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, and `tools` gives a model `remember` and `recall` bound to its bank | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
 
@@ -1262,6 +1262,17 @@ export effect function correct() {
 Recall ranks by keyword unless the layer says otherwise: a row scores one for each query word its key or text contains, and a row that matches no word is left out. Ties go to the newest update, then the key, then the bank, so the order never depends on the order the banks were named in.
 
 Every recall has a byte budget, because recalled rows become part of a prompt. The answer is empty or, serialized as JSON, at most `maxBytes` UTF-8 bytes, 2,048 unless given. Rows are taken whole, best first, while they fit; the first row that does not fit is cut to the longest prefix of its text that does, and nothing after it is taken.
+
+`Experimental.Memory.scoped(bank)(effect)` binds one bank for `effect`. Inside it, `remember`, `note` and `recall` reach that bank's namespace only: a call that omits its bank, or gives an empty one, uses the bound bank, and a call that names a bank of another namespace fails with `invalid_namespace` before any read or write. A scope inside a scope must bind the same namespace. Threads are named by id, not by bank, so a scope does not limit them.
+
+`Experimental.Memory.tools(bank)` is a model's memory: Effect's `Toolkit` with a `remember` tool (`{ key, text }`) and a `recall` tool (`{ query, maxBytes? }`), bound to `bank`. Pass it as a language model's `toolkit`. No tool takes a bank, so the model reaches no other bank, and a memory failure is returned to the model as `{ code, message, path? }` rather than ending the call. To give a model memory beside other tools, merge `Experimental.Memory.toolkit` into a larger toolkit and provide `Experimental.Memory.layerTools(bank)`.
+
+```vibe
+export effect function answer(question: string) {
+  const response = try LanguageModel.generateText({ prompt: question, toolkit: Experimental.Memory.tools("agent-support") })
+  return response.text
+}
+```
 
 Recalled text is data. It grants no capability, and a fact a model wrote is an assertion, not an instruction.
 

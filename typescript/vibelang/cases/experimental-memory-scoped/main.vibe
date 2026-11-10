@@ -1,0 +1,20 @@
+// expect-result: {"bound":[["agent-a","style"]],"refused":["invalid_namespace",["bank"]],"tools":["remember","recall"]}
+// Experimental.Memory (VIP-66): a scope binds one bank, and a model's
+// toolkit is bound to its bank.
+effect function learn() {
+  try Experimental.Memory.remember({ key: "style", text: "early returns" })
+  return try Experimental.Memory.recall({ query: "returns" })
+}
+
+export effect function main() {
+  provide Experimental.Memory.test {
+    const rows = try Experimental.Memory.scoped("agent-a")(learn())
+    const error = try Effect.flip(Experimental.Memory.scoped("agent-a")(Experimental.Memory.remember({ bank: "agent-b", key: "k", text: "t" })))
+    const kit = try Experimental.Memory.tools("agent-a")
+    return {
+      bound: rows.map((row) => [row.bank, row.key]),
+      refused: [error.code, error.path],
+      tools: Object.keys(kit.tools)
+    }
+  }
+}

@@ -138,7 +138,7 @@ test("memory: a failing store fails remember and recall with code store", async 
 
 test("memory: invalid input fails with a code and a path before any I/O", async () => {
   const { calls, layer } = faulty()
-  const cases: Array<[Effect.Effect<unknown, Memory.MemoryError, Memory.Memory>, string, ReadonlyArray<string> | undefined]> = [
+  const cases: Array<[Effect.Effect<unknown, Memory.MemoryError, Memory.Memory>, Memory.MemoryErrorCode, ReadonlyArray<string> | undefined]> = [
     [Memory.remember({ bank: "", key: "k", text: "t" }), "invalid_namespace", ["bank"]],
     [Memory.remember({ bank: "b".repeat(129), key: "k", text: "t" }), "invalid_argument", ["bank"]],
     [Memory.remember({ bank: "global-n", key: "", text: "t" }), "invalid_argument", ["key"]],

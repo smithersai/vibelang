@@ -45,7 +45,9 @@ const operation = fc.oneof(
   })
 )
 
-const apply = (store: Memory.Store, operation: typeof operation extends fc.Arbitrary<infer A> ? A : never) =>
+type Operation = typeof operation extends fc.Arbitrary<infer A> ? A : never
+
+const apply = (store: Memory.Store, operation: Operation) =>
   operation.op === "fact" ? store.putFact(operation)
   : operation.op === "note" ? store.putNote(operation)
   : store.appendMessage(operation)

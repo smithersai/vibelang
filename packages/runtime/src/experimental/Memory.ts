@@ -34,6 +34,8 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Random from "effect/Random"
+import * as Schema from "effect/Schema"
+import { Tool, Toolkit } from "effect/ai"
 import type { SqlClient } from "effect/sql"
 import * as inProcess from "./internal/memoryStore.js"
 import * as sqlStore from "./internal/memorySql.js"
@@ -341,7 +343,23 @@ export const namespaceOf = (bank: string): Namespace => {
  */
 export const bankOf = (namespace: Namespace): string => `${namespace.kind}-${namespace.id}`
 
-const resolveBank = (bank: unknown, path: ReadonlyArray<string | number>) => {
+interface Resolved {
+  readonly bank: string
+  readonly namespace: Namespace
+}
+
+const sameNamespace = (left: Namespace, right: Namespace): boolean => left.kind === right.kind && left.id === right.id
+
+/**
+ * The bank {@link scoped} bound, if any.
+ *
+ * @internal
+ */
+const Bound = /* @__PURE__ */ Context.Reference<Resolved | undefined>("vibelang/experimental/Memory/Bound", {
+  defaultValue: () => undefined
+})
+
+const parseBank = (bank: unknown, path: ReadonlyArray<string | number>): Effect.Effect<Resolved, MemoryError> => {
   if (typeof bank !== "string" || bank.length === 0) {
     return Effect.fail(
       new MemoryError({ code: "invalid_namespace", message: "memory bank must be a non-empty string", path: path.map(String) })
@@ -352,6 +370,24 @@ const resolveBank = (bank: unknown, path: ReadonlyArray<string | number>) => {
   }
   return Effect.succeed({ bank, namespace: namespaceOf(bank) })
 }
+
+// Inside `scoped`, an omitted or empty bank is the bound one, and any other
+// namespace fails before any I/O.
+const resolveBank = (bank: unknown, path: ReadonlyArray<string | number>): Effect.Effect<Resolved, MemoryError> =>
+  Effect.flatMap(Effect.service(Bound), (bound) => {
+    if (bound === undefined) return parseBank(bank, path)
+    if (bank === undefined || bank === "") return Effect.succeed(bound)
+    return Effect.flatMap(parseBank(bank, path), (resolved) =>
+      sameNamespace(resolved.namespace, bound.namespace)
+        ? Effect.succeed(resolved)
+        : Effect.fail(
+          new MemoryError({
+            code: "invalid_namespace",
+            message: `memory bank "${resolved.bank}" is outside the scoped bank "${bound.bank}"`,
+            path: path.map(String)
+          })
+        ))
+  })
 
 /**
  * Splits a query into the lower-case terms keyword ranking matches.
@@ -492,7 +528,7 @@ export const test: Layer.Layer<Memory> = /* @__PURE__ */ Layer.unwrap(
  * @since 0.0.13
  */
 export const remember = (input: {
-  readonly bank: string
+  readonly bank?: string | undefined
   readonly key: string
   readonly text: string
 }): Effect.Effect<{ readonly key: string }, MemoryError, Memory> =>
@@ -527,16 +563,18 @@ export const remember = (input: {
  * @since 0.0.13
  */
 export const recall = (input: {
-  readonly banks: ReadonlyArray<string>
+  readonly banks?: ReadonlyArray<string> | undefined
   readonly query: string
   readonly maxBytes?: number | undefined
 }): Effect.Effect<ReadonlyArray<Recalled>, MemoryError, Memory> =>
   Effect.gen(function*() {
-    if (!Array.isArray(input.banks)) return yield* Effect.fail(invalid("memory banks must be an array", ["banks"]))
-    if (input.banks.length > MAX_RECALL_BANKS) {
+    const bound = yield* Effect.service(Bound)
+    const banks = input.banks === undefined || (bound !== undefined && input.banks.length === 0) ? bound === undefined ? [] : [bound.bank] : input.banks
+    if (!Array.isArray(banks)) return yield* Effect.fail(invalid("memory banks must be an array", ["banks"]))
+    if (banks.length > MAX_RECALL_BANKS) {
       return yield* Effect.fail(invalid(`recall reads at most ${MAX_RECALL_BANKS} banks`, ["banks"]))
     }
-    const resolved = yield* Effect.forEach(input.banks, (bank, index) => resolveBank(bank, ["banks", index]))
+    const resolved = yield* Effect.forEach(banks, (bank, index) => resolveBank(bank, ["banks", index]))
     if (typeof input.query !== "string") return yield* Effect.fail(invalid("recall query must be a string", ["query"]))
     if (bytes(input.query) > MAX_TEXT_BYTES) {
       return yield* Effect.fail(invalid(`recall query exceeds ${MAX_TEXT_BYTES} UTF-8 bytes`, ["query"]))
@@ -545,7 +583,7 @@ export const recall = (input: {
     if (!Number.isInteger(maxBytes) || maxBytes < 0 || maxBytes > MAX_RECALL_BYTES) {
       return yield* Effect.fail(invalid(`maxBytes must be an integer from 0 to ${MAX_RECALL_BYTES}`, ["maxBytes"]))
     }
-    const unique = new Map<string, { readonly bank: string; readonly namespace: Namespace }>()
+    const unique = new Map<string, Resolved>()
     for (const entry of resolved) {
       const identity = `${entry.namespace.kind}\u0000${entry.namespace.id}`
       if (!unique.has(identity)) unique.set(identity, entry)
@@ -666,3 +704,112 @@ export const thread = (id: string): Thread => ({
       return yield* memory.store.history(id, limit)
     })
 })
+
+/**
+ * Binds `bank` for `effect`: inside it, {@link remember}, {@link note} and
+ * {@link recall} read and write that bank's namespace only. A call that
+ * omits its bank, or gives an empty one, uses the bound bank; a call that
+ * names a bank of another namespace fails with `invalid_namespace` before
+ * any I/O. A scope inside a scope must bind the same namespace. Threads are
+ * named by id, not by bank, and a scope does not limit them.
+ *
+ * @category namespaces
+ * @since 0.0.13
+ */
+export const scoped = (bank: string) => <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E | MemoryError, R> =>
+  Effect.gen(function*() {
+    const resolved = yield* parseBank(bank, ["namespace"])
+    const outer = yield* Effect.service(Bound)
+    if (outer !== undefined && !sameNamespace(outer.namespace, resolved.namespace)) {
+      return yield* Effect.fail(
+        new MemoryError({
+          code: "invalid_namespace",
+          message: `memory bank "${resolved.bank}" is outside the scoped bank "${outer.bank}"`,
+          path: ["namespace"]
+        })
+      )
+    }
+    return yield* Effect.provideService(effect, Bound, resolved)
+  })
+
+/**
+ * The failure a memory tool returns to the model: a {@link MemoryError}'s
+ * code, message and path.
+ *
+ * @category tools
+ * @since 0.0.13
+ */
+export const ToolFailure = /* @__PURE__ */ Schema.Struct({
+  code: Schema.String,
+  message: Schema.String,
+  path: /* @__PURE__ */ Schema.optional(/* @__PURE__ */ Schema.Array(Schema.String))
+})
+
+const RecalledSchema = /* @__PURE__ */ Schema.Struct({
+  bank: Schema.String,
+  key: Schema.String,
+  text: Schema.String,
+  score: Schema.Number,
+  updatedAtMs: Schema.Number
+})
+
+/**
+ * The definitions of the two memory tools, `remember` and `recall`, without
+ * handlers. Neither takes a bank: {@link tools} and {@link layerTools} bind
+ * it. A failure is returned to the model as a {@link ToolFailure} rather
+ * than ending the call.
+ *
+ * @category tools
+ * @since 0.0.13
+ */
+export const toolkit = /* @__PURE__ */ Toolkit.make(
+  /* @__PURE__ */ Tool.make("remember", {
+    description: "Persist a memory record in a named bank.",
+    parameters: /* @__PURE__ */ Schema.Struct({ key: Schema.String, text: Schema.String }),
+    success: /* @__PURE__ */ Schema.Struct({ key: Schema.String }),
+    failure: ToolFailure,
+    failureMode: "return"
+  }),
+  /* @__PURE__ */ Tool.make("recall", {
+    description: "Recall advisory memory rows from named banks.",
+    parameters: /* @__PURE__ */ Schema.Struct({ query: Schema.String, maxBytes: /* @__PURE__ */ Schema.optional(Schema.Number) }),
+    success: /* @__PURE__ */ Schema.Array(RecalledSchema),
+    failure: ToolFailure,
+    failureMode: "return"
+  })
+)
+
+const toFailure = (error: MemoryError): typeof ToolFailure.Type =>
+  error.path === undefined ? { code: error.code, message: error.message } : { code: error.code, message: error.message, path: [...error.path] }
+
+/**
+ * The handlers of {@link toolkit}, bound to `bank`, over the memory in
+ * scope. Merge `toolkit` into a larger toolkit and provide this layer. The
+ * layer itself never fails: with an invalid bank, every tool call returns
+ * the `invalid_namespace` failure to the model.
+ *
+ * @category tools
+ * @since 0.0.13
+ */
+export const layerTools = (bank: string) =>
+  toolkit.toLayer(
+    Effect.map(Effect.service(Memory), (memory) => {
+      const run = <A>(effect: Effect.Effect<A, MemoryError, Memory>) =>
+        scoped(bank)(effect).pipe(Effect.provideService(Memory, memory), Effect.mapError(toFailure))
+      return toolkit.of({
+        remember: ({ key, text }) => run(remember({ key, text })),
+        recall: ({ query, maxBytes }) => run(Effect.map(recall({ query, maxBytes }), (rows) => [...rows]))
+      })
+    })
+  )
+
+/**
+ * A model's memory, bound to `bank`: Effect's `Toolkit` with `remember` and
+ * `recall`, ready to pass as a language model's `toolkit`. No tool takes a
+ * bank, so the model reaches no other bank. It never fails itself: with an
+ * invalid bank, every tool call returns the `invalid_namespace` failure.
+ *
+ * @category tools
+ * @since 0.0.13
+ */
+export const tools = (bank: string) => Effect.provide(toolkit, layerTools(bank))

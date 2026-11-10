@@ -103,6 +103,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A leading or repeated semicolon in a `data` body compiled silently. It now reports `EK1606` for the missing variant; a single trailing separator remains allowed.
 
+- A model given memory tools could read and write any bank. `Experimental.Memory.tools(bank)` gives a model `remember` and `recall` bound to one bank, with no bank argument, and `Experimental.Memory.scoped(bank)` makes every memory call inside it fail with `invalid_namespace` when it names another bank.
+
 - `Experimental.Memory` could hold only facts that a later write overwrites. `Experimental.Memory.note` appends notes that a correction supersedes instead of editing, and `Experimental.Memory.thread(id)` keeps a conversation's messages, appended once each and read back newest last; both work in memory and in SQL.
 
 - `Experimental.Memory` kept facts only as long as its process. `Experimental.Memory.layerSql` keeps them in SQLite or PostgreSQL through Effect's `SqlClient`, in Smithers' `memory_facts` table, so a later run recalls what an earlier one remembered and a database error fails with the code `store`.
