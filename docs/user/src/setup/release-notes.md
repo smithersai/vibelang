@@ -36,6 +36,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A misspelled name inside a `for concurrent` body could suggest an internal compiler binding. Suggestions now use source names and still offer a matching name declared by the program.
 
+- Recording an attributed language clarification in a specification chapter could reject the required author and revision notice. Dated decision items now preserve those details while unrelated private review notes remain rejected.
+
 - Migration setup generated Effect lint commands with unsupported Oxlint flags, so linting stopped with an unknown-option error. Setup now uses compiler project options and repairs those commands when repeated.
 
 - A binding joined to a literal pattern with `and` could keep its original wide type and reject a valid return. Bindings now retain the type narrowed by the conjunction, in either order and inside array or object patterns.

@@ -559,3 +559,12 @@ compiler explicitly; the default is this checkout's native compiler. The
 audit uses the project's compiler configuration; the template configs keep
 the default diagnostic severities.
 
+
+## Public decision attribution
+
+A specification chapter may record an authored clarification under a section named
+`Claude's decisions`. Each item starts with a dated `Amended` or `Clarified`
+label, identifies its model and lane, and explicitly states that the decision may
+be overturned. The hygiene check permits those attribution spans in the chapter
+and its generated page. It continues checking the rule text, other sections,
+private data and review notes.

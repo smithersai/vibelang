@@ -54,3 +54,22 @@ test("fixture exclusions are limited to upstream tests and generated baselines",
     assert.equal(upstreamFixture(path), false, path)
   }
 })
+
+
+test("public decision attribution never exempts configured private data", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "tracked-leaks-"))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const previous = process.env.VIBELANG_LEAK_PATTERNS
+  process.env.VIBELANG_LEAK_PATTERNS = JSON.stringify(["private-build\\.example"])
+  t.after(() => {
+    if (previous === undefined) delete process.env.VIBELANG_LEAK_PATTERNS
+    else process.env.VIBELANG_LEAK_PATTERNS = previous
+  })
+  mkdirSync(join(root, "docs/design/src"), { recursive: true })
+  const file = "docs/design/src/example.md"
+  writeFileSync(join(root, file), "### Claude's decisions\n\n- **Amended 2026-11-10: finite cases.** Codex Sol, lane `matching`, records private-build.example. Will may overturn this decision.\n")
+  const found = trackedLeaks(root, [file])
+  assert.equal(found.length, 1)
+  assert.ok(found[0].startsWith(file + ":"))
+  assert.ok(!found[0].includes("private-build.example"))
+})

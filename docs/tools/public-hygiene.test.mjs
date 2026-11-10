@@ -116,3 +116,42 @@ test("API identity keeps the generated-contract exception without private attrib
   assert.match(text, /No other JSDoc difference is allowed/)
   assert.match(text, /an authored .* must remain unchanged/)
 })
+
+const decisionRecord = (model = "Codex Sol", lane = "matching", kind = "Amended") =>
+  `### Claude's decisions\n\n- **${kind} 2026-11-10: finite cases.** ${model}, lane \`${lane}\`, records the finite-case rule. Will may overturn this decision.\n`
+
+test("dated public decision attributions are accepted in source and generated chapters", () => {
+  for (const file of ["docs/design/src/example.md", "site/src/pages/spec/example.mdx"]) {
+    assert.deepEqual(publicHygiene(file, decisionRecord()), [])
+    assert.deepEqual(publicHygiene(file, decisionRecord().replace("this decision", "it")), [])
+  }
+})
+
+test("public decision records do not exempt unrelated provenance or other sections", () => {
+  const file = "docs/design/src/example.md"
+  for (const text of [
+    decisionRecord().replace("### Claude's decisions\n", ""),
+    decisionRecord().replace("2026-11-10", "undated"),
+    decisionRecord().replace(", lane `matching`,", ","),
+    decisionRecord().replace("Will may overturn this decision.", ""),
+    decisionRecord() + "\n## Rule\nCodex supplied a private review.",
+    decisionRecord().replace("records the finite-case rule.", "records a private Codex review."),
+    decisionRecord().replace("records the finite-case rule.", "records review probe R9."),
+    "```md\n" + decisionRecord() + "```\n",
+  ]) assert.ok(publicHygiene(file, text).includes("internal decision or review provenance"), text)
+})
+
+test("public attribution preserves provenance checks across model, lane and heading variations", () => {
+  fc.assert(fc.property(
+    fc.constantFrom("Codex Sol", "Codex Astra", "Codex Terra", "Claude Fable", "Claude Opus", "GPT-6.1"),
+    fc.array(fc.constantFrom("a", "b", "c", "-"), { minLength: 1, maxLength: 24 }).map(chars => "lane-" + chars.join("")),
+    fc.constantFrom("Amended", "Clarified"),
+    fc.constantFrom("docs/design/src/example.md", "site/src/pages/spec/example.mdx"),
+    (model, lane, kind, file) => {
+      const text = decisionRecord(model, lane, kind)
+      assert.deepEqual(publicHygiene(file, text), [])
+      assert.ok(publicHygiene(file, text + "\n## Other\nWill supplied a private ruling.").includes("internal decision or review provenance"))
+      assert.ok(publicHygiene(file, text.replace("records the finite-case rule.", "records a private Codex review.")).includes("internal decision or review provenance"))
+    }
+  ), { numRuns: 100, seed: 20261110 })
+})
