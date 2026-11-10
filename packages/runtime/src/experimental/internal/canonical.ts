@@ -9,6 +9,7 @@
  * @internal
  */
 import * as Effect from "effect/Effect"
+import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import { WebCrypto } from "effect/crypto"
 
@@ -273,3 +274,50 @@ export const sha256 = (text: string): Effect.Effect<string> =>
     const bytes = new Uint8Array(yield* Effect.promise(() => crypto.subtle.digest("SHA-256", encoder.encode(text))))
     return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
   })
+
+/**
+ * The path to the first `Redacted` value inside `value`, or undefined. It
+ * walks arrays, plain and class objects' own data properties, sets and maps.
+ */
+export const findRedacted = (value: unknown): string | undefined => {
+  const seen = new Set<object>()
+  const walk = (current: unknown, path: string): string | undefined => {
+    if (Redacted.isRedacted(current)) return path
+    if (typeof current !== "object" || current === null || seen.has(current) || isSlotted(current)) return undefined
+    seen.add(current)
+    if (current instanceof Map) {
+      let index = 0
+      for (const [key, entry] of current) {
+        const found = walk(key, `${path}[key ${index}]`) ?? walk(entry, `${path}[${index}]`)
+        if (found !== undefined) return found
+        index++
+      }
+      return undefined
+    }
+    if (current instanceof Set) {
+      let index = 0
+      for (const entry of current) {
+        const found = walk(entry, `${path}[${index++}]`)
+        if (found !== undefined) return found
+      }
+      return undefined
+    }
+    for (const key of Object.keys(current)) {
+      const found = walk((current as Record<string, unknown>)[key], Array.isArray(current) ? `${path}[${key}]` : `${path}.${key}`)
+      if (found !== undefined) return found
+    }
+    return undefined
+  }
+  return walk(value, "$")
+}
+
+/** Credentials never reach the journal: refuses a value that holds a `Redacted`. */
+export const refuseRedacted = (value: unknown, where: string): void => {
+  const path = findRedacted(value)
+  if (path !== undefined) {
+    throw new TypeError(
+      `${where} holds a Redacted value at ${path}, and credentials never reach the journal. ` +
+        "Pass the secret's name or a placeholder, and read the secret inside the task that uses it."
+    )
+  }
+}

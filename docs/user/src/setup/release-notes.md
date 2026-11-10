@@ -43,6 +43,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Invalid service signatures and constructors could hide unknown names and type errors in their types or bodies. These independent errors now appear alongside `EK0902`.
 
+- A `Redacted` credential in a durable workflow's payload or a step's result was written to the journal in plain text, because Effect's JSON codec encodes the secret. The engine now refuses such a value with a defect that names its path, before anything is written.
+
 - A durable run resumed under changed workflow code could mix steps recorded by the old code with steps computed by the new. A workflow that declares its `plan` now records the plan's digest when a run starts, and a resume that builds a different plan dies with `plan_changed`; `Experimental.Durable.plan` and `diff` show a plan and what changed before anything runs.
 
 - A durable workflow killed during a long `DurableClock.sleep` slept the whole duration again when it resumed. The engine now journals when the clock is due, and the resumed run waits only for the time left.

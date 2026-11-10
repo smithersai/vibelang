@@ -482,7 +482,11 @@ export const task = <
       const instance = yield* WorkflowEngine.WorkflowInstance
       const handler = yield* Handler
       const n = nextOccurrence(instance, key)
-      let body: Effect.Effect<unknown, unknown> = handler.run(payload)
+      // Credentials never reach the journal, which stores a step's result and error.
+      let body: Effect.Effect<unknown, unknown> = handler.run(payload).pipe(
+        Effect.tap((value) => Effect.sync(() => canonical.refuseRedacted(value, `The result of task ${key}`))),
+        Effect.tapError((error) => Effect.sync(() => canonical.refuseRedacted(error, `The failure of task ${key}`)))
+      )
       if (options.attemptTimeoutMs !== undefined) {
         const ms = options.attemptTimeoutMs
         body = Effect.timeoutOrElse(body, {

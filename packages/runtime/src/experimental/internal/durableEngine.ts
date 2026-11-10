@@ -24,7 +24,7 @@ import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import { Workflow, WorkflowEngine } from "effect/workflow"
 import type { Activity } from "effect/workflow"
-import { canonicalJson, sha256, sortCollections } from "./canonical.js"
+import { canonicalJson, refuseRedacted, sha256, sortCollections } from "./canonical.js"
 import { isTerminal, type JournalEntry, type NewEvent, type RunRow, type RunStatus, type Store } from "./durableStore.js"
 
 const WorkflowInstance = WorkflowEngine.WorkflowInstance
@@ -45,8 +45,10 @@ const payloadCodec = (workflow: Workflow.Any) =>
   Schema.toCodecJson(workflow.payloadSchema) as unknown as Schema.Codec<object, unknown>
 
 /** The payload as VIP-44 hashes it: sets and maps sorted, then encoded. */
-export const encodePayload = (workflow: Workflow.Any, payload: object): unknown =>
-  Schema.encodeSync(payloadCodec(workflow))(sortCollections(payload))
+export const encodePayload = (workflow: Workflow.Any, payload: object): unknown => {
+  refuseRedacted(payload, `The payload of workflow ${workflow._tag}`)
+  return Schema.encodeSync(payloadCodec(workflow))(sortCollections(payload))
+}
 export const decodePayload = (workflow: Workflow.Any, json: unknown): object => Schema.decodeUnknownSync(payloadCodec(workflow))(json)
 
 const statusOf = (result: Workflow.Result<unknown, unknown>): RunStatus => {
