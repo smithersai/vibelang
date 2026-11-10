@@ -1179,3 +1179,13 @@ The grammar admission lab derives TypeScript class decorators, including class e
 Decorators before an `error`, `schema error` or `service` declaration are tracked separately from inherited class and member decorators. The declaration's own source modifier span selects the precise pending key; keyed corpus inputs retain export positions and declaration kinds, with native classes, members, strings and comments as controls.
 
 The formatter oracle keys refusals of comments inside dotted `try` and `fork` operation headers by the formatter's own location and quoted replacement span. Appendix A admits these comment gaps. Keyed corpus coverage and generated line and block comment variants retain the existing formatter gap without allowing unrelated import or declaration refusals. The corpus guard reports an unexpected pass when the formatter supports the header.
+
+
+`FuzzReservedFiberTypeNames` checks the VIP-17 reservation at type-alias,
+interface, enum and declaration type-parameter names. Its keys identify each
+declaration shape; mutations vary the Effect body, source extension, spelling
+and comments. It asserts the exact `EK1702` range. The parser matrix also
+checks inherited callable generic heads, plain value-parameter boundaries and initializer boundaries and TypeScript's separate
+type-syntax context for callable types, inferred names and mapped keys. The
+grammar admission witnesses remain keyed corpus inputs after their pending
+markers are removed.

@@ -11,6 +11,8 @@ A parsed `fork` or `join` runs only inside an `effect` function or `effect { ...
 
 An `effect` function or producer expression cannot name itself `fork` or `join` (`EK1702`). A declaration uses its enclosing context: `export effect function fork() { return 1 }` is allowed in plain code, while a declaration named `fork` or `join` inside effect code is rejected. Method and property names remain ordinary names, so `{ effect join() { return 1 } }` is allowed.
 
+Type aliases, interfaces, enums and type parameters in an Effect context also cannot bind `fork` or `join` (`EK1702`). A callable's type parameters use the enclosing context, as in TypeScript: `effect function f<fork>() {}` is allowed in plain code, while a nested `function g<fork>() {}` inside an Effect body is rejected. Member names and tuple labels stay ordinary names. A nested plain `function` uses its own context for value parameters and its body.
+
 The reservation also covers constructor and base-class references: `new join.C()` or `class extends fork.C {}` inside effect code reports `EK1702`. Rename the binding, or preserve the reference through a plain function without changing the binding or its name. Property names such as `new tools.join()` remain ordinary names; plain nested functions and class field initializers keep their own context.
 
 Pattern references follow the same rule: `value is join`, `when fork.C:` and `value is instanceof join.C` report `EK1702` in effect code. Use an import alias or another binding name; property names such as `value is tools.join` remain valid.

@@ -139,6 +139,7 @@ func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool
 		return nil
 	}
 	state := p.mark()
+	enclosingFiberContext := p.vibelangFiberContext
 	defer p.setVibeLangFiberContext(true)()
 	pos := p.nodePos()
 	word, conflict, ok := p.scanEffectPrefix(false)
@@ -150,12 +151,16 @@ func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool
 	if arrow == nil {
 		switch {
 		case p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken:
+			// Type parameters inherit the source context before the shared
+			// arrow parser enters Effect context for value parameters.
+			restoreHeadContext := p.setVibeLangFiberContext(enclosingFiberContext)
 			switch p.isParenthesizedArrowFunctionExpression() {
 			case core.TSTrue:
 				arrow = p.parseParenthesizedArrowFunctionExpression(true /*allowAmbiguity*/, allowReturnTypeInArrowFunction, true /*effect*/)
 			case core.TSUnknown:
 				arrow = p.parseParenthesizedArrowFunctionExpression(false /*allowAmbiguity*/, allowReturnTypeInArrowFunction, true /*effect*/)
 			}
+			restoreHeadContext()
 		case p.isIdentifier() && p.lookAhead(func(p *Parser) bool {
 			p.nextToken()
 			return p.token == ast.KindEqualsGreaterThanToken && !p.hasPrecedingLineBreak()

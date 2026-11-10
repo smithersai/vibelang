@@ -1958,9 +1958,9 @@ func (p *Parser) parseFunctionDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	if modifiers == nil || modifiers.ModifierFlags&ast.ModifierFlagsDefault == 0 || p.isBindingIdentifier() {
 		name = p.parseBindingIdentifier()
 	}
-	defer p.setVibeLangFiberContext(effect)()
 	signatureFlags := core.IfElse(asteriskToken != nil, ParseFlagsYield, ParseFlagsNone) | core.IfElse(modifiers != nil && modifiers.ModifierFlags&ast.ModifierFlagsAsync != 0, ParseFlagsAwait, ParseFlagsNone)
 	typeParameters := p.parseTypeParameters()
+	defer p.setVibeLangFiberContext(effect)()
 	saveContextFlags := p.contextFlags
 	if modifiers != nil && modifiers.ModifierFlags&ast.ModifierFlagsExport != 0 {
 		p.setContextFlags(ast.NodeFlagsAwaitContext, true)
@@ -2285,9 +2285,9 @@ func (p *Parser) parsePropertyOrMethodDeclaration(pos int, jsdoc jsdocScannerInf
 }
 
 func (p *Parser) parseMethodDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, asteriskToken *ast.Node, name *ast.Node, questionToken *ast.Node, diagnosticMessage *diagnostics.Message, effect bool, allowComma bool) *ast.Node {
-	defer p.setVibeLangFiberContext(effect)()
 	signatureFlags := core.IfElse(asteriskToken != nil, ParseFlagsYield, ParseFlagsNone) | core.IfElse(modifierListHasAsync(modifiers), ParseFlagsAwait, ParseFlagsNone)
 	typeParameters := p.parseTypeParameters()
+	defer p.setVibeLangFiberContext(effect)()
 	parameters := p.parseParameters(signatureFlags)
 	typeNode := p.parseReturnType(ast.KindColonToken, false /*isType*/)
 	var body *ast.Node
@@ -2448,6 +2448,9 @@ func (p *Parser) parseErrorForInvalidName(nameDiagnostic *diagnostics.Message, b
 
 func (p *Parser) parseInterfaceDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {
 	p.parseExpected(ast.KindInterfaceKeyword)
+	if p.isReservedFiberName() {
+		p.rejectReservedFiberName(p.tokenRange())
+	}
 	name := p.parseIdentifier()
 	typeParameters := p.parseTypeParameters()
 	heritageClauses := p.parseHeritageClauses(true /*isInterface*/)
@@ -2462,6 +2465,9 @@ func (p *Parser) parseTypeAliasDeclaration(pos int, jsdoc jsdocScannerInfo, modi
 	p.parseExpected(ast.KindTypeKeyword)
 	if p.hasPrecedingLineBreak() {
 		p.parseErrorAtCurrentToken(diagnostics.Line_break_not_permitted_here)
+	}
+	if p.isReservedFiberName() {
+		p.rejectReservedFiberName(p.tokenRange())
 	}
 	name := p.parseIdentifier()
 	typeParameters := p.parseTypeParameters()
@@ -2500,6 +2506,9 @@ func (p *Parser) parseEnumMember() *ast.Node {
 func (p *Parser) parseEnumDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {
 	saveHasAwaitIdentifier := p.statementHasAwaitIdentifier
 	p.parseExpected(ast.KindEnumKeyword)
+	if p.isReservedFiberName() {
+		p.rejectReservedFiberName(p.tokenRange())
+	}
 	name := p.parseIdentifier()
 	var members *ast.NodeList
 	if p.parseExpected(ast.KindOpenBraceToken) {
@@ -3030,6 +3039,9 @@ func (p *Parser) parseExportSpecifier() *ast.Node {
 // TYPES
 
 func (p *Parser) parseType() *ast.TypeNode {
+	// TypeScript clears Await and Yield in a type. Callable type parameters
+	// likewise keep type syntax independent of the enclosing Effect context.
+	defer p.setVibeLangFiberContext(false)()
 	// A type nested in an Effect type slot, such as a tuple element, keeps
 	// TypeScript's postfix ?: only the slot's own type excludes it.
 	if p.vibeLangSlotDepth > 0 {
@@ -3688,6 +3700,9 @@ func (p *Parser) parseTypeParameters() *ast.NodeList {
 func (p *Parser) parseTypeParameter() *ast.Node {
 	pos := p.nodePos()
 	modifiers := p.parseModifiersEx(false /*allowDecorators*/, true /*permitConstAsModifier*/, false /*stopOnStartOfClassStaticBlock*/)
+	if p.isReservedFiberName() {
+		p.rejectReservedFiberName(p.tokenRange())
+	}
 	name := p.parseIdentifier()
 	var constraint *ast.TypeNode
 	var expression *ast.Expression
@@ -4832,9 +4847,6 @@ func (p *Parser) tryParseParenthesizedArrowFunctionExpression(allowReturnTypeInA
 }
 
 func (p *Parser) parseParenthesizedArrowFunctionExpression(allowAmbiguity bool, allowReturnTypeInArrowFunction bool, effect bool) *ast.Node {
-	if effect {
-		defer p.setVibeLangFiberContext(true)()
-	}
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
 	modifiers := p.parseModifiersForArrowFunction()
@@ -4848,6 +4860,9 @@ func (p *Parser) parseParenthesizedArrowFunctionExpression(allowAmbiguity bool, 
 	// And think that "(b =>" was actually a parenthesized arrow function with a missing
 	// close paren.
 	typeParameters := p.parseTypeParameters()
+	if effect {
+		defer p.setVibeLangFiberContext(true)()
+	}
 	var parameters *ast.NodeList
 	if !p.parseExpected(ast.KindOpenParenToken) {
 		if !allowAmbiguity {
@@ -6335,6 +6350,7 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 }
 
 func (p *Parser) parseFunctionExpression(effect bool) *ast.Expression {
+	enclosingFiberContext := p.vibelangFiberContext
 	defer p.setVibeLangFiberContext(effect)()
 	// GeneratorExpression:
 	//      function* BindingIdentifier [Yield][opt](FormalParameters[Yield]){ GeneratorBody }
@@ -6364,7 +6380,9 @@ func (p *Parser) parseFunctionExpression(effect bool) *ast.Expression {
 	default:
 		name = p.parseOptionalBindingIdentifier()
 	}
+	p.vibelangFiberContext = enclosingFiberContext
 	typeParameters := p.parseTypeParameters()
+	p.vibelangFiberContext = effect
 	parameters := p.parseParameters(signatureFlags)
 	returnType := p.parseReturnType(ast.KindColonToken, false /*isType*/)
 	body := p.parseFunctionBlock(signatureFlags, nil /*diagnosticMessage*/)

@@ -1,0 +1,4 @@
+go test fuzz v1
+[]byte("interface")
+byte(3)
+byte(3)

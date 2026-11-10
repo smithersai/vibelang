@@ -1,0 +1,17 @@
+// expect: EK1702 EK1702 EK1702 EK1702 EK1702 EK1702 EK1702 EK1702
+export effect function aliases() {
+  type fork = number
+  interface join { value: number }
+}
+export effect function enums() {
+  enum fork { A }
+  const enum join { A }
+}
+export effect function parameters() {
+  type Value<fork> = fork
+  class Box<join> { value!: join }
+}
+export effect function enclosing() {
+  effect function generic<fork>() {}
+  class Example { effect method<join>() {} }
+}

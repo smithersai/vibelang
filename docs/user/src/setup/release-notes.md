@@ -66,6 +66,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - A leading or repeated semicolon in a `data` body compiled silently. It now reports `EK1606` for the missing variant; a single trailing separator remains allowed.
 
+- In Effect code, type aliases, interfaces, enums and type parameters could use the reserved names `fork` and `join`. These declarations now report `EK1702`, as value bindings do.
+
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.

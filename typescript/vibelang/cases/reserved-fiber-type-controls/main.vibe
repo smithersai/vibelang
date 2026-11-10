@@ -1,0 +1,19 @@
+export type fork = number
+export interface join { value: number }
+export enum Choice { fork, join }
+export function ordinary<fork>(value: fork) { return value }
+export effect function generic<fork>(value: fork) { return value }
+export class Generic { effect method<join>(value: join) { return value } }
+
+// expect-result: 7
+export effect function main() {
+  type Callable = <fork>(value: fork) => fork
+  type Construct = new<join>(value: join) => object
+  type Shape = { method<fork>(value: fork): fork }
+  type Inferred<T> = T extends { value: infer join } ? join : never
+  type Mapped = { [fork in "value"]: number }
+  const identity: Callable = value => value
+  const result: Inferred<Mapped> = identity(7)
+  function nested<T>(value: T) { return value }
+  return nested(result)
+}
