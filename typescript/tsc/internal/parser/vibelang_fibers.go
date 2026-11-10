@@ -291,14 +291,14 @@ func (p *Parser) vibelangValueArrow(body *ast.Node, anchor core.TextRange) *ast.
 }
 
 // inNativeAwaitContext selects the native expression grammar, without
-// granting NodeFlagsAwaitContext. Namespace bodies and their plain functions
+// granting NodeFlagsAwaitContext. Namespaces, field initializers and their plain functions
 // retain TypeScript's syntax errors; effect code keeps its legacy recovery.
 func (p *Parser) inNativeAwaitContext() bool {
 	// Enum initializers use native syntax without granting suspension permission.
 	if p.parsingContexts&(1<<PCEnumMembers) != 0 && !p.vibelangFiberContext {
 		return true
 	}
-	return p.inAwaitContext() || p.vibelangNamespaceContext && !p.vibelangFiberContext
+	return p.inAwaitContext() || p.vibelangNativeAwaitContext && !p.vibelangFiberContext
 }
 
 // isVibeLangAwait reports whether the current token, await, is VibeLang's await:

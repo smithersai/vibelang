@@ -1,0 +1,13 @@
+// expect-result: [2,3,4,"native","normal"]
+import { Effect } from "effect"
+class Fields {
+ native = async (n: number) => await Promise.resolve(n + 1)
+ program = effect (n: number) => n + 2
+ normal = function(read: (n: number) => number) { return read(1) }
+}
+export effect function main() {
+ const fields = new Fields()
+ const native = try Effect.tryPromise(() => fields.native(1))
+ const program = try fields.program(1)
+ return try Effect.sync(() => [native, program, fields.normal(n => n + 3), fields.native.name, fields.normal.name])
+}

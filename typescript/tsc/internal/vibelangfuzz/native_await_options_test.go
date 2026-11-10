@@ -16,6 +16,7 @@ import (
 )
 
 var nativeAwaitOptionQuotes = []string{
+	"Class field and enum member initializers reset the Effect reservation context",
 	"Top-level `await` requires a supported module and target configuration",
 	"The ordinary TypeScript module emission and host rules still apply, including diagnostics for incompatible options.",
 	// VIP-26: a namespace wrapper is not a module top level. Native syntax
@@ -57,6 +58,15 @@ var nativeAwaitOptionWitnesses = []nativeAwaitOptionWitness{
 	{"async-body", "async function caller(){ return await Promise.resolve(1) }", "async"},
 	{"class-static", "class Value { static { await Promise.resolve(1) } }", "static"},
 	{"async-default", "async function caller(value = await Promise.resolve(1)) {}", "parameter"},
+
+	{"class-field-promise", "class Value { value = await Promise.resolve(42) }", "field"},
+	{"class-field-static", "class Value { static value = await Promise.resolve(42) }", "field"},
+	{"class-field-function", "function caller() { class Value { value = await Promise.resolve(42) }; return Value }", "field"},
+	{"class-field-async-function", "async function caller() { class Value { value = await Promise.resolve(42) }; return Value }", "field"},
+	{"class-field-parameter", "function caller(value = class { value = await Promise.resolve(42) }) {}", "field-parameter"},
+	{"class-field-async-parameter", "async function caller(value = class { value = await Promise.resolve(42) }) {}", "field-parameter"},
+	{"class-field-nested-class", "class Outer { value = class Inner { value = await Promise.resolve(42) } }", "field"},
+	{"class-field-async-control", "class Value { value = async () => await Promise.resolve(42) }", "async"},
 }
 
 func nativeAwaitOptionProject(witness nativeAwaitOptionWitness, extension string, module, target uint8) Project {
@@ -69,6 +79,14 @@ func nativeAwaitOptionProject(witness nativeAwaitOptionWitness, extension string
 		witness.source = strings.ReplaceAll(witness.source, "Promise.resolve(42)", operands[(target/3)%3])
 		for depth := uint8(0); depth < (module/4)%3; depth++ {
 			witness.source = "namespace Extra" + fmt.Sprint(depth) + " { " + witness.source + " }"
+		}
+	}
+
+	if strings.HasPrefix(witness.key, "class-field-") {
+		operands := []string{"Promise.resolve(42)", "42", "(undefined as unknown)"}
+		witness.source = strings.ReplaceAll(witness.source, "Promise.resolve(42)", operands[(target/3)%3])
+		if (module/4)%2 != 0 {
+			witness.source = strings.ReplaceAll(witness.source, "{ value = await", "{ static value = await")
 		}
 	}
 	selected := module % 4
@@ -105,6 +123,14 @@ func nativeAwaitOptionCodes(result *Result) []string {
 }
 func nativeAwaitOptionExpected(witness nativeAwaitOptionWitness, module, target uint8) []string {
 	switch witness.kind {
+	case "field", "field-parameter":
+		if (target/3)%3 == 2 {
+			return []string{"TS2311"}
+		}
+		if witness.kind == "field-parameter" {
+			return []string{"TS1308", "TS2524"}
+		}
+		return []string{"TS1308"}
 	case "namespace":
 		return []string{"TS1308"}
 	case "async":
@@ -153,7 +179,7 @@ func checkNativeAwaitOptions(w *Workspace, witness nativeAwaitOptionWitness, mod
 		return "stage=config: no program", nil
 	}
 	got, want := nativeAwaitOptionCodes(result), nativeAwaitOptionExpected(witness, module, target)
-	if tsc != "" && strings.HasPrefix(witness.key, "namespace-") {
+	if tsc != "" && (strings.HasPrefix(witness.key, "namespace-") || strings.HasPrefix(witness.key, "class-field-")) {
 		// Compare the exact generated source and options with stock tsc,
 		// not another Vibe compilation or today's inferred Effect behavior.
 		twin := nativeAwaitOptionProject(witness, "ts", module, target)
@@ -250,6 +276,9 @@ func FuzzNativeAwaitOptions(f *testing.F) {
 			key := fmt.Sprintf("%s/module%d/target%d", witness.key, module%4, target%3)
 			if strings.HasPrefix(witness.key, "namespace-") {
 				key += fmt.Sprintf("/depth%d/operand%d", (module/4)%3, (target/3)%3)
+			}
+			if strings.HasPrefix(witness.key, "class-field-") {
+				key += fmt.Sprintf("/static%d/operand%d", (module/4)%2, (target/3)%3)
 			}
 			Gap(t, "FuzzNativeAwaitOptions", key, "%s", message)
 		}

@@ -906,6 +906,8 @@ A producer parameter default reports `EK2104` for `yield` in class definition ex
 
 An enum member initializer uses native TypeScript `await` placement rules. Nest an `async` or `effect` callable to give its body that callable’s own context.
 
+A class field initializer cannot itself use `await`. A nested `async` callable keeps native Promise waiting, and a nested `effect` callable runs Effects with `try`.
+
 A `break` or `continue` whose target is outside an `effect { }` block is `EK0202`; the block runs as its own Effect. Class decorators, computed member names and `extends` expressions keep that enclosing block context. A `do` in those positions reports `EK0202` when its jump would leave the block; written method bodies keep their own targets.
 
 **Effect blocks as arguments**. Pass `effect { ... }` as an ordinary argument. A test API takes a callback that returns the Effect, such as `it.live("name", () => effect { ... })`.

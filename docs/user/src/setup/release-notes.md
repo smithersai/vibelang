@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- An invalid `await` in a class field initializer could report an obsolete waiting error. It now keeps TypeScript’s native diagnostics and the contexts of nested callables.
+
 - An Effect-valued `await` in an `async` parameter default could hide the error that forbids waiting there. It now keeps TypeScript's `TS2524` diagnostic, including destructuring defaults.
 
 - A `match` arm could wait with `await` inside a class `static` block, where waiting is forbidden. It now reports `TS18037` while a nested `async` callback keeps working.

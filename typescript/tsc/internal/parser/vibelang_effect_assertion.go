@@ -43,6 +43,9 @@ func (p *Parser) parseVibeLangExpressionInitializer(allowASI bool) *ast.Expressi
 }
 
 func (p *Parser) parseVibeLangClassInitializer() *ast.Expression {
+	saveNativeAwait := p.vibelangNativeAwaitContext
+	p.vibelangNativeAwaitContext = true
+	defer func() { p.vibelangNativeAwaitContext = saveNativeAwait }()
 	defer p.setVibeLangFiberContext(false)()
 	return p.parseVibeLangExpressionInitializer(true)
 }
@@ -76,7 +79,7 @@ func (p *Parser) parseVibeLangAssertionType() *ast.TypeNode {
 	key := effectAssertionChoiceKey{pos: p.scanner.TokenStart(), omitAt: p.vibeLangOmitRequirementAt,
 		diagnostics: len(p.diagnostics), slotDepth: p.vibeLangSlotDepth,
 		flags: p.contextFlags, contexts: p.parsingContexts, asi: p.vibeLangExpressionASI,
-		fiber: p.vibelangFiberContext, namespace: p.vibelangNamespaceContext}
+		fiber: p.vibelangFiberContext, namespace: p.vibelangNativeAwaitContext}
 	if p.vibelangThrowStop != nil {
 		key.hasThrowStop = true
 		key.throwStop = *p.vibelangThrowStop

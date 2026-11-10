@@ -1,0 +1,12 @@
+// expect: TS1308 TS2311 TS2524 TS2304
+import { Effect } from "effect"
+declare const promiseValue: Promise<number>
+export class Direct {
+ value = await promiseValue
+ static effectValue = await Effect.succeed(1)
+ parenthesized = await (undefined as unknown)
+ missing = await missingValue
+}
+export effect function parameter(value = class { field = await promiseValue }) { return value }
+export const arrow = effect (value = class { static field = await promiseValue }) => value
+export effect function* producer(value = class { field = await 1 }) { yield value }

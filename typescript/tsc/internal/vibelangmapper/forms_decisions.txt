@@ -6902,6 +6902,13 @@ typescript/vibelang/cases/native-callback-direct/main.vibe:16:24 lambda effectFn
 typescript/vibelang/cases/native-callback-direct/main.vibe:16:72 byname program annotation
 typescript/vibelang/cases/native-callback-direct/main.vibe:5:31 lambda plain hatch
 typescript/vibelang/cases/native-callback-direct/main.vibe:9:39 lambda plain hatch
+typescript/vibelang/cases/native-class-field-await-context/main.vibe:10:39 lambda plain table
+typescript/vibelang/cases/native-class-field-await-context/main.vibe:12:25 lambda plain table
+typescript/vibelang/cases/native-class-field-await-context/main.vibe:12:63 lambda plain fallback
+typescript/vibelang/cases/native-class-field-await-context/main.vibe:4:11 lambda choice fallback
+typescript/vibelang/cases/native-class-field-await-context/main.vibe:5:12 lambda effectFn keyword
+typescript/vibelang/cases/native-class-field-await-context/main.vibe:6:11 lambda plain fallback
+typescript/vibelang/cases/native-class-field-await.fail/main.vibe:11:22 lambda effectFn keyword
 typescript/vibelang/cases/native-delegation-contexts/main.vibe:6:16 lambda effectFn keyword
 typescript/vibelang/cases/native-enum-await-context/main.vibe:6:44 lambda effectFn annotation
 typescript/vibelang/cases/native-enum-await-context/main.vibe:8:48 lambda effectFn keyword
