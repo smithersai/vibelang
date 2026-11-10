@@ -14,9 +14,12 @@ func init() {
 		if flags&ast.FunctionFlagsGenerator == 0 || flags&ast.FunctionFlagsAsync != 0 {
 			return nil
 		}
-		// Names and formal initialization are outside this source body.
+		// Names, formal initialization and enum members are outside this source body.
 		// In particular a computed method name runs in its enclosing scope.
 		for node := yield.Parent; node != nil && node != fn; node = node.Parent {
+			if node.Kind == ast.KindEnumDeclaration {
+				return nil
+			}
 			if node.Kind == ast.KindParameter {
 				return nil
 			}

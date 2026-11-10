@@ -1,0 +1,18 @@
+// expect: TS1163 TS7057 TS1163 TS1163 TS1163 TS7057 TS1163 TS7057 TS1163 TS1163 TS1163 TS7057 TS1163 TS7057 TS1163 TS1163 TS1163 TS7057 TS1163 TS7057 TS1163 TS1163 TS1163 TS7057
+
+export effect function* run0(){enum E{A=(yield 1)}}
+export effect function* run1(){enum E{A=((yield 1),1)}}
+export effect function* run2(){enum E{A=((yield 1) as number)}}
+export effect function* run3(){enum E{A=true?(yield 1):1}}
+export const run4=effect function*(){enum E{A=(yield 1)}}
+export const run5=effect function*(){enum E{A=((yield 1),1)}}
+export const run6=effect function*(){enum E{A=((yield 1) as number)}}
+export const run7=effect function*(){enum E{A=true?(yield 1):1}}
+export class Feed8{effect *run(){enum E{A=(yield 1)}}}
+export class Feed9{effect *run(){enum E{A=((yield 1),1)}}}
+export class Feed10{effect *run(){enum E{A=((yield 1) as number)}}}
+export class Feed11{effect *run(){enum E{A=true?(yield 1):1}}}
+export const feed12={effect *run(){enum E{A=(yield 1)}}}
+export const feed13={effect *run(){enum E{A=((yield 1),1)}}}
+export const feed14={effect *run(){enum E{A=((yield 1) as number)}}}
+export const feed15={effect *run(){enum E{A=true?(yield 1):1}}}
