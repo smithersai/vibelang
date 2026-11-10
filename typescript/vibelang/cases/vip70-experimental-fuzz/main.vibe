@@ -193,3 +193,24 @@ export effect function deadlock() {
 export function fuzzModule() {
   return Experimental.Fuzz.run
 }
+
+// VibeLang adds no spans of its own: a stage is a coverage point once it runs
+// inside withSpan. Spans alone, with no observation, guide the search here.
+// rule-evidence: docs/design/vips/0070-std-fuzz.md#summary | It uses the spans an Effect program already has as coverage, so `Effect.fn("Bank.withdraw")` is a coverage point with no instrumentation.
+effect function spanned(bytes: ReadonlyArray<number>) {
+  if (bytes[0] !== 0x7f) return true
+  return try withSpan(effect {
+    if (bytes[1] !== 0x45) return true
+    return try withSpan(effect { return false }, "magic 2")
+  }, "magic 1")
+}
+
+export effect function spans() {
+  const report = try Experimental.Fuzz.run(Header, spanned, { seed: 1, executions: 50_000 })
+  return {
+    found: report._tag === "Falsified" ? report.findings[0].input : report._tag,
+    spans: report.stats.features.spans ?? 0,
+    observations: report.stats.features.observations ?? 0,
+    feedback: (Experimental.Fuzz.formatReport(report) ?? "").split("\n")[1],
+  }
+}

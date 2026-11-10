@@ -10646,6 +10646,8 @@ typescript/vibelang/cases/vip70-experimental-fuzz/main.vibe:161:24 lambda plain 
 typescript/vibelang/cases/vip70-experimental-fuzz/main.vibe:169:19 byname program table
 typescript/vibelang/cases/vip70-experimental-fuzz/main.vibe:169:56 byname program table
 typescript/vibelang/cases/vip70-experimental-fuzz/main.vibe:185:63 lambda effectFn keyword
+typescript/vibelang/cases/vip70-experimental-fuzz/main.vibe:202:23 lambda program table
+typescript/vibelang/cases/vip70-experimental-fuzz/main.vibe:204:25 lambda program table
 typescript/vibelang/cases/vip70-experimental-fuzz/main.vibe:61:51 lambda choice fallback
 typescript/vibelang/cases/vip70-experimental-fuzz/main.vibe:61:65 byname program table
 typescript/vibelang/cases/vip70-experimental-fuzz/main.vibe:92:63 lambda plain fallback

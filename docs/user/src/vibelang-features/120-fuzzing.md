@@ -66,7 +66,7 @@ A run bounded only by `duration` does not run the same number of executions on e
 | scores | the best `Experimental.Fuzz.score(label, value)` per label | call it to climb toward a goal |
 | structure | the shape of the generated input | always |
 
-`observe` and `score` do nothing outside a fuzz run, so they can stay in production code. A score turns a needle into a hill: report the negative of a distance and the fuzzer keeps the inputs that get closer.
+VibeLang adds no spans of its own, so an `effect function` is a span only when it runs inside `withSpan(program, "name")`, as in [Tracing](../observability/033-tracing.md). Effect code written with `Effect.fn("name")` already is. Without spans, `observe` labels guide the search. `observe` and `score` do nothing outside a fuzz run, so they can stay in production code. A score turns a needle into a hill: report the negative of a distance and the fuzzer keeps the inputs that get closer.
 
 ```vibe
 // run: try Console.log(try climb())

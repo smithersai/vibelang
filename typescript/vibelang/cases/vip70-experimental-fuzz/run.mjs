@@ -32,6 +32,13 @@ assert.match(magic.text, /Feedback: .*observations/)
 assert.deepEqual(await run(vibe.replay(magic.replay)), { tag: "Falsified", input: [0x7f, 0x45], stoppedBy: "Replay" })
 assert.equal(await run(vibe.replayElsewhere(magic.replay)), "ReplayMismatch")
 
+// Span feedback, on by default, reaches .vibe code through withSpan.
+const spans = await run(vibe.spans())
+assert.deepEqual(spans.found, [0x7f, 0x45])
+assert.ok(spans.spans > 0, "withSpan stages are span features")
+assert.equal(spans.observations, 0)
+assert.equal(spans.feedback, "Feedback: spans")
+
 // Typed failures and defects are findings with their own signatures, shrunk to the boundary.
 const signatures = await run(vibe.signatures())
 assert.deepEqual(signatures.failed, ["PropertyError:Boom", 11])
