@@ -72,17 +72,14 @@ func TestGrammarAdmissionSchemaPrefixRegression(t *testing.T) {
 			}
 		})
 	}
-	for _, source := range []string{
-		"schema S = { 1 ? = Missing }",
-	} {
-		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
-			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
-		})
-	}
+	// A numeric untyped member with an initializer keeps TS1247 beside EK2109.
+	t.Run("numeric untyped initializer", func(t *testing.T) {
+		source := "schema S = { 1 ? = Missing }"
+		if grammarAdmissionVerdict(t, w, source) {
+			r, _ := w.Compile(context.Background(), Single(source))
+			t.Fatalf("a rejected alias member is an admission gap: %v", r.Diagnostics)
+		}
+	})
 }
 
 func TestGrammarAdmissionSchemaSignatureKeys(t *testing.T) {

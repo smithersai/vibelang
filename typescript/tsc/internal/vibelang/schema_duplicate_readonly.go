@@ -34,6 +34,13 @@ func schemaDuplicateReadonlyRanges(file *ast.SourceFile) []core.TextRange {
 			bodies = append(bodies, bodySource{span: node.Loc, class: true})
 			return false
 		}
+		// A type with no schema form is a TypeScript type too (EK2109).
+		if isUnsupportedSchema(node) && !isNonFieldSchema(node) {
+			if span := node.Loc; span.Pos() >= 0 && span.End() >= span.Pos() && span.End() <= len(file.Text()) {
+				bodies = append(bodies, bodySource{span: span})
+			}
+			return false
+		}
 		return node.ForEachChild(collect)
 	}
 	file.AsNode().ForEachChild(collect)

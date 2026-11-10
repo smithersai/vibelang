@@ -84,28 +84,15 @@ func TestGrammarAdmissionSchemaDuplicateReadonlyRegression(t *testing.T) {
 		"schema S = { async async ;\nid :\nMissing\n}",
 		"schema S = { async async, id: Missing };",
 		"schema S\n= { readonly readonly readonly id ( )\n}",
+		"schema S = readonly { readonly readonly readonly id : Missing } ;",
+		"schema S = join ! { readonly readonly id : Missing } ;",
+		"schema S = readonly { readonly readonly Missing }",
 	} {
 		t.Run(source, func(t *testing.T) {
 			if grammarAdmissionVerdict(t, w, source) {
 				result, _ := w.Compile(context.Background(), Single(source))
 				t.Fatalf("a rejected schema field is an admission gap; diagnostics=%v", result.Diagnostics)
 			}
-		})
-	}
-	// A type operator or an Effect type over the object type maps to an
-	// unsupported member that erases the written modifiers: still pending
-	// under the same key.
-	for _, source := range []string{
-		"schema S = readonly { readonly readonly readonly id : Missing } ;",
-		"schema S = join ! { readonly readonly id : Missing } ;",
-		"schema S = readonly { readonly readonly Missing }",
-	} {
-		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				result, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("schema modifier witness no longer exposes an admission gap; diagnostics=%v", result.Diagnostics)
-			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 	// With a resolved field type the native rejection is visible.
@@ -122,10 +109,5 @@ func TestGrammarAdmissionSchemaDuplicateReadonlyRegression(t *testing.T) {
 				t.Fatalf("control became an admission gap; diagnostics=%v", result.Diagnostics)
 			}
 		})
-	}
-	for key, source := range map[string]string{
-		"admission:schema-duplicate-readonly": "schema S = readonly { readonly readonly id : Missing } ;",
-	} {
-		t.Run(key, func(t *testing.T) { checkGrammarAdmission(t, w, key, source) })
 	}
 }

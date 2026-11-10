@@ -1,0 +1,14 @@
+main.vibe(8,19): error EK2109
+main.vibe(8,39): error TS1030
+main.vibe(9,25): error EK2109
+main.vibe(9,36): error TS1070
+main.vibe(10,22): error EK2109
+main.vibe(10,40): error TS1030
+main.vibe(11,20): error EK2109
+main.vibe(11,26): error TS1247
+main.vibe(12,20): error EK2109
+main.vibe(12,25): error TS1247
+main.vibe(13,21): error EK2109
+main.vibe(13,36): error TS1247
+main.vibe(14,15): error EK1505
+main.vibe(14,21): error TS1247

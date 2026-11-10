@@ -1,0 +1,15 @@
+// expect: EK2109 EK1505 TS1030 TS1070 TS1247
+// Chapter 006 and Appendix A: a type with no schema form is EK2109, and a
+// member of a schema body that is not a Field is EK1505. The written type is a
+// TypeScript type too, so its members keep TypeScript's grammar errors beside
+// those codes: TS1030 for a repeated readonly and TS1070 for a class-only
+// modifier under a type operator or an Effect type, and TS1247 for an
+// initializer on an untyped or optional member, in an alias and in a body.
+schema Operator = readonly { readonly readonly id: Missing }
+schema OperatorStatic = readonly { static id: string }
+schema EffectTyped = join ! { readonly readonly id: Missing }
+schema Untyped = { id? = Missing }
+schema Numeric = { 1? = Missing }
+schema Modified = { readonly id? = Missing }
+schema Body { id? = Missing }
+export {}

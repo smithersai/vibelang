@@ -599,9 +599,9 @@ TS1188, TS1189, TS1190 and TS5086 count as syntax rejections. The remaining
 programs belonged to known families whose keys were narrower than the family,
 and they keep those keys. Two forms are new.
 `admission:schema-field-initializer` was a field initializer whose unresolved
-type reported only `EK2109` and covered TS1247; a typed field now keeps
-TS1247, and the key stays pending for the untyped and modifier-prefixed
-optional alias members below, whose initializer the mapping erases.
+type reported only `EK2109` and covered `TS1247`; a typed field now keeps
+`TS1247`, and so do the untyped and modifier-prefixed optional alias members
+below, so the key is no longer pending.
 `admission:throw-assertion-lookahead` is `throw e as T` before a
 `ThrowExpressionInvalidPunctuator`, which VIP-41 forbids and the compiler
 misses because its lookahead stops at the assertion. `error is` before a line
@@ -612,10 +612,11 @@ the lab no longer holds that statement open.
 A sweep that stacks up to two mutations on every seed and keyed program found
 four more kinds of result. A repeated `readonly` on a schema field is
 `admission:schema-duplicate-readonly`: `Field` admits one `readonly`, and an
-unresolved field type reported only `EK2109`, which covered TS1030. A field
-of a schema body or of an object-type alias now keeps TS1030; the key stays
-pending for an untyped name, a method signature and an object type behind a
-type operator such as `readonly { … }`, whose members the mapping erases. An
+unresolved field type reported only `EK2109`, which covered `TS1030`. A field
+of a schema body or of an object-type alias now keeps `TS1030`, and so do a
+method signature and an object type behind a type operator such as
+`readonly { … }` or an Effect type, whose source the compiler reads back; the
+key is no longer pending. An
 object-type alias field written `async async` before a line break is an
 untyped field named `async` with an `async` modifier, and joins
 `admission:schema-async-field`. The key scanner had read the line after an
@@ -639,8 +640,8 @@ new form. A `readonly` method signature in a schema object-type alias is
 `admission:schema-readonly-method`: TypeScript rejects `readonly` on a method
 with TS1024, which the alias's `EK2109` for the method used to cover; the
 method now keeps TS1024. An untyped
-alias member with `=`, such as `{ id? = Missing }`, is TS1247 and joins
-`admission:schema-field-initializer`. An angle-bracket assertion and a type
+alias member with `=`, such as `{ id? = Missing }`, is `TS1247`, which it now
+keeps too. An angle-bracket assertion and a type
 argument list hold an `EffectType` too, so `<A!E!>x` and `f<A!E!>` join
 `admission:effect-type-trailing-bang`.
 Type-literal `get` and `set` accessor signatures were TypeScript the lab had
@@ -654,8 +655,7 @@ property names in its classifier. A member named `readonly` is separate:
 `readonly()` carries no modifier. The field-initializer family likewise
 recognizes numeric, string and computed names, such as `{ 1? = Missing }`. String-literal initializers that already
 produce native parse errors remain rejection controls.
-The initializer programs stay pending; the method programs now report their
-modifier errors.
+Both families now report their grammar errors beside `EK2109`.
 
 Native accessor diagnostics also reject grammar: getters cannot have value
 parameters, setters require one value parameter, accessors have no type

@@ -60,9 +60,19 @@ func TestGrammarAdmissionSchemaAliasMemberRegression(t *testing.T) {
 			}
 		})
 	}
+	// An untyped member with an initializer keeps TS1247 beside EK2109.
 	for _, source := range []string{
 		"schema S = { id ? = Missing }",
 		"schema S = { async ? =\nMissing\n}",
+	} {
+		t.Run(source, func(t *testing.T) {
+			if grammarAdmissionVerdict(t, w, source) {
+				result, _ := w.Compile(context.Background(), Single(source))
+				t.Fatalf("a rejected alias member is an admission gap; diagnostics=%v", result.Diagnostics)
+			}
+		})
+	}
+	for _, source := range []string{
 		"< number ! string ! > y",
 		"{ <\nnumber ! string ! >\nboolean }",
 		"x = 1 < number ! string ! > ;",

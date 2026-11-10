@@ -25,8 +25,8 @@ var grammarSchemaInitializerModifierControls = []string{
 }
 
 // A field initializer is native TS1247 in a type literal. After a modifier
-// prefix an optional alias member still reaches it, and schema mapping
-// reports only EK2109.
+// prefix an optional alias member reaches it too, and the schema mapping now
+// keeps it beside EK2109; the key still groups the family.
 func TestGrammarAdmissionSchemaInitializerModifierKeys(t *testing.T) {
 	for _, source := range grammarSchemaInitializerModifierGaps {
 		if got := grammarAdmissionForm(source); got != "admission:schema-field-initializer" {
@@ -50,11 +50,10 @@ func TestGrammarAdmissionSchemaInitializerModifierRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarSchemaInitializerModifierGaps {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			if grammarAdmissionVerdict(t, w, source) {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("a rejected alias member is an admission gap: %v", r.Diagnostics)
 			}
-			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 	for _, source := range grammarSchemaInitializerModifierControls {

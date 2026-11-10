@@ -31,6 +31,13 @@ func schemaFieldInitializerSites(file *ast.SourceFile) []schemaFieldInitializerS
 			bodies = append(bodies, node.Arguments()[0].Loc)
 			return false
 		}
+		// A type with no schema form is a TypeScript type too (EK2109).
+		if isUnsupportedSchema(node) && !isNonFieldSchema(node) {
+			if span := node.Loc; span.Pos() >= 0 && span.End() >= span.Pos() && span.End() <= len(file.Text()) {
+				bodies = append(bodies, span)
+			}
+			return false
+		}
 		return node.ForEachChild(collect)
 	}
 	file.AsNode().ForEachChild(collect)
@@ -44,10 +51,18 @@ func schemaFieldInitializerSites(file *ast.SourceFile) []schemaFieldInitializerS
 		offset := body.Pos() - len(prefix)
 		var visit func(*ast.Node) bool
 		visit = func(node *ast.Node) bool {
-			if ast.IsPropertySignatureDeclaration(node) && node.Initializer() != nil && node.Type() != nil {
+			if ast.IsPropertySignatureDeclaration(node) && node.Initializer() != nil {
 				initializer := node.Initializer()
 				span := scanner.GetErrorRangeForNode(raw, initializer)
-				equals := scanner.SkipTrivia(raw.Text(), node.Type().End())
+				// The = follows the type, the ? or the name of an untyped member.
+				before := node.Name()
+				if node.PostfixToken() != nil {
+					before = node.PostfixToken()
+				}
+				if node.Type() != nil {
+					before = node.Type()
+				}
+				equals := scanner.SkipTrivia(raw.Text(), before.End())
 				start := scanner.SkipTrivia(raw.Text(), initializer.Pos())
 				if equals < start && raw.Text()[equals] == '=' {
 					sites = append(sites, schemaFieldInitializerSite{
