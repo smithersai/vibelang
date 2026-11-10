@@ -1549,6 +1549,10 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       return result
     }
   }
+  // Type alignment may forward a binding to the other snapshot's type.
+  // Its comments must still come from each authored input, before rewriting.
+  const documentationProgram = program
+  const documentationChecker = documentationProgram.getTypeChecker()
   progress("module-equivalence")
   const equivalents = equivalentModules(ts, program, host, left, right, externalGroups)
   progress("module-equivalence-complete", { provedModules: equivalents.size, ...equivalents.normalization })
@@ -1771,8 +1775,9 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     return alias
   }
   const printer = ts.createPrinter()
-  const sourceExports = (file, entry, side) => {
-    const sf = program.getSourceFile(file)
+  const sourceExports = (file, entry, side, input = program) => {
+    const checker = input.getTypeChecker()
+    const sf = input.getSourceFile(file)
     if (!sf) {
       result.environmentDiagnostics.push({ entrypoint: entry, side, file, blocking: true, diagnostic: "Published declaration not found: " + file })
       return new Map()
@@ -1847,7 +1852,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   function recordCheck(entrypoint, name, a, b, aspect) {
     checks.push({ entrypoint, export: name, aspect, a, b })
   }
-  function memberDocs(symbol) {
+  function memberDocs(symbol, checker = documentationChecker) {
     const found = new Map(), seen = new Set()
     found.symbols = new Map()
     const own = s => s?.declarations?.some(d => [before, after].some(base =>
@@ -1862,7 +1867,9 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
         seen.add(identity)
         const children = []
         for (const property of checker.getPropertiesOfType(type).sort((a, b) => a.name.localeCompare(b.name))) {
-          if (!own(property)) continue
+          // Alignment helpers belong to the probe, not the published namespace.
+          // Visiting them first would attribute public member docs to that helper.
+          if (!authored(property.name) || !own(property)) continue
           const key = path + "." + property.name
           // A namespace property may be a re-export alias. Its public name
           // stays on the path; authored prose and blocks belong to its target.
@@ -1897,12 +1904,14 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     if (declaration && symbol.flags & ts.SymbolFlags.Value) walk(checker.getTypeOfSymbolAtLocation(symbol, declaration), "")
     return found
   }
-  function visit(a, b, apath, bpath, entrypoint, name, trail = new Set(), sharedModule = false) {
+  function visit(a, b, apath, bpath, entrypoint, name, trail = new Set(), sharedModule = false, authoredA = a, authoredB = b) {
     const unalias = s => s.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(s) : s
-    const adoc = docs(ts, checker, a) || docs(ts, checker, unalias(a))
-    const bdoc = docs(ts, checker, b) || docs(ts, checker, unalias(b))
-    const afterEntry = b.declarations?.[0]?.getSourceFile()
-    if (!sameExportDocs(ts, checker, unalias(b), adoc, bdoc, unalias(a), afterEntry)) result.docDifferences.push({ entrypoint, export: name, before: adoc, after: bdoc, ...docBlockDifference(ts, unalias(a), unalias(b), afterEntry) })
+    const unaliasDocumentation = s => s.flags & ts.SymbolFlags.Alias ? documentationChecker.getAliasedSymbol(s) : s
+    const adoc = docs(ts, documentationChecker, authoredA) || docs(ts, documentationChecker, unaliasDocumentation(authoredA))
+    const bdoc = docs(ts, documentationChecker, authoredB) || docs(ts, documentationChecker, unaliasDocumentation(authoredB))
+    const afterEntry = authoredB.declarations?.[0]?.getSourceFile()
+    authoredA = unaliasDocumentation(authoredA); authoredB = unaliasDocumentation(authoredB)
+    if (!sameExportDocs(ts, documentationChecker, authoredB, adoc, bdoc, authoredA, afterEntry)) result.docDifferences.push({ entrypoint, export: name, before: adoc, after: bdoc, ...docBlockDifference(ts, authoredA, authoredB, afterEntry) })
     const aliases = [a, b]
     a = unalias(a); b = unalias(b)
     if (absentScope) {
@@ -1925,14 +1934,14 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     if (!(a === b && sharedSymbol(a)) && (invalidParameter(a) || invalidParameter(b) || erroneous(exportTypes(a), exportTypes(b))))
       invalidExports.push({ entrypoint, export: name, blocking: true, ...(absentScope ? { scope: "export" } : {}),
         diagnostic: "Compared export depends on an unresolved or erroneous type; identity probe cannot establish its API." })
-    const afiles = new Set(a.declarations?.map(d => d.getSourceFile().fileName))
-    const bfiles = new Set(b.declarations?.map(d => d.getSourceFile().fileName))
-    const equalDocs = a === b || a.name === b.name && afiles.size === bfiles.size && bfiles.size > 0 &&
+    const afiles = new Set(authoredA.declarations?.map(d => d.getSourceFile().fileName))
+    const bfiles = new Set(authoredB.declarations?.map(d => d.getSourceFile().fileName))
+    const equalDocs = authoredA === authoredB || authoredA.name === authoredB.name && afiles.size === bfiles.size && bfiles.size > 0 &&
       [...bfiles].every(file => afiles.has(equivalents.documentation.get(file)))
-    const amembers = equalDocs ? new Map() : memberDocs(a)
-    const bmembers = equalDocs ? new Map() : memberDocs(b)
+    const amembers = equalDocs ? new Map() : memberDocs(authoredA)
+    const bmembers = equalDocs ? new Map() : memberDocs(authoredB)
     for (const key of [...new Set([...amembers.keys(), ...bmembers.keys()])].sort()) {
-      if (!sameExportDocs(ts, checker, bmembers.symbols?.get(key), amembers.get(key), bmembers.get(key), amembers.symbols?.get(key))) result.docDifferences.push({
+      if (!sameExportDocs(ts, documentationChecker, bmembers.symbols?.get(key), amembers.get(key), bmembers.get(key), amembers.symbols?.get(key))) result.docDifferences.push({
         entrypoint, export: name + key, before: amembers.get(key) ?? "", after: bmembers.get(key) ?? "", ...docBlockDifference(ts, amembers.symbols?.get(key), bmembers.symbols?.get(key))
       })
     }
@@ -2053,22 +2062,22 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       // The raw exports table contains only an export-star marker for a
       // forwarded module. Resolve its public members before comparing docs.
       const exports = symbol.flags & ts.SymbolFlags.Namespace
-        ? new Map(checker.getExportsOfModule(symbol).map(member => [member.name, member]))
+        ? new Map(documentationChecker.getExportsOfModule(symbol).map(member => [member.name, member]))
         : symbol.exports
       for (const table of [symbol.members, exports]) {
         for (const [key, member] of table ?? []) {
           if (key === "prototype" || key.startsWith("__")) continue
-          const target = member.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(member) : member
+          const target = member.flags & ts.SymbolFlags.Alias ? documentationChecker.getAliasedSymbol(member) : member
           out.symbols.set(key, target)
-          const doc = docs(ts, checker, member) || docs(ts, checker, target)
+          const doc = docs(ts, documentationChecker, member) || docs(ts, documentationChecker, target)
           if (doc) out.set(key, doc)
         }
       }
       return out
     }
-    const amd = members(a), bmd = members(b)
+    const amd = members(authoredA), bmd = members(authoredB)
     for (const child of new Set([...amd.keys(), ...bmd.keys()])) {
-      if (!sameExportDocs(ts, checker, bmd.symbols.get(child), amd.get(child), bmd.get(child), amd.symbols.get(child)))
+      if (!sameExportDocs(ts, documentationChecker, bmd.symbols.get(child), amd.get(child), bmd.get(child), amd.symbols.get(child)))
         result.docDifferences.push({ entrypoint, export: name + "." + child, before: amd.get(child) ?? "", after: bmd.get(child) ?? "", ...docBlockDifference(ts, amd.symbols.get(child), bmd.symbols.get(child)) })
     }
     // A namespace's runtime shape omits type-only members.
@@ -2077,6 +2086,9 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       trail = new Set([...trail, a, b])
       const ae = new Map(checker.getExportsOfModule(a).map(s => [s.name, s]))
       const be = new Map(checker.getExportsOfModule(b).map(s => [s.name, s]))
+      const docExports = symbol => symbol.flags & ts.SymbolFlags.Namespace
+        ? new Map(documentationChecker.getExportsOfModule(symbol).map(s => [s.name, s])) : new Map()
+      const adocs = docExports(authoredA), bdocs = docExports(authoredB)
       for (const child of [...new Set([...ae.keys(), ...be.keys()])].filter(authored).sort()) {
         if (!ae.has(child) || !be.has(child)) result.nameDifferences.push({ entrypoint, export: name + "." + child, side: ae.has(child) ? "before" : "after" })
         else {
@@ -2088,7 +2100,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
             const source = symbol.declarations?.find(ts.isSourceFile)
             return source ? exportReference(source.fileName, child) : path + "." + child
           }
-          visit(ae.get(child), be.get(child), childPath(a, apath), childPath(b, bpath), entrypoint, name + "." + child, trail, sharedModule)
+          visit(ae.get(child), be.get(child), childPath(a, apath), childPath(b, bpath), entrypoint, name + "." + child, trail, sharedModule, adocs.get(child), bdocs.get(child))
         }
       }
     }
@@ -2105,6 +2117,8 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       continue
     }
     const a = sourceExports(left[key], key, "before"), b = sourceExports(right[key], key, "after")
+    const adocs = sourceExports(left[key], key, "before", documentationProgram)
+    const bdocs = sourceExports(right[key], key, "after", documentationProgram)
     for (const name of [...new Set([...a.keys(), ...b.keys()])].filter(authored).sort()) {
       if (!a.has(name) || !b.has(name)) result.nameDifferences.push({ entrypoint: key, export: name, side: a.has(name) ? "before" : "after" })
       else {
@@ -2122,7 +2136,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
         const sharedModule = !a.refs?.has(name) && !b.refs?.has(name) &&
           (equivalents.get(left[key]) ?? left[key]) === (equivalents.get(right[key]) ?? right[key])
         visit(a.get(name), b.get(name), ref(left[key], name, a), ref(right[key], name, b),
-          key, name, new Set(), sharedModule)
+          key, name, new Set(), sharedModule, adocs.get(name), bdocs.get(name))
       }
     }
   }

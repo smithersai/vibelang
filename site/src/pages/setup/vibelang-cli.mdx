@@ -356,7 +356,7 @@ Stock `tsc`, `tsrs`, TypeDoc and other checkers built on TypeScript cannot read 
 
 Parallel workspace imports share each owning project’s inferred sidecar layout. Compiler traces include `vibeSidecarLayout` spans for these probes, with a project fingerprint and root-file count.
 
-When saving a migration's public declarations, the compiler-generated `x.d.ts` forwarding file shares its source's emitted declaration identity, including with `vibe.sidecarDir`. Authored declarations retain their separate identities and are still compared.
+When saving a migration's public declarations, the compiler-generated `x.d.ts` forwarding file shares its source's emitted declaration identity, including with `vibe.sidecarDir`. Authored declarations retain their separate identities and are still compared. The API check compares namespace member documentation at its public path, including for bindings whose types use `infer`; private helpers created by the comparison do not take ownership of those comments.
 
 When comparing a published declaration with an ordinary TypeScript implementation, retain the TypeScript source as written. A locally declared non-effectful VibeLang callable adds the generated `@throws {never}` contract. That permitted addition does not excuse changed parameter or return types, changes to authored comments, or additional JSDoc tags.
 

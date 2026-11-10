@@ -1,0 +1,4 @@
+{
+  "rule": "Public member documentation stays attached to its authored namespace path when an inferred binding is aligned; changing that documentation remains observable.",
+  "comment": "/** Fold the input. */"
+}
