@@ -733,6 +733,8 @@ const program = effect {
 ```
 
 ```ts effect
+import { Config, Effect } from "effect"
+
 const program = Effect.gen(function* () {
   const k = yield* Config.String("API_KEY")
   return k

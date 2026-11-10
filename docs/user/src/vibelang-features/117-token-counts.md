@@ -291,7 +291,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [4. Pattern matching](../../../design/src/004-match.md) | 24,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,300 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 18,000 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 17,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |
 | **Appendices** | **140,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 120,000 |
