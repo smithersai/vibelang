@@ -410,9 +410,11 @@ func (s *services) shapeOf(class *ast.Node) *checker.Type {
 	} else {
 		symbol := c.GetSymbolOfDeclaration(class)
 		members := ast.SymbolTable{}
-		// The resolved members include those keyed by a unique symbol.
+		// The resolved members include those keyed by a unique symbol. An
+		// interface merged with the service declares members of its
+		// identifier, as with any class, not of the written shape.
 		for name, member := range c.MembersOfSymbol(symbol) {
-			if member.Flags()&(ast.SymbolFlagsProperty|ast.SymbolFlagsMethod|ast.SymbolFlagsAccessor) != 0 {
+			if member.Flags()&(ast.SymbolFlagsProperty|ast.SymbolFlagsMethod|ast.SymbolFlagsAccessor) != 0 && serviceDeclaresMember(class, member) {
 				members[name] = member
 			}
 		}
@@ -474,12 +476,24 @@ func implementedType(c *checker.Checker, class *ast.Node, heritage *ast.Node) *c
 	return implementedServiceShape(c, class, heritage, c.GetTypeFromTypeNode(heritage))
 }
 
+// serviceDeclaresMember reports whether member, a resolved instance member
+// of the service that class declares, has a declaration in class's body.
+func serviceDeclaresMember(class *ast.Node, member *ast.Symbol) bool {
+	for _, declaration := range member.Declarations() {
+		if declaration.Parent == class {
+			return true
+		}
+	}
+	return false
+}
+
 // resolveServiceShapeName is the checker's qualified type name hook: as a
 // type, Users.Shape is the shape of the service Users, Effect's
 // Context.Service.Shape<typeof Users> (D501), whether a .vibe file declares
-// Users or, read from a .vibe file, TypeScript does. A class merged with a
-// namespace keeps TypeScript's resolution, so a namespace that declares Shape
-// still does. A local service has no companion namespace, but VIP-9
+// Users or, read from a .vibe file, TypeScript does. A namespace merged with
+// the service, as a namespace merges with a class, keeps its own members
+// beside Shape; one that declares Shape itself keeps TypeScript's
+// resolution. A local service has no companion namespace, but VIP-9
 // preserves the own-member type hook in every declaration scope (detail 181).
 func resolveServiceShapeName(c *checker.Checker, name *ast.Node, left *ast.Node, right *ast.Node, meaning ast.SymbolFlags) *ast.Symbol {
 	if !ast.IsIdentifier(right) || right.Text() != serviceShapeName {
@@ -487,8 +501,13 @@ func resolveServiceShapeName(c *checker.Checker, name *ast.Node, left *ast.Node,
 	}
 	// A member-local type parameter shadows the class even in a qualified name.
 	symbol := c.ResolveEntityName(left, ast.SymbolFlagsType)
-	if symbol == nil || symbol.Flags()&ast.SymbolFlagsNamespace != 0 {
+	if symbol == nil {
 		return nil
+	}
+	if symbol.Flags()&ast.SymbolFlagsNamespace != 0 {
+		if exports := c.GetMergedSymbol(symbol).Exports(); exports != nil && exports[serviceShapeName] != nil {
+			return nil
+		}
 	}
 	s := servicesFor(c)
 	declaration := symbol.ValueDeclaration()

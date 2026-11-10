@@ -325,7 +325,7 @@ A union containing an ordinary constructor keeps TypeScript's own checks. The id
 
 ### Shape names and declaration output
 
-At module or namespace scope, `Users.Shape` names a service's implementation type, so service contracts can refer to their own or another service's `.Shape`. A function or block cannot declare that companion namespace: write `Context.Service.Shape<typeof Users>` for a local service instead. Within the service's own instance member type, `Users.Shape` remains a type-only self-reference. A member-local type parameter named `Users` shadows that service name, as in TypeScript.
+At module or namespace scope, `Users.Shape` names a service's implementation type, so service contracts can refer to their own or another service's `.Shape`. A function or block cannot declare that companion namespace: write `Context.Service.Shape<typeof Users>` for a local service instead. Within the service's own instance member type, `Users.Shape` remains a type-only self-reference. A member-local type parameter named `Users` shadows that service name, as in TypeScript. A `namespace Users { … }` merged with a service keeps its own members, such as a layer, beside `Users.Shape`, as a namespace merges with a class. An `interface Users { … }` merged with it declares members of the identifier; it adds none to `Users.Shape`.
 
 The key and the public `Shape` alias share a private named member type, preserving recursive shapes and their `readonly` members.
 

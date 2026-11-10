@@ -1,0 +1,18 @@
+// expect-result: [1, 2, 3]
+// A namespace merged with a service adds its own members beside Users.Shape,
+// as a namespace merges with a class; an interface merged with it declares
+// members of the identifier, as for any class, and none of the shape.
+service Users { static readonly key = "merge/Users"; n: number }
+namespace Users {
+  export const Live = Layer.succeed(Users, { n: 1 })
+  export const impl: Users.Shape = { n: 2 }
+}
+interface Users { extra: string }
+export const viaEffect: Context.Service.Shape<typeof Users> = { n: 3 }
+
+export effect function main() {
+  provide Users.Live {
+    const live = try Users
+    return [live.n, Users.impl.n, viaEffect.n]
+  }
+}

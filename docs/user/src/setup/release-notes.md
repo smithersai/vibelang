@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- A `namespace` merged with a `service`, such as one holding its layer, made `Users.Shape` unresolvable (`TS2694`), and an `interface` merged with it added its members to `Users.Shape`. A merged namespace now keeps its members beside `Users.Shape`, as with a class, and a merged interface declares members of the identifier only.
+
 - A `service` body accepted a separator with no member before it, such as the second `;` in `n: number; ; m: string` or a leading `;`, which an `interface` rejects. It now reports TypeScript’s `TS1131` at that separator, as an interface does.
 
 - Rejected service accessors and modified member contracts could hide unknown names and type errors in their annotations. Those independent errors now appear alongside the member rejection.
