@@ -352,6 +352,9 @@ func (p *projector) visit(node *ast.Node, e env) {
 	case parser.IsDataDeclaration(node) || parser.IsDataConstructors(node) || isDataDefinition(node):
 		p.dataDeclaration(node)
 		return
+	case durableDeclarationKind(node) != "":
+		p.durableDeclaration(node, durableDeclarationKind(node))
+		return
 	case isErrorDeclaration(node):
 		p.errorDeclaration(node)
 		return

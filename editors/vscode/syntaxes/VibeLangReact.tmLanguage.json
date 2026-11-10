@@ -56,6 +56,9 @@
 					"include": "#vibelang-member-declaration"
 				},
 				{
+					"include": "#vibelang-durable-declaration"
+				},
+				{
 					"include": "#vibelang-handle-clause"
 				},
 				{
@@ -6568,6 +6571,36 @@
 					"name": "entity.name.type.module.ts"
 				}
 			}
+		},
+		"vibelang-durable-declaration": {
+			"name": "meta.class.ts",
+			"begin": "(?<![_$[:alnum:]])(?:(?<=\\.\\.\\.)|(?<!\\.))(?:(\\bexport)\\s+)?\\b(task|workflow)\\s+([_$[:alpha:]][_$[:alnum:]]*)(?<!\\b(?:as|satisfies|is))(?=\\s*\\{)",
+			"beginCaptures": {
+				"1": {
+					"name": "keyword.control.export.ts"
+				},
+				"2": {
+					"name": "storage.type.class.ts"
+				},
+				"3": {
+					"name": "entity.name.type.class.ts"
+				},
+				"4": {
+					"name": "entity.name.type.ts"
+				}
+			},
+			"end": "(?<=\\})|(?<=[_$[:alnum:]>])(?=\\s*(?:$|;|//))",
+			"patterns": [
+				{
+					"include": "#comment"
+				},
+				{
+					"include": "#type-parameters"
+				},
+				{
+					"include": "#class-or-interface-body"
+				}
+			]
 		}
 	}
 }

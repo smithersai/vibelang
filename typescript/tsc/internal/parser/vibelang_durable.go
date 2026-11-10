@@ -1,0 +1,197 @@
+package parser
+
+import (
+	"fmt"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+)
+
+// Durable declarations (VIP-55): a task is one recorded step, and a workflow
+// is a plan over tasks.
+//
+//	task FetchIssues {
+//	  static readonly retryPolicy = { initialMs: 1000, factor: 2, maxMs: 4000, maxAttempts: 3 }
+//	  effect call(repo: string): Issues!string { … }
+//	}
+//	workflow Triage {
+//	  effect call(repo: string) { return try LabelIssues(try FetchIssues(repo)) }
+//	}
+//
+// parse as the constants the runtime's declaration helpers build:
+//
+//	const FetchIssues = $task<(repo: string) => Issues!string>()("FetchIssues", { retryPolicy: { … } }, effect function call(repo: string) { … })
+//	const Triage = $workflow("Triage", {}, effect function call(repo: string) { … })
+//
+// A task's written signature, its parameters and its A!E annotation, is its
+// durable boundary, not its body's type (VIP-55): the parser moves it into the
+// type argument, so the body's service requirements stay inferred and become
+// the requirements of the task's layer. A task whose call has no body declares
+// a step whose implementation arrives as a layer: the third argument is left
+// out. A workflow's call keeps its own annotation, which may be left out.
+//
+// Each static readonly member is one option, passed through under its own
+// name. The checker reports a declaration that is not one effect call and
+// static readonly members (EK5501) at the members the parser drops.
+
+// VibeSyntaxTask and VibeSyntaxWorkflow are the Names of the
+// VibeSyntaxDeclaration recorded for a task or workflow declaration: Head runs
+// from the word through the name, Open and Close are the braces.
+const (
+	VibeSyntaxTask     = "task"
+	VibeSyntaxWorkflow = "workflow"
+)
+
+// DurableCallDiagnosticCode is EK5501: a task or workflow that is not one
+// effect call method and static readonly members.
+const DurableCallDiagnosticCode int32 = 5501
+
+// DurableCallDiagnosticText is EK5501's message; %s is task or workflow.
+const DurableCallDiagnosticText = "A %s holds one `effect call(…)` method and `static readonly` options, nothing else."
+
+// DurableTaskSignatureDiagnosticText is EK5501's message for a task call whose
+// boundary is not written out.
+const DurableTaskSignatureDiagnosticText = "A task's `effect call` writes a type for each parameter and its `A!E` return type: they are its durable boundary."
+
+// parseDurableDeclaration parses task Name { … } or workflow Name { … } at
+// the current token, task or workflow.
+func (p *Parser) parseDurableDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, workflow bool) *ast.Node {
+	word := p.scanner.TokenRange()
+	kind := VibeSyntaxTask
+	intrinsic := "$task"
+	if workflow {
+		kind, intrinsic = VibeSyntaxWorkflow, "$workflow"
+	}
+	p.nextToken() // task or workflow
+	name := p.parseBindingIdentifier()
+	if p.token == ast.KindLessThanToken {
+		start := p.nodePos()
+		p.parseTypeParameters()
+		p.durableError(core.NewTextRange(scanner.SkipTrivia(p.sourceText, start), p.nodePos()), kind)
+	}
+	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: kind, Head: core.NewTextRange(word.Pos(), name.End())}
+	var members []*ast.Node
+	body := name.Loc
+	if p.token == ast.KindOpenBraceToken {
+		form.Open = p.tokenRange()
+		open := p.nodePos()
+		p.nextToken()
+		list := p.parseList(PCClassMembers, (*Parser).parseClassElement)
+		members = list.Nodes
+		if p.token == ast.KindCloseBraceToken {
+			form.Close = p.tokenRange()
+		}
+		p.parseExpected(ast.KindCloseBraceToken)
+		body = core.NewTextRange(open, p.nodePos())
+	} else {
+		p.parseExpected(ast.KindOpenBraceToken)
+	}
+	form.Range = core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), p.nodePos())
+	p.recordVibeSyntax(form)
+
+	var call *ast.Node
+	var options []*ast.Node
+	for _, member := range members {
+		switch {
+		case member.Kind == ast.KindSemicolonClassElement:
+			// A ; between members, as in a class body.
+		case ast.IsMethodDeclaration(member) && member.Name() != nil && member.Name().Kind == ast.KindIdentifier && member.Name().Text() == "call" &&
+			!ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) && call == nil && member.Flags&ast.NodeFlagsVibeLangEffect != 0 &&
+			member.AsMethodDeclaration().AsteriskToken == nil && member.AsMethodDeclaration().PostfixToken == nil:
+			call = member
+		case ast.IsPropertyDeclaration(member) && ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) &&
+			ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) && member.Initializer() != nil &&
+			member.Name() != nil && (member.Name().Kind == ast.KindIdentifier || member.Name().Kind == ast.KindStringLiteral):
+			options = append(options, p.vibelangSpanning(p.factory.NewPropertyAssignment(nil /*modifiers*/, member.Name(), nil /*postfixToken*/, nil /*typeNode*/, member.Initializer()), member.Loc))
+		default:
+			p.durableError(core.NewTextRange(scanner.SkipTrivia(p.sourceText, member.Pos()), member.End()), kind)
+		}
+	}
+	if call == nil && len(members) > 0 || call == nil && form.Open.Len() > 0 {
+		p.durableError(core.NewTextRange(scanner.SkipTrivia(p.sourceText, word.Pos()), name.End()), kind)
+	}
+
+	inside := body
+	if form.Open.Len() > 0 && form.Close.Len() > 0 {
+		inside = core.NewTextRange(form.Open.End(), form.Close.Pos())
+	}
+	object := p.vibelangSpanning(p.factory.NewObjectLiteralExpression(p.newNodeList(inside, options), len(options) > 0 /*multiLine*/), body)
+	tag := p.vibelangSynthesized(p.factory.NewStringLiteral(name.Text(), ast.TokenFlagsNone), name.Loc)
+	arguments := []*ast.Node{tag, object}
+
+	callee := p.vibelangIntrinsic(intrinsic, word)
+	var expression *ast.Node
+	if call != nil {
+		method := call.AsMethodDeclaration()
+		var parameters *ast.NodeList = method.Parameters
+		returnType := method.Type
+		var implementationType *ast.Node
+		if !workflow {
+			if !p.durableSignatureWritten(call) {
+				p.vibelangServiceError(core.NewTextRange(scanner.SkipTrivia(p.sourceText, call.Pos()), call.Name().End()), DurableCallDiagnosticCode, DurableTaskSignatureDiagnosticText)
+			}
+			if returnType != nil {
+				signature := p.vibelangSpanning(p.factory.NewFunctionTypeNode(nil /*typeParameters*/, p.durableCloneParameters(parameters), p.addDeepCloneReparse(returnType)), returnType.Loc)
+				signature.Flags |= ast.NodeFlagsReparsed
+				typeArguments := p.newNodeList(returnType.Loc, []*ast.Node{signature})
+				callee = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, typeArguments, p.newNodeList(word, nil), ast.NodeFlagsNone), word)
+			} else {
+				callee = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, nil, p.newNodeList(word, nil), ast.NodeFlagsNone), word)
+			}
+		}
+		if workflow && method.Body == nil {
+			p.durableError(core.NewTextRange(scanner.SkipTrivia(p.sourceText, call.Pos()), call.End()), kind)
+		}
+		if method.Body != nil {
+			if workflow {
+				implementationType = returnType
+			}
+			fn := p.factory.NewFunctionExpression(nil /*modifiers*/, nil /*asteriskToken*/, call.Name(), method.TypeParameters, parameters, implementationType, nil /*fullSignature*/, method.Body)
+			p.vibelangSpanning(fn, call.Loc)
+			fn.Flags |= ast.NodeFlagsVibeLangEffect
+			arguments = append(arguments, fn)
+		}
+	} else if !workflow {
+		callee = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, nil, p.newNodeList(word, nil), ast.NodeFlagsNone), word)
+	}
+	span := core.NewTextRange(name.Pos(), p.nodePos())
+	expression = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, p.newNodeList(span, arguments), ast.NodeFlagsNone), span)
+	declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(name, nil /*exclamationToken*/, nil /*typeNode*/, expression), span)
+	list := p.vibelangSpanning(p.factory.NewVariableDeclarationList(p.newNodeList(span, []*ast.Node{declaration}), ast.NodeFlagsConst), span)
+	statement := p.factory.NewVariableStatement(modifiers, list)
+	p.finishNode(statement, pos)
+	p.withJSDoc(statement, jsdoc)
+	return statement
+}
+
+// durableSignatureWritten reports whether a task's call writes a type for
+// every parameter and its return type.
+func (p *Parser) durableSignatureWritten(call *ast.Node) bool {
+	method := call.AsMethodDeclaration()
+	if method.Type == nil {
+		return false
+	}
+	for _, parameter := range method.Parameters.Nodes {
+		if parameter.Type() == nil {
+			return false
+		}
+	}
+	return true
+}
+
+// durableCloneParameters copies a task call's parameters into its boundary
+// signature. The copies are reparsed nodes, so the language service sees only
+// the written parameters.
+func (p *Parser) durableCloneParameters(parameters *ast.NodeList) *ast.NodeList {
+	clones := make([]*ast.Node, len(parameters.Nodes))
+	for i, parameter := range parameters.Nodes {
+		clones[i] = p.addDeepCloneReparse(parameter)
+	}
+	return p.newNodeList(parameters.Loc, clones)
+}
+
+// durableError reports EK5501 at loc for a task or a workflow (kind).
+func (p *Parser) durableError(loc core.TextRange, kind string) {
+	p.vibelangServiceError(loc, DurableCallDiagnosticCode, fmt.Sprintf(DurableCallDiagnosticText, kind))
+}

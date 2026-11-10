@@ -21,6 +21,7 @@ var (
 	EK0507 = message(507, errorCategory, "This plain catch handler's result may be a Promise or thenable, which catch neither awaits nor assimilates.")
 	EK0508 = message(508, warningCategory, "This plain catch handler's result may be an Effect, which catch gives as data without running it.")
 	EK0801 = message(801, warningCategory, "Using in effect code; use acquireDisposable inside scoped. Use acquireDisposable inside scoped for an Effect resource.")
+	EK5501 = message(parser.DurableCallDiagnosticCode, errorCategory, "A task or workflow holds one `effect call(…)` method and `static readonly` options, nothing else.")
 	EK0901 = message(901, errorCategory, "A static key without readonly, or whose initializer is not a string literal. Declare service contracts only, and supply a static readonly string-literal key if no key can be derived.")
 	EK0902 = message(902, errorCategory, "A service member that is not a PropertySignature, MethodSignature, KeyMember or DefaultMember. Declare service contracts only, and supply a static readonly string-literal key if no key can be derived.")
 	EK0903 = message(903, errorCategory, "A service with no derived key and no static readonly key. Declare service contracts only, and supply a static readonly string-literal key if no key can be derived.")

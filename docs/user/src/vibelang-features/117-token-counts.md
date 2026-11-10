@@ -17,9 +17,9 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,302 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,169 |
-| The skill and the user guide (145 pages) | 580,000 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,308 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,175 |
+| The skill and the user guide (146 pages) | 580,000 |
 | The user guide alone | 570,000 |
 | The specification (11 chapters) | 270,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
@@ -277,7 +277,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 13,000 |
-| **All 9 pages** | **76,000** |
+| [Durable tasks and workflows](119-tasks-and-workflows.md) | 570 |
+| **All 10 pages** | **76,000** |
 
 ### Specification
 
@@ -289,7 +290,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [2. Running Effects](../../../design/src/002-running.md) | 30,000 |
 | [3. Failures](../../../design/src/003-failures.md) | 11,000 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 24,000 |
-| [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
+| [5. Services and the environment](../../../design/src/005-services.md) | 14,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,300 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 17,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |

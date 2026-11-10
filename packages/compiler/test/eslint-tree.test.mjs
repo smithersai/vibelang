@@ -19,7 +19,11 @@ const keys = {
   ClassDeclaration: ["id", "body"], ClassBody: ["body"], MethodDefinition: ["key", "value"],
   // An effect block is a program value: the synthesized $effect builder call
   // around its lexical arrow (23723b612c20, VIP-2).
-  CallExpression: ["callee", "arguments"]
+  CallExpression: ["callee", "arguments"],
+  // A task or workflow declaration is its runtime constant (VIP-55).
+  TSFunctionType: ["params", "returnType"], TSTypeAnnotation: ["typeAnnotation"],
+  TSTypeReference: ["typeName", "typeArguments"], TSTypeParameterInstantiation: ["params"],
+  TSStringKeyword: [], TSNumberKeyword: [], TSNeverKeyword: [], ExpressionStatement: ["expression"]
 }
 const forms = [
   (name) => `effect function ${name}() { return 1 }`,
@@ -33,7 +37,13 @@ const forms = [
   (name) => `class Box { static effect ${name}() { return 1 } }`,
   (name) => `const ${name} = 1`,
   (name) => `function ${name}() { return 1 }`,
-  (name) => `const load = (${name}) => ${name}`
+  (name) => `const load = (${name}) => ${name}`,
+  // VIP-55: task and workflow are form words; the declared name and the
+  // call's parameter are user names.
+  (name) => `task ${name} { static readonly key = "k"; effect call(id: string): number!never { return 1 } }`,
+  (name) => `export workflow ${name} { effect call(id: string) { return id } }`,
+  (name) => `task Charge { effect call(${name}: string): number!never { return 1 } }`,
+  (name) => `const task = 1; const ${name} = task`
 ]
 const prefixes = ["", "// modifier neighbour\n", "/* 😀 */\r\n", "\uFEFF\t"]
 

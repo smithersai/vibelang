@@ -199,6 +199,7 @@ Code example count: one example per fenced code block in the source body, includ
 - [Diagnostic code map](src/vibelang-features/diagnostic-code-map.md)
 - [Imported lint diagnostics](src/vibelang-features/imported-lint-diagnostics.md)
 - [Experimental platform APIs](src/vibelang-features/118-experimental-platform-apis.md)
+- [Durable tasks and workflows](src/vibelang-features/119-tasks-and-workflows.md)
 
 ### Specification
 
@@ -349,6 +350,7 @@ These original pages supplement the 110 mirrored Effect pages. They have no upst
 | [Diagnostic code map](src/vibelang-features/diagnostic-code-map.md) | Appendix B diagnostic code renumbering and repairs |
 | [Imported lint diagnostics](src/vibelang-features/imported-lint-diagnostics.md) | Imported Effect rule codes, categories and repair messages |
 | [Experimental platform APIs](src/vibelang-features/118-experimental-platform-apis.md) | What VibeLang adds where Effect lacks an API: `Experimental.FileSystem`, `Crypto`, `Process`, `Locks`, `Dns`, `Durable` and pure `Encoding`, their layers and guarantees, and how they leave |
+| [Durable tasks and workflows](src/vibelang-features/119-tasks-and-workflows.md) | `task` and `workflow` declarations: a task's boundary, its options, where a task may run, and the engine a workflow needs |
 
 ## Counts by sidebar section
 

@@ -823,6 +823,23 @@ func TestDataDeclarationIsUnprojected(t *testing.T) {
 	assertValidMap(t, projection, source)
 }
 
+// TestDurableDeclarationIsUnprojected checks that the mapper, which does
+// not lower task and workflow declarations (VIP-55), says so once per
+// declaration, at the declaration, and maps the rest of the file.
+func TestDurableDeclarationIsUnprojected(t *testing.T) {
+	t.Parallel()
+	source := "task Fetch {\n  effect call(id: string): number!string { return 1 }\n}\nexport workflow Run {\n  effect call(id: string) { return try Fetch(id) }\n}\nconst task = 1\nconst label = task\n"
+	projection := Project(source, testContext)
+	assert.Equal(t, len(projection.Diagnostics), 2, "%v", projection.Diagnostics)
+	for i, want := range []struct{ head, kind string }{{"task Fetch {", "task declaration"}, {"export workflow Run {", "workflow declaration"}} {
+		d := projection.Diagnostics[i]
+		assert.Equal(t, d.Code, int32(CodeUnprojectedForm))
+		assert.Assert(t, strings.HasPrefix(source[d.Start:d.Start+d.Length], want.head), "%q", source[d.Start:d.Start+d.Length])
+		assert.Assert(t, strings.Contains(d.Message, want.kind), d.Message)
+	}
+	assertValidMap(t, projection, source)
+}
+
 // TestFormChoice checks that a lambda whose form the rules cannot decide
 // draws EK9005 at the lambda, with the resolver's message, and still lowers
 // the default's guess.

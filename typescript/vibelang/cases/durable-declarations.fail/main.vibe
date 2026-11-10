@@ -1,0 +1,39 @@
+// expect: EK5501
+// Each declaration below breaks the task and workflow shape (VIP-55).
+task Untyped {
+  effect call(id): number!string { return 1 }
+}
+
+task NoAnnotation {
+  effect call(id: string) { return 1 }
+}
+
+task Extra {
+  helper() { return 1 }
+  effect call(id: string): number!never { return 1 }
+}
+
+task NotEffect {
+  call(id: string): number { return 1 }
+}
+
+task Twice {
+  effect call(id: string): number!never { return 1 }
+  effect call(id: number): number!never { return 1 }
+}
+
+task Empty {}
+
+workflow Mutable {
+  static mutable = 1
+  effect call(n: number) { return n }
+}
+
+workflow Instance {
+  readonly retries = 1
+  effect call(n: number) { return n }
+}
+
+task Generic<T> {
+  effect call(id: string): number!never { return 1 }
+}

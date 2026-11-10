@@ -62,6 +62,11 @@ func (p *Parser) scanStartOfVibeLangDeclarationInContext(ambient bool) bool {
 	if p.token == ast.KindClassKeyword {
 		return word == "service" || word == "control"
 	}
+	if word == "task" || word == "workflow" {
+		// task as T, task satisfies T and task is T keep their TypeScript
+		// meaning (VIP-55): a task or workflow cannot have those names.
+		return p.isIdentifier() && p.token != ast.KindAsKeyword && p.token != ast.KindSatisfiesKeyword && p.token != ast.KindIsKeyword
+	}
 	return p.isIdentifier()
 }
 
@@ -78,7 +83,7 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	// Declaration introducers follow TypeScript contextual type, including
 	// its native prohibition on Unicode escapes in keyword tokens.
 	word := p.scanner.TokenValue()
-	if (word == "error" || word == "schema" || word == "service" || word == "data") &&
+	if (word == "error" || word == "schema" || word == "service" || word == "data" || word == "task" || word == "workflow") &&
 		(p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape()) {
 		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
 	}
@@ -98,6 +103,10 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 		return p.parseLayerDeclaration(pos, jsdoc, modifiers)
 	case "data":
 		return p.parseDataDeclaration(pos, jsdoc, modifiers) // D307, vibelang_data.go
+	case "task":
+		return p.parseDurableDeclaration(pos, jsdoc, modifiers, false /*workflow*/) // VIP-55, vibelang_durable.go
+	case "workflow":
+		return p.parseDurableDeclaration(pos, jsdoc, modifiers, true /*workflow*/) // VIP-55, vibelang_durable.go
 	case "schema":
 		if p.isStartOfVibeLangSchemaError() {
 			return p.parseErrorDeclaration(pos, jsdoc, modifiers, true /*schema*/) // vibelang_errors.go

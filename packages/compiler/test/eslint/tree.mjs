@@ -4,7 +4,7 @@ import { vibeVisitorKeys } from "../../eslint.mjs"
 // Words that start a VibeLang form: the tree has a node for the form, not
 // for the word, as it has none for TypeScript's `function` or `extends`.
 export const formWords = new Set([
-  "error", "service", "control", "schema", "data", "layer", "mutable", "match", "when", "and", "or", "not",
+  "error", "service", "control", "schema", "data", "task", "workflow", "layer", "mutable", "match", "when", "and", "or", "not",
   "provide", "fork", "join", "is", "handle", "uninterruptible", "restore", "interruptible",
   "concurrent", "all", "allSettled", "any", "race", "select"
 ])

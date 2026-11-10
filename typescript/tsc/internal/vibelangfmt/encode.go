@@ -730,6 +730,11 @@ func (e *encoder) declaration(form parser.VibeSyntax) error {
 			e.holders[len(e.holders)-1].noBody = true
 			e.insert(form.Range.End(), " {}", 0)
 		}
+	case parser.VibeSyntaxTask, parser.VibeSyntaxWorkflow:
+		// task T { … } and workflow W { … } are a class: an effect call
+		// method and static readonly members (VIP-55).
+		name := e.hold(placeholderClassHead, head, form.Head.Pos(), firstLineWidth(head)-len("class "))
+		e.add(edit{pos: form.Head.Pos(), end: form.Head.End(), text: "class " + name, opaque: true})
 	default:
 		text := declarationKeywordSpacing(e.text(form.Range))
 		name := e.hold(placeholderText, text, form.Range.Pos(), firstLineWidth(text))
@@ -801,7 +806,7 @@ func declarationKeywordSpacing(head string) string {
 		}
 		word := head[:end]
 		switch word {
-		case "error", "schema", "service", "class", "control", "data", "layer":
+		case "error", "schema", "service", "class", "control", "data", "layer", "task", "workflow":
 		default:
 			return out.String() + head
 		}

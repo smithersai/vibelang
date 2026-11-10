@@ -130,7 +130,7 @@ Each declaration production starts with its own start production (`ServiceDeclar
 #### DeclarationStart
 
 ```text
-DeclarationStart = ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart
+DeclarationStart = ServiceStart | ErrorStart | SchemaErrorStart | SchemaStart | DataStart | TaskStart | WorkflowStart
 ```
 
 #### ServiceStart
@@ -633,6 +633,38 @@ Provider = LeftHandSideExpression "=" AssignmentExpression   (Key = value)
          | ConditionalExpression                             (a Layer)
 ```
 
+#### TaskStart
+
+```text
+TaskStart        = "task"     [no LineTerminator here] BindingIdentifier
+```
+
+#### WorkflowStart
+
+```text
+WorkflowStart    = "workflow" [no LineTerminator here] BindingIdentifier
+```
+
+#### TaskDeclaration
+
+```text
+TaskDeclaration = TaskStart "{" DurableMember* "}"   (VIP-55: exactly one CallMember; a task's CallMember writes every parameter type and its return type)
+```
+
+#### WorkflowDeclaration
+
+```text
+WorkflowDeclaration = WorkflowStart "{" DurableMember* "}"   (VIP-55: exactly one CallMember with a body)
+```
+
+<a id="durablemember"></a>
+
+```text
+DurableMember = CallMember | OptionMember | RejectedElement   (parsed as class elements; a RejectedElement, a second CallMember or a missing one is EK5501)
+CallMember    = EffectMethod named call, not static, with a body or, in a task, ending in ";" with no body
+OptionMember  = "static" "readonly" PropertyName Initializer   (one option, passed through by name)
+```
+
 #### ServiceDeclaration
 
 ```text
@@ -1002,7 +1034,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1068 records)</summary>
+<summary>Parser and lowering hooks (1072 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1953,6 +1985,10 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_effect_channels.go:vibeLangFunctionTypeIsMissingArrow ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | VIP-3: identify a closed recovered function-type head lacking its outer arrow; ordinary invalid operands keep native syntax diagnostics |
 | ` parser/vibelang_do.go:doConcurrentBody ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: recover the source ForConcurrent body for the native iteration completion predicates |
 | ` parser/vibelang_data.go:Parser.skipDataVariantParameters ` | ` admission:data ` | ` 900-appendices.md#Variant ` | ` recovery ` | VIP-16/detail 247: consume a malformed parenthesized payload for EK1606; retain the declaration boundary |
+| ` parser/vibelang_durable.go:Parser.parseDurableDeclaration ` | ` admission:durable ` | ` 900-appendices.md#TaskDeclaration `, ` 900-appendices.md#WorkflowDeclaration ` | ` support ` | VIP-55 task and workflow declarations |
+| ` parser/vibelang_durable.go:Parser.durableSignatureWritten ` | ` admission:durable ` | ` 900-appendices.md#TaskDeclaration ` | ` support ` | VIP-55: a task call writes its boundary; EK5501 otherwise |
+| ` parser/vibelang_durable.go:Parser.durableCloneParameters ` | ` admission:durable ` | ` 900-appendices.md#TaskDeclaration ` | ` support ` | VIP-55 task boundary signature |
+| ` parser/vibelang_durable.go:Parser.durableError ` | ` admission:durable ` | ` 900-appendices.md#TaskDeclaration `, ` 900-appendices.md#WorkflowDeclaration ` | ` support ` | VIP-55: EK5501 for a member other than one effect call and static readonly options |
 | ` parser/vibelang_effect_assertion.go:Parser.withVibeLangExpressionASI ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
 | ` parser/vibelang_effect_assertion.go:Parser.parseVibeLangExpressionAllowInASI ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
 | ` parser/vibelang_effect_assertion.go:Parser.parseVibeLangExpressionInitializer ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
@@ -2270,6 +2306,8 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4839` | lint warning: An Effect `Match` chain with a supported finisher, or a direct `Option.match(value, handlers)` call Replay [example: main.vibe:8:10](../../../typescript/vibelang/cases/tsforms-match/main.vibe). | 7, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4841` | lint warning: A schema `const` immediately followed by its matching `typeof Name.Type` alias | 15, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4842` | lint warning: An Effect module imported under a conflicting JavaScript global name | 14, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
+| `EK5501` | a `task` or `workflow` body that is not one non-static `effect call` method and `static readonly` members with initializers, or a task `call` without a type on every parameter and a return type | 55 | [Services](005-services.md#durable-static-rules) |
+| `EK5502` | a task called outside a workflow's `effect call` | 55 | [Services](005-services.md#durable-static-rules) |
 | `EK1011` | compiler dependency error: an Effect construct cannot resolve the installed Effect type; install the pinned peer before compiling. Example: `effect function f() { return 1 }` with no resolvable Effect package | 6, 32, 34 | [Tooling](007-tooling.md#the-effect-version) |
 | `EK2112` | warning: a legacy catch clause tests its failure's type; the preserving migration removes the annotation and tests the value with `match` or `is`. Example: `catch (e: NotFound) { recover(e) }` in legacy effect code Replay [example: main.vibe:7:15; also EK2105](../../../typescript/vibelang/cases/decl-catch-untagged.fail/main.vibe). | 5, 34 | [Running Effects](002-running.md#catch) |
 | `EK2113` | warning: a legacy Cause-typed catch clause; migrate to matching `exit(program)` with `Exit.Success` and `Exit.Failure`. Example: `catch (cause: Cause.Cause<E>) { recover(cause) }` in legacy effect code Replay [example: main.vibe:13:19](../../../typescript/vibelang/cases/primitives.fail/main.vibe). | 5, 34 | [Running Effects](002-running.md#catch) |

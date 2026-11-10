@@ -140,6 +140,12 @@ or runtime references valid in first-release `.vibe` source.
 | `$global` | Captured global object, for a global failure class such as SyntaxError that a binding of the module shadows | — |
 | `$is` | Test a lowered pattern; optional third argument retains a member pattern receiver | — |
 | `$join` | Join a fiber or collection of fibers | — |
+| `$task` | Build a `task` declaration's value from its boundary signature, options, schemas and implementation | VIP-55 |
+| `$workflow` | Build a `workflow` declaration's value from its options, schemas and body | VIP-55 |
+| `DurableEngine` | The service a workflow runs on; `try W(a)` requires it | VIP-55 |
+| `DurableOptions` | Type of a declaration's `static readonly` options | VIP-55 |
+| `Task` | Type of a `task` declaration's value | VIP-55 |
+| `Workflow` | Type of a `workflow` declaration's value | VIP-55 |
 | `$try` | `try p` before an Effect value, which the lowering writes as `yield* p` (VIP-5) | — |
 | `$tryAll` | `try.all [a, b]`: run every Effect at once and keep their results in order (Effect.all, unbounded) | VIP-18 |
 | `$tryAllSettled` | `try.allSettled [a, b]`: run every Effect at once and return each one's `Exit`; never fails | VIP-18 |

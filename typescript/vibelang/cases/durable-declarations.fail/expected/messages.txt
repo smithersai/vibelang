@@ -1,0 +1,3 @@
+A task's `effect call` writes a type for each parameter and its `A!E` return type: they are its durable boundary.
+A task holds one `effect call(…)` method and `static readonly` options, nothing else.
+A workflow holds one `effect call(…)` method and `static readonly` options, nothing else.

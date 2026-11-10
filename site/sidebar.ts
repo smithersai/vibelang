@@ -768,6 +768,10 @@ export const sidebar = [
       {
         "text": "Experimental platform APIs",
         "link": "/vibelang-features/118-experimental-platform-apis"
+      },
+      {
+        "text": "Durable tasks and workflows",
+        "link": "/vibelang-features/119-tasks-and-workflows"
       }
     ],
     "collapsed": false

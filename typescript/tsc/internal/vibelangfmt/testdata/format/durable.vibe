@@ -1,0 +1,14 @@
+schema Issue {number: number;   title: string}
+task   FetchIssues {
+    static readonly retryPolicy = {initialMs: 1000, factor: 2,maxMs: 4000}
+  effect call(repo:string): ReadonlyArray<Issue>!string {
+  return [{number:1, title:repo}] }
+}
+task Charge { effect call(order: string): number!string }
+export   workflow Triage {
+  static readonly maxRounds=3
+  effect call(repo: string) { const issues = try FetchIssues(repo)
+    return issues.length }
+}
+const task = 1
+const workflow = task as number

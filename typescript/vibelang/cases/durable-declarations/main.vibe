@@ -1,0 +1,53 @@
+// expect-result: {"keys":["FetchIssues","billing/Charge","Triage"],"options":[{"retryPolicy":{"initialMs":1000,"factor":2,"maxMs":4000,"maxAttempts":3}},{"key":"billing/Charge"},{"maxRounds":2}],"count":7,"runs":["Triage(smithersai/smithers)"],"words":["chore","chore",2]}
+import { DurableEngine } from "vibelang-runtime"
+
+schema Issue { number: number; title: string }
+
+// A task's A!E annotation is its durable boundary; the services its body
+// reads belong to its implementation.
+task FetchIssues {
+  static readonly retryPolicy = { initialMs: 1000, factor: 2, maxMs: 4000, maxAttempts: 3 }
+  effect call(repo: string): ReadonlyArray<Issue>!string {
+    if (repo === "") throw "no repository"
+    const path = try Path.Path
+    return [{ number: 1, title: path.basename(repo) }]
+  }
+}
+
+// A task with no body: its implementation is supplied separately.
+task Charge {
+  static readonly key = "billing/Charge"
+  effect call(order: string, cents: number): number!string
+}
+
+export workflow Triage {
+  static readonly maxRounds = 2
+  effect call(repo: string) {
+    const issues = try FetchIssues(repo)
+    return issues.length
+  }
+}
+
+// The words stay identifiers wherever no declaration starts.
+const task = { name: "chore" }
+const workflow = task as { name: string }
+const spawn = (n: number) => n + 1
+
+export effect function main() {
+  const runs: Array<string> = []
+  provide DurableEngine = {
+    execute: (workflow, args) => sync(() => {
+      runs.push(`${workflow.key}(${args.join(", ")})`)
+      return 7
+    })
+  } {
+    const count: number = try Triage("smithersai/smithers")
+    return {
+      keys: [FetchIssues.key, Charge.key, Triage.key],
+      options: [FetchIssues.options, Charge.options, Triage.options],
+      count,
+      runs,
+      words: [task.name, workflow.name, spawn(1)]
+    }
+  }
+}

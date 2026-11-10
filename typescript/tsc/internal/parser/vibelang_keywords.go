@@ -17,7 +17,7 @@ var VibeLangKeywords = slices.Concat(vibelangDeclarationWords, vibelangMaskWords
 
 // vibelangDeclarationWords start a VibeLang declaration when an identifier
 // follows on the same line (isVibeLangDeclarationWord).
-var vibelangDeclarationWords = []string{"error", "service", "control", "layer", "schema", "data"}
+var vibelangDeclarationWords = []string{"error", "service", "control", "layer", "schema", "data", "task", "workflow"}
 
 // vibelangMaskWords start an interruption block when a block follows on the
 // same line (isVibeLangMaskWord, D180).

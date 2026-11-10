@@ -1,0 +1,36 @@
+// expect: TS2345 TS2322 EK5502
+// A task's annotation is its boundary, and a task runs only in a workflow (VIP-55).
+task Fetch {
+  effect call(id: string): number!string { return id.length }
+}
+
+task WrongSuccess {
+  effect call(id: string): number!string {
+    return "not a number"
+  }
+}
+
+task WrongError {
+  effect call(id: string): number!string {
+    throw 42
+  }
+}
+
+workflow Run {
+  effect call(id: string) {
+    const n = try Fetch(id)
+    const nested = effect { return try Fetch(id) }
+    const s: string = n
+    return n
+  }
+}
+
+effect function outside(id: string) {
+  return try Fetch(id)
+}
+
+const plain = () => Fetch("x")
+
+effect function wrongInput() {
+  return try Run(1)
+}

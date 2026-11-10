@@ -1,0 +1,2 @@
+Fetch is a task, which runs only as a step of a workflow. Call it from a workflow's `effect call`, or write it as an `effect function`.
+Type 'string' is not assignable to type 'number'.

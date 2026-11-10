@@ -66,7 +66,10 @@ var preludeModules = map[string]string{
 	// How a schema error joins its family, which the parser writes (D304).
 	"$schemaErrorFamily": runtimeModule,
 	// The refinement of an Error field's Schema (VIP-44, parser/vibelang_schema_generic.go).
-	"$isError":            runtimeModule,
+	"$isError": runtimeModule,
+	// Durable declarations, which the parser writes (VIP-55, parser/vibelang_durable.go).
+	"$task":               runtimeModule,
+	"$workflow":           runtimeModule,
 	"$schemaErrorMember":  runtimeModule,
 	"$schemaErrorMatcher": runtimeModule,
 	"Control":             runtimeModule,
