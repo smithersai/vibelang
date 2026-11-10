@@ -1,0 +1,19 @@
+# Gaps between Chapter 1's declaration output (API identity with tsc's output
+# for the TypeScript twin) and the compiler, found by
+# FuzzDeclarationNamespaceShadow: an inferred type reuses an annotation another
+# module wrote, in a module that binds the written name differently. A key
+# names the module whose declarations fail, the Effect module and main's
+# binding; every annotation shape and use behaves alike under one key.
+# target                        key                                  owner     what is missing
+FuzzDeclarationNamespaceShadow  main:option/namespace                compiler  Chapter 1 API identity: main imports effect/Option as the namespace Option and infers util's `x: Option<number>`; tsc declares Option.Option<number>, VibeLang declares Option<number>, which TS2709 rejects; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  main:option/namespace-value          compiler  Chapter 1 API identity: as main:option/namespace with a value namespace import (import * as Option); VibeLang declares Option<number>, TS2709; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  main:duration/namespace              compiler  Chapter 1 API identity: main imports effect/Duration as the namespace Duration and infers util's `x: Duration`; tsc declares Duration.Duration, VibeLang declares Duration, TS2709; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  main:duration/namespace-value        compiler  Chapter 1 API identity: as main:duration/namespace with import * as Duration; VibeLang declares Duration, TS2709; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  main:httpclient/namespace            compiler  Chapter 1 API identity: the alchemy K2Http shape; main imports effect/http/HttpClient as the namespace HttpClient and infers util's `HttpClient`; tsc declares HttpClient.HttpClient, VibeLang declares HttpClient, TS2709; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  main:httpclient/namespace-value      compiler  Chapter 1 API identity: as main:httpclient/namespace with import * as HttpClient; VibeLang declares HttpClient, TS2709; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  util:option/other-namespace          compiler  Chapter 1 API identity: util imports type { Option } from effect/Option and writes Option<number>; when main imports the module as another namespace, util's own declaration says Option.Option<number>, which TS2694 rejects (tsc keeps Option<number>); with parallel emit it varies from build to build; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  util:duration/other-namespace        compiler  Chapter 1 API identity: as util:option/other-namespace for effect/Duration; util declares Duration.Duration, TS2694; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  util:httpclient/other-namespace      compiler  Chapter 1 API identity: as util:option/other-namespace for effect/http/HttpClient; util declares HttpClient.HttpClient, TS2694; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  corpus:alchemy-k2-httpclient-namespace compiler VIP-27: minimized reproduction of main:httpclient/namespace, the alchemy K2Http declaration; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  corpus:option-namespace-value-generic compiler VIP-27: minimized reproduction of main:option/namespace-value; lane migfix-alchemy
+FuzzDeclarationNamespaceShadow  corpus:duration-other-namespace-union compiler VIP-27: minimized reproduction of util:duration/other-namespace; lane migfix-alchemy

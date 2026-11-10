@@ -1,0 +1,2 @@
+go test fuzz v1
+string("httpclient/namespace/param-return/property")

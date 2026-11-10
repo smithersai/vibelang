@@ -1,0 +1,4 @@
+{
+  "Source": "alchemy cloudflare K2/K2Http.vibe and HttpClientUtils.vibe: authorizeWith writes `eff: A!E!(Credentials | HttpClient)` with `import type { HttpClient } from \"effect/http/HttpClient\"`; K2Http imports `type * as HttpClient` from the same module and stores authorizeWith's result in an inferred object, and its declaration printed `HttpClient` where `HttpClient.HttpClient` belongs (TS2709 for a consumer)",
+  "Key": "httpclient/namespace/param-return/property"
+}
