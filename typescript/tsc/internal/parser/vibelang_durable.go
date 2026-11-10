@@ -21,15 +21,16 @@ import (
 //
 // parse as the constants the runtime's declaration helpers build:
 //
-//	const FetchIssues = $task<(repo: string) => Issues!string>()("FetchIssues", { retryPolicy: { … } }, effect function call(repo: string) { … })
-//	const Triage = $workflow("Triage", {}, effect function call(repo: string) { … })
+//	const FetchIssues = $task<(repo: string) => Issues!string>()("FetchIssues", { retryPolicy: { … } },
+//	  { payload: { repo: Schema.String }, success: Issues, error: Schema.String }, effect function call(repo: string) { … })
+//	const Triage = $workflow("Triage", {}, { payload: { repo: Schema.String } }, effect function call(repo: string) { … })
 //
 // A task's written signature, its parameters and its A!E annotation, is its
 // durable boundary, not its body's type (VIP-55): the parser moves it into the
 // type argument, so the body's service requirements stay inferred and become
 // the requirements of the task's layer. A task whose call has no body declares
-// a step whose implementation arrives as a layer: the third argument is left
-// out. A workflow's call keeps its own annotation, which may be left out.
+// a step whose implementation arrives as a layer: the last argument is left
+// out. The third argument holds the boundary's schemas (durableSchemas). A workflow's call keeps its own annotation, which may be left out.
 //
 // Each static readonly member is one option, passed through under its own
 // name. The checker reports a declaration that is not one effect call and
@@ -127,6 +128,7 @@ func (p *Parser) parseDurableDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 		var parameters *ast.NodeList = method.Parameters
 		returnType := method.Type
 		var implementationType *ast.Node
+		arguments = append(arguments, p.durableSchemas(parameters, returnType, call.Name().Loc))
 		if !workflow {
 			if !p.durableSignatureWritten(call) {
 				p.vibelangServiceError(core.NewTextRange(scanner.SkipTrivia(p.sourceText, call.Pos()), call.Name().End()), DurableCallDiagnosticCode, DurableTaskSignatureDiagnosticText)
@@ -152,8 +154,11 @@ func (p *Parser) parseDurableDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 			fn.Flags |= ast.NodeFlagsVibeLangEffect
 			arguments = append(arguments, fn)
 		}
-	} else if !workflow {
-		callee = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, nil, p.newNodeList(word, nil), ast.NodeFlagsNone), word)
+	} else {
+		arguments = append(arguments, p.durableSchemas(p.newNodeList(name.Loc, nil), nil, name.Loc))
+		if !workflow {
+			callee = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, nil, p.newNodeList(word, nil), ast.NodeFlagsNone), word)
+		}
 	}
 	span := core.NewTextRange(name.Pos(), p.nodePos())
 	expression = p.vibelangSpanning(p.factory.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, p.newNodeList(span, arguments), ast.NodeFlagsNone), span)
@@ -173,11 +178,90 @@ func (p *Parser) durableSignatureWritten(call *ast.Node) bool {
 		return false
 	}
 	for _, parameter := range method.Parameters.Nodes {
-		if parameter.Type() == nil {
+		if parameter.Type() == nil || parameter.Name() == nil || !ast.IsIdentifier(parameter.Name()) || parameter.AsParameterDeclaration().DotDotDotToken != nil {
 			return false
 		}
 	}
+	// The R slot is never written: the body's services belong to the
+	// task's implementation (VIP-55).
+	if _, _, requirements := durableEffectSlots(method.Type); requirements != nil && requirements.Flags&ast.NodeFlagsReparsed == 0 && requirements.Kind != ast.KindNeverKeyword {
+		return false
+	}
 	return true
+}
+
+// durableEffectSlots returns the success, error and requirement types of an
+// Effect type, A!E!R or Effect.Effect<A, E, R>, or typeNode alone as the
+// success when it is not one.
+func durableEffectSlots(typeNode *ast.Node) (success, failure, requirements *ast.Node) {
+	if typeNode == nil {
+		return nil, nil, nil
+	}
+	if typeNode.Kind == ast.KindTypeReference {
+		reference := typeNode.AsTypeReferenceNode()
+		if name := reference.TypeName; name.Kind == ast.KindQualifiedName && name.AsQualifiedName().Right.Text() == "Effect" &&
+			ast.IsIdentifier(name.AsQualifiedName().Left) && name.AsQualifiedName().Left.Text() == "Effect" &&
+			reference.TypeArguments != nil && len(reference.TypeArguments.Nodes) == 3 {
+			arguments := reference.TypeArguments.Nodes
+			return arguments[0], arguments[1], arguments[2]
+		}
+	}
+	return typeNode, nil, nil
+}
+
+// durableSchemas makes the boundary schemas of a task or workflow from its
+// call's parameters and return type (VIP-44, "What the compiler generates"):
+//
+//	{ payload: { repo: Schema.String }, success: Issues, error: Schema.String }
+//
+// payload holds a schema for each parameter, keyed by its name; success and
+// error come from the A and E of an A!E return type, and are left out with
+// it. A type with no schema form maps to the Schema.Unknown the checker
+// reports as EK2109, as in a schema declaration.
+func (p *Parser) durableSchemas(parameters *ast.NodeList, returnType *ast.Node, anchor core.TextRange) *ast.Node {
+	var fields []*ast.Node
+	for _, parameter := range parameters.Nodes {
+		name := parameter.Name()
+		if name == nil || !ast.IsIdentifier(name) {
+			continue
+		}
+		var value *ast.Node
+		if parameter.Type() == nil {
+			value = p.vibelangUnsupportedSchema(name.Loc)
+		} else {
+			value = p.durableSchemaOf(parameter.Type())
+		}
+		key := p.vibelangSynthesized(p.factory.NewIdentifier(name.Text()), name.Loc)
+		fields = append(fields, p.vibelangSpanning(p.factory.NewPropertyAssignment(nil /*modifiers*/, key, nil /*postfixToken*/, nil /*typeNode*/, value), core.NewTextRange(name.Pos(), value.End())))
+	}
+	payload := p.vibelangSpanning(p.factory.NewObjectLiteralExpression(p.newNodeList(parameters.Loc, fields), false /*multiLine*/), parameters.Loc)
+	properties := []*ast.Node{p.durableSchemaProperty("payload", payload, anchor)}
+	if success, failure, _ := durableEffectSlots(returnType); success != nil {
+		properties = append(properties, p.durableSchemaProperty("success", p.durableSchemaOf(success), anchor))
+		if failure != nil {
+			properties = append(properties, p.durableSchemaProperty("error", p.durableSchemaOf(failure), anchor))
+		} else {
+			properties = append(properties, p.durableSchemaProperty("error", p.vibelangSchemaMember(nil, "Never", anchor), anchor))
+		}
+	}
+	return p.vibelangSpanning(p.factory.NewObjectLiteralExpression(p.newNodeList(anchor, properties), false /*multiLine*/), anchor)
+}
+
+func (p *Parser) durableSchemaProperty(name string, value *ast.Node, anchor core.TextRange) *ast.Node {
+	key := p.vibelangSynthesized(p.factory.NewIdentifier(name), anchor)
+	return p.vibelangSpanning(p.factory.NewPropertyAssignment(nil /*modifiers*/, key, nil /*postfixToken*/, nil /*typeNode*/, value), value.Loc)
+}
+
+// durableSchemaOf is vibelangSchemaOf for a boundary type, which may also be
+// never or void: a task that cannot fail, or succeeds with nothing.
+func (p *Parser) durableSchemaOf(typeNode *ast.Node) *ast.Node {
+	switch typeNode.Kind {
+	case ast.KindNeverKeyword:
+		return p.vibelangSchemaMember(nil, "Never", p.vibelangCalleeAnchor(typeNode.Loc))
+	case ast.KindVoidKeyword:
+		return p.vibelangSchemaMember(nil, "Void", p.vibelangCalleeAnchor(typeNode.Loc))
+	}
+	return p.vibelangSchemaOf(typeNode)
 }
 
 // durableCloneParameters copies a task call's parameters into its boundary

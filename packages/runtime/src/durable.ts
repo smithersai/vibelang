@@ -1,5 +1,6 @@
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
+import type * as Schema from "effect/Schema"
 
 /**
  * Durable declarations (VIP-55). The parser writes
@@ -9,35 +10,50 @@ import * as Effect from "effect/Effect"
  *
  * as
  *
- *     const FetchIssues = $task<(repo: string) => Issues!string>()("FetchIssues", {}, effect function call(repo: string) { … })
- *     const Triage = $workflow("Triage", {}, effect function call(repo: string) { … })
+ *     const FetchIssues = $task<(repo: string) => Issues!string>()("FetchIssues", {},
+ *       { payload: { repo: Schema.String }, success: Issues, error: Schema.String }, effect function call(repo: string) { … })
+ *     const Triage = $workflow("Triage", {}, { payload: { repo: Schema.String } }, effect function call(repo: string) { … })
  *
  * A task's type argument is its written boundary: its parameters, success and
  * error. Its body's requirements stay inferred, and belong to the task's
  * implementation, not to a caller. A workflow takes its boundary from its body.
+ * The schemas are the boundary's, derived from the written types (VIP-44): a
+ * payload field for each parameter, and the success and error of a written
+ * `A!E`.
  */
+
+/** The schemas of a durable boundary (VIP-44). */
+export interface DurableSchemas {
+  readonly payload: { readonly [parameter: string]: Schema.Top }
+  readonly success?: Schema.Top
+  readonly error?: Schema.Top
+}
 
 /** The `static readonly` members of a task or workflow, passed through by name. */
 export type DurableOptions = { readonly [option: string]: unknown }
 
 /** A task declaration (VIP-55): one recorded step of a workflow run. */
-export interface Task<P extends ReadonlyArray<unknown>, A, E, R> {
+export interface Task<P extends ReadonlyArray<unknown>, A, E, R, S extends DurableSchemas = DurableSchemas> {
   /** A step of the enclosing workflow's plan. A task runs only inside a workflow. */
   (...args: P): Effect.Effect<A, E, never>
   /** The declared name, or a written `static readonly key`. */
   readonly key: string
   readonly options: DurableOptions
+  /** The boundary's schemas, derived from the written types. */
+  readonly schemas: S
   /** The implementation's own requirements. */
   readonly "~requirements"?: R
 }
 
 /** A workflow declaration (VIP-55): a plan over tasks, run by a durable engine. */
-export interface Workflow<P extends ReadonlyArray<unknown>, A, E> {
+export interface Workflow<P extends ReadonlyArray<unknown>, A, E, S extends DurableSchemas = DurableSchemas> {
   /** Runs the workflow to completion. Equal input joins the run that input already started. */
   (...args: P): Effect.Effect<A, E, DurableEngine>
   /** The declared name, or a written `static readonly key`. */
   readonly key: string
   readonly options: DurableOptions
+  /** The boundary's schemas, derived from the written types. */
+  readonly schemas: S
 }
 
 /**
@@ -51,37 +67,40 @@ export class DurableEngine extends /* @__PURE__ */ Context.Service<DurableEngine
 type Boundary = (...args: any) => Effect.Effect<any, any, any>
 
 // A written `static readonly key` replaces the declared name.
-const define = <F extends Function>(fn: F, name: string, options: DurableOptions): F => {
+const define = <F extends Function>(fn: F, name: string, options: DurableOptions, schemas: DurableSchemas): F => {
   const key = typeof options.key === "string" ? options.key : name
   return Object.defineProperties(fn, {
     key: { value: key, enumerable: true },
     options: { value: options, enumerable: true },
+    schemas: { value: schemas, enumerable: true },
     name: { value: key }
   })
 }
 
 /** A task declaration's value; `S` is its written boundary signature. */
-export function $task<S extends Boundary>(): <R = never>(
+export function $task<S extends Boundary>(): <const Sc extends DurableSchemas, R = never>(
   key: string,
   options: DurableOptions,
+  schemas: Sc,
   implementation?: (...args: Parameters<S>) => Effect.Effect<Effect.Success<ReturnType<S>>, Effect.Error<ReturnType<S>>, R>
-) => Task<Parameters<S>, Effect.Success<ReturnType<S>>, Effect.Error<ReturnType<S>>, R> {
-  return (key, options, implementation) => {
+) => Task<Parameters<S>, Effect.Success<ReturnType<S>>, Effect.Error<ReturnType<S>>, R, Sc> {
+  return (key, options, schemas, implementation) => {
     const task: any = (..._args: ReadonlyArray<unknown>) =>
       Effect.die(new TypeError(`task ${key} runs only as a step of a workflow`))
     task.implementation = implementation
-    return define(task, key, options)
+    return define(task, key, options, schemas)
   }
 }
 
 /** A workflow declaration's value. */
-export function $workflow<P extends ReadonlyArray<unknown>, A, E, R>(
+export function $workflow<P extends ReadonlyArray<unknown>, A, E, R, const Sc extends DurableSchemas>(
   key: string,
   options: DurableOptions,
+  schemas: Sc,
   body: (...args: P) => Effect.Effect<A, E, R>
-): Workflow<P, A, E> {
+): Workflow<P, A, E, Sc> {
   const workflow: any = (...args: P) =>
     Effect.flatMap(Effect.service(DurableEngine), (engine) => engine.execute(workflow, args)) as Effect.Effect<A, E, DurableEngine>
   workflow.body = body
-  return define(workflow, key, options)
+  return define(workflow, key, options, schemas)
 }

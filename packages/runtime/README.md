@@ -146,6 +146,7 @@ or runtime references valid in first-release `.vibe` source.
 | `DurableOptions` | Type of a declaration's `static readonly` options | VIP-55 |
 | `Task` | Type of a `task` declaration's value | VIP-55 |
 | `Workflow` | Type of a `workflow` declaration's value | VIP-55 |
+| `DurableSchemas` | Type of a declaration's derived payload, success and error schemas | VIP-44, VIP-55 |
 | `$try` | `try p` before an Effect value, which the lowering writes as `yield* p` (VIP-5) | — |
 | `$tryAll` | `try.all [a, b]`: run every Effect at once and keep their results in order (Effect.all, unbounded) | VIP-18 |
 | `$tryAllSettled` | `try.allSettled [a, b]`: run every Effect at once and return each one's `Exit`; never fails | VIP-18 |

@@ -1,0 +1,3 @@
+Effect has no mutable Set schema. Write ReadonlySet, which maps to Schema.ReadonlySet.
+Plain is not a schema: a field's type names a schema declaration or a schema constant.
+unknown has no schema form

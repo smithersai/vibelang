@@ -1,0 +1,23 @@
+// expect: EK2109
+// A durable boundary type with no schema form is EK2109 (VIP-44).
+type Plain = { id: string }
+
+task MutableSet {
+  effect call(ids: Set<string>): number!never { return ids.size }
+}
+
+task UnknownInput {
+  effect call(input: unknown): number!never { return 1 }
+}
+
+task AliasSuccess {
+  effect call(id: string): Plain!never { return { id } }
+}
+
+task FunctionError {
+  effect call(id: string): number!(() => void)
+}
+
+workflow Untyped {
+  effect call(id: Map<string, number>) { return 1 }
+}

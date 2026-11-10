@@ -1,0 +1,42 @@
+// expect-result: {"fields":[["repo","since","labels"],["order"],["repo"]],"since":"1970-01-01T00:00:00.000Z","labels":["a","b"],"cents":"12345","failure":true,"success":true,"log":[true,true],"triage":[true,true]}
+// Each task's payload, success and error schemas come from its written types (VIP-44, VIP-55).
+schema Issue { number: number; title: string }
+schema error Declined { reason: string }
+
+task FetchIssues {
+  effect call(repo: string, since: Date, labels: ReadonlySet<string>): ReadonlyArray<Issue>!string {
+    return [{ number: labels.size, title: repo }]
+  }
+}
+
+task Charge {
+  effect call(order: { id: string; cents: bigint }): string!(Declined | string)
+}
+
+task Log {
+  effect call(line: string): void!never { }
+}
+
+export workflow Triage {
+  effect call(repo: string): number!string {
+    const issues = try FetchIssues(repo, new Date(0), new Set(["bug"]))
+    return issues.length
+  }
+}
+
+export effect function main() {
+  const payload = Schema.toCodecJson(Schema.Struct(FetchIssues.schemas.payload))
+  const decoded = try Schema.decodeUnknownEffect(payload)({ repo: "x", since: "1970-01-01T00:00:00.000Z", labels: ["b", "a"] })
+  const charge = try Schema.decodeUnknownEffect(Schema.toCodecJson(Schema.Struct(Charge.schemas.payload)))({ order: { id: "o1", cents: "12345" } })
+  const failure = try Schema.decodeUnknownEffect(Schema.toCodecJson(Charge.schemas.error))({ _tag: "Declined", reason: "card" })
+  return {
+    fields: [Object.keys(FetchIssues.schemas.payload), Object.keys(Charge.schemas.payload), Object.keys(Triage.schemas.payload)],
+    since: decoded.since.toISOString(),
+    labels: [...decoded.labels].sort(),
+    cents: String(charge.order.cents),
+    failure: failure instanceof Declined,
+    success: FetchIssues.schemas.success !== undefined,
+    log: [Log.schemas.success === Schema.Void, Log.schemas.error === Schema.Never],
+    triage: [Triage.schemas.success === Schema.Number, Triage.schemas.error === Schema.String]
+  }
+}

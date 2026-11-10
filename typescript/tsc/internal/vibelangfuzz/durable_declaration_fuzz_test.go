@@ -14,12 +14,13 @@ import (
 // contextual keywords, read from the services chapter.
 const durableShapeQuote = "A `task` or `workflow` body holds exactly one non-static `effect call` method, not a generator, and `static readonly` members with initializers, nothing else. A task's `call` writes a type for each parameter and its return type. Anything else is the syntax error `EK5501`."
 const durableContextualQuote = "`task` and `workflow` are contextual: each starts a declaration only at the start of a statement, with a name other than `as`, `satisfies` or `is` after it on the same line, so `const task = 1`, `task as Job` and `workflow.run()` keep their TypeScript meaning."
+const durablePayloadQuote = "`schemas.payload` holds one schema per parameter, keyed by the parameter's name"
 const durableWorkflowBodyQuote = "WorkflowDeclaration = WorkflowStart \"{\" DurableMember* \"}\"   (VIP-55: exactly one CallMember with a body)"
 
 func durableDeclarationQuotes(tb testing.TB) {
 	tb.Helper()
 	services := SpecText("005-services.md")
-	for _, quote := range []string{durableShapeQuote, durableContextualQuote} {
+	for _, quote := range []string{durableShapeQuote, durableContextualQuote, durablePayloadQuote} {
 		if !strings.Contains(services, quote) {
 			tb.Fatalf("durable declaration rule changed: %q", quote)
 		}
@@ -165,9 +166,79 @@ func FuzzDurableDeclarations(f *testing.F) {
 				}
 			}
 		}
+		// durablePayloadQuote: the payload's keys are the call's parameter
+		// names, in order.
+		if valid {
+			if got, want := durablePayloadKeys(file), durableParameterNames(members); strings.Join(got, ",") != strings.Join(want, ",") {
+				Gap(t, "FuzzDurableDeclarations", precise+":payload", "payload keys %v, parameters %v", got, want)
+			}
+		}
 		// The contextual uses after the declaration stay identifiers.
 		if declared != 1 {
 			Gap(t, "FuzzDurableDeclarations", precise+":contextual", "want one recorded declaration, got %d", declared)
 		}
 	})
+}
+
+// durablePayloadKeys returns the keys of the payload schemas the parser
+// derived for the first task or workflow declaration in file.
+func durablePayloadKeys(file *ast.SourceFile) []string {
+	var keys []string
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if keys != nil {
+			return true
+		}
+		if ast.IsCallExpression(node) {
+			callee := node.Expression()
+			if ast.IsCallExpression(callee) {
+				callee = callee.Expression()
+			}
+			if ast.IsIdentifier(callee) && (callee.Text() == "$task" || callee.Text() == "$workflow") && len(node.Arguments()) >= 3 {
+				keys = []string{}
+				for _, property := range node.Arguments()[2].AsObjectLiteralExpression().Properties.Nodes {
+					if property.Name().Text() != "payload" {
+						continue
+					}
+					for _, field := range property.Initializer().AsObjectLiteralExpression().Properties.Nodes {
+						keys = append(keys, field.Name().Text())
+					}
+				}
+				return true
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	return keys
+}
+
+// durableParameterNames returns the parameter names of the call among members.
+func durableParameterNames(members []durableMember) []string {
+	for _, m := range members {
+		if !m.call {
+			continue
+		}
+		open, close := strings.Index(m.source, "("), strings.Index(m.source, ")")
+		var names []string
+		depth := 0
+		start := open + 1
+		for i := open + 1; i <= close && i < len(m.source); i++ {
+			switch m.source[i] {
+			case '{', '<':
+				depth++
+			case '}', '>':
+				depth--
+			}
+			if depth == 0 && (m.source[i] == ',' || i == close) {
+				part := strings.TrimSpace(m.source[start:i])
+				if name, _, _ := strings.Cut(part, ":"); name != "" {
+					names = append(names, strings.TrimSpace(name))
+				}
+				start = i + 1
+			}
+		}
+		return names
+	}
+	return []string{}
 }

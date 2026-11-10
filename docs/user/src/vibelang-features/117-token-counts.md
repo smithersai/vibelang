@@ -277,7 +277,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 13,000 |
-| [Durable tasks and workflows](119-tasks-and-workflows.md) | 570 |
+| [Durable tasks and workflows](119-tasks-and-workflows.md) | 690 |
 | **All 10 pages** | **76,000** |
 
 ### Specification
@@ -294,7 +294,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [6. Data](../../../design/src/006-data.md) | 9,300 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 17,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |
-| **Appendices** | **140,000** |
+| **Appendices** | **150,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 120,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
 | **All 11 pages** | **270,000** |

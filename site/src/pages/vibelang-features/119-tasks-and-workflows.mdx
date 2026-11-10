@@ -30,6 +30,7 @@ export workflow Triage {
 
 - A task's `call` writes a type for every parameter and an `A!E` return type. That annotation is the step's boundary: the body is checked against `A` and `E`, and the services the body reads belong to the task's implementation, not to its callers. The `R` slot is never written.
 - A `call` without a body declares a step whose implementation is supplied separately: `effect call(order: Order): Receipt!Declined`.
+- Each parameter type and the `A` and `E` of the annotation need a schema form, as a `schema` field's type does: `string`, a `schema` declaration, `Date`, `ReadonlySet<T>` and the other mapped types. A type without one, such as `Set<string>`, `unknown` or a plain type alias, is `EK2109`. The derived schemas are on the declaration: `FetchIssues.schemas.payload` holds one schema per parameter, and `schemas.success` and `schemas.error` hold the annotation's.
 - Each `static readonly` member is an option, passed through under its own name. `static readonly key = "billing/Charge"` replaces the declared name.
 - A task runs only as a step of a workflow. Calling one anywhere else, even inside an `effect` block in a workflow, is `EK5502`.
 

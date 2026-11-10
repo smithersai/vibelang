@@ -640,6 +640,7 @@ The grammar is [TaskDeclaration](900-appendices.md#taskdeclaration) and [Workflo
 
 - A `task` declares a constant of the runtime's type `Task<P, A, E, R>`. `P` is the parameters of its `call`, and `A` and `E` are the success and error of its written `A!E` annotation. The annotation is the step's durable boundary, not its body's type: the body is checked against `A` and `E`, and the services it reads are inferred as `R`, the requirements of the task's implementation, never of a caller. A task's `call` writes every parameter type and its return type.
 - A `call` with no body declares a step whose implementation is supplied separately.
+- Each declaration carries its boundary's schemas, derived from the written types as a `schema` field's are ([VIP-44](../vips/0044-durable-values.md#what-the-compiler-generates)): `schemas.payload` holds one schema per parameter, keyed by the parameter's name, and `schemas.success` and `schemas.error` are the schemas of a written `A!E`'s `A` and `E`. `never` maps to `Schema.Never` and `void` to `Schema.Void`.
 - Each `static readonly` member is one option of the declaration, passed through under its own name.
 - A `workflow` declares a constant of the runtime's type `Workflow<P, A, E>`, with `A` and `E` from its `call`, written or inferred. `try W(a)` runs the workflow to completion and needs the durable engine, the service `DurableEngine`: a program that runs a workflow without one has a missing requirement.
 - In a workflow's `call`, `try T(a)` is a step of the workflow's plan and gives the task's success.
@@ -648,6 +649,7 @@ The grammar is [TaskDeclaration](900-appendices.md#taskdeclaration) and [Workflo
 
 - A `task` or `workflow` body holds exactly one non-static `effect call` method, not a generator, and `static readonly` members with initializers, nothing else. A task's `call` writes a type for each parameter and its return type. Anything else is the syntax error `EK5501`.
 - A task is called only in a workflow's `effect call`. A call anywhere else is `EK5502`: there is no run for the step to record into.
+- Every parameter and written success and error type of a `call` is a durable boundary: a type with no schema form is `EK2109`, as in a `schema` declaration. A task's parameters are identifiers, not patterns or a rest parameter, and its annotation leaves the `R` slot out (`EK5501`).
 
 ## The platform standard library
 
