@@ -234,3 +234,5 @@ The page loads `page.vibe`'s JavaScript as a module script, bundled or not, and 
 ## Coming from Effect
 
 An effect function returns an Effect value. `try` replaces `yield*`, including when getting a service. `provide layer { ... }` runs the block with that layer. The entry module passes the application Effect to a platform runner.
+
+A rejected copy or computed read of `globalThis` keeps independent TypeScript errors in the computed key or its type wrappers.

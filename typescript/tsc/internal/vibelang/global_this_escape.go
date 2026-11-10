@@ -79,7 +79,9 @@ func checkGlobalThisEscapes(c *checker.Checker, file *ast.SourceFile) {
 				}
 			}
 			report(c, value, globalThisEscapeDiagnostic)
-			cover(c, value)
+			// Index-signature errors restate the rejected dynamic global read.
+			// Errors inside its key or an erased type wrapper are independent.
+			coverExactErrorCodes(c, value, 7017, 7053)
 			return false
 		}
 	}

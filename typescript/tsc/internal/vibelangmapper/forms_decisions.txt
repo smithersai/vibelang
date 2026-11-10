@@ -5229,6 +5229,8 @@ typescript/vibelang/cases/global-augmentation-throws/main.vibe:2:14 lambda plain
 typescript/vibelang/cases/global-augmentation-throws/main.vibe:4:66 lambda plain table
 typescript/vibelang/cases/global-function-erased-exemptions/main.vibe:1:11 lambda plain fallback
 typescript/vibelang/cases/global-this-escape.fail/main.vibe:23:59 lambda plain table
+typescript/vibelang/cases/global-this-native-errors/input/main.vibe:2:35 lambda plain fallback
+typescript/vibelang/cases/global-this-native-errors/input/main.vibe:4:35 lambda plain fallback
 typescript/vibelang/cases/globalthis-platform.fail/main.vibe:11:22 lambda plain annotation
 typescript/vibelang/cases/globalthis-platform.fail/main.vibe:5:23 lambda plain annotation
 typescript/vibelang/cases/globalthis-platform.fail/main.vibe:6:26 lambda plain annotation

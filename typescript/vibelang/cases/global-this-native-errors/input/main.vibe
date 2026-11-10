@@ -1,0 +1,12 @@
+export const value0 = globalThis[Missing];
+export const value1 = globalThis[((n:number)=>n)()];
+export const value2 = globalThis[(1)()];
+export const value3 = globalThis[((n:number)=>n)("bad")];
+export const value4 = (globalThis as Missing);
+export const value5 = (globalThis satisfies number);
+export const value6 = globalThis[(1 as Missing)];
+declare const key7:string; declare const empty7:{}; export const value7 = globalThis[empty7[key7]];
+declare const key8:string; export const value8 = globalThis[({})[key8]];
+declare const key9:string; export const value9 = globalThis[key9];
+export const value10 = globalThis[0];
+export const value11 = globalThis;

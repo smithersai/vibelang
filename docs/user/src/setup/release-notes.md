@@ -37,6 +37,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `data D<> { … }`, with an empty type parameter list, compiled silently where a class or an `error` reports `TS1098`. It now reports `TS1098` too; write a type parameter or remove the angle brackets.
 
+- Invalid global object accesses could hide errors in computed keys and type assertions; those errors are now reported alongside the access diagnostic.
+
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.
