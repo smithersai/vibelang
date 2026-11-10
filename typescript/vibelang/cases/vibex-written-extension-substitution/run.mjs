@@ -11,6 +11,8 @@
 // rule-evidence: docs/design/vips/0039-vibex.md#bac16aa3371bf4f3
 // "This corrects the table above to its own rule, \"Resolution treats `.vibex` as `.vibe`'s `.tsx`\", and to the 2026-11-02 resolution amendment that each rule follows TypeScript on the `.ts` twin."
 import assert from "node:assert/strict"
+import fs from "node:fs"
+import path from "node:path"
 import { project, check, nativeCheck } from "../../tests/coverage-tooling.mjs"
 
 const twinName = name => name.replace(/\.vibex$/, ".tsx").replace(/\.vibe$/, ".ts")
@@ -36,6 +38,18 @@ for (const [present, fromVibe, fromVibex] of rows) {
     const vibe = project(import.meta.url, "vibe-" + key, { ...files, "main.vibe": main("./App" + written, selected) },
       { compilerOptions, files: ["main.vibe"] })
     const result = check(vibe)
+    // VIP-27: x.d.ts beside a lone x.vibe or x.vibex is that module's native
+    // declaration, an emit output. A hand-written one there is never
+    // overwritten: the compile reports TS5055 naming both files and keeps it.
+    const owner = present.filter(name => !name.endsWith(".d.ts"))
+    if (present.includes("App.d.ts") && owner.length === 1) {
+      assert.notEqual(result.status, 0, key + ": a hand-written App.d.ts beside " + owner[0] + " is refused")
+      assert.match(result.output, /error TS5055: Cannot write file '[^']*\/App\.d\.ts' because it would overwrite input file\./, key)
+      assert.ok(result.output.includes("has not been built from source file '" + vibe.dir + "/" + owner[0] + "'"), key + "\n" + result.output)
+      assert.equal(fs.readFileSync(path.join(vibe.dir, "App.d.ts"), "utf8"), files["App.d.ts"], key + ": the hand-written bytes are kept")
+      cells++
+      continue
+    }
     assert.equal(result.status, 0, key + ": ./App" + written + " must select " + selected + "\n" + result.output)
     // The .ts/.tsx twin: rename every VibeLang source to its TypeScript twin.
     const nativeFiles = Object.fromEntries(present.map(name => [twinName(name), name.endsWith(".d.ts")

@@ -52,8 +52,8 @@ const config = (coverage) => `import { defineConfig } from "vitest/config"\nexpo
 
 test("every config shape: exclude added, appended, or left; other options untouched", () => {
   const out = (coverage) => addCoverageSelectors(config(coverage), ts)
-  assert.equal(out('coverage: { include: ["src/**/*.ts"] }'), config('coverage: { include: ["src/**/*.{ts,vibe}"], exclude: ["**/*.d.vibe.ts", "**/*.{vibe,vibex}.*.d.ts"] }'))
-  assert.equal(out('coverage: { include: ["src/**/*.ts"], exclude: [] }'), config('coverage: { include: ["src/**/*.{ts,vibe}"], exclude: ["**/*.d.vibe.ts", "**/*.{vibe,vibex}.*.d.ts"] }'))
+  assert.equal(out('coverage: { include: ["src/**/*.ts"] }'), config('coverage: { include: ["src/**/*.{ts,vibe}"], exclude: ["**/*.d.vibe.ts", "**/*.{vibe,vibex}.*.d.ts", "**/*.d.ts"] }'))
+  assert.equal(out('coverage: { include: ["src/**/*.ts"], exclude: [] }'), config('coverage: { include: ["src/**/*.{ts,vibe}"], exclude: ["**/*.d.vibe.ts", "**/*.{vibe,vibex}.*.d.ts", "**/*.d.ts"] }'))
   for (const same of ["", "coverage: { provider: 'v8' }", 'coverage: { include: ["src/**/*.js"] }', "include: ['src/**/*.test.ts']", "coverage: shared"]) assert.equal(out(same), config(same), same)
   assert.equal(addCoverageSelectors("export default {}\n", ts), "export default {}\n")
   assert.throws(() => out("coverage: { include: globs }"), /coverage\.include is not an array literal/)

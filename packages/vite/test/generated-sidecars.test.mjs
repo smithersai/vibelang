@@ -10,7 +10,7 @@ import vibelang from "../src/index.js"
 
 // The backend is deliberately observable: ignored output events must neither
 // invalidate its compile nor clear the served module and its importer.
-async function checkEvent({ directories = [], stem = "main", extension = ".d.vibe.ts", companion = true }) {
+async function checkEvent({ directories = [], stem = "main", extension = ".d.vibe.ts", companion = true, native = false }) {
   const root = await mkdtemp(join(tmpdir(), "vibelang-vite-sidecars-"))
   let plugin
   try {
@@ -31,7 +31,8 @@ export const projects = () => ({
     const event = join(root, ...directories, stem + extension)
     await mkdir(dirname(event), { recursive: true })
     await writeFile(source, "export const value = 1")
-    await writeFile(event, "// changed")
+    // A module's native declaration re-exports its sidecar (VIP-27).
+    await writeFile(event, native ? `export * from "./${stem}.vibe";\n` : "// changed")
     if (companion) await writeFile(join(root, ...directories, stem + ".vibe"), "export const value = 2")
     const { stats } = await import(pathToFileURL(join(backend, "project.mjs")).href)
     plugin = vibelang()
@@ -47,7 +48,7 @@ export const projects = () => ({
     await plugin.handleHotUpdate(context)
     // Only a declaration with its owning source is compiler output. An
     // independently authored TS declaration still affects source contracts.
-    const generated = extension === ".d.vibe.ts" && companion
+    const generated = companion && (extension === ".d.vibe.ts" || extension === ".d.ts" && native)
     const input = extension !== ".txt" && !generated
     assert.equal(stats.invalidations, input ? 2 : 0, JSON.stringify({ event, companion, stats }))
     assert.equal(stats.loads, input ? 2 : 1)
@@ -61,6 +62,8 @@ export const projects = () => ({
 
 test("compiler declaration sidecars do not invalidate the served graph", () => checkEvent({}))
 test("an authored declaration without a VibeLang companion still invalidates", () => checkEvent({ companion: false }))
+test("a module's native declaration x.d.ts does not invalidate the served graph", () => checkEvent({ extension: ".d.ts", native: true }))
+test("a hand-written x.d.ts beside its module still invalidates", () => checkEvent({ extension: ".d.ts" }))
 test("generated-sidecar neighbourhood", async () => {
   await checkProperty(fc, {
     name: "vite-generated-sidecars", numRuns: 100,
@@ -70,7 +73,8 @@ test("generated-sidecar neighbourhood", async () => {
       directories: fc.array(fc.constantFrom("src", "nested", "with spaces", "name.with.dots"), { maxLength: 3 }),
       stem: fc.constantFrom("main", "a.b", "with space", "component.test"),
       extension: fc.constantFrom(".d.vibe.ts", ".d.ts", ".ts", ".tsx", ".mts", ".cts", ".json", ".vibe", ".txt"),
-      companion: fc.boolean()
+      companion: fc.boolean(),
+      native: fc.boolean()
     }), check: checkEvent
   })
 })

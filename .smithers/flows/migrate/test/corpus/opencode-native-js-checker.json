@@ -1,0 +1,5 @@
+{
+  "key": "opencode-native-js-checker",
+  "pattern": "A native TypeScript importer retains ./src/leaf.js after leaf.ts becomes leaf.vibe; the compatibility and native declarations are relocated under rootDirs.",
+  "input": { "spelling": ".js", "resolution": "bundler", "importer": ".ts", "depth": 0 }
+}

@@ -111,7 +111,10 @@ function loadFile(path, migratedTypeScript = false, fileExists = isFile) {
   if (/\.vibex?$/.test(path)) return [path, path.replace(/\.vibex?$/, ".d.ts")].find(fileExists)
   if (migratedTypeScript && path.endsWith(".ts") && !path.endsWith(".d.ts")) {
     const stem = path.slice(0, -3)
-    return [path, stem + ".tsx", stem + ".d.ts", stem + ".vibe"].find(fileExists)
+    // TypeScript reaches x.vibe through its native declaration x.d.ts, which
+    // re-exports it (VIP-27); a runtime loads the module, never the declaration.
+    const found = [path, stem + ".tsx", stem + ".d.ts", stem + ".vibe"].find(fileExists)
+    return found === stem + ".d.ts" && fileExists(stem + ".vibe") ? stem + ".vibe" : found
   }
   if (/\.(?:d\.[cm]?ts|[cm]?ts|tsx|json)$/.test(path)) return fileExists(path) ? path : undefined
   if (/\.jsx?$/.test(path)) {
@@ -150,6 +153,26 @@ export function aliasImport(config, specifier, { migratedTypeScript = false, fil
 
 /** Forgets the configs read so far, for a process that edits them. */
 export function forgetPaths() { settings.clear() }
+
+/**
+ * compilerOptions.rootDirs as absolute paths, including inherited configs:
+ * each relative to the config that sets it, `${configDir}` to the first.
+ */
+export function rootDirsOf(config, seen = new Set(), leaf = config) {
+  if (config === undefined || seen.has(config)) return undefined
+  seen.add(config)
+  let parsed
+  try { parsed = parseConfig(readFileSync(config, "utf8")) } catch { return undefined }
+  let inherited
+  for (const parent of [parsed.extends ?? []].flat()) {
+    const path = typeof parent === "string" ? extendedConfig(config, parent) : undefined
+    const rootDirs = path === undefined ? undefined : rootDirsOf(path, seen, leaf)
+    if (rootDirs !== undefined) inherited = rootDirs
+  }
+  seen.delete(config)
+  const own = parsed.compilerOptions?.rootDirs
+  return Array.isArray(own) ? own.filter(dir => typeof dir === "string").map(dir => resolve(dirname(config), dir.replaceAll("${configDir}", dirname(leaf)))) : inherited
+}
 
 /** JSX output mode, including inherited configs, for emitted-source lookup. */
 export function jsxOf(config, seen = new Set()) {

@@ -433,6 +433,40 @@ function caseDirectory(name) {
   return dir
 }
 
+// removeNativeDeclarations deletes the native declarations a compile wrote
+// into a case: x.d.ts beside x.vibe, x.vibex or their relocated sidecar,
+// holding only the re-export vibelang writes (VIP-27). Sidecars are ignored
+// by name; these share .d.ts with the hand-written declarations cases keep.
+function removeNativeDeclarations(dir) {
+  if (!fs.existsSync(dir)) return
+  // Walk real directories only: a case's node_modules can link back into
+  // itself, and a recursive readdir follows the loop until ELOOP.
+  const files = []
+  const walk = (relative) => {
+    for (const entry of fs.readdirSync(path.join(dir, relative), { withFileTypes: true })) {
+      const file = path.join(relative, entry.name)
+      if (entry.isDirectory() && entry.name !== "node_modules") walk(file)
+      else if (entry.isFile()) files.push(file)
+    }
+  }
+  walk("")
+  for (const file of files) {
+    if (!file.endsWith(".d.ts") || /\.d\.[^./\\]+\.ts$/.test(file)) continue
+    const stem = path.join(dir, file.slice(0, -".d.ts".length))
+    for (const extension of [".vibe", ".vibex"]) {
+      if (![stem + extension, stem + ".d" + extension + ".ts"].some((candidate) => fs.existsSync(candidate))) continue
+      const specifier = JSON.stringify("./" + path.basename(stem) + extension)
+      const text = fs.readFileSync(path.join(dir, file), "utf8")
+      const forms = [
+        `export * from ${specifier};\n`,
+        `export * from ${specifier};\nexport { default } from ${specifier};\n`,
+        `import vibe = require(${specifier});\nexport = vibe;\n`,
+      ]
+      if (forms.includes(text)) fs.unlinkSync(path.join(dir, file))
+    }
+  }
+}
+
 // check compiles and runs one case. It resolves with { ok, detail, log }.
 async function check(name, commands) {
   const dir = caseDirectory(name)
@@ -560,6 +594,8 @@ async function main() {
         result = await check(name, commands)
       } catch (e) {
         result = { ok: false, detail: `harness error: ${e.message}`, log: e.stack }
+      } finally {
+        removeNativeDeclarations(caseDirectory(name))
       }
       if (!result.ok) {
         fs.mkdirSync(failureDir, { recursive: true })

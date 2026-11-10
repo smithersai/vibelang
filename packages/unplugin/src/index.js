@@ -371,12 +371,32 @@ export const unplugin = createUnplugin((options = {}, meta) => {
         [importer.replace(/\.d\.([cm]?)ts$/, ".$1ts"), importer.replace(/\.d\.ts$/, ".tsx")].find(existsSync)
       if (original) sourceFile = resolvedSourceImport(source, original)
     }
+    // A module's native declaration under vibe.sidecarDir re-exports ./x.vibe,
+    // which TypeScript finds through rootDirs: the same relative path under
+    // another root directory, here the module beside its sources (VIP-27).
+    if ((!sourceFile || !/\.vibex?$/.test(cleanId(sourceFile))) && /^\.\.?\//.test(source) && /\.vibex?$/.test(cleanId(source))) {
+      sourceFile = rootDirsSource(cleanId(source), cleanId(importer)) ?? sourceFile
+    }
     if (!sourceFile || !/\.vibex?$/.test(cleanId(sourceFile))) return resolved
     const result = await loadModule(sourceFile)
     if (result.errors.length) throw new Error(result.errors.map(backend.formatDiagnostic).join("\n"))
     if (result.error) throw result.error
     declarations ??= declarationEmitter({ backend: () => backend, compiler: compilerPath, debug })
     return declarations.resolve(cleanId(sourceFile), result.project, result.inputs)
+  }
+
+  function rootDirsSource(source, importer) {
+    const { rootDirsOf } = createRequire(import.meta.url)(join(dirname(backend.backendPath), "paths-imports.mjs"))
+    const rootDirs = rootDirsOf(backend.nearestProject(importer)) ?? []
+    const directory = dirname(importer)
+    for (const from of rootDirs) {
+      const inside = relative(from, directory)
+      if (inside.startsWith("..") || isAbsolute(inside)) continue
+      for (const to of rootDirs) {
+        const candidate = resolve(to, inside, source)
+        if (to !== from && existsSync(candidate)) return candidate
+      }
+    }
   }
 
   function resolveFrom(source, importer, directory) {

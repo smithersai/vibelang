@@ -329,6 +329,8 @@ Stock `tsc`, `tsrs`, TypeDoc and other checkers built on TypeScript cannot read 
 
 Parallel workspace imports share each owning project’s inferred sidecar layout. Compiler traces include `vibeSidecarLayout` spans for these probes, with a project fingerprint and root-file count.
 
+When saving a migration's public declarations, the compiler-generated `x.d.ts` forwarding file shares its source's emitted declaration identity, including with `vibe.sidecarDir`. Authored declarations retain their separate identities and are still compared.
+
 When comparing a published declaration with an ordinary TypeScript implementation, retain the TypeScript source as written. A locally declared non-effectful VibeLang callable adds the generated `@throws {never}` contract. That permitted addition does not excuse changed parameter or return types, changes to authored comments, or additional JSDoc tags.
 
 A TypeScript `module parse { … }` body in `src/main.vibe` also gets `main.vibe.parse.d.ts` beside the file's sidecar, `src/main.vibe.parse.d.ts` by default, even with `--noEmit` (VIP-40). A sidecar re-export such as `export { port } from parse` names that declaration through `./main.vibe.parse.js`, so stock `tsc` sees the exported types and TypeScript's JSDoc, including `@throws`. With `vibe.sidecarDir`, the body declaration is written at the mirrored path under that directory, beside the relocated sidecar, and changing the layout prunes the old copy only if it is unchanged and owned solely by this project. Wildcard discovery ignores a declaration belonging to a source's module body; an explicitly listed declaration remains an input and is protected from being overwritten. When a declaration's inferred import type, or an import in a `.ts`, `.tsx` or `.vibe` file such as `import { port } from "./main.vibe.parse.js"`, names that body's virtual source, a native check reads the body from its owning `.vibe` or `.vibex` file, including after a previous check emitted the body declaration, as TypeScript resolves a `.ts` file before its `.d.ts`. Written imports of a `.d.ts` file keep naming that declaration.
@@ -355,7 +357,20 @@ In each project whose checker is not `vibelang`, set TypeScript's [`allowArbitra
 { "compilerOptions": { "allowArbitraryExtensions": true } }
 ```
 
-TypeScript then resolves `import { greet } from "./greet.vibe"` to `greet.d.vibe.ts`, as it resolves `./styles.css` to `styles.d.css.ts`. Without the option it reports `TS6263`. Without custom `moduleSuffixes`, TypeScript does not map `./greet.js` or `./greet` to a sidecar, so a `.ts` file that such a checker reads names the `.vibe` module by its source. `vibelang` reads `greet.vibe` when its source is available, and a project's `include` leaves out a sidecar whose source is beside it. When only `greet.d.vibe.ts` is available, an explicit `./greet.vibe` import resolves to that compatibility declaration. This also covers a declaration's self-namespace re-export, such as `export * as Greet from "./greet.vibe"`, so callbacks accessed through the namespace retain their contextual parameter types.
+TypeScript then resolves `import { greet } from "./greet.vibe"` to `greet.d.vibe.ts`, as it resolves `./styles.css` to `styles.d.css.ts`. Without the option it reports `TS6263`. `vibelang` reads `greet.vibe` when its source is available, and a project's `include` leaves out a sidecar whose source is beside it. When only `greet.d.vibe.ts` is available, an explicit `./greet.vibe` import resolves to that compatibility declaration. This also covers a declaration's self-namespace re-export, such as `export * as Greet from "./greet.vibe"`, so callbacks accessed through the namespace retain their contextual parameter types.
+
+A `.ts` file keeps the specifier it wrote when the module was TypeScript. TypeScript maps `./greet.js`, `./greet` and `./greet.ts` only to `greet.ts`, `greet.tsx` or `greet.d.ts`, so the compiler also writes `greet.d.ts` beside each sidecar, which re-exports it:
+
+```ts
+export * from "./greet.vibe";
+export { default } from "./greet.vibe";
+```
+
+The second line appears only when the module has a default export. A `.vibex` module gets the same file for `./App.jsx`, `./App` and `./App.tsx`. Because the file re-exports the sidecar instead of copying it, every spelling reaches one module: a class with a private member, a `unique symbol` or a `declare global` block keeps one declaration in stock TypeScript. Declarations that `tsc` writes for the importer keep its specifier, `./greet.js`, as before the conversion.
+
+`vibelang` reads `greet.vibe` for `./greet.js` and `./greet`. A written `./greet.ts` keeps TypeScript's native substitutions and never falls back to the source, so `vibelang` reports `TS2307` for it until `greet.d.ts` exists, and reads that file afterwards, as stock TypeScript does. Name the module `./greet.js` or `./greet.vibe` so a clean checkout checks too.
+
+`greet.d.ts` is an emit output like the sidecar: `include` and default globs leave it out, `vibe.sidecarDir` moves it beside the relocated sidecar, and switching the setting removes the old copy. A file at that path that is not such a re-export is never overwritten: the build reports `TS5055` naming `greet.d.ts` and `greet.vibe`. Delete or rename the hand-written declaration, such as a forwarding declaration added before the compiler wrote one. No `greet.d.ts` is written beside a `greet.ts` or `greet.tsx`, which both checkers select for `./greet.js`, or where the project's own declaration output goes.
 
 The `vibelang/register` Node preload enables the `vibelang-source` condition for package exports and private `#` imports. It retains Node’s existing conditions, including custom conditions, so unbuilt workspace packages load from their declared source target.
 

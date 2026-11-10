@@ -99,8 +99,21 @@ function isGeneratedDeclaration(path) {
   for (const extension of [".vibe", ".vibex"]) {
     const suffix = ".d" + extension + ".ts"
     if (path.endsWith(suffix) && existsSync(path.slice(0, -suffix.length) + extension)) return true
+    // The module's native declaration x.d.ts, which re-exports its sidecar
+    // (VIP-27); a hand-written x.d.ts stays an input.
+    if (path.endsWith(".d.ts") && !/\.d\.[^./\\]+\.ts$/.test(path) && existsSync(path.slice(0, -".d.ts".length) + extension) &&
+        isNativeDeclaration(path, "./" + basename(path.slice(0, -".d.ts".length)) + extension)) return true
   }
   return false
+}
+
+function isNativeDeclaration(path, specifier) {
+  let text
+  try { text = readFileSync(path, "utf8") } catch { return false }
+  const quoted = `"${specifier}"`
+  return text === `export * from ${quoted};\n` ||
+    text === `export * from ${quoted};\nexport { default } from ${quoted};\n` ||
+    text === `import vibe = require(${quoted});\nexport = vibe;\n`
 }
 
 // cache.mjs writes JSON entries named by 32 base64url characters in the configured

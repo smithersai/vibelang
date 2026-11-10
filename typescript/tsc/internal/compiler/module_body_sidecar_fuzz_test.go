@@ -99,8 +99,10 @@ func FuzzModuleBodyDeclarationBesideSidecar(f *testing.F) {
 		if !strings.Contains(emitted[declaration], "port(raw: string): number") {
 			t.Fatalf("no body declaration at %s: %v", declaration, emitted)
 		}
+		// The module's own native declaration, main.d.ts, re-exports the sidecar.
+		native := compiler.NativeDeclarationPath(tspath.CombinePaths(dir, "main.d.vibe.ts"))
 		for name := range emitted {
-			if strings.HasSuffix(name, ".d.ts") && name != declaration {
+			if strings.HasSuffix(name, ".d.ts") && name != declaration && name != native {
 				t.Fatalf("body declaration also written at %s (want only %s)", name, declaration)
 			}
 		}

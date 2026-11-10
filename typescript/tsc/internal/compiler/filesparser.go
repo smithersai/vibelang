@@ -496,7 +496,13 @@ func (w *filesParser) getProcessedFiles(loader *fileLoader) processedFiles {
 			// to the reasons for including files.
 			if task.redirectedParseTask != nil {
 				if !loader.opts.canUseProjectReferenceSource() {
-					outputFileToProjectReferenceSource[task.redirectedParseTask.path] = task.FileName()
+					source := task.FileName()
+					// A native declaration x.d.ts redirects for its .vibe or .vibex
+					// module, which names the output in module specifiers.
+					if reference := loader.projectReferences.getProjectReferenceFromSource(task.path); reference != nil && reference.SourcePath != task.path {
+						source = reference.Source
+					}
+					outputFileToProjectReferenceSource[task.redirectedParseTask.path] = source
 				}
 				continue
 			}

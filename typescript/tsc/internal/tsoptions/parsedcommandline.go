@@ -2,6 +2,7 @@ package tsoptions
 
 import (
 	"iter"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -181,6 +182,29 @@ func (p *ParsedCommandLine) ParseInputOutputNames() {
 				outputDtsToSource[projectReference.OutputDtsPath] = projectReference
 			}
 			sourceToOutput[projectReference.SourcePath] = projectReference
+		}
+		// A .vibe or .vibex module's native declaration x.d.ts re-exports its
+		// declaration sidecar and stands for the module (VIP-27). An import that
+		// reaches it from the referenced project's sources, as an output
+		// declaration's ./x.js or ./x.ts does, redirects to the module's output
+		// declaration, as an import reaching x.ts would.
+		// Sorted, so that x.vibe claims a path x.vibex shares on every run.
+		references := slices.SortedFunc(maps.Values(sourceToOutput), func(a, b *SourceOutputAndProjectReference) int {
+			return strings.Compare(string(a.SourcePath), string(b.SourcePath))
+		})
+		for _, projectReference := range references {
+			source := string(projectReference.Source)
+			if tspath.VibeLangSourceExtension(source) == "" {
+				continue
+			}
+			options := p.CompilerOptions()
+			sidecar, _ := options.VibeSidecarPaths(source, p.caseSensitivity, options.VibeSidecarRoot(p.ParsedConfig.FileNames, p.caseSensitivity))
+			native := strings.TrimSuffix(sidecar, ".d"+tspath.VibeLangSourceExtension(source)+".ts") + tspath.ExtensionDts
+			nativePath := p.caseSensitivity.PathKey(tspath.RootedPath(native))
+			if _, taken := sourceToOutput[nativePath]; taken || nativePath == projectReference.OutputDtsPath {
+				continue
+			}
+			sourceToOutput[nativePath] = projectReference
 		}
 		p.outputDtsToProjectReference = outputDtsToSource
 		p.sourceToProjectReference = sourceToOutput

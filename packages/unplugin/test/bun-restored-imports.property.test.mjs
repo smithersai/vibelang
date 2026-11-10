@@ -46,7 +46,9 @@ async function check({ name, form }) {
     const literal = encodeURI(name)
     writeFileSync(join(root, "src", name + ".vibe"), 'export const kind: string = "vibe"\n')
     writeFileSync(join(root, "src", literal + ".js"), 'export const kind = "js"\n')
-    writeFileSync(join(root, "src", literal + ".d.ts"), "export declare const kind: string\n")
+    // A hand-written x.d.ts beside x.vibe would collide with the module's
+    // native declaration (VIP-27); allowJs types the literal file.
+    if (literal !== name) writeFileSync(join(root, "src", literal + ".d.ts"), "export declare const kind: string\n")
     const entry = join(root, "src/entry.vibe")
     writeFileSync(entry, forms[form](JSON.stringify("./" + name + ".vibe"), JSON.stringify("./" + literal + ".js")))
     const args = [pathToFileURL(join(repo, "packages/unplugin/src/bun.js")).href, root, compiler, entry]

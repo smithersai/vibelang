@@ -935,3 +935,33 @@ test("helper import quote spelling preserves native runner deadline enforcement"
     assert.match(result.stdout, new RegExp("^ok\\s+quoted-helper-" + style + "-5", "m"))
   }
 })
+
+test("cleanup of native declarations survives a self-linked node_modules and keeps hand-written ones", (t) => {
+  const { root, harness } = fixture(t)
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const at = path.join(root, "vibelang/cases/runtime")
+  // A case's node_modules link that points back at the case loops forever,
+  // and a linked directory belongs to another tree: neither is walked.
+  fs.mkdirSync(path.join(at, "node_modules"))
+  fs.symlinkSync("..", path.join(at, "node_modules/effect"), "dir")
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "vibelang-harness-linked-"))
+  t.after(() => fs.rmSync(outside, { recursive: true, force: true }))
+  fs.writeFileSync(path.join(outside, "z.vibe"), "export const z = 1\n")
+  fs.writeFileSync(path.join(outside, "z.d.ts"), 'export * from "./z.vibe";\n')
+  fs.symlinkSync(outside, path.join(at, "linked"), "dir")
+  fs.mkdirSync(path.join(at, "lib/nested"), { recursive: true })
+  for (const dir of [at, path.join(at, "lib/nested")]) {
+    fs.writeFileSync(path.join(dir, "x.vibe"), "export const x = 1\n")
+    fs.writeFileSync(path.join(dir, "x.d.ts"), 'export * from "./x.vibe";\n')
+    fs.writeFileSync(path.join(dir, "y.vibe"), "export const y = 1\n")
+    fs.writeFileSync(path.join(dir, "y.d.ts"), "export declare const y: number\n")
+  }
+  const result = spawnSync(process.execPath, [harness, "runtime"], { env, encoding: "utf8", timeout: 10_000 })
+  assert.doesNotMatch(result.stderr, /ELOOP|harness error/, result.stderr)
+  assert.match(result.stdout, /1 cases: 0 ok, 1 FAIL/, result.stdout + result.stderr)
+  for (const dir of [at, path.join(at, "lib/nested")]) {
+    assert.equal(fs.existsSync(path.join(dir, "x.d.ts")), false, "the written native declaration is removed")
+    assert.equal(fs.readFileSync(path.join(dir, "y.d.ts"), "utf8"), "export declare const y: number\n", "a hand-written declaration stays")
+  }
+  assert.equal(fs.existsSync(path.join(outside, "z.d.ts")), true, "a linked tree outside the case is left alone")
+})

@@ -70,6 +70,50 @@ for (const sidecarDir of ["types", "gen/types", ".vibe/declarations", "${configD
   })
 }
 
+// VIP-27: a module's native declaration x.d.ts re-exports its sidecar and is
+// an emit output like it, beside the source or under vibe.sidecarDir.
+const nativeForms = {
+  "main.vibe": ['export * from "./main.vibe";\n', 'export * from "./main.vibe";\nexport { default } from "./main.vibe";\n'],
+  "view.vibex": ['import vibe = require("./view.vibex");\nexport = vibe;\n']
+}
+for (const [source, texts] of Object.entries(nativeForms)) {
+  const native = source.replace(/\.vibex?$/, ".d.ts")
+  for (const sidecarDir of [undefined, "types"]) {
+    test(`a native declaration ${native} for ${source}${sidecarDir ? " under vibe.sidecarDir" : ""} does not invalidate a successful compile`, async (t) => {
+      const config = sidecarDir ? { include: ["."], vibe: { sidecarDir } } : { include: ["src"] }
+      const { app, directory, cache, store } = await fixture(t, { [source]: "export const value = 1\n" }, config)
+      const at = sidecarDir ? join(app, sidecarDir, "src", native) : join(directory, native)
+      const snapshot = cache.begin()
+      mkdirSync(join(at, ".."), { recursive: true })
+      writeFileSync(at, texts[0])
+      store(snapshot, [source])
+      assert.ok(cache.lookup().result, "the written native declaration is an output")
+      for (const text of texts) {
+        writeFileSync(at, text)
+        assert.ok(cache.lookup().result, "rewriting it in another form preserves the cache")
+      }
+      unlinkSync(at)
+      assert.ok(cache.lookup().result, "removing it preserves the cache")
+    })
+  }
+}
+
+test("a hand-written x.d.ts beside its .vibe module added during a compile invalidates its directory snapshot", async (t) => {
+  const { directory, cache, store } = await fixture(t, { "main.vibe": "export const value = 1\n" })
+  const snapshot = cache.begin()
+  writeFileSync(join(directory, "main.d.ts"), "export declare const value: string;\n")
+  store(snapshot, ["main.vibe"])
+  assert.match(cache.lookup().miss, /gained or lost a file/)
+})
+
+test("an x.d.ts re-exporting a module that does not exist stays an input", async (t) => {
+  const { directory, cache, store } = await fixture(t, { "main.ts": "export const value = 1\n" })
+  const snapshot = cache.begin()
+  writeFileSync(join(directory, "other.d.ts"), 'export * from "./other.vibe";\n')
+  store(snapshot, ["main.ts"])
+  assert.match(cache.lookup().miss, /gained or lost a file/)
+})
+
 test("an orphan declaration sidecar added during a compile invalidates its directory snapshot", async (t) => {
   const { directory, cache, store } = await fixture(t, { "main.ts": "export const value = 1\n" })
   const snapshot = cache.begin()

@@ -40,7 +40,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 // 10: decode compiler UTF-8 incrementally; discard corrupted cached warnings.
 // 11: collect Vibex outputs and fingerprint JSX source discovery.
 // 12: private emission preserves the configured declaration sidecar layout.
-const format = 12
+// 13: a module's native declaration x.d.ts is an output like its sidecar.
+const format = 13
 const version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // A file whose timestamp is this close to a compile's start may have changed
@@ -338,6 +339,32 @@ function scannedDirectories(main) {
   return { roots, skip, home, hidden, sidecarDir: sidecars === undefined ? undefined : expand(sidecars.value, sidecars.base) }
 }
 
+// A module's native declaration (VIP-27): x.d.ts holding only the re-export
+// of its sidecar that the compiler writes, in one of its three forms. It is an
+// output like the sidecar; any other x.d.ts beside a module is a hand-written
+// declaration, which the compiler refuses to overwrite, so it stays a change.
+function isNativeDeclaration(path, specifier) {
+  let text
+  try {
+    text = readFileSync(path, "utf8")
+  } catch {
+    return false
+  }
+  const quoted = `"${specifier}"`
+  return text === `export * from ${quoted};\n` ||
+    text === `export * from ${quoted};\nexport { default } from ${quoted};\n` ||
+    text === `import vibe = require(${quoted});\nexport = vibe;\n`
+}
+
+// The VibeLang source extension whose native declaration path is at stem.d.ts,
+// given whether stem plus an extension names a source file.
+function nativeDeclarationOf(path, hasSource) {
+  if (!path.endsWith(".d.ts") || /\.d\.[^./\\]+\.ts$/.test(path)) return false
+  const stem = path.slice(0, -".d.ts".length)
+  return [".vibe", ".vibex"].some((extension) => hasSource(stem, extension) &&
+    isNativeDeclaration(path, "./" + basename(stem) + extension))
+}
+
 // What a directory holds that could become part of a program: its source
 // files and subdirectories, without the dotted names TypeScript's globs skip
 // unless a pattern writes the dot (hidden).
@@ -368,6 +395,7 @@ function listing(path, omitted = [], hidden = false) {
       directories.push(join(path, entry.name))
     } else if (sourceName.test(entry.name)) {
       if (/\.d\.vibex?\.ts$/.test(entry.name) && sources.has(entry.name.replace(/\.d\.(vibex?)\.ts$/, ".$1"))) continue
+      if (nativeDeclarationOf(join(path, entry.name), (stem, extension) => sources.has(basename(stem) + extension))) continue
       names.push(entry.name)
     }
   }
@@ -385,7 +413,14 @@ function sidecarInputNames(root, { recursive, excluded, sidecarDir, home, hidden
   const names = []
   const ancestors = new Set()
   let unreadable = false
+  const mirroredSource = (stem, extension) => {
+    if (statOf(stem + extension)?.isFile()) return true
+    const mirrored = relative(sidecarDir, stem)
+    if (mirrored === ".." || mirrored.startsWith(".." + sep) || isAbsolute(mirrored)) return false
+    return statOf(join(home, mirrored + extension))?.isFile() ?? false
+  }
   const paired = (path) => {
+    if (nativeDeclarationOf(path, mirroredSource)) return true
     const suffix = /\.d\.(vibex?)\.ts$/.exec(path)?.[0]
     if (!suffix) return false
     const extension = suffix.slice(2, -3)

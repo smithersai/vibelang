@@ -182,13 +182,17 @@ func TestSidecarPruningLegacyOwnershipReceipt(t *testing.T) {
 			receipts++
 		}
 	}
-	if receipts != 1 {
-		t.Fatalf("expected one ownership receipt, got %d", receipts)
+	// One receipt for the sidecar and one for its native declaration, Own.d.ts.
+	if receipts != 2 {
+		t.Fatalf("expected an ownership receipt for each output, got %d", receipts)
 	}
 	fs.WriteFile("/src/tsconfig.json", sidecarOwnershipConfig(".vibe/declarations", `["Own.vibe"]`, "[]", false))
 	emitOwnedSidecars(t, fs, "/src/tsconfig.json")
-	if fs.FileExists("/src/Own.d.vibe.ts") {
+	if fs.FileExists("/src/Own.d.vibe.ts") || fs.FileExists("/src/Own.d.ts") {
 		t.Fatal("a legacy receipt lost ownership of its unchanged declaration")
 	}
 	requireOwnedSidecar(t, fs, "/src/.vibe/declarations/Own.d.vibe.ts")
+	if !fs.FileExists("/src/.vibe/declarations/Own.d.ts") {
+		t.Fatal("the native declaration did not move with its sidecar")
+	}
 }

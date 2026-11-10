@@ -285,7 +285,7 @@ Rolldown declaration builds, including `tsdown` with `dts: true`, receive the co
 While serving a `.vibe` module, the compiler can write its `.d.vibe.ts`
 declaration beside it. The plugin ignores watcher events for that generated
 file while its owning `.vibe` source exists, keeping the served module and its
-importers cached. Changes to the source still trigger hot updates. The same rule applies to `.d.vibex.ts` beside `.vibex`.
+importers cached. Changes to the source still trigger hot updates. The same rule applies to `.d.vibex.ts` beside `.vibex`, and to the module's native declaration `x.d.ts`, which re-exports the sidecar; a hand-written `x.d.ts` stays an input.
 An authored TypeScript declaration without a companion source remains an input.
 Set `VIBELANG_VITE_DEBUG=1` to trace ignored generated declaration events along
 with project compiles and invalidations. Each invalidation reports the new

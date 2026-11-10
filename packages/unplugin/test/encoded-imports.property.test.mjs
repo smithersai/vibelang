@@ -150,7 +150,10 @@ for (const tool of ["webpack", "rspack", "rollup", "esbuild", "vite", "vite7"]) 
       }))
       const literal = "./" + encodeURIComponent(name) + ".js"
       await writeFile(join(root, "src", encodeURIComponent(name) + ".js"), "export const value = 7\n")
-      await writeFile(join(root, "src", encodeURIComponent(name) + ".d.ts"), "export declare const value: number\n")
+      // No hand-written x.d.ts beside x.vibe: that path is the module's native
+      // declaration, and the compiler refuses to overwrite one it did not
+      // write (VIP-27). ./x.js types through the module, as for x.ts.
+      if (encodeURIComponent(name) !== name) await writeFile(join(root, "src", encodeURIComponent(name) + ".d.ts"), "export declare const value: number\n")
       try {
         for (const extension of ["ts", "vibe"]) {
           await writeFile(join(root, "src", name + "." + extension), "export const value = 42\n")

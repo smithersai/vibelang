@@ -1497,9 +1497,24 @@ func (p *Program) verifyCompilerOptions() {
 			verifyEmitFilePath(p.opts.Config.GetBuildInfoFileName())
 		}
 		// Sidecars are emitted even with noEmit, through their own output path.
+		var roots collections.Set[tspath.PathKey]
+		for _, fileName := range p.opts.Config.FileNames() {
+			roots.Add(p.caseSensitivity.PathKey(tspath.RootedPath(fileName)))
+		}
 		for _, source := range p.declarationSidecarSources() {
 			sidecar, _ := p.vibeSidecarPaths(string(source.FileName()))
 			verifyEmitFilePath(tspath.RootedFilePathFromNormalized(sidecar))
+			// So is its native declaration, unless the project's own
+			// declaration output claimed that path, or an import, not the
+			// project's file list, reached the native declaration emit wrote
+			// before.
+			if native, ok := p.nativeDeclarationTarget(source); ok {
+				path := tspath.RootedFilePathFromNormalized(native)
+				key := p.PathKeyForFileName(path)
+				if !emitFilesSeen.Has(key) && (roots.Has(key) || !p.isOwnNativeDeclaration(source, native)) {
+					verifyEmitFilePath(path)
+				}
+			}
 			// So is each body's declaration, which may be the path its ordinary
 			// declaration output already claimed.
 			for _, body := range source.EmbeddedModules() {

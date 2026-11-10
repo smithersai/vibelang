@@ -767,7 +767,9 @@ function wireViteConfig({ root, file, packages, ts, specsFor, changed, warnings,
   }
 }
 
-const sidecarGlobs = ["**/*.d.vibe.ts", "**/*.{vibe,vibex}.*.d.ts"]
+// Each module also gets its native declaration x.d.ts, which re-exports the
+// sidecar (VIP-27); no runtime code is declared in a .d.ts.
+const sidecarGlobs = ["**/*.d.vibe.ts", "**/*.{vibe,vibex}.*.d.ts", "**/*.d.ts"]
 
 /** A coverage include glob with .vibe beside .ts: `src/**\/*.ts` or `*.{ts,tsx}`. A literal path, or a glob that already names .vibe or only declarations, stays. */
 export function widenCoverageGlob(glob) {

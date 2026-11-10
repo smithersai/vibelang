@@ -16,7 +16,9 @@ const arbitrary = fc.record({
   extension: fc.constantFrom("ts", "d.ts", "mts", "cts", "tsx"),
   first: fc.constantFrom("none", "vibe", "ts", "tsx", "d.ts"),
   second: fc.constantFrom("none", "vibe", "ts", "tsx", "d.ts"),
-  name: fc.constantFrom("Migrate", "entry", "nested/source", "two words", "café")
+  name: fc.constantFrom("Migrate", "entry", "nested/source", "two words", "café"),
+  // The compiler writes x.d.ts beside x.vibe, re-exporting it (VIP-27).
+  nativeDeclaration: fc.boolean()
 })
 
 function check(input) {
@@ -36,6 +38,7 @@ function check(input) {
     if (input.inherited) put("tsconfig.json", JSON.stringify({ extends: "./config/base.json" }))
     for (const dir of ["first", "second"]) {
       if (input[dir] !== "none") put(dir + "/" + name + "." + input[dir], "export const marker = 42")
+      if (input[dir] === "vibe" && input.nativeDeclaration && input.extension === "ts") put(dir + "/" + name + ".d.ts", `export * from "./${name.split("/").pop()}.vibe";\n`)
     }
     forgetPaths()
     // Native TypeScript spelling is unchanged for ordinary resolver callers.
@@ -56,6 +59,10 @@ function check(input) {
 
 test("Bun paths aliases preserve native candidates before migrated siblings", () => {
   for (const first of ["ts", "tsx", "d.ts", "vibe", "none"]) check({ ...regression.input, first, second: "vibe" })
+})
+
+test("Bun paths aliases load a migrated module, not the native declaration beside it", () => {
+  for (const first of ["ts", "tsx", "d.ts", "vibe", "none"]) check({ ...regression.input, first, second: "vibe", nativeDeclaration: true })
 })
 
 test("Bun paths aliases cover inherited configurations and generated source layouts", async () => {

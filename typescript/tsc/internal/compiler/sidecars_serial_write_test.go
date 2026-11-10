@@ -32,8 +32,11 @@ func TestEmitDeclarationSidecarsWritesOneAtATime(t *testing.T) {
 		t.Fatal(ds)
 	}
 	p := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
-	var active, peak, written atomic.Int32
-	result := p.EmitDeclarationSidecars(t.Context(), func(string, string) error {
+	var active, peak, written, native atomic.Int32
+	result := p.EmitDeclarationSidecars(t.Context(), func(name string, _ string) error {
+		if compiler.NativeDeclarationPath(name) == "" {
+			native.Add(1) // each module's x.d.ts, written by the same writer
+		}
 		now := active.Add(1)
 		for {
 			old := peak.Load()
@@ -49,8 +52,8 @@ func TestEmitDeclarationSidecarsWritesOneAtATime(t *testing.T) {
 	if result == nil || result.EmitSkipped || len(result.Diagnostics) != 0 {
 		t.Fatalf("sidecar emit: %+v", result)
 	}
-	if written.Load() != 64 {
-		t.Fatalf("wrote %d sidecars, want 64", written.Load())
+	if written.Load() != 128 || native.Load() != 64 {
+		t.Fatalf("wrote %d files, %d of them native declarations; want 64 sidecars and 64 native declarations", written.Load(), native.Load())
 	}
 	if peak.Load() != 1 {
 		t.Fatalf("%d writers ran at once, want 1", peak.Load())
