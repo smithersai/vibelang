@@ -1,0 +1,2 @@
+go test fuzz v1
+string("exclude-scope/function/layer-succeed/service")
