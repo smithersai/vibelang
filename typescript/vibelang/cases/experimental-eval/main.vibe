@@ -1,4 +1,4 @@
-// expect-result: {"scores":[1,1],"passed":0,"regressed":1,"regression":true,"undecided":5,"keyLength":64}
+// expect-result: {"scores":[1,1],"passed":0,"regressed":1,"regression":true,"undecided":5,"keyLength":64,"outage":{"exitCode":5,"missing":0},"noise":{"regressions":0,"nondeterminism":1}}
 // VIP-69: Experimental.Eval runs a suite's cases against its target,
 // Experimental.Scorer grades every answer from 0 to 1, and a gate compares
 // the scores with a committed baseline and returns an exit code.
@@ -42,6 +42,34 @@ const judged = Experimental.Eval.suite("judged", {
   scorers: [unreachable]
 })
 
+// VIP-69 rules 3 and 7: once a baseline holds a judge's score, an outage of
+// that judge is undecided (exit 5), never a missing score (exit 1).
+function judgedBy(score: number) {
+  return Experimental.Eval.suite("judge-outage", {
+    target: greet,
+    cases: [{ name: "ada", input: ["Ada"] }],
+    scorers: [Experimental.Scorer.make({
+      name: "judge",
+      version: "1",
+      score: (run: { output: string }) => score < 0 ? Effect.fail(`no judge for ${run.output}`) : Effect.succeed(score),
+    })],
+  })
+}
+
+effect function outage() {
+  const committed = try Experimental.Eval.baseline(try Experimental.Eval.run(judgedBy(0.9)))
+  const report = try Experimental.Eval.compare(committed, try Experimental.Eval.run(judgedBy(-1)))
+  return { exitCode: Experimental.Eval.gate(report, { min: 0 }).exitCode, missing: report.missing.length }
+}
+
+// VIP-69 rule 4: the same answer graded differently is nondeterminism, not a
+// regression, because its step key, the hash of the output, did not change.
+effect function noise() {
+  const committed = try Experimental.Eval.baseline(try Experimental.Eval.run(judgedBy(0.9)))
+  const report = try Experimental.Eval.compare(committed, try Experimental.Eval.run(judgedBy(0.5)))
+  return { regressions: report.regressions.length, nondeterminism: report.nondeterminism.length }
+}
+
 effect function grade(committed: string, suite: Experimental.Eval.Suite<[name: string], string>) {
   const run = try Experimental.Eval.run(suite)
   const report = try Experimental.Eval.compare(try Experimental.Eval.load(committed), run)
@@ -62,5 +90,7 @@ export effect function main() {
     regression: regressed.summary.includes("regression for ada/polite"),
     undecided: undecided.exitCode,
     keyLength: polite.scorerKey.length,
+    outage: try outage(),
+    noise: try noise(),
   }
 }
