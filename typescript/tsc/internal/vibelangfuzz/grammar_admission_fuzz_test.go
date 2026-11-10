@@ -349,6 +349,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"retired-await-operation", grammarRetiredAwaitOperation},
 	{"unhomed-pattern-grammar-reserved-binding", grammarUnhomedPatternGaps[len(grammarUnhomedPatternGaps)-4]},
 	{"module-redeclared-body", grammarModuleRedeclaredWitness},
+	{"schema-jsdoc-alias-static-field", "schema S = ?? { static id : Missing } ;"},
+	{"import-type-empty-type-arguments", grammarImportTypeArgumentForms[0]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

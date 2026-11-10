@@ -107,6 +107,9 @@ func TestGrammarAdmissionDeepNative(t *testing.T) {
 func TestGrammarAdmissionDeepRejected(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range []string{
+		"schema S = ?? { static id : Missing } ;",
+		"schema S = ! { readonly readonly id : Missing } ;",
+		"schema S = ?? { id : Missing = 1 } ;",
 		"class C < > { }",
 		"function f < > ( ) { }",
 		"error C < >",

@@ -950,6 +950,18 @@ compiled, so the body's native grammar errors are lost. That compiler gap is
 keyed `admission:module-redeclared-body`, with its registry row on
 `Parser.parseVibeLangModuleDeclaration`, until the compiler checks the body.
 
+An import type's type arguments followed. TypeScript's parser reads them as a
+bracketed list that may be empty or end in a comma, and the checker's
+TypeArguments grammar check (`TS1099`, `TS1009`) runs on type references and
+expressions only: stock TypeScript 5.9.3 reports `TS2314` alone for
+`import("./m").T<>` and nothing for `typeof import("./m")<>` or
+`import("./m").T<string,>`. The lab's `ImportType` now takes those lists too;
+`Array<>` keeps its `TS1099` and no derivation. Schema aliases whose types
+start with a JSDoc prefix, such as `schema S = ?? { static id: Missing }`,
+now retain native source-type rejection beside `EK2109`. Aliases combining
+that prefix with static or duplicated readonly members and field
+initializers remain rejection controls; they require no pending exemption.
+
 One gap the probes found was outside what the lab can show. TypeScript parses
 a lexical declaration as a loop body for recovery and rejects it with
 `TS1156`, and the lab derives that recovery, so `if (c) const y = 1;` reads
