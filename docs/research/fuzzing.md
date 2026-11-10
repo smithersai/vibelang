@@ -346,6 +346,8 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzIncremental` | Archive and edit script over any file of the project | After each partial edit, the server's diagnostics equal a fresh compilation's (D32, D61) |
 | `FuzzCommandLine` | Archive and a fuzzed argument list | The built binary never panics or hangs; exit statuses as Chapter 28 gives them; printed diagnostics equal the library's; `--fix` as above; `--estree` equals the library conversion; `--help`, `--version`, `--watch`, an LSP and an API session end cleanly |
 
+The `FuzzFormat` module-body corpus varies names, Unicode identifiers, missing names, nested invalid syntax and layout across five modes for eight invalid TypeScript patterns, with native identifier, function, string and comment controls.
+
 Completeness is checked, not claimed. Each of these tests reads the specification at test time and fails when it grows:
 
 | Test | Fails when |

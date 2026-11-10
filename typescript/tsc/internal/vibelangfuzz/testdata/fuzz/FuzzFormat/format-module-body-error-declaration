@@ -1,0 +1,2 @@
+go test fuzz v1
+string("format-module-body-syntax:error-declaration\n\u0000")

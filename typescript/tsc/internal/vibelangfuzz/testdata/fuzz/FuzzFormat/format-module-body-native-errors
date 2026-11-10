@@ -1,0 +1,2 @@
+go test fuzz v1
+string("// expect: TS1434 TS1144\n// A module declaration's body is TypeScript (D283): VibeLang's own syntax,\n// such as an error declaration or an Effect contract, is a syntax error there.\nmodule text {\n  error Bad { reason: string }\n\n  export function clean(value: string): string!Bad {\n    return value.trim()\n  }\n}\n\nimport { clean } from text\n\nexport effect function main() {\n  return try sync((value) => clean(value), \" a \")\n}\n")

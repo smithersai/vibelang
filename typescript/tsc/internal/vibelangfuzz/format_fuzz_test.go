@@ -53,6 +53,12 @@ import (
 func FuzzFormat(f *testing.F) {
 	startShortBudget(f)
 	formatServiceSeparatorsQuoted(f)
+	formatModuleBodySyntaxQuoted(f)
+	for _, rule := range formatModuleBodySyntaxRules {
+		for _, mode := range []byte{0, 1, 2, 3, 255} {
+			f.Add(formatModuleBodySyntaxKey + rule.key + "\n" + string([]byte{mode}))
+		}
+	}
 	formatNamedModuleBodySyntaxQuoted(f)
 	for _, key := range []string{"error-declaration", "effect-contract", "unfinished-initializer", "valid-function"} {
 		f.Add(formatNamedModuleBodyKey + key + "\x00\x00")
@@ -88,6 +94,7 @@ func FuzzFormat(f *testing.F) {
 	w := NewWorkspace(f)
 	formatter := toolsFormatter(f)
 	f.Fuzz(func(t *testing.T, source string) {
+		source = formatModuleBodySyntaxSource(source)
 		source = formatNamedModuleBodySyntaxSource(source)
 		source = formatUnnamedModuleSource(formatServiceSeparatorSource(formatLabelSource(formatReturnTypesSource(formatIsLineSource(formatFoldkitSource(source))))))
 		toolsGuard(t, "FuzzFormat", func() {
