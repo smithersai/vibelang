@@ -1,9 +1,10 @@
 import { expect, test } from "bun:test"
 import fc from "fast-check"
-import { Effect, Exit, Layer, Stream } from "effect"
+import { Effect, Exit, Layer, Schema, Stream } from "effect"
 import * as AiError from "effect/ai/AiError"
 import * as LanguageModel from "effect/ai/LanguageModel"
-import { Eval, Scorer } from "vibelang-runtime/experimental"
+import * as Prompt from "effect/ai/Prompt"
+import { Eval, Scorer, Test } from "vibelang-runtime/experimental"
 import { checkProperty } from "../../../scripts/testing/property.mjs"
 
 // A scripted judge: each call answers with the next reply and records the
@@ -149,4 +150,44 @@ test("a rubric refuses malformed examples and reads a single { context, focus } 
   expect(prompts[0]).toContain("apologise once")
   // The judge reads the request's context alone, not the argument array as JSON.
   expect(prompts[0]).toContain("```text\\na refund request\\n```")
+})
+
+test("trials graded by a replayed judge claim each recorded verdict once when the judge is provided around the run", async () => {
+  // Record the prompt the rubric sends, as Test.record would.
+  let prompt: unknown
+  const capture = Layer.effect(
+    LanguageModel.LanguageModel,
+    LanguageModel.make({
+      generateText: (options) =>
+        Effect.sync(() => {
+          prompt = JSON.parse(JSON.stringify(Schema.encodeSync(Prompt.Prompt)(options.prompt).content))
+          return [{ type: "text", text: "{}" }] as any
+        }),
+      streamText: () => Stream.empty
+    })
+  )
+  const suite = (layer: Layer.Layer<LanguageModel.LanguageModel, any>) =>
+    Eval.suite("polite", {
+      target: (name: string) => Effect.succeed(`Hello, ${name}`),
+      cases: [{ name: "ada", input: ["Ada"] }],
+      scorers: [judge(layer)],
+      trials: 3
+    })
+  await Effect.runPromise(Eval.run(suite(capture)))
+  const verdict = (polite: number) => [{ type: "text", text: JSON.stringify({ scores: { polite, correct: 5 }, reason: "r" }) }]
+  const replayed = Test.replay({ calls: [5, 3, 1].map((polite) => ({ request: { prompt }, response: verdict(polite) })) })
+  const scores = (run: Eval.RunResult) =>
+    run.observations.map((o) => (o.kind === "score" ? o.score : -1)).sort((a, b) => a - b)
+
+  const shared = await Effect.runPromise(
+    Effect.gen(function*() {
+      const run = yield* Eval.run(suite(replayed))
+      return { scores: scores(run), unused: (yield* Test.unconsumed).length }
+    }).pipe(Effect.provide(replayed))
+  )
+  expect(shared).toEqual({ scores: [0.5, 0.75, 1], unused: 0 })
+
+  // Without the enclosing provide, each score builds its own replay, as
+  // Effect's provide does for sibling calls: every trial gets the first verdict.
+  expect(scores(await Effect.runPromise(Eval.run(suite(replayed))))).toEqual([1, 1, 1])
 })

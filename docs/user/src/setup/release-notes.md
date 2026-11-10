@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
+- A test of a suite graded by `Experimental.Scorer.rubric` needed a hand-built fake judge. Pass `Experimental.Test.replay(recorded)` as the rubric's `layer` and provide it around the runs: the judge answers from the recording with no key or network, each recorded verdict is used once, and a recorded failure makes the gate exit 5.
+
 - An answer with no single right text, such as a model's reply, could only be graded by hand. `Experimental.Scorer.rubric(criteria, { model, layer })` asks a judge model to score written criteria from 1 to 5, records the judge in the scorer's identity, and is inconclusive, never passing, when the judge cannot be reached; `Experimental.Scorer.calibrate` measures a judge against answers whose verdict is known.
 
 - A workflow's live runs could not be graded, so a production regression showed only in complaints. `Experimental.Scorer.bind(scorer, W, { sampling })` scores each finished run of a durable workflow once, samples runs by a rule a replay repeats, and keeps the scores in memory or in a SQL database (`Experimental.Scorer.layerSql`); a scorer or store that fails, or a scorer that runs past its `timeout`, never changes the run's result.

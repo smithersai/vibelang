@@ -852,6 +852,33 @@ export effect function judged() {
 
 The judge reads the case input as context: a suite's single argument, or the arguments as JSON, or `{ context, focus }` when the input is one, and everything it reads is fenced as data it must not follow. A judge that cannot be reached, or whose reply holds no integer score for every criterion, is inconclusive: the observation records why, and the gate exits `5`. Model scores move, so give a suite with a rubric a gate `tolerance`.
 
+In a test, the judge is `Experimental.Test.replay(recorded)` from [Testing agentic programs](#testing-agentic-programs): it answers from a recording and never calls a provider. A recorded rubric call holds both of the judge's messages, the instructions and the fenced answer, so make the recording with `Experimental.Test.record` rather than by hand. Pass the replay as `layer` and also provide it around the runs. The enclosing `provide` builds it once, so each recorded verdict is claimed once and `Experimental.Test.unconsumed` sees what is left. Without it, each score builds its own copy of the layer, as Effect's `provide` does for sibling calls, and every score replays from the first recording.
+
+```vibe
+const criteria = [{ id: "polite", question: "Is the reply polite?", low: "rude", high: "courteous" }]
+
+effect function greet(name: string) {
+  return `Hello, ${name}`
+}
+
+export effect function gradeWith(recorded: Experimental.Test.Fixture) {
+  const judge = Experimental.Test.replay(recorded)
+  const suite = Experimental.Eval.suite("politeness", {
+    target: greet,
+    cases: [{ name: "ada", input: ["Ada"] }],
+    scorers: [Experimental.Scorer.rubric(criteria, { model: "anthropic:claude-sonnet-5-5", layer: judge })],
+  })
+  provide judge {
+    const run = try Experimental.Eval.run(suite)
+    const unused = try Experimental.Test.unconsumed
+    return { scores: run.observations, unused: unused.length }
+  }
+}
+```
+
+A recorded `failure`, such as a rate limit, makes that score inconclusive, so a test can check that a judge outage makes the gate exit `5`.
+
+
 `Experimental.Scorer.calibrate(scorer, labelled)` measures a judge before you trust it: it grades answers whose verdict is known, `{ input?, output, verdict: "pass" | "fail" }`, and returns how often the judge agreed, with true and false passes and fails and the inconclusive count.
 
 ### Scoring live runs

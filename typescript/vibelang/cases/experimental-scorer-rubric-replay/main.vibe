@@ -1,0 +1,49 @@
+// expect-result: {"score":0.875,"pass":true,"judge":"anthropic:claude-sonnet-5-5","exitCode":0,"down":5,"code":"inconclusive","unused":0}
+// A rubric (VIP-69 rule 8) graded by VIP-71's model double: the judge is
+// Experimental.Test.replay, which answers from a recording and never calls a
+// provider. The recording's second call is a rate-limit failure, so the
+// second run's judge cannot answer: inconclusive, never a zero, and the gate
+// cannot decide (exit 5). Providing the judge around both runs builds it
+// once, so each recorded call is claimed once.
+import recorded from "./judge.json" with { type: "json" }
+
+const criteria = [
+  { id: "polite", question: "Is the reply polite?", low: "rude", high: "courteous" },
+  { id: "correct", question: "Does it greet the person by name?", low: "no", high: "yes" },
+]
+
+effect function greet(name: string) {
+  return `Hello, ${name}`
+}
+
+const judge = Experimental.Test.replay(recorded)
+
+const suite = Experimental.Eval.suite("politeness", {
+  target: greet,
+  cases: [{ name: "ada", input: ["Ada"] }],
+  scorers: [Experimental.Scorer.rubric(criteria, { model: "anthropic:claude-sonnet-5-5", layer: judge })],
+  gate: { min: 0.75, tolerance: 0.25 },
+})
+
+export effect function main() {
+  provide judge {
+    const first = try Experimental.Eval.run(suite)
+    const baseline = try Experimental.Eval.baseline(first)
+    const second = try Experimental.Eval.run(suite)
+    const unused = try Experimental.Test.unconsumed
+    const good = Experimental.Eval.gate(try Experimental.Eval.compare(baseline, first), suite.gate)
+    const down = Experimental.Eval.gate(try Experimental.Eval.compare(baseline, second), suite.gate)
+    const scored = first.observations[0]
+    const failed = second.observations[0]
+    const meta = scored.kind === "score" ? scored.meta as { pass: boolean; judge: string } : { pass: false, judge: "" }
+    return {
+      score: scored.kind === "score" ? scored.score : -1,
+      pass: meta.pass,
+      judge: meta.judge,
+      exitCode: good.exitCode,
+      down: down.exitCode,
+      code: failed.kind === "inconclusive" ? failed.code : failed.kind,
+      unused: unused.length,
+    }
+  }
+}
