@@ -961,6 +961,9 @@ compiled, so the body's native grammar errors are lost. That compiler gap is
 keyed `admission:module-redeclared-body`, with its registry row on
 `Parser.parseVibeLangModuleDeclaration`, until the compiler checks the body.
 
+The redeclared-module pending family takes precedence over forms inside its unchecked body. A duplicate module reports only `EK4005`, so a nested plain arrow containing `try`, a malformed arrow or an invalid schema field must retain `admission:module-redeclared-body`. Keyed corpus and regression mutations cover these overlaps; single modules, distinct module names, nested declarations, strings and comments remain controls. The compiler still needs to check the duplicate body's syntax.
+
+
 A reserved reference inside the same unhomed pattern is also a member of
 `admission:unhomed-pattern-grammar`: `function g(a = xs is [let first,
 static, 1]) {}` reports only `EK0705`, while an `if` condition exposes the

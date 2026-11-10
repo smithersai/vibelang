@@ -354,6 +354,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"unhomed-pattern-grammar-reserved-binding", grammarUnhomedPatternGaps[len(grammarUnhomedPatternGaps)-4]},
 	{"unhomed-pattern-grammar-extractor", "for (var i=0; xs is F(let first, ..., 1); i++) {}"},
 	{"module-redeclared-body", grammarModuleRedeclaredWitness},
+	{"module-redeclared-body-priority", grammarModuleRedeclaredPriorityWitness},
 	{"schema-jsdoc-alias-static-field", "schema S = ?? { static id : Missing } ;"},
 	{"import-type-empty-type-arguments", grammarImportTypeArgumentForms[0]},
 	{"unhomed-pattern-reserved-reference", grammarUnhomedPatternReservedReference},
@@ -1187,6 +1188,13 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	// A duplicate module loses every body diagnostic, including nested forms.
+	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
+		FileName: "/fuzz/main.vibe", PathKey: "/fuzz/main.vibe",
+	}, source)
+	if grammarModuleRedeclared(file) {
+		return "admission:module-redeclared-body"
+	}
 	if grammarDeclarationDecorators(source) {
 		return "admission:declaration-decorators"
 	}
@@ -1401,9 +1409,6 @@ func grammarAdmissionForm(source string) string {
 	// These records classify a known mismatch; they do not decide admission.
 	// Appendix A remains the independent oracle above. A trailing block may
 	// follow a bare name, a member or a call.
-	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
-		FileName: "/fuzz/main.vibe", PathKey: "/fuzz/main.vibe",
-	}, source)
 	if grammarOptionalEffectClassMember(file, source) {
 		return "admission:effect-optional-class-member"
 	}
@@ -1415,9 +1420,6 @@ func grammarAdmissionForm(source string) string {
 	}
 	if key := grammarUnhomedPatternGrammar(source, file); key != "" {
 		return key
-	}
-	if grammarModuleRedeclared(file) {
-		return "admission:module-redeclared-body"
 	}
 	if grammarPatternMemberLineBreak(source, forms) {
 		return "admission:pattern-member-line-break"

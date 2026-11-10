@@ -74,3 +74,4 @@ FuzzGrammarAdmission corpus:effect-type-callback-trailing-bang compiler VIP-3 an
 
 FuzzGrammarAdmission admission:module-redeclared-body compiler VIP-40 and Appendix A: a module declaration that redeclares a name of its file reports `EK4005` and its body is never compiled, so the body's native grammar errors (a doubled modifier, `TS1030`) are lost
 FuzzGrammarAdmission corpus:module-redeclared-body compiler VIP-40 and Appendix A: `module twice { export export const b = 2 }` after another `module twice` reports `EK4005` alone
+FuzzGrammarAdmission corpus:module-redeclared-body-priority compiler VIP-40 and Appendix A: a redeclared module drops malformed arrow and nested plain-function diagnostics behind EK4005; retain the module-body key before nested forms
