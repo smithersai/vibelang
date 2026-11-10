@@ -16,8 +16,8 @@ func TestGrammarAdmissionImportMetaSpecifierQuoted(t *testing.T) {
 }
 
 // Static module specifiers are strings or identifier references. This key
-// follows an unsupported import.meta value occupying the complete specifier,
-// where its platform diagnostic covers the native grammar diagnostic.
+// follows the historical import.meta specifier family for keyed corpus.
+// Native TS1141 now rejects these values and their recovered wrappers.
 func grammarImportMetaSpecifier(file *ast.SourceFile) bool {
 	unwrap := func(n *ast.Node) *ast.Node {
 		for n != nil {
@@ -128,6 +128,35 @@ func TestGrammarAdmissionImportMetaSpecifierRegression(t *testing.T) {
 			if grammarAdmissionVerdict(t, w, source) {
 				t.Fatal("native expression or rejected static specifier became an admission mismatch")
 			}
+		})
+	}
+}
+
+// Recovered wrappers still occupy a static ModuleSpecifier, whose syntax is
+// a StringLiteral or IdentifierReference. They must retain native TS1141.
+var grammarImportMetaSpecifierWrappers = []string{
+	"import import . meta !",
+	"import import . meta as meta",
+	"import import . meta <\nmeta\n. url > ;",
+}
+
+func TestGrammarAdmissionImportMetaSpecifierWrappers(t *testing.T) {
+	w := NewWorkspace(t)
+	for _, source := range grammarImportMetaSpecifierWrappers {
+		t.Run(source, func(t *testing.T) {
+			result, err := w.Compile(context.Background(), Single(source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			native, platform := false, false
+			for _, d := range result.Diagnostics {
+				native = native || !IsEK(d) && d.Code() == 1141
+				platform = platform || IsEK(d) && d.Code() == 4402
+			}
+			if !native || platform || grammarAdmissionVerdict(t, w, source) {
+				t.Fatalf("static specifier wrapper must retain native TS1141: %v", result.Diagnostics)
+			}
+			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})
 	}
 }
