@@ -710,22 +710,36 @@ const program = Effect.gen(function* () {
 })
 ```
 
-`import.meta` may appear only as the object of `.url`. Every other member (`dirname`, `filename`, `env`, `main`, `resolve`, host additions such as Vite's `hot`) and every other use of `import.meta` (an alias, destructuring, a computed key, an argument, a spread) is `EK4402`. A type position (`typeof import.meta`) is TypeScript's.
+**Amended 2026-11-09: `import.meta` follows TypeScript.** [VIP-33's amendment](/vips/0033-platform-stdlib#decision) records: "Vibelang should allow it if it's using vite. Same as ts" and "The question in fact is not actually relevant to vibelang in same way it's not a concern of typescript". This supersedes VIP-33's earlier restriction to `import.meta.url` (decided detail 90).
+
+VibeLang imposes no additional restriction on `import.meta` syntax. Members are checked against the program's `ImportMeta` declarations. With `vite/client`, `glob`, `env` and `hot` have Vite's declared types; with `@types/node`, Node's metadata such as `dirname` has Node's declared type. An undeclared member receives TypeScript's ordinary diagnostic, not `EK4402`. Aliases, destructuring, computed access, arguments and spreads follow TypeScript too. `import.meta.url` keeps its ordinary module identity. The bundler or host supplies the behavior, as it does for TypeScript; migration preserves these expressions in their original module.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-33
-const u = new URL("./data.json", import.meta.url)   // ok: module identity (ECMA-262)
-const d = import.meta.dirname                        // EK4402: use (try Path.Path).fromFileUrl(…), then dirname
-const k = import.meta.env.API_KEY                    // EK4402: use Config.String("API_KEY")
-const m = import.meta                                // EK4402: alias
+export const metadata: ImportMeta = import.meta
+export const { url } = import.meta
+export const computed: string = import.meta["url"]
 ```
 
 ```ts [Effect]
-// fragment
+export const metadata: ImportMeta = import.meta
+export const { url } = import.meta
+export const computed: string = import.meta["url"]
+```
+
+
+Injected runtime configuration uses `Config.String`:
+
+```vibe [VibeLang]
+const program = effect {
+  const k = try Config.String("API_KEY")
+  return k
+}
+```
+
+```ts [Effect]
 const program = Effect.gen(function* () {
-  const path = yield* Path.Path
-  const d = path.dirname(yield* path.fromFileUrl(new URL(import.meta.url)))
   const k = yield* Config.String("API_KEY")
+  return k
 })
 ```
 

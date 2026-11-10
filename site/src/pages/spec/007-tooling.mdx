@@ -349,11 +349,21 @@ Only a marked module is migration input. An eligible legacy startup is an export
 | `bun` | The same Node runner | `BunServices.layer` from `@effect/platform-bun/BunServices` |
 | `browser` | `BrowserRuntime.runMain` from `@effect/platform-browser/BrowserRuntime` | `BrowserServices.layer` |
 
-Use a listed service layer only when the pinned legacy compiler selected it; preserve selected experimental layers and nesting order. A marker does not by itself add a layer. Pass `main()` for an Effect function, otherwise `Effect.sync(main)`, retaining the declaration's callable kind and public types. Without eligible startup, remove only the inert marker and keep any explicit runner. CommonJS does not justify retaining the retired dispatcher; ESM cannot introduce `import.meta.main`. Preserve entry-only execution and import-only behavior. Refuse an unavailable runner or layer, an entry test not expressible in admitted source, or any other loss of types, behavior or declarations. No retired dispatcher or fallback runner is a migration target. A remaining marker keeps `EK2601`; `main` alone is ordinary source, gets no entry diagnostic and causes no implicit startup ([VIP-26](/vips/0026-top-level-and-main#decision), [VIP-34](/vips/0034-compiler-and-tooling#decision)).
+Use a listed service layer only when the pinned legacy compiler selected it; preserve selected experimental layers and nesting order. A marker does not by itself add a layer. Pass `main()` for an Effect function, otherwise `Effect.sync(main)`, retaining the declaration's callable kind and public types. Without eligible startup, remove only the inert marker and keep any explicit runner. CommonJS does not justify retaining the retired dispatcher; introducing `import.meta.main` requires proof that the original host supports the same entry test; availability in `ImportMeta` declarations alone is insufficient. Preserve entry-only execution and import-only behavior. Refuse an unavailable runner or layer, an entry test not expressible in admitted source, or any other loss of types, behavior or declarations. No retired dispatcher or fallback runner is a migration target. A remaining marker keeps `EK2601`; `main` alone is ordinary source, gets no entry diagnostic and causes no implicit startup ([VIP-26](/vips/0026-top-level-and-main#decision), [VIP-34](/vips/0034-compiler-and-tooling#decision)).
 
 ### Retired layer declarations
 
-Legacy `layer Live: Service { … }` has no declaration production. Its transitional `EK2121` is an error. Write `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit. Retain a captured or type-only `Layer` binding when changing the source. Lowering of rejected source remains available only for migration and its equivalence checks.
+Legacy `layer Live: Service { … }` has no declaration production. Its transitional `EK2121` is an error naming `vibelang --fix`. The repair emits `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit. A captured or type-only `Layer` binding prevents an automatic repair. Lowering of rejected source remains available only for migration and its equivalence checks.
+
+### Selecting ordinary fix files
+
+`--only <files>` limits ordinary `--fix` to the listed modules ([VIP-34, amended](/vips/0034-compiler-and-tooling#decision)). `<files>` is a comma-separated list of paths relative to the current directory, or `@list.txt`, a file of such paths, one per line; the flag can repeat. An empty list, or a path that is not a `.vibe` or `.vibex` module of the project, stops the invocation before it writes anything. The repairs write no other file, a config included, even when they are interrupted; the compilation after them still writes what any compilation writes, such as declaration sidecars. A fix that would edit another file is not applied. Only an error in a listed module refuses a fix: a fix that breaks an unlisted module is kept, and the compilation after `--fix` reports the error. The result is a partial repair and its report says so: a clean run does not verify the project. `--only` cannot be combined with `--fix-migration-only` or `--fix-vip-only`, because a project-wide migration changes what other modules mean. Alone, it is an unknown compiler option (`TS5023`).
+
+```sh
+vibelang --fix --only src/a.vibe,src/b.vibe -p tsconfig.json
+vibelang --fix --only @batch.txt -p tsconfig.json
+vibelang --only src/a.vibe # TS5023: add --fix
+```
 
 ## Effect's type-aware lint
 
@@ -558,8 +568,31 @@ Imported rules from `@effect/tsgo@0.57.0` (commit `999942fa41462eb46dfcb2d718e76
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
-`vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options; for example, `vibelang lint --project tsconfig.json` selects that project ([VIP-38](/vips/0038-effect-lint-built-in#decision)).
+## Fix scopes
 
-## Proofs
+`vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options; for example, `vibelang lint --project tsconfig.json` selects that project ([VIP-38](/vips/0038-effect-lint-built-in#decision)). `vibelang --fix` remains the codemod entry point. Two flags scope that invocation ([VIP-34, amended](/vips/0034-compiler-and-tooling#decision)):
 
-Accepted [VIP-43](/vips/0043-theorems) adds the `vibelang prove` command and the `vibe.proofDir` key, given in [The proof command](/spec/900-appendices#the-proof-command). Neither is implemented yet, so the key table above does not list `vibe.proofDir`.
+| Flag | Scope when used with `--fix` |
+| --- | --- |
+| `--fix-migration-only` | Migration fixes, excluding TypeScript-form teaching rewrites and prelude/import cleanup. |
+| `--fix-vip-only` | The existing VIP migration passes, including the VIP-1/VIP-2 function-kind and `try` migration, excluding prelude/import cleanup. |
+
+In every scope, `--fix` removes an import only when the resulting declaration preserves [API identity](/spec/001-functions#api-identity): the same exports, types and documentation. The prelude supplying a name does not itself prove that its import is unneeded. Changes only to formatting, quote style, import extension spelling, or import and member order where `tsc` does not care do not prevent removal; an inferred import type must still denote the same public type. Source checking remains a separate requirement: under `noUnusedLocals`, an import the fixes leave unused in the source is removed, since it would report `TS6133`. Every `.vibe` module has a declaration, its sidecar, so `noEmit` and `declaration: false` change nothing here.
+
+Either scope flag requires `--fix` somewhere in the argument list, before or after it; alone, each is an unknown compiler option (`TS5023`). The ordinary `--fix` invocation and its project options keep their existing meaning.
+
+```sh
+vibelang --fix --fix-migration-only -p tsconfig.json
+vibelang --fix-vip-only --fix -p tsconfig.json
+vibelang --fix-vip-only # TS5023: add --fix
+```
+
+`--fix-migration-only` reads existing `.vibe` source under the former readonly defaults of schema fields, including the keys of a nested schema in a `schema error` payload, and service shape properties, and writes `readonly` on their unmarked members before it takes the fix baseline. It also spells the old readonly modifiers on nested service types and nested error/data field members so published declarations stay identical. Ordinary native members outside these declarations keep their written modifiers; the already readonly error and data fields need no modifier. Readonly remains shallow during ordinary checking. Restoring the former readonly API can expose diagnostics that an invalid schema codec already caused; they stay visible. Codec expansions and other repairs keep the project-wide gate. Ordinary checking and `--fix` keep the current writable defaults.
+
+Only `--fix-vip-only` runs the VIP-1/VIP-2 function-kind and `try` passes, reading input as source for the release before VIP-1. It writes `try` before each call that ran where it stood before VIP-1, and removes the `try` that ran a known legacy wrapper, deciding from the original resolved callable and migration provenance, not the final value's shape or annotation alone. A rewrite that can't preserve types, behavior and declaration output refuses at that site ([VIP-34](/vips/0034-compiler-and-tooling#decision), amended). Ordinary `--fix` and `--fix-migration-only` do not run those passes: ordinary `--fix` never removes a valid `try` from current source merely because its callee is unannotated. In current source, `try make()` intentionally runs the result whenever it passes the [operand test](/spec/002-running#operand-test).
+
+A value that fails that operand test, such as `Option.some(1)` or `Result.succeed(2)`, keeps `EK0502`: the migration inserts no conversion and unwraps nothing, whatever methods the value has ([VIP-5](/vips/0005-try-runs-effects#decision), amended).
+
+When `--fix-vip-only` refused any call, it sets `"vibe": { "severities": { "EK4802": "error" } }` in the project's config with a comment that says why, so all `EK4802` inferred Effect argument sites in the project fail to compile; the owner removes the setting once a run refuses none.
+
+These commands have no Effect TypeScript runtime translation.
