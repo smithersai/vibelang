@@ -678,8 +678,7 @@ UnshapedTupleType = "[" UnshapedElementList ","? "]"
 UnshapedElementList = UnshapedElement | ShapedElementList "," UnshapedElement | UnshapedElementList "," TupleElement
 UnshapedElement = UnshapedTarget | Type [no LineTerminator here] "?" | IdentifierName "?"? ":" Type | "..." UnshapedTarget | "..." IdentifierName ":" Type
 TypeQueryReservedHead = "this" | "await" | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger" | "default" | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false" | "finally" | "for" | "function" | "if" | "in" | "instanceof" | "new" | "null" | "return" | "super" | "switch" | "throw" | "true" | "try" | "typeof" | "var" | "void" | "while" | "with" | "yield" | "let" | "static" | "implements" | "interface" | "package" | "private" | "protected" | "public"
-ImportType = "import" "(" StringLiteral ")" | "import" "(" StringLiteral ")" "." TypeName | ImportType [no LineTerminator here] TypeArguments | ImportType [no LineTerminator here] "<" ">" | ImportType [no LineTerminator here] "<" TypeList "," ">" | "import" "(" StringLiteral ")" "." TypeName "." [no LineTerminator here] ImportTypeArguments
-ImportTypeArguments = TypeArguments | "<" ">" | "<" TypeList "," ">"
+ImportType = "import" "(" StringLiteral ")" | "import" "(" StringLiteral ")" "." TypeName | ImportType [no LineTerminator here] TypeArguments | "import" "(" StringLiteral ")" "." TypeName "." [no LineTerminator here] TypeArguments
 MappedType = "{" MappedReadonly? "[" IdentifierName "in" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}" | "{" MappedReadonly? "[" IdentifierName "in" Type "as" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}"
 MappedReadonly = "readonly" | "+" "readonly" | "-" "readonly"
 MappedOptional = "?" | "+" "?" | "-" "?"
@@ -1269,6 +1268,7 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 	sort.Strings(g.unresolved)
 	g.provideKeywordHead()
 	g.effectDeclarationNames()
+	g.importTypeArgumentRecovery()
 	return g.parameterize()
 }
 

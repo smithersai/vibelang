@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-type-nested-argument-combined\ntype X = import(\"./m\").T<Array<Missing<>,>>;")

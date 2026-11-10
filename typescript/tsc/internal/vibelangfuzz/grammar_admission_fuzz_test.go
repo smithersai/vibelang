@@ -491,6 +491,9 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"task-start-line-break", "task\nT { effect call(a: string): number!string { return 1 } }"},
 	{"task-rejected-member", "task T { helper() { return 1 } effect call(id: string): number!never { return 1 } }"},
 	{"workflow-rejected-option", "workflow W { static mutable = 1; effect call(n: number) { return n } }"},
+	{"import-type-nested-argument-trailing", grammarImportNestedArgumentForms[0]},
+	{"import-type-nested-argument-empty", grammarImportNestedArgumentForms[1]},
+	{"import-type-nested-argument-combined", grammarImportNestedArgumentForms[2]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

@@ -1001,6 +1001,17 @@ now retain native source-type rejection beside `EK2109`. Aliases combining
 that prefix with static or duplicated readonly members and field
 initializers remain rejection controls; they require no pending exemption.
 
+Appendix A delegates native types to TypeScript. Its `checkImportType` does
+not walk an import type's argument list with `checkSourceElements`, so nested
+type references such as `import("./m").T<Array<string,>>` and
+`import("./m").T<Missing<>>` receive neither `TS1009` nor `TS1099`. The lab
+keeps a separate copy of its type productions under import arguments, with
+the empty and trailing-comma alternatives there. Ordinary `Array<>` and
+`Array<string,>` remain underived, as do missing list elements and a type
+reference's line-break boundary. Generated cases cover parenthesized,
+array, tuple, object, function, union and conditional argument types; keyed
+fuzz inputs retain the three minimal nested-list witnesses. The scoped copy follows the parenthesized-type partition and applies after a qualifier's dotted argument list too.
+
 One gap the probes found was outside what the lab can show. TypeScript parses
 a lexical declaration as a loop body for recovery and rejects it with
 `TS1156`, and the lab derives that recovery, so `if (c) const y = 1;` reads
