@@ -24,6 +24,8 @@ effect function main() {
 
 Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns its string. Pass that Effect directly to `retry`, `timeout`, or another Effect function. Use `effect { ... }` to build an Effect from several statements. Plain and `async` functions keep their TypeScript meaning. `await` waits for Promises in `async` functions. Awaiting an Effect reports `EK0103`, including in an `async function*` with a written `AsyncGenerator`, `AsyncIterator`, `AsyncIterableIterator` or `AsyncIterable` return type. Write `await runPromise(program)` to execute it. Generic inference for an implementation built inside `Effect.gen` also preserves the requirements inferred by TypeScript 5.9.3: binding a function that pipes a union of Effects to a local `const` retains the same requirements as writing it directly in the returned object.
 
+A class `static` block keeps TypeScript's `TS18037` error for `await`, including an Effect-valued operand. A nested `async` callback keeps its own `await` rules; run an Effect there with `await runPromise(program)`.
+
 A direct `try` call whose return type is `any` contributes `unknown` error and requirement channels, just like storing that result and trying the value. Parenthesized calls, method calls and calls selected by a conditional preserve the same channels. Give a dynamic call a precise `Effect.Effect<A, E, R>` return type when those channels are known.
 
 An ordinary call keeps its TypeScript meaning when its receiver has a capitalized name. A local object, class, function or parameter such as `Box` does not become a service key because of its spelling; a parameter also shadows an outer service with the same name. The TypeScript view used by editors follows the resolved lexical binding.

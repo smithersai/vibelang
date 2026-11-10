@@ -54,6 +54,11 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 				break
 			}
 			if operand := node.Expression(); holdsEffectValue(c, c.GetTypeAtLocation(operand)) {
+				// Keep the native placement error before advising how to run an Effect.
+				container := ast.FindAncestor(node.Parent, ast.IsFunctionLikeOrClassStaticBlockDeclaration)
+				if container != nil && ast.IsClassStaticBlockDeclaration(container) {
+					break
+				}
 				text := nodeText(file, operand)
 				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK0103, shortText(text, "the operand")), "Run it to a promise first: await runPromise({0}).", text)
 				cover(c, node) // the Effect the await leaves unrun restates EK0103

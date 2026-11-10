@@ -13,6 +13,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Awaiting an Effect in a class `static` block could suggest running it to a Promise. It now keeps TypeScript's `TS18037` error because `await` is forbidden there.
+
 - `await` in an enum member initializer could produce an unrelated Effect error. It now reports the native TypeScript placement error, including inside an `effect` function.
 
 - A producer parameter default containing a class or computed method could accept `yield` after an earlier returning default. It now reports `EK2104` and keeps nested native generators valid.

@@ -2422,3 +2422,4 @@ typescript/vibelang/cases/producer-moved-parameter-yield.fail/main.vibe:23:76 la
 typescript/vibelang/cases/producer-moved-parameter-yield.fail/main.vibe:24:73 lambda: plain fallback -> plain keyword # VIP-1: this unmarked source callable keeps its plain kind when the mapper classifies function literals.
 typescript/vibelang/cases/producer-moved-parameter-yield.fail/main.vibe:25:73 lambda: plain fallback -> plain keyword # VIP-1: this unmarked source callable keeps its plain kind when the mapper classifies function literals.
 typescript/vibelang/cases/native-enum-await-context/main.vibe:9:25 lambda: plain table -> plain keyword # VIP-1: this unmarked source callable keeps its plain kind when the mapper classifies function literals.
+typescript/vibelang/cases/native-static-await-context/main.vibe:16:45 lambda: plain table -> plain keyword # VIP-1: this unmarked source callable keeps its plain kind when the mapper classifies function literals.

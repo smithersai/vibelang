@@ -6902,6 +6902,9 @@ typescript/vibelang/cases/native-enum-await-context/main.vibe:8:48 lambda effect
 typescript/vibelang/cases/native-enum-await-context/main.vibe:9:25 lambda plain table
 typescript/vibelang/cases/native-generator-admission/main.vibe:6:21 lambda plain table
 typescript/vibelang/cases/native-generator-admission/main.vibe:9:21 lambda plain table
+typescript/vibelang/cases/native-static-await-context/main.vibe:11:15 lambda dual fallback
+typescript/vibelang/cases/native-static-await-context/main.vibe:12:17 lambda effectFn keyword
+typescript/vibelang/cases/native-static-await-context/main.vibe:16:45 lambda plain table
 typescript/vibelang/cases/native-stream-protocols-guard/main.vibe:17:28 lambda plain table
 typescript/vibelang/cases/native-stream-protocols-guard/main.vibe:19:33 lambda plain table
 typescript/vibelang/cases/native-stream-protocols-guard/main.vibe:21:28 lambda plain table

@@ -1,0 +1,6 @@
+// expect: TS18037
+import {Effect} from "effect"
+export class ModuleValue {static {await Effect.succeed(1)}}
+export async function native(){class Value {static {await Effect.succeed(1)}};return 1}
+export effect function read(){class Value {static {await Effect.succeed(1)}};return 1}
+export effect function* produce(){class Value {static {await Effect.succeed(1)}};yield 1}
