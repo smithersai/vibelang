@@ -14,6 +14,28 @@ type libRethrowsShape struct {
 }
 
 var libRethrowsShapes = []libRethrowsShape{
+	{"array-flatMap", "xs:number[]", "xs.flatMap(CB)", true},
+	{"array-findIndex", "xs:number[]", "xs.findIndex(CB)", true},
+	{"array-findLast", "xs:number[]", "xs.findLast(CB)", true},
+	{"array-findLastIndex", "xs:number[]", "xs.findLastIndex(CB)", true},
+	{"array-reduceRight", "xs:number[]", "xs.reduceRight(CB,0)", true},
+	{"array-toSorted", "xs:number[]", "xs.toSorted(CB)", true},
+	{"readonly-array-flatMap", "xs:readonly number[]", "xs.flatMap(CB)", true},
+	{"readonly-array-findIndex", "xs:readonly number[]", "xs.findIndex(CB)", true},
+	{"readonly-array-findLast", "xs:readonly number[]", "xs.findLast(CB)", true},
+	{"readonly-array-findLastIndex", "xs:readonly number[]", "xs.findLastIndex(CB)", true},
+	{"readonly-array-reduceRight", "xs:readonly number[]", "xs.reduceRight(CB,0)", true},
+	{"readonly-array-toSorted", "xs:readonly number[]", "xs.toSorted(CB)", true},
+	{"typed-findIndex", "xs:Uint8Array", "xs.findIndex(CB)", true},
+	{"typed-findLast", "xs:Uint8Array", "xs.findLast(CB)", true},
+	{"typed-findLastIndex", "xs:Uint8Array", "xs.findLastIndex(CB)", true},
+	{"typed-reduceRight", "xs:Uint8Array", "xs.reduceRight(CB,0)", true},
+	{"typed-toSorted", "xs:Uint8Array", "xs.toSorted(CB)", true},
+	{"bigint-findIndex", "xs:BigInt64Array", "xs.findIndex(CB)", true},
+	{"bigint-findLast", "xs:BigInt64Array", "xs.findLast(CB)", true},
+	{"bigint-findLastIndex", "xs:BigInt64Array", "xs.findLastIndex(CB)", true},
+	{"bigint-reduceRight", "xs:BigInt64Array", "xs.reduceRight(CB,0n)", true},
+	{"bigint-toSorted", "xs:BigInt64Array", "xs.toSorted(CB)", true},
 	{"array-forEach", "xs:number[]", "xs.forEach(CB)", true},
 	{"readonly-array-map", "xs:readonly number[]", "xs.map(CB)", true},
 	{"array-from", "xs:number[]", "Array.from(xs,CB)", true},
@@ -71,7 +93,7 @@ func libRethrowsSource(key string, choice uint8) (string, string, int) {
 	}
 	call := strings.Replace(shape.call, "CB", callback, 1)
 	library := "/** @throws {RangeError} */\nexport declare function risky(...args:any[]):any\n/** @throws {never} */\nexport declare function safe(...args:any[]):any\n"
-	source := "import {Effect} from \"effect\"\nimport {risky,safe} from \"./foreign.js\"\n"
+	source := "/// <reference lib=\"esnext\" />\nimport {Effect} from \"effect\"\nimport {risky,safe} from \"./foreign.js\"\n"
 	body := ""
 	switch site {
 	case "plain":
