@@ -20,6 +20,8 @@ const keys = {
   // An effect block is a program value: the synthesized $effect builder call
   // around its lexical arrow (23723b612c20, VIP-2).
   CallExpression: ["callee", "arguments"],
+  // A task or workflow constant also contains property reads and plan arrays.
+  MemberExpression: ["object", "property"], ArrayExpression: ["elements"],
   // A task or workflow declaration is its runtime constant (VIP-55).
   TSFunctionType: ["params", "returnType"], TSTypeAnnotation: ["typeAnnotation"],
   TSTypeReference: ["typeName", "typeArguments"], TSTypeParameterInstantiation: ["params"],

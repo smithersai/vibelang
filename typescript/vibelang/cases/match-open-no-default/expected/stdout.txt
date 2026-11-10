@@ -9,6 +9,5 @@ type parameter: 1 | TypeError:
 unknown: 1 | TypeError: 
 vibe class: point | TypeError: 
 slider: ve | TypeError: 
-optional field: 1 | TypeError: 
 mixed union: 1 | TypeError: 
 error tag: 1

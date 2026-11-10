@@ -115,6 +115,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `match` could silently omit a case when its union used `kind`, `type` or another literal field instead of `_tag`. It now reports an exhaustiveness error naming the missing cases, including nested unions, while keeping runtime matching unchanged.
 
+- A `match (e) { when Error: ... }` reported `EK4701` saying `Error` was left, because Effect adds an optional literal field to every `Error`, and a class arm such as `when Circle:` did not cover a class with a literal field. Optional literal fields that no arm tests no longer count as discriminants, and a class arm covers its class.
+
 - Open and proposed VIPs and their supporting reviews could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
 
 - An instance method body or property initializer in a `service` could hide errors on its other static members. Each rejected member now reports its own `EK0902`.

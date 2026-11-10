@@ -75,19 +75,14 @@ export function vibeClass(p: Point): string {
 type Input = { orientation: "Horizontal" | "Vertical"; alignment: "Center" | "Edge" }
 
 // foldkit-71: slider's style, four arms over an untagged object of two
-// finite fields. The object is open, so the check is off.
+// finite fields. Its literal fields make it finite, and the four arms cover
+// it; a value outside its type still throws the TypeError.
 export function slider(input: Input): string {
   return match (input) {
     when { orientation: "Vertical", alignment: "Center" }: "vc";
     when { orientation: "Vertical", alignment: "Edge" }: "ve";
     when { orientation: "Horizontal", alignment: "Center" }: "hc";
     when { orientation: "Horizontal", alignment: "Edge" }: "he";
-  }
-}
-
-export function optionalField(x: { mode?: "on" | "off" }): number {
-  return match (x) {
-    when { mode: "on" }: 1;
   }
 }
 

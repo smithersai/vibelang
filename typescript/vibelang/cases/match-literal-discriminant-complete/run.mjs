@@ -1,13 +1,17 @@
 import assert from "node:assert/strict"
 import { project, baseOptions, diagnostics } from "../_tooling-witness.mjs"
-import { complete, fallback, nested, mixed } from "./out/main.js"
+import { complete, fallback, nested, mixed, message, classes, circle } from "./out/main.js"
 assert.equal(complete({kind:"circle",r:2}),2)
 assert.equal(complete({kind:"square",side:3}),3)
 assert.equal(fallback({kind:"square",side:3}),0)
 assert.equal(nested({value:{type:"b"}}),2)
 assert.equal(mixed({kind:"b"}),2)
+assert.equal(message(new Error("boom")),"boom")
+assert.equal(classes(circle(1)),1)
+assert.throws(()=>classes({kind:"circle",r:1}),e=>e instanceof TypeError)
 // VIP-7: reporting a missing case never changes the tests emitted at runtime.
 // rule-evidence: docs/design/src/004-match.md#exhaustiveness
+// rule-evidence: docs/design/src/004-match.md#exhaustiveness | Each member must be finite through a required literal field, or through a literal or nested finite field tested by its patterns; a broad discriminant such as `kind: string` leaves the domain open.
 project(({ put, invoke, run, stock, exists }) => {
  const shape = 'type Shape = {kind:"circle";r:number}|{kind:"square";side:number};'
  put("main.vibe", shape + 'export function area(s:Shape):number{return match(s){when {kind:"circle",let r}:r;}}')

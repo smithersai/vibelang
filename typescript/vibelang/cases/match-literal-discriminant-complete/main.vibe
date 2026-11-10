@@ -12,3 +12,22 @@ export function nested(s:{value:{type:"a"}|{type:"b"}}):number {
 export function mixed(s:{_tag:"a"}|{kind:"b"}):number {
  return match(s){when {_tag:"a"}:1;when {kind:"b"}:2;}
 }
+// rule-evidence: docs/design/src/004-match.md#exhaustiveness | An optional literal field that no pattern tests discriminates nothing, so a library that adds one to a global type such as `Error` leaves that type open.
+export function message(e:Error):string {
+ return match(e){when Error:e.message;}
+}
+// rule-evidence: docs/design/src/004-match.md#exhaustiveness | A class pattern such as `when Circle:` covers each member assignable to its instance type.
+class Circle {
+ readonly kind = "circle" as const
+ constructor(readonly r:number) {}
+}
+class Square {
+ readonly kind = "square" as const
+ constructor(readonly side:number) {}
+}
+export function classes(s:Circle|Square):number {
+ return match(s){when Circle:1;when Square:2;}
+}
+export function circle(r:number):Circle {
+ return new Circle(r)
+}

@@ -36,6 +36,9 @@ func TestMatchLiteralDiscriminantExhaustiveness(t *testing.T) {
 		{"guard", `{kind:"a"}|{kind:"b"}`, `when {kind:"a"} and if(false):1;when {kind:"b"}:2;`, "a"},
 		{"optional", `{kind?:"a"}`, `when {kind:"a"}:1;`, "kind"},
 		{"optional-payload", `{kind:"a";x?:number}`, `when {kind:"a",let x}:1;`, "kind"},
+		{"optional-field", `{mode?:"on"|"off"}`, `when {mode:"on"}:1;`, "off"},
+		{"untested-optional-literal", `{x:number;flag?:boolean}`, `when {x:1}:1;`, ""},
+		{"untested-required-literal", `{x:number;kind:"a"}`, `when {x:1}:1;`, "kind"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			source := "export function f(s:" + tc.domain + "){return match(s){" + tc.arms + "}}"
@@ -117,5 +120,41 @@ func TestLiteralDiscriminantEnumerationBudget(t *testing.T) {
 	p, f, _, _ := editorProgram(t, source)
 	if ds := p.GetSemanticDiagnostics(t.Context(), f); len(ds) != 0 {
 		t.Fatalf("exhausted enumeration: %v", ds)
+	}
+}
+
+// A class pattern covers the instances of its class, and a literal field that
+// a library adds to a global type as optional does not make the type finite:
+// Effect declares an optional boolean on every Error.
+func TestLiteralDiscriminantClassPatterns(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+		want         int
+	}{
+		{"augmented-error", `declare global { interface Error { readonly "~lib/reported"?: boolean } }
+export function f(e:Error){return match(e){when Error:e.message;}}`, 0},
+		{"literal-field-class", `class Foo { readonly kind = "foo" as const }
+export function f(x:Foo){return match(x){when Foo:1;}}`, 0},
+		{"literal-field-classes", `class Foo { readonly kind = "foo" as const }
+class Bar { readonly kind = "bar" as const }
+export function f(x:Foo|Bar){return match(x){when Foo:1;}}`, 1},
+		{"literal-field-classes-complete", `class Foo { readonly kind = "foo" as const }
+class Bar { readonly kind = "bar" as const }
+export function f(x:Foo|Bar){return match(x){when Foo:1;when Bar:2;}}`, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p, f, _, _ := editorProgram(t, tc.source)
+			count := 0
+			for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), f), p.GetSemanticDiagnostics(t.Context(), f)...) {
+				if d.Source() == "EK" && d.Code() == 4701 {
+					count++
+				} else {
+					t.Errorf("unexpected diagnostic: %s", d.String())
+				}
+			}
+			if count != tc.want {
+				t.Errorf("EK4701 count = %d, want %d", count, tc.want)
+			}
+		})
 	}
 }

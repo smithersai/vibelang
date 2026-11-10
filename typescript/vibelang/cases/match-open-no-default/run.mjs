@@ -26,7 +26,6 @@ for (const [name, f, hit, miss] of [
   ["unknown", m.unknownValue, "a", null],
   ["vibe class", m.vibeClass, m.point(1), fake],
   ["slider", m.slider, { orientation: "Vertical", alignment: "Edge" }, { orientation: "Diagonal", alignment: "Edge" }],
-  ["optional field", m.optionalField, { mode: "on" }, {}],
   ["mixed union", m.mixedUnion, "a", { n: 1 }]
 ]) {
   console.log(`${name}: ${run(f, hit)} | ${run(f, miss)}`)

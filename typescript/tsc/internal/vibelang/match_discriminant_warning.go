@@ -100,9 +100,13 @@ func literalMatchCases(c *checker.Checker, domain *checker.Type, arms []parser.M
 		if !isFiniteMatchObjectType(member) {
 			return nil, false, false
 		}
+		// A member is finite through a field its patterns test (below) or
+		// through a required literal field. An optional literal field that
+		// no arm reads, such as the optional boolean Effect adds to the
+		// global Error, is absent from most values and discriminates nothing.
 		finite := false
 		for _, prop := range c.GetPropertiesOfType(member) {
-			if isLiteralTagType(c.GetTypeOfPropertyOfType(member, prop.Name())) {
+			if prop.Flags()&ast.SymbolFlagsOptional == 0 && isLiteralTagType(c.GetTypeOfPropertyOfType(member, prop.Name())) {
 				finite = true
 				break
 			}
@@ -182,6 +186,9 @@ func literalArmCovers(c *checker.Checker, arm parser.MatchMemberArm, candidate *
 			return false
 		}
 		value := c.GetTypeAtLocation(arm.Value)
+		if instance := classPatternInstance(c, arm.Value); instance != nil {
+			return c.IsTypeAssignableTo(candidate.typ, instance)
+		}
 		return value != nil && value.Flags()&checker.TypeFlagsUnion == 0 && isLiteralTagType(value) && c.IsTypeAssignableTo(candidate.typ, value)
 	}
 	if len(arm.Properties) == 0 || !isFiniteMatchObjectType(candidate.typ) {
@@ -235,4 +242,22 @@ func finiteLiteralCaseCovered(c *checker.Checker, call *ast.Node, domain *checke
 		}
 	}
 	return left.Flags()&checker.TypeFlagsNever != 0
+}
+
+// classPatternInstance returns the instance type a class pattern such as
+// when Error: tests with instanceof, or nil for any other value pattern and
+// for a class that declares its own custom matcher.
+func classPatternInstance(c *checker.Checker, matcher *ast.Node) *checker.Type {
+	constructor := c.GetTypeAtLocation(matcher)
+	if constructor == nil || isLiteralTagType(constructor) {
+		return nil
+	}
+	if name := customMatcherPropertyName(c); name != "" && c.GetPropertyOfType(constructor, name) != nil {
+		return nil
+	}
+	signatures := c.GetSignaturesOfType(constructor, checker.SignatureKindConstruct)
+	if len(signatures) == 0 {
+		return nil
+	}
+	return c.GetReturnTypeOfSignature(c.GetErasedSignature(signatures[len(signatures)-1]))
 }

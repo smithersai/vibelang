@@ -23,7 +23,7 @@ func FuzzLiteralDiscriminantWarning(f *testing.F) {
 	if !strings.Contains(SpecText("004-match.md"), literalDiscriminantWarningQuote) {
 		f.Fatal("missing exhaustiveness contract")
 	}
-	for _, key := range []string{"kind", "type", "phase", "nested", "mixed", "mixed-fixed", "open", "default", "generic", "union-field"} {
+	for _, key := range []string{"kind", "type", "phase", "nested", "mixed", "mixed-fixed", "open", "default", "generic", "union-field", "class", "optional-extra", "untested-optional"} {
 		f.Add([]byte(key + "\x00\x04\x05"))
 		f.Add([]byte(key + "\x00\x03\xff"))
 	}
@@ -68,6 +68,15 @@ func FuzzLiteralDiscriminantWarning(f *testing.F) {
 				member = "Fixed"
 			}
 			pattern := member
+			// An optional literal field no arm tests adds no case.
+			if key == "optional-extra" {
+				member = "{" + prop + ":" + value + ";flag?:boolean}"
+			}
+			// A class arm covers instances of its class.
+			if key == "class" {
+				member = fmt.Sprintf("C%d", i)
+				pattern = member
+			}
 			if key == "nested" {
 				pattern = "{value:" + pattern + "}"
 			}
@@ -93,6 +102,20 @@ func FuzzLiteralDiscriminantWarning(f *testing.F) {
 		}
 		if key == "open" {
 			domain = "{kind:string}"
+			// A wide field stays open, but its primitive must admit the patterns.
+			if at(2)%2 != 0 {
+				domain = "{kind:number}"
+			}
+		}
+		// Only an optional literal field: no arm tests it, so the domain is open.
+		if key == "untested-optional" {
+			domain = "{x:number;flag?:boolean}"
+			arms = arms[:0]
+			for i := 0; i < n; i++ {
+				if mask&(1<<i) != 0 {
+					arms = append(arms, "when {x:"+fmt.Sprint(i)+"}:"+fmt.Sprint(i)+";")
+				}
+			}
 		}
 		if key == "default" {
 			arms = append(arms, "default:0;")
@@ -106,6 +129,15 @@ func FuzzLiteralDiscriminantWarning(f *testing.F) {
 		prefix := ""
 		if key == "mixed-fixed" {
 			prefix = "error Fixed;"
+		}
+		if key == "class" {
+			for i := 0; i < n; i++ {
+				value := fmt.Sprintf("%q", fmt.Sprintf("case%d", i))
+				if at(2)%2 != 0 {
+					value = fmt.Sprint(i + 1)
+				}
+				prefix += fmt.Sprintf("class C%d{readonly kind=%s as const}", i, value)
+			}
 		}
 		source := prefix + "export function inspect" + params + "(s:" + subject + "){return match(s){" + strings.Join(arms, "") + "}}"
 		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}})
@@ -125,7 +157,7 @@ func FuzzLiteralDiscriminantWarning(f *testing.F) {
 			}
 		}
 		want := 0
-		if key != "open" && key != "default" && mask != (1<<n)-1 {
+		if key != "open" && key != "default" && key != "untested-optional" && mask != (1<<n)-1 {
 			want = 1
 		}
 		if got != want {
