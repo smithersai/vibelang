@@ -2,14 +2,14 @@ package vibelangfuzz
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 )
 
 // A producer is effect function* (VIP-21). Passed to a native generator API
-// such as Effect.gen, it reports EK1002, and that diagnostic covers the whole
-// argument (vibelang/generators.go), so TypeScript's grammar rejections in its
-// body disappear with the type errors.
+// such as Effect.gen, it reports EK1002. Independent grammar errors in the
+// producer's body must remain visible beside that API diagnostic.
 const grammarProducerCoverQuote = `Producer = EffectModifier [no LineTerminator here] "function" "*" Name? TypeParameters? Params ReturnType? Block`
 
 func TestGrammarAdmissionProducerCoverQuoted(t *testing.T) {
@@ -63,9 +63,16 @@ func TestGrammarAdmissionProducerCoverRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarProducerCoverGaps {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
-				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+			if grammarAdmissionVerdict(t, w, source) {
+				t.Fatal("independent grammar rejection was hidden by the API mismatch")
+			}
+			r, err := w.Compile(context.Background(), Single(source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Remove()
+			if !slices.Contains(r3Errors(r.Diagnostics), "EK1002") {
+				t.Fatalf("missing API diagnostic: %v", r.Diagnostics)
 			}
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})

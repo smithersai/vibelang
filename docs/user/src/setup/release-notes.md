@@ -34,6 +34,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Editors could ask you to choose between a plain and Effect callback for `ensures` inside a proof. Erased proof clauses no longer show runtime callback choices.
 
+- Passing a producer to a JavaScript generator API hid errors inside its body. The compiler now reports those errors alongside `EK1002`.
+
 - Contributor tests could report a missing or mismatched `typescript` installation as a generator failure. They now report the required version and its installation command before running reference programs.
 
 - A site deployment could fail because release notes mentioned an older package version in a bug description. Historical entries now pass the version check, while install commands on other pages still require the current version.

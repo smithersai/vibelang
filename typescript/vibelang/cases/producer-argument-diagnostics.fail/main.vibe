@@ -1,0 +1,21 @@
+// expect: EK1002 EK2103 TS1123 TS1098 TS2451 TS2304 TS2322 TS2369
+import { Effect } from "effect"
+declare function take(body: () => Generator<number, void, unknown>): void
+
+take(effect function* () {
+  const
+  const users = 1
+})
+Effect.gen(effect function* () { class C<> {} })
+Effect.fnUntraced(effect function* () { interface C<> {} })
+Effect.fn("read")(effect function* () { const n = 1; const n = 2 })
+take(effect function* () { void missing })
+Effect.gen(effect function* () { const value: number = "" })
+Effect.fnUntraced(effect function* () { function inner(public n: number) {} })
+Effect.fn("read")(effect function* () { return 1 })
+take(effect function* () { yield* [1] })
+
+effect function* named() { const value: number = "" }
+take(named)
+take(function* () { yield 1 })
+take(effect function* (n: number = "") { yield 1 })
