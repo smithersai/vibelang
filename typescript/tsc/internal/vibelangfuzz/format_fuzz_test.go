@@ -54,6 +54,9 @@ func FuzzFormat(f *testing.F) {
 	startShortBudget(f)
 	formatServiceSeparatorsQuoted(f)
 	formatModuleBodySyntaxQuoted(f)
+	for _, source := range formatDottedOperationCommentSources() {
+		f.Add(source)
+	}
 	for _, rule := range formatModuleBodySyntaxRules {
 		for _, mode := range []byte{0, 1, 2, 3, 255} {
 			f.Add(formatModuleBodySyntaxKey + rule.key + "\n" + string([]byte{mode}))
@@ -136,6 +139,9 @@ func FuzzFormat(f *testing.F) {
 						message, _, _ = strings.Cut(message, "\n")
 						first += ":" + toolsSlug(message)
 					}
+				}
+				if formatDottedOperationCommentRefusal(err) {
+					first = formatDottedOperationCommentKey
 				}
 				Gap(t, "FuzzFormat", "format:refusal:"+first, "D276: the formatter refused a file without syntax errors (%v):\n%s", err, source)
 			}
