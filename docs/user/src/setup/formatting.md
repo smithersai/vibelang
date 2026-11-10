@@ -79,6 +79,8 @@ Everything dprint's TypeScript plugin changes in a `.ts` file: indentation, line
 
 The bundled formatter uses TypeScript plugin `0.97.1` for `.vibe` files. It keeps the compatible `0.93.4` plugin for `.vibex` and marked `.tsx` files; use `vibelang format` for those files. Older plugin versions can fail to reach a stable layout for adjacent conditional statements. In a direct dprint configuration, use the pinned plugin above and the `semicolons` option spelling.
 
+`fork.in(scope)` can touch the following operand in the input: `fork.in(scope)work()` formats as `fork.in(scope) work()`.
+
 Service members and class-form `error` fields accept comma separators. Formatting preserves these separators, nested type commas and comments on either side of a separator.
 
 A standalone `do` expression keeps the parentheses that distinguish it from a `do`/`while` statement: `(do { 1; });`. The same grouping is preserved in a function, a conditional body or a labeled statement. After a statement whose semicolon the formatter removes, as with `semicolons: "asi"`, it is written `;(do { … })` so that the parentheses cannot continue that statement.

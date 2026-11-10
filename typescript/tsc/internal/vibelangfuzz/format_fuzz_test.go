@@ -52,6 +52,9 @@ import (
 // Chapter 007 / formatter preserves parsed meaning, diagnostics, comments and idempotence: docs/design/src/007-tooling.md#f974d998eeccfd00
 func FuzzFormat(f *testing.F) {
 	startShortBudget(f)
+	for _, source := range formatForkOwnerTokenBoundarySources() {
+		f.Add(source)
+	}
 	formatServiceSeparatorsQuoted(f)
 	formatModuleBodySyntaxQuoted(f)
 	for _, source := range formatDottedOperationCommentSources() {

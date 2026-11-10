@@ -16,6 +16,16 @@ func TestForkOwnerForms(t *testing.T) {
 func testForkOwnerForms(t *testing.T, host TypeScriptFormatter) {
 	t.Helper()
 	for _, source := range []string{
+		"fork.in(0)A",
+		"effect function f(s, e) { return fork.in(s)e }",
+		"effect function f(s, e) { return fork.in(s)e() }",
+		"effect function f(s, e) { return fork.in(s)1 }",
+		"effect function f(s, e) { return fork.in(s)0x1 }",
+		"effect function f(s, e) { return fork.in(s)\\u0065 }",
+		"effect function f(s, café) { return fork.in(s)café }",
+		"effect function f(s, e) { return fork.in(s)typeof e }",
+		"effect function f(s, e) { return fork.in(s)(e) }",
+		"effect function f(s, e) { return fork.in(s)/* operand */e }",
 		"effect function f(s, e) { return fork.in(s) e }",
 		"effect function f(s, e) { return fork . in ( s ) e }",
 		"effect function f(s, e) { return fork\n.in(s) e }",

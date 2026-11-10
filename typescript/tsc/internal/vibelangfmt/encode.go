@@ -615,7 +615,13 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 	case parser.VibeSyntaxDo, parser.VibeSyntaxForkBlock:
 		e.expressionBlock(form, block)
 	case parser.VibeSyntaxPrefix:
-		e.add(edit{pos: form.Word.Pos(), end: form.Word.End(), text: "void", token: "void", stands: e.text(form.Word)})
+		text := "void"
+		// A named owner's closing parenthesis can touch its operand. Keep
+		// the projected keyword separate from an identifier or number.
+		if end := form.Word.End(); end < len(e.source) && (isIdentifierByte(e.source[end]) || e.source[end] == '\\') {
+			text += " "
+		}
+		e.add(edit{pos: form.Word.Pos(), end: form.Word.End(), text: text, token: "void", stands: e.text(form.Word)})
 	case parser.VibeSyntaxCatch:
 		return e.catch(form)
 	case parser.VibeSyntaxPipe:
