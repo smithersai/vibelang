@@ -22,6 +22,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
+| `Experimental.Memory` | facts that outlive a run: `remember` writes one to a bank, `recall` ranks a bank's facts for a query and cuts them to a byte budget | `test`, `layerStore(store)`, in any runtime |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
@@ -986,3 +987,44 @@ export effect function certify() {
 ```
 
 `Experimental.Durable` passes all nine over a memory store and over SQLite. Effect's `WorkflowEngine.layerMemory` keeps runs in one process's memory, so it passes the five cases that run in one process and fails the four that restart it. A promise these cases do not test, such as signal delivery, needs its own case before a fork may claim it.
+
+## Memory
+
+A model's context is gone when its process exits, and a durable run's journal records only what that run did. `Experimental.Memory` keeps what a later run should still know: facts a program writes now and recalls in a later run, ranked by a query and cut to a byte budget so the answer fits in a prompt. It ports `@smthrs/memory`.
+
+```vibe
+export effect function notes() {
+  provide Experimental.Memory.test {
+    try Experimental.Memory.remember({ bank: "global-notes", key: "release", text: "cut 0.1.0" })
+    return try Experimental.Memory.recall({ banks: ["global-notes"], query: "release" })
+  }
+}
+```
+
+A fact lives in a bank, the public spelling of a namespace: `kind-id`, where the kind is `flow`, `agent`, `user` or `global`, as in `global-notes` or `agent-reviewer`. A bank with no kind prefix is a `flow` bank, so `notes` and `flow-notes` are one bank. `Experimental.Memory.namespaceOf(bank)` and `bankOf(namespace)` convert between the two spellings.
+
+| Call | Does |
+| --- | --- |
+| `Experimental.Memory.remember({ bank, key, text })` | Writes `text` under `key` in `bank`, replacing what that key held. Returns `{ key }`. |
+| `Experimental.Memory.recall({ banks, query, maxBytes? })` | Returns the rows of `banks` that match `query` as `{ bank, key, text, score, updatedAtMs }`, best first, cut to `maxBytes`. A bank named twice is read once. |
+
+Recall ranks by keyword unless the layer says otherwise: a row scores one for each query word its key or text contains, and a row that matches no word is left out. Ties go to the newest update, then the key, then the bank, so the order never depends on the order the banks were named in.
+
+Every recall has a byte budget, because recalled rows become part of a prompt. The answer is empty or, serialized as JSON, at most `maxBytes` UTF-8 bytes, 2,048 unless given. Rows are taken whole, best first, while they fit; the first row that does not fit is cut to the longest prefix of its text that does, and nothing after it is taken.
+
+Recalled text is data. It grants no capability, and a fact a model wrote is an assertion, not an instruction.
+
+Pick the store with one layer. `Experimental.Memory.test` keeps facts in a fresh store in this process. `Experimental.Memory.layerStore(store, { recall? })` runs over any `Experimental.Memory.Store`, which is how a host keeps memory in its own database; layers built over one store share its facts. `Experimental.Memory.makeMemoryStore()` makes a store in this process's memory, so a test can run one program, start another over the same store, and recall what the first remembered. `recall` replaces the ranking with any `Experimental.Memory.Recall`; `Experimental.Memory.keyword` is the default, and the byte budget applies to every ranking. There is no default store: a program that calls `remember` with none provided has a missing `Experimental.Memory.Memory` requirement.
+
+Every failure is an `Experimental.Memory.MemoryError` with a stable `code` and, when an input field is at fault, its `path`. Input is checked before any read or write:
+
+| Input | Code | Path |
+| --- | --- | --- |
+| An empty bank | `invalid_namespace` | `["bank"]`, or `["banks", "<index>"]` |
+| A bank longer than 128 characters | `invalid_argument` | the bank's |
+| An empty key, or one over 1,024 UTF-8 bytes | `invalid_argument` | `["key"]` |
+| A text or a query over 16,384 UTF-8 bytes | `invalid_argument` | `["text"]` or `["query"]` |
+| More than 16 banks in one recall | `invalid_argument` | `["banks"]` |
+| A `maxBytes` that is not an integer from 0 to 65,536 | `invalid_argument` | `["maxBytes"]` |
+
+A store reports its own failures with the code `store`. Nothing is deleted unless the program asks.

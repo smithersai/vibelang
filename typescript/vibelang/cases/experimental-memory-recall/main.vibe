@@ -1,0 +1,37 @@
+// expect-result: {"first":[{"bank":"global-notes","key":"release","text":"cut 0.1.0","score":1}],"later":["prefer early returns"],"fresh":[],"error":["MemoryError","invalid_namespace",["banks","0"]]}
+// Experimental.Memory (VIP-66): a fact written in one program is recalled by
+// a later program over the same store, and a bad bank fails before any read.
+export effect function notes() {
+  provide Experimental.Memory.test {
+    try Experimental.Memory.remember({ bank: "global-notes", key: "release", text: "cut 0.1.0" })
+    return try Experimental.Memory.recall({ banks: ["global-notes"], query: "release" })
+  }
+}
+
+effect function learn(store: Experimental.Memory.Store) {
+  provide Experimental.Memory.layerStore(store) {
+    try Experimental.Memory.remember({ bank: "agent-reviewer", key: "style", text: "prefer early returns" })
+  }
+}
+
+effect function use(store: Experimental.Memory.Store) {
+  provide Experimental.Memory.layerStore(store) {
+    const rows = try Experimental.Memory.recall({ banks: ["agent-reviewer"], query: "returns" })
+    return rows.map((row) => row.text)
+  }
+}
+
+export effect function main() {
+  const first = try notes()
+  const store = Experimental.Memory.makeMemoryStore()
+  try learn(store)
+  const later = try use(store)
+  const fresh = try use(Experimental.Memory.makeMemoryStore())
+  const error = try Effect.flip(Effect.provide(Experimental.Memory.recall({ banks: [""], query: "x" }), Experimental.Memory.test))
+  return {
+    first: first.map(({ bank, key, text, score }) => ({ bank, key, text, score })),
+    later,
+    fresh,
+    error: [error._tag, error.code, error.path]
+  }
+}

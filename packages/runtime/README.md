@@ -329,6 +329,7 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/Dns` | Typed DNS resolution |
 | `vibelang-runtime/experimental/Durable` | A journaled engine for Effect's `Workflow` and `Activity`: crashed runs resume and skip finished steps |
 | `vibelang-runtime/experimental/Test` | Test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording, `decisions`, the same for a `DecisionModel`, `record`, which records what the file is missing, `modelServer`, the recording served over HTTP, `durable` and `restartable` engines with `crash`, `host`, a machine of fixed files and scripted commands, `journal` and `divergence` assertions over a durable run, and `conformance.engine()`, nine cases that certify a workflow engine |
+| `vibelang-runtime/experimental/Memory` | Facts that outlive a run, recalled by query within a byte budget |
 | `vibelang-runtime/experimental/Encoding` | Pure `decodeBase64Lenient`, requiring no layer |
 | `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns` layer |
 

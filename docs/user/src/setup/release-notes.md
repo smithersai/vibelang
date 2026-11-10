@@ -89,6 +89,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A leading or repeated semicolon in a `data` body compiled silently. It now reports `EK1606` for the missing variant; a single trailing separator remains allowed.
 
+- A program had no place to keep what it learned for a later run short of writing its own database code. `Experimental.Memory.remember` writes a fact to a bank, and `Experimental.Memory.recall` returns the facts that match a query, best first and cut to a byte budget, from any store a layer provides.
+
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.

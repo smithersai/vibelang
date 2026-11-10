@@ -176,6 +176,11 @@
       "import": "./dist/experimental/Durable.js",
       "default": "./dist/experimental/Durable.js"
     },
+    "./experimental/Memory": {
+      "types": "./dist/experimental/Memory.d.ts",
+      "import": "./dist/experimental/Memory.js",
+      "default": "./dist/experimental/Memory.js"
+    },
     "./experimental/Encoding": {
       "types": "./dist/experimental/Encoding.d.ts",
       "import": "./dist/experimental/Encoding.js",
