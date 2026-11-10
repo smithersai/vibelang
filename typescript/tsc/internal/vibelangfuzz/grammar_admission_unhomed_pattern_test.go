@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"context"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -55,14 +56,11 @@ func grammarPatternMarkers(file *ast.SourceFile) []grammarPatternMarker {
 	return found
 }
 
-// grammarUnhomedPatternGrammar reports an is pattern that stays behind its
-// placement marker and whose own text, read in an if condition where the
-// compiler does compile the pattern, carries a parser or binder syntax
-// error. The compiler then reports the placement error alone (EK4703, or
-// EK0705 in a parameter default or enum initializer), which covers the
-// pattern's own rejection. A pattern the compiler would accept in the if
-// condition is no member, whatever its home.
-func grammarUnhomedPatternGrammar(source string, file *ast.SourceFile) bool {
+// grammarUnhomedPatternGrammar retains keys for deferred syntax and
+// native binder errors behind a placement marker. The supported-home copy
+// distinguishes invalid syntax from strict reserved identifiers while
+// preserving property IdentifierName positions.
+func grammarUnhomedPatternGrammar(source string, file *ast.SourceFile) string {
 	for _, marker := range grammarPatternMarkers(file) {
 		if marker.code != 4703 || marker.pos < 0 || marker.end > len(source) || marker.end <= marker.pos {
 			continue
@@ -72,7 +70,7 @@ func grammarUnhomedPatternGrammar(source string, file *ast.SourceFile) bool {
 		}, "if ("+source[marker.pos:marker.end]+") {}")
 		for _, inner := range grammarPatternMarkers(homed) {
 			if inner.code != 4703 && grammarAdmissionSyntaxCode(int32(inner.code)) {
-				return true
+				return "admission:unhomed-pattern-grammar"
 			}
 		}
 		// Reserved references and bindings are rejected by the binder. Reading
@@ -81,18 +79,18 @@ func grammarUnhomedPatternGrammar(source string, file *ast.SourceFile) bool {
 		binder.BindSourceFile(homed)
 		for _, diagnostic := range homed.BindDiagnostics() {
 			if grammarAdmissionSyntaxDiagnostic(diagnostic) {
-				return true
+				return "admission:unhomed-pattern-reserved-identifier"
 			}
 		}
 	}
-	return false
+	return ""
 }
 
 // The campaign witness: a mutation put `=>` between the two rest markers of
 // the landed duplicated-rest witness.
 const grammarUnhomedPatternWitness = "for (\nvar i = 0 ; xs is [ let first , ... => ... ] ; i ++ ) { }"
 
-var grammarUnhomedPatternGaps = []string{
+var grammarUnhomedPatternGaps = append([]string{
 	grammarUnhomedPatternWitness,
 	"for (var i = 0; xs is [let first, ..., 1]; i++) {}",
 	"function g(a = xs is [let first, ..., 1]) {}",
@@ -108,6 +106,9 @@ var grammarUnhomedPatternGaps = []string{
 	"export default xs is [let first, ..., 1];",
 	"const b = match (xs is [let first, ..., 1]) { default: 0; };",
 	"effect function f(xs) { return xs is [let first, ..., 1] catch () => 1 }",
+}, grammarUnhomedPatternBindingGaps...)
+
+var grammarUnhomedPatternBindingGaps = []string{
 	// A strict-mode reserved word as a binding name: the binder's TS1214,
 	// which the placement marker hides.
 	"for ( var i\n= 0 ; xs is [ let let , ... ] ; i ++ ) { }",
@@ -118,8 +119,12 @@ var grammarUnhomedPatternGaps = []string{
 
 func TestGrammarAdmissionUnhomedPatternKeys(t *testing.T) {
 	for _, source := range grammarUnhomedPatternGaps {
-		if got := grammarAdmissionForm(source); got != "admission:unhomed-pattern-grammar" {
-			t.Errorf("key=%q, want admission:unhomed-pattern-grammar: %q", got, source)
+		want := "admission:unhomed-pattern-grammar"
+		if slices.Contains(grammarUnhomedPatternBindingGaps, source) {
+			want = "admission:unhomed-pattern-reserved-identifier"
+		}
+		if got := grammarAdmissionForm(source); got != want {
+			t.Errorf("key=%q, want %s: %q", got, want, source)
 		}
 	}
 	// The duplicated rest marker keeps its landed key.
@@ -160,9 +165,10 @@ func TestGrammarAdmissionUnhomedPatternRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarUnhomedPatternGaps {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			wantGap := slices.Contains(grammarUnhomedPatternBindingGaps, source)
+			if got := grammarAdmissionVerdict(t, w, source); got != wantGap {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("admission gap=%v want %v: %v", got, wantGap, r.Diagnostics)
 			}
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})

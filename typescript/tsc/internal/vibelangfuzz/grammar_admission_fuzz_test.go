@@ -354,6 +354,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"import-meta-callee-name", grammarImportMetaCalleeName},
 	{"retired-await-operation", grammarRetiredAwaitOperation},
 	{"unhomed-pattern-grammar-reserved-binding", grammarUnhomedPatternGaps[len(grammarUnhomedPatternGaps)-4]},
+	{"unhomed-pattern-grammar-extractor", "for (var i=0; xs is F(let first, ..., 1); i++) {}"},
 	{"module-redeclared-body", grammarModuleRedeclaredWitness},
 	{"schema-jsdoc-alias-static-field", "schema S = ?? { static id : Missing } ;"},
 	{"import-type-empty-type-arguments", grammarImportTypeArgumentForms[0]},
@@ -1408,8 +1409,8 @@ func grammarAdmissionForm(source string) string {
 	if grammarPatternRestEllipsis(source, forms) {
 		return "admission:pattern-rest-ellipsis"
 	}
-	if grammarUnhomedPatternGrammar(source, file) {
-		return "admission:unhomed-pattern-grammar"
+	if key := grammarUnhomedPatternGrammar(source, file); key != "" {
+		return key
 	}
 	if grammarModuleRedeclared(file) {
 		return "admission:module-redeclared-body"

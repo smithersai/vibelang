@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:unhomed-pattern-grammar-extractor\nfor (var i=0; xs is F(let first, ..., 1); i++) {}")

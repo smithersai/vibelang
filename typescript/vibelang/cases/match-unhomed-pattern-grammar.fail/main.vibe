@@ -1,0 +1,6 @@
+// expect: EK0707 EK4703 EK0107 EK0705
+// Pattern syntax and binding placement are independent errors.
+declare const xs: unknown;
+for (var i=0; xs is [let first, ... ...]; i++) {}
+function g(a=xs is [let first, ..., 1]) {}
+export {}

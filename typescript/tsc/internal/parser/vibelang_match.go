@@ -767,7 +767,37 @@ func (p *Parser) parseVibeLangIs(subject *ast.Node, pos int) *ast.Node {
 	p.vibelangIsBindings[marker] = info
 	// The parentheses hold the marker until a statement claims the bindings
 	// (hoistVibeLangIs); a while condition reads the marker through them.
-	holder := p.mParens(marker, marker.Loc)
+	// A placement marker must not hide errors in the pattern itself.
+	// Keep deferred grammar calls in its holder until a lexical home
+	// replaces the holder with the compiled pattern, which reports them
+	// there. A marker left unclaimed retains both independent diagnostics.
+	var errors []*ast.Node
+	var collect func(*pattern)
+	collect = func(pat *pattern) {
+		if pat == nil {
+			return
+		}
+		if pat.code != 0 {
+			errors = append(errors, p.patternErrorCall(pat.code, pat.detail, pat.anchor))
+			return
+		}
+		if pat.kind == patternBinding && pat.bindFlags == ast.NodeFlagsNone {
+			errors = append(errors, p.patternErrorCall(107, "", pat.anchor))
+		}
+		for _, item := range pat.items {
+			collect(item)
+		}
+		for _, clause := range pat.clauses {
+			collect(clause.pattern)
+		}
+		collect(pat.rest)
+	}
+	collect(info.pattern)
+	var held *ast.Node = marker
+	for i := len(errors) - 1; i >= 0; i-- {
+		held = p.mBinary(errors[i], ast.KindCommaToken, held, marker.Loc)
+	}
+	holder := p.mParens(held, marker.Loc)
 	p.vibelangIsHolders[marker] = holder
 	return holder
 }

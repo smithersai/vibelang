@@ -116,9 +116,9 @@ func TestGrammarAdmissionPatternRestEllipsisRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, source := range grammarPatternRestEllipsisGaps {
 		t.Run(source, func(t *testing.T) {
-			if !grammarAdmissionVerdict(t, w, source) {
+			if grammarAdmissionVerdict(t, w, source) {
 				r, _ := w.Compile(context.Background(), Single(source))
-				t.Fatalf("witness no longer exposes an admission gap: %v", r.Diagnostics)
+				t.Fatalf("a repeated rest marker needs a pattern syntax rejection: %v", r.Diagnostics)
 			}
 			checkGrammarAdmission(t, w, grammarAdmissionMutationKey(source), source)
 		})

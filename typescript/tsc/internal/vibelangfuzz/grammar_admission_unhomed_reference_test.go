@@ -47,12 +47,12 @@ var grammarUnhomedReferenceControls = []string{
 
 func TestGrammarAdmissionUnhomedReferenceKeys(t *testing.T) {
 	for _, source := range grammarUnhomedReservedReferences() {
-		if got := grammarAdmissionForm(source); got != "admission:unhomed-pattern-grammar" {
+		if got := grammarAdmissionForm(source); got != "admission:unhomed-pattern-reserved-identifier" {
 			t.Errorf("key=%q, want admission:unhomed-pattern-grammar: %q", got, source)
 		}
 	}
 	for _, source := range grammarUnhomedReferenceControls {
-		if got := grammarAdmissionForm(source); got == "admission:unhomed-pattern-grammar" {
+		if got := grammarAdmissionForm(source); got == "admission:unhomed-pattern-reserved-identifier" {
 			t.Errorf("control keyed as an unhomed reserved reference: %q", source)
 		}
 	}
