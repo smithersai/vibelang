@@ -16,6 +16,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Under the Bun preload, a native module whose first line is a `#!` line could not import a `.vibe` module by an extensionless path and stopped with `Cannot find module`. The preload now rewrites that module's imports like any other native module's.
 
+- A durable run kept in memory was lost when its process was killed. `Experimental.Durable.layerSql` journals runs into a SQLite or PostgreSQL database through Effect's `SqlClient`, so a program killed mid-run resumes the run on its next start and repeats only the step that had not finished.
+
 - Calling a library function named `fork`, such as `Experimental.Durable.fork({ run, seq })`, in Effect code was `EK4410`, as if it were the reserved `fork`. A member named `fork` or `join` in the `Experimental` namespace is now an ordinary property name; the prelude's `fork` and `join` keep their rule.
 
 - A program could not inspect, branch or repair a workflow run it had recorded. `Experimental.Durable.replay` folds a run's journal up to a position without running anything, `fork` starts a new run that reuses the steps before that position, and `rewind` truncates the run so its next execution repeats the later steps, refusing to cross an irreversible one.

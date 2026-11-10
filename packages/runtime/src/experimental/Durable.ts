@@ -42,9 +42,11 @@ import * as Option from "effect/Option"
 import * as Random from "effect/Random"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
+import type { SqlClient } from "effect/sql"
 import { Activity, Workflow, WorkflowEngine } from "effect/workflow"
 import * as canonical from "./internal/canonical.js"
 import * as engineInternal from "./internal/durableEngine.js"
+import * as sqlStore from "./internal/durableSql.js"
 import * as store from "./internal/durableStore.js"
 
 /**
@@ -161,6 +163,21 @@ export const layerStore = (store: Store): Layer.Layer<WorkflowEngine.WorkflowEng
         Context.add(Durable, { [TypeId]: TypeId, internals })
       ))
   )
+
+/**
+ * A journaled engine whose runs live in a SQL database, through Effect's
+ * `SqlClient`: provide one of Effect's clients, such as `SqliteClient.layer({
+ * filename })` from `@effect/sql-sqlite-node` or `@effect/sql-sqlite-bun`, or
+ * `PgClient.layer` from `@effect/sql-pg`. The tables `durable_runs`,
+ * `durable_journal` and `durable_cache` are created if missing. Runs survive
+ * the process: a program killed mid-run resumes it on its next start. A SQL
+ * failure is a defect.
+ *
+ * @category layers
+ * @since 0.0.13
+ */
+export const layerSql: Layer.Layer<WorkflowEngine.WorkflowEngine | Durable, never, SqlClient.SqlClient> = /* @__PURE__ */ Layer
+  .unwrap(/* @__PURE__ */ Effect.map(/* @__PURE__ */ Effect.orDie(sqlStore.make), layerStore))
 
 /**
  * A journaled engine over a fresh {@link makeMemoryStore}. Runs survive an
