@@ -1,0 +1,5 @@
+# The generated alias must share native duplicate binding and first-declaration lookup.
+FuzzServiceDeclarationMerge namespace-shape compiler VIP-9: the generated Shape alias does not participate in native namespace duplicate binding and lookup
+FuzzServiceDeclarationMerge corpus:namespace-shape compiler VIP-9: the generated Shape alias does not participate in native namespace duplicate binding and lookup
+FuzzServiceDeclarationMerge namespace-shape-rejects compiler VIP-9: the generated Shape alias does not participate in native namespace duplicate binding and lookup
+FuzzServiceDeclarationMerge corpus:namespace-shape-rejects compiler VIP-9: the generated Shape alias does not participate in native namespace duplicate binding and lookup

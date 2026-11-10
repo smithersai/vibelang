@@ -1,0 +1,9 @@
+// expect-result: [1, "shape"]
+export service Users {
+  static readonly key = "namespace/Users"
+  n: number
+}
+export namespace Users { export const Shape = "shape" }
+export const implementation: Users.Shape = { n: 1 }
+const query: typeof Users.Shape = "shape"
+export effect function main() { return [implementation.n, query] }

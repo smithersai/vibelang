@@ -505,8 +505,10 @@ func resolveServiceShapeName(c *checker.Checker, name *ast.Node, left *ast.Node,
 		return nil
 	}
 	if symbol.Flags()&ast.SymbolFlagsNamespace != 0 {
-		if exports := c.GetMergedSymbol(symbol).Exports(); exports != nil && exports[serviceShapeName] != nil {
-			return nil
+		if exports := c.GetMergedSymbol(symbol).Exports(); exports != nil {
+			if shape := exports[serviceShapeName]; shape != nil && c.GetSymbolFlags(shape)&ast.SymbolFlagsType != 0 {
+				return nil
+			}
 		}
 	}
 	s := servicesFor(c)
