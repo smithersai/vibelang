@@ -1,0 +1,35 @@
+// expect-result: [3,3,7,["parameter","body","body","parameter"],[5],[],"Fail","Fail"]
+const events: string[] = []
+effect function read(flag = false, value = do {
+  events.push("parameter")
+  if (flag) return 7
+  try { JSON.parse("{"); 0 } catch { 3 }
+}) {
+  events.push("body")
+  return value
+}
+effect function* values(flag = false, value = do {
+  if (flag) return
+  try { JSON.parse("{"); 0 } catch { 5 }
+}) { yield value }
+error BodyFailure
+effect function failBody(flag = false, value = do { if (flag) return 0; 1 }) {
+  throw new BodyFailure()
+}
+effect function* failProducerBody(flag = false, value = do { if (flag) return; 1 }) {
+  throw new BodyFailure()
+}
+export effect function main() {
+  const program: Effect.Effect<number> = read()
+  const first = try program
+  const second = try program
+  const early = try read(true)
+  const source: Stream.Stream<number> = values()
+  const produced = try Stream.runCollect(source)
+  const empty = try Stream.runCollect(values(true))
+  const bodyFailure = try exit(failBody())
+  const producerFailure = try exit(Stream.runCollect(failProducerBody()))
+  return [first, second, early, events, produced, empty,
+    Exit.isFailure(bodyFailure) ? bodyFailure.cause.reasons[0]?._tag : "Success",
+    Exit.isFailure(producerFailure) ? producerFailure.cause.reasons[0]?._tag : "Success"]
+}

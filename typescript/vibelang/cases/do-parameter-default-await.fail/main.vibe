@@ -1,0 +1,5 @@
+// expect: EK0102
+export effect function returning(flag=false,value=do {if(flag)return; await Promise.resolve(1)}) {return value}
+export const earlier=effect (value=await 1,last=do {return})=>value
+export class C {effect later(first=do {return},value=await Promise.resolve(1)) {return value}}
+export effect function* values(flag=false,value=do {if(flag)return; await 1}) {yield value}

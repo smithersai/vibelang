@@ -634,6 +634,7 @@ func (a *analyzer) plainHomeOf(node *ast.Node) *ast.Node {
 			if isProgramArrow(n) && !isMarkedEffect(n) {
 				continue // a throw or do expression, a match arm, or a catch expression's side
 			}
+			inParameters = inParameters || inParameterListOf(node, n)
 			flags := ast.GetFunctionFlags(n)
 			async := flags&ast.FunctionFlagsAsync != 0
 			if inParameters {

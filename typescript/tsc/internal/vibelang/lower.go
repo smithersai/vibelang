@@ -95,6 +95,15 @@ func newLowering(opts *transformers.TransformOptions, file *ast.SourceFile) *tra
 }
 
 func (tx *lowering) visit(node *ast.Node) *ast.Node {
+	// Moved defaults are stored ahead of the source body, but still run at
+	// the call. Visit their complete subtree as native parameter code;
+	// nested source callables establish their own lowering context.
+	if tx.inEffect && inParameterListOf(node, enclosingFunction(node)) {
+		saved, savedPlain := tx.inEffect, tx.plain
+		tx.inEffect, tx.plain = false, false
+		defer func() { tx.inEffect, tx.plain = saved, savedPlain }()
+	}
+
 	if cache := tx.matchPropertyCaches[node]; cache != nil {
 		return tx.visitCachedPatternRead(node, cache)
 	}

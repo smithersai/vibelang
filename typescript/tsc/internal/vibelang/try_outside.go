@@ -75,6 +75,9 @@ func effectCodeOwner(node *ast.Node) *ast.Node {
 			continue // an arrow the parser calls in place, or a catch expression's left side, has the code around it (markedForm)
 		}
 		if ast.IsFunctionLike(n) && n.Body() != nil && n.Body() == child {
+			if inParameterListOf(node, n) {
+				return nil
+			}
 			return n
 		}
 		return nil
@@ -97,7 +100,7 @@ func inEffectParameterInitialization(node *ast.Node) bool {
 		if !isFunctionBoundary(parent) || isCalledInPlace(parent) || isCatchLeftFunction(parent) {
 			continue
 		}
-		return ast.IsFunctionLike(parent) && child.Kind == ast.KindParameter && (isMarkedEffect(parent) || isProducer(parent))
+		return ast.IsFunctionLike(parent) && (child.Kind == ast.KindParameter || inParameterListOf(node, parent)) && (isMarkedEffect(parent) || isProducer(parent))
 	}
 	return false
 }

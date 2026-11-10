@@ -1,0 +1,14 @@
+// expect: EK0401
+export effect function direct(flag: boolean, value: unknown = do {
+  if (flag) return
+  throw "bad"
+}) { return value }
+export effect function foreign(flag: boolean, value: unknown = do {
+  if (flag) return
+  JSON.parse("{}")
+  1
+}) { return value }
+export effect function* producer(flag: boolean, value: unknown = do {
+  if (flag) return
+  throw "bad"
+}) { yield value }

@@ -3357,6 +3357,7 @@ typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:30:56 lambda p
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:50:73 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:70:55 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:90:61 lambda plain annotation
+typescript/vibelang/cases/do-parameter-default-await.fail/main.vibe:3:22 lambda effectFn keyword
 typescript/vibelang/cases/do-parameter-default-closure/main.vibe:12:50 lambda plain fallback
 typescript/vibelang/cases/do-parameter-default-closure/main.vibe:17:29 lambda plain fallback
 typescript/vibelang/cases/do-parameter-default-closure/main.vibe:22:43 lambda plain fallback
@@ -3369,6 +3370,8 @@ typescript/vibelang/cases/do-parameter-default-context/main.vibe:3:11 lambda pla
 typescript/vibelang/cases/do-parameter-default-context/main.vibe:3:3 lambda plain annotation
 typescript/vibelang/cases/do-parameter-default-context/main.vibe:5:35 lambda effectFn annotation
 typescript/vibelang/cases/do-parameter-default-names/main.vibe:2:26 lambda plain fallback
+typescript/vibelang/cases/do-parameter-default-plain-context/main.vibe:30:32 byname program table
+typescript/vibelang/cases/do-parameter-default-plain-context/main.vibe:31:36 byname program table
 typescript/vibelang/cases/do-parameter-default-rest/main.vibe:7:42 lambda plain fallback
 typescript/vibelang/cases/do-parameter-default-return-effect/main.vibe:9:15 lambda effectFn keyword
 typescript/vibelang/cases/do-parameter-default-return/main.vibe:11:15 lambda plain fallback

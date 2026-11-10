@@ -2,16 +2,20 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
+
+const effectAwaitParameterQuote = "Forbidden `await` in directly evaluated formal-parameter initialization of an Effect callable or producer is `EK0102`"
 
 const effectAwaitPlacementQuote = "`await`, `for await` and `await using` inside effect code are errors"
 
 func effectAwaitPlacementCited(t testing.TB) {
 	t.Helper()
+	chapterSays(t, "001-functions.md", effectAwaitParameterQuote)
 	chapter, err := os.ReadFile(SpecPath("002-running.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -46,6 +50,31 @@ func effectAwaitPlacementRules() []effectAwaitPlacementRule {
 			{"block", "const f = effect { %s; return 0 }"}, {"producer", "effect function* f() { %s; yield 0 }"},
 		} {
 			rules = append(rules, effectAwaitPlacementRule{operand.key + ":" + context.key, "import { Effect, Fiber, Deferred } from \"effect\";\n" + operand.prelude + "\n" + fmt.Sprintf(context.body, "await "+operand.value)})
+		}
+
+		if operand.key == "promise" || operand.key == "scalar" || operand.key == "any" || operand.key == "effect" {
+			for _, kind := range []string{"declaration", "arrow", "method", "producer"} {
+				for _, shape := range []string{"returning", "earlier", "later"} {
+					parameter := "flag=false,value=do {if(flag)return; await " + operand.value + "}"
+					if shape == "earlier" {
+						parameter = "value=await " + operand.value + ",flag=false,last=do {if(flag)return; 1}"
+					}
+					if shape == "later" {
+						parameter = "first=do {if(false)return; 1},value=await " + operand.value
+					}
+					body := "export effect function f(" + parameter + "){return value}"
+					if kind == "arrow" {
+						body = "export const f=effect (" + parameter + ")=>value"
+					}
+					if kind == "method" {
+						body = "export class C {effect f(" + parameter + "){return value}}"
+					}
+					if kind == "producer" {
+						body = "export effect function* f(" + parameter + "){yield value}"
+					}
+					rules = append(rules, effectAwaitPlacementRule{operand.key + ":moved-" + kind + "-" + shape, "import {Effect,Fiber,Deferred} from \"effect\";\n" + operand.prelude + "\n" + body})
+				}
+			}
 		}
 	}
 	return rules

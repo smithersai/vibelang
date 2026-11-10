@@ -166,7 +166,7 @@ Declare a generator-based Stream source with `effect function*`. Write `try` for
 
 A `for try` head must declare its element with `const` or `let`. A `var`, `using`, `await using`, or assignment head reports `EK2005`, including with `--noCheck`. To assign an existing variable, write `for try (const item of stream) { current = item }`.
 
-A producer binds parameters and evaluates defaults once at the call. Each consumption reruns the body with those same bindings. Forwarding arguments adds no array iterator observations; a source array destructuring pattern still uses its input's iterator.
+A producer binds parameters and evaluates defaults once at the call. Each consumption reruns the body with those same bindings. A `do` containing an outward `return` in a default still runs outside the producer body: plain `throw` and unwrapped potentially throwing calls report `EK0401` there, while an ordinary `try`/`catch` may catch a throwing call. Direct `await` in a default remains `EK0102`. Forwarding arguments adds no array iterator observations; a source array destructuring pattern still uses its input's iterator.
 
 A producer method retains its receiver without reading a user-modified `Function.prototype.bind`. Its body reads receiver properties when the stream is consumed, including on later consumptions.
 

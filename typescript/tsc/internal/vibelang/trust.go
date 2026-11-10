@@ -6,6 +6,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -607,6 +608,12 @@ func outsideFibers(c *checker.Checker, a *analyzer, node *ast.Node) bool {
 // inParameterListOf reports whether node stands in a parameter of fn: a
 // default, a destructuring default or a computed binding key.
 func inParameterListOf(node, fn *ast.Node) bool {
+	// Returning defaults move ahead of the source body but keep their
+	// parameter-initialization context.
+	if body := parser.VibeLangMovedDefaultsSourceBody(fn); body != nil &&
+		ast.IsNodeDescendantOf(node, fn.Body()) && !ast.IsNodeDescendantOf(node, body) && !ast.IsNodeDescendantOf(body, node) {
+		return true
+	}
 	for n := node.Parent; n != nil && n != fn; n = n.Parent {
 		if n.Kind == ast.KindParameter && n.Parent == fn {
 			return true
