@@ -1145,3 +1145,5 @@ Recovered static `import.meta` specifiers wrapped in a non-null assertion, type 
 
 
 Deferred pattern syntax errors now survive an unsupported binding home. The placement marker retains the grammar calls until a supported home compiles the pattern, where the holder is replaced so each error appears once. The `admission:pattern-rest-ellipsis` family and the missing-pattern/rest-position witnesses of `admission:unhomed-pattern-grammar` are no longer pending. Strict-mode reserved identifiers still need native binder recovery; bindings and references retain corpus under the narrower `admission:unhomed-pattern-reserved-identifier` key.
+
+The `admission:data-separators` family is no longer pending. `DataDeclaration` permits one separator between variants and one final separator. The parser now reports `EK1606` when a separator stands where a variant name belongs, including leading, repeated and separator-only bodies. Keyed corpus retains these shapes, and valid comma, line-break and trailing separators remain controls.

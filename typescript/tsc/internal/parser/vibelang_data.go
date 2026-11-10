@@ -97,9 +97,6 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 	if p.token == ast.KindOpenBraceToken {
 		p.nextToken()
 		for p.token != ast.KindCloseBraceToken && p.token != ast.KindEndOfFile {
-			if p.parseOptional(ast.KindSemicolonToken) {
-				continue
-			}
 			if variant := p.parseDataVariant(&form); variant != nil {
 				variants = append(variants, variant)
 			}
@@ -165,6 +162,7 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
 	if !tokenIsIdentifierOrKeyword(p.token) {
+		wasSeparator := p.token == ast.KindSemicolonToken || p.token == ast.KindCommaToken
 		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.scanner.TokenRange(), "EK", diagnostics.CategoryError, 1606, "A data variant needs an identifier name, such as `Ready`."))
 		p.hasParseError = true
 		p.nextToken()
@@ -176,6 +174,13 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 		case ast.KindOpenParenToken:
 			p.skipDataVariantParameters()
 		}
+		// A malformed variant keeps its one trailing separator. A
+		// separator in place of a name is itself the error, so do not
+		// absorb another separator in that case.
+		if !wasSeparator && !p.parseOptional(ast.KindCommaToken) {
+			p.parseOptional(ast.KindSemicolonToken)
+		}
+
 		return nil
 	}
 	name := p.parseIdentifierName()

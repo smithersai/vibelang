@@ -1,0 +1,10 @@
+// expect: EK1606
+// Separators belong between variants or after the last variant.
+data Leading { ; A }
+data Repeated { A; ; B }
+data Trailing { A;; }
+data NoVariant { ; }
+data Payload { A { x: number }; /* gap */ ; B }
+data Quoted { "bad"; Good }
+data QuotedTwice { "bad"; ; Good }
+export {}

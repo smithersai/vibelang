@@ -44,7 +44,9 @@ true
 
 A variant without fields is a bare name. A variant with fields lists them in braces as an `error` does, `name: Type` or `name?: Type`, and they are readonly. A new line, `;` or `,` separates variants and fields. `Delivery.Sent({ tracking })` and `Delivery.Waiting()` build values: plain records with a `_tag`, which compare and hash by their fields.
 
-Variant names are identifier names, including reserved words such as `default`. Quoted strings, numeric and `bigint` literals, and template literals report `EK1606`; write a name such as `Ready`.
+A leading separator or two separators in a row reports `EK1606`: a variant name must appear between them. One trailing separator is allowed.
+
+Variant names are identifier names, including reserved words such as `default`. Quoted strings, numeric and `bigint` literals, and template literals report `EK1606`; write a name such as `Ready`. Following variants continue to be checked after a malformed name.
 
 A parenthesized payload such as `data D { A(x: number) }` reports `EK1606`; write `A { x: number }`. Payload methods and signatures, such as `A { m(): void }`, also report `EK1606`. A function-valued field such as `A { m: () => void }` is allowed.
 
