@@ -1,0 +1,52 @@
+// expect-result: {"score":0.9,"label":"correct","pass":true,"judge":"openai:gpt-6","exitCode":0,"down":5,"code":"inconclusive","calibrated":1}
+// A decision-model judge (VIP-69 follow-up question 2): Experimental.Scorer.decide
+// grades with one typed decision on Effect's DecisionModel. The judge here is
+// VIP-71's Experimental.Test.decisions, which answers from a recording and
+// never calls a provider. The classify decision passes on "correct", so the
+// score is the probability of "correct". The recording's second call is a
+// refusal: the second run's judge gives no answer, which is inconclusive,
+// never a zero, and the gate cannot decide (exit 5).
+import recorded from "./judge.json" with { type: "json" }
+
+effect function greet(name: string) {
+  return `Hello, ${name}`
+}
+
+const verdict = Decision.classify({
+  instructions: "Does the output greet the person named in the context?",
+  criteria: { correct: "greets that person", wrong: "greets someone else or no one" },
+})
+
+const judge = Experimental.Test.decisions(recorded)
+const greets = Experimental.Scorer.decide(verdict, { model: "openai:gpt-6", layer: judge, pass: ["correct"] })
+
+const suite = Experimental.Eval.suite("greets", {
+  target: greet,
+  cases: [{ name: "ada", input: ["Ada"] }],
+  scorers: [greets],
+  gate: { min: 0.75, tolerance: 0.25 },
+})
+
+export effect function main() {
+  provide judge {
+    const first = try Experimental.Eval.run(suite)
+    const baseline = try Experimental.Eval.baseline(first)
+    const second = try Experimental.Eval.run(suite)
+    const agreement = try Experimental.Scorer.calibrate(greets, [{ input: "Grace", output: "Hello, Ada", verdict: "fail" }])
+    const good = Experimental.Eval.gate(try Experimental.Eval.compare(baseline, first), suite.gate)
+    const down = Experimental.Eval.gate(try Experimental.Eval.compare(baseline, second), suite.gate)
+    const scored = first.observations[0]
+    const failed = second.observations[0]
+    const meta = scored.kind === "score" ? scored.meta as { label: string; pass: boolean; judge: string } : { label: "", pass: false, judge: "" }
+    return {
+      score: scored.kind === "score" ? scored.score : -1,
+      label: meta.label,
+      pass: meta.pass,
+      judge: meta.judge,
+      exitCode: good.exitCode,
+      down: down.exitCode,
+      code: failed.kind === "inconclusive" ? failed.code : failed.kind,
+      calibrated: agreement.trueFail,
+    }
+  }
+}

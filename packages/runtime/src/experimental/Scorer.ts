@@ -18,10 +18,11 @@
  * refuses a suite that uses it.
  *
  * {@link rubric} asks a model, the judge, to grade an answer against written
- * criteria; {@link calibrate} measures a judge on answers whose verdict is
- * known. {@link bind} scores a durable workflow's live runs: each finished run of
- * the workflow is graded once, sampled by a rule a replay repeats, and kept
- * in a {@link ScoreStore}, in memory or in a SQL database.
+ * criteria, and {@link decide} asks Effect's `DecisionModel` one typed
+ * question; {@link calibrate} measures a judge on answers whose verdict is
+ * known. {@link bind} scores a durable workflow's live runs: each finished
+ * run of the workflow is graded once, sampled by a rule a replay repeats, and
+ * kept in a {@link ScoreStore}, in memory or in a SQL database.
  *
  * Ported from Smithers' `@smthrs/scorers` (`Scorer`, `Scorers`, `Checks`,
  * `Rubric`, `Binding`, `Sampling`, `ScoreStore`, `SqlScoreStore`).
@@ -36,6 +37,10 @@ import * as Data from "effect/Data"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as EffectResult from "effect/Result"
+import * as Schema from "effect/Schema"
+import * as Decision from "effect/ai/Decision"
+import * as DecisionModel from "effect/ai/DecisionModel"
 import * as LanguageModel from "effect/ai/LanguageModel"
 import type { SqlClient } from "effect/sql"
 import { type Workflow, WorkflowEngine } from "effect/workflow"
@@ -924,3 +929,150 @@ export const calibrate = <R>(
         }
       })
     )
+
+// ---------------------------------------------------------------------------
+// Decision-model judges
+// ---------------------------------------------------------------------------
+
+/**
+ * A decision {@link decide} grades with: Effect's `Decision.classify`,
+ * `Decision.rate` or `Decision.probability`.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export type Graded = Decision.Classify<string> | Decision.Rate<string> | Decision.Probability
+
+/**
+ * Options of {@link decide}.
+ *
+ * @category models
+ * @since 0.0.13
+ */
+export interface DecideOptions<E, R> {
+  /** The judge's seat, such as `"openai:gpt-5"`. Part of the scorer's identity. */
+  readonly model: string
+  /** The `DecisionModel` that answers for the seat. A test passes `Experimental.Test.decisions` here. */
+  readonly layer: Layer.Layer<DecisionModel.DecisionModel, E, R>
+  /** For a classify decision, the labels that pass. Required for classify, refused otherwise. */
+  readonly pass?: ReadonlyArray<string> | undefined
+  readonly name?: string | undefined
+  readonly version?: string | undefined
+}
+
+/** What the judge reads: the case input as context, the ideal behaviour when given, and the output. */
+const Judged = Schema.Struct({
+  context: Schema.String,
+  focus: Schema.optional(Schema.String),
+  output: Schema.String
+})
+
+const decisionProblem = (decision: unknown, pass: unknown): string | undefined => {
+  if (typeof decision !== "object" || decision === null) return "Scorer.decide needs a classify, rate or probability decision"
+  const { _tag, criteria, instructions } = decision as { _tag?: unknown; criteria?: unknown; instructions?: unknown }
+  if (_tag === "Locate") return "Scorer.decide grades text; a locate decision has no score"
+  if (_tag !== "Classify" && _tag !== "Rate" && _tag !== "Probability") return "Scorer.decide needs a classify, rate or probability decision"
+  if (instructions === undefined || instructions === null) return "A decision needs instructions"
+  if (_tag === "Classify") {
+    const labels = typeof criteria === "object" && criteria !== null && !Array.isArray(criteria) ? Object.keys(criteria) : []
+    if (labels.length < 2) return "A classify decision needs at least two labels"
+    if (!Array.isArray(pass) || pass.length === 0) return "A classify decision needs pass: the labels that pass"
+    for (const label of pass) {
+      if (typeof label !== "string" || !labels.includes(label)) return `pass names ${JSON.stringify(label)}, which is not one of the decision's labels`
+    }
+    if (new Set(pass).size === labels.length) return "pass must leave at least one label failing"
+    return undefined
+  }
+  if (pass !== undefined) return "pass applies only to a classify decision"
+  if (_tag === "Rate" && (!Array.isArray(criteria) || criteria.length < 2)) return "A rate decision needs at least two levels"
+  return undefined
+}
+
+const unit = (value: number): number => Math.min(1, Math.max(0, value))
+
+const definedFields = (value: unknown): unknown => {
+  try {
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined))
+      : value
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * A scorer whose judge is a decision model, Effect's `DecisionModel`: one
+ * typed decision instead of a prompt and a parsed reply. The score is the
+ * probability for `Decision.probability`, the rating mapped onto `[0, 1]`
+ * (lowest level 0, highest 1) for `Decision.rate`, and the probability of the
+ * passing labels for `Decision.classify`, whose `meta.pass` says whether
+ * the chosen label passes. The seat, the decision and `pass` are the
+ * scorer's identity. Nothing defaults to the model under test.
+ *
+ * The judge reads `{ context, focus?, output }`: the case input as context,
+ * as {@link rubric} reads it, and the output as text. A judge that cannot be
+ * reached, refuses, or gives no valid answer is inconclusive: it never
+ * passes.
+ *
+ * @category scorers
+ * @since 0.0.13
+ */
+export const decide = <E = never, R = never>(
+  decision: Graded,
+  options: DecideOptions<E, R>
+): Scorer<{ readonly input: unknown; readonly output: unknown }, R> => {
+  const settings = (typeof options === "object" && options !== null ? options : {}) as Partial<DecideOptions<E, R>>
+  const seat = settings.model
+  // The decision and its passing labels are copied and frozen at
+  // declaration: they are the scorer's identity. A field Effect's
+  // constructors leave undefined, such as a probability's `criteria`, is
+  // not part of it.
+  const declared = frozenCopy({ decision: definedFields(decision), pass: settings.pass ?? null })
+  let problem = typeof seat !== "string" || seat.trim().length === 0
+    ? "A decision scorer must name its judge's seat"
+    : declared === undefined
+    ? "A decision scorer's decision and pass must be plain data"
+    : decisionProblem(declared.decision, declared.pass ?? undefined)
+  if (problem === undefined && !Layer.isLayer(settings.layer)) problem = "A decision scorer needs the layer of its judge's DecisionModel"
+  const scorer = make({
+    name: typeof settings.name === "string" ? settings.name : "decide",
+    version: typeof settings.version === "string" ? settings.version : "1",
+    config: problem === undefined ? { model: seat, decision: declared!.decision, pass: declared!.pass } : null,
+    score: ({ input, output }: { readonly input: unknown; readonly output: unknown }) =>
+      Effect.gen(function*() {
+        const graded = declared!.decision as Graded
+        const { context, focus } = rubricText.subject(Array.isArray(input) && input.length === 1 ? input[0] : input)
+        const definition = Decision.make({ input: Judged, decisions: { verdict: graded } })
+        const response = yield* DecisionModel.decideSettled(definition, {
+          input: { context, ...(focus === undefined ? {} : { focus }), output: rubricText.asText(output) }
+        }).pipe(
+          Effect.provide(settings.layer!),
+          Effect.mapError((cause) => inconclusive(`The judge ${seat} could not answer: ${describe(cause)}`, cause))
+        )
+        const outcome = response.outcomes.verdict as EffectResult.Result<unknown, Decision.Unanswered>
+        if (EffectResult.isFailure(outcome)) {
+          return yield* Effect.fail(
+            inconclusive(`The judge ${seat} gave no answer (${outcome.failure.reason}): ${outcome.failure.description}`)
+          )
+        }
+        const answer = outcome.success
+        switch (graded._tag) {
+          case "Probability": {
+            const { probability } = answer as Decision.ProbabilityAnswer
+            return { score: unit(probability), meta: { probability, judge: seat } }
+          }
+          case "Rate": {
+            const { label, probabilities, rating } = answer as Decision.RateAnswer<string>
+            return { score: unit(rating / (graded.criteria.length - 1)), meta: { label, rating, probabilities: { ...probabilities }, judge: seat } }
+          }
+          case "Classify": {
+            const { label, probabilities } = answer as Decision.ClassifyAnswer<string>
+            const passing = declared!.pass as ReadonlyArray<string>
+            const mass = passing.reduce((total, name) => total + (probabilities[name] ?? 0), 0)
+            return { score: unit(mass), meta: { label, probabilities: { ...probabilities }, pass: passing.includes(label), judge: seat } }
+          }
+        }
+      })
+  })
+  return problem === undefined ? scorer : withProblem(scorer, problem)
+}

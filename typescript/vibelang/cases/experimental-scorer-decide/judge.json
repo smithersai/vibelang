@@ -1,0 +1,16 @@
+{
+  "calls": [
+    {
+      "request": { "state": { "context": "Ada", "output": "Hello, Ada" } },
+      "response": { "answers": { "verdict": { "_tag": "Classify", "label": "correct", "probabilities": { "correct": 0.9, "wrong": 0.1 } } } }
+    },
+    {
+      "request": { "state": { "context": "Ada", "output": "Hello, Ada" } },
+      "response": { "answers": { "verdict": { "_tag": "Refusal" } } }
+    },
+    {
+      "request": { "state": { "context": "Grace", "output": "Hello, Ada" } },
+      "response": { "answers": { "verdict": { "_tag": "Classify", "label": "wrong", "probabilities": { "correct": 0.05, "wrong": 0.95 } } } }
+    }
+  ]
+}

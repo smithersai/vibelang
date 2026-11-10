@@ -892,6 +892,44 @@ A recorded `failure`, such as a rate limit, makes that score inconclusive, so a 
 
 `Experimental.Scorer.calibrate(scorer, labelled)` measures a judge before you trust it: it grades answers whose verdict is known, `{ input?, output, verdict: "pass" | "fail" }`, and returns how often the judge agreed, with true and false passes and fails and the inconclusive count.
 
+### Decision-model judges
+
+`Experimental.Scorer.decide(decision, { model, layer, pass? })` grades with one typed decision on Effect's `DecisionModel` instead of a prompt and a parsed reply. The decision is Effect's own `Decision.probability`, `Decision.rate` or `Decision.classify`, and Effect validates the judge's answer against it.
+
+| Decision | Score | `meta` |
+| --- | --- | --- |
+| `Decision.probability` | the probability | `probability` |
+| `Decision.rate` | the rating, from 0 at the lowest level to 1 at the highest | `label`, `rating`, `probabilities` |
+| `Decision.classify` with `pass` | the probability of the labels in `pass` | `label`, `probabilities`, and `pass`, whether the chosen label is in `pass` |
+
+Every `meta` also holds `judge`, the seat. A classify decision needs `pass`, the labels that pass, and at least one label must fail; the other decisions refuse `pass`. As with `rubric`, `model` names the judge's seat, `layer` is the Effect `DecisionModel` that answers for it, and the seat, the decision and `pass` are the scorer's identity.
+
+```vibe
+// run: try Console.log(try decided())
+// A scripted judge stands in for a provider in this example.
+const judge = Layer.effect(DecisionModel.DecisionModel, DecisionModel.make({
+  decide: () => Effect.succeed({
+    answers: { verdict: { _tag: "Probability", probability: 0.75 } },
+    usage: { inputTokens: undefined, outputTokens: undefined },
+  } as any),
+}))
+
+const greets = Experimental.Scorer.decide(
+  Decision.probability({ instructions: "Does the output greet the person named in the context?" }),
+  { model: "openai:gpt-6", layer: judge }
+)
+
+export effect function decided() {
+  const result = try greets.score({ input: "Ada", output: "Hello, Ada" })
+  return result.score
+}
+// Output: 0.75
+```
+
+The judge reads `{ context, focus?, output }`: the case input as context, read as `rubric` reads it, and the output as text. The decision is named `verdict`. A judge that cannot be reached, refuses, or gives an answer Effect does not accept, such as a probability outside `[0, 1]` or probabilities that do not sum to 1, is inconclusive, and the gate exits `5`. A locate decision has no score and is refused.
+
+In a test, the judge is `Experimental.Test.decisions(recorded)` from [Testing agentic programs](#testing-agentic-programs). Each recorded call's `request.state` is what the judge reads, such as `{ "context": "Ada", "output": "Hello, Ada" }`, and its `response.answers.verdict` is the answer. As with `rubric`, pass it as `layer` and also provide it around the runs.
+
 ### Scoring live runs
 
 `Experimental.Scorer.bind(scorer, W, { sampling })` scores the live runs of a durable workflow `W`. It is a layer over the `WorkflowEngine`: when a run of `W` finishes with a result, the scorer grades `{ input: payload, output: result }`, and the score store keeps the observation under the run's execution id. A run executed again, joined or resumed records its score once. A run that fails is not scored.
