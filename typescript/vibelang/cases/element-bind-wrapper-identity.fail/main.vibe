@@ -1,0 +1,9 @@
+// expect: EK0401
+import { Effect as Original } from "effect"
+import { risky } from "./foreign.js"
+const wrapped = Original.try["bind"](undefined)
+export const nested = wrapped(() => (() => risky("sync", false))())
+export const mapper = wrapped({ try: () => 1, catch: (_error:unknown) => risky("sync", false) })
+export const explicit = wrapped(() => { throw new RangeError() })
+const fake = { bind(_this: undefined) { return (callback: () => number) => callback() } }
+export const local = fake["bind"](undefined)(() => risky("sync", false))

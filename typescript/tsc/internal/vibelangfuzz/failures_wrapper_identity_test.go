@@ -36,6 +36,13 @@ func wrapperIdentityKeys() []string {
 			}
 		}
 	}
+	for _, binding := range []string{"element-bind", "key-bind", "fake-element-bind"} {
+		for _, api := range []string{"try", "tryPromise"} {
+			for _, contract := range []string{"RangeError", "never", "builtin"} {
+				keys = append(keys, binding+":"+api+":"+contract)
+			}
+		}
+	}
 	return keys
 }
 func checkWrapperSignatureIdentity(t *testing.T, w *Workspace, key string, choice uint8) {
@@ -114,6 +121,15 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 			denied, allowed = "Original.promise<number>", "Original.tryPromise<number>"
 		}
 		declaration = "const Effect={" + api + ":choice?" + denied + ":" + allowed + "}\n"
+	case "element-bind", "key-bind", "fake-element-bind":
+		imports += "import {Effect as Original} from \"effect\"\n"
+		declaration = "const Effect={" + api + ":Original." + api + "[\"bind\"](undefined)}\n"
+		if binding == "key-bind" {
+			declaration = "const key=\"bind\" as const\nconst Effect={" + api + ":Original." + api + "[key](undefined)}\n"
+		}
+		if binding == "fake-element-bind" {
+			declaration = "const local={bind(_this:undefined){return Fake." + api + "}}\nconst Effect={" + api + ":local[\"bind\"](undefined)}\n"
+		}
 	case "constant":
 		declaration = "const Effect=Fake\n"
 	case "imported":
@@ -152,6 +168,9 @@ export declare const Admitting:{try(input:Admitted<number>):number;tryPromise(in
 	defer result.Remove()
 	want := 0
 	if (binding == "constant" || binding == "parameter" || binding == "imported" || binding == "forbidding" || binding == "sync-alias" || binding == "promise-alias" || binding == "mixed-sync-alias" || binding == "mixed-promise-alias" || binding == "spread-overwritten-unsafe" || binding == "spread-mixed") && contract != "never" {
+		want = 1
+	}
+	if binding == "fake-element-bind" && contract != "never" {
 		want = 1
 	}
 	var errors []string

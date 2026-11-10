@@ -314,8 +314,17 @@ func isAdmittingTryValue(c *checker.Checker, expression *ast.Node, properties []
 		callee := ast.SkipParentheses(expression.Expression())
 		declaration := signatureDeclaration(c, expression)
 		owner := ownerOf(declaration)
-		if len(expression.Arguments()) != 1 || !ast.IsPropertyAccessExpression(callee) ||
-			callee.Name().Text() != "bind" || owner == nil || declarationName(owner) != "bind" ||
+		method := ""
+		if ast.IsPropertyAccessExpression(callee) {
+			method = callee.Name().Text()
+		} else if ast.IsElementAccessExpression(callee) {
+			key := c.GetTypeAtLocation(callee.AsElementAccessExpression().ArgumentExpression)
+			if key != nil && checker.IsTypeUsableAsPropertyName(key) {
+				method = checker.GetPropertyNameFromType(key)
+			}
+		}
+		if len(expression.Arguments()) != 1 || method != "bind" ||
+			owner == nil || declarationName(owner) != "bind" ||
 			!isLibFile(c, ast.GetSourceFileOfNode(owner)) {
 			return false
 		}

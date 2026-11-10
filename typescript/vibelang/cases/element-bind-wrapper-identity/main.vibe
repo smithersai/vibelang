@@ -1,0 +1,21 @@
+import { Effect as Original } from "effect"
+import { risky, later, bindKey } from "./foreign.js"
+
+const key = "bind" as const
+const copied = { try: Original.try["bind"](undefined), tryPromise: Original.tryPromise["bind"](undefined) }
+const explicitLast = { try: Original.try[key](undefined), tryPromise: Original.tryPromise[key](undefined) }
+const unrelatedLast = { try: Original.try["bi\u006ed"](undefined), tryPromise: Original.tryPromise["bi\u006ed"](undefined) }
+const spreadLast = { try: Original.try[bindKey()](undefined), tryPromise: Original.tryPromise[bindKey()](undefined) }
+
+export function make(bad: boolean) {
+  return [
+    copied.try(() => risky("sync", bad)),
+    explicitLast.try(() => risky("sync", bad)),
+    unrelatedLast.try({ try: () => risky("sync", bad), catch: (error: unknown) => error }),
+    spreadLast.try({ try: () => risky("sync", bad), catch: (error: unknown) => error }),
+    copied.tryPromise(() => later("promise", bad)),
+    explicitLast.tryPromise(() => later("promise", bad)),
+    unrelatedLast.tryPromise({ try: () => later("promise", bad), catch: (error: unknown) => error }),
+    spreadLast.tryPromise({ try: () => later("promise", bad), catch: (error: unknown) => error })
+  ]
+}

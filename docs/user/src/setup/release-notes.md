@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Open and proposed VIPs could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
 
 - An instance method body or property initializer in a `service` could hide errors on its other static members. Each rejected member now reports its own `EK0902`.
+- Accessing `Effect.try` or `Effect.tryPromise` through bracket-style `bind` could reject a valid throwing callback. Native `bind` now retains the wrapper's callback contract through static element access.
+
 - Throwing calls in array callbacks such as `flatMap` and `reduceRight` were rejected inside `Effect.try`. Synchronous array callbacks now share the same throw contracts, including when nested.
 
 - Copying `Effect.try` or `Effect.tryPromise` with an object spread could reject a valid throwing thunk with `EK0401`. Copied wrappers now retain their callback contract, and replaced properties follow the replacement.

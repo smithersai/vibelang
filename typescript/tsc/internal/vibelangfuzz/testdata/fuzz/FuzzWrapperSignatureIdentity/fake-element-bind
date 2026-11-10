@@ -1,0 +1,3 @@
+go test fuzz v1
+string("fake-element-bind:try:RangeError")
+byte(0)
