@@ -461,6 +461,29 @@ test("CommonJS text in an ES module's literals keeps its extensionless .vibe imp
   assert.equal(mixed.stdout, "core 18\n")
 })
 
+// A property named exports or module is not the CommonJS binding. alchemy's
+// Runtime/Process test reads (ctx.exports as { program?: unknown }).program
+// and imports migrated modules by extensionless and "@/" paths.
+test("an exports or module property in an ES module keeps its extensionless .vibe imports", { skip }, (t) => {
+  const { bun } = project(t, {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", types: [], skipLibCheck: true, noEmit: true }, include: ["src/**/*", "main.ts"] }),
+    "src/stage.vibe": 'export const stage: string = "stage"\n',
+    "main.ts": [
+      'import { stage } from "./src/stage"',
+      "const ctx = { exports: { program: 1 } as unknown, module: { exports: 2 } }",
+      "const program = (ctx.exports as { program?: unknown }).program",
+      "const spaced = ctx . module . exports",
+      "const optional = ctx?.module?.exports",
+      'const indexed = ctx.module["exports"]',
+      "console.log(stage, program, spaced, optional, indexed)",
+      ""
+    ].join("\n")
+  })
+  const result = bun(["--preload", preload, "main.ts"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, "stage 1 2 2 2\n")
+})
+
 // opencode's plugin runtime require()s src/effect/index.ts, a native barrel
 // whose schema modules became .vibe. Bun makes a module whose onLoad returns a
 // pending Promise async, and require() of an async module throws, so the

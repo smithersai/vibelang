@@ -1,0 +1,6 @@
+{
+  "property": "bun-native-importer-text",
+  "rule": "docs/design/src/007-tooling.md: output names follow the native twin; bundler plugins use the same names",
+  "input": { "shebang": false, "context": "member", "spelling": "exports.default = 1", "extension": "ts", "entry": true, "value": 7 },
+  "reason": "alchemy Runtime/Process test: a property access ctx.exports.program made the preload treat an ES module as CommonJS and skip its import rewrite, so its extensionless imports of migrated modules failed."
+}

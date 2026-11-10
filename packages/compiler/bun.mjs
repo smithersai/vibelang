@@ -397,9 +397,11 @@ function withSourceMap({ contents, loader }, map, source) {
 // A module is CommonJS when its code names module.exports or exports, as Bun
 // reads it. The same words in a string, template, regular expression or
 // comment leave an ES module one: opencode's plugin tests embed CommonJS
-// bundle text in template literals. The text test is a prefilter; the
-// transpiler drops comments and types, and the scan below blanks literals.
-const commonJSText = /\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|\bexports\s*[.[]/
+// bundle text in template literals. A property named exports or module, as in
+// ctx.exports.program or a?.module.exports, is not the binding either. The text
+// test is a prefilter; the transpiler drops comments and types, and the scan
+// below blanks literals.
+const commonJSText = /(?<![^.]\.\s*)\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|(?<![^.]\.\s*)\bexports\s*[.[]/
 const regexKeywords = new Set(["await", "case", "delete", "do", "else", "in", "instanceof", "new", "of", "return", "throw", "typeof", "void", "yield"])
 function codeOutsideLiterals(code, loader) {
   try {

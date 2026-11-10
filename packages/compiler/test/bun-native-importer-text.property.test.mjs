@@ -13,7 +13,8 @@ import { checkProperty } from "../../../scripts/testing/property.mjs"
 // twin: Bun without the preload runs the program with leaf.ts, and the
 // preload must print the same with leaf.vibe. opencode kept modules native
 // for two such texts: a #! line (Bun 1.4.2's import scanner rejects it) and
-// CommonJS words inside an ES module's template literal.
+// CommonJS words inside an ES module's template literal. alchemy kept modules
+// native for a third: a property access such as ctx.exports.program in code.
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const preload = fileURLToPath(new URL("../bun.mjs", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
@@ -25,7 +26,7 @@ const rule = "docs/design/src/007-tooling.md: output names follow the native twi
 const regressions = new URL("./property-regressions/", import.meta.url)
 
 const spellings = ["exports.default = 1", "module.exports = { a: 1 }", 'module["exports"] = 2', "exports[key] = 3", "Object.defineProperty(exports, \"x\", {})"]
-const contexts = ["double", "single", "template", "substitution", "nested-template", "line-comment", "block-comment", "regex", "none"]
+const contexts = ["double", "single", "template", "substitution", "nested-template", "line-comment", "block-comment", "regex", "member", "optional-member", "none"]
 const input = fc.record({
   shebang: fc.boolean(),
   context: fc.constantFrom(...contexts),
@@ -46,6 +47,15 @@ function literal({ context, spelling }) {
     case "line-comment": return "const text = \"\" // " + spelling
     case "block-comment": return "/* " + spelling + " */ const text = \"\""
     case "regex": return "const text = String(/" + spelling.replace(/[\\/[\](){}.*+?^$|]/g, "\\$&") + "/)"
+    // Code, not text: a property named exports or module on an ordinary object.
+    case "member": {
+      const code = spelling.startsWith("Object.defineProperty") ? spelling.replace("(exports", "(holder.exports") : "holder." + spelling
+      return "const holder = { exports: {}, module: { exports: {} } }\nconst key = \"k\"\n" + code + "\nconst text = JSON.stringify(holder)"
+    }
+    case "optional-member": {
+      const read = spelling.startsWith("module") ? "holder?.module?.exports" : spelling.startsWith("exports[") ? "holder?.exports[\"k\"]" : "holder?.exports.default"
+      return "const holder = { exports: { default: 1, k: 2 }, module: { exports: 3 } }\nconst text = String(" + read + ")"
+    }
     case "none": return "const text = \"\""
   }
 }
@@ -107,5 +117,5 @@ test("a native importer reaches a .vibe module whatever text surrounds its impor
     arbitrary: input, numRuns: 30, regressions, artifacts: filesOf,
     diagnostics: () => diagnostics, check
   })
-  t.diagnostic("#! line, CommonJS words in strings, templates, substitutions, comments and regular expressions; .ts/.js/.mts importers; entry or imported")
+  t.diagnostic("#! line, CommonJS words in strings, templates, substitutions, comments and regular expressions, exports and module as object properties; .ts/.js/.mts importers; entry or imported")
 })

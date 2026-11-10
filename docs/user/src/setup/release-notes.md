@@ -131,6 +131,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - A `@rethrows` tag on a function type alias could let a throwing callback bypass its parameter’s contract. Only a tag on the callable signature now grants that permission.
 
+- Under the Bun preload, an ES module that read a property named `exports` or `module`, such as `ctx.exports.program`, was treated as CommonJS, so its extensionless and `paths` imports of `.vibe` modules failed with `Cannot find module`. Only the CommonJS `exports` and `module` bindings now change how the preload loads a module.
+
 - Under the Bun preload, an ES module that quoted CommonJS code such as `exports.default = 1` in a string, template literal, regular expression or comment was treated as CommonJS, so its extensionless imports of `.vibe` modules failed with `Cannot find module`. Only CommonJS code now changes how the preload loads a module.
 
 - Under the Bun preload, a native module whose first line is a `#!` line could not import a `.vibe` module by an extensionless path and stopped with `Cannot find module`. The preload now rewrites that module's imports like any other native module's.

@@ -450,8 +450,9 @@ The public and internal runtime entries retain their helper values when Bun capt
 The Bun preload resolves a missing `.ts` import to its sibling `.vibe` source
 when the import is relative, absolute or mapped by `paths` in `tsconfig.json`.
 A native launcher or test can retain a literal import after migration. Existing native files keep their priority.
-This includes a native module that starts with a `#!` line or quotes CommonJS
-code such as `exports.default` in a string, template or comment.
+This includes a native module that starts with a `#!` line, quotes CommonJS
+code such as `exports.default` in a string, template or comment, or reads a
+property named `exports` or `module`, such as `ctx.exports.program`.
 Alias lookup keeps the config's inherited paths and substitution order. This
 runtime fallback does not change the compiler's handling of written `.ts` imports.
 The command-line entry itself must name an existing file; update that path when
