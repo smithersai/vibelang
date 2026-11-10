@@ -1,0 +1,15 @@
+{
+  "property": "bun-coverage-ignore",
+  "key": "bun-coverage-sibling-module-body",
+  "rule": "**Existing tools work.** Type checkers work through `.d.vibe.ts` (VIP-27), and linters, Knip, bundlers and test runners each read `.vibe`.",
+  "input": {
+    "location": "sibling",
+    "external": [
+      "body"
+    ],
+    "ownBody": false
+  },
+  "knownFailure": true,
+  "errorPattern": "coverage reports vibelang-module:.*\\.vibe\\.[^ ,]*\\.js, which coveragePathIgnorePatterns",
+  "reason": "bun test --coverage leaves out the .ts twin of this dependency, whose body is a sibling .ts file, but reports the module body of the .vibe file as vibelang-module:<absolute path>/x.vibe.<name>.js, which no coveragePathIgnorePatterns entry matches (packages/compiler/bun.mjs serves bodies in the vibelang-module namespace). When fixed, delete these files and allow body forms in the property."
+}
