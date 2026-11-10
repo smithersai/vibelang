@@ -11,6 +11,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const ts = require("typescript"), fc = require("fast-check")
 const repo = resolve(new URL("../../../../", import.meta.url).pathname)
 const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
+const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-native-js-checker.json", import.meta.url)))
 const quote = "NodeNext " + String.fromCharCode(96) + "./user.js" + String.fromCharCode(96) + " can resolve to " + String.fromCharCode(96) + "user.vibe" + String.fromCharCode(96) + "."
 
 test("Bun-check resolver oracle remains quoted in Chapter 7", () => {
@@ -72,16 +73,24 @@ function check({ spelling, resolution, importer, depth = 0 }) {
     }
     if (spelling === ".js" && importer === ".ts") {
       const stock = ts.createProgram([join(root, migrated)], { ...parsed.options, rootDirs: options.rootDirs.map(dir => join(root, dir)) })
-      assert.ok(ts.getPreEmitDiagnostics(stock).some(d => d.code === 2307),
-        "the original stock-checker path still reproduces TS2307 even with the official hidden sidecar")
+      const stockErrors = ts.getPreEmitDiagnostics(stock).filter(d => d.category === ts.DiagnosticCategory.Error)
+      assert.deepEqual(stockErrors.map(d => d.code), nativeCodes,
+        "the native forwarding declaration must preserve the stock checker's original resolution")
     }
     if (!expectedMissing && importer === ".ts") {
       put(migrated, text(specifier).replace("output: number", "output: string"))
       const bad = spawnSync(compiler, ["--noEmit", "--pretty", "false"], { cwd: root, encoding: "utf8", timeout: 60000 })
       assert.match(bad.stdout + bad.stderr, /TS2322/)
+      if (spelling === ".js") {
+        const stock = ts.createProgram([join(root, migrated)], { ...parsed.options, rootDirs: options.rootDirs.map(dir => join(root, dir)) })
+        assert.ok(ts.getPreEmitDiagnostics(stock).some(d => d.code === 2322),
+          "the stock importer must retain the forwarded export's type")
+      }
     }
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
+
+test("native JavaScript importer checks its forwarded export in stock TypeScript", () => check(corpus.input))
 
 test("opencode original .js import and all spelling/resolution/importer cells match TypeScript", () => {
   for (const resolution of ["bundler", "node16", "nodenext"])
@@ -96,5 +105,5 @@ test("property: forced checker preserves native resolution through nested source
     spelling: fc.constantFrom(".js", ".mjs", ".cjs", "extensionless", ".vibe"),
     resolution: fc.constantFrom("bundler", "node16", "nodenext"),
     importer: fc.constantFrom(".ts", ".vibe", ".d.ts"), depth: fc.integer({ min: 0, max: 3 })
-  }), check), { seed: 46046, numRuns: 30 })
+  }), check), { examples: [[corpus.input]], seed: 46046, numRuns: 30 })
 })
