@@ -120,15 +120,16 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 	}
 	candidates = append(candidates, decl)
 
-	t := tagged(c, call, candidates, &trust{kind: trustForeign, promise: returnsPromise(c, call)})
-	// A module loader's compile reads a referenced project's sources where the
-	// project compile reads its declaration output, so it classifies them as
-	// that output: both compiles report the same calls.
-	asDeclaration := file.IsDeclarationFile || c.Program().GetRedirectForResolution(file) != nil
-	if t.kind == trustForeign && reachedThroughTrustedPackage(c, call, asDeclaration) {
-		return &trust{kind: trustEffect}
-	}
-	return t
+	// The declaring file alone decides: an import through an Effect package
+	// that re-exports another package's function, or a value a trusted call
+	// returned, grants nothing (VIP-4, amended 2026-11-02, clarified
+	// 2026-11-10). vitest's expect and assert, which @effect/vitest
+	// re-exports, carry no @throws, so they throw unknown:
+	//
+	//	import { assert, expect } from "@effect/vitest"
+	//	expect(n).toBe(1)                          // EK0403
+	//	try Effect.try(() => expect(n).toBe(1))    // ok: fails with UnknownError
+	return tagged(c, call, candidates, &trust{kind: trustForeign, promise: returnsPromise(c, call)})
 }
 
 // trustedValueFailures returns the classes that callee, a value of the
@@ -230,86 +231,6 @@ func trustedErrorsProperty(c *checker.Checker, t *checker.Type) *ast.Symbol {
 		}
 	}
 	return nil
-}
-
-// reachedThroughTrustedPackage reports whether call's callee is an export of one of
-// trusted packages (D22, D261), a member of one, or a function or method of a value
-// that a trusted call to one returned (D22), called at once or held in a const.
-// A package may re-export another package's functions, as @effect/vitest
-// re-exports vitest's assert and expect, so their declarations alone do not
-// show that they are Effect's:
-//
-//	import { assert, expect, vi } from "@effect/vitest"
-//	assert.strictEqual(n, 1)   // assert is an export of @effect/vitest
-//	expect(n).toBe(1)          // toBe is a method of what expect returned
-//	const spy = vi.spyOn(o, "f")
-//	spy.mockRestore()          // mockRestore is a method of what spyOn returned
-func reachedThroughTrustedPackage(c *checker.Checker, call *ast.Node, followReturned bool) bool {
-	callee := ast.SkipParentheses(ast.GetInvokedExpression(call))
-	for {
-		switch {
-		case ast.IsPropertyAccessExpression(callee), ast.IsElementAccessExpression(callee):
-			callee = ast.SkipParentheses(callee.Expression())
-		case ast.IsCallExpression(callee):
-			// A returned value whose own TypeScript source declares its methods
-			// keeps the source package's trust; exports and re-exports are trusted.
-			return followReturned && callTrust(c, callee).kind == trustEffect
-		case ast.IsIdentifier(callee):
-			if initializer := constCallInitializer(c, callee); initializer != nil {
-				// A const holds what its trusted call returned; a let may not.
-				return followReturned && callTrust(c, initializer).kind == trustEffect
-			}
-			return importedFromTrustedPackage(c, callee)
-		default:
-			return false
-		}
-	}
-}
-
-// constCallInitializer returns the call that initializes the const name
-// refers to, as vi.spyOn(o, "f") in const spy = vi.spyOn(o, "f"), or nil.
-func constCallInitializer(c *checker.Checker, name *ast.Node) *ast.Node {
-	symbol := c.GetSymbolAtLocation(name)
-	if symbol == nil {
-		return nil
-	}
-	decl := symbol.ValueDeclaration()
-	if decl == nil {
-		return nil
-	}
-	if !ast.IsVariableDeclaration(decl) || !ast.IsVarConst(decl) || decl.Initializer() == nil {
-		return nil
-	}
-	initializer := ast.SkipParentheses(decl.Initializer())
-	if !ast.IsCallExpression(initializer) {
-		return nil
-	}
-	return initializer
-}
-
-// importedFromTrustedPackage reports whether name is bound by an import from one of
-// trusted packages, whichever module declares what the import names.
-func importedFromTrustedPackage(c *checker.Checker, name *ast.Node) bool {
-	symbol := c.GetSymbolAtLocation(name)
-	if symbol == nil || symbol.Flags()&ast.SymbolFlagsAlias == 0 {
-		return false
-	}
-	for _, decl := range symbol.Declarations() {
-		statement := ast.FindAncestorKind(decl, ast.KindImportDeclaration)
-		if statement == nil {
-			continue
-		}
-		module := c.ResolveExternalModuleName(statement.ModuleSpecifier(), nil /*importAttributesType*/)
-		if module == nil {
-			continue
-		}
-		for _, moduleDecl := range module.Declarations() {
-			if file := ast.GetSourceFileOfNode(moduleDecl); file != nil && isTrustedPackage(c, ast.GetSourceFileOfNode(name), packageOf(c, file)) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // tagged returns the trust of a declaration among candidates that says what

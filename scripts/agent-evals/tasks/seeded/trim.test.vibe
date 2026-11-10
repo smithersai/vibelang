@@ -10,7 +10,8 @@ it.effect("trims the id before reading the Store", effect () => {
       return id
     },
   }) {
-    assert.strictEqual(load("  ada "), "ADA")
+    const actual = load("  ada ")
+    try Effect.try(() => assert.strictEqual(actual, "ADA"))
   }
-  assert.deepStrictEqual(seen, ["ada"])
+  try Effect.try(() => assert.deepStrictEqual(seen, ["ada"]))
 })

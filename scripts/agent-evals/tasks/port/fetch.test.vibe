@@ -8,8 +8,8 @@ it.effect("retries a Timeout twice", effect () => {
     if (calls < 3) throw new Timeout({ ms: 100 })
     return "ok"
   })
-  assert.strictEqual(result, "OK")
-  assert.strictEqual(calls, 3)
+  try Effect.try(() => assert.strictEqual(result, "OK"))
+  try Effect.try(() => assert.strictEqual(calls, 3))
 })
 
 it.effect("fails after the third Timeout", effect () => {
@@ -19,9 +19,9 @@ it.effect("fails after the third Timeout", effect () => {
       calls += 1
       throw new Timeout({ ms: 100 })
     })
-    assert.fail("expected Timeout")
+    try Effect.try(() => assert.fail("expected Timeout"))
   }, effect (error) => {
-    assert.instanceOf(error, Timeout)
+    try Effect.try(() => assert.instanceOf(error, Timeout))
   })
-  assert.strictEqual(calls, 3)
+  try Effect.try(() => assert.strictEqual(calls, 3))
 })

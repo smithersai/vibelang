@@ -192,29 +192,47 @@ export declare function make(): Schema`,
 	}
 }
 
-// D22 trusts the values that a trusted call returns, so a method of the spy
-// that @effect/vitest's vi.spyOn returns is trusted whether the call is chained
-// or its value is held in a const. A let can be reassigned, so it is not.
+// A re-export through an Effect package grants no thrown-type contract:
+// @effect/vitest re-exports vitest, and vitest's expect, assert and vi carry
+// no @throws, so each call of one, and of a method of what one returned,
+// throws unknown in effect code (VIP-4, amended 2026-11-02, clarified
+// 2026-11-10). @effect/vitest's own declarations, and a written @throws
+// {never} on vitest's, keep their contracts.
 // Chapter 900: EK1011 diagnostic - spec-rule: docs/design/src/900-appendices.md#9784033faf45ac67
-func TestTrustedValueHeldInConst(t *testing.T) {
+func TestReexportedForeignCallsThrowUnknown(t *testing.T) {
 	t.Parallel()
+	const vitest = `export interface Assertion<T> { toBe(expected: T): void }
+export interface Spy { mockRestore(): void }
+export declare const expect: <T>(actual: T) => Assertion<T>
+export declare const assert: { strictEqual<T>(actual: T, expected: T): void }
+export declare const vi: { spyOn(target: object, name: string): Spy }
+/** @throws {never} */
+export declare function annotated(): void
+`
 	for _, test := range []struct {
-		name, body string
-		want       int
+		name, imports, reexport, body string
+		want                          int
 	}{
-		{"chained", `vi.spyOn(target, "f").mockRestore()`, 0},
-		{"held in a const", `const spy = vi.spyOn(target, "f"); spy.mockRestore()`, 0},
-		{"held in a let", `let spy = vi.spyOn(target, "f"); spy.mockRestore()`, 1},
+		{"expect and its matcher", `import { expect } from "@effect/vitest"`, `export * from "vitest"`, `expect(1).toBe(1)`, 2},
+		{"assert member", `import { assert } from "@effect/vitest"`, `export * from "vitest"`, `assert.strictEqual(1, 1)`, 1},
+		{"namespace import", `import * as V from "@effect/vitest"`, `export * from "vitest"`, `V.expect(1).toBe(1)`, 2},
+		{"named re-export", `import { expect } from "@effect/vitest"`, `export { expect } from "vitest"`, `expect(1).toBe(1)`, 2},
+		{"renamed re-export", `import { check } from "@effect/vitest"`, `export { expect as check } from "vitest"`, `check(1).toBe(1)`, 2},
+		{"const held matcher", `import { expect } from "@effect/vitest"`, `export * from "vitest"`, `const e = expect(1); e.toBe(1)`, 2},
+		{"chained spy", `import { vi } from "@effect/vitest"`, `export { vi } from "vitest"`, `vi.spyOn(target, "f").mockRestore()`, 2},
+		{"spy held in a const", `import { vi } from "@effect/vitest"`, `export { vi } from "vitest"`, `const spy = vi.spyOn(target, "f"); spy.mockRestore()`, 2},
+		{"spy held in a let", `import { vi } from "@effect/vitest"`, `export { vi } from "vitest"`, `let spy = vi.spyOn(target, "f"); spy.mockRestore()`, 2},
+		{"written never contract", `import { annotated } from "@effect/vitest"`, `export * from "vitest"`, `annotated()`, 0},
+		{"own declaration", `import { own } from "@effect/vitest"`, `export * from "vitest"; export declare function own(): void`, `own()`, 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			files := map[string]string{
 				"/node_modules/@effect/vitest/package.json": `{"name":"@effect/vitest","types":"index.d.ts"}`,
-				"/node_modules/@effect/vitest/index.d.ts":   `export { vi } from "vitest"`,
+				"/node_modules/@effect/vitest/index.d.ts":   test.reexport,
 				"/node_modules/vitest/package.json":         `{"name":"vitest","types":"index.d.ts"}`,
-				"/node_modules/vitest/index.d.ts": `export interface Spy { mockRestore(): void }
-export declare const vi: { spyOn(target: object, name: string): Spy }`,
-				"/main.vibe":     `import { vi } from "@effect/vitest"; const target = { f: (): number => 1 }; export effect function use() { ` + test.body + ` }`,
-				"/tsconfig.json": `{"compilerOptions":{"strict":true},"files":["main.vibe"]}`,
+				"/node_modules/vitest/index.d.ts":           vitest,
+				"/main.vibe":                                test.imports + `; const target = { f: (): number => 1 }; export effect function use() { ` + test.body + ` }`,
+				"/tsconfig.json":                            `{"compilerOptions":{"strict":true},"files":["main.vibe"]}`,
 			}
 			fs := bundled.WrapFS(vfstest.FromMap(fixtureRuntime(files), tspath.CaseSensitive))
 			parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)

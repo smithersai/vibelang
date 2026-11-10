@@ -13,7 +13,7 @@ test.skipIf(!existsSync(compiler))("runs marked Vitest examples and fails test a
       "```vibe",
       'import { assert, it } from "@effect/vitest"',
       'it.live("prints the result", effect () => { try Console.log("checked") })',
-      'it.effect("checks the result", effect () => { assert.strictEqual(7, 7) })',
+      'it.effect("checks the result", effect () => { try Effect.try(() => assert.strictEqual(7, 7)) })',
       '// Output: checked',
       '```'
     ].join("\n"))
@@ -27,7 +27,7 @@ test.skipIf(!existsSync(compiler))("runs marked Vitest examples and fails test a
     writeFileSync(join(root, "clock.md"), [
       "```vibe", 'import { assert, it } from "@effect/vitest"',
       'effect function delayed() { try sleep("1 millis"); return "ready" }',
-      'it.effect("registered assertion", effect () => { assert.strictEqual(7, 7) })', "```",
+      'it.effect("registered assertion", effect () => { try Effect.try(() => assert.strictEqual(7, 7)) })', "```",
       "```vibe", '// run: try Console.log(try delayed())', 'const label = "excerpt"',
       '// Output: ready', "```"
     ].join("\n"))
@@ -50,7 +50,7 @@ test.skipIf(!existsSync(compiler))("a Vitest example's deadline excludes Vitest 
   try {
     writeFileSync(join(root, "quick.md"), [
       "```vibe", 'import { assert, it } from "@effect/vitest"',
-      'it.effect("checks quickly", effect () => { assert.strictEqual(7, 7) })', "// Output:", "```"
+      'it.effect("checks quickly", effect () => { try Effect.try(() => assert.strictEqual(7, 7)) })', "// Output:", "```"
     ].join("\n"))
     writeFileSync(join(root, "hung.md"), [
       "```vibe", 'import { it } from "@effect/vitest"',

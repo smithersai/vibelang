@@ -327,7 +327,7 @@ test.skipIf(!existsSync(compiler))("runs Effect Vitest snippets, shared assertio
     ].join("\n"))
     writeFileSync(join(root, "failure.md"), [
       "```vibe", 'import { assert, it } from "@effect/vitest"',
-      'it.effect("reports assertion failures", effect () => { assert.strictEqual(1, 2) })', '// Output:', "```"
+      'it.effect("reports assertion failures", effect () => { try Effect.try(() => assert.strictEqual(1, 2)) })', '// Output:', "```"
     ].join("\n"))
     writeFileSync(join(root, "literal.md"), [
       "```ts", "// TypeScript (.ts)", "// literal.ts", 'console.log("@effect/vitest")', '// Output: @effect/vitest', "```"
@@ -344,7 +344,9 @@ test.skipIf(!existsSync(compiler))("runs Effect Vitest snippets, shared assertio
     expect(literal.execution.stdout).toBe("@effect/vitest\n")
     const failure = report.pages.find((p: any) => p.page.endsWith("/failure.md")).blocks[0]
     expect(failure.execution.exitCode).not.toBe(0)
-    expect(failure.execution.stderr).toContain("AssertionError")
+    // vitest's assert throws, so the snippet runs it through Effect.try and
+    // the failed assertion fails the test with UnknownError.
+    expect(failure.execution.stderr).toContain("UnknownError")
     // Only this block hangs, so only its run has the short deadline.
     writeFileSync(join(root, "pending.md"), [
       "```ts", "// TypeScript (.ts)", "// pending.ts", '// run: return new Promise<void>(() => {})',

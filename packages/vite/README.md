@@ -128,13 +128,15 @@ function answer() {
 }
 
 it.effect("answers", effect () => {
-  assert.strictEqual(try answer(), 42)
+  const value = try answer()
+  try Effect.try(() => assert.strictEqual(value, 42))
 })
 ```
 
 Run `bunx vitest run`, or `bunx vitest` for watch mode; no prior emission to
-`dist/` is needed. `assert` and `expect` from `@effect/vitest` are trusted
-exports of an Effect package, so a test calls them directly. A failed
+`dist/` is needed. `assert` and `expect` are vitest's, which `@effect/vitest`
+re-exports. They carry no `@throws`, so a test runs them through `Effect.try`
+(a direct call in effect code is `EK0403`). A failed
 assertion's stack points to its `.vibe` source line. Coverage with
 `@vitest/coverage-v8` counts the code you wrote: one function for each
 function in a `.vibe` module, and none for the thunks and generators the

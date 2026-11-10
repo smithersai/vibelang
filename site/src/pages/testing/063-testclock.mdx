@@ -23,7 +23,27 @@ export default defineConfig({
 })
 ```
 
-Register `it.effect` at the top level or inside `describe`; its callback returns an Effect, as in `() => effect { … }`. `assert` and `expect` from `@effect/vitest` are Effect package exports: an assertion may throw, so wrap it in `Effect.try`, as in `try Effect.try(() => assert.strictEqual(actual, expected))` or `try Effect.try(() => expect(actual).toBe(expected))`; `sync` takes only a function that can't throw. A failed assertion fails the Effect, which fails the test, and the plugin's maps point its stack at the original `.vibe` line. Import them from `@effect/vitest`. The examples below use a local `check` helper that works the same way.
+Register `it.effect` at the top level or inside `describe`; its callback returns an Effect, as in `() => effect { … }`.
+
+## Prefer Effect's test tools
+
+Write tests with Effect's own tools: `it.effect` and `it.live` from `@effect/vitest`, its `layer` to provide services to a group of tests, and Effect's test services, such as `TestClock`. Vitest's assertions are plain functions that throw. `assert`, `expect` and `vi` carry no `@throws`, including the copies `@effect/vitest` re-exports, so each call may throw `unknown` ([Wrap synchronous operations](/getting-started/005-creating-effects#wrap-synchronous-operations)). In effect code, run an assertion through `Effect.try`; a direct call such as `expect(sum).toBe(7)` is `EK0403`, and `sync` takes only a function that can't throw:
+
+```vibe
+import { assert, expect, it } from "@effect/vitest"
+
+effect function total(prices: ReadonlyArray<number>) {
+  return prices.reduce((sum, price) => sum + price, 0)
+}
+
+it.effect("totals a cart", () => effect {
+  const sum = try total([3, 4])
+  try Effect.try(() => expect(sum).toBe(7))
+  try Effect.try(() => assert.isAbove(sum, 0))
+})
+```
+
+A failed assertion fails the Effect with `UnknownError`, which fails the test, and the plugin's maps point its stack at the original `.vibe` line. The examples below use a local `check` helper that runs `assert.isTrue` the same way.
 
 ## Controlling virtual time
 

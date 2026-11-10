@@ -1,0 +1,20 @@
+// VIP-4: vitest's expect and assert, which @effect/vitest re-exports, carry
+// no @throws, so in effect code each assertion runs through Effect.try. A
+// failed assertion then fails the Effect with UnknownError, which appears in
+// the error type, and fails the test that it.effect registered.
+import { assert, expect, it } from "@effect/vitest"
+
+export effect function same(actual: number, expected: number) {
+  try Effect.try(() => expect(actual).toBe(expected))
+  try Effect.try(() => assert.strictEqual(actual, expected))
+  return actual
+}
+
+it.effect("adds", effect () => {
+  const actual = try same(1 + 1, 2)
+  try Effect.try(() => expect(actual).toBe(2))
+})
+
+it.effect("miscounts", effect () => {
+  try Effect.try(() => expect(1 + 1).toBe(3))
+})

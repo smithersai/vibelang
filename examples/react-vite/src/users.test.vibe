@@ -3,18 +3,18 @@ import { greet, UserNotFound, Users, UsersLive } from "./users.vibe"
 
 it.effect("greets a known user", effect () => {
   const message = try Effect.provide(effect { return try greet("42") }, UsersLive)
-  assert.strictEqual(message, "Welcome, Ada Lovelace")
+  try Effect.try(() => assert.strictEqual(message, "Welcome, Ada Lovelace"))
 })
 
 it.effect("fails a lookup with UserNotFound", effect () => {
   provide UsersLive {
     const error = try Effect.flip((try Users).find("404"))
-    assert.instanceOf(error, UserNotFound)
-    assert.strictEqual(error.id, "404")
+    try Effect.try(() => assert.instanceOf(error, UserNotFound))
+    try Effect.try(() => assert.strictEqual(error.id, "404"))
   }
 })
 
 it.effect("recovers UserNotFound in greet", effect () => {
   const message = try Effect.provide(effect { return try greet("404") }, UsersLive)
-  assert.strictEqual(message, "No user 404")
+  try Effect.try(() => assert.strictEqual(message, "No user 404"))
 })

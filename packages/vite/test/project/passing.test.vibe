@@ -9,10 +9,10 @@ export effect function answer() {
 
 it.effect("runs a VibeLang Effect function", effect () => {
   const value = try answer()
-  try Effect.sync(() => assert.strictEqual(value, 42))
+  try Effect.try(() => assert.strictEqual(value, 42))
 })
 
 it.effect("keeps plain callbacks plain", effect () => {
   const values = [1, 2, 3].map(double)
-  try Effect.sync(() => assert.deepStrictEqual(values, [2, 4, 6]))
+  try Effect.try(() => assert.deepStrictEqual(values, [2, 4, 6]))
 })

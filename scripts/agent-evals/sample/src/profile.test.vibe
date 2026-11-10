@@ -17,17 +17,19 @@ function flakyStore(failures: number, calls: { mutable count: number }) {
 it.effect("loads a name", effect () => {
   const calls = { count: 0 }
   provide flakyStore(0, calls) {
-    assert.strictEqual(load("ada"), "ADA")
+    const actual = load("ada")
+    try Effect.try(() => assert.strictEqual(actual, "ADA"))
   }
-  assert.strictEqual(calls.count, 1)
+  try Effect.try(() => assert.strictEqual(calls.count, 1))
 })
 
 it.effect("retries Unavailable", effect () => {
   const calls = { count: 0 }
   provide flakyStore(2, calls) {
-    assert.strictEqual(load("ada"), "ADA")
+    const actual = load("ada")
+    try Effect.try(() => assert.strictEqual(actual, "ADA"))
   }
-  assert.strictEqual(calls.count, 3)
+  try Effect.try(() => assert.strictEqual(calls.count, 3))
 })
 
 it.effect("gives up after 3 retries", effect () => {
@@ -35,12 +37,12 @@ it.effect("gives up after 3 retries", effect () => {
   provide flakyStore(10, calls) {
     try Effect.catch(effect {
       load("ada")
-      assert.fail("expected Unavailable")
+      try Effect.try(() => assert.fail("expected Unavailable"))
     }, effect (error) => {
-      assert.instanceOf(error, Unavailable)
+      try Effect.try(() => assert.instanceOf(error, Unavailable))
     })
   }
-  assert.strictEqual(calls.count, 4)
+  try Effect.try(() => assert.strictEqual(calls.count, 4))
 })
 
 it.effect("does not retry Missing", effect () => {
@@ -48,10 +50,10 @@ it.effect("does not retry Missing", effect () => {
   provide flakyStore(0, calls) {
     try Effect.catch(effect {
       load("")
-      assert.fail("expected Missing")
+      try Effect.try(() => assert.fail("expected Missing"))
     }, effect (error) => {
-      assert.instanceOf(error, Missing)
+      try Effect.try(() => assert.instanceOf(error, Missing))
     })
   }
-  assert.strictEqual(calls.count, 1)
+  try Effect.try(() => assert.strictEqual(calls.count, 1))
 })

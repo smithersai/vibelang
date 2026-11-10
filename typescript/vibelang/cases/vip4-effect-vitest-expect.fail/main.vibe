@@ -1,0 +1,8 @@
+// expect: EK0403
+// VIP-4: vitest's expect, which @effect/vitest re-exports, carries no
+// @throws, so calling it in an it.effect body outside Effect.try is EK0403.
+import { expect, it } from "@effect/vitest"
+
+it.effect("adds", effect () => {
+  expect(1 + 1).toBe(2)
+})

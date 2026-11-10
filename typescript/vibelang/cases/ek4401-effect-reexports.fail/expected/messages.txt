@@ -1,3 +1,7 @@
+Call it through try Effect.try(() => assert.strictEqual(n, 1)), or keep its exceptions as defects with try Effect.orDie(Effect.try({ try: () => assert.strictEqual(n, 1), catch: (e) => e })).
+Call it through try Effect.try(() => expect(n)), or keep its exceptions as defects with try Effect.orDie(Effect.try({ try: () => expect(n), catch: (e) => e })).
+Call it through try Effect.try(() => expect(n).toBe(1)), or keep its exceptions as defects with try Effect.orDie(Effect.try({ try: () => expect(n).toBe(1), catch: (e) => e })).
+Call it through try Effect.try(() => EffectVitest.assert.isTrue(n > 0)), or keep its exceptions as defects with try Effect.orDie(Effect.try({ try: () => EffectVitest.assert.isTrue(n > 0), catch: (e) => e })).
 Call it through try Effect.try(() => vitestExpect(n)), or keep its exceptions as defects with try Effect.orDie(Effect.try({ try: () => vitestExpect(n), catch: (e) => e })).
 Call it through try Effect.try(() => vitestExpect(n).toBe(1)), or keep its exceptions as defects with try Effect.orDie(Effect.try({ try: () => vitestExpect(n).toBe(1), catch: (e) => e })).
 Call it through try Effect.try(() => Option.getOrThrow(account).close()), or keep its exceptions as defects with try Effect.orDie(Effect.try({ try: () => Option.getOrThrow(account).close(), catch: (e) => e })).

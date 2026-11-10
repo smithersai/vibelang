@@ -33,6 +33,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A compiler acceptance case that exceeded its run deadline could report only missing output or an exit code. It now names the deadline that killed the runner, including when its output matched.
 - An implementation written inside a service member could hide its unknown names and type errors. Those independent TypeScript errors now appear alongside the member rejection.
 - Redeclared `is` bindings promised a quick fix the editor did not offer. Their diagnostics now advise using distinct names or separate blocks, and collecting diagnostics in different projects leaves their shared source diagnostics unchanged.
+- Assertions imported from `@effect/vitest` and foreign methods on values returned by Effect calls could be treated as never throwing, so failures were missing from the error type. They now keep their declared throwing contracts; use `try Effect.try(() => expect(x).toBe(y))` to report the failure as `UnknownError`.
 
 - `await` in a plain callback inside a class `static` block could report obsolete advice about Effect code. It now reports TypeScript's native error for the written form.
 

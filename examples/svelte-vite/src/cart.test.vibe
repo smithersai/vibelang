@@ -3,23 +3,23 @@ import { InventoryLive, Inventory, OutOfStock, quote, quoteCart } from "./cart.v
 
 it.effect("quotes a product in stock", effect () => {
   const line = try Effect.provide(effect { return try quote("tea", 2) }, InventoryLive)
-  assert.strictEqual(line, "2 x Green tea: $8.00")
+  try Effect.try(() => assert.strictEqual(line, "2 x Green tea: $8.00"))
 })
 
 it.effect("fails a reservation with OutOfStock", effect () => {
   provide InventoryLive {
     const error = try Effect.flip((try Inventory).reserve("coffee", 3))
-    assert.instanceOf(error, OutOfStock)
-    assert.strictEqual(error.available, 1)
+    try Effect.try(() => assert.instanceOf(error, OutOfStock))
+    try Effect.try(() => assert.strictEqual(error.available, 1))
   }
 })
 
 it.effect("recovers OutOfStock in quote", effect () => {
   const line = try Effect.provide(effect { return try quote("coffee", 3) }, InventoryLive)
-  assert.strictEqual(line, "Only 1 coffee left")
+  try Effect.try(() => assert.strictEqual(line, "Only 1 coffee left"))
 })
 
 it.effect("quotes the cart concurrently", effect () => {
   const lines = try Effect.provide(effect { return try quoteCart() }, InventoryLive)
-  assert.deepStrictEqual(lines, ["2 x Green tea: $8.00", "Only 1 coffee left"])
+  try Effect.try(() => assert.deepStrictEqual(lines, ["2 x Green tea: $8.00", "Only 1 coffee left"]))
 })

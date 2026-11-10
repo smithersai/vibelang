@@ -205,8 +205,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Creating Sinks](../sink/060-creating.md) | 2,200 |
 | [Operations](../sink/061-operations.md) | 830 |
 | [Leftovers](../sink/062-leftovers.md) | 680 |
-| **Testing** | **1,400** |
-| [TestClock](../testing/063-testclock.md) | 1,400 |
+| **Testing** | **1,600** |
+| [TestClock](../testing/063-testclock.md) | 1,600 |
 | **Code Style** | **8,700** |
 | [Guidelines](../code-style/064-guidelines.md) | 870 |
 | [Dual APIs](../code-style/065-dual.md) | 1,000 |

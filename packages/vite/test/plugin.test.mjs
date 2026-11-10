@@ -112,7 +112,7 @@ import { value } from "./dep.vibe"
 
 it.effect("reads its dependency", effect () => {
   const seven: number = value()
-  assert.strictEqual(seven, 7)
+  try Effect.try(() => assert.strictEqual(seven, 7))
 })
 `)
   await writeFile(join(root, "dep.vibe"), "export function value(): number {\n  return 7\n}\n")
@@ -172,9 +172,12 @@ export default defineConfig({
 test("a deliberate failing assertion reports failure.test.vibe:6", async (t) => {
   const result = await runVitest(await fixture(t), true)
   assert.equal(result.code, 1, result.output)
+  // vitest's assert throws, so the test runs it through Effect.try: the
+  // failure is an UnknownError whose cause is the assertion's error.
+  assert.match(result.output, /UnknownError/)
   assert.match(result.output, /expected 41 to equal 42/)
-  assert.match(result.output, /failure\.test\.vibe:6:32/)
-  console.log("PASS expected failure: assertion stack at failure.test.vibe:6:32")
+  assert.match(result.output, /failure\.test\.vibe:6:31/)
+  console.log("PASS expected failure: assertion stack at failure.test.vibe:6:31")
 })
 
 test("a fixture goes at once after a request, with no dependency optimizer writing into it", async (t) => {
@@ -431,7 +434,10 @@ test("documented Vitest setup includes tests excluded by the app project", async
   await writeFile(join(root, "src/greet.vibe"), 'export function greet(name: string) { return `Hello, ${name}!` }\n')
   await writeFile(join(root, "src/greet.test.vibe"), `import { assert, it } from "@effect/vitest"
 import { greet } from "./greet.vibe"
-it.effect("greets", effect () => { assert.strictEqual(greet("Vite"), "Hello, Vite!") })
+it.effect("greets", effect () => {
+  const message = greet("Vite")
+  try Effect.try(() => assert.strictEqual(message, "Hello, Vite!"))
+})
 `)
   const result = await runVitest(root)
   assert.equal(result.code, 0, result.output)
@@ -456,7 +462,10 @@ export default defineConfig({
   await writeFile(join(root, "src/greet.vibe"), 'export function greet(name: string) { return `Hello, ${name}!` }\n')
   await writeFile(join(root, "src/greet.test.vibe"), `import { assert, it } from "@effect/vitest"
 import { greet } from "./greet.vibe"
-it.effect("greets", effect () => { assert.strictEqual(greet("Vite"), "Hello, Vite!") })
+it.effect("greets", effect () => {
+  const message = greet("Vite")
+  try Effect.try(() => assert.strictEqual(message, "Hello, Vite!"))
+})
 `)
   const configPath = join(root, "tsconfig.json")
   const config = JSON.parse(await readFile(configPath, "utf8"))

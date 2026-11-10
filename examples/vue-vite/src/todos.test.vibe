@@ -3,27 +3,27 @@ import { completeTodo, loadBoard, type Todo, TodoNotFound, Todos, TodosLive } fr
 
 it.effect("completes a todo", effect () => {
   const message = try Effect.provide(effect { return try completeTodo(2) }, TodosLive)
-  assert.strictEqual(message, "Completed: Write the service")
+  try Effect.try(() => assert.strictEqual(message, "Completed: Write the service"))
 })
 
 it.effect("fails with TodoNotFound for an unknown id", effect () => {
   provide TodosLive {
     const error = try Effect.flip((try Todos).complete(99))
-    assert.instanceOf(error, TodoNotFound)
-    assert.strictEqual(error.id, 99)
+    try Effect.try(() => assert.instanceOf(error, TodoNotFound))
+    try Effect.try(() => assert.strictEqual(error.id, 99))
   }
 })
 
 it.effect("recovers TodoNotFound in completeTodo", effect () => {
   const message = try Effect.provide(effect { return try completeTodo(99) }, TodosLive)
-  assert.strictEqual(message, "No todo #99")
+  try Effect.try(() => assert.strictEqual(message, "No todo #99"))
 })
 
 it.effect("loads the board after both completions", effect () => {
   const board = try Effect.provide(effect { return try loadBoard() }, TodosLive)
-  assert.deepStrictEqual(board.messages, ["Completed: Write the service", "No todo #99"])
+  try Effect.try(() => assert.deepStrictEqual(board.messages, ["Completed: Write the service", "No todo #99"]))
   // map and done are also Effect data methods. The written types say these are
   // the array's map and the todo's field (EK9101).
   const todos: ReadonlyArray<Todo> = board.todos
-  assert.deepStrictEqual(todos.map((todo: Todo) => todo.done), [true, true, false])
+  try Effect.try(() => assert.deepStrictEqual(todos.map((todo: Todo) => todo.done), [true, true, false]))
 })

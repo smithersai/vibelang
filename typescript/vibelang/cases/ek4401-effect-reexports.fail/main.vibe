@@ -1,16 +1,16 @@
 // expect: EK0403
-// D22: an export of one of Effect's packages is trusted, and so are the
-// values it returns, also when the package re-exports another package's
-// function, as @effect/vitest re-exports vitest's assert and expect. The
-// same function imported from its own package keeps EK0403, and so does the
-// program's own TypeScript reached through a value Effect returned.
+// VIP-4: a re-export grants no thrown-type contract. @effect/vitest
+// re-exports vitest, so its assert and expect are vitest's declarations,
+// which carry no @throws: each call, and each call of a method on what one
+// returned, throws unknown, as the same functions imported from vitest do,
+// and as the program's own method on a value Option.getOrThrow returned does.
 import { Option } from "effect"
 import { assert, expect } from "@effect/vitest"
 import * as EffectVitest from "@effect/vitest"
 import { expect as vitestExpect } from "vitest"
 import type { Account } from "./account.ts"
 
-export effect function trusted(n: number) {
+export effect function reexported(n: number) {
   try Effect.sleep("1 millis")
   assert.strictEqual(n, 1)
   expect(n).toBe(1)
@@ -18,7 +18,7 @@ export effect function trusted(n: number) {
   return n
 }
 
-export effect function untrusted(n: number, account: Option.Option<Account>) {
+export effect function direct(n: number, account: Option.Option<Account>) {
   try Effect.sleep("1 millis")
   vitestExpect(n).toBe(1)
   Option.getOrThrow(account).close()

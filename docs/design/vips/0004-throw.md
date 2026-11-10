@@ -31,6 +31,7 @@ effect function load(id: string, s: string, q: string) {
 
 - **Amended 2026-10-31: plain functions never throw (Will).** `throw` in effect code fails the Effect with `e`, a typed error, exactly as `Effect.fail(e)` does. `throw` in an `async` function rejects its Promise, as in TypeScript. `throw` in any other `.vibe` code, or a call known to throw there outside the `try` block of a `try`/`catch` statement, is `EK0401`. Code that throws lives in a `.ts` file or a `module` body (VIP-40). See [Plain code never throws](../src/003-failures.md#plain-code-never-throws).
 - **Amended 2026-11-02: one rule for all TypeScript (Will).** Only a callable declared in a `.ts`, `.js` or `.d.ts` file, an npm package or a `module` body has a thrown type. `@throws {T}` means it throws `T`, and no `@throws` means it throws `unknown`. Package-level special cases are gone. A `.vibe` callable throws `never`: nothing is inferred from a body, and a written `@throws` or `@rethrows` in a `.vibe` file is `EK0406`.
+- **Clarified 2026-11-10 (Will): vitest's assertions throw.** Will: "Just type vitest to be throwing an error most people should be using the effect native testing utils anyways." vitest's `expect`, its matchers, `assert` and `vi` carry no `@throws`, so they throw `unknown`, also when imported through `@effect/vitest`, which re-exports them: a re-export, or a value a call returned, grants no contract the declaration lacks. In effect code a direct `expect(n).toBe(1)` is `EK0403`; `try Effect.try(() => expect(n).toBe(1))` runs it, and a failed assertion fails the Effect with `UnknownError`. Tests should prefer Effect's own test tools: `it.effect`, `layer` and Effect's test services such as `TestClock`.
 - An `effect` function may call a function that may throw only through an Effect wrapper. The wrapped call is then run with `try` (VIP-5). The wrappers are Effect's own functions, which VIP-6 makes global: `Effect.try` for sync code, and `tryPromise` for a Promise.
   - It always wraps a Promise, whether or not the Promise can reject. Tagged-template invocations use the same selected-signature Promise/thenable result test and explicit bridge. Runtime `import()` uses the same bridge: its own synchronous thrown type is `never`, and source argument expressions keep their separate contracts and order.
   - It calls a function that does not throw directly.
@@ -70,6 +71,8 @@ effect function load(id: string, s: string, q: string) {
 > "if you are in normal vibelang you can't throw. You can throw in ts. You can throw in a ts module using module syntax. You can throw in a ts file you import into vibelang. If you throw in vibelang itself in a sync function that's an error." (2026-10-31)
 
 > "A typescript function without a @throws has an unknown error type that it throws. This is literally how typescript already works. Trusted packages does not make sense as a concept nor does it make any sense why you are even thinking about treating npm packages any different than a normal .ts file." (2026-11-02)
+
+> "Just type vitest to be throwing an error most people should be using the effect native testing utils anyways." (2026-11-10)
 
 *Updated by VIP-5 and VIP-6 (2026-10-28): wrapped calls run with `try`, and the wrappers are Effect's own functions.*
 
