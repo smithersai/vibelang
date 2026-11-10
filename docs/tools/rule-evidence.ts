@@ -35,8 +35,22 @@ export function canonical(text: string): string {
   ).join("").replace(/\s+/g, " ").replace(/[.!?]+$/, "").trim()
 }
 
+// Authority comes from the proposal's own metadata, including at each revision
+// of an acceptance transition. Missing or unknown statuses keep the gate closed.
+function nonNormativeVip(path: string, markdown: string): boolean {
+  if (!/^docs\/design\/vips\/\d+[^/]*\.md$/.test(path)) return false
+  const status = sentences("", markdown).find(s => /^\*\*Status:\*\*/.test(s.text))
+  return !!status && /^\*\*Status:\*\*\s*(?:open|proposed)(?=[\s,.]|$)/i.test(status.text)
+}
+
+function openTableVip(sentence: Sentence): string | undefined {
+  if (sentence.path !== "docs/design/vips/README.md" || sentence.section !== "open") return
+  const target = /^\|\s*\[\d+\]\((\d+[^/()]*\.md)(?:#[^()]*)?\)/.exec(sentence.text)
+  return target ? "docs/design/vips/" + target[1] : undefined
+}
+
 export function sentences(path: string, markdown: string): Sentence[] {
-  if (generated(markdown)) return []
+  if (generated(markdown) || nonNormativeVip(path, markdown)) return []
   const out: Sentence[] = []
   // This generated implementation census is metadata, never grammar authority.
   // Preserve line numbers; malformed frames and handwritten additions stay rules.
@@ -158,8 +172,15 @@ function attributionComparable(text: string): string {
 export function changedRules(changes: Change[]): Sentence[] {
   const docs = changes.filter(c => specPath(c.path))
   // Compare the whole entry, so moving a rule to another chapter is exempt.
-  const old = docs.flatMap(c => sentences(c.path, c.before))
-  const next = docs.flatMap(c => sentences(c.path, c.after))
+  const at = (side: "before" | "after") => {
+    const pages = new Map(docs.map(c => [c.path, c[side]]))
+    return docs.flatMap(c => sentences(c.path, c[side])).filter(sentence => {
+      const target = openTableVip(sentence)
+      return !target || !nonNormativeVip(target, pages.get(target) ?? "")
+    })
+  }
+  const old = at("before")
+  const next = at("after")
   const unmatched = (a: Sentence[], b: Sentence[]) => {
     const existing = new Set(b.map(s => canonical(s.text)))
     const editorial = new Set(b.map(s => attributionComparable(s.text)))
@@ -515,6 +536,21 @@ export function collectEntry(root: string, base: string, head: string): Entry {
   const patch = jj(root, ["diff", "--from", base, "--to", head, "--git", "--context", "1000000", "--",
     "docs/design/src", "docs/design/vips", "typescript/vibelang/cases", "docs/tools"])
   const changes = parseDiff(patch)
+  // README-only edits still consult the linked VIP at the compared immutable
+  // revisions, never a working-copy file or the table's status label.
+  const index = changes.find(c => c.path === "docs/design/vips/README.md")
+  if (index) {
+    const targets = new Set([index.before, index.after].flatMap(markdown =>
+      sentences(index.path, markdown).flatMap(sentence => openTableVip(sentence) ?? [])))
+    const changed = new Set(changes.map(c => c.path))
+    const files = (rev: string) => new Set(jj(root, ["file", "list", "-r", rev, "docs/design/vips"]).trim().split("\n"))
+    const beforeFiles = files(base), afterFiles = files(head)
+    for (const path of targets) if (!changed.has(path)) changes.push({
+      path,
+      before: beforeFiles.has(path) ? jj(root, ["file", "show", "-r", base, path]) : "",
+      after: afterFiles.has(path) ? jj(root, ["file", "show", "-r", head, path]) : ""
+    })
+  }
 
   return { base, head, changes }
 }

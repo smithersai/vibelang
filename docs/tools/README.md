@@ -343,6 +343,7 @@ bun test --timeout 120000 docs/tools/rule-evidence.test.ts
 
 The checker reads snapshots through `jj`, including deletions, and reports each
 changed normative sentence in `docs/design/src/` and `docs/design/vips/`.
+VIPs whose own `Status` line is `open` or `proposed` state no normative rules, including candidate models and their rows in the VIP README's `Open` table. The checker reads each linked VIP's status at the compared revision; a table label alone grants no exemption. Acceptance makes the existing proposal sentences normative. Accepted VIP amendments and `Clarified` bullets, and design chapters, retain their evidence requirements.
 A sentence with inline code, an `EK` or `TS` diagnostic code, `must`,
 `is an error`, `compiles` or `means` is normative. Code fences themselves
 are examples, not prose rules. In Appendix A, the grammar admission census is

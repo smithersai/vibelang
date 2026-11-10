@@ -511,3 +511,119 @@ test("fold-details' seventeen findings reduce to five inherited rules and no new
   const fresh = await checkEntry(entry(...fixture.changes, doc("A new `schema` rule must compile.")))
   expect(fresh.findings.map(f => f.text)).toEqual(["A new `schema` rule must compile."])
 })
+
+
+const proposalPath = "docs/design/vips/0054-platform-model-open.md"
+const proposal = (status: string, body = "Candidate A means `node` must compile. Candidate B means `node` is an error.") =>
+  "# Platform model\n\n**Status:** " + status + ", 2026-11-07.\n\n## Candidates\n\n" + body
+const proposalChange = (after: string, before = ""): Change => ({ path: proposalPath, before, after })
+const openRow = "| [54](0054-platform-model-open.md) | `node` must compile | open |"
+const indexChange = (row = openRow): Change => ({
+  path: "docs/design/vips/README.md", before: "", after: "## Open\n\n| VIP | Title | Status |\n| --- | --- | --- |\n" + row
+})
+
+for (const status of ["open", "proposed"]) test(status + " VIP candidates require no evidence", async () => {
+  const result = await checkEntry(entry(proposalChange(proposal(status)), indexChange()), okTwin)
+  expect(result.rules).toBe(0)
+  expect(result.findings).toEqual([])
+  expect([result.cases, result.twins, result.pending, result.inherited]).toEqual([0, 0, 0, 0])
+})
+
+test("accepted VIP candidates and Clarified amendments still require evidence", async () => {
+  const result = await checkEntry(entry(proposalChange(proposal("accepted"))), okTwin)
+  expect(result.rules).toBe(2)
+  expect(result.findings).toHaveLength(2)
+  for (const marker of ["Clarified", "Amended"]) {
+    const before = proposal("accepted", "An ordinary introduction.")
+    const after = before + "\n\n- **" + marker + ":** `node` must compile."
+    expect((await checkEntry(entry(proposalChange(after, before)), okTwin)).findings).toHaveLength(1)
+  }
+})
+
+test("acceptance makes unchanged candidate sentences normative", async () => {
+  for (const status of ["open", "proposed"]) {
+    const result = await checkEntry(entry(proposalChange(proposal("accepted"), proposal(status))), okTwin)
+    expect(result.rules).toBe(2)
+    expect(result.findings).toHaveLength(2)
+  }
+})
+
+test("an open-table label cannot exempt an accepted VIP or a chapter", () => {
+  expect(changedRules([proposalChange(proposal("accepted")), indexChange()])).toHaveLength(3)
+  expect(changedRules([doc(proposal("open"))])).toHaveLength(2)
+  expect(changedRules([indexChange()])).toHaveLength(1)
+  expect(changedRules([proposalChange("No status. `node` must compile.")])).toHaveLength(1)
+})
+
+test("open VIP prose cannot establish an inherited rule in a chapter", () => {
+  const text = "`node` must compile."
+  expect(changedRules([
+    proposalChange("", proposal("open", text)), doc(text)
+  ])).toEqual([{ path, line: 1, text, section: "" }])
+})
+
+test("landed open VIP-53 and its README row remain non-normative", async () => {
+  const vipPath = "docs/design/vips/0053-rename-smithersscript-open.md"
+  const after = readFileSync(resolve(import.meta.dir, "../design/vips/0053-rename-smithersscript-open.md"), "utf8")
+  const row = readFileSync(resolve(import.meta.dir, "../design/vips/README.md"), "utf8")
+    .split("\n").find(line => line.startsWith("| [53]"))!
+  const result = await checkEntry(entry({ path: vipPath, before: "", after }, indexChange(row)), okTwin)
+  expect(result.rules).toBe(0)
+  expect(result.findings).toEqual([])
+})
+
+test("fast-check: VIP authority follows its own status across candidate and amendment wording", async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.constantFrom("open", "proposed"),
+    fc.constantFrom("must compile", "is an error", "means a value"),
+    fc.constantFrom("Candidates", "Amended", "Clarified", "Accepted"),
+    fc.integer({ min: 1, max: 9999 }),
+    async (status, wording, heading, code) => {
+      const body = "## " + heading + "\n\n`form" + code + "` " + wording + "."
+      const before = proposal(status, body), after = proposal("accepted", body)
+      expect((await checkEntry(entry(proposalChange(before)), okTwin)).rules).toBe(0)
+      const accepted = await checkEntry(entry(proposalChange(after, before)), okTwin)
+      expect(accepted.rules).toBe(1)
+      expect(accepted.findings).toHaveLength(1)
+    }
+  ), { numRuns: 100 })
+})
+
+test("jj README-only changes use the linked VIP status at immutable revisions", async () => {
+  const root = mkdtempSync(join(tmpdir(), "rule-evidence-status-jj-"))
+  const jj = (...args: string[]) => {
+    const result = spawnSync("jj", args, { cwd: root, encoding: "utf8" })
+    if (result.status) throw new Error(result.stderr)
+    return result.stdout.trim()
+  }
+  const indexPath = "docs/design/vips/README.md"
+  try {
+    jj("git", "init")
+    mkdirSync(join(root, "docs/design/vips"), { recursive: true })
+    writeFileSync(join(root, proposalPath), proposal("open"))
+    jj("describe", "-m", "proposal")
+    const base = jj("log", "--no-graph", "-r", "@", "-T", "commit_id")
+    jj("new")
+    writeFileSync(join(root, indexPath), indexChange().after)
+    jj("describe", "-m", "index proposal")
+    const head = jj("log", "--no-graph", "-r", "@", "-T", "commit_id")
+    writeFileSync(join(root, proposalPath), proposal("accepted"))
+    expect((await checkEntry(collectEntry(root, base, head), okTwin)).rules).toBe(0)
+    jj("describe", "-m", "accept proposal")
+    const accepted = jj("log", "--no-graph", "-r", "@", "-T", "commit_id")
+    expect((await checkEntry(collectEntry(root, head, accepted), okTwin)).findings).toHaveLength(2)
+    jj("new")
+    writeFileSync(join(root, indexPath), indexChange(openRow.replace("must compile", "means a value")).after)
+    jj("describe", "-m", "edit stale open row")
+    const indexed = jj("log", "--no-graph", "-r", "@", "-T", "commit_id")
+    writeFileSync(join(root, proposalPath), proposal("open"))
+    expect((await checkEntry(collectEntry(root, accepted, indexed), okTwin)).findings).toHaveLength(1)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+}, 30_000)
+
+test("status text inside examples or comments cannot exempt accepted or unknown VIPs", () => {
+  for (const fake of ["<!-- **Status:** open -->", "`**Status:** open`", "```md\n**Status:** open\n```"]) {
+    expect(changedRules([proposalChange(fake + "\n\n`node` must compile.")]).length).toBeGreaterThan(0)
+    expect(changedRules([proposalChange(proposal("accepted") + "\n\n" + fake)]).length).toBeGreaterThan(0)
+  }
+})

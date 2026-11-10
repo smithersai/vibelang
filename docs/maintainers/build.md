@@ -1640,6 +1640,7 @@ independent emit, and generated direct/reexport graphs in `//:release`.
 sentence in a design chapter or VIP needs a relevant changed compiler case,
 an adjacent VibeLang / Effect TypeScript example whose declarations compile
 and match, or an exact pending witness. Deletions add no evidence obligation.
+VIPs whose own `Status` line is `open` or `proposed` state no normative rules, including candidate models and their rows in the VIP README's `Open` table. The checker reads each linked VIP's status at the compared revision; a table label alone grants no exemption. Acceptance makes the existing proposal sentences normative. Accepted VIP amendments and `Clarified` bullets, and design chapters, retain their evidence requirements.
 A reworded rule can inherit an existing test when its exact citation is
 repointed and the executable checks stay unchanged; shared diagnostic codes
 alone do not establish equivalence. `//:spec-rule-evidence-test` runs rejection,

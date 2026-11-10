@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Open and proposed VIPs could be rejected for lacking implementation examples. They now remain proposals without that requirement; accepted rules still need supporting examples.
+
 - Throwing calls in array callbacks such as `flatMap` and `reduceRight` were rejected inside `Effect.try`. Synchronous array callbacks now share the same throw contracts, including when nested.
 
 - Copying `Effect.try` or `Effect.tryPromise` with an object spread could reject a valid throwing thunk with `EK0401`. Copied wrappers now retain their callback contract, and replaced properties follow the replacement.
