@@ -606,6 +606,10 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 			break
 		}
 		e.expressionBlock(form, block)
+	case parser.VibeSyntaxSpec:
+		// spec before a function (VIP-43): async, which TypeScript allows
+		// where spec stands, matched by order as for effect.
+		e.add(edit{pos: form.Word.Pos(), end: form.Word.End(), text: "async", token: "async", stands: e.text(form.Word)})
 	case parser.VibeSyntaxShorthand:
 		e.add(edit{pos: form.Word.Pos(), end: form.Word.Pos(), text: "function ", token: "function", stands: "shorthand"})
 	case parser.VibeSyntaxDo, parser.VibeSyntaxForkBlock:

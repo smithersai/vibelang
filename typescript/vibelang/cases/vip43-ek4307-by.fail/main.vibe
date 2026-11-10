@@ -1,0 +1,5 @@
+// expect: EK4307 TS2304 TS2554
+export function same(n: number): number {
+  proof { assert(n === n, by) }
+  return n
+}

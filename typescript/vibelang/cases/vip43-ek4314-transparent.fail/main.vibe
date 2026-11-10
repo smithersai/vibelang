@@ -1,0 +1,26 @@
+// expect: EK4314
+function counted(n: number): number {
+  let total = 0
+  for (let i = 0; i < n; i++) total += 1
+  return total
+}
+
+export function run(n: number): number {
+  proof { assert(n === n) }
+  return counted(n)
+}
+
+spec function looping(n: number): number {
+  let total = 0
+  while (total < n) total += 1
+  return total
+}
+
+spec function viaProcedure(n: number): number {
+  return counted(n)
+}
+
+spec function asserting(n: number): number {
+  proof { assert(n === n) }
+  return n
+}

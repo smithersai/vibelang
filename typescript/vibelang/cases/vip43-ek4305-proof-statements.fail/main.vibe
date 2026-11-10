@@ -1,0 +1,12 @@
+// expect: EK4305
+export function counted(n: number): number {
+  proof {
+    let shadow = n
+    shadow
+  }
+  proof {
+    const unused = n + 1
+    assert(n === n)
+  }
+  return n
+}

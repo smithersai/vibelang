@@ -1,0 +1,10 @@
+// expect: EK4310
+spec function double(n: number): number { return n + n }
+
+export function running(n: number): number {
+  return double(n)
+}
+
+export const kept = double
+export type Doubler = typeof double
+export { double }

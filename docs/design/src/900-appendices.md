@@ -119,7 +119,7 @@ Timeout                       then another
 | `provide` | at a statement start when a valid [ProvideStatement](#providestatement) head parses, or bounded recovery relaxes only line breaks immediately before/after top-level provider commas; the ordinary provider grammar, no break after `provide` and same-line final `{` still apply; otherwise an identifier | [Services](005-services.md#provide-blocks) |
 | `match`, `when`, `is`, `and`, `or`, `not` | as TC39's pattern-matching proposal says; where both parses exist, prefix `not` wins syntactically over a member/extractor rooted at an identifier `not`, before early errors and without consulting bindings | [Pattern matching](004-match.md) |
 
-Accepted [VIP-43](../vips/0043-theorems.md) adds `theorem`, `spec` and `proof`, with the productions under [VIP-43 productions](#vip-43-productions). It is not implemented yet: until it is, the compiler reads the three words as identifiers.
+Accepted [VIP-43](../vips/0043-theorems.md) adds `theorem`, `spec` and `proof`, with the productions under [VIP-43 productions](#vip-43-productions). The compiler implements `spec` and `proof`; it does not implement `theorem` yet, so it reads that word as an identifier.
 
 `try` and `catch` are reserved words already; VibeLang gives them expression forms under `[+Effect]`. At the start of a statement, `try` followed by `{`, on the same line or not, is TypeScript's `try` statement, as in JavaScript.
 
@@ -998,7 +998,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 
 ### VIP-43 productions
 
-These productions belong to accepted [VIP-43](../vips/0043-theorems.md), which is not implemented yet; [Appendix F](#syntax) gives their rules. A `TheoremDeclaration` or `SpecFunctionDeclaration` starts where a TypeScript declaration can start: a `StatementListItem`, or after `export`, `export default`, `declare` or `effect` on the same line, which parse and are then rule 4302. A `ProofBlock` is recognized where a `Statement` can start and is valid only as a `StatementListItem`, as a `let` declaration is. Anywhere else the three words are identifiers.
+These productions belong to accepted [VIP-43](../vips/0043-theorems.md), whose `TheoremDeclaration` is not implemented yet; [Appendix F](#syntax) gives their rules. A `TheoremDeclaration` or `SpecFunctionDeclaration` starts where a TypeScript declaration can start: a `StatementListItem`, or after `export`, `export default`, `declare` or `effect` on the same line, which parse and are then rule 4302. A `ProofBlock` is recognized where a `Statement` can start and is valid only as a `StatementListItem`, as a `let` declaration is. Anywhere else the three words are identifiers.
 
 #### TheoremDeclaration
 
@@ -1034,7 +1034,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1082 records)</summary>
+<summary>Parser and lowering hooks (1089 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -2120,6 +2120,13 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang.go:Parser.parseVibeLangDeclaration@ambient-custom-declaration ` | ` admission:ambient-custom-declaration ` | ` - ` | ` pending ` | Chapters 003 and 006 define static ambient-custom rejection, but Appendix A's `DeclareDeclaration` omits the explicit `declare error`, `declare schema` and `declare data` forms; the parser retains the native modifiers |
 | ` parser/vibelang_match.go:Parser.parseMatchPrimaryPattern@pattern-name-object ` | ` admission:pattern-name-object ` | ` - ` | ` pending ` | VIP-7 pinned `MemberExpressionPattern` has a member or extractor call, never a member followed by `ObjectPattern`; the parser consumes the field list after a name and leaves a static error |
 | ` parser/vibelang_match.go:Parser.parseMatchValueExpression@pattern-super-element ` | ` admission:pattern-super-element ` | ` - ` | ` pending ` | VIP-7 pinned `PatternMatchingMemberExpression` starts with `super . IdentifierName`, never bare `super`; the parser also consumes `super[key]` and leaves only ordinary checking errors |
+| ` parser/vibelang_proofs.go:Parser.scanStartOfSpecFunction ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` support ` | VIP-43: spec before function, async function or effect function on the same line |
+| ` parser/vibelang_proofs.go:Parser.parseSpecFunctionDeclaration ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` admitted ` | VIP-43 spec function; async, effect, generator and overload forms parse for EK4302 |
+| ` parser/vibelang_proofs.go:Parser.joinModifiers ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` support ` | VIP-43: modifiers before and after spec form one list for EK4302 |
+| ` parser/vibelang_proofs.go:Parser.isStartOfVibeLangProofBlock ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` support ` | VIP-43: proof before { on the same line where a statement can start |
+| ` parser/vibelang_proofs.go:Parser.parseVibeLangProofBlock ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` admitted ` | VIP-43 proof block; placement is EK4304 |
+| ` parser/vibelang_proofs.go:Parser.markProofStatements ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` support ` | VIP-43 proof statements: syntax decides, in a proof block and its if statements and blocks |
+| ` parser/vibelang_proofs.go:Parser.isProofStatementCall ` | ` admission:proof-block ` | ` 900-appendices.md#ProofBlock ` | ` support ` | VIP-43 proof statements: an unparenthesized, unescaped identifier callee without type arguments or optional chaining |
 
 </details>
 
@@ -2159,7 +2166,7 @@ The rows below that cite VIP-55 belong to the experimental durable declarations 
 
 The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed. The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`. The old module-declaration codes are retired by [VIP-40](../vips/0040-module-declarations.md#diagnostics); its current rules use `EK4001`–`EK4009`.
 
-Accepted [VIP-43](../vips/0043-theorems.md) numbers the rules in [Appendix F](#details) 4301 to 4319 in its block. They are not assigned yet: each becomes a row here when the compiler registers it. Interim `EK4301` keeps its number until a coordinated renumber moves it out of the block, and the compiler registers rule 4301 only after that move.
+Accepted [VIP-43](../vips/0043-theorems.md) numbers the rules in [Appendix F](#details) 4301 to 4319 in its block. The compiler registers `EK4302`, `EK4304` to `EK4307`, `EK4309`, `EK4310` and `EK4314`, which have rows below; each other rule becomes a row here when the compiler registers it. Interim `EK4301` keeps its number until a coordinated renumber moves it out of the block, and the compiler registers rule 4301 only after that move.
 
 The additional retained compiler and migration assignments are `EK1011`, `EK2112`, `EK2113`, `EK2120`, `EK2121`, `EK9001`, `EK9002`, `EK9003` and `EK9004`. Their definitions and existing VIP authorities are listed in the table below.
 
@@ -2301,6 +2308,14 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4007` | an identifier specifier inside a module body | 40 | [Modules](001-functions.md#module-declarations) |
 | `EK4008` | `export =` or `import x = require()` in a module body Replay [example: main.vibe:4:3](../../../typescript/vibelang/cases/cov2-900b-cite-ek4008-module-cjs.fail/main.vibe). | 40 | [Modules](001-functions.md#module-declarations) |
 | `EK4009` | `import.meta` in a module body | 40 | [Modules](001-functions.md#module-declarations) |
+| `EK4302` | a modifier or overload on a spec function: `export`, `export default`, `declare`, `async`, `effect`, `*`, or an overload signature | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4304` | a `proof { }` block outside a checked function, inside another proof context, or as the whole body of an `if`, `else`, loop or labeled statement | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4305` | a statement in a proof block other than a proof statement, a `const`, an `if` or a block, or a `const` that no later statement of its block uses | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4306` | in a proof block, `assume` or `ensures` other than as a direct statement of a function's leading proof block, `decreases` other than as a direct statement of a function's or loop's leading proof block, or `invariant` other than as a direct statement of a loop's leading proof block | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4307` | a second argument to `assert`, or any other reference to `by` in a proof context | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4309` | `ensures` in a function without a written return type, with a `void` or `undefined` return type, or whose argument is not an arrow with one untyped identifier parameter and an expression body | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4310` | a reference to a spec function outside a proof context or a spec function | 43 | [Theorems and proofs](#compiler-and-language-server) |
+| `EK4314` | a spec function that is not transparent: a loop, a `let`, an assignment, a proof block with an `assert`, or a call to a procedure | 43 | [Theorems and proofs](#compiler-and-language-server) |
 | `EK3410` | retired `mutable` marker on an ordinary type member or plain-error payload; remove redundant markers or preserve payloads in a compatibility class; enforce after preserving migration | 34 | [Migration](007-tooling.md#ordinary-mutable-marker-migration) |
 | `EK3501` | retired continuation forms: `control`/`handle` syntax or resolved continuation-runtime `Control`, `resume`, `resumeWith`, `abandon` or `handle`; repair manually | 35 (open; removal only) | [Retirement](000-intro.md#retired-continuation-forms) |
 | `EK4402` | interim warning inside formerly accepted boundary callbacks; error otherwise: a value import of a Node builtin, with or without `node:` (`node:fs`, `fs`), a string-literal `import(…)` of one, or a statically named value that [reaches the platform](005-services.md#reaches-the-platform): a global declared by `lib.dom`, `lib.webworker`, `lib.scripthost` or `@types/node` and not by `lib.es*` or `lib.decorators*`, minus the allowlist, or a banned member of an allowlisted global, in a `.vibe` file Replay [example: main.vibe:4:74](../../../typescript/vibelang/cases/cov-ch002b-running-import-forbidden-builtin.fail/main.vibe). Category variants: `error`, `warning`. A legacy hatch callback warns while the preserving platform migration remains incomplete; other platform uses keep their errors. `EK4402` is an error code that sometimes prints as a warning, so `vibe.severities` can't configure it (`EK3006`). | 33 | [Services](005-services.md#the-platform-standard-library) |
@@ -2692,9 +2707,9 @@ export declare function decodeUnknownSync<T>(s: Schema.Decoder<T>): {
 
 ## Appendix F. Theorems and proofs (VIP-43)
 
-**Not in the alpha.** VIP-43 is accepted, but the alpha does not support it and 0.0.13 implements none of it: the vibelang prove command this appendix describes does not exist yet. Its rules become part of the language when the compiler implements them.
+**Outside the supported alpha.** VIP-43 remains outside the alpha's core supported set.
 
-Source: [VIP-43](../vips/0043-theorems.md), accepted 2026-11-07 and not implemented yet. The rules below are part of the language; until the compiler implements them, it reads `theorem`, `spec` and `proof` as identifiers and the proof statement names as ordinary names, it reports none of the codes in [Details](#details), it has no `vibelang prove` command, and a `vibe.proofDir` key in a config is an unknown `vibe` option, `EK3007`.
+Source: [VIP-43](../vips/0043-theorems.md), accepted 2026-11-07. The rules below are part of the language. The compiler implements spec functions and proof blocks, and reports `EK4302`, `EK4304` to `EK4307`, `EK4309`, `EK4310` and `EK4314` for them. It does not implement theorems yet: it reads `theorem` as an identifier, and it does not yet report rules 4301, 4303, 4308 and 4311 to 4313.
 
 A theorem states a fact about plain functions for every input in the [model](#the-trust-boundary). `vibelang prove` proves it by lowering the source to [LemmaScript](https://github.com/midspiral/LemmaScript)'s annotated TypeScript and running LemmaScript's `lsc` with the Dafny verifier. All proof syntax erases: compiled JavaScript and declarations are the same as for the program without it.
 
@@ -2736,7 +2751,7 @@ Proofs are about integers. LemmaScript has an integer model of `number` and no f
 | `decreases(E)` | A termination measure for a loop or a recursive function | [Proof blocks](#proof-blocks) |
 | `declare function f(…): R` | A pure trusted function: proofs never check it and assume only that equal arguments give equal results | [Trusted functions](#trusted-functions) |
 
-The numbers in parentheses below, such as (4304), are the rules in [Details](#details). The VibeLang examples use `text` blocks: VIP-43 is not implemented yet, so no checker compiles them.
+The numbers in parentheses below, such as (4304), are the rules in [Details](#details). The VibeLang examples use `text` blocks, because the compiler does not implement theorems yet.
 
 ### Syntax
 
@@ -3284,26 +3299,26 @@ VIP-34 gives VIP-43 the block `EK43xx`, and its rules are numbered from 4301. Ea
 | Reserved code | Trigger | Fix |
 | --- | --- | --- |
 | `4301` | A `theorem` or `spec function` that is not a statement of a module's top level: in a block, a function body, a namespace or a `declare` context | Move it to the module's top level |
-| `4302` | A modifier or overload on a theorem or spec function: `export`, `export default`, `declare`, `async`, `effect`, `*`, or an overload signature | Remove it; theorems and spec functions are module-local |
+| `EK4302` | A modifier or overload on a theorem or spec function: `export`, `export default`, `declare`, `async`, `effect`, `*`, or an overload signature | Remove it; theorems and spec functions are module-local |
 | `4303` | A theorem parameter without a type annotation, an optional, rest, defaulted, destructured or `this` parameter, or a theorem return type | Give each parameter a plain name and a type |
-| `4304` | A `proof { }` block outside a checked function, inside another proof context, or as the whole body of an `if`, `else`, loop or labeled statement | Move the facts into a theorem, into a module-level plain function, or into a braced block |
-| `4305` | A statement in a theorem body or proof block outside the allowed forms: `let`, a loop, `return`, `throw`, a nested function, an expression statement other than a proof statement, or `assume` after another statement; a `const` that no later statement uses; a theorem with no `assert` | Use `const`, `if` and proof statements, and state at least one assertion |
-| `4306` | A proof statement outside its allowed place: `ensures`, `invariant` or `decreases` in a theorem; in a proof block, `assume` or `ensures` other than as a direct statement of a function's leading proof block, `decreases` other than as a direct statement of a function's or loop's leading proof block, and `invariant` other than as a direct statement of a loop's leading proof block | Move it to the leading proof block of the function or loop it describes |
-| `4307` | A second argument to `assert`, or any other reference to `by` in a proof context | Remove it; write proof steps in the proof file |
+| `EK4304` | A `proof { }` block outside a checked function, inside another proof context, or as the whole body of an `if`, `else`, loop or labeled statement | Move the facts into a theorem, into a module-level plain function, or into a braced block |
+| `EK4305` | A statement in a theorem body or proof block outside the allowed forms: `let`, a loop, `return`, `throw`, a nested function, an expression statement other than a proof statement, or `assume` after another statement; a `const` that no later statement uses; a theorem with no `assert` | Use `const`, `if` and proof statements, and state at least one assertion |
+| `EK4306` | A proof statement outside its allowed place: `ensures`, `invariant` or `decreases` in a theorem; in a proof block, `assume` or `ensures` other than as a direct statement of a function's leading proof block, `decreases` other than as a direct statement of a function's or loop's leading proof block, and `invariant` other than as a direct statement of a loop's leading proof block | Move it to the leading proof block of the function or loop it describes |
+| `EK4307` | A second argument to `assert`, or any other reference to `by` in a proof context | Remove it; write proof steps in the proof file |
 | `4308` | A call to a procedure, an impure trusted function included, in a verification expression anywhere except the initializer of a `const` that is a direct statement of a theorem body: in a hypothesis, an assertion, a contract, an invariant, a measure, an `if` condition, or a `const` in a proof block or nested in a theorem's `if` or block | Move the call into a `const` at the theorem body's top level |
-| `4309` | `ensures` in a function without a written return type, with a `void` or `undefined` return type, or whose argument is not an arrow with one untyped identifier parameter and an expression body | Write the return type and `ensures((r) => …)` |
-| `4310` | A reference to a theorem, in an expression, a type query or an export specifier, or a reference to a spec function outside a proof context or a spec function | Call a plain function, or move the use into a proof |
+| `EK4309` | `ensures` in a function without a written return type, with a `void` or `undefined` return type, or whose argument is not an arrow with one untyped identifier parameter and an expression body | Write the return type and `ensures((r) => …)` |
+| `EK4310` | A reference to a theorem, in an expression, a type query or an export specifier, or a reference to a spec function outside a proof context or a spec function | Call a plain function, or move the use into a proof |
 | `4311` | An expression in a verification position outside the verification expression forms, the [number rule](#numbers) included | Rewrite it with the listed forms, or move the computation into a spec function |
 | `4312` | `==` or `!=` in verified code, or a comparison of a value whose type is not primitive: an operand of `===` or `!==`, an array element type for `includes`, `indexOf` or `lastIndexOf`, a `Set` element type or a `Map` key type | Compare primitive values, or write a spec function that compares the parts |
 | `4313` | Verified code outside VibeLang's layer of the verified subset: a VibeLang form, a class or `new`, mutation, a numeric form outside the number rule, a cast, `null`, a call of a non-callable target, an excluded reached type such as a function type, a reached variable other than a primitive `.vibe` constant, or a mutable collection type in a trusted function's signature | Keep reached code to plain TypeScript in the subset, write `with` or a spread instead of mutating, or make the callee trusted |
-| `4314` | A spec function that is not transparent: a loop, a `let`, an assignment, an `assert`, or a call to a procedure | Write it with expressions and recursion |
+| `EK4314` | A spec function that is not transparent: a loop, a `let`, an assignment, an `assert`, or a call to a procedure | Write it with expressions and recursion |
 
 #### `vibelang prove`
 
 | Reserved code | Trigger | Fix |
 | --- | --- | --- |
-| `4315` | An obligation Dafny could not prove: an assertion, postcondition, precondition at a call, invariant on entry or maintenance, termination, a well-formedness condition such as an index in range, or a verifier time-out | Strengthen the hypotheses, state a missing `ensures` or invariant, or add proof steps to `P.dfy` |
-| `4316` | The proof environment is unusable: `lemmascript` is not installed or is not the pinned 0.6.6; `dafny` does not run from `PATH` or is not the pinned 4.11.0; the proof directory holds a program file, or files `vibelang prove` did not write; or a module with a root is outside the selected config's directory | Install `lemmascript@0.6.6` as a development dependency and Dafny 4.11.0; exclude the proof directory in the config, or choose another `vibe.proofDir` |
-| `4317` | LemmaScript rejected the lowering file, Dafny reported a resolution or type error in its output, or the audit found an assertion or postcondition missing from its output, or a Dafny `function` for a procedure or a `method` for a transparent function | Keep reached code inside LemmaScript's subset; a lost obligation or a different classification is a LemmaScript defect to report upstream |
-| `4318` | `P.dfy` changes a generated line, its merge with the new generation conflicts, or it adds an assumption that `dafny audit` reports | Restore the generated lines, resolve the merge from `P.dfy.merged`, or prove the assumed fact |
-| `4319` | With `--strict`, a call in verified code to a function from another file, which would otherwise be an impure trusted function | Prove the function in a `.vibe` module, or write a `declare function` and accept the trust explicitly |
+| `EK4315` | An obligation Dafny could not prove: an assertion, postcondition, precondition at a call, invariant on entry or maintenance, termination, a well-formedness condition such as an index in range, or a verifier time-out | Strengthen the hypotheses, state a missing `ensures` or invariant, or add proof steps to `P.dfy` |
+| `EK4316` | The proof environment is unusable: `lemmascript` is not installed or is not the pinned 0.6.6; `dafny` does not run from `PATH` or is not the pinned 4.11.0; the proof directory holds a program file, or files `vibelang prove` did not write; or a module with a root is outside the selected config's directory | Install `lemmascript@0.6.6` as a development dependency and Dafny 4.11.0; exclude the proof directory in the config, or choose another `vibe.proofDir` |
+| `EK4317` | LemmaScript rejected the lowering file, Dafny reported a resolution or type error in its output, or the audit found an assertion or postcondition missing from its output, or a Dafny `function` for a procedure or a `method` for a transparent function | Keep reached code inside LemmaScript's subset; a lost obligation or a different classification is a LemmaScript defect to report upstream |
+| `EK4318` | `P.dfy` changes a generated line, its merge with the new generation conflicts, or it adds an assumption that `dafny audit` reports | Restore the generated lines, resolve the merge from `P.dfy.merged`, or prove the assumed fact |
+| `EK4319` | With `--strict`, a call in verified code to a function from another file, which would otherwise be an impure trusted function | Prove the function in a `.vibe` module, or write a `declare function` and accept the trust explicitly |

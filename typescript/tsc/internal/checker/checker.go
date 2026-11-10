@@ -8793,6 +8793,10 @@ func (c *Checker) resolveCallExpression(node *ast.Node, candidatesOutArray *[]*S
 	if ast.IsImportCall(node) {
 		return c.resolveUntypedCall(node)
 	}
+	if signature := c.proofStatementSignature(node); signature != nil {
+		// A proof statement, such as assume(P) in proof { … } (VIP-43): its callee is syntax, not a binding (extensions_proofs.go).
+		return c.resolveCall(node, []*Signature{signature}, candidatesOutArray, checkMode, SignatureFlagsNone, nil)
+	}
 	var callChainFlags SignatureFlags
 	funcType := c.checkExpression(node.Expression())
 	if isCallChain(node) {
@@ -11418,6 +11422,9 @@ func (c *Checker) checkSyntheticExpression(node *ast.Node) *Type {
 func (c *Checker) checkIdentifier(node *ast.Node, checkMode CheckMode) *Type {
 	if ast.IsThisInTypeQuery(node) {
 		return c.checkThisExpression(node)
+	}
+	if t := c.proofStatementCalleeType(node); t != nil {
+		return t // VibeLang proof statement (extensions_proofs.go)
 	}
 	symbol := c.getResolvedSymbol(node)
 	if symbol == c.unknownSymbol {
@@ -14326,6 +14333,8 @@ func (c *Checker) getResolvedSymbol(node *ast.Node) *ast.Symbol {
 			// An is binding's initialization belongs to its own declaration,
 			// including the recovery symbol for an illegal redeclaration.
 			symbol = declaration.Symbol()
+		} else if isProofStatementCallee(node) {
+			// A VibeLang proof statement's callee names no binding (extensions_proofs.go).
 		} else if !ast.NodeIsMissing(node) {
 			symbol = c.resolveName(node, node.Text(), ast.SymbolFlagsValue|ast.SymbolFlagsExportValue,
 				c.getCannotFindNameDiagnosticForName(node), !ast.IsWriteOnlyAccess(node), false /*excludeGlobals*/)
@@ -29106,6 +29115,9 @@ func (c *Checker) markLinkedReferences(location *ast.Node, hint ReferenceHint, p
 		// References within types and declaration files are never going to contribute to retaining a JS import,
 		// except for properties (which can be decorated).
 		return
+	}
+	if inErasedProofCode(location) {
+		return // VibeLang proof code erases, so it keeps no import (extensions_proofs.go)
 	}
 	switch hint {
 	case ReferenceHintIdentifier:

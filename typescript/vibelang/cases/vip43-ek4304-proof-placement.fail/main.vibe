@@ -1,0 +1,31 @@
+// expect: EK4304
+proof { assert(true) }
+
+export function guarded(n: number): number {
+  if (n > 0) proof { assert(n > 0) }
+  return n
+}
+
+export const arrow = (n: number): number => {
+  proof { assert(n === n) }
+  return n
+}
+
+export effect function running(n: number) {
+  proof { assert(n === n) }
+  return n
+}
+
+export function nested(n: number): number {
+  proof {
+    proof { assert(n === n) }
+  }
+  return n
+}
+
+export class Box {
+  get(n: number): number {
+    proof { assert(n === n) }
+    return n
+  }
+}

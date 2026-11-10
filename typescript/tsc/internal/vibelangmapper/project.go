@@ -239,6 +239,13 @@ func lower(text string, ctx FileContext) *projector {
 		kind = core.ScriptKindTSX
 	}
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
+	// Proof syntax (VIP-43) erases before every other mark is taken, so no
+	// mark points into it.
+	proofs := proofErasures(file, text)
+	if len(proofs) > 0 {
+		text = blank(text, proofs)
+		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
+	}
 	fiberOperations := fiberOperationPositions(file, text)
 	effectDeclarations := writtenEffectDeclarationMarks(file)
 	operandTries := tryOperandMarks(file, text)
@@ -261,7 +268,7 @@ func lower(text string, ctx FileContext) *projector {
 	p := &projector{
 		file:            file,
 		text:            text,
-		keywords:        keywords,
+		keywords:        withProofErasures(keywords, proofs),
 		ctx:             ctx,
 		names:           newNames(file, text),
 		forms:           newFormResolver(file),

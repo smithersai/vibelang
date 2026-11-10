@@ -786,6 +786,10 @@ export const sidebar = [
       {
         "text": "Fuzzing with Experimental.Fuzz",
         "link": "/vibelang-features/120-fuzzing"
+      },
+      {
+        "text": "Spec functions and proofs",
+        "link": "/vibelang-features/121-proofs"
       }
     ],
     "collapsed": false

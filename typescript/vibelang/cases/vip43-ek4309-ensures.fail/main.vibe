@@ -1,0 +1,20 @@
+// expect: EK4309
+export function unwritten(n: number) {
+  proof { ensures((r) => r === n) }
+  return n
+}
+
+export function nothing(n: number): void {
+  proof { ensures((r) => true) }
+  n
+}
+
+export function typed(n: number): number {
+  proof { ensures((r: number) => r === n) }
+  return n
+}
+
+export function block(n: number): number {
+  proof { ensures((r) => { return r === n }) }
+  return n
+}

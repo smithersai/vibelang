@@ -52,6 +52,9 @@ func (p *Parser) scanStartOfVibeLangDeclarationInContext(ambient bool) bool {
 		// effect function f(), effect f() (vibelang_effect.go); effect export function f() (vibelang_effect_misplaced.go)
 		return p.lookAhead((*Parser).scanStartOfEffectDeclaration) || p.scanStartOfMisplacedEffectDeclaration()
 	}
+	if word == "spec" {
+		return p.scanStartOfSpecFunction() // spec function f() (VIP-43, vibelang_proofs.go)
+	}
 	if !isVibeLangDeclarationWord(word) {
 		return false
 	}
@@ -83,7 +86,7 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	// Declaration introducers follow TypeScript contextual type, including
 	// its native prohibition on Unicode escapes in keyword tokens.
 	word := p.scanner.TokenValue()
-	if (word == "error" || word == "schema" || word == "service" || word == "data" || word == "task" || word == "workflow") &&
+	if (word == "error" || word == "schema" || word == "service" || word == "data" || word == "task" || word == "workflow" || word == "spec") &&
 		(p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape()) {
 		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
 	}
@@ -93,6 +96,8 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 			return nil // a misplaced effect, which parseVibeLangModifiers reads (vibelang_effect_misplaced.go)
 		}
 		return p.parseEffectDeclaration(pos, jsdoc, modifiers) // vibelang_effect.go
+	case "spec":
+		return p.parseSpecFunctionDeclaration(pos, jsdoc, modifiers) // VIP-43, vibelang_proofs.go
 	case "error":
 		return p.parseErrorDeclaration(pos, jsdoc, modifiers, false /*schema*/)
 	case "service":

@@ -1,0 +1,9 @@
+// expect: EK4302
+export spec function exported(n: number): number { return n }
+spec async function later(n: number): Promise<number> { return n }
+spec function* counted(): Generator<number> { yield 1 }
+spec effect function running(n: number) { return n }
+spec function twice(n: number): number
+spec function twice(n: number): number { return n + n }
+export default spec function fallback(n: number): number { return n }
+export const one = 1

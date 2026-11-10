@@ -82,6 +82,9 @@ func callTrust(c *checker.Checker, call *ast.Node) *trust {
 }
 
 func computeTrust(c *checker.Checker, call *ast.Node) *trust {
+	if call.Flags&ast.NodeFlagsVibeLangProof != 0 {
+		return &trust{kind: trustES} // a proof statement, which runs nothing (VIP-43, proofs.go)
+	}
 	if failures, ok := trustedValueFailures(c, ast.GetInvokedExpression(call)); ok {
 		return &trust{kind: trustTagged, failures: failures, value: true}
 	}

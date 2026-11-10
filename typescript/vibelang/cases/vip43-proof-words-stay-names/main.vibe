@@ -1,0 +1,22 @@
+// rule-evidence: docs/design/src/900-appendices.md#proof-statements | Outside proof contexts the five names are ordinary names, so a project's own `assert` keeps working.
+const assert = (ok: boolean, message: string): string => ok ? "ok" : message
+const proof = { steps: 2 }
+const spec = (n: number): number => n * 10
+
+export function check(assume: (x: number) => number): string {
+  const assumed = assume(3)
+  return assert(assumed === 4, "no")
+}
+
+export function words(): string {
+  const ensures = [1, 2]
+  const invariant = ensures.length
+  const decreases = proof.steps
+  proof
+  { }
+  return [spec(invariant), decreases, check((x) => x + 1)].join(" ")
+}
+
+export function main(): string {
+  return words()
+}

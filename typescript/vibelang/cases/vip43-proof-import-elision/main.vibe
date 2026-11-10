@@ -1,0 +1,16 @@
+// An import that only proof code uses is elided, as for the program
+// without the proof forms: Appendix F, Erasure, "import elision included".
+import { helper } from "./helper.js"
+import { other } from "./other.js"
+import { kept } from "./kept.js"
+
+spec function lifted(n: number): number {
+  return other(n)
+}
+
+export function f(n: number): number {
+  proof {
+    assert(helper(n) === lifted(n) + 1)
+  }
+  return kept(n)
+}

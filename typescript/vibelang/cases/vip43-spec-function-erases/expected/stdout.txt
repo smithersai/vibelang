@@ -1,0 +1,4 @@
+exports: quadruple, sumBelow
+quadruple(3) = 12
+sumBelow(5) = 10
+no spec function or proof statement in main.js or main.d.ts

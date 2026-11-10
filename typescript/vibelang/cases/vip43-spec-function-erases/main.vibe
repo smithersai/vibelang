@@ -1,0 +1,35 @@
+// rule-evidence: docs/design/src/900-appendices.md#appendix-f-theorems-and-proofs-vip-43 | The compiler implements spec functions and proof blocks, and reports `EK4302`, `EK4304` to `EK4307`, `EK4309`, `EK4310` and `EK4314` for them.
+// rule-evidence: docs/design/src/008-runtime.md#runtime-guarantees | Theorems, spec functions and proof blocks ([VIP-43](../vips/0043-theorems.md), accepted; the compiler implements spec functions and proof blocks) erase entirely, so they cannot change any `Exit` or finalizer trace ([Appendix F](900-appendices.md#erasure)).
+// rule-evidence: docs/design/src/900-appendices.md#spec-functions | A spec function is a [checked function](#proof-blocks) marked `spec`: only proofs call it, and it erases.
+// rule-evidence: docs/design/src/900-appendices.md#proof-blocks | At run time a proof block is absent: a function compiles to the JavaScript it has without its proof blocks.
+// rule-evidence: docs/design/src/900-appendices.md#erasure | | Declarations (`.d.ts`, `.d.vibe.ts`) | Theorems and spec functions emit nothing.
+spec function double(n: number): number {
+  return n + n
+}
+
+export function quadruple(n: number): number {
+  proof {
+    ensures((r) => r === double(double(n)))
+  }
+  return 4 * n
+}
+
+export function sumBelow(n: number): number {
+  proof {
+    assume(0 <= n)
+    ensures((r) => r >= 0)
+  }
+  let total = 0
+  for (let i = 0; i < n; i++) {
+    proof {
+      invariant(0 <= i && i <= n)
+      decreases(n - i)
+    }
+    total += i
+  }
+  proof {
+    const last = n - 1
+    if (n > 0) assert(last >= 0)
+  }
+  return total
+}

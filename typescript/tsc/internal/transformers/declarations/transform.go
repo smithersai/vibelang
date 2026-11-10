@@ -1834,6 +1834,9 @@ func (tx *DeclarationTransformer) transformTopLevelDeclaration(input *ast.Node) 
 	if tx.shouldStripInternal(input) {
 		return nil
 	}
+	if input.Flags&ast.NodeFlagsVibeLangSpec != 0 {
+		return nil // a VibeLang spec function erases from declarations (VIP-43)
+	}
 	if input.Kind == ast.KindImportEqualsDeclaration {
 		return tx.transformImportEqualsDeclaration(input.AsImportEqualsDeclaration())
 	}

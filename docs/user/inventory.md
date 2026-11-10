@@ -205,6 +205,7 @@ Code example count: one example per fenced code block in the source body, includ
 
 - [Durable tasks and workflows](src/vibelang-features/119-tasks-and-workflows.md)
 - [Fuzzing with Experimental.Fuzz](src/vibelang-features/120-fuzzing.md)
+- [Spec functions and proofs](src/vibelang-features/121-proofs.md)
 
 ### Specification
 

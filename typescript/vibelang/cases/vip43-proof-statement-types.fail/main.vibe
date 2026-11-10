@@ -1,0 +1,10 @@
+// expect: TS2345 TS2554 TS2339
+export function typed(n: number, s: string): number {
+  proof {
+    assume(n)
+    assume(n > 0, n > 1)
+    ensures((r) => r.length > 0)
+    decreases(s)
+  }
+  return n
+}

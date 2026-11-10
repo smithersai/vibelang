@@ -1,0 +1,17 @@
+// expect: EK4306
+export function sum(n: number): number {
+  proof {
+    invariant(n >= 0)
+    if (n > 0) assume(n > 1)
+  }
+  let total = 0
+  while (total < n) {
+    proof {
+      assume(total >= 0)
+      ensures((r) => r >= 0)
+    }
+    total += 1
+  }
+  proof { decreases(n) }
+  return total
+}

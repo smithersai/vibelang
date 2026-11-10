@@ -1,0 +1,2 @@
+f(2) = 4
+imports: import { kept } from "./kept.js";

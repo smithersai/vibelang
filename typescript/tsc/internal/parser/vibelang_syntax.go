@@ -86,6 +86,9 @@ const (
 	// function keyword, effect load() or async get() (VIP-1): Word is the
 	// declared name.
 	VibeSyntaxShorthand
+	// VibeSyntaxSpec is spec before a function (VIP-43): Word, and Range
+	// through the function's end.
+	VibeSyntaxSpec
 )
 
 // VibeSyntax is one recorded VibeLang form. Which fields are set depends on

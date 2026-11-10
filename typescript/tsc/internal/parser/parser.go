@@ -1271,6 +1271,9 @@ func (p *Parser) parseStatementWorker() *ast.Statement {
 		if p.isStartOfVibeLangMaskBlock() {
 			return p.parseVibeLangMaskBlock() // uninterruptible { ... }, restore { ... }, interruptible { ... } (vibelang_primitives.go)
 		}
+		if p.isStartOfVibeLangProofBlock() {
+			return p.parseVibeLangProofBlock() // proof { ... } (VIP-43, vibelang_proofs.go)
+		}
 	}
 	return p.parseExpressionOrLabeledStatement()
 }
@@ -4484,7 +4487,8 @@ func (p *Parser) nextTokenCanFollowDefaultKeyword() bool {
 	case ast.KindAsyncKeyword:
 		return p.lookAhead((*Parser).nextTokenIsFunctionKeywordOnSameLine) || p.isStartOfVibeLangEffectExpression()
 	case ast.KindIdentifier:
-		return p.isStartOfVibeLangEffectExpression() // export default effect function (vibelang_effect.go)
+		// export default effect function (vibelang_effect.go); export default spec function, rule 4302 (vibelang_proofs.go)
+		return p.isStartOfVibeLangEffectExpression() || p.isVibeLangFile() && p.scanner.TokenValue() == "spec" && p.lookAhead((*Parser).scanStartOfSpecFunction)
 	}
 	return false
 }

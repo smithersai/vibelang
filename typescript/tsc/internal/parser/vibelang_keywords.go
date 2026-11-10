@@ -13,6 +13,7 @@ var VibeLangKeywords = slices.Concat(vibelangDeclarationWords, vibelangMaskWords
 	"fork", "join", "select", "concurrent", // the fiber forms (D166-D170, vibelang_fibers.go)
 	"provide", "handle", // provide blocks (D173) and handle statements (D132)
 	"match", "when", "and", "or", "not", // pattern matching (VIP-7, vibelang_match.go)
+	"spec", "proof", // spec functions and proof blocks (VIP-43, vibelang_proofs.go)
 })
 
 // vibelangDeclarationWords start a VibeLang declaration when an identifier
