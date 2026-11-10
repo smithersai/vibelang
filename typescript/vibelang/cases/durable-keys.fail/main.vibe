@@ -1,0 +1,26 @@
+// expect: EK5503
+// Two durable declarations of one package with one tag share their recorded runs (VIP-55).
+task Charge {
+  effect call(order: string): number!string
+}
+
+task Refund {
+  static readonly key = "Charge"
+  effect call(order: string): number!string
+}
+
+workflow Ship {
+  static readonly key = "billing/Ship"
+  effect call(order: string): number!string { return 1 }
+}
+
+workflow ShipAgain {
+  static readonly key = "billing/Ship"
+  effect call(order: string): number!string { return 2 }
+}
+
+// A different key is a different tag.
+task Distinct {
+  static readonly key = "billing/Distinct"
+  effect call(order: string): number!string
+}

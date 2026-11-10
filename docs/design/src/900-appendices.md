@@ -2313,6 +2313,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4842` | lint warning: An Effect module imported under a conflicting JavaScript global name | 14, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK5501` | a `task` or `workflow` body that is not one non-static `effect call` method and `static readonly` members with initializers, or a task `call` without a type on every parameter and a return type | 55 | [Services](005-services.md#durable-static-rules) |
 | `EK5502` | a task called outside a workflow's `effect call` | 55 | [Services](005-services.md#durable-static-rules) |
+| `EK5503` | two task or workflow declarations of one package with one tag: one written `static readonly key`, or one derived `<package>#<Name>` | 55 | [Services](005-services.md#durable-static-rules) |
 | `EK5504` | in a workflow's `effect call`, a `try` whose operand is not a call of a task or a workflow, `W.child(…)`, or `try.all`, `try.race` or `try.any` over such calls | 55 | [Services](005-services.md#durable-static-rules) |
 | `EK5505` | a workflow's `effect call` that reads the clock, randomness, or a module-level `let` or `var` of its file | 55 | [Services](005-services.md#durable-static-rules) |
 | `EK5506` | a loop statement, or an assignment, `++` or `--` to a variable, in a workflow's own `effect call` | 55 | [Services](005-services.md#durable-static-rules) |

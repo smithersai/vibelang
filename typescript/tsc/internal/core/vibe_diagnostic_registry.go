@@ -161,6 +161,7 @@ var VibeDiagnosticCategories = map[string]string{
 	"EK4842": "lint warning",
 	"EK5501": "error",
 	"EK5502": "error",
+	"EK5503": "error",
 	"EK5504": "error",
 	"EK5505": "error",
 	"EK5506": "error",

@@ -1,0 +1,4 @@
+main.vibe(3,6): error EK5503
+main.vibe(7,6): error EK5503
+main.vibe(12,10): error EK5503
+main.vibe(17,10): error EK5503

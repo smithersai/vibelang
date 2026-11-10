@@ -32,6 +32,7 @@ export workflow Triage {
 - A `call` without a body declares a step whose implementation is supplied separately: `effect call(order: Order): Receipt!Declined`.
 - Each parameter type and the `A` and `E` of the annotation need a schema form, as a `schema` field's type does: `string`, a `schema` declaration, `Date`, `ReadonlySet<T>` and the other mapped types. A type without one, such as `Set<string>`, `unknown` or a plain type alias, is `EK2109`. The derived schemas are on the declaration: `FetchIssues.schemas.payload` holds one schema per parameter, and `schemas.success` and `schemas.error` hold the annotation's.
 - Each `static readonly` member is an option, passed through under its own name. `static readonly key = "billing/Charge"` replaces the declared name.
+- A declaration's tag is `<package>#<Name>`, from the package's `package.json` name, or its written `static readonly key`. The tag names its recorded runs, so moving the file keeps them. Two declarations of one package with one tag are `EK5503`.
 - A task runs only as a step of a workflow. Calling one anywhere else, even inside an `effect` block in a workflow, is `EK5502`.
 
 ## Workflows

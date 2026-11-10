@@ -650,6 +650,7 @@ The grammar is [TaskDeclaration](900-appendices.md#taskdeclaration) and [Workflo
 ### Durable static rules
 
 - A `task` or `workflow` body holds exactly one non-static `effect call` method, not a generator, and `static readonly` members with initializers, nothing else. A task's `call` writes a type for each parameter and its return type. Anything else is the syntax error `EK5501`.
+- A declaration's tag is its written `static readonly key`, or `<package>#<Name>` from the nearest `package.json`'s name and the declared name (the name alone in a package without one). The tag names the declaration's recorded runs, so it does not include the file. Two task or workflow declarations of one package with one tag are `EK5503`.
 - A task is called only in a workflow's `effect call`. A call anywhere else is `EK5502`: there is no run for the step to record into.
 - A workflow's `effect call` is a plan, built before it runs (VIP-55). In it, `try` runs a durable step: a call of a task or a workflow, `W.child(…)`, or `try.all`, `try.race` or `try.any` over such calls. Any other operand of `try`, such as a service, `sleep(…)` or `succeed(…)`, is `EK5504`.
 - A workflow's `effect call` reads no clock (`Date.now()`, `new Date()`, `performance.now()`), no randomness (`Math.random()`, `crypto.randomUUID()`, `crypto.getRandomValues()`) and no module-level `let` or `var` of its file: `EK5505`.
