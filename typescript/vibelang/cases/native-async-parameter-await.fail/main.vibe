@@ -1,0 +1,7 @@
+// expect: TS2524
+import {Effect} from "effect"
+export async function read(value=await Effect.succeed(1)){return value}
+export const arrow=async({value=await Effect.succeed(1)}={})=>value
+export class Holder{async read([value=await Effect.succeed(1)]=[]){return value}}
+export const object={async read(value=await Effect.succeed(1)){return value}}
+export async function* produce(value=await Effect.succeed(1)){yield value}

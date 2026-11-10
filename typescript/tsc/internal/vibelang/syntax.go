@@ -62,6 +62,9 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 					break
 				}
 				text := nodeText(file, operand)
+				if awaitInNativeParameterInitializer(node) {
+					break
+				}
 				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK0103, shortText(text, "the operand")), "Run it to a promise first: await runPromise({0}).", text)
 				cover(c, node) // the Effect the await leaves unrun restates EK0103
 			}
@@ -112,4 +115,19 @@ func isAtModuleTopLevel(node *ast.Node) bool {
 		}
 	}
 	return true
+}
+
+// Match the native initializer boundary; nested callables own their await.
+func awaitInNativeParameterInitializer(node *ast.Node) bool {
+	inBindingInitializer := false
+	for node.Parent != nil && (!ast.IsFunctionLike(node.Parent) || isCalledInPlace(node.Parent)) {
+		if ast.IsParameterDeclaration(node.Parent) && (inBindingInitializer || node.Parent.Initializer() == node) {
+			return true
+		}
+		if ast.IsBindingElement(node.Parent) && node.Parent.Initializer() == node {
+			inBindingInitializer = true
+		}
+		node = node.Parent
+	}
+	return false
 }

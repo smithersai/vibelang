@@ -1,0 +1,8 @@
+// expect-result: [3,4,5]
+import {Effect} from "effect"
+async function read(value=Promise.resolve(3)){return await value}
+async function capture(value=async()=>await Promise.resolve(4)){return await value()}
+async function fromEffect(value=Effect.succeed(5)){return await Effect.runPromise(value)}
+export effect function main(){
+ return [try Effect.tryPromise(()=>read()),try Effect.tryPromise(()=>capture()),try Effect.tryPromise(()=>fromEffect())]
+}

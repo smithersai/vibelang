@@ -6889,6 +6889,12 @@ typescript/vibelang/cases/named-expression-self-reference/self.vibe:6:27 byname 
 typescript/vibelang/cases/named-tuple-parameter-runtime/main.vibe:17:3 lambda effectFn keyword
 typescript/vibelang/cases/named-tuple-parameter-runtime/main.vibe:9:15 lambda effectFn keyword
 typescript/vibelang/cases/namespace-await-async/main.vibe:4:24 lambda plain annotation
+typescript/vibelang/cases/native-async-parameter-await-context/main.vibe:4:30 lambda choice fallback
+typescript/vibelang/cases/native-async-parameter-await-context/main.vibe:7:103 lambda plain table
+typescript/vibelang/cases/native-async-parameter-await-context/main.vibe:7:32 lambda plain table
+typescript/vibelang/cases/native-async-parameter-await-context/main.vibe:7:66 lambda plain table
+typescript/vibelang/cases/native-async-parameter-await.fail/main.vibe:4:20 lambda plain fallback
+typescript/vibelang/cases/native-async-parameter-await.fail/main.vibe:6:22 lambda plain fallback
 typescript/vibelang/cases/native-callback-direct/main.vibe:14:21 lambda effectFn table
 typescript/vibelang/cases/native-callback-direct/main.vibe:14:37 lambda effectFn table
 typescript/vibelang/cases/native-callback-direct/main.vibe:15:39 lambda plain hatch

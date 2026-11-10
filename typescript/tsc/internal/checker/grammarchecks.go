@@ -1758,7 +1758,7 @@ func (c *Checker) checkGrammarAwaitOrAwaitUsing(node *ast.Node) bool {
 		}
 	}
 
-	if ast.IsAwaitExpression(node) && c.isInParameterInitializerBeforeContainingFunction(node) {
+	if ast.IsAwaitExpression(node) && c.isInParameterInitializerBeforeContainingFunction(node, true /*skipExpressionHelpers*/) {
 		// NOTE: We report this regardless as to whether there are parse diagnostics.
 		c.error(node, diagnostics.X_await_expressions_cannot_be_used_in_a_parameter_initializer)
 		hasError = true
@@ -1773,7 +1773,7 @@ func (c *Checker) checkGrammarYieldExpression(node *ast.Node) bool {
 		c.grammarErrorOnFirstToken(node, diagnostics.A_yield_expression_is_only_allowed_in_a_generator_body)
 		hasError = true
 	}
-	if c.isInParameterInitializerBeforeContainingFunction(node) {
+	if c.isInParameterInitializerBeforeContainingFunction(node, false /*skipExpressionHelpers*/) {
 		c.error(node, diagnostics.X_yield_expressions_cannot_be_used_in_a_parameter_initializer)
 		hasError = true
 	}

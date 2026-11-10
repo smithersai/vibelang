@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- An Effect-valued `await` in an `async` parameter default could hide the error that forbids waiting there. It now keeps TypeScript's `TS2524` diagnostic, including destructuring defaults.
+
 - A `match` arm could wait with `await` inside a class `static` block, where waiting is forbidden. It now reports `TS18037` while a nested `async` callback keeps working.
 
 - Awaiting an Effect in a class `static` block could suggest running it to a Promise. It now keeps TypeScript's `TS18037` error because `await` is forbidden there.

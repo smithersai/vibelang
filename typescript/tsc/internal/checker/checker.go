@@ -12548,7 +12548,7 @@ func (c *Checker) tryGetThisTypeAtEx(node *ast.Node, includeGlobalThis bool, con
 	if container == nil {
 		container = c.getThisContainer(node, false /*includeArrowFunctions*/, false /*includeClassComputedPropertyName*/)
 	}
-	if ast.IsFunctionLike(container) && (!c.isInParameterInitializerBeforeContainingFunction(node) || ast.GetThisParameter(container) != nil) {
+	if ast.IsFunctionLike(container) && (!c.isInParameterInitializerBeforeContainingFunction(node, false /*skipExpressionHelpers*/) || ast.GetThisParameter(container) != nil) {
 		sig := c.getSignatureOfFullSignatureType(container)
 		if sig == nil {
 			sig = c.getSignatureFromDeclaration(container)
@@ -12633,9 +12633,10 @@ func (c *Checker) getThisContainer(node *ast.Node, includeArrowFunctions bool, i
 	}
 }
 
-func (c *Checker) isInParameterInitializerBeforeContainingFunction(node *ast.Node) bool {
+func (c *Checker) isInParameterInitializerBeforeContainingFunction(node *ast.Node, skipExpressionHelpers bool) bool {
 	inBindingInitializer := false
-	for node.Parent != nil && !ast.IsFunctionLike(node.Parent) {
+	// Await placement follows the source parameter boundary through expression helpers.
+	for node.Parent != nil && (!ast.IsFunctionLike(node.Parent) || skipExpressionHelpers && isLabelTransparentFunction(node.Parent)) {
 		if ast.IsParameterDeclaration(node.Parent) {
 			if inBindingInitializer || node.Parent.Initializer() == node {
 				return true
