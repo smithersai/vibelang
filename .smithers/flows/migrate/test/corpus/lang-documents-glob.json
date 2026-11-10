@@ -1,4 +1,0 @@
-{
-  "file": "documents.ts",
-  "source": "export const pages: Record<string, string> = import.meta.glob(\"./*.md\", { query: \"?raw\", import: \"default\", eager: true });\n"
-}

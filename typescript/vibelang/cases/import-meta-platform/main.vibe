@@ -11,9 +11,3 @@ export class Ordinary {
 }
 
 // VIP-33 import.meta.url remains a permitted module URL; rule: docs/design/vips/0033-platform-stdlib.md#10ea3ca56b0b802f
-
-export const alias: ImportMeta = import.meta
-export const { url } = import.meta
-export const computed: string = import.meta["url"]
-export const spread: ImportMeta = { ...import.meta }
-export const passed = ((meta: ImportMeta): ImportMeta => meta)(import.meta)

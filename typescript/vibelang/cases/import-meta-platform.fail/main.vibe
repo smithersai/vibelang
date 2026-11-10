@@ -1,4 +1,4 @@
-// expect: TS2339
+// expect: EK4402 TS2339
 declare global {
   interface ImportMeta {
     dirname: string
@@ -27,4 +27,4 @@ export effect function wrapped() { return try Effect.sync(() => import.meta.dirn
 export const invalidUrlProperty = import.meta.url.notAProperty
 export { hostDirectory } from "./host.js"
 
-// VIP-33: metadata is checked against ImportMeta, as in TypeScript.
+// VIP-33 other import.meta properties and captures require TypeScript; rule: docs/design/vips/0033-platform-stdlib.md#5d38a6069ac86031

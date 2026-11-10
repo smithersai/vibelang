@@ -116,10 +116,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 690 |
 | [Existing project](../setup/existing-project.md) | 4,300 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,400 |
-| **Build and test** | **23,000** |
+| **Build and test** | **22,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 18,000 |
-| [Vite and Vitest](../setup/vite.md) | 4,800 |
-| **Format and lint** | **16,000** |
+| [Vite and Vitest](../setup/vite.md) | 4,700 |
+| **Format and lint** | **15,000** |
 | [Format with dprint](../setup/formatting.md) | 3,700 |
 | [Developer tools](../setup/developer-tools.md) | 12,000 |
 | **Frameworks** | **11,000** |
@@ -252,14 +252,14 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Equivalence](../schema/102-equivalence.md) | 770 |
 | [Formatter](../schema/103-formatter.md) | 540 |
 | [Schema Compilers](../schema/104-compilers.md) | 2,200 |
-| **Platform** | **25,000** |
-| [Introduction](../platform/105-introduction.md) | 4,400 |
+| **Platform** | **26,000** |
+| [Introduction](../platform/105-introduction.md) | 4,600 |
 | [FileSystem](../platform/106-file-system.md) | 1,300 |
 | [Path](../platform/107-path.md) | 950 |
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,500 |
 | [Terminal](../platform/110-terminal.md) | 1,700 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 11,000 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 12,000 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,600 |
 | **All 101 pages** | **190,000** |

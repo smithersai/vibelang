@@ -16,7 +16,7 @@ Spelling suggestions in these callbacks follow the same boundary: a misspelled v
 
 The migrate flow can move a zero-argument optional host call, such as `process.getuid?.()`, into a native module helper while keeping the class and its `import.meta.url` in the original module. The helper performs the whole optional call on its original receiver, only when the call is reached. Calls with value or type arguments retain the preservation refusal.
 
-`import.meta` follows TypeScript. Members are checked against the program's `ImportMeta` declarations. Enable `vite/client` for Vite's `glob`, `env` and `hot`, or `@types/node` for Node metadata such as `dirname`. An undeclared member gets TypeScript's ordinary diagnostic, not `EK4402`. Aliases, destructuring, computed access, arguments and spreads keep their ordinary meaning. The migrate flow preserves these expressions in the original module and generates no metadata companion.
+The migrate flow moves a module's `import.meta` reads into a fresh `<source>.platform.ts` companion before renaming the source. A direct `import.meta.resolve` call with one or two arguments calls a companion function instead. Its arguments stay where they were, inside the original callback and `try`/`catch`, so captured inputs and deferred execution stay unchanged. `import.meta.filename` and `import.meta.dirname` become companion calls that receive the module's own `import.meta.url`, so they still name the module, and they stay `undefined` for a URL other than `file:`, as in Node.js. `import.meta.env` becomes a companion call that returns the build's environment. Code that reads `import.meta.filename` stays in the entry module so the value keeps that file's identity. Code that reads `import.meta.dirname` can move with a declaration, since the sibling shares its directory. An executable script keeps its shebang at the start of the entry module; the generated companion contains no shebang. A source wildcard export map gains an exact `null` entry for the new helper subpath to keep it private; revert removes that entry. Existing companions, `import.meta.main`, writes to `import.meta` members, other unsupported `import.meta` uses and publication layouts the flow cannot prove safe receive a refusal. `import.meta.url` stays in the original module. Code that reaches the platform and reads `import.meta.url` stays in the module too: only its host calls and reads move, so `import.meta.url` still names the module.
 
 Platform repairs from one source share one fresh `<source>.platform.ts` companion. A moved host call becomes a companion helper with the callee's own type: the helper forwards the call and asserts its forwarding arrow to `typeof` the callee, and a `// SAFETY:` comment before the helper states why that assertion is sound, so a repository lint that requires a justification for every type assertion accepts the generated companion. Clock and randomness helpers have signatures of their own and assert nothing. Explicit `sync` inputs stay evaluated at the original call site, in order; the callback still runs only when its Effect runs. A callback that captures other bindings or a lexical receiver keeps the existing preservation checks, and an existing foreign module is never rewritten. During migration, host access inside formerly accepted boundary callbacks reports an `EK4402` warning. Unwrapped host access remains an error.
 
@@ -163,7 +163,7 @@ Browser hardware concurrency is read through a `navigator.hardwareConcurrency` a
 | `requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 | `requestIdleCallback` | escape to TypeScript for now: Effect has no service for the browser's idle callbacks; schedule work with Schedule, or call them in a .ts file. |
 | `require` | `import { name } from "./module.ts"` |
-| `require.resolve` | `import.meta.resolve` with the host's `ImportMeta` declarations; its ordinary call contract still applies |
+| `require.resolve` | escape to TypeScript: resolve in a `.ts` module and call it with `Effect.try`, because `import.meta` allows only `.url` |
 | `self` | escape to TypeScript for now: Effect has no global-object service; keep access to the host global object in TypeScript. |
 | `sessionStorage` | `try (try KeyValueStore.KeyValueStore).get(key)` |
 | `setImmediate` | `try yieldNow` |
@@ -227,9 +227,16 @@ Type-only import aliases keep TypeScript's native diagnostics, including `TS1392
 
 Native `import.source(...)` and `import.defer(...)` calls retain TypeScript's option and argument checks during service checking; their callees are import syntax rather than service-key values.
 
-Invalid meta-property names such as `import.x` keep TypeScript's `TS17012` syntax diagnostic. An incomplete `import.source` or `import.defer` keeps the native `TS1005` syntax diagnostic.
+Invalid meta-property names such as `import.x` keep TypeScript's `TS17012` syntax diagnostic. An incomplete `import.source` or `import.defer` keeps the native `TS1005` syntax diagnostic. The platform restriction applies to the actual `import.meta` object and its members.
 
-`import.meta` follows TypeScript. Members are checked against the program's `ImportMeta` declarations. Enable `vite/client` for Vite's `glob`, `env` and `hot`, or `@types/node` for Node metadata such as `dirname`. An undeclared member gets TypeScript's ordinary diagnostic, not `EK4402`. Aliases, destructuring, computed access, arguments and spreads keep their ordinary meaning. The migrate flow preserves these expressions in the original module and generates no metadata companion.
+`import.meta` gives a `.vibe` file only `import.meta.url`, its module identity (VIP-33, amended). `import.meta.dirname`, `import.meta.filename` and `import.meta.env` read host state, as `__dirname`, `__filename` and `process.env` do, and take the same replacements. In the specification's explicit module spelling, first read `try Path.Path`, then call `fromFileUrl` and `dirname` on that service. Every other member, `import.meta.resolve` included, and every other use of `import.meta` as a value reports `EK4402`. Aliases, destructuring, computed keys, arguments and spreads are rejected, including inside `Effect.try`, `tryPromise` or `sync` callbacks. Direct `import.meta.url` reads keep working. Parentheses and erased TypeScript wrappers such as `as`, `satisfies` and non-null assertions preserve this URL read, as in `(import.meta as ImportMeta).url`. Put module resolution in a TypeScript helper:
+
+```ts
+// resolve-module.ts
+export function resolveModule(specifier: string): string {
+  return import.meta.resolve(specifier)
+}
+```
 
 
 ## The replacements at work

@@ -46,8 +46,6 @@ Source maps in esbuild bundles keep original source filenames, including Unicode
 
 Existing `import.meta.hot.accept` dependency handlers keep updates inside the page and preserve its state when a VibeLang dependency changes. Ordinary TypeScript dependency updates continue through Vite's normal hot-reload handling.
 
-Vite's `import.meta.glob`, `import.meta.env` and `import.meta.hot` work in `.vibe` modules with their Vite types. Include `"types": ["vite/client"]` in `compilerOptions` (alongside any other required types). Eager and lazy glob results keep Vite's overloads; Vite transforms the macros when it builds the module.
-
 Diagnostics from source loaders retain their source details and exclude compiler file-list output.
 
 For a custom compiler, set `VIBELANG_BINARY` to its native executable. Selecting the package's JavaScript launcher reports an error before another compiler starts.

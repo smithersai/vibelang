@@ -12,7 +12,8 @@ import (
 
 func TestModuleMetadataBoundsQuoted(t *testing.T) {
 	for _, quote := range []string{
-		"Members are checked against the program's `ImportMeta` declarations.",
+		"\x60import.meta\x60 may appear only as the object of \x60.url\x60",
+		"Every other member (\x60dirname\x60, \x60filename\x60, \x60env\x60, \x60main\x60, \x60resolve\x60, host additions such as Vite's \x60hot\x60) and every other use of \x60import.meta\x60 (an alias, destructuring, a computed key, an argument, a spread) is \x60EK4402\x60.",
 	} {
 		if !strings.Contains(SpecText("005-services.md"), quote) {
 			t.Fatalf("Chapter 5 no longer says %q", quote)
@@ -22,46 +23,48 @@ func TestModuleMetadataBoundsQuoted(t *testing.T) {
 
 type metadataBoundCase struct {
 	key, expression string
-	want            int32
+	forbidden       bool
 }
 
 func metadataBoundCases() []metadataBoundCase {
 	return []metadataBoundCase{
-		{"url", "import.meta.url", 0},
-		{"dirname", "import.meta.dirname", 0},
-		{"filename", "import.meta.filename", 0},
-		{"env", "import.meta.env.VITE_FOLDKIT_CANARY_COMMIT", 0},
-		{"main", "import.meta.main", 0},
-		{"hot", "import.meta.hot", 0},
-		{"resolve", "import.meta.resolve('./asset')", 0},
-		{"glob", "import.meta.glob<string>('./*.md', { query: '?raw', import: 'default', eager: true })", 0},
-		{"alias", "import.meta", 0},
-		{"computed-url", "import.meta['url']", 0},
-		{"argument", "Boolean(import.meta)", 0},
-		{"spread", "({ ...import.meta })", 0},
-		{"undeclared", "import.meta.undeclaredMember", 2339},
+		{"url", "import.meta.url", false},
+		{"dirname", "import.meta.dirname", true},
+		{"filename", "import.meta.filename", true},
+		{"env", "import.meta.env.VITE_FOLDKIT_CANARY_COMMIT", true},
+		{"main", "import.meta.main", true},
+		{"hot", "import.meta.hot", true},
+		{"resolve", "import.meta.resolve('./asset')", true},
+		{"glob", "import.meta.glob<string>('./*.md', { query: '?raw', import: 'default', eager: true })", true},
+		{"alias", "import.meta", true},
+		{"computed-url", "import.meta['url']", true},
+		{"argument", "Boolean(import.meta)", true},
+		{"spread", "({ ...import.meta })", true},
 	}
 }
 
-// VIP-33 amendment: declarations determine metadata access in every callable home.
+// Foldkit124–126: retain the accepted boundary while the consumer/platform
+// owners implement the distinct directory, Vite-macro and entry counterparts.
+// This target does not invent those APIs or replace compile-time Vite inputs
+// with a runtime filesystem read.
 func FuzzModuleMetadataBounds(f *testing.F) {
 	// Spec rule: docs/design/src/005-services.md#8a4271c66660c37c
-	// Chapter 005: metadata members follow ImportMeta declarations across callable homes (FuzzModuleMetadataBounds).
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
 
 	// Spec rule: docs/design/src/005-services.md#77d844734bc21156
-	// Chapter 005: metadata members follow ImportMeta declarations across callable homes (FuzzModuleMetadataBounds).
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
 
 	// Spec rule: docs/design/src/005-services.md#093fe9c889a52f8a
-	// Chapter 005: metadata members follow ImportMeta declarations across callable homes (FuzzModuleMetadataBounds).
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
 
 	// Spec rule: docs/design/src/005-services.md#25e2b783d54ba566
-	// Chapter 005: metadata members follow ImportMeta declarations across callable homes (FuzzModuleMetadataBounds).
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
 
 	// Spec rule: docs/design/src/005-services.md#52acbff1ca95c8ce
-	// Chapter 005: metadata members follow ImportMeta declarations across callable homes (FuzzModuleMetadataBounds).
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
 
 	// Spec rule: docs/design/src/005-services.md#7bb0b4abc2dc6987
-	// Chapter 005: metadata members follow ImportMeta declarations across callable homes (FuzzModuleMetadataBounds).
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
 
 	startShortBudget(f)
 	rows := metadataBoundCases()
@@ -100,7 +103,7 @@ func FuzzModuleMetadataBounds(f *testing.F) {
 			native = body
 		}
 		if home == 3 {
-			body = "export effect function read(){ return try Effect.try(() => " + expression + "); }\n"
+			body = "export effect function read(){ return " + expression + "; }\n"
 			native = "export function read(){ return " + expression + "; }\n"
 		}
 		config, _ := json.Marshal(map[string]any{
@@ -127,24 +130,26 @@ func FuzzModuleMetadataBounds(f *testing.F) {
 			return result
 		}
 		control := compile("main.ts", native)
+		if HasError(control.Diagnostics) {
+			t.Fatalf("invalid native metadata control %s: %v", row.key, SortedKeys(Keys(control.Dir, control.Diagnostics)))
+		}
 		result := compile("main.vibe", body)
-		valid := func(result *Result) bool {
-			count := 0
-			for _, d := range result.Diagnostics {
-				if d.Category() != diagnostics.CategoryError {
-					continue
-				}
-				count++
-				if row.want == 0 || IsEK(d) || d.Code() != row.want {
-					return false
-				}
+		hasBoundary := false
+		unexpected := false
+		for _, diagnostic := range result.Diagnostics {
+			if diagnostic.Category() != diagnostics.CategoryError {
+				continue
 			}
-			return count == 0 && row.want == 0 || count == 1 && row.want != 0
+			if IsEK(diagnostic) && diagnostic.Code() == 4402 {
+				hasBoundary = true
+			} else {
+				unexpected = true
+			}
 		}
 		gaps := &Gaps{Target: "FuzzModuleMetadataBounds", Input: body}
 		rule := fmt.Sprintf("%s:%d:%d", row.key, home, variant/3%3)
-		if !valid(control) || !valid(result) {
-			gaps.Add(rule, "VIP-33 metadata uses ImportMeta declarations; want TS%d, native=%v, vibe=%v", row.want, SortedKeys(Keys(control.Dir, control.Diagnostics)), SortedKeys(Keys(result.Dir, result.Diagnostics)))
+		if hasBoundary != row.forbidden || !row.forbidden && unexpected {
+			gaps.Add(rule, "VIP-33/detail90 requires only .url metadata access; forbidden=%t, diagnostics=%v", row.forbidden, SortedKeys(Keys(result.Dir, result.Diagnostics)))
 		} else {
 			ExpectPending(t, "FuzzModuleMetadataBounds", rule)
 		}
