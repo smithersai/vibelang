@@ -3499,6 +3499,14 @@ typescript/vibelang/cases/durable-declarations/main.vibe:25:3 lambda effectFn ke
 typescript/vibelang/cases/durable-declarations/main.vibe:34:15 lambda plain fallback
 typescript/vibelang/cases/durable-declarations/main.vibe:39:14 lambda plain fallback
 typescript/vibelang/cases/durable-declarations/main.vibe:39:39 lambda plain table
+typescript/vibelang/cases/durable-handoff.fail/main.vibe:4:3 lambda effectFn keyword
+typescript/vibelang/cases/durable-handoff.fail/main.vibe:8:3 lambda effectFn keyword
+typescript/vibelang/cases/durable-handoff/main.vibe:12:3 lambda effectFn keyword
+typescript/vibelang/cases/durable-handoff/main.vibe:20:3 lambda effectFn keyword
+typescript/vibelang/cases/durable-handoff/main.vibe:28:3 lambda effectFn keyword
+typescript/vibelang/cases/durable-handoff/main.vibe:34:38 lambda plain fallback
+typescript/vibelang/cases/durable-handoff/main.vibe:34:63 lambda plain table
+typescript/vibelang/cases/durable-handoff/main.vibe:7:3 lambda effectFn keyword
 typescript/vibelang/cases/durable-schemas.fail/main.vibe:10:3 lambda effectFn keyword
 typescript/vibelang/cases/durable-schemas.fail/main.vibe:14:3 lambda effectFn keyword
 typescript/vibelang/cases/durable-schemas.fail/main.vibe:22:3 lambda effectFn keyword

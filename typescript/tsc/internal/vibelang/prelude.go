@@ -70,6 +70,8 @@ var preludeModules = map[string]string{
 	// Durable declarations, which the parser writes (VIP-55, parser/vibelang_durable.go).
 	"$task":               runtimeModule,
 	"$workflow":           runtimeModule,
+	"$handoff":            runtimeModule,
+	"$Handoff":            runtimeModule,
 	"$schemaErrorMember":  runtimeModule,
 	"$schemaErrorMatcher": runtimeModule,
 	"Control":             runtimeModule,

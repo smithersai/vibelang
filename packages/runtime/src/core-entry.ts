@@ -79,6 +79,7 @@ export const {
   $runMain,
   $isError,
   $schemaErrorFamily,
+  $handoff,
   $task,
   $workflow,
   DurableEngine,

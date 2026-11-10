@@ -156,6 +156,20 @@ func (p *Parser) parseDurableDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 					arguments[2] = p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindAnyKeyword), requirements.Loc)
 					arguments[2].Parent = returnType
 				}
+				// return W.to(…) ends a round: the body may also give a
+				// Handoff, which the workflow's success type leaves out.
+				if success, _, requirements := durableEffectSlots(returnType); requirements != nil {
+					arguments := returnType.AsTypeReferenceNode().TypeArguments.Nodes
+					handoff := p.vibelangSynthesized(p.factory.NewTypeReferenceNode(p.vibelangIntrinsic("$Handoff", success.Loc), nil), success.Loc)
+					union := p.vibelangSpanning(p.factory.NewUnionTypeNode(p.newNodeList(success.Loc, []*ast.Node{success, handoff})), success.Loc)
+					grouped := p.vibelangSpanning(p.factory.NewParenthesizedTypeNode(union), success.Loc)
+					grouped.Flags |= ast.NodeFlagsReparsed
+					arguments[0] = grouped
+					grouped.Parent = returnType
+				}
+			}
+			if workflow {
+				p.durableSelfHandoffs(method.Body, name.Text(), parameters)
 			}
 			fn := p.factory.NewFunctionExpression(nil /*modifiers*/, nil /*asteriskToken*/, call.Name(), method.TypeParameters, parameters, implementationType, nil /*fullSignature*/, method.Body)
 			p.vibelangSpanning(fn, call.Loc)
@@ -286,4 +300,45 @@ func (p *Parser) durableCloneParameters(parameters *ast.NodeList) *ast.NodeList 
 // durableError reports EK5501 at loc for a task or a workflow (kind).
 func (p *Parser) durableError(loc core.TextRange, kind string) {
 	p.vibelangServiceError(loc, DurableCallDiagnosticCode, fmt.Sprintf(DurableCallDiagnosticText, kind))
+}
+
+// durableSelfHandoffs writes each W.to(…) in workflow W's own body as
+// $handoff<[parameter types]>("W", …). The handoff then takes its type from
+// W's written parameters, not from W, whose type TypeScript infers from this
+// body: W.to(…) there would make W's type depend on itself (TS7022). A
+// function or class inside the body that declares its own W keeps it.
+func (p *Parser) durableSelfHandoffs(body *ast.Node, name string, parameters *ast.NodeList) {
+	if body == nil {
+		return
+	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if (ast.IsFunctionLike(node) || ast.IsClassLike(node)) && node.Name() != nil && node.Name().Text() == name {
+			return false
+		}
+		if ast.IsCallExpression(node) {
+			call := node.AsCallExpression()
+			callee := call.Expression
+			if ast.IsPropertyAccessExpression(callee) && callee.Name().Text() == "to" && ast.IsIdentifier(callee.Expression()) && callee.Expression().Text() == name {
+				types := make([]*ast.Node, 0, len(parameters.Nodes))
+				for _, parameter := range parameters.Nodes {
+					if parameter.Type() == nil {
+						types = append(types, p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindAnyKeyword), parameter.Loc))
+						continue
+					}
+					types = append(types, p.addDeepCloneReparse(parameter.Type()))
+				}
+				tuple := p.vibelangSpanning(p.factory.NewTupleTypeNode(p.newNodeList(callee.Loc, types)), callee.Loc)
+				tuple.Flags |= ast.NodeFlagsReparsed
+				call.Expression = p.vibelangIntrinsic("$handoff", callee.Loc)
+				call.TypeArguments = p.newNodeList(callee.Loc, []*ast.Node{tuple})
+				tag := p.vibelangSynthesized(p.factory.NewStringLiteral(name, ast.TokenFlagsNone), callee.Expression().Loc)
+				call.Arguments = p.newNodeList(call.Arguments.Loc, append([]*ast.Node{tag}, call.Arguments.Nodes...))
+				p.overrideParentInImmediateChildren(node)
+			}
+		}
+		node.ForEachChild(visit)
+		return false
+	}
+	body.ForEachChild(visit)
 }

@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Adding `vibelang()` from `vibelang-unplugin/bun` to `Bun.build` made `.tsx` modules ignore the `jsxImportSource` in `tsconfig.json`, so a Solid or Preact build failed with `Could not resolve: "react/jsx-dev-runtime"`. The plugin now matches only extensionless imports whose name is a `.vibe` file or a directory with an `index.vibe`, so Bun keeps the JSX settings of every other `.tsx` module.
 
+- A workflow had no way to repeat work or run another workflow separately. `return W.to(…)` now starts the next round, `try W.child(…)` runs a separate run, and a handoff written anywhere but after `return` is `EK5508`.
+
 - A workflow body could run any Effect, loop, read the clock or call itself, none of which a plan built before the run can hold. These are now `EK5504` to `EK5507`, and a `retryPolicy` that never gives up warns with `EK5509`.
 
 - A `task` or `workflow` could declare a parameter, success or error type that cannot be stored, such as `Set<string>` or `unknown`. Each boundary type now needs a schema form, or it is `EK2109`, and the derived schemas are on the declaration as `schemas`.

@@ -1,0 +1,39 @@
+// expect-result: {"fixed":"Fix(bug, 0)","annotated":"Annotated(x)","parent":"Parent"}
+// return W.to(…) ends a round and starts the next (VIP-55), with or without
+// a written return type, and W.child(…) runs another workflow separately.
+import { DurableEngine } from "vibelang-runtime"
+
+task Check {
+  effect call(patch: string): boolean!string { return patch.length > 3 }
+}
+
+export workflow Fix {
+  static readonly maxRounds = 4
+  effect call(issue: string, attempt: number) {
+    const ok = try Check(`${issue}-${attempt}`)
+    if (ok) return `fixed in ${attempt}`
+    return Fix.to(issue, attempt + 1)
+  }
+}
+
+export workflow Annotated {
+  effect call(issue: string): string!string {
+    const ok = try Check(issue)
+    if (ok) return issue
+    return Annotated.to(`${issue}!`)
+  }
+}
+
+export workflow Parent {
+  effect call(issue: string): string!string {
+    return try Annotated.child(issue)
+  }
+}
+
+export effect function main() {
+  provide DurableEngine = { execute: (workflow, args) => sync(() => `${workflow.key}(${args.join(", ")})`) } {
+    const fixed: string = try Fix("bug", 0)
+    const annotated: string = try Annotated("x")
+    return { fixed, annotated, parent: Parent.key }
+  }
+}

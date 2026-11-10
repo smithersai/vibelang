@@ -147,6 +147,9 @@ or runtime references valid in first-release `.vibe` source.
 | `Task` | Type of a `task` declaration's value | VIP-55 |
 | `Workflow` | Type of a `workflow` declaration's value | VIP-55 |
 | `DurableSchemas` | Type of a declaration's derived payload, success and error schemas | VIP-44, VIP-55 |
+| `$handoff` | `return W.to(…)` in W's own body, typed by W's parameters | VIP-55 |
+| `$Handoff` | Type of a handoff in a workflow's written return type | VIP-55 |
+| `Handoff` | Type of a workflow round's handoff, `W.to(…)` | VIP-55 |
 | `$try` | `try p` before an Effect value, which the lowering writes as `yield* p` (VIP-5) | — |
 | `$tryAll` | `try.all [a, b]`: run every Effect at once and keep their results in order (Effect.all, unbounded) | VIP-18 |
 | `$tryAllSettled` | `try.allSettled [a, b]`: run every Effect at once and return each one's `Exit`; never fails | VIP-18 |

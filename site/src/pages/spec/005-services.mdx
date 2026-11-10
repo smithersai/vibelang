@@ -648,15 +648,18 @@ The grammar is [TaskDeclaration](/spec/900-appendices#taskdeclaration) and [Work
 - Each `static readonly` member is one option of the declaration, passed through under its own name.
 - A `workflow` declares a constant of the runtime's type `Workflow<P, A, E>`, with `A` and `E` from its `call`, written or inferred. `try W(a)` runs the workflow to completion and needs the durable engine, the service `DurableEngine`: a program that runs a workflow without one has a missing requirement.
 - In a workflow's `call`, `try T(a)` is a step of the workflow's plan and gives the task's success.
+- `return W.to(a)` ends this round of the workflow and starts the next with the arguments `a`, checked against `W`'s parameters. The workflow's success type leaves the handoff out. In `W`'s own body the compiler types the handoff from `W`'s written parameters, so a workflow that hands off to itself needs no return type.
+- In a workflow's `call`, `try W.child(a)` runs `W` as a separate run and waits for it.
 
 ### Durable static rules
 
 - A `task` or `workflow` body holds exactly one non-static `effect call` method, not a generator, and `static readonly` members with initializers, nothing else. A task's `call` writes a type for each parameter and its return type. Anything else is the syntax error `EK5501`.
 - A task is called only in a workflow's `effect call`. A call anywhere else is `EK5502`: there is no run for the step to record into.
-- A workflow's `effect call` is a plan, built before it runs (VIP-55). In it, `try` runs a durable step: a call of a task or a workflow, or `try.all`, `try.race` or `try.any` over such calls. Any other operand of `try`, such as a service, `sleep(…)` or `succeed(…)`, is `EK5504`.
+- A workflow's `effect call` is a plan, built before it runs (VIP-55). In it, `try` runs a durable step: a call of a task or a workflow, `W.child(…)`, or `try.all`, `try.race` or `try.any` over such calls. Any other operand of `try`, such as a service, `sleep(…)` or `succeed(…)`, is `EK5504`.
 - A workflow's `effect call` reads no clock (`Date.now()`, `new Date()`, `performance.now()`), no randomness (`Math.random()`, `crypto.randomUUID()`, `crypto.getRandomValues()`) and no module-level `let` or `var` of its file: `EK5505`.
 - A loop statement, or an assignment, `++` or `--` to a variable, in a workflow's own `effect call` is `EK5506`, once for each loop.
 - A workflow whose `try W(…)` steps reach the workflow again, directly or through other workflows, is `EK5507`.
+- `W.to(…)` anywhere but as a `return` operand is `EK5508`.
 - A written `retryPolicy` object literal with neither `maxAttempts` nor `expirationMs` is the warning `EK5509`: such a policy never gives up.
 - A workflow's written `A!E` leaves `R` unchecked: its body is a plan, and the workflows it calls need the engine only when they run.
 - Every parameter and written success and error type of a `call` is a durable boundary: a type with no schema form is `EK2109`, as in a `schema` declaration. A task's parameters are identifiers, not patterns or a rest parameter, and its annotation leaves the `R` slot out (`EK5501`).

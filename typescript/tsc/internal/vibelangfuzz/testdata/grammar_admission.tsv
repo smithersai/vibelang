@@ -955,6 +955,7 @@ parser/vibelang_durable.go:durableEffectSlots	admission:durable	900-appendices.m
 parser/vibelang_durable.go:Parser.durableSchemas	admission:durable	900-appendices.md#TaskDeclaration,900-appendices.md#WorkflowDeclaration	support	VIP-44/55 boundary schemas derived from the call's parameter and return types
 parser/vibelang_durable.go:Parser.durableSchemaProperty	admission:durable	900-appendices.md#TaskDeclaration	support	VIP-44/55 boundary schemas
 parser/vibelang_durable.go:Parser.durableSchemaOf	admission:durable	900-appendices.md#TaskDeclaration	support	VIP-44/55: never and void boundaries map to Schema.Never and Schema.Void
+parser/vibelang_durable.go:Parser.durableSelfHandoffs	admission:durable	900-appendices.md#WorkflowDeclaration	support	VIP-55: return W.to(…) in W's own body, typed by W's parameters
 parser/vibelang_effect_assertion.go:Parser.withVibeLangExpressionASI	admission:effect-type	900-appendices.md#EffectOperand	support	Optional requirement complete-parse priority and the native expression caller’s ASI boundary
 parser/vibelang_effect_assertion.go:Parser.parseVibeLangExpressionAllowInASI	admission:effect-type	900-appendices.md#EffectOperand	support	Optional requirement complete-parse priority and the native expression caller’s ASI boundary
 parser/vibelang_effect_assertion.go:Parser.parseVibeLangExpressionInitializer	admission:effect-type	900-appendices.md#EffectOperand	support	Optional requirement complete-parse priority and the native expression caller’s ASI boundary

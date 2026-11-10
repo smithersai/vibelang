@@ -1,0 +1,14 @@
+// expect: EK5508 TS2345
+// A handoff stands only as a return operand, with the workflow's parameter types (VIP-55).
+task Check {
+  effect call(patch: string): boolean!string { return patch.length > 3 }
+}
+
+workflow Fix {
+  effect call(issue: string, attempt: number) {
+    const ok = try Check(issue)
+    const next = Fix.to(issue, attempt + 1)
+    if (ok) return issue
+    return Fix.to(issue, "one more")
+  }
+}

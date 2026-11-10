@@ -11,19 +11,21 @@ import (
 
 var (
 	// EK5504: try on something that is not a durable call in a workflow body. {0} is the operand.
-	EK5504 = message(5504, errorCategory, "In a workflow, try runs a durable step: a task, a workflow, or try.all, try.race or try.any over those. {0} is not one; move this work into a task.")
+	EK5504 = message(5504, errorCategory, "In a workflow, try runs a durable step: a task, a workflow, W.child(…), or try.all, try.race or try.any over those. {0} is not one; move this work into a task.")
 	// EK5505: a workflow body reads the clock, randomness or a module-level let. {0} is the read.
 	EK5505 = message(5505, errorCategory, "A workflow's plan is decided before it runs, so its body reads no clock, randomness or module-level let: {0}. Move the read into a task and use its result.")
 	// EK5506: a loop or a reassignment in a workflow body. {0} is the workflow.
 	EK5506 = message(5506, errorCategory, "A workflow's plan is fixed before it runs, so {0} has no loops and no reassignments. Write the repeated work as a task, or run steps at once with try.all.")
 	// EK5507: a workflow that reaches itself through try W(…). {0} is the workflow, {1} the call.
 	EK5507 = message(5507, errorCategory, "{0} reaches itself through try {1}(…), and its plan would never end. A workflow's steps never run the workflow again.")
+	// EK5508: W.to(…) that is not a return operand. {0} is the handoff.
+	EK5508 = message(5508, errorCategory, "{0} ends this round and starts the next, so it stands only as a return operand: return {0}.")
 	// EK5509: a retryPolicy with neither maxAttempts nor expirationMs.
 	EK5509 = message(5509, warningCategory, "This retryPolicy has neither maxAttempts nor expirationMs, so it never gives up. Bound it with one of them.")
 )
 
 func init() {
-	for _, m := range []*Message{EK5504, EK5505, EK5506, EK5507, EK5509} {
+	for _, m := range []*Message{EK5504, EK5505, EK5506, EK5507, EK5508, EK5509} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkWorkflowBodies)
@@ -44,13 +46,18 @@ func isDurableValue(c *checker.Checker, expression *ast.Node, names ...string) b
 	return false
 }
 
-// isDurableCall reports whether node is a call of a task or a workflow.
+// isDurableCall reports whether node is a call of a task or a workflow, or
+// W.child(…).
 func isDurableCall(c *checker.Checker, node *ast.Node) bool {
 	node = ast.SkipParentheses(node)
 	if !ast.IsCallExpression(node) || durableKind(node) != "" {
 		return false
 	}
-	return isDurableValue(c, node.Expression(), "Task", "Workflow")
+	callee := node.Expression()
+	if isDurableValue(c, callee, "Task", "Workflow") {
+		return true
+	}
+	return ast.IsPropertyAccessExpression(callee) && callee.Name().Text() == "child" && isDurableValue(c, callee.Expression(), "Workflow")
 }
 
 // tryOperationElements returns the elements of try.all [ … ], try.race and
@@ -95,6 +102,9 @@ func checkWorkflowBodies(c *checker.Checker, file *ast.SourceFile) {
 			if kind == "workflow" && len(node.Arguments()) == 4 {
 				checkWorkflowBody(c, file, node.Arguments()[3])
 			}
+		}
+		if isHandoff(c, node) && !isReturnOperand(node) {
+			report(c, node, EK5508, handoffText(file, node))
 		}
 		return node.ForEachChild(visit)
 	}
@@ -301,4 +311,31 @@ func insideLoop(node *ast.Node, fn *ast.Node) bool {
 		}
 	}
 	return false
+}
+
+// isHandoff reports whether node is W.to(…) on a workflow, or the
+// $handoff(…) the parser writes for one in W's own body.
+func isHandoff(c *checker.Checker, node *ast.Node) bool {
+	if !ast.IsCallExpression(node) {
+		return false
+	}
+	callee := node.Expression()
+	if ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && callee.Text() == "$handoff" {
+		return true
+	}
+	return ast.IsPropertyAccessExpression(callee) && callee.Name().Text() == "to" && isDurableValue(c, callee.Expression(), "Workflow")
+}
+
+// handoffText is a handoff as written.
+func handoffText(file *ast.SourceFile, node *ast.Node) string {
+	return nodeText(file, node)
+}
+
+// isReturnOperand reports whether node, through parentheses, is a return
+// statement's expression.
+func isReturnOperand(node *ast.Node) bool {
+	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
+		node = node.Parent
+	}
+	return node.Parent != nil && ast.IsReturnStatement(node.Parent)
 }
