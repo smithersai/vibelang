@@ -527,3 +527,32 @@ test("checks refuse unusable bounds and empty groups, and are frozen at declarat
   expect((await run(scorer.score({ output: "hello" }))).score).toBe(1)
   expect(Scorer.checks([{ includes: ["hello"] }]).scorerKey).toBe(key)
 })
+
+test("a suite whose model-judged scorers meet a gate with no tolerance warns, and run logs each warning once", async () => {
+  const { Logger } = await import("effect")
+  const DecisionModel = await import("effect/ai/DecisionModel")
+  const Decision = await import("effect/ai/Decision")
+  const judge = Layer.effect(DecisionModel.DecisionModel, DecisionModel.make({
+    decide: () => Effect.succeed({ answers: { verdict: { _tag: "Probability", probability: 1 } } as any, usage: { inputTokens: undefined, outputTokens: undefined } })
+  }))
+  const greets = Scorer.decide(Decision.probability({ instructions: "Does it greet?" }), { model: "openai:gpt-6", layer: judge })
+  const rubric = Scorer.rubric([{ id: "polite", question: "Polite?", low: "no", high: "yes" }], { model: "anthropic:claude-sonnet-5-5", layer: Layer.empty as any })
+  expect(greets.judge).toBe("openai:gpt-6")
+  expect(rubric.judge).toBe("anthropic:claude-sonnet-5-5")
+  expect(Scorer.exact.judge).toBeUndefined()
+  const declare = (gate: Eval.GateOptions | undefined, scorers: ReadonlyArray<Scorer.Scorer<any, any>>) =>
+    Eval.suite("greets", { target: greet, cases: [{ name: "ada", input: ["Ada"] as [string], expected: "Hello, Ada" }], scorers: scorers as any, gate })
+  const loose = declare({ min: 0.5 }, [greets, rubric, Scorer.exact])
+  expect(loose.warnings).toHaveLength(2)
+  expect(loose.warnings[0]).toContain("openai:gpt-6")
+  expect(loose.warnings[0]).toContain("gate.tolerance")
+  expect(declare(undefined, [greets]).warnings).toHaveLength(1)
+  expect(declare({ min: 0.5, tolerance: 0 }, [greets, rubric]).warnings).toEqual([])
+  expect(declare({ min: 0.5 }, [Scorer.exact]).warnings).toEqual([])
+  const logged: Array<string> = []
+  const capture = Logger.layer([Logger.make(({ logLevel, message }) => logged.push(`${logLevel}: ${String(message)}`))])
+  const loosely = declare({ min: 0.5 }, [greets])
+  await Effect.runPromise(Eval.run(loosely).pipe(Effect.provide(capture)))
+  expect(logged.filter((line) => line.includes("gate.tolerance"))).toHaveLength(1)
+  expect(logged[0]).toMatch(/^Warn/)
+})

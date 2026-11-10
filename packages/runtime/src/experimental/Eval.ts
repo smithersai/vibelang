@@ -134,6 +134,13 @@ export interface Suite<Args extends ReadonlyArray<unknown> = ReadonlyArray<any>,
   readonly trials: number
   readonly concurrency: number
   readonly gate: GateOptions | undefined
+  /**
+   * What {@link run} logs as a warning before it runs: one line for each
+   * scorer graded by a model, such as `Scorer.rubric` or `Scorer.decide`,
+   * when the gate sets no `tolerance`. Model scores move, so with no
+   * tolerance any lower score is a regression.
+   */
+  readonly warnings: ReadonlyArray<string>
 }
 
 type ServicesOf<S> = S extends Scorer.Scorer<any, infer R> ? R : never
@@ -186,16 +193,29 @@ export const suite = <
   }
   const source = (typeof options === "object" && options !== null ? options : {}) as Partial<SuiteOptions<Args, A, E, R, S>>
   const list = (value: unknown) => Array.isArray(value) ? Object.freeze([...value]) : value === undefined ? Object.freeze([]) : value
+  const scorers = read(() => list(source.scorers))
+  const gate = read(() => source.gate)
   return Object.freeze({
     [TypeId]: TypeId,
     name,
     target: read(() => source.target) as Declared["target"],
     cases: read(() => list(source.cases)) as Declared["cases"],
-    scorers: read(() => list(source.scorers)) as Declared["scorers"],
+    scorers: scorers as Declared["scorers"],
     trials: read(() => source.trials) ?? 1,
     concurrency: read(() => source.concurrency) ?? 1,
-    gate: read(() => source.gate)
+    gate,
+    warnings: Object.freeze(read(() => toleranceWarnings(name, scorers, gate)) ?? [])
   })
+}
+
+const toleranceWarnings = (name: unknown, scorers: unknown, gate: unknown): ReadonlyArray<string> => {
+  const tolerance = typeof gate === "object" && gate !== null ? (gate as GateOptions).tolerance : undefined
+  if (tolerance !== undefined || !Array.isArray(scorers)) return []
+  return scorers.flatMap((scorer) =>
+    Scorer.isScorer(scorer) && typeof scorer.judge === "string"
+      ? [`Suite ${JSON.stringify(name)}: scorer ${JSON.stringify(scorer.name)} is graded by the model ${scorer.judge}, and its gate sets no tolerance, so any lower score is a regression. Model scores move: set gate.tolerance.`]
+      : []
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -596,6 +616,7 @@ export const run = <Args extends ReadonlyArray<unknown>, A, R>(
   Effect.gen(function*() {
     const problem = suiteProblem(suite as unknown as Suite<ReadonlyArray<unknown>, unknown, unknown>)
     if (problem !== undefined) return yield* Effect.fail(problem)
+    for (const warning of Array.isArray(suite.warnings) ? suite.warnings : []) yield* Effect.logWarning(warning)
     const n = options.trials ?? suite.trials
     const k = options.k ?? 1
     const optionsProblem = runOptionsProblem(options, n, k)

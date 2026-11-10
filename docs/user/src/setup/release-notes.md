@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
+- A suite graded by a model judge and gated with no `tolerance` failed on any small move of the judge's score, with no hint why. `Experimental.Eval.suite` now lists a warning in `suite.warnings`, and `Experimental.Eval.run` logs it.
+
 - A model could grade an answer in an eval only through a rubric prompt whose reply had to be parsed. `Experimental.Scorer.decide(decision, { model, layer })` now grades with one typed `Decision` on Effect's `DecisionModel`, and a refused or invalid answer is inconclusive, never a pass.
 
 - A test of a suite graded by `Experimental.Scorer.rubric` needed a hand-built fake judge. Pass `Experimental.Test.replay(recorded)` as the rubric's `layer` and provide it around the runs: the judge answers from the recording with no key or network, each recorded verdict is used once, and a recorded failure makes the gate exit 5.

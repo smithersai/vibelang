@@ -1,0 +1,35 @@
+// expect-result: {"loose":1,"named":true,"tolerant":0,"plain":0}
+// VIP-69 follow-up question 3: a model's scores move, so a suite whose
+// model-judged scorer meets a gate with no tolerance carries a warning, which
+// Experimental.Eval.run logs before it runs. A tolerance, or a scorer no model
+// grades, has none.
+const judge = Layer.effect(DecisionModel.DecisionModel, DecisionModel.make({
+  decide: () => Effect.succeed({
+    answers: { verdict: { _tag: "Probability", probability: 1 } },
+    usage: { inputTokens: undefined, outputTokens: undefined },
+  } as any),
+}))
+
+const greets = Experimental.Scorer.decide(
+  Decision.probability({ instructions: "Does the output greet the person named in the context?" }),
+  { model: "openai:gpt-6", layer: judge }
+)
+
+effect function greet(name: string) {
+  return `Hello, ${name}`
+}
+
+const cases = [{ name: "ada", input: ["Ada"] as [string], expected: "Hello, Ada" }]
+const loose = Experimental.Eval.suite("loose", { target: greet, cases, scorers: [greets], gate: { min: 0.5 } })
+const tolerant = Experimental.Eval.suite("tolerant", { target: greet, cases, scorers: [greets], gate: { min: 0.5, tolerance: 0.25 } })
+const plain = Experimental.Eval.suite("plain", { target: greet, cases, scorers: [Experimental.Scorer.exact], gate: { min: 1 } })
+
+export effect function main() {
+  try Experimental.Eval.run(loose)
+  return {
+    loose: loose.warnings.length,
+    named: loose.warnings[0].includes("openai:gpt-6"),
+    tolerant: tolerant.warnings.length,
+    plain: plain.warnings.length,
+  }
+}

@@ -138,6 +138,8 @@ export interface Scorer<In = Run, R = never> {
   readonly scorerKey: string
   /** Why this declaration has no stable identity, or `undefined` when it has one. */
   readonly problem: string | undefined
+  /** The seat of the model that grades, for {@link rubric} and {@link decide}; `undefined` for any other scorer. */
+  readonly judge: string | undefined
   /** Grades one record. Fails with a {@link ScorerError}, never with the score function's own error. */
   readonly score: (run: In) => Effect.Effect<Result, ScorerError, R>
 }
@@ -278,6 +280,7 @@ export const make = <In, R = never>(options: MakeOptions<In, R>): Scorer<In, R> 
     config: frozen,
     scorerKey,
     problem,
+    judge: undefined,
     score: (run: In): Effect.Effect<Result, ScorerError, R> =>
       problem !== undefined
         ? Effect.fail(new ScorerError({ code: "invalid_declaration", message: problem }))
@@ -781,6 +784,9 @@ export interface RubricOptions<E, R> {
   readonly instructions?: string | undefined
 }
 
+const judgedBy = <In, R>(scorer: Scorer<In, R>, seat: unknown): Scorer<In, R> =>
+  Object.freeze({ ...scorer, judge: typeof seat === "string" ? seat : undefined })
+
 const withProblem = <In, R>(scorer: Scorer<In, R>, problem: string): Scorer<In, R> =>
   Object.freeze({
     ...scorer,
@@ -855,7 +861,7 @@ export const rubric = <E = never, R = never>(
         }
       })
   })
-  return problem === undefined ? scorer : withProblem(scorer, problem)
+  return problem === undefined ? judgedBy(scorer, seat) : withProblem(judgedBy(scorer, seat), problem)
 }
 
 /**
@@ -1074,5 +1080,5 @@ export const decide = <E = never, R = never>(
         }
       })
   })
-  return problem === undefined ? scorer : withProblem(scorer, problem)
+  return problem === undefined ? judgedBy(scorer, seat) : withProblem(judgedBy(scorer, seat), problem)
 }
