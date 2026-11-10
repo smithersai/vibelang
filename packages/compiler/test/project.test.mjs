@@ -68,7 +68,7 @@ test("diagnostic parsing preserves multiline detail, CRLF, global messages and d
     diagnostics: [
       { file: join(root, "src/main.vibe"), line: 2, column: 17, category: "error", code: "TS2322", text: "Type 'string' is not assignable.\n  Type detail\n    Nested detail" },
       { category: "warning", code: "EK9204", text: "unreachable catch" }
-    ], files: [join(root, "src/main.vibe"), join(root, "src/type-only.ts")]
+    ], files: [join(root, "src/main.vibe"), join(root, "src/type-only.ts")], exitIgnored: new Set()
   })
 })
 

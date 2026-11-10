@@ -21,6 +21,10 @@ import { launcherBinary, loaderRecord, loaderRecordFile, parseJsonc, projectCach
 const slash = (path) => path.replaceAll("\\", "/")
 const located = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(\w+\d+):\s?(.*)$/
 const global = /^(error|warning)\s+(\w+\d+):\s?(.*)$/
+// Under --project-emit the compiler names each category and code its exit
+// status leaves out, such as an imported Effect lint error under the plugin's
+// ignoreEffectErrorsInTscExitCode: `VIBELANG-EXIT-IGNORED: error EK3889`.
+const exitIgnoredLine = /^VIBELANG-EXIT-IGNORED: (\w+) (\w+\d+)$/
 
 /**
  * Returns the compiler command: the `compiler` option, else VIBELANG_BINARY,
@@ -61,11 +65,13 @@ function command(compiler, args) {
 /**
  * Parses `vibelang --pretty false --listFiles` output into the files the
  * program read and the diagnostics it reported. A diagnostic's position is
- * 1-based, as the compiler prints it.
+ * 1-based, as the compiler prints it. exitIgnored holds `<category> <code>`
+ * for each kind of diagnostic that leaves the compiler's exit status alone.
  */
 export function parseOutput(output, root) {
   const files = []
   const diagnostics = []
+  const exitIgnored = new Set()
   let diagnostic
   const lines = output.split(/\r?\n/)
   const library = /^bundled:\/\/\/libs\/lib\.[^/\s]+\.d\.ts$/
@@ -75,7 +81,7 @@ export function parseOutput(output, root) {
   // Source excerpts can quote the same URLs before continuing their message.
   for (let index = lines.length - 1; index >= 0; index--) {
     const line = lines[index]
-    if (!line) continue
+    if (!line || exitIgnoredLine.test(line)) continue
     if (library.test(line)) {
       if (listing) libraryListings.add(index)
     } else {
@@ -84,7 +90,10 @@ export function parseOutput(output, root) {
   }
   for (const [index, line] of lines.entries()) {
     let match
-    if ((match = line.match(located))) {
+    if ((match = line.match(exitIgnoredLine))) {
+      exitIgnored.add(`${match[1]} ${match[2]}`)
+      diagnostic = undefined
+    } else if ((match = line.match(located))) {
       diagnostic = {
         file: resolve(root, match[1]), line: Number(match[2]), column: Number(match[3]),
         category: match[4], code: match[5], text: match[6]
@@ -110,7 +119,7 @@ export function parseOutput(output, root) {
       diagnostic.text += "\n" + line
     }
   }
-  return { files, diagnostics }
+  return { files, diagnostics, exitIgnored }
 }
 
 const imported = /^\s+Imported via (".*"|'.*') from file '(.+?)'(?: with packageId '[^']*')?( to import .+)?$/
@@ -252,15 +261,21 @@ export function moduleDeclarationSource(path) {
 //                { code, map }, and from each output of its module
 //                declarations, such as main.vibe.text.js beside it, to that
 //   inputs       project source files the result depends on
-//   errors       all project error diagnostics; loaders select by source
-//   warnings     all project warning diagnostics
+//   errors       all project error diagnostics that fail the build; loaders
+//                select by source
+//   warnings     all other project diagnostics: warnings, and errors the
+//                build's exit status leaves out, as the Effect plugin's
+//                ignoreEffectErrorsInTscExitCode does for its lint rules
 // and every file the compiler read, dependencies included, for the cache.
 function collect({ status, signal, output }, root, out) {
-  const { files, diagnostics } = parseOutput(output, root)
+  const { files, diagnostics, exitIgnored } = parseOutput(output, root)
   // Dependencies are contracts too; their sources change only on install.
   const inputs = files.filter((path) => !slash(path).includes("/node_modules/"))
-  const errors = diagnostics.filter((diagnostic) => diagnostic.category === "error")
-  const warnings = diagnostics.filter((diagnostic) => diagnostic.category === "warning")
+  // A loader fails a module on the errors that fail `vibelang -p`, and
+  // reports the rest as the build prints them.
+  const fails = (diagnostic) => diagnostic.category === "error" && !exitIgnored.has(`error ${diagnostic.code}`)
+  const errors = diagnostics.filter(fails)
+  const warnings = diagnostics.filter((diagnostic) => !fails(diagnostic))
   if (status !== 0 && !errors.length) {
     // A crash or an unknown flag prints no diagnostic; report the raw output.
     errors.push({ category: "error", code: "vibelang", text: output.trim() || `exited with ${signal || status}` })

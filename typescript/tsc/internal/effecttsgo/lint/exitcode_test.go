@@ -1,6 +1,7 @@
 package lint
 
 import (
+	"maps"
 	"math/rand"
 	"slices"
 	"testing"
@@ -45,7 +46,7 @@ func TestEffectExitOptionsWitness(t *testing.T) {
 }
 
 // FuzzEffectExitOptions: over any mix of own and imported diagnostics of every
-// category and any plugin exit options, the filter keeps every own VibeLang
+// category and imported rule, and any plugin exit options, the filter keeps every own VibeLang
 // and TypeScript diagnostic, and drops an imported one exactly when its
 // category's option is set (suggestions and messages: ignoreEffectSuggestions,
 // default true; warnings; errors).
@@ -55,7 +56,9 @@ func FuzzEffectExitOptions(f *testing.F) {
 	f.Fuzz(func(t *testing.T, seed int64, size uint8, ignores uint8) {
 		r := rand.New(rand.NewSource(seed))
 		categories := []diagnostics.Category{diagnostics.CategoryError, diagnostics.CategoryWarning, diagnostics.CategorySuggestion, diagnostics.CategoryMessage}
-		imported := []int32{importedRuleCodes["unstableApiUsage"], importedRuleCodes["floatingEffect"], importedRuleCodes["schemaNumber"]}
+		// Every imported rule's code: the options cover each one, such as
+		// preferSchemaOverJson's EK3889 and unknownInEffectCatch's EK38122.
+		imported := slices.Sorted(maps.Values(importedRuleCodes))
 		var diags []*ast.Diagnostic
 		for i := range int(size % 12) {
 			category := categories[r.Intn(len(categories))]

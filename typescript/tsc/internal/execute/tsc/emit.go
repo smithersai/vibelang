@@ -13,6 +13,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnosticwriter"
 	"github.com/microsoft/TypeScript/tsc/internal/execute/incremental"
 	"github.com/microsoft/TypeScript/tsc/internal/locale"
 	"github.com/microsoft/TypeScript/tsc/internal/tracing"
@@ -92,6 +93,9 @@ func EmitAndReportStatistics(input EmitInput) (CompileAndEmitResult, *Statistics
 	diagnosticsForExitCode := result.Diagnostics
 	if FilterDiagnosticsForExitCodeCallback != nil {
 		diagnosticsForExitCode = FilterDiagnosticsForExitCodeCallback(input.Config.CompilerOptions(), result.Diagnostics)
+	}
+	if compiler.IsProjectEmit() {
+		ReportExitIgnored(input.Writer, result.Diagnostics, diagnosticsForExitCode)
 	}
 	hasErrors := slices.ContainsFunc(diagnosticsForExitCode, (*ast.Diagnostic).AffectsBuild)
 	if result.EmitResult.EmitSkipped && hasErrors {
@@ -209,5 +213,38 @@ func listFiles(input EmitInput, emitResult *compiler.EmitResult) {
 			}
 			fmt.Fprintln(input.Writer, file.FileName())
 		}
+	}
+}
+
+// ExitIgnoredPrefix starts each line ReportExitIgnored prints.
+const ExitIgnoredPrefix = "VIBELANG-EXIT-IGNORED: "
+
+// ReportExitIgnored names each category and code among diagnostics that the
+// exit-code filter left out of counted, as the Effect plugin's
+// ignoreEffectErrorsInTscExitCode does for imported lint errors, one line
+// apiece: "VIBELANG-EXIT-IGNORED: error EK3889". The filter judges a
+// diagnostic by its code and category alone, so a line covers every printed
+// diagnostic with both. vibelang/project reports these diagnostics without
+// failing a module load, as they leave the build's exit status alone.
+func ReportExitIgnored(w io.Writer, all []*ast.Diagnostic, counted []*ast.Diagnostic) {
+	kept := make(map[*ast.Diagnostic]bool, len(counted))
+	for _, d := range counted {
+		kept[d] = true
+	}
+	seen := map[string]bool{}
+	var lines []string
+	for _, d := range all {
+		if kept[d] {
+			continue
+		}
+		line := ExitIgnoredPrefix + d.Category().Name() + " " + diagnosticwriter.Code(diagnosticwriter.WrapASTDiagnostic(d))
+		if !seen[line] {
+			seen[line] = true
+			lines = append(lines, line)
+		}
+	}
+	slices.Sort(lines)
+	for _, line := range lines {
+		fmt.Fprintln(w, line)
 	}
 }

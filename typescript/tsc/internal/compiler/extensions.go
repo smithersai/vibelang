@@ -175,4 +175,8 @@ func outsideLoaderRoot(file *ast.SourceFile, caseSensitivity tspath.CaseSensitiv
 // project emission. Only the command entry point sets this process-local mode.
 func SetProjectSidecarOptions(enabled bool) { projectSidecarOptions = enabled }
 
+// IsProjectEmit reports whether this process compiles for vibelang/project
+// (--project-emit), whose loaders read the compiler's printed output.
+func IsProjectEmit() bool { return projectSidecarOptions }
+
 var projectSidecarOptions bool

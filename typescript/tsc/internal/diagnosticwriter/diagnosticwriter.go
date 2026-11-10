@@ -382,6 +382,9 @@ func flattenDiagnosticMessageChain(writer io.Writer, chain Diagnostic, newLine s
 	}
 }
 
+// Code is a diagnostic's code as the compiler prints it, such as TS2322 or EK3889.
+func Code(diagnostic Diagnostic) string { return diagnosticCode(diagnostic) }
+
 // diagnosticCode preserves Appendix B's four-digit EK identifiers. Other
 // diagnostic sources retain their own decimal formatting.
 func diagnosticCode(diagnostic Diagnostic) string {

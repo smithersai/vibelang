@@ -23,9 +23,13 @@ export interface Result {
   readonly inputs: Array<string>
   /** Every file the compiler listed, including dependencies. */
   readonly files: Array<string>
-  /** All project error diagnostics; emitted outputs may still be available. */
+  /** All project errors that fail a `vibelang -p` build; emitted outputs may still be available. */
   readonly errors: Array<Diagnostic>
-  /** All project warning diagnostics. */
+  /**
+   * All other project diagnostics: warnings, and errors the build's exit status
+   * leaves out, such as imported Effect lint errors under the plugin's
+   * `ignoreEffectErrorsInTscExitCode`.
+   */
   readonly warnings: Array<Diagnostic>
 }
 
@@ -37,7 +41,7 @@ export interface Loaded {
   readonly inputs: Array<string>
   /** Errors for this source and project-wide errors. The module's code throws when there are any. */
   readonly errors: Array<Diagnostic>
-  /** Warnings for this source and project-wide warnings. */
+  /** Warnings and build-ignored errors (see Result.warnings) for this source, and project-wide ones. */
   readonly warnings: Array<Diagnostic>
   /** True for the first module loaded from this compile. */
   readonly first: boolean
@@ -77,7 +81,8 @@ export function findCompiler(root: string, compiler?: string): string
  * `module text` compiles to main.vibe.text.js, or undefined.
  */
 export function moduleDeclarationSource(path: string): string | undefined
-export function parseOutput(output: string, root: string): { files: Array<string>; diagnostics: Array<Diagnostic> }
+/** exitIgnored holds `<category> <code>`, such as `error EK3889`, for each kind of diagnostic the build's exit status leaves out. */
+export function parseOutput(output: string, root: string): { files: Array<string>; diagnostics: Array<Diagnostic>; exitIgnored: Set<string> }
 export function parseExplainFiles(output: string, root: string): { files: Array<string>; roots: Array<string>; imports: Array<Import>; diagnostics: Array<Diagnostic> }
 export function projectImports(options: { project: string; root?: string; compiler?: string }): Imports
 export function formatDiagnostic(diagnostic: Diagnostic): string

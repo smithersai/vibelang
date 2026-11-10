@@ -182,7 +182,7 @@ Legacy Oxlint adapter flags, including `-c`, `--deny-warnings`, `--ignore-path`,
 
 Imported Effect warnings make a compiler build exit non-zero and block `noEmitOnError` by default, as in the pinned Effect TypeScript compiler. Suggestions print when `includeSuggestionsInTsc` is `true` and affect a build only when `ignoreEffectSuggestionsInTscExitCode` is `false`.
 
-The plugin's `ignoreEffectErrorsInTscExitCode`, `ignoreEffectWarningsInTscExitCode` and `ignoreEffectSuggestionsInTscExitCode` options keep these rules' `EK38xx` diagnostics of that category out of a `vibelang` build's exit status and out of `noEmitOnError`; the diagnostics still print.
+The plugin's `ignoreEffectErrorsInTscExitCode`, `ignoreEffectWarningsInTscExitCode` and `ignoreEffectSuggestionsInTscExitCode` options keep these rules' `EK38xx` diagnostics of that category out of a `vibelang` build's exit status and out of `noEmitOnError`; the diagnostics still print. The module loaders (`vibelang/register`, `vibelang/bun`, the Vite and bundler plugins) and `vibelang/project` follow the same rule: such a diagnostic fails no module load, stays out of a project result's `errors`, and is reported among its `warnings`.
 
 `vibelang agents init` also teaches coding agents to run `vibelang lint` before finishing a change.
 
