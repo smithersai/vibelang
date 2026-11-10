@@ -174,17 +174,29 @@ export const suite = <
   E = never,
   R = never,
   const S extends ReadonlyArray<Scorer.Scorer<Scorer.Run<NoInfer<Args>, NoInfer<A>>, any>> = readonly []
->(name: string, options: SuiteOptions<Args, A, E, R, S>): Suite<Args, A, R | ServicesOf<S[number]>> =>
-  Object.freeze({
+>(name: string, options: SuiteOptions<Args, A, E, R, S>): Suite<Args, A, R | ServicesOf<S[number]>> => {
+  type Declared = Suite<Args, A, R | ServicesOf<S[number]>>
+  // Read every field once and never throw: run refuses what is malformed.
+  const read = <X>(pick: () => X): X | undefined => {
+    try {
+      return pick()
+    } catch {
+      return undefined
+    }
+  }
+  const source = (typeof options === "object" && options !== null ? options : {}) as Partial<SuiteOptions<Args, A, E, R, S>>
+  const list = (value: unknown) => Array.isArray(value) ? Object.freeze([...value]) : value === undefined ? Object.freeze([]) : value
+  return Object.freeze({
     [TypeId]: TypeId,
     name,
-    target: options.target as Suite<Args, A, R | ServicesOf<S[number]>>["target"],
-    cases: Object.freeze([...(options.cases ?? [])]),
-    scorers: Object.freeze([...(options.scorers ?? [])]) as Suite<Args, A, R | ServicesOf<S[number]>>["scorers"],
-    trials: options.trials ?? 1,
-    concurrency: options.concurrency ?? 1,
-    gate: options.gate
+    target: read(() => source.target) as Declared["target"],
+    cases: read(() => list(source.cases)) as Declared["cases"],
+    scorers: read(() => list(source.scorers)) as Declared["scorers"],
+    trials: read(() => source.trials) ?? 1,
+    concurrency: read(() => source.concurrency) ?? 1,
+    gate: read(() => source.gate)
   })
+}
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -195,23 +207,25 @@ const invalid = (message: string, path: string): EvalError => new EvalError({ co
 const validThreshold = (value: unknown): boolean =>
   typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 1
 
-const gateProblem = (gate: GateOptions | undefined, path: string): EvalError | undefined => {
-  if (gate === undefined) return undefined
+const gateProblem = (gate: GateOptions | undefined | null, path: string): EvalError | undefined => {
+  if (gate === undefined || gate === null) return undefined
   if (typeof gate !== "object" || gate === null) return invalid("A gate must be a record", path)
   for (const key of ["mean", "min"] as const) {
     const value = gate[key]
     if (value !== undefined && !validThreshold(value)) {
-      return invalid(`Gate '${key}' must be a finite number in [0, 1], got ${String(value)}`, `${path}.${key}`)
+      return invalid(`Gate '${key}' must be a finite number in [0, 1], got ${shown(value)}`, `${path}.${key}`)
     }
   }
-  for (const [name, value] of Object.entries(gate.perCase ?? {})) {
+  const perCase: unknown = gate.perCase
+  if (perCase !== undefined && (typeof perCase !== "object" || perCase === null)) return invalid("Gate 'perCase' must be a record", `${path}.perCase`)
+  for (const [name, value] of Object.entries(perCase ?? {})) {
     if (!validThreshold(value)) {
       return invalid(`Gate threshold for case '${text.flattenControlCharacters(name)}' must be in [0, 1]`, `${path}.perCase`)
     }
   }
   const tolerance = gate.tolerance
   if (tolerance !== undefined && !(typeof tolerance === "number" && Number.isFinite(tolerance) && tolerance >= 0)) {
-    return invalid(`Gate 'tolerance' must be finite and non-negative, got ${String(tolerance)}`, `${path}.tolerance`)
+    return invalid(`Gate 'tolerance' must be finite and non-negative, got ${shown(tolerance)}`, `${path}.tolerance`)
   }
   return undefined
 }
@@ -241,6 +255,8 @@ const suiteProblem = (suite: Suite<ReadonlyArray<unknown>, unknown, unknown>): E
       "concurrency"
     )
   }
+  if (!Array.isArray(suite.cases)) return invalid("A suite's cases must be an array", "cases")
+  if (!Array.isArray(suite.scorers)) return invalid("A suite's scorers must be an array", "scorers")
   if (suite.cases.length === 0) return invalid("A suite must contain at least one case", "cases")
   if (suite.cases.length > limits.cases) {
     return invalid(`A suite must contain at most ${limits.cases} cases, got ${suite.cases.length}`, "cases")
@@ -451,10 +467,11 @@ const runTarget = <Args extends ReadonlyArray<unknown>, A, R>(
     const finished = yield* Clock.currentTimeMillis
     return { execution: { output, stepKey: stepKeyOf(output), latencyMs: Math.max(0, finished - started) }, observations: [] }
   }).pipe(
+    // Any cause, an interruption the target raised itself included, fails
+    // only this case. Interrupting the run still stops it: the fiber stays
+    // interrupted and ends at its next step.
     Effect.catchCause((cause): Effect.Effect<Attempt> =>
-      Cause.hasInterrupts(cause)
-        ? Effect.interrupt
-        : Effect.succeed({
+      Effect.succeed({
           error: new EvalError({
             code: "target",
             message: text.flattenControlCharacters(`Target failed for case '${item.name}': ${describe(Cause.squash(cause))}`),
@@ -485,7 +502,6 @@ const scoreOne = <Args extends ReadonlyArray<unknown>, A, R>(
       ...(result.meta === undefined ? {} : { meta: result.meta })
     })),
     Effect.catchCause((cause): Effect.Effect<Observation> => {
-      if (Cause.hasInterrupts(cause)) return Effect.interrupt
       const reason = Cause.squash(cause)
       const failure = reason instanceof Scorer.ScorerError ? reason : undefined
       return Effect.succeed({
@@ -595,7 +611,7 @@ export const run = <Args extends ReadonlyArray<unknown>, A, R>(
               attempt.execution === undefined
                 ? Effect.succeed(attempt)
                 : Effect.forEach(suite.scorers, (scorer) => scoreOne(item, attempt.execution!, scorer, at), {
-                  concurrency: suite.concurrency
+                  concurrency: 1
                 }).pipe(Effect.map((observations): Attempt => ({ ...attempt, observations })))
             )
           ), { concurrency: suite.concurrency }),
@@ -1015,9 +1031,6 @@ const groupBy = <A>(items: ReadonlyArray<A>, of: (item: A) => string): Map<strin
 const byScore = <A extends { readonly score: number }>(items: ReadonlyArray<A>): Array<A> =>
   [...items].sort((left, right) => left.score - right.score)
 
-const byStepThenScore = <A extends { readonly stepKey: string; readonly score: number }>(items: ReadonlyArray<A>): Array<A> =>
-  [...items].sort((left, right) => text.compareText(left.stepKey, right.stepKey) || left.score - right.score)
-
 type Pair =
   | { readonly kind: "matched"; readonly expected: BaselineRecord; readonly observed: ScoreObservation }
   | { readonly kind: "missing-run"; readonly expected: BaselineRecord }
@@ -1042,8 +1055,10 @@ const pairsFor = (expected: ReadonlyArray<BaselineRecord>, observed: ReadonlyArr
   for (const [stepKey, atStep] of observedByStep) {
     if (!expectedByStep.has(stepKey)) leftoverObserved.push(...atStep)
   }
-  const remainingExpected = byStepThenScore(leftoverExpected)
-  const remainingObserved = byStepThenScore(leftoverObserved)
+  // Leftovers at step keys that changed pair by score rank: their step keys
+  // are hashes, and pairing in hash order would invent regressions.
+  const remainingExpected = byScore(leftoverExpected)
+  const remainingObserved = byScore(leftoverObserved)
   const matched = Math.min(remainingExpected.length, remainingObserved.length)
   for (let index = 0; index < matched; index++) {
     pairs.push({ kind: "matched", expected: remainingExpected[index]!, observed: remainingObserved[index]! })
@@ -1100,11 +1115,22 @@ export const compare = (baseline: Baseline, run: RunResult, tolerances: Toleranc
   )
   const baselineByKey = groupBy(baseline.records, (record) => text.tupleKey(record.case, record.scorer))
   const actualByKey = groupBy(actual, (observation) => text.tupleKey(observation.case, observation.scorer))
+  // A scorer that could not decide is inconclusive, not missing: each
+  // inconclusive observation accounts for one baseline record of its pair.
+  const undecided = new Map<string, number>()
+  for (const observation of inconclusive) {
+    const key = text.tupleKey(observation.case, observation.scorer)
+    undecided.set(key, (undecided.get(key) ?? 0) + 1)
+  }
   const regressions: Array<Regression> = []
   const nondeterminism: Array<Nondeterminism> = []
   const missing: Array<MissingObservation> = []
   for (const key of new Set([...baselineByKey.keys(), ...actualByKey.keys()])) {
     for (const pair of pairsFor(baselineByKey.get(key) ?? [], actualByKey.get(key) ?? [])) {
+      if (pair.kind === "missing-run" && (undecided.get(key) ?? 0) > 0) {
+        undecided.set(key, undecided.get(key)! - 1)
+        continue
+      }
       if (pair.kind !== "matched") {
         const side = pair.kind === "missing-run" ? "run" : "baseline"
         const present = pair.kind === "missing-run" ? pair.expected : pair.observed
@@ -1204,7 +1230,8 @@ const grade = (verdict: Verdict): Grade => {
  * @category gating
  * @since 0.0.13
  */
-export const gate = (report: Report, options: GateOptions = {}): Grade => {
+export const gate = (report: Report, gateOptions: GateOptions = {}): Grade => {
+  const options: GateOptions = gateOptions ?? {}
   const problem = gateProblem(options, "options")
   if (problem !== undefined) return grade({ _tag: "Inconclusive", reasons: [`invalid_threshold: ${problem.message}`] })
   const tolerance = options.tolerance ?? 0

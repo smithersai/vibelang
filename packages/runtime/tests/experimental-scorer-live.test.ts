@@ -192,3 +192,24 @@ test("a binding scores only its own workflow", async () => {
   )))
   expect(observations.map((item) => item.workflow)).toEqual(["test#Double"])
 })
+
+test("a scorer that hangs or interrupts itself cannot hold or change the run", async () => {
+  const hangs = Scorer.make({ name: "hangs", version: "1", score: () => Effect.never })
+  const quits = Scorer.make({ name: "quits", version: "1", score: () => Effect.interrupt })
+  for (const scorer of [hangs, quits]) {
+    const observations = await Effect.runPromise(Effect.gen(function*() {
+      expect(yield* Double.execute({ n: 4 })).toBe(8)
+      return yield* stored()
+    }).pipe(Effect.provide(live(Scorer.bind(scorer, Double, { timeout: "20 millis" })))))
+    expect(observations).toEqual([expect.objectContaining({ kind: "inconclusive" })])
+  }
+})
+
+test("prune accepts any duration", async () => {
+  const pruned = await Effect.runPromise(Effect.gen(function*() {
+    yield* Double.execute({ n: 1 })
+    const store = yield* Scorer.ScoreStore
+    return [yield* store.prune({ olderThan: 1.5 }), yield* store.prune({ olderThan: "1 hour" })]
+  }).pipe(Effect.provide(live(Scorer.bind(even, Double)))))
+  expect(pruned).toEqual([0, 0])
+})

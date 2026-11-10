@@ -416,3 +416,114 @@ test("property: a scorer key is SHA-256 of the canonical identity, as node:crypt
     numRuns: 200
   })
 })
+
+// Review findings: each test failed before its fix.
+
+test("a judge outage after a baseline exists is inconclusive (exit 5), not a missing score", async () => {
+  const committed = await run(Eval.run(judgedSuite).pipe(
+    Effect.provide(Layer.succeed(Judge, { grade: () => Effect.succeed(0.9) })),
+    Effect.flatMap(Eval.baseline)
+  ))
+  const down = Layer.succeed(Judge, { grade: () => Effect.fail(new Error("judge unreachable")) })
+  const report = await run(Effect.gen(function*() {
+    return yield* Eval.compare(committed, yield* Eval.run(judgedSuite))
+  }).pipe(Effect.provide(down)))
+  expect(report.missing).toEqual([])
+  const grade = Eval.gate(report, { min: 0 })
+  expect(grade.exitCode).toBe(5)
+  expect(grade.summary).toContain("judge unreachable")
+})
+
+test("leftover scores at new step keys pair by score, so equal scores are no regression", async () => {
+  const record = (stepKey: string, score: number) => ({ suite: "s", case: "c", scorer: "k", stepKey, score })
+  const observation = (stepKey: string, score: number): Eval.Observation => ({ case: "c", scorer: "k", stepKey, at: "t", kind: "score", score })
+  for (const [left, right] of [["d", "c"], ["c", "d"]] as const) {
+    const result = { ...fakeRun([], []), observations: [observation(left, 0.5), observation(right, 0.9)] }
+    const report = await run(Eval.compare({ version: 1, suite: "s", records: [record("a", 0.5), record("b", 0.9)] }, result))
+    expect(report.regressions).toEqual([])
+  }
+})
+
+test("a target or scorer that interrupts itself is a failed case or an inconclusive score; interrupting the run still stops it", async () => {
+  const selfish = Eval.suite("selfish", {
+    target: (name: string) => name === "x" ? Effect.interrupt : Effect.succeed(name),
+    cases: [{ name: "x", input: ["x"] }, { name: "y", input: ["y"] }],
+    scorers: [Scorer.make({ name: "quits", version: "1", score: () => Effect.interrupt })]
+  })
+  const result = await run(Eval.run(selfish))
+  expect(result.cases[0]!.error?.code).toBe("target")
+  expect(result.cases[1]!.observations[0]).toMatchObject({ kind: "inconclusive" })
+  const forever = Eval.suite("forever", { target: () => Effect.never, cases: [{ name: "x", input: [] }], scorers: [] })
+  const exit = await Effect.runPromiseExit(Eval.run(forever).pipe(Effect.timeout("50 millis")))
+  expect(Exit.isFailure(exit)).toBe(true)
+})
+
+test("scorers run inside the suite's concurrency, not multiplied by it", async () => {
+  let live = 0, peak = 0
+  const slow = (name: string) =>
+    Scorer.make({
+      name,
+      version: "1",
+      score: () =>
+        Effect.gen(function*() {
+          live++
+          peak = Math.max(peak, live)
+          yield* Effect.sleep("2 millis")
+          live--
+          return 1
+        })
+    })
+  const suite = Eval.suite("wide", {
+    target: greet,
+    cases: Array.from({ length: 8 }, (_, index) => ({ name: `c${index}`, input: [`n${index}`] as [string] })),
+    scorers: [slow("a"), slow("b"), slow("c"), slow("d")],
+    concurrency: 2
+  })
+  await run(Eval.run(suite))
+  expect(peak).toBeLessThanOrEqual(2)
+})
+
+test("declarations and the gate never throw on malformed input", async () => {
+  const anyEval = Eval as any, anyScorer = Scorer as any
+  for (const make of [
+    () => anyEval.suite("x", { cases: 5 }),
+    () => anyEval.suite("x", undefined),
+    () => anyEval.suite(undefined, null)
+  ]) {
+    const suite = make()
+    expect(await failure(Eval.run(suite))).toMatchObject({ code: "invalid_suite" })
+  }
+  for (const make of [
+    () => anyScorer.make(undefined),
+    () => anyScorer.make({ name: Object.create(null), version: "1", score: () => 1 }),
+    () => anyScorer.checks(5),
+    () => anyScorer.rubric([], undefined)
+  ]) {
+    expect(make().problem).toBeString()
+  }
+  expect(anyScorer.checks([], null).problem).toBeUndefined()
+  const report = await run(Effect.gen(function*() {
+    const result = yield* Eval.run(greetSuite)
+    return yield* Eval.compare(yield* Eval.baseline(result), result)
+  }))
+  expect(Eval.gate(report, { min: Object.create(null) } as any).exitCode).toBe(5)
+  expect(Eval.gate(report, { tolerance: Object.create(null) } as any).exitCode).toBe(5)
+  expect(Eval.gate(report, null as any).exitCode).toBe(0)
+})
+
+test("a score function that throws fails with a ScorerError, not a defect", async () => {
+  const thrower = Scorer.make({ name: "t", version: "1", score: (): number => { throw new Error("bad") } })
+  expect(await failure(thrower.score({ input: [], output: 1, expected: 1 }))).toMatchObject({ _tag: "ScorerError", code: "inconclusive" })
+})
+
+test("checks refuse unusable bounds and empty groups, and are frozen at declaration", async () => {
+  expect(Scorer.checks([{ words: null } as any]).problem).toBeString()
+  expect(Scorer.checks([{ includes: [[]] }]).problem).toBeString()
+  const list: Array<Scorer.Check> = [{ includes: ["hello"] }]
+  const scorer = Scorer.checks(list)
+  const key = scorer.scorerKey
+  list.push({ includes: ["missing"] })
+  ;(list[0] as { includes: Array<string> }).includes.push("absent")
+  expect((await run(scorer.score({ output: "hello" }))).score).toBe(1)
+  expect(Scorer.checks([{ includes: ["hello"] }]).scorerKey).toBe(key)
+})

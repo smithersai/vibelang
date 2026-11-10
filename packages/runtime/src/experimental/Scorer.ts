@@ -246,29 +246,67 @@ const identity = (name: string, version: string, config: unknown): string => {
  * @since 0.0.13
  */
 export const make = <In, R = never>(options: MakeOptions<In, R>): Scorer<In, R> => {
-  const { config, description, name, score, version } = options
-  let problem = declarationProblem(name, version, config)
-  const scorerKey = problem === undefined ? identity(name, version, config) : ""
+  // Each field is read once, and nothing here throws: a declaration this
+  // module cannot use keeps the reason as its problem.
+  const field = (key: keyof MakeOptions<In, R>): unknown => {
+    try {
+      return typeof options === "object" && options !== null ? options[key] : undefined
+    } catch {
+      return undefined
+    }
+  }
+  const name = field("name"), version = field("version"), config = field("config"), score = field("score")
+  const description = field("description")
+  let problem = typeof options === "object" && options !== null ? declarationProblem(name, version, config) : "A scorer needs { name, version, score }"
+  if (problem === undefined && typeof score !== "function") problem = "A scorer's score must be a function"
+  const scorerKey = problem === undefined ? identity(name as string, version as string, config) : ""
   if (problem === undefined && scorerKey === "") problem = "A scorer configuration could not be written as canonical JSON"
+  // The configuration is copied at declaration, so mutating the caller's
+  // object later cannot change grading under the same scorerKey.
+  const frozen = problem === undefined && config !== undefined ? deepFreeze(JSON.parse(canonical.canonicalJson(config))) : null
+  const grade = score as MakeOptions<In, R>["score"]
   return Object.freeze({
     [TypeId]: TypeId,
-    name: typeof name === "string" ? name : String(name),
-    version: typeof version === "string" ? version : String(version),
-    description,
-    config: config ?? null,
+    name: typeof name === "string" ? name : "",
+    version: typeof version === "string" ? version : "",
+    description: typeof description === "string" ? description : undefined,
+    config: frozen,
     scorerKey,
     problem,
     score: (run: In): Effect.Effect<Result, ScorerError, R> =>
       problem !== undefined
         ? Effect.fail(new ScorerError({ code: "invalid_declaration", message: problem }))
         : Effect.suspend(() => {
-          const outcome = score(run)
+          const outcome = grade(run)
           return Effect.isEffect(outcome) ? outcome : Effect.succeed(outcome)
         }).pipe(
-          Effect.mapError((cause) => cause instanceof ScorerError ? cause : inconclusive(describe(cause), cause)),
+          // A typed failure or a defect is the scorer's failure; an
+          // interruption stays an interruption.
+          Effect.catchCause((cause): Effect.Effect<Outcome, ScorerError> => {
+            if (Cause.hasInterruptsOnly(cause)) return Effect.failCause(cause as Cause.Cause<never>)
+            const reason = Cause.squash(cause)
+            return Effect.fail(reason instanceof ScorerError ? reason : inconclusive(describe(reason), reason))
+          }),
           Effect.flatMap(validate)
         )
   })
+}
+
+const deepFreeze = <A>(value: A): A => {
+  if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
+    Object.freeze(value)
+    for (const child of Object.values(value)) deepFreeze(child)
+  }
+  return value
+}
+
+/** A frozen deep copy of plain data, or `undefined` when it is not plain JSON. */
+const frozenCopy = <A>(value: A): A | undefined => {
+  try {
+    return text.lossyPath(value, "value") === undefined ? deepFreeze(JSON.parse(canonical.canonicalJson(value)) as A) : undefined
+  } catch {
+    return undefined
+  }
 }
 
 /**
@@ -372,6 +410,7 @@ const checkProblem = (item: Check, index: number): string | undefined => {
   if (keys.length !== 1) return `${at} must name exactly one check`
   const patterns = (entries: unknown): string | undefined => {
     if (!Array.isArray(entries)) return `${at}.${keys[0]} must be an array`
+    if (entries.some((entry) => Array.isArray(entry) && entry.length === 0)) return `${at}.${keys[0]} has an empty any-of group`
     for (const entry of entries.flat()) {
       if (typeof entry !== "string") return `${at}.${keys[0]} entries must be text`
       const invalid = text.invalidPattern(entry)
@@ -383,7 +422,8 @@ const checkProblem = (item: Check, index: number): string | undefined => {
   if ("excludes" in item) return patterns(item.excludes)
   if ("excludesOpener" in item) return patterns(item.excludesOpener)
   if ("words" in item) {
-    const { max, min } = item.words ?? {}
+    if (typeof item.words !== "object" || item.words === null) return `${at}.words must be { min?, max? }`
+    const { max, min } = item.words
     for (const bound of [min, max]) {
       if (bound !== undefined && (!Number.isSafeInteger(bound) || bound < 0)) return `${at}.words bounds must be non-negative integers`
     }
@@ -416,16 +456,23 @@ export const checks = (
   list: ReadonlyArray<Check>,
   options: { readonly name?: string | undefined; readonly version?: string | undefined } = {}
 ): Scorer<{ readonly output: unknown }> => {
-  const problem = Array.isArray(list)
-    ? list.map(checkProblem).find((found) => found !== undefined)
-    : "checks needs an array of checks"
+  const settings = typeof options === "object" && options !== null ? options : {}
+  let problem: string | undefined
+  try {
+    problem = Array.isArray(list) ? list.map(checkProblem).find((found) => found !== undefined) : "checks needs an array of checks"
+  } catch {
+    problem = "checks could not read its list"
+  }
+  // Copied and frozen at declaration: the list is the scorer's identity.
+  const frozen = problem === undefined ? frozenCopy(list) : undefined
+  if (problem === undefined && frozen === undefined) problem = "checks needs a list of plain data"
   const scorer = make({
-    name: options.name ?? "checks",
-    version: options.version ?? "1",
-    config: problem === undefined ? { checks: list } : null,
+    name: typeof settings.name === "string" ? settings.name : "checks",
+    version: typeof settings.version === "string" ? settings.version : "1",
+    config: problem === undefined ? { checks: frozen } : null,
     score: ({ output }: { readonly output: unknown }) => {
       if (typeof output !== "string") return Effect.fail(inconclusive("checks grades text output"))
-      const results = list.map((item) => runCheck(item, output))
+      const results = frozen!.map((item) => runCheck(item, output))
       const failed = results.filter((result) => !result.pass)
       return {
         score: results.length === 0 ? 1 : (results.length - failed.length) / results.length,
@@ -437,14 +484,7 @@ export const checks = (
       }
     }
   })
-  return problem === undefined
-    ? scorer
-    : Object.freeze({
-      ...scorer,
-      scorerKey: "",
-      problem,
-      score: () => Effect.fail(new ScorerError({ code: "invalid_declaration", message: problem }))
-    })
+  return problem === undefined ? scorer : withProblem(scorer, problem)
 }
 
 // ---------------------------------------------------------------------------
@@ -554,7 +594,10 @@ const fromStore = (store: scoreStore.Store): ScoreStore => ({
   observations: store.observations,
   aggregate: (filter) => Effect.map(store.observations(filter), scoreStore.aggregate),
   prune: ({ olderThan }) =>
-    Effect.flatMap(Clock.currentTimeMillis, (now) => store.prune(now - Duration.toMillis(Duration.fromInputUnsafe(olderThan))))
+    Effect.flatMap(Clock.currentTimeMillis, (now) => {
+      const age = Duration.toMillis(Duration.fromInputUnsafe(olderThan))
+      return Number.isFinite(age) ? store.prune(Math.floor(now - age)) : Effect.succeed(0)
+    })
 })
 
 /**
@@ -587,6 +630,8 @@ export const layerSql: Layer.Layer<ScoreStore, never, SqlClient.SqlClient> = /* 
 export interface BindOptions {
   /** Which runs to score. Default `"all"`. */
   readonly sampling?: Sampling | undefined
+  /** How long one score may take before it is inconclusive. Default one minute. */
+  readonly timeout?: Duration.Input | undefined
 }
 
 type PayloadOf<W> = W extends Workflow.Workflow<any, infer P, any, any> ? P["Type"] : never
@@ -615,7 +660,9 @@ export const bind = <W extends Workflow.Any, R = never>(
   Layer.effect(
     WorkflowEngine.WorkflowEngine,
     Effect.gen(function*() {
-      const sampling = options.sampling ?? "all"
+      const settings = typeof options === "object" && options !== null ? options : {}
+      const sampling = settings.sampling ?? "all"
+      const timeout = settings.timeout ?? "1 minute"
       const problem = scorer.problem ?? samplingProblem(sampling)
       if (problem !== undefined) {
         return yield* Effect.fail(
@@ -641,6 +688,7 @@ export const bind = <W extends Workflow.Any, R = never>(
             scorer.score({ input: payload, output, expected: undefined as SuccessOf<W> })
           ).pipe(
             Effect.provideContext(services),
+            Effect.timeout(timeout),
             Effect.map((result): StoredObservation => ({
               ...base,
               kind: "score",
@@ -648,8 +696,9 @@ export const bind = <W extends Workflow.Any, R = never>(
               ...(result.reason === undefined ? {} : { reason: result.reason }),
               ...(result.meta === undefined ? {} : { meta: result.meta })
             })),
+            // Any cause, a timeout or an interruption the scorer raised
+            // itself included, is inconclusive and never reaches the run.
             Effect.catchCause((cause): Effect.Effect<StoredObservation> => {
-              if (Cause.hasInterrupts(cause)) return Effect.interrupt
               const reason = Cause.squash(cause)
               const failure = reason instanceof ScorerError ? reason : undefined
               return Effect.succeed({
@@ -662,9 +711,7 @@ export const bind = <W extends Workflow.Any, R = never>(
           )
           yield* store.recordOnce(observation).pipe(
             Effect.catchCause((cause) =>
-              Cause.hasInterrupts(cause)
-                ? Effect.interrupt
-                : Effect.logWarning("Could not record a live score", Cause.squash(cause)).pipe(
+              Effect.logWarning("Could not record a live score", Cause.squash(cause)).pipe(
                   Effect.annotateLogs({ workflow: workflow._tag, run, scorer: scorer.scorerKey })
                 )
             )
@@ -756,20 +803,32 @@ export const rubric = <E = never, R = never>(
   criteria: ReadonlyArray<Criterion>,
   options: RubricOptions<E, R>
 ): Scorer<{ readonly input: unknown; readonly output: unknown }, R> => {
-  const rule = options.rule ?? rubricText.defaultRule
-  const examples = options.examples ?? []
-  const seat = options.model
+  const settings = (typeof options === "object" && options !== null ? options : {}) as Partial<RubricOptions<E, R>>
+  const seat = settings.model
+  const rule = settings.rule ?? rubricText.defaultRule
+  const instructions = settings.instructions
+  // Criteria, examples and rule are copied and frozen at declaration: they
+  // are the scorer's identity.
+  const declared = frozenCopy({ criteria, examples: settings.examples ?? [], rule })
+  let problem = typeof seat !== "string" || seat.trim().length === 0
+    ? "A rubric must name its judge's seat"
+    : declared === undefined
+    ? "A rubric's criteria, examples and rule must be plain data"
+    : rubricText.criteriaProblem(declared.criteria, declared.rule) ?? rubricText.examplesProblem(declared.examples)
+  if (problem === undefined && instructions !== undefined && typeof instructions !== "string") problem = "A rubric's instructions must be text"
+  if (problem === undefined && !Layer.isLayer(settings.layer)) problem = "A rubric needs the layer of its judge's LanguageModel"
   const scorer = make({
-    name: options.name ?? "rubric",
-    version: options.version ?? "1",
-    config: { model: seat, criteria, examples, rule, instructions: options.instructions ?? null },
+    name: typeof settings.name === "string" ? settings.name : "rubric",
+    version: typeof settings.version === "string" ? settings.version : "1",
+    config: problem === undefined ? { model: seat, ...declared, instructions: instructions ?? null } : null,
     score: ({ input, output }: { readonly input: unknown; readonly output: unknown }) =>
       Effect.gen(function*() {
-        const { context, focus } = rubricText.subject(input)
+        // A suite passes the target's arguments; one argument is the subject.
+        const { context, focus } = rubricText.subject(Array.isArray(input) && input.length === 1 ? input[0] : input)
         const request = rubricText.render({
-          criteria,
-          examples,
-          instructions: options.instructions,
+          criteria: declared!.criteria,
+          examples: declared!.examples,
+          instructions,
           context,
           focus,
           output: rubricText.asText(output)
@@ -777,23 +836,20 @@ export const rubric = <E = never, R = never>(
         const reply = yield* LanguageModel.generateText({
           prompt: [{ role: "system", content: request.system }, { role: "user", content: request.prompt }]
         }).pipe(
-          Effect.provide(options.layer),
+          Effect.provide(settings.layer!),
           Effect.mapError((cause) => inconclusive(`The judge ${seat} could not answer: ${describe(cause)}`, cause))
         )
-        const judgement = rubricText.parse(reply.text, criteria)
+        const judgement = rubricText.parse(reply.text, declared!.criteria)
         if (typeof judgement === "string") {
           return yield* Effect.fail(new ScorerError({ code: "invalid_score", message: `The judge ${seat} replied without a usable score: ${judgement}` }))
         }
         return {
           score: rubricText.normalized(judgement.scores),
           reason: judgement.reason,
-          meta: { scores: judgement.scores, pass: rubricText.decide(judgement.scores, rule), judge: seat }
+          meta: { scores: judgement.scores, pass: rubricText.decide(judgement.scores, declared!.rule), judge: seat }
         }
       })
   })
-  const problem = typeof seat !== "string" || seat.trim().length === 0
-    ? "A rubric must name its judge's seat"
-    : rubricText.criteriaProblem(criteria, rule)
   return problem === undefined ? scorer : withProblem(scorer, problem)
 }
 
@@ -848,7 +904,7 @@ export const calibrate = <R>(
       }),
       Effect.map((pass) => ({ expected: item.verdict, actual: pass ? "pass" as const : "fail" as const })),
       Effect.catchCause((cause) =>
-        Cause.hasInterrupts(cause) ? Effect.interrupt : Effect.succeed({ expected: item.verdict, actual: "inconclusive" as const })
+        Effect.succeed({ expected: item.verdict, actual: "inconclusive" as const, cause })
       )
     ), { concurrency: options.concurrency ?? 1 }).pipe(
       Effect.map((pairs): Agreement => {

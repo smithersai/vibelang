@@ -135,3 +135,18 @@ test("property: any judge reply gives a score in [0, 1] that passes exactly when
     numRuns: 200
   })
 })
+
+test("a rubric refuses malformed examples and reads a single { context, focus } argument from Eval", async () => {
+  expect(Scorer.rubric(criteria, { model: "m", layer: scripted(["{}"]), examples: [{ verdict: "pass" } as any] }).problem).toContain("examples")
+  const prompts: Array<string> = []
+  const suite = Eval.suite("focused", {
+    target: (request: { context: string; focus: string }) => Effect.succeed(`reply to ${request.context}`),
+    cases: [{ name: "a", input: [{ context: "a refund request", focus: "apologise once" }] }],
+    scorers: [judge(scripted(["{\"scores\": {\"polite\": 4, \"correct\": 4}}"], prompts))]
+  })
+  await Effect.runPromise(Eval.run(suite))
+  expect(prompts[0]).toContain("Ideal behaviour for this case")
+  expect(prompts[0]).toContain("apologise once")
+  // The judge reads the request's context alone, not the argument array as JSON.
+  expect(prompts[0]).toContain("```text\\na refund request\\n```")
+})

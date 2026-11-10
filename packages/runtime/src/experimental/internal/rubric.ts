@@ -169,3 +169,14 @@ export const criteriaProblem = (criteria: unknown, rule: unknown): string | unde
   }
   return undefined
 }
+
+export const examplesProblem = (examples: unknown): string | undefined => {
+  if (!Array.isArray(examples)) return "A rubric's examples must be an array"
+  for (const [index, example] of examples.entries()) {
+    if (typeof example !== "object" || example === null) return `examples[${index}] must be a record`
+    const { transcript, verdict, why } = example as Partial<Example>
+    if (verdict !== "pass" && verdict !== "fail") return `examples[${index}].verdict must be "pass" or "fail"`
+    if (typeof transcript !== "string" || typeof why !== "string") return `examples[${index}] needs a text transcript and why`
+  }
+  return undefined
+}

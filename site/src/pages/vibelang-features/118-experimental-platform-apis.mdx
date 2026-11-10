@@ -783,7 +783,7 @@ A case's `input` is the array of the target's arguments, typed from the target, 
 | `Experimental.Eval.fromJsonLines(text, { name, target, scorers, … })` | A suite whose cases are JSON Lines, one `{ "name", "input", "expected"? }` per line. |
 | `Experimental.Eval.passAtK(n, c, k)` | The chance at least one of `k` trials passes, from `c` passes in `n`; `NaN` for impossible counts. |
 
-A suite holds at most 10,000 cases and runs at most 1,024 at once (`Experimental.Eval.limits`). Trials run one after another; a trial passes when its target succeeded and every scorer gave 1, and each case reports `passAt1`, `passAtK` and `passHatK`.
+A suite holds at most 10,000 cases and runs at most 1,024 at once (`Experimental.Eval.limits`). Trials run one after another, and a case's scorers run one after another, so at most `concurrency` targets or scorers run at once; a trial passes when its target succeeded and every scorer gave 1, and each case reports `passAt1`, `passAtK` and `passHatK`.
 
 The outcomes stay distinct all the way to the exit code:
 
@@ -791,7 +791,7 @@ The outcomes stay distinct all the way to the exit code:
 | --- | --- | --- |
 | Regression | A score dropped and the target gave a different answer: the output's hash, its step key, changed | `1` |
 | Nondeterminism | A score moved and the answer did not: the same output graded differently twice | `1` |
-| Missing | A score on one side only, such as a new case, or a scorer whose version changed | `1` |
+| Missing | A score on one side only, such as a new case, or a scorer whose version changed. A scorer that could not decide is inconclusive, not missing | `1` |
 | Failed target | The target failed or died; the case has no scores, and the run continues | `1` |
 | Inconclusive | A scorer failed or returned something other than a finite number in `[0, 1]`; it records a code and a reason, never a score of zero | `5` |
 
@@ -850,7 +850,7 @@ export effect function judged() {
 // Output: 1
 ```
 
-The judge reads the case input as context, or `{ context, focus }` when the input is one, and everything it reads is fenced as data it must not follow. A judge that cannot be reached, or whose reply holds no integer score for every criterion, is inconclusive: the observation records why, and the gate exits `5`. Model scores move, so give a suite with a rubric a gate `tolerance`.
+The judge reads the case input as context: a suite's single argument, or the arguments as JSON, or `{ context, focus }` when the input is one, and everything it reads is fenced as data it must not follow. A judge that cannot be reached, or whose reply holds no integer score for every criterion, is inconclusive: the observation records why, and the gate exits `5`. Model scores move, so give a suite with a rubric a gate `tolerance`.
 
 `Experimental.Scorer.calibrate(scorer, labelled)` measures a judge before you trust it: it grades answers whose verdict is known, `{ input?, output, verdict: "pass" | "fail" }`, and returns how often the judge agreed, with true and false passes and fails and the inconclusive count.
 
@@ -890,7 +890,7 @@ export effect function scoredRuns() {
 | `"none"` | no run |
 | `{ ratio, seed }`, `0 < ratio < 1` | the runs whose hash of run id, `scorerKey` and `seed` falls below `ratio`. The choice depends on nothing else, so a replay samples the same runs; `Experimental.Scorer.sampled(sampling, run, scorerKey)` answers it |
 
-Scoring never changes a run's result. A scorer that fails records an inconclusive observation, and a store that fails logs a warning. A scorer with no stable identity, or an invalid sampling policy, fails the layer with a `ScorerError` when it is built.
+Scoring never changes a run's result. A scorer that fails, interrupts itself or runs past `timeout` (default one minute) records an inconclusive observation, and a store that fails logs a warning. The score is taken when the run finishes, so the scorer's time adds to the run's, at most `timeout`. A scorer with no stable identity, or an invalid sampling policy, fails the layer with a `ScorerError` when it is built.
 
 Pick the store with one layer: `Experimental.Scorer.memory` keeps scores in this process; `Experimental.Scorer.layerSql` keeps them in a SQL database through the `SqlClient` the program provides, as `Experimental.Durable.layerSql` does, and creates the table `score_observations` if it is missing. The `Experimental.Scorer.ScoreStore` service reads them: `observations({ workflow?, run?, scorer? })`, oldest first, `aggregate(filter)` for the count, mean, minimum and inconclusive count, and `prune({ olderThan })`, which deletes older observations and answers how many. Nothing else deletes them.
 
