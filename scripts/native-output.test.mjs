@@ -22,7 +22,7 @@ function fixture(t, windows = false) {
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, content, mode ? { mode } : undefined)
   }
-  for (const file of ["scripts/build-vibelang.sh", "scripts/native-output.sh"]) {
+  for (const file of ["scripts/build-vibelang.sh", "scripts/native-output.sh", "scripts/generate-projection-prelude.mjs", "packages/ts-mapper/prelude.d.ts"]) {
     if (existsSync(new URL("../" + file, import.meta.url))) put(file, read(file))
   }
   for (const dir of ["typescript/tsc", "typescript/built/local", "packages/compiler/native"]) mkdirSync(join(root, dir), { recursive: true })
