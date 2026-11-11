@@ -365,6 +365,41 @@ function nativeDeclarationOf(path, hasSource) {
     isNativeDeclaration(path, "./" + basename(stem) + extension))
 }
 
+// A module body's declaration (VIP-40): x.vibe.<name>.d.ts beside x.vibe's
+// sidecar, where <name> encodes the declared name as the compiler's output
+// stem does. It is an output while x.vibe declares that body, as compiler
+// discovery treats it; a file of that shape whose source declares no such
+// body stays an input. sourceOf(path) maps the x.vibe path beside the file
+// to the source file, or to undefined when there is none.
+const bodyDeclarationName = /^(.+\.vibex?)\.((?:[a-z0-9_]|-[0-9a-f]+-)+)\.d\.ts$/
+function isBodyDeclaration(path, sourceOf) {
+  const match = bodyDeclarationName.exec(basename(path))
+  if (!match) return false
+  const source = sourceOf(join(dirname(path), match[1]))
+  return source !== undefined && declaredBodies(source).has(match[2])
+}
+
+// The encoded names of the module declarations a .vibe file holds: module,
+// a name on the same line, then {. The name's escapes are decoded first, as
+// the compiler names a body by its decoded name.
+const escape = String.raw`\\u[0-9a-fA-F]{4}|\\u\{[0-9a-fA-F]+\}`
+const moduleDeclaration = new RegExp(String.raw`(?<![\p{ID_Continue}$.\\])module[^\S\r\n  ]+` +
+  String.raw`((?:[\p{ID_Start}$_]|${escape})(?:[\p{ID_Continue}$‌‍]|${escape})*)\s*\{`, "gu")
+function declaredBodies(source) {
+  let text
+  try {
+    text = readFileSync(source, "utf8")
+  } catch {
+    return new Set()
+  }
+  const names = new Set()
+  for (const [, written] of text.matchAll(moduleDeclaration)) {
+    const name = written.replace(/\\u\{([0-9a-fA-F]+)\}|\\u([0-9a-fA-F]{4})/g, (_, long, short) => String.fromCodePoint(parseInt(long ?? short, 16)))
+    names.add([...name].map((character) => /[a-z0-9_]/.test(character) ? character : `-${character.codePointAt(0).toString(16)}-`).join(""))
+  }
+  return names
+}
+
 // What a directory holds that could become part of a program: its source
 // files and subdirectories, without the dotted names TypeScript's globs skip
 // unless a pattern writes the dot (hidden).
@@ -381,7 +416,8 @@ function listing(path, omitted = [], hidden = false) {
   const names = []
   const directories = []
   // A declaration sidecar beside its .vibe source is an output (VIP-27),
-  // excluded from the program just as it is by the compiler's resolver.
+  // excluded from the program just as it is by the compiler's resolver, and
+  // so are the source's native declaration and its bodies' declarations.
   // An orphan sidecar remains a TypeScript input.
   const sources = new Set(entries.filter((entry) => /\.vibex?$/.test(entry.name) &&
     (entry.isFile() || entry.isSymbolicLink() && statOf(join(path, entry.name))?.isFile())).map((entry) => entry.name))
@@ -396,6 +432,7 @@ function listing(path, omitted = [], hidden = false) {
     } else if (sourceName.test(entry.name)) {
       if (/\.d\.vibex?\.ts$/.test(entry.name) && sources.has(entry.name.replace(/\.d\.(vibex?)\.ts$/, ".$1"))) continue
       if (nativeDeclarationOf(join(path, entry.name), (stem, extension) => sources.has(basename(stem) + extension))) continue
+      if (isBodyDeclaration(join(path, entry.name), (source) => sources.has(basename(source)) ? source : undefined)) continue
       names.push(entry.name)
     }
   }
@@ -419,8 +456,15 @@ function sidecarInputNames(root, { recursive, excluded, sidecarDir, home, hidden
     if (mirrored === ".." || mirrored.startsWith(".." + sep) || isAbsolute(mirrored)) return false
     return statOf(join(home, mirrored + extension))?.isFile() ?? false
   }
+  const sourceOf = (path) => {
+    if (statOf(path)?.isFile()) return path
+    const mirrored = relative(sidecarDir, path)
+    if (mirrored === ".." || mirrored.startsWith(".." + sep) || isAbsolute(mirrored)) return undefined
+    return statOf(join(home, mirrored))?.isFile() ? join(home, mirrored) : undefined
+  }
   const paired = (path) => {
     if (nativeDeclarationOf(path, mirroredSource)) return true
+    if (isBodyDeclaration(path, sourceOf)) return true
     const suffix = /\.d\.(vibex?)\.ts$/.exec(path)?.[0]
     if (!suffix) return false
     const extension = suffix.slice(2, -3)

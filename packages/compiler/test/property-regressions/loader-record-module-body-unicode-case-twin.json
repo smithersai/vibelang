@@ -1,0 +1,43 @@
+{
+  "property": "loader-record-module-body",
+  "key": "loader-record:body-declarations-after-snapshot",
+  "rule": "007-tooling.md: a module body's declaration written beside a sidecar is left out of discovery while its source declares that body",
+  "input": {
+    "bodies": [
+      {
+        "start": "Ü",
+        "rest": [
+          "Z",
+          "$"
+        ],
+        "escape": "braced",
+        "gap": "\t",
+        "open": "\n",
+        "name": "ÜZ$"
+      },
+      {
+        "start": "M",
+        "rest": [
+          "a"
+        ],
+        "escape": "short",
+        "gap": " ",
+        "open": "",
+        "name": "Ma"
+      },
+      {
+        "start": "m",
+        "rest": [
+          "a"
+        ],
+        "escape": "none",
+        "gap": "  ",
+        "open": " ",
+        "name": "ma"
+      }
+    ],
+    "layout": "beside",
+    "decoy": "caseTwin"
+  },
+  "reason": "A body name with a braced escape for a non-ASCII start, a short escape and a case twin of a declared body: only the declared bodies' declarations are outputs."
+}
