@@ -434,6 +434,12 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"ambient-export-pattern", "export declare const { a }: { a: number };"},
 	{"arrow-parenthesized-effect-return", "const b = effect (): (number!!) | (number!TypeError) => 1"},
 	{"arrow-single-parenthesized-effect-return", "const c = effect (): (number!TypeError) => 1"},
+	{"mutable-type-literal", "type T = { mutable x: number }"},
+	{"mutable-interface", "interface Point { mutable x: number; readonly y: number }"},
+	{"mutable-schema-field", "schema S { mutable plain?: string }"},
+	{"effect-try-statement", "effect function f() { try { return 1 } catch (e) { return 2 } }"},
+	{"effect-await-using", "effect function f(r: AsyncDisposable) { await using h = r; return 1 }"},
+	{"legacy-infer-slot", "import { Effect } from \"effect\"\nexport const a = (): number!(infer E) => Effect.succeed(1)"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1615,6 +1621,12 @@ func grammarAdmissionForm(source string) string {
 	if grammarIsOperandPrecedence(ts) {
 		return "admission:is-operand-precedence"
 	}
+	// VIP-15 keeps native writable defaults and adopts no mutable modifier,
+	// yet the parser consumes a mutable member marker (registry key
+	// admission:mutable-default, pending). Key the program by it.
+	if grammarMutableMemberMarker(ts) {
+		return "admission:mutable-default"
+	}
 	return ""
 }
 
@@ -2251,6 +2263,12 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 501, 504, 1701, 1001: // [+Effect] placement; EK1001 is legacy module-level try rejection.
 		return true
+	case 503: // Appendix A gives an effect body no TryStatement; the compiler parses `try { } catch` there for recovery and rejects it at the same placement check.
+		return true
+	case 1003: // The effect body is [~Await]: `await using` there has no derivation, and the legacy fallback's EK1003 stands beside EK0102 for it.
+		return true
+	case 4857: // VIP-3 retired written infer slots: `(infer E) => A!E!R` is parsed and rejected where TS1338 would reject the same occurrence.
+		return true
 	case 108: // VIP-1: a recognized effect modifier on an interface or type literal member, abstract or ambient (Appendix A).
 		return true
 	case 1702: // VIP-17: reserved fork/join names are a syntax error, including expression-owned names.
@@ -2353,6 +2371,11 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// TypeScript permits a parameter property only in a constructor
 	// implementation. This is a structural rejection, independent of types.
 	case 2369:
+		return true
+	// `infer` is permitted only in the extends clause of a conditional type
+	// (checkGrammar in checkInferType): a placement rule of the type grammar,
+	// which VIP-3's retired written infer slot (EK4857) stands in for.
+	case 1338:
 		return true
 	// checkGrammarIndexSignatureParameters (checker/grammarchecks.go): an
 	// IndexSignature is "[" one BindingIdentifier TypeAnnotation "]"
@@ -2831,6 +2854,31 @@ func grammarThrowExpressionPosition(prev grammarToken) bool {
 	switch prev.text {
 	case "return", "join", "fork", "try", "await", "typeof", "void", "delete", "yield", "in", "instanceof", "case":
 		return true
+	}
+	return false
+}
+
+// grammarMutableMemberMarker reports a `mutable` word that opens a type
+// member: the first token of a member (after "{", ";", "," or a line break)
+// followed on the same line by a member name, a computed key or a private
+// name, as Parser.parseVibeLangMutable reads it. A property named mutable
+// (`{ mutable: 1 }`) or a binding (`const mutable = 1`) is not one.
+func grammarMutableMemberMarker(ts []grammarToken) bool {
+	for i, tok := range ts {
+		if tok.kind != 'w' || tok.text != "mutable" || i+1 >= len(ts) {
+			continue
+		}
+		if i > 0 && !tok.nl && ts[i-1].text != "{" && ts[i-1].text != ";" && ts[i-1].text != "," {
+			continue
+		}
+		next := ts[i+1]
+		if next.nl {
+			continue
+		}
+		switch {
+		case next.kind == 'w' || next.kind == 's' || next.kind == 'n' || next.text == "[" || next.text == "#":
+			return true
+		}
 	}
 	return false
 }

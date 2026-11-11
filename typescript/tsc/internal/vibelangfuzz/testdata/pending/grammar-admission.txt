@@ -64,3 +64,5 @@ FuzzGrammarAdmission corpus:module-redeclared-body-priority compiler VIP-40 and 
 
 FuzzGrammarAdmission admission:unhomed-pattern-subject compiler VIP-7 and VIP-17: an is binding with no lexical home discards its subject, hiding an outside-Effect fork or join prefix behind EK0705 even when the pattern grammar is valid
 FuzzGrammarAdmission corpus:unhomed-pattern-subject-prefix compiler VIP-7 and VIP-17: an unhomed binding in a parameter default discards its outside-Effect join subject; the valid rest pattern receives only EK0705
+FuzzGrammarAdmission admission:mutable-default compiler VIP-15 preserves native writable defaults and adopts no mutable modifier: the parser still consumes a `mutable` member marker in type literals, interfaces, schemas and data payloads (EK3410 on an ordinary member) and Appendix A has no production for it; the registry rows Parser.parseVibeLangMutable and Parser.vibelangReadonly carry the same key
+
