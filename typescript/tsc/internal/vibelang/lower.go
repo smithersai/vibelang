@@ -297,7 +297,11 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 	case node.Kind == ast.KindCallExpression && tx.plan.wireOrders[node] != nil:
 		return tx.visitWireCall(node)
 	case tx.plan.producers[node]:
-		return tx.visitProducer(node)
+		lowered := tx.visitProducer(node)
+		if node.Kind == ast.KindMethodDeclaration && node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
+			return tx.visitObjectMemberName(lowered)
+		}
+		return lowered
 	case node.Kind == ast.KindFunctionDeclaration && tx.plan.isEffect(node):
 		return tx.visitEffectFunctionDeclaration(node)
 	case node.Kind == ast.KindMethodDeclaration && tx.plan.isEffect(node):

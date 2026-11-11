@@ -1,0 +1,59 @@
+// expect-result: [[[1],[2],[3],[4],[5],[6],[7],[8],[9],[10],[11]],["class-key","object-key","decorator","decorated-key","defined","collected"]]
+import { Effect, Stream } from "effect"
+
+const events: string[] = []
+const names = { a: "k" }
+function mark<This, A extends unknown[], R>(
+  value: (this: This, ...args: A) => R,
+  _context: ClassMethodDecoratorContext<This, (this: This, ...args: A) => R>
+) { return value }
+
+class C {
+  [name: string]: () => Stream.Stream<number>
+  effect *[names.a |> String(%)]() { yield 1 }
+  effect *[match (names.a) { when "k": "match"; default: "unused"; }]() { yield 2 }
+  effect *[(names.a is String) ? "is" : "unused"]() { yield 3 }
+  effect *[do { events.push("class-key"); "do"; }]() { yield 4 }
+}
+
+const object = {
+  effect *[names.a |> String(%)]() { yield 5 },
+  effect *[match (names.a) { when "k": "match"; default: "unused"; }]() { yield 6 },
+  effect *[(names.a is String) ? "is" : "unused"]() { yield 7 },
+  effect *[do { events.push("object-key"); "do"; }]() { yield 8 }
+}
+
+class Decorated {
+  [name: string]: () => Stream.Stream<number>
+  @(do { events.push("decorator"); mark; } |> %)
+  effect *[do { events.push("decorated-key"); "decorated"; }]() { yield 9 }
+}
+
+export effect function main() {
+  const local = {
+    effect *[try Effect.succeed("local")]() { yield 10 }
+  }
+  class Local {
+    [name: string]: () => Stream.Stream<number>
+    @(try Effect.succeed(mark))
+    effect *[try Effect.succeed("localClass")]() { yield 11 }
+  }
+  events.push("defined")
+  const c = new C()
+  const decorated = new Decorated()
+  const values = [
+    try Stream.runCollect(c.k()),
+    try Stream.runCollect(c.match()),
+    try Stream.runCollect(c.is()),
+    try Stream.runCollect(c.do()),
+    try Stream.runCollect(object.k()),
+    try Stream.runCollect(object.match()),
+    try Stream.runCollect(object.is()),
+    try Stream.runCollect(object.do()),
+    try Stream.runCollect(decorated.decorated()),
+    try Stream.runCollect(local.local()),
+    try Stream.runCollect(new Local().localClass())
+  ]
+  events.push("collected")
+  return [values, events]
+}

@@ -357,7 +357,7 @@ func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 		lowered = f.UpdateFunctionDeclaration(node.AsFunctionDeclaration(), node.Modifiers(), nil /*asteriskToken*/, node.Name(), nil /*typeParameters*/, parameters, nil /*type*/, nil /*fullSignature*/, block)
 	} else if node.Kind == ast.KindMethodDeclaration {
 		method := node.AsMethodDeclaration()
-		lowered = f.UpdateMethodDeclaration(method, node.Modifiers(), nil /*asteriskToken*/, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
+		lowered = f.UpdateMethodDeclaration(method, tx.methodModifiers(node), nil /*asteriskToken*/, tx.methodName(node), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
 	} else {
 		lowered = f.UpdateFunctionExpression(node.AsFunctionExpression(), node.Modifiers(), nil /*asteriskToken*/, node.Name(), nil /*typeParameters*/, parameters, nil /*type*/, nil /*fullSignature*/, block)
 	}

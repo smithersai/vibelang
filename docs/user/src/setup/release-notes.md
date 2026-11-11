@@ -1356,6 +1356,8 @@ These features come from VIPs 55 to 72, which are open proposals. They are not p
 
 - A failure that random property checks rarely reach, such as a magic header, a precise sequence of calls or one interleaving of two fibers, passed `Arbitrary.checkEffect` unnoticed. The new experimental fuzzing module takes a schema, keeps the inputs that reach new spans, error tags or observed stages, and reports a shrunk failure with a replay token. Its simulation mode makes fiber scheduling and time part of the input, so it finds lost updates and deadlocks. See [the fuzzing guide](../vibelang-features/120-fuzzing.md).
 
+- A producer method with a computed name or decorator containing VibeLang syntax could compile successfully but fail to load as JavaScript. Those expressions now compile like other method names and decorators.
+
 ### Upgrade from 0.0.12
 
 The compiler provides no automatic source repairs. Review and apply the changes below; use an editor action when it preserves the contract.
