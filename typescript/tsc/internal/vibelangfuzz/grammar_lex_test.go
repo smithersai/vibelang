@@ -77,7 +77,7 @@ func grammarLexSource(src string) []grammarToken {
 			// ECMAScript's IdentifierName; the word keeps its written form.
 			for j = i; j < len(rs); {
 				switch {
-				case grammarIsWordRune(rs[j]) || rs[j] == '$' || j == i && rs[j] == '#':
+				case grammarIsWordRune(rs[j]) || rs[j] == '$' || j == i && rs[j] == '#' || j > i && grammarIsWordContinueRune(rs[j]):
 					j++
 				case grammarIsUnicodeEscapeAt(rs, j):
 					j += grammarUnicodeEscapeLen(rs, j)
@@ -110,6 +110,14 @@ func grammarLexSource(src string) []grammarToken {
 		i = j
 	}
 	return out
+}
+
+// grammarIsWordContinueRune reports a rune ECMAScript's IdentifierPart admits
+// after the first: ID_Continue adds nonspacing and spacing marks (a combining
+// acute in an NFD name), decimal digits and connector punctuation to
+// ID_Start, and the grammar adds ZWNJ and ZWJ.
+func grammarIsWordContinueRune(r rune) bool {
+	return r == '\u200c' || r == '\u200d' || unicode.In(r, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc)
 }
 
 // grammarTemplateEnd returns the index after the template literal that opens

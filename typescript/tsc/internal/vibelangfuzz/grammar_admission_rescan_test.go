@@ -18,6 +18,9 @@ func TestGrammarLexTemplateAndExponent(t *testing.T) {
 		{"-1e-400", []string{"-", "1e-400"}},
 		{"2E+3 + 1e5", []string{"2E+3", "+", "1e5"}},
 		{"0xe-1", []string{"0xe", "-", "1"}},
+		{"cafe\u0301 = caf\u00e9", []string{"cafe\u0301", "=", "caf\u00e9"}},
+		{"a\u200db + x\u203fy", []string{"a\u200db", "+", "x\u203fy"}},
+		{"\u0301x", []string{"\u0301", "x"}},
 		{"a-1", []string{"a", "-", "1"}},
 	} {
 		var got []string

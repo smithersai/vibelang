@@ -458,6 +458,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"ambient-schema-declaration", "export declare schema Missing { a: string }"},
 	{"pattern-schema-object", "schema Address { street: string }; export function f(s: unknown) { return match (s) { when Address { let street }: street; default: 0; } }"},
 	{"pattern-variant-object", "data Option { Some { value: number }; None }; export function pick(x: Option) { return match (x) { when Option.Some { let value }: value; default: 0; } }"},
+	{"nfd-identifier", "const cafe\u0301 = 1; export const n = cafe\u0301"},
 	{"pattern-super-element", "const key = \"k\"; class B { v() { return 1 } } export class C extends B { viaKey(s: unknown) { return match (s) { when super[key]: \"hit\"; default: \"miss\"; } } }"},
 }
 
