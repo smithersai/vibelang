@@ -1,0 +1,10 @@
+// expect: EK1002
+// VIP-21: a producer fits a Stream callback, including overloads and unions.
+import { take, mixed, reject } from "./api.js"
+
+const one = take(effect function* () { yield 1 })
+effect function* values() { yield 2 }
+const two = take(values)
+const three = mixed(effect function* () { yield 3 })
+reject(effect function* () { yield 4 })
+void [one, two, three]

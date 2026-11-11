@@ -1,0 +1,3 @@
+go test fuzz v1
+string("return-union-rest-named-producer")
+byte(0)

@@ -7951,6 +7951,9 @@ typescript/vibelang/cases/producer-bind-observations/main.vibe:6:26 lambda choic
 typescript/vibelang/cases/producer-bind-observations/main.vibe:7:20 lambda plain fallback
 typescript/vibelang/cases/producer-bind-observations/main.vibe:8:27 lambda choice fallback
 typescript/vibelang/cases/producer-binding-dies/main.vibe:14:27 lambda plain fallback
+typescript/vibelang/cases/producer-compatible-callbacks.fail/main.vibe:5:18 lambda choice fallback
+typescript/vibelang/cases/producer-compatible-callbacks.fail/main.vibe:8:21 lambda choice fallback
+typescript/vibelang/cases/producer-compatible-callbacks.fail/main.vibe:9:8 lambda choice fallback
 typescript/vibelang/cases/producer-coverage-layer-order.fail/main.vibe:8:35 block appended/program table
 typescript/vibelang/cases/producer-coverage-layer-order.fail/main.vibe:9:3 lambda effectFn keyword
 typescript/vibelang/cases/producer-coverage-lifecycle/main.vibe:6:111 lambda plain table

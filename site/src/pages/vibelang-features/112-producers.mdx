@@ -183,4 +183,6 @@ A producer method retains its receiver without reading a user-modified `Function
 
 A plain `function*` retains JavaScript iterator behavior and may return a value. Pass a plain generator to `Effect.gen` or other native generator APIs; only `effect function*` creates a producer Stream.
 
+Overloads and callback unions follow TypeScript's assignability rules. A parameter that accepts a function returning a `Stream` also accepts an `effect function*` producer, even when another branch expects a JavaScript generator. A generator-only parameter still requires a plain `function*`.
+
 A labeled jump out of a `for try` loop reports `EK2003`, including when the loop is inside `for concurrent`. Stop consuming with `break`, then make the item's decision after the stream loop.
