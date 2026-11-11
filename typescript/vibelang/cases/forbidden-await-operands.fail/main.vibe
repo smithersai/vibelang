@@ -1,0 +1,15 @@
+// expect: EK0102 TS2304 TS2339 TS2345 TS2352 TS1360 TS2554
+export effect function missing(){void(await missingValue)}
+export effect function property(){void(await ({n:1}).missingValue)}
+export effect function argument(){void(await ((n:number)=>n)("bad"))}
+export effect function assertion(){void(await (1 as string))}
+export effect function satisfies(){void(await (1 satisfies string))}
+export effect function arity(){void(await ((n:number)=>n)(1,2))}
+export effect function callback(){void(await (()=>missingValue))}
+export effect function valid(){void(await 1)}
+export effect function parameter(value=await missingValue){void value}
+export const arrow=effect(value=await ({n:1}).missingValue)=>{void value}
+export effect function* producer(value=await ((n:number)=>n)("bad")){yield value}
+export class Nested{static{void(()=>{void(effect()=>{void(await missingValue)})})}}
+export async function native(){void(await missingValue)}
+export async function nativeValid(){void(await 1)}

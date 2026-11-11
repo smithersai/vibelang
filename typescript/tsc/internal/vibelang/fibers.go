@@ -208,7 +208,9 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 				note(d, "Wait for the Deferred with try Deferred.await({0}).", nodeText(file, args[0]))
 			}
 		}
-		cover(c, call)
+		// Only the generated helper needs diagnostic recovery. The operand
+		// keeps its independent native errors.
+		cover(c, call.Expression())
 		return
 	}
 	operand := args[0]
