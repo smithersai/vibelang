@@ -315,7 +315,7 @@ export function checkFiles(files, binary, cwd) {
 export function parseDiagnostics(output, directory) {
   const diagnostics = []
   for (const line of output.split("\n")) {
-    const match = /^(?:(.+?)\((\d+),(\d+)\): )?(error|warning|message) ([A-Z]+\d+): (.*)$/.exec(line)
+    const match = /^(?:(.+?)\((\d+),(\d+)\): )?(error|warning|suggestion|message) ([A-Z]+\d+): (.*)$/.exec(line)
     if (match) {
       const location = match[1] === undefined ? {} : { file: resolve(directory, match[1]), line: Number(match[2]), column: Number(match[3]) }
       diagnostics.push({ ...location, severity: match[4], code: match[5], message: match[6] })

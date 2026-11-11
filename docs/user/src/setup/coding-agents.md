@@ -62,6 +62,8 @@ Project-wide compiler diagnostics without a source location, such as `TS18003` w
 
 A hook returns a project error or an incomplete compiler check to the agent with exit status `2`, and a warning as context the agent reads with the tool's result.
 
+Included Effect lint suggestions are shown with their codes and explanations, too. They keep the compiler's configured exit behavior; a successful check returns them to the hook as context.
+
 The generated instructions also recommend `vibelang lint`. It uses the compiler’s configuration and Effect language-service plugin settings; select a non-default project with `vibelang lint --project <config>`. This command reports diagnostics without emitting files.
 
 ## In a workspace
