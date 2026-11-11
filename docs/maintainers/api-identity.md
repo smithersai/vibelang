@@ -4,7 +4,14 @@ Run `node scripts/api-identity.mjs --before <dir|package> --after <dir|package>`
 from the checkout, adding `--json` for machine-readable output. Install the
 pinned stock TypeScript compiler API with
 `(cd docs/tools && bun install --frozen-lockfile)` first. The checker reads
-both inputs without writing to them.
+both inputs without writing to them. Compiler selection never searches either
+input or its ancestors: the default uses the checkout's pinned installations
+in `docs/tools`, `packages/runtime` or `experiments`. To deliberately use a
+different compiler, add `--typescript <directory>`, where `directory` resolves
+the requested `typescript` package. This executes that compiler's JavaScript;
+an unavailable or invalid requested compiler exits `2` without falling back.
+The parent resolves the compiler's module path and passes that same path to
+the comparison worker.
 
 Exports named with keywords, such as `await`, are compared through local type-only import aliases. This also applies to namespace re-exports; a type change still produces a normal type difference.
 
@@ -160,8 +167,11 @@ An explicit `skipLibCheck` cannot turn invalid owned declarations into a
 successful comparison. Type differences include `mutuallyAssignable`, measured by a second
 two-way assignability probe. Strict differences always fail, even when this
 additional result is `true`.
-`loadTypeScript()` loads the pinned compiler API; `formatResult(result)`
-prints the three lists.
+`loadTypeScript()` loads the pinned compiler API. Its optional directory list
+explicitly supplies trusted compiler locations before the pinned fallbacks.
+`publishedEntrypoints(directory)` also defaults to the pinned compiler;
+callers can pass their chosen compiler as its second argument.
+`formatResult(result)` prints the three lists.
 
 Semantic declaration oracles use one bounded Node worker per test phase or fuzz target. Within each pinned
 worker, an optional `dependencyDiagnosticsCache` retains at most 16 diagnostic

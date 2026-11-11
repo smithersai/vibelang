@@ -230,6 +230,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Compiling a standalone `.vibe` file on Windows, or checking an untitled editor document outside a project, could crash when no `package.json` existed above it. Package lookup now stops at the path root, and dependency errors remain locationless when no project file exists.
 
+- The API comparison command could load a TypeScript compiler installed with an input package and fail on unchanged declarations. It now uses the pinned compiler unless another compiler is explicitly requested.
+
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
 - A migration could report unchanged namespace member documentation as changed when a public binding used `infer`. The API check now keeps those comments on their public members and still detects edited documentation.

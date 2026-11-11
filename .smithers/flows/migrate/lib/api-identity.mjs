@@ -26,12 +26,24 @@ function peerInstallation(root, manifest) {
   return folder === ordinary ? [] : [folder]
 }
 
+const compilerPaths = new WeakMap()
+
+function loadCompiler(dir) {
+  try {
+    const require = createRequire(join(resolve(dir), "package.json"))
+    const compiler = require.resolve("typescript")
+    const ts = require(compiler)
+    if (typeof ts?.createProgram !== "function") throw new Error("Missing createProgram")
+    compilerPaths.set(ts, compiler)
+    return ts
+  } catch (cause) {
+    throw new Error("Requested TypeScript compiler API unavailable: " + dir, { cause })
+  }
+}
+
 export function loadTypeScript(dirs = []) {
   for (const dir of [...dirs, join(repo, "docs/tools"), join(repo, "packages/runtime"), join(repo, "experiments")]) {
-    try {
-      const ts = createRequire(join(resolve(dir), "package.json"))("typescript")
-      if (typeof ts.createProgram === "function") return ts
-    } catch {}
+    try { return loadCompiler(dir) } catch {}
   }
   throw new Error("TypeScript compiler API unavailable; run (cd docs/tools && bun install --frozen-lockfile)")
 }
@@ -200,7 +212,7 @@ export function publishedEntrypoints(directory, tsCompiler) {
   // Both arrays and conditional objects select ordered alternatives.
   // A later types condition cannot override an earlier resolvable default.
   if (manifest.exports !== undefined) {
-    const ts = tsCompiler ?? loadTypeScript([directory])
+    const ts = tsCompiler ?? loadTypeScript()
     const packageName = "__api_identity_snapshot__"
     // A declaration-only snapshot retains source spelling in its export map.
     // Resolve an existing emitted twin through tsc, so condition order and
@@ -2295,7 +2307,7 @@ export function compareApiIdentityInWorker(ts, before, after, options = {}) {
       [...preload, "--max-old-space-size=" + heap, fileURLToPath(import.meta.url), "--api-identity-worker"], {
         // Profiled stage records arrive as they happen, so a lost box keeps them.
         ...(options.profile ? { stdio: ["pipe", "pipe", "inherit"] } : {}),
-        input: JSON.stringify({ compiler: ts.sys.getExecutingFilePath(), before, after,
+        input: JSON.stringify({ compiler: compilerPaths.get(ts) ?? ts.sys.getExecutingFilePath(), before, after,
           options: { ...options, compilerOptions } }),
         encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
       })
@@ -2330,18 +2342,18 @@ export function formatResult(result) {
 
 function main(args) {
   if (args.includes("--help")) {
-    console.log("node scripts/api-identity.mjs --before <dir|package> --after <dir|package> [--json] [--profile]")
+    console.log("node scripts/api-identity.mjs --before <dir|package> --after <dir|package> [--json] [--profile] [--typescript <directory>]")
     return 0
   }
   const values = {}
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--profile") values.profile = true
     else if (args[i] === "--json") values.json = true
-    else if (["--before", "--after"].includes(args[i]) && args[i + 1]) values[args[i].slice(2)] = args[++i]
+    else if (["--before", "--after", "--typescript"].includes(args[i]) && args[i + 1]) values[args[i].slice(2)] = args[++i]
     else throw new Error("Unknown or incomplete argument: " + args[i])
   }
   if (!values.before || !values.after) throw new Error("--before and --after are required")
-  const ts = loadTypeScript([values.before, values.after])
+  const ts = values.typescript ? loadCompiler(values.typescript) : loadTypeScript()
   const result = compareApiIdentityInWorker(ts, values.before, values.after, { profile: values.profile })
   console.log(values.json ? JSON.stringify(result, null, 2) : formatResult(result))
   return result.comparisonComplete === false ? 2 : result.identical ? 0 : 1
