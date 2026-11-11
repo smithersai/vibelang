@@ -446,6 +446,13 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-bang-equals", "const x: number!!= 1"},
 	{"nested-template-literal", "const t = (s: TemplateStringsArray, ...v: unknown[]) => s.raw[0]; const o = t`outer: ${t`inner`}`"},
 	{"numeric-exponent-sign-pattern", "function f(n: number) { return match (n) { when -1e-400: 1; when 2E+3: 2; default: 0; } }"},
+	{"await-using-statement", "export async function native(resource: AsyncDisposable) { await using held = resource; return 3 }"},
+	{"for-using-head", "function f(d: Disposable) { for (using r = d; false; ) { } }"},
+	{"for-await-using-head", "async function f(d: AsyncDisposable) { for (await using r = d; false; ) { } }"},
+	{"tagged-template-call-chain", "const tags = (x: number) => ({ tag: (s: TemplateStringsArray, ...v: unknown[]) => s.raw[0] }); const v = tags(1).tag`a${2}`"},
+	{"instantiation-call-newline-export", "function mk<T>() { return (v: T) => v }\nconst g = mk()<number>\nexport const h = g"},
+	{"await-using-line-break", "export async function f(resource: AsyncDisposable) { await\nusing held = resource; return 3 }"},
+	{"instantiation-call-semicolon", "function mk<T>() { return (v: T) => v }; const g = mk()<number>;"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

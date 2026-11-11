@@ -489,7 +489,7 @@ EnumMember = PropertyName Initializer?
 HoistableDeclaration = FunctionDeclaration
 Block = "{" Statement* "}"
 FunctionBody = Statement*
-VariableStatement = LetOrConst BindingList StatementEnd | "using" [no LineTerminator here] BindingList StatementEnd
+VariableStatement = LetOrConst BindingList StatementEnd | "using" [no LineTerminator here] BindingList StatementEnd | "await" "using" [no LineTerminator here] BindingList StatementEnd
 LetOrConst = "const" | "let" | "var"
 BindingList = LexicalBinding | BindingList "," LexicalBinding
 LexicalBinding = BindingIdentifier TypeAnnotation? Initializer? | BindingPattern TypeAnnotation? Initializer
@@ -516,7 +516,7 @@ WhileStatement = "while" "(" Expression ")" Statement
 DoWhileStatement = "do" Statement "while" "(" Expression ")" ";"?
 DeclareExpressionStatement = "declare" [no LineTerminator here] [lookahead ∉ { "(", "[", ".", "?.", "!", ",", ";", "=>", "?", ":", "=", "+=", "-=", "*=", "/=", "%=", "**=", "&=", "|=", "^=", "&&=", "||=", "??=", "+", "-", "*", "/", "%", "**", "<", ">", "<=", ">=", "==", "!=", "===", "!==", "&&", "||", "??", "&", "|", "^", "++", "--", "as", "satisfies", "is", "in", "instanceof", "|>", "catch" }] Statement
 ForOfStatement = "for" "(" ForOfHead "of" AssignmentExpression ")" Statement | "for" "await" "(" ForAwaitOfHead "of" AssignmentExpression ")" Statement
-ForStatement = "for" "(" [lookahead ∉ { "let" "[" }] Expression? ";" Expression? ";" Expression? ")" Statement | "for" "(" LetOrConst BindingList ";" Expression? ";" Expression? ")" Statement
+ForStatement = "for" "(" [lookahead ∉ { "let" "[" }] Expression? ";" Expression? ";" Expression? ")" Statement | "for" "(" LetOrConst BindingList ";" Expression? ";" Expression? ")" Statement | "for" "(" "using" [no LineTerminator here] BindingList ";" Expression? ";" Expression? ")" Statement | "for" "(" "await" "using" [no LineTerminator here] BindingList ";" Expression? ";" Expression? ")" Statement
 ForInStatement = "for" "(" ForOfHead "in" Expression ")" Statement
 ForDeclaration = LetOrConst ForBinding
 ForBinding = BindingIdentifier | BindingPattern
@@ -604,7 +604,7 @@ LeftHandSideExpression = NewExpression | CallExpression | OptionalExpression
 NewExpression = MemberExpression | "new" NewExpression
 MemberExpression = MemberExpression TypeArguments LineTerminator [lookahead ∉ { "<", ">", "+", "-" }] | MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | MetaProperty | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments | "new" MemberExpression TypeArguments Arguments
 MetaProperty = "import" "." "meta" | "new" "." "target"
-CallExpression = ImportCall | MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!" | MemberExpression TypeArguments Arguments | CallExpression TypeArguments Arguments
+CallExpression = ImportCall | MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!" | MemberExpression TypeArguments Arguments | CallExpression TypeArguments Arguments | CallExpression TemplateLiteral | CallExpression TypeArguments LineTerminator [lookahead ∉ { "<", ">", "+", "-" }] | CallExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }]
 ImportCall = "import" "(" AssignmentExpression ","? ")" | "import" "(" AssignmentExpression "," AssignmentExpression ","? ")" | "import" "." ImportPhase "(" AssignmentExpression ","? ")" | "import" "." ImportPhase "(" AssignmentExpression "," AssignmentExpression ","? ")"
 ImportPhase = "source" | "defer"
 OptionalExpression = MemberExpression OptionalChain | CallExpression OptionalChain | OptionalExpression OptionalChain
