@@ -31,6 +31,10 @@ type chunk struct {
 	text   string
 	node   *ast.Node
 	env    env
+	// targets are the jump targets open around node where the form stands.
+	// The printer opens a loop or a label only while it prints it, and node
+	// is walked after that, so the walk restores them.
+	targets []target
 }
 
 // printer collects a synthesized form's chunks.
@@ -53,6 +57,16 @@ type printer struct {
 
 func (w *printer) write(text string) {
 	w.chunks = append(w.chunks, chunk{kind: editSyntax, text: text})
+}
+
+// walk hands n, which stands at this point of the form, to the ordinary
+// walker in env e.
+func (w *printer) walk(n *ast.Node, e env) {
+	c := chunk{node: n, env: e}
+	if e.frame != nil {
+		c.targets = append([]target(nil), e.frame.targets...)
+	}
+	w.chunks = append(w.chunks, c)
 }
 
 func (w *printer) mark(kind editKind, p part, text string) {
@@ -107,7 +121,14 @@ func (p *projector) synthesizedChunks(node *ast.Node, chunks []chunk, start, end
 		// would never end, so it stays source text the host diagnoses.
 		if s >= cursor && c.node.End() <= end && c.node != node {
 			flush(s)
-			p.visit(c.node, c.env)
+			if f := c.env.frame; f != nil {
+				outer := f.targets
+				f.targets = c.targets
+				p.visit(c.node, c.env)
+				f.targets = outer
+			} else {
+				p.visit(c.node, c.env)
+			}
 			cursor = c.node.End()
 			continue
 		}
@@ -141,14 +162,15 @@ func (w *printer) node(n *ast.Node, e env) {
 	}
 	// These forms have source spans but synthesized descendants. Let their
 	// own lowering preserve lazy operands and lexical pipe topics, including
-	// when a match arm or do expression contains them.
-	if isCatchExpression(n) || isFiberHelper(n, "$join", 1) || isForkOwner(n) || isFiberHelper(n, "$try", 1) ||
-		isPipeExpression(n) || formsIsTopic(n) || p.isSource(n) ||
+	// when a match arm, a do expression, or a block rendered for a pattern's
+	// bindings contains them. Printing one from its parts would write the
+	// parser's helper name, which no rendering imports.
+	if p.spannedForm(n) != nil || isProvideBlock(n) || maskWord(n) != "" || p.isScopeRegion(n, e) || p.isWrittenLambda(n) || p.isSource(n) ||
 		ast.IsCallExpression(n) && isRunnableCall(n) && p.isSource(n.Expression()) {
 		// A source call with synthesized arguments still needs the normal
 		// call walker: exit(x catch y), for example, takes its operand by
 		// name and must run the call itself before a match inspects its value.
-		w.chunks = append(w.chunks, chunk{node: n, env: e})
+		w.walk(n, e)
 		return
 	}
 	switch n.Kind {
@@ -175,7 +197,7 @@ func (w *printer) node(n *ast.Node, e env) {
 		w.write(")")
 	case ast.KindAsExpression:
 		if n.Type().Flags&ast.NodeFlagsReparsed == 0 {
-			w.chunks = append(w.chunks, chunk{node: n, env: e})
+			w.walk(n, e)
 			return
 		}
 		// Pattern assertions retain static types only in the checking view.
@@ -256,8 +278,33 @@ func (w *printer) node(n *ast.Node, e env) {
 			return
 		}
 		// A node of a kind no form writes: its source text as it stands.
-		w.chunks = append(w.chunks, chunk{node: n, env: e})
+		w.walk(n, e)
 	}
+}
+
+// isScopeRegion reports whether n is a written block or loop body that owns
+// a fork or a using (D408), so the walker runs it in a scope of its own.
+func (p *projector) isScopeRegion(n *ast.Node, e env) bool {
+	if !e.effect || e.producer || n.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) != 0 || !ownsForks(n) {
+		return false
+	}
+	if n.Kind == ast.KindBlock {
+		start := p.tokenStart(n)
+		return start < n.End() && p.text[start] == '{' && p.holdsScope(n.Statements())
+	}
+	return ast.IsStatement(n) && p.isLoopStatementRegion(n)
+}
+
+// isWrittenLambda reports whether n is an arrow function the source writes:
+// its arrow is source text, so its form, parameters and body are the lambda
+// rule's. An arrow the parser writes, such as a match's invoked function,
+// has no arrow in the source.
+func (p *projector) isWrittenLambda(n *ast.Node) bool {
+	if n.Kind != ast.KindArrowFunction || n.Flags&ast.NodeFlagsReparsed != 0 || !isLambda(n) {
+		return false
+	}
+	arrow := p.tokenStart(n.AsArrowFunction().EqualsGreaterThanToken)
+	return arrow >= p.tokenStart(n) && arrow < n.End() && strings.HasPrefix(p.text[arrow:], "=>")
 }
 
 // blockContents keeps parser-owned cache declarations and cleanup in the same
@@ -289,8 +336,11 @@ func (w *printer) blockContents(owner *ast.Node, statements []*ast.Node, e env) 
 // statement prints a statement followed by its separator.
 func (w *printer) statement(n *ast.Node, e env) {
 	p := w.p
-	if p.isSource(n) || n.Kind == ast.KindExpressionStatement && isFiberHelper(n.Expression(), "$forConcurrent", 3) {
-		w.chunks = append(w.chunks, chunk{node: n, env: e})
+	// A provide, mask or scope block lowers to one yield* statement, so it
+	// takes a statement's separator, not a block's.
+	if p.isSource(n) || n.Kind == ast.KindExpressionStatement && isFiberHelper(n.Expression(), "$forConcurrent", 3) ||
+		isProvideBlock(n) || maskWord(n) != "" || p.isScopeRegion(n, e) {
+		w.walk(n, e)
 		w.write("; ")
 		return
 	}
@@ -370,7 +420,7 @@ func (w *printer) statement(n *ast.Node, e env) {
 			w.statement(n.Statement(), e)
 		}
 	default:
-		w.chunks = append(w.chunks, chunk{node: n, env: e})
+		w.walk(n, e)
 		w.write("; ")
 	}
 }

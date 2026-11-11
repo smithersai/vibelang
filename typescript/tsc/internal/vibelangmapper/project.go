@@ -400,39 +400,12 @@ func (p *projector) visit(node *ast.Node, e env) {
 	case node.Kind == ast.KindPropertySignature || node.Kind == ast.KindIndexSignature:
 		p.readonlyMember(node, e)
 		return
-	case isFiberHelper(node, "$join", 1):
-		p.join(node, e)
+	}
+	if lower := p.spannedForm(node); lower != nil {
+		lower(e)
 		return
-	case isForkOwner(node):
-		p.forkOwner(node, e)
-		return
-	case isFiberHelper(node, "$try", 1):
-		p.tryValue(node, e)
-		return
-	case isFiberHelper(node, "$forConcurrent", 3):
-		p.forConcurrent(node, e)
-		return
-	case tryOperationHelper(node) != "":
-		p.tryOperation(node, e)
-		return
-	case awaitOperationHelper(node) != "":
-		p.retiredAwaitOperation(node)
-		return
-	case p.isHatchCall(node):
-		p.hatchCall(node, e)
-		return
-	case isRetiredCatchStatement(node):
-		p.retiredCatchStatement(node)
-		return
-	case isCatchExpression(node):
-		p.catchExpression(node, e)
-		return
-	case isPipeExpression(node):
-		p.pipeExpression(node, e)
-		return
-	case formsIsTopic(node):
-		p.pipeTopic(node)
-		return
+	}
+	switch {
 	case p.isMatchForm(node):
 		p.synthesized(node, p.tokenStart(node), node.End(), e)
 		return
@@ -573,6 +546,41 @@ func (p *projector) rememberComputedNames(node *ast.Node, e env) {
 		}
 		return false
 	})
+}
+
+// spannedForm returns the lowering of node when node is a form the parser
+// writes as a helper call or a marked statement over the form's own source
+// span: join, fork, try and its operations, a concurrent for, a hatch call, a
+// catch expression, a pipe, and a pipe topic. Such a node is not source text,
+// yet only its own lowering renders it, so visit and the pattern printer
+// (synth.go) both ask here: a form added to this list is lowered wherever it
+// stands, including beside an is test that binds names.
+func (p *projector) spannedForm(node *ast.Node) func(e env) {
+	switch {
+	case isFiberHelper(node, "$join", 1):
+		return func(e env) { p.join(node, e) }
+	case isForkOwner(node):
+		return func(e env) { p.forkOwner(node, e) }
+	case isFiberHelper(node, "$try", 1):
+		return func(e env) { p.tryValue(node, e) }
+	case isFiberHelper(node, "$forConcurrent", 3):
+		return func(e env) { p.forConcurrent(node, e) }
+	case tryOperationHelper(node) != "":
+		return func(e env) { p.tryOperation(node, e) }
+	case awaitOperationHelper(node) != "":
+		return func(env) { p.retiredAwaitOperation(node) }
+	case p.isHatchCall(node):
+		return func(e env) { p.hatchCall(node, e) }
+	case isRetiredCatchStatement(node):
+		return func(env) { p.retiredCatchStatement(node) }
+	case isCatchExpression(node):
+		return func(e env) { p.catchExpression(node, e) }
+	case isPipeExpression(node):
+		return func(e env) { p.pipeExpression(node, e) }
+	case formsIsTopic(node):
+		return func(env) { p.pipeTopic(node) }
+	}
+	return nil
 }
 
 // visitChildren walks node's children in order.
