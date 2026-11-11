@@ -192,8 +192,8 @@ func (a *analyzer) requiresScope(initializer *ast.Node) bool {
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		switch {
-		case isFunctionBoundary(n), n != initializer && false, isHatchArgument(n):
-			return false // nothing there runs as part of the initializer, or its callee's R holds what it needs
+		case isFunctionBoundary(n), isHatchArgument(n):
+			return false // nested function bodies and hatch arguments do not run here
 		case n.Kind == ast.KindCallExpression && a.isAcquisition(n):
 			acquisition := &effectInfo{}
 			a.addCall(acquisition, n)

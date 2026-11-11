@@ -8,19 +8,10 @@ import (
 	"slices"
 )
 
-// Checks of error declarations (D278, D279, D304). An error declaration is a
-// class whose base the parser writes (parser/vibelang_errors.go); TypeScript
-// checks it as that class. This file reports what the class alone cannot
-// say well:
-//
-//   - EK2117: a tag that does not fit. A concrete error's own name must fit
-//     the tag type its _tag field declares, a subclass's included, since the
-//     runtime tags it with that name whatever the field says; and a subclass's
-//     tag must fit its base's tag type, which a family's base widens with
-//     `_tag: string`. Also
-//     an error that extends a class that is not an error, a schema error that
-//     extends an error that is not a schema error, and an error that extends
-//     a schema error.
+// Error declarations lower to classes that TypeScript checks normally.
+// EK2117 rejects an extends clause and written _tag members or payload fields;
+// the generated tag is always the error's name. Computed payload names are
+// checked after their types resolve, including schema error keys.
 
 func init() {
 	fileChecks = append(fileChecks, checkErrorDeclarations)
@@ -140,7 +131,7 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 	}
 	name := class.Name()
 	// VIP-13/VIP-29 reject the clause, independently of the native base's
-	// tag width. Keep the old lowering available only to the preserving fix.
+	// tag width. The parser retains the base for independent native checks.
 	if form == errorFormSubclass || form == errorFormSchemaSubclass {
 		report(c, base, EK2117.With("An error declaration cannot have an extends clause. Use a union to group errors, or keep inheritance in a TypeScript class."))
 		// These checks belong to the generated helper call, not to the
@@ -157,13 +148,6 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 		coverExactCodes(c, ast.GetClassExtendsHeritageElement(class).Expression(), 2509)
 		return
 	}
-	symbol := c.GetSymbolAtLocation(name)
-	if symbol == nil {
-		return
-	}
-	instance := c.GetDeclaredTypeOfSymbol(symbol)
-	abstract := ast.HasSyntacticModifier(class, ast.ModifierFlagsAbstract)
-	own := c.GetStringLiteralType(name.Text())
 	if form == errorFormRoot {
 		// A computed key that resolves to _tag can reduce the generated
 		// instance to never. Resolve it here so it still gets EK2117.
@@ -185,117 +169,6 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 			}
 		}
 	}
-	if form == errorFormRoot || form == errorFormSchemaRoot {
-		if tag := c.GetTypeOfPropertyOfType(instance, "_tag"); !abstract && tag != nil && !restrictedEffectErrorTag(c, class, instance) && !c.IsTypeAssignableTo(own, tag) {
-			d := report(c, errorTagField(class, form), EK2117.With("{0}'s tag is \"{0}\", but its _tag field's type is {1}."), name.Text(), c.TypeToString(tag))
-			note(d, "A concrete error is tagged with its own name; give _tag a type that includes it, such as string.")
-		}
-		return
-	}
-	statics := c.GetTypeAtLocation(base)
-	baseName := entityText(base)
-	if baseName == "" {
-		baseName = nodeText(ast.GetSourceFileOfNode(base), base)
-	}
-	schemaBase := statics != nil && c.GetPropertyOfType(c.GetApparentType(statics), schemaTypeID) != nil
-	switch {
-	case form == errorFormSubclass && schemaBase:
-		d := report(c, base, EK2117.With("{0} extends {1}, a schema error, so it is declared with schema error."), name.Text(), baseName)
-		note(d, "Write schema error {0} extends {1}, so its fields join {1}'s schema.", name.Text(), baseName)
-		cover(c, class.Name())
-		return
-	case form == errorFormSchemaSubclass && !schemaBase:
-		report(c, base, EK2117.With("{0} is a schema error, so it extends a schema error, and {1} is not one."), name.Text(), baseName)
-		cover(c, base) // TS2339: extend does not exist
-		return
-	}
-	baseTag := errorBaseTag(c, statics)
-	if baseTag == nil {
-		d := report(c, base, EK2117.With("{1} is not an error, so {0} cannot extend it."), name.Text(), baseName)
-		note(d, "An error extends another error, declared with error or schema error.")
-		coverArgument(c, base) // TS2345: the base has no _tag
-		return
-	}
-	tag := errorDeclaredTag(c, class, form, instance)
-	if tag != nil && !restrictedEffectErrorTag(c, class, instance) && !c.IsTypeAssignableTo(tag, baseTag) {
-		d := report(c, name, EK2117.With("{0} cannot have its own tag: {1}'s tag is {2}, which does not include {3}."), name.Text(), baseName, c.TypeToString(baseTag), c.TypeToString(tag))
-		note(d, "Give {0} the field _tag: string, or declare it abstract, so that its subclasses' tags fit.", baseName)
-		cover(c, name)                                           // TS2416 at the tag member the parser writes
-		cover(c, class.ClassLikeData().HeritageClauses.Nodes[0]) // TS2509: a schema base whose tag reduces to never
-		coverCodes(c, class, 2509)                               // a schema subclass's TS2509 spans its fields in the body
-		if field := errorTagField(class, form); field != name {
-			cover(c, field)
-		}
-	}
-	if field := errorTagField(class, form); !abstract && tag != nil && field != name && !c.IsTypeAssignableTo(own, tag) {
-		d := report(c, field, EK2117.With("{0}'s tag is \"{0}\", but its _tag field's type is {1}."), name.Text(), c.TypeToString(tag))
-		note(d, "A concrete error is tagged with its own name; give _tag a type that includes it, such as string.")
-	}
-}
-
-// A forbidden effect accessor can determine the recovered _tag type, but
-// Functions owns that member's diagnostic in both error forms.
-func restrictedEffectErrorTag(c *checker.Checker, class *ast.Node, instance *checker.Type) bool {
-	tag := c.GetPropertyOfType(instance, "_tag")
-	if tag == nil {
-		return false
-	}
-	for _, declaration := range tag.Declarations() {
-		if declaration.Parent == class && restrictedEffectMember(declaration) {
-			return true
-		}
-	}
-	return false
-}
-
-// errorBaseTag returns the tag type of the instances that statics, a base
-// class's constructor type, constructs, or nil when they have no _tag.
-func errorBaseTag(c *checker.Checker, statics *checker.Type) *checker.Type {
-	if statics == nil {
-		return nil
-	}
-	signatures := c.GetSignaturesOfType(statics, checker.SignatureKindConstruct)
-	if len(signatures) == 0 {
-		return nil
-	}
-	return c.GetTypeOfPropertyOfType(c.GetReturnTypeOfSignature(signatures[0]), "_tag")
-}
-
-// errorDeclaredTag returns the tag type a subclass declares: the type of the
-// _tag member that the parser writes, or that the declaration's _tag field
-// becomes, or, for a schema error, the type of what Schema.tag takes.
-func errorDeclaredTag(c *checker.Checker, class *ast.Node, form errorForm, instance *checker.Type) *checker.Type {
-	if form == errorFormSubclass {
-		for _, member := range class.Members() {
-			if ast.IsPropertyDeclaration(member) && member.Name() != nil && !ast.IsComputedPropertyName(member.Name()) && member.Name().Text() == "_tag" && member.Type() != nil {
-				return c.GetTypeFromTypeNode(member.Type())
-			}
-		}
-		return nil
-	}
-	if argument := schemaErrorTagArgument(class); argument != nil {
-		return c.GetTypeAtLocation(argument)
-	}
-	return nil
-}
-
-// schemaErrorTagArgument returns what Schema.tag takes in the fields of a
-// schema error subclass: "Name", or "Name" as T.
-func schemaErrorTagArgument(class *ast.Node) *ast.Node {
-	call := ast.GetClassExtendsHeritageElement(class).Expression()
-	arguments := call.Arguments()
-	if len(arguments) != 1 || !ast.IsObjectLiteralExpression(arguments[0]) {
-		return nil
-	}
-	properties := arguments[0].AsObjectLiteralExpression().Properties.Nodes
-	if len(properties) == 0 || !ast.IsPropertyAssignment(properties[0]) {
-		return nil
-	}
-	tag := properties[0].Initializer()
-	if !ast.IsCallExpression(tag) || len(tag.Arguments()) != 1 {
-		return nil
-	}
-	return tag.Arguments()[0]
 }
 
 // errorTagField returns the node that declares an error's tag type, its _tag
@@ -311,19 +184,8 @@ func errorTagField(class *ast.Node, form errorForm) *ast.Node {
 				}
 			}
 		}
-	case errorFormSubclass:
-		for _, member := range class.Members() {
-			if ast.IsPropertyDeclaration(member) && member.Flags&ast.NodeFlagsReparsed == 0 && member.Name() != nil && !ast.IsComputedPropertyName(member.Name()) && member.Name().Text() == "_tag" {
-				return member
-			}
-		}
-	case errorFormSchemaRoot, errorFormSchemaSubclass:
-		var tag *ast.Node
-		if form == errorFormSchemaRoot {
-			tag = ast.GetClassExtendsHeritageElement(class).Expression().Arguments()[0]
-		} else {
-			tag = schemaErrorTagArgument(class)
-		}
+	case errorFormSchemaRoot:
+		tag := ast.GetClassExtendsHeritageElement(class).Expression().Arguments()[0]
 		if tag != nil && ast.IsAsExpression(tag) && tag.Type().Flags&ast.NodeFlagsReparsed == 0 {
 			return tag.Type()
 		}

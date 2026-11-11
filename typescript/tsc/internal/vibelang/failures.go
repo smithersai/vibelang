@@ -19,8 +19,8 @@ import (
 
 // flowOf collects what running node adds to E and R. node is a statement,
 // block, or expression in the body of one function. Nested function and class
-// bodies, and expressions passed by name (D147), do not run as part of it.
-// A class's extends expression does run in the enclosing code.
+// bodies do not run as part of it. Argument expressions are evaluated in
+// their ordinary positions; a class's extends expression runs here too.
 func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 	info := &effectInfo{}
 	var visit func(n *ast.Node) bool
@@ -36,8 +36,6 @@ func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 		case inlineCatchLeft(n):
 			info.add(a.flowOf(n.Body())) // Head evaluation precedes the recovery boundary.
 		case isFunctionBoundary(n) && !catchLeftHoldsTry(n):
-		case n != node && false:
-			// Passed as a program (D147): it runs where the callee runs it.
 		case isHatchArgument(n):
 			// TypeScript inside a boundary hatch (D148): nothing there runs.
 		case isHandleStatement(n):
@@ -334,12 +332,12 @@ func init() {
 
 // blockRunsEffects tests operations, rather than E/R or effectInfo.effect:
 // a call through a written contract and a Stream loop can run Effects without
-// supplying an Effect interface to flowOf. Nested functions and lazy program
-// arguments do not run as part of this block.
+// supplying an Effect interface to flowOf. Nested functions do not run as
+// part of this block; argument expressions keep their ordinary positions.
 func (a *analyzer) blockRunsEffects(block *ast.Node) bool {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
-		if isFunctionBoundary(n) || isHatchArgument(n) || n != block && false {
+		if isFunctionBoundary(n) || isHatchArgument(n) {
 			return false
 		}
 		if a.returnedProgram(n) != nil || isInvocation(n) && a.performs(n) ||

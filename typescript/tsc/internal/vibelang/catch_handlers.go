@@ -92,29 +92,6 @@ func isCatchBlockHandler(handler *ast.Node) bool {
 	return token != nil && token.Pos() == token.End()
 }
 
-// catchBlockLeavesHandler reports whether body, a recovered handler's block,
-// holds a jump, await or yield at its own level, whose target changes when the
-// block becomes an arrow's body: the repair would move it (chapter 2).
-func catchBlockLeavesHandler(body *ast.Node) bool {
-	var visit func(n *ast.Node, inLoop, inSwitch bool) bool
-	visit = func(n *ast.Node, inLoop, inSwitch bool) bool {
-		switch {
-		case ast.IsFunctionLike(n) && !(isProgramArrow(n) && !isEffectBlock(n)):
-			return false
-		case ast.IsBreakStatement(n):
-			return n.AsBreakStatement().Label != nil || !inLoop && !inSwitch
-		case ast.IsContinueStatement(n):
-			return n.AsContinueStatement().Label != nil || !inLoop
-		case ast.IsAwaitExpression(n), ast.IsYieldExpression(n), fiberHelper(n) == "$await":
-			return true
-		}
-		inLoop = inLoop || ast.IsIterationStatement(n, false /*lookInLabeledStatements*/)
-		inSwitch = inSwitch || ast.IsSwitchStatement(n)
-		return n.ForEachChild(func(child *ast.Node) bool { return visit(child, inLoop, inSwitch) })
-	}
-	return body.ForEachChild(func(child *ast.Node) bool { return visit(child, false, false) })
-}
-
 func isAsyncOrGenerator(fn *ast.Node) bool {
 	if !ast.IsArrowFunction(fn) && !ast.IsFunctionExpression(fn) {
 		return false
@@ -136,7 +113,7 @@ func checkCatchHandler(c *checker.Checker, file *ast.SourceFile, call, fallback 
 	d := reportAt(c, file, core.NewTextRange(scanner.SkipTrivia(file.Text(), handler.Pos()), handler.End()), EK0509)
 	if catchHandlerNeedsConversion(handler) {
 		note(d, "This handler uses await or yield at its own function level; an explicit body conversion is needed before removing async or *.")
-	} else if _, text := catchHandlerRepair(c, file, call, handler); text != "" {
+	} else if text := catchHandlerRepair(c, file, handler); text != "" {
 		note(d, "Write it as a function literal: {0}.", text)
 	} else if inner := ast.SkipParentheses(handler); isAsyncOrGenerator(inner) {
 		if reason := catchNativeKeywordRefusal(c, inner); reason != "" {
@@ -145,46 +122,38 @@ func checkCatchHandler(c *checker.Checker, file *ast.SourceFile, call, fallback 
 	}
 }
 
-// catchHandlerRepair returns the edits that make handler a function literal
-// and the repaired handler's text, or nil when there is no mechanical repair
-// (a class expression or an async/generator body needing conversion).
-func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler *ast.Node) ([]core.TextChange, string) {
+// catchHandlerRepair returns a function literal's text for the diagnostic
+// note, or an empty string when the handler needs an explicit conversion.
+func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, handler *ast.Node) string {
 	text := file.Text()
 	start := scanner.SkipTrivia(text, handler.Pos())
 	source := text[start:handler.End()]
 	inner := ast.SkipParentheses(handler)
-	if isCatchBlockHandler(inner) {
-		// (e) { B } becomes effect (e) => { B }, the handler chapter 2's
-		// table gives, unless B jumps out of itself.
-		if len(inner.ModifierNodes()) != 0 || catchBlockLeavesHandler(inner.Body()) {
-			return nil, ""
-		}
-		at := scanner.SkipTrivia(text, inner.Pos())
-		// Put the arrow before the body trivia: a line break before =>
-		// is forbidden, and comments and line endings belong to the source.
-		open := inner.Body().Pos()
-		edits := []core.TextChange{{TextRange: core.NewTextRange(at, at), NewText: "effect "}, {TextRange: core.NewTextRange(open, open), NewText: " =>"}}
-		return edits, applyTextChanges(text, edits)[start : handler.End()+len("effect ")+len("=> ")]
-	}
 	if isAsyncOrGenerator(inner) {
 		if catchHandlerNeedsConversion(handler) {
-			return nil, ""
+			return ""
 		}
 		if catchNativeKeywordRefusal(c, inner) != "" {
-			return nil, ""
+			return ""
 		}
-		var edits []core.TextChange
+		var repaired strings.Builder
+		cursor := start
+		remove := func(from, to int) {
+			repaired.WriteString(text[cursor:from])
+			cursor = to
+		}
 		for _, modifier := range inner.ModifierNodes() {
 			if modifier.Kind == ast.KindAsyncKeyword {
 				r := scanner.GetRangeOfTokenAtPosition(file, modifier.Pos())
-				edits = append(edits, core.TextChange{TextRange: core.NewTextRange(r.Pos(), scanner.SkipTriviaEx(text, r.End(), &scanner.SkipTriviaOptions{StopAtComments: true})), NewText: ""})
+				remove(r.Pos(), scanner.SkipTriviaEx(text, r.End(), &scanner.SkipTriviaOptions{StopAtComments: true}))
 			}
 		}
 		if ast.IsFunctionExpression(inner) && inner.AsFunctionExpression().AsteriskToken != nil {
 			r := scanner.GetRangeOfTokenAtPosition(file, inner.AsFunctionExpression().AsteriskToken.Pos())
-			edits = append(edits, core.TextChange{TextRange: r, NewText: ""})
+			remove(r.Pos(), r.End())
 		}
-		return edits, applyTextChanges(text, edits)[start : handler.End()-removedLength(edits)]
+		repaired.WriteString(text[cursor:handler.End()])
+		return repaired.String()
 	}
 	var repaired string
 	switch {
@@ -193,7 +162,7 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 		keyword := scanner.SkipTrivia(text, inner.Pos())
 		repaired = source[:keyword-start+len("effect")] + " () =>" + source[keyword-start+len("effect"):]
 	case ast.IsClassExpression(inner):
-		return nil, ""
+		return ""
 	case isThrowExpression(file, inner):
 		repaired = "effect () => " + source
 	default:
@@ -220,19 +189,7 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 			repaired = "() => " + body
 		}
 	}
-	edits := []core.TextChange{{TextRange: core.NewTextRange(start, handler.End()), NewText: repaired}}
-	if catchHandlerNeedsParentheses(call) {
-		// The arrow would take in what follows, so the whole catch
-		// expression is parenthesized: (x catch () => a) catch () => b.
-		edits = append([]core.TextChange{{TextRange: core.NewTextRange(scanner.SkipTrivia(text, call.Pos()), scanner.SkipTrivia(text, call.Pos())), NewText: "("}}, edits...)
-		edits[1].NewText += ")"
-	}
-	if t := c.GetTypeAtLocation(handler); t != nil && !isEffectOperandType(c, t) && len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) == 0 {
-		if removal := legacyCatchTryRemoval(file, call); removal != nil {
-			edits = append(edits, *removal)
-		}
-	}
-	return edits, repaired
+	return repaired
 }
 
 // isThrowExpression reports whether node is a throw expression, the call of
@@ -283,21 +240,6 @@ func catchHandlerNeedsConversion(handler *ast.Node) bool {
 	return visit(fn.Body())
 }
 
-func removedLength(edits []core.TextChange) int {
-	n := 0
-	for _, edit := range edits {
-		n += edit.Len() - len(edit.NewText)
-	}
-	return n
-}
-
-func applyTextChanges(text string, edits []core.TextChange) string {
-	for i := len(edits) - 1; i >= 0; i-- {
-		text = text[:edits[i].Pos()] + edits[i].NewText + text[edits[i].End():]
-	}
-	return text
-}
-
 // freshCatchParameter uses the checker's decoded bindings, including names
 // written with Unicode escapes. Check every candidate, including the fallback;
 // source-text words mistake comments for reads and miss escaped identifiers.
@@ -313,29 +255,6 @@ func freshCatchParameter(c *checker.Checker, handler *ast.Node) string {
 			return name
 		}
 	}
-}
-
-// catchHandlerNeedsParentheses reports whether an arrow written as call's
-// handler would take in what follows call: an arrow's concise body extends as
-// far as an assignment expression does, so in `x catch a catch b`,
-// `x catch a ? b : c` or `x catch a as T` the repaired handler is
-// parenthesized.
-func catchHandlerNeedsParentheses(call *ast.Node) bool {
-	parent := call.Parent
-	switch {
-	case parent == nil:
-		return false
-	case ast.IsConditionalExpression(parent):
-		return parent.AsConditionalExpression().Condition == call
-	case ast.IsBinaryExpression(parent):
-		return parent.AsBinaryExpression().Left == call && parent.AsBinaryExpression().OperatorToken.Kind != ast.KindCommaToken
-	case ast.IsAsExpression(parent), ast.IsSatisfiesExpression(parent):
-		return true
-	case isProgramArrow(parent):
-		outer := catchExpressionOf(parent.Parent)
-		return outer != nil && outer.Arguments()[0] == parent
-	}
-	return false
 }
 
 // catchNativeKeywordRefusal keeps the result a valid plain handler when the

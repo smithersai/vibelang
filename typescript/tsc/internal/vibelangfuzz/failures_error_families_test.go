@@ -28,6 +28,8 @@ func failuresErrorFamilyCases() []*failCase {
 				{"field", "{ value: number }"},
 				{"optional", "{ value?: number }"},
 				{"getter", "{ get label(): string { return this.id } }"},
+				{"method", "{ label(): string { return this.id } }"},
+				{"readonly", "{ readonly value: number }"},
 			} {
 				base := "class Base extends Data.TaggedError(" + tag.text + ")<{ readonly id: string }> {}"
 				if form.prefix == "schema error" {
@@ -41,6 +43,26 @@ func failuresErrorFamilyCases() []*failCase {
 			}
 		}
 	}
+	// Every kind of parent receives the same clause diagnostic, including
+	// cross-kind parents and classes with no error tag at all.
+	for _, form := range []struct {
+		prefix string
+		vip    int
+	}{{"error", 13}, {"schema error", 29}} {
+		for _, parent := range []struct{ name, text string }{
+			{"data", `class Base extends Data.TaggedError("Base") {}`},
+			{"schema", `class Base extends Schema.TaggedError<Base>()("Base", {}) {}`},
+			{"plain", `class Base {}`},
+		} {
+			cases = append(cases, &failCase{
+				Name:  strings.ReplaceAll(form.prefix, " ", "-") + "-extends-parent-" + parent.name,
+				Quote: "| an `extends` clause, `error UserNotFound extends NotFound { … }`, in either error form | `EK2117` |",
+				VIP:   form.vip, Host: "none", Code: 2117, OneDiagnostic: true,
+				Decls: "import { Data, Schema } from \"effect\"\n" + parent.text + "\nexport " + form.prefix + " Child ⟦extends Base⟧ {}\n",
+			})
+		}
+	}
+
 	return cases
 }
 

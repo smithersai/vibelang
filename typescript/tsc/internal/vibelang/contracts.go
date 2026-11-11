@@ -391,23 +391,11 @@ func channelAssignableTo(c *checker.Checker, source, target *checker.Type, visit
 		channelAssignableTo(c, c.GetFalseTypeOfConditionalType(source), target, visiting)
 }
 
-// contractText writes contract, an Effect<A, E, R>, with extra joined to the
-// given channel, for a fix that widens the contract. It writes the ! form.
-func contractText(c *checker.Checker, contract *checker.Type, channel int, extra *checker.Type) string {
-	channels := []*checker.Type{successType(c, contract), channelType(c, contract, "_E"), channelType(c, contract, "_R")}
-	channels[channel] = c.GetUnionType([]*checker.Type{channels[channel], extra})
-	texts := make([]string, len(channels))
-	for i, t := range channels {
-		texts[i] = c.TypeToString(t)
-	}
-	return bangText(texts...)
-}
-
-// contractTextAt is contractText for the contract escape breaks, written for
-// code at escape's source: a member of escape that its bare name does not
-// reach there is written through its module, and replaces the member of the
-// channel that only shares its name (VIP-14: a contract's bare FileSystem is
-// the DOM's when the DOM lib is loaded).
+// contractTextAt writes contract, an Effect<A, E, R>, with escape joined to
+// the given channel, using the ! form. It names types at escape's source:
+// a member that its bare name does not reach there is written through its
+// module, replacing the channel member that only shares its name (VIP-14:
+// a contract's bare FileSystem is the DOM's when the DOM lib is loaded).
 func contractTextAt(c *checker.Checker, contract *checker.Type, channel int, escape escape) string {
 	channels := []*checker.Type{successType(c, contract), channelType(c, contract, "_E"), channelType(c, contract, "_R")}
 	if namesake := ambientNamesake(c, channels[channel], escape.t, escape.source); namesake != nil {
