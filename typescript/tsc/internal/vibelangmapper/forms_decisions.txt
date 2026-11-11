@@ -4201,6 +4201,7 @@ typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:7:23 lambda program
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:7:43 lambda program table
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:8:22 lambda plain annotation
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:9:23 lambda program keyword
+typescript/vibelang/cases/ek5509-unbounded-retry-policy/main.vibe:5:3 lambda effectFn keyword
 typescript/vibelang/cases/element-bind-wrapper-identity.fail/main.vibe:5:31 lambda choice fallback
 typescript/vibelang/cases/element-bind-wrapper-identity.fail/main.vibe:5:38 lambda dual fallback
 typescript/vibelang/cases/element-bind-wrapper-identity.fail/main.vibe:6:38 lambda plain fallback

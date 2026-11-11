@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "effect": "4.1.1",
-    "vibelang-runtime": "0.0.13",
+    "vibelang-runtime": "0.0.12",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -21,8 +21,8 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",
-    "vibelang": "0.0.13",
-    "vibelang-vite": "0.0.13",
+    "vibelang": "0.0.12",
+    "vibelang-vite": "0.0.12",
     "happy-dom": "20.14.6",
     "vite": "8.3.4",
     "vitest": "5.0.5"

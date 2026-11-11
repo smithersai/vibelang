@@ -23,7 +23,7 @@
         "webpack": "5.111.1",
       },
       "peerDependencies": {
-        "vibelang": "0.0.13",
+        "vibelang": "0.0.12",
       },
     },
   },

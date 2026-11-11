@@ -23,7 +23,7 @@ The starter's `start` script runs Node and uses `@effect/platform-node`, even wh
 The starter prints:
 
 ```out
-Created my-app with VibeLang 0.0.13.
+Created my-app with VibeLang 0.0.12.
 Installing dependencies with npm...
 ```
 

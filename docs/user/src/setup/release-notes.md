@@ -4,7 +4,7 @@ VibeLang is v0, so a new version can change the language in breaking ways.
 Before you update, read the notes for every version between yours and the new
 one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
-## 0.0.13
+## 0.0.13 (unreleased)
 
 ### Bugs fixed since 0.0.12
 
@@ -1222,12 +1222,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A plain `catch` handler with a written return type, such as `x catch (): number => 0` or `x catch (): Effect.Effect<number> => Effect.succeed(7)`, was rejected with `TS2322`, `TS2345` or `EK0502`: the compiler read the annotation as an `effect` function's Effect type. The annotation now types what the handler returns, as on any plain function, and the `catch` gives that value, an Effect included, unrun.
 
 - The migrate flow kept a module in TypeScript when its platform code built a URL beside the module from a path written without `./`, such as `new URL("results/", import.meta.url)`, because it read the path as naming the module's file. Paths such as these drop the file name and name the same URL from the `.platform.ts` companion, so such code now moves. References with leading whitespace or C0 control characters, empty paths, query-only and fragment-only references, and computed paths remain in TypeScript.
-
-- Wrapping a recursive reverse-mapped value in a returned object could truncate its inferred declaration too early. Declarations now preserve the TypeScript 5.9 and 7.0 structure before eliding the cycle.
-
-- The platform globals guide omitted `Buffer.byteLength` and could drift from diagnostic advice. It now shows UTF-8 byte counts and checks every replacement while retaining native-behavior caveats.
-
-- The platform introduction showed an HTTP server layer as an Effect, and its checks rejected valid replacement examples. It now launches that layer with `Layer.launch` and checks complete calls, pure helpers and their layers.
 
 ### Upgrade from 0.0.12
 

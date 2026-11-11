@@ -10,15 +10,15 @@
   },
   "dependencies": {
     "effect": "4.1.1",
-    "vibelang-runtime": "0.0.13",
+    "vibelang-runtime": "0.0.12",
     "svelte": "5.57.2"
   },
   "devDependencies": {
     "@effect/vitest": "4.1.1",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@testing-library/svelte": "5.4.2",
-    "vibelang": "0.0.13",
-    "vibelang-vite": "0.0.13",
+    "vibelang": "0.0.12",
+    "vibelang-vite": "0.0.12",
     "happy-dom": "20.14.6",
     "vite": "8.3.4",
     "vitest": "5.0.5"

@@ -1,6 +1,6 @@
 {
   "name": "vibelang-typescript",
-  "version": "7.1.13",
+  "version": "7.1.12",
   "description": "VibeLang's compiler under the name typescript: VibeLang in a .ts file compiles with your tsc and editor",
   "keywords": [
     "vibelang",
@@ -38,7 +38,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "vibelang": "0.0.13"
+    "vibelang": "0.0.12"
   },
   "engines": {
     "node": "^22.22.3 || >=24.11.1"

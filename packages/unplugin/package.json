@@ -1,6 +1,6 @@
 {
   "name": "vibelang-unplugin",
-  "version": "0.0.13",
+  "version": "0.0.12",
   "description": "Compile VibeLang source modules with vibelang in webpack, Rollup, Rolldown, esbuild, Rspack, and Bun",
   "keywords": [
     "vibelang",
@@ -90,7 +90,7 @@
     "@jridgewell/remapping": "2.3.5"
   },
   "peerDependencies": {
-    "vibelang": "0.0.13"
+    "vibelang": "0.0.12"
   },
   "devDependencies": {
     "@rspack/core": "2.2.8",

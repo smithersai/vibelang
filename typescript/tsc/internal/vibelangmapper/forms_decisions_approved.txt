@@ -9,8 +9,6 @@
 # Entries stay as the history of reviewed moves. Bump vibelangmapper.RulesVersion
 # when the classifier, the generator, or the resolver moved them.
 
-typescript/vibelang/cases/migrate-opencode-held-program-fixed/lib.vibe:4:16 lambda: effectFn keyword -> effectFn annotation # The written return annotation now describes the plain factory that preserves its synchronous primitive.
-
 # rules 2: a method keyed by a well-known symbol is plain (D94), and the generator reads a mapped type's template, so handle's Clauses<S, H> makes every clause an Effect function.
 typescript/vibelang/cases/ch06-disposable/ch06-disposable.vibe:10:5 lambda: dual fallback -> plain protocol # a well-known symbol's method is plain: the language calls it (D94)
 typescript/vibelang/cases/ch09-handlers/ch09-handlers.vibe:116:5 lambda: choice fallback -> effectFn table # a handle clause: the runtime's Clauses<S, H> requires an Effect function
