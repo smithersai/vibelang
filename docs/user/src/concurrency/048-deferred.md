@@ -41,7 +41,7 @@ effect function waitForAddress() {
 
 `try Deferred.await(address)` waits while the handle is empty and returns at once after completion. Several fibers can await one deferred and receive the same result. Cancelling one waiter doesn't require completing the deferred for the others.
 
-Only a value with the `Deferred` interface triggers `EK4610`; a wrapper object or a marker-only object remains an ordinary JavaScript value.
+Only a value with the `Deferred` interface triggers `EK4610`; a wrapper object or a marker-only object remains an ordinary JavaScript value. In effect code, `await` always reports `EK0102`. Its `try Deferred.await(value)` guidance requires the complete `Deferred` interface; a marker-only or partial object receives no Deferred-specific repair.
 
 ## Completing with success or failure
 

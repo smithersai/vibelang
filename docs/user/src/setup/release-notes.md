@@ -83,6 +83,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `(Effect).Array`, and every other collision qualifier written with the implicit `Effect` in parentheses, was `TS2339`, though `Effect.Array` names Effect's `Array` module. Parentheses around the implicit `Effect` now change nothing, as in TypeScript.
 
+- Await errors treated incomplete `Deferred` objects as runnable handles; `Deferred`-specific guidance now requires the complete interface.
+
 - Await errors on collections of fibers suggested joining the whole collection; handle-specific guidance now applies only to a single fiber.
 
 - A rejected `await` in Effect code could suggest joining a `Fiber` when its operand was unresolved or unchecked. The compiler now keeps general placement guidance for those values.

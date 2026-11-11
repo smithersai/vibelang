@@ -205,7 +205,7 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 			switch {
 			case isJoinable(c, t, 1):
 				note(d, "Join the fiber with join {0}.", nodeText(file, args[0]))
-			case isDeferred(c, t):
+			case nativeAwaitTarget(c, t, "Deferred"):
 				note(d, "Wait for the Deferred with try Deferred.await({0}).", nodeText(file, args[0]))
 			}
 		}
