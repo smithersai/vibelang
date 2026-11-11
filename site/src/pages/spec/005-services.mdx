@@ -843,6 +843,6 @@ The grammar is [TaskDeclaration](/spec/900-appendices#taskdeclaration) and [Work
 - A loop statement, or an assignment, `++` or `--` to a variable, in a workflow's own `effect call` is `EK5506`, once for each loop.
 - A workflow whose `try W(…)` steps reach the workflow again, directly or through other workflows, is `EK5507`.
 - `W.to(…)` anywhere but as a `return` operand is `EK5508`.
-- A written `retryPolicy` object literal with neither `maxAttempts` nor `expirationMs` is the warning `EK5509`: such a policy never gives up.
+- A written `retryPolicy` object literal with neither `maxAttempts` nor `expirationMs` is the warning `EK5509`: such a policy never gives up. A spread or computed property name may supply a bound, so either suppresses this warning.
 - A workflow's written `A!E` leaves `R` unchecked: its body is a plan, and the workflows it calls need the engine only when they run.
 - Every parameter and written success and error type of a `call` is a durable boundary: a type with no schema form is `EK2109`, as in a `schema` declaration. A task's parameters are identifiers, not patterns or a rest parameter, and its annotation leaves the `R` slot out (`EK5501`).

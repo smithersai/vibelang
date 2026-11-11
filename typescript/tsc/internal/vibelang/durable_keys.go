@@ -41,7 +41,7 @@ func durableTag(c *checker.Checker, file *ast.SourceFile, call *ast.Node) (tag s
 	}
 	if ast.IsObjectLiteralExpression(arguments[1]) {
 		for _, option := range arguments[1].AsObjectLiteralExpression().Properties.Nodes {
-			if ast.IsPropertyAssignment(option) && option.Name() != nil && option.Name().Text() == "key" {
+			if ast.IsPropertyAssignment(option) && option.Name() != nil && ast.GetTextOfPropertyName(option.Name()) == "key" {
 				if value := ast.SkipParentheses(option.Initializer()); ast.IsStringLiteralLike(value) {
 					tag = value.Text()
 				} else {

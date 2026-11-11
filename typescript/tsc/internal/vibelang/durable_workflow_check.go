@@ -118,7 +118,7 @@ func checkRetryPolicy(c *checker.Checker, options *ast.Node) {
 		return
 	}
 	for _, property := range options.AsObjectLiteralExpression().Properties.Nodes {
-		if !ast.IsPropertyAssignment(property) || property.Name() == nil || property.Name().Text() != "retryPolicy" {
+		if !ast.IsPropertyAssignment(property) || property.Name() == nil || ast.GetTextOfPropertyName(property.Name()) != "retryPolicy" {
 			continue
 		}
 		policy := ast.SkipParentheses(property.Initializer())
@@ -127,8 +127,17 @@ func checkRetryPolicy(c *checker.Checker, options *ast.Node) {
 		}
 		bounded := false
 		for _, field := range policy.AsObjectLiteralExpression().Properties.Nodes {
-			if field.Name() != nil && (field.Name().Text() == "maxAttempts" || field.Name().Text() == "expirationMs") || ast.IsSpreadAssignment(field) {
+			name := field.Name()
+			// A spread or computed name may supply a bound at runtime.
+			if ast.IsSpreadAssignment(field) || name != nil && ast.IsComputedPropertyName(name) {
 				bounded = true
+				break
+			}
+			if name != nil {
+				switch ast.GetTextOfPropertyName(name) {
+				case "maxAttempts", "expirationMs":
+					bounded = true
+				}
 			}
 		}
 		if !bounded {

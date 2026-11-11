@@ -323,7 +323,7 @@ func (p *Parser) durableSelfHandoffs(body *ast.Node, name string, parameters *as
 	}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if (ast.IsFunctionLike(node) || ast.IsClassLike(node)) && node.Name() != nil && node.Name().Text() == name {
+		if (ast.IsFunctionLike(node) || ast.IsClassLike(node)) && node.Name() != nil && ast.IsIdentifier(node.Name()) && node.Name().Text() == name {
 			return false
 		}
 		if ast.IsCallExpression(node) {

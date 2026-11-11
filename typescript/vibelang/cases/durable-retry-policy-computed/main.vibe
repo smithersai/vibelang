@@ -1,0 +1,64 @@
+// expect-result: [3,40,9,7,2,5]
+// Computed retry-policy fields preserve their values without a static warning.
+task Fetch {
+  static readonly retryPolicy = { ["maxAttempts"]: 3 }
+  effect call(id: string): number!string { return id.length }
+}
+
+const k = "maxMs"
+task DynamicFetch {
+  static readonly retryPolicy = { initialMs: 10, [k]: 40, maxAttempts: 2 }
+  effect call(id: string): number!string { return id.length }
+}
+
+task ComputedOnly {
+  static readonly retryPolicy = { [(k)]: 9 }
+  effect call(id: string): number!string { return id.length }
+}
+
+const bound = { maxAttempts: 7 }
+task SpreadFetch {
+  static readonly retryPolicy = { ...bound, initialMs: 10 }
+  effect call(id: string): number!string { return id.length }
+}
+
+task QuotedFetch {
+  static readonly "retryPolicy" = { "expirationMs": 2 }
+  effect call(id: string): number!string { return id.length }
+}
+
+workflow ComputedWorkflow {
+  static readonly retryPolicy = { initialMs: 10, [`expirationMs`]: 5 }
+  effect call(id: string): number!string { return id.length }
+}
+
+// Handoff scanning visits nested method names as well as declaration names.
+workflow ComputedMembers {
+  effect call(id: string): number!string {
+    const methods = {
+      [k]() { return id.length },
+      get ["other"]() { return id.length },
+      0() { return id.length },
+      "quoted"() { return id.length }
+    }
+    return methods.maxMs()
+  }
+}
+
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics
+// An object with only delay fields still warns; dynamic bounds above do not.
+task Unbounded {
+  static readonly retryPolicy = { initialMs: 10, factor: 2, maxMs: 40 }
+  effect call(id: string): number!string { return id.length }
+}
+
+export effect function main() {
+  return [
+    (Fetch.options.retryPolicy as { maxAttempts: number }).maxAttempts,
+    (DynamicFetch.options.retryPolicy as { maxMs: number }).maxMs,
+    (ComputedOnly.options.retryPolicy as { maxMs: number }).maxMs,
+    (SpreadFetch.options.retryPolicy as { maxAttempts: number }).maxAttempts,
+    (QuotedFetch.options.retryPolicy as { expirationMs: number }).expirationMs,
+    (ComputedWorkflow.options.retryPolicy as { expirationMs: number }).expirationMs
+  ]
+}
