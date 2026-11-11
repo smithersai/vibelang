@@ -289,6 +289,11 @@ effect function concurrent() {
 
 An effect function call constructs an Effect. `try` runs it at that point. `try.all` runs the supplied Effects concurrently. An `effect { ... }` block constructs an Effect and reruns its statements each time that Effect runs. A producer call constructs a Stream. See [Producers](/vibelang-features/112-producers).
 
+Calls and template tags on `super` keep their receiver, including through
+parentheses, `!`, `as`, `satisfies` and type assertions. For example,
+`super.method!()` and `(super.method as F)()` use the same `this` as
+`super.method()`.
+
 An effect arrow or block keeps its enclosing `this`, `super` and `new.target`.
 Building the Effect does not read these bindings. You can build a block in a
 derived constructor before `super()` and run it afterward. Running it before

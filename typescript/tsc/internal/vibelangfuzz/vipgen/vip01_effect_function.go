@@ -369,20 +369,50 @@ func init() {
 			l1, l2 := g.Label(), g.Label()
 			k := g.Intn(31)
 			argument := fmt.Sprintf("(ev(%q), %d)", l2, k)
-			call := "super.offset(" + argument + ")"
-			switch g.Intn(4) {
-			case 1:
-				call = "super[(ev(\"key\"), \"offset\")](...[" + argument + "])"
-			case 2:
-				call = "super.offset?.(" + argument + ")"
-			case 3:
-				call = "super.tag`value ${" + argument + "}`"
+			shape := g.Intn(4)
+			property, typ := "super.offset", b+"Offset"
+			if shape == 1 {
+				property = "super[(ev(\"key\"), \"offset\")]"
+			} else if shape == 3 {
+				property, typ = "super.tag", b+"Tag"
 			}
+			// Type-only wrappers erase, and parentheses preserve a Reference.
+			// The native reference deliberately leaves their erased form.
+			referenceProperty := property
+			for depth := 1 + g.Intn(3); depth > 0; depth-- {
+				switch g.Intn(7) {
+				case 1:
+					property += "!"
+				case 2:
+					property = "(" + property + ")"
+				case 3:
+					property = "(" + property + " as typeof " + typ + ")"
+				case 4:
+					property = "(" + property + " satisfies typeof " + typ + ")"
+				case 5:
+					property = "(<typeof " + typ + ">" + property + ")"
+				case 6:
+					property = "((" + property + " as typeof " + typ + ")!)"
+				}
+				referenceProperty = "(" + referenceProperty + ")"
+			}
+			invoke := func(property string) string {
+				switch shape {
+				case 1:
+					return property + "(...[" + argument + "])"
+				case 2:
+					return property + "?.(" + argument + ")"
+				case 3:
+					return property + "`value $" + "{" + argument + "}`"
+				}
+				return property + "(" + argument + ")"
+			}
+			call, referenceCall := invoke(property), invoke(referenceProperty)
 			base := fmt.Sprintf("function %sOffset(this: { n: number }, k: number) { ev(%q); return this.n + k }\nfunction %sTag(this: { n: number }, parts: TemplateStringsArray, k: number) { ev(%q); return this.n + k + Number(Object.isFrozen(parts)) }\nclass %s {\nn = 0\nget offset() { ev(\"lookup\"); return %sOffset }\nget tag() { ev(\"lookup-tag\"); return %sTag }\n}\nfor (const fn of [%sOffset, %sTag]) for (const key of [\"call\", \"apply\", \"bind\"]) Object.defineProperty(fn, key, { get() { ev(\"poison-\" + key); return () => -1000 } })\n", b, l1, b, l1, b, b, b, b, b)
 			reference := strings.NewReplacer("this: { n: number }, ", "", "k: number", "k", "parts: TemplateStringsArray", "parts").Replace(base)
 			g.AddDecl(&Code{
 				V: base + fmt.Sprintf("class %s extends %s {\nn = 7\neffect value() {\ntry Effect.succeed(0)\nreturn %s\n}\n}", c, b, call),
-				E: reference + fmt.Sprintf("class %s extends %s {\nn = 7\nvalue() {\nconst invoke = () => %s\nreturn Effect.gen(function* () {\nyield* Effect.succeed(0)\nreturn yield* Effect.sync(invoke)\n})\n}\n}", c, b, call),
+				E: reference + fmt.Sprintf("class %s extends %s {\nn = 7\nvalue() {\nconst invoke = () => %s\nreturn Effect.gen(function* () {\nyield* Effect.succeed(0)\nreturn yield* Effect.sync(invoke)\n})\n}\n}", c, b, referenceCall),
 			})
 			s.Locals = append(s.Locals, v)
 			return []Stmt{&Const{Name: v, Value: &Try{X: &Lit{Text: "new " + c + "().value()"}}}}

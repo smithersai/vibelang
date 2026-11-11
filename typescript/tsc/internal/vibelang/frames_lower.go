@@ -343,20 +343,23 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 			ec.SetOriginal(value, node)
 			value.Loc = node.Loc
 			return value
-		case super != nil && ast.IsCallExpression(node) && isSuperProperty(node.Expression()):
+		case super != nil && ast.IsCallExpression(node) && isSuperProperty(ast.SkipOuterExpressions(node.Expression(), ast.OEKAll)):
 			// Capture the method before evaluating arguments, without reading
 			// its own call/apply/bind properties (VIP-1 Bindings).
-			method := read(super, key(node.Expression()))
+			// Parentheses and erased type wrappers preserve the Reference.
+			property := ast.SkipOuterExpressions(node.Expression(), ast.OEKAll)
+			method := read(super, key(property))
 			callee := tx.bindSuperMethod(method, receiver(), node.QuestionDotToken() != nil)
 			call := f.NewCallExpression(callee, node.QuestionDotToken(), nil /*typeArguments*/, visitor.VisitNodes(node.ArgumentList()), node.Flags)
 			ec.SetOriginal(call, node)
 			call.Loc = node.Loc
 			return call
-		case super != nil && ast.IsTaggedTemplateExpression(node) && isSuperProperty(node.AsTaggedTemplateExpression().Tag):
+		case super != nil && ast.IsTaggedTemplateExpression(node) && isSuperProperty(ast.SkipOuterExpressions(node.AsTaggedTemplateExpression().Tag, ast.OEKAll)):
 			// Keep the native template site and capture the receiver before
 			// substitutions. The adapter uses the runtime's captured apply.
 			tagged := node.AsTaggedTemplateExpression()
-			tag := tx.bindSuperMethod(read(super, key(tagged.Tag)), receiver(), false)
+			property := ast.SkipOuterExpressions(tagged.Tag, ast.OEKAll)
+			tag := tx.bindSuperMethod(read(super, key(property)), receiver(), false)
 			return f.UpdateTaggedTemplateExpression(tagged, tag, tagged.QuestionDotToken, tagged.TypeArguments, visitor.VisitNode(tagged.Template), node.Flags)
 		case super != nil && isSuperProperty(node):
 			var value *ast.Node

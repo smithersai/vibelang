@@ -1,0 +1,93 @@
+// VIP-1 Bindings: erased wrappers keep the native super Reference.
+type Method = (value: number) => number
+type Tag = (parts: TemplateStringsArray, value: number) => number
+const events: string[] = []
+let poisonReads = 0
+function mark(name: string) { events.push(name); return 2 }
+function method(this: { n: number } | undefined, value: number) {
+  events.push("method")
+  return (this?.n ?? -1000) + value
+}
+function tag(this: { n: number } | undefined, parts: TemplateStringsArray, value: number) {
+  events.push("tag")
+  return (this?.n ?? -1000) + value + Number(Object.isFrozen(parts) && parts.raw[0] === "x")
+}
+for (const fn of [method, tag]) {
+  for (const key of ["call", "apply", "bind"]) {
+    Object.defineProperty(fn, key, { get() { poisonReads++; return () => -999 } })
+  }
+}
+class Base {
+  n = 0
+  get method() { events.push("lookup"); return method }
+  get tag() { events.push("lookup-tag"); return tag }
+  get absent(): Method | undefined { events.push("absent"); return undefined }
+  optionalMethod?(value: number) { return this.n + value }
+  generic<T>(value: T) { return [this.n, value] }
+  static n = 20
+  static method() { return this.n }
+}
+class Derived extends Base {
+  n = 7
+  effect run() {
+    try Effect.succeed(0)
+    const calls = [
+      super.method(mark("arg")),
+      super.method!(mark("arg")),
+      (super.method)(mark("arg")),
+      (super.method as Method)(mark("arg")),
+      (super.method satisfies Method)(mark("arg")),
+      (<Method>super.method)(mark("arg")),
+      (((super.method as Method)!) satisfies Method)(mark("arg")),
+      super[(mark("key"), "method")](mark("arg")),
+      super[(mark("key"), "method")]!(mark("arg")),
+      (super[(mark("key"), "method")])(mark("arg")),
+      (super[(mark("key"), "method")] as Method)(mark("arg")),
+      (super[(mark("key"), "method")] satisfies Method)(mark("arg")),
+      (<Method>super[(mark("key"), "method")])(mark("arg")),
+      (((super[(mark("key"), "method")] as Method)!) satisfies Method)(mark("arg"))
+    ]
+    const tags = [
+      super.tag`x${mark("substitution")}`,
+      super.tag!`x${mark("substitution")}`,
+      (super.tag)`x${mark("substitution")}`,
+      (super.tag as Tag)`x${mark("substitution")}`,
+      (super.tag satisfies Tag)`x${mark("substitution")}`,
+      (<Tag>super.tag)`x${mark("substitution")}`,
+      (((super.tag as Tag)!) satisfies Tag)`x${mark("substitution")}`,
+      super[(mark("key"), "tag")]`x${mark("substitution")}`,
+      super[(mark("key"), "tag")]!`x${mark("substitution")}`,
+      (super[(mark("key"), "tag")])`x${mark("substitution")}`,
+      (super[(mark("key"), "tag")] as Tag)`x${mark("substitution")}`,
+      (super[(mark("key"), "tag")] satisfies Tag)`x${mark("substitution")}`,
+      (<Tag>super[(mark("key"), "tag")])`x${mark("substitution")}`,
+      (((super[(mark("key"), "tag")] as Tag)!) satisfies Tag)`x${mark("substitution")}`
+    ]
+    const optional = (super.method as Method)?.(mark("optional-arg"))
+    const absent = (super.absent!)?.(mark("must-not-run"))
+    const detached = ((mark("detach"), super.method) as Method)(mark("detached-arg"))
+    const declaredOptional = super.optionalMethod!(2)
+    const generic = (super.generic<number>)(2)
+    return { calls, tags, optional, absent: absent === undefined, detached, generic, declaredOptional }
+  }
+  effect contexts() {
+    try Effect.succeed(0)
+    const arrow = effect () => { try Effect.succeed(0); return (super.method!)(2) }
+    const a = try arrow()
+    const b = try effect { try Effect.succeed(0); return (super.method as Method)(3) }
+    return [a, b]
+  }
+  effect *values() { try Effect.succeed(0); yield (super.method satisfies Method)(4) }
+  static effect read() { try Effect.succeed(0); return (super.method!)() }
+}
+// expect-result: {"first":{"calls":[9,9,9,9,9,9,9,9,9,9,9,9,9,9],"tags":[10,10,10,10,10,10,10,10,10,10,10,10,10,10],"optional":9,"absent":true,"detached":-998,"generic":[7,2],"declaredOptional":9},"second":{"calls":[19,19,19,19,19,19,19,19,19,19,19,19,19,19],"tags":[20,20,20,20,20,20,20,20,20,20,20,20,20,20],"optional":19,"absent":true,"detached":-998,"generic":[17,2],"declaredOptional":19},"contexts":[19,20],"produced":[21],"staticValue":20,"poisonReads":0,"events":["lookup","arg","method","lookup","arg","method","lookup","arg","method","lookup","arg","method","lookup","arg","method","lookup","arg","method","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","lookup","optional-arg","method","absent","detach","lookup","detached-arg","method","lookup","arg","method","lookup","arg","method","lookup","arg","method","lookup","arg","method","lookup","arg","method","lookup","arg","method","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","key","lookup","arg","method","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","key","lookup-tag","substitution","tag","lookup","optional-arg","method","absent","detach","lookup","detached-arg","method","lookup","method","lookup","method","lookup","method"]}
+export effect function main() {
+  const b = new Derived()
+  const first = try b.run()
+  b.n = 17
+  const second = try b.run()
+  const contexts = try b.contexts()
+  const produced = try Stream.runCollect(b.values())
+  const staticValue = try Derived.read()
+  return { first, second, contexts, produced, staticValue, poisonReads, events }
+}
