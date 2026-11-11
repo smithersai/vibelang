@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -10,8 +11,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangestree"
 )
 
-// FuzzLintTreeTokens checks that the nodes the parser generates for patterns,
-// match and do keep the tokens ESLint's rules read.
+// FuzzLintTreeTokens checks that the nodes the parser generates for VibeLang
+// syntax keep the tokens ESLint's rules read.
 //
 // Chapter 7, Formatting and existing tools: "Type checkers use `.d.vibe.ts`;
 // linters, Knip, bundlers and test runners read `.vibe`." ESLint reads a
@@ -19,8 +20,10 @@ import (
 // ones the author wrote. Its core rules look for an arrow's `=>`
 // (arrow-spacing), a declarator's or an assignment's operator
 // (space-infix-ops, operator-linebreak, indent), a call's parentheses
-// (function-paren-newline, comma-dangle, indent) and a unary operator
-// (no-div-regex, wrap-regex) among a node's tokens, and a rule that finds
+// (function-paren-newline, comma-dangle, indent), a member access's `.` or
+// `[` (dot-location, no-whitespace-before-property,
+// computed-property-spacing), a literal's own token (no-div-regex,
+// wrap-regex) and a unary operator among a node's tokens, and a rule that finds
 // none throws, which stops the whole lint run. The tree of a `.ts` file has
 // every one of these tokens; the twin forms check that the oracle holds
 // there, so a failure belongs to the `.vibe` tree. The `!` and the
@@ -40,15 +43,20 @@ var lintTreeChecks = []struct{ name, token string }{
 	{"assignment", "an assignment's operator"},
 	{"call", "a call's parentheses"},
 	{"declarator", "a declarator's ="},
+	{"literal", "a literal's own token"},
+	{"member", "a member access's . or ["},
 	{"unary", "a unary operator"},
 }
 
 // lintTreeForm is a source form: an expression placed in each expression
-// home, or statements placed directly in a function body. A twin is
-// TypeScript, parsed as main.ts.
+// home, statements placed directly in a function body, or a whole file. A
+// twin is TypeScript, parsed as main.ts. A form whose generated nodes differ
+// by home is split, so that every key fails in all of its homes or in none.
 type lintTreeForm struct {
-	key, text       string
-	statement, twin bool
+	key, text             string
+	statement, twin, file bool
+	// homes, when set, are the only expression homes the form takes.
+	homes []string
 }
 
 var lintTreeForms = []lintTreeForm{
@@ -83,11 +91,44 @@ var lintTreeForms = []lintTreeForm{
 	{key: "match/type-relation", text: "return match (x) {\n    when String: 1;\n    when > 2: 2;\n    default: 0;\n  }", statement: true},
 	{key: "do-match/literal", text: "return do {\n    match (x) {\n      when 1: 1;\n      default: 0;\n    }\n  }", statement: true},
 	{key: "do-match/object", text: "return do {\n    match (x) {\n      when { a: 2 }: 3;\n      default: 0;\n    }\n  }", statement: true},
+	{key: "catch/value", text: "read() catch \"x\""},
+	{key: "catch/handler", text: "read() catch (e) => 1"},
+	{key: "pipe/topic", text: "x |> % + 1 |> String(%)"},
+	{key: "try/call", text: "try((text) => JSON.parse(text), x)"},
+	{key: "throw/coalesce", text: "x ?? (throw new Error(\"none\"))"},
+	{key: "match/expression", text: "match (x) { when 1: 1; default: 0; }", homes: lintTreeHomesBut("return")},
+	{key: "effect/block", text: "effect { return 1 }"},
+	{key: "effect/span", text: "Effect.withSpan(effect { const value = do { 1 }; return value }, \"f\")"},
+	{key: "do/value", text: "do { 1 }", homes: lintTreeHomesBut("argument")},
+	{key: "do/statements", text: "do { const v = 1; v + 1 }", homes: lintTreeHomesBut("argument")},
+	{key: "fiber/fork", text: "fork read()"},
+	{key: "fiber/await-all", text: "await.all [read()]"},
+	{key: "fiber/join", text: "join x"},
+	{key: "do/argument-value", text: "return g(do { 1 }, 1)", statement: true},
+	{key: "do/argument-statements", text: "return g(do { const v = 1; v + 1 }, 1)", statement: true},
+	{key: "pattern/variant-binding", text: "if (x is Exit.Failure(let cause)) {\n    return cause\n  }\n  return 0", statement: true},
+	{key: "match/statement", text: "match (x) {\n    when 1: log(\"one\");\n    default: log(\"other\");\n  }", statement: true},
+	{key: "fiber/for-concurrent", text: "for concurrent(2) (const id of x) log(id)", statement: true},
+	{key: "primitive/uninterruptible", text: "uninterruptible {\n    restore {\n      return read()\n    }\n  }", statement: true},
+	{key: "primitive/finally-exit", text: "try {\n    return read()\n  } finally (exit) {\n    log(exit)\n  }", statement: true},
+	{key: "provide/layers", text: "provide Live, Clock = clock {\n    return Users.find(\"1\")\n  }", statement: true},
+	{key: "decl/error", text: "error Gone { id: string }\nerror Timeout\n", file: true},
+	{key: "decl/error-class", text: "export error AppError implements Coded {\n  _tag: string\n  code: string\n  static readonly family = \"app\"\n  constructor(code: string) { super({ code }) }\n  get label(): string { return this.code }\n}\nerror NotFound extends AppError { mutable path: string; describe(): string { return this.path } }\nabstract error Http { status: number; abstract describe(): string }\n", file: true},
+	{key: "decl/schema-error", text: "schema error FsError { _tag: string; method: string; mutable path?: string }\nschema error Missing extends FsError { attempts: number }\n", file: true},
+	{key: "decl/service", text: "service Users { find(id: string): string!Gone }\n", file: true},
+	{key: "decl/service-shape", text: "service Prefix: string {}\nexport service Search: SearchApi { static readonly key = \"app/Search\" }\n", file: true},
+	{key: "decl/schema", text: "schema Ticket { id: string; mutable count: number }\nschema Code = \"a\" | \"b\"\nschema Point = { x: number }\n", file: true},
+	{key: "decl/layer", text: "layer Live: Users { find(id) { return id } }\n", file: true},
+	{key: "decl/contracts", text: "function read(id: string): string!Gone!Users { return Users.find(id) }\ntype Program = number!!\n", file: true},
+	{key: "decl/data", text: "export data Delivery {\n  Waiting\n  Sent { tracking: string; note?: string }\n}\ndata Box<A> { Full { value: A }; Empty }\n", file: true},
+	{key: "decl/data-match", text: "data Box<A> { Full { value: A }; Empty }\nfunction f(d: Box<number>) {\n  return match (d) {\n    when Box.Empty: 0;\n    when Box.Full { let value }: value;\n  }\n}\n", file: true},
+	{key: "decl/module", text: "module text {\n  export function clean(value: string): string {\n    return value.trim()\n  }\n}\nimport { clean } from text\nexport { clean as tidy } from text\nexport function main(): string { return clean(\" a \") }\n", file: true},
 	{key: "twin/or", text: "x === 1 || x === 2", twin: true},
 	{key: "twin/arrow-call", text: "((v) => v === 1)(x)", twin: true},
 	{key: "twin/typeof", text: `typeof x === "string" && !(x instanceof Map)`, twin: true},
 	{key: "twin/object", text: `typeof x === "object" && x !== null && x.a === 2`, twin: true},
 	{key: "twin/statements", text: "const { a } = x\n  let b = a\n  b += 1\n  b = g(b, -1)\n  return a === b ? void a : ~b", statement: true, twin: true},
+	{key: "twin/members", text: "x?.a?.[0] ?? x.b[\"c\"] ?? /a\\/b/g.source", twin: true},
 	{key: "twin/switch", text: "switch (x) {\n    case 1:\n      return 1\n    default:\n      return 0\n  }", statement: true, twin: true},
 }
 
@@ -102,6 +143,27 @@ var lintTreeHomes = []struct{ key, text string }{
 	{"conditional", "return (%s) ? 1 : 0"},
 }
 
+// lintTreeHomesBut returns the keys of every expression home except those
+// named.
+func lintTreeHomesBut(except ...string) []string {
+	var keys []string
+	for _, home := range lintTreeHomes {
+		if !slices.Contains(except, home.key) {
+			keys = append(keys, home.key)
+		}
+	}
+	return keys
+}
+
+// lintTreeHomeOf returns home if form takes it, and otherwise the form's
+// first home.
+func lintTreeHomeOf(form lintTreeForm, home string) string {
+	if len(form.homes) == 0 || slices.Contains(form.homes, home) {
+		return home
+	}
+	return form.homes[0]
+}
+
 // A variant picks the trivia before the file and the function the body is in.
 var lintTreePrefixes = []string{"", "// é 😀\n", "/* 😀 */\r\n", "\xef\xbb\xbf"}
 
@@ -112,6 +174,9 @@ var lintTreeContainers = []string{
 }
 
 func lintTreeSource(form lintTreeForm, home string, variant uint8) string {
+	if form.file {
+		return lintTreePrefixes[int(variant)%len(lintTreePrefixes)] + form.text
+	}
 	body := form.text
 	if !form.statement {
 		for _, h := range lintTreeHomes {
@@ -234,6 +299,26 @@ func lintTreeFlaws(tree map[string]any) map[string]string {
 						add("call", v)
 					}
 				}
+			case "Literal":
+				inner := lintTreeBetween(tokens, start, end)
+				if len(inner) == 0 || inner[0].start != start {
+					add("literal", v)
+				}
+			case "MemberExpression":
+				object, okObject := lintTreeChild(v, "object")
+				property, okProperty := lintTreeChild(v, "property")
+				if okObject && okProperty {
+					_, objectEnd := lintTreeSpan(object)
+					propertyStart, _ := lintTreeSpan(property)
+					between := lintTreeBetween(tokens, objectEnd, propertyStart)
+					if computed, _ := v["computed"].(bool); computed {
+						if !lintTreeHas(between, "[") {
+							add("member", v)
+						}
+					} else if !lintTreeHas(between, ".") && !lintTreeHas(between, "?.") {
+						add("member", v)
+					}
+				}
 			case "UnaryExpression":
 				if operator, _ := v["operator"].(string); operator != "!" && operator != "typeof" {
 					inner := lintTreeBetween(tokens, start, end)
@@ -257,14 +342,18 @@ func FuzzLintTreeTokens(f *testing.F) {
 	startShortBudget(f)
 	for _, form := range lintTreeForms {
 		homes := []string{"return"}
-		if !form.statement {
-			homes = nil
-			for _, home := range lintTreeHomes {
-				homes = append(homes, home.key)
+		if !form.statement && !form.file {
+			homes = form.homes
+			if len(homes) == 0 {
+				homes = lintTreeHomesBut()
 			}
 		}
 		for _, home := range homes {
-			for variant := uint8(0); variant < 12; variant++ {
+			variants := uint8(12)
+			if form.file {
+				variants = uint8(len(lintTreePrefixes))
+			}
+			for variant := uint8(0); variant < variants; variant++ {
 				f.Add(form.key, home, variant)
 			}
 		}
@@ -277,6 +366,7 @@ func FuzzLintTreeTokens(f *testing.F) {
 		chapterSays(t, "007-tooling.md", lintTreeQuote)
 		choice, _ := keyedChoice(keys, []byte(formKey))
 		form := lintTreeForms[choice]
+		home = lintTreeHomeOf(form, home)
 		source := lintTreeSource(form, home, variant)
 		name := "main.vibe"
 		if form.twin {
@@ -303,7 +393,7 @@ func FuzzLintTreeTokens(f *testing.F) {
 			_, isPending := Pending(lintTreeTarget, key)
 			if node, failed := flaws[check.name]; failed {
 				if !isPending {
-					t.Errorf("%s %s: %s lacks %s among its tokens; the ESLint rules that read it throw\n%s", lintTreeTarget, key, node, check.token, source)
+					t.Errorf("%s %s: %s lacks %s among its tokens; the ESLint rules that read it throw (home %q, variant %d)\n%s", lintTreeTarget, key, node, check.token, home, variant, source)
 				}
 				pending = append(pending, key+": "+node)
 			} else {

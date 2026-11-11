@@ -1,0 +1,4 @@
+go test fuzz v1
+string("fiber/for-concurrent")
+string("return")
+byte('\x00')
