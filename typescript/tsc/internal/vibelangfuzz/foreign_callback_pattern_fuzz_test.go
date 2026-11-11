@@ -90,6 +90,9 @@ func FuzzForeignCallbackPatterns(f *testing.F) {
 		errors := r4Errors(r.Diagnostics)
 		if len(errors) > 1 || len(errors) == 1 && errors[0] != "EK0402" || (len(errors) == 1) != want {
 			Gap(t, "FuzzForeignCallbackPatterns", "pattern:"+key, "004-match: %s; 003-failures: %s; key %s got%v want EK0402=%t\n%s", foreignCallbackPatternQuote, foreignVariableAdmissionQuote, key, errors, want, Archive(files))
+		} else {
+			// The key names this one probe, so a pending line for it is stale.
+			ExpectPending(t, "FuzzForeignCallbackPatterns", "pattern:"+key)
 		}
 	})
 }

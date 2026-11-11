@@ -19,9 +19,12 @@ export function pendingUnits(directory = dir): Array<string> {
   const text = readdirSync(directory).filter((file) => file.endsWith(".txt")).sort()
     .map((file) => readFileSync(join(directory, file), "utf8")).join("")
   const units = new Set(["probe:TestDataSpecRules", "probe:TestVIPConstructs"])
+  // As pending.sh: a target with a corpus or feature line runs named, and a
+  // target with any other line that is not superseded runs whole.
   for (const line of text.split("\n")) {
-    const match = /^([A-Za-z]+)[ \t\r\f\v]+(corpus|feature|rule|control|reject|diagnostic):/.exec(line)
-    if (match) units.add(match[1])
+    const [target, key, owner] = line.trim().split(/[ \t\r\f\v]+/)
+    if (line.startsWith("#") || line.trim().split(/[ \t\r\f\v]+/).length < 4) continue
+    if (/^(corpus|feature):/.test(key) || (!key.startsWith("corpus:") && owner !== "superseded")) units.add(target)
   }
   return [...units].sort()
 }

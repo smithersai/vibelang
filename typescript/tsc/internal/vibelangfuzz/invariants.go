@@ -62,6 +62,7 @@ func (g *Gaps) Finish(t testing.TB) {
 	failed := false
 	for _, f := range g.found {
 		if entry, ok := Pending(g.Target, f.key); ok {
+			usePending(entry)
 			pending = append(pending, fmt.Sprintf("%s (%s: %s)", f.key, entry.Owner, entry.Reason))
 			continue
 		}
@@ -75,6 +76,10 @@ func (g *Gaps) Finish(t testing.TB) {
 		t.FailNow()
 	}
 	if len(pending) != 0 {
+		// The input names the witness a pending line needs in the seed set.
+		if g.Input != "" {
+			t.Skipf("pending: %s\ninput: %s", strings.Join(pending, "; "), g.Input)
+		}
 		t.Skipf("pending: %s", strings.Join(pending, "; "))
 	}
 }
@@ -257,8 +262,9 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 		if !imported {
 			if want, ok := configurationDiagnosticDefault(d); ok {
 				if len(severities) != 0 && facts.IsAdjustable(code) {
-					if severity, configured := severities[0][name]; configured {
-						want = map[string]DefaultCategory{"error": DefaultError, "warning": DefaultWarning, "off": DefaultOff}[severity]
+					// A value outside the four leaves the default in force.
+					if category, configured := severityCategories[severities[0][name]]; configured {
+						want = category
 					}
 				}
 				if (defaultsApply || want != DefaultWarning) && !CategoryMatches(want, d.Category()) {
@@ -296,7 +302,7 @@ func CheckDiagnostics(g *Gaps, dir string, ds []*ast.Diagnostic, defaultsApply b
 			(facts.Default(code) == DefaultOff || facts.Default(code) == DefaultWarning)
 		if legacyInterim && d.File() != nil {
 			if severity, configured := legacyDirectiveSeverityAt(d.File().Text(), d.Pos(), name); configured {
-				want := map[string]DefaultCategory{"error": DefaultError, "warning": DefaultWarning, "off": DefaultOff}[severity]
+				want := severityCategories[severity]
 				if !CategoryMatches(want, d.Category()) {
 					g.Add("ek:"+name, "%s has source directive %s, but was reported as %s: %s", name, severity, d.Category().Name(), keyOf(dir, d))
 				}
@@ -345,7 +351,13 @@ func EffectiveSeverities(options *core.VibeLangOptions) map[string]string {
 	return result
 }
 
-// CategoryMatches reports whether a reported category is the default.
+// severityCategories are the categories of the four severities a
+// `vibe.severities` entry may hold (007-tooling.md; Facts().Severities).
+var severityCategories = map[string]DefaultCategory{"error": DefaultError, "warning": DefaultWarning, "suggestion": DefaultSuggestion, "off": DefaultOff}
+
+// CategoryMatches reports whether a reported category is the default. No
+// category matches an unknown default: a code without a stated category has
+// no category it may be reported at.
 func CategoryMatches(want DefaultCategory, got diagnostics.Category) bool {
 	switch want {
 	case DefaultError:
@@ -356,10 +368,8 @@ func CategoryMatches(want DefaultCategory, got diagnostics.Category) bool {
 		return got == diagnostics.CategoryError || got == diagnostics.CategoryWarning
 	case DefaultSuggestion:
 		return got == diagnostics.CategorySuggestion
-	case DefaultOff:
-		return false
 	}
-	return true
+	return false
 }
 
 // checkSpan checks that a diagnostic's span, and its related spans, lie in

@@ -78,22 +78,22 @@ var SpecCodes = sync.OnceValue(func() []int32 {
 // represented by a current registry row.
 var SpecListedCodes = sync.OnceValue(func() []int32 {
 	var codes []int32
-	for _, code := range vipCodes {
+	for code := range vipCodes {
 		if !slices.Contains(SpecCodes(), code) {
 			codes = append(codes, code)
 		}
 	}
+	slices.Sort(codes)
 	return codes
 })
 
-// vipCodes are the codes the accepted VIPs (docs/design/vips) add, which
-// override Chapter 28 until it is rewritten from them: VIP-5's EK0502,
-// EK4616, and EK0103, VIP-39's EK4618, and VIP-18's EK1802 for a
-// removed await operation. VIP-20 adds EK0201 and EK0202.
-// Appendix B now lists the earlier migration warnings.
-var (
-	vipCodes = []int32{502, 4616, 103, 2801, 4618, 1802, 201, 202}
-)
+// vipCodes are the codes an accepted VIP (docs/design/vips) assigns before
+// Appendix B has their rows, each with the default category its VIP states:
+// a code that is registered without a category would be accepted at any
+// category. Delete an entry once its row lands (TestSpecFacts). Every code
+// listed here so far has its row or its interim entry now, and the retired
+// EK4618 has neither, so the compiler may not report it.
+var vipCodes = map[int32]DefaultCategory{}
 
 // SpecHasCode reports whether the current registry, its transitional
 // inventory, its imported table or an accepted VIP names code.

@@ -82,8 +82,13 @@ test("a unit a new pending line adds lands in a group", () => {
 test("the groups together select exactly what one whole run selects", () => {
   const whole = selections({})
   const split = leaves.flatMap(([, leaf]) => selections({ VIBELANG_PENDING_UNITS: unitsOf(leaf.shell).join(" ") })).sort()
-  assert.deepEqual([...new Set(whole.map((pair) => pair.split("\t")[0]))].sort(),
-    pendingUnits().map((unit) => unit.replace(/^probe:/, "")).sort(), "the whole run selects every unit")
+  // A target that runs whole brings the tests PendingCompanion registers for it.
+  const companions = spawnSync("sh", ["internal/vibelangfuzz/pending.sh", "--companions"], { cwd: tsc, encoding: "utf8" })
+  assert.equal(companions.status, 0, companions.stderr)
+  const extra = new Set(companions.stdout.split("\n").filter(Boolean).map((line) => line.split(" ")[1]))
+  const units = pendingUnits().map((unit) => unit.replace(/^probe:/, ""))
+  assert.deepEqual([...new Set(whole.map((pair) => pair.split("\t")[0]))].filter((name) => !extra.has(name) || units.includes(name)).sort(),
+    units.sort(), "the whole run selects every unit")
   assert.deepEqual(split, whole)
 })
 

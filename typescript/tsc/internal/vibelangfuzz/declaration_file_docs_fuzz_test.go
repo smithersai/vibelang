@@ -175,6 +175,12 @@ func TestDeclarationFileDocsWitness(t *testing.T) {
 func FuzzDeclarationFileDocs(f *testing.F) {
 	startShortBudget(f)
 	cases := declarationFileDocsCases()
+	for _, key := range pendingSeedInputs(declarationFileDocsTarget, len(cases), func(i int) (string, string) {
+		return cases[i].key, cases[i].gapKey()
+	}) {
+		f.Add(key)
+	}
+
 	f.Add("jsdoc/blank/none/const-doc")
 	f.Add("license/tight/value/function")
 	f.Add("none/blank/type/class")
@@ -192,12 +198,12 @@ func FuzzDeclarationFileDocs(f *testing.F) {
 }
 
 func TestDeclarationFileDocsNeighborhood(t *testing.T) {
-	if testing.Short() && os.Getenv("VIBELANG_FILE_DOCS_MATRIX") == "" {
-		t.Skip("the complete header, gap, import and first-statement matrix runs separately")
-	}
+	SkipShortMatrix(t, declarationFileDocsTarget, "VIBELANG_FILE_DOCS_MATRIX", "the complete header, gap, import and first-statement matrix runs separately")
 	TestDeclarationFileDocsQuoted(t)
 	w := NewWorkspace(t)
 	for _, c := range declarationFileDocsCases() {
 		t.Run(c.key, func(t *testing.T) { declarationFileDocsCompare(t, w, c.key, c.gapKey(), c.source, c.source) })
 	}
 }
+
+var _ = PendingCompanion(declarationFileDocsTarget, "TestDeclarationFileDocsWitness")

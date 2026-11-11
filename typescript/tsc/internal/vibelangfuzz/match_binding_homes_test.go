@@ -291,6 +291,9 @@ func CheckMatchBindingHomes(t *testing.T, w *Workspace, in bindingHomeInput) {
 	defer c.Remove()
 	if c.Program == nil || HasError(c.Diagnostics) {
 		g.Add("feature:"+in.key(), "Chapter 4, Typing: \"A `let` binding has the type TypeScript gives the value it is bound to in the counterpart\", whatever the compiler options (%s); the compiler reports %v for:\n%s", options, SortedKeys(Keys(c.Dir, c.Diagnostics)), vibe)
+	} else {
+		// The key names this one probe, so a pending line for it is stale.
+		ExpectPending(t, target, "feature:"+in.key())
 	}
 	g.FinishInput(t, key)
 }

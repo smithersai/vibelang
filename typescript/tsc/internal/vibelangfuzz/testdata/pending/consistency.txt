@@ -5,7 +5,3 @@
 # crash:<function that panicked>; each gap's minimal reproduction is also
 # listed by corpus file, so that it fails as XPASS once fixed.
 # <target> <key> <owner> <what is missing, with the decision it breaks>
-FuzzEditorConsistency feature:layer-declaration compiler hang: the parser loops on a stray `)` or `]` in a `layer` declaration's body (FuzzFormat corpus parser-hang-layer-close-paren)
-FuzzEditorConsistency consistency:rename:ClassDeclaration:diagnostics:EK2117 compiler LSP 3.17, D372: renaming an `error` or `schema error` declaration leaves `extends Base` in another error's heritage unrenamed (its references miss it), so the renamed program adds EK2117 and TS2304
-FuzzEditorConsistency consistency:rename:ClassDeclaration:diagnostics:EK0502 compiler LSP 3.17, D372: renaming an `error` declaration changes its `_tag` but leaves the matching key of `Effect.catchTags(e, { A: … })` unrenamed, so the handlers no longer match and the renamed program adds EK0502, TS2769 and TS7006 (seed#8 on 8b4abee2)
-FuzzEditorConsistency consistency:document-symbols:selection-outside:Block compiler LSP 3.17 (selectionRange "Must be contained by the `range`"): the document symbol of the temporary `$is1` that `outcome is Exit.Success(let value)` synthesizes selects bytes outside its range (D32)

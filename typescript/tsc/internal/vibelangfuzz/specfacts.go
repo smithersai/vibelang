@@ -289,8 +289,13 @@ func quoted(text string) []string {
 func (f *SpecFacts) IsAdjustable(code int32) bool {
 	return slices.Contains(f.Adjustable, code)
 }
-func (f *SpecFacts) IsRegistered(code int32) bool       { return SpecHasCode(code) }
-func (f *SpecFacts) Default(code int32) DefaultCategory { return f.Defaults[code] }
+func (f *SpecFacts) IsRegistered(code int32) bool { return SpecHasCode(code) }
+func (f *SpecFacts) Default(code int32) DefaultCategory {
+	if category, ok := f.Defaults[code]; ok {
+		return category
+	}
+	return vipCodes[code]
+}
 
 // reusedCodes expands the inclusive code ranges in Appendix B's reuse sentence.
 func reusedCodes(text string) []int32 {

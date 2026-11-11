@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -37,6 +38,12 @@ import (
 // the old rule no longer says what should happen. Only a superseded key may
 // end in "*", which matches every key with that prefix. Rewrite or delete the
 // oracle when its new rule is in the specification, and delete the line then.
+//
+// A line must stay reachable. The package records each line an oracle
+// raises or deliberately omits, and a gate run (VIBELANG_FUZZ_REQUIRE=1) that
+// runs a target whole fails when one of the target's lines was never used:
+// no seed raises that key any more, or the key is misspelt, and the line
+// would excuse the failure for good if it came back (UnusedPending).
 
 // A PendingEntry is one line of a file in testdata/pending/.
 type PendingEntry struct {
@@ -89,6 +96,75 @@ func Pending(target, key string) (PendingEntry, bool) {
 		panic(err)
 	}
 	return findPending(entries, target, key)
+}
+
+// pendingUsed holds the lines this process used, as "<target> <key>".
+var pendingUsed sync.Map
+
+// usePending records that an oracle raised a gap or deliberately omitted
+// an input for the feature the line names.
+func usePending(entry PendingEntry) { pendingUsed.Store(entry.Target+" "+entry.Key, true) }
+
+// pendingUnjudged holds the targets whose complete matrix this process
+// skipped (SkipShortMatrix): their lines cannot be judged unused.
+var pendingUnjudged sync.Map
+
+// SkipShortMatrix skips a target's complete matrix test in a -short run
+// unless env or VIBELANG_FUZZ_MATRIX=1 is set, and leaves the target's
+// pending lines unjudged in this process: a key only the matrix raises would
+// otherwise read as stale. The gate (pending.sh) sets VIBELANG_FUZZ_MATRIX
+// and runs a matrix registered with PendingCompanion whole.
+func SkipShortMatrix(t testing.TB, target, env, reason string) {
+	t.Helper()
+	if !testing.Short() || os.Getenv(env) != "" || os.Getenv("VIBELANG_FUZZ_MATRIX") == "1" {
+		return
+	}
+	pendingUnjudged.Store(target, true)
+	t.Skip(reason)
+}
+
+// judgedTargets narrows ran to the targets whose complete matrix, if any,
+// was not skipped in this process.
+func judgedTargets(ran func(test string) bool) func(test string) bool {
+	return func(test string) bool {
+		if _, skipped := pendingUnjudged.Load(test); skipped {
+			return false
+		}
+		return ran(test)
+	}
+}
+
+// pendingCompanions holds, for a target, the tests besides its own seeds
+// that raise keys under its name.
+var pendingCompanions = map[string][]string{}
+
+// PendingCompanion registers a test that raises keys under a fuzz target's
+// name, such as a table test of the target's oracle. A target's lines are
+// judged unused only by a run of the target and all its companions. Call it
+// from the test file's init, and keep the test in the -short run: a line
+// only a longer run reaches is never judged.
+func PendingCompanion(target string, tests ...string) bool {
+	pendingCompanions[target] = append(pendingCompanions[target], tests...)
+	return true
+}
+
+// UnusedPending returns the lines no oracle used although everything that
+// raises their target's keys ran: ran reports whether a test ran whole (a
+// target with all its seeds), and used whether a gap was raised or deliberately omitted. Such a
+// line is stale or misspelt. A corpus line is left to ExpectPending, which
+// fails its input as XPASS, and a superseded line never fails.
+func UnusedPending(entries []PendingEntry, companions map[string][]string, ran func(test string) bool, used func(entry PendingEntry) bool) []PendingEntry {
+	var unused []PendingEntry
+	for _, entry := range entries {
+		if entry.Owner == Superseded || strings.HasPrefix(entry.Key, "corpus:") || used(entry) {
+			continue
+		}
+		if !ran(entry.Target) || slices.ContainsFunc(companions[entry.Target], func(test string) bool { return !ran(test) }) {
+			continue
+		}
+		unused = append(unused, entry)
+	}
+	return unused
 }
 
 // SkipRetired skips a target, or a test of its oracles, that a superseded
@@ -144,6 +220,9 @@ func Gap(t testing.TB, target, key, format string, args ...any) {
 	if err != nil {
 		panic(err)
 	}
+	if entry, ok := findPending(entries, target, key); ok {
+		usePending(entry)
+	}
 	gapIn(t, entries, target, key, fmt.Sprintf(format, args...))
 }
 
@@ -158,9 +237,10 @@ func gapIn(t testing.TB, entries []PendingEntry, target, key, failure string) {
 	t.Fatalf("%s %s: %s", target, key, failure)
 }
 
-// ExpectPending fails a pending corpus input that now passes. Call it after
-// every oracle of the input held. A superseded input never fails here: the
-// rule it was pending on is gone.
+// ExpectPending fails a pending key that now passes: a corpus input, after
+// every oracle of the input held, or an oracle's own key, when the key names
+// one probe and the probe held. A superseded key never fails here: the rule
+// it was pending on is gone.
 func ExpectPending(t testing.TB, target, key string) {
 	t.Helper()
 	entries, err := pendingEntries()
@@ -175,4 +255,23 @@ func expectPending(t testing.TB, entries []PendingEntry, target, key string) {
 	if entry, ok := findPending(entries, target, key); ok && entry.Owner != Superseded {
 		t.Fatalf("XPASS %s %s: it now meets the specification; delete its line in testdata/pending/ (%s: %s)", target, key, entry.Owner, entry.Reason)
 	}
+}
+
+// pendingSeedInputs picks one reproducible input per pending oracle key.
+// Merely selecting a seed does not record use: its oracle must still fail,
+// or report XPASS, when the seed runs.
+func pendingSeedInputs(target string, count int, keyAt func(int) (string, string)) []string {
+	seen := map[string]bool{}
+	var inputs []string
+	for i := 0; i < count; i++ {
+		input, key := keyAt(i)
+		if seen[key] {
+			continue
+		}
+		if entry, pending := Pending(target, key); pending && entry.Owner != Superseded {
+			inputs = append(inputs, input)
+			seen[key] = true
+		}
+	}
+	return inputs
 }

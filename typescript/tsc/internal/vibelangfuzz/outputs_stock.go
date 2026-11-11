@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -101,20 +102,55 @@ func (oc *OutputChecker) checkStockConsumer(dir string, inputs []string) {
 			continue
 		}
 		reported = true
-		if strings.Contains(line, "/node_modules/") {
+		if !stockConsumerLineOwned(line, inputs) {
 			continue
 		}
-		// So is an error inside a declaration file the project supplies, such
-		// as a case's stub of a package the harness does not install: the
-		// compiler did not write it.
-		if slices.ContainsFunc(inputs, func(input string) bool { return strings.HasPrefix(line, input+"(") }) {
-			continue
-		}
-		oc.G.Add("feature:declaration-consumer-TS"+match[1], "Chapter 27 rules 1 and 4 (D366): stock TypeScript rejected the emitted declarations and calls: %s\n%.1000s", line, out)
+		oc.G.Add(consumerKey(match[1], stockConsumerDeclaration(dir, line)), "Chapter 27 rules 1 and 4 (D366): stock TypeScript rejected the emitted declarations and calls: %s\n%.1000s", line, out)
 	}
 	if !reported {
 		oc.G.Add("feature:declaration-consumer", "Chapter 27 rules 1 and 4 (D366): stock TypeScript consumer failed: %v: %.1000s", runErr, out)
 	}
+}
+
+// stockConsumerLineOwned reports whether a line of stock TypeScript's output
+// is an error in a file the compiler wrote, or in the calls through it. The
+// file is the diagnostic location, excluding its line/column: an error inside an installed
+// package is not the emitted declarations', and neither is one inside a
+// declaration file the project supplies, such as a case's stub of a package
+// the harness does not install. The message is not part of the test:
+// TypeScript prints a file module's symbol as its quoted resolved path, so
+// the message of an error in an emitted declaration names node_modules
+// whenever the declaration names something a package does not export.
+func stockConsumerLineOwned(line string, inputs []string) bool {
+	file := ""
+	if location := stockLocation.FindStringSubmatch(line); location != nil {
+		file = strings.ReplaceAll(location[1], "\\", "/")
+	}
+	if strings.Contains(file, "/node_modules/") || strings.HasPrefix(file, "node_modules/") {
+		return false
+	}
+	return !slices.ContainsFunc(inputs, func(input string) bool { return filepath.Clean(input) == filepath.Clean(file) })
+}
+
+var stockLocation = regexp.MustCompile(`^(.+?)\((\d+),\d+\): `)
+
+// stockConsumerDeclaration names the declaration a line of stock
+// TypeScript's output is in, or "".
+func stockConsumerDeclaration(dir, line string) string {
+	match := stockLocation.FindStringSubmatch(line)
+	if match == nil {
+		return ""
+	}
+	name := match[1]
+	if !filepath.IsAbs(name) {
+		name = filepath.Join(dir, name)
+	}
+	text, err := os.ReadFile(name)
+	if err != nil {
+		return ""
+	}
+	number, _ := strconv.Atoi(match[2])
+	return consumerDeclaration(filepath.Base(name), string(text), number)
 }
 
 // stockConsumerConfig writes the configuration of a TypeScript consumer of

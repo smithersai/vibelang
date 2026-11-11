@@ -12,9 +12,3 @@ FuzzFunctionEffectInference corpus:fz-func-inference-4 compiler VIP-1: minimized
 FuzzFunctionEffectInference corpus:fz-func-inference-5 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
 FuzzFunctionEffectInference corpus:fz-func-inference-6 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-arguments-default compiler VIP-1: minimized default binding ban; lane vip-core2
-FuzzUnionDataMember plain-call:direct compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember plain-call:array compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember plain-call:explicit compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember plain-call:explicit-array compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember plain-call:later compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func
-FuzzUnionDataMember plain-call:later-array compiler VIP-1/VIP-26: plain module call retains EK4301 erasure diagnostics absent from native TypeScript; lane impl-hunt-func

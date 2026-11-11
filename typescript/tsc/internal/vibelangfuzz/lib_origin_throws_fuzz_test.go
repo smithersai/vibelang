@@ -450,9 +450,7 @@ func FuzzLibOriginThrows(f *testing.F) {
 }
 
 func TestLibOriginThrowsNeighborhood(t *testing.T) {
-	if testing.Short() && os.Getenv("VIBELANG_LIB_ORIGIN_MATRIX") == "" {
-		t.Skip("the complete project, callee, form and host matrix runs separately")
-	}
+	SkipShortMatrix(t, libOriginTarget, "VIBELANG_LIB_ORIGIN_MATRIX", "the complete project, callee, form and host matrix runs separately")
 	TestLibOriginThrowsQuoted(t)
 	w := NewWorkspace(t)
 	inventory := libOriginInventory(t)
@@ -460,3 +458,8 @@ func TestLibOriginThrowsNeighborhood(t *testing.T) {
 		t.Run(c.key, func(t *testing.T) { checkLibOrigin(t, w, inventory, c) })
 	}
 }
+
+// Some of the target's pending keys are raised only by the complete matrix or
+// the migration witness, so the gate's unused-line audit judges the target
+// with them (pending.sh).
+var _ = PendingCompanion(libOriginTarget, "TestLibOriginThrowsNeighborhood", "TestLibOriginThrowsWitness")

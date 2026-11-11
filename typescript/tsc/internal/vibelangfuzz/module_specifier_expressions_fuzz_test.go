@@ -3,7 +3,6 @@ package vibelangfuzz
 import (
 	"context"
 	"maps"
-	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -169,9 +168,7 @@ func FuzzModuleSpecifierExpressions(f *testing.F) {
 }
 
 func TestModuleSpecifierExpressionsMatrix(t *testing.T) {
-	if testing.Short() && os.Getenv("VIBELANG_SPECIFIER_MATRIX") == "" {
-		t.Skip("the complete specifier, declaration, use and file-kind matrix runs separately")
-	}
+	SkipShortMatrix(t, specifierTarget, "VIBELANG_SPECIFIER_MATRIX", "the complete specifier, declaration, use and file-kind matrix runs separately")
 	TestModuleSpecifierExpressionsQuoted(t)
 	w := NewWorkspace(t)
 	for _, c := range specifierCases() {

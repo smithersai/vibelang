@@ -14,6 +14,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // FuzzCompile compiles arbitrary projects and checks current Appendix B
@@ -338,6 +340,37 @@ func TestSpecFacts(t *testing.T) {
 	}
 	if facts.Default(3801) != DefaultError {
 		t.Error("Appendix B's imported table gives EK3801 the default error")
+	}
+	// A code the registry accepts without a category would pass
+	// CheckDiagnostics at any category.
+	accepted := append(slices.Clone(SpecCodes()), SpecListedCodes()...)
+	accepted = append(accepted, facts.Interim...)
+	for code := range facts.Imported {
+		accepted = append(accepted, code)
+	}
+	for code := int32(1); code < 10000; code++ {
+		if SpecHasCode(code) && !slices.Contains(accepted, code) {
+			accepted = append(accepted, code)
+		}
+	}
+	for _, code := range accepted {
+		if !SpecHasCode(code) || facts.Default(code) == DefaultUnknown {
+			t.Errorf("%s: registered %v with default %s; every registered code states its category", specCodeName(code), SpecHasCode(code), facts.Default(code))
+		}
+	}
+	for code := range vipCodes {
+		if slices.Contains(SpecCodes(), code) || slices.Contains(facts.Interim, code) {
+			t.Errorf("%s has its row now; delete it from vipCodes", specCodeName(code))
+		}
+	}
+	// EK4618 is retired: no row, interim entry or accepted assignment names it.
+	if SpecHasCode(4618) {
+		t.Error("the retired EK4618 is still registered, so CheckDiagnostics would accept it")
+	}
+	for _, category := range []diagnostics.Category{diagnostics.CategoryError, diagnostics.CategoryWarning, diagnostics.CategorySuggestion, diagnostics.CategoryMessage} {
+		if CategoryMatches(DefaultUnknown, category) {
+			t.Errorf("an unknown default matches %s", category.Name())
+		}
 	}
 }
 

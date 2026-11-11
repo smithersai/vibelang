@@ -276,6 +276,12 @@ func TestParenthesizedSourceNamesWitness(t *testing.T) {
 func FuzzParenthesizedSourceNames(f *testing.F) {
 	startShortBudget(f)
 	cases := parenNamesCases()
+	for _, key := range pendingSeedInputs(parenNamesTarget, len(cases), func(i int) (string, string) {
+		return cases[i].key, cases[i].gapKey()
+	}) {
+		f.Add(key)
+	}
+
 	f.Add("block/paren/const/do")
 	f.Add("block/as/property/top")
 	f.Add("arrow/satisfies/logical/effect")
@@ -293,9 +299,7 @@ func FuzzParenthesizedSourceNames(f *testing.F) {
 }
 
 func TestParenthesizedSourceNamesNeighborhood(t *testing.T) {
-	if testing.Short() && os.Getenv("VIBELANG_PAREN_NAMES_MATRIX") == "" {
-		t.Skip("the complete form, wrapper, context and host matrix runs separately")
-	}
+	SkipShortMatrix(t, parenNamesTarget, "VIBELANG_PAREN_NAMES_MATRIX", "the complete form, wrapper, context and host matrix runs separately")
 	TestParenthesizedSourceNamesQuoted(t)
 	w := NewWorkspace(t)
 	node := parenNamesNode(t, w)
@@ -303,3 +307,5 @@ func TestParenthesizedSourceNamesNeighborhood(t *testing.T) {
 		t.Run(c.key, func(t *testing.T) { checkParenNames(t, w, node, c) })
 	}
 }
+
+var _ = PendingCompanion(parenNamesTarget, "TestParenthesizedSourceNamesWitness")

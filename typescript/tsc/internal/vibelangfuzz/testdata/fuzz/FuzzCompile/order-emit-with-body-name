@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport function read(o: { a: number }) { with (o) { return a } }\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"es2022\", \"lib\": [\"esnext\"], \"module\": \"esnext\", \"moduleResolution\": \"bundler\", \"strict\": true, \"skipLibCheck\": true, \"types\": [], \"declaration\": true, \"sourceMap\": true, \"outDir\": \"out\"}, \"files\": [\"main.vibe\"]}\n")

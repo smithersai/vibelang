@@ -178,6 +178,8 @@ func TestForeignLazyThunksQuoted(t *testing.T) {
 // TestForeignLazyThunksWitness compiles the opencode minimum unchanged: three
 // foreign functions, each passed to promise or sync directly and through an
 // arrow. Each of the six thunks is rejected, and nothing else is.
+var _ = PendingCompanion(foreignLazyTarget, "TestForeignLazyThunksWitness")
+
 func TestForeignLazyThunksWitness(t *testing.T) {
 	TestForeignLazyThunksQuoted(t)
 	raw, err := os.ReadFile(filepath.Join(repoTestdata(), "corpus", "opencode-foreign-lazy-thunks.json"))
@@ -210,9 +212,12 @@ func TestForeignLazyThunksWitness(t *testing.T) {
 func FuzzForeignLazyThunks(f *testing.F) {
 	startShortBudget(f)
 	cases := foreignLazyCases()
-	f.Add("Effect.promise/arrow/untagged", uint8(0))
+	// Every case is a seed: a pending line names one, and a line no seed
+	// reaches is never judged.
+	for _, c := range cases {
+		f.Add(c.key, uint8(0))
+	}
 	f.Add("sync/reference/untagged", uint8(8))
-	f.Add("Effect.tryPromise/arrow/untagged", uint8(0))
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, choice uint8) {
 		TestForeignLazyThunksQuoted(t)

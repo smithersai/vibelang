@@ -244,6 +244,9 @@ func CheckEffectBlockDeclarationTwin(t *testing.T, w *Workspace, tsc, api string
 	}
 	if diff != "" {
 		g.Add("feature:"+e.key(), "Chapter 2: \"`effect { … }` … is `Effect.gen(function* () { … })`\" and Chapter 1: \"Declarations are exactly what idiomatic Effect TypeScript would declare.\" The twin's (-) and the module's (+) canonical declarations differ:\n%s\nmodule:\n%s\ntwin:\n%s", diff, e.vibe(), e.twin())
+	} else {
+		// The key names this one probe, so a pending line for it is stale.
+		ExpectPending(t, g.Target, "feature:"+e.key())
 	}
 	g.FinishInput(t, key)
 }

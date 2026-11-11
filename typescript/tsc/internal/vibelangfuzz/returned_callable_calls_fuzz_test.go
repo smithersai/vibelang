@@ -216,6 +216,12 @@ func TestReturnedCallableCallsWitness(t *testing.T) {
 func FuzzReturnedCallableCalls(f *testing.F) {
 	startShortBudget(f)
 	cases := returnedCallableCases()
+	for _, key := range pendingSeedInputs(returnedCallableCallsTarget, len(cases), func(i int) (string, string) {
+		return cases[i].key, cases[i].gapKey()
+	}) {
+		f.Add(key)
+	}
+
 	f.Add("never/none/inline/mono/direct/effect")
 	f.Add("Error/none/typed-const/generic/bound/function")
 	f.Add("none/none/typed-const/generic/direct/arrow")
@@ -235,9 +241,7 @@ func FuzzReturnedCallableCalls(f *testing.F) {
 }
 
 func TestReturnedCallableCallsNeighborhood(t *testing.T) {
-	if testing.Short() && os.Getenv("VIBELANG_RETURNED_CALLS_MATRIX") == "" {
-		t.Skip("the complete contract, spelling, signature, form and host matrix runs separately")
-	}
+	SkipShortMatrix(t, returnedCallableCallsTarget, "VIBELANG_RETURNED_CALLS_MATRIX", "the complete contract, spelling, signature, form and host matrix runs separately")
 	TestReturnedCallableCallsQuoted(t)
 	w := NewWorkspace(t)
 	for _, c := range returnedCallableCases() {
@@ -246,3 +250,5 @@ func TestReturnedCallableCallsNeighborhood(t *testing.T) {
 		})
 	}
 }
+
+var _ = PendingCompanion(returnedCallableCallsTarget, "TestReturnedCallableCallsWitness")

@@ -149,5 +149,7 @@ func FuzzDeclarationPreludeModes(f *testing.F) {
 		if diff := compareDeclarationResults(t, native, vibe); diff != "" {
 			Gap(t, "FuzzDeclarationPreludeModes", fmt.Sprintf("%s/%s/%d", mode, key, pkg%3), "module=%s package=%s\nVibeLang:\n%s\nTypeScript:\n%s\nAPI:\n%s", mode, packageText, got, want, diff)
 		}
+		// The key names this one probe, so a pending line for it is stale.
+		ExpectPending(t, "FuzzDeclarationPreludeModes", fmt.Sprintf("%s/%s/%d", mode, key, pkg%3))
 	})
 }

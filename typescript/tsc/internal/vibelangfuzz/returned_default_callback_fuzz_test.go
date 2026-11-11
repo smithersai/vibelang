@@ -133,6 +133,9 @@ func FuzzReturnedDefaultCallbacks(f *testing.F) {
 		want := unsafe && v.bound != 2
 		if len(errors) > 1 || len(errors) == 1 && errors[0] != "EK0402" || (len(errors) == 1) != want {
 			Gap(t, "FuzzReturnedDefaultCallbacks", "contract:"+v.name(), "003-failures: %s; %s; key%s got%v want EK0402=%t\n%s", returnedDefaultQuote, foreignVariableAdmissionQuote, v.name(), errors, want, Archive(files))
+		} else {
+			// The key names this one probe, so a pending line for it is stale.
+			ExpectPending(t, "FuzzReturnedDefaultCallbacks", "contract:"+v.name())
 		}
 	})
 }

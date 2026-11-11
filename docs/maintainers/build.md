@@ -659,7 +659,11 @@ or a test function that a pending line names, run with the same selectors as one
 their measured seconds, slowest first onto the least loaded group, so a unit
 that a new pending line adds joins a group without an edit. Each group runs
 `pending.sh` with `VIBELANG_PENDING_UNITS` and compiles the test binary
-itself. `scripts/fuzz-pending-groups.test.mjs` fails when a unit runs in no
+itself. A target with a pending line other than a corpus line runs whole, with
+the tests that `PendingCompanion` registers for it
+(`sh internal/vibelangfuzz/pending.sh --companions`) in the same process, so
+the unused-line audit can judge its lines in that group.
+`scripts/fuzz-pending-groups.test.mjs` fails when a unit runs in no
 group or in two, or when the groups together select different tests than one
 whole run.
 

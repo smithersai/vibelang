@@ -190,6 +190,12 @@ func TestPlatformHatchSymbolsWitness(t *testing.T) {
 func FuzzPlatformHatchSymbols(f *testing.F) {
 	startShortBudget(f)
 	cases := platformHatchCases()
+	for _, key := range pendingSeedInputs(platformHatchTarget, len(cases), func(i int) (string, string) {
+		return cases[i].key, cases[i].gapKey()
+	}) {
+		f.Add(key)
+	}
+
 	f.Add("crypto.randomUUID/sync/effect")
 	f.Add("console.log/Effect.try-options/plain")
 	f.Add("performance.now/unwrapped/top")
@@ -206,12 +212,12 @@ func FuzzPlatformHatchSymbols(f *testing.F) {
 }
 
 func TestPlatformHatchSymbolsNeighborhood(t *testing.T) {
-	if testing.Short() && os.Getenv("VIBELANG_PLATFORM_HATCH_MATRIX") == "" {
-		t.Skip("the complete symbol, wrapper and host matrix runs separately")
-	}
+	SkipShortMatrix(t, platformHatchTarget, "VIBELANG_PLATFORM_HATCH_MATRIX", "the complete symbol, wrapper and host matrix runs separately")
 	TestPlatformHatchSymbolsQuoted(t)
 	w := NewWorkspace(t)
 	for _, c := range platformHatchCases() {
 		t.Run(c.key, func(t *testing.T) { checkPlatformHatch(t, w, c) })
 	}
 }
+
+var _ = PendingCompanion(platformHatchTarget, "TestPlatformHatchSymbolsWitness")

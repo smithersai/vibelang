@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime/pprof"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -293,8 +294,8 @@ func checkDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive stri
 		g.Input = "testdata/fuzz/" + target + "/" + name
 	}
 	if diff != "" {
-		// Pending uses one feature key, so optionally retain every divergent
-		// input for campaign triage, including differences that already skip.
+		// Optionally retain every divergent input for campaign triage,
+		// including differences that skip as pending.
 		if report := os.Getenv("VIBELANG_FUZZ_DECLARATION_REPORT"); report != "" {
 			data, err := json.Marshal(struct{ Input, Archive, Diff string }{g.Input, archive, diff})
 			if err != nil {
@@ -310,9 +311,50 @@ func checkDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive stri
 				t.Fatalf("declaration identity report: write %v; close %v", err, closeErr)
 			}
 		}
-		g.Add("feature:declaration-identity", "Chapter 1: \"Declarations are exactly what idiomatic Effect TypeScript would declare.\" Stock (-) and renamed .vibe (+) canonical declarations differ:\n%s", diff)
+		// One key per difference, named by what differs: a pending line
+		// excuses that export's difference and no other.
+		for _, difference := range declarationIdentityKeys(diff) {
+			g.Add(difference, "Chapter 1: \"Declarations are exactly what idiomatic Effect TypeScript would declare.\" Stock (-) and renamed .vibe (+) canonical declarations differ:\n%s", diff)
+		}
 	}
 	g.FinishInput(t, key)
+}
+
+// declarationIdentityKey is the key of a difference the comparison's report
+// does not attribute to an export. It is never pending: a line under it
+// would skip every difference of every input (TestPendingLines).
+const declarationIdentityKey = "feature:declaration-identity"
+
+// declarationIdentityKeys returns the keys of a comparison's differences:
+// "feature:declaration-identity:<name|type|doc>:<export>" for each export
+// whose names, types or documentation differ, in the report's order.
+func declarationIdentityKeys(diff string) []string {
+	sections := map[string]string{"Name differences:": "name", "Type differences:": "type", "Doc-comment differences:": "doc"}
+	var keys []string
+	section := ""
+	for _, line := range strings.Split(diff, "\n") {
+		if !strings.HasPrefix(line, "  ") {
+			section = sections[line]
+			continue
+		}
+		var item struct {
+			Export string `json:"export"`
+		}
+		if section == "" || json.Unmarshal([]byte(line), &item) != nil {
+			continue
+		}
+		key := declarationIdentityKey + ":" + section
+		if name := strings.Join(strings.Fields(item.Export), "_"); name != "" {
+			key += ":" + name
+		}
+		if !slices.Contains(keys, key) {
+			keys = append(keys, key)
+		}
+	}
+	if len(keys) == 0 {
+		return []string{declarationIdentityKey}
+	}
+	return keys
 }
 
 // declarationIdentityDiff runs the API comparison only on trees that differ.

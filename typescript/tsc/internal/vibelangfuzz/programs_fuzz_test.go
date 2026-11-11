@@ -388,6 +388,7 @@ func (g *specGaps) finish(key string, final bool) {
 	failed := false
 	for _, f := range g.found {
 		if entry, ok := Pending(f.target, f.key); ok {
+			usePending(entry)
 			pending = append(pending, fmt.Sprintf("%s %s (%s: %s)", f.target, f.key, entry.Owner, entry.Reason))
 			continue
 		}

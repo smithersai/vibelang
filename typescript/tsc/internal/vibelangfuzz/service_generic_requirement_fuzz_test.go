@@ -222,6 +222,12 @@ func TestServiceGenericRequirementWitness(t *testing.T) {
 func FuzzServiceGenericRequirement(f *testing.F) {
 	startShortBudget(f)
 	cases := serviceGenericCases()
+	for _, key := range pendingSeedInputs(serviceGenericTarget, len(cases), func(i int) (string, string) {
+		return cases[i].key, cases[i].gapKey()
+	}) {
+		f.Add(key)
+	}
+
 	f.Add("exclude/block/layer-effect/property")
 	f.Add("identity/arrow/layer-succeed/method")
 	f.Add("negative-exclude/method/shape/service")
@@ -238,12 +244,12 @@ func FuzzServiceGenericRequirement(f *testing.F) {
 }
 
 func TestServiceGenericRequirementNeighborhood(t *testing.T) {
-	if testing.Short() && os.Getenv("VIBELANG_SERVICE_GENERIC_MATRIX") == "" {
-		t.Skip("the complete rule, form, host and declaration matrix runs separately")
-	}
+	SkipShortMatrix(t, serviceGenericTarget, "VIBELANG_SERVICE_GENERIC_MATRIX", "the complete rule, form, host and declaration matrix runs separately")
 	TestServiceGenericRequirementQuoted(t)
 	w := NewWorkspace(t)
 	for _, c := range serviceGenericCases() {
 		t.Run(c.key, func(t *testing.T) { checkServiceGeneric(t, w, c) })
 	}
 }
+
+var _ = PendingCompanion(serviceGenericTarget, "TestServiceGenericRequirementWitness")

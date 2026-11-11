@@ -69,9 +69,10 @@ func FuzzEditorConsistency(f *testing.F) {
 				files[name] = strings.ToValidUTF8(text, "?") // an LSP document is UTF-8
 			}
 			main := toolsMainFile(files)
-			if main == "" || toolsTooLarge(files) || toolsLeftOut(consistencyTarget, files) {
+			if main == "" || toolsTooLarge(files) {
 				return
 			}
+			toolsSkipLeftOut(t, consistencyTarget, files)
 			r := toolsCompile(t, w, consistencyTarget, files)
 			defer r.Remove()
 			if r.SourceFile(main) == nil {

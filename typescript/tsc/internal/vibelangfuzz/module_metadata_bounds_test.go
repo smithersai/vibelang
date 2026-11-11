@@ -65,9 +65,15 @@ func FuzzModuleMetadataBounds(f *testing.F) {
 
 	startShortBudget(f)
 	rows := metadataBoundCases()
+	// One seed for each home and key class of a row: a pending line names
+	// all three, and a line no seed reaches is never judged.
 	for _, row := range rows {
-		for home := uint8(0); home < 4; home++ {
-			f.Add(row.key, home)
+		seeded := map[[2]uint8]bool{}
+		for variant := uint8(0); variant < 36; variant++ {
+			if class := [2]uint8{variant % 4, variant / 3 % 3}; !seeded[class] {
+				seeded[class] = true
+				f.Add(row.key, variant)
+			}
 		}
 	}
 	w := NewWorkspace(f)

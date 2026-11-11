@@ -581,6 +581,7 @@ func TestVIPConstructs(t *testing.T) {
 			order := append([]string{c.Key}, slices.DeleteFunc(vipgen.Closure(c.Key), func(k string) bool { return k == c.Key })...)
 			for _, k := range order {
 				if e, ok := Pending(vipTarget, "feature:"+k); ok && productOwners[e.Owner] {
+					usePending(e)
 					t.Skipf("pending (%s) feature:%s: %s\n%s", e.Owner, k, e.Reason, strings.Join(report, "\n"))
 				}
 			}
@@ -596,6 +597,7 @@ func TestVIPConstructs(t *testing.T) {
 					break
 				}
 				e, _ := Pending(vipTarget, key+"/"+order[i])
+				usePending(e)
 				gaps = append(gaps, fmt.Sprintf("%s/%s (%s): %s", key, order[i], e.Owner, e.Reason))
 			}
 			if len(gaps) > 0 {
@@ -697,6 +699,8 @@ var (
 	vipKeyNumber   = regexp.MustCompile(`^vip(\d{2})\.`)
 )
 
+var _ = PendingCompanion(vipTarget, "TestVIPConstructs", "TestVIPCoverage")
+
 // TestVIPCoverage reads the accepted VIPs from docs/design/vips/README.md at
 // test time and logs each one that has no construct, no not-runtime line and
 // no "not generated" line, so an accepted VIP is never silently untested. It
@@ -744,6 +748,7 @@ func TestVIPCoverage(t *testing.T) {
 				t.Errorf("%s: VIP-%d has a %s", id, n, covered[n])
 			default:
 				covered[n] = "not-runtime line"
+				usePending(e) // the coverage count reads this line
 			}
 		case "feature":
 			if c := vipgen.Lookup(name); c != nil {
@@ -764,6 +769,7 @@ func TestVIPCoverage(t *testing.T) {
 			} else if covered[n] == "" {
 				covered[n] = "not generated"
 			}
+			usePending(e) // a validated, deliberately ungenerated construct
 			debt = append(debt, name)
 		case "compile", "exit":
 			if i := strings.LastIndex(name, "/"); i < 0 || vipgen.Lookup(name[i+1:]) == nil {

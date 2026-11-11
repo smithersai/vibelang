@@ -101,9 +101,10 @@ func FuzzFormat(f *testing.F) {
 		source = formatNamedModuleBodySyntaxSource(source)
 		source = formatUnnamedModuleSource(formatServiceSeparatorSource(formatLabelSource(formatReturnTypesSource(formatIsLineSource(formatFoldkitSource(source))))))
 		toolsGuard(t, "FuzzFormat", func() {
-			if len(source) > 24<<10 || toolsLeftOut("FuzzFormat", map[string]string{"main.vibe": source}) {
+			if len(source) > 24<<10 {
 				return
 			}
+			toolsSkipLeftOut(t, "FuzzFormat", map[string]string{"main.vibe": source})
 			var once string
 			var err error
 			toolsRun(t, "FuzzFormat", "format", source, nil, func() { once, err = vibelangfmt.Format("main.vibe", source, formatter) })

@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -373,5 +374,53 @@ func TestToolsFreshExcludedFile(t *testing.T) {
 	}
 	if !slices.ContainsFunc(diagnostics, func(d *lsproto.Diagnostic) bool { return strings.Contains(toolsDiagnosticKey(d), "2322 ") }) {
 		t.Fatalf("excluded document lacks its inferred-project error: %v", toolsDiagnosticKeys(diagnostics))
+	}
+}
+
+// The layer-declaration feature leaves out a `layer` declaration, the form
+// its pending line names, and nothing else: the word in a comment or a
+// string is prose.
+func TestToolsLayerDeclarationFeature(t *testing.T) {
+	for _, tc := range []struct {
+		name, text string
+		want       bool
+	}{
+		{"declaration", "layer Live provides Database {\n}\n", true},
+		{"exported declaration", "export layer Live = make()\n", true},
+		{"line comment", "// VIP-9: the layer is a separate value beside its service key.\nexport const live = 1\n", false},
+		{"block comment", "/* each layer provides one service */\nexport const live = 1\n", false},
+		{"string", "export const note = \"a layer provides\"\n", false},
+		{"template", "export const note = `a layer provides`\n", false},
+		{"regular expression", "export const re = /layer provides/\n", false},
+		{"comment between declaration tokens", "layer /* documentation */ Live {}\n", true},
+		{"property", "export const live = config.layer\nfoo()\n", false},
+		{"value", "const layer = 1\nexport const live = [layer]\n", false},
+		{"object assertion", "const value = layer as { value: number }\n", false},
+		{"object satisfies", "const value = layer satisfies { value: number }\n", false},
+		{"returned assertion", "function f() { return layer as { value: number } }\n", false},
+		{"as expression", "const value = layer as unknown\n", false},
+		{"satisfies expression", "const value = layer satisfies object\n", false},
+		{"instanceof expression", "const value = layer instanceof Object\n", false},
+		{"in expression", "const value = layer in object\n", false},
+		{"contextual declaration name", "layer as {)\n", true},
+		{"typed declaration", "layer Live: Database {)\n", true},
+		{"no word", "export const live = 1\n", false},
+		{"line break", "const v = layer\nfoo()\n", false},
+	} {
+		if got := toolsHasLayerDeclaration(tc.text); got != tc.want {
+			t.Errorf("%s: layer declaration %v, want %v", tc.name, got, tc.want)
+		}
+	}
+	if os.Getenv("VIBELANG_FUZZ_PENDING") == "1" || os.Getenv("VIBELANG_FUZZ_HANG_PROBE") == "1" {
+		return
+	}
+	if _, pending := PendingFeatures("FuzzEditor")["layer-declaration"]; !pending {
+		return
+	}
+	if got := toolsLeftOut("FuzzEditor", map[string]string{"main.vibe": "// the layer is a separate value\nexport const live = 1\n"}); got != "" {
+		t.Errorf("a comment left the input out as %s", got)
+	}
+	if got := toolsLeftOut("FuzzEditor", map[string]string{"main.vibe": "layer Live provides Database {\n}\n"}); got != "layer-declaration" {
+		t.Errorf("a layer declaration was left out as %q", got)
 	}
 }

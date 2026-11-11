@@ -51,6 +51,10 @@ func TestConfigDiagnosticHonorsConfiguredSeverity(t *testing.T) {
 		{diagnostics.CategoryError, map[string]string{"EK3009": "warning"}, false},
 		{diagnostics.CategoryError, map[string]string{"EK4802": "error"}, false},
 		{diagnostics.CategoryWarning, map[string]string{"EK4802": "error"}, true},
+		// "suggestion" is one of the four severities, not a wildcard.
+		{diagnostics.CategorySuggestion, map[string]string{"EK3009": "suggestion"}, true},
+		{diagnostics.CategoryError, map[string]string{"EK3009": "suggestion"}, false},
+		{diagnostics.CategoryWarning, map[string]string{"EK3009": "suggestion"}, false},
 	} {
 		d := ast.NewExternalDiagnostic(file, core.NewTextRange(1, 7), "EK", test.category, 3009, "configuration test")
 		gaps := &Gaps{}

@@ -17,6 +17,30 @@ that part of the specification yet. See `pending.go`.
   anything by itself: it marks its reproduction, and the reproduction fails as
   XPASS once it meets every oracle. Delete both lines in the change that fixes
   the gap.
+- A key names what differs, never a whole oracle: a line under an oracle's
+  only key would skip every failure of that oracle. `FuzzDeclarationIdentity`
+  keys each difference by its kind and export, such as
+  `feature:declaration-identity:type:<export>`, and the declaration consumer
+  keys each error by its TypeScript code and the declaration it is in, such as
+  `feature:declaration-consumer-TS2693:<declaration>`. `TestPendingLines`
+  rejects the bare `feature:declaration-identity`.
+- A line must stay reachable. The package records each line an oracle raises
+  or deliberately omits. A gate run (`VIBELANG_FUZZ_REQUIRE=1`) of a whole
+  target, together with the tests that `PendingCompanion` registers as
+  raising keys under its name, fails with `XPASS` for each of the target's
+  lines that nothing used: no seed raises the key any more, or the key is
+  misspelt. Delete the line, or add the corpus input that raises it, so a
+  `-short` run reaches it. Where a key names one probe, the probe also calls
+  `ExpectPending` when it holds, and fails at once.
+  A complete matrix test that skips under `-short` calls `SkipShortMatrix`,
+  which leaves its target unjudged in that run. Register the matrix with
+  `PendingCompanion` when some keys are raised only there:
+  `pending.sh` sets `VIBELANG_FUZZ_MATRIX=1` and runs it whole. A run whose
+  tests fail prints a note that the audit did not run.
+- A tools target skips an input it leaves out for a pending generator
+  feature, and the skip names every matching feature. The `layer-declaration` feature
+  matches a `layer` declaration by its tokens, never the word in a comment or
+  a string.
 - A line owned by `compiler` names the chapter or decision it breaks, or the
   key whose line does. A crash or a hang needs no citation.
 - A hang's reproduction (a reason that starts with `hang`) is skipped by its
@@ -47,3 +71,10 @@ pending line is deleted; write its reproductions in the named form instead,
 which focuses that construct whatever else is registered. A named
 reproduction of a pending construct generates nothing and skips until the
 construct's `feature:` line is deleted. Old index inputs still decode.
+
+A `feature:` line whose reason starts with `hang` also needs a same-target
+`corpus:` line whose reason starts with `hang` and names that feature key.
+`TestPendingLines` enforces this link. `TestPendingHangs` bypasses feature
+exclusions and runs each witness under a deadline: a reproduction that
+completes fails as `XPASS`, so a fixed hang cannot remain hidden by an
+exclusion that merely records its own use. Remove both lines when it completes.

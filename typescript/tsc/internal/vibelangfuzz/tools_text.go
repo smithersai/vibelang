@@ -114,43 +114,119 @@ func toolsTooLarge(files map[string]string) bool {
 // the features testdata/pending lists as "feature:<name>". A campaign leaves
 // such inputs out (pending.go), since a known hang ends the process and would
 // stop every campaign at the same bug.
-var toolsFeatures = map[string]*regexp.Regexp{
+var toolsFeatures = map[string]func(text string) bool{
 	// The superseded `layer` declaration (D276 leaves it as written).
-	"layer-declaration": regexp.MustCompile(`(^|[^\w$.])layer\s+[\w$]`),
+	"layer-declaration": toolsHasLayerDeclaration,
 }
 
-// toolsFeature returns a feature's pattern. compiler-gap-vipNN recognizes a
-// specification example marked `// compiler-gap: pending VIP-NN` (with any
-// other VIPs), the gap the snippet checker reports as known rather than as a
-// failure (000-intro.md), so a tools oracle skips it as the checker does.
-func toolsFeature(name string) (*regexp.Regexp, bool) {
-	if vip, ok := strings.CutPrefix(name, "compiler-gap-vip"); ok {
-		if _, err := strconv.Atoi(vip); err == nil {
-			return regexp.MustCompile(`//\s*compiler-gap:\s*pending\b[^\n]*\bVIP-` + vip + `\b`), true
-		}
-	}
-	pattern, ok := toolsFeatures[name]
-	return pattern, ok
-}
-
-// toolsLeftOut reports whether a project uses a feature that testdata/pending
-// lists for the target, unless VIBELANG_FUZZ_PENDING=1 or a hang probe is running.
-func toolsLeftOut(target string, files map[string]string) bool {
-	if os.Getenv("VIBELANG_FUZZ_HANG_PROBE") == "1" {
+// toolsHasLayerDeclaration reports whether text holds a `layer` declaration:
+// the word `layer`, not a property name, with a name after it. It reads
+// tokens, so the word in a comment or a string ("the layer is a separate
+// value") is not one.
+func toolsHasLayerDeclaration(text string) bool {
+	if !strings.Contains(text, "layer") {
 		return false
 	}
-	for name := range PendingFeatures(target) {
-		pattern, ok := toolsFeature(name)
-		if !ok {
-			panic("testdata/pending names an unknown feature " + name + " for " + target)
+	tokens := slices.DeleteFunc(toolsScan(text), toolsIsComment)
+	for i := 0; i+2 < len(tokens); i++ {
+		token := tokens[i]
+		if token.kind != ast.KindIdentifier || text[token.start:token.end] != "layer" {
+			continue
 		}
-		for _, text := range files {
-			if pattern.MatchString(text) {
-				return true
+		if i > 0 && (tokens[i-1].kind == ast.KindDotToken || tokens[i-1].kind == ast.KindQuestionDotToken) {
+			continue
+		}
+		name, head := tokens[i+1], tokens[i+2]
+		if strings.ContainsAny(text[token.end:name.start], "\r\n\u2028\u2029") || name.kind != ast.KindIdentifier && !ast.IsKeywordKind(name.kind) {
+			continue
+		}
+		if name.kind != ast.KindIdentifier && i > 0 {
+			previous := tokens[i-1]
+			statement := false
+			switch previous.kind {
+			case ast.KindOpenBraceToken, ast.KindCloseBraceToken, ast.KindSemicolonToken,
+				ast.KindExportKeyword, ast.KindDefaultKeyword, ast.KindDeclareKeyword,
+				ast.KindElseKeyword, ast.KindDoKeyword, ast.KindCloseParenToken:
+				statement = true
 			}
+			lineBreak := strings.ContainsAny(text[previous.end:token.start], "\r\n\u2028\u2029")
+			if !statement && !(lineBreak && (toolsEndsExpression(previous.kind) || previous.kind == ast.KindReturnKeyword)) {
+				continue
+			}
+		}
+		// A name alone is not a declaration: ordinary expressions such as
+		// layer as T, layer satisfies T and layer instanceof C keep running.
+		switch head.kind {
+		case ast.KindOpenBraceToken, ast.KindColonToken, ast.KindEqualsToken:
+			return true
+		}
+		if text[head.start:head.end] == "provides" {
+			return true
 		}
 	}
 	return false
+}
+
+// toolsFeature returns a feature's recognizer. compiler-gap-vipNN recognizes a
+// specification example marked `// compiler-gap: pending VIP-NN` (with any
+// other VIPs), the gap the snippet checker reports as known rather than as a
+// failure (000-intro.md), so a tools oracle skips it as the checker does.
+func toolsFeature(name string) (func(text string) bool, bool) {
+	if vip, ok := strings.CutPrefix(name, "compiler-gap-vip"); ok {
+		if _, err := strconv.Atoi(vip); err == nil {
+			return regexp.MustCompile(`//\s*compiler-gap:\s*pending\b[^\n]*\bVIP-` + vip + `\b`).MatchString, true
+		}
+	}
+	matches, ok := toolsFeatures[name]
+	return matches, ok
+}
+
+// toolsLeftOut returns the feature a project uses that testdata/pending
+// lists for the target, or "", and always "" when VIBELANG_FUZZ_PENDING=1 or
+// a hang probe is running.
+func toolsLeftOut(target string, files map[string]string) string {
+	if names := toolsLeftOutFeatures(target, files); len(names) != 0 {
+		return names[0]
+	}
+	return ""
+}
+
+// toolsLeftOutFeatures returns every matching exclusion. Two pending
+// features can describe the same input; both omissions must stay visible.
+func toolsLeftOutFeatures(target string, files map[string]string) []string {
+	if os.Getenv("VIBELANG_FUZZ_HANG_PROBE") == "1" {
+		return nil
+	}
+	var names []string
+	for _, name := range mapKeys(PendingFeatures(target)) {
+		matches, ok := toolsFeature(name)
+		if !ok {
+			panic("testdata/pending names an unknown feature " + name + " for " + target)
+		}
+		for _, file := range mapKeys(files) {
+			if matches(files[file]) {
+				names = append(names, name)
+				break
+			}
+		}
+	}
+	return names
+}
+
+// toolsSkipLeftOut reports every feature that omits an input, so exclusions
+// count as skips and each pending line records actual use.
+func toolsSkipLeftOut(t testing.TB, target string, files map[string]string) {
+	t.Helper()
+	var omitted []string
+	features := PendingFeatures(target)
+	for _, name := range toolsLeftOutFeatures(target, files) {
+		entry := features[name]
+		usePending(entry)
+		omitted = append(omitted, fmt.Sprintf("%s (%s: %s)", name, entry.Owner, entry.Reason))
+	}
+	if len(omitted) != 0 {
+		t.Skipf("left out: pending features %s", strings.Join(omitted, "; "))
+	}
 }
 
 // toolsUnarchive decodes a fuzz input's project. A tsconfig.json that names

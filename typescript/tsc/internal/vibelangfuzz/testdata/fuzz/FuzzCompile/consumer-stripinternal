@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n/** @internal */\nexport schema Message { readonly id: string }\n/** @internal */\nexport schema Code = string\nexport namespace N {\n/** @internal */\nexport schema Nested { readonly n: number }\n}\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"es2022\", \"lib\": [\"esnext\"], \"module\": \"nodenext\", \"moduleResolution\": \"nodenext\", \"strict\": true, \"types\": [], \"skipLibCheck\": true, \"declaration\": true, \"sourceMap\": true, \"outDir\": \"out\", \"stripInternal\": true}, \"files\": [\"main.vibe\"]}\n")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"maps"
-	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -203,9 +202,7 @@ func FuzzModuleBodyDirectives(f *testing.F) {
 }
 
 func TestModuleBodyDirectivesMatrix(t *testing.T) {
-	if testing.Short() && os.Getenv("VIBELANG_BODY_DIRECTIVES_MATRIX") == "" {
-		t.Skip("the complete directive, statement, position and file-kind matrix runs separately")
-	}
+	SkipShortMatrix(t, bodyDirectiveTarget, "VIBELANG_BODY_DIRECTIVES_MATRIX", "the complete directive, statement, position and file-kind matrix runs separately")
 	TestModuleBodyDirectivesQuoted(t)
 	w := NewWorkspace(t)
 	for _, c := range bodyDirectiveCases() {

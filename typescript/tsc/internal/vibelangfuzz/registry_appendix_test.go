@@ -32,7 +32,7 @@ func TestRegistryUsesCurrentAppendix(t *testing.T) {
 		}
 	}
 	// Appendix B now holds the migration warnings; they left the VIP-ahead list.
-	if !slices.Contains(SpecCodes(), 4853) || facts.Default(4853) != DefaultWarning || !facts.IsAdjustable(4853) || slices.Contains(vipCodes, 4853) {
+	if !slices.Contains(SpecCodes(), 4853) || facts.Default(4853) != DefaultWarning || !facts.IsAdjustable(4853) || vipCodes[4853] != DefaultUnknown {
 		t.Errorf("EK4853: default=%s adjustable=%v", facts.Default(4853), facts.IsAdjustable(4853))
 	}
 	if !SpecHasCode(4409) || !slices.Contains(facts.Interim, 4409) || facts.Default(4409) != DefaultWarning || facts.IsAdjustable(4409) {

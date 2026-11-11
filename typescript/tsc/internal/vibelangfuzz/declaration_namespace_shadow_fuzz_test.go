@@ -254,12 +254,14 @@ func FuzzDeclarationNamespaceShadow(f *testing.F) {
 }
 
 func TestDeclarationNamespaceShadowNeighborhood(t *testing.T) {
-	if testing.Short() && os.Getenv("VIBELANG_NAMESPACE_SHADOW_MATRIX") == "" {
-		t.Skip("the complete module, binding, annotation and use matrix runs separately")
-	}
+	SkipShortMatrix(t, namespaceShadowTarget, "VIBELANG_NAMESPACE_SHADOW_MATRIX", "the complete module, binding, annotation and use matrix runs separately")
 	TestDeclarationNamespaceShadowQuoted(t)
 	w := NewWorkspace(t)
 	for _, c := range namespaceShadowCases() {
 		t.Run(c.key, func(t *testing.T) { checkNamespaceShadow(t, w, c) })
 	}
 }
+
+// Some of the target's pending keys are raised only by the complete matrix,
+// so the gate's unused-line audit judges the target with it (pending.sh).
+var _ = PendingCompanion(namespaceShadowTarget, "TestDeclarationNamespaceShadowNeighborhood")

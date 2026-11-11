@@ -390,9 +390,11 @@ func FuzzLintTreeTokens(f *testing.F) {
 		var pending []string
 		for _, check := range lintTreeChecks {
 			key := check.name + ":" + form.key
-			_, isPending := Pending(lintTreeTarget, key)
+			entry, isPending := Pending(lintTreeTarget, key)
 			if node, failed := flaws[check.name]; failed {
-				if !isPending {
+				if isPending {
+					usePending(entry)
+				} else {
 					t.Errorf("%s %s: %s lacks %s among its tokens; the ESLint rules that read it throw (home %q, variant %d)\n%s", lintTreeTarget, key, node, check.token, home, variant, source)
 				}
 				pending = append(pending, key+": "+node)

@@ -69,9 +69,10 @@ func FuzzIncremental(f *testing.F) {
 				files[name] = strings.ToValidUTF8(text, "?") // an LSP document is UTF-8
 			}
 			main := toolsMainFile(files)
-			if main == "" || toolsTooLarge(files) || toolsLeftOut("FuzzIncremental", files) {
+			if main == "" || toolsTooLarge(files) {
 				return
 			}
+			toolsSkipLeftOut(t, "FuzzIncremental", files)
 			dir, err := toolsWrite(w, Project{Files: files})
 			if err != nil {
 				t.Fatal(err)

@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -338,11 +339,16 @@ func (oc *OutputChecker) Check(c *Compilation) {
 		case isJS(name) && fromVibe(from):
 			oc.checkJS(c, name, text, from)
 		case isDeclaration(name) && fromVibe(from):
+			before := len(oc.G.found)
 			oc.checkDeclarationText(c, name, text, from)
-			declarations = append(declarations, name)
+			if len(oc.G.found) == before {
+				declarations = append(declarations, name)
+			}
 		}
 	}
-	if len(declarations) != 0 && !oc.G.Any() {
+	// Only a rejected declaration itself is omitted from the consumer.
+	// Diagnostics, JavaScript and maps do not invalidate other declarations.
+	if len(declarations) != 0 {
 		oc.checkConsumer(c, declarations)
 	}
 }
@@ -666,28 +672,117 @@ func (oc *OutputChecker) checkConsumer(c *Compilation, declarations []string) {
 		}
 	}
 	done()
-	if err := writeInside(filepath.Join(c.Dir, mirror), "__consumer.mts", consumer.String()); err != nil {
+	if err := writeInside(filepath.Join(c.Dir, mirror), consumerModule, consumer.String()); err != nil {
 		oc.G.Add("feature:declaration-consumer", "Chapter 27 rule 4: cannot write consumer: %v", err)
 		return
 	}
 	// The native fork and stock TypeScript check the same isolated consumer.
 	// An unavailable stock compiler skips only that half, with a reason.
 	oc.checkStockConsumer(filepath.Join(c.Dir, mirror), inputs)
-	consumerResult, err := oc.W.checkFiles(oc.Ctx, filepath.Join(c.Dir, mirror), append([]string{"__consumer.mts"}, declarations...))
+	consumerResult, err := oc.W.checkFiles(oc.Ctx, filepath.Join(c.Dir, mirror), append([]string{consumerModule}, declarations...))
 	if err != nil {
 		oc.G.Add("feature:declaration-consumer", "Chapter 27 rule 4: the consumer did not compile: %v", err)
 		return
 	}
 	for _, d := range consumerResult {
-		if d.Category() == diagnostics.CategoryError {
+		if declarationConsumerError(d) {
+			// Effect lint belongs to the producer diagnostic oracle; a stock
+			// TypeScript declaration consumer does not enable those rules.
 			text := ""
 			if d.File() != nil {
 				text = excerpt(d.File().Text(), d.Pos())
 			}
-			oc.G.Add(fmt.Sprintf("feature:declaration-consumer-TS%d", d.Code()), "Chapter 27 rule 4 (D366): a TypeScript consumer of the emitted declarations does not type-check: %s near %q", keyOf(c.Dir, d), text)
-			return
+			// Every error is reported, each under its code and the declaration
+			// it is in: the first error must not hide the next, and a pending
+			// line excuses one declaration's error, never the code everywhere.
+			declaration := ""
+			if d.File() != nil {
+				declaration = consumerDeclaration(path.Base(string(d.File().FileName())), d.File().Text(), 1+strings.Count(d.File().Text()[:min(max(d.Pos(), 0), len(d.File().Text()))], "\n"))
+			}
+			oc.G.Add(consumerDiagnosticKey(d, declaration), "Chapter 27 rule 4 (D366): a TypeScript consumer of the emitted declarations does not type-check: %s near %q", keyOf(c.Dir, d), text)
 		}
 	}
+}
+
+// Imported lint rules belong to the producer's diagnostic oracle. Every
+// other consumer error, including unknown or language-only EK codes, stays
+// visible instead of being hidden by its diagnostic source.
+func declarationConsumerError(d *ast.Diagnostic) bool {
+	if d.Category() != diagnostics.CategoryError {
+		return false
+	}
+	if IsEK(d) {
+		_, imported := Facts().Imported[d.Code()]
+		return !imported
+	}
+	return true
+}
+
+func consumerDiagnosticKey(d *ast.Diagnostic, declaration string) string {
+	code := strconv.Itoa(int(d.Code()))
+	if IsEK(d) {
+		code = specCodeName(d.Code())
+	}
+	return consumerKey(code, declaration)
+}
+
+// consumerModule is the module the consumer oracle writes beside the emitted
+// declarations.
+const consumerModule = "__consumer.mts"
+
+// consumerKey is the key of a consumer error: its TypeScript code and, when
+// known, the declaration it is in.
+func consumerKey(code, declaration string) string {
+	prefix := "TS"
+	if strings.HasPrefix(code, "EK") {
+		prefix = ""
+	}
+	key := "feature:declaration-consumer-" + prefix + code
+	if declaration != "" {
+		key += ":" + declaration
+	}
+	return key
+}
+
+var (
+	consumerCallee    = regexp.MustCompile(`\bm\d+\[("(?:[^"\\]|\\.)*")\]`)
+	consumerSpecifier = regexp.MustCompile(`\bfrom ("(?:[^"\\]|\\.)*")`)
+	declarationHead   = regexp.MustCompile(`^(?:(?:export|declare|default|abstract|async|const|let|var|function\*?|class|interface|type|namespace|module|enum)\s+)+([\w$]+)`)
+)
+
+// consumerDeclaration names the declaration that holds a 1-based line of a
+// file the consumer oracle checks, or "". In the consumer module it is the
+// export a line calls, or the module a line imports. In an emitted
+// declaration file it is the name of the enclosing top-level statement, which
+// the printer starts in the first column.
+func consumerDeclaration(base, text string, line int) string {
+	lines := strings.Split(text, "\n")
+	if line < 1 || line > len(lines) {
+		return ""
+	}
+	name := ""
+	if base == consumerModule {
+		for _, pattern := range []*regexp.Regexp{consumerCallee, consumerSpecifier} {
+			if match := pattern.FindStringSubmatch(lines[line-1]); match != nil {
+				name, _ = strconv.Unquote(match[1])
+				break
+			}
+		}
+	} else {
+		for i := line - 1; i >= 0; i-- {
+			if match := declarationHead.FindStringSubmatch(lines[i]); match != nil {
+				name = match[1]
+				break
+			}
+			// Any other statement that starts in the first column, such as
+			// an import or an export list, names no declaration.
+			if lines[i] != "" && !strings.ContainsAny(lines[i][:1], " \t})]*/") {
+				break
+			}
+		}
+	}
+	// A key is one whitespace-free field of a pending line.
+	return strings.Join(strings.Fields(name), "_")
 }
 
 // exportsCache holds each workspace's runtime exports by specifier.

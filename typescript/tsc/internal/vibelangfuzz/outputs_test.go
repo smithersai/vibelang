@@ -7,6 +7,10 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // D30, D31 and D365 authorize source module specifiers, not unrelated text.
@@ -307,5 +311,146 @@ func TestOutputsDataDeclarationMappings(t *testing.T) {
 				t.Fatalf("D307 constructor mapping gaps: %v, want failure %v", g.found, tc.bad)
 			}
 		})
+	}
+}
+
+// Gaps collects "so that one pending gap does not hide the other oracles'
+// verdicts": a gap another oracle recorded for the input, pending or not,
+// must not turn the declaration consumer off (Chapter 27 rule 4, D366).
+func TestOutputsConsumerBesideEarlierGap(t *testing.T) {
+	w := NewWorkspace(t)
+	c, err := w.CompileOrdered(t.Context(), Single("export function f(n: number) { return n }\n"), OrderTsc, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Remove()
+	g := &Gaps{Target: "FuzzCompile"}
+	g.Add("feature:order:emit-first:+TS2304", "another oracle's pending gap")
+	(&OutputChecker{W: w, G: g, Ctx: t.Context(), Logf: t.Logf}).Check(c)
+	if len(g.found) != 1 {
+		t.Fatalf("the outputs of a valid program were rejected: %v", g.found)
+	}
+	if _, err := os.Stat(filepath.Join(c.Dir, "__declarations", consumerModule)); err != nil {
+		t.Fatalf("an earlier gap turned the declaration consumer off: %v", err)
+	}
+}
+
+// Every consumer error is reported, each under its code and the declaration
+// it is in: the first error must not hide the second, and one declaration's
+// pending line must not excuse another declaration.
+func TestOutputsConsumerReportsEveryError(t *testing.T) {
+	w := NewWorkspace(t)
+	c, err := w.CompileOrdered(t.Context(), Single("export function f(n: number) { return n }\n"), OrderTsc, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Remove()
+	c.Outputs["out/main.d.ts"] = "export declare const first: Absent1;\nexport declare const second: {\n    value: Absent2;\n};\n"
+	g := &Gaps{}
+	(&OutputChecker{W: w, G: g, Ctx: t.Context(), Logf: t.Logf}).checkConsumer(c, []string{"out/main.d.ts"})
+	for _, want := range []string{"feature:declaration-consumer-TS2304:first", "feature:declaration-consumer-TS2304:second"} {
+		if !slices.ContainsFunc(g.found, func(found gap) bool { return found.key == want }) {
+			t.Errorf("no gap %s: %v", want, g.found)
+		}
+	}
+}
+
+func TestConsumerDeclaration(t *testing.T) {
+	const declarations = "import { Effect } from \"effect\";\n/**\n * The first.\n */\nexport declare const first: {\n    value: number;\n};\nexport declare function second(n: number): Effect.Effect<number>;\nexport type Third = typeof first;\nexport { first as alias };\n"
+	const consumer = "import * as m0 from \"./out/main.js\"\ndeclare const args0_0: Parameters<typeof m0[\"second\"]>\nexport const result0_0: ReturnType<typeof m0[\"second\"]> = m0[\"second\"](...args0_0)\n"
+	for _, tc := range []struct {
+		base, text string
+		line       int
+		want       string
+	}{
+		{"main.d.ts", declarations, 1, ""},
+		{"main.d.ts", declarations, 6, "first"},
+		{"main.d.ts", declarations, 7, "first"},
+		{"main.d.ts", declarations, 8, "second"},
+		{"main.d.ts", declarations, 9, "Third"},
+		{"main.d.ts", declarations, 10, ""},
+		{"main.d.ts", declarations, 99, ""},
+		{consumerModule, consumer, 1, "./out/main.js"},
+		{consumerModule, consumer, 3, "second"},
+	} {
+		if got := consumerDeclaration(tc.base, tc.text, tc.line); got != tc.want {
+			t.Errorf("%s line %d: declaration %q, want %q", tc.base, tc.line, got, tc.want)
+		}
+	}
+}
+
+// The stock half of D366 drops an error inside an installed package or a
+// declaration file the project supplies, by the file the line names. The
+// message may name node_modules too: TypeScript prints a file module's symbol
+// as its quoted resolved path.
+func TestStockConsumerLineOwned(t *testing.T) {
+	inputs := []string{"stubs/pkg.d.ts"}
+	for _, tc := range []struct {
+		line  string
+		owned bool
+	}{
+		{`out/main.d.ts(3,30): error TS2694: Namespace '"/w/node_modules/effect/dist/Effect"' has no exported member 'Nope'.`, true},
+		{`__consumer.mts(2,7): error TS2322: Type 'string' is not assignable to type 'number'.`, true},
+		{`node_modules/effect/dist/Effect.d.ts(10,5): error TS2550: Property 'dispose' does not exist on type 'SymbolConstructor'.`, false},
+		{`../node_modules/effect/dist/Effect.d.ts(10,5): error TS2550: Property 'dispose' does not exist on type 'SymbolConstructor'.`, false},
+		{`/w/node_modules/effect/dist/Effect.d.ts(10,5): error TS2550: Property 'dispose' does not exist on type 'SymbolConstructor'.`, false},
+		{`stubs/pkg.d.ts(1,1): error TS2304: Cannot find name 'Absent'.`, false},
+		{`stubs/pkg.d.ts.d.ts(1,1): error TS2304: Cannot find name 'Absent'.`, true},
+		{`./stubs/pkg.d.ts(1,1): error TS2304: Cannot find name 'Absent'.`, false},
+		{`vendor(copy)/node_modules/pkg/index.d.ts(1,1): error TS2304: Cannot find name 'Absent'.`, false},
+		{`out/(group)/main.d.ts(1,1): error TS2694: Namespace '"node_modules/pkg"' has no exported member 'X'.`, true},
+		{`C:\work\node_modules\pkg\index.d.ts(1,1): error TS2304: Cannot find name 'Absent'.`, false},
+		{`error TS2688: Cannot find type definition file for 'node'. The file is in the program because: entry point of type library '/w/node_modules/@types/node'`, true},
+	} {
+		if got := stockConsumerLineOwned(tc.line, inputs); got != tc.owned {
+			t.Errorf("owned %v, want %v: %s", got, tc.owned, tc.line)
+		}
+	}
+}
+
+// A malformed JavaScript output does not establish whether declarations
+// type-check. D366 remains independent of the JavaScript oracle.
+func TestOutputsConsumerBesideOtherOutputGap(t *testing.T) {
+	w := NewWorkspace(t)
+	c, err := w.CompileOrdered(t.Context(), Single("export const n = 1\n"), OrderTsc, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Remove()
+	c.Outputs["out/main.js"] = "export const n = ;\n"
+	g := &Gaps{Target: "FuzzCompile"}
+	(&OutputChecker{W: w, G: g, Ctx: t.Context(), Logf: t.Logf}).Check(c)
+	if !g.Any() {
+		t.Fatal("invalid JavaScript output was not rejected")
+	}
+	if _, err := os.Stat(filepath.Join(c.Dir, "__declarations", consumerModule)); err != nil {
+		t.Fatalf("a JavaScript output gap suppressed the declaration consumer: %v", err)
+	}
+}
+
+// A valid imported lint configuration is irrelevant to D366. An own or
+// unregistered EK error is still a consumer failure, with a distinct source.
+func TestOutputsConsumerDiagnosticKinds(t *testing.T) {
+	for _, tc := range []struct {
+		source   string
+		code     int32
+		category diagnostics.Category
+		want     bool
+		key      string
+	}{
+		{"", 2322, diagnostics.CategoryError, true, "feature:declaration-consumer-TS2322:Widget"},
+		{"", 3823, diagnostics.CategoryError, true, "feature:declaration-consumer-TS3823:Widget"},
+		{"EK", 3823, diagnostics.CategoryError, false, "feature:declaration-consumer-EK3823:Widget"},
+		{"EK", 4618, diagnostics.CategoryError, true, "feature:declaration-consumer-EK4618:Widget"},
+		{"EK", 401, diagnostics.CategoryError, true, "feature:declaration-consumer-EK0401:Widget"},
+		{"EK", 401, diagnostics.CategoryWarning, false, "feature:declaration-consumer-EK0401:Widget"},
+	} {
+		d := ast.NewExternalDiagnostic(nil, core.TextRange{}, tc.source, tc.category, tc.code, "consumer control")
+		if got := declarationConsumerError(d); got != tc.want {
+			t.Errorf("%s%d %s: retained %v, want %v", tc.source, tc.code, tc.category.Name(), got, tc.want)
+		}
+		if got := consumerDiagnosticKey(d, "Widget"); got != tc.key {
+			t.Errorf("key %s, want %s", got, tc.key)
+		}
 	}
 }
