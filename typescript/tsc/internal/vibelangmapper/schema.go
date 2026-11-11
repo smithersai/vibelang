@@ -86,8 +86,79 @@ func (p *projector) schemaDeclaration(node *ast.Node) {
 			p.plan.witness(start, "interface "+name.Text()+" extends "+schema+".Schema.Type<typeof "+name.Text()+"> {}\n"+exported)
 		}
 	}
-	value := p.schemaExpression(declaration.Initializer(), schema)
-	p.plan.replace(start, node.End(), "const "+name.Text()+" = "+value+";")
+	var pieces schemaPieces
+	pieces.write("const ")
+	if nameStart := p.tokenStart(name); p.text[nameStart:name.End()] == name.Text() {
+		pieces.source(p.text, nameStart, name.End())
+	} else {
+		pieces.mapped(name.Text(), p.tokenStart(name), name.End()) // a name written with an escape
+	}
+	pieces.write(" = ")
+	p.schemaWrite(&pieces, declaration.Initializer(), schema)
+	pieces.write(";")
+	p.replacePieces(start, node.End(), pieces)
+}
+
+// schemaPiece is generated text, a verbatim source stretch, or the normalized
+// spelling of a source token whose range is [pos, end).
+type schemaPiece struct {
+	text     string
+	pos, end int
+	atom     bool
+}
+
+// schemaPieces is a schema declaration's projected text in order. It keeps
+// apart the names the user wrote, the declaration's name, each field name and
+// each type reference, so the plan can leave them in place and the span map
+// has a segment for each one.
+type schemaPieces []schemaPiece
+
+func (s *schemaPieces) write(text string) {
+	*s = append(*s, schemaPiece{text: text})
+}
+
+func (s *schemaPieces) source(original string, pos int, end int) {
+	*s = append(*s, schemaPiece{text: original[pos:end], pos: pos, end: end})
+}
+
+func (s *schemaPieces) mapped(text string, pos int, end int) {
+	*s = append(*s, schemaPiece{text: text, pos: pos, end: end, atom: true})
+}
+
+func (s schemaPieces) String() string {
+	var out strings.Builder
+	for _, piece := range s {
+		out.WriteString(piece.text)
+	}
+	return out.String()
+}
+
+// replacePieces replaces the source text in [start, end) with pieces. Each
+// source stretch that follows the one before it stays where it is, and an
+// edit replaces only the text between two of them: a diagnostic, a hover or
+// a rename at a written name then maps to that name. A stretch out of source
+// order is written as text, so the projected text is the same either way.
+func (p *projector) replacePieces(start int, end int, pieces schemaPieces) {
+	cursor := start
+	var written strings.Builder
+	flush := func(to int) {
+		if written.Len() != 0 || to > cursor {
+			p.plan.replace(cursor, to, written.String())
+		}
+		written.Reset()
+	}
+	for _, piece := range pieces {
+		if piece.end <= piece.pos || piece.pos < cursor || piece.end > end {
+			written.WriteString(piece.text)
+			continue
+		}
+		flush(piece.pos)
+		if piece.atom {
+			p.plan.replaceAtom(piece.pos, piece.end, piece.text)
+		}
+		cursor = piece.end
+	}
+	flush(end)
 }
 
 // schemaPropertyKey prints the compiler-created own __proto__ field key,
@@ -179,6 +250,14 @@ func schemaKeyEffectFrame(node *ast.Node, lexical bool) *ast.Node {
 // schemaExpression serializes only expressions the schema parser creates.
 // Unsupported forms and undecidable names are diagnosed at their source span.
 func (p *projector) schemaExpression(node *ast.Node, schema string) string {
+	var pieces schemaPieces
+	p.schemaWrite(&pieces, node, schema)
+	return pieces.String()
+}
+
+// schemaWrite appends schemaExpression's text to out, with each field name
+// and each written type as a source stretch.
+func (p *projector) schemaWrite(out *schemaPieces, node *ast.Node, schema string) {
 	for _, reference := range p.file.VibeLangSchemaGenerics {
 		if reference.Expression == node && reference.Library != nil && p.libraryReference(reference) {
 			name := reference.Name
@@ -186,16 +265,19 @@ func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 				name = name.AsQualifiedName().Right
 			}
 			if reference.Arity == 0 && name.Text() == "Error" {
-				return schema + ".Defect().pipe(" + schema + ".refine(" + helperRef("$isError") + "))"
+				out.write(schema + ".Defect().pipe(" + schema + ".refine(" + helperRef("$isError") + "))")
+				return
 			}
-			return p.schemaExpression(reference.Library, schema)
+			p.schemaWrite(out, reference.Library, schema)
+			return
 		}
 		if reference.Expression == node && reference.Arity == 0 {
 			break // a shadowing declaration keeps the written name
 		}
 		if reference.Expression == node && !reference.Legacy {
 			p.schemaDiagnostic(node, "This generic schema needs project type bindings; compile it with vibelang.")
-			return schema + ".Unknown"
+			out.write(schema + ".Unknown")
+			return
 		}
 	}
 	if node.Kind == ast.KindPropertyAccessExpression && node.Flags&ast.NodeFlagsVibeLang != 0 {
@@ -209,35 +291,69 @@ func (p *projector) schemaExpression(node *ast.Node, schema string) string {
 	}
 	switch node.Kind {
 	case ast.KindCallExpression:
-		args := make([]string, len(node.Arguments()))
+		p.schemaWrite(out, node.Expression(), schema)
+		out.write("(")
 		for i, arg := range node.Arguments() {
-			args[i] = p.schemaExpression(arg, schema)
+			if i != 0 {
+				out.write(", ")
+			}
+			p.schemaWrite(out, arg, schema)
 		}
-		return p.schemaExpression(node.Expression(), schema) + "(" + strings.Join(args, ", ") + ")"
+		out.write(")")
+		return
 	case ast.KindPropertyAccessExpression:
 		if node.Flags&ast.NodeFlagsReparsed != 0 {
-			return schema + "." + node.Name().Text()
+			out.write(schema + "." + node.Name().Text())
+			return
 		}
 		p.checkSchemaName(node)
-		return p.text[p.tokenStart(node):node.End()]
 	case ast.KindObjectLiteralExpression:
-		var fields []string
-		for _, field := range node.AsObjectLiteralExpression().Properties.Nodes {
+		out.write("{ ")
+		for i, field := range node.AsObjectLiteralExpression().Properties.Nodes {
+			if i != 0 {
+				out.write(", ")
+			}
 			name := field.Name()
 			key := p.schemaPropertyKey(name)
-			fields = append(fields, key+": "+p.schemaExpression(field.Initializer(), schema))
+			if name.Flags&ast.NodeFlagsReparsed == 0 {
+				start := p.tokenStart(name)
+				written := p.text[start:name.End()]
+				switch {
+				case key == written:
+					out.source(p.text, start, name.End())
+				case key == "["+written+"]":
+					out.write("[")
+					out.source(p.text, start, name.End())
+					out.write("]")
+				case key == `["`+written+`"]`:
+					out.write(`["`)
+					out.source(p.text, start, name.End())
+					out.write(`"]`)
+				default:
+					out.mapped(key, start, name.End())
+				}
+			} else {
+				out.write(key)
+			}
+			out.write(": ")
+			p.schemaWrite(out, field.Initializer(), schema)
 		}
-		return "{ " + strings.Join(fields, ", ") + " }"
+		out.write(" }")
+		return
 	case ast.KindArrayLiteralExpression:
-		var values []string
-		for _, value := range node.AsArrayLiteralExpression().Elements.Nodes {
-			values = append(values, p.schemaExpression(value, schema))
+		out.write("[")
+		for i, value := range node.AsArrayLiteralExpression().Elements.Nodes {
+			if i != 0 {
+				out.write(", ")
+			}
+			p.schemaWrite(out, value, schema)
 		}
-		return "[" + strings.Join(values, ", ") + "]"
+		out.write("]")
+		return
 	case ast.KindIdentifier:
 		p.checkSchemaName(node)
 	}
-	return p.text[p.tokenStart(node):node.End()]
+	out.source(p.text, p.tokenStart(node), node.End())
 }
 
 // checkSchemaName accepts locally evident schema values and diagnoses names

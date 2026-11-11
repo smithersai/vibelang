@@ -461,6 +461,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Hovering over a generic schema type, such as `Array<number>`, could fail in the language server. It now shows the written type’s information, including in schema aliases and nested declarations.
 
+- With the TypeScript mapper (`vibelang-ts-mapper`), a TypeScript error on a field of a `schema` declaration, such as an undefined type name, was reported at the start of the declaration, and hover, go to definition and rename did nothing on a name inside it. The declaration's name, each field name and each written type name now map to their own source text, so errors and editor answers land on the name.
+
 - Migration verification could treat a missing original compiler report as no packages to check. It now keeps the package list and refuses verification when the report or a package entry is missing.
 
 - Nested `try` expressions with parenthesized operands could leave an Effect unrun and infer an extra Effect layer. Each `try` now runs its operand once, with or without parentheses.

@@ -141,6 +141,8 @@ type edit struct {
 	// fields are a kind's structured data, for the renderings to write
 	// from: a service base's key and name, a control's operations.
 	fields []string
+	// atom gives a spelling-changing source token one whole-span mapping.
+	atom bool
 }
 
 // helperRef writes a reference to a projection helper in edit text. Each
@@ -206,6 +208,12 @@ func (l *plan) insert(pos int, text string) {
 // replace records syntax text to replace the original text in [pos, end).
 func (l *plan) replace(pos int, end int, text string) {
 	l.edits = append(l.edits, edit{pos: pos, end: end, text: text})
+}
+
+// replaceAtom records a token whose projected spelling differs from its source.
+// Atom geometry preserves locations without claiming exact editable characters.
+func (l *plan) replaceAtom(pos int, end int, text string) {
+	l.edits = append(l.edits, edit{pos: pos, end: end, text: text, atom: true})
 }
 
 // witness records checker-only text to insert before the original
@@ -445,7 +453,8 @@ func pick(p part, open, middle, close string) string {
 // at one position apply in the order the walk recorded them: an outer run
 // opens before an inner one and closes after it. Each stretch of original
 // text between edits is copied verbatim and gets a Verbatim segment with
-// every language feature; rendered text is synthesized and gets none. ok
+// every language feature; a spelling-changing token gets an Atom segment,
+// and other rendered text is synthesized and gets none. ok
 // is false when two edits overlap, a projector bug; the caller then passes
 // the file through unchanged.
 func (l *plan) render(r rendering, original string, prefix func() string) (text string, segments []spanmap.Segment, overlap int, ok bool) {
@@ -462,7 +471,15 @@ func (l *plan) render(r rendering, original string, prefix func() string) (text 
 		}
 		segments = appendVerbatim(segments, &body, original, cursor, e.pos)
 		if t, keep := r.text(e); keep {
+			start := core.TextPos(body.Len())
 			body.WriteString(t)
+			if e.atom && t != "" {
+				segments = append(segments, spanmap.Segment{
+					VirtualStart: start, VirtualEnd: core.TextPos(body.Len()),
+					OriginalStart: core.TextPos(e.pos), OriginalEnd: core.TextPos(e.end),
+					Kind: spanmap.KindAtom, Features: spanmap.FeatureAll,
+				})
+			}
 		}
 		cursor = e.end
 	}
@@ -486,7 +503,7 @@ func appendVerbatim(segments []spanmap.Segment, out *strings.Builder, original s
 	}
 	virtualStart := core.TextPos(out.Len())
 	out.WriteString(original[from:to])
-	if n := len(segments); n > 0 && segments[n-1].VirtualEnd == virtualStart && segments[n-1].OriginalEnd == core.TextPos(from) {
+	if n := len(segments); n > 0 && segments[n-1].Kind == spanmap.KindVerbatim && segments[n-1].VirtualEnd == virtualStart && segments[n-1].OriginalEnd == core.TextPos(from) {
 		segments[n-1].VirtualEnd = core.TextPos(out.Len())
 		segments[n-1].OriginalEnd = core.TextPos(to)
 		return segments
