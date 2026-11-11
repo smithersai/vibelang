@@ -54,6 +54,8 @@ vibelang: 1 error left in the files you edited. Fix it before you finish.
 
 It exits with status `1` when the project has an error, including errors outside the files you named. Errors in the project's other files are counted on one line. If the compiler exits unsuccessfully, is terminated by a signal or cannot start, the check also fails: it reports that the check is incomplete, names the exit status, signal or spawn error, and includes the compiler's standard error output. It never reports `no errors` for a failed compiler check. When the directory has multiple configurations, it selects the first project that includes the file, in the order above followed by alternate `tsconfig*.json` projects such as `tsconfig.test.json`.
 
+Explicit `agents check` inputs must name existing files. A missing file or directory reports an error and exits with status `1`; other existing inputs are still checked. Hooks skip deleted files.
+
 A hook returns a project error or an incomplete compiler check to the agent with exit status `2`, and a warning as context the agent reads with the tool's result.
 
 The generated instructions also recommend `vibelang lint`. It uses the compiler’s configuration and Effect language-service plugin settings; select a non-default project with `vibelang lint --project <config>`. This command reports diagnostics without emitting files.

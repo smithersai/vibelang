@@ -7,7 +7,7 @@
 //
 // docs/maintainers/coding-agents.md cites each agent's documentation.
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -204,10 +204,22 @@ function check(files, findBinary) {
     console.error("vibelang agents check: name the .vibe or .vibex files to check.")
     return 2
   }
-  const result = checkFiles(files.map((file) => resolve(file)).filter((file) => existsSync(file)), findBinary(), process.cwd())
-  const text = report(result, process.cwd(), true)
+  const available = []
+  let unavailable = false
+  for (const file of files.map((file) => resolve(file))) {
+    try {
+      if (!statSync(file).isFile()) throw new Error("not a regular file")
+      available.push(file)
+    } catch (error) {
+      console.error(`vibelang agents check: cannot check ${file}: ${error.message}`)
+      unavailable = true
+    }
+  }
+  if (available.length === 0) return 1
+  const result = checkFiles(available, findBinary(), process.cwd())
+  const text = report(result, process.cwd(), !unavailable)
   if (text) console.log(text)
-  return failed(result) ? 1 : 0
+  return unavailable || failed(result) ? 1 : 0
 }
 
 // hook reads a PostToolUse event from Claude Code, Codex, Cursor or VS Code
