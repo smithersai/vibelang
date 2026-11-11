@@ -13,9 +13,10 @@ import (
 // The parser sees the token offending when no item of the set scans it.
 
 type grammarToken struct {
-	text string
-	nl   bool // a line break precedes it
-	kind byte // 'w' word, 's' string, 'n' number, 't' template, 'p' punctuator, 'x' prose terminal
+	text    string
+	decoded string // a word's name with its \u escapes decoded, when it has any
+	nl      bool   // a line break precedes it
+	kind    byte   // 'w' word, 's' string, 'n' number, 't' template, 'p' punctuator, 'x' prose terminal
 }
 
 // grammarReservedWords are ECMAScript's reserved words in strict code, which
@@ -245,6 +246,12 @@ func (p *grammarEarley) startsWith(r, i int) bool {
 	if f["t:"+t.text] && t.kind != 's' && t.kind != 't' {
 		return true
 	}
+	// The decoded name of an escaped word after "." predicts as the name does
+	// (see match): a rule whose name sits behind a helper nonterminal, such
+	// as TryAll's name group or ImportPhase, is otherwise never predicted.
+	if t.kind == 'w' && t.decoded != "" && i > 0 && p.toks[i-1].text == "." && f["t:"+t.decoded] {
+		return true
+	}
 	switch t.kind {
 	case 'w':
 		return f["c:IdentifierName"] || f["c:IdentifierReference"] || f["c:BindingIdentifier"] || f["c:LabelIdentifier"]
@@ -263,8 +270,19 @@ func (p *grammarEarley) startsWith(r, i int) bool {
 func (p *grammarEarley) match(s grammarGsym, i int) bool {
 	t := p.toks[i]
 	if s.kind == grammarSymTok {
-		if t.text != s.text || t.kind == 's' || t.kind == 't' || t.kind == 'x' {
+		if t.kind == 's' || t.kind == 't' || t.kind == 'x' {
 			return false
+		}
+		if t.text != s.text {
+			// After "." the name is an IdentifierName, whose \u escapes spell
+			// the same property: TypeScript reads new.t\u0061rget and
+			// import.m\u0065ta as the meta-properties, and Appendix A separates
+			// the tokens of try.all and the fork owners as new . target's.
+			// Elsewhere an escaped word is never the keyword it spells (TS1260).
+			if !(t.kind == 'w' && t.decoded != "" && t.decoded == s.text && i > 0 && p.toks[i-1].text == ".") {
+				return false
+			}
+			return true
 		}
 		if p.words[t.text] {
 			return p.kwAt(s, i) != grammarKwNo

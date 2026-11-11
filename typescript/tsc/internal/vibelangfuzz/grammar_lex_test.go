@@ -100,10 +100,38 @@ func grammarLexSource(src string) []grammarToken {
 		}
 		j = min(j, len(rs))
 		t.text = string(rs[i:j])
+		if t.kind == 'w' && strings.Contains(t.text, "\\u") {
+			t.decoded = grammarDecodeEscapes(t.text)
+		}
 		out = append(out, t)
 		i = j
 	}
 	return out
+}
+
+// grammarDecodeEscapes replaces each `\uXXXX` or `\u{…}` escape of a word
+// with the code point it names, as ECMAScript's IdentifierName StringValue
+// does; anything else stays written.
+func grammarDecodeEscapes(word string) string {
+	rs := []rune(word)
+	var b strings.Builder
+	for i := 0; i < len(rs); {
+		n := grammarUnicodeEscapeLen(rs, i)
+		if n == 0 {
+			b.WriteRune(rs[i])
+			i++
+			continue
+		}
+		hex := string(rs[i+2 : i+n])
+		hex = strings.TrimSuffix(strings.TrimPrefix(hex, "{"), "}")
+		var cp rune
+		for _, h := range hex {
+			cp = cp*16 + rune(strings.IndexRune("0123456789abcdef", unicode.ToLower(h)))
+		}
+		b.WriteRune(cp)
+		i += n
+	}
+	return b.String()
 }
 
 // grammarIsDecimalDigitAt reports a decimal digit at i.
@@ -187,5 +215,18 @@ func TestGrammarLexLeadingDotNumber(t *testing.T) {
 	want := []string{"n.5", "wa", "p?", "n.5", "p:", "n1", "wa", "p?.", "wb", "p...", "wxs", "n.00e1"}
 	if strings.Join(got, " ") != strings.Join(want, " ") {
 		t.Fatalf("tokens %q, want %q", got, want)
+	}
+}
+
+// An escaped word keeps its written text and records its decoded name, as
+// ECMAScript's IdentifierName StringValue; a plain word records none.
+func TestGrammarLexDecodedEscapes(t *testing.T) {
+	for _, c := range []struct{ word, decoded string }{
+		{"a\\u006ey", "any"}, {"\\u{69}n", "in"}, {"t\\u0061rget", "target"}, {"m\\u0065ta", "meta"}, {"\\u0069f", "if"}, {"plain", ""},
+	} {
+		tok := grammarLexSource(c.word)[0]
+		if tok.text != c.word || tok.decoded != c.decoded {
+			t.Errorf("lex %q = %q decoded %q, want decoded %q", c.word, tok.text, tok.decoded, c.decoded)
+		}
 	}
 }

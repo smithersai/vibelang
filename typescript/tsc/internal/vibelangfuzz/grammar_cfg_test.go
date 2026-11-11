@@ -481,7 +481,7 @@ Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | I
 SwitchStatement = "switch" "(" Expression ")" "{" CaseClause* "}"
 CaseClause = "case" Expression ":" Statement* | "default" ":" Statement*
 Declaration = DecoratorList DecoratedClassExport | DecoratorList "abstract" [no LineTerminator here] ClassDeclaration | HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ImportEqualsDeclaration | ExportDeclaration | "declare" [no LineTerminator here] DeclareDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | NamespaceDeclaration | EnumDeclaration
-DeclareDeclaration = VariableStatement | FunctionDeclaration | ClassDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | NamespaceDeclaration | EnumDeclaration | "module" StringLiteral "{" ModuleBody? "}" | "module" StringLiteral StatementEnd | "global" "{" ModuleBody? "}"
+DeclareDeclaration = AmbientVariableStatement | FunctionDeclaration | ClassDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | NamespaceDeclaration | EnumDeclaration | "module" StringLiteral "{" ModuleBody? "}" | "module" StringLiteral StatementEnd | "global" "{" ModuleBody? "}"
 NamespaceDeclaration = "namespace" [no LineTerminator here] TypeName "{" ModuleBody? "}"
 EnumDeclaration = "const"? "enum" BindingIdentifier "{" "}" | "const"? "enum" BindingIdentifier "{" EnumMemberList ","? "}"
 EnumMemberList = EnumMember | EnumMemberList "," EnumMember
@@ -493,6 +493,9 @@ VariableStatement = LetOrConst BindingList StatementEnd | "using" [no LineTermin
 LetOrConst = "const" | "let" | "var"
 BindingList = LexicalBinding | BindingList "," LexicalBinding
 LexicalBinding = BindingIdentifier TypeAnnotation? Initializer? | BindingPattern TypeAnnotation? Initializer
+AmbientVariableStatement = LetOrConst AmbientBindingList StatementEnd
+AmbientBindingList = AmbientBinding | AmbientBindingList "," AmbientBinding
+AmbientBinding = BindingIdentifier TypeAnnotation? Initializer? | BindingPattern TypeAnnotation? Initializer?
 Initializer = "=" AssignmentExpression
 BindingPattern = ObjectBindingPattern | ArrayBindingPattern
 ObjectBindingPattern = "{" "}" | "{" BindingRestProperty "}" | "{" BindingPropertyList "}" | "{" BindingPropertyList "," "}" | "{" BindingPropertyList "," BindingRestProperty "}"
@@ -602,7 +605,8 @@ NewExpression = MemberExpression | "new" NewExpression
 MemberExpression = MemberExpression TypeArguments LineTerminator [lookahead ∉ { "<", ">", "+", "-" }] | MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | MetaProperty | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments | "new" MemberExpression TypeArguments Arguments
 MetaProperty = "import" "." "meta" | "new" "." "target"
 CallExpression = ImportCall | MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!" | MemberExpression TypeArguments Arguments | CallExpression TypeArguments Arguments
-ImportCall = "import" "(" AssignmentExpression ","? ")" | "import" "(" AssignmentExpression "," AssignmentExpression ","? ")"
+ImportCall = "import" "(" AssignmentExpression ","? ")" | "import" "(" AssignmentExpression "," AssignmentExpression ","? ")" | "import" "." ImportPhase "(" AssignmentExpression ","? ")" | "import" "." ImportPhase "(" AssignmentExpression "," AssignmentExpression ","? ")"
+ImportPhase = "source" | "defer"
 OptionalExpression = MemberExpression OptionalChain | CallExpression OptionalChain | OptionalExpression OptionalChain
 OptionalChain = "?." IdentifierName | "?." Arguments | "?." "[" Expression "]" | "?." TypeArguments Arguments | OptionalChain "." IdentifierName | OptionalChain "[" Expression "]" | OptionalChain Arguments | OptionalChain TemplateLiteral | OptionalChain [no LineTerminator here] "!"
 Arguments = "(" ")" | "(" ArgumentList ","? ")"
@@ -781,6 +785,7 @@ var grammarSubsetHooks = []struct{ at, name string }{
 	{"PropertyDefinition", "EffectObjectMethod"},
 	{"PropertyDefinition", "ProducerObjectMethod"},
 	{"Type", "EffectType"},
+	{"PrimaryType", "ParenthesizedEffectType"},
 	{"Statement", "ForConcurrent"},
 	{"Statement", "ForTry"},
 	{"Statement", "Uninterruptible"},
@@ -1036,6 +1041,21 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		topic.source = "vips/tc39-pipeline-operator/spec.html"
 		defs = append(defs, topic)
 		defined["PipeTopic"] = true
+	}
+	// Appendix A's ReturnType is "parsed as TypeScript parses it", and
+	// TypeScript's function-type lookahead stops at an operand's "!", so a
+	// parenthesized EffectType stands before "=>" where the subset's
+	// "(" Type ")" [lookahead ∉ { "=>" }] keeps plain types out.
+	if defined["EffectType"] {
+		paren := grammarParseDef("ParenthesizedEffectType", `"(" EffectType ")"`, 0)
+		paren.vibe = true
+		for _, d := range a.defs {
+			if d.name == "EffectType" {
+				paren.source = d.source
+			}
+		}
+		defs = append(defs, paren)
+		defined["ParenthesizedEffectType"] = true
 	}
 	// Appendix A also incorporates the pinned do-expression and
 	// pattern-matching drafts; their productions are external, not TypeScript.

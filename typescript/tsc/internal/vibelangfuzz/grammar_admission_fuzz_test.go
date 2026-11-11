@@ -422,6 +422,18 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"import-meta-specifier-type-arguments", grammarImportMetaSpecifierWrappers[2]},
 	{"pattern-member-line-break-comment", "x is C /*\n*/ []"},
 	{"pattern-member-line-break-trailing", "x is C\n[key,]"},
+	{"escaped-try-any", "effect function f(a: unknown, b: unknown) { return try.a\\u006ey [a, b] }"},
+	{"escaped-fork-in", "effect function f(scope: unknown) { const c = fork.\\u{69}n(scope) 1; return join c }"},
+	{"escaped-new-target", "function f() { return new.t\\u0061rget }"},
+	{"escaped-import-meta", "const u = import.m\\u0065ta.url"},
+	{"import-phase-source", "function s(specifier: string) { return import.source(specifier) }"},
+	{"import-phase-defer", "function d(specifier: string) { return import.defer(specifier) }"},
+	{"import-phase-source-options", "function s(specifier: string) { return import.source(specifier, { with: { type: \"json\" } }) }"},
+	{"ambient-object-pattern", "declare const { customMatcher: key }: typeof Symbol;"},
+	{"ambient-array-pattern", "declare let [first, second]: number[];"},
+	{"ambient-export-pattern", "export declare const { a }: { a: number };"},
+	{"arrow-parenthesized-effect-return", "const b = effect (): (number!!) | (number!TypeError) => 1"},
+	{"arrow-single-parenthesized-effect-return", "const c = effect (): (number!TypeError) => 1"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
