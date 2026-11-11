@@ -250,6 +250,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - A statement starting with `(`, `[`, a template literal, `+` or `-` on the line after a block-bodied `catch` arrow could be swallowed and reported as `EK0512`. It now starts a separate statement, for both plain and `effect` handlers.
 
+- The migration's API identity check refused an unchanged package whose enum had helper functions in a namespace or was declared more than once, reporting `TS2451`. These declarations now compare identical, while changed enum values and helper types still differ.
+
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
 
 - The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.

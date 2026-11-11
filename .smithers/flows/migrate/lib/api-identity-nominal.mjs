@@ -195,12 +195,44 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
   const brandKey = id => factory.createComputedPropertyName(factory.createPropertyAccessExpression(factory.createIdentifier("__api_nominal"), id))
   const brandType = id => factory.createTypeLiteralNode([factory.createPropertySignature(
     [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], brandKey(id), undefined, factory.createKeywordTypeNode(ts.SyntaxKind.VoidKeyword))])
+  // Declaration merging belongs to a symbol, not to an individual enum node.
+  // Emit its complete value/type shape once, including members in other files.
+  const emittedEnums = new Set()
+  // Members and merged declarations can move between files. Original source
+  // offsets cannot carry their documentation into the destination source.
+  const enumDocs = (target, nodes) => ts.setSyntheticLeadingComments(target, nodes.flatMap(node => {
+    const text = node.getSourceFile().text
+    return (ts.getLeadingCommentRanges(text, node.pos) ?? []).filter(range => text.startsWith("/**", range.pos)).map(range => ({
+      kind: range.kind, text: text.slice(range.pos + 2, range.end - 2),
+      hasTrailingNewLine: true, pos: -1, end: -1,
+    }))
+  }))
+  const enumIndexes = symbol => {
+    const type = checker.getTypeOfSymbolAtLocation(symbol, symbol.declarations.find(ts.isEnumDeclaration).name)
+    return checker.getIndexInfosOfType(type).map(index => factory.createIndexSignature(
+      index.isReadonly ? [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] : undefined,
+      [factory.createParameterDeclaration(undefined, undefined, "key", undefined,
+        checker.typeToTypeNode(index.keyType, undefined, ts.NodeBuilderFlags.NoTruncation))],
+      checker.typeToTypeNode(index.type, undefined, ts.NodeBuilderFlags.NoTruncation)))
+  }
   for (const source of program.getSourceFiles()) {
     const own = [before, after].some(base => source.fileName === base || ownsFile(base, source.fileName))
     if (!own || source.fileName.includes("/node_modules/")) continue
     let changed = false
     const transform = context => {
       const visit = node => {
+        // A value namespace can merge with enum member constants, but cannot
+        // carry the enum object's numeric index signature. Preserve that view
+        // wherever authored declarations query its value type.
+        if (ts.isTypeQueryNode(node) || ts.isImportTypeNode(node) && node.isTypeOf && node.qualifier) {
+          const name = ts.isTypeQueryNode(node) ? node.exprName : node.qualifier
+          const found = checker.getSymbolAtLocation(name)
+          const symbol = found && unalias(found)
+          if (symbol && (symbol.flags & ts.SymbolFlags.Enum) && (symbol.flags & ts.SymbolFlags.ValueModule)) {
+            changed = true
+            return factory.createIntersectionTypeNode([node, factory.createTypeLiteralNode(enumIndexes(symbol))])
+          }
+        }
         if (forwarded.has(node)) {
           const { file, id } = forwarded.get(node)
           changed = true
@@ -276,8 +308,12 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
         }
         if (ts.isEnumDeclaration(node)) {
           changed = true
+          const enumSymbol = checker.getSymbolAtLocation(node.name)
+          if (emittedEnums.has(enumSymbol)) return undefined
+          emittedEnums.add(enumSymbol)
           const id = brand(source, node)
-          const entries = node.members.map(member => {
+          const declarations = enumSymbol.declarations.filter(ts.isEnumDeclaration)
+          const entries = declarations.flatMap(declaration => [...declaration.members]).map(member => {
             const value = checker.getConstantValue(member)
             const type = typeof value === "string" ? factory.createLiteralTypeNode(literal(value))
               : typeof value === "number" ? factory.createLiteralTypeNode(value < 0
@@ -289,24 +325,26 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
           const mods = node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) ? [factory.createModifier(ts.SyntaxKind.ExportKeyword)] : []
           const ambientMods = source.isDeclarationFile && !ts.isSourceFile(node.parent)
             ? mods : [...mods, factory.createModifier(ts.SyntaxKind.DeclareKeyword)]
+          const valueNamespace = Boolean(enumSymbol.flags & ts.SymbolFlags.ValueModule)
           const namespace = factory.createModuleDeclaration(ambientMods, node.name,
-            factory.createModuleBlock(entries.map(({member, type}) => ts.setOriginalNode(factory.createTypeAliasDeclaration(
-              [factory.createModifier(ts.SyntaxKind.ExportKeyword)], member.name.text, undefined, type), member))), ts.NodeFlags.Namespace)
+            factory.createModuleBlock(entries.flatMap(({member, type}) => {
+              const alias = enumDocs(factory.createTypeAliasDeclaration(
+                [factory.createModifier(ts.SyntaxKind.ExportKeyword)], member.name.text, undefined, type), [member])
+              return valueNamespace ? [alias, factory.createVariableStatement(
+                [factory.createModifier(ts.SyntaxKind.ExportKeyword)], factory.createVariableDeclarationList([
+                  factory.createVariableDeclaration(member.name.text, undefined, qualified(member), undefined)
+                ], ts.NodeFlags.Const))] : [alias]
+            })), ts.NodeFlags.Namespace)
           const properties = entries.map(({member}) => factory.createPropertySignature(
-            [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], member.name, undefined, qualified(member)))
-          const enumSymbol = checker.getSymbolAtLocation(node.name)
-          const enumType = checker.getTypeOfSymbolAtLocation(enumSymbol, node.name)
-          for (const index of checker.getIndexInfosOfType(enumType)) properties.push(factory.createIndexSignature(
-            index.isReadonly ? [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] : undefined,
-            [factory.createParameterDeclaration(undefined, undefined, "key", undefined, checker.typeToTypeNode(index.keyType, undefined, ts.NodeBuilderFlags.NoTruncation))],
-            checker.typeToTypeNode(index.type, undefined, ts.NodeBuilderFlags.NoTruncation)))
+            [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)], factory.createStringLiteral(member.name.text), undefined, qualified(member)))
+          properties.push(...enumIndexes(enumSymbol))
           const variable = factory.createVariableStatement(ambientMods, factory.createVariableDeclarationList([
             factory.createVariableDeclaration(node.name, undefined, factory.createTypeLiteralNode(properties), undefined)
           ], ts.NodeFlags.Const))
           const type = factory.createTypeAliasDeclaration(mods, node.name, undefined,
             entries.length ? factory.createUnionTypeNode(entries.map(({member}) => qualified(member))) : factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword))
-          ts.setOriginalNode(type, node)
-          return [type, variable, namespace]
+          enumDocs(type, declarations)
+          return valueNamespace ? [type, namespace] : [type, variable, namespace]
         }
         return ts.visitEachChild(node, visit, context)
       }
