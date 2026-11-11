@@ -1,0 +1,14 @@
+// expect: EK4601 EK4602 EK4603 EK0102
+import { Effect, Fiber, Deferred } from "effect"
+declare const program: Effect.Effect<number>
+declare const pending: Promise<number>
+declare const fiber: Fiber.Fiber<number>
+declare const deferred: Deferred.Deferred<number>
+
+export function call() { return await Effect.succeed(1) }
+export function promise() { return await pending }
+export function value() { return await program }
+export function plain() { return await 1 }
+export function handle() { return await fiber }
+export function gate() { return await deferred }
+export function handles() { return await [fiber, deferred] }

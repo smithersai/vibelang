@@ -15,24 +15,24 @@ import (
 // EK1802 can rewrite it (retired_await_operations.go). The checker, the analyzer, and the
 // lowering read them as those calls; this file reports what each form cannot
 // mean and tells a hover what it does. A plain `await x` still parses, as
-// $await(x), so that EK4609 and EK4610 can name its replacement; select
+// $await(x), so that placement and operand diagnostics can explain it; select
 // still parses, as a labeled block around $select(...), so that EK4607 can.
 
 var (
 	EK1906 = message(parser.ConcurrentHeadDiagnosticCode, errorCategory, parser.ConcurrentHeadDiagnosticText)
-	// EK4601: await before a call that already runs. {0} is the call.
-	EK4601 = message(4601, errorCategory, "{0} already runs here, so there is nothing to await.")
+	// EK4601: await before a call returning an unrun Effect. {0} is the call.
+	EK4601 = message(4601, errorCategory, "{0} returns an unrun Effect; await cannot run it.")
 	// EK4602: await on a promise. {0} is the operand.
-	EK4602 = message(4602, errorCategory, "{0} is a promise, but await in VibeLang code does not wait for promises.")
+	EK4602 = message(4602, errorCategory, "{0} is a Promise, but await requires an async function.")
 	// EK4603: await on something else. {0} is the operand's type.
-	EK4603 = message(4603, errorCategory, "await in VibeLang code waits for nothing, and this is {0}.")
+	EK4603 = message(4603, errorCategory, "await requires an async function; this operand has type {0}.")
 	// EK4604: await inside a hatch body that is not async.
 	EK4604 = message(4604, errorCategory, "await in a hatch body is JavaScript's await, which needs an async function.")
 	// EK1903: a break that would leave a for concurrent loop.
 	EK1903 = message(1903, errorCategory, "break cannot leave a for concurrent loop.")
 	// EK1904: a return in the body of a for concurrent loop.
 	EK1904 = message(1904, errorCategory, "return cannot leave a for concurrent loop.")
-	// EK4607: a select statement, replaced by try.race (D197, VIP-18).
+	// EK4607: a retired select statement (VIP-18, removal only).
 	EK4607 = message(4607, errorCategory, "select is outside the first release. Choose explicit Effect selection for the intended behavior.")
 	// EK4609: native await on a Fiber (VIP-5). {0} is the operand.
 	EK4609 = message(4609, warningCategory, "await does not wait for this Fiber; use await runPromise(Fiber.join({0})).")
@@ -188,7 +188,7 @@ func checkConcurrentOperand(c *checker.Checker, operand *ast.Node) {
 func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	keyword := scanner.GetRangeOfTokenAtPosition(file, call.Pos())
 	if inHatch(call) {
-		note(reportAt(c, file, keyword, EK4604), "Make the function async, or move the await out of the hatch.")
+		note(reportAt(c, file, keyword, EK4604), "Hatches are retired. Use an async function to await a Promise, or run Effects with try in effect code.")
 		cover(c, call)
 		return
 	}
@@ -213,7 +213,7 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	}
 	operand := args[0]
 	if inner := ast.SkipParentheses(operand); ast.IsCallExpression(inner) && callReturnsEffect(c, inner) {
-		note(reportAt(c, file, keyword, EK4601, nodeText(file, operand)), "Remove await: the call runs and waits. To run it concurrently, fork it and join the fiber.")
+		note(reportAt(c, file, keyword, EK4601, nodeText(file, operand)), "Mark the function effect and write try {0}, or use await runPromise({0}) in an async function.", nodeText(file, operand))
 		cover(c, call)
 		return
 	}
@@ -222,21 +222,21 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 		return
 	}
 	if c.GetPromisedTypeOfPromise(t) != nil {
-		note(reportAt(c, file, keyword, EK4602, nodeText(file, operand)), "Wrap it in a hatch: try(async () => …) or sync(async () => …).")
+		note(reportAt(c, file, keyword, EK4602, nodeText(file, operand)), "Make the function async to await the Promise, or mark it effect and use try tryPromise(() => {0}).", nodeText(file, operand))
 		cover(c, call)
 		return
 	}
 	switch {
 	case isJoinable(c, t, 0):
-		note(reportAt(c, file, keyword, EK0102), "Join the fiber with join {0}.", nodeText(file, operand))
+		note(reportAt(c, file, keyword, EK0102), "Mark the function effect and write join {0}, or use await runPromise(Fiber.join({0})) in an async function.", nodeText(file, operand))
 	case isDeferred(c, t):
-		note(reportAt(c, file, keyword, EK0102), "Wait for the Deferred with try Deferred.await({0}).", nodeText(file, operand))
+		note(reportAt(c, file, keyword, EK0102), "Mark the function effect and write try Deferred.await({0}), or use await runPromise(Deferred.await({0})) in an async function.", nodeText(file, operand))
 	default:
 		d := reportAt(c, file, keyword, EK4603, c.TypeToString(t))
 		if isEffectType(c, t) {
-			note(d, "A program runs when you call it; fork it to run it concurrently, then join the fiber.")
+			note(d, "Mark the function effect and write try {0}, or use await runPromise({0}) in an async function.", nodeText(file, operand))
 		} else if isAwaitable(c, t, 0) {
-			note(d, "Join fibers with join, and wait for each Deferred with d.await().")
+			note(d, "In effect code, join fibers with join and wait for each Deferred with try Deferred.await(deferred).")
 		} else {
 			note(d, "Remove await: a value needs no waiting.")
 		}
@@ -249,7 +249,7 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 func checkJoin(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	keyword := scanner.GetRangeOfTokenAtPosition(file, call.Pos())
 	if inHatch(call) {
-		note(reportAt(c, file, keyword, EK4612), "Move the join out of the hatch.")
+		note(reportAt(c, file, keyword, EK4612), "Hatches are retired. Put join in effect code.")
 		cover(c, call)
 		return
 	}
@@ -355,16 +355,16 @@ var awaitOperationNames = map[string]string{
 	"$awaitAny":        "await.any",
 }
 
-// callReturnsEffect reports whether call's signature returns an Effect, so
-// in VibeLang code the call runs where it stands.
+// callReturnsEffect reports whether call's signature returns an Effect.
+// Returning an Effect does not itself execute it.
 func callReturnsEffect(c *checker.Checker, call *ast.Node) bool {
 	signature := c.GetResolvedSignature(call)
 	return signature != nil && isEffectType(c, c.GetReturnTypeOfSignature(signature))
 }
 
-// isAwaitable reports whether await can wait for a value of type t: a Fiber,
-// a Deferred, or (at depth 0) an array, tuple, or object whose elements all
-// are Fibers or Deferreds.
+// isAwaitable recognizes legacy handle operands for diagnostic guidance:
+// a Fiber, a Deferred, or (at depth 0) an array, tuple, or object whose
+// elements all are Fibers or Deferreds. Native await does not run them.
 func isAwaitable(c *checker.Checker, t *checker.Type, depth int) bool {
 	if t.Flags()&checker.TypeFlagsUnion != 0 {
 		for _, member := range t.Types() {
@@ -522,14 +522,7 @@ func fiberFormQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 	}
 	switch fiberHelper(call) {
 	case "$await":
-		value := c.GetTypeAtLocation(call)
-		paragraph := "Waits for the operand and returns `" + c.TypeToStringEx(value, call, hoverTypeFlags, nil) + "`."
-		if signature := c.GetResolvedSignature(call); signature != nil {
-			if errors := channelType(c, c.GetReturnTypeOfSignature(signature), "_E"); errors != nil && errors.Flags()&checker.TypeFlagsNever == 0 {
-				paragraph += " Its failures propagate: `" + c.TypeToStringEx(errors, call, hoverTypeFlags, nil) + "`."
-			}
-		}
-		return "await", paragraph + " In VibeLang code this is EK4609 or EK4610: join a fiber with join, and wait for a Deferred with d.await()."
+		return "await", "await is only available in `async` functions and at the module top level. It waits for Promises and never runs an Effect. In effect code, run Effects with `try`, join fibers with `join`, and wait for Deferreds with `try Deferred.await(deferred)`."
 	case "$join":
 		value := c.GetTypeAtLocation(call)
 		paragraph := "Runs Fiber.join on the fiber and returns `" + c.TypeToStringEx(value, call, hoverTypeFlags, nil) + "`, or propagates its failure."
@@ -546,7 +539,7 @@ func fiberFormQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 	case "$forkDetach":
 		return "fork.detached", "Starts a fiber that nothing owns, and gives its Fiber (Effect.forkDetach)."
 	case "$select":
-		return "select", "Replaced by try.race (EK4607)."
+		return "select", "select is outside the first release (EK4607). Choose explicit Effect selection for the intended behavior."
 	case "$forConcurrent":
 		return "for concurrent", "Runs Effect.forEach with the loop's concurrency limit. Numeric limits at or below 1 run the items sequentially on the enclosing fiber. All items join before the loop ends; a failure interrupts the rest."
 	}

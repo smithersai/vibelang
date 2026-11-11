@@ -1,0 +1,10 @@
+Effect.succeed(1) returns an unrun Effect; await cannot run it.
+pending is a Promise, but await requires an async function.
+await requires an async function; this operand has type Effect<number, never, never>.
+Mark the function effect and write try Effect.succeed(1), or use await runPromise(Effect.succeed(1)) in an async function.
+Make the function async to await the Promise, or mark it effect and use try tryPromise(() => pending).
+Mark the function effect and write try program, or use await runPromise(program) in an async function.
+Remove await: a value needs no waiting.
+Mark the function effect and write join fiber, or use await runPromise(Fiber.join(fiber)) in an async function.
+Mark the function effect and write try Deferred.await(deferred), or use await runPromise(Deferred.await(deferred)) in an async function.
+In effect code, join fibers with join and wait for each Deferred with try Deferred.await(deferred).

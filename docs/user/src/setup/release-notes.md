@@ -175,6 +175,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - A migration could report unchanged namespace member documentation as changed when a public binding used `infer`. The API check now keeps those comments on their public members and still detects edited documentation.
 
+- Errors for `await` in a plain function suggested retired hatches or claimed an Effect call already ran. Their notes now explain how to wait in `async` or `effect` code, and the `await` and retired `select` hovers give current guidance.
+
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
 
 - The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.

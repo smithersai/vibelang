@@ -175,7 +175,7 @@ These identities remain in the compiler registry for older source and migration 
 | `EK2120` | The editor recognizes a legacy `control class` spelling. Removing `class` repairs that spelling only; it does not make the open handler proposal available. A retired `service class` instead reports `EK0909`. |
 | `EK3202` | A legacy wiring expression supplies more than one provider for a service. Use an explicit `provide` block with the intended provider. |
 | `EK4501` | A receiver-method extension is read as a value. Use the module function and pass the receiver explicitly; current code does not rely on receiver-method extensions. |
-| `EK4601` | A legacy await check found a call that already ran. Current `async` code awaits Promises; run an Effect there with `await runPromise(program)`. |
+| `EK4601` | A legacy `await` check found a call returning an unrun Effect in plain code. Mark the function `effect` and run it with `try`, or use `await runPromise(program)` in an `async` function. |
 | `EK4604`, `EK4612` | A retired hatch contains JavaScript `await` or VibeLang `join`. Put Promise-based `await` in an `async` function in a `.ts` file. In effect code, run a Promise through `try tryPromise(() => promiseCall())`, or join a fiber with `join fiber`. |
 
 
