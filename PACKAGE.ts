@@ -313,7 +313,7 @@ const pendingHangs = goVibelang(
   `CGO_ENABLED=0 GOMAXPROCS=8 GOFLAGS=-p=8 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG_PROBE=0 ${effect} ` +
     "go test -v -short -count=1 -timeout=5m -trimpath -run '^(TestPendingHangs|TestHangProbeDiagnosticSummary)$' ./internal/vibelangfuzz/",
   [Tsc["vibelangfuzz-files"]],
-  "30m",
+  "10m",
   fuzzBudgetEnv
 )
 
@@ -351,6 +351,58 @@ const fuzzTopicTargets = Object.fromEntries(
     )
   ])
 )
+
+// Independent checks use the launcher's complete binary-discovered inventory.
+// Package seams keep the small support suites separate; weighted slices bound
+// the large seed package without maintaining a list of individual test names.
+const fuzzShardPlans = [
+  ...Array.from({ length: 32 }, (_, index) => ({
+    label: `go-vibelangfuzz-seeds-${index + 1}`,
+    pkg: "./internal/vibelangfuzz/",
+    slice: `${index + 1}/32`,
+    run: ""
+  })),
+  ...[
+    "./internal/vibelangfuzz/grammaradmission/",
+    "./internal/vibelangfuzz/specgen/",
+    "./internal/vibelangfuzz/vipgen/",
+    "./internal/vibelangfuzz/testtools/parse/",
+    "./internal/vibelangfuzz/vipgen/programs/"
+  ].map(pkg => ({
+    label: `go-vibelangfuzz-package-${pkg.slice("./internal/vibelangfuzz/".length, -1).replaceAll("/", "-")}`,
+    pkg,
+    slice: "1/1",
+    run: ""
+  })),
+  { label: "go-vibelangfuzz-vip", pkg: "./internal/vibelangfuzz/", slice: "1/1", run: "^FuzzVIPDifferential$" }
+]
+const fuzzShardTargets = Object.fromEntries(fuzzShardPlans.map(({ label, pkg, slice, run }) => {
+  const summary = `The fuzz seed corpus in ${pkg}, partition ${slice}.`
+  // Bound cold support-package compilation to the four-core CI boxes.
+  const maxProcs = pkg === "./internal/vibelangfuzz/" && !run
+    ? `$(n=$(node -p 'require("node:os").availableParallelism()'); [ "$n" -lt 24 ] && echo "$n" || echo 24)`
+    : "4"
+  const buildJobs = pkg === "./internal/vibelangfuzz/" && !run ? 6 : 4
+  const selection = run ? ` -run '${run}'` : pkg === "./internal/vibelangfuzz/" ? " -skip '^FuzzVIPDifferential$'" : ""
+  const shell = `CGO_ENABLED=0 GOMAXPROCS=${maxProcs} GOFLAGS=-p=${buildJobs} VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
+    `go test -short -count=1 -timeout=8m -trimpath -exec "$PWD/../../scripts/go-test-shards.sh"${selection} ${pkg}`
+  const env = { ...fuzzBudgetEnv, GO_TEST_SLICE: slice, GO_TEST_SHARDS: "2" }
+  const launcher = S.file("//scripts/go-test-shards.sh")
+  return [label, pkg === "./internal/vibelangfuzz/"
+    // Seed oracles read arbitrary cases, specification pages, installs and
+    // migration sources. Preserve the original whole-tree inputs.
+    ? goVibelang(summary, shell,
+      [Tsc["vibelangfuzz-files"], launcher, Packages["compiler-native"], migrationSources], "10m", env)
+    // Support tests read their package, saved corpora and (for admission)
+    // specification/registry pages, without the compiler's npm artifact.
+    : check(summary, `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs ${shell}`,
+      [Tsc.srcs, launcher, S.Filegroup({ srcs: [...S.glob([
+        `typescript/tsc/${pkg.slice(2)}**`,
+        "typescript/tsc/internal/vibelangfuzz/testdata/**",
+        ...(pkg.endsWith("/grammaradmission/") ? ["docs/design/**"] : [])
+      ])] })], [go, node], "10m", env, [])
+  ]
+}))
 
 // One target per internal/vibelang test topic (vibelang-topics.ts): the Test
 // functions of internal/vibelang/<topic>_test.go and <topic>_*_test.go. The
@@ -1600,7 +1652,7 @@ const targets = {
     "The inputs testdata/pending/ lists still fail, and every probe passes or is pending: a change that makes one pass deletes its line.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} sh internal/vibelangfuzz/pending.sh`,
     [Tsc["vibelangfuzz-files"], pendingHangs, Packages["compiler-native"], migrationSources],
-    "30m",
+    "10m",
     fuzzBudgetEnv
   ),
   // The merge gate runs it for a change to the documentation or a case, which
@@ -1611,9 +1663,9 @@ const targets = {
   "go-vibelangfuzz-editor": goVibelang(
     "The editor oracles over their short sample of documentation examples and cases.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      "go test -short -count=1 -timeout=15m -trimpath -run '^(TestConsistencyRenameCollision.*|FuzzEditorRenameCollisionDiagnostics|FuzzEditor|FuzzEditorConsistency|FuzzEffectArrowHeads|FuzzAsyncReturnAdoption|FuzzAsyncRefactorBridges)$' ./internal/vibelangfuzz/",
+      "go test -short -count=1 -timeout=8m -trimpath -run '^(TestConsistencyRenameCollision.*|FuzzEditorRenameCollisionDiagnostics|FuzzEditor|FuzzEditorConsistency|FuzzEffectArrowHeads|FuzzAsyncReturnAdoption|FuzzAsyncRefactorBridges)$' ./internal/vibelangfuzz/",
     [Tsc["vibelangfuzz-files"]],
-    "30m",
+    "10m",
     fuzzBudgetEnv
   ),
   // The merge gate runs it for a change to a case, the documentation or the
@@ -1625,9 +1677,9 @@ const targets = {
   "go-vibelangfuzz-compile": goVibelang(
     "The compile oracles over their short sample of cases and documentation examples.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      "go test -short -count=1 -timeout=15m -trimpath -run '^FuzzCompile$' ./internal/vibelangfuzz/",
+      "go test -short -count=1 -timeout=8m -trimpath -run '^FuzzCompile$' ./internal/vibelangfuzz/",
     [Tsc["vibelangfuzz-files"]],
-    "30m",
+    "10m",
     fuzzBudgetEnv
   ),
   // The merge gate runs it for a change to a case, the specification, the
@@ -1638,26 +1690,13 @@ const targets = {
   "go-vibelangfuzz-config": goVibelang(
     "The project-settings oracles over every case's vibelang section and the settings the specification lists.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      "go test -short -count=1 -timeout=15m -trimpath -run '^FuzzConfig$' ./internal/vibelangfuzz/",
+      "go test -short -count=1 -timeout=8m -trimpath -run '^FuzzConfig$' ./internal/vibelangfuzz/",
     [Tsc["vibelangfuzz-files"]],
-    "30m",
+    "10m",
     fuzzBudgetEnv
   ),
-  // Shell targets do not inherit ambient Go controls. Declare the
-  // fuzz budget: at most 24 seed workers within the process CPU affinity,
-  // and six build jobs. Node is already a declared tool of goVibelang.
-  "go-vibelangfuzz": goVibelang(
-    "The fuzz oracles over the seed corpus: cases, snippets and saved reproductions.",
-    `CGO_ENABLED=0 GOMAXPROCS=$(n=$(node -p 'require("node:os").availableParallelism()'); [ "$n" -lt 24 ] && echo "$n" || echo 24) GOFLAGS=-p=6 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} ` +
-      `go test -short -count=1 -timeout=40m -trimpath -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/...`,
-    [Tsc["vibelangfuzz-files"], S.file("//scripts/go-test-shards.sh"), Packages["compiler-native"], migrationSources],
-    // The package's tests and seed corpora run one after another, so the
-    // binary runs as up to six processes at once (scripts/go-test-shards.sh); each
-    // keeps the documented 40m corpus deadline. Admission and compilation
-    // retain their separate 25m allowance before the task's 65m limit.
-    "65m",
-    fuzzBudgetEnv
-  ),
+  // Keep the original public label as a group of all independent checks.
+  "go-vibelangfuzz": S.Suite({ tests: Object.values(fuzzShardTargets) }),
   // The registry test alone, for spec-push (~/vibe/mq/mq.py SPEC_LINT_TARGETS; fix-main-red 2026-11-03): spec-direct
   // commits gave Appendix B 15 codes the registry lacked, and only post-merge's //:spec-tests saw it. spec-push
   // tolerates a target main carries red, so a target of one test still blocks while //:spec-tests is red for others.
@@ -1843,9 +1882,9 @@ const targets = {
     data: [design, goTestProgress, migrationSources, Tsc.srcs, Tsc["effect-shim-files"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Packages["runtime-dist"]] as Array<never>,
     tools: [go, node],
     sandbox: "none",
-    timeout: "30m"
+    timeout: "10m"
   })
 }
 
 export const Package = S.Package({ targets: {
-    "migration-sources": migrationSources, tree, "design-files": design, ...targets, ...fuzzTopicTargets, ...vibelangTopicTargets } })
+    "migration-sources": migrationSources, tree, "design-files": design, ...targets, ...fuzzTopicTargets, ...fuzzShardTargets, ...vibelangTopicTargets } })

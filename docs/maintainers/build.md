@@ -847,7 +847,11 @@ expanded test globs. Runtime discovery includes nested tests and Bun's
   :go-vibelang                 suite of :go-vibelang-shard-01 through -64
   :go-vibelang-compile-<n>     shared Go test binary, including default vet checks
   :go-vibelang-shard-<nn>      independent weighted slice of every Go package test
-  :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
+  :go-vibelang-race :go-vibelangmapper
+  :go-vibelangfuzz              suite of every independent seed and support-package check
+  :go-vibelangfuzz-seeds-<n>     weighted seed partition, n = 1..32
+  :go-vibelangfuzz-vip           the complete VIP differential oracle's seeds
+  :go-vibelangfuzz-package-<p>   one support package (table below)
   :go-vibelangfuzz-hangs        bounded child probes for stale hang markers (merge gate)
   :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail, and every VIP and data probe (merge gate)
   :go-vibelangfuzz-editor       the editor oracles over documentation examples and cases (merge gate)
@@ -1208,18 +1212,63 @@ dependencies for the `dprint` formatter oracle too. Preserve package-manager
 links in `node_modules/.bin`: copying a script there changes its relative
 module lookup.
 
-`:go-vibelangfuzz` runs its test binary through `scripts/go-test-shards.sh`
-(`go test -exec`): six processes at once, or one per core on a smaller machine, sharing two threads per core through `GOMAXPROCS`, each with its own `-run` list and the
-40-minute deadline. Go runs a package's tests and each seed corpus one after
-another unless they call `t.Parallel`, so the package was one chain: 686 s on a
-quiet host, and it hit its 40-minute deadline on the loaded post-merges of
-`1180893af776` and `42c771e16b1c`. The script puts the slowest names, by
-`internal/vibelangfuzz/testdata/shard-seconds.txt`, in different processes;
-`scripts/go-shard-seconds.mjs` refreshes that file too. To
-run the suite the same way by hand, from `typescript/tsc`:
+`//:go-vibelangfuzz` is a `Smithers.Suite` of independent checks generated
+from one plan in the root `PACKAGE.ts`:
+
+| Targets | Selection |
+| --- | --- |
+| `//:go-vibelangfuzz-seeds-1` through `//:go-vibelangfuzz-seeds-32` | Disjoint weighted partitions of `internal/vibelangfuzz`, except the dedicated differential oracle |
+| `//:go-vibelangfuzz-vip` | Every `FuzzVIPDifferential` seed, without other oracles ahead of it |
+| `//:go-vibelangfuzz-package-grammaradmission` | `internal/vibelangfuzz/grammaradmission` |
+| `//:go-vibelangfuzz-package-specgen` | `internal/vibelangfuzz/specgen` |
+| `//:go-vibelangfuzz-package-vipgen` | `internal/vibelangfuzz/vipgen` |
+| `//:go-vibelangfuzz-package-testtools-parse` | `internal/vibelangfuzz/testtools/parse` |
+| `//:go-vibelangfuzz-package-vipgen-programs` | `internal/vibelangfuzz/vipgen/programs` |
+
+Each check has a `10m` graph timeout and an `8m` test-binary timeout.
+It uses `scripts/go-test-shards.sh` with an explicit `GO_TEST_SLICE` and
+`GO_TEST_SHARDS=2`: the complete discovered test inventory is dealt by
+`testdata/shard-seconds.txt`, then each partition runs in two processes.
+New test names enter that inventory automatically. The weighted checks use
+`-skip '^FuzzVIPDifferential$'` and the dedicated check uses
+`-run '^FuzzVIPDifferential$'`, so the complete differential corpus runs once. The complete
+`TestCaseCorpusCompilerTemporaryDiagnostics` audit retains every named case
+and assertion; it bounds parallel case compilations to four, each with an independent program
+directory and the harness's shared declaration cache. The explicit slice takes
+precedence over the host-local slice file; orchestration must schedule the
+new labels directly, without also slicing the old suite label.
+
+The original label still runs all checks, with independent cache receipts.
+Each new label can run alone or beside the others. The tests read arbitrary
+cases, specification pages, runtime installs and migration sources, so they
+retain the original whole-tree inputs. Support-package checks declare the
+module's Go sources, their package files and saved corpora; grammar admission
+also declares the specification and registry. They do not build the compiler
+npm artifact or runtime distribution. Their Go compiler uses `GOMAXPROCS=4`
+and `-p=4` so a cold build stays within the box CPU budget.
+
+`scripts/go-fuzz-test-inventory.test.mjs` scans every fuzz package and test
+file and exercises the real launcher over every discovered test name plus
+new names. It rejects missing packages, incomplete or duplicate partitions,
+lost tests and duplicate assignments. A failing name still fails exactly one
+partition. The graph declaration test checks that the original suite reaches
+every new label.
+
+Run the complete suite or one independent partition:
 
 ```sh
-go test -short -count=1 -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/
+sh scripts/ci.sh //:go-vibelangfuzz --jobs 8
+sh scripts/ci.sh //:go-vibelangfuzz-seeds-1 --jobs 8
+```
+
+The independently cached `-pending`, `-editor`, `-compile`, `-config` and
+`-hangs` checks, and `//:spec-tests`, retain their selections and use
+`10m` graph limits. The direct unsplit command remains available for manual
+corpus runs, with the longer full-suite budget documented in
+`docs/research/fuzzing.md`:
+
+```sh
+go test -short -count=1 -timeout=40m -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/...
 ```
 
 The launcher reports discovery, each process's assigned test names and each completed process's exit status immediately on stderr. A held or slow sibling therefore leaves the current stage and assignments visible while test stdout remains grouped until all processes finish. Discovery failures include the binary's exit status and preserve its output. `scripts/go-test-shards-progress.test.mjs` checks held discovery, held siblings, success and failure, native selector pass-through, and generated shard/slice layouts.

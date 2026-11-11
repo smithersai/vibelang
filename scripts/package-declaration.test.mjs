@@ -46,8 +46,8 @@ test("real declarations retain caller dependency identities and isolated environ
   })
   assert.ok(root.forms.data.includes(forms))
   assert.ok(root.release.data.includes(compiler))
-  assert.equal(root["go-vibelangfuzz"].env.VIBELANG_FUZZ_BUDGET_LOG, "budget with spaces.tsv")
-  assert.equal(declarationTargets("PACKAGE.ts")["go-vibelangfuzz"].env.VIBELANG_FUZZ_BUDGET_LOG, "")
+  assert.equal(root["go-vibelangfuzz-seeds-1"].env.VIBELANG_FUZZ_BUDGET_LOG, "budget with spaces.tsv")
+  assert.equal(declarationTargets("PACKAGE.ts")["go-vibelangfuzz-seeds-1"].env.VIBELANG_FUZZ_BUDGET_LOG, "")
 })
 
 

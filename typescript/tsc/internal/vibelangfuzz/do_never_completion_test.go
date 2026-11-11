@@ -418,8 +418,14 @@ func doTemporaryDiagnosticText(d *ast.Diagnostic) string {
 // does not sample this corpus-wide diagnostic invariant.
 func TestCaseCorpusCompilerTemporaryDiagnostics(t *testing.T) {
 	w := NewWorkspace(t)
+	// Reuse the harness's concurrent declaration cache while keeping program
+	// directories independent and the complete case audit bounded to four.
+	slots := make(chan struct{}, 4)
 	for _, seed := range CaseSeeds() {
 		t.Run(seed.Name, func(t *testing.T) {
+			t.Parallel()
+			slots <- struct{}{}
+			defer func() { <-slots }()
 			// A compiler panic must fail this case without preventing the rest
 			// of the diagnostic/declaration audit from running.
 			defer func() {

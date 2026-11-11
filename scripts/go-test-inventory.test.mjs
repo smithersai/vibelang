@@ -1,3 +1,4 @@
+import { declarationTargets } from "./testing/package-declaration.mjs"
 import assert from "node:assert/strict"
 import { readdirSync, readFileSync } from "node:fs"
 import { test } from "node:test"
@@ -40,7 +41,12 @@ function ownedTestPackages() {
 test("every VibeLang Go test package is selected by the validation graph", () => {
   const packages = ownedTestPackages()
   assert.ok(packages.length >= 7, `only ${packages.length} VibeLang packages discovered`)
-  const selected = selections(read("PACKAGE.ts"), read("typescript/tsc/PACKAGE.ts"))
+  const rootTargets = declarationTargets("PACKAGE.ts")
+  const generated = Object.values(rootTargets).flatMap(target =>
+    typeof target.shell === "string" && /\bgo test\b/.test(target.shell)
+      ? (target.shell.match(/\.\/internal\/[\w/.-]+/g) ?? []).map(pattern => ({ pattern: pattern.replace(/\/$/, "") }))
+      : [])
+  const selected = [...selections(read("PACKAGE.ts"), read("typescript/tsc/PACKAGE.ts")), ...generated]
   assert.deepEqual(packages.filter((path) => !selected.some(({ pattern }) => covers(pattern, path))), [],
     "Go does not run a dependency's tests; give each owned test package a target")
 })

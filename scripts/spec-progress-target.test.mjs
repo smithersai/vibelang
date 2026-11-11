@@ -24,7 +24,7 @@ test("the spec gate invalidates its cache when its progress runner changes", () 
     "the runner is an executable input, not just an optional diagnostic")
 })
 
-test("progress retains spec selection, fresh external oracles and the existing deadline", () => {
+test("progress retains spec selection, fresh external oracles and the bounded deadline", () => {
   const context = declarations()
   const spec = context.targets["spec-tests"]
   assert.match(spec.shell, /-count=1(?: |$)/)
@@ -33,9 +33,7 @@ test("progress retains spec selection, fresh external oracles and the existing d
     assert.ok(spec.shell.includes(pkg), "missing package " + pkg)
   }
   assert.match(spec.shell, /VIBELANG_FUZZ_REQUIRE=1/)
-  const shared = context.evaluate('check("deadline contract", "true", [], []).timeout')
-  assert.match(shared, /^[1-9]\d*(?:ms|s|m|h)$/)
-  assert.equal(spec.timeout, shared, "the observer retains the shared graph deadline")
+  assert.equal(spec.timeout, "10m", "the measured fast spec check retains its bounded graph deadline")
 })
 
 
@@ -74,9 +72,9 @@ test("the release runner declares the Go tool used by its real progress fixture"
 // Run the real command-contract test against independent declaration variants.
 // Selecting that test in the child prevents these fixture controls recursing.
 for (const [name, shared, deadline, status] of [
-  ["current shared limit", "30m", "30m", 0],
-  ["shorter shared limit", "15m", "15m", 0],
-  ["longer shared limit", "45m", "45m", 0],
+  ["current shared limit", "30m", "10m", 0],
+  ["shorter shared limit", "15m", "10m", 0],
+  ["longer shared limit", "45m", "10m", 0],
   ["stale shorter override", "30m", "15m", 1],
   ["stale longer override", "30m", "45m", 1],
   ["missing target deadline", "30m", undefined, 1],
@@ -123,7 +121,7 @@ test("spec deadline fixture controls follow a later shared graph limit", t => {
   const start = original.indexOf('"spec-tests": S.Shell.Test({')
   assert.ok(start > 0)
   const source = original.slice(0, start).replace(/timeout\s*=\s*(?:"[^"]*"|'[^']*')/, 'timeout = "45m"') +
-    original.slice(start).replace(/timeout:\s*(?:"[^"]*"|'[^']*')/, 'timeout: "45m"')
+    original.slice(start)
   writeFileSync(join(root, "PACKAGE.ts"), source)
   const env = { ...process.env }
   delete env.NODE_TEST_CONTEXT

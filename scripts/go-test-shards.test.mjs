@@ -270,13 +270,34 @@ for (const name of ["go-vibelangfuzz", "go-vibelang"]) {
     const graph = declarationFixture("PACKAGE.ts").targets
     const target = graph[name]
     for (const member of target.tests ?? [target]) {
-      if (member.env.GO_TEST_SLICE) {
+      if (name === "go-vibelang" && member.env.GO_TEST_SLICE) {
         assert.match(member.shell, /scripts\/go-test-shards\.sh"/)
         assert.match(member.shell, /-test\.count=1 -test\.timeout=8m/)
       } else {
         assert.match(member.shell, /go test [^\n]*-exec "\$PWD\/\.\.\/\.\.\/scripts\/go-test-shards\.sh"/)
       }
       assert.ok(member.data.includes("//scripts/go-test-shards.sh"))
+    }
+  })
+}
+
+for (const name of ["go-vibelangfuzz", "go-vibelang"]) {
+  // Import the declaration reader lazily: go-test-shards-isolation.test.mjs
+  // runs this file's fixture tests from a copy that has only this file and
+  // the launcher.
+  test("//:" + name + " runs its binaries through the declared launcher", async () => {
+    const { declarationTargets } = await import("./testing/package-declaration.mjs")
+    const graph = declarationTargets("PACKAGE.ts")
+    const targets = graph[name].tests ?? [graph[name]]
+    assert.ok(targets.length)
+    for (const target of targets) {
+      if (name === "go-vibelang") {
+        assert.match(target.shell, /scripts\/go-test-shards\.sh"/)
+        assert.match(target.shell, /-test\.count=1 -test\.timeout=8m/)
+      } else {
+        assert.match(target.shell, /go test .*?-exec "\$PWD\/\.\.\/\.\.\/scripts\/go-test-shards\.sh"/)
+      }
+      assert.ok(target.data.includes("//scripts/go-test-shards.sh"))
     }
   })
 }

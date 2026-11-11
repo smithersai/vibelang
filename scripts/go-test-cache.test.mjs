@@ -1,3 +1,4 @@
+import { declarationTargets } from "./testing/package-declaration.mjs"
 import { tmpdir } from "node:os"
 import { join, delimiter } from "node:path"
 import { spawnSync } from "node:child_process"
@@ -51,37 +52,28 @@ func TestExternalOracle(t *testing.T) {
   }
 })
 
-// A whole seed run reached the old 20m deadline before completing. Keep the
-// graph's test and task budgets consistent with the documented full run.
-test("the fuzz seed target honors its documented deadline and build allowance", () => {
-  const seconds = text => {
-    const hit = /^(\d+)([smh])$/.exec(text)
-    assert.ok(hit, "invalid deadline " + text)
-    return Number(hit[1]) * ({ s: 1, m: 60, h: 3600 })[hit[2]]
+// The complete manual command retains its corpus budget; each graph slice
+// has its own bounded test deadline and room for compilation.
+test("fuzz seed shards retain the complete run and bounded build allowance", () => {
+  const graph = declarationTargets("PACKAGE.ts")
+  const shards = graph["go-vibelangfuzz"].tests
+  assert.ok(shards.length >= 16)
+  assert.match(read("docs/research/fuzzing.md"), /go test -short -count=1 -p 8 -timeout=40m/)
+  for (const shard of shards) {
+    assert.match(shard.shell, /go test -short -count=1 -timeout=8m -trimpath -exec /)
+    assert.equal(shard.timeout, "10m", "reserve two minutes for compilation")
+    assert.match(shard.env.GO_TEST_SLICE, /^\d+\/\d+$/)
+    assert.equal(shard.env.GO_TEST_SHARDS, "2")
   }
-  const documented = /go test -short -count=1 -p 8 -timeout=([0-9]+[smh])/.exec(read("docs/research/fuzzing.md"))
-  assert.ok(documented, "the corpus command must declare its deadline")
-  const source = read("PACKAGE.ts")
-  const start = source.indexOf('"go-vibelangfuzz": goVibelang(')
-  const end = source.indexOf('"spec-tests":', start)
-  assert.ok(start >= 0 && end > start)
-  const target = source.slice(start, end)
-  const testLimit = /go test [^"\n]*-timeout=([0-9]+[smh])/.exec(target)
-  const taskLimit = /\n\s*"([0-9]+[smh])"(?:,\s*fuzzBudgetEnv)?\s*\n\s*\)/.exec(target)
-  assert.ok(testLimit && taskLimit, "the seed target must declare both deadlines")
-  assert.ok(seconds(testLimit[1]) >= seconds(documented[1]), "the graph truncates the documented seed run")
-  assert.ok(seconds(taskLimit[1]) >= seconds(testLimit[1]) + 25 * 60, "the task deadline must leave the test its admission/build allowance")
 })
 
-test("the spec gate's compile replays share the full fuzz stage watchdog", () => {
-  const source = read("PACKAGE.ts")
-  const fullStart = source.indexOf('"go-vibelangfuzz": goVibelang(')
-  const specStart = source.indexOf('"spec-tests":', fullStart)
-  assert.ok(fullStart >= 0 && specStart > fullStart)
-  const full = source.slice(fullStart, specStart)
-  const spec = source.slice(specStart)
-  const budget = /VIBELANG_FUZZ_HANG=([0-9]+[smh])/.exec(full)
-  assert.ok(budget, "the full fuzz target must declare its stage watchdog")
-  assert.match(spec, new RegExp("VIBELANG_FUZZ_HANG=" + budget[1] + "(?: |$)"),
-    "compiled spec regressions must not inherit the short default watchdog")
+test("the spec gate's compile replays share every fuzz shard's stage watchdog", () => {
+  const graph = declarationTargets("PACKAGE.ts")
+  const spec = graph["spec-tests"]
+  for (const shard of graph["go-vibelangfuzz"].tests) {
+    const budget = /VIBELANG_FUZZ_HANG=([0-9]+[smh])/.exec(shard.shell)
+    assert.ok(budget, "every shard declares the stage watchdog")
+    assert.match(spec.shell, new RegExp("VIBELANG_FUZZ_HANG=" + budget[1] + "(?: |$)"),
+      "compiled spec regressions must not inherit the short default watchdog")
+  }
 })

@@ -10,6 +10,7 @@ export const buildContractSuites = [
   "scripts/go-build-flags.test.mjs",
   "scripts/go-cache.test.mjs",
   "scripts/go-shared-test-inventory.test.mjs",
+  "scripts/go-fuzz-test-inventory.test.mjs",
   "scripts/go-test-cache.test.mjs",
   "scripts/source-map-tool-coverage.test.mjs",
   "scripts/package-test-inventory.test.mjs",
@@ -33,6 +34,7 @@ export const buildContractFiles = [
   "scripts/testing/prepare-package-tests.mjs",
   "scripts/testing/run-package-test.mjs",
   "scripts/testing/package-declarations.mjs",
+  "api-inputs.ts",
   "PACKAGE.ts",
   "packages/PACKAGE.ts",
   "typescript/PACKAGE.ts",
@@ -49,6 +51,8 @@ export const buildContractFiles = [
   "scripts/check-forms-table.sh",
   "scripts/warm-go-cache.sh",
   "scripts/go-cache-packages.awk",
+  "scripts/go-test-shards.sh",
+  "scripts/testing/package-declaration.mjs",
   "scripts/testing/node-failures.mjs",
   "scripts/go-test-progress.mjs",
   ".github/workflows/go-cache.yml",
@@ -79,6 +83,8 @@ export function createBuildContractInputs(S: typeof Smithers) {
     "packages/unplugin/test/*.test.mjs",
     "packages/typescript-shim/test/*.test.mjs",
     "typescript/tsc/internal/**/vibelang*_test.go",
+    "typescript/tsc/internal/vibelangfuzz/**/*.go",
+    "typescript/tsc/internal/vibelangfuzz/**/testdata/shard-seconds.txt",
   ], { cwd: root, exclude: path => path.split("/").some(part => ["node_modules", "dist", ".cache", ".fixtures"].includes(part)) })
   return S.Filegroup({
     srcs: [...new Set([...buildContractFiles, ...inventory])].sort().map(path => S.file("//" + path)),

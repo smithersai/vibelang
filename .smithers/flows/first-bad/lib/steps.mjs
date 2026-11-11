@@ -109,11 +109,12 @@ export function verdict(statuses, label) {
 // //:go-vibelangfuzz run took over 15 minutes on loaded nyc-01 (11-02 17:20Z),
 // and bisect reran it at every commit; one named test takes its compile and
 // seconds. The graph cannot run part of a target: its cache would record the
-// part's pass as the target's. A suite's leaves (the go-vibelang shards) run
-// the same package's tests, so a failing leaf narrows as its suite does.
+// part's pass as the target's. A suite's leaves (the go-vibelang shards, the
+// fuzz seed partitions, support packages and VIP check) run the same
+// packages' tests, so a failing leaf narrows as its suite does.
 // Test: test/steps.test.mjs reads PACKAGE.ts.
 export const GO_TARGETS = [
-  { label: /^\/\/:go-vibelangfuzz(?:-topic-[a-z0-9]+)?$/, pkg: "./internal/vibelangfuzz/...", env: "CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s", flags: "-short -count=1 -timeout=40m -trimpath" },
+  { label: /^\/\/:go-vibelangfuzz(?:-topic-[a-z0-9]+|-seeds-\d+|-package-[a-z0-9-]+|-vip)?$/, pkg: "./internal/vibelangfuzz/...", env: "CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s", flags: "-short -count=1 -timeout=40m -trimpath" },
   { label: /^\/\/:go-vibelang(?:-shard-\d+)?$/, pkg: "./internal/vibelang/...", env: "CGO_ENABLED=0", flags: "-count=1 -timeout=45m -trimpath" }
 ]
 // The runtime the Go tests run compiled programs against: goVibelang's data.

@@ -114,3 +114,26 @@ export const Package = S.Package({
     assert.equal(readFileSync(join(workspace, name + ".receipt"), "utf8").trim(), name)
   }
 })
+
+test("the real full fuzz suite reaches every independent seed and package target", () => {
+  const root = fileURLToPath(new URL("../", import.meta.url))
+  const cli = fileURLToPath(new URL("../.smithers/node_modules/.bin/smthrs", import.meta.url))
+  const run = spawnSync(cli, ["graph", "//:go-vibelangfuzz", "--workspace", root, "--format", "json"], {
+    cwd: root, encoding: "utf8", timeout: 60000
+  })
+  assert.ifError(run.error)
+  assert.equal(run.status, 0, run.stdout + run.stderr)
+  const graph = JSON.parse(run.stdout)
+  const group = graph.targets.find(target => target.label === "//:go-vibelangfuzz")
+  assert.equal(group?.target, "Suite")
+  const dependencies = graph.edges.filter(edge => edge.from === group.label).map(edge => edge.to)
+  const expected = [
+    "//:go-vibelangfuzz-vip",
+    ...Array.from({ length: 32 }, (_, i) => "//:go-vibelangfuzz-seeds-" + (i + 1)),
+    ...["grammaradmission", "specgen", "vipgen", "testtools-parse", "vipgen-programs"]
+      .map(pkg => "//:go-vibelangfuzz-package-" + pkg)
+  ]
+  assert.deepEqual(dependencies.sort(), expected.sort())
+  assert.equal(new Set(dependencies).size, expected.length)
+
+})

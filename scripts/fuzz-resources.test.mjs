@@ -1,3 +1,4 @@
+import { declarationTargets } from "./testing/package-declaration.mjs"
 import assert from "node:assert/strict"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -6,9 +7,8 @@ import { spawnSync } from "node:child_process"
 import test from "node:test"
 
 function prefix() {
-  const source = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
-  const target = source.split('"go-vibelangfuzz": goVibelang(')[1].split('"spec-tests":')[0]
-  return target.match(/`([^`]+)`\s*\+/)[1].replace(/\$\{effect\}/g, "EFFECT_NODE_MODULES=unused")
+  const target = declarationTargets("PACKAGE.ts")["go-vibelangfuzz-seeds-1"]
+  return "CGO_ENABLED=0" + target.shell.split("CGO_ENABLED=0")[1].split("go test")[0]
 }
 
 function fixture(t) {

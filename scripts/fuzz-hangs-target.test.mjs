@@ -78,7 +78,8 @@ for (const path of ["", "/tmp/fuzz budget.tsv"]) {
     const graph = targets(path ? { VIBELANG_FUZZ_BUDGET_LOG: path } : {})
     for (const name of ["go-vibelangfuzz", "go-vibelangfuzz-pending",
       "go-vibelangfuzz-editor", "go-vibelangfuzz-compile", "go-vibelangfuzz-config", "go-vibelangfuzz-hangs"]) {
-      assert.equal(graph[name].env?.VIBELANG_FUZZ_BUDGET_LOG, path, name)
+      for (const target of graph[name].tests ?? [graph[name]])
+        assert.equal(target.env?.VIBELANG_FUZZ_BUDGET_LOG, path, name)
     }
   })
 }
@@ -86,16 +87,24 @@ for (const path of ["", "/tmp/fuzz budget.tsv"]) {
 for (const name of ["go-vibelangfuzz", "go-vibelangfuzz-pending", "go-vibelangfuzz-topic-migration"]) {
   test(name + " schedules the shipped formatter plugin before its regressions", () => {
     const graph = targets()
-    assert.ok(graph[name].data.includes("packages.compiler-native"),
-      "the process formatter needs the compiler package binary and plugin manifest")
-    assert.ok(graph[name].tools.includes("node"))
+    for (const target of name === "go-vibelangfuzz"
+      ? Object.entries(graph).filter(([label]) => /^go-vibelangfuzz-seeds-/.test(label)).map(([, target]) => target)
+      : [graph[name]]) {
+      assert.ok(target.data.includes("packages.compiler-native"),
+        "the process formatter needs the compiler package binary and plugin manifest")
+      assert.ok(target.tools.includes("node"))
+    }
   })
 }
 
 for (const name of ["go-vibelangfuzz", "go-vibelangfuzz-pending", "go-vibelangfuzz-topic-migration"]) {
   test(name + " tracks canonical migration sources for route oracles", () => {
     const graph = targets()
-    assert.ok(graph[name].data.some(input => input?.migrationSources === true),
-      "a route oracle must invalidate when its canonical migration implementation changes")
+    for (const target of name === "go-vibelangfuzz"
+      ? Object.entries(graph).filter(([label]) => /^go-vibelangfuzz-seeds-/.test(label)).map(([, target]) => target)
+      : [graph[name]]) {
+      assert.ok(target.data.some(input => input?.migrationSources === true),
+        "a route oracle must invalidate when its canonical migration implementation changes")
+    }
   })
 }

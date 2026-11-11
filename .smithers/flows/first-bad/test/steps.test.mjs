@@ -112,6 +112,7 @@ test("bisect runs a Go target's failing tests alone: top-level names, Test and F
   assert.equal(n.pkg, "./internal/vibelangfuzz/...")
   assert.equal(narrowed("//:go-vibelangfuzz-topic-do", ["TestDoContextualResult"]).pkg, "./internal/vibelangfuzz/...")
   assert.equal(narrowed("//:go-vibelang", ["TestFixProject"]).pkg, "./internal/vibelang/...")
+  for (const label of ["//:go-vibelangfuzz-seeds-1", "//:go-vibelangfuzz-seeds-32", "//:go-vibelangfuzz-package-grammaradmission", "//:go-vibelangfuzz-package-vipgen-programs", "//:go-vibelangfuzz-vip"]) assert.equal(narrowed(label, ["TestA"]).pkg, "./internal/vibelangfuzz/...", label)
   for (const label of ["//:go-vibelang-shard-01", "//:go-vibelang-shard-64"]) assert.equal(narrowed(label, ["TestFixProject"]).pkg, "./internal/vibelang/...", label)
   // Pending and hang targets set their own environment; cases and other targets are not Go tests.
   for (const label of ["//:go-vibelangfuzz-pending", "//:go-vibelangfuzz-hangs", "//typescript/vibelang:hello", "//:spec-tests"]) assert.equal(narrowed(label, ["TestA"]), null, label)
@@ -146,7 +147,10 @@ test("GO_TARGETS runs each target's tests as PACKAGE.ts does", () => {
   const helper = block("const goVibelang = ")
   for (const dep of GO_DEPS) assert.ok(helper.includes(`Packages["${dep.split(":")[1]}"]`), `goVibelang builds ${dep}`)
   assert.ok(helper.includes("cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs"))
-  const cases = [["//:go-vibelangfuzz", block(`"go-vibelangfuzz": goVibelang(`)], ["//:go-vibelangfuzz-topic-do", block("const fuzzTopicTargets = ")], ["//:go-vibelang", upTo("const goVibelangPackages = ", "\n)\n")]]
+  const cases = [["//:go-vibelangfuzz", upTo("const fuzzShardPlans = ", "\n}))\n")], ["//:go-vibelangfuzz-topic-do", block("const fuzzTopicTargets = ")], ["//:go-vibelang", upTo("const goVibelangPackages = ", "\n)\n")]]
+  // //:go-vibelangfuzz is a suite of seed partitions, support packages and the VIP check.
+  for (const leaf of ["`go-vibelangfuzz-seeds-${", "`go-vibelangfuzz-package-${", `label: "go-vibelangfuzz-vip"`]) assert.ok(cases[0][1].includes(leaf), leaf)
+  assert.ok(pkg.includes(`"go-vibelangfuzz": S.Suite({ tests: Object.values(fuzzShardTargets) })`), "//:go-vibelangfuzz groups the leaves")
   // //:go-vibelang is a suite of shards that run one compiled binary of these packages.
   assert.ok(cases[2][1].includes(`["internal/vibelang"]`), "the shards test internal/vibelang")
   assert.ok(cases[2][1].includes("`go-vibelang-shard-${"), "the shard labels")
