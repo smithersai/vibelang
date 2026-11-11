@@ -886,7 +886,7 @@ const targets = {
   // Fast targets the queue's build-only gate selects by changed path (the merge
   // queue's validate.sh), so a commit that breaks one stops at the queue, not in
   // post-merge. scripts/fast-gate-targets.test.mjs keeps what they name real.
-  "flow-layout": check("Each migrate step's result literal lists one property per line.", "node --test .smithers/flows/migrate/test/layout.test.mjs", [], [node]),
+  "flow-layout": check("Each migrate step's result literal lists one property per line, and conversion.json lists the flow's VibeLang modules.", "node --test .smithers/flows/migrate/test/layout.test.mjs .smithers/flows/migrate/test/conversion.test.mjs", [], [node]),
   "grammar-inventory": S.Shell.Test({
     summary: "Every parser and lowering hook has a row in the grammar admission inventory, and every row has a hook.",
     shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -count=1 -trimpath ./internal/vibelangfuzz/grammaradmission/",

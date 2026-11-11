@@ -595,6 +595,17 @@ No mechanical rule covers these patterns: each needs a judgment the repair agent
 | A cold `Effect.map` or `orElseSucceed` program, `Effect.currentParentSpan.pipe(Effect.map(f), Effect.orElseSucceed(() => undefined))` | 2 (alchemy) | The deferred direct-style body depends on each use of the value |
 | A schema constant written before its type alias, `const X = Schema.…` then `type X = typeof X.Type` | 818 of 820 such pairs that are not structs; 1,474 struct pairs | A schema declaration's declaration file lists the type before the constant, so the rewrite would reorder the module's declarations: EK4841 does not mark these pairs, and rewriting a struct pair as EK4832 asks changes the declarations |
 
+## Conversion to VibeLang
+
+The flow is being rewritten in VibeLang, one module at a time. `conversion.json` lists the modules that are `.vibe` files: the flow's top-level files and `lib/`, without `lib/vendor`. A change that converts a module adds its path to the list and removes the JavaScript or TypeScript file. `test/conversion.test.mjs` fails when the list and the tree differ, and prints the count:
+
+```sh
+node --test .smithers/flows/migrate/test/conversion.test.mjs
+# 0 of 117 migrate flow modules are VibeLang
+```
+
+A `.vibe` module compiles here once `.smithers/package.json` installs the Effect version the compiler pins. Until then the compiler reports `EK3201` for a project in `.smithers`.
+
 ## Tests
 
 The optional lint-engine checks use `VIBELANG_OXLINT_NODE_MODULES` for an
