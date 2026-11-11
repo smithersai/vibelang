@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,308 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 17,175 |
-| The skill and the user guide (146 pages) | 590,000 |
-| The user guide alone | 580,000 |
+| The skill and the user guide (147 pages) | 600,000 |
+| The user guide alone | 590,000 |
 | The specification (11 chapters) | 280,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -138,7 +138,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |
 | **Upgrade** | **200,000** |
 | [Release notes](../setup/release-notes.md) | 200,000 |
-| **All 22 pages** | **260,000** |
+| **All 22 pages** | **270,000** |
 
 ### Guides
 
@@ -213,7 +213,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern Matching](../code-style/067-pattern-matching.md) | 1,900 |
 | [Excessive Nesting](../code-style/068-do.md) | 1,900 |
 | [Control Flow Operators](../code-style/069-control-flow.md) | 1,900 |
-| **Data Types** | **19,000** |
+| **Data Types** | **20,000** |
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
 | [Cause](../data-types/071-cause.md) | 1,200 |
 | [Chunk](../data-types/072-chunk.md) | 930 |
@@ -276,9 +276,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 14,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
-| [Experimental platform APIs](118-experimental-platform-apis.md) | 22,000 |
+| [Experimental platform APIs](118-experimental-platform-apis.md) | 26,000 |
 | [Durable tasks and workflows](119-tasks-and-workflows.md) | 1,200 |
-| **All 10 pages** | **85,000** |
+| [Fuzzing with Experimental.Fuzz](120-fuzzing.md) | 2,700 |
+| **All 11 pages** | **92,000** |
 
 ### Specification
 

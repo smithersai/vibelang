@@ -15,6 +15,18 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
+- A suite graded by a model judge and gated with no `tolerance` failed on any small move of the judge's score, with no hint why. `Experimental.Eval.suite` now lists a warning in `suite.warnings`, and `Experimental.Eval.run` logs it.
+
+- A model could grade an answer in an eval only through a rubric prompt whose reply had to be parsed. `Experimental.Scorer.decide(decision, { model, layer })` now grades with one typed `Decision` on Effect's `DecisionModel`, and a refused or invalid answer is inconclusive, never a pass.
+
+- A test of a suite graded by `Experimental.Scorer.rubric` needed a hand-built fake judge. Pass `Experimental.Test.replay(recorded)` as the rubric's `layer` and provide it around the runs: the judge answers from the recording with no key or network, each recorded verdict is used once, and a recorded failure makes the gate exit 5.
+
+- An answer with no single right text, such as a model's reply, could only be graded by hand. `Experimental.Scorer.rubric(criteria, { model, layer })` asks a judge model to score written criteria from 1 to 5, records the judge in the scorer's identity, and is inconclusive, never passing, when the judge cannot be reached; `Experimental.Scorer.calibrate` measures a judge against answers whose verdict is known.
+
+- A workflow's live runs could not be graded, so a production regression showed only in complaints. `Experimental.Scorer.bind(scorer, W, { sampling })` scores each finished run of a durable workflow once, samples runs by a rule a replay repeats, and keeps the scores in memory or in a SQL database (`Experimental.Scorer.layerSql`); a scorer or store that fails, or a scorer that runs past its `timeout`, never changes the run's result.
+
+- A program had no way to tell whether a model-driven answer got better or worse than last time: a test can only assert equality. `Experimental.Eval` runs a suite of cases against a target and grades each answer with `Experimental.Scorer` scorers (`exact`, `contains`, `checks` or your own), writes the scores as a baseline to commit, and compares a later run with it; `Experimental.Eval.gate` exits 0 when every case cleared the gate, 1 on a regression, a moved or missing score or a failed target, and 5 when it could not decide.
+
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
 
 - A failure that random property checks rarely reach, such as a magic header, a precise sequence of calls or one interleaving of two fibers, passed `Arbitrary.checkEffect` unnoticed. The new experimental fuzzing module takes a schema, keeps the inputs that reach new spans, error tags or observed stages, and reports a shrunk failure with a replay token. Its simulation mode makes fiber scheduling and time part of the input, so it finds lost updates and deadlocks. See [the fuzzing guide](/vibelang-features/120-fuzzing).
@@ -28,6 +40,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - With the `@effect/language-service` plugin's `ignoreEffectErrorsInTscExitCode` set, an Effect lint error such as `EK3889` (`preferSchemaOverJson`) or `EK38122` (`unknownInEffectCatch`) still failed `vibelang/register`, `vibelang/bun`, the Vite and bundler plugins and `compileProjectSync`, though `vibelang -p` printed it and exited 0. The loaders and `vibelang/project` now fail a module only on the errors that fail the build, and report the ignored ones as warnings.
 
 - Under Vite 7, a `.vibex` module served from another package failed with `Failed to resolve import` for a package only its own package depends on, where its `.tsx` twin resolved, as in a Storybook root that renders components from other workspace packages. Its bare imports now resolve from the module's own directory.
+
+- A workflow that waited for a person, a payment or a date had to hold a process open with `Effect.sleep` or a polling loop, and lost the wait when the process restarted. `Experimental.Durable.sleep`, `until` and `signal`, and the new `Experimental.Human` questions, park the run: no process waits, the wake time, the delivery or the answer is journaled, and the run wakes on any engine over the same store.
+
+- A durable task called inside `DurableDeferred.raceAll` or `DurableDeferred.into` and called again afterwards returned the first call's recorded result, because a race's steps shared numbers with the steps around it. `Experimental.Durable.race` now records a race's winner and numbers its own steps, and a task call inside Effect's own `raceAll` or `into` stops with `Experimental.Durable.UnstableStep` instead of reading another step's result.
+
+- `Experimental.Durable.spawn`, `start` and `run` rejected every declared workflow with `TS2345`, because their parameter type fixed the payload type. They now take any declared workflow, and a handle's `result` has the workflow's success and error types.
 
 - Stock `tsc`, and `bun check` scripts that invoke TypeScript, reported `TS2307` for a `.ts` file's `./x.js`, `./x` or `./x.ts` import once `x` became a `.vibe` module, though `vibelang` accepted it. The compiler now also writes `x.d.ts`, which re-exports `x.d.vibe.ts`, so those imports resolve and the importer's published declarations are unchanged.
 
@@ -93,6 +111,18 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A test of a program that calls a language model needed a provider key and a network, and answered differently on each run. `Experimental.Test.replay(fixture)` is a `LanguageModel` layer that answers from a recording and never calls a provider; a request the recording does not describe fails the test.
 
 - An invalid binding pattern in a parameter default or a `var`/`using` loop head could report only its placement error. It now also reports invalid pattern syntax, including repeated rest markers.
+
+- A leading or repeated semicolon in a `data` body compiled silently. It now reports `EK1606` for the missing variant; a single trailing separator remains allowed.
+
+- Facts and message threads in `Experimental.Memory` only grew. `Experimental.Memory.remember` takes `ttlMs`, after which a fact is no longer recalled, and `Experimental.Memory.sweep({ ttl, keep })` deletes expired and stale facts and trims each thread to its newest messages when the program runs it.
+
+- A model given memory tools could read and write any bank. `Experimental.Memory.tools(bank)` gives a model `remember` and `recall` bound to one bank, with no bank argument, and `Experimental.Memory.scoped(bank)` makes every memory call inside it fail with `invalid_namespace` when it names another bank.
+
+- `Experimental.Memory` could hold only facts that a later write overwrites. `Experimental.Memory.note` appends notes that a correction supersedes instead of editing, and `Experimental.Memory.thread(id)` keeps a conversation's messages, appended once each and read back newest last; both work in memory and in SQL.
+
+- `Experimental.Memory` kept facts only as long as its process. `Experimental.Memory.layerSql` keeps them in SQLite or PostgreSQL through Effect's `SqlClient`, in Smithers' `memory_facts` table, so a later run recalls what an earlier one remembered and a database error fails with the code `store`.
+
+- A program had no place to keep what it learned for a later run short of writing its own database code. `Experimental.Memory.remember` writes a fact to a bank, and `Experimental.Memory.recall` returns the facts that match a query, best first and cut to a byte budget, from any store a layer provides.
 
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
