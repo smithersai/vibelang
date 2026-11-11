@@ -3,7 +3,7 @@ import { test, expect } from "bun:test";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { digestSync } from "@smthrs/crypto";
-import { generate, readSources, repository, smithers } from "./run.ts";
+import { generate, readSources, repository, smithers } from "./generate.ts";
 import { countTokens, header, render, resolve, tokenizer } from "./render.ts";
 import { facts } from "./project.ts";
 

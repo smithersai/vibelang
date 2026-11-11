@@ -62,15 +62,16 @@ Run from a jj workspace of the repository. Use a new run directory each time:
 a finished run returns its recorded result.
 
 ```sh
-cd .smithers && bun flows/first-bad/run.ts --run <run dir> --repo .. \
-  --good <rev> --bad <rev> //typescript/vibelang:some-case //:docs-tools
+smthrs flow start first-bad --data '{"run":"<run dir>","repo":"<repository>",
+  "good":"<rev>","bad":"<rev>","targets":"//typescript/vibelang:some-case //:docs-tools"}'
 ```
 
-`--tests '<target>=<Test>,<Test>'` (repeatable) runs only those tests of a Go
-target, at bad and at every bisection commit. `--tries N` sets the runs at bad
-before a failing target counts as broken,
-`--jobs N` is passed to `scripts/ci.sh`, and `--keep` keeps the flow's
-workspace after the run. A commit that changes the compiler rebuilds it; the
+Paths in the payload are absolute, and `targets` is space-separated.
+`"tests":"<target>=<Test>,<Test> ..."` runs only those tests of a Go target, at
+bad and at every bisection commit. `tries` (3) sets the runs at bad before a
+failing target counts as broken, `jobs` (8) is passed to `scripts/ci.sh`, and
+`"keep":true` keeps the flow's workspace after the report. A failed run keeps
+it too, so the run resumes where it stopped. `smthrs runs list` lists the runs. A commit that changes the compiler rebuilds it; the
 Go build cache makes that incremental.
 
 ## The eval

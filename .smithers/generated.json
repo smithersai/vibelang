@@ -2,7 +2,7 @@
   "version": 2,
   "flow": "docs",
   "source": ".smithers/flows/docs/flow.ts",
-  "digest": "085c093e88869c93414f5b323f5310be97b6ba955963d1919f9aa4d61f6f9ec6",
+  "digest": "c2d9f795b7fda213e996b84e445ee2347d335710bcc20d2b894c80af7c9cb94d",
   "inputs": [
     {
       "path": ".smithers/flows/docs/project.ts",
@@ -17,12 +17,16 @@
       "sha256": "0de38c527acf8da52e8461f44d7c933d1f9043a86a67709952411113dec87c9d"
     },
     {
-      "path": ".smithers/flows/docs/run.ts",
-      "sha256": "524caa324378a0c8a143b2701fecd30e3fa7f2bb65553dfa13933d905887064d"
+      "path": ".smithers/flows/docs/generate.ts",
+      "sha256": "d4b7ebad0f9bcc0bfc3b97e786bff5e5b894cbd5670bb5b7bb1eb4a65007fbe1"
+    },
+    {
+      "path": ".smithers/flows/in-process.ts",
+      "sha256": "acced68cc5983d09b18573cfa4a11aa00d3ef75e4c7e16093ba801e776d61c60"
     },
     {
       "path": ".smithers/package.json",
-      "sha256": "64d2cbd3b23dc8d3946cbfd63d23f3abda845783fd1b21510969ace8e303d319"
+      "sha256": "decca53d206b5d741cbf00891620f6dba582f47b4f071adf43a89a8b7c33f36d"
     },
     {
       "path": ".smithers/bun.lock",

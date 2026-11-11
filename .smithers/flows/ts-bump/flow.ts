@@ -19,9 +19,9 @@ const Outcome = Schema.Struct({ step: Schema.String, ok: Schema.Boolean, summary
 export class StepFailed extends Schema.TaggedError<StepFailed>()("StepFailed", { step: Schema.String, message: Schema.String }) {}
 
 // to: a commit, or an npm dist-tag or version of `typescript` whose gitHead
-// is the commit. targets: graph target patterns, space-separated; empty runs
+// is the commit. targets: graph target patterns, space-separated; absent or empty runs
 // the default set (lib/steps.mjs TARGETS).
-const StartPayload = { run: Schema.String, repo: Schema.String, to: Schema.String, targets: Schema.String };
+const StartPayload = { run: Schema.String, repo: Schema.String, to: Schema.String, targets: Schema.optional(Schema.String) };
 const RunPayload = { run: Schema.String };
 
 const declare = <const Tag extends string, P extends Schema.Struct.Fields>(tag: Tag, payload: P) =>
@@ -43,7 +43,7 @@ const step = (name: keyof typeof steps, run: string) =>
     catch: (error) => new StepFailed({ step: name, message: error instanceof Error ? error.message : String(error) })
   });
 
-const options = ({ repo, to, targets }: { repo: string; to: string; targets: string }) =>
+const options = ({ repo, to, targets = "" }: { repo: string; to: string; targets?: string | undefined }) =>
   ({ repo, to, ...(targets.trim() ? { targets: targets.trim().split(/\s+/) } : {}) });
 
 /** The steps' implementations, which the flow's host composes. */

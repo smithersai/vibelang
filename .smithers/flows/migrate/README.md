@@ -454,7 +454,7 @@ The `--no-wire` repair uses the same package-wiring rules as ordinary setup, inc
 
 ### As a Smithers flow
 
-`flow.ts` declares the same steps as durable actions of `Flow.make("migrate", ...)`. One execution upgrades Effect, sets the run up and plans it the first time, then migrates the next batch and reports; the next execution migrates the batch after it. `run.ts` runs one execution on the in-memory engine:
+`flow.ts` declares the same steps as durable actions of `Flow.make("migrate", ...)`. One execution upgrades Effect, sets the run up and plans it the first time, then migrates the next batch and reports; the next execution migrates the batch after it. `run.ts` runs one execution in its own process on the in-memory engine. The durable host, `smthrs flow start`, refuses this flow: its steps load the target repository's own tools (TypeScript, knip, oxlint, Vite) through `createRequire`, and Smithers runs only code it can measure before a run starts.
 
 ```sh
 MIGRATE_AGENT="<agent command>" bun .smithers/flows/migrate/run.ts --run <run> --target <repo> \

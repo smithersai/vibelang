@@ -66,3 +66,32 @@ test("a ci-health run on the durable host writes its report and is listed", { sk
   assert.equal(runs.status, 0, runs.stderr)
   assert.deepEqual(runs.json().items.map(({ flowId, status }) => ({ flowId, status })), [{ flowId: "ci-health", status: "completed" }])
 })
+
+test("effect-bump and first-bad start on the durable host; a missing checkout fails the run", { skip }, (t) => {
+  const root = project(t)
+  const missing = path.join(root, "missing")
+  for (const [flow, payload] of [
+    ["effect-bump", { run: path.join(root, "effect-bump"), repo: missing, version: "4.2.0" }],
+    ["first-bad", { run: path.join(root, "first-bad"), repo: missing, good: "a", bad: "b", targets: "//:docs-tools" }]
+  ]) {
+    const started = smthrs(root, "flow", "start", flow, "--data", JSON.stringify(payload))
+    assert.equal(started.json().status, "failed", started.stdout + started.stderr)
+  }
+  const runs = smthrs(root, "runs", "list", "--sort", "oldest")
+  assert.deepEqual(runs.json().items.map(({ flowId, status }) => ({ flowId, status })),
+    [{ flowId: "effect-bump", status: "failed" }, { flowId: "first-bad", status: "failed" }])
+})
+
+// The migrate steps load the target repository's own TypeScript, knip, oxlint
+// and Vite through createRequire, and the durable host runs only code it can
+// measure before the run, so migrate still runs from run.ts. When this test
+// fails, smthrs admits migrate: move it to smthrs flow start.
+test("the durable host refuses migrate, whose steps load the target's tools", { skip }, (t) => {
+  const root = project(t)
+  const started = smthrs(root, "flow", "start", "migrate", "--data", JSON.stringify({
+    run: path.join(root, "run"), target: path.join(root, "missing"), packages: ["."], test: "true", testCwd: ".", toolchain: path.join(root, "toolchain")
+  }))
+  assert.notEqual(started.status, 0)
+  assert.match(started.stdout + started.stderr, /runs code this host cannot pin: .*computes the target of/)
+  assert.deepEqual(smthrs(root, "runs", "list").json().items, [])
+})

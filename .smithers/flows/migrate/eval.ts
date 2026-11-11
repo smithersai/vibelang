@@ -29,11 +29,11 @@ import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, wri
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import migrate from "./flow.ts";
+import migrate, { layer } from "./flow.ts";
 import * as Jj from "./lib/jj.mjs";
 import { stageToolchain } from "./lib/toolchain.mjs";
 import { must } from "./lib/util.mjs";
-import { runtime } from "./run.ts";
+import { execute } from "../in-process.ts";
 import { stepKey } from "../step-key.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -87,12 +87,8 @@ async function migrateFresh(input: Input): Promise<Output & { readonly compiler:
       .filter((f) => f.endsWith(".ts")).sort().map((f) => `src/${f}`);
     const scopeFile = join(scratch, "scope.txt");
     writeFileSync(scopeFile, scope.join("\n") + "\n");
-    const exit = await Effect.runPromiseExit(
-      migrate.execute(
-        { run, target: repo, packages: ["."], test: input.test, testCwd: ".", toolchain, scope: scopeFile },
-        { executionId: `migrate-eval-${Date.now()}` }
-      ).pipe(Effect.provide(runtime))
-    );
+    const exit = await execute(migrate, layer,
+      { run, target: repo, packages: ["."], test: input.test, testCwd: ".", toolchain, scope: scopeFile }, `migrate-eval-${Date.now()}`);
     const verify = readIf(join(run, "batches/01/verify.json"));
     const record = readIf(join(run, "batches/01/record.json"));
     return {

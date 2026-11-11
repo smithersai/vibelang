@@ -1,20 +1,19 @@
+// The docs generator: reads the inputs, renders them with the docs flow in this
+// process, and writes the outputs and .smithers/generated.json.
 import { execFileSync } from "node:child_process";
-// Command-line composition root: reads the inputs, runs the docs flow, writes the outputs and .smithers/generated.json.
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Effect, Layer } from "effect";
-import * as Crypto from "effect/Crypto";
-import { FlowEngine } from "@smthrs/engine";
-import { Interpreter } from "@smthrs/flow";
-import { digestSync, syncCrypto } from "@smthrs/crypto";
+import { Exit } from "effect";
+import { digestSync } from "@smthrs/crypto";
+import { execute } from "../in-process.ts";
 import docs, { layer } from "./flow.ts";
 import { flowPath, readmeFooter, sourcePaths, type Sources } from "./render.ts";
 
 export const smithers = join(dirname(fileURLToPath(import.meta.url)), "../..");
 export const repository = join(smithers, "..");
 /** The generator's own files, relative to .smithers/. The lockfile pins every package version. */
-export const generatorInputs = ["flows/docs/project.ts", "flows/docs/render.ts", "flows/docs/flow.ts", "flows/docs/run.ts", "package.json", "bun.lock"];
+export const generatorInputs = ["flows/docs/project.ts", "flows/docs/render.ts", "flows/docs/flow.ts", "flows/docs/generate.ts", "flows/in-process.ts", "package.json", "bun.lock"];
 
 export async function readSources(): Promise<Sources> {
   return Object.fromEntries(await Promise.all(sourcePaths.map(async path => [path, await readFile(join(repository, path), "utf8")]))) as Sources;
@@ -32,12 +31,9 @@ export async function identity(sources: Sources) {
 export async function generate() {
   const sources = await readSources();
   const id = await identity(sources);
-  const runtime = Interpreter.layerWithImplementations(docs, layer).pipe(
-    Layer.provideMerge(FlowEngine.layerMemory), Layer.provideMerge(Layer.succeed(Crypto.Crypto, syncCrypto))
-  );
-  const outputs = await Effect.runPromise(docs.execute({ sources }, {
-    executionId: `docs-${id.digest}`
-  }).pipe(Effect.provide(runtime)));
+  const exit = await execute(docs, layer, { sources }, `docs-${id.digest}`);
+  if (Exit.isFailure(exit)) throw new Error(String(exit.cause));
+  const outputs = exit.value;
   const manifest = JSON.stringify({
     version: 2, flow: "docs", source: flowPath, digest: id.digest, inputs: id.files,
     outputs: Object.fromEntries(Object.entries(outputs).map(([path, text]) => [path, { sha256: digestSync(text) }]))

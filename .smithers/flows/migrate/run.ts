@@ -1,17 +1,17 @@
-// Command-line composition root: runs one execution of the migrate flow, which
-// migrates the next batch of a run, on the in-memory engine. The run directory
-// holds every step's result, so the next execution resumes from it.
+// Command line for the migrate flow: runs one execution, which migrates the
+// next batch of a run, in this process on the in-memory engine. The run
+// directory holds every step's result, so the next execution resumes from it.
+// The durable host refuses this flow: its steps load the target repository's
+// own tools (TypeScript, knip, oxlint, Vite) through createRequire, which
+// smthrs cannot pin before a run.
 //
 //   MIGRATE_AGENT="<command>" bun .smithers/flows/migrate/run.ts --run <dir> \
 //     --target <repo> --package <dir> --test "<command>" [--test-cwd <dir>] --toolchain <dir>
 //
 // --scope <scope.txt> plans one whole-scope pass instead, which needs no agent.
-import { Cause, Effect, Exit, Layer, Option } from "effect";
-import * as Crypto from "effect/Crypto";
-import { FlowEngine } from "@smthrs/engine";
-import { Interpreter } from "@smthrs/flow";
-import { syncCrypto } from "@smthrs/crypto";
+import { Cause, Exit, Option } from "effect";
 import migrate, { layer } from "./flow.ts";
+import { execute } from "../in-process.ts";
 import { many, one, parseArgs } from "./lib/args.mjs";
 
 export function payloadFrom(argv: ReadonlyArray<string>) {
@@ -32,16 +32,9 @@ export function payloadFrom(argv: ReadonlyArray<string>) {
   };
 }
 
-export const runtime = Interpreter.layerWithImplementations(migrate, layer).pipe(
-  Layer.provideMerge(FlowEngine.layerMemory),
-  Layer.provideMerge(Layer.succeed(Crypto.Crypto, syncCrypto))
-);
-
 if (import.meta.main) {
   const payload = payloadFrom(process.argv.slice(2));
-  const exit = await Effect.runPromiseExit(
-    migrate.execute(payload, { executionId: `migrate-${Date.now()}` }).pipe(Effect.provide(runtime))
-  );
+  const exit = await execute(migrate, layer, payload);
   if (Exit.isSuccess(exit)) console.log(JSON.stringify(exit.value, null, 2));
   else {
     const failure = Cause.findErrorOption(exit.cause);

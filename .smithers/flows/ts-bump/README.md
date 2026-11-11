@@ -29,9 +29,11 @@ Run it in a checkout you can throw away, such as a `jj workspace add`, because
 it rewrites `typescript/`:
 
 ```sh
-cd .smithers && bun flows/ts-bump/run.ts --run <run dir> --repo <checkout> --to next
-cd .smithers && bun flows/ts-bump/run.ts --run <run dir> --repo <checkout> --to <commit> --targets "//typescript:compiler"
+smthrs flow start ts-bump --data '{"run":"<run dir>","repo":"<checkout>","to":"next"}'
+smthrs flow start ts-bump --data '{"run":"<run dir>","repo":"<checkout>","to":"<commit>","targets":"//typescript:compiler"}'
 ```
+
+Paths in the payload are absolute. `smthrs runs list` lists the runs.
 
 ## The eval
 

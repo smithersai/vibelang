@@ -29,8 +29,10 @@ Run it in a checkout you can throw away, such as a `jj workspace add`, because
 it rewrites manifests and lockfiles:
 
 ```sh
-cd .smithers && bun flows/effect-bump/run.ts --run <run dir> --repo <checkout> --version 4.2.0
+smthrs flow start effect-bump --data '{"run":"<run dir>","repo":"<checkout>","version":"4.2.0"}'
 ```
+
+Paths in the payload are absolute. `smthrs runs list` lists the runs.
 
 ## The eval
 

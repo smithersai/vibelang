@@ -31,7 +31,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { pinned } from "./lib/steps.mjs";
-import { execute } from "./run.ts";
+import bump, { layer } from "./flow.ts";
+import { execute } from "../in-process.ts";
 import { stepKey } from "../step-key.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -117,7 +118,7 @@ function bumpFresh(input: Input): Promise<Output> {
     } catch {}
     return copy;
   };
-  return execute({ run, repo: workspace, to: input.to, targets: input.targets }).then((exit) => {
+  return execute(bump, layer, { run, repo: workspace, to: input.to, targets: input.targets }).then((exit) => {
     const read = (step: string) => existsSync(join(run, `${step}.json`)) ? JSON.parse(readFileSync(join(run, `${step}.json`), "utf8")) : undefined;
     const fetch = read("fetch"), merge = read("merge");
     const merged = [...(merge?.merged ?? [])];

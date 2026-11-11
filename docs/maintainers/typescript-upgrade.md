@@ -18,7 +18,7 @@ of what to change: `.smithers/flows/ts-bump/README.md`.
 
 ```sh
 jj workspace add ../ts-bump --name ts-bump -r main
-cd .smithers && bun flows/ts-bump/run.ts --run ../../ts-bump-run --repo ../../ts-bump --to next
+smthrs flow start ts-bump --data "{\"run\":\"$PWD/../ts-bump-run\",\"repo\":\"$PWD/../ts-bump\",\"to\":\"next\"}"
 ```
 
 1. Merge upstream's changes since the pin into `typescript/` and move the pin.

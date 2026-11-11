@@ -38,7 +38,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execute } from "./run.ts";
+import firstBad, { layer } from "./flow.ts";
+import { finish } from "./lib/steps.mjs";
+import { execute } from "../in-process.ts";
 import { stepKey } from "../step-key.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -121,7 +123,7 @@ async function answer(input: Input): Promise<Output> {
   const run = mkdtempSync(join(tmpdir(), "first-bad-eval-"));
   try {
     const targets = Object.keys(input.states);
-    const exit = await execute({ run, repo, good: input.good, bad: input.bad, targets: targets.join(" "), tries: 3, jobs: 8,
+    const exit = await execute(firstBad, layer, { run, repo, good: input.good, bad: input.bad, targets: targets.join(" "), tries: 3, jobs: 8,
       tests: Object.entries(input.red ?? {}).map(([t, names]) => `${t}=${names.join(",")}`).join(" ") });
     if (Exit.isFailure(exit)) throw new Error(String(exit.cause));
     const read = (step: string) => JSON.parse(readFileSync(join(run, `${step}.json`), "utf8"));
@@ -136,6 +138,7 @@ async function answer(input: Input): Promise<Output> {
         Object.entries(r.targets).every(([t, e]) => !t.startsWith("//:go-") || (e.narrowed?.length ?? 0) > 0))
     };
   } finally {
+    finish(run);
     rmSync(run, { recursive: true, force: true });
   }
 }

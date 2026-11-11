@@ -1,7 +1,7 @@
 import { Action, Flow } from "@smthrs/flow";
 import { Node } from "@smthrs/plan";
 import { Effect, Layer, Schema } from "effect";
-import { parseTests, run as steps, start } from "./lib/steps.mjs";
+import { finish, parseTests, run as steps, start } from "./lib/steps.mjs";
 
 // One execution answers: which of these targets, failing at bad, did a commit
 // after good break, and which commit? Each step reads and writes the run
@@ -15,20 +15,24 @@ const Outcome = Schema.Struct({ step: Schema.String, ok: Schema.Boolean, summary
 export class StepFailed extends Schema.TaggedError<StepFailed>()("StepFailed", { step: Schema.String, message: Schema.String }) {}
 
 // targets: graph labels, space-separated. tries: runs at bad before a failing
-// target counts as broken rather than flaky. jobs: --jobs for scripts/ci.sh.
-// tests: "<target>=<Test>,<Test> ...", the failing tests to run alone in a Go
-// target at every commit; "" runs every target whole at bad.
+// target counts as broken rather than flaky; absent is 3. jobs: --jobs for
+// scripts/ci.sh; absent is 8. tests: "<target>=<Test>,<Test> ...", the failing
+// tests to run alone in a Go target at every commit; absent or "" runs every
+// target whole at bad.
 const StartPayload = {
   run: Schema.String,
   repo: Schema.String,
   good: Schema.String,
   bad: Schema.String,
   targets: Schema.String,
-  tries: Schema.Number,
-  jobs: Schema.Number,
-  tests: Schema.String
+  tries: Schema.optional(Schema.Number),
+  jobs: Schema.optional(Schema.Number),
+  tests: Schema.optional(Schema.String),
+  keep: Schema.optional(Schema.Boolean)
 };
 const RunPayload = { run: Schema.String };
+// keep: leave the flow's jj workspace in the run directory after the report.
+const ReportPayload = { run: Schema.String, keep: Schema.Boolean };
 
 const declare = <const Tag extends string, P extends Schema.Struct.Fields>(tag: Tag, payload: P) =>
   Action.make(tag, { implementationVersion, payload, success: Outcome, error: StepFailed });
@@ -36,7 +40,7 @@ const declare = <const Tag extends string, P extends Schema.Struct.Fields>(tag: 
 export const Prepare = declare("first-bad/Prepare", StartPayload);
 export const Reproduce = declare("first-bad/Reproduce", RunPayload);
 export const Bisect = declare("first-bad/Bisect", RunPayload);
-export const Report = declare("first-bad/Report", RunPayload);
+export const Report = declare("first-bad/Report", ReportPayload);
 
 const step = (name: keyof typeof steps, run: string) =>
   Effect.try({
@@ -49,7 +53,7 @@ const step = (name: keyof typeof steps, run: string) =>
 
 const begin = (input: Schema.Struct.Type<typeof StartPayload>) =>
   Effect.try({
-    try: () => start(input.run, { ...input, targets: input.targets.split(/\s+/).filter(Boolean), tests: parseTests(input.tests) }),
+    try: () => start(input.run, { ...input, tries: input.tries ?? 3, jobs: input.jobs ?? 8, targets: input.targets.split(/\s+/).filter(Boolean), tests: parseTests(input.tests ?? "") }),
     catch: (error) => new StepFailed({ step: "prepare", message: error instanceof Error ? error.message : String(error) })
   });
 
@@ -58,7 +62,7 @@ export const layer = Layer.mergeAll(
   Prepare.toLayer((input) => begin(input).pipe(Effect.andThen(step("prepare", input.run))), { implementationVersion }),
   Reproduce.toLayer(({ run }) => step("reproduce", run), { implementationVersion }),
   Bisect.toLayer(({ run }) => step("bisect", run), { implementationVersion }),
-  Report.toLayer(({ run }) => step("report", run), { implementationVersion })
+  Report.toLayer(({ run, keep }) => step("report", run).pipe(Effect.tap(() => keep ? Effect.void : Effect.sync(() => finish(run)))), { implementationVersion })
 );
 
 export default Flow.make("first-bad", {
@@ -72,6 +76,6 @@ export default Flow.make("first-bad", {
   error: StepFailed,
   body: Node.capture({ implementationVersion }, (input: Schema.Struct.Type<typeof StartPayload>) => {
     const run = { run: input.run };
-    return Prepare.call(input).pipe(Node.andThen(Reproduce.call(run)), Node.andThen(Bisect.call(run)), Node.andThen(Report.call(run)));
+    return Prepare.call(input).pipe(Node.andThen(Reproduce.call(run)), Node.andThen(Bisect.call(run)), Node.andThen(Report.call({ ...run, keep: input.keep ?? false })));
   })
 });

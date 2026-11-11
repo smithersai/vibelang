@@ -22,7 +22,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execute } from "./run.ts";
+import bump, { layer } from "./flow.ts";
+import { execute } from "../in-process.ts";
 import { stepKey } from "../step-key.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -89,7 +90,7 @@ function bumpFresh(input: Input): Promise<Output> {
     try { jj("workspace", "forget", name); } catch {}
     rmSync(scratch, { recursive: true, force: true });
   };
-  return execute({ run, repo: workspace, version: fixture.version }).then((exit) => {
+  return execute(bump, layer, { run, repo: workspace, version: fixture.version }).then((exit) => {
     const read = (step: string) => existsSync(join(run, `${step}.json`)) ? JSON.parse(readFileSync(join(run, `${step}.json`), "utf8")) : undefined;
     const probe = read("probe");
     const changed = execFileSync("jj", ["diff", "--name-only", "--from", fixture.base], { cwd: workspace, encoding: "utf8" }).split("\n").filter(Boolean);
