@@ -61,6 +61,8 @@ It exits with status `1` when the project has an error, including errors outside
 
 A hook returns a project error or an incomplete compiler check to the agent with exit status `2`, and a warning as context the agent reads with the tool's result.
 
+The generated instructions also recommend `vibelang lint`. It uses the compiler’s configuration and Effect language-service plugin settings; select a non-default project with `vibelang lint --project <config>`. This command reports diagnostics without emitting files.
+
 ## In a workspace
 
 When `vibelang` is installed in a workspace package rather than at the root, run `init` from that package's directory, with the root as its argument:

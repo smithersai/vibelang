@@ -125,6 +125,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The Proposals page called `.vibex` files unbuilt and durable execution nonexistent, and cited decision-log entries the site does not publish. It now says, for each idea from the earlier design, whether it shipped, which VIP proposes it, or that it has no VIP.
 
+- Agent setup generated obsolete lint instructions that selected an Oxlint configuration with an unsupported option. The instructions now use the compiler configuration and `--project`; rerun `vibelang agents init` to refresh them.
+
 - After agent setup, edits to `.vibex` files could miss language-server diagnostics and checks after an edit. Agent registrations, hooks and the generated plugin now include JSX VibeLang alongside `.vibe` files; rerun `vibelang agents init` to refresh an existing setup.
 
 ## 0.0.13

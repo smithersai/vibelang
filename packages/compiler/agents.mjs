@@ -132,7 +132,7 @@ function section(command) {
 
 - After you edit \`.vibe\` or \`.vibex\` files, run \`${run} agents check <file>...\`. It prints each diagnostic left; fix every error before you finish. Claude Code, Codex and opencode run it for you after each edit and show you the result.
 - \`${run} --noEmit\` checks the whole project. Each \`EKxxxx\` diagnostic says how to fix it.
-- \`${run} lint\` runs the built-in Effect type-aware rules on \`.vibe\` files using the repository’s Oxlint configuration; pass \`-c <config>\` for a non-default config. Run it before finishing a change.
+- \`${run} lint\` runs the built-in Effect type-aware rules using the repository’s compiler configuration; pass \`--project <config>\` for a non-default config. It uses the same Effect language-service plugin configuration as the compiler and emits no files. Run it before finishing a change.
 ${sectionEnd}`
 }
 
