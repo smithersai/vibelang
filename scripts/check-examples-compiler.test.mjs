@@ -37,7 +37,7 @@ for (const selection of selections) {
       if (executable) chmodSync(file, 0o755)
       return file
     }
-    for (const script of ["check-examples.sh", "prepare-examples.mjs"]) {
+    for (const script of ["check-examples.sh", "prepare-examples.mjs", "template-files.mjs"]) {
       const file = put("scripts/" + script, "")
       cpSync(join(source, "scripts", script), file)
     }

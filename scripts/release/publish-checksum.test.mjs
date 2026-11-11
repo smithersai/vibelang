@@ -6,6 +6,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import { fixtureCheckout, fixtureRevision, fixtureDprint } from "./fixture-checkout.mjs"
 
 const repo = fileURLToPath(new URL("../../", import.meta.url))
 const names = ["vibelang-linux-x64", "@smthrs/cli-win32-x64", "@smthrs/cli-win32-arm64", "vibelang"]
@@ -17,14 +18,17 @@ function fixture(t, mode, target = names[0]) {
   const tarballs = join(root, "dist-npm/tarballs")
   const bin = join(root, "bin")
   for (const dir of [scripts, tarballs, bin, join(root, "source/package")]) mkdirSync(dir, { recursive: true })
-  for (const file of ["publish.sh", "repack.mjs"]) cpSync(join(repo, "scripts/release", file), join(scripts, file))
+  for (const file of ["publish.sh", "repack.mjs", "revision.mjs"]) cpSync(join(repo, "scripts/release", file), join(scripts, file))
+  const checkout = fixtureCheckout(root)
   const packages = names.map(name => {
-    writeFileSync(join(root, "source/package/package.json"), JSON.stringify({ name, version: "0.0.6" }))
+    const optionalDependencies = name === "vibelang" ? Object.fromEntries(names.slice(0, 3).map(platform => [platform, "0.0.6"])) : undefined
+    writeFileSync(join(root, "source/package/package.json"), JSON.stringify({ name, version: "0.0.6", optionalDependencies }))
+    if (name === "vibelang") writeFileSync(join(root, "source/package/dprint-plugin.json"), JSON.stringify(fixtureDprint(names, "0.0.6")))
     const file = name.replace("@", "").replace("/", "-") + "-0.0.6.tgz"
     execFileSync("tar", ["-czf", join(tarballs, file), "-C", join(root, "source"), "package"])
     return { name, version: "0.0.6", file }
   })
-  writeFileSync(join(tarballs, "manifest.json"), JSON.stringify({ version: "0.0.6", packages }))
+  writeFileSync(join(tarballs, "manifest.json"), JSON.stringify({ version: "0.0.6", revision: fixtureRevision, clean: true, packages }))
   writeFileSync(join(bin, "npm"), `#!/usr/bin/env node
 const { appendFileSync, readFileSync } = require("node:fs")
 const { createHash } = require("node:crypto")
@@ -44,7 +48,7 @@ else if (args[0] === "view") {
   return {
     run: () => spawnSync("sh", [join(scripts, "publish.sh"), "--dry-run"], {
       encoding: "utf8", timeout: 30_000,
-      env: { ...process.env, PATH: bin + ":" + process.env.PATH, CALLS: join(root, "calls"),
+      env: { ...process.env, PATH: checkout.bin + ":" + bin + ":" + process.env.PATH, CALLS: join(root, "calls"),
         TARBALLS: tarballs, MODE: mode, TARGET: target, VIBELANG_SKIP: "", NPM_OTP: "",
         VIBELANG_REGISTRY: "https://fixture.invalid/" }
     }),

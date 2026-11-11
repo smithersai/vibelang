@@ -12,6 +12,21 @@ import (
 // version in packages/compiler/package.json.
 const Version = "0.0.13"
 
+// Revision is the source revision a release binary was built from. The
+// release build sets it at link time (scripts/release/build-binaries.sh);
+// every other build leaves it empty. No command prints it, so --version is
+// the same for every build of a version: the release scripts find the
+// revision in the binary's bytes, which tells two builds of one version apart.
+var Revision string
+
+// releaseRevision is read from Revision in init. That read is what keeps the
+// linked value in the binary; the linker drops a variable nothing reads.
+var releaseRevision string
+
+// ReleaseRevision returns the revision this binary was built from, or "" for
+// a build that is not a release build.
+func ReleaseRevision() string { return releaseRevision }
+
 // The binary built from tsc/cmd/tsc is VibeLang's compiler, vibelang, under
 // any file name, so --version and --help say so and name the TypeScript
 // version it is built on:
@@ -19,6 +34,7 @@ const Version = "0.0.13"
 //	$ vibelang --version
 //	VibeLang 0.0.13 (TypeScript 7.1.0-dev)
 func init() {
+	releaseRevision = Revision
 	base := "TypeScript " + core.Version()
 	tsc.SetIdentity(tsc.Identity{
 		Command:     "vibelang",

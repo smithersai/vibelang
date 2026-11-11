@@ -1665,7 +1665,7 @@ const targets = {
     [node, bun],
     "5m",
     {},
-    [S.Filegroup({srcs: [...S.glob(["examples/http-api/**", "scripts/check-http-api.mjs", "scripts/prepare-examples.mjs", "packages/vite/**", "packages/compiler/package.json"])]})]
+    [S.Filegroup({srcs: [...S.glob(["examples/http-api/**", "scripts/check-http-api.mjs", "scripts/prepare-examples.mjs", "scripts/template-files.mjs", "packages/vite/**", "packages/compiler/package.json"])]})]
   ),
   "go-module-foreign-factories": goVibelang(
     "TypeScript module factories retain foreign callback contracts without eager acquisition.",

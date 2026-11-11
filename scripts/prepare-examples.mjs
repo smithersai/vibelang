@@ -1,13 +1,11 @@
 // Stage example sources for repository checks without changing their published pins.
 import { cpSync, readFileSync, writeFileSync, readdirSync } from "node:fs"
-import { basename, join, resolve } from "node:path"
+import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { templateFilter } from "./template-files.mjs"
 
 export function prepareExample(source, destination, packages, effect) {
-  cpSync(source, destination, {
-    recursive: true,
-    filter: path => !["node_modules", "dist", ".prototype", ".vibe", "bun.lock", "package-lock.json"].includes(basename(path))
-  })
+  cpSync(source, destination, { recursive: true, filter: templateFilter })
   const path = join(destination, "package.json")
   const manifest = JSON.parse(readFileSync(path, "utf8"))
   const localPackages = Object.fromEntries(Object.entries(packages).map(([name, target]) => [name, "file:" + resolve(target)]))

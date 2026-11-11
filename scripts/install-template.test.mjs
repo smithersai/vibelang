@@ -19,6 +19,7 @@ function fixture(t, previous = "owned") {
   }
   mkdirSync(join(root, "scripts"))
   cpSync(installer, join(root, "scripts/install-template.mjs"))
+  cpSync(join(dirname(installer), "template-files.mjs"), join(root, "scripts/template-files.mjs"))
   put("templates/app/package.json", JSON.stringify(manifest))
   put("templates/app/src/main.vibe", "fresh template")
   const base = join(root, "templates home")

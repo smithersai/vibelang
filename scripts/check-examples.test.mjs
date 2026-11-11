@@ -31,7 +31,7 @@ for (const [mode, status, message] of modes) {
       return target
     }
     mkdirSync(join(root, "scripts"), { recursive: true })
-    for (const script of ["check-examples.sh", "prepare-examples.mjs"]) cpSync(join(source, "scripts", script), join(root, "scripts", script))
+    for (const script of ["check-examples.sh", "prepare-examples.mjs", "template-files.mjs"]) cpSync(join(source, "scripts", script), join(root, "scripts", script))
     put("packages/runtime/package.json", JSON.stringify({ peerDependencies: { effect: "4.1.1" } }))
     for (const name of names) {
       put(`examples/${name}/package.json`, JSON.stringify({ name, ...(name === "users" ? { scripts: { test: "fixture" } } : {}) }))

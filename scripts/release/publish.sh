@@ -41,6 +41,10 @@ done
   exit 1
 }
 version=$(node -p 'require(process.argv[1]).version' "$tarballs/manifest.json")
+# The tarballs must come from this checkout's commit, with nothing uncommitted.
+node "$root/scripts/release/revision.mjs" --manifest "$tarballs/manifest.json" "$root"
+# repack derives vibelang's tarball from the full one on every run and fails
+# unless it lists exactly the platform packages published below.
 node "$root/scripts/release/repack.mjs" "$tarballs"
 
 if user=$(npm whoami --registry "$registry" 2>/dev/null); then

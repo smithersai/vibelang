@@ -29,7 +29,7 @@ for (const [mode, expected] of modes) {
       return path
     }
     mkdirSync(join(root, "scripts"), { recursive: true })
-    for (const name of ["check-examples.sh", "prepare-examples.mjs"]) cpSync(join(repository, "scripts", name), join(root, "scripts", name))
+    for (const name of ["check-examples.sh", "prepare-examples.mjs", "template-files.mjs"]) cpSync(join(repository, "scripts", name), join(root, "scripts", name))
     put("packages/runtime/package.json", JSON.stringify({ peerDependencies: { effect: "4.1.0" } }))
     for (const name of names) {
       const scripts = name === "users" && mode !== "test-absent" ? { scripts: mode === "scripts-empty" ? {} : { test: "fixture" } } : {}

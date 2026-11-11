@@ -90,6 +90,18 @@ for (const manager of managers) {
   }
 }
 
+// verify-published.sh <version> must scaffold that version: the latest tag
+// can name another release.
+for (const manager of managers) {
+  test(`${manager} scaffolds the requested version, not the latest tag`, t => {
+    const { result, calls } = probe(t, manager)
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    const creates = calls.filter(c => c.args[0] === "create")
+    assert.equal(creates.length, 1, JSON.stringify(creates))
+    assert.equal(creates[0].args[1], "vibelang@0.0.12")
+  })
+}
+
 test("the full release rehearsal includes pnpm", () => {
   assert.match(rehearsal, /check-app\.sh" "\$registry" "\$version" npm (?:bun pnpm|pnpm bun)/)
 })

@@ -2,31 +2,42 @@
 // publication unless --dry-run is present. No registry or credentials are used.
 import assert from "node:assert/strict"
 import { execFileSync, spawnSync } from "node:child_process"
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import { fixtureCheckout, fixtureRevision, fixtureDprint } from "./fixture-checkout.mjs"
 
 const repo = fileURLToPath(new URL("../../", import.meta.url))
 const names = ["vibelang-linux-x64", "vibelang-runtime", "vibelang"]
-function fixture(t) {
+const realNpm = execFileSync("sh", ["-c", "command -v npm"], { encoding: "utf8" }).trim()
+const platformNames = (all) => all.filter((name) => /-(?:darwin|linux|win32)-/.test(name))
+function fixture(t, names = ["vibelang-linux-x64", "vibelang-runtime", "vibelang"], manifest = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-publish-dry-test-")))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, "scripts/release"), { recursive: true })
-  for (const file of ["publish.sh", "repack.mjs"]) cpSync(join(repo, "scripts/release", file), join(root, "scripts/release", file))
+  for (const file of ["publish.sh", "repack.mjs", "revision.mjs"]) cpSync(join(repo, "scripts/release", file), join(root, "scripts/release", file))
+  const checkout = fixtureCheckout(root)
   const tarballs = join(root, "dist-npm/tarballs")
   mkdirSync(tarballs, { recursive: true })
   const entries = []
   for (const name of names) {
     const source = join(root, name, "package")
     mkdirSync(source, { recursive: true })
-    writeFileSync(join(source, "package.json"), JSON.stringify({ name, version: "0.0.1" }))
-    const file = `${name}-0.0.1.tgz`
+    const optionalDependencies = name === "vibelang" ? Object.fromEntries(platformNames(names).map((platform) => [platform, "0.0.1"])) : undefined
+    writeFileSync(join(source, "package.json"), JSON.stringify({ name, version: "0.0.1", optionalDependencies }))
+    if (name === "vibelang") {
+      writeFileSync(join(source, "dprint-plugin.json"), JSON.stringify(fixtureDprint(names, "0.0.1")))
+      chmodSync(join(source, "dprint-plugin.json"), 0o644)
+    }
+    // npm pack normalizes modes; repack verifies its output against the input.
+    chmodSync(join(source, "package.json"), 0o644)
+    const file = `${name.replace("@", "").replace("/", "-")}-0.0.1.tgz`
     execFileSync("tar", ["-czf", join(tarballs, file), "-C", dirname(source), "package"])
     entries.push({ name, version: "0.0.1", file })
   }
-  writeFileSync(join(tarballs, "manifest.json"), JSON.stringify({ version: "0.0.1", packages: entries }))
+  writeFileSync(join(tarballs, "manifest.json"), JSON.stringify({ version: "0.0.1", revision: fixtureRevision, clean: true, ...manifest, packages: entries }))
   const bin = join(root, "bin")
   mkdirSync(bin)
   const calls = join(root, "calls.jsonl")
@@ -34,7 +45,10 @@ function fixture(t) {
   writeFileSync(join(bin, "npm"), `#!${process.execPath}
 import { appendFileSync, readFileSync } from "node:fs"
 import { createHash } from "node:crypto"
+import { spawnSync } from "node:child_process"
 const args = process.argv.slice(2)
+// repack.mjs packs locally; only registry commands are recorded and faked.
+if (args[0] === "pack") process.exit(spawnSync(${JSON.stringify(realNpm)}, args, { stdio: "inherit" }).status ?? 1)
 appendFileSync(${JSON.stringify(calls)}, JSON.stringify(args) + "\\n")
 const startupDelay = Number(process.env.TEST_NPM_DELAY_MS || 0)
 if (startupDelay > 0) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, startupDelay)
@@ -51,7 +65,7 @@ if (args[0] === "publish") {
 }
 console.error("unexpected npm command"); process.exit(98)
 `, { mode: 0o755 })
-  return { root, tarballs, calls, bin }
+  return { root, tarballs, calls, bin, checkout }
 }
 // The offline child chain needs room to start under load; a stalled probe
 // still fails with process state and recorded command stages.
@@ -59,7 +73,7 @@ function run(f, env = {}, args = ["--dry-run"], timeout = 60_000) {
   const started = performance.now()
   const result = spawnSync("sh", [join(f.root, "scripts/release/publish.sh"), ...args], {
     encoding: "utf8", timeout, input: "",
-    env: { PATH: `${f.bin}:${process.env.PATH}`, VIBELANG_REGISTRY: "http://127.0.0.1:1/unused/", ...env }
+    env: { PATH: `${f.checkout.bin}:${f.bin}:${process.env.PATH}`, VIBELANG_REGISTRY: "http://127.0.0.1:1/unused/", ...env }
   })
   const calls = readFileSync(f.calls, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line))
   if (result.error || result.signal || result.status === null) {
@@ -149,3 +163,57 @@ test("an offline probe timeout reports process failure and recorded stages", (t)
   assert.throws(() => run(f, { TEST_NPM_DELAY_MS: "250" }, ["--dry-run"], 100),
     /offline publish probe failed: .*ETIMEDOUT.*commands/)
 })
+
+// Release integrity: a skip run must not strip what a later run publishes.
+const withWindows = ["vibelang-linux-x64", "@smthrs/cli-win32-x64", "@smthrs/cli-win32-arm64", "vibelang"]
+const optional = (f) => Object.keys(JSON.parse(execFileSync("tar", ["-xOzf", join(f.tarballs, "vibelang-0.0.1.tgz"), "package/package.json"], { encoding: "utf8" })).optionalDependencies ?? {})
+test("a dry run with VIBELANG_SKIP does not strip the vibelang tarball a later run publishes", (t) => {
+  const f = fixture(t, withWindows)
+  const skipped = run(f, { VIBELANG_SKIP: "win32" })
+  assert.equal(skipped.status, 0, skipped.stderr)
+  assert.deepEqual(optional(f), ["vibelang-linux-x64"])
+  assert.deepEqual(skipped.publishes.map((args) => args[1]), ["vibelang-linux-x64", "vibelang"].map((name) => join(f.tarballs, `${name}-0.0.1.tgz`)))
+  writeFileSync(f.calls, "")
+  const full = run(f)
+  assert.equal(full.status, 0, full.stderr)
+  assert.equal(full.publishes.length, withWindows.length)
+  assert.deepEqual(optional(f), withWindows.slice(0, 3), "vibelang lists every platform package this run publishes")
+})
+
+test("a vibelang tarball that lacks a platform package being published is refused before npm runs", (t) => {
+  const f = fixture(t, withWindows)
+  const source = join(f.root, "vibelang/package/package.json")
+  writeFileSync(source, JSON.stringify({ name: "vibelang", version: "0.0.1", optionalDependencies: { "vibelang-linux-x64": "0.0.1" } }))
+  execFileSync("tar", ["-czf", join(f.tarballs, "vibelang-0.0.1.tgz"), "-C", join(f.root, "vibelang"), "package"])
+  const result = run(f)
+  assert.equal(result.status, 1, result.stdout)
+  assert.match(result.stderr, /lists optionalDependencies \[vibelang-linux-x64\], but manifest\.json has the platform packages/)
+  assert.equal(result.calls.length, 0)
+})
+
+for (const [name, change, message] of [
+  ["tarballs from another revision", (f) => f.checkout.set({ revision: "9c".repeat(20) }), /assembled from revision 5a5a.*but this checkout is 9c9c/],
+  ["a checkout with uncommitted changes", (f) => f.checkout.set({ clean: false }), /changes that are not in a commit/],
+  ["a manifest without a revision", (f) => rewrite(f, (manifest) => { delete manifest.revision }), /records no source revision/],
+  ["tarballs assembled with --skip-build", (f) => rewrite(f, (manifest) => { manifest.rehearsalOnly = ["--skip-build"] }), /assembled with --skip-build, for rehearsal only/],
+  ["a tree that is no checkout", (f) => rmSync(join(f.root, ".jj"), { recursive: true }), /not a jj or git checkout/],
+]) {
+  test(`${name}: refused before repacking or invoking npm`, (t) => {
+    for (const args of [["--dry-run"], ["--otp", "123456"]]) {
+      const f = fixture(t)
+      change(f)
+      const before = readFileSync(join(f.tarballs, "manifest.json"))
+      const result = run(f, { TEST_LOGGED_IN: "1" }, args)
+      assert.equal(result.status, 1, result.stdout)
+      assert.match(result.stderr, message)
+      assert.equal(result.calls.length, 0)
+      assert.deepEqual(readFileSync(join(f.tarballs, "manifest.json")), before)
+    }
+  })
+}
+function rewrite(f, change) {
+  const path = join(f.tarballs, "manifest.json")
+  const manifest = JSON.parse(readFileSync(path, "utf8"))
+  change(manifest)
+  writeFileSync(path, JSON.stringify(manifest))
+}

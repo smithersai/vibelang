@@ -10,6 +10,8 @@ import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 
+import { fixtureDprint } from "./fixture-checkout.mjs"
+
 const repo = fileURLToPath(new URL("../../", import.meta.url))
 test("rehearsal publishes both scoped Windows packages to its isolated registry", {
   skip: !process.env.VIBELANG_TEST_REGISTRY,
@@ -30,7 +32,10 @@ test("rehearsal publishes both scoped Windows packages to its isolated registry"
   const formatter = "export const fixture = \"registry\"\n"
   const packages = names.map(name => {
     const packageVersion = name === "vibelang-typescript" ? "7.1.0" : version
-    writeFileSync(join(source, "package.json"), JSON.stringify({ name, version: packageVersion }))
+    const optionalDependencies = name === "vibelang" ? Object.fromEntries(names.slice(0, 2).map(platform => [platform, version])) : undefined
+    writeFileSync(join(source, "package.json"), JSON.stringify({ name, version: packageVersion, optionalDependencies }))
+    if (name === "vibelang") writeFileSync(join(source, "dprint-plugin.json"), JSON.stringify(fixtureDprint(names, version)))
+    else rmSync(join(source, "dprint-plugin.json"), { force: true })
     // rehearse.sh hashes the compiler package's formatter so each app proves it installed the candidate's bytes.
     if (name === "vibelang") writeFileSync(join(source, "format.mjs"), formatter)
     else rmSync(join(source, "format.mjs"), { force: true })

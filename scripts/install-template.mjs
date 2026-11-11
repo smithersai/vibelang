@@ -1,6 +1,7 @@
 import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { templateFilter } from "./template-files.mjs"
 
 const root = fileURLToPath(new URL("../", import.meta.url))
 const base = process.env.BUN_CREATE_DIR || join(process.env.HOME, ".bun-create")
@@ -28,10 +29,7 @@ const pending = join(staging, "next")
 const previous = join(staging, "previous")
 let cleanup = true
 try {
-  cpSync(join(root, "templates/app"), pending, {
-    recursive: true,
-    filter: (path) => !["node_modules", "dist", ".prototype", "bun.lock"].includes(path.split("/").at(-1))
-  })
+  cpSync(join(root, "templates/app"), pending, { recursive: true, filter: templateFilter })
   const packagePath = join(pending, "package.json")
   const pkg = JSON.parse(readFileSync(packagePath, "utf8"))
   pkg.dependencies["vibelang-runtime"] = `file:${join(root, "packages/runtime/vibelang-runtime.tgz")}`

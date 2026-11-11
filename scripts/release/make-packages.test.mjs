@@ -8,6 +8,7 @@ import { crc32 } from "node:zlib"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import { fixtureCheckout, fixtureRevision } from "./fixture-checkout.mjs"
 
 const repo = fileURLToPath(new URL("../../", import.meta.url))
 const platformPackage = (platform) => platform.startsWith("win32-") ? `@smthrs/cli-${platform}` : `vibelang-${platform}`
@@ -46,10 +47,13 @@ function zipAt(when, files) {
   end.writeUInt32LE(directory.length, 12); end.writeUInt32LE(offset, 16)
   return Buffer.concat([...locals, directory, end])
 }
-function fixture(t) {
+// Build output, which no revision tracks.
+const buildOutput = ["packages/runtime/dist", "editors/vscode/vibelang.vsix"]
+const checkouts = new Map()
+function fixture(t, checkout = {}) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-release-test-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  for (const path of ["scripts/release/make-packages.mjs", "scripts/release/zip-times.mjs", "docs/tools/release-docs.mjs", "LICENSE", "typescript/LICENSE.txt", "typescript/NOTICE.txt", "typescript/tsc/internal/vibelang/identity.go",
+  for (const path of ["scripts/release/make-packages.mjs", "scripts/release/zip-times.mjs", "scripts/release/revision.mjs", "scripts/template-files.mjs", "docs/tools/release-docs.mjs", "LICENSE", "typescript/LICENSE.txt", "typescript/NOTICE.txt", "typescript/tsc/internal/vibelang/identity.go",
     ...["compiler", "runtime", "vite", "create-vibelang", "unplugin", "typescript-shim"].flatMap((name) => [`packages/${name}/package.json`, `packages/${name}/README.md`]),
     ...["bin", "lib", "launcher.mjs", "tsc"].map((name) => `packages/typescript-shim/${name}`),
     ...compilerSources, "editors/tree-sitter-vibelang/tree-sitter.json",
@@ -66,12 +70,20 @@ function fixture(t) {
   for (const platform of platforms) {
     const binary = join(root, "dist-npm/bin", platform, platform.startsWith("win32") ? "vibelang.exe" : "vibelang")
     mkdirSync(dirname(binary), { recursive: true })
-    writeFileSync(binary, Buffer.from(`binary ${platform}\0\xff`))
+    writeFileSync(binary, Buffer.from(`binary ${platform}\0\xff revision ${fixtureRevision}`))
+    writeFileSync(join(root, "dist-npm/bin", platform + ".status"), `platform=${platform}\ncompleted=2026-11-08T05:00:00Z\nexit=0\n`)
   }
+  writeFileSync(join(root, "dist-npm/bin/revision"), `revision=${fixtureRevision}\nclean=true\n`)
+  checkouts.set(root, fixtureCheckout(root, { ...checkout, untracked: [...buildOutput, ...(checkout.untracked ?? [])] }))
   return root
 }
-function assemble(root) {
-  return spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build"], { encoding: "utf8", timeout: 120_000 })
+function assemble(root, ...flags) {
+  return spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build", ...flags],
+    { encoding: "utf8", timeout: 120_000, env: { ...process.env, PATH: checkouts.get(root).bin + ":" + process.env.PATH } })
+}
+function listing(root, name) {
+  const { file } = json(join(root, "dist-npm/tarballs/manifest.json")).packages.find((pkg) => pkg.name === name)
+  return execFileSync("tar", ["-tzf", join(root, "dist-npm/tarballs", file)], { encoding: "utf8" }).split("\n").filter(Boolean)
 }
 function archive(root, name, path) {
   const { file } = json(join(root, "dist-npm/tarballs/manifest.json")).packages.find((pkg) => pkg.name === name)
@@ -317,3 +329,188 @@ test("release assembly includes every registered grammar and its manifest", { ti
   assert.ok(symbols.includes("tree_sitter_vibe"), symbols)
   assert.ok(symbols.includes("tree_sitter_extra"), symbols)
 })
+
+// Release integrity: the tarballs must be one commit's files and binaries.
+test("the manifest records the revision and that --skip-build tarballs are for rehearsal only", { timeout: 120_000 }, (t) => {
+  const root = fixture(t)
+  const result = assemble(root)
+  assert.equal(result.status, 0, result.stderr)
+  const manifest = json(join(root, "dist-npm/tarballs/manifest.json"))
+  assert.equal(manifest.revision, fixtureRevision)
+  assert.equal(manifest.clean, true)
+  assert.deepEqual(manifest.rehearsalOnly, ["--skip-build"])
+})
+
+for (const [name, receipt, message] of [
+  ["a receipt that records a failed build", "platform=linux-arm64\ncompleted=2026-11-08T05:00:00Z\nexit=1\n", /linux-arm64\.status records exit 1, so .*linux-arm64\/vibelang is from an earlier build/],
+  ["a missing receipt", undefined, /no receipt dist-npm\/bin\/linux-arm64\.status/],
+]) {
+  test(`refuses a binary beside ${name} before replacing release artifacts`, (t) => {
+    const root = fixture(t)
+    const path = join(root, "dist-npm/bin/linux-arm64.status")
+    if (receipt) writeFileSync(path, receipt)
+    else rmSync(path)
+    for (const flags of [[], ["--rehearsal"]]) {
+      const result = assemble(root, ...flags)
+      assert.equal(result.status, 1, result.stdout)
+      assert.match(result.stderr, message)
+      assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
+    }
+  })
+}
+
+test("refuses binaries built from another revision than the checkout's", { timeout: 120_000 }, (t) => {
+  const root = fixture(t)
+  const next = "9c".repeat(20)
+  checkouts.get(root).set({ revision: next })
+  const result = assemble(root)
+  assert.equal(result.status, 1, result.stdout)
+  assert.ok(result.stderr.includes(`the binaries were built from revision ${fixtureRevision}, but this checkout is ${next}`), result.stderr)
+  assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
+  const rehearsed = assemble(root, "--rehearsal")
+  assert.equal(rehearsed.status, 0, rehearsed.stderr)
+  assert.deepEqual(json(join(root, "dist-npm/tarballs/manifest.json")).rehearsalOnly, ["--skip-build", "--rehearsal"])
+})
+
+test("refuses a binary that does not carry the recorded revision, a missing record and a build from a changed tree", (t) => {
+  const root = fixture(t)
+  writeFileSync(join(root, "dist-npm/bin/win32-x64/vibelang.exe"), "an earlier build")
+  const stale = assemble(root, "--rehearsal")
+  assert.equal(stale.status, 1, stale.stdout)
+  assert.match(stale.stderr, new RegExp("win32-x64/vibelang\\.exe does not carry revision " + fixtureRevision))
+  writeFileSync(join(root, "dist-npm/bin/revision"), `revision=${fixtureRevision}\nclean=false\n`)
+  assert.match(assemble(root).stderr, /binaries were built from a tree with uncommitted changes/)
+  rmSync(join(root, "dist-npm/bin/revision"))
+  const unrecorded = assemble(root, "--rehearsal")
+  assert.equal(unrecorded.status, 1, unrecorded.stdout)
+  assert.match(unrecorded.stderr, /no dist-npm\/bin\/revision/)
+  assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
+})
+
+test("refuses a tree with uncommitted changes, and a tree that is no checkout", { timeout: 120_000 }, (t) => {
+  const root = fixture(t, { clean: false })
+  const result = assemble(root)
+  assert.equal(result.status, 1, result.stdout)
+  assert.match(result.stderr, /the tree has changes that are not in a commit/)
+  assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
+  const rehearsed = assemble(root, "--rehearsal")
+  assert.equal(rehearsed.status, 0, rehearsed.stderr)
+  assert.equal(json(join(root, "dist-npm/tarballs/manifest.json")).clean, false)
+  rmSync(join(root, ".jj"), { recursive: true })
+  rmSync(join(root, "dist-npm/tarballs"), { recursive: true })
+  const bare = assemble(root, "--rehearsal")
+  assert.equal(bare.status, 1, bare.stdout)
+  assert.match(bare.stderr, /not a jj or git checkout/)
+  assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
+})
+
+// Files a maintainer has lying in the source directories: a secret, lockfiles
+// from a local install, an editor scratch file, test output.
+const strays = {
+  "templates/app/.env": "create-vibelang",
+  "templates/app/package-lock.json": "create-vibelang",
+  "templates/app/pnpm-lock.yaml": "create-vibelang",
+  "templates/app/src/notes.txt": "create-vibelang",
+  "packages/vite/src/scratch.js": "vibelang-vite",
+  "packages/unplugin/src/scratch.js": "vibelang-unplugin",
+  "packages/typescript-shim/lib/output.log": "vibelang-typescript",
+  "packages/create-vibelang/bin/debug.mjs": "create-vibelang",
+  "packages/compiler/bin/core": "vibelang",
+  "packages/compiler/skills/vibelang/draft.md": "vibelang",
+  "editors/tree-sitter-vibelang/src/parser.o": "vibelang",
+}
+test("untracked files in the template and package source directories are not packed", { timeout: 120_000 }, (t) => {
+  const root = fixture(t, { untracked: Object.keys(strays) })
+  for (const path of Object.keys(strays)) {
+    mkdirSync(dirname(join(root, path)), { recursive: true })
+    writeFileSync(join(root, path), "TOKEN=not-for-npm\n")
+  }
+  const result = assemble(root)
+  assert.equal(result.status, 0, result.stderr)
+  for (const [path, name] of Object.entries(strays)) {
+    const leaked = listing(root, name).filter((file) => file.endsWith("/" + path.split("/").at(-1)))
+    assert.deepEqual(leaked, [], `${name} packs the untracked ${path}`)
+  }
+  assert.ok(listing(root, "create-vibelang").includes("package/template/src/main.vibe"))
+  assert.ok(listing(root, "vibelang-vite").includes("package/src/index.js"))
+})
+
+test("a tracked lockfile in the template is still left out, by the shared exclusion list", { timeout: 120_000 }, (t) => {
+  const root = fixture(t)
+  for (const name of ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock"]) writeFileSync(join(root, "templates/app", name), "lock\n")
+  const result = assemble(root)
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(listing(root, "create-vibelang").filter((file) => /lock/.test(file)), [])
+})
+
+test("every tracked file under a staged directory is packed", { timeout: 120_000 }, (t) => {
+  const root = fixture(t)
+  const result = assemble(root)
+  assert.equal(result.status, 0, result.stderr)
+  const tracked = execFileSync("jj", ["file", "list"], { cwd: root, encoding: "utf8", env: { ...process.env, PATH: checkouts.get(root).bin + ":" + process.env.PATH } }).split("\n")
+  for (const [from, name, to] of [["packages/vite/src/", "vibelang-vite", "package/src/"], ["packages/unplugin/src/", "vibelang-unplugin", "package/src/"],
+    ["packages/typescript-shim/lib/", "vibelang-typescript", "package/lib/"], ["packages/compiler/bin/", "vibelang", "package/bin/"]]) {
+    const expected = tracked.filter((file) => file.startsWith(from)).map((file) => to + file.slice(from.length)).sort()
+    assert.ok(expected.length > 0, from)
+    assert.deepEqual(listing(root, name).filter((file) => file.startsWith(to)).sort(), expected, name)
+  }
+})
+
+// A normal build uses a stand-in for bun, but real assembly and npm pack.
+// Like tsc, this builder writes current outputs without deleting old ones.
+function buildAndAssemble(root, failure = "") {
+  const bin = checkouts.get(root).bin
+  const freshVsix = join(bin, "fresh.vsix")
+  writeFileSync(freshVsix, zipAt(new Date("2026-11-08T05:04:40Z"), {
+    ...vsixFiles, "extension/readme.md": "# Fresh build\n"
+  }))
+  writeFileSync(join(bin, "bun"), `#!${process.execPath}
+const fs = require("node:fs"), path = require("node:path")
+const args = process.argv.slice(2)
+if (args[0] === "install") process.exit(0)
+const phase = path.basename(process.cwd()) === "runtime" ? "runtime" : "extension"
+if (args[0] !== "run" || args[1] !== (phase === "runtime" ? "build" : "package")) process.exit(91)
+if (phase === process.env.TEST_RELEASE_BUILD_FAILURE) process.exit(23)
+if (phase === "runtime") {
+  for (const file of ["index.js", "index.d.ts", "kernel/kernel.js"]) {
+    const target = path.join("dist", file)
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    fs.writeFileSync(target, "fresh " + file)
+  }
+} else fs.copyFileSync(${JSON.stringify(freshVsix)}, "vibelang.vsix")
+`, { mode: 0o755 })
+  return spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs")], {
+    encoding: "utf8", timeout: 120_000,
+    env: { ...process.env, PATH: bin + ":" + process.env.PATH, TEST_RELEASE_BUILD_FAILURE: failure }
+  })
+}
+
+test("normal assembly removes outputs of deleted runtime sources and rebuilds the extension", { timeout: 120_000 }, t => {
+  const root = fixture(t)
+  for (const file of ["deleted.js", "kernel/deleted.d.ts"]) writeFileSync(join(root, "packages/runtime/dist", file), "stale output")
+  const result = buildAndAssemble(root)
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(listing(root, "vibelang-runtime").filter(file => file.includes("deleted")), [])
+  assert.equal(archive(root, "vibelang-runtime", "dist/index.js").toString(), "fresh index.js")
+  assert.deepEqual(unzipped(root, archive(root, "vibelang", "editor/vibelang.vsix")), {
+    ...vsixFiles, "extension/readme.md": "# Fresh build\n"
+  })
+  const manifest = json(join(root, "dist-npm/tarballs/manifest.json"))
+  assert.equal(manifest.revision, fixtureRevision)
+  assert.equal(manifest.clean, true)
+  assert.equal(manifest.rehearsalOnly, undefined)
+})
+
+for (const [phase, output] of [
+  ["runtime", "packages/runtime/dist"],
+  ["extension", "editors/vscode/vibelang.vsix"]
+]) {
+  test(`a failed ${phase} build removes its previous output before packing`, t => {
+    const root = fixture(t)
+    assert.ok(existsSync(join(root, output)))
+    const result = buildAndAssemble(root, phase)
+    assert.equal(result.status, 1, result.stderr)
+    assert.equal(existsSync(join(root, output)), false, "the failed build must not leave stale output")
+    assert.equal(existsSync(join(root, "dist-npm/tarballs/manifest.json")), false)
+  })
+}

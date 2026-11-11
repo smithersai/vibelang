@@ -27,10 +27,11 @@ export npm_config_registry="$registry" NPM_CONFIG_REGISTRY="$registry" BUN_CONFI
 # pnpm 11 and later use their own configuration environment namespace.
 export pnpm_config_registry="$registry" PNPM_CONFIG_REGISTRY="$registry"
 export npm_config_cache="$scratch/npm-cache" BUN_INSTALL_CACHE_DIR="$scratch/bun-cache"
-# bun create runs bunx, which keeps create-vibelang@latest under $TMPDIR across
-# runs and reuses it even when the registry has a newer tarball, so an earlier
-# rehearsal's template would be scaffolded. A scratch TMPDIR starts it clean.
+# bun create runs bunx, which keeps create-vibelang under $TMPDIR across runs
+# and reuses it even when the registry has a newer tarball of that version, so
+# an earlier rehearsal's template would be scaffolded. A scratch TMPDIR starts it clean.
 # (https://github.com/oven-sh/bun/issues/12245; bunx re-resolves a bare name only after 24 hours.)
+# Every manager scaffolds the requested version, never the latest tag.
 export TMPDIR="$scratch/tmp"
 mkdir -p "$TMPDIR"
 export npm_config_yes=true npm_config_fund=false npm_config_audit=false npm_config_update_notifier=false
@@ -53,8 +54,8 @@ for manager in "$@"; do
   case $manager in
     npm) step "npm create vibelang@$version"; npm create "vibelang@$version" "$manager-app" ;;
     pnpm) step "pnpm create vibelang@$version"; pnpm create "vibelang@$version" "$manager-app" --no-install ;;
-    bun) step "bun create vibelang@latest"; bun create vibelang@latest "$manager-app" ;;
-    bun-isolated) tool=bun; step "bun create vibelang@latest"; bun create vibelang@latest "$manager-app" ;;
+    bun) step "bun create vibelang@$version"; bun create "vibelang@$version" "$manager-app" ;;
+    bun-isolated) tool=bun; step "bun create vibelang@$version"; bun create "vibelang@$version" "$manager-app" ;;
     *) echo "check-app: unknown package manager $manager" >&2; exit 1 ;;
   esac
   cd "$app"

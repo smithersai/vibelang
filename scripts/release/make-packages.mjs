@@ -3,17 +3,27 @@
 // packs them into dist-npm/tarballs/, with manifest.json listing the tarballs
 // in publish order. Run scripts/release/build-binaries.sh first.
 //
-//   node scripts/release/make-packages.mjs [--skip-build]
+//   node scripts/release/make-packages.mjs [--skip-build] [--rehearsal]
 //
 // --skip-build reuses packages/runtime/dist and editors/vscode/vibelang.vsix.
 // The script fails unless every package version equals the compiler's own
 // version (typescript/tsc/internal/vibelang/identity.go) and every pin agrees.
+//
+// The tarballs must come from one commit. The script fails unless the tree
+// has no uncommitted change, every build receipt in dist-npm/bin/ records
+// exit 0, and the binaries were built from the checkout's revision, which
+// manifest.json then records. Packages are staged from the files that
+// revision tracks, so untracked and ignored files never ship. --rehearsal
+// accepts a changed tree and binaries from another revision. publish.sh
+// refuses tarballs assembled with --rehearsal or --skip-build.
 import { releaseDocsProblems, typescriptShimPatch } from "../../docs/tools/release-docs.mjs"
+import { readRecord, sourceRevision, trackedFiles } from "./revision.mjs"
 import { zipFixedTimes } from "./zip-times.mjs"
+import { isTemplateFile } from "../template-files.mjs"
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
-import { basename, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const root = fileURLToPath(new URL("../../", import.meta.url))
@@ -21,6 +31,7 @@ const out = join(root, "dist-npm")
 const staging = join(out, "pkg")
 const tarballs = join(out, "tarballs")
 const skipBuild = process.argv.includes("--skip-build")
+const rehearsal = process.argv.includes("--rehearsal")
 const platformPackage = (platform) => platform.startsWith("win32-") ? `@smthrs/cli-${platform}` : `vibelang-${platform}`
 const platforms = {
   "darwin-arm64": ["darwin", "arm64"],
@@ -85,9 +96,33 @@ expect(template.dependencies?.effect === effect, `template: effect ${template.de
 expect(template.dependencies?.["@effect/platform-node"] === effect, `template: @effect/platform-node must match effect ${effect}`)
 expect(template.devDependencies?.["@effect/vitest"] === effect, `template: @effect/vitest must match effect ${effect}`)
 expect(template.overrides?.["@effect/platform-node-shared"] === effect, `template: @effect/platform-node-shared override must match effect ${effect}`)
+// The checkout's revision, the one build-binaries.sh recorded, and each
+// target's receipt must agree: a binary an earlier run left behind has the
+// same version as this one.
+let source
+try {
+  source = sourceRevision(root)
+} catch (error) {
+  problems.push(error.message)
+}
+expect(!source || source.clean || rehearsal, "the tree has changes that are not in a commit; commit them (--rehearsal assembles tarballs that publish.sh refuses)")
+const built = readRecord(join(out, "bin", "revision"))
 for (const [platform, [os]] of Object.entries(platforms)) {
   const binary = join(out, "bin", platform, os === "win32" ? "vibelang.exe" : "vibelang")
-  expect(existsSync(binary), `missing ${binary.slice(root.length)}; run scripts/release/build-binaries.sh`)
+  const shown = binary.slice(root.length)
+  expect(existsSync(binary), `missing ${shown}; run scripts/release/build-binaries.sh`)
+  if (!existsSync(binary)) continue
+  const receipt = readRecord(join(out, "bin", `${platform}.status`))
+  expect(receipt?.exit === "0", receipt
+    ? `dist-npm/bin/${platform}.status records exit ${receipt.exit}, so ${shown} is from an earlier build; run scripts/release/build-binaries.sh`
+    : `no receipt dist-npm/bin/${platform}.status for ${shown}; run scripts/release/build-binaries.sh`)
+  expect(!built?.revision || readFileSync(binary).includes(built.revision),
+    `${shown} does not carry revision ${built?.revision}, which dist-npm/bin/revision records; run scripts/release/build-binaries.sh`)
+}
+expect(built?.revision, "no dist-npm/bin/revision, so nothing says which commit the binaries are from; run scripts/release/build-binaries.sh")
+if (built?.revision && !rehearsal) {
+  expect(built.clean === "true", "the binaries were built from a tree with uncommitted changes; commit them and run scripts/release/build-binaries.sh")
+  expect(!source || built.revision === source.revision, `the binaries were built from revision ${built.revision}, but this checkout is ${source?.revision}; run scripts/release/build-binaries.sh`)
 }
 if (problems.length) {
   console.error(`make-packages: ${problems.length} problem(s):\n${problems.map((p) => `  - ${p}`).join("\n")}`)
@@ -97,9 +132,12 @@ if (problems.length) {
 const run = (command, args, cwd) => execFileSync(command, args, { cwd, stdio: ["ignore", "inherit", "inherit"] })
 if (!skipBuild) {
   console.log("make-packages: build the runtime")
+  // tsc never deletes the output of a source that is gone.
+  rmSync(join(root, "packages/runtime/dist"), { recursive: true, force: true })
   run("bun", ["install", "--frozen-lockfile"], join(root, "packages/runtime"))
   run("bun", ["run", "build"], join(root, "packages/runtime"))
   console.log("make-packages: build the VS Code extension")
+  rmSync(join(root, "editors/vscode/vibelang.vsix"), { force: true })
   run("bun", ["install", "--frozen-lockfile"], join(root, "editors/vscode"))
   run("bun", ["run", "package"], join(root, "editors/vscode"))
 }
@@ -132,10 +170,23 @@ The TypeScript notices follow.
 ${readFileSync(join(root, "typescript/NOTICE.txt"), "utf8")}`
 const warning = "> **Warning:** VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use."
 
+// copyTracked copies a tracked file, or the tracked files of a directory, and
+// nothing else found there: an untracked or ignored file never reaches a package.
+const tracked = trackedFiles(root)
+function copyTracked(from, to, keep = () => true) {
+  const files = tracked.filter((file) => file === from || (file.startsWith(`${from}/`) && keep(file.slice(from.length + 1))))
+  if (!files.length) throw new Error(`make-packages: ${from} has no tracked files`)
+  for (const file of files) {
+    const target = join(to, file.slice(from.length))
+    mkdirSync(dirname(target), { recursive: true })
+    cpSync(join(root, file), target)
+  }
+}
+
 function stage(name, sources, files) {
   const dir = join(staging, name)
   mkdirSync(dir, { recursive: true })
-  for (const [from, to] of sources) cpSync(join(root, from), join(dir, to ?? basename(from)), { recursive: true })
+  for (const [from, to] of sources) copyTracked(join(from), join(dir, to ?? basename(from)))
   for (const [to, text] of Object.entries(files)) writeFileSync(join(dir, to), text)
   return dir
 }
@@ -193,9 +244,11 @@ order.push({
 
 order.push({
   name: "vibelang-runtime",
-  dir: stage("vibelang-runtime", [["packages/runtime/dist", "dist"], ["packages/runtime/README.md"], ["packages/runtime/package.json"]], { LICENSE: mit }),
+  dir: stage("vibelang-runtime", [["packages/runtime/README.md"], ["packages/runtime/package.json"]], { LICENSE: mit }),
   required: ["dist/index.js", "dist/index.d.ts", "dist/kernel/kernel.js", "LICENSE"]
 })
+// The runtime's dist is build output, which no revision tracks.
+cpSync(join(root, "packages/runtime/dist"), join(staging, "vibelang-runtime/dist"), { recursive: true })
 order.push({
   name: "vibelang-vite",
   dir: stage("vibelang-vite", [["packages/vite/src", "src"], ["packages/vite/README.md"], ["packages/vite/package.json"]], { LICENSE: mit }),
@@ -203,10 +256,7 @@ order.push({
 })
 
 const createDir = stage("create-vibelang", [["packages/create-vibelang/bin", "bin"], ["packages/create-vibelang/README.md"], ["packages/create-vibelang/package.json"]], { LICENSE: mit })
-cpSync(join(root, "templates/app"), join(createDir, "template"), {
-  recursive: true,
-  filter: (path) => !["node_modules", "dist", "bun.lock", ".prototype", ".vibe"].includes(basename(path))
-})
+copyTracked("templates/app", join(createDir, "template"), isTemplateFile)
 // npm drops .gitignore from packages; create-vibelang restores the dot.
 for (const name of [".gitignore", ".gitattributes"]) renameSync(join(createDir, "template", name), join(createDir, "template", name.slice(1)))
 const appManifest = JSON.parse(readFileSync(join(createDir, "template/package.json"), "utf8"))
@@ -266,8 +316,11 @@ if (problems.length) {
   console.error(`make-packages: ${problems.length} problem(s):\n${problems.map((p) => `  - ${p}`).join("\n")}`)
   process.exit(1)
 }
-writeFileSync(join(tarballs, "manifest.json"), JSON.stringify({ version, packages: manifest }, null, 2) + "\n")
+const rehearsalOnly = [skipBuild && "--skip-build", rehearsal && "--rehearsal"].filter(Boolean)
+writeFileSync(join(tarballs, "manifest.json"), JSON.stringify({
+  version, revision: source.revision, clean: source.clean, ...(rehearsalOnly.length ? { rehearsalOnly } : {}), packages: manifest
+}, null, 2) + "\n")
 
 const mb = (bytes) => `${(bytes / 1024 / 1024).toFixed(1)} MB`
-console.log(`\nmake-packages: ${manifest.length} tarballs for ${version} in dist-npm/tarballs/, in publish order:`)
+console.log(`\nmake-packages: ${manifest.length} tarballs for ${version} at revision ${source.revision} in dist-npm/tarballs/, in publish order:`)
 for (const p of manifest) console.log(`  ${p.name.padEnd(22)} ${mb(p.size).padStart(9)} packed  ${mb(p.unpackedSize).padStart(9)} unpacked  ${String(p.files).padStart(3)} files`)

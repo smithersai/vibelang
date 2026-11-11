@@ -11,7 +11,9 @@
 #   VIBELANG_TEST_REGISTRY=1 node --test scripts/release/rehearse.test.mjs
 # VIBELANG_SKIP=win32 leaves out every package whose name contains win32, the way
 # publish.sh does, to rehearse a release that ships without those packages.
-# Both scripts repack vibelang to omit those optional dependencies too.
+# Both scripts repack vibelang to omit those optional dependencies too. The
+# repacked tarball is derived from the full one each run, so a later run
+# without VIBELANG_SKIP has every platform again.
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 tarballs="$root/dist-npm/tarballs"
