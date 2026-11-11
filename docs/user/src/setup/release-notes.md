@@ -14,21 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
-- A suite graded by a model judge and gated with no `tolerance` failed on any small move of the judge's score, with no hint why. `Experimental.Eval.suite` now lists a warning in `suite.warnings`, and `Experimental.Eval.run` logs it.
-
-- A model could grade an answer in an eval only through a rubric prompt whose reply had to be parsed. `Experimental.Scorer.decide(decision, { model, layer })` now grades with one typed `Decision` on Effect's `DecisionModel`, and a refused or invalid answer is inconclusive, never a pass.
-
-- A test of a suite graded by `Experimental.Scorer.rubric` needed a hand-built fake judge. Pass `Experimental.Test.replay(recorded)` as the rubric's `layer` and provide it around the runs: the judge answers from the recording with no key or network, each recorded verdict is used once, and a recorded failure makes the gate exit 5.
-
-- An answer with no single right text, such as a model's reply, could only be graded by hand. `Experimental.Scorer.rubric(criteria, { model, layer })` asks a judge model to score written criteria from 1 to 5, records the judge in the scorer's identity, and is inconclusive, never passing, when the judge cannot be reached; `Experimental.Scorer.calibrate` measures a judge against answers whose verdict is known.
-
-- A workflow's live runs could not be graded, so a production regression showed only in complaints. `Experimental.Scorer.bind(scorer, W, { sampling })` scores each finished run of a durable workflow once, samples runs by a rule a replay repeats, and keeps the scores in memory or in a SQL database (`Experimental.Scorer.layerSql`); a scorer or store that fails, or a scorer that runs past its `timeout`, never changes the run's result.
-
-- A program had no way to tell whether a model-driven answer got better or worse than last time: a test can only assert equality. `Experimental.Eval` runs a suite of cases against a target and grades each answer with `Experimental.Scorer` scorers (`exact`, `contains`, `checks` or your own), writes the scores as a baseline to commit, and compares a later run with it; `Experimental.Eval.gate` exits 0 when every case cleared the gate, 1 on a regression, a moved or missing score or a failed target, and 5 when it could not decide.
-
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
-
-- A failure that random property checks rarely reach, such as a magic header, a precise sequence of calls or one interleaving of two fibers, passed `Arbitrary.checkEffect` unnoticed. The new experimental fuzzing module takes a schema, keeps the inputs that reach new spans, error tags or observed stages, and reports a shrunk failure with a replay token. Its simulation mode makes fiber scheduling and time part of the input, so it finds lost updates and deadlocks. See [the fuzzing guide](../vibelang-features/120-fuzzing.md).
 
 - The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.
 
@@ -40,29 +26,11 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Under Vite 7, a `.vibex` module served from another package failed with `Failed to resolve import` for a package only its own package depends on, where its `.tsx` twin resolved, as in a Storybook root that renders components from other workspace packages. Its bare imports now resolve from the module's own directory.
 
-- A workflow that waited for a person, a payment or a date had to hold a process open with `Effect.sleep` or a polling loop, and lost the wait when the process restarted. `Experimental.Durable.sleep`, `until` and `signal`, and the new `Experimental.Human` questions, park the run: no process waits, the wake time, the delivery or the answer is journaled, and the run wakes on any engine over the same store.
-
-- A durable task called inside `DurableDeferred.raceAll` or `DurableDeferred.into` and called again afterwards returned the first call's recorded result, because a race's steps shared numbers with the steps around it. `Experimental.Durable.race` now records a race's winner and numbers its own steps, and a task call inside Effect's own `raceAll` or `into` stops with `Experimental.Durable.UnstableStep` instead of reading another step's result.
-
-- `Experimental.Durable.spawn`, `start` and `run` rejected every declared workflow with `TS2345`, because their parameter type fixed the payload type. They now take any declared workflow, and a handle's `result` has the workflow's success and error types.
-
 - Stock `tsc`, and `bun check` scripts that invoke TypeScript, reported `TS2307` for a `.ts` file's `./x.js`, `./x` or `./x.ts` import once `x` became a `.vibe` module, though `vibelang` accepted it. The compiler now also writes `x.d.ts`, which re-exports `x.d.vibe.ts`, so those imports resolve and the importer's published declarations are unchanged.
 
 - Converting a package module could stop API checking with `Conflicting declaration snapshot alias`. The check now recognizes the compiler's `x.d.ts` forwarding file as the same module and keeps authored declarations separate.
 
 - Adding `vibelang()` from `vibelang-unplugin/bun` to `Bun.build` made `.tsx` modules ignore the `jsxImportSource` in `tsconfig.json`, so a Solid or Preact build failed with `Could not resolve: "react/jsx-dev-runtime"`. The plugin now matches only extensionless imports whose name is a `.vibe` file or a directory with an `index.vibe`, so Bun keeps the JSX settings of every other `.tsx` module.
-
-- A declared `task` or `workflow` could not run: calling a workflow needed an engine nothing provided. Declarations now run on `Experimental.Durable`: `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { try W(a) }` journals each step, an equal input joins the recorded run, and a crashed run resumes without repeating finished steps.
-
-- Two tasks or workflows of one package could share a tag, and so the same recorded runs. That is now `EK5503`, naming both declarations.
-
-- A workflow had no way to repeat work or run another workflow separately. `return W.to(…)` now starts the next round, `try W.child(…)` runs a separate run, and a handoff written anywhere but after `return` is `EK5508`.
-
-- A workflow body could run any Effect, loop, read the clock or call itself, none of which a plan built before the run can hold. These are now `EK5504` to `EK5507`, and a `retryPolicy` that never gives up warns with `EK5509`.
-
-- A `task` or `workflow` could declare a parameter, success or error type that cannot be stored, such as `Set<string>` or `unknown`. Each boundary type now needs a schema form, or it is `EK2109`, and the derived schemas are on the declaration as `schemas`.
-
-- `task` and `workflow` declarations were syntax errors. They now parse, type-check and format: a task's `A!E` annotation is its boundary, and a task called outside a workflow is `EK5502`.
 
 - Rejected static members in a `service` could hide unknown names and type errors inside them. Those independent TypeScript errors now appear alongside `EK0902`, for services with member signatures and services with a written whole shape.
 
@@ -82,45 +50,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `constructor` in a service with member signatures that called `super()` reported "'super' can only be referenced in a derived class" next to `EK0902`, though the service extends `Context.Service`. Only `EK0902` is reported now; `super` in a class nested inside the constructor still reports it.
 
-- Two resumes of one durable run at the same moment could both run its unfinished step, and an engine that had lost a run to another kept a stale copy of it. A run's resumes now take turns, an engine reloads a run another engine claimed, a run rewound to before its plan record records the plan again, and a workflow refused for a changed plan no longer takes the run from the engine driving it.
-
-- `Experimental.Durable.runs()` listed runs in insertion order from the memory store and by creation time from a SQL store. Both stores now list the oldest run first.
-
-- A `Redacted` credential in a durable workflow's payload or a step's result was written to the journal in plain text, because Effect's JSON codec encodes the secret. The engine now refuses such a value with a defect that names its path, before anything is written.
-
-- A durable run resumed under changed workflow code could mix steps recorded by the old code with steps computed by the new. A workflow that declares its `plan` now records the plan's digest when a run starts, and a resume that builds a different plan dies with `plan_changed`; `Experimental.Durable.plan` and `diff` show a plan and what changed before anything runs.
-
-- A durable workflow killed during a long `DurableClock.sleep` slept the whole duration again when it resumed. The engine now journals when the clock is due, and the resumed run waits only for the time left.
-
-- A program under test that reaches its model over HTTP, such as an agent run as a child process, could not use a recorded model. `Experimental.Test.modelServer({ fixture })` answers Chat Completions requests from a recording and answers `501` for a request it does not hold.
-
-- A fork of the workflow engine had no way to show it still behaves like the standard one. `Experimental.Test.conformance.engine()` gives nine black-box cases, for run identity, interruption, replay after a restart and races, that run against any `WorkflowEngine` layer.
-
-- A test of a program that asks a `DecisionModel` for a decision needed a provider. `Experimental.Test.decisions(fixture)` answers from a recording, validating each answer as Effect validates a provider's, and a request the recording does not describe fails the test.
-
-- Checking which steps a durable run took meant reading its raw history. `Experimental.Test.journal(run)` lists the run's steps in order with their attempts and outcome, with assertions that fail the test with `JournalMismatch`, and `Experimental.Test.divergence(runA, runB)` names the first entry where two runs differ.
-
-- A test of code that reads files or runs commands depended on the machine it ran on. `Experimental.Test.host({ files, commands })` provides Effect's `FileSystem`, `Path` and `ChildProcessSpawner` for a machine described in the test, and an unscripted command fails as a missing binary does.
-
-- A test could not show that a durable workflow recovers from a crash without building engines over a shared store by hand. `Experimental.Test.restartable` is an engine a test kills with `Experimental.Test.crash`; the next execution resumes the run, serving finished steps and running the unfinished one again.
-
-- Refreshing a recorded model fixture meant writing the provider's answers out by hand. `Experimental.Test.record(path, { live })` replays the file and sends only a request it is missing to the named live model, appending the answer; it never writes an interrupted call or a call that holds a credential.
-
-- A test of a program that calls a language model needed a provider key and a network, and answered differently on each run. `Experimental.Test.replay(fixture)` is a `LanguageModel` layer that answers from a recording and never calls a provider; a request the recording does not describe fails the test.
-
 - An invalid binding pattern in a parameter default or a `var`/`using` loop head could report only its placement error. It now also reports invalid pattern syntax, including repeated rest markers.
 
 - A leading or repeated semicolon in a `data` body compiled silently. It now reports `EK1606` for the missing variant; a single trailing separator remains allowed.
-
-- Facts and message threads in `Experimental.Memory` only grew. `Experimental.Memory.remember` takes `ttlMs`, after which a fact is no longer recalled, and `Experimental.Memory.sweep({ ttl, keep })` deletes expired and stale facts and trims each thread to its newest messages when the program runs it.
-
-- A model given memory tools could read and write any bank. `Experimental.Memory.tools(bank)` gives a model `remember` and `recall` bound to one bank, with no bank argument, and `Experimental.Memory.scoped(bank)` makes every memory call inside it fail with `invalid_namespace` when it names another bank.
-
-- `Experimental.Memory` could hold only facts that a later write overwrites. `Experimental.Memory.note` appends notes that a correction supersedes instead of editing, and `Experimental.Memory.thread(id)` keeps a conversation's messages, appended once each and read back newest last; both work in memory and in SQL.
-
-- `Experimental.Memory` kept facts only as long as its process. `Experimental.Memory.layerSql` keeps them in SQLite or PostgreSQL through Effect's `SqlClient`, in Smithers' `memory_facts` table, so a later run recalls what an earlier one remembered and a database error fails with the code `store`.
-
-- A program had no place to keep what it learned for a later run short of writing its own database code. `Experimental.Memory.remember` writes a fact to a bank, and `Experimental.Memory.recall` returns the facts that match a query, best first and cut to a byte budget, from any store a layer provides.
 
 - An `effect` function’s parameter default containing an outward `return` could accept a plain `throw` and emit invalid JavaScript. It now reports `EK0401`; defaults retain their ordinary synchronous `try`/`catch` context.
 
@@ -129,18 +61,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Under the Bun preload, an ES module that quoted CommonJS code such as `exports.default = 1` in a string, template literal, regular expression or comment was treated as CommonJS, so its extensionless imports of `.vibe` modules failed with `Cannot find module`. Only CommonJS code now changes how the preload loads a module.
 
 - Under the Bun preload, a native module whose first line is a `#!` line could not import a `.vibe` module by an extensionless path and stopped with `Cannot find module`. The preload now rewrites that module's imports like any other native module's.
-
-- A durable run kept in memory was lost when its process was killed. `Experimental.Durable.layerSql` journals runs into a SQLite or PostgreSQL database through Effect's `SqlClient`, so a program killed mid-run resumes the run on its next start and repeats only the step that had not finished.
-
-- Calling a library function named `fork`, such as `Experimental.Durable.fork({ run, seq })`, in Effect code was `EK4410`, as if it were the reserved `fork`. A member named `fork` or `join` in the `Experimental` namespace is now an ordinary property name; the prelude's `fork` and `join` keep their rule.
-
-- A program could not inspect, branch or repair a workflow run it had recorded. `Experimental.Durable.replay` folds a run's journal up to a position without running anything, `fork` starts a new run that reuses the steps before that position, and `rewind` truncates the run so its next execution repeats the later steps, refusing to cross an irreversible one.
-
-- Executing a workflow twice with equal sets or maps built in different orders started two runs, because Effect hashes the `idempotencyKey` text as written. `Experimental.Durable.workflow` derives that key from the payload's identity, with sets, maps and object keys sorted, so equal inputs join one run, and its body sees the sorted payload.
-
-- A durable step recomputed a result an equal call had already produced, such as a second lookup of one price. An `Experimental.Durable.task` with `cache: { scope, ttlMs }` now returns the stored result within a run, a workflow or the whole store, and reuse across runs requires an `implementationVersion`.
-
-- A workflow's runs were lost when its process exited, because Effect's only local workflow engine keeps them in memory. `Experimental.Durable` journals each step: a crashed run resumes on its next execution, finished steps return their recorded results, and a step that never finished runs again.
 
 - A misspelled name inside a `for concurrent` body could suggest an internal compiler binding. Suggestions now use source names and still offer a matching name declared by the program.
 
@@ -1099,6 +1019,102 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A plain `catch` handler with a written return type, such as `x catch (): number => 0` or `x catch (): Effect.Effect<number> => Effect.succeed(7)`, was rejected with `TS2322`, `TS2345` or `EK0502`: the compiler read the annotation as an `effect` function's Effect type. The annotation now types what the handler returns, as on any plain function, and the `catch` gives that value, an Effect included, unrun.
 
 - The migrate flow kept a module in TypeScript when its platform code built a URL beside the module from a path written without `./`, such as `new URL("results/", import.meta.url)`, because it read the path as naming the module's file. Paths such as these drop the file name and name the same URL from the `.platform.ts` companion, so such code now moves. References with leading whitespace or C0 control characters, empty paths, query-only and fragment-only references, and computed paths remain in TypeScript.
+
+### Experimental (opt-in)
+
+These features come from VIPs 55 to 72, which are open proposals. They are not part of the language this release supports, and each can change or be removed in any release. Their runtime modules are in the `Experimental` namespace, which carries no compatibility promise.
+
+#### `task` and `workflow` declarations (VIP-55)
+
+- `task` and `workflow` declarations were syntax errors. They now parse, type-check and format: a task's `A!E` annotation is its boundary, and a task called outside a workflow is `EK5502`.
+
+- A declared `task` or `workflow` could not run: calling a workflow needed an engine nothing provided. Declarations now run on `Experimental.Durable`: `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { try W(a) }` journals each step, an equal input joins the recorded run, and a crashed run resumes without repeating finished steps.
+
+- A `task` or `workflow` could declare a parameter, success or error type that cannot be stored, such as `Set<string>` or `unknown`. Each boundary type now needs a schema form, or it is `EK2109`, and the derived schemas are on the declaration as `schemas`.
+
+- Two tasks or workflows of one package could share a tag, and so the same recorded runs. That is now `EK5503`, naming both declarations.
+
+- A workflow body could run any Effect, loop, read the clock or call itself, none of which a plan built before the run can hold. These are now `EK5504` to `EK5507`, and a `retryPolicy` that never gives up warns with `EK5509`.
+
+- A workflow had no way to repeat work or run another workflow separately. `return W.to(…)` now starts the next round, `try W.child(…)` runs a separate run, and a handoff written anywhere but after `return` is `EK5508`.
+
+#### Durable runs and waits: `Experimental.Durable` and `Experimental.Human` (VIP-56, VIP-60)
+
+- A workflow's runs were lost when its process exited, because Effect's only local workflow engine keeps them in memory. `Experimental.Durable` journals each step: a crashed run resumes on its next execution, finished steps return their recorded results, and a step that never finished runs again.
+
+- A durable run kept in memory was lost when its process was killed. `Experimental.Durable.layerSql` journals runs into a SQLite or PostgreSQL database through Effect's `SqlClient`, so a program killed mid-run resumes the run on its next start and repeats only the step that had not finished.
+
+- A program could not inspect, branch or repair a workflow run it had recorded. `Experimental.Durable.replay` folds a run's journal up to a position without running anything, `fork` starts a new run that reuses the steps before that position, and `rewind` truncates the run so its next execution repeats the later steps, refusing to cross an irreversible one.
+
+- Executing a workflow twice with equal sets or maps built in different orders started two runs, because Effect hashes the `idempotencyKey` text as written. `Experimental.Durable.workflow` derives that key from the payload's identity, with sets, maps and object keys sorted, so equal inputs join one run, and its body sees the sorted payload.
+
+- A durable step recomputed a result an equal call had already produced, such as a second lookup of one price. An `Experimental.Durable.task` with `cache: { scope, ttlMs }` now returns the stored result within a run, a workflow or the whole store, and reuse across runs requires an `implementationVersion`.
+
+- A workflow that waited for a person, a payment or a date had to hold a process open with `Effect.sleep` or a polling loop, and lost the wait when the process restarted. `Experimental.Durable.sleep`, `until` and `signal`, and the new `Experimental.Human` questions, park the run: no process waits, the wake time, the delivery or the answer is journaled, and the run wakes on any engine over the same store.
+
+- A durable task called inside `DurableDeferred.raceAll` or `DurableDeferred.into` and called again afterwards returned the first call's recorded result, because a race's steps shared numbers with the steps around it. `Experimental.Durable.race` now records a race's winner and numbers its own steps, and a task call inside Effect's own `raceAll` or `into` stops with `Experimental.Durable.UnstableStep` instead of reading another step's result.
+
+- `Experimental.Durable.spawn`, `start` and `run` rejected every declared workflow with `TS2345`, because their parameter type fixed the payload type. They now take any declared workflow, and a handle's `result` has the workflow's success and error types.
+
+- Two resumes of one durable run at the same moment could both run its unfinished step, and an engine that had lost a run to another kept a stale copy of it. A run's resumes now take turns, an engine reloads a run another engine claimed, a run rewound to before its plan record records the plan again, and a workflow refused for a changed plan no longer takes the run from the engine driving it.
+
+- `Experimental.Durable.runs()` listed runs in insertion order from the memory store and by creation time from a SQL store. Both stores now list the oldest run first.
+
+- A `Redacted` credential in a durable workflow's payload or a step's result was written to the journal in plain text, because Effect's JSON codec encodes the secret. The engine now refuses such a value with a defect that names its path, before anything is written.
+
+- A durable run resumed under changed workflow code could mix steps recorded by the old code with steps computed by the new. A workflow that declares its `plan` now records the plan's digest when a run starts, and a resume that builds a different plan dies with `plan_changed`; `Experimental.Durable.plan` and `diff` show a plan and what changed before anything runs.
+
+- A durable workflow killed during a long `DurableClock.sleep` slept the whole duration again when it resumed. The engine now journals when the clock is due, and the resumed run waits only for the time left.
+
+- Calling a library function named `fork`, such as `Experimental.Durable.fork({ run, seq })`, in Effect code was `EK4410`, as if it were the reserved `fork`. A member named `fork` or `join` in the `Experimental` namespace is now an ordinary property name; the prelude's `fork` and `join` keep their rule.
+
+#### Tests with recorded models and engines: `Experimental.Test` (VIP-71)
+
+- A test of a program that calls a language model needed a provider key and a network, and answered differently on each run. `Experimental.Test.replay(fixture)` is a `LanguageModel` layer that answers from a recording and never calls a provider; a request the recording does not describe fails the test.
+
+- Refreshing a recorded model fixture meant writing the provider's answers out by hand. `Experimental.Test.record(path, { live })` replays the file and sends only a request it is missing to the named live model, appending the answer; it never writes an interrupted call or a call that holds a credential.
+
+- A program under test that reaches its model over HTTP, such as an agent run as a child process, could not use a recorded model. `Experimental.Test.modelServer({ fixture })` answers Chat Completions requests from a recording and answers `501` for a request it does not hold.
+
+- A test of a program that asks a `DecisionModel` for a decision needed a provider. `Experimental.Test.decisions(fixture)` answers from a recording, validating each answer as Effect validates a provider's, and a request the recording does not describe fails the test.
+
+- Checking which steps a durable run took meant reading its raw history. `Experimental.Test.journal(run)` lists the run's steps in order with their attempts and outcome, with assertions that fail the test with `JournalMismatch`, and `Experimental.Test.divergence(runA, runB)` names the first entry where two runs differ.
+
+- A test of code that reads files or runs commands depended on the machine it ran on. `Experimental.Test.host({ files, commands })` provides Effect's `FileSystem`, `Path` and `ChildProcessSpawner` for a machine described in the test, and an unscripted command fails as a missing binary does.
+
+- A test could not show that a durable workflow recovers from a crash without building engines over a shared store by hand. `Experimental.Test.restartable` is an engine a test kills with `Experimental.Test.crash`; the next execution resumes the run, serving finished steps and running the unfinished one again.
+
+- A fork of the workflow engine had no way to show it still behaves like the standard one. `Experimental.Test.conformance.engine()` gives nine black-box cases, for run identity, interruption, replay after a restart and races, that run against any `WorkflowEngine` layer.
+
+#### Evals and scorers: `Experimental.Eval` and `Experimental.Scorer` (VIP-59, VIP-69)
+
+- A program had no way to tell whether a model-driven answer got better or worse than last time: a test can only assert equality. `Experimental.Eval` runs a suite of cases against a target and grades each answer with `Experimental.Scorer` scorers (`exact`, `contains`, `checks` or your own), writes the scores as a baseline to commit, and compares a later run with it; `Experimental.Eval.gate` exits 0 when every case cleared the gate, 1 on a regression, a moved or missing score or a failed target, and 5 when it could not decide.
+
+- An answer with no single right text, such as a model's reply, could only be graded by hand. `Experimental.Scorer.rubric(criteria, { model, layer })` asks a judge model to score written criteria from 1 to 5, records the judge in the scorer's identity, and is inconclusive, never passing, when the judge cannot be reached; `Experimental.Scorer.calibrate` measures a judge against answers whose verdict is known.
+
+- A model could grade an answer in an eval only through a rubric prompt whose reply had to be parsed. `Experimental.Scorer.decide(decision, { model, layer })` now grades with one typed `Decision` on Effect's `DecisionModel`, and a refused or invalid answer is inconclusive, never a pass.
+
+- A workflow's live runs could not be graded, so a production regression showed only in complaints. `Experimental.Scorer.bind(scorer, W, { sampling })` scores each finished run of a durable workflow once, samples runs by a rule a replay repeats, and keeps the scores in memory or in a SQL database (`Experimental.Scorer.layerSql`); a scorer or store that fails, or a scorer that runs past its `timeout`, never changes the run's result.
+
+- A suite graded by a model judge and gated with no `tolerance` failed on any small move of the judge's score, with no hint why. `Experimental.Eval.suite` now lists a warning in `suite.warnings`, and `Experimental.Eval.run` logs it.
+
+- A test of a suite graded by `Experimental.Scorer.rubric` needed a hand-built fake judge. Pass `Experimental.Test.replay(recorded)` as the rubric's `layer` and provide it around the runs: the judge answers from the recording with no key or network, each recorded verdict is used once, and a recorded failure makes the gate exit 5.
+
+#### Memory: `Experimental.Memory` (VIP-66)
+
+- A program had no place to keep what it learned for a later run short of writing its own database code. `Experimental.Memory.remember` writes a fact to a bank, and `Experimental.Memory.recall` returns the facts that match a query, best first and cut to a byte budget, from any store a layer provides.
+
+- `Experimental.Memory` kept facts only as long as its process. `Experimental.Memory.layerSql` keeps them in SQLite or PostgreSQL through Effect's `SqlClient`, in Smithers' `memory_facts` table, so a later run recalls what an earlier one remembered and a database error fails with the code `store`.
+
+- `Experimental.Memory` could hold only facts that a later write overwrites. `Experimental.Memory.note` appends notes that a correction supersedes instead of editing, and `Experimental.Memory.thread(id)` keeps a conversation's messages, appended once each and read back newest last; both work in memory and in SQL.
+
+- A model given memory tools could read and write any bank. `Experimental.Memory.tools(bank)` gives a model `remember` and `recall` bound to one bank, with no bank argument, and `Experimental.Memory.scoped(bank)` makes every memory call inside it fail with `invalid_namespace` when it names another bank.
+
+- Facts and message threads in `Experimental.Memory` only grew. `Experimental.Memory.remember` takes `ttlMs`, after which a fact is no longer recalled, and `Experimental.Memory.sweep({ ttl, keep })` deletes expired and stale facts and trims each thread to its newest messages when the program runs it.
+
+#### Fuzzing: `Experimental.Fuzz` and `Experimental.FuzzSimulation` (VIP-70)
+
+- A failure that random property checks rarely reach, such as a magic header, a precise sequence of calls or one interleaving of two fibers, passed `Arbitrary.checkEffect` unnoticed. The new experimental fuzzing module takes a schema, keeps the inputs that reach new spans, error tags or observed stages, and reports a shrunk failure with a replay token. Its simulation mode makes fiber scheduling and time part of the input, so it finds lost updates and deadlocks. See [the fuzzing guide](../vibelang-features/120-fuzzing.md).
 
 ### Upgrade from 0.0.12
 
