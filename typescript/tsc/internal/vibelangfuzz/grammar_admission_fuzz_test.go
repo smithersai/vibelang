@@ -83,10 +83,64 @@ var admissionRelationalLab = sync.OnceValues(func() (*grammarLab, error) {
 // operate only in the explicitly bounded TS subset of the grammar lab. A
 // mismatch can be a compiler admission bug OR an incomplete lab; minimize and
 // classify before adding a pending line.
-// grammarAdmissionRawSeeds is how many leading seeds an unkeyed input's first
-// byte chooses among. Seeds added after them are reached by key, so a new
-// seed leaves the replay of every raw corpus file unchanged.
+// grammarAdmissionRawSeeds is how many archived seeds an unkeyed input's first
+// byte selects among. grammarAdmissionRawPrefix names them, by key, in their
+// archived order, so the corpus's raw inputs replay the same programs however
+// grammarAdmissionSeeds grows: a seed inserted anywhere in that list no longer
+// moves the archived replays (TestGrammarAdmissionRawPrefixFrozen).
 const grammarAdmissionRawSeeds = 156
+
+var grammarAdmissionRawPrefix = [grammarAdmissionRawSeeds]string{
+	"plain", "native-export-modifiers", "native-export-assignment-modifiers", "native-import-modifiers",
+	"native-import-clauses", "native-type-exports", "native-export-names", "native-default-object-export",
+	"native-default-class-export", "native-optional-tuple", "native-bitwise", "native-division",
+	"native-exponentiation", "asserted-is-expression", "effect-optional-class-member", "is-bitwise-continuation",
+	"native-import-meta", "native-new-target", "import-meta-property", "native-dynamic-import",
+	"native-dynamic-import-arity", "declaration-name-context", "effect", "block",
+	"catch-arrow", "fork", "join", "is-operand-precedence",
+	"is-relational-operand-precedence", "pipe", "pipe-chain", "function-kind",
+	"try-function-fork", "catch-value", "throw-expression", "throw-expression-return",
+	"inline-module", "inline-module-no-name", "service-shape", "layer-declaration",
+	"trailing-block", "trailing-block-bare", "async-shorthand", "fork-block",
+	"native-destructuring-initializer", "native-destructuring-initializer-array", "native-cover-initialized-name", "native-cover-initialized-name-const",
+	"effect-element-access", "production-producer", "production-effect-class-method", "production-producer-method",
+	"production-effect-object-method", "production-pipe-try", "production-fork-scoped", "production-fork-in",
+	"production-try-all", "production-for-concurrent", "production-for-concurrent-limit", "production-for-try",
+	"production-interruption", "production-provide", "production-service", "production-error",
+	"production-schema-error", "production-schema", "production-schema-alias", "production-data",
+	"production-match", "production-match-patterns", "production-match-combined", "production-is",
+	"pattern-member-line-break", "pattern-member-logical-line-break", "production-effect-type", "production-effect-type-omitted",
+	"production-effect-type-as", "production-do", "native-leading-bang", "production-effect-type-paren",
+	"production-effect-type-group", "production-call-signature", "effect-type-mix", "schema-type-parameters",
+	"for-concurrent-line-break", "schema-no-body", "provider-expression", "effect-type-trailing-bang",
+	"effect-type-line-break", "service-class", "try-in-generator-effect-identifier", "try-in-generator",
+	"or-binding-reserved-name", "data-separators", "join-for-head", "join-outside-effect-empty",
+	"service-separators", "effect-overload-line-break", "instantiation-before-operator", "effect-type-slot-line-break",
+	"service-rejected-async-member", "join-for-head-line-break", "interruption-outside-effect", "interruption-in-generator",
+	"fiber-in-generator", "error-no-end", "error-no-end-schema", "fiber-binding-arrow",
+	"native-function-overload", "join-nested-plain", "for-of-async-module", "native-async-for-of-context",
+	"native-asserted-for-heads", "native-for-of-async", "native-for-await-async", "native-for-await",
+	"native-for-await-placement", "reserved-expression-name", "throw-comma-warning", "schema-async-field",
+	"schema-async-duplicate-modifier", "schema-static-async-field", "schema-static-field", "schema-static-field-line-break",
+	"schema-static-field-alias", "schema-effect-field", "schema-effect-unsupported-field", "export-assignment",
+	"import-equals", "data-member-not-field", "throw-comma-join", "schema-member-not-field",
+	"module-reference-not-literal", "module-require-identifier", "module-specifier-keyword", "module-require-reserved-identifier",
+	"import-relational-recovery", "import-meta-specifier", "import-meta-specifier-campaign", "import-relational-campaign",
+	"schema-jsdoc-postfix-type", "schema-jsdoc-field-type", "schema-error-jsdoc-field-type", "is-contextual-schema",
+	"is-contextual-error", "effect-type-parenthesized-trailing-bang", "native-regexp-literal", "native-regexp-unmatched-paren",
+	"custom-declaration-export", "native-regexp-alternation", "native-instantiation-block-asi", "schema-interruption-name",
+	"provide-identifier-head", "schema-mixed-async-effect-field", "throw-assertion-lookahead", "schema-field-initializer-typed",
+}
+
+// grammarAdmissionSeed is the live seed grammarAdmissionSeeds holds under key.
+func grammarAdmissionSeed(key string) struct{ key, source string } {
+	for _, s := range grammarAdmissionSeeds {
+		if s.key == key {
+			return s
+		}
+	}
+	panic("grammarAdmissionRawPrefix names a seed grammarAdmissionSeeds lacks: " + key)
+}
 
 var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"plain", "const n = 1;"},
@@ -622,7 +676,7 @@ func grammarAdmissionInput(data []byte) (string, string) {
 			}
 		}
 	}
-	s := grammarAdmissionSeeds[int(data[0])%grammarAdmissionRawSeeds]
+	s := grammarAdmissionSeed(grammarAdmissionRawPrefix[int(data[0])%grammarAdmissionRawSeeds])
 	return grammarAdmissionMutate(s.source, data)
 }
 
