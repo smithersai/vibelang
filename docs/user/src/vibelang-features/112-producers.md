@@ -46,6 +46,7 @@ A producer expression cannot use `fork` or `join` as its own name (`EK1702`), ju
 
 A plain synchronous generator follows the no-throw rule: a written `throw` in its body is `EK0401`. Keep JavaScript code that throws in a `.ts` helper.
 
+A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value. This also applies when the producer is passed to `Effect.gen` or another JavaScript generator API. These APIs take a plain `function*`, which keeps its JavaScript return value. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
 A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value. An unknown function or method receiving that producer does not hide this error; the unresolved name or property is reported too. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
 
 A `yield` belongs to its own source activation. In a nonproducer `effect` function, arrow or `effect { }` block, it reports `EK2104`, even inside an outer producer. Directly evaluated parameter defaults and destructuring of Effect callables and producers also report `EK2104`: parameter initialization is outside the suspended body. Nested native generators keep TypeScript's own `yield` rules.

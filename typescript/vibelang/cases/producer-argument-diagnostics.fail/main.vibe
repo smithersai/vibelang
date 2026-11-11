@@ -1,4 +1,4 @@
-// expect: EK1002 EK2103 TS1123 TS1098 TS2451 TS2304 TS2322 TS2369
+// expect: EK1002 EK2103 EK2128 TS1123 TS1098 TS2451 TS2304 TS2322 TS2369
 import { Effect } from "effect"
 declare function take(body: () => Generator<number, void, unknown>): void
 

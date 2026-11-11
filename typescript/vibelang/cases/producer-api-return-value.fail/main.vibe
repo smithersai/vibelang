@@ -1,0 +1,8 @@
+// expect: EK1002 EK2128 EK1002 EK2128
+// VIP-21: a generator API cannot change an explicit producer into a native generator.
+import { Effect } from "effect"
+declare function take(body: () => Generator<number, void, unknown>): void
+
+take(effect function* () { return 1 })
+effect function* producer() { return undefined }
+Effect.gen(producer)
