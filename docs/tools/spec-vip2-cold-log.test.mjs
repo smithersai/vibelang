@@ -9,7 +9,7 @@ import { read } from "./spec-witness.mjs"
 
 test("VIP-2's cold-block example logs with try log", () => {
   const vip = read("docs/design/vips/0002-effect-blocks-and-do.md")
-  assert.match(vip, /const p = effect \{ try log\("hi"\); return 1 \} +\/\/ an Effect, not yet run\ntry p +\/\/ logs "hi", gives 1\ntry p +\/\/ logs "hi" again: each run reruns the block/)
+  assert.match(vip, /const p = effect \{ try log\("hi"\); return 1 \} +\/\/ an Effect, not yet run\neffect function twice\(\) \{ +\/\/ try runs in effect code \(VIP-26\)\n  try p +\/\/ logs "hi", gives 1\n  try p +\/\/ logs "hi" again: each run reruns the block/)
   assert.ok(vip.includes("**Corrected 2026-10-31: the first example logs with `log`.**"))
   assert.doesNotMatch(vip, /effect \{ console\./)
 })

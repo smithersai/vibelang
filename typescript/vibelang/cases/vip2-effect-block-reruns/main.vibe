@@ -1,0 +1,11 @@
+// expect-result: [1,2]
+// VIP-2: an effect block at the top level builds an Effect without running
+// it; try runs it in effect code (VIP-26), and each run reruns the block.
+let runs = 0
+const p = effect { runs++; return runs }
+
+export effect function main() {
+  const a = try p
+  const b = try p
+  return [a, b]
+}

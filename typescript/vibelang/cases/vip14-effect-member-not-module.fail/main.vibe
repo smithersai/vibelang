@@ -1,0 +1,6 @@
+// expect: TS2551 TS2339 TS2339
+// VIP-14: outside the precedence table's first two rows, Effect.x is the
+// export x of effect/Effect, which has no Option, Schema or Nothing.
+export const option = Effect.Option
+export const schema = Effect.Schema
+export const nothing = Effect.Nothing

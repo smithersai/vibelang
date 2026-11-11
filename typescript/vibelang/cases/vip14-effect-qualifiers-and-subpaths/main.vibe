@@ -1,0 +1,10 @@
+// VIP-14: through the implicit Effect, Effect.M names a module only for the
+// precedence table's first two rows. Subpath namespaces such as LanguageModel
+// (effect/ai) and TestClock (effect/testing) are in scope with no import,
+// though neither is a root export (VIP-33 rule 3).
+export const first = Effect.Array.head([1, 2])
+export const length = Effect.String.length("abc")
+export const keys = Effect.Record.keys({ a: 1, b: 2 })
+export const some = Option.isSome(Option.some(1))
+export const model = LanguageModel
+export const clock = TestClock

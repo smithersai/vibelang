@@ -11,8 +11,8 @@ description: "VIP-14: Effect's modules are in scope without an import. A VibeLan
 
 ```ts
 const Port = Schema.Number                       // Effect's Schema, no import
-try sleep(Duration.seconds(1))
-const first = Effect.Array.head(xs)              // Effect's Array module: JavaScript's Array wins the bare name
+effect function pause() { try sleep(Duration.seconds(1)) }   // try runs in effect code (VIP-26)
+const first = Effect.Array.head([1, 2])          // Effect's Array module: JavaScript's Array wins the bare name
 const o = Option.some(1)                         // Effect's Option: the DOM's Option is platform-specific
 ```
 
@@ -43,3 +43,7 @@ Rust's prelude; Elixir's `Kernel`; VIP-6.
 > "Yea Typescript globals like Record take president"
 
 - **Amended 2026-11-01: collision qualifiers use the implicit binding.** `Effect.Array`, `Effect.String`, `Effect.Record` and other colliding-module qualifiers are intrinsic to the compiler's implicit `Effect`; they are not exports of `effect/Effect`. A written binding, imported under any name or declared locally, keeps its TypeScript meaning and shadows the implicit binding. An explicit namespace has no `Array` member (`TS2339`); use `import { Array as Arr } from "effect"`. Turning `vibe.effectModules` off removes the implicit qualifier without changing explicit imports.
+- **Clarified 2026-11-11: which `Effect.M` names a module.** Through the implicit `Effect`, `Effect.M` names a module only when `M` is in the precedence table's first two rows: `Array`, `String`, `Number`, `Boolean`, `BigInt`, `Symbol`, `Function`, `RegExp`, `Record` and `Iterable`. Emitted code imports that module from `effect/<M>` under a fresh name, so `Effect.Array.head` is `effect/Array`'s `head`. Every other `Effect.x` is the export `x` of `effect/Effect`: `Effect.Option`, `Effect.Schema` and `Effect.Nothing` are TypeScript's `TS2339` (`TS2551` where TypeScript suggests a near name), and the bare `Option` and `Schema` are the modules. [Effect's modules are in scope](https://github.com/smithersai/vibelang/blob/main/docs/design/src/005-services.md#effects-modules-are-in-scope) states this rule; the amendment above named only its examples.
+- **Clarified 2026-11-11: subpath namespaces are in scope too.** The root exports are not the whole set. [VIP-33](/vips/0033-platform-stdlib)'s rule 3 also puts in scope the namespaces of effect 4.1.1's 23 lowercase subpaths, such as `effect/ai`, `effect/http` and `effect/testing`, with this VIP's precedence. Bare `LanguageModel` is `effect/ai`'s and emits `import * as LanguageModel from "effect/ai/LanguageModel"`; bare `TestClock` is `effect/testing`'s; neither is a root export. A name that two subpaths export, or a subpath and the root, stays `EK1401`, as the 2026-10-29 amendment above rules. [The platform standard library](https://github.com/smithersai/vibelang/blob/main/docs/design/src/005-services.md#the-platform-standard-library) lists the 23 subpaths.
+
+*Corrected 2026-11-11: the Decision example runs `sleep` inside an `effect` function and passes `Effect.Array.head` an array. A module's top level is not effect code, so a `try` there is `EK0501` (VIP-26), and the example's `xs` was never declared.*

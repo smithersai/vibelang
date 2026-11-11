@@ -1,0 +1,9 @@
+first: 1 length: 3 keys: a,b some: true
+LanguageModel.generateText: function TestClock.adjust: function
+import * as Effect from "effect/Effect";
+import * as LanguageModel from "effect/ai/LanguageModel";
+import * as Option from "effect/Option";
+import * as TestClock from "effect/testing/TestClock";
+import * as Array_1 from "effect/Array";
+import * as String_1 from "effect/String";
+import * as Record_1 from "effect/Record";

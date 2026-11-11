@@ -1,0 +1,5 @@
+// expect: EK0501
+// VIP-2 and VIP-14: a module top level is not effect code, so try there is
+// EK0501 (VIP-26); the effect block itself is allowed there.
+const p = effect { return 1 }
+try p
