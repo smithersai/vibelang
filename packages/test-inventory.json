@@ -438,7 +438,8 @@
     "compiler/test/tools/oxc.test.mjs",
     "compiler/test/tools/react-emitted-phi.property.test.mjs",
     "compiler/test/tools/remap.property.test.mjs",
-    "compiler/test/tools/vite.test.mjs"
+    "compiler/test/tools/vite.test.mjs",
+    "compiler/test/tools/metro-module-bodies.property.test.mjs"
   ],
   "source-map-tools": [
     "compiler/test/source-maps/bun.test.mjs",

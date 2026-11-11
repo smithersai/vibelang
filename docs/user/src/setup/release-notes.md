@@ -12,6 +12,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 ### Bugs fixed since 0.0.12
 
+- Metro could not bundle a `.vibe` or `.vibex` module that imports from its own `module` declaration: it stopped with `Unable to resolve module ./main.vibe.text.js`. `vibelang/metro` now bundles each declaration as a module of its own, as the Vite and bundler plugins do.
+
 - The experimental opt-in section implied that every alias and subpath import was checked. It now states the support boundary and documents union-typed aliases and inline module bridges that can run experimental operations without opting in.
 
 - Moving a declaration into a module body could make an unchanged recursive type alias fail API verification. The check now recognizes the alias's unchanged bindings and dependencies while still rejecting changed types or documentation.

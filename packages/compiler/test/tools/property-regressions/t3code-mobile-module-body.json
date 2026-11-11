@@ -1,0 +1,10 @@
+{
+  "key": "metro:module-body-output-unresolved",
+  "source": "t3code apps/mobile, a module that imports from its own `module` body; Metro 0.87.1 failed with Unable to resolve module ./with-body.vibe.words.js",
+  "files": {
+    "with-body.vibe": "import { label } from words\n\nmodule words {\n  export function label(): string {\n    return \"from a module body\"\n  }\n}\n\nexport const message = label()\n",
+    "entry-body.js": "import { message } from \"./with-body.vibe\";\nconsole.log(message);\n",
+    "tsconfig.json": "{\n  \"compilerOptions\": {\n    \"target\": \"ESNext\",\n    \"module\": \"preserve\",\n    \"moduleResolution\": \"bundler\",\n    \"strict\": true,\n    \"noEmit\": true,\n    \"allowImportingTsExtensions\": true,\n    \"skipLibCheck\": true,\n    \"types\": []\n  },\n  \"include\": [\n    \"*.vibe\",\n    \"*.ts\"\n  ]\n}\n"
+  },
+  "logs": "from a module body"
+}

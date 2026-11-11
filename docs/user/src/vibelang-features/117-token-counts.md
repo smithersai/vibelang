@@ -125,7 +125,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Developer tools](../setup/developer-tools.md) | 12,000 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
-| [React Native and Metro](../setup/react-native.md) | 560 |
+| [React Native and Metro](../setup/react-native.md) | 710 |
 | [Vue](../setup/vue.md) | 2,900 |
 | [Svelte](../setup/svelte.md) | 2,600 |
 | [Foldkit](../setup/foldkit.md) | 3,400 |

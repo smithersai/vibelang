@@ -23,6 +23,8 @@ module.exports = withVibeLang(getDefaultConfig(__dirname))
 
 Metro caches a transformed module by its own text, but a `.vibe` module's JavaScript also depends on the modules it imports. After a change that alters how an importer compiles, restart Metro with `npx expo start --clear` or `--reset-cache`.
 
+Each `module` declaration compiles to a module of its own, such as `main.vibe.text.js` for `module text` in `main.vibe`. That file is not on disk, so `withVibeLang` writes a stand-in for each declaration under `node_modules/.cache/vibelang-metro` before Metro starts, and the app's Babel transformer reads the declaration's JavaScript as it would a `.ts` file beside the `.vibe` file. It finds the declarations in the `.vibe` and `.vibex` files under the project root and `watchFolders`, so wrap the config that Metro runs. If you add a declaration while Metro runs, Metro names it in an error: restart Metro.
+
 ## 2. Configure Babel
 
 Add `vibelang/babel` after the app's presets. Metro does not need it, but any tool that runs Babel on a file directly does, such as a Jest suite or a React Compiler coverage test. Save CommonJS Babel configuration as `babel.config.cjs` because `package.json` has `"type": "module"`. Rename an existing `babel.config.js` that uses `module.exports`:

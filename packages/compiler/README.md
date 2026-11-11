@@ -294,6 +294,18 @@ Metro's transform cache keys a module by its own text, but a `.vibe` module's
 JavaScript also depends on the modules it imports: after a change that alters
 how an importer compiles, restart Metro with `--reset-cache`.
 
+A `module` declaration compiles to a module of its own, `main.vibe.text.js` for
+`module text` in `main.vibe`, which is not on disk, and Metro bundles only files
+it found when it started. So `withVibeLang` writes a stand-in for each
+declaration in the `.vibe` and `.vibex` files under `projectRoot` and
+`watchFolders`, outside `node_modules` and dot directories, at
+`node_modules/.cache/vibelang-metro` in the project root. The resolver sends a
+declaration's name to its stand-in, and the app's transformer receives the
+declaration's JavaScript under the output's own name beside the `.vibe` file,
+as it would a sibling `.ts` file. Wrap the config Metro runs, watch folders
+included. Metro reports a declaration added after it started by name: restart
+Metro to bundle it.
+
 ## Read .vibe modules from Babel and other one-file tools
 
 A tool that parses one file at a time cannot read a `.vibe` module's source.
