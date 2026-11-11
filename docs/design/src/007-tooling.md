@@ -389,6 +389,8 @@ The legacy shortcut activated the whole default plugin even for an `"off"` key. 
 
 The following own warnings default to `"warning"`; they are separate from imported rules and the [TypeScript-form advisories](#typescript-spellings-with-vibelang-forms). They preserve the underlying behavior. An `effect { … }` expression statement builds and discards an unrun Effect; imported `floatingEffect` reports it as `EK3801`, as in TypeScript.
 
+The row that cites VIP-55 is experimental: it belongs to the durable declarations of the open proposal [VIP-55](../vips/0055-durable-tasks-workflows.md) and is not part of the language.
+
 | Warning | Code | Suggested fix |
 | --- | --- | --- |
 | A legacy catch clause tests its failure's type ([VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK2112` | Remove the annotation and test the value with `match` or `is`. |

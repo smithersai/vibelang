@@ -1,6 +1,8 @@
 # VIP-44: Durable values
 
-**Status:** accepted by Will, 2026-11-06. Nothing is implemented. This is the first durable execution VIP. The design is decided bottom-up, one layer at a time.
+**Status:** accepted by Will, 2026-11-06. This is the first durable execution VIP. The design is decided bottom-up, one layer at a time. Parts of it are implemented; the Clarified bullet below says which, and which the alpha supports.
+
+- **Clarified 2026-11-11: outside the alpha, and what is implemented.** This VIP stays accepted by Will, but it is outside the alpha's supported set, which is the core VIPs numbered 1 to 41 ([VIPs](README.md#acceptance)). Its [schema mapping](#schema-mapping) is an amendment to [VIP-15](0015-schema-declarations.md), which carries it into the alpha: every schema declaration accepts the types in that table. Its durable boundaries, the schemas the compiler derives for a durable call's parameters, success and error, exist only in task and workflow declarations, which come from the open proposal [VIP-55](0055-durable-tasks-workflows.md) and are experimental. Its collection sorting runs only in the runtime's experimental durable engine. The earlier Status sentence "Nothing is implemented" was wrong and is removed; the Evidence section records the state at vibelang 0.0.11.
 
 ## Will's words
 

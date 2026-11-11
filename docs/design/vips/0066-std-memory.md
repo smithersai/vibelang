@@ -1,6 +1,6 @@
 # VIP-66: `Experimental.Memory`: durable facts, notes, history and recall across runs
 
-**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval. Will has not reviewed this VIP's decisions.
+**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](README.md#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. An experimental implementation exists: the runtime module `Experimental.Memory`.
 
 ## Will's words
 

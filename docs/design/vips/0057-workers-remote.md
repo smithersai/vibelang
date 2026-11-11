@@ -1,6 +1,6 @@
 # VIP-57: `schema service` and worker imports: threads and other machines behind one typed boundary
 
-**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval. Will has not reviewed this VIP's decisions.
+**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](README.md#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. No implementation exists.
 
 ## Will's words
 > Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?

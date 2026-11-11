@@ -285,7 +285,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| [Introduction](../../../design/src/000-intro.md) | 3,100 |
+| [Introduction](../../../design/src/000-intro.md) | 3,200 |
 | **The language** | **130,000** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 14,000 |
 | [2. Running Effects](../../../design/src/002-running.md) | 29,000 |

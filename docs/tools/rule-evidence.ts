@@ -116,6 +116,10 @@ export function sentences(path: string, markdown: string): Sentence[] {
 }
 
 export function normative(text: string): boolean {
+  // A blockquote that is only a quotation, such as Will's words beside a
+  // ruling, records what someone said; the prose around it states the rule.
+  // A quotation holding a code span stays a rule.
+  if (/^>\s*["“][^"”`]*["”]\s*$/.test(text)) return false
   if (/^`EK\d+` to `EK\d+` keep their specific triggers\.$/.test(text)) return false
   return /`[^`]+`|\b(?:EK|TS)\d{4,}\b|\b(?:must|compiles?|means)\b|\bis an? error\b/i.test(text)
 }

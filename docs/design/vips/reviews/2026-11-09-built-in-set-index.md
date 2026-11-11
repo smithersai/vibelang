@@ -1,6 +1,6 @@
 # The built-in VIP set: index (final)
 
-**Status:** proposed design index, recorded 2026-11-09; the linked VIPs 55–72 are now accepted optimistically under the pre-alpha standing approval. Will has not reviewed their decisions. Nothing is built. The comparative review records the adopted recommendations.
+**Status:** proposed design index, recorded 2026-11-09; the linked VIPs 55–72 were accepted optimistically under the pre-alpha standing approval and became open proposals on 2026-11-11 ([VIPs](../README.md#the-built-in-set)). Will has not reviewed their decisions. Parts are built as experimental code; each VIP's Status line says which. The comparative review records the adopted recommendations.
 
 ```text
  ┌─ language: the compiler must understand it ─────────────────────────────────────────────────┐

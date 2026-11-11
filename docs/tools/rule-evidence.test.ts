@@ -698,3 +698,14 @@ test("fast-check: supporting reviews preserve status authority and acceptance ev
     }
   ), { numRuns: 100 })
 })
+
+test("a quotation blockquote records words, not a rule; a quoted code span and a bare blockquote stay rules", () => {
+  const path = "docs/design/vips/README.md", before = "# VIPs\n\n## Acceptance\n\nIntro.\n"
+  const add = (line: string) => changedRules([{ path, before, after: before + "\n" + line + "\n" }])
+  expect(add('> "approval just means it is ready to be discussed"')).toHaveLength(0)
+  expect(add("> “this means a vote”")).toHaveLength(0)
+  expect(add('> "a `task` means a step"')).toHaveLength(1)
+  expect(add("> approval means it is ready")).toHaveLength(1)
+  fc.assert(fc.property(fc.stringMatching(/^[a-z]{1,12}( [a-z]{1,12}){0,4}$/), words =>
+    add('> "' + words + ' means ' + words + '"').length === 0 && add(words + " means " + words + ".").length === 1))
+})

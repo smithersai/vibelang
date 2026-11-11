@@ -215,13 +215,7 @@ export const vipsSidebar = [
           {
             "text": "54. One consistent model for platform-specific code",
             "link": "/vips/0054-consistent-platform-code-open"
-          }
-        ]
-      },
-      {
-        "text": "Optimistically accepted built-ins",
-        "collapsed": true,
-        "items": [
+          },
           {
             "text": "55. task and workflow, durable steps and the plan the compiler derives",
             "link": "/vips/0055-durable-tasks-workflows"

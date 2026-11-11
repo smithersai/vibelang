@@ -1,6 +1,6 @@
 # Review of the two draft sets, and how the final 18 were chosen
 
-**Status:** proposed design review, recorded 2026-11-09. The recommendations below were subsequently adopted as the maintainers' decisions in optimistically accepted VIPs 55–72 under the pre-alpha standing approval. Will has not reviewed those decisions. Nothing is built.
+**Status:** proposed design review, recorded 2026-11-09. The recommendations below were subsequently adopted as the maintainers' decisions in VIPs 55–72, accepted optimistically under the pre-alpha standing approval and open proposals since 2026-11-11 ([VIPs](../README.md#the-built-in-set)). Will has not reviewed those decisions. Parts are built as experimental code; each VIP's Status line says which.
 
 ```text
                  Draft A                                Draft B                              final

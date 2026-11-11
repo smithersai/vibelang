@@ -1,6 +1,6 @@
 # VIP-59: Eval declarations: a file kind and a function, no syntax
 
-**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval. Will has not reviewed this VIP's decisions.
+**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](README.md#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. No implementation exists: no tool discovers, runs or excludes `*.eval.vibe` files. `Experimental.Eval.suite` belongs to [VIP-69](0069-std-eval.md).
 
 ## Will's words
 > Ok so give me a list of [the reference engine's] features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them

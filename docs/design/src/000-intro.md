@@ -71,13 +71,15 @@ The compiler is being changed to match the VIPs. Until it does, a VibeLang examp
 2. [Running Effects](002-running.md): VIP-5, VIP-2, VIP-17 to VIP-23.
 3. [Failures](003-failures.md): VIP-4, VIP-13, VIP-29, VIP-41.
 4. [Pattern matching](004-match.md): VIP-7.
-5. [Services and the environment](005-services.md): VIP-9, VIP-12, VIP-6, VIP-14, VIP-33, VIP-55 to VIP-58, VIP-60 to VIP-72.
-6. [Data](006-data.md): VIP-15, VIP-16, VIP-28, VIP-44.
-7. [Configuration and tooling](007-tooling.md): VIP-30, VIP-32, VIP-34, VIP-38, VIP-39, VIP-59.
+5. [Services and the environment](005-services.md): VIP-9, VIP-12, VIP-6, VIP-14, VIP-33.
+6. [Data](006-data.md): VIP-15, VIP-16, VIP-28.
+7. [Configuration and tooling](007-tooling.md): VIP-30, VIP-32, VIP-34, VIP-38, VIP-39.
 8. [Runtime guarantees](008-runtime.md): VIP-31.
-9. [Appendices](900-appendices.md): the grammar, the diagnostics, the denied and open VIPs, flipping pending examples, and theorems and proofs: VIP-43.
+9. [Appendices](900-appendices.md): the grammar, the diagnostics, the denied and open VIPs, flipping pending examples, and theorems and proofs.
 
-VIPs 55 to 72 are accepted optimistically ([VIPs](../vips/README.md#optimistically-accepted-built-ins)). Each is listed under the chapter its subject belongs to; where that chapter does not yet restate a VIP's rules, the VIP's Decision section is the rule.
+The chapter list names only what the alpha, 0.0.13, supports: the accepted VIPs numbered 1 to 41.
+
+**Not in the alpha.** Accepted VIP-43 (theorems and proofs) and VIP-44 (durable values) are outside the alpha. 0.0.13 implements none of VIP-43, and the vibelang prove command its appendix describes does not exist yet. Of VIP-44, only its schema mapping is in the alpha, as an amendment to VIP-15. VIPs 55 to 72 are open proposals and not part of the language ([VIPs](../vips/README.md#the-built-in-set)); what is built from them is experimental, and a program reaches it only through an explicit opt-in. Their rules are in parts titled as not in the alpha: [Open proposals, not in the alpha](005-services.md#open-proposals-not-in-the-alpha) in chapter 5, and [Appendix F](900-appendices.md#appendix-f-theorems-and-proofs-vip-43) for VIP-43.
 
 ## Retired continuation forms
 

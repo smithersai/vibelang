@@ -605,63 +605,6 @@ function preludeExamples() {
 
 Where `Effect` is the compiler's implicit binding, `Effect.M`, where `M` is a module in the table's first two rows, is that module: the emitted code imports it under a fresh name, as `Array$` above. Every other `Effect.x` is the export `x` of `effect/Effect`. A written binding keeps its ordinary TypeScript meaning: an imported, aliased or local `Effect` shadows the implicit binding. The namespace from `import { Effect } from "effect"` has no `Array`, so `Effect.Array` there is `TS2339`; import `Array as Arr` from `effect` instead. With `vibe.effectModules: false` the implicit binding is absent, and explicitly importing `Effect` does not restore its collision-module qualifiers ([VIP-14](/vips/0014-effect-modules-in-scope#decision), amended).
 
-## `task` and `workflow` declarations
-
-A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks ([VIP-55](/vips/0055-durable-tasks-workflows)). Both are written as `service` is: a class-shaped body with one `effect call` method and `static readonly` options.
-
-### Durable syntax
-
-```vibe
-schema Issue { number: number; title: string }
-
-task FetchIssues {
-  static readonly retryPolicy = { initialMs: 1000, factor: 2, maxMs: 4000, maxAttempts: 3 }
-  effect call(repo: string): ReadonlyArray<Issue>!string {
-    if (repo === "") throw "no repository"
-    return [{ number: 1, title: repo }]
-  }
-}
-
-task Charge {
-  effect call(order: string): number!string
-}
-
-export workflow Triage {
-  effect call(repo: string) {
-    const issues = try FetchIssues(repo)
-    return issues.length
-  }
-}
-```
-
-The grammar is [TaskDeclaration](/spec/900-appendices#taskdeclaration) and [WorkflowDeclaration](/spec/900-appendices#workflowdeclaration). `task` and `workflow` are contextual: each starts a declaration only at the start of a statement, with a name other than `as`, `satisfies` or `is` after it on the same line, so `const task = 1`, `task as Job` and `workflow.run()` keep their TypeScript meaning.
-
-### Durable meaning
-
-- A `task` declares a constant of the runtime's type `Task<P, A, E, R>`. `P` is the parameters of its `call`, and `A` and `E` are the success and error of its written `A!E` annotation. The annotation is the step's durable boundary, not its body's type: the body is checked against `A` and `E`, and the services it reads are inferred as `R`, the requirements of the task's implementation, never of a caller. A task's `call` writes every parameter type and its return type.
-- A `call` with no body declares a step whose implementation is supplied separately.
-- Each declaration carries its boundary's schemas, derived from the written types as a `schema` field's are ([VIP-44](/vips/0044-durable-values#what-the-compiler-generates)): `schemas.payload` holds one schema per parameter, keyed by the parameter's name, and `schemas.success` and `schemas.error` are the schemas of a written `A!E`'s `A` and `E`. `never` maps to `Schema.Never` and `void` to `Schema.Void`.
-- Each `static readonly` member is one option of the declaration, passed through under its own name.
-- A `workflow` declares a constant of the runtime's type `Workflow<P, A, E>`, with `A` and `E` from its `call`, written or inferred. Declarations run on `Experimental.Durable` ([VIP-60](/vips/0060-std-durable)): a task is a `Durable.task` and a workflow a `Durable.workflow`, each tagged with its key, whose payload is the call's arguments keyed by parameter name. `try W(a)` executes the workflow and needs Effect's `WorkflowEngine`, which `Experimental.Durable.memory`, `layerStore` and `layerSql` provide: a program that runs a workflow without one has a missing requirement. An equal payload joins the run that payload already started (VIP-44).
-- `T.layer` is the implementation of a task whose `call` has a body, and `T.toLayer(implementation)` supplies one for a task without. `W.layer` is the workflow's handler with the layers of the tasks and workflows its body calls; its requirements are the services those implementations read, so a program runs a workflow inside `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { … }`.
-- In a workflow's `call`, `try T(a)` is a step of the workflow's plan and gives the task's success.
-- `return W.to(a)` ends this round of the workflow and starts the next, in the same run, with the arguments `a`, checked against `W`'s parameters; a written `static readonly maxRounds` bounds the rounds, and a handoff after the last one is a defect. The workflow's success type leaves the handoff out. In `W`'s own body the compiler types the handoff from `W`'s written parameters, so a workflow that hands off to itself needs no return type.
-- In a workflow's `call`, `try W.child(a)` runs `W` as a separate run and waits for it.
-
-### Durable static rules
-
-- A `task` or `workflow` body holds exactly one non-static `effect call` method, not a generator, and `static readonly` members with initializers, nothing else. A task's `call` writes a type for each parameter and its return type. Anything else is the syntax error `EK5501`.
-- A declaration's tag is its written `static readonly key`, or `<package>#<Name>` from the nearest `package.json`'s name and the declared name (the name alone in a package without one). The tag names the declaration's recorded runs, so it does not include the file. Two task or workflow declarations of one package with one tag are `EK5503`.
-- A task is called only in a workflow's `effect call`. A call anywhere else is `EK5502`: there is no run for the step to record into.
-- A workflow's `effect call` is a plan, built before it runs (VIP-55). In it, `try` runs a durable step: a call of a task or a workflow, `W.child(…)`, or `try.all`, `try.race` or `try.any` over such calls. Any other operand of `try`, such as a service, `sleep(…)` or `succeed(…)`, is `EK5504`.
-- A workflow's `effect call` reads no clock (`Date.now()`, `new Date()`, `performance.now()`), no randomness (`Math.random()`, `crypto.randomUUID()`, `crypto.getRandomValues()`) and no module-level `let` or `var` of its file: `EK5505`.
-- A loop statement, or an assignment, `++` or `--` to a variable, in a workflow's own `effect call` is `EK5506`, once for each loop.
-- A workflow whose `try W(…)` steps reach the workflow again, directly or through other workflows, is `EK5507`.
-- `W.to(…)` anywhere but as a `return` operand is `EK5508`.
-- A written `retryPolicy` object literal with neither `maxAttempts` nor `expirationMs` is the warning `EK5509`: such a policy never gives up.
-- A workflow's written `A!E` leaves `R` unchecked: its body is a plan, and the workflows it calls need the engine only when they run.
-- Every parameter and written success and error type of a `call` is a durable boundary: a type with no schema form is `EK2109`, as in a `schema` declaration. A task's parameters are identifiers, not patterns or a rest parameter, and its annotation leaves the `R` slot out (`EK5501`).
-
 ## The platform standard library
 
 The restrictions below apply to VibeLang code. A named top-level `module` body is TypeScript and follows the same rules as a sibling `.ts` file (VIP-40).
@@ -839,3 +782,66 @@ const m = import(name)                    // ok: a computed specifier is not che
 yield* Console.log("hi")
 yield* Effect.sleep("10 millis")
 ```
+
+## Open proposals, not in the alpha
+
+The sections below restate open proposals. They are not part of the language and not part of the alpha.
+
+## `task` and `workflow` declarations
+
+**Experimental.** This section restates [VIP-55](/vips/0055-durable-tasks-workflows), an open proposal, and [VIP-44](/vips/0044-durable-values)'s durable boundaries. It is not part of the language: it describes the compiler's experimental implementation.
+
+A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks ([VIP-55](/vips/0055-durable-tasks-workflows)). Both are written as `service` is: a class-shaped body with one `effect call` method and `static readonly` options.
+
+### Durable syntax
+
+```vibe
+schema Issue { number: number; title: string }
+
+task FetchIssues {
+  static readonly retryPolicy = { initialMs: 1000, factor: 2, maxMs: 4000, maxAttempts: 3 }
+  effect call(repo: string): ReadonlyArray<Issue>!string {
+    if (repo === "") throw "no repository"
+    return [{ number: 1, title: repo }]
+  }
+}
+
+task Charge {
+  effect call(order: string): number!string
+}
+
+export workflow Triage {
+  effect call(repo: string) {
+    const issues = try FetchIssues(repo)
+    return issues.length
+  }
+}
+```
+
+The grammar is [TaskDeclaration](/spec/900-appendices#taskdeclaration) and [WorkflowDeclaration](/spec/900-appendices#workflowdeclaration). `task` and `workflow` are contextual: each starts a declaration only at the start of a statement, with a name other than `as`, `satisfies` or `is` after it on the same line, so `const task = 1`, `task as Job` and `workflow.run()` keep their TypeScript meaning.
+
+### Durable meaning
+
+- A `task` declares a constant of the runtime's type `Task<P, A, E, R>`. `P` is the parameters of its `call`, and `A` and `E` are the success and error of its written `A!E` annotation. The annotation is the step's durable boundary, not its body's type: the body is checked against `A` and `E`, and the services it reads are inferred as `R`, the requirements of the task's implementation, never of a caller. A task's `call` writes every parameter type and its return type.
+- A `call` with no body declares a step whose implementation is supplied separately.
+- Each declaration carries its boundary's schemas, derived from the written types as a `schema` field's are ([VIP-44](/vips/0044-durable-values#what-the-compiler-generates)): `schemas.payload` holds one schema per parameter, keyed by the parameter's name, and `schemas.success` and `schemas.error` are the schemas of a written `A!E`'s `A` and `E`. `never` maps to `Schema.Never` and `void` to `Schema.Void`.
+- Each `static readonly` member is one option of the declaration, passed through under its own name.
+- A `workflow` declares a constant of the runtime's type `Workflow<P, A, E>`, with `A` and `E` from its `call`, written or inferred. Declarations run on `Experimental.Durable` ([VIP-60](/vips/0060-std-durable)): a task is a `Durable.task` and a workflow a `Durable.workflow`, each tagged with its key, whose payload is the call's arguments keyed by parameter name. `try W(a)` executes the workflow and needs Effect's `WorkflowEngine`, which `Experimental.Durable.memory`, `layerStore` and `layerSql` provide: a program that runs a workflow without one has a missing requirement. An equal payload joins the run that payload already started (VIP-44).
+- `T.layer` is the implementation of a task whose `call` has a body, and `T.toLayer(implementation)` supplies one for a task without. `W.layer` is the workflow's handler with the layers of the tasks and workflows its body calls; its requirements are the services those implementations read, so a program runs a workflow inside `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { … }`.
+- In a workflow's `call`, `try T(a)` is a step of the workflow's plan and gives the task's success.
+- `return W.to(a)` ends this round of the workflow and starts the next, in the same run, with the arguments `a`, checked against `W`'s parameters; a written `static readonly maxRounds` bounds the rounds, and a handoff after the last one is a defect. The workflow's success type leaves the handoff out. In `W`'s own body the compiler types the handoff from `W`'s written parameters, so a workflow that hands off to itself needs no return type.
+- In a workflow's `call`, `try W.child(a)` runs `W` as a separate run and waits for it.
+
+### Durable static rules
+
+- A `task` or `workflow` body holds exactly one non-static `effect call` method, not a generator, and `static readonly` members with initializers, nothing else. A task's `call` writes a type for each parameter and its return type. Anything else is the syntax error `EK5501`.
+- A declaration's tag is its written `static readonly key`, or `<package>#<Name>` from the nearest `package.json`'s name and the declared name (the name alone in a package without one). The tag names the declaration's recorded runs, so it does not include the file. Two task or workflow declarations of one package with one tag are `EK5503`.
+- A task is called only in a workflow's `effect call`. A call anywhere else is `EK5502`: there is no run for the step to record into.
+- A workflow's `effect call` is a plan, built before it runs (VIP-55). In it, `try` runs a durable step: a call of a task or a workflow, `W.child(…)`, or `try.all`, `try.race` or `try.any` over such calls. Any other operand of `try`, such as a service, `sleep(…)` or `succeed(…)`, is `EK5504`.
+- A workflow's `effect call` reads no clock (`Date.now()`, `new Date()`, `performance.now()`), no randomness (`Math.random()`, `crypto.randomUUID()`, `crypto.getRandomValues()`) and no module-level `let` or `var` of its file: `EK5505`.
+- A loop statement, or an assignment, `++` or `--` to a variable, in a workflow's own `effect call` is `EK5506`, once for each loop.
+- A workflow whose `try W(…)` steps reach the workflow again, directly or through other workflows, is `EK5507`.
+- `W.to(…)` anywhere but as a `return` operand is `EK5508`.
+- A written `retryPolicy` object literal with neither `maxAttempts` nor `expirationMs` is the warning `EK5509`: such a policy never gives up.
+- A workflow's written `A!E` leaves `R` unchecked: its body is a plan, and the workflows it calls need the engine only when they run.
+- Every parameter and written success and error type of a `call` is a durable boundary: a type with no schema form is `EK2109`, as in a `schema` declaration. A task's parameters are identifiers, not patterns or a rest parameter, and its annotation leaves the `R` slot out (`EK5501`).
