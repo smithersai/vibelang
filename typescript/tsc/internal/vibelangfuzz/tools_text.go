@@ -638,6 +638,9 @@ func toolsPanicKey(frame string, failure any) string {
 	if frame == "ls.getContainingArgumentInfo" && strings.Contains(fmt.Sprint(failure), "Child: KindVariableStatement, parent: KindBlock") {
 		return key + ":VariableStatement:Block"
 	}
+	if frame == "ls.getContainingArgumentInfo" && strings.Contains(fmt.Sprint(failure), "Child: KindIdentifier, parent: KindCallExpression") {
+		return key + ":Identifier:CallExpression"
+	}
 	return key
 }
 
