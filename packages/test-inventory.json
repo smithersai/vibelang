@@ -7,6 +7,7 @@
     "compiler/test/agents-lint-guidance.test.mjs",
     "compiler/test/agents-config-discovery.test.mjs",
     "compiler/test/agents-check-inputs.test.mjs",
+    "compiler/test/agents-missing-project.test.mjs",
     "compiler/test/approval-service-proof.test.mjs",
     "compiler/test/asset-imports.property.test.mjs",
     "compiler/test/ast-grep.test.mjs",

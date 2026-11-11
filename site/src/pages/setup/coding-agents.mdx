@@ -61,6 +61,8 @@ It exits with status `1` when the project has an error, including errors outside
 
 Explicit `agents check` inputs must name existing files. A missing file or directory reports an error and exits with status `1`; other existing inputs are still checked. Hooks skip deleted files.
 
+If a named source has no project configuration above it, the check reports that the file was not checked and exits with status `1`. Add a project config that includes the file, or check it directly with `vibelang --noEmit <file>`. A skipped file also fails a check that includes files from a successful project.
+
 A hook returns a project error or an incomplete compiler check to the agent with exit status `2`, and a warning as context the agent reads with the tool's result.
 
 The generated instructions also recommend `vibelang lint`. It uses the compiler’s configuration and Effect language-service plugin settings; select a non-default project with `vibelang lint --project <config>`. This command reports diagnostics without emitting files.

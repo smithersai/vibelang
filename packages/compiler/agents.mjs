@@ -333,7 +333,7 @@ function projectOf(file, binary) {
 }
 
 function failed(result) {
-  return result.errors.length > 0 || result.otherErrors > 0 || result.failures.length > 0
+  return result.errors.length > 0 || result.otherErrors > 0 || result.failures.length > 0 || result.missing.length > 0
 }
 
 function report(result, cwd, clean) {
