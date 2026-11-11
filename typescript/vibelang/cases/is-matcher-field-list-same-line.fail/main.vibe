@@ -1,0 +1,36 @@
+// expect: EK0707
+class Foo { a = 1 }
+const classes = { Foo }
+error NotFound {}
+function predicate(x: unknown): boolean { return true }
+
+export function plain(x: unknown) {
+  return x is Foo {}
+}
+
+export effect function effectful(x: unknown) {
+  return x is Foo /* same line */ {}
+}
+
+export function qualified(x: unknown) {
+  return x is classes.Foo {}
+}
+
+export function tagged(x: unknown) {
+  return x is NotFound {}
+}
+
+export function builtin(x: unknown) {
+  return x is Number {}
+}
+
+export function custom(x: unknown) {
+  return x is predicate {}
+}
+
+export function arm(x: unknown) {
+  return match (x) {
+    when Foo {}: true;
+    default: false;
+  }
+}

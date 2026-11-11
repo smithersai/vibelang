@@ -94,6 +94,8 @@ A single `match` keeps an iterable's pulled values for later arms. If `when [1, 
 
 A matcher, a value pattern or a relational operand is a member expression: a name, `this`, `super`, `import.meta` or `new.target`, followed by `.name` or `[expression]` accesses, as in `when import.meta.url:` or `when === new.target:`.
 
+A block on the line after a completed `is` test is a separate statement, including when a comment contains the line break. A brace field list on the matcher's line is `EK0707`; write `Foo and { … }` to test a class and its properties.
+
 Computed matcher members continue across line breaks, as ordinary property access does. A line break before `["Number"]` continues the preceding matcher lookup. A semicolon ends the test explicitly. The brackets require an expression; empty, elided, spread or trailing-comma array syntax is a syntax error in a matcher member.
 
 Bindings inside `or` and `not` patterns follow the same lexical rules as other pattern bindings. Alternatives that bind the same name with the same keyword share one cell; a later alternative can replace a value from an earlier alternative that failed. A saved closure observes that replacement. A `const` binding remains immutable in user code, and a name bound in every alternative gets the union of its extracted types.

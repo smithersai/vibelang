@@ -509,10 +509,13 @@ func isContextReference(c *checker.Checker, matcher *ast.Node) bool {
 // not a data variant: a field list after it is EK0707.
 func checkFieldListPattern(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	matcher := call.Arguments()[0]
-	// A pattern's matcher is source text; a field list follows it only in
-	// the retired variant pattern form, Name.Variant { … }, since anything
-	// else there is a syntax error.
-	if after := scanner.SkipTrivia(file.Text(), matcher.End()); after < len(file.Text()) && file.Text()[after] == '{' && !isMissingVariant(c, matcher) {
+	// The parser admits the retired brace suffix only on the matcher's line.
+	// After a line break, ASI can instead start a separate block statement.
+	// Compare ECMAScript lines to include line breaks inside comments.
+	after := scanner.SkipTrivia(file.Text(), matcher.End())
+	if after < len(file.Text()) && file.Text()[after] == '{' &&
+		scanner.GetECMALineOfPosition(file, matcher.End()) == scanner.GetECMALineOfPosition(file, after) &&
+		!isMissingVariant(c, matcher) {
 		report(c, matcher, classFieldListDiagnostic, scanner.GetTextOfNode(matcher))
 	}
 }

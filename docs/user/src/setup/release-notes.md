@@ -28,6 +28,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - An `await` in a class's `extends` expression inside an Effect parameter default could report an unrelated Promise error. It now reports `EK0102`, as other parameter initializers do.
 
+- A block after an `is` test on the next line was rejected as `EK0707`. It now starts a separate statement, including when a comment contains the line break.
+
 - The website could change a claim about a specific release to name the latest published version. Versioned claims now keep their original version while installation pins and platform information follow the selected release.
 
 - Find References and Rename missed parameters named `source` or another contextual word in a destructuring declaration whose default used `do { }` to return from the function. They now include the declaration and the source read.

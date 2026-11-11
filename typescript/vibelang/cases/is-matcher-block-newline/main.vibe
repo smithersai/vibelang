@@ -1,0 +1,45 @@
+// expect-result: [true,false,true,false,true,false,true,false,true,false,10]
+class Foo { a = 1 }
+const classes = { Foo }
+let calls = 0
+function log(): void { calls++ }
+
+export function check(x: unknown) {
+  const ok = x is Foo
+  { log() }
+  return ok
+}
+
+effect function checkEffect(x: unknown) {
+  const ok = x is Foo
+  { try sync(log) }
+  return ok
+}
+
+function qualified(x: unknown) {
+  const ok = x is classes.Foo // the following block is a statement
+  { log() }
+  return ok
+}
+
+function commented(x: unknown) {
+  const ok = x is Foo /* a comment
+  separates the statements */ { log() }
+  return ok
+}
+
+function unicode(x: unknown) {
+  const ok = x is Foo   { log() }
+  return ok
+}
+
+export effect function main() {
+  return [
+    check(new Foo()), check({}),
+    try checkEffect(new Foo()), try checkEffect({}),
+    qualified(new Foo()), qualified({}),
+    commented(new Foo()), commented({}),
+    unicode(new Foo()), unicode({}),
+    calls
+  ]
+}
