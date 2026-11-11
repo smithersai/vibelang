@@ -460,6 +460,22 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"pattern-variant-object", "data Option { Some { value: number }; None }; export function pick(x: Option) { return match (x) { when Option.Some { let value }: value; default: 0; } }"},
 	{"nfd-identifier", "const cafe\u0301 = 1; export const n = cafe\u0301"},
 	{"pattern-super-element", "const key = \"k\"; class B { v() { return 1 } } export class C extends B { viaKey(s: unknown) { return match (s) { when super[key]: \"hit\"; default: \"miss\"; } } }"},
+	{"arrow-parenthesized-qualified-return", "const c = effect (): (Effect.Effect) => 1"},
+	{"arrow-parenthesized-qualified-return-line-break", "const c = effect ()\n: (Effect.Effect) => 1"},
+	{"arrow-parenthesized-generic-return", "const f = (): (Promise<number>) => Promise.resolve(1)"},
+	{"arrow-parenthesized-union-return", "const f = (): (number | string) => 1"},
+	{"arrow-parenthesized-array-return", "const f = (): (number[]) => [1]"},
+	{"arrow-parenthesized-literal-return", "const f = (): (\"a\") => \"a\""},
+	{"arrow-parenthesized-tail-return", "const f = (): (x: number) => (number | string) => (x) => x"},
+	{"arrow-parenthesized-optional-member-return", "const f = (): ({ a?: number }) => ({})"},
+	{"arrow-parenthesized-semicolon-member-return", "const f = (): ({ a: number; }) => ({ a: 1 })"},
+	{"arrow-parenthesized-optional-element-return", "const f = (): ([number?]) => []"},
+	{"arrow-parenthesized-readonly-array-return", "const f = (): (readonly number[]) => [1]"},
+	{"arrow-parenthesized-readonly-line-break-return", "const f = (): (readonly\nnumber[]) => [1]"},
+	{"arrow-parenthesized-nested-return", "const f = (): ((number)) => 1"},
+	{"arrow-parenthesized-keyof-return", "type K = { a: 1 }; const f = (): (keyof K) => \"a\""},
+	{"arrow-parenthesized-reserved-shorthand-return", "const f = (): ({ class }) => ({ class: 1 })"},
+	{"async-arrow-parenthesized-return", "const f = async (): (Promise<number>) => 1"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

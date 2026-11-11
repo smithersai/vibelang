@@ -628,9 +628,9 @@ PropertyName = IdentifierName | StringLiteral | NumericLiteral | "[" AssignmentE
 FunctionExpression = "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block
 ClassExpression = DecoratorList? "class" BindingIdentifier? TypeParameters? ClassHeritage? "{" ClassElement* "}"
 ParenthesizedExpression = "(" Expression ")"
-ArrowFunction = ArrowParameters [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody | TypeParameters "(" FormalParameters ")" [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" ":" "(" Type ")" [no LineTerminator here] "=>" ConciseBody
+ArrowFunction = ArrowParameters [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody | TypeParameters "(" FormalParameters ")" [no LineTerminator here] "=>" ConciseBody
 ArrowParameters = BindingIdentifier | "(" FormalParameters ")"
-AsyncArrowFunction = "async" [no LineTerminator here] ArrowParameters [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] "(" FormalParameters ")" ":" "(" Type ")" [no LineTerminator here] "=>" ConciseBody
+AsyncArrowFunction = "async" [no LineTerminator here] ArrowParameters [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody
 ConciseBody = [lookahead ∉ { "{" }] AssignmentExpression | Block
 FormalParameters = FormalParameterList? | FormalParameterList ","
 FormalParameterList = FormalParameter | "this" TypeAnnotation | FormalParameterList "," FormalParameter
@@ -655,8 +655,28 @@ ConstructorType = "abstract"? "new" TypeParameters? "(" FormalParameters ")" "=>
 UnionType = "|"? IntersectionType | UnionType "|" IntersectionType
 IntersectionType = "&"? PostfixType | IntersectionType "&" PostfixType
 PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" PostfixType | "keyof" PostfixType | "infer" BindingIdentifier | "infer" BindingIdentifier "extends" Type | "unique" PostfixType
-PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | TemplateLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" TypeQueryName | "typeof" TypeQueryName [no LineTerminator here] TypeArguments | "typeof" ImportType | ImportType | "this" | "-" NumericLiteral | MappedType
+PrimaryType = TypeReference | "(" ParameterLikeType ")" [lookahead ∉ { "=>" }] | "(" ArrowSafeType ")" | ObjectType | TupleType | StringLiteral | TemplateLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" TypeQueryName | "typeof" TypeQueryName [no LineTerminator here] TypeArguments | "typeof" ImportType | ImportType | "this" | "-" NumericLiteral | MappedType
 TypeQueryName = IdentifierReference | TypeQueryReservedHead | TypeQueryName "." IdentifierName
+ParameterLikeType = IdentifierName | ShapedObjectType | ShapedTupleType | "readonly" [no LineTerminator here] ParameterLikeType
+ShapedObjectType = "{" "}" | "{" ShapedMemberList ","? "}"
+ShapedMemberList = ShapedMember | ShapedMemberList "," ShapedMember
+ShapedMember = BindingIdentifier | PropertyName ":" ShapedTarget
+ShapedTarget = BindingIdentifier | ShapedObjectType | ShapedTupleType
+ShapedTupleType = "[" "]" | "[" ShapedElementList ","? "]"
+ShapedElementList = ShapedElement | ShapedElementList "," ShapedElement
+ShapedElement = ShapedTarget | "..." ShapedTarget
+ArrowSafeType = FunctionType | ConstructorType | ConditionalType | "|" IntersectionType | UnionType "|" IntersectionType | "&" PostfixType | IntersectionType "&" PostfixType | ArrowSafePostfixType
+ArrowSafePostfixType = ArrowSafePrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" [no LineTerminator here] ArrowSafePostfixType | "readonly" LineTerminator PostfixType | "keyof" PostfixType | "infer" BindingIdentifier | "infer" BindingIdentifier "extends" Type | "unique" PostfixType
+ArrowSafePrimaryType = TypeName "." IdentifierName [lookahead ∉ { "<" }] | TypeName [no LineTerminator here] TypeArguments | "(" Type ")" | UnshapedObjectType | UnshapedTupleType | StringLiteral | TemplateLiteral | NumericLiteral | "-" NumericLiteral | "void" | "null" | "true" | "false" | "typeof" TypeQueryName | "typeof" TypeQueryName [no LineTerminator here] TypeArguments | "typeof" ImportType | ImportType | MappedType
+UnshapedObjectType = "{" UnshapedMemberList TypeMemberEnd? "}" | "{" ShapedMemberList ";" "}"
+UnshapedMemberList = UnshapedMember | ShapedMemberList "," UnshapedMember | ShapedMemberList UnshapedSeparator TypeMember | UnshapedMemberList TypeMemberSeparator TypeMember
+UnshapedSeparator = ";" | LineTerminator
+UnshapedMember = MethodSignature | CallSignature | GetAccessorSignature | SetAccessorSignature | IndexSignature | "readonly" [no LineTerminator here] PropertyName "?"? TypeAnnotation? | PropertyName "?" TypeAnnotation? | PropertyName ":" UnshapedTarget | ShorthandReservedName | StringLiteral | NumericLiteral | "[" AssignmentExpression "]"
+UnshapedTarget = ArrowSafeType | "this" | "readonly" [no LineTerminator here] ParameterLikeType
+ShorthandReservedName = TypeQueryReservedHead | "import"
+UnshapedTupleType = "[" UnshapedElementList ","? "]"
+UnshapedElementList = UnshapedElement | ShapedElementList "," UnshapedElement | UnshapedElementList "," TupleElement
+UnshapedElement = UnshapedTarget | Type [no LineTerminator here] "?" | IdentifierName "?"? ":" Type | "..." UnshapedTarget | "..." IdentifierName ":" Type
 TypeQueryReservedHead = "this" | "await" | "break" | "case" | "catch" | "class" | "const" | "continue" | "debugger" | "default" | "delete" | "do" | "else" | "enum" | "export" | "extends" | "false" | "finally" | "for" | "function" | "if" | "in" | "instanceof" | "new" | "null" | "return" | "super" | "switch" | "throw" | "true" | "try" | "typeof" | "var" | "void" | "while" | "with" | "yield" | "let" | "static" | "implements" | "interface" | "package" | "private" | "protected" | "public"
 ImportType = "import" "(" StringLiteral ")" | "import" "(" StringLiteral ")" "." TypeName | ImportType [no LineTerminator here] TypeArguments | ImportType [no LineTerminator here] "<" ">" | ImportType [no LineTerminator here] "<" TypeList "," ">"
 MappedType = "{" MappedReadonly? "[" IdentifierName "in" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}" | "{" MappedReadonly? "[" IdentifierName "in" Type "as" Type "]" MappedOptional? TypeAnnotation? TypeMemberEnd? "}"
@@ -785,7 +805,7 @@ var grammarSubsetHooks = []struct{ at, name string }{
 	{"PropertyDefinition", "EffectObjectMethod"},
 	{"PropertyDefinition", "ProducerObjectMethod"},
 	{"Type", "EffectType"},
-	{"PrimaryType", "ParenthesizedEffectType"},
+	{"ArrowSafeType", "EffectType"},
 	{"Statement", "ForConcurrent"},
 	{"Statement", "ForTry"},
 	{"Statement", "Uninterruptible"},
@@ -1041,21 +1061,6 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		topic.source = "vips/tc39-pipeline-operator/spec.html"
 		defs = append(defs, topic)
 		defined["PipeTopic"] = true
-	}
-	// Appendix A's ReturnType is "parsed as TypeScript parses it", and
-	// TypeScript's function-type lookahead stops at an operand's "!", so a
-	// parenthesized EffectType stands before "=>" where the subset's
-	// "(" Type ")" [lookahead ∉ { "=>" }] keeps plain types out.
-	if defined["EffectType"] {
-		paren := grammarParseDef("ParenthesizedEffectType", `"(" EffectType ")"`, 0)
-		paren.vibe = true
-		for _, d := range a.defs {
-			if d.name == "EffectType" {
-				paren.source = d.source
-			}
-		}
-		defs = append(defs, paren)
-		defined["ParenthesizedEffectType"] = true
 	}
 	// Appendix A also incorporates the pinned do-expression and
 	// pattern-matching drafts; their productions are external, not TypeScript.
