@@ -57,12 +57,17 @@ function withoutSidecarEntries(input) {
 }
 
 // A module declaration of main.vibe compiles to main.vibe.text.js beside it
-// (D403), which is not on disk: the project's compile serves it. The pattern
-// is vibelang/project's moduleDeclarationSource.
+// (D403), and one in a .vibex file to main.vibex.text.js, or .jsx under
+// preserved JSX. Neither is on disk: the project's compile serves it. The
+// pattern is vibelang/project's moduleDeclarationSource.
+const moduleOutputSource = /^(.+\.vibex?)\.[^./\\]+\.jsx?$/
 function isModuleOutput(path) {
-  const source = /^(.+\.vibe)\.[^./\\]+\.js$/.exec(path)?.[1]
+  const source = moduleOutputSource.exec(path)?.[1]
   return source !== undefined && !existsSync(path) && existsSync(source)
 }
+// A .vibex module or one of its module declarations: TSX, whose JavaScript
+// may keep JSX for the bundler.
+const isJsxModule = (path) => /\.vibex$/.test(path) || /\.vibex\.[^./\\]+\.jsx?$/.test(path)
 // A module whose JavaScript the plugin compiles: a VibeLang source or module declaration.
 const isCompiled = (id) => isVibeLangFile(cleanId(id)) || isModuleOutput(cleanId(id))
 
@@ -162,7 +167,8 @@ export function vibeNames(...directories) {
  * serve there. That is a .vibe name, a relative name with no extension
  * TypeScript removes (extensionlessImport) whose last segment names x.vibe
  * (names) or a directory with an index.vibe (indexDirectories), a module
- * declaration's ./x.vibe.text.js, and a relative ./x.js where names holds x.
+ * declaration's ./x.vibe.text.js (./x.vibex.text.js or .jsx in a .vibex
+ * module), and a relative ./x.js where names holds x.
  * Bun 1.4.2 and 1.4.4 compile a .tsx module against react/jsx-dev-runtime,
  * ignoring its tsconfig's jsxImportSource, once a plugin's onResolve matches
  * the import that reaches it, even when the hook returns nothing. Bun 1.4.4
@@ -181,7 +187,7 @@ export function bunResolveFilter(names, indexDirectories = new Set()) {
   const unnamed = String.raw`^\.\.?(?:\/\.\.?)*\/?(?:\?.*)?$|` + relative +
     String.raw`(?!.*\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)(?:\?.*)?$)` +
     (named.length ? String.raw`(?:.*\/)?(?:` + named.join("|") + String.raw`)\/?(?:\?.*)?$` : "(?!)")
-  const declaration = relative + String.raw`.*\.vibe\.[^./\\]+\.js(?:\?.*)?$`
+  const declaration = relative + String.raw`.*\.vibex?\.[^./\\]+\.jsx?(?:\?.*)?$`
   const sources = names.size
     ? [relative + String.raw`(?:.*\/)?(?:` + [...names].sort().map(escape).join("|") + String.raw`)\.js(?:\?.*)?$`]
     : []
@@ -580,13 +586,13 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           return id === undefined ? undefined : { path: id }
         })
         // Bun.build ignores a plugin's source map, so the module is its JavaScript alone.
-        build.onLoad({ filter: /\.vibex?(?:\.[^./\\]+\.js)?(?:\?.*)?$/ }, async ({ path }) => {
+        build.onLoad({ filter: /\.vibex?(?:\.[^./\\]+\.jsx?)?(?:\?.*)?$/ }, async ({ path }) => {
           if (!isCompiled(path)) return undefined
           const { code, errors, warnings, error } = await loadModule(path)
           if (errors.length) throw new Error(errors.map(backend.formatDiagnostic).join("\n"))
           if (!errors.length) for (const warning of warnings) console.warn(backend.formatDiagnostic(warning))
           if (error) throw new Error(error.message)
-          return { contents: code, loader: cleanId(path).endsWith(".vibex") ? "jsx" : "js" }
+          return { contents: code, loader: isJsxModule(cleanId(path)) ? "jsx" : "js" }
         })
       }
     },
@@ -661,7 +667,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           const sideEffects = sideEffectsOf(cleanId(id))
           return { path: id, namespace: "vibelang", ...(sideEffects === undefined ? {} : { sideEffects }) }
         })
-        build.onLoad({ filter: /\.(?:vibex?(?:\.[^./\\]+\.js)?|tsx?|[cm]ts)(?:\?.*)?$/ }, async ({ path }) => {
+        build.onLoad({ filter: /\.(?:vibex?(?:\.[^./\\]+\.jsx?)?|tsx?|[cm]ts)(?:\?.*)?$/ }, async ({ path }) => {
           if (!isCompiled(path)) return undefined
           const { project, code, map: compilerMap, inputs, errors, warnings, error } = await loadModule(path)
           // Inline maps carry URLs. Preserve filesystem spelling when the
@@ -677,7 +683,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           if (error) messages.push({ text: error.message })
           // Inline source-map sources are URLs. Keep percent signs literal
           // when esbuild resolves and combines this map with its JSX output.
-          const outputMap = map && cleanId(path).endsWith(".vibex")
+          const outputMap = map && isJsxModule(cleanId(path))
             ? { ...map, sources: map.sources.map(source => isAbsolute(source) ? pathToFileURL(source).href : source) }
             : map
           let contents = outputMap
@@ -685,7 +691,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
 //# sourceMappingURL=data:application/json;charset=utf-8;base64,${Buffer.from(JSON.stringify(outputMap)).toString("base64")}`
             : code
           let jsxWarnings = []
-          if (cleanId(path).endsWith(".vibex") && !messages.length) {
+          if (isJsxModule(cleanId(path)) && !messages.length) {
             const transformed = await build.esbuild.transform(contents, {
               loader: "jsx", sourcefile: cleanId(path), sourcemap: "inline",
               tsconfigRaw: await jsxReader.read(project),
@@ -696,7 +702,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
           }
           return {
             contents,
-            loader: cleanId(path).endsWith(".vibex") ? "jsx" : "js", resolveDir: dirname(path), watchFiles: [project, ...inputs],
+            loader: isJsxModule(cleanId(path)) ? "jsx" : "js", resolveDir: dirname(path), watchFiles: [project, ...inputs],
             errors: messages,
             warnings: !errors.length ? [...await Promise.all(warnings.map((warning) => esbuildMessage(backend.formatDiagnostic, warning))), ...jsxWarnings] : []
           }

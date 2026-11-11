@@ -227,7 +227,8 @@
     "compiler/test/watch-warning.test.mjs",
     "compiler/test/loader-record-module-body.property.test.mjs",
     "compiler/test/loader-record-module-body.test.mjs",
-    "compiler/test/experimental-gate.test.mjs"
+    "compiler/test/experimental-gate.test.mjs",
+    "compiler/test/module-body-diagnostics.test.mjs"
   ],
   "runtime": [
     "runtime/tests/binding-iterator.test.mjs",
@@ -430,7 +431,9 @@
     "unplugin/test/vibex-load-include.test.mjs",
     "unplugin/test/vibex-sidecar-entries.test.mjs",
     "unplugin/test/virtual-source-ids.test.mjs",
-    "unplugin/test/workspace-barrels.property.test.mjs"
+    "unplugin/test/workspace-barrels.property.test.mjs",
+    "unplugin/test/module-body-filter.property.test.mjs",
+    "unplugin/test/module-body-vibex.test.mjs"
   ],
   "compiler-tools": [
     "compiler/test/tools/babel.test.mjs",

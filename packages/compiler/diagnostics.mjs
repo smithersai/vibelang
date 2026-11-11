@@ -6,7 +6,12 @@ const realpath = (path) => {
   try { return realpathSync(path) } catch { return path }
 }
 
+// main.vibe.text.js, main.vibex.text.js and main.vibex.text.jsx are module
+// declarations of their .vibe or .vibex file: vibelang/project's
+// moduleDeclarationSource, which imports this module.
+const moduleDeclarationSource = (path) => /^(.+\.vibex?)\.[^./\\]+\.jsx?$/.exec(path)?.[1]
+
 export function diagnosticsForFile(diagnostics, file, files) {
-  const source = realpath(/^(.+\.vibe)\.[^./\\]+\.js$/.exec(file)?.[1] ?? file)
+  const source = realpath(moduleDeclarationSource(file) ?? file)
   return diagnostics.filter((diagnostic) => !diagnostic.file || !files.includes(diagnostic.file) || realpath(diagnostic.file) === source)
 }

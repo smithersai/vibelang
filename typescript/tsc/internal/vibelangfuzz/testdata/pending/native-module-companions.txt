@@ -1,3 +1,0 @@
-FuzzNativeModuleCompanions companion:vibex-js compiler VIP-40: bundler hooks fail to recognize a module body owned by JSX source; lane migfix-t3code
-FuzzNativeModuleCompanions companion:vibex-jsx compiler VIP-39: bundler hooks fail to resolve and select a JSX-preserving module companion; lane migfix-t3code
-FuzzNativeModuleCompanions corpus:t3code-jsx-module-companion compiler VIP-39: JSX module output loses its owner in bundler hooks; lane migfix-t3code

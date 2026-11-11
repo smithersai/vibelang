@@ -53,6 +53,41 @@ for (const jsx of ["preserve", "react-native", "react"]) {
   })
 }
 
+// rule-evidence: docs/design/vips/0040-module-declarations.md#f7120f477684687d
+const bodyRule = "**Loaders and bundlers.** `vibelang/register`, the Bun plugin, Vite and unplugin serve each body's canonical filename from the compiled parent, using the same source basename, encoded name and output suffix as the compiler, cached by the parent's version."
+
+// A body in a .vibex file is TSX (VIP-40): under preserved JSX it compiles to
+// names.vibex.-54-ext.jsx, otherwise to names.vibex.-54-ext.js.
+for (const jsx of ["preserve", "react"]) {
+  test(`Vite builds a .vibex module's module declarations, JSX included, under ${jsx} (VIP-40)`, async t => {
+    assert.ok(bodyRule.includes("Vite"))
+    const root = await fixture(t, "vibex", jsx)
+    await writeFile(join(root, "names.vibex"), [
+      "module Text {",
+      "  function h(tag: string, props: unknown, ...children: unknown[]): JSX.Element { return { tag, children } }",
+      "  export const view = <div>{\"from a body\"}</div>",
+      "}",
+      "module Über { export const n = 1 }",
+      "import { view } from Text",
+      "import { n } from Über",
+      "export const all: unknown[] = [view, n]",
+      ""
+    ].join("\n"))
+    const requested = new Set()
+    const result = await build({
+      root, configFile: false, logLevel: "silent",
+      plugins: [vibelang(), { name: "requested", transform(code, id) { if (/names\.vibex\.[^./]+\.jsx?$/.test(id)) requested.add(id.split("/").at(-1)) } }],
+      oxc: { jsx: { runtime: "classic", pragma: "h" } },
+      build: { write: false, minify: false, lib: { entry: join(root, "names.vibex"), formats: ["es"] } }
+    })
+    const code = [result].flat()[0].output.find(output => output.type === "chunk").code
+    const module = await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"))
+    assert.deepEqual(module.all, [{ tag: "div", children: ["from a body"] }, 1])
+    const suffix = jsx === "preserve" ? "jsx" : "js"
+    assert.deepEqual([...requested].sort(), [`names.vibex.-54-ext.${suffix}`, `names.vibex.-dc-ber.${suffix}`])
+  })
+}
+
 async function automaticRuntime(root, name) {
   const runtime = join(root, "node_modules", name)
   await mkdir(runtime)
