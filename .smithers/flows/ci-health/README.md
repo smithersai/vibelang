@@ -99,17 +99,21 @@ migrate suites joined it, and no report said so for four hours.
 
 ## Run it
 
+The flow runs on the durable host from anywhere in the repository. Paths in
+the payload are absolute:
+
 ```sh
-cd .smithers && bun flows/ci-health/run.ts --run <run dir> --results <results dir>
-cd .smithers && bun flows/ci-health/run.ts --run <run dir> --results <results dir> --since 2026-10-30T00:00:00Z
-cd .smithers && bun flows/ci-health/run.ts --run <run dir> --results <results dir> --split 2026-11-02T00:00:00Z
+smthrs flow start ci-health --data '{"run":"<run dir>","results":"<results dir>"}'
+smthrs flow start ci-health --data '{"run":"<run dir>","results":"<results dir>","since":"2026-10-30T00:00:00Z"}'
+smthrs flow start ci-health --data '{"run":"<run dir>","results":"<results dir>","split":"2026-11-02T00:00:00Z"}'
 ```
 
-Without `--split`, the split falls at the middle run.
+Without `split`, the split falls at the middle run.
 
-Point `--results` at a directory where CI runs write `CI_RESULTS` and the graph
+Point `results` at a directory where CI runs write `CI_RESULTS` and the graph
 log beside it. Use a new run directory each time: a finished run returns its
-recorded result.
+recorded result. `smthrs runs list` lists the runs, and `smthrs runs show
+<run id>` says what one did.
 
 ## The eval
 

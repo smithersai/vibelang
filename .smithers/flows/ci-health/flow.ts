@@ -15,10 +15,10 @@ const Outcome = Schema.Struct({ step: Schema.String, ok: Schema.Boolean, summary
 export class StepFailed extends Schema.TaggedError<StepFailed>()("StepFailed", { step: Schema.String, message: Schema.String }) {}
 
 // results: the directory of <id>-graph.json and <id>-graph.log files.
-// since: an ISO time; older results are ignored. Empty reads every file.
+// since: an ISO time; older results are ignored. Absent or empty reads every file.
 // split: an ISO time; run times after it are compared with those before it
-// (the slower targets). Empty splits at the middle run.
-const StartPayload = { run: Schema.String, results: Schema.String, since: Schema.String, split: Schema.String };
+// (the slower targets). Absent or empty splits at the middle run.
+const StartPayload = { run: Schema.String, results: Schema.String, since: Schema.optional(Schema.String), split: Schema.optional(Schema.String) };
 const RunPayload = { run: Schema.String };
 
 const declare = <const Tag extends string, P extends Schema.Struct.Fields>(tag: Tag, payload: P) =>
@@ -39,7 +39,7 @@ const step = (name: keyof typeof steps, run: string) =>
 
 /** The steps' implementations, which the flow's host composes. */
 export const layer = Layer.mergeAll(
-  Collect.toLayer(({ run, results, since, split }) => Effect.sync(() => start(run, { results, since, split })).pipe(Effect.andThen(step("collect", run))), { implementationVersion }),
+  Collect.toLayer(({ run, results, since, split }) => Effect.sync(() => start(run, { results, since: since ?? "", split: split ?? "" })).pipe(Effect.andThen(step("collect", run))), { implementationVersion }),
   Analyze.toLayer(({ run }) => step("analyze", run), { implementationVersion }),
   Report.toLayer(({ run }) => step("report", run), { implementationVersion })
 );

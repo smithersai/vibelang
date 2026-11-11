@@ -32,7 +32,8 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } 
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execute } from "./run.ts";
+import health, { layer } from "./flow.ts";
+import { execute } from "../in-process.ts";
 import { stepKey } from "../step-key.mjs";
 import { exactly, regressionScore } from "./scoring.mjs";
 
@@ -322,7 +323,7 @@ async function report(input: Input): Promise<Output> {
   const scratch = mkdtempSync(join(tmpdir(), "ci-health-eval-"));
   const run = join(scratch, "run");
   try {
-    const exit = await execute({ run, results: results(input.fixture, scratch), since: "", split: input.split });
+    const exit = await execute(health, layer, { run, results: results(input.fixture, scratch), split: input.split });
     if (Exit.isFailure(exit)) throw new Error(String(exit.cause));
     const read = (step: string) => JSON.parse(readFileSync(join(run, `${step}.json`), "utf8"));
     const result = read("report"), analysis = read("analyze");

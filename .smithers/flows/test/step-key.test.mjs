@@ -14,14 +14,14 @@ function flow(t) {
   const dir = path.join(root, "demo")
   mkdirSync(path.join(dir, "lib"), { recursive: true })
   mkdirSync(path.join(dir, "test"))
-  for (const [file, text] of [["flow.ts", "flow\n"], ["run.ts", "run\n"], ["lib/steps.mjs", "steps\n"], ["eval.ts", "eval\n"],
+  for (const [file, text] of [["flow.ts", "flow\n"], ["lib/steps.mjs", "steps\n"], ["eval.ts", "eval\n"],
     ["baseline.json", "{}\n"], ["README.md", "# demo\n"], ["test/steps.test.mjs", "test\n"]]) writeFileSync(path.join(dir, file), text)
   return dir
 }
 
 test("a change to the code a run executes changes the step key", (t) => {
   const dir = flow(t)
-  for (const file of ["flow.ts", "run.ts", "lib/steps.mjs"]) {
+  for (const file of ["flow.ts", "lib/steps.mjs"]) {
     const before = flowDigest(dir)
     writeFileSync(path.join(dir, file), `changed ${file}\n`)
     assert.notEqual(flowDigest(dir), before, file)
