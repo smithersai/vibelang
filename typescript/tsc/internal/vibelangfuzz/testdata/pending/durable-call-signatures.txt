@@ -1,0 +1,13 @@
+# Task call parameters and return annotations against Chapter 5's durable
+# static rules: "A task's parameters are identifiers, not patterns or a rest
+# parameter, and its annotation leaves the `R` slot out (`EK5501`)." VIP-55:
+# "The `R` slot of `call` is never written." Found by FuzzDurableCallSignatures;
+# each key fails in every home (body or bodyless, exported, after an option,
+# .vibe or .vibex) and with every typed identifier parameter list.
+FuzzDurableCallSignatures task-accepted:a-e-never compiler VIP-55: a task call annotated number!string!never draws no EK5501, although the annotation writes the R slot (the signature check exempts a never R slot); lane vip-tasks-workflows
+FuzzDurableCallSignatures task-accepted:a-never compiler VIP-55: a task call annotated number!!never draws no EK5501, although the annotation writes the R slot; lane vip-tasks-workflows
+FuzzDurableCallSignatures task-accepted:effect-a-e-never compiler VIP-55: a task call annotated Effect.Effect<number, string, never> draws no EK5501, although the annotation writes the R slot; lane vip-tasks-workflows
+FuzzDurableCallSignatures task-accepted:group-a-e-service compiler VIP-55: a task call annotated (number!string!Users) draws no EK5501: the parentheses hide the written service R slot that number!string!Users is rejected for; lane vip-tasks-workflows
+FuzzDurableCallSignatures task-accepted:a-e-object compiler Chapter 1 EffectType: a task call annotated number!string!{ users: Users } draws no EK5501 because the parser reads the object type as the call's body, as it does in any class or object-literal method's return annotation, although required error and requirement slots admit object types (a body after it then draws TS1068 and TS1128); lane unassigned
+FuzzDurableCallSignatures corpus:task-written-never-r-slot compiler reproduction of task-accepted:a-e-never, a task call annotated number!string!never; lane vip-tasks-workflows
+FuzzDurableCallSignatures corpus:task-parenthesized-service-r-slot compiler reproduction of task-accepted:group-a-e-service in a .vibex file; lane vip-tasks-workflows
