@@ -113,10 +113,11 @@ test("migration failures remain visible after more files than the graph's live o
 
 test("migration target uses the progress reporter without verbose successful test output", () => {
   const source = readFileSync(new URL("../packages/PACKAGE.ts", import.meta.url), "utf8")
-  const declaration = source.slice(source.indexOf("const migrateTest ="), source.indexOf("const migrateHelperIdentity ="))
+  const declaration = readFileSync(new URL("./testing/migrate-shards.mjs", import.meta.url), "utf8")
+  assert.ok(source.includes("shell: migrateShardShell(shard)"))
   assert.ok(declaration.includes("--test-reporter=../../scripts/testing/migrate-progress.mjs"))
   assert.ok(!declaration.includes("--test-reporter=spec"))
-  assert.ok(declaration.includes("migrate/test/*.test.mjs convert/*.test.mjs"))
+  assert.ok(declaration.includes('"migrate/test/*.test.mjs", "convert/*.test.mjs"'))
 })
 
 test("the compact reporter alone preserves assertion and loader failures", { timeout: 20_000 }, async t => {

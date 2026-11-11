@@ -6,6 +6,7 @@ import { dirname, join } from "node:path"
 import { test } from "node:test"
 import * as apiInputs from "../api-inputs.ts"
 import * as buildContractInputs from "../build-contract-inputs.ts"
+import * as migrateInputs from "./testing/migrate-shards.mjs"
 import { declarationTargets } from "./testing/package-declaration.mjs"
 
 const read = file => readFileSync(new URL("../" + file, import.meta.url), "utf8")
@@ -36,6 +37,22 @@ for (const name of ["createApiIdentityInputs", "createBuildContractInputs", "bui
   })
 }
 
+test("the shared context binds the production migration shard helpers", () => {
+  const targets = declarationTargets("packages/PACKAGE.ts", { source: `
+import { migrateShards, migrateShardShell } from "../scripts/testing/migrate-shards.mjs"
+export const Package = S.Package({ targets: { migrateShards, migrateShardShell } })
+` })
+  assert.equal(targets.migrateShards, migrateInputs.migrateShards)
+  assert.equal(targets.migrateShardShell, migrateInputs.migrateShardShell)
+})
+
+for (const name of ["migrateShards", "migrateShardShell"]) {
+  test("a missing migration binding is diagnosed while loading the real package: " + name, () => {
+    assert.throws(() => declarationTargets("packages/PACKAGE.ts", { bindings: { [name]: undefined } }),
+      { message: "packages/PACKAGE.ts: fixture has no binding for imported " + name })
+  })
+}
+
 test("real declarations retain caller dependency identities and isolated environments", () => {
   const native = {}, forms = {}, compiler = {}
   const ts = declarationTargets("typescript/PACKAGE.ts", { bindings: { Tsc: { "native-srcs": native } } })
@@ -53,7 +70,7 @@ test("real declarations retain caller dependency identities and isolated environ
 
 // A new export in either production helper must reach every real consumer
 // without adding another hand-maintained list of VM bindings.
-for (const module of ["api-inputs.ts", "build-contract-inputs.ts"]) {
+for (const module of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/testing/migrate-shards.mjs"]) {
   for (const binding of ["nextInput", "next_inventory2", "nextInputÉ"]) {
     test(module + " adds " + binding + " without changing consumer contexts", t => {
       const root = mkdtempSync(join(tmpdir(), "declaration-export-"))
@@ -61,6 +78,7 @@ for (const module of ["api-inputs.ts", "build-contract-inputs.ts"]) {
       const files = [
         "PACKAGE.ts", "typescript/PACKAGE.ts", "packages/PACKAGE.ts",
         "api-inputs.ts", "build-contract-inputs.ts", "scripts/testing/package-declaration.mjs",
+        "scripts/testing/migrate-shards.mjs",
         ...consumers.map(name => "scripts/" + name + ".test.mjs"),
         "scripts/build-vibelang.sh", "scripts/native-output.sh",
         "packages/compiler/test/eslint/run.sh", "packages/vite/test/run.sh",

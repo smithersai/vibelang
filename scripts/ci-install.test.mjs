@@ -5,7 +5,7 @@ import os from "node:os"
 import path from "node:path"
 import { spawnSync } from "node:child_process"
 
-const directories = [".smithers", "packages/runtime", "packages/compiler", "packages/compiler/test/tools", "packages/compiler/test/source-maps", "packages/create-vibelang", "packages/vite", "experiments", "docs/tools"]
+const directories = [".smithers", "packages/runtime", "packages/compiler", "packages/compiler/test/eslint", "packages/compiler/test/tools", "packages/compiler/test/source-maps", "packages/create-vibelang", "packages/vite", "experiments", "docs/tools"]
 // Companion probes load the plugin helpers from their owning package.
 directories.push("packages/unplugin")
 

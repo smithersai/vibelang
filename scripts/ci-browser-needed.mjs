@@ -1,6 +1,7 @@
 // Only reviewed targets with a complete dependency plan may omit Chromium.
 // New targets, planner failures and broad selections retain browser setup.
 import { spawnSync } from "node:child_process"
+import { migrateShards, migrateDedicated } from "./testing/migrate-shards.mjs"
 import { resolve, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
@@ -10,6 +11,8 @@ const tests = new Set([
   "//:docs-tools", "//:docs-check", "//:site-spec-links",
   "//packages:compiler-test-1", "//packages:compiler-test-2", "//packages:compiler-test-3", "//packages:compiler-test-4",
   "//packages:migrate-test", "//packages:runtime-test",
+  ...migrateShards().map(shard => "//packages:" + shard.label),
+  ...Object.values(migrateDedicated).map(label => "//packages:" + label),
   "//packages:compiler-tools-test", "//packages:vite-test", "//packages:unplugin-test",
 ])
 const builds = new Set([
@@ -30,6 +33,7 @@ export function classifyPlan(targets, plan) {
       node.dependencies.some(label => typeof label !== "string")) return true
     nodes.set(node.label, node)
     if (node.target === "Filegroup") continue
+    if (node.target === "Suite" && node.label === "//packages:migrate-test") continue
     if (node.target === "Shell.Test" && tests.has(node.label)) continue
     if (node.target === "Shell.Build" && builds.has(node.label)) continue
     return true

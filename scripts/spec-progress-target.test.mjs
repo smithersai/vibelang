@@ -84,7 +84,7 @@ for (const [name, shared, deadline, status] of [
   const root = mkdtempSync(join(tmpdir(), "spec-progress-deadline-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, "scripts/testing"), { recursive: true })
-  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs"]) {
+  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs"]) {
     copyFileSync(new URL("../" + file, import.meta.url), join(root, file))
   }
   const original = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
@@ -114,7 +114,7 @@ test("spec deadline fixture controls follow a later shared graph limit", t => {
   const root = mkdtempSync(join(tmpdir(), "spec-progress-next-deadline-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, "scripts/testing"), { recursive: true })
-  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs"]) {
+  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs"]) {
     copyFileSync(new URL("../" + file, import.meta.url), join(root, file))
   }
   const original = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")

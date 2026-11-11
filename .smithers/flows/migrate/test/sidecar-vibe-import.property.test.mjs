@@ -10,7 +10,8 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const ts = require("typescript")
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-sidecar-vibe-import.json", import.meta.url), "utf8"))
-const put = (root, file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
+import { put, forms, check, encode } from "./sidecar-vibe-import-oracle.mjs"
+import { assertParallelProperty } from "../../../../scripts/testing/parallel-property.mjs"
 
 // foldkit-161: Foldkit's committed sidecars import their neighbours as
 // `./calendarDate.vibe`. The earlier-API probe copied them over the emitted
@@ -36,25 +37,12 @@ test("foldkit-161: the earlier-API probe resolves a sidecar's ./x.vibe import", 
 // in every import form, completes the comparison, and reports a change exactly
 // when the emitted type differs.
 const spelling = fc.constantFrom("./b.vibe", "./b.vibex", "./b.js", "./b", "./sub/../b.vibe")
-const form = fc.constantFrom(
-  (s) => `import type { B } from "${s}";\nexport declare const a: B;\n`,
-  (s) => `import { type B } from '${s}';\nexport declare const a: B;\n`,
-  (s) => `export declare const a: import("${s}").B;\n`,
-  (s) => `export type { B } from "${s}";\nexport declare const a: number;\n`,
-  (s) => `// see "./b.vibe"\nimport type { B } from "${s}";\nexport declare const a: B;\n`
-)
-test("foldkit-161: every neighbour spelling and import form compares the API", () => {
-  const outDir = mkdtempSync(join(tmpdir(), "migrate-sidecar-vibe-import-property-"))
-  try {
-    put(outDir, "b.d.ts", "export type B = number;\n")
-    fc.assert(fc.property(spelling, form, fc.boolean(), (s, write, change) => {
-      const sidecar = write(s)
-      put(outDir, "a.d.ts", write("./b.js") + (change ? "export declare const added: string;\n" : ""))
-      const result = sidecarChanges(ts, { "src/a.d.vibe.ts": sidecar, "src/b.d.vibe.ts": "export type B = number;\n" }, outDir)
-      assert.equal(result.comparisonComplete, undefined, `${sidecar}\n${JSON.stringify(result.environmentDiagnostics)}`)
-      assert.deepEqual(result.changed.map((c) => c.file), change ? ["src/a.d.vibe.ts"] : [], sidecar)
-    }), { seed: 16101, numRuns: 120 })
-  } finally {
-    rmSync(outDir, { recursive: true, force: true })
-  }
+const form = fc.constantFrom(...forms)
+
+test("foldkit-161: every neighbour spelling and import form compares the API", async () => {
+  await assertParallelProperty(fc, {
+    arbitraries: [spelling, form, fc.boolean()], oracle: check,
+    module: new URL("./sidecar-vibe-import-oracle.mjs", import.meta.url),
+    exportName: "checkEncoded", encode, seed: 16101, numRuns: 120
+  })
 })

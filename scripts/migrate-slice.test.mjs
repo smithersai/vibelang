@@ -53,10 +53,13 @@ test("the command fails rather than run an unselected suite", () => {
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 
-test("the target selects through the slice and stops when selection fails", () => {
+test("independent targets ignore legacy host slice files", () => {
   const declaration = readFileSync(join(root, "packages/PACKAGE.ts"), "utf8")
-  assert.match(declaration, /files=\$\(node \.\.\/\.\.\/scripts\/testing\/migrate-slice\.mjs migrate\/test\/\*\.test\.mjs convert\/\*\.test\.mjs\) && node --test /)
-  assert.ok(declaration.includes('S.file("//scripts/testing/migrate-slice.mjs")'))
+  const command = readFileSync(join(root, "scripts/testing/migrate-shards.mjs"), "utf8")
+  assert.ok(declaration.includes("S.Suite({ tests: ["))
+  assert.ok(declaration.includes("shell: migrateShardShell(shard)"))
+  assert.ok(!command.includes("migrate-slice.mjs"))
+  assert.ok(!declaration.includes('S.file("//scripts/testing/migrate-slice.mjs")'))
 })
 
 test("no commit can carry a slice file", () => {

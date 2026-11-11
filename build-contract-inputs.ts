@@ -53,6 +53,7 @@ export const buildContractFiles = [
   "scripts/go-cache-packages.awk",
   "scripts/go-test-shards.sh",
   "scripts/testing/package-declaration.mjs",
+  "scripts/testing/migrate-shards.mjs",
   "scripts/testing/node-failures.mjs",
   "scripts/go-test-progress.mjs",
   ".github/workflows/go-cache.yml",

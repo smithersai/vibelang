@@ -155,11 +155,59 @@ The formatted-declaration certification file must parse and execute its complete
 
 Upgrade fixtures use real named and versioned toolchain archives. Public workspaces assert the release dependency and the managed local install pin separately, and compare the staged archive bytes with the producing artifact.
 
-The `//packages:migrate-test` target retains both complete migrate and convert test globs and a bounded 90-minute aggregate budget. Property sample counts, worker deadlines and Node's concurrency remain unchanged. Only this aggregate target's budget changed.
+The `//packages:migrate-test` compatibility label is an `S.Suite`: it selects
+every migrate and convert test once, through independent file and test-name targets. The
+`migrate/test/*.test.mjs` and `convert/*.test.mjs` globs are discovered by
+`scripts/testing/migrate-shards.mjs`. A new file automatically gets a target;
+colliding target names fail declaration loading. Each generated target has a
+`10m` deadline and retains the old target's complete input closure, property
+sample counts and worker deadlines.
 
-On a four-vCPU Cloudflare box, an exact Node 26 run selected 261 files and completed in 37m03.7s with 37 failures, 1646 passes, 42 skips and 1 TODO. Its 1580 API worker calls all returned without signals (median 2.872s, maximum 10.931s). Fixing previously failing properties restores about 10 more minutes of measured work. Focused successful properties also varied by 2.5–2.7x across boxes. The 90-minute bound allows more of this work to finish and remains a sizing choice, not a guarantee on the slowest host or a claim that the suite is green.
+The labels are `//packages:migrate-test-<file stem>`, with dots in the stem
+replaced by hyphens. Convert files use `migrate-test-convert-<file stem>`.
+For example, `migrate/test/api-identity-gate.test.mjs` runs as
+`//packages:migrate-test-api-identity-gate`. The three existing file targets
+`//packages:migrate-source-child-native`,
+`//packages:migrate-toolchain-baseline` and
+`//packages:migrate-quoted-rules` are suite members; generated targets do not
+repeat their files. Focused partial-test gates remain available separately.
 
-A gate can split `//packages:migrate-test` across boxes. `scripts/testing/migrate-slice.mjs` reads one git-ignored line, `i/n <host>`, from `scripts/migrate-test-slice`, sorts the selected files and runs every n-th one starting at i. The line applies only on the host it names, so every other run selects both complete globs, and a malformed or empty slice fails the target. The whole suite takes over an hour on four vCPUs, which is longer than a Cloudflare box reliably keeps its stream.
+Seven files have explicit generated-property and control targets:
+`ambient-roots.property.test.mjs`, `published-specifiers.property.test.mjs`,
+`record-verification.property.test.mjs`, `sidecar-vibe-import.property.test.mjs`,
+`implicit-root-context.property.test.mjs`, `mts-declarations.property.test.mjs`
+and `deep-declarations.property.test.mjs`.
+Their labels append `-generated` or `-controls` to the usual file label.
+Exact positive name patterns select the existing long property in one target
+and the discovered control names in the other. New literal test names join the
+controls automatically. The inventory test executes these patterns with Node:
+a negative pattern can match Node's enclosing file test and select both groups.
+Computed registrations are discovered in an isolated process without invoking
+test bodies or hooks, and checked for unique ownership by the same real commands.
+
+The long properties in those files except `implicit-root-context.property.test.mjs`,
+plus `earlier-declarations.property.test.mjs` and `public-declarations.property.test.mjs`, evaluate their independent declaration comparisons on
+four workers. Their oracles, seeds and `numRuns` values are unchanged.
+`scripts/testing/parallel-property.mjs` samples the same inputs, records every
+outcome in input order, and replays those outcomes through `fast-check`. A failure
+continues through the original oracle for shrinking. The harness tests compare
+counterexamples, shrink paths, run and skip counts, reversed completion order,
+synchronous and asynchronous exceptions and worker failures with ordinary `fast-check`. They also verify that
+each of the `40`, `80`, `120`, `150`, `200` or `300` seeded samples executes exactly once on four workers.
+
+Use `sh scripts/ci.sh --prepare-only` to provision dependencies before running
+individual labels with `smthrs ci`. Preparation includes the compiler's ESLint
+fixture dependencies, so parallel migration targets do not race dependency
+installs. The suite can schedule its leaves in parallel with `--jobs`; a
+distributed runner can place each leaf on its own worker. Legacy
+`scripts/migrate-test-slice` files do not filter these targets. The external
+runner should select the leaves directly instead of repeating the suite for
+each old host slice.
+
+`scripts/migrate-test-inventory.test.mjs` checks actual graph membership,
+exact file ownership, automatic admission of new files, duplicate rejection,
+bounded timeouts and the reporter command. No failed, skipped or pending test
+is changed by the split.
 
 The migration progress reporter prints the selected-file list, failure details, aggregate counts and a heartbeat every 30 seconds. A `test-failed` record retains Node's `todo` and `skip` flags and reasons, so an expected todo failure remains distinguishable from an ordinary failure even when the command succeeds. Successful tests and file summaries update counts without consuming the graph's live output budget. Pending files remain named, and a failed file includes its captured output and unabridged assertion error. A file that cannot load or a terminated run remains incomplete, and Node retains responsibility for the exit status. `scripts/migrate-progress.test.mjs` checks late failures beyond 200 files, real child processes, full assertion witnesses, missing file summaries and termination against an unmodified Node runner.
 
@@ -836,7 +884,8 @@ expanded test globs. Runtime discovery includes nested tests and Bun's
   :runtime-test                 Suite of runtime-test-<file> leaves (bun test)
   :compiler-native              the binary and dprint plugin in packages/compiler
   :compiler-test-1 .. -4         Suites over compiler-test-<file> leaves (node --test)
-  :migrate-test                 node --test (the migrate and convert flows)
+  :migrate-test                 Suite of :migrate-test-<file> and the three existing file checks
+  :migrate-test-<file>          node --test (one migrate or convert file)
   :vite-test :unplugin-test      Suites over vite-test-<file> and unplugin-test-<file> leaves
   :compiler-tools-test           Suite over compiler-tools-test-<file> leaves
   :source-map-tools-test         Suite over source-map-tools-test-<file> leaves and compiler-tools-test
@@ -870,7 +919,7 @@ expanded test globs. Runtime discovery includes nested tests and Bun's
 
 The source-map tool assertions share one four-worker leaf; its thirteen files run beside each other so splitting them does not multiply total elapsed work. Runtime compilation and generated source-map programs remain a separate cached preparation.
 
-Migration and convert suites run only in `//packages:migrate-test`. The compiler target runs its own tests; importing a flow test into a compiler entrypoint repeats that suite. `scripts/test-runners.test.mjs` checks discovery coverage and this ownership boundary.
+Migration and convert suites belong to the `//packages:migrate-test` suite and its per-file members. The compiler target runs its own tests; importing a flow test into a compiler entrypoint repeats that suite. `scripts/test-runners.test.mjs` checks discovery coverage and this ownership boundary.
 
 
 ```text

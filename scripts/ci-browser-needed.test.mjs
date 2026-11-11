@@ -105,3 +105,17 @@ export const Package = S.Package({targets:{release:outer,tokens:inner,"site-cont
   assert.equal(browserPrerequisites("//:release", dir).needed, true)
   assert.equal(existsSync(join(dir, "must-not-run")), false, "planning must never execute a target")
 })
+
+test("the migration suite and its exact generated leaves retain non-browser plans", async () => {
+  const { migrateShards, migrateDedicated } = await import("./testing/migrate-shards.mjs")
+  const leaves = [...migrateShards().map(s => "//packages:" + s.label), ...Object.values(migrateDedicated).map(s => "//packages:" + s)]
+  const suite = "//packages:migrate-test"
+  const fixture = plan([node(suite, leaves, "Suite"), ...leaves.map(label => node(label))], [suite])
+  assert.equal(classifyPlan(suite, fixture), false)
+  for (const label of leaves) assert.equal(classifyPlan(label, plan([node(label)], [label])), false)
+  const changed = structuredClone(fixture)
+  changed.targets.at(-1).dependencies.push("//future:browser")
+  changed.targets.push(node("//future:browser"))
+  assert.equal(classifyPlan(suite, changed), true)
+  assert.equal(classifyPlan("//packages:migrate-test-unknown", plan([node("//packages:migrate-test-unknown")], ["//packages:migrate-test-unknown"])), true)
+})

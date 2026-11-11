@@ -4,6 +4,7 @@ import { createRequire } from "node:module"
 const require = createRequire(new URL("../../docs/tools/package.json", import.meta.url))
 const ts = require("typescript")
 import { nodeTestSelection } from "./node-selection.mjs"
+import { migrateShards, migrateShardShell } from "./migrate-shards.mjs"
 export function packageDeclarations(source = readFileSync(process.env.VIBELANG_PACKAGE_DECLARATION ?? new URL("../../packages/PACKAGE.ts", import.meta.url), "utf8"),
   inventory = JSON.parse(readFileSync(new URL("../../packages/test-inventory.json", import.meta.url), "utf8")),
   testBatches = JSON.parse(readFileSync(new URL("../../packages/test-batches.json", import.meta.url), "utf8"))) {
@@ -18,7 +19,7 @@ export function packageDeclarations(source = readFileSync(process.env.VIBELANG_P
   const text = source.replace(/^import .*\n/gm, "").replace("export const Package", "const Package")
   const js = ts.transpileModule(text, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText
   const testGroups = JSON.parse(readFileSync(new URL("../../packages/test-groups.json", import.meta.url), "utf8"))
-  return Function("S", "inventory", "migrationSources", "Typescript", "Tsc", "testGroups", "nodeTestSelection", "testBatches", js + "\nreturn Package.targets")(
+  return Function("S", "inventory", "migrationSources", "Typescript", "Tsc", "testGroups", "nodeTestSelection", "testBatches", "migrateShards", "migrateShardShell", js + "\nreturn Package.targets")(
     S, inventory, { kind: "migrationSources" }, { compiler: { kind: "compiler" } },
-    { srcs: { kind: "tsc" }, "go-vibelangfmt": { kind: "formatter" } }, testGroups, nodeTestSelection, testBatches)
+    { srcs: { kind: "tsc" }, "go-vibelangfmt": { kind: "formatter" } }, testGroups, nodeTestSelection, testBatches, migrateShards, migrateShardShell)
 }

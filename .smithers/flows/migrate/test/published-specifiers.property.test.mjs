@@ -1,34 +1,13 @@
 // Published declarations preserve exported names, strict types and documentation.
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { createRequire } from "node:module"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
 import { test } from "node:test"
-import { compareDeclarations } from "../lib/declarations.mjs"
-
+import { compare, check, forms } from "./published-specifiers-oracle.mjs"
+import { assertParallelProperty } from "../../../../scripts/testing/parallel-property.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
-const ts = require("typescript")
 const fc = require("fast-check")
 const quote = "Equivalent formatting, quotes, alias expansion, member/import order and module-specifier spelling pass."
-const manifest = { name: "@opencode/stats-core", types: "./index.d.ts", exports: { ".": { types: "./index.d.ts" } } }
-
-function compare(before, after) {
-  const root = mkdtempSync(join(tmpdir(), "migrate-published-specifiers-"))
-  try {
-    for (const [dir, files] of Object.entries({ before, after })) {
-      mkdirSync(join(root, dir))
-      writeFileSync(join(root, dir, "package.json"), JSON.stringify(manifest))
-      for (const [file, text] of Object.entries(files)) {
-        mkdirSync(join(root, dir, file, ".."), { recursive: true })
-        writeFileSync(join(root, dir, file), text)
-      }
-    }
-    return compareDeclarations(ts, join(root, "before"), join(root, "after"))
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-}
 
 test("opencode-19: a published barrel's ./runtime declared as ./runtime.js is excused and listed", () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(quote), "update the quoted verify rule")
@@ -59,41 +38,12 @@ test("published specifiers: equivalent structural targets pass while missing tar
     { "index.d.ts": 'export * from "./b.js";\nexport * from "./a.js";\n', "a.d.ts": "export {};\n", "b.d.ts": "export {};\n" }).identical, true)
 })
 
-// Generated published barrels: each module may be renamed (declared ./m.js
-// after, ./m before) in any import form, and one mutation may change a byte
-// elsewhere. Renamed spellings alone pass and are each listed; a mutation fails.
-const forms = [
-  (s, n) => `export * as M${n} from "${s}";`,
-  (s, n) => `export { value as v${n} } from "${s}";`,
-  (s, n) => `import type { Value as V${n} } from "${s}";\nexport type T${n} = V${n};`,
-  (s, n) => `export declare const c${n}: import("${s}").Value;`
-]
 const barrel = fc.array(fc.record({ form: fc.nat(forms.length - 1), renamed: fc.boolean(), directory: fc.boolean() }), { minLength: 1, maxLength: 5 })
 
-test("published-specifier-equivalence: renamed spellings pass and are listed; semantic or invalid-declaration mutations fail", () => {
-  fc.assert(fc.property(barrel, fc.option(fc.constantFrom("value", "Value", "export", ";"), { nil: undefined }), (modules, mutate) => {
-    const before = {}, after = {}
-    const lines = { before: [], after: [] }
-    let renamed = 0
-    modules.forEach(({ form, renamed: rename, directory }, n) => {
-      const file = directory ? `m${n}/index.d.ts` : `m${n}.d.ts`
-      const text = "export declare const value: number;\nexport type Value = number;\n"
-      before[file] = after[file] = text
-      const base = directory ? `./m${n}/index` : `./m${n}`
-      lines.before.push(forms[form](rename ? base : base + ".js", n))
-      lines.after.push(forms[form](base + ".js", n))
-      if (rename) renamed++
-    })
-    before["index.d.ts"] = lines.before.join("\n") + "\n"
-    after["index.d.ts"] = lines.after.join("\n") + "\n"
-    if (mutate !== undefined && after["index.d.ts"].includes(mutate)) {
-      after["index.d.ts"] = after["index.d.ts"].replace(mutate, mutate + "X")
-      assert.equal(compare(before, after).identical, false)
-      return
-    }
-    const result = compare(before, after)
-    assert.equal(result.identical, true, JSON.stringify(result.changed))
-    assert.equal(result.excused.length, renamed)
-    for (const pair of result.excused) assert.equal(pair.after, pair.before + ".js")
-  }), { seed: 31031, numRuns: 150 })
+test("published-specifier-equivalence: renamed spellings pass and are listed; semantic or invalid-declaration mutations fail", async () => {
+  await assertParallelProperty(fc, {
+    arbitraries: [barrel, fc.option(fc.constantFrom("value", "Value", "export", ";"), { nil: undefined })],
+    oracle: check, module: new URL("./published-specifiers-oracle.mjs", import.meta.url),
+    seed: 31031, numRuns: 150
+  })
 })

@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-// Prints the files one //packages:migrate-test run owns, one per line. The whole
-// suite takes over an hour on four vCPUs, longer than a gate box reliably keeps
-// its stream, so a gate splits it across boxes. scripts/migrate-test-slice holds
-// one line, "i/n <host>", and applies only on the host it names, so a copy that
-// reaches another checkout slices nothing. Every other run gets every file.
+// Legacy file selector for external runners using the aggregate shell target.
+// The current migrate-test Suite schedules per-file targets and does not read
+// scripts/migrate-test-slice. Keep this helper for older checkouts.
+// The ignored slice file contains "i/n <host>" and applies only to its host.
 // Files are sorted and dealt in turn, so n runs cover each file exactly once.
 import { existsSync, readFileSync } from "node:fs"
 import { hostname } from "node:os"

@@ -74,8 +74,8 @@ const runs = [
   ["packages/compiler/test/*.test.mjs", "packages/PACKAGE.ts", "node --test --test-concurrency=4 --test-reporter=../../scripts/testing/node-failures.mjs "],
   ["packages/compiler/test/tools/*.test.mjs", "packages/compiler/test/tools/run.sh", "./*.test.mjs"],
   ["packages/compiler/test/source-maps/*.test.mjs", "packages/compiler/test/source-maps/run.sh", "./*.test.mjs"],
-  [".smithers/flows/migrate/test/*.test.mjs", "packages/PACKAGE.ts", "migrate/test/*.test.mjs"],
-  [".smithers/flows/convert/*.test.mjs", "packages/PACKAGE.ts", "convert/*.test.mjs"],
+  [".smithers/flows/migrate/test/*.test.mjs", "scripts/testing/migrate-shards.mjs", "migrate/test/*.test.mjs"],
+  [".smithers/flows/convert/*.test.mjs", "scripts/testing/migrate-shards.mjs", "convert/*.test.mjs"],
   [".smithers/flows/docs/check.test.ts", ".smithers/package.json", "./flows/docs/check.test.ts"],
   [".smithers/flows/effect-bump/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
   [".smithers/flows/ts-bump/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/ts-bump/test/*.test.mjs"],
@@ -279,7 +279,7 @@ test("migration suites run in their own target without compiler reimports", () =
 
 test("entrypoint audit agrees with Node across import forms and ignores quoted examples", async () => {
   assert.equal(corpus.key, "compiler-test:migrate-suites-timeout")
-  assert.ok(read("docs/maintainers/build.md").includes("Migration and convert suites run only"))
+  assert.ok(read("docs/maintainers/build.md").includes("Migration and convert suites belong to"))
   await fc.assert(fc.asyncProperty(
     fc.constantFrom(...corpus.forms), fc.constantFrom(" ", "\n", " /* gap */ "),
     fc.boolean(), fc.boolean(),

@@ -29,7 +29,7 @@ install() {
 	[ ! -L "$1/node_modules" ] || return 0
 	(cd "$1" && bun install --frozen-lockfile >/dev/null)
 }
-for dir in .smithers packages/runtime packages/compiler packages/compiler/test/tools packages/compiler/test/source-maps packages/create-vibelang packages/vite experiments docs/tools; do install "$dir"; done
+for dir in .smithers packages/runtime packages/compiler packages/compiler/test/eslint packages/compiler/test/tools packages/compiler/test/source-maps packages/create-vibelang packages/vite experiments docs/tools; do install "$dir"; done
 # Companion probes import the plugin helpers from its own package scope.
 install packages/unplugin
 node scripts/share-effect.mjs

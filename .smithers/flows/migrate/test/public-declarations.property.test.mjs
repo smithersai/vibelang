@@ -4,29 +4,14 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { compareDeclarations } from "../lib/declarations.mjs"
+import { compare, check } from "./public-declarations-oracle.mjs"
+import { assertParallelProperty } from "../../../../scripts/testing/parallel-property.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
 const fc = require("fast-check")
 const quote = "Public declarations reachable from `exports` or `types` must remain API-identical; unreachable new declarations pass as `addedPrivate`."
 
-function compare(before, after, manifest) {
-  const root = mkdtempSync(join(tmpdir(), "migrate-public-dts-"))
-  try {
-    for (const [dir, files] of Object.entries({ before, after })) {
-      mkdirSync(join(root, dir))
-      writeFileSync(join(root, dir, "package.json"), JSON.stringify(manifest))
-      for (const [file, text] of Object.entries(files)) {
-        mkdirSync(join(root, dir, file, ".."), { recursive: true })
-        writeFileSync(join(root, dir, file), text)
-      }
-    }
-    return compareDeclarations(ts, join(root, "before"), join(root, "after"))
-  } finally {
-    rmSync(root, { recursive: true, force: true })
-  }
-}
 
 test("foldkit-28: a private adapter declaration is admitted without weakening the public API gate", () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(quote))
@@ -40,23 +25,12 @@ test("foldkit-28: a private adapter declaration is admitted without weakening th
   assert.equal(compare(corpus.before, { "platform.d.ts": corpus.after["platform.d.ts"] }, corpus.manifest).identical, false)
 })
 
-test("public declaration graph: imports, exports, import types, require and references expose transitive additions", () => {
-  const forms = [
-    p => `export * from "${p}";\n`,
-    p => `import type { Item as Inner } from "${p}"; export type Item = Inner;\n`,
-    p => `export type Item = import("${p}").Item;\n`,
-    p => `import type * as X from "${p}"; export type Item = X.Item;\n`,
-    p => `export type Item = import("${p}").Item;\n`
-  ]
-  fc.assert(fc.property(fc.array(fc.nat(4), { minLength: 1, maxLength: 8 }), fc.boolean(), fc.constantFrom(".d.ts", ".d.mts", ".d.cts"), (edges, exposed, ext) => {
-    const before = {}
-    for (let i = 0; i < edges.length; i++) before[`n${i}${ext}`] = i + 1 < edges.length
-      ? forms[edges[i]](`./n${i + 1}${ext === ".d.mts" ? ".mjs" : ext === ".d.cts" ? ".cjs" : ".js"}`) : exposed ? forms[edges[i]](`./new${ext === ".d.mts" ? ".mjs" : ext === ".d.cts" ? ".cjs" : ".js"}`) : "export interface Item {}\n"
-    const result = compare(before, { ...before, [`new${ext}`]: "export interface Item {}\n" },
-      { exports: { ".": { types: `./n0${ext}` } } })
-    assert.equal(result.identical, !exposed)
-    assert.deepEqual(exposed ? result.added : result.addedPrivate, [`new${ext}`])
-  }), { seed: 280028, numRuns: 200 })
+test("public declaration graph: imports, exports, import types, require and references expose transitive additions", async () => {
+  await assertParallelProperty(fc, {
+    arbitraries: [fc.array(fc.nat(4), { minLength: 1, maxLength: 8 }), fc.boolean(), fc.constantFrom(".d.ts", ".d.mts", ".d.cts")],
+    oracle: check, module: new URL("./public-declarations-oracle.mjs", import.meta.url),
+    seed: 280028, numRuns: 200
+  })
 })
 
 test("public roots include conditional and wildcard exports; unknown entry points fail closed", () => {

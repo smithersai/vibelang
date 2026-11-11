@@ -17,7 +17,7 @@ const flowFiles = dir => readdirSync(join(root, dir), { withFileTypes: true })
 
 // The targets that run or import the flows, by their packages/PACKAGE.ts names.
 // The compiler package tests run as four file shards, compiler-test-1 to compiler-test-4.
-const consumers = ["compiler-test-1", "compiler-test-2", "compiler-test-3", "compiler-test-4", "migrate-test", "vite-test", "compiler-tools-test"]
+const consumers = ["compiler-test-1", "compiler-test-2", "compiler-test-3", "compiler-test-4", "vite-test", "compiler-tools-test"]
 
 // Evaluate the actual constructors without planning the workspace. Every leaf
 // below a compatibility Suite must retain the flow inputs, not just the group.
@@ -43,12 +43,23 @@ test("each flow consumer takes //:migration-sources", () => {
 
 test("the declaration reader sees a target or Suite leaf that drops //:migration-sources", () => {
   const source = readFileSync(join(root, "packages/PACKAGE.ts"), "utf8")
-  for (const [builder, label] of [["migrateTest", "migrate-test"], ["pluginTest", "vite-test"], ["compilerTest", "compiler-test-1"]]) {
+  for (const [builder, label] of [["pluginTest", "vite-test"], ["compilerTest", "compiler-test-1"]]) {
     const dropped = source.replace(new RegExp("(const " + builder + " = [\\s\\S]*?)migrationSources,"), "$1")
     assert.notEqual(dropped, source)
     assert.ok(consumerLeaves(dropped, label).some(leaf => !hasFlowInputs(leaf)))
     for (const leaf of consumerLeaves(source, label)) assert.ok(hasFlowInputs(leaf))
   }
+})
+
+test("every generated migration file target retains the full shared input closure", () => {
+  const source = readFileSync(join(root, "packages/PACKAGE.ts"), "utf8")
+  const shared = source.slice(source.indexOf("const migrateTestData ="), source.indexOf("const migrateTestTargets ="))
+  const shards = source.slice(source.indexOf("const migrateTestTargets ="), source.indexOf("const migrateHelperIdentity ="))
+  assert.match(shared, /\bmigrationSources\b/)
+  assert.match(shards, /data: \[\.\.\.migrateTestData/)
+  const dropped = shared.replace("migrationSources,", "")
+  assert.notEqual(dropped, shared)
+  assert.doesNotMatch(dropped, /\bmigrationSources\b/)
 })
 
 test("//:migration-sources keys every file of the migrate and convert flows, including hidden directories", { timeout: 180000 }, () => {

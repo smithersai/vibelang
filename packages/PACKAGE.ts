@@ -4,6 +4,7 @@ import testGroups from "./test-groups.json" with { type: "json" }
 import testBatches from "./test-batches.json" with { type: "json" }
 import { nodeTestSelection } from "../scripts/testing/node-selection.mjs"
 import { migrationSources } from "../migration-inputs.ts"
+import { migrateShards, migrateShardShell } from "../scripts/testing/migrate-shards.mjs"
 import { Package as Typescript } from "../typescript/PACKAGE.ts"
 import { Package as Tsc } from "../typescript/tsc/PACKAGE.ts"
 
@@ -160,15 +161,8 @@ const compilerSuite = (shard: number) => S.Suite({
     ...(shard === 1 ? [Tsc["go-vibelangfmt"]] : [])]
 })
 
-// The migrate and convert flows' tests stage this compiler and runtime as a
-// toolchain. They ran inside //packages:compiler-test from 2026-11-02 00:58Z,
-// which took that target from a 134 s to a 389 s median on cf pre-gate boxes,
-// with six 15-minute timeouts; as their own target they run on another box.
-// Isolated API workers made an exact Node 26 run take 37m, before restoring
-// roughly 10m of previously failing property work. Bound the aggregate at 90m;
-// leave all file selections, property samples and per-worker limits intact.
-// //:migration-sources keys both flows; scripts/test-runners.test.mjs fails
-// when a test file runs in no target.
+// The migrate and convert flows stage this compiler and runtime as a
+// toolchain. Their per-file targets can be scheduled on independent workers.
 const migrateLostWrapper = S.Shell.Test({
   summary: "Check wrapper loss against normal and scratch migration emission.",
   shell: "node --test .smithers/flows/migrate/test/lost-wrapper.test.mjs",
@@ -233,22 +227,23 @@ const migrateLoaderValidation = S.Shell.Test({
   timeout: "2m"
 })
 
-const migrateTest = S.Shell.Test({
-  summary: "The migrate and convert flows' tests.",
-  shell: "cd docs/tools && bun install --frozen-lockfile && cd ../.. && " +
-    "cd packages/compiler && bun install --frozen-lockfile && " +
-    "cd test/eslint && bun install --frozen-lockfile && " +
-    "cd ../../../../.smithers/flows && files=$(node ../../scripts/testing/migrate-slice.mjs migrate/test/*.test.mjs convert/*.test.mjs) && node --test " +
-    "--test-reporter=../../scripts/testing/migrate-progress.mjs --test-reporter-destination=stderr $files",
-  data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
-    S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
-    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//scripts/testing/migrate-progress.mjs"), S.file("//scripts/testing/migrate-slice.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
-    S.file("//docs/user/src/setup/migrating-retired-forms.md"),
-    S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...install],
+// Each file is a separate scheduler node. Keep the complete old input closure:
+// migration tests import shared helpers, fixtures and package adapters.
+const migrateTestData = [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
+  S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
+  S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"),
+  S.file("//scripts/testing/migrate-progress.mjs"), S.file("//scripts/testing/migrate-shards.mjs"),
+  S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
+  S.file("//docs/user/src/setup/migrating-retired-forms.md"),
+  S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...install]
+const migrateTestTargets = Object.fromEntries(migrateShards().map(shard => [shard.label, S.Shell.Test({
+  summary: `Migration tests: ${shard.file}.`,
+  shell: migrateShardShell(shard),
+  data: [...migrateTestData, ...(shard.parallel ? [S.file("//scripts/testing/parallel-property.mjs")] : [])],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",
-  timeout: "90m"
-})
+  timeout: "10m"
+})]))
 
 const migrateHelperIdentity = S.Shell.Test({
   summary: "Preserve authored helper declarations while accepting generated never contracts.",
@@ -265,10 +260,8 @@ const migrateHelperIdentity = S.Shell.Test({
 // this checkout's compiler into its fixtures and builds a private copy of the
 // runtime's sources with the native compiler, under test/.fixtures: it never
 // writes packages/runtime, which the runtime and compiler targets read.
-// A compiler rule change can reject the code the migrate flow generates, and
-// before this target only the full migrate-test (four shards, over twenty
-// minutes) compiled it. This file compiles the generated source-child helper
-// with the native compiler in about a minute, so any compiler change reruns it.
+// Compile the generated source-child helper with the native compiler. This
+// focused label is also a member of the complete migration compatibility suite.
 const migrateSourceChildNative = S.Shell.Test({
   summary: "Compile migrated source-child helpers with the native compiler.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && cd ../.. && " +
@@ -310,6 +303,12 @@ const migrateQuotedRules = S.Shell.Test({
   sandbox: "none",
   timeout: "1m"
 })
+
+// S.Suite keeps the old command selecting all files, with no second test run.
+const migrateTest = S.Suite({ tests: [
+  ...Object.values(migrateTestTargets),
+  migrateSourceChildNative, migrateToolchainBaseline, migrateQuotedRules
+] })
 
 // Prepare shared fixture inputs once. Test files create unique project
 // directories; no leaf reinstalls packages or deletes a sibling's runtime.
@@ -443,6 +442,7 @@ export const Package = S.Package({
     "migrate-source-child-native": migrateSourceChildNative,
     "vite-paths-imports-copy": vitePathsImportsCopy,
     "migrate-test": migrateTest,
+    ...migrateTestTargets,
     "migrate-lost-wrapper": migrateLostWrapper,
     "migrate-record-provenance": migrateRecordProvenance,
     "migrate-warning-provenance": migrateWarningProvenance,

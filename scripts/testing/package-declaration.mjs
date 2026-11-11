@@ -1,5 +1,6 @@
 import * as apiInputs from "../../api-inputs.ts"
 import * as buildContractInputs from "../../build-contract-inputs.ts"
+import * as migrateInputs from "./migrate-shards.mjs"
 import { readFileSync } from "node:fs"
 import { stripTypeScriptTypes } from "node:module"
 import { runInNewContext } from "node:vm"
@@ -12,7 +13,7 @@ const identity = spec => spec
 // does not validate SDK behavior; build-declarations.test.mjs loads the real SDK.
 export function declarationFixture(file, { env = {}, bindings = {}, source = readFileSync(new URL("../../" + file, import.meta.url), "utf8") } = {}) {
   const context = {
-    ...apiInputs, ...buildContractInputs,
+    ...apiInputs, ...buildContractInputs, ...migrateInputs,
     fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]],
       ["migration", ["FuzzMigrationFormatterFixedPoint", "FuzzMigrationJSXRoutes"]]]),
     vibelangTopics: new Map([["inventory", ["TestInventoryFirst", "TestInventorySecond"]]]),
