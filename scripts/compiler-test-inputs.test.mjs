@@ -69,6 +69,18 @@ function assertRuntimePrerequisites(source, expectedShards = 4) {
   const { file, entries, targets } = compilerInputs(source)
   assert.ok(entries.includes("runtimeDist"), "compilerTest must declare runtimeDist unconditionally")
   assert.ok(targets.length > 0, "compiler-test has no registered targets")
+  if (source.includes("const compilerSuite =")) {
+    assert.deepEqual(targets.map(p => p.name.text).sort(), ["compiler-test-1", "compiler-test-2", "compiler-test-3", "compiler-test-4"])
+    for (const property of targets) {
+      const call = unwrap(property.initializer)
+      assert.equal(call.expression.getText(file), "compilerSuite")
+      assert.equal(Number(call.arguments[0].text), Number(property.name.text.slice("compiler-test-".length)))
+    }
+    assert.match(source, /testEntries\("compiler", inventory\.compiler, compilerTest\)/)
+    assert.match(source, /build\(selectedFiles, names\)/)
+    assert.match(source, /index % COMPILER_TEST_SHARDS === shard - 1/)
+    return
+  }
   const legacy = targets.filter(p => p.name.text === "compiler-test")
   if (legacy.length) {
     assert.equal(targets.length, 1, "compiler-test registrations cannot mix legacy and shard targets")

@@ -29,3 +29,8 @@ dist-npm/
 
 # Handwritten compatibility-declaration regression input, not compiler output.
 !typescript/vibelang/cases/opencode-explicit-sidecar-namespace/decl/tool.d.vibe.ts
+
+# Cached package-test preparation holds generated runtime bytes and fuzz programs.
+packages/vite/test/.prepared/
+packages/unplugin/test/.prepared/
+packages/compiler/test/source-maps/.prepared/

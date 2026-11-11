@@ -7,7 +7,7 @@ import test from "node:test"
 
 const source = readFileSync(new URL("../packages/PACKAGE.ts", import.meta.url), "utf8")
 const runtime = source.slice(source.indexOf("const runtimeTest ="))
-const command = JSON.parse(/\bshell:\s*("(?:[^"\\]|\\.)*")/.exec(runtime)[1])
+const command = Function("files", "return (" + /\bshell:\s*([^\n]+),/.exec(runtime)[1] + ")")(["runtime/tests/suite.test.ts"])
 
 for (const before of [-1, 0, 130, 199, 200, 201, 260]) {
   test(before < 0 ? "runtime reporting preserves an entirely passing suite" : "runtime failures stay visible in the graph preview after " + before + " passing tests", () => {

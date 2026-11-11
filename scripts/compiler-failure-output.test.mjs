@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { nodeTestSelection } from "./testing/node-selection.mjs"
 import { spawnSync } from "node:child_process"
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -10,7 +11,7 @@ const repo = fileURLToPath(new URL("../", import.meta.url))
 const source = readFileSync(join(repo, "packages/PACKAGE.ts"), "utf8")
 const expression = source.match(/const compilerTest =[\s\S]*?\bshell:\s*([\s\S]*?),\n\s*\/\//)?.[1]
 assert.ok(expression, "read the actual compiler shard command")
-const command = shard => Function("shard", "COMPILER_TEST_SHARDS", "return (" + expression + ")")(shard, 4)
+const command = shard => Function("files", "names", "nodeTestSelection", "return (" + expression + ")")(["compiler/test/" + ["a","b","c","d"][shard - 1] + ".test.mjs"], undefined, nodeTestSelection)
 const reporter = "scripts/testing/node-failures.mjs"
 
 function run(shard, mode) {

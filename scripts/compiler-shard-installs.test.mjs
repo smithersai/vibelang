@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { nodeTestSelection } from "./testing/node-selection.mjs"
 import { spawn } from "node:child_process"
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
@@ -10,7 +11,7 @@ const count = Number(/const COMPILER_TEST_SHARDS = (\d+)/.exec(packageSource)?.[
 const factory = packageSource.slice(packageSource.indexOf("const compilerTest ="))
 const shellExpression = /\bshell:\s*([\s\S]*?),\n\s*\/\//.exec(factory)?.[1]
 assert.ok(shellExpression, "compilerTest must declare its shell")
-const shellFor = new Function("shard", "COMPILER_TEST_SHARDS", "return (" + shellExpression + ")")
+const shellFor = (file) => Function("files", "names", "nodeTestSelection", "return (" + shellExpression + ")")([file], undefined, nodeTestSelection)
 
 function run(shell, cwd, env) {
   return new Promise((resolve, reject) => {
@@ -40,22 +41,22 @@ test("parallel compiler shards read provisioned dependencies without relinking p
     const observer = [
       'const fs = require("node:fs"), path = require("node:path")',
       'const args = process.argv.slice(2)',
-      'const shard = args.find(value => value.startsWith("--test-shard=")).split("=")[1]',
-      'fs.writeFileSync(path.join(process.env.SHARD_RECORDS, shard.replace("/", "-") + ".json"), JSON.stringify({ args, binary: process.env.VIBELANG_BINARY }))'
+      'const shard = args.at(-1).split("/").pop()',
+      'fs.writeFileSync(path.join(process.env.SHARD_RECORDS, shard + ".json"), JSON.stringify({ args, binary: process.env.VIBELANG_BINARY }))'
     ].join("\n")
     writeFileSync(join(bin, "node"), "#!" + process.execPath + "\n" + observer + "\n", { mode: 0o755 })
     const env = { ...process.env, PATH: bin + ":" + process.env.PATH, SHARD_RECORDS: records }
     assert.ok(count >= 2)
-    const results = await Promise.all(Array.from({ length: count }, (_, index) =>
-      run(shellFor(index + 1, count), root, env)))
+    const results = await Promise.all(files.map(file =>
+      run(shellFor("compiler/test/" + file), root, env)))
     assert.deepEqual(results.map(({ status, signal, stderr }) => ({ status, signal, stderr })),
-      Array.from({ length: count }, () => ({ status: 0, signal: null, stderr: "" })),
+      files.map(() => ({ status: 0, signal: null, stderr: "" })),
       "shards must consume the dependency installation completed by scripts/ci.sh")
     assert.equal(readFileSync(tool, "utf8"), "installed before the graph\n")
-    assert.equal(readdirSync(records).length, count, "every shard must reach the test runner")
-    for (let shard = 1; shard <= count; shard++) {
-      const record = JSON.parse(readFileSync(join(records, shard + "-" + count + ".json"), "utf8"))
-      assert.deepEqual(record.args, ["--test", "--test-reporter=../../scripts/testing/node-failures.mjs", "--test-shard=" + shard + "/" + count, ...files.map(file => "test/" + file)])
+    assert.equal(readdirSync(records).length, files.length, "every shard must reach the test runner")
+    for (const file of files) {
+      const record = JSON.parse(readFileSync(join(records, file + ".json"), "utf8"))
+      assert.deepEqual(record.args, ["--test", "--test-concurrency=4", "--test-reporter=../../scripts/testing/node-failures.mjs", "test/" + file])
       assert.equal(record.binary, join(packageDir, "native/vibelang"))
     }
   } finally {

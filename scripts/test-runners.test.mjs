@@ -70,8 +70,8 @@ const runs = [
   ["docs/tools/*.test.*", "PACKAGE.ts", "$(ls *.test.*"],
   ["packages/runtime/tests/**", "packages/PACKAGE.ts", "cd packages/runtime && bun test"],
   ["packages/runtime/tests/entry-exports.node.test.mjs", "packages/PACKAGE.ts", "node --test packages/runtime/tests/entry-exports.node.test.mjs"],
-  // Sharded by file: each shard runs node --test --test-shard=<n>/<total> over the same glob (checked below).
-  ["packages/compiler/test/*.test.mjs", "packages/PACKAGE.ts", "node --test --test-reporter=../../scripts/testing/node-failures.mjs --test-shard=${shard}/${COMPILER_TEST_SHARDS} test/*.test.mjs"],
+  // Exact-file leaves are inventoried in package-test-inventory.test.mjs; compatibility Suites are checked below.
+  ["packages/compiler/test/*.test.mjs", "packages/PACKAGE.ts", "node --test --test-concurrency=4 --test-reporter=../../scripts/testing/node-failures.mjs "],
   ["packages/compiler/test/tools/*.test.mjs", "packages/compiler/test/tools/run.sh", "./*.test.mjs"],
   ["packages/compiler/test/source-maps/*.test.mjs", "packages/compiler/test/source-maps/run.sh", "./*.test.mjs"],
   [".smithers/flows/migrate/test/*.test.mjs", "packages/PACKAGE.ts", "migrate/test/*.test.mjs"],
@@ -83,7 +83,7 @@ const runs = [
   [".smithers/flows/first-bad/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/first-bad/test/*.test.mjs"],
   [".smithers/flows/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/test/*.test.mjs"],
   ["packages/vite/test/*.test.mjs", "packages/vite/test/run.sh", "test/*.test.mjs"],
-  ["packages/typescript-shim/test/*.test.mjs", "packages/PACKAGE.ts", "node --test packages/typescript-shim/test/*.test.mjs"],
+  ["packages/typescript-shim/test/*.test.mjs", "packages/test-inventory.json", '"typescript-shim/test/'],
   ["packages/create-vibelang/test/create.test.mjs", "PACKAGE.ts", "node --test packages/create-vibelang/test/create.test.mjs"],
   ["packages/create-vibelang/test/dev.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/dev.test.mjs"],
   ["packages/create-vibelang/test/filesystem.property.test.mjs", "PACKAGE.ts", "packages/create-vibelang/test/filesystem.property.test.mjs"],
@@ -358,7 +358,7 @@ test("entrypoint audit agrees with Node for a multi-suite forwarder and repeated
 })
 
 test("release and API globs give prefixed files one runner without dropping their neighbours", () => {
-  const release = matcher("scripts/!(api-identity*|bun-test-budgets|compiler-test-inputs|compiler-failure-output|compiler-shard-installs|go-build-flags|go-cache|go-shared-test-inventory|go-test-cache).test.mjs")
+  const release = matcher("scripts/!(api-identity*|bun-test-budgets|compiler-test-inputs|compiler-failure-output|compiler-shard-installs|go-build-flags|go-cache|go-shared-test-inventory|go-test-cache|package-test-inventory|package-test-fixtures).test.mjs")
   const api = matcher("scripts/api-identity*.test.mjs")
   for (const name of ["api-identity", "api-identity-extra", "api-identity space", "api-identityλ"]) {
     const file = "scripts/" + name + ".test.mjs"
@@ -377,7 +377,7 @@ test("every compiler-test shard is a target, so together they run every compiler
   const total = Number(/const COMPILER_TEST_SHARDS = (\d+)/.exec(pkg)?.[1])
   assert.ok(total >= 2, "packages/PACKAGE.ts declares COMPILER_TEST_SHARDS")
   for (let shard = 1; shard <= total; shard++) {
-    assert.ok(pkg.includes(`"compiler-test-${shard}": compilerTest(${shard})`), `compiler-test-${shard} is declared`)
+    assert.ok(pkg.includes(`"compiler-test-${shard}": compilerSuite(${shard})`), `compiler-test-${shard} is declared`)
   }
   assert.ok(!pkg.includes(`"compiler-test-${total + 1}"`), "no shard beyond COMPILER_TEST_SHARDS")
 })

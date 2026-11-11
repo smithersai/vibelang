@@ -26,4 +26,5 @@ export EFFECT_NODE_MODULES
 cd "$here"
 # --no-cache keeps bunfig.toml's minimumReleaseAge in force (bunfig.toml).
 bun install --frozen-lockfile --no-cache
+[ "${VIBELANG_TEST_PREPARE_ONLY:-}" != 1 ] || exit 0
 node --test --test-timeout=300000 "$@" ./*.test.mjs

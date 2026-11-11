@@ -65,7 +65,8 @@ for (const module of ["api-inputs.ts", "build-contract-inputs.ts"]) {
         "scripts/build-vibelang.sh", "scripts/native-output.sh",
         "packages/compiler/test/eslint/run.sh", "packages/vite/test/run.sh",
         "packages/unplugin/test/run.sh", "typescript/vibelang/smoke.sh",
-        "typescript/vibelang/lsp-smoke.sh", "packages/ts-mapper/test/e2e.sh"
+        "typescript/vibelang/lsp-smoke.sh", "packages/ts-mapper/test/e2e.sh",
+        "packages/test-inventory.json", "packages/test-groups.json", "packages/test-batches.json", "scripts/testing/node-selection.mjs"
       ]
       for (const file of files) {
         mkdirSync(dirname(join(root, file)), { recursive: true })

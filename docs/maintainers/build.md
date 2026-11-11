@@ -759,6 +759,58 @@ sh scripts/ci.sh //:spec-tests --jobs 8
 
 ## Packages
 
+Package tests run one assertion file per target, generated from
+`packages/test-inventory.json`. A leaf name replaces the file's dots with
+hyphens and removes `.test.mjs` or `.test.ts`, for example
+`//packages:compiler-test-cache-group` and `//packages:runtime-test-binding-iterator-group`.
+Longer files use exact-name groups from `packages/test-groups.json`.
+A named batch addresses a selection as `unplugin/test/encoded-imports.property.test.mjs#2`.
+Its combined filter must select exactly the requested registrations in every file;
+the inventory guard rejects cross-file name collisions with unselected groups.
+Compiler file groups retain every registration; Vite properties
+split by Vite version and unplugin properties by emit, build and invalid-input
+mode. The checked union includes every registration once. Each leaf has an `8m` deadline: the slowest takes about 150 s on a typical 4-vCPU box, and box speed varies up to about 2.5x. The original labels are `S.Suite` groups,
+so `smthrs ci //packages:compiler-test-1` and the other existing commands
+continue to run their complete selections. The four compiler Suites keep a
+round-robin partition of the inventory's order; the first also selects the formatter's
+Go regressions.
+
+`//packages:vite-test-prepare`, `//packages:unplugin-test-prepare` and
+`//packages:source-map-tools-test-prepare` build their shared fixture inputs
+before any file runs. Prepared outputs contain real runtime files and generated programs.
+Each plugin or source-map leaf stages a private tree under the system temporary directory with
+`scripts/testing/package-fixtures.mjs`, then wires its declared compiler,
+Effect and package inputs there. Artifact outputs never contain links to
+other workspace directories. Compiler package sources are copied into that private repository view so
+backend dependency identities match the paths the test sees; its native binary
+and installed dependencies stay linked inputs. Sibling leaves share no writable
+fixture tree.
+Tests retain their existing reporting options.
+Leaves consume provisioned dependencies; they do not reinstall packages.
+Compiler adapter dependencies are installed by `scripts/ci.sh` before
+the graph starts.
+
+Each leaf keys its selected assertion files, package production code, fixture helpers,
+corpus, pinned installs and existing external inputs. Assertion files are
+excluded from shared support globs, so editing an unrelated test does not
+invalidate other groups. A test that reads another assertion file declares it
+explicitly: the watcher cancellation regression uses `launcher.test.mjs`
+as its subprocess fixture, and the intermediate-build regression keys
+`watch-warning.test.mjs`. Runtime README audits key `runtime/README.md`;
+the budget reader keys its sibling `package.test.ts` even when it runs alone.
+The published kernel model also declares its
+shared `experiments/tests/conformance/model-laws.ts` oracle.
+
+When adding or renaming tests, update `packages/test-inventory.json` (append new compiler files at the end of its list, so no existing file changes partition) and, when grouping short files,
+`packages/test-batches.json`, then
+run `node --test scripts/package-test-inventory.test.mjs`. The check
+compares the inventory with filesystem discovery, requires each file and
+leaf exactly once, validates compatibility Suite membership, and rejects
+missing selections, duplicate labels, installs in leaf commands and
+expanded test globs. Runtime discovery includes nested tests and Bun's
+`.test`, `.spec`, `_test` and `_spec` conventions.
+
+
 ```text
 .smithers/WORKSPACE.ts          toolchain (node, go, bun), cache in .flows/
 //typescript/tsc                the Go module
@@ -781,12 +833,14 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :lsp-smoke                    headless language-server editor checks
 //packages
   :runtime-dist                 bun run build -> packages/runtime/dist
-  :runtime-test                 bun test (runtime)
+  :runtime-test                 Suite of runtime-test-<file> leaves (bun test)
   :compiler-native              the binary and dprint plugin in packages/compiler
-  :compiler-test-1 .. -4        node --test (compiler package), sharded by file
+  :compiler-test-1 .. -4         Suites over compiler-test-<file> leaves (node --test)
   :migrate-test                 node --test (the migrate and convert flows)
-  :vite-test :unplugin-test      the bundler plugins' test/run.sh (source maps, builds, watch)
-  :source-map-tools-test         source maps through each tool that reads them (docs/maintainers/source-maps.md)
+  :vite-test :unplugin-test      Suites over vite-test-<file> and unplugin-test-<file> leaves
+  :compiler-tools-test           Suite over compiler-tools-test-<file> leaves
+  :source-map-tools-test         Suite over source-map-tools-test-<file> leaves and compiler-tools-test
+  :typescript-shim-test          Suite over typescript-shim-test-<file> leaves
 //                              repository and focused checks
   :create-cli                   node --test (fast scaffolder CLI unit tests; no compiler or install)
   :tree                         Filegroup: every file
@@ -806,6 +860,8 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :design-files                 Filegroup: docs/design
   :spec-tests                   the Go tests that read docs/design (every Test...Quoted by name, registry, whole printed diagnostic numbers, VIP citations, pending lines), the cost guards of --fix and flow narrowing
 ```
+
+The source-map tool assertions share one four-worker leaf; its thirteen files run beside each other so splitting them does not multiply total elapsed work. Runtime compilation and generated source-map programs remain a separate cached preparation.
 
 Migration and convert suites run only in `//packages:migrate-test`. The compiler target runs its own tests; importing a flow test into a compiler entrypoint repeats that suite. `scripts/test-runners.test.mjs` checks discovery coverage and this ownership boundary.
 

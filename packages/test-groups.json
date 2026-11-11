@@ -1,0 +1,81 @@
+{
+  "vite/test/javascript-contract.property.test.mjs": [
+    [
+      "vite: JavaScript dependency edits recheck importer contracts and recover"
+    ],
+    [
+      "vite7: JavaScript dependency edits recheck importer contracts and recover"
+    ]
+  ],
+  "vite/test/missing-source.property.test.mjs": [
+    [
+      "vite: creating and deleting imported sources updates served modules",
+      "vite: dependency accept boundaries preserve hot updates without a document reload"
+    ],
+    [
+      "vite7: creating and deleting imported sources updates served modules",
+      "vite7: dependency accept boundaries preserve hot updates without a document reload"
+    ]
+  ],
+  "unplugin/test/bundlers.property.test.mjs": [
+    [
+      "bundlers-emit"
+    ],
+    [
+      "bundlers-build"
+    ],
+    [
+      "bundlers-invalid"
+    ]
+  ],
+  "unplugin/test/encoded-imports.property.test.mjs": [
+    [
+      "webpack: emitted relative URLs resolve the original source filename",
+      "rspack: emitted relative URLs resolve the original source filename",
+      "rollup: emitted relative URLs resolve the original source filename",
+      "esbuild: emitted relative URLs resolve the original source filename",
+      "vite: emitted relative URLs resolve the original source filename"
+    ],
+    [
+      "vite7: emitted relative URLs resolve the original source filename",
+      "esbuild source maps preserve the exact source filename like TypeScript",
+      "webpack: mixed escaped source and literal JavaScript imports keep distinct identities",
+      "webpack: mixed sibling source and literal JavaScript imports keep distinct identities",
+      "rspack: mixed escaped source and literal JavaScript imports keep distinct identities"
+    ],
+    [
+      "rspack: mixed sibling source and literal JavaScript imports keep distinct identities",
+      "rollup: mixed escaped source and literal JavaScript imports keep distinct identities",
+      "rollup: mixed sibling source and literal JavaScript imports keep distinct identities",
+      "esbuild: mixed escaped source and literal JavaScript imports keep distinct identities",
+      "esbuild: mixed sibling source and literal JavaScript imports keep distinct identities"
+    ],
+    [
+      "vite: mixed escaped source and literal JavaScript imports keep distinct identities",
+      "vite: mixed sibling source and literal JavaScript imports keep distinct identities",
+      "vite7: mixed escaped source and literal JavaScript imports keep distinct identities",
+      "vite7: mixed sibling source and literal JavaScript imports keep distinct identities",
+      "webpack: a literal filename loads as .vibe wherever it loads as .ts"
+    ],
+    [
+      "rspack: a literal filename loads as .vibe wherever it loads as .ts",
+      "rollup: a literal filename loads as .vibe wherever it loads as .ts",
+      "esbuild: a literal filename loads as .vibe wherever it loads as .ts",
+      "vite: a literal filename loads as .vibe wherever it loads as .ts",
+      "vite7: a literal filename loads as .vibe wherever it loads as .ts"
+    ]
+  ],
+  "unplugin/test/encoded-reexports.property.test.mjs": [
+    [
+      "the unplugin README still states the encoded-name import rule",
+      "webpack: native re-exports keep encoded leaf names",
+      "rspack: native re-exports keep encoded leaf names",
+      "rollup: native re-exports keep encoded leaf names"
+    ],
+    [
+      "esbuild: native re-exports keep encoded leaf names",
+      "vite: native re-exports keep encoded leaf names",
+      "vite7: native re-exports keep encoded leaf names"
+    ]
+  ]
+}

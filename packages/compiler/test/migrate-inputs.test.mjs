@@ -5,6 +5,7 @@ import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
+import { packageDeclarations } from "../../../scripts/testing/package-declarations.mjs"
 
 const root = fileURLToPath(new URL("../../../", import.meta.url))
 const flows = [".smithers/flows/migrate", ".smithers/flows/convert"]
@@ -18,35 +19,36 @@ const flowFiles = dir => readdirSync(join(root, dir), { withFileTypes: true })
 // The compiler package tests run as four file shards, compiler-test-1 to compiler-test-4.
 const consumers = ["compiler-test-1", "compiler-test-2", "compiler-test-3", "compiler-test-4", "migrate-test", "vite-test", "compiler-tools-test"]
 
-// The text that declares a target: its `const` up to the next top-level statement, plus the local helper it calls
-// (`pluginTest("vite", ...)`). Read as text rather than through `smthrs explain`: every explain walks the whole
-// workspace, and the graph runs this file while other targets create and remove directories in it (smthrs's own
-// `.smthrs-mat-*` output staging, and until 61878b40 the migrate tests' fixture repositories). On 2026-11-02 that
-// failed 9 hosted pre-gates with explain_failed ("Something went wrong on our side", smithers-bugs.md); the four
-// target explains also took 55 s on a quiet nyc-01, against 4 s for the one explain below.
-const declaration = (source, label) => {
-  const name = source.match(new RegExp(`^\\s+"?${label}"?: (\\w+)(?:\\(\\d+\\))?,?$`, "m"))?.[1]
-  assert.ok(name, `packages/PACKAGE.ts: no target ${label}`)
-  const body = id => source.match(new RegExp(`^const ${id} = [\\s\\S]*?(?=^(?:const|export|/[/*])|(?![\\s\\S]))`, "m"))?.[0] ?? ""
-  const text = body(name)
-  assert.ok(text, `packages/PACKAGE.ts: no declaration of ${name}`)
-  const helper = text.match(new RegExp(`^const ${name} = (\\w+)\\(`))?.[1]
-  return helper ? text + body(helper) : text
+// Evaluate the actual constructors without planning the workspace. Every leaf
+// below a compatibility Suite must retain the flow inputs, not just the group.
+function consumerLeaves(source, label) {
+  const targets = packageDeclarations(source)
+  const target = targets[label]
+  assert.ok(target, "packages/PACKAGE.ts: no target " + label)
+  const leaves = node => node.kind === "Suite" ? node.tests.flatMap(leaves) : node.kind === "Shell.Test" ? [node] : []
+  const selected = leaves(target)
+  assert.ok(selected.length, "no executable flow consumers under " + label)
+  return selected
 }
+const hasFlowInputs = target => target.data.some(input => input.kind === "migrationSources")
 
 test("each flow consumer takes //:migration-sources", () => {
   const source = readFileSync(join(root, "packages/PACKAGE.ts"), "utf8")
   for (const label of consumers) {
-    assert.match(declaration(source, label), /\bmigrationSources\b/, `//packages:${label} must list migrationSources in its data`)
+    for (const leaf of consumerLeaves(source, label)) {
+      assert.ok(hasFlowInputs(leaf), "//packages:" + label + " must retain migrationSources on every leaf")
+    }
   }
 })
 
-test("the declaration reader sees a target that drops //:migration-sources", () => {
+test("the declaration reader sees a target or Suite leaf that drops //:migration-sources", () => {
   const source = readFileSync(join(root, "packages/PACKAGE.ts"), "utf8")
-  const dropped = source.replace(/^(const migrateTest = [\s\S]*?)migrationSources,/m, "$1")
-  assert.notEqual(dropped, source)
-  assert.doesNotMatch(declaration(dropped, "migrate-test"), /\bmigrationSources\b/)
-  assert.match(declaration(dropped, "vite-test"), /\bmigrationSources\b/)
+  for (const [builder, label] of [["migrateTest", "migrate-test"], ["pluginTest", "vite-test"], ["compilerTest", "compiler-test-1"]]) {
+    const dropped = source.replace(new RegExp("(const " + builder + " = [\\s\\S]*?)migrationSources,"), "$1")
+    assert.notEqual(dropped, source)
+    assert.ok(consumerLeaves(dropped, label).some(leaf => !hasFlowInputs(leaf)))
+    for (const leaf of consumerLeaves(source, label)) assert.ok(hasFlowInputs(leaf))
+  }
 })
 
 test("//:migration-sources keys every file of the migrate and convert flows, including hidden directories", { timeout: 180000 }, () => {

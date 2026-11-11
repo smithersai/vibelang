@@ -21,5 +21,6 @@ export const Workspace = S.Workspace("vibelang", {
   // Gitignored trees with no CACHEDIR.TAG: discovery would walk each one on
   // every smthrs command.
   discovery: { prune: [".cache", "typescript/built", "typescript/.cache", "typescript/vibelang/cases",
-    "packages/vite/test/.fixtures", "packages/unplugin/test/.fixtures"] }
+    "packages/vite/test/.fixtures", "packages/unplugin/test/.fixtures",
+    "packages/vite/test/.prepared", "packages/unplugin/test/.prepared", "packages/compiler/test/source-maps/.prepared"] }
 })

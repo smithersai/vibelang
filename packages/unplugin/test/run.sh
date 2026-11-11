@@ -23,6 +23,9 @@ if [ -z "${VIBELANG_BINARY:-}" ]; then
 	(cd "$repo/typescript/tsc" && CGO_ENABLED=0 sh "$repo/scripts/native-output.sh" build "$VIBELANG_BINARY" -trimpath ./cmd/tsc)
 fi
 export VIBELANG_BINARY
+if [ "${VIBELANG_TEST_PREPARE_ONLY:-}" = 1 ]; then
+	exec node "$repo/scripts/testing/prepare-package-tests.mjs" unplugin
+fi
 
 effect_modules=${EFFECT_NODE_MODULES:-$repo/experiments/node_modules}
 effect=$(cd "$effect_modules/effect" && pwd -P)
