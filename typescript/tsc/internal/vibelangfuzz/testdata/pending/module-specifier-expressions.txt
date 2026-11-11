@@ -1,0 +1,5 @@
+# Module specifiers that are neither a StringLiteral nor an IdentifierReference (Appendix A, ModuleSpecifier).
+FuzzModuleSpecifierExpressions crash:ast.Node.Text compiler declaration emit panics (vibelang.preludeAliases reads the recovered specifier with Node.Text: Unhandled case KindAwaitExpression, KindCallExpression, KindParenthesizedExpression) when a named or type-only named import has an await, throw, grouped throw or parenthesized specifier and a contract type uses the import; lane unassigned
+FuzzModuleSpecifierExpressions corpus:grammar-admission-throw-specifier compiler reproduction of crash:ast.Node.Text, the grammar admission fuzzer's import type { Model } from throw './model.js' witness; lane unassigned
+FuzzModuleSpecifierExpressions corpus:await-specifier-named-import compiler reproduction of crash:ast.Node.Text with an await specifier in a value import; lane unassigned
+FuzzModuleSpecifierExpressions corpus:parenthesized-specifier-vibex compiler reproduction of crash:ast.Node.Text with a parenthesized string specifier in a .vibex file; lane unassigned
