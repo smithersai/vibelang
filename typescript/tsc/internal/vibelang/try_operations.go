@@ -7,8 +7,18 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// EK1801: VIP-18 accepts only arrays of Effects.
-var EK1801 = message(1801, errorCategory, "{0} requires an array or tuple of Effects. Use try all({ … }, { concurrency: \"unbounded\" }) for an object.")
+// EK1801: VIP-18 accepts only arrays of Effects. {0} is the operation.
+var EK1801 = message(1801, errorCategory, "{0} requires an array or tuple of Effects.")
+
+// tryOperationHints gives each VIP-18 operation an EK1801 hint that keeps its
+// meaning. Only try.all has an object counterpart, the all global; a race or
+// an any written with it would become an all.
+var tryOperationHints = map[string]string{
+	"try.all":        "Use try all({ … }, { concurrency: \"unbounded\" }) for an object.",
+	"try.race":       "Race an array of Effects, such as try.race [a(), b()].",
+	"try.any":        "Pass an array of Effects, such as try.any [a(), b()].",
+	"try.allSettled": "Pass an array of Effects, such as try.allSettled [a(), b()].",
+}
 
 func init() {
 	checker.RegisterCallArgumentDiagnosticsFilterHook(filterRejectedTryOperationArgumentDiagnostics)
@@ -45,8 +55,7 @@ func checkTryOperations(c *checker.Checker, file *ast.SourceFile) {
 			t := c.GetTypeAtLocation(operand)
 			valid := tryOperationArrayType(c, t)
 			if t != nil && !valid {
-				report(c, operand, EK1801, name)
-
+				note(report(c, operand, EK1801, name), tryOperationHints[name])
 			}
 		}
 		return node.ForEachChild(visit)

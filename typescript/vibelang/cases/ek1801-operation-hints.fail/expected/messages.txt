@@ -1,0 +1,8 @@
+main.vibe(2,49): error EK1801: try.race requires an array or tuple of Effects.
+Race an array of Effects, such as try.race [a(), b()].
+main.vibe(3,49): error EK1801: try.any requires an array or tuple of Effects.
+Pass an array of Effects, such as try.any [a(), b()].
+main.vibe(4,58): error EK1801: try.allSettled requires an array or tuple of Effects.
+Pass an array of Effects, such as try.allSettled [a(), b()].
+main.vibe(5,49): error EK1801: try.all requires an array or tuple of Effects.
+Use try all({ … }, { concurrency: "unbounded" }) for an object.

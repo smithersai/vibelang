@@ -1,0 +1,8 @@
+// expect: EK1801
+export effect function race() { return try.race 42 }
+export effect function first() { return try.any 42 }
+export effect function settled() { return try.allSettled 42 }
+export effect function every() { return try.all { a: Effect.succeed(1) } }
+
+// Each operation's hint keeps that operation: only try.all has an object counterpart, the all global.
+// Appendix B: EK1801 — spec-rule: docs/design/src/900-appendices.md#cbbe6ca6bdb37b31
