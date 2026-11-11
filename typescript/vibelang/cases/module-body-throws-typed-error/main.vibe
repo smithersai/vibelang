@@ -1,0 +1,23 @@
+// rule-evidence: docs/design/src/003-failures.md#plain-code-never-throws
+// rule-evidence: docs/design/src/001-functions.md#module-declarations
+// VIP-40: throwing on purpose goes in a module block. The body is TypeScript
+// kept in the .vibe file, so its throw is JavaScript's, and `@throws {Error}`
+// types it for every caller. Effect code runs the call through Effect.try.
+// typescript/ holds the same program with the body as a sibling .ts file;
+// both must declare the same API, including the re-exported @throws tag.
+module check {
+  /** @throws {Error} */
+  export function nonEmpty(s: string): string {
+    if (!s) throw new Error("empty")
+    return s
+  }
+}
+
+import { nonEmpty } from check
+export { nonEmpty }
+
+error Empty { input: string }
+
+export effect function load(s: string) {
+  return try Effect.try({ try: () => nonEmpty(s), catch: () => new Empty({ input: s }) })
+}

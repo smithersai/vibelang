@@ -507,7 +507,7 @@ effect function keys() {
 
 `try (try Experimental.Document.Document).current` gives the page's `Document` to an API that takes one, such as `Stream.fromEventListener`, or a library's helper that cancels an event while it is dispatched. Its type is the real `Document`, so event types carry through. For events you only read, `BrowserStream.fromEventListenerDocument` needs no service.
 
-Calling a member of the document in a `.vibe` file is `EK0403`, because nothing says what it throws: UI code that reads or changes the page belongs in a `.ts` or `.tsx` file.
+Calling a member of the document in a `.vibe` file is `EK0403`, because nothing says what it throws: UI code that reads or changes the page belongs in a `module` body or a `.ts` or `.tsx` file.
 
 Two members read the host's other document-level APIs:
 

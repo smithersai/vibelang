@@ -82,7 +82,7 @@ VibeLang gives each Effect idea its own syntax and compiles it to the Effect pro
 Interop rests on two facts.
 
 1. **The output is ordinary Effect code.** The compiler is a fork of the TypeScript 7 compiler. It checks `.vibe` and `.ts` files in one program, with TypeScript's type system, and emits JavaScript plus a `.d.vibe.ts` declaration beside each `.vibe` file. TypeScript imports a VibeLang module and sees ordinary Effect functions. [VibeLang for Effect users](vibelang-features/114-vibelang-for-effect-users.md) covers the rules.
-2. **A `.ts` file can sit beside any `.vibe` file.** Plain and `async` functions are TypeScript's. Code that needs a Node or browser global, or that throws, lives in a `.ts` file, and Effect code calls it through Effect's own adapters: `Effect.try` for a call that may throw, `tryPromise` for a Promise, and `callback` for a callback API.
+2. **TypeScript can sit inside or beside any `.vibe` file.** Plain and `async` functions are TypeScript's. Code that needs a Node or browser global, or that throws, lives in a `module` block, TypeScript kept inside the `.vibe` file with `@throws {T}` on each function that throws, or in a `.ts` file where a tool must start the file by path. Effect code calls it through Effect's own adapters: `Effect.try` for a call that may throw, `tryPromise` for a Promise, and `callback` for a callback API.
 
 Based on [Effect's Creating Effects](https://effect.website/docs/v4/getting-started/creating-effects#trypromise), this adapter wraps an `async` function from a `.ts` file:
 

@@ -191,15 +191,19 @@ When upgrading existing `.vibe` modules from the former readonly defaults, make 
 
 ### Keep a throwing helper in a TypeScript body
 
-A named `module` body at file scope uses ordinary TypeScript, including native `throw`. Import its members with the module name:
+A named `module` body at file scope uses ordinary TypeScript, including native `throw`. Throwing on purpose is always typed: write `@throws {T}` on each function that throws, so callers see the contract. Import its members with the module name:
 
 ```vibe
 module pem {
+  /** @throws {Error} */
   export function b(message: string): string { throw new Error(message) }
 }
 import { b } from pem
 export { b }
+export effect function decode(message: string) { return try Effect.try(() => b(message)) }
 ```
+
+Effect code runs the call through `Effect.try`. Use a sibling `.ts` file instead only where a tool must start the file by path.
 
 The name is an identifier specifier in the containing VibeLang file. When moving the body to a sibling TypeScript file, import that file with a string specifier. Ordinary TypeScript namespaces remain available inside the body.
 

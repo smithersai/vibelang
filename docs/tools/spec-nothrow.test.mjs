@@ -273,7 +273,7 @@ test("user docs, the cheat sheet and SKILL.md say plain VibeLang code never thro
   assert.doesNotMatch(fallback, /a plain arrow returns a success value, where a `throw` is a defect/)
   assert.match(fallback, /A `throw` in a plain handler is `EK0401`; write `catch effect` for a typed failure/)
 
-  assert.match(read("docs/user/src/vibelang-features/115-cheat-sheet.md"), /In a plain function it is `EK0401`: make the function `effect`, or move the code to a `\.ts` file\. In an `async` function it rejects the Promise\./)
+  assert.match(read("docs/user/src/vibelang-features/115-cheat-sheet.md"), /In a plain function it is `EK0401`: make the function `effect`, or keep JavaScript's `throw` in a `module` block with `@throws \{T\}` on each function that throws\. In an `async` function it rejects the Promise\./)
   assert.doesNotMatch(read("docs/user/src/getting-started/005-creating-effects.md"), /VibeLang infers throws from non-effectful plain `\.vibe` functions/)
   assertPublishedNoThrowNote(read("docs/user/src/setup/release-notes.md"))
 })

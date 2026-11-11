@@ -60,7 +60,7 @@ async function load(id: string) { if (!id) throw new Error("no id"); return id }
 function orNull(s: string) { try { return JSON.parse(s) } catch { return null } } // allowed
 ```
 
-To keep JavaScript throwing behavior, move the code to a `.ts` file. To make a typed Effect failure, use an `effect` function and `throw`; to keep the failure a defect in Effect code, use `die`. Preserve public declarations when changing an exported function.
+To keep JavaScript throwing behavior, move the code into a [`module` declaration](/spec/001-functions#module-declarations) in the same file and write `@throws {T}` on each of its functions that throws, so every caller sees the thrown type; an exported function keeps the declaration a `.ts` original would have. Use a separate `.ts` file only where a tool must start the file by path. To make a typed Effect failure, use an `effect` function and `throw`; to keep the failure a defect in Effect code, use `die`. Preserve public declarations when changing an exported function.
 
 For `EK0403`, an explicit synchronous defect bridge is `try Effect.orDie(Effect.try({ try: () => call(), catch: (e) => e }))`. It preserves the thrown value as a defect without widening `E`.
 
