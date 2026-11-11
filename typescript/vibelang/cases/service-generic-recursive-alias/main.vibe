@@ -1,0 +1,22 @@
+// A concrete service inside a generic function may give a member a type whose
+// alias names itself with a growing argument (005 "Services", EK3005). The
+// alias has no largest instantiation, and neither member names T.
+// expect-result: ["g/Local","g/Step",3]
+type Builder<T extends unknown[]> = { add<U>(u: U): Builder<[...T, U]>; done(): T }
+type Nested<U> = Nested<U[]>[]
+type Next<U> = { next: Next<U[]>; value: U }
+
+function builder<T extends unknown[]>(items: T): Builder<T> {
+  return { add: (u) => builder([...items, u]), done: () => items }
+}
+
+function generic<T>(x: T) {
+  service Local { static readonly key = "g/Local"; make(): Builder<[]> }
+  service Step { static readonly key = "g/Step"; value: Next<number>; nested: Nested<number> }
+  return [Local, Step] as const
+}
+
+export effect function main() {
+  const [Local, Step] = generic(1)
+  return [Local.key, Step.key, builder([]).add(1).add("two").add(3).done().length]
+}

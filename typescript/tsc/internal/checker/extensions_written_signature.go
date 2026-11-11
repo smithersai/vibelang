@@ -1,5 +1,7 @@
 package checker
 
+import "github.com/microsoft/TypeScript/tsc/internal/ast"
+
 // InstantiateWrittenSignatureType applies a signature's and its containing
 // objects' existing substitutions to written metadata such as a foreign @throws
 // tag. It resolves that metadata without inferring a new callable contract.
@@ -34,4 +36,35 @@ func (c *Checker) InstantiateWrittenSignatureType(signature *Signature, declared
 func (c *Checker) ReferenceTypeArgumentUsed(t *Type, index int) bool {
 	variances := c.getVariances(t.Target())
 	return index >= len(variances) || variances[index] != VarianceFlagsIndependent
+}
+
+// AnonymousInstantiation returns the declared object type that an anonymous or
+// mapped object type instantiates, with the types its substitution gives the
+// type parameters in scope at that declaration: an alias's own parameters and
+// every enclosing parameter the declaration may name. The target is nil for a
+// reference and for a type that is not an instantiation.
+func (c *Checker) AnonymousInstantiation(t *Type) (target *Type, arguments []*Type) {
+	if t == nil || t.flags&TypeFlagsObject == 0 || t.objectFlags&ObjectFlagsReference != 0 || t.objectFlags&ObjectFlagsInstantiated == 0 {
+		return nil, nil
+	}
+	data := t.AsObjectType()
+	if data.target == nil || data.mapper == nil {
+		return nil, nil
+	}
+	var declaration *ast.Node
+	switch {
+	case t.objectFlags&ObjectFlagsInstantiationExpressionType != 0:
+		declaration = t.AsInstantiationExpressionType().node
+	case t.symbol != nil && len(t.symbol.Declarations()) != 0:
+		declaration = t.symbol.Declarations()[0]
+	}
+	if declaration == nil || !c.typeNodeLinks.Has(declaration) {
+		return data.target, nil
+	}
+	// getObjectTypeInstantiation stored this list when it first instantiated
+	// the declaration, and keys each instantiation by these mapped types.
+	for _, parameter := range c.typeNodeLinks.Get(declaration).getOuterTypeParameters() {
+		arguments = append(arguments, data.mapper.Map(parameter))
+	}
+	return data.target, arguments
 }

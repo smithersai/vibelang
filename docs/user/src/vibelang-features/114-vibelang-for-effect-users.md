@@ -502,7 +502,7 @@ Inferred parameter types of retained SDK error constructors keep their Effect na
 
 Returning an Effect, an Effect subtype, a union or a program function keeps it as data and does not itself report `EK4802`. To execute a returned Effect, write `return try program`. Native `Effect.gen` return advice belongs to the imported `effecttsgo/returnEffectInGen` rule (`EK38103`).
 
-A generic assertion such as `expect(awaited(p))` in effect code reports `EK4802` when `awaited(p)` returns an Effect: the assertion would receive the unrun program. Write `expect(try awaited(p))` to inspect its result. To inspect the program object intentionally, write `expect<Effect.Effect<number>>(e)`. Generic arrays, Promises and callback contracts also report the warning; run their Effects where those values are constructed.
+A generic assertion such as `expect(awaited(p))` in effect code reports `EK4802` when `awaited(p)` returns an Effect: the assertion would receive the unrun program. Write `expect(try awaited(p))` to inspect its result. To inspect the program object intentionally, write `expect<Effect.Effect<number>>(e)`. Generic arrays, Promises and callback contracts also report the warning; run their Effects where those values are constructed. Recursive generic aliases are checked by the same rule: a declared Effect member remains an Effect position, while an inferred bare parameter still receives the warning.
 
 A plain callback keeps its TypeScript body even when an `effect` function passes it as an argument. A captured `Effect.runSyncWith(context)` runner can be called from that callback, as from an assigned or returned plain function; passing the callback does not add an Effect activation. An explicitly `effect` callback remains Effect code.
 

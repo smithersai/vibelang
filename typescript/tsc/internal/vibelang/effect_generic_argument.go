@@ -78,7 +78,7 @@ func inferredEffectArguments(c *checker.Checker, call *ast.Node) []*ast.Node {
 		if value.Flags&ast.NodeFlagsVibeLangTry != 0 || arg.Flags&ast.NodeFlagsVibeLangTry != 0 || isTryCall(value) || tried(value) {
 			continue
 		}
-		if inferredEffectPosition(c, c.GetTypeAtPosition(target, i), inferred, make(map[*checker.Type]bool)) {
+		if inferredEffectPosition(c, c.GetTypeAtPosition(target, i), inferred, newEffectTypeWalk()) {
 			out = append(out, arg)
 		}
 	}
@@ -88,23 +88,69 @@ func inferredEffectArguments(c *checker.Checker, call *ast.Node) []*ast.Node {
 // constraintNamesEffect reports whether the unsubstituted constraint declares
 // Effect data, including constrained duals and containers of programs.
 func constraintNamesEffect(c *checker.Checker, param *checker.Type) bool {
-	return declaresEffectData(c, c.GetConstraintOfTypeParameter(param), make(map[*checker.Type]bool))
+	return declaresEffectData(c, c.GetConstraintOfTypeParameter(param), newEffectTypeWalk())
+}
+
+// effectTypeWalk is the state of one walk over a declared type's members.
+type effectTypeWalk struct {
+	steps *int
+	depth int
+	seen  map[*checker.Type]bool
+	// expanding counts, for each declared anonymous object type, the
+	// instantiations whose members the walk is inside.
+	expanding map[*checker.Type]int
+}
+
+func newEffectTypeWalk() *effectTypeWalk {
+	return &effectTypeWalk{steps: new(int), seen: map[*checker.Type]bool{}, expanding: map[*checker.Type]int{}}
+}
+
+// maxExpandedInstantiations is how many instantiations of one declared object
+// type a walk expands inside one another.
+const maxExpandedInstantiations = 2
+
+// expand reports whether t is an instantiation nested too deep to expand, and
+// then returns its type arguments. An alias of an object type that names
+// itself with a growing argument, such as Next<U[]> or Builder<[...T, U]>,
+// yields a new type at every step, which no visited set bounds. Nested
+// instantiations of one declaration have the same members, so past the limit
+// the walk reads the arguments, as it does for a reference. Each call that
+// returns false is paired with leave.
+func (w *effectTypeWalk) expand(c *checker.Checker, t *checker.Type) (arguments []*checker.Type, nested bool) {
+	target, arguments := c.AnonymousInstantiation(t)
+	if target == nil {
+		return nil, false
+	}
+	if w.expanding[target] == maxExpandedInstantiations {
+		return arguments, true
+	}
+	w.expanding[target]++
+	return nil, false
+}
+
+func (w *effectTypeWalk) leave(c *checker.Checker, t *checker.Type) {
+	if target, _ := c.AnonymousInstantiation(t); target != nil {
+		w.expanding[target]--
+	}
 }
 
 // declaresEffectData inspects the declared type before this call's inference.
 // Use resolved symbols, not source spellings: aliases and Effect's other data
 // types (Stream, Option, Layer, ...) retain their library identity. Do not
 // descend into those types' implementation members or generic payloads.
-func declaresEffectData(c *checker.Checker, t *checker.Type, seen map[*checker.Type]bool) bool {
-	if t == nil || seen[t] {
+func declaresEffectData(c *checker.Checker, t *checker.Type, walk *effectTypeWalk) bool {
+	if t == nil || walk.depth >= maxTypeWalkDepth || *walk.steps >= maxTypeWalkSteps || walk.seen[t] {
 		return false
 	}
-	seen[t] = true
+	*walk.steps++
+	walk.depth++
+	defer func() { walk.depth-- }()
+	walk.seen[t] = true
 	if t.Flags()&checker.TypeFlagsTypeParameter != 0 {
-		return declaresEffectData(c, c.GetConstraintOfTypeParameter(t), seen)
+		return declaresEffectData(c, c.GetConstraintOfTypeParameter(t), walk)
 	}
 	if t.Flags()&(checker.TypeFlagsUnion|checker.TypeFlagsIntersection) != 0 {
-		return slices.ContainsFunc(t.Types(), func(part *checker.Type) bool { return declaresEffectData(c, part, seen) })
+		return slices.ContainsFunc(t.Types(), func(part *checker.Type) bool { return declaresEffectData(c, part, walk) })
 	}
 	if t.Flags()&checker.TypeFlagsObject == 0 {
 		return false
@@ -118,57 +164,76 @@ func declaresEffectData(c *checker.Checker, t *checker.Type, seen map[*checker.T
 		return true
 	}
 	if t.ObjectFlags()&checker.ObjectFlagsReference != 0 {
-		return slices.ContainsFunc(c.GetTypeArguments(t), func(arg *checker.Type) bool { return declaresEffectData(c, arg, seen) })
+		return slices.ContainsFunc(c.GetTypeArguments(t), func(arg *checker.Type) bool { return declaresEffectData(c, arg, walk) })
 	}
+	if arguments, nested := walk.expand(c, t); nested {
+		return slices.ContainsFunc(arguments, func(arg *checker.Type) bool { return declaresEffectData(c, arg, walk) })
+	}
+	defer walk.leave(c, t)
 	for _, sig := range c.GetSignaturesOfType(t, checker.SignatureKindCall) {
-		if declaresEffectData(c, c.GetReturnTypeOfSignature(sig), seen) {
+		if declaresEffectData(c, c.GetReturnTypeOfSignature(sig), walk) {
 			return true
 		}
 		for _, param := range sig.Parameters() {
-			if declaresEffectData(c, c.GetTypeOfSymbol(param), seen) {
+			if declaresEffectData(c, c.GetTypeOfSymbol(param), walk) {
 				return true
 			}
 		}
 	}
 	return slices.ContainsFunc(c.GetPropertiesOfType(t), func(property *ast.Symbol) bool {
-		return declaresEffectData(c, c.GetTypeOfSymbol(property), seen)
+		return declaresEffectData(c, c.GetTypeOfSymbol(property), walk)
 	})
 }
 
 // Follow generic containers and callback contracts without expanding their
-// library implementation members. The visited set bounds recursive aliases.
-func inferredEffectPosition(c *checker.Checker, t *checker.Type, inferred map[*checker.Type]bool, seen map[*checker.Type]bool) bool {
-	if t == nil || seen[t] {
+// library implementation members. The visited set bounds a recursive alias
+// that returns to the same type; effectTypeWalk bounds one that never does.
+func inferredEffectPosition(c *checker.Checker, t *checker.Type, inferred map[*checker.Type]bool, walk *effectTypeWalk) bool {
+	if t != nil && inferred[t] {
+		return true
+	}
+	if t == nil || walk.depth >= maxTypeWalkDepth || *walk.steps >= maxTypeWalkSteps || walk.seen[t] {
 		return false
 	}
-	seen[t] = true
+	*walk.steps++
+	walk.depth++
+	defer func() { walk.depth-- }()
+	walk.seen[t] = true
 	if inferred[t] {
 		return true
 	}
-	if declaresEffectData(c, t, make(map[*checker.Type]bool)) {
+	declaredWalk := newEffectTypeWalk()
+	// Rechecking the declared contract at each inferred position shares the
+	// same work budget, rather than multiplying that budget by the graph size.
+	declaredWalk.steps = walk.steps
+	if declaresEffectData(c, t, declaredWalk) {
 		return false
 	}
 	if t.Flags()&(checker.TypeFlagsUnion|checker.TypeFlagsIntersection) != 0 {
-		return slices.ContainsFunc(t.Types(), func(part *checker.Type) bool { return inferredEffectPosition(c, part, inferred, seen) })
+		return slices.ContainsFunc(t.Types(), func(part *checker.Type) bool { return inferredEffectPosition(c, part, inferred, walk) })
 	}
 	if t.Flags()&checker.TypeFlagsObject == 0 {
 		return false
 	}
 	if t.ObjectFlags()&checker.ObjectFlagsReference != 0 {
-		return slices.ContainsFunc(c.GetTypeArguments(t), func(arg *checker.Type) bool { return inferredEffectPosition(c, arg, inferred, seen) })
+		return slices.ContainsFunc(c.GetTypeArguments(t), func(arg *checker.Type) bool { return inferredEffectPosition(c, arg, inferred, walk) })
 	}
+	if arguments, nested := walk.expand(c, t); nested {
+		return slices.ContainsFunc(arguments, func(arg *checker.Type) bool { return inferredEffectPosition(c, arg, inferred, walk) })
+	}
+	defer walk.leave(c, t)
 	for _, sig := range c.GetSignaturesOfType(t, checker.SignatureKindCall) {
-		if inferredEffectPosition(c, c.GetReturnTypeOfSignature(sig), inferred, seen) {
+		if inferredEffectPosition(c, c.GetReturnTypeOfSignature(sig), inferred, walk) {
 			return true
 		}
 		for _, param := range sig.Parameters() {
-			if inferredEffectPosition(c, c.GetTypeOfSymbol(param), inferred, seen) {
+			if inferredEffectPosition(c, c.GetTypeOfSymbol(param), inferred, walk) {
 				return true
 			}
 		}
 	}
 	for _, property := range c.GetPropertiesOfType(t) {
-		if inferredEffectPosition(c, c.GetTypeOfSymbol(property), inferred, seen) {
+		if inferredEffectPosition(c, c.GetTypeOfSymbol(property), inferred, walk) {
 			return true
 		}
 	}

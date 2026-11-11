@@ -10,6 +10,12 @@ import (
 const serviceCaptureRecoveryQuote = "A service's resolved member contracts cannot capture a type parameter from an enclosing scope"
 const serviceCaptureRecoveryRuleQuote = "a written member contract depending on an outer type parameter"
 
+// Each alias names itself with a larger argument at every step.
+const serviceCaptureRecursiveAliases = "type Builder<A extends unknown[]> = { add<V>(v: V): Builder<[...A, V]>; done(): A }; " +
+	"type Next<U> = { next: Next<U[]>; value: U }; type Skip<U> = { next: Skip<U[]>; n: number }; " +
+	"type Nested<U> = Nested<U[]>[]; type NestedValue<U> = U | NestedValue<U[]>[]; " +
+	"type Chain<U> = (value: U) => Chain<U[]>; type Grow<U> = U extends string ? number : { next: Grow<U[]> }; "
+
 func serviceCaptureRecoveryChapter(t testing.TB) string {
 	t.Helper()
 	chapter := serviceKeyRecoveryChapter(t)
@@ -35,7 +41,7 @@ func FuzzServiceCaptureWithRejectedMembers(f *testing.F) {
 		if contract != "" {
 			contract += "; "
 		}
-		return "type Box<U> = { value: U }; type Phantom<U> = { n: number }; export function outer<T>() { service S { static readonly key = \"capture/S\"; " + contract + rejected + " } }; export const invalid: number = \"wrong\""
+		return "type Box<U> = { value: U }; type Phantom<U> = { n: number }; " + serviceCaptureRecursiveAliases + "export function outer<T>() { service S { static readonly key = \"capture/S\"; " + contract + rejected + " } }; export const invalid: number = \"wrong\""
 	}
 	for _, contract := range []struct {
 		key, text string
@@ -45,6 +51,15 @@ func FuzzServiceCaptureWithRejectedMembers(f *testing.F) {
 		{"alias", "value: Box<T>", true}, {"constraint", "read<U extends T>(value: U): U", true},
 		{"phantom", "value: Phantom<T>", false}, {"member-local", "read<U>(value: U): U", false},
 		{"concrete", "value: number", false},
+		// A recursive alias whose argument grows has no largest instantiation.
+		// It captures exactly when a used argument does.
+		{"recursive-array", "value: Nested<number>", false}, {"recursive-array-phantom", "value: Nested<T>", false},
+		{"recursive-array-capture", "value: NestedValue<T>", true},
+		{"recursive-builder", "value: Builder<[]>", false}, {"recursive-growing", "value: Next<number>", false},
+		{"recursive-function", "value: Chain<number>", false}, {"recursive-conditional", "read<U>(value: U): Grow<U>", false},
+		{"recursive-phantom", "value: Skip<T>", false}, {"recursive-nested-concrete", "value: Next<Next<number>>", false},
+		{"recursive-builder-capture", "value: Builder<[T]>", true}, {"recursive-growing-capture", "value: Next<T>", true},
+		{"recursive-function-capture", "value: Chain<T>", true}, {"recursive-nested-capture", "value: Next<Next<T>>", true},
 	} {
 		for _, rejected := range []struct{ key, text string }{
 			{"constructor", "constructor() {}"}, {"index", "[name: string]: unknown"},

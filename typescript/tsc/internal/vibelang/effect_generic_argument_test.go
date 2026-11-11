@@ -51,6 +51,18 @@ func TestEffectIntoPlainGeneric(t *testing.T) {
 		{"effect-fork-child", "const take = Effect.forkChild", "job", "", 0},
 		{"effect-fork-detach", "const take = Effect.forkDetach", "job", "", 0},
 		{"other-constraint", "function take<T extends { readonly n?: number } | object>(x: T): number { return 1 }", "job", "", 1},
+		// A parameter or constraint whose alias names itself with a growing
+		// argument has no largest instantiation; the walk still answers.
+		{"branching-array-parameter", "type Tree<U> = Tree<U[]>[] | Tree<[U]>[]; declare const tree: Tree<number>; function take<T>(x: T, n: Tree<number>): number { return 1 }", "job, tree", "", 1},
+		{"recursive-array-parameter", "type Nested<U> = Nested<U[]>[]; declare const chain: Nested<number>; function take<T>(x: T, n: Nested<number>): number { return 1 }", "job, chain", "", 1},
+		{"recursive-array-constraint", "type Nested<U> = Nested<U[]>[]; declare const chain: Nested<number>; function take<A extends Nested<number>, T>(a: A, x: T): number { return 1 }", "chain, job", "", 1},
+		{"recursive-alias-parameter", "type Next<U> = { next: Next<U[]> }; declare const chain: Next<number>; function take<T>(x: T, n: Next<number>): number { return 1 }", "job, chain", "", 1},
+		{"recursive-alias-constraint", "type Next<U> = { next: Next<U[]> }; declare const chain: Next<number>; function take<A extends Next<number>, T>(a: A, x: T): number { return 1 }", "chain, job", "", 1},
+		{"recursive-builder-parameter", "type Builder<A extends unknown[]> = { add<U>(u: U): Builder<[...A, U]>; done(): A }; declare const builder: Builder<[]>; function take<T>(x: T, b: Builder<[]>): number { return 1 }", "job, builder", "", 1},
+		{"recursive-alias-payload", "type Next<U> = { next: Next<U[]>; value: U }; declare const jobs: Next<Effect.Effect<number>>; function take<T>(x: Next<T>): number { return 1 }", "jobs", "", 1},
+		{"nested-alias-payload", "type Box<U> = { value: U }; declare const jobs: Box<Box<Box<Box<Effect.Effect<number>>>>>; function take<T>(x: Box<Box<Box<Box<T>>>>): number { return 1 }", "jobs", "", 1},
+		{"nested-alias-declared-program", "type Box<U> = { value: U }; declare const jobs: Box<Box<Box<Box<Effect.Effect<number>>>>>; function take<T>(x: Box<Box<Box<Box<Effect.Effect<T>>>>>): number { return 1 }", "jobs", "", 0},
+		{"recursive-alias-declared-program", "type Next<U> = { next: Next<U[]>; run: Effect.Effect<U> }; declare const jobs: Next<number>; function take<T>(x: T, n: Next<number>): number { return 1 }", "job, jobs", "", 1},
 		{"effect-factory", "function take<T>(x: T): Effect.Effect<T> { return Effect.succeed(x) }", "job", "", 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {

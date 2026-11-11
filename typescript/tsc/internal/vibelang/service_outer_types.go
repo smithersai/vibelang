@@ -102,6 +102,8 @@ type outerTypeContext struct {
 }
 
 type outerTypeWalk struct {
+	steps            int
+	depth            int
 	c                *checker.Checker
 	class            *ast.Node
 	seen             map[outerTypeSeen]*checker.Type
@@ -109,7 +111,26 @@ type outerTypeWalk struct {
 	context          uint32
 	contexts         map[outerTypeContext]uint32
 	activeReferences map[*checker.Type]bool
+	// activeInstantiations holds, for each declared anonymous object type
+	// whose instantiation is being expanded, which of that instantiation's
+	// type arguments capture an outer parameter (one entry per nested expansion).
+	activeInstantiations map[*checker.Type][][]bool
+	// capturing remembers each anonymous instantiation found to capture.
+	capturing map[*checker.Type]*checker.Type
 }
+
+// maxNestedInstantiations bounds how many instantiations of one declared
+// object type the walk expands inside one another.
+const maxNestedInstantiations = 8
+
+// maxTypeWalkDepth also bounds cycles inside reference arguments themselves,
+// such as type Nested<T> = Nested<T[]>[]. These never reach member expansion
+// and therefore cannot be stopped by an active member-instantiation guard.
+const maxTypeWalkDepth = 1024
+
+// Branching recursive arguments can generate exponentially many distinct
+// types within the depth limit. Bound the total work as well.
+const maxTypeWalkSteps = 10000
 
 // find returns the first type parameter in t declared outside class, or nil.
 // References check structurally witnessed type arguments, then resolved members
@@ -119,6 +140,22 @@ func (w *outerTypeWalk) find(t *checker.Type) (captured *checker.Type) {
 	if t == nil {
 		return nil
 	}
+	// An immediately visible free parameter is conclusive even when an
+	// earlier, unrelated recursive branch used the expansion budget.
+	if t.Flags()&checker.TypeFlagsTypeParameter != 0 {
+		if symbol := t.Symbol(); symbol != nil && len(symbol.Declarations()) != 0 {
+			declaration := symbol.Declarations()[0]
+			if !ast.IsNodeDescendantOf(declaration, w.class) && ast.IsNodeDescendantOf(w.class, declaration.Parent) {
+				return t
+			}
+		}
+	}
+	if w.depth >= maxTypeWalkDepth || w.steps >= maxTypeWalkSteps {
+		return nil
+	}
+	w.steps++
+	w.depth++
+	defer func() { w.depth-- }()
 	seen := outerTypeSeen{t, w.context}
 	if result, visited := w.seen[seen]; visited {
 		return result
@@ -243,6 +280,53 @@ func (w *outerTypeWalk) find(t *checker.Type) (captured *checker.Type) {
 			}
 			w.activeReferences[target] = true
 			defer delete(w.activeReferences, target)
+		} else if target, arguments := c.AnonymousInstantiation(t); target != nil {
+			// An instantiation of an alias of an object type, or of an object
+			// type inside a generic declaration, is an anonymous type with no
+			// reference target. TypeScript resolves its members lazily, so a
+			// declaration that names itself with a growing argument, such as
+			// Builder<[...T, U]> or Next<U[]>, yields a new type at every
+			// step. An instantiation nested in another of the same declaration
+			// has the same members under another substitution: it can capture
+			// only through an argument, and an argument position is used in
+			// the nested members exactly where the enclosing expansion uses
+			// it. Expand it only when it captures at a position where no
+			// enclosing instantiation does.
+			captures := make([]bool, len(arguments))
+			for index, argument := range arguments {
+				captures[index] = w.find(argument) != nil
+			}
+			if active := w.activeInstantiations[target]; len(active) != 0 {
+				// The nested type may itself be an argument of an enclosing
+				// instantiation, as Box<T> is in Box<Box<T>>; its own walk
+				// already answered.
+				if found := w.capturing[t]; found != nil {
+					return found
+				}
+				if len(active) >= maxNestedInstantiations {
+					return nil
+				}
+				for _, enclosing := range active {
+					covered := true
+					for index, capture := range captures {
+						covered = covered && (!capture || index < len(enclosing) && enclosing[index])
+					}
+					if covered {
+						return nil
+					}
+				}
+			}
+			if w.activeInstantiations == nil {
+				w.activeInstantiations = map[*checker.Type][][]bool{}
+				w.capturing = map[*checker.Type]*checker.Type{}
+			}
+			w.activeInstantiations[target] = append(w.activeInstantiations[target], captures)
+			defer func() {
+				w.activeInstantiations[target] = w.activeInstantiations[target][:len(w.activeInstantiations[target])-1]
+				if captured != nil {
+					w.capturing[t] = captured
+				}
+			}()
 		}
 		if t.ObjectFlags()&(checker.ObjectFlagsAnonymous|checker.ObjectFlagsMapped|checker.ObjectFlagsReference) == 0 {
 			return nil
