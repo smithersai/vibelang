@@ -1,0 +1,19 @@
+// expect-result: [1,"none","other","other",2]
+// VIP-7: effect 4.1.1 has no runtime Option.Some, so when Option.Some(let v)
+// is a retained fixed check: Option.isOption(s) && Option.isSome(s), matching
+// [s.value]. A look-alike object that is not an Option matches neither arm.
+const label = (o: unknown) => match (o) {
+  when Option.Some(let v): v;
+  when Option.None: "none";
+  default: "other";
+}
+
+export effect function main() {
+  return [
+    label(Option.some(1)),
+    label(Option.none()),
+    label({ _tag: "Some", value: 1 }),
+    label({ _tag: "None" }),
+    label(Option.some(2)),
+  ]
+}
