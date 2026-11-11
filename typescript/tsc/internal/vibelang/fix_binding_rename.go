@@ -9,28 +9,26 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
-// Lexical is-pattern bindings share their enclosing home. The binder reports
-// duplicate names using the same TS2451 or TS2300 diagnostic as TypeScript.
-
 func init() {
 	checker.RegisterBindDiagnosticsFilterHook(explainBindingRename)
 }
 
 // Lexical is-pattern bindings share their enclosing home. The binder reports
 // duplicate names using the same TS2451 or TS2300 diagnostic as TypeScript.
-const bindingRenameNote = "Two is patterns bind {0} in one block: the quick fix renames the later binding and its uses; or use distinct names or separate blocks."
+const bindingRenameNote = "Two is patterns bind {0} in one block: use distinct names or separate blocks."
 
 // explainBindingRename adds bindingRenameNote under each TS2451 or TS2300 at
 // a later is binding's name or at the declaration it repeats. The binder's
-// diagnostics are the file's, shared by every checker, so a diagnostic that
-// already carries the note keeps one.
+// diagnostics are shared by every checker. Copy both the diagnostic and its
+// message-chain storage before appending checker-owned advice.
 func explainBindingRename(c *checker.Checker, file *ast.SourceFile, ds []*ast.Diagnostic) []*ast.Diagnostic {
 	if !file.IsVibeLang() {
 		return ds
 	}
+	var out []*ast.Diagnostic
 	var renames []bindingRename
 	found := false
-	for _, d := range ds {
+	for i, d := range ds {
 		if d.Source() != "" || d.Code() != 2451 && d.Code() != 2300 || d.File() != file || hasBindingRenameNote(d) {
 			continue
 		}
@@ -39,30 +37,34 @@ func explainBindingRename(c *checker.Checker, file *ast.SourceFile, ds []*ast.Di
 		}
 		for _, r := range renames {
 			if r.at(file, d.Loc()) {
-				note(d, bindingRenameNote, r.name.Text())
+				if out == nil {
+					out = slices.Clone(ds)
+				}
+				explained := d.Clone().SetMessageChain(slices.Clone(d.MessageChain()))
+				out[i] = note(explained, bindingRenameNote, r.name.Text())
 				break
 			}
 		}
+	}
+	if out != nil {
+		return out
 	}
 	return ds
 }
 
 func hasBindingRenameNote(d *ast.Diagnostic) bool {
 	for _, chained := range d.MessageChain() {
-		if strings.Contains(chained.MessageText(), "the quick fix renames the later binding") {
+		if chained.Source() == diagnosticSource && strings.HasPrefix(chained.MessageText(), "Two is patterns bind ") {
 			return true
 		}
 	}
 	return false
 }
 
-// A bindingRename is the rename of one later is binding and its uses.
+// A bindingRename identifies a later is binding and the declaration it repeats.
 type bindingRename struct {
-	name    *ast.Node    // the later binding's name, where the pattern wrote it
-	first   *ast.Node    // the declaration the name resolves to instead
-	code    int32        // 2451, or 2300 beside a parameter
-	newName string       // the name the rename writes
-	edits   []sourceEdit // the binding, then each later use, in source order
+	name  *ast.Node // the later binding's name, where the pattern wrote it
+	first *ast.Node // the declaration the name resolves to instead
 }
 
 // at reports whether span lies in the later binding's name or the first
@@ -74,196 +76,30 @@ func (r bindingRename) at(file *ast.SourceFile, span core.TextRange) bool {
 	return in(r.name) || in(r.first.Name())
 }
 
-// bindingRenames returns, in source order, the later is bindings of file
-// whose name a declaration of their home already declares. When three or
-// more patterns bind one name, each later binding takes the reads up to the
-// next later binding, so one round renames them all to distinct names.
+// bindingRenames returns the later is bindings whose names their lexical
+// home already declares. Only binding declarations need symbol resolution;
+// diagnostic advice does not compute source edits or inspect uses.
 func bindingRenames(c *checker.Checker, file *ast.SourceFile) []bindingRename {
-	var declarations []*ast.Node
-	var taken []string
+	var out []bindingRename
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ast.IsIdentifier(node) {
-			taken = append(taken, node.Text())
-		}
 		if ast.IsVariableDeclaration(node) && node.Flags&ast.NodeFlagsVibeLangIsBinding != 0 {
-			declarations = append(declarations, node)
+			name := node.Name()
+			if name != nil && ast.IsIdentifier(name) {
+				own := c.GetSymbolAtLocation(name)
+				visible := c.ResolveName(name.Text(), node, ast.SymbolFlagsValue, true)
+				if own != nil && visible != nil && visible != own {
+					first := visible.ValueDeclaration()
+					if first != nil && first != node && first.Name() != nil && nodeStart(file, first.Name()) < nodeStart(file, name) {
+						out = append(out, bindingRename{name: name, first: first})
+					}
+				}
+			}
 		}
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
-	slices.Sort(taken)
-	taken = slices.Compact(taken)
-	type later struct {
-		declaration *ast.Node
-		visible     *ast.Symbol
-	}
-	var laters []later
-	for _, declaration := range declarations {
-		name := declaration.Name()
-		if name == nil || !ast.IsIdentifier(name) || declaration.Parent == nil || declaration.Parent.Parent == nil {
-			continue
-		}
-		own := c.GetSymbolAtLocation(name)
-		visible := c.ResolveName(name.Text(), declaration, ast.SymbolFlagsValue, true)
-		if own == nil || visible == nil || visible == own || visible.ValueDeclaration() == nil || visible.ValueDeclaration() == declaration {
-			continue // the first of its name, or no duplicate
-		}
-		first := visible.ValueDeclaration()
-		if first.Name() == nil || nodeStart(file, first.Name()) >= nodeStart(file, name) {
-			continue // the binding came first; the later declaration is not an is binding
-		}
-		laters = append(laters, later{declaration, visible})
-	}
-	slices.SortStableFunc(laters, func(a, b later) int {
-		return nodeStart(file, a.declaration.Name()) - nodeStart(file, b.declaration.Name())
-	})
-	var out []bindingRename
-	for i, l := range laters {
-		name := l.declaration.Name()
-		limit := l.declaration.Parent.Parent.Parent.End() // the home
-		for _, next := range laters[i+1:] {
-			if next.visible == l.visible {
-				limit = nodeStart(file, next.declaration.Name())
-				break
-			}
-		}
-		code := int32(2451)
-		first := l.visible.ValueDeclaration()
-		if ast.IsParameterDeclaration(first) {
-			code = 2300
-		}
-		r := bindingRename{name: name, first: first, code: code, newName: uniqueName(name.Text(), taken)}
-		taken = append(taken, r.newName)
-		r.edits = bindingRenameEdits(c, file, l.declaration, l.visible, r.newName, limit)
-		out = append(out, r)
-	}
 	return out
-}
-
-// bindingRenameEdits writes newName for the binding declaration declares and
-// for each owned read after it and before limit that resolves to visible.
-// Positive if heads retain their previous statement-local ownership so a
-// migration never captures an outer fallback (VIP-7, decided detail 245).
-func bindingRenameEdits(c *checker.Checker, file *ast.SourceFile, declaration *ast.Node, visible *ast.Symbol, newName string, limit int) []sourceEdit {
-	text := file.Text()
-	name := declaration.Name()
-	start, end := nodeStart(file, name), name.End()
-	var edits []sourceEdit
-	if keyword, ok := shorthandBindingKeyword(text, start); ok {
-		// { let id } names its key by the binding: keep the key, rename the binding.
-		edits = append(edits, sourceEdit{keyword, end, name.Text() + ": " + text[keyword:start] + newName})
-	} else {
-		edits = append(edits, sourceEdit{start, end, newName})
-	}
-	home := declaration.Parent.Parent.Parent // declaration list, statement, home
-	var uses func(node *ast.Node) bool
-	uses = func(node *ast.Node) bool {
-		if ast.IsIdentifier(node) && node.Flags&ast.NodeFlagsReparsed == 0 && node.Text() == name.Text() && node.End() > end {
-			useStart := nodeStart(file, node)
-			if useStart < limit && text[useStart:node.End()] == name.Text() {
-				switch {
-				case ast.IsShorthandPropertyAssignment(node.Parent) && node.Parent.Name() == node:
-					if c.GetShorthandAssignmentValueSymbol(node.Parent) == visible {
-						edits = append(edits, sourceEdit{useStart, node.End(), name.Text() + ": " + newName})
-					}
-				case c.GetSymbolAtLocation(node) == visible:
-					edits = append(edits, sourceEdit{useStart, node.End(), newName})
-				}
-			}
-		}
-		return node.ForEachChild(uses)
-	}
-	if condition, then := legacyBindingRenameScope(home, name); condition != nil {
-		uses(condition)
-		uses(then)
-	} else {
-		home.ForEachChild(uses)
-	}
-	slices.SortStableFunc(edits, func(a, b sourceEdit) int { return a.start - b.start })
-	var distinct []sourceEdit
-	for _, e := range edits {
-		if len(distinct) == 0 || e.start >= distinct[len(distinct)-1].end {
-			distinct = append(distinct, e)
-		}
-	}
-	return distinct
-}
-
-// legacyBindingRenameScope recognizes the old positive if/&& form. The
-// parser retains the source range of its is holder after lowering its tests.
-// A negation, disjunction or another expression wrapper is not this old form;
-// newly admitted homes continue to use their normal lexical ownership.
-func legacyBindingRenameScope(home, name *ast.Node) (condition, then *ast.Node) {
-	var positive func(*ast.Node) bool
-	positive = func(node *ast.Node) bool {
-		if node == nil {
-			return false
-		}
-		node = ast.SkipParentheses(node)
-		if !ast.IsBinaryExpression(node) {
-			return false
-		}
-		binary := node.AsBinaryExpression()
-		if binary.OperatorToken.Kind == ast.KindAmpersandAmpersandToken {
-			return positive(binary.Left) || positive(binary.Right)
-		}
-		// The holder and its structural tests use vibelangSpanning, not
-		// Reparsed, and inner ranges cover only the is token. Recognize the
-		// generated (binding = value, true) step by its synthetic target,
-		// whose range identifies this exact pattern declaration.
-		if binary.OperatorToken.Kind != ast.KindCommaToken || binary.Right.Kind != ast.KindTrueKeyword || binary.Right.Flags&ast.NodeFlagsReparsed == 0 {
-			return false
-		}
-		assignment := ast.SkipParentheses(binary.Left)
-		if !ast.IsBinaryExpression(assignment) || assignment.AsBinaryExpression().OperatorToken.Kind != ast.KindEqualsToken {
-			return false
-		}
-		target := assignment.AsBinaryExpression().Left
-		return ast.IsIdentifier(target) && target.Flags&ast.NodeFlagsReparsed != 0 && target.Text() == name.Text() && target.Loc == name.Loc
-	}
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if ast.IsIfStatement(node) && node.Flags&ast.NodeFlagsReparsed == 0 && positive(node.Expression()) {
-			condition, then = node.Expression(), node.AsIfStatement().ThenStatement
-			return true
-		}
-		return node.ForEachChild(visit)
-	}
-	home.ForEachChild(visit)
-	return condition, then
-}
-
-// shorthandBindingKeyword returns where the let or const keyword before the
-// binding name at start begins when the binding is an object pattern's
-// shorthand field, { let id } or { x: 1, const id }, whose key is the name;
-// an explicit key, { id: let id }, a bare binding, an array element or an
-// extractor argument is not.
-func shorthandBindingKeyword(text string, start int) (int, bool) {
-	i := skipTriviaBackwards(text, start)
-	var keyword int
-	switch {
-	case strings.HasSuffix(text[:i], "const"):
-		keyword = i - len("const")
-	case strings.HasSuffix(text[:i], "let"):
-		keyword = i - len("let")
-	default:
-		return 0, false
-	}
-	if keyword > 0 && isIdentifierByte(text[keyword-1]) {
-		return 0, false
-	}
-	j := skipTriviaBackwards(text, keyword)
-	if j == 0 {
-		return 0, false
-	}
-	switch text[j-1] {
-	case '{':
-		return keyword, true
-	case ',':
-		return keyword, nearestOpener(text, j-1) == '{'
-	}
-	return 0, false
 }
 
 // skipTriviaBackwards returns the end of the token before position end,
@@ -290,26 +126,4 @@ func skipTriviaBackwards(text string, end int) int {
 		}
 	}
 	return end
-}
-
-// nearestOpener returns the bracket that is open at position end, scanning
-// back over balanced pairs, or 0.
-func nearestOpener(text string, end int) byte {
-	depth := 0
-	for i := end - 1; i >= 0; i-- {
-		switch text[i] {
-		case ')', ']', '}':
-			depth++
-		case '(', '[', '{':
-			if depth == 0 {
-				return text[i]
-			}
-			depth--
-		}
-	}
-	return 0
-}
-
-func isIdentifierByte(b byte) bool {
-	return b == '_' || b == '$' || b >= '0' && b <= '9' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= 0x80
 }

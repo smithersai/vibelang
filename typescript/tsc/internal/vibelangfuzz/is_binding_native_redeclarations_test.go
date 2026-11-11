@@ -8,9 +8,14 @@ import (
 )
 
 const isBindingNativeTarget = "FuzzIsBindingNativeRedeclarations"
+const isBindingAdviceQuote = "VibeLang ships no quick fixes or codemods of its own before its first release."
+
 const isBindingNativeQuote = "Two top-level patterns that bind one name in the same lexical home are a redeclaration, as two `let` declarations are, and report what such a `let` reports: `TS2451` beside another lexical declaration, `TS2300` beside a parameter"
 
 func TestIsBindingNativeRedeclarationsQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("007-tooling.md"), isBindingAdviceQuote) {
+		t.Fatalf("diagnostic advice rule changed: %q", isBindingAdviceQuote)
+	}
 	if !strings.Contains(SpecText("004-match.md"), isBindingNativeQuote) {
 		t.Fatalf("VIP-7 redeclaration rule changed: %q", isBindingNativeQuote)
 	}
@@ -125,6 +130,14 @@ func FuzzIsBindingNativeRedeclarations(f *testing.F) {
 			}
 			slices.Sort(out)
 			return out
+		}
+		for _, d := range result.Diagnostics {
+			for _, child := range d.MessageChain() {
+				if strings.Contains(child.MessageText(), "quick fix") {
+					Gap(t, isBindingNativeTarget, fmt.Sprintf("%s:%d:advice", key, variation),
+						"%s: diagnostic offers an unavailable quick fix: %s", isBindingAdviceQuote, child.MessageText())
+				}
+			}
 		}
 		want, got := codes(reference), codes(result)
 		if !slices.Equal(want, got) {
