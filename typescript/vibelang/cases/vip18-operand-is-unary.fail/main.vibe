@@ -1,0 +1,8 @@
+// expect: EK1801
+// VIP-18: try.all takes a UnaryExpression, as try does, so [a, b][0] is the
+// whole operand: an Effect, not an array of Effects. (try.all [a, b])[0]
+// would take the first result.
+export effect function main() {
+  const first = try.all [succeed(1), succeed(2)][0]
+  return first
+}

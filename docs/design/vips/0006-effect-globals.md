@@ -21,6 +21,7 @@ effect function load(q) {
   - a JavaScript global: `undefined`;
   - a VibeLang keyword.
 - If a later VIP adds a keyword with the same name as an Effect export, the global is removed. That may happen to `match`, `when`, `service` and `provide`.
+- **Clarified 2026-11-11: the six removed globals.** In effect 4.1.1 the Effect exports that a VibeLang keyword removes are `match` and `when` (VIP-7), `service` (VIP-9), `provide` (VIP-12), and `uninterruptible` and `interruptible` (VIP-22). Each is written `Effect.match`, `Effect.provide` and so on; the bare name means only what a local declaration or import gives it, and otherwise is TypeScript's `TS2304` (`TS2552` where TypeScript suggests a near name). `fork`, `join` (VIP-17) and `spawn` (VIP-55) remove nothing, because effect 4.1.1 exports none of them. [Effect's functions are globals](../src/005-services.md#effects-functions-are-globals) lists the same six.
 - No language feature wraps TypeScript into an Effect. You use Effect's own functions (`tryPromise`, `sync`, `callback`, `Effect.try`), and their arrows capture locals as in Effect TS.
 
 *Corrected 2026-10-29: the example calls `queryDb`, a Promise-returning function imported from a `.ts` module, because VIP-33 forbids platform calls such as `fetch` anywhere in a `.vibe` file.*

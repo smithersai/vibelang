@@ -1,0 +1,15 @@
+// expect-result: [0,1,2,3]
+// VIP-5: an Effect that can't fail is still run explicitly. Building it runs
+// nothing; try runs it, and so do catch (VIP-5) and fork with join (VIP-17).
+let runs = 0
+const tick = effect { runs++; return runs }
+
+export effect function main() {
+  const built = tick
+  const before = runs
+  const a = try built
+  const b = built catch () => -1
+  const fiber = fork built
+  const c = join fiber
+  return [before, a, b, c]
+}

@@ -1,0 +1,11 @@
+// expect: TS2552 TS2304 TS2304 TS2304 TS2552 TS2552
+// VIP-6: an Effect export named like a VibeLang keyword is not a global. In
+// effect 4.1.1 these are match, when, service, provide, uninterruptible and
+// interruptible; each stays reachable as Effect.x.
+export const qualified = [Effect.match, Effect.when, Effect.service, Effect.provide, Effect.uninterruptible, Effect.interruptible]
+export const a = match
+export const b = when
+export const c = service
+export const d = provide
+export const e = uninterruptible
+export const f = interruptible

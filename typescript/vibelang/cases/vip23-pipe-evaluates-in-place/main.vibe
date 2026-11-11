@@ -1,0 +1,11 @@
+// expect-result: [[false,0],[2,1],[0,1],[10,2]]
+// VIP-23: a pipe in a short-circuit arm or a conditional branch evaluates its
+// topic once, at its source position, and only when evaluation reaches it.
+let calls = 0
+function tick(): number { calls++; return 1 }
+const and = (flag: boolean) => [flag && (tick() |> % + 1), calls]
+const pick = (flag: boolean) => [flag ? (tick() |> % * 10) : 0, calls]
+
+export effect function main() {
+  return [and(false), and(true), pick(false), pick(true)]
+}
