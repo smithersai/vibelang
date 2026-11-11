@@ -25,7 +25,7 @@ func checkGeneratorArguments(c *checker.Checker, file *ast.SourceFile) {
 	visit = func(node *ast.Node) bool {
 		if ast.IsCallExpression(node) {
 			for _, arg := range node.Arguments() {
-				if isGeneratorFunction(c, arg) && expectsGenerator(c, arg) {
+				if isGeneratorFunction(c, arg) && expectsGenerator(c, arg) && !c.IsResolvedCallApplicable(node) {
 					api := apiName(node)
 					d := report(c, api, EK1002, scanner.GetSourceTextOfNodeFromSourceFile(file, api, false))
 					note(d, "Write the body as an ordinary function: remove {0}, function*, and yield*.", scanner.GetSourceTextOfNodeFromSourceFile(file, api, false))

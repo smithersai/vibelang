@@ -1,0 +1,3 @@
+go test fuzz v1
+string("unknown-value-first-inline-producer")
+byte(0)

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("variadic-middle-named-producer")
+byte(3)

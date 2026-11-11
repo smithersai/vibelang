@@ -1,0 +1,44 @@
+// expect: EK1002
+// VIP-21: producers remain Stream factories when passed as values.
+import { takeUnknown, takeAny, takeObject, takeEmpty, takeFunction, reject } from "./api.js"
+
+takeUnknown(effect function* () { yield 1 })
+takeAny(effect function* () { yield 2 })
+takeObject(effect function* () { yield 3 })
+takeEmpty(effect function* () { yield 4 })
+takeFunction(effect function* () { yield 5 })
+effect function* values() { yield 6 }
+takeUnknown(values)
+takeAny(values)
+takeObject(values)
+takeEmpty(values)
+takeFunction(values)
+const alias = values
+takeUnknown(alias)
+Option.gen(values, function* () { return yield* Option.some(1) })
+reject(effect function* () { yield 7 })
+
+import { takeVariadicTail } from "./api.js"
+takeVariadicTail(effect function* () { yield 8 })
+import { takeVariadicTailPrefix } from "./api.js"
+takeVariadicTailPrefix(1,effect function* () { yield 9 })
+import { takeVariadicPrefix } from "./api.js"
+takeVariadicPrefix(effect function* () { yield 10 },()=>{})
+import { takeVariadicMiddle } from "./api.js"
+takeVariadicMiddle(1,effect function* () { yield 11 },()=>{})
+import { takeOptionalMetadata } from "./api.js"
+takeOptionalMetadata(undefined,effect function* () { yield 12 })
+import { takeOptionalTuple } from "./api.js"
+takeOptionalTuple(undefined,effect function* () { yield 13 })
+import { takeVoidMetadata } from "./api.js"
+takeVoidMetadata(effect function* () { yield 14 })
+import { takeSpreadArray } from "./api.js"
+takeSpreadArray(effect function* () { yield 15 },...[1,2])
+import { takeSpreadTuple } from "./api.js"
+takeSpreadTuple(effect function* () { yield 16 },...([1] as const))
+import { takeSpreadBefore } from "./api.js"
+takeSpreadBefore(...([1] as const),effect function* () { yield 17 })
+import { takeGenericValue } from "./api.js"
+takeGenericValue(effect function* () { yield 19 })
+import { takeGenericValueExplicit } from "./api.js"
+takeGenericValueExplicit<unknown>(effect function* () { yield 20 })

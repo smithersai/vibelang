@@ -175,6 +175,8 @@ A producer method retains its receiver without reading a user-modified `Function
 
 A plain `function*` retains JavaScript iterator behavior and may return a value. Pass a plain generator to `Effect.gen` or other native generator APIs; only `effect function*` creates a producer Stream.
 
+A producer function is also an ordinary value. An overload accepting `unknown`, `object` or another compatible value type accepts that function when TypeScript accepts the complete call, including optional parameters, variadic tuples and spread arguments. Another overload that expects a generator does not change the producer's type. Receiver and callback forms of an API stay separate: `Option.gen(producer, function* () { return yield* Option.some(1) })` uses the producer as its receiver value, while `Option.gen(producer)` requires a native generator callback.
+
 Overloads and callback unions follow TypeScript's assignability rules. A parameter that accepts a function returning a `Stream` also accepts an `effect function*` producer, even when another branch expects a JavaScript generator. A generator-only parameter still requires a plain `function*`.
 
 A labeled jump out of a `for try` loop reports `EK2003`, including when the loop is inside `for concurrent`. Stop consuming with `break`, then make the item's decision after the stream loop.

@@ -34,6 +34,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Editors could ask you to choose between a plain and Effect callback for `ensures` inside a proof. Erased proof clauses no longer show runtime callback choices.
 
+- Passing a producer to a value-taking overload could report a generator mismatch, including with tuple rest parameters or spread arguments. Producers now keep their `Stream` factory type when TypeScript accepts the call.
+
 - A callback that accepted a Stream factory could reject a producer when another overload or union accepted a JavaScript generator. Producers now use their compatible callback type.
 
 - Passing a producer to `Effect.gen` or another JavaScript generator API could hide its invalid `return value`. Those returns now report `EK2128` alongside the API mismatch.
