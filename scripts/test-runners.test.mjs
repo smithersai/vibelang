@@ -114,6 +114,7 @@ const unrun = [
   ["site/scripts/patch-vocs-search.test.mjs", "requires the site's TypeScript and Vocs vendor files"],
   ["site/scripts/cloudflare-stack.test.mjs", "requires the site's TypeScript install"],
   ["site/scripts/deploy-load.test.mjs", "requires the site's Alchemy install"],
+  ["site/scripts/state-store-version.test.mjs", "requires the site's Alchemy install; the site's test:infrastructure script runs it"],
   ["site/scripts/llms.test.mjs", "requires built site publication output"],
   ["site/scripts/contrast.test.mjs", "requires the site's install, Chromium and a full site build"],
   ["editors/tree-sitter-vibelang/test/*.test.mjs", "the grammar property test fails on main"],

@@ -19,7 +19,7 @@
     "test:llms": "node --test scripts/llms.test.mjs",
     "social-card": "node scripts/render-social-card.mjs",
     "test:contrast": "node --test scripts/contrast.test.mjs scripts/outline-contrast.test.mjs scripts/outline-structure.test.mjs scripts/navigation-landmarks.test.mjs scripts/table-keyboard.test.mjs scripts/page-landmarks.test.mjs scripts/declaration-routes.test.mjs scripts/heading-order.test.mjs scripts/table-headers.test.mjs scripts/proposal-overview.test.mjs scripts/starter-video-playback.test.mjs scripts/compiler-video-playback.test.mjs scripts/ecosystem-video.test.mjs scripts/specification-video-playback.test.mjs",
-    "test:infrastructure": "node --test scripts/cloudflare-stack.test.mjs scripts/deploy-load.test.mjs scripts/patch-vocs-search.test.mjs scripts/patch-vocs-llms.test.mjs scripts/patch-vocs-outline.test.mjs scripts/patch-vocs-navigation.test.mjs scripts/patch-vocs-tables.test.mjs scripts/patch-vocs-not-found.test.mjs scripts/patch-vocs-page-landmarks.test.mjs scripts/patch-vocs-routes.test.mjs scripts/starter-video.test.mjs scripts/compiler-video.test.mjs",
+    "test:infrastructure": "node --test scripts/cloudflare-stack.test.mjs scripts/state-store-version.test.mjs scripts/deploy-load.test.mjs scripts/patch-vocs-search.test.mjs scripts/patch-vocs-llms.test.mjs scripts/patch-vocs-outline.test.mjs scripts/patch-vocs-navigation.test.mjs scripts/patch-vocs-tables.test.mjs scripts/patch-vocs-not-found.test.mjs scripts/patch-vocs-page-landmarks.test.mjs scripts/patch-vocs-routes.test.mjs scripts/starter-video.test.mjs scripts/compiler-video.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -30,24 +30,24 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.11.1",
-    "@effect/platform-bun": "4.0.6",
-    "@effect/platform-node": "4.0.6",
+    "@effect/platform-bun": "4.1.1",
+    "@effect/platform-node": "4.1.1",
     "@resvg/resvg-js": "2.6.2",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^6.1.0",
-    "alchemy": "2.0.0-beta.84",
-    "effect": "4.0.6",
+    "@vitejs/plugin-react": "6.1.2",
+    "alchemy": "2.0.0-beta.85",
+    "effect": "4.1.1",
     "playwright": "1.64.1",
     "typescript": "^6.0.2",
     "vite": "^8.2.2",
-    "@alchemy.run/cloudflare": "2.0.0-beta.84"
+    "@alchemy.run/cloudflare": "2.0.0-beta.85"
   },
   "overrides": {
-    "@effect/platform-node-shared": "4.0.6",
-    "@effect/vitest": "4.0.6",
-    "@effect/sql-d1": "4.0.6",
-    "@effect/sql-sqlite-do": "4.0.6"
+    "@effect/platform-node-shared": "4.1.1",
+    "@effect/vitest": "4.1.1",
+    "@effect/sql-d1": "4.1.1",
+    "@effect/sql-sqlite-do": "4.1.1"
   }
 }
