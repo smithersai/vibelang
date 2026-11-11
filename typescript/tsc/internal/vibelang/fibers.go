@@ -200,7 +200,8 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	// the handle-specific repair notes without the retired await codes.
 	if inEffectCode(call) || inEffectParameterInitialization(call) {
 		d := reportAt(c, file, keyword, EK0102)
-		if t := c.GetTypeAtLocation(args[0]); t != nil {
+		// Recovery and unchecked or absent values do not identify a handle.
+		if t := c.GetTypeAtLocation(args[0]); t != nil && t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsNever|checker.TypeFlagsNull|checker.TypeFlagsUndefined) == 0 {
 			switch {
 			case isJoinable(c, t, 0):
 				note(d, "Join the fiber with join {0}.", nodeText(file, args[0]))

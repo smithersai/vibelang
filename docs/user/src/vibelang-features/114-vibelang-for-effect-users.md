@@ -32,6 +32,8 @@ Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns
 
 A class `static` block keeps TypeScript's `TS18037` error for `await`, including an Effect-valued operand. A nested `async` callback keeps its own `await` rules; run an Effect there with `await runPromise(program)`.
 
+In effect code and Effect parameter defaults, an unresolved or unchecked operand keeps the general `await` placement message. Handle-specific repairs remain available for operands typed as `Fiber` or `Deferred`.
+
 A direct `try` call whose return type is `any` contributes `unknown` error and requirement channels, just like storing that result and trying the value. Parenthesized calls, method calls and calls selected by a conditional preserve the same channels. Give a dynamic call a precise `Effect.Effect<A, E, R>` return type when those channels are known.
 
 An ordinary call keeps its TypeScript meaning when its receiver has a capitalized name. A local object, class, function or parameter such as `Box` does not become a service key because of its spelling; a parameter also shadows an outer service with the same name. The TypeScript view used by editors follows the resolved lexical binding.
