@@ -453,6 +453,12 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"instantiation-call-newline-export", "function mk<T>() { return (v: T) => v }\nconst g = mk()<number>\nexport const h = g"},
 	{"await-using-line-break", "export async function f(resource: AsyncDisposable) { await\nusing held = resource; return 3 }"},
 	{"instantiation-call-semicolon", "function mk<T>() { return (v: T) => v }; const g = mk()<number>;"},
+	{"ambient-error-declaration", "export declare error Exported { code: string }"},
+	{"ambient-data-declaration", "export declare data NoBody { A }"},
+	{"ambient-schema-declaration", "export declare schema Missing { a: string }"},
+	{"pattern-schema-object", "schema Address { street: string }; export function f(s: unknown) { return match (s) { when Address { let street }: street; default: 0; } }"},
+	{"pattern-variant-object", "data Option { Some { value: number }; None }; export function pick(x: Option) { return match (x) { when Option.Some { let value }: value; default: 0; } }"},
+	{"pattern-super-element", "const key = \"k\"; class B { v() { return 1 } } export class C extends B { viaKey(s: unknown) { return match (s) { when super[key]: \"hit\"; default: \"miss\"; } } }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1674,6 +1680,15 @@ func grammarAdmissionForm(source string) string {
 	// VIP-15 keeps native writable defaults and adopts no mutable modifier,
 	// yet the parser consumes a mutable member marker (registry key
 	// admission:mutable-default, pending). Key the program by it.
+	if grammarAmbientCustomDeclaration(ts) {
+		return "admission:ambient-custom-declaration"
+	}
+	if grammarPatternSuperElement(ts) {
+		return "admission:pattern-super-element"
+	}
+	if grammarPatternNameObject(ts) {
+		return "admission:pattern-name-object"
+	}
 	if grammarMutableMemberMarker(ts) {
 		return "admission:mutable-default"
 	}
@@ -2927,6 +2942,63 @@ func grammarMutableMemberMarker(ts []grammarToken) bool {
 		}
 		switch {
 		case next.kind == 'w' || next.kind == 's' || next.kind == 'n' || next.text == "[" || next.text == "#":
+			return true
+		}
+	}
+	return false
+}
+
+// grammarAmbientCustomDeclaration reports `declare` followed on its line by
+// a custom declaration word: error, schema (schema error included), data or
+// service. The chapters reject the explicit ambient form statically
+// (EK1307, EK1506, EK1607); Appendix A's DeclareDeclaration lists only
+// TypeScript's declarations.
+func grammarAmbientCustomDeclaration(ts []grammarToken) bool {
+	for i, tok := range ts {
+		if tok.kind != 'w' || tok.text != "declare" || i+2 >= len(ts) || ts[i+1].nl {
+			continue
+		}
+		switch ts[i+1].text {
+		case "error", "schema", "data", "service":
+			if ts[i+2].kind == 'w' && !ts[i+2].nl {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// grammarPatternSuperElement reports `when super [`: the pinned draft's
+// PatternMatchingMemberExpression has `super . IdentifierName` only.
+func grammarPatternSuperElement(ts []grammarToken) bool {
+	for i := 0; i+2 < len(ts); i++ {
+		if ts[i].text == "when" && ts[i+1].text == "super" && ts[i+2].text == "[" {
+			return true
+		}
+	}
+	return false
+}
+
+// grammarPatternNameObject reports a `when` arm whose pattern is a member
+// chain (a name, `this` or `super`, with `.` members) directly followed by
+// `{`: a class pattern written as a name and an object pattern, which the
+// pinned draft does not define (MemberExpressionPattern is a chain or an
+// extractor call; ObjectPattern stands alone). `when { … }` and
+// `when Name({ … })` are not this form.
+func grammarPatternNameObject(ts []grammarToken) bool {
+	for i, tok := range ts {
+		if tok.text != "when" || i+1 >= len(ts) {
+			continue
+		}
+		j := i + 1
+		if ts[j].kind != 'w' || ts[j].text == "{" {
+			continue
+		}
+		j++
+		for j+1 < len(ts) && ts[j].text == "." && ts[j+1].kind == 'w' {
+			j += 2
+		}
+		if j < len(ts) && ts[j].text == "{" {
 			return true
 		}
 	}
