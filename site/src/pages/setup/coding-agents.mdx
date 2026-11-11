@@ -63,6 +63,8 @@ Explicit `agents check` inputs must name existing files. A missing file or direc
 
 If a named source has no project configuration above it, the check reports that the file was not checked and exits with status `1`. Add a project config that includes the file, or check it directly with `vibelang --noEmit <file>`. A skipped file also fails a check that includes files from a successful project.
 
+Project-wide compiler diagnostics without a source location, such as `TS18003` when a config selects no input files, keep their code, message and continuation lines in the report. They do not count as errors in the edited source files.
+
 A hook returns a project error or an incomplete compiler check to the agent with exit status `2`, and a warning as context the agent reads with the tool's result.
 
 The generated instructions also recommend `vibelang lint`. It uses the compiler’s configuration and Effect language-service plugin settings; select a non-default project with `vibelang lint --project <config>`. This command reports diagnostics without emitting files.

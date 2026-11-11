@@ -266,7 +266,7 @@ export function editedFiles(event, cwd) {
 // checkFiles runs `vibelang -p <project> --noEmit` once for each
 // project the files belong to and sorts what it prints.
 export function checkFiles(files, binary, cwd) {
-  const result = { errors: [], warnings: [], otherErrors: 0, missing: [], failures: [] }
+  const result = { errors: [], warnings: [], projectDiagnostics: [], otherErrors: 0, missing: [], failures: [] }
   const projects = new Map()
   for (const file of files.map((file) => realpathSync(file))) {
     const project = projectOf(file, binary)
@@ -286,7 +286,9 @@ export function checkFiles(files, binary, cwd) {
     }
     const output = `${run.stdout ?? ""}${run.stderr ?? ""}`
     for (const diagnostic of parseDiagnostics(output, directory)) {
-      if (!members.includes(diagnostic.file)) {
+      if (!diagnostic.file) {
+        result.projectDiagnostics.push(diagnostic)
+      } else if (!members.includes(diagnostic.file)) {
         if (diagnostic.severity === "error") result.otherErrors++
       } else if (diagnostic.severity === "error") result.errors.push(diagnostic)
       else result.warnings.push(diagnostic)
@@ -295,14 +297,15 @@ export function checkFiles(files, binary, cwd) {
   return result
 }
 
-// parseDiagnostics reads `file(line,col): error CODE: message` lines and the
-// indented lines that continue them.
+// parseDiagnostics reads located and project-wide diagnostic lines, plus
+// the indented lines that continue them.
 export function parseDiagnostics(output, directory) {
   const diagnostics = []
   for (const line of output.split("\n")) {
-    const match = /^(.+?)\((\d+),(\d+)\): (error|warning|message) ([A-Z]+\d+): (.*)$/.exec(line)
+    const match = /^(?:(.+?)\((\d+),(\d+)\): )?(error|warning|message) ([A-Z]+\d+): (.*)$/.exec(line)
     if (match) {
-      diagnostics.push({ file: resolve(directory, match[1]), line: Number(match[2]), column: Number(match[3]), severity: match[4], code: match[5], message: match[6] })
+      const location = match[1] === undefined ? {} : { file: resolve(directory, match[1]), line: Number(match[2]), column: Number(match[3]) }
+      diagnostics.push({ ...location, severity: match[4], code: match[5], message: match[6] })
     } else if (line.startsWith("  ") && diagnostics.length > 0) {
       diagnostics.at(-1).message += `\n${line}`
     }
@@ -338,7 +341,7 @@ function failed(result) {
 
 function report(result, cwd, clean) {
   const name = (file) => relative(cwd, file) || file
-  const lines = []
+  const lines = result.projectDiagnostics.map((d) => `${d.severity} ${d.code}: ${d.message}`)
   for (const d of [...result.errors, ...result.warnings]) {
     lines.push(`${name(d.file)}(${d.line},${d.column}): ${d.severity} ${d.code}: ${d.message}`)
   }
