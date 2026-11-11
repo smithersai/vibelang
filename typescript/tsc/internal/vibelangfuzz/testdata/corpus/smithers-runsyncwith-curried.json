@@ -1,0 +1,4 @@
+{
+  "Source": "smithers apps/mvp src/boundary.ts: plain runners call Effect.runSyncWith(c)(e) and Effect.runSync(e); the .vibe module reports no EK0401 and its declarations carry @throws {never}",
+  "Main": "import { Context, Effect } from \"effect\"\n\nexport const run = <A, E>(c: Context.Context<never>, e: A!E) => Effect.runSyncWith(c)(e)\nexport function runDirect<A, E>(e: A!E): A {\n  return Effect.runSync(e)\n}\n"
+}
