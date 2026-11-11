@@ -414,6 +414,19 @@ func (c *Checker) resolveBeforeGlobals(location *ast.Node, name string, meaning 
 	return nil
 }
 
+// resolveEntityNameFromHooks asks the name resolution hooks about identifier,
+// the first identifier of an entity name that a declaration file copies, at
+// the identifier itself. The visibility check resolves the name from the
+// enclosing declaration, where a hook that reads the name's own syntax cannot
+// answer: the source resolved the name through that hook, so the declaration
+// file must declare or import what the hook supplied.
+func (c *Checker) resolveEntityNameFromHooks(identifier *ast.Node, meaning ast.SymbolFlags) *ast.Symbol {
+	if !ast.IsIdentifier(identifier) {
+		return nil
+	}
+	return c.resolveBeforeGlobals(identifier, identifier.Text(), meaning)
+}
+
 // EntityNameVisibilityHook reports whether a declaration file may write
 // entityName, which resolves to symbol, although no declaration of the file
 // declares or imports it. A hook that says yes must make the declaration file

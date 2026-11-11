@@ -165,6 +165,9 @@ func (c *Checker) isEntityNameVisible(entityName *ast.Node, enclosingDeclaration
 	firstIdentifier := ast.GetFirstIdentifier(entityName)
 
 	symbol := c.resolveName(enclosingDeclaration, firstIdentifier.Text(), meaning, nil, false, false)
+	if symbol == nil {
+		symbol = c.resolveEntityNameFromHooks(firstIdentifier, meaning)
+	}
 
 	if symbol != nil && symbol.Flags()&ast.SymbolFlagsTypeParameter != 0 && meaning&ast.SymbolFlagsType != 0 {
 		return printer.SymbolAccessibilityResult{Accessibility: printer.SymbolAccessibilityAccessible}

@@ -1,0 +1,4 @@
+export service Ledger {
+  static readonly key = "case/Ledger"
+  total: number
+}

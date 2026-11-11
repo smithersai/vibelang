@@ -1,0 +1,40 @@
+// A declaration that names Name.Shape declares Name, exported or not: the
+// declaration output of a service is that of the Effect TypeScript in
+// typescript/main.ts, which keeps a module-private class its exports name
+// (chapter 005, "Two types": the compiler declares Name.Shape).
+import { Ledger } from "./ledger.js"
+
+service Private {
+  static readonly key = "case/Private"
+  v: number
+}
+service Third {
+  static readonly key = "case/Third"
+  z: number
+}
+service Unused {
+  static readonly key = "case/Unused"
+  u: number
+}
+
+export const a: Private.Shape = { v: 1 }
+export function annotated(x: Third.Shape): Array<Third.Shape> {
+  return [x]
+}
+export const fakeLedger: Ledger.Shape = { total: 1 }
+
+export type Alias = Private.Shape
+export interface Wide extends Third.Shape {
+  extra: number
+}
+export class Box {
+  inner: Private.Shape = { v: 1 }
+}
+
+export namespace Inner {
+  service Hidden {
+    static readonly key = "case/Hidden"
+    h: number
+  }
+  export const hidden: Hidden.Shape = { h: 1 }
+}
