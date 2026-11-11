@@ -50,6 +50,41 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
     ...data
   ], [go, node], timeout, env)
 
+// Compile each package once, then distribute its test binary to independent
+// workers. The inventory check requires every package under internal/vibelang
+// to appear here; new files within a package enter Go's discovery automatically.
+const goVibelangPackages = ["internal/vibelang"]
+const goVibelangBinaries = goVibelangPackages.map((pkg, index) => {
+  const output = `typescript/built/local/go-vibelang-${index + 1}.test`
+  return {
+    pkg, output,
+    target: S.Shell.Build({
+      summary: `Compile the ${pkg} Go test binary, including the default vet checks.`,
+      shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -c -count=1 -p 8 -trimpath -o ../../${output} ./${pkg}`,
+      data: [tree, Tsc.srcs, Tsc["vibelang-files"], Packages["runtime-dist"]],
+      tools: [go, node], outFiles: [output], sandbox: "none", timeout: "10m", env: { GOMAXPROCS: "4" }
+    })
+  }
+})
+const goVibelangShardCount = 64
+const goVibelangShards = Object.fromEntries(
+  Array.from({ length: goVibelangShardCount }, (_, index) => [
+    `go-vibelang-shard-${String(index + 1).padStart(2, "0")}`,
+    goVibelang(
+      `Go tests of internal/vibelang, slice ${index + 1}/${goVibelangShardCount}.`,
+      `CGO_ENABLED=0 ${effect} TYPESCRIPT_REPO_ROOT=$PWD sh -c '` +
+        "status=0\n" +
+        goVibelangBinaries.map(({ pkg, output }) =>
+          `(cd "$TYPESCRIPT_REPO_ROOT/${pkg}" && "$TYPESCRIPT_REPO_ROOT/../../scripts/go-test-shards.sh" ` +
+          `"$TYPESCRIPT_REPO_ROOT/../../${output}" -test.v -test.paniconexit0 -test.count=1 -test.timeout=8m) || status=$?\n`
+        ).join("") + 'exit "$status"' + "'",
+      [Tsc["vibelang-files"], S.file("//scripts/go-test-shards.sh"), ...goVibelangBinaries.map(({ target }) => target)],
+      "10m",
+      { GO_TEST_SLICE: `${index + 1}/${goVibelangShardCount}`, GO_TEST_SHARDS: "1", GOMAXPROCS: "4" }
+    )
+  ])
+)
+
 // The Go tests that read docs/design: the registry against the
 // specification's Appendix B, the settings oracle against the compiler, the
 // fuzz suite's citations of the VIPs, its coverage of the accepted VIPs, its
@@ -1540,14 +1575,9 @@ const targets = {
   "docs-check": check("Generated docs, tracked-leak and case-collision checks.", "cd .smithers && bun run docs:check", [], [bun, node, gofmt]),
   // The compiler corpus runs as `//typescript/vibelang/...`, one cached target
   // per case, through the binary users run.
-  "go-vibelang": goVibelang(
-    "Go tests of internal/vibelang and its subpackages.",
-    `CGO_ENABLED=0 ${effect} go test -count=1 -p 8 -timeout 45m -trimpath -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelang/...`,
-    [Tsc["vibelang-files"], S.file("//scripts/go-test-shards.sh")],
-    // Go bounds the tests; the outer budget also covers admission and a cold
-    // compile, which took 30m under load on 2026-10-31.
-    "70m"
-  ),
+  ...Object.fromEntries(goVibelangBinaries.map(({ target }, index) => [`go-vibelang-compile-${index + 1}`, target])),
+  ...goVibelangShards,
+  "go-vibelang": S.Suite({ tests: Object.values(goVibelangShards) }),
   "go-vibelang-race": goVibelang(
     "Parallel declaration emit under the race detector.",
     "CGO_ENABLED=1 go test -race -count=1 -trimpath -run TestDeclarationEmitInParallel ./internal/vibelang/",

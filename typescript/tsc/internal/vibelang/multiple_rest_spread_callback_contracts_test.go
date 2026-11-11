@@ -65,6 +65,7 @@ func TestMultipleRestSpreadCallbackContracts(t *testing.T) {
 	for _, key := range multipleRestSpreadKeys() {
 		for _, choice := range []uint8{0, 1, 4, 8, 16, 64} {
 			t.Run(fmt.Sprintf("%s/%d", key, choice), func(t *testing.T) {
+				t.Parallel()
 				source, library, want := multipleRestSpreadSource(key, choice)
 				p, f, _, _ := requirementIdentityProgram(t, source, map[string]string{"foreign.d.ts": library})
 				var got []int

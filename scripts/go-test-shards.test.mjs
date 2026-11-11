@@ -264,12 +264,20 @@ for (const [why, args, env] of [
   })
 }
 
-for (const [name, end] of [["go-vibelangfuzz", "\"spec-tests\":"], ["go-vibelang", "\"go-vibelang-race\":"]]) {
-  test("//:" + name + " runs its binary through this script, and the script is a declared input", () => {
-    const source = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
-    const target = source.split("\"" + name + "\": goVibelang(")[1].split(end)[0]
-    assert.match(target, /go test [^`"]*-exec "\$PWD\/\.\.\/\.\.\/scripts\/go-test-shards\.sh"/)
-    assert.match(target, /S\.file\("\/\/scripts\/go-test-shards\.sh"\)/)
+for (const name of ["go-vibelangfuzz", "go-vibelang"]) {
+  test("//:" + name + " runs every binary through this script, and declares the script input", async () => {
+    const { declarationFixture } = await import("./testing/package-declaration.mjs")
+    const graph = declarationFixture("PACKAGE.ts").targets
+    const target = graph[name]
+    for (const member of target.tests ?? [target]) {
+      if (member.env.GO_TEST_SLICE) {
+        assert.match(member.shell, /scripts\/go-test-shards\.sh"/)
+        assert.match(member.shell, /-test\.count=1 -test\.timeout=8m/)
+      } else {
+        assert.match(member.shell, /go test [^\n]*-exec "\$PWD\/\.\.\/\.\.\/scripts\/go-test-shards\.sh"/)
+      }
+      assert.ok(member.data.includes("//scripts/go-test-shards.sh"))
+    }
   })
 }
 

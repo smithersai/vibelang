@@ -106,6 +106,7 @@ func TestVariadicSpreadCallbackContracts(t *testing.T) {
 	for _, key := range variadicSpreadKeys() {
 		for _, choice := range []uint8{0, 1, 2, 4, 8, 31, 64} {
 			t.Run(fmt.Sprintf("%s/%d", key, choice), func(t *testing.T) {
+				t.Parallel()
 				source, library, want := variadicSpreadSource(key, choice)
 				p, f, _, _ := requirementIdentityProgram(t, source, map[string]string{"foreign.d.ts": library})
 				var got []int

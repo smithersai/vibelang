@@ -112,6 +112,7 @@ test("bisect runs a Go target's failing tests alone: top-level names, Test and F
   assert.equal(n.pkg, "./internal/vibelangfuzz/...")
   assert.equal(narrowed("//:go-vibelangfuzz-topic-do", ["TestDoContextualResult"]).pkg, "./internal/vibelangfuzz/...")
   assert.equal(narrowed("//:go-vibelang", ["TestFixProject"]).pkg, "./internal/vibelang/...")
+  for (const label of ["//:go-vibelang-shard-01", "//:go-vibelang-shard-64"]) assert.equal(narrowed(label, ["TestFixProject"]).pkg, "./internal/vibelang/...", label)
   // Pending and hang targets set their own environment; cases and other targets are not Go tests.
   for (const label of ["//:go-vibelangfuzz-pending", "//:go-vibelangfuzz-hangs", "//typescript/vibelang:hello", "//:spec-tests"]) assert.equal(narrowed(label, ["TestA"]), null, label)
   assert.equal(narrowed("//:go-vibelangfuzz", []), null)
@@ -140,15 +141,21 @@ test("probe passes the narrowed tests to every try", () => {
 
 test("GO_TARGETS runs each target's tests as PACKAGE.ts does", () => {
   const pkg = readFileSync(new URL("../../../../PACKAGE.ts", import.meta.url), "utf8")
-  const block = (start) => { const i = pkg.indexOf(start); assert.ok(i >= 0, start); return pkg.slice(i, pkg.indexOf("\n  )", i) + 4) }
+  const upTo = (start, end) => { const i = pkg.indexOf(start); assert.ok(i >= 0, start); const j = pkg.indexOf(end, i); assert.ok(j > i, end); return pkg.slice(i, j + end.length) }
+  const block = (start) => upTo(start, "\n  )")
   const helper = block("const goVibelang = ")
   for (const dep of GO_DEPS) assert.ok(helper.includes(`Packages["${dep.split(":")[1]}"]`), `goVibelang builds ${dep}`)
   assert.ok(helper.includes("cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs"))
-  const cases = [["//:go-vibelangfuzz", block(`"go-vibelangfuzz": goVibelang(`)], ["//:go-vibelangfuzz-topic-do", block("const fuzzTopicTargets = ")], ["//:go-vibelang", block(`"go-vibelang": goVibelang(`)]]
+  const cases = [["//:go-vibelangfuzz", block(`"go-vibelangfuzz": goVibelang(`)], ["//:go-vibelangfuzz-topic-do", block("const fuzzTopicTargets = ")], ["//:go-vibelang", upTo("const goVibelangPackages = ", "\n)\n")]]
+  // //:go-vibelang is a suite of shards that run one compiled binary of these packages.
+  assert.ok(cases[2][1].includes(`["internal/vibelang"]`), "the shards test internal/vibelang")
+  assert.ok(cases[2][1].includes("`go-vibelang-shard-${"), "the shard labels")
+  assert.ok(pkg.includes(`"go-vibelang": S.Suite({ tests: Object.values(goVibelangShards) })`), "//:go-vibelang groups the shards")
   for (const [label, text] of cases) {
     const g = GO_TARGETS.find((x) => x.label.test(label))
     for (const word of g.env.split(" ")) assert.ok(text.includes(word), `${label} sets ${word}`)
-    assert.ok(text.includes(g.pkg.replace(/\.\.\.$/, "")), `${label} tests ${g.pkg}`)
+    const dir = g.pkg.replace(/\.\.\.$/, "")
+    assert.ok(text.includes(dir) || text.includes(`"${dir.slice(2, -1)}"`), `${label} tests ${g.pkg}`)
     assert.equal(g.flags.includes("-short"), text.includes("-short"), `${label} -short`)
     assert.ok(text.includes("${effect}"), `${label} sets EFFECT_NODE_MODULES`)
   }

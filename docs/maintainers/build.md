@@ -844,7 +844,10 @@ expanded test globs. Runtime discovery includes nested tests and Bun's
 //                              repository and focused checks
   :create-cli                   node --test (fast scaffolder CLI unit tests; no compiler or install)
   :tree                         Filegroup: every file
-  :go-vibelang :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
+  :go-vibelang                 suite of :go-vibelang-shard-01 through -64
+  :go-vibelang-compile-<n>     shared Go test binary, including default vet checks
+  :go-vibelang-shard-<nn>      independent weighted slice of every Go package test
+  :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
   :go-vibelangfuzz-hangs        bounded child probes for stale hang markers (merge gate)
   :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail, and every VIP and data probe (merge gate)
   :go-vibelangfuzz-editor       the editor oracles over documentation examples and cases (merge gate)
@@ -1133,15 +1136,46 @@ The case harness requires compilation to exit with status `0` when no error diag
 The compiler corpus runs through `harness.mjs` only, as one target per case in
 `//typescript/vibelang/...`. `:go-vibelang` does not rerun it: three Go tests did
 until 2026-10-31, took 700 s of the package's 900 s, and over 114 red post-merge
-runs reported no product failure the case targets missed. `:go-vibelang` runs Go
-with `-timeout 45m`, and its shell target allows 70 minutes, including waiting
-for a Go build slot and compiling the test binary.
-It runs its test binary through `scripts/go-test-shards.sh` like
-`:go-vibelangfuzz` (below), with weights in
-`internal/vibelang/testdata/shard-seconds.txt`: 339 s as one process, 153 s as
-six, on the same host at load 75 (2026-11-01). A name the file does not list
-counts 1 s, so the dealing is only as good as the file is current: refresh it
-from an uncached `go test -json -count=1` log of the package with
+runs reported no product failure the case targets missed.
+
+`//:go-vibelang` is a `Suite` over sixty-four independently cached targets,
+`//:go-vibelang-shard-01` through `//:go-vibelang-shard-64`. The root
+`PACKAGE.ts` generates them from one shard count. Selecting the old label
+runs all sixty-four; each shard can also run alone or on a separate worker.
+Each shard has an eight-minute Go test deadline and a ten-minute target deadline.
+The `//:go-vibelang-compile-1` build target compiles the package once with
+`go test -c -count=1 -p 8 -trimpath`, including Go's default vet checks, and has a
+ten-minute deadline. It declares `GOMAXPROCS=4` for the four-CPU worker.
+Its executable is a declared output shared by every shard,
+so separate workers can restore it without recompiling the compiler and tests.
+
+The package list in `PACKAGE.ts` covers every Go package under
+`internal/vibelang`. Each build and shard retains the module sources, package
+test files, runtime build and repository-wide fixtures. The launcher
+`scripts/go-test-shards.sh` discovers each package's tests and deals them
+by weight across the sixty-four explicit `GO_TEST_SLICE` values. Each
+target declares `GO_TEST_SHARDS=1` and `GOMAXPROCS=4`, so one Go process
+and its native parallel subtests share the worker's four CPUs. Explicit slices override any
+host-local `scripts/go-test-slice` file. No test selector, short mode,
+skip list or expected failure changes. New names enter discovery immediately;
+unmeasured names count one second.
+
+`scripts/go-vibelang-shard-inventory.test.mjs` inventories every package,
+test file and top-level test, fuzz seed entry point and example under
+`internal/vibelang`, then executes the actual launcher for every declared
+slice against that inventory. It rejects missing or duplicate names,
+incomplete suite membership, packages absent from the binary build list and
+overlapping slices. Shards run each binary from its original package directory
+with `TYPESCRIPT_REPO_ROOT` set to the checkout's `typescript/tsc` directory;
+full test mode, `-test.count=1` and `-test.paniconexit0` remain enabled.
+Verbose output retains individual test timings so a slow slice can be diagnosed.
+Large callback-contract matrices run their independent temporary projects
+in parallel through `t.Parallel`.
+`scripts/build-declarations.test.mjs` also checks the real SDK graph's
+suite edges and independent shard dependencies.
+
+The weights remain in `internal/vibelang/testdata/shard-seconds.txt`.
+Refresh them from an uncached `go test -json -count=1` log of the package with
 `node scripts/go-shard-seconds.mjs typescript/tsc/internal/vibelang <log>...`,
 which keeps the slowest observed cost of each name at five seconds or more.
 JSON event timestamps include time spent waiting for parallel subtests; Go's

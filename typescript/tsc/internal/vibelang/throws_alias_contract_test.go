@@ -13,6 +13,7 @@ func TestAliasedTopBottomThrowsContract(t *testing.T) {
 			for _, ext := range []string{"ts", "d.ts"} {
 				for _, site := range []string{"assignment", "argument", "implements"} {
 					t.Run(fmt.Sprintf("%s/%s/%s/%s", source, target, ext, site), func(t *testing.T) {
+						t.Parallel()
 						lib := fmt.Sprintf(`export type Nil=never;export type Opaque=unknown;export type Loose=any;export type Text=string;
 /** @throws {%s} */
 export declare function risky():number
