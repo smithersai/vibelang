@@ -1,0 +1,6 @@
+// expect: EK0512 EK0512
+export effect function main() {
+  const a = Effect.fail(1) catch e => { return e } + 1
+  const b = Effect.fail(2) catch effect e => { return e } + 1
+  return [a, b]
+}

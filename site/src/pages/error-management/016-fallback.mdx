@@ -130,6 +130,8 @@ Saved issue
 
 Mixing `catch` with `??`, `||` or `&&` without parentheses reports `EK0512`. Write `(saved ?? loadTitle()) catch () => "Untitled issue"` to catch the selected operand, or `saved ?? (loadTitle() catch () => "Untitled issue")` to catch only the load. A call, member access or index cannot attach to a closed handler: parenthesize the complete catch expression before using its result.
 
+An unparenthesized block-bodied arrow ends before a line break when TypeScript would insert a semicolon. A following line starting with `(`, `[`, a template literal, `+` or `-` starts a separate statement. This applies to both plain and `effect` arrows. On the same line, the closed-handler restriction still applies; parentheses around the handler or a `function` expression also keep their ordinary continuation rules across line breaks.
+
 A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect () => try cachedTitle() } catch () => "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
 
 For `EK0509` on a callable value such as `x catch onErr`, write a function literal, `x catch (e) => onErr(e)`, with a parameter name that does not shadow a name visible to the handler.

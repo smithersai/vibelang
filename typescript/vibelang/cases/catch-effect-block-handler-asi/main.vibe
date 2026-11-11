@@ -1,0 +1,18 @@
+// expect-result: [1,2,3,4,5,6,17]
+effect function failWith(n: number): never!number { throw n }
+export effect function main() {
+  let n = 0
+  const a = failWith(1) catch effect (e) => { return e }
+  (n = a + 1)
+  const b = failWith(2) catch effect (e) => { return e }
+  [3, 4].forEach((value) => { n += value })
+  const c = failWith(3) catch (e) => { return e }
+  `x${n}`.length
+  const d = failWith(4) catch e => { return e }
+  +n++
+  const e = failWith(5) catch <T,>(e: T) => { return e }
+  -n++
+  const f = failWith(6) catch effect e => { return e } /*
+  */ (n += f)
+  return [a, b, c, d, e, f, n]
+}

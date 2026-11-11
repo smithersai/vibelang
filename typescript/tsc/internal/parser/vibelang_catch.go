@@ -41,9 +41,14 @@ func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expr
 		p.nextToken() // catch
 		handlerStart := p.nodePos()
 		handler := p.parseVibeLangCatchHandler()
-		// A closed handler cannot take binary or postfix continuations. Keep
-		// the old fallback tree for recovery, so --fix can preserve it.
-		if handler != nil {
+		// A closed handler cannot take binary or postfix continuations. An
+		// unparenthesized block arrow permits ASI before a new expression.
+		// Parentheses are erased from the handler tree, but move its start.
+		// Keep the old fallback tree for invalid continuations.
+		if handler != nil && !(ast.IsArrowFunction(handler) && ast.IsBlock(handler.Body()) &&
+			handler.Pos() == handlerStart && p.hasPrecedingLineBreak() &&
+			(p.isStartOfLeftHandSideExpression() || p.token == ast.KindPlusToken ||
+				p.token == ast.KindMinusToken || p.token == ast.KindLessThanToken)) {
 			rest := p.parseCallExpressionRest(handlerStart, handler)
 			rest = p.parseBinaryExpressionRest(ast.OperatorPrecedenceLowest, rest, handlerStart)
 			if rest != handler {

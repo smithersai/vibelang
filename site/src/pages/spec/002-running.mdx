@@ -148,6 +148,8 @@ const nested = Effect.gen(function* () {
 
 After a parenthesized handler, a function expression handler or a block-bodied arrow handler, another `catch` or a lower-precedence operator may follow, but a member access or call can't attach to the handler, so `a catch function () { }.call(o)` is a syntax error (`EK0512`). Parenthesize the whole `catch` expression first: `(a catch function () { }).pipe(f)`.
 
+TypeScript's automatic semicolon insertion applies after an unparenthesized block-bodied arrow handler: on a following line, `(`, `[`, a template literal, `+` or `-` starts a new statement. Parenthesized handlers and function expressions keep their ordinary continuation rules across line breaks. A forbidden continuation on the same line still receives `EK0512`.
+
 A block-bodied arrow closes at its `}`; a following conditional tests the recovered value, and a following `catch` runs that value if it is an Effect. The plain handler in `closedCatchChain` deliberately returns an unrun Effect (`EK0508` warning); the second `catch` runs it.
 
 ```vibe [VibeLang]

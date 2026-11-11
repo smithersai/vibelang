@@ -1,0 +1,9 @@
+// expect-result: 2
+error Boom { n: number }
+effect function a(): number!Boom { throw new Boom({ n: 1 }) }
+const xs: Array<number> = []
+export effect function main() {
+  const y = a() catch (e) => { return e.n }
+  [1, 2].forEach((n) => { xs.push(n) })
+  return xs.length
+}
