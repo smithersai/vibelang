@@ -58,10 +58,10 @@ test("init wires each agent through its own configuration", (t) => {
 
   const plugin = readJson(root, ".claude/skills/vibelang-lsp/.claude-plugin/plugin.json")
   assert.deepEqual(plugin.lspServers.vibelang, {
-    command: "npx", args: ["--no", "--", "vibelang", "--lsp", "--stdio"], extensionToLanguage: { ".vibe": "vibe" }
+    command: "npx", args: ["--no", "--", "vibelang", "--lsp", "--stdio"], extensionToLanguage: { ".vibe": "vibe", ".vibex": "vibex" }
   })
   assert.deepEqual(readJson(root, "opencode.json").lsp, {
-    vibelang: { command: ["npx", "--no", "--", "vibelang", "--lsp", "--stdio"], extensions: [".vibe"] }
+    vibelang: { command: ["npx", "--no", "--", "vibelang", "--lsp", "--stdio"], extensions: [".vibe", ".vibex"] }
   })
   assert.match(read(root, ".opencode/plugins/vibelang.js"), /"tool\.execute\.after"/)
 })
@@ -190,7 +190,7 @@ test("hook returns an edited file's error to the agent with exit status 2", { sk
   assert.match(codex.stderr, /error TS2322/)
 })
 
-test("hook ignores non-.vibe files and fails for other project errors", { skip: skipNative }, (t) => {
+test("hook ignores other source kinds and fails for other project errors", { skip: skipNative }, (t) => {
   const root = brokenProject(t)
   const other = vibelang(root, ["agents", "hook"], JSON.stringify({ cwd: root, tool_name: "Edit", tool_input: { file_path: join(root, "package.json") } }))
   assert.deepEqual([other.status, other.stdout, other.stderr], [0, "", ""])

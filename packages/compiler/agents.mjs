@@ -36,7 +36,7 @@ export async function main(args, findBinary) {
 }
 
 const usage = `Usage:
-  vibelang agents init [dir]    Set up Claude Code, Codex, opencode, Cursor and VS Code for .vibe files
+  vibelang agents init [dir]    Set up Claude Code, Codex, opencode, Cursor and VS Code for .vibe and .vibex files
   vibelang agents check <file>  Print the diagnostics of each file's project
   vibelang agents hook          Run check for the files a PostToolUse hook event names (stdin JSON)`
 
@@ -128,9 +128,9 @@ function section(command) {
   return `${sectionStart}
 ## VibeLang
 
-\`.vibe\` files are VibeLang: Effect programs in TypeScript syntax. Load the \`vibelang\` skill (\`.agents/skills/vibelang/SKILL.md\`) before you write or review one.
+\`.vibe\` and \`.vibex\` files are VibeLang: Effect programs in TypeScript syntax. Load the \`vibelang\` skill (\`.agents/skills/vibelang/SKILL.md\`) before you write or review one.
 
-- After you edit \`.vibe\` files, run \`${run} agents check <file>...\`. It prints each diagnostic left; fix every error before you finish. Claude Code, Codex and opencode run it for you after each edit and show you the result.
+- After you edit \`.vibe\` or \`.vibex\` files, run \`${run} agents check <file>...\`. It prints each diagnostic left; fix every error before you finish. Claude Code, Codex and opencode run it for you after each edit and show you the result.
 - \`${run} --noEmit\` checks the whole project. Each \`EKxxxx\` diagnostic says how to fix it.
 - \`${run} lint\` runs the built-in Effect type-aware rules on \`.vibe\` files using the repository’s Oxlint configuration; pass \`-c <config>\` for a non-default config. Run it before finishing a change.
 ${sectionEnd}`
@@ -150,7 +150,7 @@ export function withSection(text, block) {
 export function withHook(config, matcher, command) {
   const hooks = { ...config.hooks }
   const groups = (hooks.PostToolUse ?? []).filter((group) => !group.hooks?.some((h) => String(h.command).includes(hookTag)))
-  hooks.PostToolUse = [...groups, { matcher, hooks: [{ type: "command", command, timeout: 300, statusMessage: "Checking .vibe files" }] }]
+  hooks.PostToolUse = [...groups, { matcher, hooks: [{ type: "command", command, timeout: 300, statusMessage: "Checking VibeLang files" }] }]
   return { ...config, hooks }
 }
 
@@ -158,20 +158,20 @@ function claudePlugin(run) {
   const [command, ...args] = run.split(" ")
   return {
     name: "vibelang-lsp",
-    description: `VibeLang language server for .vibe files: diagnostics and hover. ${header}`,
+    description: `VibeLang language server for .vibe and .vibex files: diagnostics and hover. ${header}`,
     lspServers: {
-      vibelang: { command, args: [...args, "--lsp", "--stdio"], extensionToLanguage: { ".vibe": "vibe" } }
+      vibelang: { command, args: [...args, "--lsp", "--stdio"], extensionToLanguage: { ".vibe": "vibe", ".vibex": "vibex" } }
     }
   }
 }
 
 function opencodeLsp(run) {
-  return { vibelang: { command: [...run.split(" "), "--lsp", "--stdio"], extensions: [".vibe"] } }
+  return { vibelang: { command: [...run.split(" "), "--lsp", "--stdio"], extensions: [".vibe", ".vibex"] } }
 }
 
 function opencodePlugin(run) {
   return `// ${header}
-// After opencode edits a .vibe file, checks its project and
+// After opencode edits a .vibe or .vibex file, checks its project and
 // appends the diagnostics left to the tool's result, which the agent reads.
 import { execFile } from "node:child_process"
 
@@ -184,7 +184,7 @@ export const VibeLang = async ({ directory }) => ({
     if (!["edit", "write", "multiedit", "apply_patch", "patch"].includes(input.tool)) return
     const args = input.args ?? {}
     const files = [args.filePath, ...(typeof args.patchText === "string" ? patchFiles(args.patchText) : [])]
-      .filter((file) => typeof file === "string" && file.endsWith(".vibe"))
+      .filter((file) => typeof file === "string" && /\\.vibex?$/.test(file))
     if (files.length === 0) return
     const report = await new Promise((done) =>
       execFile(command[0], [...command.slice(1), ...files], { cwd: directory, maxBuffer: 1 << 24 }, (_, stdout, stderr) =>
@@ -201,7 +201,7 @@ export const VibeLang = async ({ directory }) => ({
 // 1 when a project has errors or its compiler check did not complete.
 function check(files, findBinary) {
   if (files.length === 0) {
-    console.error("vibelang agents check: name the .vibe files to check.")
+    console.error("vibelang agents check: name the .vibe or .vibex files to check.")
     return 2
   }
   const result = checkFiles(files.map((file) => resolve(file)).filter((file) => existsSync(file)), findBinary(), process.cwd())
@@ -222,7 +222,7 @@ function hook(findBinary) {
     return 0
   }
   const cwd = typeof event.cwd === "string" ? event.cwd : process.cwd()
-  const files = editedFiles(event, cwd).filter((file) => file.endsWith(".vibe") && existsSync(file))
+  const files = editedFiles(event, cwd).filter((file) => /\.vibex?$/.test(file) && existsSync(file))
   if (files.length === 0) return 0
   const result = checkFiles(files, findBinary(), cwd)
   if (failed(result)) {
