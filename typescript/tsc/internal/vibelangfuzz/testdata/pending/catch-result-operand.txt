@@ -1,0 +1,6 @@
+FuzzCatchResultOperand arrow/effect/annotated compiler VIP-5/002 Catch Meaning: a written Effect value annotation retains an extra outer Effect around the recovered value and reports TS2322; lane core-catch
+FuzzCatchResultOperand block/effect/annotated compiler VIP-5/002 Catch Meaning: a written Effect value annotation retains an extra outer Effect around the recovered value and reports TS2322; lane core-catch
+FuzzCatchResultOperand function/effect/annotated compiler VIP-5/002 Catch Meaning: a written Effect value annotation retains an extra outer Effect around the recovered value and reports TS2322; lane core-catch
+FuzzCatchResultOperand effect/effect/annotated compiler VIP-5/002 Catch Meaning: a written Effect value annotation retains an extra outer Effect around the recovered value and reports TS2322; lane core-catch
+FuzzCatchResultOperand corpus:returned-effect-annotation compiler VIP-5/002 Catch Meaning: a written Effect value annotation retains an extra outer Effect around the recovered value and reports TS2322; lane core-catch
+FuzzCatchResultOperand corpus:returned-effect-annotation-vibex compiler VIP-5/002 Catch Meaning: a written Effect value annotation retains an extra outer Effect around the recovered value and reports TS2322; lane core-catch
