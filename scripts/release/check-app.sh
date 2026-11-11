@@ -1,6 +1,7 @@
 #!/bin/sh
 # Scaffolds a new VibeLang app from a registry with each named package manager,
-# then installs, checks both formatters, builds, starts, and tests it.
+# then installs, checks the installed formatter, builds, starts, and tests it,
+# and checks the built app with the dprint.json the formatting guide documents.
 # Checks the compiler version and resolves optional packages without hoisting.
 # npm also reinstalls from its generated lockfile with npm ci. bun-isolated
 # scaffolds with Bun, then reinstalls with Bun's isolated linker, the layout
@@ -12,6 +13,7 @@
 # directory, so the check uses fresh registry installs. KEEP=1
 # keeps that directory for inspection.
 set -eu
+root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 registry=$1
 version=$2
 shift 2
@@ -125,25 +127,6 @@ JS
   # plugin-resolution failure.
   step "vibelang-format --check src"
   node_modules/.bin/vibelang-format --check 'src/**/*.{vibe,vibex}'
-  # This is the documented npm plugin entry, resolved from the app itself.
-  cat >dprint.json <<'JSON'
-{
-  "includes": ["src/**/*.{vibe,vibex}"],
-  "typescript": { "semiColons": "asi" },
-  "plugins": [
-    "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a",
-    "npm:vibelang/dprint-plugin.json"
-  ]
-}
-JSON
-  step "install dprint"
-  case $manager in
-    npm) npm install --save-dev --save-exact dprint@0.64.3 ;;
-    *) "$tool" add --save-dev --save-exact dprint@0.64.3 ;;
-  esac
-  step "dprint check"
-  node_modules/.bin/dprint check
-
   step "run build"
   "$tool" run build
   step "run start"
@@ -153,6 +136,17 @@ JSON
   /usr/bin/grep -Fq 'Recovered from EmptyName' "$scratch/$manager-start.txt"
   step "run test"
   "$tool" run test
+  # Format the built app with the dprint.json the formatting guide documents,
+  # byte for byte, so the rehearsal checks what a user copies. After build and
+  # test, the compiler's generated declarations are present.
+  step "dprint check (docs/user/src/setup/formatting.md)"
+  awk '/^```json$/ { found = 1; next } found && /^```$/ { exit } found' "$root/docs/user/src/setup/formatting.md" >dprint.json
+  [ -s dprint.json ] || { echo "check-app: no dprint.json in docs/user/src/setup/formatting.md" >&2; exit 1; }
+  case $manager in
+    npm) npm install --save-dev --save-exact dprint@0.64.3 ;;
+    *) "$tool" add --save-dev --save-exact dprint@0.64.3 ;;
+  esac
+  node_modules/.bin/dprint check
   # A warning used to exit 0 while suppressing emit under noEmitOnError.
   # Import that module through Vite, which always enables noEmitOnError.
   step "Vite warning-only .vibe import"

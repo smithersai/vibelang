@@ -449,12 +449,15 @@ it beside dprint's TypeScript plugin, and add `vibe` to `includes`:
 ```json
 {
   "includes": ["**/*.{ts,vibe}"],
+  "excludes": ["**/node_modules", "**/dist", "**/*.d.ts", "**/*.d.vibe.ts", "**/*.d.vibex.ts"],
   "plugins": [
     "https://plugins.dprint.dev/typescript-0.97.1.wasm@3be85494ff8141c412535e659cbe3d764ed3a740375c929be48393ed20a9d429",
     "npm:vibelang/dprint-plugin.json"
   ]
 }
 ```
+
+The `.d.ts`, `.d.vibe.ts` and `.d.vibex.ts` excludes skip the declarations the compiler regenerates beside each `.vibe` source on every build; without them `dprint check` fails after a build.
 
 The formatter and `vibelang/prettier` recognize `.vibe` and `.vibex`. Include `**/*.{vibe,vibex}` in dprint's `includes`; `vibelang-format` discovers both by default. JSX in `.vibex` uses the host's TSX mode, keeping comments, text, entities and the comma in `<T,>` generic arrows.
 

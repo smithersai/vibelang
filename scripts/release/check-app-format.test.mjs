@@ -9,23 +9,31 @@ import { test } from "node:test"
 const fc = createRequire(new URL("../../packages/compiler/package.json", import.meta.url))("fast-check")
 
 const script = readFileSync(new URL("./check-app.sh", import.meta.url), "utf8")
+const guide = readFileSync(new URL("../../docs/user/src/setup/formatting.md", import.meta.url), "utf8")
+const documentedConfig = guide.match(/^```json\n([\s\S]*?)\n```$/m)[1] + "\n"
 const rehearsal = readFileSync(new URL("./rehearse.sh", import.meta.url), "utf8")
 
-function probe(t, manager, failure = "", exit = 23, extraEnv = {}) {
+function probe(t, manager, failure = "", exit = 23, extraEnv = {}, formatting = guide) {
   const dir = mkdtempSync(join(tmpdir(), "release-format-check-"))
   t.after(() => rmSync(dir, { recursive: true, force: true }))
   mkdirSync(join(dir, "bin"))
-  // Stop before builds: exercise the real scaffold/install/format shell control
-  // flow, with commands recording their calls and deterministic failures.
-  const prefix = script.slice(0, script.indexOf('  step "run build"'))
-  const check = join(dir, "check.sh")
+  // Stop before the Vite fixture: exercise the real scaffold, install, build,
+  // test and format shell control flow, with commands recording their calls and
+  // deterministic failures. The script reads the formatting guide relative to
+  // its own checkout, so the probe mirrors that layout.
+  const prefix = script.slice(0, script.indexOf('  step "Vite warning-only .vibe import"'))
+  mkdirSync(join(dir, "scripts/release"), { recursive: true })
+  mkdirSync(join(dir, "docs/user/src/setup"), { recursive: true })
+  writeFileSync(join(dir, "docs/user/src/setup/formatting.md"), formatting)
+  const check = join(dir, "scripts/release/check.sh")
   writeFileSync(check, prefix + '\ndone\n')
   const fake = join(dir, "bin/tool")
   writeFileSync(fake, `#!${process.execPath}
 const fs = require("node:fs"), path = require("node:path")
 const name = path.basename(process.argv[1]), args = process.argv.slice(2)
 const bunfig = fs.existsSync("bunfig.toml") ? fs.readFileSync("bunfig.toml", "utf8") : null
-fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({ name, args, cwd: process.cwd(), registry: process.env.pnpm_config_registry, bunfig, isolated: fs.existsSync("node_modules/.bun") }) + "\\n")
+const config = name === "dprint" && fs.existsSync("dprint.json") ? fs.readFileSync("dprint.json", "utf8") : null
+fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({ name, args, cwd: process.cwd(), registry: process.env.pnpm_config_registry, bunfig, config, isolated: fs.existsSync("node_modules/.bun") }) + "\\n")
 const bins = app => {
   fs.mkdirSync(path.join(app, "node_modules/.bin"), { recursive: true })
   for (const bin of ["vibelang", "vibelang-format", "dprint"]) fs.symlinkSync(process.env.PROBE_TOOL, path.join(app, "node_modules/.bin", bin))
@@ -46,6 +54,7 @@ if (name === "bun" && args[0] === "install") {
 }
 if (name === "node") process.stdin.resume()
 if (name === "vibelang") console.log("VibeLang 0.0.12 (fixture)")
+if (args[0] === "run" && args[1] === "start") console.log("Hello, VibeLang!\\nRecovered from EmptyName")
 if (name === "dprint") {
   const config = JSON.parse(fs.readFileSync("dprint.json", "utf8"))
   if (!config.plugins.includes("npm:vibelang/dprint-plugin.json")) process.exit(91)
@@ -89,6 +98,28 @@ for (const manager of managers) {
     })
   }
 }
+
+// The rehearsal once wrote its own dprint.json and ran it before the first
+// build, so it passed while the guide's configuration failed on every built app.
+for (const manager of managers) {
+  test(`${manager} runs the formatting guide's dprint.json after build and test`, t => {
+    const { result, calls } = probe(t, manager)
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    const index = predicate => calls.findIndex(predicate)
+    const build = index(c => c.args[0] === "run" && c.args[1] === "build")
+    const tested = index(c => c.args[0] === "run" && c.args[1] === "test")
+    const dprint = index(c => c.name === "dprint" && c.args[0] === "check")
+    assert.ok(build >= 0 && tested > build && dprint > tested, JSON.stringify(calls.map(c => [c.name, ...c.args])))
+    assert.equal(calls[dprint].config, documentedConfig, "dprint.json must be the guide's block, byte for byte")
+  })
+}
+
+test("the rehearsal fails when the formatting guide has no dprint.json block", t => {
+  const { result, calls } = probe(t, "npm", "", 23, {}, "# Format with dprint\n")
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /no dprint\.json in docs\/user\/src\/setup\/formatting\.md/)
+  assert.ok(!calls.some(c => c.name === "dprint"))
+})
 
 // verify-published.sh <version> must scaffold that version: the latest tag
 // can name another release.
