@@ -45,7 +45,10 @@ func grammarLexSource(src string) []grammarToken {
 		nl = false
 		j := i + 1
 		switch {
-		case r == '"' || r == '\'' || r == '`':
+		case r == '`':
+			j = grammarTemplateEnd(rs, i)
+			t.kind = 't'
+		case r == '"' || r == '\'':
 			for j < len(rs) && rs[j] != r {
 				if rs[j] == '\\' {
 					j++
@@ -54,9 +57,6 @@ func grammarLexSource(src string) []grammarToken {
 			}
 			j++
 			t.kind = 's'
-			if r == '`' {
-				t.kind = 't'
-			}
 		case r == '‹':
 			for j < len(rs) && rs[j] != '›' {
 				j++
@@ -65,7 +65,10 @@ func grammarLexSource(src string) []grammarToken {
 			t.kind = 'x'
 		// ECMAScript's DecimalLiteral may start with `.` before a digit: `.5`.
 		case r >= '0' && r <= '9' || r == '.' && grammarIsDecimalDigitAt(rs, i+1):
-			for j < len(rs) && (grammarIsWordRune(rs[j]) || rs[j] == '.') {
+			// A DecimalLiteral's ExponentPart may carry a sign: `1e-400`, `2E+3`.
+			// A hex, octal or binary literal has no exponent, and its e is a digit.
+			decimal := !(r == '0' && i+1 < len(rs) && strings.ContainsRune("xXoObB", rs[i+1]))
+			for j < len(rs) && (grammarIsWordRune(rs[j]) || rs[j] == '.' || decimal && (rs[j] == '+' || rs[j] == '-') && (rs[j-1] == 'e' || rs[j-1] == 'E') && grammarIsDecimalDigitAt(rs, j+1)) {
 				j++
 			}
 			t.kind = 'n'
@@ -107,6 +110,62 @@ func grammarLexSource(src string) []grammarToken {
 		i = j
 	}
 	return out
+}
+
+// grammarTemplateEnd returns the index after the template literal that opens
+// at i. A `${` substitution runs to its matching `}` and may hold strings,
+// braces and nested templates, as TemplateMiddle and TemplateTail scanning
+// does; an unterminated template runs to the end.
+func grammarTemplateEnd(rs []rune, i int) int {
+	j := i + 1
+	for j < len(rs) {
+		switch {
+		case rs[j] == '\\':
+			j += 2
+		case rs[j] == '`':
+			return j + 1
+		case rs[j] == '$' && j+1 < len(rs) && rs[j+1] == '{':
+			j = grammarSubstitutionEnd(rs, j+2)
+		default:
+			j++
+		}
+	}
+	return len(rs)
+}
+
+// grammarSubstitutionEnd returns the index after the `}` that closes the
+// substitution whose expression starts at i.
+func grammarSubstitutionEnd(rs []rune, i int) int {
+	depth := 0
+	j := i
+	for j < len(rs) {
+		switch {
+		case rs[j] == '`':
+			j = grammarTemplateEnd(rs, j)
+		case rs[j] == '"' || rs[j] == '\'':
+			q := rs[j]
+			j++
+			for j < len(rs) && rs[j] != q {
+				if rs[j] == '\\' {
+					j++
+				}
+				j++
+			}
+			j++
+		case rs[j] == '{':
+			depth++
+			j++
+		case rs[j] == '}':
+			if depth == 0 {
+				return j + 1
+			}
+			depth--
+			j++
+		default:
+			j++
+		}
+	}
+	return len(rs)
 }
 
 // grammarDecodeEscapes replaces each `\uXXXX` or `\u{…}` escape of a word

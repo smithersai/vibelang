@@ -440,6 +440,12 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-try-statement", "effect function f() { try { return 1 } catch (e) { return 2 } }"},
 	{"effect-await-using", "effect function f(r: AsyncDisposable) { await using h = r; return 1 }"},
 	{"legacy-infer-slot", "import { Effect } from \"effect\"\nexport const a = (): number!(infer E) => Effect.succeed(1)"},
+	{"type-close-greater-equals", "const x: Promise<number>= Promise.resolve(1)"},
+	{"type-close-greater-arrow", "const f = (flag: boolean): number[] | Set<string>=> flag ? [5] : new Set([\"7\"])"},
+	{"type-close-nested-greater-equals", "const m: Map<string, Set<number>>= new Map()"},
+	{"effect-type-bang-equals", "const x: number!!= 1"},
+	{"nested-template-literal", "const t = (s: TemplateStringsArray, ...v: unknown[]) => s.raw[0]; const o = t`outer: ${t`inner`}`"},
+	{"numeric-exponent-sign-pattern", "function f(n: number) { return match (n) { when -1e-400: 1; when 2E+3: 2; default: 0; } }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -764,9 +770,46 @@ func grammarAdmissionMismatch(source string) (bool, string) {
 		}
 	}
 	if r.count == 0 {
+		if rescanned, ok := grammarRescannedTokens(toks); ok {
+			r = lab.read(lab.g, rescanned, grammarParseMode{prose: true, names: true})
+		}
+	}
+	if r.count == 0 {
 		return true, "compiler reports no syntax rejection, but Appendix A has no derivation (check compiler admission or lab coverage)"
 	}
 	return false, ""
+}
+
+// grammarRescannedTokens splits the punctuators TypeScript rescans after a
+// type: the `>` that closes a type argument or parameter list is scanned
+// apart from a following `=`, `=>` or `>=` (`Promise<number>= p`,
+// `Set<string>=> x`), and the `=` after an effect type's bang
+// (`number!!= e`). The lexer joins them by longest match, so a program the
+// first read refused is read again with every `>=` and every `!=` after `!`
+// split. A split never adds a derivation the joined tokens already had.
+func grammarRescannedTokens(toks []grammarToken) ([]grammarToken, bool) {
+	var out []grammarToken
+	split := false
+	for i := 0; i < len(toks); i++ {
+		t := toks[i]
+		switch {
+		case t.kind == 'p' && t.text == ">=":
+			split = true
+			out = append(out, grammarToken{text: ">", kind: 'p', nl: t.nl})
+			if i+1 < len(toks) && toks[i+1].text == ">" && !toks[i+1].nl {
+				out = append(out, grammarToken{text: "=>", kind: 'p'})
+				i++
+			} else {
+				out = append(out, grammarToken{text: "=", kind: 'p'})
+			}
+		case t.kind == 'p' && t.text == "!=" && i > 0 && toks[i-1].text == "!" && !t.nl:
+			split = true
+			out = append(out, grammarToken{text: "!", kind: 'p'}, grammarToken{text: "=", kind: 'p'})
+		default:
+			out = append(out, t)
+		}
+	}
+	return out, split
 }
 
 func checkGrammarAdmission(t *testing.T, w *Workspace, key, source string) {
