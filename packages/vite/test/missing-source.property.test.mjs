@@ -72,9 +72,17 @@ for (const version of ["vite", "vite7"]) {
         await until(() => messages.some(message => message?.type === "error" && message.err.message.includes("./" + name)), "source deletion", messages)
         await writeFile(main, "export const value = 1\n")
         await until(async () => (await fetch(base + "/src/main.vibe")).status === 200, "recovery", messages)
-        await rm(file.replace(/\.vibe$/, ".d.vibe.ts"), { force: true })
+        // Reset the name: remove what the compiler wrote beside the deleted
+        // source, the sidecar x.d.vibe.ts and the native declaration x.d.ts
+        // that re-exports it (VIP-27). A leftover x.d.ts would resolve a
+        // later import of the same name, reporting TS2305 instead of TS2307.
+        if (name.endsWith(".vibe")) {
+          await rm(file.replace(/\.vibe$/, ".d.vibe.ts"), { force: true })
+          await rm(file.replace(/\.vibe$/, ".d.ts"), { force: true })
+        }
       }
-      const names = ["created.vibe", "créé.vibe", "nested/index.vibe", "types.ts", "日本.ts", "percent%20.vibe", "space name.vibe", "long-" + "a".repeat(128) + ".vibe"]
+      // created.vibe repeats: the property draws repeated names too.
+      const names = ["created.vibe", "créé.vibe", "nested/index.vibe", "types.ts", "日本.ts", "percent%20.vibe", "space name.vibe", "long-" + "a".repeat(128) + ".vibe", "created.vibe"]
       for (const name of names) await check(name)
       await checkProperty(fc, {
         name: `vite-missing-source-${version}`,
