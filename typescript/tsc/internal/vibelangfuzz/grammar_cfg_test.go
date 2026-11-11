@@ -167,7 +167,7 @@ func grammarLexNotation(s string) []grammarNtok {
 }
 
 func grammarIsWordRune(r rune) bool {
-	return r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r > 127 && (unicode.IsLetter(r) || unicode.IsDigit(r))
+	return r == '_' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r > 127 && (unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.In(r, unicode.Nl, unicode.Other_ID_Start))
 }
 
 func isGrammarName(s string) bool {

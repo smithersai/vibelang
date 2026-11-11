@@ -115,9 +115,11 @@ func grammarLexSource(src string) []grammarToken {
 // grammarIsWordContinueRune reports a rune ECMAScript's IdentifierPart admits
 // after the first: ID_Continue adds nonspacing and spacing marks (a combining
 // acute in an NFD name), decimal digits and connector punctuation to
-// ID_Start, and the grammar adds ZWNJ and ZWJ.
+// ID_Start, plus Other_ID_Continue; the grammar adds ZWNJ and ZWJ.
+// The word scanner separately admits ID_Start's letters, letter numbers and
+// Other_ID_Start (for example the script capital P, U+2118).
 func grammarIsWordContinueRune(r rune) bool {
-	return r == '\u200c' || r == '\u200d' || unicode.In(r, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc)
+	return r == '\u200c' || r == '\u200d' || unicode.In(r, unicode.Mn, unicode.Mc, unicode.Nd, unicode.Pc, unicode.Other_ID_Continue)
 }
 
 // grammarTemplateEnd returns the index after the template literal that opens

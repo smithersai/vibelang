@@ -477,6 +477,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"arrow-parenthesized-reserved-shorthand-return", "const f = (): ({ class }) => ({ class: 1 })"},
 	{"async-arrow-parenthesized-return", "const f = async (): (Promise<number>) => 1"},
 	{"import-type-dotted-arguments", grammarImportTypeDottedArgumentForms[0]},
+	{"unicode-other-id-start", "const \u2118x = 1; export const v = \u2118x"},
+	{"unicode-other-id-continue", "const a\u00b7b = 1; export const v = a\u00b7b"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

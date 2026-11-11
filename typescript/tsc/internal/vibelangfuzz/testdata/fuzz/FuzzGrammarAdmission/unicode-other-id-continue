@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:unicode-other-id-continue\nconst a\u00b7b = 1; export const v = a\u00b7b")
