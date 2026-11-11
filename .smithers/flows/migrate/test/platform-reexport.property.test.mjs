@@ -123,7 +123,7 @@ test("a re-export the module would read before it is initialized keeps the refus
   const through = 'import { sep } from "node:path"\nfunction first(): unknown { return Refused }\nexport const known = [first()]\nexport class Refused extends Error {}\nexport const check = (s: string): boolean => { if (s === sep) throw new Refused(); return true }\n'
   assert.match(splitPlatform(through, "src/m.ts", ts).refused, /export Refused would be initialized in m\.platform\.ts before a statement above it/)
   // Moved code a statement above runs that never reads it runs the same in either file.
-  const other = 'import { sep } from "node:path"\nexport const known = [check("x")]\nexport class Refused extends Error {}\nexport function check(s: string): boolean { return s.length > sep.length }\nexport const refuse = (s: string): boolean => { if (s === sep) throw new Refused(); return true }\n'
+  const other = 'import { sep } from "node:path"\nexport const known = [check("x")]\nexport class Refused {}\nexport function check(s: string): boolean { return s.length > sep.length }\nexport const refuse = (s: string): boolean => { if (s === sep) throw new Refused(); return true }\n'
   assert.ok(!splitPlatform(other, "src/m.ts", ts).refused, splitPlatform(other, "src/m.ts", ts).refused)
   // An exported value whose type of the same name is private cannot be re-exported without exporting the type.
   const twin = 'import { sep } from "node:path"\nexport const Shape = { sep }\ntype Shape = typeof Shape\nexport const shape = (): Shape => Shape\n'

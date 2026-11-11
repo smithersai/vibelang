@@ -274,6 +274,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Migration setup generated Effect lint commands with unsupported Oxlint flags, so linting stopped with an unknown-option error. Setup now uses compiler project options and repairs those commands when repeated.
 
+- Migration could initialize a value from host state before earlier setup statements had run. Initializers now keep their original order, with host operations called in place or the unsafe split refused.
+
 - A binding joined to a literal pattern with `and` could keep its original wide type and reject a valid return. Bindings now retain the type narrowed by the conjunction, in either order and inside array or object patterns.
 
 - A `match` could silently omit a case when its union used `kind`, `type` or another literal field instead of `_tag`. It now reports an exhaustiveness error naming the missing cases, including nested unions, while keeping runtime matching unchanged.
