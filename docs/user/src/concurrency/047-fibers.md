@@ -45,7 +45,7 @@ An operand that is not assignable to `Fiber.Fiber<any, any>` reports `EK1704`. A
 
 When `join` receives a `Deferred`, `Promise` or `Effect`, its diagnostic shows an executable alternative: `try Deferred.await(value)`, `try Effect.tryPromise(() => value)` or `try value`. Calling an Effect factory constructs its program; `try` runs it. An incomplete marker does not establish a valid `Effect` or `Deferred` operation.
 
-A collection of fibers is not itself a fiber: `join [first, second]` and `join { first, second }` report `EK1704`.
+A collection of fibers is not itself a fiber: `join [first, second]` and `join { first, second }` report `EK1704`. An `await` error on a collection therefore does not suggest `join collection`; join each handle or run `try all(collection.map(Fiber.join))`.
 
 With `strictNullChecks` disabled, `null` and `undefined` pass the operand's TypeScript assignability check; `void` remains invalid.
 

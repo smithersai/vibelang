@@ -203,7 +203,7 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 		// Recovery and unchecked or absent values do not identify a handle.
 		if t := c.GetTypeAtLocation(args[0]); t != nil && t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsNever|checker.TypeFlagsNull|checker.TypeFlagsUndefined) == 0 {
 			switch {
-			case isJoinable(c, t, 0):
+			case isJoinable(c, t, 1):
 				note(d, "Join the fiber with join {0}.", nodeText(file, args[0]))
 			case isDeferred(c, t):
 				note(d, "Wait for the Deferred with try Deferred.await({0}).", nodeText(file, args[0]))
