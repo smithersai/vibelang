@@ -120,6 +120,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - The Proposals page called `.vibex` files unbuilt and durable execution nonexistent, and cited decision-log entries the site does not publish. It now says, for each idea from the earlier design, whether it shipped, which VIP proposes it, or that it has no VIP.
 
+- Agent setup failed to start checks and language servers when the workspace package path contained spaces or punctuation. Generated commands now preserve the complete package path.
+
 - Agent checks hid compiler messages without a source location, such as a project selecting no input files. The command and post-edit hooks now show those diagnostics and their details.
 
 - `vibelang agents check` and post-edit hooks could succeed after skipping a file with no project configuration. They now fail and name the unchecked file, including when another project passes.

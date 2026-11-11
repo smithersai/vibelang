@@ -49,7 +49,8 @@ export function init(root) {
     console.error(`vibelang agents init: ${root} has no package.json; run it at the repository root.`)
     return 1
   }
-  const run = invocation(root)
+  const command = invocationArguments(root)
+  const run = shellCommand(command)
   if (run === "npx --no -- vibelang" && !existsSync(join(root, "node_modules/.bin/vibelang"))) {
     console.log("vibelang agents init: vibelang is not installed here yet; the commands below run once it is.")
   }
@@ -69,32 +70,32 @@ export function init(root) {
   write(".claude/skills/vibelang/SKILL.md", skill)
 
   // Instructions: every agent reads AGENTS.md; Claude Code reads CLAUDE.md instead when one exists.
-  write("AGENTS.md", withSection(read(join(root, "AGENTS.md")), section(run)))
+  write("AGENTS.md", withSection(read(join(root, "AGENTS.md")), section(command)))
   for (const path of ["CLAUDE.md", ".claude/CLAUDE.md"]) {
-    if (existsSync(join(root, path))) write(path, withSection(read(join(root, path)), section(run)))
+    if (existsSync(join(root, path))) write(path, withSection(read(join(root, path)), section(command)))
   }
 
   // Claude Code (and Cursor and VS Code, which load its hooks): a PostToolUse hook after each edit.
   const hookCommand = `${run} agents hook`
   write(".claude/settings.json", json(withHook(readJson(root, ".claude/settings.json"), "Edit|Write|MultiEdit", hookCommand)))
   // Claude Code's language servers come from plugins; a plugin under .claude/skills is the repository's.
-  write(".claude/skills/vibelang-lsp/.claude-plugin/plugin.json", json(claudePlugin(run)))
+  write(".claude/skills/vibelang-lsp/.claude-plugin/plugin.json", json(claudePlugin(command)))
 
   // Codex: the same hook after apply_patch, from the project's .codex layer.
   write(".codex/hooks.json", json(withHook(readJson(root, ".codex/hooks.json"), "apply_patch", hookCommand)))
 
   // opencode: the language server, whose diagnostics its edit tools report, and a plugin that runs check.
   if (existsSync(join(root, "opencode.jsonc")) && !existsSync(join(root, "opencode.json"))) {
-    skipped.push(`opencode.jsonc: add "lsp": ${JSON.stringify(opencodeLsp(run))} by hand`)
+    skipped.push(`opencode.jsonc: add "lsp": ${JSON.stringify(opencodeLsp(command))} by hand`)
   } else {
     const config = readJson(root, "opencode.json")
     if (config.lsp !== false) {
       config.$schema ??= "https://opencode.ai/config.json"
-      config.lsp = { ...(typeof config.lsp === "object" ? config.lsp : {}), ...opencodeLsp(run) }
+      config.lsp = { ...(typeof config.lsp === "object" ? config.lsp : {}), ...opencodeLsp(command) }
       write("opencode.json", json(config))
     } else skipped.push(`opencode.json turns LSP off ("lsp": false); left it`)
   }
-  write(".opencode/plugins/vibelang.js", opencodePlugin(run))
+  write(".opencode/plugins/vibelang.js", opencodePlugin(command))
 
   for (const path of written) console.log(`vibelang agents init: wrote ${path}`)
   for (const note of skipped) console.log(`vibelang agents init: skipped ${note}`)
@@ -109,18 +110,30 @@ export function init(root) {
 // current directory that has it, as in a workspace that doesn't hoist it.
 // `--` keeps npx from reading vibelang's flags as its own.
 export function invocation(root, cwd = process.cwd()) {
+  return shellCommand(invocationArguments(root, cwd))
+}
+
+function invocationArguments(root, cwd = process.cwd()) {
   const has = (directory) => existsSync(join(directory, "node_modules/.bin/vibelang"))
   if (!has(root)) {
     for (let directory = resolve(cwd); directory.startsWith(`${root}/`); directory = dirname(directory)) {
-      if (has(directory)) return `npx --no --prefix ${relative(root, directory)} -- vibelang`
+      if (has(directory)) {
+        const path = relative(root, directory)
+        return ["npx", "--no", "--prefix", path.startsWith("-") ? "./" + path : path, "--", "vibelang"]
+      }
     }
   }
-  return "npx --no -- vibelang"
+  return ["npx", "--no", "--", "vibelang"]
+}
+
+// Hook commands run in a shell; LSP and execFile commands keep their argv.
+function shellCommand(args) {
+  return args.map((arg) => /^[A-Za-z0-9_./:@%+=,-]+$/.test(arg) ? arg : "'" + arg.replaceAll("'", "'\\''") + "'").join(" ")
 }
 
 // prose is invocation as a person types it.
-function prose(run) {
-  return run.replace(/ --no\b/, "").replace(/ -- /, " ")
+function prose(command) {
+  return shellCommand([command[0], ...command.slice(2, -2), command.at(-1)])
 }
 
 function section(command) {
@@ -154,8 +167,8 @@ export function withHook(config, matcher, command) {
   return { ...config, hooks }
 }
 
-function claudePlugin(run) {
-  const [command, ...args] = run.split(" ")
+function claudePlugin(argv) {
+  const [command, ...args] = argv
   return {
     name: "vibelang-lsp",
     description: `VibeLang language server for .vibe and .vibex files: diagnostics and hover. ${header}`,
@@ -165,17 +178,17 @@ function claudePlugin(run) {
   }
 }
 
-function opencodeLsp(run) {
-  return { vibelang: { command: [...run.split(" "), "--lsp", "--stdio"], extensions: [".vibe", ".vibex"] } }
+function opencodeLsp(command) {
+  return { vibelang: { command: [...command, "--lsp", "--stdio"], extensions: [".vibe", ".vibex"] } }
 }
 
-function opencodePlugin(run) {
+function opencodePlugin(command) {
   return `// ${header}
 // After opencode edits a .vibe or .vibex file, checks its project and
 // appends the diagnostics left to the tool's result, which the agent reads.
 import { execFile } from "node:child_process"
 
-const command = ${JSON.stringify([...run.split(" "), "agents", "check"])}
+const command = ${JSON.stringify([...command, "agents", "check"])}
 const patchFiles = (patch) =>
   [...patch.matchAll(/^\\*\\*\\* (?:Add File|Update File|Move to): (.+)$/gm)].map((match) => match[1].trim())
 

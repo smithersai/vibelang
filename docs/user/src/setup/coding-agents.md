@@ -73,3 +73,5 @@ cd packages/core && npx vibelang agents init ../..
 ```
 
 The commands it writes then name the package, as `npx --no --prefix packages/core -- vibelang agents hook`.
+
+Workspace package paths with spaces, quotes or shell punctuation work in the generated hooks, language-server commands and opencode plugin. Rerun `init` to update an existing setup.

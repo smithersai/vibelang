@@ -9,6 +9,7 @@
     "compiler/test/agents-check-inputs.test.mjs",
     "compiler/test/agents-missing-project.test.mjs",
     "compiler/test/agents-project-diagnostics.test.mjs",
+    "compiler/test/agents-workspace-paths.test.mjs",
     "compiler/test/approval-service-proof.test.mjs",
     "compiler/test/asset-imports.property.test.mjs",
     "compiler/test/ast-grep.test.mjs",
