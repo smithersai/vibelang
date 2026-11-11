@@ -226,14 +226,16 @@ type Arm struct {
 	Value   Expr
 }
 
-// A Pattern is a class arm `Oops0` when Class is set, or else the object
+// A Pattern is a class arm `Oops0` when Class is set, a primitive literal
+// pattern such as `1` or `true` when Literal is set, or else the object
 // pattern `{ _tag: "<Tag>" }`, `{ _tag: "<Tag>", n }` when Field is set, or
 // `{ _tag: "<Tag>", n: let <Bind> }` when Bind is set too.
 type Pattern struct {
-	Class string
-	Tag   string
-	Field string
-	Bind  string
+	Class   string
+	Literal string
+	Tag     string
+	Field   string
+	Bind    string
 }
 
 func (m *Match) Vibe(w *Writer) {
@@ -290,6 +292,8 @@ func (p *Pattern) vibe(w *Writer) {
 	switch {
 	case p.Class != "":
 		w.Write(p.Class)
+	case p.Literal != "":
+		w.Write(p.Literal)
 	case p.Bind != "":
 		w.Write(fmt.Sprintf("{ _tag: %q, %s: let %s }", p.Tag, p.Field, p.Bind))
 	case p.Field != "":
@@ -300,6 +304,12 @@ func (p *Pattern) vibe(w *Writer) {
 }
 
 func (p *Pattern) test(w *Writer, m string) {
+	if p.Literal != "" {
+		// The generator writes only literals that SameValue and === compare
+		// alike: positive integers and Booleans.
+		w.Write(m + " === " + p.Literal)
+		return
+	}
 	if p.Class != "" {
 		w.Write(m + "._tag === " + strconv.Quote(p.Class))
 		return

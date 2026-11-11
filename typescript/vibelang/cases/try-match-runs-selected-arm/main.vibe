@@ -1,0 +1,90 @@
+// expect-result: ["ran a","ran b",["dispatch a","dispatch b"],[1,2,3],[4,5,6],[7,8],[9,10],"boom",["s:x","s:y"]]
+// try before a match runs the Effect the selected arm gives, as try runs any
+// operand (VIP-5): try e is yield* e, and a match expression's value is its
+// selected arm's. The match runs once, where it stands, and an arm that is
+// not selected never runs. A dispatcher typed void!Failed runs its arm too.
+import * as Effect from "effect/Effect"
+
+export error Failed { reason: string }
+
+effect function a() { return "ran a" }
+effect function b() { return "ran b" }
+
+export effect function pick(kind: "a" | "b") {
+  return try match (kind) {
+    when "a": a();
+    when "b": b();
+  }
+}
+
+const log: string[] = []
+effect function record(entry: string) { log.push(entry) }
+
+export effect function dispatch(kind: "a" | "b"): void!Failed {
+  return try match (kind) {
+    when "a": record("dispatch a");
+    when "b": record("dispatch b");
+  }
+}
+
+const e = (n: number) => Effect.succeed(n)
+const flag = (n: number): boolean => n > 0
+
+// A const initializer, an argument and a binary operand.
+effect function positions(n: number) {
+  const first: number = try match (n) { when 1: e(1); default: e(0); }
+  const second = ((value: number) => value)(try match (n) { when 1: e(2); default: e(0); })
+  const third = (try match (flag(n)) { when true: e(2); when false: e(0); }) + 1
+  return [first, second, third]
+}
+
+// An effect block, an effect arrow's concise body, and parentheses.
+effect function enclosing(n: number) {
+  const block = try effect { return try match (n) { when 1: e(4); default: e(0); } }
+  const arrow = effect () => try match (n) { when 1: e(5); default: e(0); }
+  const paren = try (match (n) { when 1: effect { return 6 }; default: e(0); })
+  return [block, try arrow(), paren]
+}
+
+// try inside a do block, and try before a do whose value is the match.
+effect function inDo(n: number) {
+  const inside = do { try match (n) { when 1: e(7); default: e(0); } }
+  const outside = try do { match (n) { when 1: e(8); default: e(0); } }
+  return [inside, outside]
+}
+
+// An arm that is itself a match gives its own arm's Effect.
+effect function nested(n: number, m: number) {
+  const inner = try match (n) {
+    when 1: match (m) { when 2: e(9); default: e(0); };
+    default: e(0);
+  }
+  const outer = try match (flag(n)) {
+    when true: match (flag(m)) { when true: effect { try a(); return 10 }; when false: e(0); };
+    when false: e(0);
+  }
+  return [inner, outer]
+}
+
+// A failing arm fails the enclosing Effect.
+export effect function failing(n: number) {
+  return try match (flag(n)) {
+    when true: Effect.fail(new Failed({ reason: "boom" }));
+    when false: e(0);
+  }
+}
+
+// An expression statement runs the selected arm and discards its value.
+effect function statements(n: number) {
+  const seen: string[] = []
+  try match (n) { when 1: Effect.sync(() => { seen.push("s:x") }); default: Effect.sync(() => { seen.push("s:no") }); }
+  try match (flag(n)) { when true: Effect.sync(() => { seen.push("s:y") }); when false: Effect.sync(() => { seen.push("s:no") }); }
+  return seen
+}
+
+export effect function main() {
+  try dispatch("a")
+  try dispatch("b")
+  const failed = failing(1) catch (error) => error.reason
+  return [try pick("a"), try pick("b"), log, try positions(1), try enclosing(1), try inDo(1), try nested(1, 2), failed, try statements(1)]
+}

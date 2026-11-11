@@ -905,6 +905,8 @@ the minimized typed-helper witness; the runtime Exit and event-log oracle is unc
 
 The `FuzzTryNested` corpus also varies native Effect calls, stored native arrows and member aliases over zero to three held Effect layers. The written-forms arrow has one `try` for one layer; an extra `try` must report `EK0502` under Chapter 2.
 
+The `vip05.try-match` differential constructs put `try` before a `match` whose arms give Effects, at eleven positions: a `const` initializer, a `return`, an expression statement, parentheses, a binary operand, a call argument, an `effect` block, an `effect` arrow, inside a `do` block, before a `do` block, and with a nested `match` arm. The reference is `yield*` of the match's reading, so the Exit and event log show the selected arm's Effect running once and no other arm's. The bare construct is also an operand, so any generated `try`, `catch` or `fork` may run such a match. The `lang-flows-try-match-*` corpus files keep the dispatcher pattern that compiled without running its arm before the fix.
+
 The static `FuzzDataSpecRules` matrix for readonly record aliases varies six library-binding spellings, parenthesized arguments, readonly writes, value types, required keys and nested mutable arrays. Each unresolved combination has its own feature key and corpus file; canonical `Readonly<Record<"x", number>>` controls stay active. A pending entry records missing compiler support rather than treating an unsupported decoder as an equivalent result.
 
 ### TypeScript namespace consumers of native declarations

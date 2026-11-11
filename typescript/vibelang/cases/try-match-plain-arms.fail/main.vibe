@@ -1,0 +1,23 @@
+// expect: EK0502
+// try runs the Effect a match gives (VIP-5). A match whose arms give plain
+// values, or plain values beside Effects, gives no Effect for try to run,
+// in a return, a statement, a const, a do block or an effect block alike.
+import * as Effect from "effect/Effect"
+
+effect function a() { return "ran a" }
+
+export effect function plainReturn(kind: "a" | "b") {
+  return try match (kind) { when "a": "a"; when "b": "b"; }
+}
+
+export effect function mixedReturn(kind: "a" | "b") {
+  return try match (kind) { when "a": a(); when "b": "b"; }
+}
+
+export effect function mixedConst(n: number) {
+  const v = try match (n) { when 1: Effect.succeed(1); default: 0; }
+  try match (n) { when 1: 1; default: Effect.void; }
+  const inDo = do { try match (n) { when 1: 1; default: 2; } }
+  const inBlock = try effect { return try match (n) { when 1: a(); default: null; } }
+  return [v, inDo, inBlock]
+}
