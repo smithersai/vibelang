@@ -823,6 +823,8 @@ var grammarSubsetHooks = []struct{ at, name string }{
 	{"Statement", "SchemaDeclaration"},
 	{"Statement", "DataDecl"},
 	{"Statement", "DataDeclaration"},
+	{"Statement", "TaskDeclaration"},
+	{"Statement", "WorkflowDeclaration"},
 	{"UnaryExpression", "ThrowExpression"},
 	{"ScriptItem", "ModuleDeclaration"},
 }
@@ -854,6 +856,7 @@ var grammarProseMeanings = []struct {
 	{regexp.MustCompile(`^a LineTerminator before the next token`), "LineTerminator", ""},
 	{regexp.MustCompile(`^an ordinary TypeScript import declaration using ModuleSpecifier`), "TsImportDeclaration", "TypeScript's import, side-effect form included, with VIP-40's ModuleSpecifier"},
 	{regexp.MustCompile(`^Undecided \(pending VIP\): UnaryExpression`), "UnaryExpression", "undecided; the search takes the first option, UnaryExpression"},
+	{regexp.MustCompile(`^EffectMethod named call`), "EffectMethod", "an effect method, bodiless in a task through its \";\" alternative; the call name, static and single-call rules are static (EK5501)"},
 }
 
 // grammarUndefinedMeanings stands in for a name a production uses and none
@@ -1125,7 +1128,7 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 	// alternatives and do not install this bridge in the TypeScript-only lab.
 	if strings.Contains(a.text, grammarDeclarationExportQuote) {
 		var exports []string
-		for _, name := range []string{"ServiceDeclaration", "ErrorDeclaration", "SchemaErrorDeclaration", "SchemaDeclaration", "DataDeclaration"} {
+		for _, name := range []string{"ServiceDeclaration", "ErrorDeclaration", "SchemaErrorDeclaration", "SchemaDeclaration", "DataDeclaration", "TaskDeclaration", "WorkflowDeclaration"} {
 			if defined[name] {
 				exports = append(exports, `"export" `+name)
 			}

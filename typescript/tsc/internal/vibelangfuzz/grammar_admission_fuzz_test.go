@@ -484,6 +484,13 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-bang-arrow", "const arrow = effect (x: number): number!!=> x + 1"},
 	{"effect-type-bang-mixed-equality", "declare const a: number\nconst d: number!!= a\nconst spaced = a as number!! != null\nconst different = a as number!! !== a"},
 	{"mutable-typed-effect-arrow", "const f = effect (p: { mutable n: number }): number!! => { return try Effect.succeed(p.n) }"},
+	{"task-declaration", "task T { static readonly key = \"k\"; effect call(repo: string): number!string { return 1 } }"},
+	{"task-bodiless-call", "task T { effect call(order: string, cents: number): number!string; }"},
+	{"workflow-declaration", "workflow W { static readonly maxRounds = 2; effect call(repo: string) { return 1 } }"},
+	{"workflow-export", "export workflow W { effect call(repo: string) { return 1 } }"},
+	{"task-start-line-break", "task\nT { effect call(a: string): number!string { return 1 } }"},
+	{"task-rejected-member", "task T { helper() { return 1 } effect call(id: string): number!never { return 1 } }"},
+	{"workflow-rejected-option", "workflow W { static mutable = 1; effect call(n: number) { return n } }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
