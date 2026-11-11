@@ -45,14 +45,14 @@ The hooks and the opencode plugin run `npx vibelang agents check` on the `.vibe`
 npx vibelang agents check src/profile.vibe
 ```
 
-It compiles the project in the nearest `tsconfig.json` above each file, then prints the errors in those files:
+It finds the nearest directory with a compiler configuration above each file, checking `vibe.config.json`, `tsconfig.json` and `jsconfig.json` in that order, then prints the errors in those files:
 
 ```out
 src/profile.vibe(6,10): error TS2322: Type 'string' is not assignable to type 'number'.
 vibelang: 1 error left in the files you edited. Fix it before you finish.
 ```
 
-It exits with status `1` when the project has an error, including errors outside the files you named. Errors in the project's other files are counted on one line. If the compiler exits unsuccessfully, is terminated by a signal or cannot start, the check also fails: it reports that the check is incomplete, names the exit status, signal or spawn error, and includes the compiler's standard error output. It never reports `no errors` for a failed compiler check. In a directory with several `tsconfig*.json` files, such as `tsconfig.json` and `tsconfig.test.json`, it checks a file with the first project that includes it.
+It exits with status `1` when the project has an error, including errors outside the files you named. Errors in the project's other files are counted on one line. If the compiler exits unsuccessfully, is terminated by a signal or cannot start, the check also fails: it reports that the check is incomplete, names the exit status, signal or spawn error, and includes the compiler's standard error output. It never reports `no errors` for a failed compiler check. When the directory has multiple configurations, it selects the first project that includes the file, in the order above followed by alternate `tsconfig*.json` projects such as `tsconfig.test.json`.
 
 A hook returns a project error or an incomplete compiler check to the agent with exit status `2`, and a warning as context the agent reads with the tool's result.
 

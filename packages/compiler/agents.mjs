@@ -298,13 +298,18 @@ export function parseDiagnostics(output, directory) {
   return diagnostics
 }
 
-// projectOf returns the tsconfig that compiles file: the nearest directory
-// above it with a tsconfig*.json, choosing tsconfig.json first when it
-// includes the file, then the others whose file list has it.
+// projectOf finds the nearest compiler project, in VibeLang configuration
+// priority order. Alternate tsconfig projects follow the primary names;
+// their file lists select the project that contains the edited file.
 function projectOf(file, binary) {
+  const primary = ["vibe.config.json", "tsconfig.json", "jsconfig.json"]
+  const order = (name) => {
+    const index = primary.indexOf(name)
+    return index < 0 ? primary.length : index
+  }
   for (let directory = dirname(file); ; directory = dirname(directory)) {
-    const configs = readdirSync(directory).filter((name) => /^tsconfig(\..+)?\.json$/.test(name))
-      .sort((a, b) => (a === "tsconfig.json" ? -1 : b === "tsconfig.json" ? 1 : a.localeCompare(b)))
+    const configs = readdirSync(directory).filter((name) => primary.includes(name) || /^tsconfig(\..+)?\.json$/.test(name))
+      .sort((a, b) => order(a) - order(b) || a.localeCompare(b))
     if (configs.length === 1) return join(directory, configs[0])
     for (const config of configs) {
       const listed = spawnSync(binary, ["-p", join(directory, config), "--listFilesOnly"], { encoding: "utf8", maxBuffer: 1 << 26 })
@@ -333,7 +338,7 @@ function report(result, cwd, clean) {
     ].filter(Boolean).join("; ")
     lines.push(`vibelang: check incomplete for ${name(failure.project)}: ${reason}.\n${failure.stderr}`)
   }
-  for (const file of result.missing) lines.push(`vibelang: no tsconfig.json above ${name(file)}; it was not checked.`)
+  for (const file of result.missing) lines.push(`vibelang: no compiler configuration above ${name(file)}; it was not checked.`)
   if (result.errors.length > 0) {
     lines.push(`vibelang: ${result.errors.length} error${result.errors.length === 1 ? "" : "s"} left in the files you edited. Fix ${result.errors.length === 1 ? "it" : "them"} before you finish.`)
   }
