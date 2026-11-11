@@ -66,6 +66,7 @@ export effect function onWebhook(run: string, amount: number) {
 ### Signals
 
 - `Experimental.Durable.signal(name, schema)` declares a wait point. The schema is a durable boundary (VIP-44), and the value crosses in its JSON form.
+- **Clarified 2026-11-11: "its JSON form" is VIP-44's default, not a second rule.** The value crosses through its schema as [VIP-44](0044-durable-values.md) rules: its identity comes from canonical JSON, and its stored and sent bytes come from the injected `RpcSerialization`, whose default is `RpcSerialization.layerJson`. The journal holds the schema's encoded form and the waiting run receives the decoded type, so a `Date` field is journaled as its ISO string and arrives as a `Date`. VIP-29's "encoding is not JSON serialization" says the same from the other side: the schema gives the encoded value, and the serializer turns it into bytes.
 - `name` is local to a run. The address of a wait is the workflow, the run and the name, so two workflows may both use `"paid"`.
 - `try paid.wait()` in a workflow body waits for the value. `try paid.wait("second")` names a second wait point on the same signal in one run.
 - `try paid.send(W, run, value)` in Effect code delivers a value to run `run` of workflow `W`. `try handle.send(paid, value)` does the same through a `Run` handle.

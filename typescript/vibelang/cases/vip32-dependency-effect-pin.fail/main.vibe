@@ -1,0 +1,7 @@
+// expect: EK3201
+// VIP-32: a dependency that pins another Effect cannot be honored. The
+// reference engine's published 1.0.0-rc.16 flow and plan packages declare an
+// exact effect 4.0.5 peer; resolving that effect is off VibeLang's pin. VIP-55's emitted
+// TypeScript type-checks against rc.16 only with effect 4.1.1 installed over
+// that peer pin, and VIP-60 says the durable modules need the next release.
+export effect function main() { return 1 }

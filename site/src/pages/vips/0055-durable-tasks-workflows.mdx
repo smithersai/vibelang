@@ -151,6 +151,8 @@ Rules:
 
 For the example above, exactly this Effect TypeScript. It type-checks against the reference engine's flow and plan packages at 1.0.0-rc.16 on `effect` 4.1.1.
 
+*Clarified 2026-11-11: rc.16 declares an exact `effect` 4.0.5 peer, so this check installs `effect` 4.1.1 over that peer pin. An install that honors the pin is off VibeLang's Effect pin (VIP-32), so a published install needs the reference engine's next release, as [std-durable](/vips/0060-std-durable#what-must-change-in-the-reference-engine) says.*
+
 ```ts
 import { Action, Flow, Interpreter, RetryPolicy } from "@smthrs/flow"
 import { Node } from "@smthrs/plan"

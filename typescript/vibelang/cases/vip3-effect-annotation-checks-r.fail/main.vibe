@@ -1,0 +1,10 @@
+// expect: EK9202
+// VIP-3: outside a task's call, A!E means exactly Effect.Effect<A, E, never>,
+// so the same annotation on a plain effect function rejects a body that needs
+// a service.
+service Ticks { static readonly key = "vip3/Ticks"; now(): number!! }
+
+export effect function stamp(id: string): number!string {
+  const ticks = try Ticks
+  return id.length + (try ticks.now())
+}

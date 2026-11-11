@@ -1,0 +1,23 @@
+// expect-result: 4
+// VIP-3 and VIP-55: a task's effect call(...): A!E annotation is the step's
+// boundary. Its body may need a service, which becomes a requirement of the
+// layer, not an error against the omitted R. VIP-31: the workflow runs on the
+// standard library's Experimental.Durable and gives the Exit of that Effect.
+service Ticks { static readonly key = "vip3/Ticks"; now(): number!! }
+
+task Stamp {
+  effect call(id: string): number!string {
+    const ticks = try Ticks
+    return id.length + (try ticks.now())
+  }
+}
+
+export workflow Run {
+  effect call(id: string): number!string { return try Stamp(id) }
+}
+
+export effect function main() {
+  provide Layer.provideMerge(Run.layer, Experimental.Durable.memory), Ticks = { now: () => succeed(1) } {
+    return try Run("abc")
+  }
+}

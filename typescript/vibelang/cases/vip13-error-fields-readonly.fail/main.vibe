@@ -1,0 +1,12 @@
+// expect: TS2540
+// VIP-13: an error declaration is exactly Data.TaggedError, whose payload is
+// readonly, so assigning its field is TS2540. The same written field in a
+// schema declaration mirrors TypeScript's mutability (VIP-15) and stays
+// writable.
+error NotFound { id: string }
+schema User { id: string }
+
+export function rename(e: NotFound, u: User) {
+  u.id = "x"
+  e.id = "x"
+}

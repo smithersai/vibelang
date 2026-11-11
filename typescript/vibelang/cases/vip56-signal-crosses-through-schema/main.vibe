@@ -1,0 +1,30 @@
+// expect-result: {"received":{"isDate":true,"time":5,"text":"hi"},"journaled":"1970-01-01T00:00:00.005Z"}
+// VIP-56: a signal's value crosses the durable boundary through its schema,
+// as VIP-44 rules. The journal holds the schema's encoded form, here a Date as its
+// ISO string, and the waiting run receives the decoded type, a Date.
+schema Stamp { at: Date; text: string }
+export const stamp = Experimental.Durable.signal("stamp", Stamp)
+
+export const Stamps = Experimental.Durable.workflow("case#Stamps", {
+  payload: { id: Schema.String },
+  success: Schema.Struct({ isDate: Schema.Boolean, time: Schema.Number, text: Schema.String })
+})
+
+const StampsLive = Stamps.toLayer(effect ({ id }) => {
+  const got = try stamp.wait()
+  return { isDate: got.at instanceof Date, time: got.at.getTime(), text: got.text }
+}).pipe(Layer.provideMerge(Experimental.Durable.memory))
+
+export effect function main() {
+  provide StampsLive {
+    const handle = try Experimental.Durable.spawn(Stamps, { id: "s1" })
+    try stamp.send(Stamps, handle.id, { at: new Date(5), text: "hi" })
+    const received = try handle.result
+    const entries = try Stream.runCollect(Experimental.Durable.history(handle.id))
+    const journaled = Array.from(entries).flatMap((entry) => {
+      const payload = entry.payload as { readonly name?: string; readonly exit?: { readonly value?: { readonly at?: unknown } } }
+      return entry.eventType === "DeferredDone" && payload.name === "Durable.signal/stamp" ? [payload.exit?.value?.at] : []
+    })
+    return { received, journaled: journaled[0] }
+  }
+}
