@@ -1,0 +1,26 @@
+// expect: EK0501 EK0501 EK0501 EK0501 EK0501 EK0501 EK0501 EK0501 EK0501
+// Chapter 1: "Inside" means the innermost enclosing function, so a plain arrow
+// written inside an effect function is a plain function, and try is an error
+// inside it. Chapter 5: sync, Effect.try and tryPromise are Effect's own
+// functions and take ordinary arrows. A try in such a callback is outside
+// effect code (EK0501, chapter 2), wherever the wrapper call stands. The
+// compiler once dropped the try and emitted a callback that returned the
+// Effect unrun.
+error Bad { cause: unknown }
+
+export effect function load() { return 1 }
+
+export effect function main() {
+  const a = try sync(() => try succeed(1))
+  const b = try Effect.try(() => try succeed(2))
+  const c = try Effect.try({ try: () => try succeed(3), catch: (cause) => new Bad({ cause }) })
+  const d = try tryPromise(() => try succeed(Promise.resolve(4)))
+  const e = try sync(() => try load())
+  const f = try sync(function () { return try succeed(6) })
+  const g = try sync(() => [7].map((n) => try succeed(n)))
+  const h = try sync(() => try.all [succeed(8)])
+  return [a, b, c, d, e, f, g, h]
+}
+
+// The wrapper call need not stand in effect code.
+export function plain() { return sync(() => try succeed(9)) }

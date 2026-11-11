@@ -1328,9 +1328,6 @@ func grammarAdmissionForm(source string) string {
 	if form := grammarAdmissionDeclarationForm(declarationTokens); form != "" {
 		return form
 	}
-	if grammarTryInHatch(declarationTokens) {
-		return "admission:try-in-hatch"
-	}
 	if grammarDataEmptyTypeParameters(declarationTokens) {
 		return "admission:data-empty-type-parameters"
 	}

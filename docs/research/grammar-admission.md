@@ -1029,32 +1029,28 @@ separate from an ordinary custom matcher.
 
 A case-seeded campaign put a `try` inside the callback that
 `hatch-promise-shapes` passes to `sync`. VIP-6 replaces the legacy hatches,
-so that callback is plain code, where `try` is `EK0501`. The compiler still
-reads the first argument of a call to the prelude's `sync` as TypeScript and
-skips `EK0501` there. With a well-typed operand,
-`function f() { return sync(() => try Effect.succeed(1)) }` compiles with no
-diagnostic, and the emitted callback returns `Effect.succeed(1)` unrun. The
-witnesses remain pending under `admission:try-in-hatch`. The classifier reads
-only the first argument of an unqualified `sync` call; inputs after it,
-member calls, `new sync(...)` and programs that declare `sync` keep their
-`EK0501` and do not acquire the key.
+so that callback is plain code, where `try` is `EK0501`. The compiler read the
+first argument of a call to the prelude's `sync` as TypeScript and skipped
+`EK0501` there: with a well-typed operand,
+`function f() { return sync(() => try Effect.succeed(1)) }` compiled with no
+diagnostic, and the emitted callback returned `Effect.succeed(1)` unrun. The
+compiler now reports `EK0501` at that `try`, so the witnesses derive nothing
+and are rejected, and the `admission:try-in-hatch` key is retired. Its seeds
+and corpus files remain as regressions.
 
 A later case-seeded campaign put a `try` inside the arrow that
 `ek0402-own-signature-target` passes to `Effect.try`. VIP-6 says no language
 feature wraps TypeScript into an Effect: Effect's own wrappers take ordinary
-arrows, so that arrow is plain code too. The compiler reads the function that
+arrows, so that arrow is plain code too. The compiler read the function that
 `Effect.try`, `Effect.tryPromise` or the global `tryPromise` wraps, as a direct
 argument or as the `try` property of an options object, as TypeScript
-(`isWrappedCode`), skips `EK0501` there and drops the `try` from the emitted
-callback:
+(`isWrappedCode`), skipped `EK0501` there and dropped the `try` from the
+emitted callback:
 `export effect function main() { const b = try Effect.try(() => try Effect.succeed(1)); return b }`
-compiles with no diagnostic. The classifier now reads those wrapper calls as
-it reads `sync`, recognizing `Effect.try` and `Effect.tryPromise` by the name
-`Effect` as the compiler does; `x.try(...)`, `new Effect.try(...)`,
-`Effect.map(...)`, inputs after the first argument, a `catch` property and
-programs that declare `tryPromise` keep their `EK0501` and do not acquire the
-key. The wrapper witnesses are keyed seeds and corpus files under
-`admission:try-in-hatch`.
+compiled with no diagnostic. It now reports `EK0501` there too.
+`FuzzTryInWrapperCallback` checks every wrapper, callback shape, `try` form
+and enclosing code together: one `try` in the wrapped callback gives exactly
+one `EK0501`, and the same callback without the `try` gives none.
 
 A later case-seeded campaign reduced a case to the one-word program
 `using`. The compiler reports only `TS2304`, as stock TypeScript 5.9.3 does

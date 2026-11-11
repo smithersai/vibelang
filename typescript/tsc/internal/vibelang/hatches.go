@@ -23,7 +23,9 @@ import (
 // run, so calling a .vibe function gives an inert Effect value for
 // runPromise or runFork; throw, async, and await keep their JavaScript
 // meaning; platform APIs retain their migration diagnostics; and a
-// runner may start a program (no EK1005). VIP-6 permits ordinary lexical
+// runner may start a program (no EK1005). An execution form there is outside
+// effect code, as in any nested plain function: try is EK0501
+// (try_outside.go), fork and join are EK1701. VIP-6 permits ordinary lexical
 // captures. Legacy explicit inputs, the arguments after the function, still
 // fill its first parameters (D230). The inputs are VibeLang (D232). A
 // throw or rejection that may fail is wrapped with Effect's own Effect.try
@@ -89,7 +91,8 @@ func isHatchArgument(node *ast.Node) bool {
 // wrappers that replaced the try hatch (VIP-5):
 // a function literal that is the call's argument, or the try property of
 // its options object. Like a hatch's, its body is TypeScript, where a throw
-// or a rejection is JavaScript's, for the wrapper to catch.
+// or a rejection is JavaScript's, for the wrapper to catch, and a try is
+// EK0501.
 func isWrappedCode(node *ast.Node) bool {
 	if !ast.IsFunctionExpressionOrArrowFunction(node) {
 		return false

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- A `try` written inside the callback of `sync`, `Effect.try` or `tryPromise`, such as `try sync(() => try load())`, compiled with no diagnostic and was left out of the output, so the callback returned the Effect itself where the source asked for its value. It now reports `EK0501`, as a `try` in any other plain function does; run the Effect outside the callback.
+
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
 - A suite graded by a model judge and gated with no `tolerance` failed on any small move of the judge's score, with no hint why. `Experimental.Eval.suite` now lists a warning in `suite.warnings`, and `Experimental.Eval.run` logs it.

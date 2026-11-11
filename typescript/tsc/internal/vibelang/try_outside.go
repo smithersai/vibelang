@@ -114,8 +114,10 @@ func checkTriesOutsideEffectCode(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		// try.all, try.race, try.any and try.allSettled follow the same rule
-		// (chapter 2: EK0501).
-		if (isTry(node) || tryOperationName(node) != "") && !inHatch(node) && !inEffectCode(node) {
+		// (chapter 2: EK0501). The arrow that sync, Effect.try or tryPromise
+		// takes is an ordinary plain function (VIP-6), so a try in it is
+		// outside effect code like a try in any other nested plain function.
+		if (isTry(node) || tryOperationName(node) != "") && !inEffectCode(node) {
 			reportTryOutsideEffectCode(c, file, node)
 		}
 		return node.ForEachChild(visit)

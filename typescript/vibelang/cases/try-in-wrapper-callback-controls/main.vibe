@@ -1,0 +1,18 @@
+// expect-result: {"values":[1,2,3,4,5],"effects":[false,false,false,false,false]}
+// The callback of sync, Effect.try or tryPromise is an ordinary plain
+// function: it returns a value, never an Effect the source ran. An Effect is
+// run outside the callback, or in an effect function the callback returns.
+error Bad { cause: unknown }
+
+export effect function load() { return 5 }
+
+export effect function main() {
+  const a = try sync(() => 1)
+  const b = try Effect.try(() => JSON.parse("2") as number)
+  const c = try Effect.try({ try: () => JSON.parse("3") as number, catch: (cause) => new Bad({ cause }) })
+  const d = try tryPromise(() => Promise.resolve(4))
+  const run = try sync(() => effect () => try load())
+  const e = try run()
+  const values = [a, b, c, d, e]
+  return { values, effects: values.map((value) => Effect.isEffect(value)) }
+}

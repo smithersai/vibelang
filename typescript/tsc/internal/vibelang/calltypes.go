@@ -58,7 +58,7 @@ func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *ch
 // the code around it reports no second, derived error; try follows await's
 // placement (chapter 2), so a rejected try keeps the Effect's success type.
 func rejectedTry(a *analyzer, call *ast.Node) bool {
-	return isTry(call) && !inEffectCode(call) && !inHatch(call) && (serviceLookup(a.checker, call) == nil || a.resolvedRunsResult(call))
+	return isTry(call) && !inEffectCode(call) && (serviceLookup(a.checker, call) == nil || a.resolvedRunsResult(call))
 }
 
 // runningCallInferenceTarget keeps TypeScript from inferring a candidate's
