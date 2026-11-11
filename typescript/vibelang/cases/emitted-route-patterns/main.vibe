@@ -1,0 +1,6 @@
+// expect-result: [11,22]
+import { repeated, server } from "./routed.js"
+
+export effect function main() {
+  return [repeated, server]
+}

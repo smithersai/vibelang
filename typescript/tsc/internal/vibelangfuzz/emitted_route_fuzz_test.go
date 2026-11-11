@@ -22,7 +22,7 @@ var (
 	emittedRouteSites     = []string{"import", "export-star", "export-named", "dynamic", "type"}
 	emittedRouteTargets   = []string{"vibe", "ts"}
 	emittedRouteLayouts   = []string{"flat", "nested", "up"}
-	emittedRouteForms     = []string{"exact", "star"}
+	emittedRouteForms     = []string{"exact", "star", "repeated", "suffix-first", "suffix-last", "prefix"}
 )
 
 type emittedRouteVariant struct {
@@ -71,11 +71,34 @@ func (v emittedRouteVariant) project() (map[string]string, string, string) {
 	}
 	stem := strings.TrimSuffix(target, "."+v.target)
 	route, key, source := "#vibelang/emitted/"+stem, "#vibelang/emitted/"+stem, "./"+target
-	if v.form == "star" {
+	if v.form != "exact" {
 		key, source = "#vibelang/emitted/*", "./*."+v.target
 	}
+	extra := ""
+	switch v.form {
+	case "repeated":
+		target = strings.TrimSuffix(target, "."+v.target) + "/user." + v.target
+		source = "./" + strings.TrimSuffix(target, "user/user."+v.target) + "*/*." + v.target
+		route = "#vibelang/emitted/user"
+	case "suffix-first", "suffix-last":
+		route += ".server"
+		key, source = "#vibelang/emitted/*.server", "./*."+v.target
+		extra = fmt.Sprintf(`"#vibelang/emitted/*":{"vibelang-source":"./wrong/*.%s","default":"./wrong/*.js"}`, v.target)
+	case "prefix":
+		route = "#vibelang/emitted/src/" + stem
+		key = "#vibelang/emitted/src/*"
+		extra = fmt.Sprintf(`"#vibelang/emitted/*":{"vibelang-source":"./wrong/*.%s","default":"./wrong/*.js"}`, v.target)
+	}
 	condition := fmt.Sprintf(`"vibelang-source":%q,`, source)
-	manifest := fmt.Sprintf(`{"type":"module","imports":{%q:{%s"types":"./%s","default":"./elsewhere/%s.js"}}}`, key, condition, target, stem)
+	entry := fmt.Sprintf(`%q:{%s"types":"./%s","default":"./elsewhere/%s.js"}`, key, condition, target, stem)
+	if extra != "" {
+		if v.form == "suffix-first" {
+			entry += "," + extra
+		} else {
+			entry = extra + "," + entry
+		}
+	}
+	manifest := `{"type":"module","imports":{` + entry + "}}"
 	var body string
 	switch v.site {
 	case "import":
@@ -104,8 +127,8 @@ func TestEmittedRoutesQuoted(t *testing.T) {
 
 func TestEmittedRouteKeys(t *testing.T) {
 	_, names := emittedRouteVariants()
-	if len(names) != 96 {
-		t.Fatalf("got %d keys, want 96", len(names))
+	if len(names) != 288 {
+		t.Fatalf("got %d keys, want 288", len(names))
 	}
 	seen := map[string]bool{}
 	for _, name := range names {

@@ -8,6 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/module"
 	"github.com/microsoft/TypeScript/tsc/internal/packagejson"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
@@ -98,7 +99,7 @@ func resolveEmittedRoute(c *checker.Checker, file *ast.SourceFile, route string)
 	}
 	target := condition.AsString()
 	if match != "" {
-		target = strings.Replace(target, "*", match, 1)
+		target = strings.ReplaceAll(target, "*", match)
 	}
 	path := directory.ResolveFile(target).AsString()
 	source := emittedRouteStateOf(c).sources[emittedRouteKey(c, path)]
@@ -112,24 +113,26 @@ func resolveEmittedRoute(c *checker.Checker, file *ast.SourceFile, route string)
 }
 
 // emittedRouteEntry finds route's entry among imports and the wildcard match.
+// Node's pattern ordering prefers the longest prefix, then the longest key.
+// The route must be at least as long as the key, so the match is nonempty.
 func emittedRouteEntry(imports *collections.OrderedMap[string, packagejson.ExportsOrImports], route string) (packagejson.ExportsOrImports, string, bool) {
 	if entry, ok := imports.Get(route); ok {
 		return entry, "", true
 	}
-	best, bestMatch, bestPrefix := packagejson.ExportsOrImports{}, "", -1
+	best, bestMatch, bestKey := packagejson.ExportsOrImports{}, "", ""
 	for key := range imports.Keys() {
 		star := strings.IndexByte(key, '*')
 		if star < 0 || strings.Count(key, "*") != 1 || !strings.HasPrefix(key, emittedRoutePrefix) {
 			continue
 		}
 		prefix, suffix := key[:star], key[star+1:]
-		if len(route) < len(prefix)+len(suffix) || !strings.HasPrefix(route, prefix) || !strings.HasSuffix(route, suffix) || star <= bestPrefix {
+		if len(route) < len(key) || !strings.HasPrefix(route, prefix) || !strings.HasSuffix(route, suffix) || (bestKey != "" && module.ComparePatternKeys(key, bestKey) >= 0) {
 			continue
 		}
 		entry, _ := imports.Get(key)
-		best, bestMatch, bestPrefix = entry, route[len(prefix):len(route)-len(suffix)], star
+		best, bestMatch, bestKey = entry, route[len(prefix):len(route)-len(suffix)], key
 	}
-	return best, bestMatch, bestPrefix >= 0
+	return best, bestMatch, bestKey != ""
 }
 
 // emittedRouteSpecifier is how output from file names the routed source:

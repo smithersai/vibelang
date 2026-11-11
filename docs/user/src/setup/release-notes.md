@@ -205,6 +205,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The compiler reference said flow analysis skipped arguments passed as programs. It now describes argument traversal and nested function boundaries accurately.
 
+- Wildcard private imports could name the wrong module or remain in compiled JavaScript and declarations. Emission now follows the most specific matching route, rejects empty wildcard matches, and substitutes every target wildcard.
+
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
 
 - The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.
