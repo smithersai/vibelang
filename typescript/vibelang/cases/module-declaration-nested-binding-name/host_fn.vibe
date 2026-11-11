@@ -1,0 +1,8 @@
+module host {
+  export const read = (input: number): number => input
+}
+
+import { read } from host
+export function f(a: number) {
+  return { a, n: read(1) }
+}

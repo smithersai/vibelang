@@ -22,6 +22,7 @@ type NameResolver struct {
 	OnSuccessfullyResolvedSymbol     func(location *ast.Node, result *ast.Symbol, meaning ast.SymbolFlags, lastLocation *ast.Node, associatedDeclarationForContainingInitializerOrBindingName *ast.Node, withinDeferredContext bool)
 	// ResolveBeforeGlobals, when set, can supply a symbol for a name that no
 	// scope enclosing location declares, before the global scope is searched.
+	// It does not run when the caller excludes globals.
 	ResolveBeforeGlobals func(location *ast.Node, name string, meaning ast.SymbolFlags) *ast.Symbol
 }
 
@@ -332,7 +333,9 @@ loop:
 			r.SymbolReferenced(result, meaning)
 		}
 	}
-	if result == nil && r.ResolveBeforeGlobals != nil && originalLocation != nil {
+	// ResolveBeforeGlobals supplies names that no scope declares, as the global
+	// scope does, so a caller that excludes globals excludes them too.
+	if result == nil && !excludeGlobals && r.ResolveBeforeGlobals != nil && originalLocation != nil {
 		result = r.ResolveBeforeGlobals(originalLocation, name, meaning)
 	}
 	if result == nil && !excludeGlobals {

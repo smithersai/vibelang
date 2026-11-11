@@ -1,0 +1,4 @@
+const context = "a local const"
+
+export const local = context
+export const ready = succeed(local)

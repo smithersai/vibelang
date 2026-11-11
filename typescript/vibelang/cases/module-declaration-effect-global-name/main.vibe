@@ -1,0 +1,29 @@
+// expect-result: ["context body","sleep body","Duration body","no Effect use","a local const"]
+// A module declaration shadows an Effect global or module of its name, as a
+// const does, so EK4005 never depends on what else the file uses. This file
+// uses succeed, so it resolves Effect's globals; unused.vibe uses none;
+// shadow.vibe shadows context with a const.
+import { label } from context
+import { label as pause } from sleep
+import { label as span } from Duration
+import { quiet } from "./unused.vibe"
+import { local } from "./shadow.vibe"
+
+module context {
+  export const label = "context body"
+}
+
+module sleep {
+  export const label = "sleep body"
+}
+
+module Duration {
+  export const label = "Duration body"
+}
+
+const ready = succeed(label)
+
+export effect function main() {
+  const first = try ready
+  return [first, pause, span, quiet, local]
+}

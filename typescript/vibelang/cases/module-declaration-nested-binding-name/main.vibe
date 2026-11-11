@@ -1,0 +1,18 @@
+// expect-result: [1,2,true,{"a":1,"n":1},{"a":2,"n":1},{"a":1,"n":1},{"a":3,"n":1},1]
+// A module name collides only with a binding of the file's top level. A
+// nested const, a parameter or a parameter of a function type of the same
+// name shadows the module inside its own scope and redeclares nothing. An
+// object literal inside a function or a destructured parameter changes
+// nothing either. context and sleep are Effect globals; host is no global.
+import { f as local } from "./local_context.vibe"
+import { g as param } from "./param_context.vibe"
+import { b as typelit } from "./typelit_context.vibe"
+import { value as sleepTop } from "./sleep_top.vibe"
+import { f as sleepFn } from "./sleep_fn.vibe"
+import { value as hostTop } from "./host_top.vibe"
+import { f as hostFn } from "./host_fn.vibe"
+import { d as destructured } from "./sleep_destructured.vibe"
+
+export effect function main() {
+  return [local(), param(1), typelit.f?.(0), sleepTop, sleepFn(2), hostTop, hostFn(3), destructured({})]
+}

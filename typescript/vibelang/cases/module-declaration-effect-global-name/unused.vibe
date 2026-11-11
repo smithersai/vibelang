@@ -1,0 +1,7 @@
+import { label } from context
+
+module context {
+  export const label = "no Effect use"
+}
+
+export const quiet = label

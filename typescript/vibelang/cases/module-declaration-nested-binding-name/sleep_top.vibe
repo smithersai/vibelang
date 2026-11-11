@@ -1,0 +1,6 @@
+module sleep {
+  export const read = (input: number): number => input
+}
+
+import { read } from sleep
+export const value = { a: 1, n: read(1) }

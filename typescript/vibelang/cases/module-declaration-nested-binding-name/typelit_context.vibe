@@ -1,0 +1,6 @@
+module context {
+  export const a = 1
+}
+import { a } from context
+type O = { f?: (context: number) => boolean }
+export const b: O = { f: () => a > 0 }

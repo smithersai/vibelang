@@ -76,6 +76,9 @@ func checkModuleDeclarations(c *checker.Checker, file *ast.SourceFile) {
 				report(c, node.Name(), EK4005, name)
 			}
 			seen[key] = true
+			// Only a binding of the file collides. Excluding globals also excludes
+			// the prelude and Effect's globals and modules, which a module name
+			// shadows as a const does, whatever else the file uses.
 			if symbol := c.ResolveName(name, node, ast.SymbolFlagsValue, true); !duplicate && symbol != nil &&
 				c.GetSymbolFlags(symbol)&ast.SymbolFlagsValue != 0 && c.GetTypeOnlyAliasDeclaration(symbol) == nil {
 				report(c, node.Name(), EK4005, name)

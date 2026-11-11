@@ -295,7 +295,9 @@ func (c *Checker) GetTypeOfExpressionBeforeWidening(node *ast.Node) *Type {
 // NameResolutionHook can supply a symbol for name, which no scope enclosing
 // location declares, before the checker searches the global scope. It returns
 // nil when it has nothing to supply. It runs for every name that reaches the
-// global scope, so it must be cheap.
+// global scope, so it must be cheap. Like the global scope, it is skipped
+// when the caller excludes globals (ResolveName with excludeGlobals): a name
+// it supplies is no binding of any scope.
 type NameResolutionHook func(c *Checker, location *ast.Node, name string, meaning ast.SymbolFlags) *ast.Symbol
 
 var nameResolutionHooks []NameResolutionHook

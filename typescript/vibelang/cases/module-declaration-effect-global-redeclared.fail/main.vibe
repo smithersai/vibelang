@@ -1,0 +1,17 @@
+// expect: EK4005 EK4005 EK4005 EK4005
+// Only bindings of the file collide with a module name: a function, a second
+// module, a const and an import. The first module context shadows Effect's
+// context and is no redeclaration, though this file uses succeed.
+import { context as other } from "./other.ts"
+function Duration() { return 1 }
+module Duration { export const n = 1 }
+module context { export const label = "first" }
+module context { export const label = "second" }
+const sleep = "a local const"
+module sleep { export const label = "third" }
+module other { export const label = "fourth" }
+import { n } from Duration
+import { label } from context
+import { label as pause } from sleep
+import { label as fourth } from other
+export const ready = succeed([n, label, pause, sleep, fourth, Duration()])

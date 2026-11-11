@@ -1,0 +1,8 @@
+module sleep {
+  export const read = (input: number): number => input
+}
+
+import { read } from sleep
+export function d({ a = 1 }: { a?: number }) {
+  return read(a)
+}

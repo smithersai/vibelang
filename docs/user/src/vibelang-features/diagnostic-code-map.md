@@ -16,7 +16,7 @@ Diagnostic codes follow Appendix B of the specification: `EK`, the two-digit VIP
 
 The language server keeps the numeric code (`103`) with source `EK`; the terminal and diagnostic references write `EK0103`.
 
-Contextual identifiers such as `module`, `type` and `of` also work as module names and identifier specifiers. Module names are case-sensitive: `module Text` and `module text` are distinct. Generated filenames preserve lowercase ASCII letters, digits and `_`; each other code point becomes `-` followed by its hexadecimal value and `-`. Thus `Text` emits `main.vibe.-54-ext.js`, while `text` emits `main.vibe.text.js`. Unicode normalization twins also keep distinct filenames.
+Contextual identifiers such as `module`, `type` and `of` also work as module names and identifier specifiers. A module may also take the name of an Effect global or module, such as `context` or `Duration`: it shadows that name as a `const` would, and `EK4005` reports only another binding of the file with the same name. A parameter or local declaration of that name inside a function shadows the module there and is no redeclaration. Module names are case-sensitive: `module Text` and `module text` are distinct. Generated filenames preserve lowercase ASCII letters, digits and `_`; each other code point becomes `-` followed by its hexadecimal value and `-`. Thus `Text` emits `main.vibe.-54-ext.js`, while `text` emits `main.vibe.text.js`. Unicode normalization twins also keep distinct filenames.
 
 Current compatibility splits keep the old check's behavior while freeing the canonical VIP identity:
 

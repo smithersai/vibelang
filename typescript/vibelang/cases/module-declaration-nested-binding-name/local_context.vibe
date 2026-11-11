@@ -1,0 +1,5 @@
+module context {
+  export const a = 1
+}
+import { a } from context
+export function f() { const context = a; return context }
