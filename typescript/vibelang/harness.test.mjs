@@ -244,6 +244,53 @@ if (before !== after) { console.log("before " + before + "after " + after); proc
   assert.equal(fs.readFileSync(path.join(at, "typescript", "out", "main.d.ts"), "utf8"), 'export declare const effect: "4.1.0";\n')
 })
 
+
+for (const outcome of ["different", "unavailable", "unexpected exit", "signal", "timeout"]) {
+  test("declaration comparison reports " + outcome + " with its command receipt", (t) => {
+    const { root, harness, compiler } = fixture(t)
+    fs.writeFileSync(compiler, "#!/usr/bin/env node\nimport fs from 'node:fs'\nfs.mkdirSync('out', { recursive: true }); fs.writeFileSync('out/main.d.ts', 'export declare const value: number\\n')\n", { mode: 0o755 })
+    const identity = path.join(root, "..", "scripts", "api-identity.mjs")
+    fs.mkdirSync(path.dirname(identity), { recursive: true })
+    fs.writeFileSync(identity, outcome === "signal" ? 'process.kill(process.pid, "SIGKILL")\n' :
+      'console.log("comparison output"); process.exit(' + ({ different: 1, unavailable: 2, "unexpected exit": 3, timeout: 0 }[outcome]) + ')\n')
+    if (outcome === "timeout") fs.appendFileSync(path.join(root, "vibelang/harness-command.mjs"), [
+      "\nconst originalRun = CaseCommands.prototype.run",
+      "CaseCommands.prototype.run = async function (...args) {",
+      "  const result = await originalRun.apply(this, args)",
+      "  if (args[2].phase !== 'compare declarations') return result",
+      "  Object.assign(this.records.at(-1), { exitCode: null, signal: 'SIGKILL', timedOut: true, wallMs: 120000 })",
+      "  return { ...result, code: 'killed by SIGKILL' }",
+      "}",
+    ].join("\n"))
+    const dir = path.join(root, "vibelang/cases/comparison")
+    fs.mkdirSync(path.join(dir, "typescript"), { recursive: true })
+    fs.writeFileSync(path.join(dir, "tsconfig.json"), "{}")
+    fs.writeFileSync(path.join(dir, "typescript/tsconfig.json"), "{}")
+    const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+    const reportDir = fs.mkdtempSync(path.join(os.tmpdir(), "comparison-report-"))
+    t.after(() => fs.rmSync(reportDir, { recursive: true, force: true }))
+    for (const flags of [[], ["--isolated", "--scratch", reportDir]]) {
+      const report = path.join(reportDir, "comparison-" + flags.length + ".json")
+      const result = spawnSync(process.execPath, [harness, ...flags, "--verbose", "--report", report, "comparison"], {
+        env, encoding: "utf8", timeout: 10000,
+      })
+      assert.equal(result.status, 1, result.stdout + result.stderr)
+      const record = JSON.parse(fs.readFileSync(report, "utf8")).cases[0]
+      assert.equal(record.detail, outcome === "different" ? "declaration API differs from typescript/" : "declaration API comparison unavailable")
+      const failure = JSON.parse(fs.readFileSync(record.logFile, "utf8"))
+      const command = failure.commands.at(-1)
+      assert.equal(command.phase, "compare declarations")
+      if (outcome === "different") assert.doesNotMatch(failure.logTail, /comparison receipt:/)
+      else {
+        assert.match(failure.logTail, /comparison receipt:/)
+        assert.match(result.stdout, /comparison receipt:/)
+        assert.match(failure.logTail, new RegExp('"timedOut":' + (outcome === "timeout")))
+        assert.match(failure.logTail, /"timeoutMs":120000/)
+      }
+    }
+  })
+}
+
 test("runtime files use the case's peers without exposing development dependencies", (t) => {
   const { root, harness, compiler } = fixture(t)
   const runtime = path.join(root, "runtime")
@@ -396,8 +443,13 @@ if (named) {
   const ordinaryDir = fs.readFileSync(path.join(barrier, "regular-cwd"), "utf8")
   const delayedDir = fs.readFileSync(path.join(barrier, "delayed-cwd"), "utf8")
   assert.notEqual(ordinaryDir, delayedDir, "targets must own different case directories")
-  assert.ok(fs.existsSync(path.join(ordinaryDir, "out/main.js")), "aggregate run preserved the per-case output")
-  assert.ok(fs.existsSync(path.join(ordinaryDir, "node_modules/vibelang-runtime/package.json")), "aggregate run preserved the per-case install")
+  assert.equal(fs.existsSync(ordinaryDir), false, "successful per-case scratch was removed")
+  assert.equal(fs.existsSync(delayedDir), false, "successful aggregate scratch was removed")
+  for (const name of cases) {
+    assert.equal(fs.existsSync(path.join(root, "vibelang/cases", name, "out")), false)
+    assert.equal(fs.existsSync(path.join(root, "vibelang/cases", name, "node_modules")), false)
+  }
+  for (const shell of Object.values(targets)) assert.match(shell, /harness\.mjs --isolated/)
 })
 
 test("isolated custom runners keep relative imports of shared helpers", (t) => {
@@ -667,7 +719,9 @@ test("performance reports retain successful, failing and pending command timings
   for (const name of ["pending", "xpass"]) put("vibelang/cases/" + name + "/pending", "test intentional status fixture")
   put("vibelang/cases/compile/expected/stdout.txt", "wrong\n")
   put("modules/effect/package.json", '{"name":"effect","version":"4.1.0"}')
-  const report = path.join(root, "reports", "trial.json")
+  const reports = fs.mkdtempSync(path.join(os.tmpdir(), "harness-reports-"))
+  t.after(() => fs.rmSync(reports, { recursive: true, force: true }))
+  const report = path.join(reports, "trial.json")
   const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
   const selected = ["xpass", "success", "compile", "pending"]
   const invoke = (out) => spawnSync(process.execPath, [harness, "--report", out, "--status", "--isolated", "--jobs", "2", ...selected], {
@@ -707,7 +761,7 @@ test("performance reports retain successful, failing and pending command timings
   assert.equal(again.status, 2, again.stdout + again.stderr)
   assert.match(again.stderr, /report.*already exists/i)
   assert.deepEqual(fs.readFileSync(report), first, "never overwrite a prior trial")
-  const second = path.join(root, "reports", "trial2.json")
+  const second = path.join(reports, "trial2.json")
   assert.equal(invoke(second).status, 1)
   assert.deepEqual(fs.readFileSync(report), first)
 })
@@ -783,6 +837,8 @@ test("generated report paths and option orders preserve case selection and round
   // performance. Shared hosts can change CPU affinity between invocations.
   const reportEnvironment = path.join(root, "report-environment.mjs")
   fs.writeFileSync(reportEnvironment, 'import os from "node:os"\nos.availableParallelism = () => 4\n')
+  const reports = fs.mkdtempSync(path.join(os.tmpdir(), "harness-reports-"))
+  t.after(() => fs.rmSync(reports, { recursive: true, force: true }))
   const receipts = []
   fc.assert(fc.property(
     fc.record({
@@ -792,7 +848,7 @@ test("generated report paths and option orders preserve case selection and round
       verbose: fc.boolean(),
     }),
     ({ suffix, first, status, verbose }) => {
-      const output = path.join(root, "reports " + receipts.length, suffix + ".json")
+      const output = path.join(reports, "trial " + receipts.length, suffix + ".json")
       const reportArgs = ["--report", output]
       const caseArgs = ["--isolated", "--jobs", "1", ...(status ? ["--status"] : []), ...(verbose ? ["-v"] : []), "runtime"]
       const args = first ? [...reportArgs, ...caseArgs] : [...caseArgs, ...reportArgs]

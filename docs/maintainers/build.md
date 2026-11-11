@@ -913,16 +913,38 @@ forced exit still stops the runner's timer and background work.
 `scripts/harness-result.test.mjs` exercises the generated adapter with the real
 pinned Effect package, large strings, escapes, structured values and defects.
 
-The `//typescript/vibelang:fork-late-start` target runs the fork startup
-regressions with delayed scheduling as part of the regular compiler suite.
-It passes the harness's `--isolated` switch, which copies each case into
-`typescript/vibelang/.smthrs-harness-<run>/<case>/` before compiling and running
-it. Keeping this directory beside `cases/` preserves custom runners' relative
-imports of shared helpers. Its `out/`, `node_modules/`, custom runners and declaration-identity
-outputs belong to that invocation, so it can run concurrently with the same
-cases' individual targets. Successful copies are removed; failing copies and
-command logs remain for inspection. The root `node_modules/` install is rebuilt for the invocation; nested fixture packages, including copies below `stubs/`, are preserved. Relative fixture symlinks keep their written targets so they resolve inside the private copy. Any aggregate harness target that overlaps
-individual case targets must use `--isolated`.
+Every compiler-case target and `//typescript/vibelang:fork-late-start` uses
+`--isolated`. The harness copies each selected case into a fresh directory
+under `os.tmpdir()`, normally `$TMPDIR`. Pass `--scratch <dir>` to choose
+the parent directory; this option also enables isolation. The directory must
+be outside the repository, including through symlinks.
+
+Case copies preserve their package scope, shared helpers, nested fixture
+packages and relative fixture links. A sparse mirror supplies runners'
+repository-relative reads. The root `node_modules/` install is rebuilt in
+the copy. Compiler output, declaration twins, command logs and helper
+processes' private `TMPDIR` and `HOME` stay under scratch. Sibling fixture inputs remain readable throughout a run, including when the sibling case also runs. Selected inputs stay private until every reader finishes; emits and installs are released as each case succeeds. Successful case
+copies are removed. Failed runs retain their scratch directory and print
+`scratch: <path>`; pending failures retain evidence too.
+
+A declaration comparator reports an API difference only for exit `1`.
+Unavailable results, unexpected exits, signals and timeouts still fail the
+case and print a `comparison receipt:` with the command phase, exit code,
+signal, timeout flag, elapsed time and deadline. These records preserve the
+fixed deadline and distinguish an incomplete comparison from a verified
+API difference. The harness tests cover each outcome in both modes.
+
+With isolation, a relative `--report <file>` path is relative to the fresh
+scratch directory. An absolute report path must be outside the repository.
+Reports are retained after successful runs. `EFFECT_NODE_MODULES` and
+`VIBELANG_RUNTIME` must both be absolute paths.
+
+`//typescript/vibelang:harness-readonly` copies the checkout, removes its
+write permissions, runs ordinary, expected-error, configuration, fork startup
+and language-server cases, and checks every copied path's mode, contents and
+link target afterwards. It requires no mount or sandbox utility.
+`scripts/harness-scratch.test.mjs` also covers helper temporary files,
+failure retention, report paths and rejection of repository paths.
 
 The harness decodes compiler and runner output as UTF-8 across pipe chunks,
 with separate decoders for stdout and stderr. A character split between reads
@@ -1375,11 +1397,12 @@ The `//packages:migrate-lost-wrapper` gate runs the wrapper-loss suite when migr
 
 ## Known gaps
 
-- **Sandboxing.** The targets run with `sandbox: "none"`: the harness writes
-  `out/` and `node_modules/` into each case directory, which a confined test
-  may not write. Unconfined results stay in the local cache and are never
-  published to a remote cache. Making the harness compile a copy of the case
-  under `$TMPDIR` would let the cases run confined.
+- **Sandboxing.** Targets still use `sandbox: "none"`, so their results
+  stay in the local cache. Compiler cases now compile private copies under
+  `$TMPDIR` and leave the repository unchanged. Confinement still needs
+  access to the pinned Effect installation and complete declarations for
+  custom runners' support files and external tools before results can be
+  published to a remote cache.
 - **One cache per checkout.** `.flows/` must live inside the checkout, so each
   checkout keeps its own cache. Sharing one across checkouts or hosts needs
   `smthrs`'s remote cache, which accepts only confined results.

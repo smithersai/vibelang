@@ -52,6 +52,7 @@ const runs = [
   ["typescript/native-deps.test.mjs", "typescript/PACKAGE.ts", "node --test typescript/native-deps.test.mjs"],
   ["typescript/native-inputs.test.mjs", "typescript/PACKAGE.ts", "node --test typescript/native-inputs.test.mjs"],
   ["typescript/vibelang/harness.test.mjs", "PACKAGE.ts", "typescript/vibelang/harness.test.mjs"],
+  ["typescript/vibelang/harness-readonly.test.mjs", "typescript/vibelang/PACKAGE.ts", "node --test typescript/vibelang/harness-readonly.test.mjs"],
   ["typescript/vibelang/harness-deadlines.test.mjs", "PACKAGE.ts", "node --test typescript/vibelang/harness-deadlines.test.mjs"],
   ["typescript/vibelang/case-import-extensions.test.mjs", "PACKAGE.ts", "node --test typescript/vibelang/case-import-extensions.test.mjs"],
   ["typescript/vibelang/cov-ch004-twin.test.mjs", "PACKAGE.ts", "typescript/vibelang/cov-ch004-twin.test.mjs"],

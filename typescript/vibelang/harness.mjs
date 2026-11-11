@@ -1,6 +1,6 @@
 // Compiles and runs the VibeLang acceptance cases in vibelang/cases.
 //
-//   node vibelang/harness.mjs [--status] [--verbose] [--jobs N] [--late-start] [--isolated] [--report new.json] [case...]
+//   node vibelang/harness.mjs [--status] [--verbose] [--jobs N] [--late-start] [--isolated] [--scratch dir] [--report new.json] [case...]
 //
 // smoke.sh builds tsc and the runtime, then runs this script; run smoke.sh,
 // not this file. A case argument selects the case with that name, or else
@@ -34,9 +34,11 @@
 //
 // --late-start (or VIBELANG_LATE_START=1) delays scheduler dispatch by 100 ms.
 // Use it to expose parents that sleep instead of waiting for child readiness.
-// --isolated copies each case into a private sibling of cases/, so an
-// aggregate target can run alongside per-case targets without sharing out/ or
-// node_modules. Successful copies are removed; failed copies retain evidence.
+// --isolated copies each case into a fresh directory under os.tmpdir().
+// --scratch dir selects its parent directory and implies --isolated. The
+// repository is read-only input: emits, installs, failure logs and helpers'
+// TMPDIR and HOME live in scratch. Successful copies are removed; failed runs
+// print and retain their scratch path. Relative reports live there too.
 //
 // --report new.json retains full-precision case and phase wall times, outcomes,
 // commands and tool identities for successful and failing cases alike. The path
@@ -69,7 +71,8 @@
 // reports XPASS, and its owner deletes the file in the commit that fixed it.
 //
 // Every failed check, including pending cases and --status runs, retains a
-// JSON log under .cache/vibelang-harness/<run>/<case>.json. Its status names
+// JSON log under .cache/vibelang-harness/<run>/<case>.json (scratch's logs/
+// directory with isolation). Its status names
 // the log: command/argv, phase, cwd, start/deadline, exit code, timeout/signal,
 // and separate stdout/stderr tails. Reruns preserve earlier logs.
 //
@@ -123,12 +126,14 @@ const effectModules = process.env.EFFECT_NODE_MODULES
 const runtimeDir = process.env.VIBELANG_RUNTIME
 // A new directory per invocation preserves intermittent failures across reruns.
 const runId = String(Date.now()) + "-" + process.pid
-const failureDir = path.join(root, ".cache", "vibelang-harness", runId)
-// Match cases/<name>'s depth so custom runners' ../../ helper imports still
-// resolve in vibelang/. This scratch prefix is already ignored by the graph.
-const isolatedCasesDir = path.join(root, "vibelang", ".smthrs-harness-" + runId)
+
 if (!effectModules || !runtimeDir) {
   console.error("harness.mjs: set EFFECT_NODE_MODULES and VIBELANG_RUNTIME, or run vibelang/smoke.sh")
+  process.exit(2)
+}
+
+if (!path.isAbsolute(effectModules)) {
+  console.error("harness.mjs: EFFECT_NODE_MODULES must be an absolute directory")
   process.exit(2)
 }
 
@@ -167,11 +172,11 @@ try {
 
 const args = process.argv.slice(2)
 // Reject unknown switches before case selection or filesystem writes. A value
-// belongs to --jobs or --report; validate those values below.
+// belongs to --jobs, --report or --scratch; validate those values below.
 const switches = new Set(["--status", "--late-start", "--isolated", "--verbose", "-v"])
 for (let i = 0; i < args.length; i++) {
   const arg = args[i]
-  if (arg === "--jobs" || arg === "--report") {
+  if (arg === "--jobs" || arg === "--report" || arg === "--scratch") {
     i++
   } else if (arg.startsWith("-") && !switches.has(arg)) {
     console.error("harness.mjs: unknown option " + arg)
@@ -180,7 +185,8 @@ for (let i = 0; i < args.length; i++) {
 }
 const statusOnly = args.includes("--status")
 const lateStart = args.includes("--late-start") || process.env.VIBELANG_LATE_START === "1"
-const isolated = args.includes("--isolated")
+const scratchAt = args.indexOf("--scratch")
+const isolated = args.includes("--isolated") || scratchAt >= 0
 const verbose = args.includes("--verbose") || args.includes("-v")
 const jobsAt = args.indexOf("--jobs")
 const jobs = jobsAt >= 0 ? Number(args[jobsAt + 1]) : Math.max(2, Math.min(8, os.availableParallelism() >> 1))
@@ -193,9 +199,43 @@ if (reportAt >= 0 && (!args[reportAt + 1] || args[reportAt + 1].startsWith("-") 
   console.error("harness.mjs: --report requires one new JSON file path")
   process.exit(2)
 }
-const reportPath = reportAt >= 0 ? path.resolve(args[reportAt + 1]) : undefined
+if (scratchAt >= 0 && (!args[scratchAt + 1] || args[scratchAt + 1].startsWith("-") || args.lastIndexOf("--scratch") !== scratchAt)) {
+  console.error("harness.mjs: --scratch requires one directory path")
+  process.exit(2)
+}
+// Resolve existing parents too, so a symlink cannot put scratch or reports
+// back inside the repository. Validate before creating any directory.
+const repository = fs.realpathSync(path.dirname(root))
+function physicalPath(file) {
+  const absolute = path.resolve(file)
+  let parent = absolute
+  while (!fs.existsSync(parent)) {
+    const next = path.dirname(parent)
+    if (next === parent) break
+    parent = next
+  }
+  return path.resolve(fs.realpathSync(parent), path.relative(parent, absolute))
+}
+function outsideRepository(file) {
+  const relative = path.relative(repository, physicalPath(file))
+  if (relative === "" || (!relative.startsWith(".." + path.sep) && relative !== ".." && !path.isAbsolute(relative))) {
+    throw new Error("path must be outside the repository: " + file)
+  }
+}
+let scratchParent, scratchDir, workDir, reportPath
+try {
+  if (isolated) {
+    scratchParent = path.resolve(scratchAt >= 0 ? args[scratchAt + 1] : os.tmpdir())
+    outsideRepository(scratchParent)
+    if (reportAt >= 0 && path.isAbsolute(args[reportAt + 1])) outsideRepository(args[reportAt + 1])
+  }
+} catch (error) {
+  console.error("harness.mjs: " + error.message)
+  process.exit(2)
+}
 const selectors = args.filter((a, i) => !a.startsWith("-") &&
-  !(jobsAt >= 0 && i === jobsAt + 1) && !(reportAt >= 0 && i === reportAt + 1))
+  !(jobsAt >= 0 && i === jobsAt + 1) && !(reportAt >= 0 && i === reportAt + 1) &&
+  !(scratchAt >= 0 && i === scratchAt + 1))
 
 
 const allCases = fs
@@ -203,6 +243,72 @@ const allCases = fs
   .filter((name) => fs.existsSync(path.join(casesDir, name, "tsconfig.json")))
   .sort()
 const selected = selectors.length === 0 ? allCases : [...new Set(selectors.flatMap(select))]
+
+// A sparse mirror keeps runners' repository-relative reads working. Only
+// selected cases and helper inputs are writable copies. Copying helpers also keeps
+// caches based on import.meta.url inside scratch. Other inputs are linked;
+// repository metadata and caches are excluded. Unselected sibling cases
+// remain readable as source inputs.
+let isolatedCasesDir
+if (isolated) {
+  fs.mkdirSync(scratchParent, { recursive: true })
+  scratchDir = fs.mkdtempSync(path.join(scratchParent, "vibelang-harness-"))
+  // Reports may use any ordinary relative directory name. Keep all disposable
+  // state under a fresh child so cleanup and failure logs cannot collide.
+  workDir = fs.mkdtempSync(path.join(scratchDir, "work-"))
+  const mirror = (source, target, except) => {
+    fs.mkdirSync(target, { recursive: true })
+    for (const entry of fs.readdirSync(source)) {
+      if ([except, ".git", ".jj", ".cache", ".flows"].includes(entry)) continue
+      const from = path.join(source, entry), to = path.join(target, entry)
+      if (except === "cases" && (entry === "test" || entry === "tests" || entry.endsWith(".mjs"))) {
+        fs.cpSync(from, to, {
+          recursive: true, verbatimSymlinks: true,
+          filter: file => !path.relative(from, file).split(path.sep).some(part =>
+            ["node_modules", "out", ".cache"].includes(part)),
+        })
+        makeWritable(to)
+      } else fs.symlinkSync(from, to)
+
+    }
+  }
+  const shadow = path.join(workDir, "repo")
+  mirror(path.dirname(root), shadow, "typescript")
+  mirror(root, path.join(shadow, "typescript"), "vibelang")
+  mirror(path.join(root, "vibelang"), path.join(shadow, "typescript/vibelang"), "cases")
+  isolatedCasesDir = path.join(shadow, "typescript/vibelang/cases")
+  fs.mkdirSync(isolatedCasesDir)
+  const selectedNames = new Set(selected), caseNames = new Set(allCases)
+  for (const entry of fs.readdirSync(casesDir, { withFileTypes: true })) {
+    const from = path.join(casesDir, entry.name), to = path.join(isolatedCasesDir, entry.name)
+    if (entry.isFile()) fs.copyFileSync(from, to)
+    else if (entry.isDirectory() && !selectedNames.has(entry.name) &&
+      !["node_modules", "out", ".cache", ".flows", ".git", ".jj"].includes(entry.name) && !entry.name.startsWith(".smthrs-")) {
+      if (caseNames.has(entry.name)) fs.symlinkSync(from, to, "dir")
+      else {
+        // Input-only helper directories may also create file-relative caches.
+        fs.cpSync(from, to, {
+          recursive: true, verbatimSymlinks: true,
+          filter: file => !path.relative(from, file).split(path.sep).some(part =>
+            [".git", ".jj", ".cache", ".flows"].includes(part)),
+        })
+        makeWritable(to)
+      }
+    }
+  }
+}
+const failureDir = isolated ? path.join(workDir, "logs") : path.join(root, ".cache", "vibelang-harness", runId)
+if (reportAt >= 0) {
+  reportPath = path.resolve(isolated ? scratchDir : process.cwd(), args[reportAt + 1])
+  if (isolated) {
+    try { outsideRepository(reportPath) }
+    catch (error) {
+      fs.rmSync(scratchDir, { recursive: true, force: true })
+      console.error("harness.mjs: " + error.message)
+      process.exit(2)
+    }
+  }
+}
 
 // Reserve the file before running a case. A killed process leaves an explicit
 // incomplete invocation; a repeated path cannot destroy an earlier sample.
@@ -232,6 +338,7 @@ if (reportPath) {
   } catch (error) {
     console.error("harness.mjs: report " + reportPath + ": " +
       (error.code === "EEXIST" ? "already exists; choose a new path" : error.message))
+    if (isolated) fs.rmSync(scratchDir, { recursive: true, force: true })
     process.exit(2)
   }
 }
@@ -396,29 +503,29 @@ async function checkDeclarationIdentity(dir, commands) {
     path.join(root, "../scripts/api-identity.mjs"),
     "--before", path.join(original, "out"), "--after", path.join(dir, "out")
   ], { phase: "compare declarations", cwd: dir, timeout: 120_000 })
-  if (compared.code !== 0)
-    return { ok: false, detail: compared.code === 2 ? "declaration API comparison unavailable" : "declaration API differs from typescript/", log: compared.stdout + compared.stderr }
+  if (compared.code !== 0) {
+    const unavailable = compared.code !== 1
+    const command = commands.records.at(-1)
+    const receipt = unavailable ? "comparison receipt: " + JSON.stringify({
+      phase: command.phase, code: compared.code, exitCode: command.exitCode,
+      signal: command.signal, timedOut: command.timedOut,
+      wallMs: command.wallMs, timeoutMs: command.timeoutMs,
+    }) : ""
+    return { ok: false, detail: unavailable ? "declaration API comparison unavailable" : "declaration API differs from typescript/",
+      log: [compared.stdout + compared.stderr, receipt].filter(Boolean).join("\n") }
+  }
 
   return undefined
 }
 
-// Keep the entire install and emit tree private, including custom run.mjs
-// files that import ./out and declaration-identity cases' typescript/out.
-// A copy must compile as the case does in place. The files beside the cases
-// (cases/package.json makes every case an ES module) come along, and so does a
-// case's own nested node_modules (linked or stub packages it commits); only
-// the install linkNodeModules rebuilds at the case root stays behind. Before
-// 2026-11-01 five cases failed only when isolated.
+// Copy the entire case, including package scope and nested fixture packages.
+// The root install is rebuilt; generated output from earlier runs stays behind.
+const preparedCases = new Set()
 function caseDirectory(name) {
   const source = path.join(casesDir, name)
   if (!isolated) return source
-  if (!fs.existsSync(isolatedCasesDir)) {
-    fs.mkdirSync(isolatedCasesDir, { recursive: true })
-    for (const entry of fs.readdirSync(casesDir, { withFileTypes: true })) {
-      if (entry.isFile()) fs.copyFileSync(path.join(casesDir, entry.name), path.join(isolatedCasesDir, entry.name))
-    }
-  }
   const dir = path.join(isolatedCasesDir, name)
+  if (preparedCases.has(name)) return dir
   fs.cpSync(source, dir, {
     recursive: true,
     // Keep fixture package copies and workspace links inside the private case.
@@ -430,7 +537,18 @@ function caseDirectory(name) {
       return parts[0] !== "node_modules" && !parts.some((part) => part === "out" || part === ".cache")
     },
   })
+  makeWritable(dir)
+  preparedCases.add(name)
   return dir
+}
+
+// A source checkout may itself be read-only. Change only private copies,
+// preserving executability and never following fixture symlinks.
+function makeWritable(at) {
+  const stat = fs.lstatSync(at)
+  if (stat.isSymbolicLink()) return
+  fs.chmodSync(at, stat.mode | 0o200 | (stat.isDirectory() ? 0o700 : 0))
+  if (stat.isDirectory()) for (const entry of fs.readdirSync(at)) makeWritable(path.join(at, entry))
 }
 
 // removeNativeDeclarations deletes the native declarations a compile wrote
@@ -550,7 +668,7 @@ async function check(name, commands) {
   const stdoutFile = path.join(expectedDir, "stdout.txt")
   const ran = await commands.run("node", [entry], {
     phase: "run", cwd: dir, timeout: runTimeout,
-    env: { ...process.env, VIBELANG_BINARY: tsc },
+    env: { ...commands.env, VIBELANG_BINARY: tsc },
   })
   let want, got
   if (fs.existsSync(stdoutFile)) {
@@ -578,6 +696,15 @@ async function main() {
   const results = new Array(selected.length)
   let next = 0
   let printed = 0
+  const preparationErrors = new Map(), preparationMs = new Map()
+  // Prepare every selected input before runners start. A runner may read a
+  // sibling selected earlier or later, including one executing concurrently.
+  if (isolated) for (const name of selected) {
+    const started = performance.now()
+    try { caseDirectory(name) }
+    catch (error) { preparationErrors.set(name, error) }
+    preparationMs.set(name, performance.now() - started)
+  }
   const flush = () => {
     while (printed < selected.length && results[printed]) report(results[printed++])
   }
@@ -586,16 +713,30 @@ async function main() {
       const index = next++
       const name = selected[index]
       let pending
-      const started = performance.now()
+      const started = performance.now() - (preparationMs.get(name) ?? 0)
       let result
-      const commands = new CaseCommands()
+      let env = process.env
+      if (isolated) {
+        const temporary = path.join(workDir, "tmp", name)
+        const home = path.join(workDir, "home", name)
+        fs.mkdirSync(temporary, { recursive: true })
+        fs.mkdirSync(home, { recursive: true })
+        env = { ...process.env, TMPDIR: temporary, TMP: temporary, TEMP: temporary, HOME: home, USERPROFILE: home,
+          XDG_CACHE_HOME: path.join(home, ".cache"), XDG_CONFIG_HOME: path.join(home, ".config"),
+          XDG_DATA_HOME: path.join(home, ".local/share"),
+          BUN_INSTALL_CACHE_DIR: path.join(home, ".bun/install/cache"),
+          npm_config_cache: path.join(home, ".npm"), YARN_CACHE_FOLDER: path.join(home, ".yarn"),
+          VIBELANG_CACHE_DIR: path.join(home, ".cache/vibelang") }
+      }
+      const commands = new CaseCommands(env)
       try {
         pending = readPending(path.join(casesDir, name))
+        if (preparationErrors.has(name)) throw preparationErrors.get(name)
         result = await check(name, commands)
       } catch (e) {
         result = { ok: false, detail: `harness error: ${e.message}`, log: e.stack }
       } finally {
-        removeNativeDeclarations(caseDirectory(name))
+        removeNativeDeclarations(isolated ? path.join(isolatedCasesDir, name) : path.join(casesDir, name))
       }
       if (!result.ok) {
         fs.mkdirSync(failureDir, { recursive: true })
@@ -605,7 +746,13 @@ async function main() {
           commands: commands.records,
         }, null, 2) + "\n")
       }
-      if (isolated && result.ok) fs.rmSync(path.join(isolatedCasesDir, name), { recursive: true, force: true })
+      if (isolated && result.ok) {
+        // Keep fixture inputs until all readers finish, while releasing emits
+        // and installs immediately so aggregate runs stay bounded on disk.
+        for (const entry of ["out", "node_modules", ".cache"]) {
+          fs.rmSync(path.join(isolatedCasesDir, name, entry), { recursive: true, force: true })
+        }
+      }
       const status = pending ? (result.ok ? "XPASS" : "pending") : result.ok ? "ok" : "FAIL"
       const deadline = result.ok ? nearDeadline(commands.records) : null
       results[index] = { name, pending, status, ms: performance.now() - started, commands: reportPath ? commands.records : undefined, deadline, ...result }
@@ -613,10 +760,18 @@ async function main() {
     }
   }
   await Promise.all(Array.from({ length: Math.min(jobs, selected.length) }, worker))
-  // Done when no case directory is left: the files copied beside them do not count.
-  if (isolated && fs.existsSync(isolatedCasesDir) &&
-    fs.readdirSync(isolatedCasesDir, { withFileTypes: true }).every((entry) => !entry.isDirectory())) {
-    fs.rmSync(isolatedCasesDir, { recursive: true, force: true })
+  // Keep reports requested inside scratch, but remove successful case copies.
+  // Failure logs and helper state remain together for inspection.
+  const failed = results.some((result) => !result.ok)
+  if (isolated) for (const result of results) {
+    if (result.ok) fs.rmSync(path.join(isolatedCasesDir, result.name), { recursive: true, force: true })
+  }
+  if (isolated && !failed) {
+    fs.rmSync(workDir, { recursive: true, force: true })
+    if (!reportPath?.startsWith(scratchDir + path.sep)) fs.rmSync(scratchDir, { recursive: true, force: true })
+  }
+  if (isolated && (failed || reportPath?.startsWith(scratchDir + path.sep))) {
+    console.log("scratch: " + scratchDir)
   }
 
   if (reportPath) {

@@ -793,14 +793,14 @@ const targets = {
   ),
   "promise-data-bridge": check(
     "Explicit synchronous bridges retain Promise and thenable data while plain catch preserves identity.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPromiseDataBridgeQuoted|TestPromiseDataBridgeForms)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose plain-catch-function-results",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPromiseDataBridgeQuoted|TestPromiseDataBridgeForms)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose plain-catch-function-results",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "trusted-callback-contracts": check(
     "Listed trusted callbacks keep explicit foreign contracts and constructor shadowing behavior.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestTrustedCallbackContractsQuoted|FuzzTrustedCallbackContracts)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose hygiene-builtin-failure-class",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestTrustedCallbackContractsQuoted|FuzzTrustedCallbackContracts)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose hygiene-builtin-failure-class",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
@@ -808,14 +808,14 @@ const targets = {
   
   "whole-service-declarations": check(
     "Whole-shape service declarations match their native counterpart without invented namespaces.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestWholeServiceShapeDeclarationQuoted|FuzzWholeServiceShapeDeclaration)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose declaration-identity-namespace-imports",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestWholeServiceShapeDeclarationQuoted|FuzzWholeServiceShapeDeclaration)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose declaration-identity-namespace-imports",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "legacy-provider-identities": check(
     "Missing-provider diagnostics keep their compatibility identity and do not apply to stored Effect data.",
-    "cd typescript/tsc && CGO_ENABLED=0 go test -v -p 8 -count=1 -trimpath -timeout=5m ./internal/vibelang -run '^TestCompatibilityIdentityPrimaryMessages$' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestLegacyProviderIdentityQuoted|FuzzLegacyProviderIdentity)$' && CGO_ENABLED=0 go vet -p 8 -trimpath ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose d362-effect-provide-union.fail d362-provide-tuple.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 go test -v -p 8 -count=1 -trimpath -timeout=5m ./internal/vibelang -run '^TestCompatibilityIdentityPrimaryMessages$' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestLegacyProviderIdentityQuoted|FuzzLegacyProviderIdentity)$' && CGO_ENABLED=0 go vet -p 8 -trimpath ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose d362-effect-provide-union.fail d362-provide-tuple.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Tsc["vibelang-files"], Vibelang.tree],
     [go, node, bun],
     "15m"
@@ -828,7 +828,7 @@ const targets = {
   ),
   "optional-callback-identities": check(
     "Optional callback contracts retain both operand admission and channel diagnostics.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestOptionalEffectGuardsQuoted|FuzzOptionalEffectGuards)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose optional-callback-contract.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestOptionalEffectGuardsQuoted|FuzzOptionalEffectGuards)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose optional-callback-contract.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
@@ -842,105 +842,105 @@ const targets = {
   ),
   "interim-severity-probes": check(
     "Interim diagnostic configuration retains exact rejection across the current compatibility inventory.",
-    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose cov900-interim-severity.fail",
+    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose cov900-interim-severity.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Vibelang.tree],
     [node, bun],
     "10m"
   ),
   "join-message-regressions": check(
     "Join diagnostics retain their accepted operand domain and Deferred guidance.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestJoinOperandDiagnosticsQuoted|FuzzJoinOperandDiagnostics)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose fibers-await.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestJoinOperandDiagnosticsQuoted|FuzzJoinOperandDiagnostics)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose fibers-await.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "lint-activation-regressions": check(
     "Imported lint retains configured legacy activation and leaves unconfigured projects inactive.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestLintActivationQuoted|FuzzLintActivation|TestLintPluginMigrationQuoted)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose effect-lint-activation ek4823-effect-block.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestLintActivationQuoted|FuzzLintActivation|TestLintPluginMigrationQuoted)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose effect-lint-activation ek4823-effect-block.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "service-member-controls": check(
     "Invalid service members retain errors while valid native service classes retain their advisory.",
-    "cd typescript/tsc && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose service-nameless-members.fail",
+    "cd typescript/tsc && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose service-nameless-members.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "plain-runner-promise-data": check(
     "Plain runner examples retain eager Promise creation and explicit later awaiting.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^TestPromiseDataBridgeForms$' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzPromiseResultGate$/^plain-runpromise-' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose vip1-accept-plain-runpromise",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^TestPromiseDataBridgeForms$' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzPromiseResultGate$/^plain-runpromise-' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose vip1-accept-plain-runpromise",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "option-direct-consumption": check(
     "Option match retains its teaching advisory while direct try consumption avoids generic warnings.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzTryOperandEffectArgumentDiagnostics$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose tsforms-option-match-program",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzTryOperandEffectArgumentDiagnostics$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose tsforms-option-match-program",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "lexical-restore-regressions": check(
     "Restore examples use lexical masks and retain outward return and interruption behavior.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestInterruptionPlacementQuoted|FuzzInterruptionPlacement)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose restore-in-uninterruptible-expression interruption-nested-restore",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestInterruptionPlacementQuoted|FuzzInterruptionPlacement)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose restore-in-uninterruptible-expression interruption-nested-restore",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "native-value-boundaries": check(
     "Native identity examples keep explicit boundaries and original process-service observations.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestNativeValueDefectBoundaryQuoted|FuzzNativeValueDefectBoundary)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose experimental-process-current-uid",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestNativeValueDefectBoundaryQuoted|FuzzNativeValueDefectBoundary)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose experimental-process-current-uid",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "object-runner-promise-data": check(
     "Object runner calls retain Promise values without running stored work.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPromiseDataBridgeQuoted|TestPromiseDataBridgeForms)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose plain-object-byname",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPromiseDataBridgeQuoted|TestPromiseDataBridgeForms)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose plain-object-byname",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "stream-loop-head-identities": check(
     "Stream loop head rejections use their owning diagnostic without parser cascades.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectLoopHeadsQuoted|FuzzEffectLoopHeadRecovery)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose cov2-002a-stream-heads.fail vip20-head.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectLoopHeadsQuoted|FuzzEffectLoopHeadRecovery)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose cov2-002a-stream-heads.fail vip20-head.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "host-clock-identities": check(
     "Host clock reads keep the platform diagnostic and ignore retired clock settings.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestClockPlatformContractQuoted|FuzzClockPlatformContract)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose d5-clock-read.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestClockPlatformContractQuoted|FuzzClockPlatformContract)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose d5-clock-read.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "native-written-declaration-routes": check(
     "Native source imports of VibeLang declarations retain the corresponding TypeScript routes.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^TestWrittenSourceDeclarationSpellingsQuoted$' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzWrittenSourceDeclarationSpellings$/^native-import-' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose declaration-written-ts-import-vibe-target",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^TestWrittenSourceDeclarationSpellingsQuoted$' && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzWrittenSourceDeclarationSpellings$/^native-import-' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose declaration-written-ts-import-vibe-target",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "setup-lint-exit-policy": check(
     "Setup preserves authored lint settings and native compiler exit policy.",
-    "node --test --test-name-pattern='^(effect-exit-options:|effect-exit-extends:)' .smithers/flows/migrate/test/tsc-scripts.property.test.mjs && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose effect-lint-built-in-setup-policy",
+    "node --test --test-name-pattern='^(effect-exit-options:|effect-exit-extends:)' .smithers/flows/migrate/test/tsc-scripts.property.test.mjs && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose effect-lint-built-in-setup-policy",
     [Packages["compiler-native"], Packages["runtime-dist"], Vibelang.tree],
     [node, bun, S.Host.bin("jj")],
     "10m"
   ),
   "catch-value-identities": check(
     "Invalid catch values keep their syntax error and independent native diagnostics without generic-call cascades.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestCatchValueDiagnosticsQuoted|FuzzCatchValueDiagnostics)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose vip1-accept-catch-value-fallback.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestCatchValueDiagnosticsQuoted|FuzzCatchValueDiagnostics)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose vip1-accept-catch-value-fallback.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "throws-documentation-preservation": check(
     "Throw-tag migrations preserve authored comments and report manual migration without discarding prose.",
-    "cd typescript/tsc && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose vip4-coverage-annotation-fix",
+    "cd typescript/tsc && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose vip4-coverage-annotation-fix",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelang-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
@@ -954,70 +954,70 @@ const targets = {
   ),
   "trusted-empty-forwarding": check(
     "Trusted-wrapper migration retains the original input proof and runs current forwarding output.",
-    "cd typescript/tsc && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose trusted-empty-migration",
+    "cd typescript/tsc && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose trusted-empty-migration",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "negative-promise-boundaries": check(
     "Rejected Promise calls retain every independent boundary, host and root-runner diagnostic.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestNegativePromiseBoundariesQuoted|FuzzNegativePromiseBoundaries)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose ek1005-runners.fail ek1005-prelude-runner.fail ch10-fetch.fail ek4401-plain-call.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestNegativePromiseBoundariesQuoted|FuzzNegativePromiseBoundaries)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose ek1005-runners.fail ek1005-prelude-runner.fail ch10-fetch.fail ek4401-plain-call.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "error-family-native-patterns": check(
     "Native error families preserve declarations and runtime routing through class and object patterns.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestErrorFamilyNativePatternsQuoted|FuzzErrorFamilyNativePatterns)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose decl-error-family",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestErrorFamilyNativePatternsQuoted|FuzzErrorFamilyNativePatterns)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose decl-error-family",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "pattern-predicate-contracts": check(
     "Pattern predicates retain source and foreign callable contracts without changing global objects.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPatternPredicateContractQuoted|FuzzPatternPredicateContract)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose match-vip7-patching",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPatternPredicateContractQuoted|FuzzPatternPredicateContract)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose match-vip7-patching",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "relocated-sidecar-layout": check(
     "Relocated sidecars share source identity only through their proven owning root.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestRelocatedSidecarLayoutQuoted|FuzzRelocatedSidecarLayout)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose declaration-output-relocated-routes",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestRelocatedSidecarLayoutQuoted|FuzzRelocatedSidecarLayout)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose declaration-output-relocated-routes",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "catch-error-data-advisories": check(
     "Tagged errors returned as plain catch data retain the Effect-result advisory.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestCatchErrorDataAdvisoryQuoted|FuzzCatchErrorDataAdvisory)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose tsforms-errors tsforms-errors-fixed",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestCatchErrorDataAdvisoryQuoted|FuzzCatchErrorDataAdvisory)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose tsforms-errors tsforms-errors-fixed",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "plain-unknown-contracts": check(
     "Unknown foreign calls retain native plain-code behavior and effect-code wrapper errors.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPlainUnknownContractQuoted|FuzzPlainUnknownContract)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose ek4401-fix.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPlainUnknownContractQuoted|FuzzPlainUnknownContract)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose ek4401-fix.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "producer-native-annotations": check(
     "Producer annotations retain TypeScript assignability with stock TypeScript positive and negative controls.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzProducerWrittenContract$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose producer-native-return-contracts",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzProducerWrittenContract$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose producer-native-return-contracts",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "stream-loop-body-identities": check(
     "Stream-loop restrictions retain their owner diagnostics and valid local-break controls.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestStreamLoopBodyIdentityQuoted|FuzzStreamLoopBodyIdentity)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose for-try-coverage-bindings.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestStreamLoopBodyIdentityQuoted|FuzzStreamLoopBodyIdentity)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose for-try-coverage-bindings.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "missing-data-method-diagnostics": check(
     "Invalid data methods retain native missing-member errors without inferred-argument advisories.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestMissingDataMethodQuoted|FuzzMissingDataMethod)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose data-methods-first-parameter.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestMissingDataMethodQuoted|FuzzMissingDataMethod)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose data-methods-first-parameter.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
@@ -1038,7 +1038,7 @@ const targets = {
   ),
   "native-import-preference-twins": check(
     "Unchanged native importers preserve declaration bytes and explicit imports follow stock TypeScript preferences.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestUnrelatedDeclarationSpecifierQuoted|FuzzUnrelatedDeclarationSpecifier)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose native-import-preference-twins",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestUnrelatedDeclarationSpecifierQuoted|FuzzUnrelatedDeclarationSpecifier)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose native-import-preference-twins",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
@@ -1048,7 +1048,7 @@ const targets = {
   
   "error-tag-inheritance-identities": check(
     "Error declarations reject inherited and reserved tags while retaining native property errors.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestReservedPayloadInheritanceQuoted|FuzzReservedPayloadInheritance)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose decl-error-family-own-tag.fail && node typescript/vibelang/test/error-family-native-override.mjs",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestReservedPayloadInheritanceQuoted|FuzzReservedPayloadInheritance)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose decl-error-family-own-tag.fail && node typescript/vibelang/test/error-family-native-override.mjs",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
@@ -1092,7 +1092,7 @@ const targets = {
   ),
   "platform-callback-contracts": check(
     "Platform diagnostics retain independent foreign-callback contract errors.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPlatformCallbackContractQuoted|FuzzPlatformCallbackContract)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose ek4402-platform.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPlatformCallbackContractQuoted|FuzzPlatformCallbackContract)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose ek4402-platform.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
@@ -1107,28 +1107,28 @@ const targets = {
   
   "recursive-legacy-slot-diagnostics": check(
     "Recursive legacy slots retain migration and call-cycle diagnostics with complete-contract controls.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestRecursiveLegacySlotsQuoted|FuzzRecursiveLegacySlots)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose cov2-900b-cite-recursive-partial-contract.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestRecursiveLegacySlotsQuoted|FuzzRecursiveLegacySlots)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose cov2-900b-cite-recursive-partial-contract.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "fork-object-operands": check(
     "Fork owns assignability rejection while embedded native errors remain independent.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestForkObjectOperandsQuoted|FuzzForkObjectOperands)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose conf-fork-object-operand.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestForkObjectOperandsQuoted|FuzzForkObjectOperands)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose conf-fork-object-operand.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "plain-handler-regressions": check(
     "Plain catch handler throws remain errors while Effect handlers and nested Effects stay valid.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzFailuresSpec$/^plain-handler-' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose catch-plain-throw.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^FuzzFailuresSpec$/^plain-handler-' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose catch-plain-throw.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "abstract-error-family-membership": check(
     "Legacy abstract error roots retain native family matching through aliases and subclass histories.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestAbstractErrorFamilyMembershipQuoted|FuzzAbstractErrorFamilyMembership)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose abstract-error-family-membership decl-error-family",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestAbstractErrorFamilyMembershipQuoted|FuzzAbstractErrorFamilyMembership)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose abstract-error-family-membership decl-error-family",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go,node,bun],
     "10m"
@@ -1334,7 +1334,7 @@ const targets = {
   ),
   "migration-metadata-comment-twins": check(
     "Native counterparts preserve narrowed values and parameter bindings",
-    "cd typescript/tsc && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose opencode-narrowed-property-call-fixed hatch-parameter-cell-fixed",
+    "cd typescript/tsc && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose opencode-narrowed-property-call-fixed hatch-parameter-cell-fixed",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "25m"
@@ -1360,7 +1360,7 @@ const targets = {
   ),
   "catch-completion-declaration-surface": check(
     "Nested catch fixtures preserve literal returns and exclude invented normal completions",
-    "cd typescript/tsc && VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^TestCatchDeclarationGoldens$' ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=8m -run '^(TestCatchCompletionDeclarationsQuoted|FuzzCatchCompletionDeclarations)$' ./internal/vibelangfuzz && cd .. && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --verbose decl-catch",
+    "cd typescript/tsc && VIBELANG_MAPPER_TEST_TSC=$PWD/../built/local/tsc VIBELANG_MAPPER_TEST_MAPPER=$PWD/../built/local/vibelang-mapper EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=5m -run '^TestCatchDeclarationGoldens$' ./internal/vibelangmapper && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=8m -run '^(TestCatchCompletionDeclarationsQuoted|FuzzCatchCompletionDeclarations)$' ./internal/vibelangfuzz && cd .. && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --isolated --verbose decl-catch",
     [Typescript.compiler, Typescript.mapper, Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"]],
     [go, node, bun],
     "20m"
@@ -1373,28 +1373,28 @@ const targets = {
   ),
   "optional-foreign-contracts": check(
     "Optional calls preserve receiver and evaluation semantics with explicit foreign callback contracts.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestOptionalForeignCallbacksQuoted|FuzzOptionalForeignCallbacks)$' && CGO_ENABLED=0 go vet -p 8 -trimpath ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose optional-effect-calls optional-effect-semantics",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestOptionalForeignCallbacksQuoted|FuzzOptionalForeignCallbacks)$' && CGO_ENABLED=0 go vet -p 8 -trimpath ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose optional-effect-calls optional-effect-semantics",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "native-inferred-declarations": check(
     "Inferred native import spellings follow stock TypeScript across suffix, quote and directory variations.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestWrittenSourceDeclarationSpellingsQuoted|FuzzWrittenSourceDeclarationSpellings)$' && CGO_ENABLED=0 go vet -p 8 -trimpath ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose native-inferred-import-spelling",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestWrittenSourceDeclarationSpellingsQuoted|FuzzWrittenSourceDeclarationSpellings)$' && CGO_ENABLED=0 go vet -p 8 -trimpath ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose native-inferred-import-spelling",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "pipe-topic-regressions": check(
     "Implemented direct and nested missing-topic errors run as ordinary regression cases.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPipeTopicEarlyErrorQuoted|FuzzPipeTopicEarlyError)$' && CGO_ENABLED=0 go vet -p 8 -trimpath ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose cov-ch002b-running-pipe-missing-topic-absent.fail cov-ch002b-running-pipe-missing-topic-nested.fail",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPipeTopicEarlyErrorQuoted|FuzzPipeTopicEarlyError)$' && CGO_ENABLED=0 go vet -p 8 -trimpath ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose cov-ch002b-running-pipe-missing-topic-absent.fail cov-ch002b-running-pipe-missing-topic-nested.fail",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "10m"
   ),
   "declaration-manifest-retirement": check(
     "Declaration builds retain their complete file sets and runtime behavior without retired provenance manifests.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPackageFileSetQuoted|FuzzPackageFileSet)$' && CGO_ENABLED=0 go test -v -p 8 -count=1 -trimpath -timeout=5m ./internal/vibelang -run '^TestPackageEmitHasNoManifest$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose written-forms",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPackageFileSetQuoted|FuzzPackageFileSet)$' && CGO_ENABLED=0 go test -v -p 8 -count=1 -trimpath -timeout=5m ./internal/vibelang -run '^TestPackageEmitHasNoManifest$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose written-forms",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Tsc["vibelang-files"], Vibelang.tree],
     [go, node, bun],
     "15m"
@@ -1681,7 +1681,7 @@ const targets = {
   ),
   "declaration-contract-twins": check(
     "Stock declaration twins preserve types and authored documentation under generated never contracts.",
-    "node --test typescript/vibelang/cov-ch004-twin.test.mjs && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose conditional-record-environment declaration-output-async-contracts declaration-throws-contract vibex-census-containers",
+    "node --test typescript/vibelang/cov-ch004-twin.test.mjs && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose conditional-record-environment declaration-output-async-contracts declaration-throws-contract vibex-census-containers",
     [Packages["compiler-native"], Packages["runtime-dist"]],
     [node, bun],
     "10m",
@@ -1690,7 +1690,7 @@ const targets = {
   ),
   "emission-snapshots": check(
     "Coverage-preserving and native tail delegation emitters keep their exact JavaScript, declarations and runtime observations.",
-    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose module-declaration-emit data-match-emit vibelang-lower vibelang-infer vibelang-concise-comments match-exhaustive-last-arm rerun-parameter-readonly try-tail-unchecked-message try-tail-native-delegation match-vip7-negation-types",
+    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose module-declaration-emit data-match-emit vibelang-lower vibelang-infer vibelang-concise-comments match-exhaustive-last-arm rerun-parameter-readonly try-tail-unchecked-message try-tail-native-delegation match-vip7-negation-types",
     [Packages["compiler-native"], Packages["runtime-dist"]],
     [node, bun],
     "5m",
@@ -1712,14 +1712,14 @@ const targets = {
   ),
   "deep-type-repair": check(
     "Nested Effect types retain exact grouped shorthand, declarations and runtime behavior.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -timeout 5m -trimpath -run '^(TestEffectTypeHintParenthesesQuoted)$' ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose rewrite-deep-types",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -timeout 5m -trimpath -run '^(TestEffectTypeHintParenthesesQuoted)$' ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose rewrite-deep-types",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "15m"
   ),
   "reserved-error-repair": check(
     "Reserved payload and inheritance errors stay independent while preserving exact declarations and runtime behavior.",
-    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -timeout 5m -trimpath -run '^(TestReservedPayloadInheritanceQuoted|FuzzReservedPayloadInheritance)$' ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --verbose rewrite-reserved-error-payload",
+    "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -timeout 5m -trimpath -run '^(TestReservedPayloadInheritanceQuoted|FuzzReservedPayloadInheritance)$' ./internal/vibelangfuzz && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose rewrite-reserved-error-payload",
     [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"], Vibelang.tree],
     [go, node, bun],
     "15m"

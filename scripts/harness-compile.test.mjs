@@ -35,8 +35,7 @@ function fixture(t, { diagnostic = "", header = "", identity = false, identityAf
   put(at + "/expected/stdout.txt", "42\n")
   if (runnerBinary) put(at + "/run.mjs", [
     'import assert from "node:assert/strict"',
-    'import { resolve } from "node:path"',
-    'assert.equal(process.env.VIBELANG_BINARY, resolve("../../../built/local/tsc"))',
+    'assert.equal(process.env.VIBELANG_BINARY, ' + JSON.stringify(join(root, "typescript/built/local/tsc")) + ')',
     'console.log(42)',
   ].join("\n"))
   if (pending) put(at + "/pending", "fixture known failure\n")

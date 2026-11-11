@@ -53,7 +53,7 @@ for (const name of cases) {
   targets[label(name)] = S.Shell.Test({
     summary: `Compile and run the compiler case ${name}.`,
     shell: "cd typescript && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
-      `VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --verbose ${name}`,
+      `VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --isolated --verbose ${name}`,
     data: [
       ...shared,
       ...(name === "tooling-format-tool-inputs" ? [Packages["tooling-adapter-srcs"]] : []),
@@ -80,6 +80,24 @@ targets["fork-late-start"] = S.Shell.Test({
   shell: "cd typescript && EFFECT_NODE_MODULES=$PWD/../experiments/node_modules " +
     "VIBELANG_RUNTIME=$PWD/../packages/runtime node vibelang/harness.mjs --isolated --late-start --verbose " + startupCases.join(" "),
   data: [...shared, ...startupCases.map((name) => S.glob(`cases/${name}/**`))],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "5m"
+})
+
+// Real cases execute against a chmod read-only checkout and compare every
+// copied path before and after. Keep confinement independently reproducible.
+targets["harness-readonly"] = S.Shell.Test({
+  summary: "Compiler cases keep all generated files outside a read-only checkout.",
+  shell: "EFFECT_NODE_MODULES=$PWD/experiments/node_modules " +
+    "VIBELANG_RUNTIME=$PWD/packages/runtime node --test typescript/vibelang/harness-readonly.test.mjs",
+  data: [
+    ...shared, S.file("harness-readonly.test.mjs"), Packages["tooling-adapter-srcs"],
+    ...["uninterruptible-using", "conditional-record-environment", "vibelang-config", "ambient-schema-data-owner.fail",
+      "tooling-format-lsp-sidecar", "appendix-interim-ek4202-ek4406-unreached", "ek4401-fix.fail"]
+      .map((name) => S.glob(`cases/${name}/**`)),
+    S.file("//typescript/tsc/internal/vibelangfuzz/testdata/fuzz/FuzzCompile/appendix-ek4202-complete-project")
+  ],
   tools: [S.Host.bin("node")],
   sandbox: "none",
   timeout: "5m"

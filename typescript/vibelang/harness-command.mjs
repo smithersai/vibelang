@@ -65,6 +65,8 @@ export function nearDeadline(records, fraction = 0.5) {
 export class CaseCommands {
   records = []
 
+  constructor(env = process.env) { this.env = env }
+
   run(command, argv, { phase, timeout, ...options }) {
     return new Promise((resolve) => {
       const started = Date.now()
@@ -78,7 +80,7 @@ export class CaseCommands {
       this.records.push(record)
       // Own a process group so a runner's subprocesses share its deadline.
       const grouped = process.platform !== "win32"
-      const child = spawn(command, argv, { ...options, detached: grouped, stdio: ["ignore", "pipe", "pipe"] })
+      const child = spawn(command, argv, { env: this.env, ...options, detached: grouped, stdio: ["ignore", "pipe", "pipe"] })
       record.pid = child.pid ?? null
       record.processGroup = grouped ? child.pid ?? null : null
       const terminate = () => {
