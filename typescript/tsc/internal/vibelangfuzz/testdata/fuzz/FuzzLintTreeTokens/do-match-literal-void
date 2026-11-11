@@ -1,0 +1,4 @@
+go test fuzz v1
+string("do-match/literal")
+string("return")
+byte('\x00')
