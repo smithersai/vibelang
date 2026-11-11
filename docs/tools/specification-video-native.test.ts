@@ -16,22 +16,29 @@ test("specification recording examples compile and execute across generated payl
   try {
     linkModules(temp)
     writeFileSync(join(temp, "package.json"), '{"name":"specification-demo","private":true,"type":"module"}')
-    writeFileSync(join(temp, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: true, types: [], rootDir: ".", outDir: "dist" }, files: ["main.vibe"] }))
+    const project = (files: string[]) => writeFileSync(join(temp, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: true, types: [], rootDir: ".", outDir: "dist" }, files }))
+    // One compiler run checks and emits all three recordings of a payload, and their
+    // programs run side by side. A compile per recording started the compiler 24
+    // times; under the full docs-tools load that alone passed the 60 s deadline.
+    project(examples.map((example) => example.name + ".vibe"))
     await fc.assert(fc.asyncProperty(fc.constantFrom("Ada", "Grace", "Zoë", "李"), fc.integer({ min: 1, max: 9999 }), fc.constantFrom(...handlers), async (name, parcel, handler) => {
       for (const example of examples) {
         const source = readFileSync(resolve(repo, "site/videos/specification", example.name + ".vibe"), "utf8")
           .replaceAll("Ada", name).replaceAll("parcel-7", "parcel-" + parcel)
           .replace('catch () => "Hello, guest!"', "catch " + handler)
-        writeFileSync(join(temp, "main.vibe"), source)
-        const compile = await stage([defaultCompiler(), "-p", "tsconfig.json"], { cwd: temp })
-        expect(compile.failure).toBe("")
-        const run = await stage(["node", "dist/main.js"], { cwd: temp })
-        expect(run.failure).toBe("")
-        expect(run.stdout.trim()).toBe(example.output.replaceAll("Ada", name).replaceAll("parcel-7", "parcel-" + parcel))
+        writeFileSync(join(temp, example.name + ".vibe"), source)
       }
+      const compile = await stage([defaultCompiler(), "-p", "tsconfig.json"], { cwd: temp })
+      expect(compile.failure).toBe("")
+      const runs = await Promise.all(examples.map((example) => stage(["node", "dist/" + example.name + ".js"], { cwd: temp })))
+      examples.forEach((example, i) => {
+        expect(runs[i].failure).toBe("")
+        expect(runs[i].stdout.trim()).toBe(example.output.replaceAll("Ada", name).replaceAll("parcel-7", "parcel-" + parcel))
+      })
     }), { numRuns: 8, examples: handlers.map((handler, i) => ["Ada", i + 1, handler]) })
     const current = readFileSync(resolve(repo, "site/videos/specification/effects.vibe"), "utf8")
     writeFileSync(join(temp, "main.vibe"), current.replace('catch () => "Hello, guest!"', 'catch "Hello, guest!"'))
+    project(["main.vibe"])
     const retired = await stage([defaultCompiler(), "-p", "tsconfig.json", "--noEmit"], { cwd: temp })
     expect(retired.exitCode).not.toBe(0)
     expect(retired.stdout + retired.stderr).toContain("EK0509")
