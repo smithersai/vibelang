@@ -2,17 +2,17 @@ package vipgen
 
 // Source calls do not acquire an observable apply lookup from lowering.
 func init() {
-	for _, row := range []struct{ key, source, reference, call string }{
-		{"empty", "effect function f() {}", "function f() { return Effect.gen(function* () {}) }", "f()"},
-		{"bare-return", "effect function f() { return }", "function f() { return Effect.gen(function* () { return }) }", "f()"},
-		{"statements", "effect function f() { const value = 7; return value }", "function f() { return Effect.gen(function* () { const value = 7; return value }) }", "f()"},
-		{"delegated-tail", "effect function f() { return try Effect.succeed(7) }", "function f() { return Effect.gen(function* () { return yield* Effect.succeed(7) }) }", "f()"},
-		{"suspension", "effect function f() { const value = try Effect.succeed(7); return value }", "function f() { return Effect.gen(function* () { const value = yield* Effect.succeed(7); return value }) }", "f()"},
-		{"nested-arrow", "effect function f() { const read = () => 7; return read() }", "function f() { return Effect.gen(function* () { const read = () => 7; return read() }) }", "f()"},
-		{"direct-control", "effect function f() { return 7 }", "function f() { return Effect.gen(function* () { return 7 }) }", "f()"},
-		{"parameter-control", "effect function f(value: number) { const result = value; return result }", "function f(value) { return Effect.gen(function* () { const result = value; return result }) }", "f(7)"},
-		{"expression-control", "const f = effect function () { const value = 7; return value }", "const f = function () { return Effect.gen(function* () { const value = 7; return value }) }", "f()"},
-		{"method-control", "const object = { effect f() { const value = 7; return value } }", "const object = { f() { return Effect.gen(function* () { const value = 7; return value }) } }", "object.f()"},
+	for _, row := range []struct{ key, source, reference, call, template string }{
+		{"empty", "effect function f() {}", "function f() { return Effect.gen(function* () {}) }", "f()", "function f() { return Effect.gen(function* () {}) }"},
+		{"bare-return", "effect function f() { return }", "function f() { return Effect.gen(function* () { return }) }", "f()", "function f() { return Effect.gen(function* () { return }) }"},
+		{"statements", "effect function f() { const value = 7; return value }", "function f() { return Effect.gen(function* () { const value = 7; return value }) }", "f()", "function f() { return Effect.gen(function* () { const value = 7; return value }) }"},
+		{"delegated-tail", "effect function f() { return try Effect.succeed(7) }", "function f() { return Effect.gen(function* () { return yield* Effect.succeed(7) }) }", "f()", "function f() { return Effect.gen(function* () { return yield* Effect.succeed(7) }) }"},
+		{"suspension", "effect function f() { const value = try Effect.succeed(7); return value }", "function f() { return Effect.gen(function* () { const value = yield* Effect.succeed(7); return value }) }", "f()", "function f() { return Effect.gen(function* () { const value = yield* Effect.succeed(7); return value }) }"},
+		{"nested-arrow", "effect function f() { const read = () => 7; return read() }", "function f() { return Effect.gen(function* () { const read = () => 7; return read() }) }", "f()", "function f() { return Effect.gen(function* () { const read = () => 7; return read() }) }"},
+		{"direct-control", "effect function f() { return 7 }", "function f() { return Effect.gen(function* () { return 7 }) }", "f()", "function f() { return Effect.gen(function* () { return 7 }) }"},
+		{"parameter-control", "effect function f(value: number) { const result = value; return result }", "function f(value) { return Effect.gen(function* () { const result = value; return result }) }", "f(7)", "function f(value) { return Effect.gen(function* () { const result = value; return result }) }"},
+		{"expression-control", "const f = effect function () { const value = 7; return value }", "const f = function () { return Effect.gen(function* () { const value = 7; return value }) }", "f()", "const f = function () { return Effect.gen(function* () { const value = 7; return value }) }"},
+		{"method-control", "const object = { effect f() { const value = 7; return value } }", "const object = { f() { return Effect.gen(function* () { const value = 7; return value }) } }", "object.f()", "const object = { f() { return Effect.gen(function* () { const value = 7; return value }) } }"},
 	} {
 		common := "const a = observe(() => " + row.call + ", false); const b = observe(() => " + row.call + ", true); "
 		result := "return [a.reads, a.threw, b.reads, b.threw, try a.program, try b.program]"
@@ -21,7 +21,7 @@ func init() {
 			Key:      "vip01.declaration-forwarding-" + row.key,
 			Chapter:  "001-functions.md",
 			Quote:    "Each form keeps the form it is written in, as \x60async\x60 does.",
-			Cite:     Citation{VIP: 1, Template: "Effect.gen(function* ()", Quote: vip01Unrun},
+			Cite:     Citation{VIP: 1, Template: row.template, Quote: vip01Unrun},
 			Requires: []string{"vip01.effect-function", "vip05.try"},
 			Files:    []ChapterWitnessFile{{Name: "forwarding.ts", Source: declarationForwardingObserver, Names: []string{"observe"}}},
 			Vibe:     "effect function witness() { " + row.source + "; " + common + result + " }",

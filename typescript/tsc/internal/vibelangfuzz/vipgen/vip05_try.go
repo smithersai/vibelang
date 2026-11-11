@@ -16,7 +16,7 @@ func init() {
 		Requires: []string{"vip01.effect-function"},
 		Citations: []Citation{{
 			VIP:      5,
-			Template: "yield* ‹e›",
+			Template: "yield* Effect.sync(‹callback›)",
 			Quote:    "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
 			Reading:  "VIP-5 shows no Effect TS; it names Effect's `yield*` as prior art, and yield* inside Effect.gen runs an Effect, gives its success value and propagates its failure.",
 		}},
@@ -63,7 +63,7 @@ func init() {
 		Key: "vip05.try-fatal-result", VIP: 5,
 		Requires: []string{"vip01.effect-function", "vip05.try"},
 		Citations: []Citation{{
-			VIP: 5, Template: "yield* ‹e›",
+			VIP: 5, Template: "return yield* Effect.‹operation›(‹error›)",
 			Quote:   "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
 			Reading: "A generated numeric helper returns that success value. A terminal fail or die is never-valued; returning its yield preserves the numeric operand contract, while a bare terminal yield infers void in TypeScript. This tests generator validity without changing the Exit oracle.",
 		}},
@@ -164,7 +164,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip05.try-composition", VIP: 5,
 		Requires: []string{"vip01.effect-function"},
-		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
+		Citations: []Citation{{VIP: 5, Template: "yield* obj.run()", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
 			Reading: "The reference uses the VIP's Effect operation, preserving the enclosing JavaScript evaluation order and completion."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
@@ -204,7 +204,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip05.try-operand-positions", VIP: 5,
 		Requires: []string{"vip01.effect-function"},
-		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
+		Citations: []Citation{{VIP: 5, Template: "const ‹result› = ‹prefix› yield* ‹operand›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
 			Reading: "Parentheses, a pipe, a stored Effect and a member are each the Effect e; an argument of a call that initializes an annotated declaration is still a position where try runs it, as yield* does in the reference."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
@@ -237,7 +237,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip05.try-nested", VIP: 5,
 		Requires: []string{"vip01.effect-function"},
-		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
+		Citations: []Citation{{VIP: 5, Template: "return ‹prefix› yield* ‹operand›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value. A failure propagates to the enclosing Effect",
 			Reading: "Each try runs its own operand: n tries over n nested Effects give the innermost value, as n yield*s do in the reference, whether or not parentheses hold any operand."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()

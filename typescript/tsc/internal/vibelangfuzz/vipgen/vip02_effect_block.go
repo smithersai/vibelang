@@ -137,7 +137,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip02.lexical-receiver", VIP: 2, Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block"},
 		Citations: []Citation{{VIP: 2, Template: "Effect.gen(function* () { ‹body› })", Quote: "It is Effect TS's `Effect.gen(function* () { \u2026 })`, and the same as `(effect () => { \u2026 })()`.",
-			Reading: "Chapter 2 expands the VIP operation with completion records and lexical captures; the reference dispatches outward jumps only after the operation completes."}},
+			Reading: "Chapter 2 preserves source completions and lexical bindings. This reference chooses records to dispatch outward jumps only after successful completion of the operation."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 			return []Stmt{&catchEdge{vibe: "class Base { value() { return 5 } }; class C extends Base { n = 2; run() { return effect { return this.n + super.value() } } }; return try new C().run()", ref: "class Base { value() { return 5 } }; class C extends Base { n = 2; run() { const self = this; const parentValue = () => super.value(); return Effect.gen(function* () { return self.n + parentValue() }) } }; return yield* new C().run()"}}
@@ -149,7 +149,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip02.do-order", VIP: 2, Requires: []string{"vip01.effect-function", "vip05.try"},
 		Citations: []Citation{{VIP: 2, Template: "yield* Effect.succeed(‹n›)", Quote: "As TC39 specifies, `await` inside `do` belongs to the enclosing function, and so does `try`.",
-			Reading: "Chapter 2 expands the VIP operation with completion records and lexical captures; the reference dispatches outward jumps only after the operation completes."}},
+			Reading: "Chapter 2 preserves source completions and lexical bindings. This reference chooses records to dispatch outward jumps only after successful completion of the operation."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 			return []Stmt{&catchEdge{vibe: "const receiver = { n: 3, f(x: number, y: number) { ev(\"call\"); return this.n + x + y } }; const out = receiver.f((ev(\"left\"), 1), do { ev(\"body\"); try Effect.succeed(4) }); const skip = false && do { ev(\"wrong\"); try Effect.succeed(9) }; return out", ref: "const receiver = { n: 3, f(x, y) { ev(\"call\"); return this.n + x + y } }; const fn = receiver.f; const left = (ev(\"left\"), 1); ev(\"body\"); const right = yield* Effect.succeed(4); const out = fn.call(receiver, left, right); const skip = false; return out"}}
@@ -161,7 +161,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip02.lexical-new-target", VIP: 2, Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block"},
 		Citations: []Citation{{VIP: 2, Template: "Effect.gen(function* () { ‹body› })", Quote: "It is Effect TS's `Effect.gen(function* () { \u2026 })`, and the same as `(effect () => { \u2026 })()`.",
-			Reading: "The reference combines the VIP operation with chapter 2's lexical capture and completion-record rules, retaining Effect interruption and finalization."}},
+			Reading: "The reference combines the VIP operation with chapter 2's source completion and lexical binding rules, choosing records to retain Effect interruption and finalization."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 
@@ -628,7 +628,7 @@ func init() {
 				Quote:   "A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body:",
 				Vibe:    "function witness(): unknown[] { const log: string[] = []; " + declaration + "; return [[f(),f(undefined,3),f(2),f(2,3)],log] }",
 				Effect:  "function witness() { const log = []; " + reference + "; return [[f(),f(undefined,3),f(2),f(2,3)],log] }",
-				Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+				Cite:    Citation{VIP: 2, Template: "if(a===undefined){log.push(\"first\"); ‹earlyReturn› }", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
 			}
 			if effect {
 				witness.Key = "vip02.do-parameter-return-" + home + "-" + form
@@ -682,7 +682,7 @@ func init() {
 				Quote:   "including its temporal-dead-zone exception: JavaScript has none, so VibeLang has none.",
 				Vibe:    "function witness() { " + callable(params) + "; return [f(), f(undefined, 5), f(() => 7)] }",
 				Effect:  "function witness() { " + callable(nativeParams) + "; return [f(), f(undefined, 5), f(() => 7)] }",
-				Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+				Cite:    Citation{VIP: 2, Template: "(read = () => a, a = 1) { ‹body› return [a, read(), read.name] }", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
 			})
 		}
 	}
@@ -695,7 +695,7 @@ func init() {
 		Quote:   "The naming context must be preserved or suppressed before creation, rather than repairing `.name` afterward: a class static initializer may already have observed it.",
 		Vibe:    "function witness() { function f(C = class { static observed = this.name }, a: number = do { if (false) return -1; 1 }) { return [C.name, C.observed] }; return [f(), f(undefined,5), f(class Named { static observed = this.name })] }",
 		Effect:  "function witness() { function f(C = class { static observed = this.name }, a = 1) { return [C.name, C.observed] }; return [f(), f(undefined,5), f(class Named { static observed = this.name })] }",
-		Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+		Cite:    Citation{VIP: 2, Template: "function f(C = class { static observed = this.name }, a = 1)", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
 	})
 	registerWitness(2, ChapterWitness{
 		Key:     "vip02.do-parameter-default-context-plain",
@@ -703,7 +703,7 @@ func init() {
 		Quote:   "A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body:",
 		Vibe:    "function witness() { const f: (read?: (n: number) => number, a?: number) => number = (read = n => n + a, a: number = do { if (false) return -1; 1 }) => read(2); return [f(), f(undefined,5), f(n => n * 3)] }",
 		Effect:  "function witness() { const f = (read = n => n + a, a = 1) => read(2); return [f(), f(undefined,5), f(n => n * 3)] }",
-		Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+		Cite:    Citation{VIP: 2, Template: "const f = (read = n => n + a, a = 1) => read(2)", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
 	})
 }
 
@@ -756,7 +756,7 @@ func init() {
 			Quote:   "A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body:",
 			Vibe:    "function witness() { const log: string[] = []; " + declaration + "; const result = [f.length, f(undefined,false,undefined,2,3), f(undefined,true,undefined,2,3), f(undefined,false,4,5)]; return [result,log] }",
 			Effect:  "function witness() { const log = []; " + reference + "; const result = [f.length, f(undefined,false,undefined,2,3), f(undefined,true,undefined,2,3), f(undefined,false,4,5)]; return [result,log] }",
-			Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+			Cite:    Citation{VIP: 2, Template: "if(a===undefined){log.push(\"default\");if(stop) return ‹value›; a=1 }", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
 		}
 		if effect {
 			witness.Key = "vip02.do-parameter-rest-" + home

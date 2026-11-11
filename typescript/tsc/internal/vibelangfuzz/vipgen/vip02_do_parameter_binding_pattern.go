@@ -37,7 +37,7 @@ func init() {
 					Quote:   "including its temporal-dead-zone exception: JavaScript has none, so VibeLang has none.",
 					Vibe:    "function witness() { " + callable(head+", "+taken, "(...args: Parameters<typeof box.f>) => box.f(...args)") + "; return [" + calls + "] }",
 					Effect:  "function witness() { " + callable(native+", a = 1", "(...args) => box.f(...args)") + "; return [" + calls + "] }",
-					Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+					Cite:    Citation{VIP: 2, Template: "read = () => a ‹rest of pattern› , a = 1", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
 				})
 			}
 		}

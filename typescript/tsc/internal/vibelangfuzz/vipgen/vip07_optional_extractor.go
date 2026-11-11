@@ -17,9 +17,8 @@ func init() {
 				Quote:  "An absent optional element consumes zero values, leaves the iterator done and the actual index unchanged, and does not run its sub-pattern or initialize its bindings.",
 				Vibe:   "function witness(){const value:Option.Option<unknown>=" + value + ";return match(value){when Option.None(" + keyword + " cell?):optionalExtractorRead(()=>cell);when Option.Some(" + keyword + " cell?):optionalExtractorRead(()=>cell);default:\"miss\";}}",
 				Effect: "function witness(){const value=" + value + ";const read=()=>cell;if(Option.isNone(value))return optionalExtractorRead(read);" + keyword + " cell=value.value;return optionalExtractorRead(read)}",
-				Cite:   vip7Cite("return"), Files: []ChapterWitnessFile{file},
+				Cite:   vip7Cite("const read=()=>cell;if(Option.isNone(value))"), Files: []ChapterWitnessFile{file},
 			})
-			Lookup(key).Citations[0].Reading = ""
 		}
 	}
 }

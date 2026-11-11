@@ -27,7 +27,7 @@ func init() {
 			},
 			{
 				VIP:      19,
-				Template: "return",
+				Template: "Effect.gen(function* () { ‹body› return })",
 				Quote:    "`continue` ends that one item. `break` and `return` are compile errors, because no loop runs on the body's fiber.",
 				Reading:  "VIP-19 shows no continue in its Effect TS. The body is the callback's Effect.gen, and return ends that generator, which ends that one item.",
 			},

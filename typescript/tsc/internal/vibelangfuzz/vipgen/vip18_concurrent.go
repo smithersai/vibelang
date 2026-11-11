@@ -329,7 +329,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip18.settled-external-interrupt", VIP: 18, Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block", "vip18.all-settled"},
 		Citations: []Citation{{VIP: 18, Template: "Effect.all(‹args›)", Quote: "Each is exact sugar for an Effect function.",
-			Reading: "The reference combines the VIP operation with chapter 2's lexical capture and completion-record rules, retaining Effect interruption and finalization."}},
+			Reading: "The reference combines the VIP operation with chapter 2's source completion and lexical binding rules, choosing records to retain Effect interruption and finalization."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 			g.UseModule("Deferred", true)

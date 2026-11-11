@@ -153,7 +153,7 @@ func init() {
 			VIP:      1,
 			Template: "const ‹f› = (‹params›) => Effect.gen(function* () { ‹body› })",
 			Quote:    vip01Where,
-			Reading:  "001-functions.md: \"`effect (p) => B` | `(p) => Effect.gen(function* () { B })`\". The arrow is bound to a const of the function's name.",
+			Reading:  "001-functions.md: \"`effect (p) => { B }` | `(p) => Effect.gen(function* () { B })`\". The arrow is bound to a const of the function's name.",
 		}},
 		Focus:   func(g *Gen, s *Scope) []Stmt { return []Stmt{&Event{Label: g.Label()}} },
 		Declare: func(f *Func) Node { return &EffectArrowDecl{Func: f} },
@@ -177,7 +177,7 @@ func init() {
 			VIP:      1,
 			Template: "const { ‹f› } = { ‹f›(‹params›) { return Effect.gen(function* () { ‹body› }) } }",
 			Quote:    vip01Where,
-			Reading:  "001-functions.md: \"`effect m(p) { B }` | `m(p) { return Effect.gen(function* () { B }) }`\". The method of an object literal is destructured into a const of its name; its body reads no this.",
+			Reading:  "001-functions.md: \"`effect m(p) { B }`, `effect #m(p) { B }` | `m(p) { return Effect.gen(function* () { B }) }`\". The object method is destructured into a const of its name; its body reads no this.",
 		}},
 		Focus:   func(g *Gen, s *Scope) []Stmt { return []Stmt{&Event{Label: g.Label()}} },
 		Declare: func(f *Func) Node { return &EffectMethodDecl{Func: f} },
@@ -189,7 +189,7 @@ func init() {
 			VIP:      1,
 			Template: "const { ‹f› } = class { static ‹f›(‹params›) { return Effect.gen(function* () { ‹body› }) } }",
 			Quote:    vip01Where,
-			Reading:  "001-functions.md: \"As for `async`: `static effect m()` is allowed\", read as the method row. The static method of a class expression is destructured into a const of its name; its body reads no this.",
+			Reading:  "001-functions.md: \"`static effect m()` and a private `effect #load() { }` are allowed\". The static method is destructured into a const of its name; its body reads no this.",
 		}},
 		Focus:   func(g *Gen, s *Scope) []Stmt { return []Stmt{&Event{Label: g.Label()}} },
 		Declare: func(f *Func) Node { return &EffectMethodDecl{Func: f, Static: true} },
@@ -207,7 +207,7 @@ func init() {
 			VIP:      1,
 			Template: "function ‹g›(‹p› = ‹default›) { return Effect.gen(function* () { ‹body› }) }",
 			Quote:    vip01Unrun,
-			Reading:  "001-functions.md: \"Parameters, defaults included, are bound when the function is called. The body runs each time the Effect runs.\" A default is JavaScript's, outside the generator.",
+			Reading:  "001-functions.md: \"Parameters, defaults included, are bound when the function is called, before `Effect.gen`, as an `async` function's are bound before its body starts.\" 001-functions.md: \"The body runs each time the Effect runs.\" The default is native JavaScript outside the generator.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			k, fn, x, v1, v2 := g.Name("k"), g.Name("g"), g.Name("x"), g.Name("v"), g.Name("v")
@@ -302,7 +302,7 @@ func init() {
 			VIP:      1,
 			Template: "Effect.gen({ self: this }, function* () { ‹body› })",
 			Quote:    vip01Unrun,
-			Reading:  "001-functions.md: \"`this` | `Effect.gen({ self: this }, function* () { … })`; the generator's `this` is `self`\", and \"`Effect.gen({ self: this }, function* () { B })` when `B` reads `this`\" for an effect arrow.",
+			Reading:  "001-functions.md: \"An `effect` body reads `this`, `super` and `new.target` exactly as the same body reads them in an `async` function of the same form\". The reference chooses Effect.gen self binding; lexical arrows inherit the enclosing receiver.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			o, c, v1, v2, v3 := g.Name("o"), g.Name("C"), g.Name("v"), g.Name("v"), g.Name("v")
@@ -331,7 +331,7 @@ func init() {
 			VIP:      1,
 			Template: "const $newTarget = new.target return Effect.gen(function* () { ‹body› })",
 			Quote:    vip01Unrun,
-			Reading:  "001-functions.md: \"`new.target` | a temporary, `const $new_target = new.target`\", declared \"at the top of the innermost enclosing non-arrow function\".",
+			Reading:  "001-functions.md: \"A function nested in the body has its own, as in TypeScript, and an `effect` arrow or block has its enclosing function's, as any arrow does.\" The reference captures new.target in the enclosing non-arrow function; the chapter leaves the capture mechanism to the compiler.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			fa, fn, v1, v2, v3 := g.Name("g"), g.Name("g"), g.Name("v"), g.Name("v"), g.Name("v")
@@ -580,7 +580,7 @@ func init() {
       })
     }
   }`, "new NAME().run()")
-	functionWitness("field-arrow", "const $super_get = (k) => super[k]", "001-functions.md: \"A class field initializer or a parameter default can't see the body's declarations, so there they are declared in an arrow called in place\".",
+	functionWitness("field-arrow", "const $super_get = (k) => super[k]", "001-functions.md: \"A function nested in the body has its own, as in TypeScript, and an `effect` arrow or block has its enclosing function's, as any arrow does.\".",
 		`class NAMEBase { get x() { return 8 } }
   class NAME extends NAMEBase {
     n = 3
@@ -594,7 +594,7 @@ func init() {
       return () => Effect.gen({ self: this }, function* () { return this.n + $super_get("x") })
     })()
   }`, "new NAME().read()")
-	functionWitness("default-arrow", "const $new_target = new.target", "001-functions.md: \"A class field initializer or a parameter default can't see the body's declarations, so there they are declared in an arrow called in place\"; `new.target` belongs to the enclosing non-arrow function.",
+	functionWitness("default-arrow", "const $new_target = new.target", "001-functions.md: \"A function nested in the body has its own, as in TypeScript, and an `effect` arrow or block has its enclosing function's, as any arrow does.\"; `new.target` belongs to the enclosing non-arrow function.",
 		`function NAME(f = effect () => new.target === undefined ? 1 : 2) { return f() }`,
 		`function NAME(f = (() => {
     const $new_target = new.target

@@ -10,7 +10,7 @@ func init() {
 		Register(&Construct{
 			Key: "vip05.tail-native-delegation-" + mode, VIP: 5,
 			Requires: []string{"vip01.effect-function", "vip05.try"},
-			Citations: []Citation{{VIP: 5, Template: "yield* ‹e›",
+			Citations: []Citation{{VIP: 5, Template: "return ‹prefix› yield* ‹operand›",
 				Quote:   "After the static Effect-assignability check, `try e` is still `yield* e`, with no dynamic Effect guard, Promise conversion or non-Promise identity.",
 				Reading: "Preserve native iterator acquisition, next/result getters and defects even in a tail result. A valid typed Effect can have an observable iterator getter too; suspend is not delegated yield.",
 			}},

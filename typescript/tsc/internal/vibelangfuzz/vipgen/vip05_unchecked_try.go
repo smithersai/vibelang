@@ -6,7 +6,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip05.unchecked-try", VIP: 5,
 		Requires: []string{"vip01.effect-function"},
-		Citations: []Citation{{VIP: 5, Template: "yield* ‹e›",
+		Citations: []Citation{{VIP: 5, Template: "return yield* value",
 			Quote:   "An unchecked noniterable produces its native `TypeError` as a defect.",
 			Reading: "An any operand retains native yield-star iteration in tail positions, including its iterator errors and ordinary iterator completions. Compare normalized Exit values through the shared differential oracle."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {

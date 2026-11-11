@@ -13,7 +13,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip02.do-assignment-pattern-plain", VIP: 2, Plain: true,
 		Citations: []Citation{{
-			VIP: 2, Template: "‹pattern with IIFE defaults and keys› = ‹rhs›",
+			VIP: 2, Template: "(() => { ‹body› return ‹value›; })()",
 			Quote:   "A `do` or `match` inside a larger expression runs where JavaScript evaluates that expression, and how the compiler keeps that is its choice.",
 			Reading: "Native DestructuringAssignmentEvaluation evaluates the RHS once, then each target/key and conditional default. The reference substitutes no-jump IIFEs for do; it retains native getters, iterators, closing and throws.",
 		}},

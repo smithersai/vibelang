@@ -321,7 +321,7 @@ func (u *Unmask) Ends() bool { return ends(u.Body) }
 
 const jumpsQuote = "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block."
 
-const recordReading = "The VIP shows no Effect TS for a jump out of a block. 002-running.md, \"Leaving a block\": \"The block's body is a separate generator, so a jump to a target outside it can't be written there. It ends the generator with a completion record instead, and the code where the block stands carries out the jump\"; \"The records are `Normal`, `Return(value)`, `Break(label)` and `Continue(label)`\"; \"Nested blocks pass a record outward the same way, until it reaches the block that encloses its target\"; \"A jump whose target is inside the block stays as written.\""
+const recordReading = "The VIP shows no Effect TS for a jump out of a block. 002-running.md: \"Across `provide`, `uninterruptible`, `restore` and `interruptible`, a statement retains its ECMAScript completion kind, value (including `empty`) and target.\" 002-running.md: \"The compiler preserves that behavior; how it transports completions is its choice\". This reference chooses completion records and dispatches a pending source jump after successful finalization; the chapter does not prescribe that transport."
 
 // jumpsFocus writes the specification's example: a labeled loop whose block
 // continues it and breaks it, then a loop whose block returns from the
@@ -695,7 +695,7 @@ func init() {
 			VIP:      22,
 			Template: "return Effect.gen({ self: this }, function* () { ‹body› yield* Effect.uninterruptibleMask((restore) => Effect.gen({ self: this }, function* () { ‹body› a.length })) })",
 			Quote:    "these are ordinary blocks",
-			Reading:  "002-running.md, \"Leaving a block\": \"`this`, `super` and `new.target` in the block are the enclosing function's, passed in as for an `effect` block\"; 008-runtime.md: \"`this`, `super` and `new.target` in such a block are the source function's.\"",
+			Reading:  "002-running.md: \"`this`, `super` and `new.target` are the source function's, passed in as for an `effect` arrow\". The reference uses Effect.gen self binding and native lexical captures to preserve those source bindings.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
@@ -863,7 +863,7 @@ func regionWitness(key, vibe, reference, call string) {
 		Citations: []Citation{{
 			VIP: 22, Quote: "these are ordinary blocks",
 			Template: "yield* Effect.uninterruptibleMask((restore) => Effect.gen",
-			Reading:  "002-running.md: source bindings survive region lowering; bindings follow chapter 1; only a completed region produces a completion record.",
+			Reading:  "002-running.md: source bindings survive region lowering; bindings follow chapter 1; the reference transfers a pending source completion only after successful finalization.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
@@ -959,7 +959,7 @@ func init() {
 			Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible", "vip22.interruptible"},
 			Citations: []Citation{{VIP: 22, Template: "Effect.gen(function* () { ‹body› })",
 				Quote:   "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
-				Reading: "The reference uses the completion records specified in chapter 2: a nested generator returns the target and value, and the enclosing generator dispatches the jump after the mask completes."}},
+				Reading: "The reference chooses completion records to preserve chapter 2's source completions: a nested generator returns the target and value, and the enclosing generator dispatches the jump after the mask completes successfully."}},
 			Focus: func(g *Gen, s *Scope) []Stmt {
 				g.UseEffect()
 				open, close := form+" {", "}"
@@ -993,7 +993,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip22.nested-completions", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible", "vip22.interruptible"},
 		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
-			Reading: "Chapter 2 expands the VIP operation with completion records and lexical captures; the reference dispatches outward jumps only after the operation completes."}},
+			Reading: "Chapter 2 preserves source completions and lexical bindings. This reference chooses records to dispatch outward jumps only after successful completion of the operation."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 			return []Stmt{&catchEdge{vibe: "let n = 0; outer: { uninterruptible { interruptible { n += 2; break outer }; n = 99 }; n = 999 }; switch (n) { case 2: uninterruptible { n += 3; break }; default: n = 99 }; uninterruptible { for (const x of [1,2]) { if (x === 1) continue; n += x; break } }; return n", ref: "let n = 0; outer: { const c = yield* Effect.uninterruptibleMask((restore) => Effect.gen(function* () { const inner = yield* Effect.interruptible(Effect.gen(function* () { n += 2; return { tag: \"BreakOuter\" } })); if (inner.tag === \"BreakOuter\") return inner; n = 99; return { tag: \"Normal\" } })); if (c.tag === \"BreakOuter\") break outer; n = 999 }; target: switch (n) { case 2: { const c = yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { n += 3; return { tag: \"BreakSwitch\" } })); if (c.tag === \"BreakSwitch\") break target }; default: n = 99 }; yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { for (const x of [1,2]) { if (x === 1) continue; n += x; break } })); return n"}}
@@ -1005,7 +1005,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip22.return-evaluation", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible", "vip22.interruptible"},
 		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
-			Reading: "Chapter 2 expands the VIP operation with completion records and lexical captures; the reference dispatches outward jumps only after the operation completes."}},
+			Reading: "Chapter 2 preserves source completions and lexical bindings. This reference chooses records to dispatch outward jumps only after successful completion of the operation."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 			// RC-33 / 001-functions source-names: "A value-only evaluation of an
@@ -1055,7 +1055,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip22.failure-not-completion", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible", "vip22.interruptible"},
 		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
-			Reading: "Chapter 2 expands the VIP operation with completion records and lexical captures; the reference dispatches outward jumps only after the operation completes."}},
+			Reading: "Chapter 2 preserves source completions and lexical bindings. This reference chooses records to dispatch outward jumps only after successful completion of the operation."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 			return []Stmt{&catchEdge{vibe: "uninterruptible { interruptible { try Effect.fail(7) }; ev(\"wrong-inner\") }; ev(\"wrong-outer\"); return 99", ref: "yield* Effect.uninterruptibleMask(() => Effect.gen(function* () { yield* Effect.interruptible(Effect.gen(function* () { yield* Effect.fail(7) })); ev(\"wrong-inner\") })); ev(\"wrong-outer\"); return 99"}}
@@ -1067,7 +1067,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip22.finalizer-return", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip22.uninterruptible"},
 		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "`return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.",
-			Reading: "The reference combines the VIP operation with chapter 2's lexical capture and completion-record rules, retaining Effect interruption and finalization."}},
+			Reading: "The reference combines the VIP operation with chapter 2's source completion and lexical binding rules, choosing records to retain Effect interruption and finalization."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 
@@ -1080,7 +1080,7 @@ func init() {
 	Register(&Construct{
 		Key: "vip22.inherited-restore", VIP: 22, Requires: []string{"vip01.effect-function", "vip05.try", "vip02.effect-block", "vip22.uninterruptible"},
 		Citations: []Citation{{VIP: 22, Template: "yield* Effect.uninterruptibleMask(‹body›)", Quote: "Each is exact sugar for Effect's function.",
-			Reading: "The reference combines the VIP operation with chapter 2's lexical capture and completion-record rules, retaining Effect interruption and finalization."}},
+			Reading: "The reference combines the VIP operation with chapter 2's source completion and lexical binding rules, choosing records to retain Effect interruption and finalization."}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
 			g.UseModule("Deferred", true)

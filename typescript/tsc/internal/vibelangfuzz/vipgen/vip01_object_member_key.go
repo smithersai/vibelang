@@ -16,7 +16,7 @@ func init() {
 		Citations: []Citation{
 			{VIP: 1, Template: "function ‹f›() { return Effect.gen(function* () { ‹body› }) }", Quote: vip01Unrun,
 				Reading: "Chapter001: computed object method and accessor names evaluate in their enclosing function, like JavaScript await. Their bodies keep their own function context. This prints the chapter's Effect.gen counterpart, with key resolution and ToPropertyKey events inside the generator and member bodies uncalled."},
-			{VIP: 5, Template: "yield* ‹e›", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value.",
+			{VIP: 5, Template: "yield* Effect.sync(‹callback›)", Quote: "`try e` runs the Effect `e` inside an `effect` function or block and gives its success value.",
 				Reading: "The computed name is the current function's expression, so VIP5's yield* runs its key Effect at object construction. JavaScript performs the subsequent key coercion and leaves method/accessor bodies cold."},
 		},
 		Focus: func(g *Gen, s *Scope) []Stmt { return []Stmt{objectMemberKeyCode(g)} },

@@ -4,7 +4,7 @@ package vipgen
 // effect code a try there runs in the enclosing Effect, as await does in an
 // async function (chapter 2; VIP-5, amended 2026-10-29).
 
-var classMemberKeyCitation = Citation{VIP: 5, Template: "yield* ‹x›",
+var classMemberKeyCitation = Citation{VIP: 5, Template: "yield* Effect.‹operation›(‹value›)",
 	Quote:   "It is a unary operator with `await`'s precedence, and where `await` can't appear in an `async` function (its parameter list, a class field initializer, a `static` block), `try` can't appear in an `effect` function.",
 	Reading: "A computed class member name is not among those positions: await is allowed there, so the reference evaluates each name with yield* where the class is defined, in member order after the extends expression."}
 
@@ -45,7 +45,7 @@ func init() {
 // leaves out the identity application: a class decorator before its class,
 // whose decorators run first, and a member decorator in a computed name at its
 // member's position.
-var classDecoratorCitation = Citation{VIP: 5, Template: "yield* ‹x›",
+var classDecoratorCitation = Citation{VIP: 5, Template: "yield* Effect.‹operation›(‹value›)",
 	Quote:   classMemberKeyCitation.Quote,
 	Reading: "A decorator expression is not among those positions: await is allowed there, so the reference evaluates each decorator with yield* where the class is defined, class decorators first, then the extends expression, then each member's decorators before its name."}
 

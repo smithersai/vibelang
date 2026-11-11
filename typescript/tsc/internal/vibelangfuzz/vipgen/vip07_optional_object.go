@@ -20,9 +20,8 @@ func init() {
 				Quote:  "Each cell stays in TDZ until its binding pattern executes.",
 				Vibe:   "function witness(){const value:{cell?:unknown}=" + value + ";return match(value){when {" + keyword + " cell?}:optionalObjectRead(()=>cell);default:\"miss\";}}",
 				Effect: "function witness(){const value=" + value + ";const read=()=>cell;if(!(\"cell\" in value))return optionalObjectRead(read);" + keyword + " cell=value.cell;return optionalObjectRead(read)}",
-				Cite:   vip7Cite("return"), Files: []ChapterWitnessFile{file},
+				Cite:   vip7Cite("const read=()=>cell;if(!(\"cell\" in value))"), Files: []ChapterWitnessFile{file},
 			})
-			Lookup(key).Citations[0].Reading = ""
 		}
 	}
 	for _, keyword := range []string{"let", "const"} {
@@ -39,9 +38,8 @@ func init() {
 				Quote:  "Later arms reuse them: a cached pattern getter runs at most once and an iterable subject is iterated once.",
 				Vibe:   "function witness(){let reads=0;const value:{cell?:unknown}=" + row.value + ";const result=match(value){when {" + keyword + " cell?}:optionalObjectRead(()=>cell);default:[\"miss\"];};return [result,reads]}",
 				Effect: "function witness(){let reads=0;const value=" + nativeValue + ";const read=()=>cell;if(!(\"cell\" in value))return [optionalObjectRead(read),reads];" + keyword + " cell=value.cell;return [optionalObjectRead(read),reads]}",
-				Cite:   vip7Cite("return"), Files: []ChapterWitnessFile{file},
+				Cite:   vip7Cite("const read=()=>cell;if(!(\"cell\" in value))"), Files: []ChapterWitnessFile{file},
 			})
-			Lookup(key).Citations[0].Reading = ""
 		}
 	}
 

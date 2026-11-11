@@ -12,7 +12,7 @@ func init() {
 		Register(&Construct{
 			Key: "vip05.optional-native-delegation-" + mode, VIP: 5,
 			Requires: []string{"vip01.effect-function", "vip05.try"},
-			Citations: []Citation{{VIP: 5, Template: "yield* ‹e›",
+			Citations: []Citation{{VIP: 5, Template: "yield* input.‹member›",
 				Quote:   "After the static Effect-assignability check, `try e` is still `yield* e`, with no dynamic Effect guard, Promise conversion or non-Promise identity.",
 				Reading: "An unchecked optional call preserves native receiver/key/argument evaluation and delegates its result, including undefined on an absent branch. Observe the native defect class and events rather than engine-dependent error text.",
 			}},

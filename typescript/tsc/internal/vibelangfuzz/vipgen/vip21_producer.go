@@ -37,7 +37,7 @@ func init() {
 			},
 			{
 				VIP:      21,
-				Template: "return",
+				Template: "Effect.gen(function* () { ‹body› return }).pipe(Effect.andThen(Queue.end(queue)))",
 				Quote:    "`return value` in a producer is a compile error, because a Stream has no return value. A bare `return` ends the stream.",
 				Reading:  "VIP-21 shows no return in its Effect TS. A bare return ends the body's Effect.gen, and the Effect.andThen(Queue.end(queue)) after it ends the stream.",
 			},

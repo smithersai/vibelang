@@ -634,17 +634,12 @@ func vipInOrder(want, have []string) bool {
 	return i == len(want)
 }
 
-// TestVIPTemplatesCited reads docs/design/vips/ at test time. Each
-// construct's citations must quote their VIP verbatim, and each template's
-// tokens must appear, in order, in a code block of its VIP, or the citation
-// gives the suite's reading, which this test lists. A reading the VIP now
-// states in code is confirmed, and is listed for deletion, not failed: VIP
-// edits land as documents and must not fail the next gate. A template the
-// suite cites as code that its VIP no longer shows fails, since the VIP
-// changed its Effect TS and the reference may be wrong; so does a quote the
-// VIP no longer says when the template is not in its code either. The
-// construct's probe's reference print must hold each template too, so the
-// printer writes what is cited.
+// TestVIPTemplatesCited checks each reference against its cited VIP or a
+// chapter reading. Templates need at least three concrete tokens, appear in
+// the probe's reference print, and occur in the VIP's code unless a reading
+// explains the reference. Every reading is checked and listed, including
+// readings whose templates also occur in VIP code. Stale VIP prose remains
+// visible when the VIP's code still supports its template.
 func TestVIPTemplatesCited(t *testing.T) {
 	space := regexp.MustCompile(`\s+`)
 	normal := func(s string) string { return space.ReplaceAllString(s, " ") }
@@ -655,14 +650,17 @@ func TestVIPTemplatesCited(t *testing.T) {
 		}
 		probe := vipgen.PrintEffect(vipgen.Probe(c.Key))
 		for _, cite := range c.Citations {
+			for _, problem := range vipReadingProblems(cite.Reading, readVIPChapter) {
+				t.Errorf("%s: %s", c.Key, problem)
+			}
 			text, err := vipText(cite.VIP)
 			if err != nil {
 				t.Errorf("%s: %v", c.Key, err)
 				continue
 			}
 			want := vipTokens(cite.Template)
-			if len(want) == 0 {
-				t.Errorf("%s: a citation of VIP-%d has no template", c.Key, cite.VIP)
+			if problem := vipTemplateProblem(cite.Template, probe); problem != "" {
+				t.Errorf("%s: %s", c.Key, problem)
 				continue
 			}
 			shown := false
@@ -676,20 +674,14 @@ func TestVIPTemplatesCited(t *testing.T) {
 					t.Errorf("%s: VIP-%d does not say %q", c.Key, cite.VIP, cite.Quote)
 				}
 			}
-			switch {
-			case shown && cite.Reading != "":
-				stale = append(stale, fmt.Sprintf("%s: VIP-%d now shows %s in code, confirming the reading; delete the reading %q", c.Key, cite.VIP, cite.Template, cite.Reading))
-			case !shown && cite.Reading == "":
-				t.Errorf("%s: VIP-%d shows no %q in a code block; give the suite's reading of %q", c.Key, cite.VIP, cite.Template, cite.Quote)
-			case !shown:
+			if cite.Reading != "" {
 				readings = append(readings, fmt.Sprintf("%s reads VIP-%d as %s: %s", c.Key, cite.VIP, cite.Template, cite.Reading))
-			}
-			if !vipInOrder(want, vipTokens(probe)) {
-				t.Errorf("%s: the reference print of its probe does not hold %q:\n%s", c.Key, cite.Template, probe)
+			} else if !shown {
+				t.Errorf("%s: VIP-%d shows no %q in a code block; give the suite's reading of %q", c.Key, cite.VIP, cite.Template, cite.Quote)
 			}
 		}
 	}
-	t.Logf("%d readings the VIPs do not show in code yet:\n%s", len(readings), strings.Join(readings, "\n"))
+	t.Logf("%d readings justifying reference templates:\n%s", len(readings), strings.Join(readings, "\n"))
 	if len(stale) > 0 {
 		t.Logf("%d citations to update after a VIP edit:\n%s", len(stale), strings.Join(stale, "\n"))
 	}

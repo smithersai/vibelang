@@ -257,7 +257,7 @@ func init() {
 			VIP:      12,
 			Template: `const ‹c› = yield* Effect.provide(Effect.gen(function* () { ‹body› return { _tag: "Continue", label: ‹l› } ‹body› return { _tag: "Normal" } }), [‹layer›]) if (‹c›._tag === "Break" ‹and its label›) break ‹l›`,
 			Quote:    jumpsQuote,
-			Reading:  recordReading + " Its own words for the order: \"The block's own finalizers, such as releasing a `provide`'s layers, run before the jump\".",
+			Reading:  recordReading + ". 008-runtime.md: \"Source completion values and targets are carried separately and transferred only after successful finalization.\"",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			return jumpsFocus(g, s, func(body []Stmt) Stmt {

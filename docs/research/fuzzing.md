@@ -16,6 +16,26 @@ Each `FuzzDataSpecRules` row names the diagnostic it expects. A bare code permit
 
 Declaration-order seeds use inferred returns and must emit all three functions before comparing them. Editor token-navigation seeds check that returned spans stay within the source, touching spans contain the requested offset, and preceding spans begin at or before it. Stock-only API-preflight controls are table tests, not compiler fuzz campaigns.
 
+## Differential reference citations
+
+`TestVIPTemplatesCited` requires at least three concrete tokens in each
+citation template, excluding placeholders. Each template names the reference's
+distinctive operation; replacing a reference with an unrelated `return` must
+fail the citation gate. Chapter witnesses retain their readings even when a
+VIP contains a common token from the reference.
+
+Readings quote current chapters with `NNN-name.md: "quoted text"` (use Go
+string escapes for embedded quotation marks). Every quotation following that
+chapter prefix is checked against the chapter, including subsequent quotes
+and references to other chapters. `TestVIPReadingsQuoted` includes these
+checks in the specification gate. Native reference mechanisms, such as
+completion records, are identified as reference choices when the chapter
+specifies observable behavior without prescribing a lowering.
+
+`FuzzVIPCitationValidation` varies distinctive bindings and mutates references
+and chapter text to check that missing operations, vacuous templates and
+stale quotations cannot pass.
+
 ## Data variant names
 
 `FuzzDataVariantNames` quotes Chapter 6's `IdentifierName` grammar and malformed-variant diagnostic rule. It varies ordinary, escaped and reserved names alongside quoted, numeric, bigint and template tokens. Keyed inputs preserve each name family across `.vibe` and `.vibex`, generic declarations, lexical homes and line endings. The oracle checks diagnostic identity and token range, plus recovery of the following variant and declaration. Failed inputs retain their decoded profile in the test log.
