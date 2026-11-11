@@ -25,6 +25,9 @@ type VibeLangOptions struct {
 	// (VIP-27, decided detail 268). It may still begin with ${configDir}
 	// until the selected config's directory substitutes it.
 	SidecarDir string `json:"sidecarDir,omitzero"`
+	// Experimental is vibe.experimental, the experimental features the
+	// project opts in to (VIP-30, clarified 2026-11-11). Nil inherits.
+	Experimental []string `json:"experimental,omitzero"`
 
 	// TrustedPackages are package-name globs granted D22 trust (D261).
 	TrustedPackages []string `json:"trustedPackages,omitzero"`
@@ -47,12 +50,21 @@ var VibeLangAdjustableCodes = []string{
 	"EK4830", "EK4831", "EK4832", "EK4833", "EK4834", "EK4835", "EK4836", "EK4837", "EK4839", "EK4840", "EK4841", "EK4842", "EK4853", "EK4854", "EK4855", "EK4856",
 }
 
+// VibeExperimentalBuiltins is the vibe.experimental feature that opts in to
+// what is built from the open built-in set, VIPs 55 to 72: task and workflow
+// declarations and the Experimental.Durable, Human, Eval, Scorer, Memory,
+// Fuzz, FuzzSimulation and Test modules.
+const VibeExperimentalBuiltins = "builtins"
+
+// VibeExperimentalFeatures are the names vibe.experimental accepts.
+var VibeExperimentalFeatures = []string{VibeExperimentalBuiltins}
+
 // Equals reports whether o and other hold the same settings.
 func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 	if o == nil || other == nil {
 		return o == other
 	}
-	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.SidecarDir == other.SidecarDir && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
+	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.SidecarDir == other.SidecarDir && slices.Equal(o.Experimental, other.Experimental) && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
 }
 
 // VibeSeverityCode implements VIP-30/34/38, details 57 and 77. Legacy
@@ -116,6 +128,9 @@ func MergeVibeSettings(base, child *VibeLangOptions) *VibeLangOptions {
 	}
 	if result.SidecarDir == "" {
 		result.SidecarDir = base.SidecarDir
+	}
+	if result.Experimental == nil {
+		result.Experimental = base.Experimental
 	}
 	return &result
 }

@@ -56,7 +56,7 @@ func isTaskValue(c *checker.Checker, expression *ast.Node) bool {
 // checkTaskCalls reports EK5502 at each call of a task outside a workflow's
 // effect call.
 func checkTaskCalls(c *checker.Checker, file *ast.SourceFile) {
-	if !isVibeLangFile(file) {
+	if !isVibeLangFile(file) || !builtinsOn(c, file) { // EK3013 gates them (experimental_gate.go)
 		return
 	}
 	var visit func(*ast.Node) bool

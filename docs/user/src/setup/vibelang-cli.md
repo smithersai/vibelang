@@ -101,6 +101,16 @@ Inferred declaration imports use the TypeScript twin's module choice, including 
 
 For `export { value } from "./producer.vibe"`, public `.d.ts` output writes `./producer.ts` and the adjacent `.d.vibe.ts` writes `./producer.vibe`. A written `.vibex` specifier similarly uses `.tsx` in public output. The declaration spellings stay the same with either value of `rewriteRelativeImportExtensions`; that option rewrites JavaScript output.
 
+### Experimental features
+
+What is built from the open proposals VIPs 55 to 72 is experimental and not part of the alpha: `task` and `workflow` declarations, and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules. A project opts in to all of them at once:
+
+```json
+{ "vibe": { "experimental": ["builtins"] } }
+```
+
+Without the opt-in, the first use of one in a file reports `EK3013`, which names the open proposal and the opt-in. VIP-33's platform modules under `Experimental`, such as `Experimental.FileSystem` and `Experimental.Encoding`, are core and need no opt-in. Another name in the array, or a value that is not an array, is `EK3007`. A child config's `experimental` replaces its base's.
+
 ## 2. Replace tsc in the scripts
 
 ![vibelang in place of tsc](/videos/eco-tsc.mp4)

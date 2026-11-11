@@ -1,0 +1,12 @@
+// Without the opt-in: task and workflow stay identifiers, and VIP-33's
+// platform modules under Experimental are core (VIP-30, clarified 2026-11-11).
+const task = 1
+const workflow = { run: () => task + 1 }
+type Job = { task: number }
+const job: Job = { task }
+const asTask = task as number
+const decoded = Experimental.Encoding.decodeBase64Lenient("aGk=")
+export effect function main() {
+  try Console.log("task", task, "workflow", workflow.run(), job.task, asTask, decoded._tag)
+}
+runPromise(main())

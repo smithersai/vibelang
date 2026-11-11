@@ -113,7 +113,7 @@ func FuzzWorkflowBodyRules(f *testing.F) {
 		}
 		source := workflowBodyPrelude + "\nworkflow Self {\n  effect call(id: string): number!string {\n    " + strings.Join(body, "\n    ") + "\n    return 1\n  }\n}\nexport {}\n"
 		files := map[string]string{"main.vibe": source}
-		r, err := w.Compile(t.Context(), Project{Files: files})
+		r, err := w.Compile(t.Context(), builtinsProject(files))
 		if err != nil {
 			t.Fatal(err)
 		}

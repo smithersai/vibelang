@@ -1,6 +1,8 @@
 # Fuzzing with Experimental.Fuzz
 
-`Experimental.Fuzz.run` generates inputs from a schema, keeps the inputs that made the program do something new, mutates them, and reports a shrunk failure you can replay. With `Experimental.FuzzSimulation.execution()` it also chooses how fibers interleave and when timers fire, so a race is found, shrunk and replayed the same way a bad value is. Both are in scope in a `.vibe` file with no import; their code is `vibelang-runtime/experimental/Fuzz` and `vibelang-runtime/experimental/FuzzSimulation`.
+> **Open proposal ([VIP-70](https://vibelang.sh/vips/0070-std-fuzz)), experimental, not part of the alpha.** This page needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+
+`Experimental.Fuzz.run` generates inputs from a schema, keeps the inputs that made the program do something new, mutates them, and reports a shrunk failure you can replay. With `Experimental.FuzzSimulation.execution()` it also chooses how fibers interleave and when timers fire, so a race is found, shrunk and replayed the same way a bad value is. Both are in scope in a `.vibe` file with no import once the project opts in with `"vibe": { "experimental": ["builtins"] }`; their code is `vibelang-runtime/experimental/Fuzz` and `vibelang-runtime/experimental/FuzzSimulation`.
 
 The module is a copy of a `Fuzz` module written for Effect and kept file for file with it, so it moves to Effect's own module when Effect ships one ([VIP-70](https://vibelang.sh/vips/0070-std-fuzz#decision)). Like the other [experimental APIs](118-experimental-platform-apis.md), a release can change or remove it. It needs no layer and runs in a browser, a Worker, Node and Bun.
 
@@ -22,6 +24,7 @@ The parser below fails only on input that starts with the bytes `0x7f 0x45`. Ran
 
 ```vibe
 // run: try Console.log(try firstRun())
+// experimental: builtins
 const Byte = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 255 }))
 
 effect function parse(bytes: ReadonlyArray<number>) {
@@ -70,6 +73,7 @@ VibeLang adds no spans of its own, so an `effect function` is a span only when i
 
 ```vibe
 // run: try Console.log(try climb())
+// experimental: builtins
 const Wide = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1_000_000_000 }))
 
 export effect function climb() {
@@ -104,6 +108,7 @@ Each finding has a `signature`: `ReturnedFalse`, `PropertyError:<tag>`, `Died:<c
 
 ```vibe
 // run: try Console.log(try twice())
+// experimental: builtins
 const Digit = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 9 }))
 const pin = Experimental.Fuzz.target(Schema.Array(Digit), (digits) => !(digits[0] === 7 && digits[1] === 9), { id: "pin", revision: "1" })
 
@@ -125,6 +130,7 @@ A confirmed failure is saved as a value, encoded with the schema's JSON codec, s
 
 ```vibe
 // run: try Console.log(try lostUpdate())
+// experimental: builtins
 effect function withdraw(balance: Ref<number>, paid: Ref<number>, amount: number) {
   const current = try Ref.get(balance)
   if (current < amount) return

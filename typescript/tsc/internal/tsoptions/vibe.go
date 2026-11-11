@@ -49,6 +49,25 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 			} else {
 				options.EffectModules = setting
 			}
+		case "experimental":
+			// VIP-30, clarified 2026-11-11: the experimental features from open
+			// proposals that the project opts in to.
+			list, ok := value.([]any)
+			if !ok {
+				report(node, core.VibeInvalidConfigCode, "vibe.experimental must be an array of feature names; use [\""+core.VibeExperimentalBuiltins+"\"].")
+				continue
+			}
+			options.Experimental = []string{}
+			for _, item := range list {
+				name, ok := item.(string)
+				if !ok || !slices.Contains(core.VibeExperimentalFeatures, name) {
+					report(node, core.VibeInvalidConfigCode, fmt.Sprintf("vibe.experimental lists %v, which is not an experimental feature; use \"%s\" or remove it.", item, core.VibeExperimentalBuiltins))
+					continue
+				}
+				if !slices.Contains(options.Experimental, name) {
+					options.Experimental = append(options.Experimental, name)
+				}
+			}
 		case "trustedPackages":
 			// VIP-4: retired for every value; the declaring config supplies EK3010.
 		case "sidecarDir":
@@ -92,7 +111,7 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 				severityDiagnostics[""] = diagnostic(name, core.VibeInvalidSeverityCode, "An empty diagnostic code cannot appear in vibe.severities; remove the entry.")
 			}
 		default:
-			report(jsonName(property), core.VibeInvalidConfigCode, "Unknown vibe option "+key+"; use effectGlobals, effectModules, severities or sidecarDir, or remove the option.")
+			report(jsonName(property), core.VibeInvalidConfigCode, "Unknown vibe option "+key+"; use effectGlobals, effectModules, severities, sidecarDir or experimental, or remove the option.")
 		}
 	}
 	for _, name := range jsonEmptyNames(expression) {
@@ -102,7 +121,7 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 }
 
 func serializeVibeSettings(options *core.VibeLangOptions, configFileName tspath.RootedFilePath, caseSensitivity tspath.CaseSensitivity) *collections.OrderedMap[string, any] {
-	if options.Severities == nil && options.EffectGlobals == core.TSUnknown && options.EffectModules == core.TSUnknown && options.SidecarDir == "" {
+	if options.Severities == nil && options.EffectGlobals == core.TSUnknown && options.EffectModules == core.TSUnknown && options.SidecarDir == "" && options.Experimental == nil {
 		if options.VibeOnly {
 			return collections.NewOrderedMapWithSizeHint[string, any](0)
 		}
@@ -121,6 +140,13 @@ func serializeVibeSettings(options *core.VibeLangOptions, configFileName tspath.
 			directory = tspath.GetRelativePathFromDirectory(configFileName.Directory().AsString(), directory, caseSensitivity)
 		}
 		result.Set("sidecarDir", directory)
+	}
+	if options.Experimental != nil {
+		names := make([]any, len(options.Experimental))
+		for i, name := range options.Experimental {
+			names[i] = name
+		}
+		result.Set("experimental", names)
 	}
 	if options.Severities != nil {
 		codes := collections.NewOrderedMapWithSizeHint[string, any](len(options.Severities))

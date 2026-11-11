@@ -1,0 +1,2 @@
+// expect: EK3007
+export const value = 1

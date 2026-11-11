@@ -226,7 +226,8 @@
     "compiler/test/watch-intermediate.test.mjs",
     "compiler/test/watch-warning.test.mjs",
     "compiler/test/loader-record-module-body.property.test.mjs",
-    "compiler/test/loader-record-module-body.test.mjs"
+    "compiler/test/loader-record-module-body.test.mjs",
+    "compiler/test/experimental-gate.test.mjs"
   ],
   "runtime": [
     "runtime/tests/binding-iterator.test.mjs",

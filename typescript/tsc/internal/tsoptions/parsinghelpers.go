@@ -417,7 +417,7 @@ func mergeCompilerOptions(targetOptions, sourceOptions *core.CompilerOptions, ra
 		// merge reset the shared pointer, so merge the modern child from its
 		// source options before clearing legacy fields on a private copy.
 		modern := core.MergeVibeSettings(previousVibe, sourceVibe)
-		if modern != nil && (modern.VibeOnly || modern.Severities != nil || len(modern.InvalidSeverities) != 0 || modern.EffectGlobals != core.TSUnknown || modern.EffectModules != core.TSUnknown || modern.SidecarDir != "") {
+		if modern != nil && (modern.VibeOnly || modern.Severities != nil || len(modern.InvalidSeverities) != 0 || modern.EffectGlobals != core.TSUnknown || modern.EffectModules != core.TSUnknown || modern.SidecarDir != "" || modern.Experimental != nil) {
 			reset := *modern
 			reset.VibeOnly = true
 			reset.Diagnostics = nil

@@ -15,5 +15,10 @@
   },
   "include": [
     "*.vibe"
-  ]
+  ],
+  "vibe": {
+    "experimental": [
+      "builtins"
+    ]
+  }
 }

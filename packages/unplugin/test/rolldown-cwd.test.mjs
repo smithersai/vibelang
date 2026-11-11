@@ -148,3 +148,14 @@ test("property: source graphs keep their cwd, entry shape, custom project and va
     succeeds((await run(driver, [request(root, driver, input)]))[0], root, input.value)
   }), { seed: 20261105, numRuns: 24, endOnFailure: true })
 })
+
+// VIP-30: "In a directory, VibeLang reads the first that exists:
+// `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`." With no
+// project option the plugin selects the root's config in that order.
+for (const name of ["vibe.config.json", "jsconfig.json"]) {
+  test(`Rolldown selects the root's ${name} when no project option names one`, async t => {
+    const { root, driver } = await fixture(t, name)
+    const [result] = await run(driver, [{ ...request(root, driver), options: {} }])
+    succeeds(result, root)
+  })
+}

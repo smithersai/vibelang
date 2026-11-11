@@ -17,5 +17,10 @@
   "include": [
     "*.vibe",
     "label.json"
-  ]
+  ],
+  "vibe": {
+    "experimental": [
+      "builtins"
+    ]
+  }
 }

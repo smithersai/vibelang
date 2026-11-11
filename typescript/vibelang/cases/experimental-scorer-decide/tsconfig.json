@@ -17,5 +17,10 @@
   "include": [
     "*.vibe",
     "judge.json"
-  ]
+  ],
+  "vibe": {
+    "experimental": [
+      "builtins"
+    ]
+  }
 }

@@ -789,13 +789,14 @@ The sections below restate open proposals. They are not part of the language and
 
 ## `task` and `workflow` declarations
 
-**Experimental.** This section restates [VIP-55](/vips/0055-durable-tasks-workflows), an open proposal, and [VIP-44](/vips/0044-durable-values)'s durable boundaries. It is not part of the language: it describes the compiler's experimental implementation.
+**Experimental.** This section restates [VIP-55](/vips/0055-durable-tasks-workflows), an open proposal, and [VIP-44](/vips/0044-durable-values)'s durable boundaries. It is not part of the language: it describes the compiler's experimental implementation, which compiles only in a project that opts in with `"vibe": { "experimental": ["builtins"] }` ([Configuration](/spec/007-tooling#config-files)); without it a declaration is `EK3013`.
 
 A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks ([VIP-55](/vips/0055-durable-tasks-workflows)). Both are written as `service` is: a class-shaped body with one `effect call` method and `static readonly` options.
 
 ### Durable syntax
 
 ```vibe
+// experimental: builtins
 schema Issue { number: number; title: string }
 
 task FetchIssues {

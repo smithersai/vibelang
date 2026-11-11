@@ -256,7 +256,8 @@ export const unplugin = createUnplugin((options = {}, meta) => {
   function configure(base) {
     if (root) return
     root = resolve(options.root || base || process.cwd())
-    project = resolve(root, options.project || "tsconfig.json")
+    // VIP-30: the root's vibe.config.json, then tsconfig.json, then jsconfig.json.
+    project = options.project ? resolve(root, options.project) : projectFiles.map((name) => resolve(root, name)).find((path) => existsSync(path)) ?? resolve(root, "tsconfig.json")
     debug(`configure ${meta.framework}: root=${root}, project=${project}`)
   }
 

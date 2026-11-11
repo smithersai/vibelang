@@ -1,0 +1,10 @@
+// The built-in set (open VIPs 55 to 72) compiles with "vibe": { "experimental": ["builtins"] } (VIP-30, clarified 2026-11-11).
+schema Ticket { number: number; title: string }
+task ListIssues { effect call(repo: string): ReadonlyArray<Ticket>!string { return [{ number: 1, title: repo }] } }
+export workflow CountIssues { effect call(repo: string) { return (try ListIssues(repo)).length } }
+export effect function main() {
+  provide Layer.provideMerge(CountIssues.layer, Experimental.Durable.memory) {
+    try Console.log("workflow result", (try CountIssues("a/b")) + (try CountIssues("a/b")))
+  }
+}
+runPromise(main())

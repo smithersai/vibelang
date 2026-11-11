@@ -17,5 +17,10 @@
   "include": [
     "*.vibe",
     "triage.json"
-  ]
+  ],
+  "vibe": {
+    "experimental": [
+      "builtins"
+    ]
+  }
 }

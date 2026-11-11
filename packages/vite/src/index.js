@@ -91,13 +91,18 @@ function isModuleOutput(path) {
 // A module whose JavaScript the plugin compiles: a .vibe module or one of its module declarations.
 const isCompiled = (path) => isSource(sourceFile(path)) || isModuleOutput(path)
 
-// The tsconfig.json nearest above directory, whose paths apply to its modules.
+// A directory's config, in VIP-30's order: vibe.config.json, then
+// tsconfig.json, then jsconfig.json.
+const configNames = ["vibe.config.json", "tsconfig.json", "jsconfig.json"]
+const directoryConfig = (directory) => configNames.map((name) => join(directory, name)).find((path) => existsSync(path))
+
+// The config nearest above directory, whose paths apply to its modules.
 const configs = new Map()
 function nearestConfig(directory) {
   if (!configs.has(directory)) {
-    const own = join(directory, "tsconfig.json")
+    const own = directoryConfig(directory)
     const parent = dirname(directory)
-    configs.set(directory, existsSync(own) ? own : parent === directory ? undefined : nearestConfig(parent))
+    configs.set(directory, own ?? (parent === directory ? undefined : nearestConfig(parent)))
   }
   return configs.get(directory)
 }
@@ -453,7 +458,7 @@ export default function vibelang(options = {}) {
       root = config.root
       serving = config.command === "serve"
       urlBase = config.base || "/"
-      project = resolve(root, options.project || "tsconfig.json")
+      project = options.project ? resolve(root, options.project) : directoryConfig(root) ?? resolve(root, "tsconfig.json")
       logger = config.logger
     },
     configureServer(server) {

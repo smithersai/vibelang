@@ -37,6 +37,7 @@ Code example count: one example per fenced code block in the source body, includ
 ### Setup
 
 - [Set up VibeLang](src/setup.md)
+- [What is in the alpha](src/setup/alpha.md)
 - [Known limitations](src/setup/known-limitations.md)
 - [Source maps](src/setup/source-maps.md)
 - **Start a project**
@@ -199,6 +200,9 @@ Code example count: one example per fenced code block in the source body, includ
 - [Diagnostic code map](src/vibelang-features/diagnostic-code-map.md)
 - [Imported lint diagnostics](src/vibelang-features/imported-lint-diagnostics.md)
 - [Experimental platform APIs](src/vibelang-features/118-experimental-platform-apis.md)
+
+### Experimental
+
 - [Durable tasks and workflows](src/vibelang-features/119-tasks-and-workflows.md)
 - [Fuzzing with Experimental.Fuzz](src/vibelang-features/120-fuzzing.md)
 

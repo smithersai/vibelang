@@ -17,10 +17,10 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,308 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,183 |
-| The skill and the user guide (147 pages) | 600,000 |
-| The user guide alone | 590,000 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,463 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 17,338 |
+| The skill and the user guide (148 pages) | 600,000 |
+| The user guide alone | 600,000 |
 | The specification (11 chapters) | 280,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -110,6 +110,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 2,100 |
+| [What is in the alpha](../setup/alpha.md) | 2,600 |
 | [Known limitations](../setup/known-limitations.md) | 940 |
 | [Source maps](../setup/source-maps.md) | 1,000 |
 | **Start a project** | **8,300** |
@@ -138,7 +139,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [VibeLang in .ts files](../setup/typescript-shim.md) | 1,400 |
 | **Upgrade** | **200,000** |
 | [Release notes](../setup/release-notes.md) | 200,000 |
-| **All 22 pages** | **260,000** |
+| **All 23 pages** | **270,000** |
 
 ### Guides
 
@@ -277,9 +278,15 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 26,000 |
-| [Durable tasks and workflows](119-tasks-and-workflows.md) | 1,200 |
-| [Fuzzing with Experimental.Fuzz](120-fuzzing.md) | 2,700 |
-| **All 11 pages** | **92,000** |
+| **All 9 pages** | **89,000** |
+
+### Experimental
+
+| Page | Tokens |
+| --- | ---: |
+| [Durable tasks and workflows](119-tasks-and-workflows.md) | 1,300 |
+| [Fuzzing with Experimental.Fuzz](120-fuzzing.md) | 2,800 |
+| **All 2 pages** | **4,100** |
 
 ### Specification
 

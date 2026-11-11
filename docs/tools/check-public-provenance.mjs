@@ -30,11 +30,11 @@ export const sources = [
 // repository. Nothing else is allowed:
 // prose says what the thing is instead ("the repository's build targets").
 // VIP-53 is the open proposal to rename the language after the product: its page cannot avoid the
-// name, and the index links it by file name. Whether it stays public is the owner's decision.
+// name, and pages link it by file name or by its published URL. Whether it stays public is the owner's decision.
 const productPages = new Set(["docs/design/vips/0053-rename-smithersscript-open.md"])
 const productAllowed = [
   /@smthrs\/[a-z][a-z0-9-]*/g,
-  /0053-rename-smithersscript-open\.mdx?/g,
+  /0053-rename-smithersscript-open(?:\.mdx?)?(?![\w-])/g,
   /(?:https:\/\/)?(?:github\.com\/)?smithersai\/(?!smithers)[A-Za-z0-9._-]+/g,
 ]
 const product = /smithers|smthrs/i

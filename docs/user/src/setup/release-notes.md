@@ -6,8 +6,13 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ## 0.0.13
 
+0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](alpha.md) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules compile only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).
+
+Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml). Propose a change to the language with an [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml).
+
 ### Bugs fixed since 0.0.12
 
+- With no `project` option, the Vite plugin and the bundler plugins read the root's `tsconfig.json` even when a `vibe.config.json` was beside it, so they compiled with settings the compiler ignored. They now read the root's `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, as the compiler does.
 - Some docs examples taught forms the compiler warns about, such as a service member typed `Effect.Effect<{…}, never, never>` on the Stream page (`EK4833`). The docs check now fails an example that draws a warning, and those examples use the forms the compiler asks for; an example that shows a flagged form on purpose says so with `// expect-warning:`.
 - The specification marked 185 of its examples `// compiler-gap: pending VIP-N`, but 184 of those markers were stale: the compiler already did what the text says. They are gone, the docs check now compiles every specification example and fails on a marker whose example passes, and the two real gaps are listed on [Known limitations](known-limitations.md#specification-examples-the-compiler-does-not-pass-yet).
 - The `vibelang-runtime` package page told readers to run `vibelang --fix`, which the compiler rejects with `TS5023`. The page no longer mentions the option.
@@ -1027,10 +1032,11 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Experimental (opt-in)
 
-These features come from VIPs 55 to 72, which are open proposals. They are not part of the language this release supports, and each can change or be removed in any release. Their runtime modules are in the `Experimental` namespace, which carries no compatibility promise.
+These features come from VIPs 55 to 72, which are open proposals. They are not part of the language this release supports, and each can change or be removed in any release. Their runtime modules are in the `Experimental` namespace, which carries no compatibility promise. A project opts in to all of them with `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; VIP-33's platform modules under `Experimental`, such as `Experimental.FileSystem`, need no opt-in.
 
 #### `task` and `workflow` declarations (VIP-55)
 
+- `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules compile only in a project that opts in with `"vibe": { "experimental": ["builtins"] }`. Without it, the first use in a file is `EK3013`, which names the open proposal and the opt-in. Elsewhere `task` and `workflow` stay ordinary names.
 - `task` and `workflow` declarations were syntax errors. They now parse, type-check and format: a task's `A!E` annotation is its boundary, and a task called outside a workflow is `EK5502`.
 
 - A declared `task` or `workflow` could not run: calling a workflow needed an engine nothing provided. Declarations now run on `Experimental.Durable`: `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { try W(a) }` journals each step, an equal input joins the recorded run, and a crashed run resumes without repeating finished steps.
@@ -1127,6 +1133,7 @@ The compiler provides no automatic source repairs. Review and apply the changes 
 
 | Before | After and repair |
 | --- | --- |
+| A `task` or `workflow` declaration, or `Experimental.Durable`, `Human`, `Eval`, `Scorer`, `Memory`, `Fuzz`, `FuzzSimulation` or `Test` | `EK3013`: add `"vibe": { "experimental": ["builtins"] }` to `tsconfig.json` or `vibe.config.json`. These come from open proposals and are not part of the alpha. |
 | A mutated `const` destructuring initializer in a `for` head containing an `is` binding | `TS2588`: write `let` for the mutated binding, preserving the emitted loop behavior. Leave unrelated `const` declarations unchanged. |
 | `import "vibelang/platform/node"`, `bun` or `browser` | `EK2601`, and no implicit startup: remove the marker import and write the platform's explicit `runMain` call, with any required layers, in the file that starts your program. |
 | An `effect` function whose written return type is a union of different Effect types, such as `(number!!) \| (string!Refused)` | `EK0106`: write one Effect with the joined channels, `(string \| number)!Refused`. |

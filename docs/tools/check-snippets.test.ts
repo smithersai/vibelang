@@ -7,7 +7,7 @@
 // 000-intro.md: compiler-gap markers classify a failing marked snippet as pending
 // rule: docs/design/src/000-intro.md#d9a91bb53ca0982d
 import { expect, test } from "bun:test"
-import { blockFilenames, classify, defaultCompiler, extract, linkModules, markdownPages, normalizeOutput, parseDiagnostics, runBlock, writeProject } from "./check-snippets"
+import { blockFilenames, classify, defaultCompiler, experimentalSection, extract, linkModules, markdownPages, normalizeOutput, parseDiagnostics, runBlock, writeProject } from "./check-snippets"
 
 const block = extract('```ts\nconst answer = 42\n```')[0]
 const diagnostic = (code: string, message = "example") => ({ code, message })
@@ -609,3 +609,11 @@ test.skipIf(!existsSync(compiler))("a pending marker stands only while the compi
     rmSync(root, { recursive: true, force: true })
   }
 }, 120_000)
+
+test("an experimental header opts the page's program in to that feature only", () => {
+  const blocks = extract('```vibe\n// experimental: builtins\nexport const fuzz = Experimental.Fuzz\n```\n\n```vibe\nexport const one = 1\n```')
+  expect(blocks[0].experimental).toEqual(["builtins"])
+  expect(blocks[1].experimental).toBeUndefined()
+  expect(experimentalSection(blocks)).toEqual({ vibe: { experimental: ["builtins"] } })
+  expect(experimentalSection([blocks[1]])).toEqual({})
+})

@@ -1,0 +1,7 @@
+// expect: EK3013 EK3013
+// A built-in module from the open set needs the opt-in whether named through
+// Experimental or imported from the runtime (VIP-30, clarified 2026-11-11).
+import { fromSchema } from "./imported.js"
+export const recall = Experimental.Memory.recall
+export const fuzz = Experimental.Fuzz
+export { fromSchema }

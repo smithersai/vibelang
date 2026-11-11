@@ -2289,6 +2289,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK3010` | warning: retired `trustedPackages` is ignored in `vibe` and supported legacy sections; remove the key and use the ordinary foreign-callable contract | 4, 30 | [Configuration](/spec/007-tooling#config-files) |
 | `EK3011` | warning: retired root `vibelang.declarationImportStyle` or `compilerOptions.vibelang.declarationImportStyle` is ignored for every value, including invalid values; remove the setting | 30 | [Configuration](/spec/007-tooling#config-files) |
 | `EK3012` | warning: an assigned `EK38xx` severity key without a resolved `@effect/language-service` plugin entry needs the preserving config migration; write the explicit plugin entry while retaining inherited plugins and authored settings | 30, 38 | [Imported lint activation migration](/spec/007-tooling#effects-type-aware-lint) |
+| `EK3013` | a `.vibe` file's first use of experimental code built from an open proposal, a `task` or `workflow` declaration or a gated `Experimental` module, in a project whose `vibe.experimental` does not list `"builtins"` | 30 | [Configuration](/spec/007-tooling#config-files) |
 | `EK3201` | a resolved `effect` version other than the pin | 32 | [Configuration and tooling](/spec/007-tooling#the-effect-version) |
 | `EK4001` | a module declaration below the file's top level | 40 | [Modules](/spec/001-functions#module-declarations) |
 | `EK4002` | an exported module declaration | 40 | [Modules](/spec/001-functions#module-declarations) |

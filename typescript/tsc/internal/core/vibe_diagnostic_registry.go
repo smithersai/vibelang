@@ -129,6 +129,7 @@ var VibeDiagnosticCategories = map[string]string{
 	"EK3010": "warning",
 	"EK3011": "warning",
 	"EK3012": "warning",
+	"EK3013": "error",
 	"EK3201": "error",
 	"EK4001": "error",
 	"EK4002": "error",

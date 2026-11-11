@@ -90,7 +90,7 @@ func workflowName(fn *ast.Node) string {
 // checkWorkflowBodies reports what a workflow body cannot hold (EK5504 to
 // EK5507), and an unbounded retry policy on a task (EK5509).
 func checkWorkflowBodies(c *checker.Checker, file *ast.SourceFile) {
-	if !isVibeLangFile(file) {
+	if !isVibeLangFile(file) || !builtinsOn(c, file) { // EK3013 gates them (experimental_gate.go)
 		return
 	}
 	var visit func(*ast.Node) bool

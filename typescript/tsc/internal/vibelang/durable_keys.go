@@ -78,7 +78,7 @@ func durableKeysFor(c *checker.Checker) *durableKeys {
 // checkDurableKeys reports EK5503 at each declaration of file whose tag
 // another declaration of its package derives.
 func checkDurableKeys(c *checker.Checker, file *ast.SourceFile) {
-	if !isVibeLangFile(file) {
+	if !isVibeLangFile(file) || !builtinsOn(c, file) { // EK3013 gates them (experimental_gate.go)
 		return
 	}
 	var visit func(*ast.Node) bool

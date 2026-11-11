@@ -2,10 +2,13 @@
 
 VibeLang adds the few platform APIs that Effect does not have yet. They are experimental: a release can change or remove them, and each goes when Effect ships the API. Where Effect has the service, the experimental one extends it, so the rest of the service is Effect's own; where Effect has none, the experimental service follows Effect's style. Each addition lives under `Experimental.X` and can be proposed upstream. Native language helpers, including error declarations, keep the experimental namespace out of their bundle graph unless the source uses it.
 
+`Experimental` holds two kinds of module. The platform additions come from VIP-33, are part of the alpha and need no opt-in. The modules built from open proposals (VIPs 55 to 72) are not part of the alpha and compile only with `"vibe": { "experimental": ["builtins"] }`; without it the compiler reports `EK3013`.
+
+**Platform additions (VIP-33, core).**
+
 | Module | Adds | Layers |
 | --- | --- | --- |
 | `Experimental.Encoding` | pure lenient base64 decode returning a typed result | none |
-| `Experimental.Fuzz`, `Experimental.FuzzSimulation` | feedback-guided fuzzing and fiber-schedule simulation; see [Fuzzing](120-fuzzing.md) | none |
 | `Experimental.NetAddress` | pure `isIPv6` with Node-compatible zones | none (pure) |
 | `Experimental.Dns` | Effect Dns extended only with direct authoritative-server TXT queries | Node; Worker TCP, or typed `Unsupported` |
 | `Experimental.FileSystem` | `access(path, { executable })`, `open(path, { nonBlocking })`, `File.chmod` | Node, Bun |
@@ -21,8 +24,14 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.ResizeObserver` | `observe` of an element, until the Scope closes | browser |
 | `Experimental.FileReader` | `readAsText`, `readAsDataUrl`, `readAsArrayBuffer` of a `Blob` or a `File` | browser |
 | `Experimental.Animations` | `nextFrame`, `nextFrameUnless`, `frameDeltas`, `settled` over animation frames and the Web Animations API | browser |
-| `Experimental.Human` | questions a workflow asks a person: `confirm`, `ask`, `select`, `json`; `answer` and `validate` for the inbox that replies | the engine of `Experimental.Durable`, in any runtime |
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
+
+**Open proposals (opt-in).** Not part of the alpha; each needs `"vibe": { "experimental": ["builtins"] }`.
+
+| Module | Adds | Layers |
+| --- | --- | --- |
+| `Experimental.Fuzz`, `Experimental.FuzzSimulation` | feedback-guided fuzzing and fiber-schedule simulation; see [Fuzzing](120-fuzzing.md) | none |
+| `Experimental.Human` | questions a workflow asks a person: `confirm`, `ask`, `select`, `json`; `answer` and `validate` for the inbox that replies | the engine of `Experimental.Durable`, in any runtime |
 | `Experimental.Durable` | a journaled engine for Effect's `Workflow` and `Activity`: a crashed run resumes and skips finished steps; `workflow` with VIP-44 run identity, `task` with a result cache, run handles, `plan` and `diff`, `history`, `replay`, `fork`, `rewind` | `memory`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
@@ -659,12 +668,15 @@ effect function sampleRate() {
 
 ## Durable execution
 
+> **Open proposal ([VIP-60](https://vibelang.sh/vips/0060-std-durable)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+
 Effect defines durable workflows: `Workflow.make` declares a workflow and its payload, `Activity.make` a recorded step, and both run on Effect's `WorkflowEngine` service. Effect's one local engine, `WorkflowEngine.layerMemory`, forgets every run when the process exits. `Experimental.Durable` adds the engine that remembers. Each step's start and result go to an append-only journal, one per run. A run that stopped part way, because its process crashed or was killed, resumes the next time anything executes it with the same input: the body runs again, and each step the journal finished returns its recorded result instead of running.
 
 `Experimental.Durable.task(key, options)` declares a step with a payload. Its implementation is a layer, `Task.toLayer(handler)`, so a test swaps it by providing another. Inside a workflow, calling the task runs one step; two calls of one task are two steps. `key` names the step in the journal, so keep it while runs that used it are stored. Options keep the names of the durable-execution library they port: `payload`, `success`, `error`, `tier` (`"sealed"`, `"compensable"` or `"irreversible"`, recorded with the step), `retryPolicy` and `attemptTimeoutMs`.
 
 ```vibe
 // run: try Console.log(try placeOrder("A-1"))
+// experimental: builtins
 const Charge = Experimental.Durable.task("shop#Charge", { payload: { order: Schema.String }, success: Schema.Number })
 
 const Order = Experimental.Durable.workflow("shop#Order", { payload: { order: Schema.String }, success: Schema.Number })
@@ -734,6 +746,7 @@ A position is `{ run, seq }`: a run and a sequence number in its journal.
 The std-durable VIP's example reads a run's events and forks it:
 
 ```vibe
+// experimental: builtins
 export effect function forkAt(run: string, seq: number) {
   const events = try Stream.runCollect(Stream.map(Experimental.Durable.history(run), (entry) => entry.eventType))
   const copy = try Experimental.Durable.fork({ run, seq })
@@ -744,6 +757,8 @@ export effect function forkAt(run: string, seq: number) {
 `fork`, `rewind` and `replay` fail with `Experimental.Durable.TimeTravelError`, whose `code` is one of the ported library's twelve. This engine raises `not_found` for an unknown run, `invalid` for a position outside the journal, `busy` when this engine is running the run, `irreversible` when a rewind would remove an irreversible task's step, because no engine can unsend an email, and `compensation_failed` when it would remove a compensable one, because undoing a step is not built yet. A rewind claims the run, so another engine still driving it dies with `FenceLost` at its next write. Note that `fork` is a reserved word in Effect code: name the result `copy`, as above.
 
 ## Evals and scorers
+
+> **Open proposal ([VIP-59](https://vibelang.sh/vips/0059-eval-declarations), [VIP-69](https://vibelang.sh/vips/0069-std-eval)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
 
 A test asserts that an answer equals something. A model's answer rarely equals anything; it is better or worse than the last one. `Experimental.Eval` runs a fixed set of cases against a target, `Experimental.Scorer` grades each answer from 0 to 1, and a gate compares the scores with a committed baseline and returns an exit code. Both modules are pure: no layer, no platform. They port an existing Effect library's evaluation and scoring packages, and a baseline is the same versioned JSON (VIP-69).
 
@@ -756,6 +771,7 @@ A test asserts that an answer equals something. A model's answer rarely equals a
 
 ```vibe
 // run: try Console.log(try nightly())
+// experimental: builtins
 effect function greet(name: string) {
   return `Hello, ${name}`
 }
@@ -843,6 +859,7 @@ Each check of `Experimental.Scorer.checks` is plain data, so the list is the sco
 
 ```vibe
 // run: try Console.log(try judged())
+// experimental: builtins
 import * as LanguageModel from "effect/ai/LanguageModel"
 
 // A scripted judge stands in for a provider in this example.
@@ -868,6 +885,7 @@ The judge reads the case input as context: a suite's single argument, or the arg
 In a test, the judge is `Experimental.Test.replay(recorded)` from [Testing agentic programs](#testing-agentic-programs): it answers from a recording and never calls a provider. A recorded rubric call holds both of the judge's messages, the instructions and the fenced answer, so make the recording with `Experimental.Test.record` rather than by hand. Pass the replay as `layer` and also provide it around the runs. The enclosing `provide` builds it once, so each recorded verdict is claimed once and `Experimental.Test.unconsumed` sees what is left. Without it, each score builds its own copy of the layer, as Effect's `provide` does for sibling calls, and every score replays from the first recording.
 
 ```vibe
+// experimental: builtins
 const criteria = [{ id: "polite", question: "Is the reply polite?", low: "rude", high: "courteous" }]
 
 effect function greet(name: string) {
@@ -909,6 +927,7 @@ Every `meta` also holds `judge`, the seat. A classify decision needs `pass`, the
 ```vibe
 // run: try Console.log(try decided())
 // A scripted judge stands in for a provider in this example.
+// experimental: builtins
 const judge = Layer.effect(DecisionModel.DecisionModel, DecisionModel.make({
   decide: () => Effect.succeed({
     answers: { verdict: { _tag: "Probability", probability: 0.75 } },
@@ -938,6 +957,7 @@ In a test, the judge is `Experimental.Test.decisions(recorded)` from [Testing ag
 
 ```vibe
 // run: try Console.log(try scoredRuns())
+// experimental: builtins
 const Double = Experimental.Durable.workflow("docs#Double", { payload: { n: Schema.Number }, success: Schema.Number })
 
 const doubled = Experimental.Scorer.make({
@@ -975,12 +995,15 @@ Pick the store with one layer: `Experimental.Scorer.memory` keeps scores in this
 
 ## Testing agentic programs
 
+> **Open proposal ([VIP-71](https://vibelang.sh/vips/0071-std-test)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+
 A test of an agentic program needs a model that holds still. `Experimental.Test` (VIP-71) adds doubles for what Effect has none of, each a layer the test provides in place of the production one. Tests stay `@effect/vitest` tests, and Effect's `TestClock` and `TestConsole` stay as they are.
 
 `Experimental.Test.replay(fixture)` is a `LanguageModel` that answers from a recording and never calls a provider, so a test runs with no key and no network. A program asks through whatever `LanguageModel` is in scope, so the test changes no line of it:
 
 ```vibe
 // run: try Console.log(try labelCrash())
+// experimental: builtins
 schema Label { type: "bug" | "feature" | "question" | "chore" }
 
 const recorded = {
@@ -1028,6 +1051,7 @@ The layer also provides `Experimental.Test.Recording`. `try Experimental.Test.un
 `Experimental.Test.record(path, { live })` makes a recording. It replays the file at `path` as `replay` does, claiming each recorded call once; a request the file does not answer goes to the `live` model, such as a provider's layer, and the answer is appended to the file before the caller sees it. Recording and replaying are two calls, so a deleted fixture never turns a free test run into a paid one: switch a test to `record` to refresh its fixture, then back to `replay`.
 
 ```vibe
+// experimental: builtins
 import { NodeFileSystem } from "@effect/platform-node"
 
 export effect function labelLive(seat: Layer.Layer<LanguageModel.LanguageModel>) {
@@ -1049,6 +1073,7 @@ export effect function labelLive(seat: Layer.Layer<LanguageModel.LanguageModel>)
 `Experimental.Test.decisions(fixture)` is the same double for Effect's `DecisionModel`. Each recorded call holds the `request` a provider received, its encoded input as `state`, and the provider's `response`, its `answers` by decision name; `request.decisions` is compared only when present. Effect validates each recorded answer against the program's decision definition as it would a provider's, so a `Classify` answer carries its `probabilities`, a label the definition does not have is `Invalid`, and a `Refusal` is refused. Each recording is claimed once, and a request none matches dies with `Experimental.Test.UnrecordedDecision`.
 
 ```vibe
+// experimental: builtins
 const recorded = {
   calls: [{
     request: { state: { title: "Crash on start" } },
@@ -1074,6 +1099,7 @@ export effect function triageCrash() {
 A layer replaces a model only inside one process. A program under test that reaches its model over HTTP, such as a coding agent run as a child process, needs a server. `Experimental.Test.modelServer({ fixture })` answers Chat Completions requests, `POST /v1/chat/completions`, from a recording: point the program's OpenAI-compatible base URL at it.
 
 ```vibe
+// experimental: builtins
 import { ExperimentalNodeHttpServer } from "vibelang-runtime/experimental/platform-node"
 
 const recorded = { calls: [{ request: { prompt: "hello" }, response: [{ type: "text", text: "hi there" }] }] }
@@ -1094,6 +1120,7 @@ The server reads a request's messages as the prompt Effect's `LanguageModel` sen
 
 ```vibe
 // run: try Console.log(try changedFiles())
+// experimental: builtins
 const machine = Experimental.Test.host({
   files: { "/repo/package.json": `{"name":"demo"}` },
   commands: { "git status --short": { stdout: " M src/a.ts\n M src/b.ts\n" } }
@@ -1128,6 +1155,7 @@ Each build of the layer starts from its options again.
 
 ```vibe
 // run: try Console.log(try crashMidStep())
+// experimental: builtins
 const done: Array<string> = []
 const reached = Deferred.makeUnsafe<void>()
 const blocked = { step: 2 }
@@ -1183,6 +1211,7 @@ Step 2 blocks before its effect, so the crash interrupts it unfinished. Step 1 i
 A step name matches by its journal name or by its task key, which matches every occurrence. `attempts` counts retries; `starts` counts every time the step started, so a step that ran again after `Experimental.Test.crash` has two starts and one attempt.
 
 ```vibe
+// experimental: builtins
 export effect function checkOrder(run: string) {
   const journal = try Experimental.Test.journal(run)
   try journal.executedInOrder(["shop#Reserve", "shop#Charge"])
@@ -1210,6 +1239,7 @@ export effect function checkOrder(run: string) {
 | `race/recorded-loser` | after a restart, leave the recorded loser lost |
 
 ```vibe
+// experimental: builtins
 const subject = Effect.sync(() => Experimental.Durable.layerStore(Experimental.Durable.makeMemoryStore()))
 
 export effect function certify() {
@@ -1223,9 +1253,12 @@ export effect function certify() {
 
 ## Memory
 
+> **Open proposal ([VIP-66](https://vibelang.sh/vips/0066-std-memory)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
+
 A model's context is gone when its process exits, and a durable run's journal records only what that run did. `Experimental.Memory` keeps what a later run should still know: facts a program writes now and recalls in a later run, ranked by a query and cut to a byte budget so the answer fits in a prompt. It ports an existing Effect memory package.
 
 ```vibe
+// experimental: builtins
 export effect function notes() {
   provide Experimental.Memory.test {
     try Experimental.Memory.remember({ bank: "global-notes", key: "release", text: "cut 0.1.0" })
@@ -1244,6 +1277,7 @@ A fact lives in a bank, the public spelling of a namespace: `kind-id`, where the
 A note is never edited. `Experimental.Memory.note(bank, text, { id?, supersedes? })` appends one and returns `{ id }`; a correction is a new note that names the notes it replaces in `supersedes`, an id or an array of ids, and a superseded note drops out of recall. Recall returns a note as a row whose key is its id. Writing a note again with the same `id`, bank, text and `supersedes` does nothing, so a retried write is safe; without an `id`, each call appends a new note.
 
 ```vibe
+// experimental: builtins
 export effect function correct() {
   try Experimental.Memory.note("agent-ci", "tests take 4 minutes", { id: "n1" })
   try Experimental.Memory.note("agent-ci", "tests take 9 minutes", { id: "n2", supersedes: "n1" })
@@ -1269,6 +1303,7 @@ Every recall has a byte budget, because recalled rows become part of a prompt. T
 `Experimental.Memory.tools(bank)` is a model's memory: Effect's `Toolkit` with a `remember` tool (`{ key, text }`) and a `recall` tool (`{ query, maxBytes? }`), bound to `bank`. Pass it as a language model's `toolkit`. No tool takes a bank, so the model reaches no other bank, and a memory failure is returned to the model as `{ code, message, path? }` rather than ending the call. To give a model memory beside other tools, merge `Experimental.Memory.toolkit` into a larger toolkit and provide `Experimental.Memory.layerTools(bank)`.
 
 ```vibe
+// experimental: builtins
 export effect function answer(question: string) {
   const response = try LanguageModel.generateText({ prompt: question, toolkit: Experimental.Memory.tools("agent-support") })
   return response.text
@@ -1298,12 +1333,15 @@ A store reports its own failures, such as a SQL error, with the code `store`.
 Nothing is deleted unless the program asks. `Experimental.Memory.sweep({ ttl?, keep? })` deletes facts whose `ttlMs` has passed, facts not written within `ttl` (any Effect `Duration` input, such as `"30 days"`) when it is given, and each thread's messages beyond its newest `keep` when it is given, and returns `{ facts, messages }`, the number of each it deleted. Notes stay, because a superseded note is already out of recall. A sweep is a finite Effect: run it when the program chooses, or schedule it with `Effect.schedule`. It deletes rows only, so a recorded step that recalled a row still holds what it recalled.
 
 ```vibe
+// experimental: builtins
 export effect function tidy() {
   return try Experimental.Memory.sweep({ ttl: "30 days", keep: 200 })
 }
 ```
 
 ### Waits: timers, signals and human answers
+
+> **Open proposal ([VIP-56](https://vibelang.sh/vips/0056-durable-waits)), experimental, not part of the alpha.** This section needs the opt-in `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it the compiler reports `EK3013`. A release can change or remove it.
 
 A workflow that waits a week for an approval must not keep a process alive for a week. Inside a workflow, these calls park the run instead of holding a fiber: the run is stored as `suspended`, no process waits, and the clock, a delivery or an answer wakes it on any engine over the same store.
 
@@ -1315,6 +1353,7 @@ A workflow that waits a week for an approval must not keep a process alive for a
 | `try Experimental.Human.confirm(name, prompt)`, and `ask`, `select`, `json` | `Experimental.Human.answer(W, run, name, value)` records an answer | `approval` |
 
 ```vibe
+// experimental: builtins
 schema Paid { amount: number }
 export const paid = Experimental.Durable.signal("paid", Paid)
 

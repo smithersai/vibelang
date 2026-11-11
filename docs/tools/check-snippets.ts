@@ -8,7 +8,7 @@ const repo = resolve(import.meta.dir, "../..")
 // A warning is a diagnostic too: an example that draws one fails unless its
 // header expects it, so the docs never teach a form the compiler flags.
 export type Diagnostic = { code: string; message: string; line?: number; column?: number; severity?: "warning" }
-export type Block = { number: number; line: number; endLine?: number; language: "vibe" | "ts"; source: string; filename?: string; types?: string[]; firstLine: string; expected: string[]; fragment: boolean; comparison?: boolean; warns?: string[]; gap?: string; output?: string; run?: string; pending?: string[]; marker?: number; inherited?: boolean; imports?: string[] }
+export type Block = { number: number; line: number; endLine?: number; language: "vibe" | "ts"; source: string; filename?: string; types?: string[]; experimental?: string[]; firstLine: string; expected: string[]; fragment: boolean; comparison?: boolean; warns?: string[]; gap?: string; output?: string; run?: string; pending?: string[]; marker?: number; inherited?: boolean; imports?: string[] }
 export type Result = Block & { status: "ok" | "fragment" | "pending" | "compiler-gap" | "fail"; diagnostics: Diagnostic[]; reason?: string; execution?: Execution }
 export type Execution = { phase: "compile" | "run"; status: "passed" | "failed"; expectedStdout: string; stdout: string; stderr: string; exitCode: number; timedOut: boolean }
 
@@ -65,6 +65,9 @@ export function extract(markdown: string, options: { inlineExamples?: boolean } 
     if (run && output === undefined) throw new Error(`Block ${number} has a run marker without expected output`)
     blocks.push({ number, line: start + 1, endLine: i + 1, language, source: body.join("\n"), filename, output, run,
       types: header.match(/\/\/ types:\s*([^\n]+)/)?.[1].split(/[\s,]+/).filter(Boolean),
+      // An example of experimental code from an open proposal names its
+      // vibe.experimental feature; the page's program opts in (VIP-30, clarified).
+      experimental: header.match(/\/\/ experimental:\s*([^\n]+)/)?.[1].split(/[\s,]+/).filter(Boolean),
       firstLine: body.find(l => l.trim() && !/^\s*\/\//.test(l)) ?? body[0] ?? "",
       expected: [...header.matchAll(/\/\/ expect-(?:error|warning):\s*([^\n]+)/g)].flatMap(m => [...m[1].matchAll(/(?:EK|TS)\d+/g)].map(c => c[0])),
       warns: [...header.matchAll(/\/\/ expect-warning:\s*([^\n]+)/g)].flatMap(m => [...m[1].matchAll(/(?:EK|TS)\d+/g)].map(c => c[0])),
@@ -394,8 +397,15 @@ export function writeProject(dir: string, blocks: Block[], options: { exportFunc
   writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: {
     strict: true, target: "ESNext", module: "NodeNext", moduleResolution: "NodeNext",
     skipLibCheck: true, noEmit: true, types: [...new Set(blocks.flatMap(block => block.types ?? []))], rewriteRelativeImportExtensions: true
-  }, files: blocks.filter(block => !(options.omitFragments && block.fragment)).map(block => filenames.get(block.number)!) }))
+  }, ...experimentalSection(blocks), files: blocks.filter(block => !(options.omitFragments && block.fragment)).map(block => filenames.get(block.number)!) }))
   return { filenames, offsets, context }
+}
+
+// The vibe section a page's program needs: the experimental features its
+// blocks name, or none.
+export function experimentalSection(blocks: Block[]): { vibe?: { experimental: string[] } } {
+  const features = [...new Set(blocks.flatMap(block => block.experimental ?? []))]
+  return features.length ? { vibe: { experimental: features } } : {}
 }
 
 // Keep compile and execution output separate so a failure identifies its stage.

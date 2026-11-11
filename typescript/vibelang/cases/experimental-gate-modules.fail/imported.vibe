@@ -1,0 +1,2 @@
+import { Test } from "vibelang-runtime/experimental"
+export const fromSchema = Test

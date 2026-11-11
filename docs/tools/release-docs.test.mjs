@@ -327,3 +327,19 @@ test("current publication notes omit compiler-options vet records", {
   ).join("\n")
   assert.doesNotMatch(bullets, /go\s+vet|fuzz\s+suite|compiler.options\s+lock\s+guard/i)
 })
+
+// The alpha's release notes open with what the release supports and how to
+// reach the project, then core fixes, then the experimental features, which
+// are never written as bug fixes.
+test("the 0.0.13 notes open with the alpha header and keep experimental features in their own section", () => {
+  const notes = readFileSync(new URL("../user/src/setup/release-notes.md", import.meta.url), "utf8")
+  const release = notes.split(/^## 0\.0\.13\n/m)[1].split(/^## /m)[0]
+  const header = release.split(/^### /m)[0]
+  for (const required of ["0.0.13 is the alpha.", "the 33 accepted VIPs numbered 1 to 41", "(alpha.md)", '`"vibe": { "experimental": ["builtins"] }`',
+    "(https://github.com/smithersai/vibelang/issues/new?template=bug.yml)", "(https://github.com/smithersai/vibelang/issues/new?template=idea.yml)"])
+    assert.ok(header.includes(required), "the 0.0.13 header must include " + required)
+  const sections = [...release.matchAll(/^### (.+)$/gm)].map(m => m[1])
+  assert.deepEqual(sections.slice(0, 2), ["Bugs fixed since 0.0.12", "Experimental (opt-in)"])
+  const bugs = release.split(/^### Bugs fixed since 0\.0\.12\n/m)[1].split(/^### /m)[0]
+  assert.deepEqual(bugs.split("\n").filter(line => /Experimental\.(Durable|Human|Test|Eval|Scorer|Memory|Fuzz)\b|`(task|workflow)` declaration|\bEK55\d\d\b|\bEK3013\b/.test(line)), [])
+})

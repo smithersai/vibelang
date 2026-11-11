@@ -4,7 +4,7 @@ title: "VIP-56: Durable waits: timers, signals and human answers"
 
 # VIP-56: Durable waits: timers, signals and human answers
 
-**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](/vips/#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. An experimental implementation exists in the runtime: `Experimental.Durable.sleep`, signals and `Experimental.Human`. The compiler lowers none of them to plan nodes.
+**Status:** open, 2026-11-11. Not part of the language: Will limited the alpha to the core VIPs and reopened this one as a proposal ([VIPs](/vips/#the-built-in-set)). It was accepted optimistically on 2026-11-09 under his pre-alpha standing approval, since superseded; Will has not reviewed this VIP's decisions. An experimental implementation exists in the runtime: `Experimental.Durable.sleep`, signals and `Experimental.Human`. The compiler lowers none of them to plan nodes. It compiles only in a project that opts in with `"vibe": { "experimental": ["builtins"] }` ([VIP-30](/vips/0030-config-files#decision)); without it, the first use in a file is `EK3013`.
 
 ## Will's words
 

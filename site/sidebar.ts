@@ -86,6 +86,10 @@ export const sidebar = [
         "link": "/setup"
       },
       {
+        "text": "What is in the alpha",
+        "link": "/setup/alpha"
+      },
+      {
         "text": "Known limitations",
         "link": "/setup/known-limitations"
       },
@@ -768,7 +772,13 @@ export const sidebar = [
       {
         "text": "Experimental platform APIs",
         "link": "/vibelang-features/118-experimental-platform-apis"
-      },
+      }
+    ],
+    "collapsed": false
+  },
+  {
+    "text": "Experimental",
+    "items": [
       {
         "text": "Durable tasks and workflows",
         "link": "/vibelang-features/119-tasks-and-workflows"

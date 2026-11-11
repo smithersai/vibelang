@@ -67,6 +67,8 @@ test("the specification names only shipped tools and dates its transitional rows
 test("only VIP-53, the rename proposal, may name the product in its page and index link", () => {
   assert.deepEqual(provenance("docs/design/vips/0053-rename-smithersscript-open.md", "# VIP-53: Renaming VibeLang to SmithersScript (open)\n"), [])
   assert.deepEqual(reasons("| [53](0053-rename-smithersscript-open.md) | Renaming VibeLang | open 2026-11-07 |"), [])
+  assert.deepEqual(reasons("| [53](https://vibelang.sh/vips/0053-rename-smithersscript-open) | Renaming VibeLang | Open, no code |"), [])
+  assert.deepEqual(reasons("See https://vibelang.sh/vips/0053-rename-smithersscript-open-v2."), ["the hosting product's name"])
   assert.deepEqual(reasons("| [53](0053-rename-smithersscript-open.md) | Renaming VibeLang to SmithersScript |"), ["the hosting product's name"])
   assert.ok(provenance("docs/design/vips/0053-rename-smithersscript-open.md", "Codex Sol reviewed it.\n").length > 0)
 })
