@@ -1,0 +1,5 @@
+// VIP-33: bare Experimental is vibelang-runtime's Experimental namespace, in
+// scope with no import. It is VibeLang's own module, not Effect's, so this
+// case turns vibe.effectModules and vibe.effectGlobals off and still uses it.
+export const v6 = Experimental.NetAddress.isIPv6("fe80::1%eth0")
+export const v4 = Experimental.NetAddress.isIPv6("127.0.0.1")

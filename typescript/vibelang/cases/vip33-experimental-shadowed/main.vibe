@@ -1,0 +1,8 @@
+// expect-result: "local"
+// VIP-33: a local declaration named Experimental shadows the implicit
+// namespace, as a local declaration shadows any global.
+const Experimental = { NetAddress: { isIPv6: (_: string) => "local" } }
+
+export effect function main() {
+  return Experimental.NetAddress.isIPv6("::1")
+}
