@@ -248,6 +248,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - A `module` declaration named after an Effect global or module, such as `module context { }`, could report `EK4005` ("redeclares a binding of this file") because of unrelated code in the same file: a call to another Effect global such as `succeed`, a parameter or local `const` named `context` inside a function, or an object literal inside a function. A module name now shadows Effect's globals and modules as a `const` does, and `EK4005` reports only a second binding of that name at the top level of the file.
 
+- A `.vibe` module whose inferred export type was longer than TypeScript's serializer limit wrote the whole type into its declaration sidecar, 52 MB for one t3code module, where `tsc` reports `TS7056` for the same `.ts` source, and the migrate flow's API check ran out of memory reading it. The module now reports `TS7056` as `tsc` does: at the export in a project that emits declarations, and at each `.ts` file that imports the module in one that does not. Its sidecar holds what TypeScript writes, cut off at the limit. Give the export an explicit type annotation, as the message says.
+
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
 - A migration could report unchanged namespace member documentation as changed when a public binding used `infer`. The API check now keeps those comments on their public members and still detects edited documentation.

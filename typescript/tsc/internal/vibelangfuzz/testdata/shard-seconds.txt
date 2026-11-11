@@ -207,7 +207,7 @@
 9 FuzzPriorityYieldMigration
 9 FuzzReturnedDefaultCallbacks
 9 FuzzServiceAccessMigration
-9 FuzzSidecarFullTypes
+9 FuzzSidecarSerializerLimit
 9 FuzzStaticDefaultFix
 9 FuzzVIPLegacyForms
 9 FuzzVoidMatchFix

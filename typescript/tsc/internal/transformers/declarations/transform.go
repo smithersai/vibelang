@@ -224,11 +224,11 @@ const declarationEmitNodeBuilderFlags = nodebuilder.FlagsMultilineObjectLiterals
 const declarationEmitInternalNodeBuilderFlags = nodebuilder.InternalFlagsAllowUnresolvedNames | nodebuilder.InternalFlagsRewriteModuleSpecifiers
 
 // internalNodeBuilderFlags are the internal node builder flags for the file
-// being transformed. A .vibe module's declarations are its sidecar
-// (compiler/sidecars.go), which stock checkers read in place of the source:
-// its inferred types print in full, as the source gives them to a checker
-// that reads it, and TS7056 cannot replace one with any (t3code agent,
-// 2026-10-31: t3code's contracts read their sources' full types).
+// being transformed. A .vibe module keeps TypeScript's serializer limit: an
+// inferred type longer than it draws TS7056, as it does in the module's .ts
+// twin, and its sidecar (compiler/sidecars.go) holds what TypeScript writes,
+// cut off at the limit, rather than the whole type, which can run to tens of
+// megabytes.
 //
 // A project with neither declaration nor composite publishes no declarations,
 // so this transformer runs there only for the sidecars beside its .vibe
@@ -237,9 +237,6 @@ const declarationEmitInternalNodeBuilderFlags = nodebuilder.InternalFlagsAllowUn
 // node_modules: the exact type, where TS2883 would leave any (foldkit-33).
 func (tx *DeclarationTransformer) internalNodeBuilderFlags() nodebuilder.InternalFlags {
 	flags := declarationEmitInternalNodeBuilderFlags
-	if tx.state.currentSourceFile != nil && tx.state.currentSourceFile.IsVibeLang() {
-		flags |= nodebuilder.InternalFlagsNoTruncationLimit
-	}
 	if !tx.compilerOptions.GetEmitDeclarations() {
 		flags |= nodebuilder.InternalFlagsLocalModulePaths
 	}
