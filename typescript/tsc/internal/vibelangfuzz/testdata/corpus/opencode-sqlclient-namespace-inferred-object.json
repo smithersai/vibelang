@@ -1,0 +1,6 @@
+{
+  "Source": "opencode core database/database: a native helper returns an object whose SqlClient interface is shadowed by the consumer namespace import",
+  "Key": "sqlclient",
+  "Main": "import type { SqlClient } from \"effect/sql\"\nimport { plain } from \"./helper.js\"\nconst plained = plain()\nexport type Plained = typeof plained\nexport type Named = SqlClient.SqlClient\n",
+  "Helper": "import type { SqlClient } from \"effect/sql/SqlClient\"\nexport declare const plain: () => { $client: SqlClient }\n"
+}

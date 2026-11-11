@@ -202,7 +202,10 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 						first := ast.GetFirstIdentifier(written)
 						if file := ast.GetSourceFileOfNode(original); file == sourceFile {
 							preludeNameVisible(c, first, c.GetSymbolAtLocation(first))
-						} else if file != nil && file != declarations && !bound[first.Text()] {
+						} else if file != nil && file != declarations && !bound[first.Text()] &&
+							ast.GetFirstIdentifier(name).Text() == first.Text() {
+							// A copied type may already use a local alias, such as
+							// Client.SqlClient. Its original bare name needs no import.
 							recordLibraryTypeUse(c, state, sourceFile, first)
 						}
 					}
@@ -451,6 +454,15 @@ func preludeNameUnwritten(c *checker.Checker, file *ast.SourceFile, name string,
 	if !isVibeLangFile(file) || !isPreludeName(name) {
 		return false
 	}
+	// A namespace import may supply a same-named type shorthand in .vibe
+	// source. That shorthand is not a TypeScript binding for an annotation
+	// copied from another file: SqlClient must remain SqlClient.SqlClient.
+	// Check the symbol, since a direct interface import really binds the type.
+	if local := file.AsNode().Locals()[name]; local != nil &&
+		resolvedAlias(c, local) != resolvedAlias(c, symbol) &&
+		moduleAliasTypeOf(c, local, name) == resolvedAlias(c, symbol) {
+		return true
+	}
 	state := preludeStateOf(c)
 	if writtenPreludeNames(c, state, file)[name] {
 		return false
@@ -485,6 +497,16 @@ func writtenPreludeNames(c *checker.Checker, state *preludeState, file *ast.Sour
 			return false
 		}
 		if ast.IsIdentifier(node) {
+			// Client.SqlClient names a member of Client, not a local
+			// SqlClient binding. Qualified names have no Name() child.
+			if node.Parent != nil && ast.IsRightSideOfQualifiedNameOrPropertyAccess(node) {
+				return false
+			}
+			// In import { SqlClient as Client }, SqlClient is the exported
+			// name, not a binding in this file. Only Client is in scope.
+			if parent := node.Parent; parent != nil && ast.IsImportSpecifier(parent) && parent.AsImportSpecifier().PropertyName == node {
+				return false
+			}
 			if !isMemberNameOf(node) && isPreludeName(node.Text()) {
 				// A local declaration or reference can spell a prelude name
 				// without bringing that library into scope. Only the library's

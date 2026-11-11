@@ -1,0 +1,1 @@
+namespace type declarations match the TypeScript twin byte for byte

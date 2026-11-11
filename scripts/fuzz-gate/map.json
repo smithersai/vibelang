@@ -1,4 +1,5 @@
 {
+  "shadowed-import-declarations": {"paths": ["^typescript/tsc/internal/vibelang/(declarations|moduleservices)\\.go$", "^typescript/tsc/internal/vibelangfuzz/shadowed_import_declaration_fuzz_test\\.go$", "^typescript/tsc/internal/vibelangfuzz/declaration_namespace_shadow_fuzz_test\\.go$", "^typescript/tsc/internal/vibelangfuzz/testdata/pending/declaration-namespace-shadow\\.txt$"], "tests": ["TestShadowedImportDeclarationQuoted", "FuzzShadowedImportDeclaration", "TestDeclarationNamespaceShadowQuoted", "TestDeclarationNamespaceShadowWitness", "FuzzDeclarationNamespaceShadow"]},
   "format": {
     "paths": ["^typescript/tsc/internal/vibelangfmt/", "^typescript/tsc/internal/format/vibelang", "^typescript/tsc/internal/vibelangfuzz/format", "^docs/design/src/007-tooling\\.md$"],
     "tests": ["FuzzFormat", "TestToolsFormatSemanticContract"]
