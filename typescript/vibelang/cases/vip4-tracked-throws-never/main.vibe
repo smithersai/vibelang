@@ -1,0 +1,15 @@
+// VIP-4 and VIP-27: a plain .vibe function never throws in the tracked sense,
+// so it declares @throws {never}. A throw that only an any argument reaches is
+// untracked: in effect code the call dies with it instead of failing.
+error NotFound { id: string }
+
+export function add(a: number, b: number) { return a + b }
+
+const loose: any = 1n
+
+export effect function sum() { return add(loose, 1) }
+
+export effect function load(id: string) {
+  if (id === "") throw new NotFound({ id })
+  return id
+}

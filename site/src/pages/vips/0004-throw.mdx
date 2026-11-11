@@ -12,18 +12,21 @@ Before its first release, VibeLang ships no quick fixes or codemods of its own. 
 ## Decision
 
 ```ts
-// parse.ts: TypeScript may throw
-/** @throws {Error} */
-export function parse(s: string) { if (!s) throw new Error("empty"); return s }
-
 // load.vibe
-import { parse } from "./parse.ts"
-function add(a, b) { return a + b }                                 // a plain function never throws
-function bad(s) { if (!s) throw new Error("empty"); return s }      // EK0401
-async function get(url) { return Promise.reject(new Error("no")) }  // allowed, as in TypeScript
+module io {                                    // TypeScript, as in a sibling .ts file (VIP-40)
+  /** @throws {Error} */
+  export function parse(s: string): string { if (!s) throw new Error("empty"); return s }   // may throw
+  export function queryDb(q: string): Promise<string> { return Promise.resolve(q) }
+}
+import { parse, queryDb } from io
+error NotFound { id: string }
 
-effect function load(id) {
-  if (!user) throw new NotFound(id)            // the same as failing with Effect.fail(new NotFound(id))
+function add(a: number, b: number) { return a + b }                       // a plain function never throws
+function bad(s: string) { if (!s) throw new Error("empty"); return s }    // expect-error: EK0401
+async function get(url: string) { return Promise.reject(new Error(url)) } // allowed, as in TypeScript
+
+effect function load(id: string, s: string, q: string) {
+  if (!id) throw new NotFound({ id })          // the same as failing with Effect.fail(new NotFound({ id }))
   add(1, 2)                                    // ok: doesn't throw
   parse(s)                                     // expect-error: EK0403; may throw, so wrap it and run it with try
   try Effect.try(() => parse(s))               // ok: Effect.try (a reserved word, so not a global)
@@ -45,7 +48,14 @@ effect function load(id) {
 - **Amended 2026-10-29: generated annotations.** The remaining annotations of `lib.d.ts` globals and effect 4.1.1's non-Effect exports are generated: `@throws {never}` only when the source has no `throw` reachable from well-typed input, a named class when one is known (`SchemaError`), otherwise `unknown`. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 40).
 - **Amended 2026-10-29: only two wrappers take a throwing thunk.** Only `Effect.try` and `Effect.tryPromise` admit a throwing thunk. `sync`, `promise`, `callback` and `suspend` take `LazyArg`, which has no `@throws`, so a throwing thunk there is a compile error; use the matching wrapper. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 41).
 
+- **Clarified 2026-11-11: a throwing call inside a wrapper thunk belongs to the wrapper.** The 2026-10-31 rule above exempts a function literal passed where the parameter's function type admits throws: the thunks of `Effect.try` and `Effect.tryPromise`, the `Promise` executor, and a callback passed to a `@rethrows` parameter. A call known to throw inside that literal belongs to the enclosing call, so the example's `try Effect.try(() => parse(s))` is allowed, while `const read = (s: string) => parse(s)` in plain code is `EK0401`. A `throw` in the literal is still `EK0401`, and a function nested in the literal is plain code of its own. This is the exemption [Plain code never throws](https://github.com/smithersai/vibelang/blob/main/docs/design/src/003-failures.md#plain-code-never-throws) states; the amendment's wording omitted it.
+- **Clarified 2026-11-11: "never throws" counts tracked throws.** A plain function never throws in the tracked sense: no `throw` and no call known to throw is reachable from it, so its thrown type is `never` and its declaration carries `@throws {never}` (VIP-27). A throw that no well-typed argument reaches stays untracked, as [Implicit throws](https://github.com/smithersai/vibelang/blob/main/docs/design/src/003-failures.md#implicit-throws) rules for lib globals. With `add(a: number, b: number)`, the call `add(1n, 1)` is TypeScript's `TS2345`; only an `any` argument reaches the `TypeError` that `+` throws when it mixes `bigint` and `number`. That throw is a defect: in effect code the call dies with the `TypeError`, as in `Effect.sync`.
+
 *Corrected 2026-10-29: in effect 4.1.1, `Schema.decodeUnknownSync(schema)` only builds a decoder and throws nothing; the decoder it returns is what throws `SchemaError`. The annotation amendment above means that returned decoder (found by the round-4 review).*
+
+*Corrected 2026-11-11: the Decision example declares every name it uses.* It read `user`, `s` and `q` without declaring them, beside lines that state their own diagnostics, so the free names added errors the example never stated. The TypeScript it calls now sits in a VIP-40 `module` body in the same file, so the example checks as one program that reports exactly the `EK0401` and `EK0403` it marks.
+
+*Corrected 2026-11-11: the Decision example builds the error as `new NotFound({ id })`. An `error NotFound { id: string }` declaration is a `Data.TaggedError` whose constructor takes the payload object (VIP-13), so `new NotFound(id)` is `TS2345`.*
 
 ## Prior art
 

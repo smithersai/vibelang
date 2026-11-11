@@ -1,0 +1,9 @@
+// expect: EK0401
+// VIP-4: a call known to throw inside the thunk of Effect.try or
+// Effect.tryPromise belongs to that wrapper. The same call in a plain arrow is
+// EK0401, the one error this case reports.
+import { parse } from "./parse.ts"
+
+export effect function load(s: string) { return try Effect.try(() => parse(s)) }
+export effect function later(s: string) { return try tryPromise(() => Promise.resolve(parse(s))) }
+export const read = (s: string) => parse(s)

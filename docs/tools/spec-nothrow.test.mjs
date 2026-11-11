@@ -89,7 +89,7 @@ test("VIP-4 records plain functions never throw", () => {
   assert.match(text, /`throw` in an `async` function rejects its Promise, as in TypeScript\./)
   assert.match(text, /`throw` in any other `\.vibe` code, or a call known to throw there outside the `try` block of a `try`\/`catch` statement, is `EK0401`\./)
   assert.match(text, /A `\.vibe` callable throws `never`: nothing is inferred from a body, and a written `@throws` or `@rethrows` in a `\.vibe` file is `EK0406`\./)
-  assert.match(text, /function bad\(s\) \{ if \(!s\) throw new Error\("empty"\); return s \}\s+\/\/ EK0401/)
+  assert.match(text, /function bad\(s: string\) \{ if \(!s\) throw new Error\("empty"\); return s \}\s+\/\/ expect-error: EK0401/)
 })
 
 test("VIP-4's decision bullets no longer let a plain function throw or infer a .vibe thrown type", () => {
