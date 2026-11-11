@@ -8,7 +8,6 @@ import (
 	"io"
 	"maps"
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -18,6 +17,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ipc"
 	"github.com/microsoft/TypeScript/tsc/internal/json"
 	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // DiagnosticSource prefixes the code of every diagnostic the mapper reports,
@@ -131,7 +131,7 @@ func (h *Handler) openProject(params json.Value) (any, error) {
 		}
 	}
 	if table, err := DefaultTable(); err == nil && p.ConfigFileName != "" {
-		dir := path.Dir(filepath.ToSlash(p.ConfigFileName))
+		dir := tspath.GetDirectoryPath(filepath.ToSlash(p.ConfigFileName))
 		if message := versionMismatch(table.Header, dir, os.ReadFile); message != "" {
 			// A project-level diagnostic, on the mapper's tsconfig entry.
 			result.OptionDiagnostics = append(result.OptionDiagnostics, contentmapper.OptionDiagnosticResult{

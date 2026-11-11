@@ -130,7 +130,7 @@ func composeSourceMap(tsMap string, exec string, segments []spanmap.Segment, ori
 	if source == "" {
 		source = "/module.vibe"
 	}
-	dir := tspath.RootedDirectoryPathFromNormalized(path.Dir(source))
+	dir := tspath.RootedFilePathFromAbsolute(source).Directory()
 	generator := sourcemap.NewGenerator(jsName, "", dir, tspath.CaseSensitive)
 	index := generator.AddSource(tspath.RootedFilePathFromAbsolute(source))
 	_ = generator.SetSourceContent(index, original)

@@ -228,6 +228,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - Published packages could reuse an older compiler, include local scratch files, or leave Windows without a compiler after a rehearsal. Packaging now requires matching committed sources and successful builds, includes only tracked sources, restores the selected platforms on every run, and checks the requested Bun starter version.
 - On a fresh checkout, a project whose `.vibe` files hold module bodies, such as a `tsconfig.json` with `include: ["."]`, got a loader record that `checkLoaderRecord` called stale at once (`gained or lost a file`), because the record's own compile wrote each body's `x.vibe.<name>.d.ts` after listing the directory. Those declarations now count as outputs, and the record holds right after it is written.
 
+- Compiling a standalone `.vibe` file on Windows, or checking an untitled editor document outside a project, could crash when no `package.json` existed above it. Package lookup now stops at the path root, and dependency errors remain locationless when no project file exists.
+
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
 - A migration could report unchanged namespace member documentation as changed when a public binding used `infer`. The API check now keeps those comments on their public members and still detects edited documentation.

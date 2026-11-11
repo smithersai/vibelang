@@ -7,7 +7,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	stdmaps "maps"
-	"path"
 	"slices"
 	"strings"
 )
@@ -87,13 +86,12 @@ func effectPinDiagnostics(p *compiler.Program) []*ast.Diagnostic {
 // Inferred and command-line projects use their nearest package manifest.
 func effectPinPackageAnchor(p *compiler.Program, file *ast.SourceFile) *ast.SourceFile {
 	fs := p.Host().FS()
-	for dir := path.Dir(file.FileName().AsString()); ; dir = path.Dir(dir) {
-		name := tspath.RootedFilePathFromAbsolute(path.Join(dir, "package.json"))
+	anchor, _ := file.FileName().Directory().ForEachAncestorDirectory(func(dir tspath.RootedDirectoryPath) (*ast.SourceFile, bool) {
+		name := dir.ResolveFile("package.json")
 		if text, ok := fs.ReadFile(name); ok {
-			return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: name, PathKey: fs.CaseSensitivity().PathKey(tspath.RootedPath(name))}, text, core.ScriptKindJSON)
+			return parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: name, PathKey: fs.CaseSensitivity().PathKey(tspath.RootedPath(name))}, text, core.ScriptKindJSON), true
 		}
-		if path.Dir(dir) == dir {
-			return nil
-		}
-	}
+		return nil, false
+	})
+	return anchor
 }

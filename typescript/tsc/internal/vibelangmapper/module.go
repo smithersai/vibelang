@@ -36,15 +36,15 @@ func FileContextOf(fileName string) FileContext {
 // program's common source directory, which a per-file mapper cannot know.
 func moduleKey(fileName string, read func(string) ([]byte, error)) string {
 	module := strings.TrimSuffix(fileName, tspath.VibeLangSourceExtension(fileName))
-	for dir := path.Dir(fileName); ; dir = path.Dir(dir) {
-		if data, err := read(path.Join(dir, "package.json")); err == nil {
+	for dir := tspath.GetDirectoryPath(fileName); ; dir = tspath.GetDirectoryPath(dir) {
+		if data, err := read(tspath.CombinePaths(dir, "package.json")); err == nil {
 			prefix := path.Base(dir)
 			if name, named := packageName(data); named {
 				prefix = name
 			}
 			return prefix + "/" + strings.TrimPrefix(module, strings.TrimSuffix(dir, "/")+"/")
 		}
-		if parent := path.Dir(dir); parent == dir {
+		if parent := tspath.GetDirectoryPath(dir); parent == dir {
 			break
 		}
 	}
@@ -79,10 +79,10 @@ func projectPackageFiles(configFileName string) (files []string, identity string
 	if configFileName == "" {
 		return nil, "no-config"
 	}
-	root := path.Dir(filepath.ToSlash(configFileName))
-	for dir := root; ; dir = path.Dir(dir) {
-		files = append(files, path.Join(dir, "package.json"))
-		if parent := path.Dir(dir); parent == dir {
+	root := tspath.GetDirectoryPath(filepath.ToSlash(configFileName))
+	for dir := root; ; dir = tspath.GetDirectoryPath(dir) {
+		files = append(files, tspath.CombinePaths(dir, "package.json"))
+		if parent := tspath.GetDirectoryPath(dir); parent == dir {
 			break
 		}
 	}
@@ -99,7 +99,7 @@ func projectPackageFiles(configFileName string) (files []string, identity string
 			}
 			return nil
 		}
-		if entry.Name() == "package.json" && path.Dir(filepath.ToSlash(name)) != root {
+		if entry.Name() == "package.json" && tspath.GetDirectoryPath(filepath.ToSlash(name)) != root {
 			files = append(files, filepath.ToSlash(name))
 		}
 		return nil
@@ -137,8 +137,8 @@ func projectPackageFiles(configFileName string) (files []string, identity string
 func installedVersions(dir string, names []string, read func(string) ([]byte, error)) map[string]string {
 	found := map[string]string{}
 	for _, name := range names {
-		for d := dir; ; d = path.Dir(d) {
-			if data, err := read(path.Join(d, "node_modules", name, "package.json")); err == nil {
+		for d := dir; ; d = tspath.GetDirectoryPath(d) {
+			if data, err := read(tspath.CombinePaths(d, "node_modules", name, "package.json")); err == nil {
 				var manifest struct {
 					Version string `json:"version"`
 				}
@@ -147,7 +147,7 @@ func installedVersions(dir string, names []string, read func(string) ([]byte, er
 				}
 				break
 			}
-			if parent := path.Dir(d); parent == d {
+			if parent := tspath.GetDirectoryPath(d); parent == d {
 				break
 			}
 		}
