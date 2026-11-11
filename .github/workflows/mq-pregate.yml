@@ -31,7 +31,7 @@ env:
   PRE_TARGETS: ${{ github.event.client_payload.targets || inputs.targets }}
   PRE_PATCH: ${{ github.event.client_payload.patch || inputs.patch }}
   # The graph's Go build, ~/.cache/go-build-smthrs, comes only from the go- cache below, which go-cache.yml trims on
-  # each push. The day's cache restores yesterday's and saves it again, so a Go build in it only grew.
+  # each push. Both caches are restored read-only; only the trusted main workflow saves them.
   CACHE_PATHS: |
     ~/.cache/go-build
     ~/go/pkg/mod
@@ -75,12 +75,12 @@ jobs:
       - name: Name today's cache
         id: day
         run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
-      - id: cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      # A fresh prefix excludes caches previously written by dispatched patches.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ${{ env.CACHE_PATHS }}
-          key: gate-${{ steps.day.outputs.day }}
-          restore-keys: gate-
+          key: gate-trusted-v1-${{ steps.day.outputs.day }}
+          restore-keys: gate-trusted-v1-
       # The Go build cache of a recent main, which go-cache.yml saves on each push, over the day's cache, so the gate
       # compiles only the packages that changed since. The Go cache is content-addressed, so the two merge. The path
       # matches go-cache.yml's: a cache's version hashes its paths.
@@ -112,13 +112,6 @@ jobs:
             > "$RUNNER_TEMP/pre/$PRE_TAG-graph.log" 2>&1 || rc=$?
           echo "$rc" > "$RUNNER_TEMP/pre/$PRE_TAG.rc"
           exit "$rc"
-      # Saved whether the gate passed or not, so a day whose first run fails still gets its modules, packages and
-      # browser.
-      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        if: always() && steps.cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ env.CACHE_PATHS }}
-          key: gate-${{ steps.day.outputs.day }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

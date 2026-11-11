@@ -6,7 +6,9 @@ run-name: go cache ${{ github.sha }}
 # restores was saved; with one cache a day, the compiler build took 41 s an hour
 # after the save and 393 s by the next morning (2026-10-31). Each push to main
 # compiles what the graph's Go targets compile and saves the result under the
-# commit's id; the pre-gate restores the newest. One run at a time: a push
+# commit's id; the pre-gate restores the newest. This trusted workflow also
+# warms the daily dependency cache; dispatched patches only restore it.
+# One run at a time: a push
 # during a run waits, and a newer push replaces the waiting one.
 on:
   push:
@@ -20,8 +22,17 @@ concurrency:
   group: go-cache
   cancel-in-progress: false
 
+env:
+  # Keep the dependency paths identical to mq-pregate.yml.
+  CACHE_PATHS: |
+    ~/.cache/go-build
+    ~/go/pkg/mod
+    ~/.bun/install/cache
+    ~/.cache/ms-playwright
+
 jobs:
   warm:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
@@ -32,6 +43,35 @@ jobs:
         with:
           go-version-file: typescript/tsc/go.mod
           cache: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "26"
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: "1.4.2"
+      - name: Free disk space
+        run: |
+          df -h / | tail -1
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift /opt/hostedtoolcache/CodeQL
+          df -h / | tail -1
+      - name: Name today's cache
+        id: day
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+      - id: cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ env.CACHE_PATHS }}
+          key: gate-trusted-v1-${{ steps.day.outputs.day }}
+          restore-keys: gate-trusted-v1-
+      - name: Warm dependency downloads
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: sh scripts/ci.sh --prepare-only
+      - name: Warm Chromium downloads
+        if: steps.cache.outputs.cache-hit != 'true'
+        working-directory: site
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
       # mq-pregate.yml restores the same path: a cache's version hashes its paths.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
@@ -40,6 +80,12 @@ jobs:
           restore-keys: go-
       - name: Compile what the graph's Go targets compile
         run: sh scripts/warm-go-cache.sh
+      # Publish only after every warmup succeeds; never save partial installs.
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        if: steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.CACHE_PATHS }}
+          key: gate-trusted-v1-${{ steps.day.outputs.day }}
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/go-build-smthrs

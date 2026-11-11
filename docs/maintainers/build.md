@@ -404,10 +404,23 @@ the graph's Go targets and `scripts/check-forms-table.sh` compile, with their
 flags, and saves the cache as `go-<commit>`. The pre-gate restores the newest
 `go-` cache, the only cache that holds the graph's Go build. With one cache saved
 a day, the hosted `//typescript:compiler` build took 41 s an hour after the save
-and 393 s by the next morning (2026-10-31). The day's `gate-` cache holds the
-modules, package and browser downloads; each day's restores the day before's, so
-a Go build in it only grew, and hosted runs ran out of disk restoring it. The
-run first deletes toolchains no target uses, about 10 GB.
+and 393 s by the next morning (2026-10-31).
+
+The same trusted workflow saves the day's dependency cache as
+`gate-trusted-v1-<day>`. Only runs on `main` can write either cache, including
+manual runs. On a daily cache miss, it runs `scripts/ci.sh --prepare-only` for
+the frozen dependency installs, then `npm ci` and the Chromium install in
+`site/`. Its Go warmup downloads the Go modules. Both caches are saved only
+after all warmup steps succeed, so failed or interrupted installs are not
+published. The daily cache can restore an earlier trusted day's downloads.
+
+The hosted pre-gate restores both caches read-only and never saves changes
+made while running a dispatched patch, regardless of the gate's result.
+The new dependency prefix excludes the old `gate-<day>` caches; neither
+workflow falls back to that namespace. The daily cache holds ordinary Go
+build entries, Go modules, Bun packages and Playwright browser downloads, but
+leaves the graph's Go build to `go-<commit>`. Both workflows first delete
+toolchains no target uses, about 10 GB.
 Every Go build and test target, including `//typescript:forms-generator`, uses `GOCACHE=$HOME/.cache/go-build-smthrs`,
 so one cache serves them all. All three native executable targets pass Go's
 `-p 8` limit. The compiler appends `-trimpath` to inherited `GOFLAGS`,
@@ -416,7 +429,9 @@ limit package compilation inside one target. `scripts/go-cache.test.mjs` fails w
 compiles a package the script misses, or when the two workflows' cache paths
 differ. `scripts/mq-pregate.test.mjs` checks the pre-gate's base guidance and
 verifies that both dispatch paths carry the supplied commit into checkout and
-target selection.
+target selection. It also rejects cache writers in the pre-gate, checks that
+the trusted workflow is the only writer of both cache families, and verifies
+the dependency cache namespace, paths and successful warmup requirements.
 
 The runtime suite uses Bun's `--only-failures` reporter. Every test still runs,
 and the summary retains pass, skip and failure counts. Omitting individual
