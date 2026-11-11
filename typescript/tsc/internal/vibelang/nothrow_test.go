@@ -13,8 +13,8 @@ import (
 // the same throw, whatever form the throw takes and wherever the plain code
 // stands. Effect code, an async function and a module block report nothing.
 func TestThrowOutsideEffectCodeIsEK0401(t *testing.T) {
-	throwText := "A 'throw' is not allowed outside effect code: synchronous VibeLang code never throws. Make the function 'effect' (its 'throw' becomes 'Effect.fail'), or move the code to a '.ts' file."
-	topText := "A 'throw' is not allowed at the top level of a VibeLang module. Move the code to a '.ts' file, or run it in an 'effect' function."
+	throwText := "A 'throw' is not allowed outside effect code: synchronous VibeLang code never throws. Make the function 'effect' (its 'throw' becomes 'Effect.fail'), or keep JavaScript's throw in a 'module' block with '@throws' on the function."
+	topText := "A 'throw' is not allowed at the top level of a VibeLang module. Run it in an 'effect' function, or move the code to a 'module' block, whose throw is JavaScript's."
 	for _, test := range []struct {
 		name, source string
 		want         []string // the message of each diagnostic, in order
@@ -101,6 +101,27 @@ export function c() { return viaClass() }`
 	for i := range want {
 		if !strings.HasPrefix(got[i], want[i]) {
 			t.Errorf("diagnostic %d:\n got %s\nwant %s", i, got[i], want[i])
+		}
+	}
+}
+
+// Throwing on purpose is always possible and always typed: a module block
+// keeps TypeScript in the .vibe file (VIP-40). Every EK0401 text that offers
+// an escape names the module block, never a separate .ts file alone, so the
+// diagnostic does not send readers and agents out of VibeLang.
+func TestThrowMessagesNameTheModuleBlock(t *testing.T) {
+	for name, m := range map[string]*Message{
+		"throwOutsideEffect":            throwOutsideEffect,
+		"throwAtTopLevel":               throwAtTopLevel,
+		"throwingCallOutsideEffect":     throwingCallOutsideEffect,
+		"foreignCallInEffectParameters": foreignCallInEffectParameters,
+		"unknownThrowInEffectful":       unknownThrowInEffectful,
+	} {
+		if !strings.Contains(m.Text, "'module' block") {
+			t.Errorf("%s does not name the module block: %q", name, m.Text)
+		}
+		if strings.Contains(m.Text, "'.ts' file") {
+			t.Errorf("%s still sends the code to a .ts file: %q", name, m.Text)
 		}
 	}
 }

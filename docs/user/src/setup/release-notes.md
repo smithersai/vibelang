@@ -234,6 +234,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The API comparison command could load a TypeScript compiler installed with an input package and fail on unchanged declarations. It now uses the pinned compiler unless another compiler is explicitly requested.
 
+- `EK0401`, for a `throw` or a call known to throw in a plain function or at the top level, told you to move the code to a `.ts` file. Its message now offers the `module` block, TypeScript kept inside the `.vibe` file with `@throws` on the function, and `EK0406`'s note names the `module` block beside a `.ts` file.
+
 - The guidance for a plain function that throws (`EK0401`) told readers and coding agents to move the code to a `.ts` file, so converted projects kept throwing code out of VibeLang. The skill, the specification and these docs now say to keep the code in a `module` block inside the `.vibe` file, with `@throws {T}` on each function that throws, and to use a separate `.ts` file only where a tool must start the file by path.
 
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.

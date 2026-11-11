@@ -1,2 +1,2 @@
-A 'throw' is not allowed outside effect code: synchronous VibeLang code never throws. Make the function 'effect' (its 'throw' becomes 'Effect.fail'), or move the code to a '.ts' file.
-A 'throw' is not allowed at the top level of a VibeLang module. Move the code to a '.ts' file, or run it in an 'effect' function.
+A 'throw' is not allowed outside effect code: synchronous VibeLang code never throws. Make the function 'effect' (its 'throw' becomes 'Effect.fail'), or keep JavaScript's throw in a 'module' block with '@throws' on the function.
+A 'throw' is not allowed at the top level of a VibeLang module. Run it in an 'effect' function, or move the code to a 'module' block, whose throw is JavaScript's.

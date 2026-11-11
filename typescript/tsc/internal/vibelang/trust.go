@@ -549,7 +549,7 @@ func inParameterListOf(node, fn *ast.Node) bool {
 // foreignCallInEffectParameters is EK0401's text for a call whose throwing
 // is unknown in an effect function's or producer's parameter list. {0} is
 // the callee.
-var foreignCallInEffectParameters = EK0401.With("'{0}' may throw, and an effect function's parameter list runs at the call, before its Effect exists, so nothing there may throw. Compute the value in the body, or move the code to a '.ts' file.")
+var foreignCallInEffectParameters = EK0401.With("'{0}' may throw, and an effect function's parameter list runs at the call, before its Effect exists, so nothing there may throw. Compute the value in the body, or move the code to a 'module' block with '@throws' on the function.")
 
 // throwContextParent follows source evaluation rather than member ownership.
 // A computed name or decorator runs while defining its class or object, before
@@ -812,7 +812,7 @@ func isPlatformInvocation(c *checker.Checker, node *ast.Node) bool {
 
 // unknownThrowInEffectful is EK0401's text for a call whose throwing is
 // unknown in a plain function whose return type is wholly effectful.
-var unknownThrowInEffectful = EK0401.With("'{0}' may throw, and a function that returns an Effect, a Stream or a Layer never throws: its failures belong in that value. Make the function 'effect' and run the call with 'try Effect.try(() => …)', declare the callee's '@throws', or move the code to a '.ts' file.")
+var unknownThrowInEffectful = EK0401.With("'{0}' may throw, and a function that returns an Effect, a Stream or a Layer never throws: its failures belong in that value. Make the function 'effect' and run the call with 'try Effect.try(() => …)', declare the callee's '@throws', or move the code to a 'module' block with '@throws' on the function.")
 
 // inEffectfulPlainHome reports whether call, outside a hatch and an async
 // function, runs where isEffectfulPlainHome holds for its enclosing function.

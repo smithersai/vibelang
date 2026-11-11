@@ -38,7 +38,7 @@ func checkVibeThrowsTags(c *checker.Checker, file *ast.SourceFile) {
 				}
 				seen[tag.Pos()] = true
 				d := reportAt(c, file, tagNameRange(tag), EK0406, "@"+tag.TagName().Text())
-				note(d, "Remove the tag. An effect function writes its failures in its error type, such as number!NotFound; code that throws belongs in a .ts file, whose @throws tags VibeLang reads.")
+				note(d, "Remove the tag. An effect function writes its failures in its error type, such as number!NotFound; code that throws belongs in a module block or a .ts file, whose @throws tags VibeLang reads.")
 			}
 		}
 		return n.ForEachChild(visit)

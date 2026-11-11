@@ -29,17 +29,17 @@ import (
 // (throwsBelongToCall). A throw expression and a do block are the throw
 // statement they hold: the arrow the
 // parser writes for them (parser/vibelang_blocks.go) belongs to the code
-// around it. Code that must throw a JavaScript exception moves to a .ts file
-// or a module block, whose body is TypeScript (modules.go).
+// around it. Code that must throw a JavaScript exception moves to a module block,
+// whose body is TypeScript (modules.go), with @throws on each function.
 
 var (
 	// throwOutsideEffect is EK0401's text for a throw in synchronous code.
-	throwOutsideEffect = EK0401.With("A 'throw' is not allowed outside effect code: synchronous VibeLang code never throws. Make the function 'effect' (its 'throw' becomes 'Effect.fail'), or move the code to a '.ts' file.")
+	throwOutsideEffect = EK0401.With("A 'throw' is not allowed outside effect code: synchronous VibeLang code never throws. Make the function 'effect' (its 'throw' becomes 'Effect.fail'), or keep JavaScript's throw in a 'module' block with '@throws' on the function.")
 	// throwAtTopLevel is EK0401's text for a throw at a module's top level.
-	throwAtTopLevel = EK0401.With("A 'throw' is not allowed at the top level of a VibeLang module. Move the code to a '.ts' file, or run it in an 'effect' function.")
+	throwAtTopLevel = EK0401.With("A 'throw' is not allowed at the top level of a VibeLang module. Run it in an 'effect' function, or move the code to a 'module' block, whose throw is JavaScript's.")
 	// throwingCallOutsideEffect is EK0401's text for a call known to throw in
 	// synchronous code. {0} is the callee, {1} what it throws.
-	throwingCallOutsideEffect = EK0401.With("'{0}' may throw '{1}', and synchronous VibeLang code never throws. Make the function 'effect' and run the call with 'try Effect.try(() => …)', or move the code to a '.ts' file.")
+	throwingCallOutsideEffect = EK0401.With("'{0}' may throw '{1}', and synchronous VibeLang code never throws. Make the function 'effect' and run the call with 'try Effect.try(() => …)', or move the code to a 'module' block with '@throws' on the function.")
 )
 
 func init() {
