@@ -243,6 +243,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-line-break", "type T = number !\n! ;"},
 	{"effect-type-line-break-equality", "declare const a: number\nconst loose = a as number!\n!== a"},
 	{"try-assignment-target", grammarTryAssignmentSources[0]},
+	{"hashbang-comment", grammarHashbangForms[0]},
 	{"service-class", "service class S { n: number }"},
 	{"try-in-generator-effect-identifier", "function* g() { effect % try 1; }"},
 	{"try-in-generator", "function* g() { try 1; }"},

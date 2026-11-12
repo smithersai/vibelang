@@ -15,7 +15,16 @@ func grammarLexSource(src string) []grammarToken {
 	var out []grammarToken
 	rs := []rune(src)
 	nl := false
-	for i := 0; i < len(rs); {
+	i := 0
+	// ECMAScript's HashbangComment: `#!` at the very start of the source runs
+	// to the end of its line and is skipped like a comment, as TypeScript's
+	// scanner does; anywhere else `#!` is TS18026 and lexes as written.
+	if len(rs) >= 2 && rs[0] == '#' && rs[1] == '!' {
+		for i < len(rs) && rs[i] != '\n' {
+			i++
+		}
+	}
+	for i < len(rs) {
 		r := rs[i]
 		switch {
 		case r == '\n':
