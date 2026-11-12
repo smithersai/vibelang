@@ -1,0 +1,6 @@
+// expect: EK2201
+export function load() { uninterruptible { } }
+export function save() { restore { } }
+
+// EK2201's note gives both ways out and names no earlier compiler.
+// Appendix B: EK2201 — spec-rule: docs/design/src/900-appendices.md#8fd256f4944475fa

@@ -646,7 +646,7 @@ Run `bun test`. Use `Effect.runPromise` in an async test when the Effect is asyn
 
 Typed ESLint integration follows the same config discovery: `typedProgram()` checks `vibe.config.json`, `tsconfig.json`, then `jsconfig.json` in each directory, starting at `tsconfigRootDir`. Set `project` to select an explicit config file. The compiler's compatibility sidecars keep native imports distinct from neighbouring TypeScript files and follow configured sidecar locations.
 
-For VIP-22, interruption blocks outside effect code report `EK2201`. The old compiler emitted them as ordinary JavaScript blocks. Remove only the `uninterruptible`, `interruptible` or `restore` keyword there, retaining the block, comments, scope and control flow. To mask an Effect instead, move the block into an `effect` function or `effect { }` block.
+For VIP-22, interruption blocks outside effect code report `EK2201`. To keep such a block without masking, remove only the `uninterruptible`, `interruptible` or `restore` keyword, retaining the block, comments, scope and control flow. To mask an Effect instead, move the block into an `effect` function or `effect { }` block.
 
 For VIP-2, write a `do { … }` used as an Effect argument as `effect { return do { … } }`. The inner `do` preserves its completion value; the effect block delays evaluation until each run.
 
