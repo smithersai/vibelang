@@ -40,6 +40,15 @@ func relicContinuationTargets(c *checker.Checker, file *ast.SourceFile) map[*ast
 			}
 		}
 	}
+	// The kernel entry declares its own continuation functions; Appendix B
+	// retires every resolved continuation-runtime name, not only the root's.
+	if kernel := resolvedModuleSymbol(c, map[*ast.SourceFile]*ast.Symbol{}, file, runtimeModule+"/kernel"); kernel != nil {
+		for _, name := range []string{"handle", "resume", "resumeWith", "abandon"} {
+			if symbol := c.TryGetMemberInModuleExports(name, kernel); symbol != nil {
+				targets[aliasTarget(c, symbol)] = true
+			}
+		}
+	}
 	return targets
 }
 
