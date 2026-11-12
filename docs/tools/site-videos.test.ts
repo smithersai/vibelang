@@ -125,3 +125,31 @@ test("the specification walkthrough is off the site until it is re-scripted", ()
   expect(manifest.videos["spec-walkthrough.mp4"].removed).toBe("teaches retired forms; needs a new script")
   expect(readFileSync(join(repo, "docs/design/src/000-intro.md"), "utf8")).not.toContain("/videos/spec-walkthrough")
 })
+
+const bound = (version: string | undefined, receiptVersion: string) => ({
+  "site/src/pages/a.mdx": page("demo"),
+  "site/public/videos/demo.mp4": "v", "site/public/videos/demo.jpg": "p",
+  "site/videos/demo/recording.json": JSON.stringify({ compilerVersion: receiptVersion, videoSha256: sha256("v") }),
+  "site/videos/manifest.json": JSON.stringify({ schema: 1, videos: { "demo.mp4": version === undefined ? { poster: "demo.jpg" } : { version, poster: "demo.jpg" } } })
+})
+
+test("a receipt-bound video takes its version from the receipt, so a re-recording needs no manifest edit", () => {
+  expect(check(bound(undefined, "1.2.2"))).toEqual([])
+  expect(check(bound(undefined, "1.2.3"))).toEqual([])
+  expect(check(bound(undefined, "1.2.3"), { release: "1.2.3" })).toEqual([])
+  expect(check(bound(undefined, "1.2.2"), { release: "1.2.3" }).join("\n")).toMatch(/demo\.mp4: records VibeLang 1\.2\.2, but the site states 1\.2\.3/)
+})
+
+test("a video with no version and no receipt fails", () => {
+  const problems = check({
+    "site/src/pages/a.mdx": page("demo"),
+    "site/public/videos/demo.mp4": "v", "site/public/videos/demo.jpg": "p",
+    "site/videos/manifest.json": JSON.stringify({ schema: 1, videos: { "demo.mp4": { poster: "demo.jpg" } } })
+  })
+  expect(problems.join("\n")).toMatch(/demo\.mp4 has no "version" and no recording receipt binds/)
+})
+
+test("every receipt-bound video leaves its version to the receipt", () => {
+  const manifest = JSON.parse(readFileSync(join(repo, "site/videos/manifest.json"), "utf8"))
+  expect(manifest.videos["agent-loop.mp4"]).toEqual({ poster: "agent-loop.jpg" })
+})

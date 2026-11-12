@@ -1,9 +1,8 @@
 {
   "schema": 1,
-  "about": "The VibeLang version each video on vibelang.sh shows, or null when the recording does not say. docs/tools/site-videos.mjs checks it. An entry with \"removed\" names a video taken off the site, with the reason; no page may embed it and its files are not served.",
+  "about": "The VibeLang version each video on vibelang.sh shows. An entry without version takes it from the recording receipt that binds the served file by SHA-256 (compilerVersion), so a re-recording needs no edit here; otherwise version is the version shown, or null when the recording does not say. An entry with removed names a video taken off the site, with the reason; no page may embed it and its files are not served. docs/tools/site-videos.mjs checks it.",
   "videos": {
     "agent-loop.mp4": {
-      "version": "0.0.12",
       "poster": "agent-loop.jpg"
     },
     "concurrent.mp4": {
@@ -19,11 +18,9 @@
       "poster": "eco-format.jpg"
     },
     "eco-lint-effect.mp4": {
-      "version": "0.0.12",
       "poster": "eco-lint-effect.jpg"
     },
     "eco-lint-eslint.mp4": {
-      "version": "0.0.12",
       "poster": "eco-lint-eslint.jpg"
     },
     "eco-lint-oxlint.mp4": {
@@ -35,7 +32,6 @@
       "poster": "eco-tsc.jpg"
     },
     "eco-vitest.mp4": {
-      "version": "0.0.12",
       "poster": "eco-vitest.jpg"
     },
     "ecosystem.mp4": {
@@ -75,7 +71,6 @@
       "poster": "term-create.jpg"
     },
     "term-test.mp4": {
-      "version": "0.0.12",
       "poster": "term-test.jpg"
     },
     "type-flip.mp4": {
@@ -83,7 +78,6 @@
       "poster": "type-flip.jpg"
     },
     "vite-dev.mp4": {
-      "version": "0.0.12",
       "poster": "vite-dev.jpg"
     },
     "webpack.mp4": {

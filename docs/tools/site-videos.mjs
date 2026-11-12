@@ -74,7 +74,7 @@ export function videoManifestProblems(repository = root, { release } = {}) {
       continue
     }
     if (!embeds.has(video)) problems.push(`site/videos/manifest.json: ${video} is listed but no page embeds it; remove the entry and the file`)
-    if (entry.version !== null && !/^\d+\.\d+\.\d+$/.test(entry.version ?? "")) problems.push(`site/videos/manifest.json: ${video} needs "version": the VibeLang version it shows, or null when unknown`)
+    if (entry.version !== undefined && entry.version !== null && !/^\d+\.\d+\.\d+$/.test(entry.version)) problems.push(`site/videos/manifest.json: ${video} needs "version": the VibeLang version it shows, or null when unknown`)
   }
   for (const file of [...embeds.keys(), ...[...embeds.values()].map(e => e.poster).filter(Boolean)]) {
     if (!existsSync(join(publicDir, file))) problems.push(`site/public/videos/${file}: embedded by a page but missing`)
@@ -88,6 +88,9 @@ export function videoManifestProblems(repository = root, { release } = {}) {
   const receipts = walk(join(repository, "site/videos"))
     .filter(path => path.endsWith(".json") && resolve(path) !== resolve(manifestPath))
     .map(path => ({ path: relative(repository, path), receipt: JSON.parse(readFileSync(path, "utf8")) }))
+  // A video a receipt binds takes its version from the receipt, so a
+  // re-recording that updates the receipt needs no manifest edit.
+  const effective = new Map(Object.entries(videos).filter(([, entry]) => entry.removed === undefined).map(([video, entry]) => [video, entry.version]))
   const digests = new Map()
   for (const video of Object.keys(videos)) {
     const file = join(publicDir, video)
@@ -97,23 +100,28 @@ export function videoManifestProblems(repository = root, { release } = {}) {
     const video = digests.get(receipt.videoSha256)
     if (!video) continue
     if (videos[video].removed !== undefined) continue
-    const recorded = videos[video].version
+    if (receipt.compilerVersion && videos[video].version === undefined) effective.set(video, receipt.compilerVersion)
+    const recorded = effective.get(video)
     if (receipt.compilerVersion && recorded !== receipt.compilerVersion) {
       problems.push(`site/videos/manifest.json: ${video} records ${recorded}, but ${path} recorded it with ${receipt.compilerVersion}`)
     }
     // A composition shows one version only when every segment shows it.
     if (receipt.kind === "composition") {
-      const versions = new Set(receipt.segments.map(segment => videos[segment.file]?.version ?? null))
+      const versions = new Set(receipt.segments.map(segment => effective.get(segment.file) ?? null))
       const single = versions.size === 1 ? [...versions][0] : null
       if (recorded !== single) problems.push(`site/videos/manifest.json: ${video} is composed by ${path}; its version is ${JSON.stringify(single)} (the one version all segments record, else null), not ${JSON.stringify(recorded)}`)
     }
   }
 
+  for (const [video, version] of effective) {
+    if (version === undefined) problems.push(`site/videos/manifest.json: ${video} has no "version" and no recording receipt binds site/public/videos/${video}; record the VibeLang version it shows, or null when unknown`)
+  }
+
   if (release !== undefined) {
-    for (const [video, entry] of Object.entries(videos)) {
-      if (entry.removed !== undefined) continue
-      if (entry.version !== release) {
-        const shown = entry.version === null ? "records no VibeLang version" : `records VibeLang ${entry.version}`
+    for (const [video, version] of effective) {
+      if (version === undefined) continue
+      if (version !== release) {
+        const shown = version === null ? "records no VibeLang version" : `records VibeLang ${version}`
         problems.push(`site/public/videos/${video}: ${shown}, but the site states ${release}; re-record it with ${release} and update site/videos/manifest.json`)
       }
     }
