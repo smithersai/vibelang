@@ -20,7 +20,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,463 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 17,338 |
 | The skill and the user guide (148 pages) | 600,000 |
-| The user guide alone | 600,000 |
+| The user guide alone | 590,000 |
 | The specification (11 chapters) | 280,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -111,15 +111,15 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 2,100 |
 | [What is in the alpha](../setup/alpha.md) | 2,600 |
-| [Known limitations](../setup/known-limitations.md) | 940 |
+| [Known limitations](../setup/known-limitations.md) | 860 |
 | [Source maps](../setup/source-maps.md) | 1,000 |
 | **Start a project** | **8,300** |
 | [New project](../setup/new-project.md) | 690 |
 | [Existing project](../setup/existing-project.md) | 4,300 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,300 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,400 |
 | **Build and test** | **23,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 18,000 |
-| [Vite and Vitest](../setup/vite.md) | 4,700 |
+| [Vite and Vitest](../setup/vite.md) | 4,800 |
 | **Format and lint** | **16,000** |
 | [Format with dprint](../setup/formatting.md) | 3,600 |
 | [Developer tools](../setup/developer-tools.md) | 12,000 |
@@ -253,14 +253,14 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Equivalence](../schema/102-equivalence.md) | 770 |
 | [Formatter](../schema/103-formatter.md) | 540 |
 | [Schema Compilers](../schema/104-compilers.md) | 2,200 |
-| **Platform** | **26,000** |
-| [Introduction](../platform/105-introduction.md) | 4,700 |
+| **Platform** | **25,000** |
+| [Introduction](../platform/105-introduction.md) | 4,400 |
 | [FileSystem](../platform/106-file-system.md) | 1,300 |
 | [Path](../platform/107-path.md) | 950 |
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,500 |
 | [Terminal](../platform/110-terminal.md) | 1,700 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 12,000 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 11,000 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,600 |
 | **All 101 pages** | **190,000** |
