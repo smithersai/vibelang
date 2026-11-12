@@ -1,0 +1,5 @@
+// expect: EK3013
+// A gated module reached through the runtime's durable helpers still needs the opt-in: the gate
+// decides by what the reference resolves to, not by its spelling (VIP-30).
+import * as RT from "vibelang-runtime"
+export const helper = RT.$task

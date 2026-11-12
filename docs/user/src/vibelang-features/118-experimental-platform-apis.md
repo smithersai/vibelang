@@ -2,7 +2,7 @@
 
 VibeLang adds the few platform APIs that Effect does not have yet. They are experimental: a release can change or remove them, and each goes when Effect ships the API. Where Effect has the service, the experimental one extends it, so the rest of the service is Effect's own; where Effect has none, the experimental service follows Effect's style. Each addition lives under `Experimental.X` and can be proposed upstream. Native language helpers, including error declarations, keep the experimental namespace out of their bundle graph unless the source uses it.
 
-`Experimental` holds two kinds of module. The platform additions come from VIP-33, are part of the alpha and need no opt-in. The modules built from open proposals (VIPs 55 to 72) are not part of the alpha and are refused at their direct uses, such as `Experimental.Durable.x`, without `"vibe": { "experimental": ["builtins"] }`: the compiler reports `EK3013`.
+`Experimental` holds two kinds of module. The platform additions come from VIP-33, are part of the alpha and need no opt-in. The modules built from open proposals (VIPs 55 to 72) are not part of the alpha and compile only with `"vibe": { "experimental": ["builtins"] }`; without it the compiler reports `EK3013`.
 
 **Platform additions (VIP-33, core).**
 

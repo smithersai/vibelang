@@ -114,7 +114,7 @@ What is built from the open proposals VIPs 55 to 72 is experimental and not part
 { "vibe": { "experimental": ["builtins"] } }
 ```
 
-Without the opt-in, the first direct use of one in a file, such as `Experimental.Durable.x`, reports `EK3013`, which names the open proposal and the opt-in; [Known limitations](/setup/known-limitations#the-experimental-opt-in) lists the forms it does not catch yet. VIP-33's platform modules under `Experimental`, such as `Experimental.FileSystem` and `Experimental.Encoding`, are core and need no opt-in. Another name in the array, or a value that is not an array, is `EK3007`. A child config's `experimental` replaces its base's.
+Without the opt-in, the first use of one in a file reports `EK3013`, which names the open proposal and the opt-in. The check follows what a name resolves to, so an alias such as `const E = Experimental`, destructuring, `Experimental["Durable"]`, `typeof`, a namespace import or `export *` of `vibelang-runtime/experimental`, a dynamic `import()` of a module's subpath and a re-export from another file are refused too. VIP-33's platform modules under `Experimental`, such as `Experimental.FileSystem` and `Experimental.Encoding`, are core and need no opt-in. Another name in the array, or a value that is not an array, is `EK3007`. A child config's `experimental` replaces its base's.
 
 ## 2. Replace tsc in the scripts
 

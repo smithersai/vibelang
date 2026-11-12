@@ -1,0 +1,20 @@
+// Without the opt-in, VIP-33's platform modules stay core through every form
+// that reaches a gated module, and a local binding named Experimental is the
+// user's own (VIP-30).
+import { Experimental as X } from "vibelang-runtime"
+const E = Experimental
+const { Locks, NetAddress } = Experimental
+const Encoding = Experimental["Encoding"]
+type LocksModule = typeof Experimental.Locks
+const locks: LocksModule = E.Locks
+function shadow() {
+  const Experimental = { Durable: 1, Memory: 2 }
+  const { Memory } = Experimental
+  const Alias = Experimental
+  return Alias.Durable + Experimental["Durable"] + Memory
+}
+const own = { Durable: 3, Test: 4 }
+export effect function main() {
+  try Console.log(typeof Locks, typeof NetAddress, Encoding.decodeBase64Lenient("aGk=")._tag, locks === Locks, X.Encoding === Encoding, shadow(), own.Durable + own["Test"])
+}
+runPromise(main())

@@ -1,0 +1,12 @@
+// expect: EK3013
+// A gated module reached through destructuring in the docs' fuzz example still needs the opt-in: the gate
+// decides by what the reference resolves to, not by its spelling (VIP-30).
+const { Fuzz } = Experimental
+const Wide = Schema.Int.check(Schema.isBetween({ minimum: 0, maximum: 1_000_000_000 }))
+export effect function climb() {
+  const report = try Fuzz.run(Wide, effect (n) => {
+    try Fuzz.score("closeness", -Math.abs(n - 777_777_777))
+    return n !== 777_777_777
+  }, { seed: 1, executions: 100, feedback: [] })
+  return report._tag === "Falsified" ? report.findings[0].input : report._tag
+}

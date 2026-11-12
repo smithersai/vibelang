@@ -144,3 +144,41 @@ test("the language server reports EK3013 only without the opt-in, once, with the
     }
   }
 })
+
+// The gate decides by what a reference resolves to, so an alias of the
+// namespace is refused by every entry as tsc refuses it (VIP-30, clarified
+// 2026-11-12).
+test("every entry refuses a gated module reached through an alias of Experimental", async t => {
+  const root = project(t, "none")
+  const text = "const E = Experimental\nexport const kind = typeof E.Durable.memory\n"
+  writeFileSync(join(root, "main.vibe"), text)
+  settle()
+  const checked = tsc(root)
+  assert.ok(!checked.ok, checked.out)
+  assert.equal(checked.out.match(/EK3013/g)?.length, 1, checked.out)
+  for (const [name, load] of loaders) {
+    const loaded = load(root)
+    assert.ok(!loaded.ok, name + ": " + loaded.out)
+    assert.match(loaded.out, /EK3013/, name)
+  }
+  const { build } = await import(join(repo, "packages/vite/node_modules/vite/dist/node/index.js"))
+  const { default: vibelang } = await import(join(repo, "packages/vite/src/index.js"))
+  await assert.rejects(build({ root, configFile: false, logLevel: "silent", plugins: [vibelang()],
+    build: { write: false, minify: false, lib: { entry: join(root, "main.vibe"), formats: ["es"] } } }), /EK3013/)
+  const connection = new Connection(compiler, ["--lsp", "--stdio"], root)
+  try {
+    const rootUri = pathToFileURL(root).href
+    await connection.request("initialize", {
+      processId: process.pid, rootUri, workspaceFolders: [{ uri: rootUri, name: "gate" }],
+      capabilities: { general: { positionEncodings: ["utf-16"] }, textDocument: { diagnostic: {} }, workspace: { configuration: true } }
+    })
+    connection.notify("initialized", {})
+    const uri = pathToFileURL(join(root, "main.vibe")).href
+    connection.notify("textDocument/didOpen", { textDocument: { uri, languageId: "vibelang", version: 1, text } })
+    const items = (await connection.request("textDocument/diagnostic", { textDocument: { uri } }))?.items ?? []
+    assert.deepEqual(items.map(d => String(d.code)), ["3013"], JSON.stringify(items))
+    assert.match(items[0].message, /`Experimental\.Durable`/)
+  } finally {
+    await connection.close?.()
+  }
+})

@@ -32,7 +32,7 @@ With `declarationMap` on, the declaration map of a `module` body lists a source 
 
 ## The experimental opt-in
 
-- Without `"vibe": { "experimental": ["builtins"] }`, `EK3013` refuses `task` and `workflow` declarations and the direct uses of the eight experimental modules, such as `Experimental.Durable.x` and imports from `vibelang-runtime/experimental`. It does not yet catch an alias (`const E = Experimental`, then `E.Durable`), destructuring (`const { Memory } = Experimental`) or element access (`Experimental["Durable"]`): those compile without the opt-in, and the modules they reach are still experimental.
+- Without `"vibe": { "experimental": ["builtins"] }`, `EK3013` refuses every use in a `.vibe` or `.vibex` file that resolves to one of the eight experimental modules or to `task` and `workflow` support. It cannot see a use whose target the compiler does not resolve, such as `(globalThis as any).Experimental`, `(Experimental as any).Durable` or a dynamic `import()` with a computed specifier, and it does not check `.ts` files or a dependency's JavaScript that use the modules themselves.
 
 ## Specification examples the compiler does not pass yet
 

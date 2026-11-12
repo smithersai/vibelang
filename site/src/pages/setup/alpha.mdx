@@ -5,7 +5,7 @@ description: "VibeLang 0.0.13 is the alpha. It supports the 33 accepted VIPs num
 
 # What is in the alpha
 
-VibeLang 0.0.13 is the alpha. It supports the 33 accepted VIPs numbered 1 to 41, the core language. Code built from open proposals is experimental: a project opts in with `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`, and without it the compiler reports `EK3013` at their direct uses, such as `Experimental.Durable.x`. [Known limitations](/setup/known-limitations#the-experimental-opt-in) lists the forms it does not catch yet.
+VibeLang 0.0.13 is the alpha. It supports the 33 accepted VIPs numbered 1 to 41, the core language. Code built from open proposals is experimental: a project opts in with `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`, and without it the compiler reports `EK3013`.
 
 `Experimental` holds two kinds of module. VIP-33's platform additions, such as `Experimental.FileSystem` and `Experimental.Encoding`, are core and need no opt-in. The modules built from open proposals, listed below as experimental, need the opt-in.
 

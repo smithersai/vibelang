@@ -1,0 +1,4 @@
+// expect: EK3013
+// A gated module reached through a type query still needs the opt-in: the gate
+// decides by what the reference resolves to, not by its spelling (VIP-30).
+export type Durable = typeof Experimental.Durable
