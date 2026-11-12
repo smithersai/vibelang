@@ -26,6 +26,10 @@ After the supported CLI, plugins and editor routes, the experimental [TypeScript
 
 Mapper failures `EK9001` through `EK9006` have [repair guidance in the diagnostic reference](../vibelang-features/diagnostic-code-map.md#typescript-mapper-failures).
 
+In a `.vibex` file, `return` inside a `do` expression in a JSX attribute or child container reports `EK0204`, although [VIP-39](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/0039-vibex.md) says it leaves the enclosing function. For example, `export function f() { return <Box v={do { return 7 }} /> }` fails. Move the `do` expression into a statement of its own before the element: `const v = do { return 7 }; return <Box v={v} />`.
+
+With `declarationMap` on, the declaration map of a `module` body lists a source that is never written. For `module parse { … }` in `a.vibe`, `dist/a.vibe.parse.d.ts.map` has `"sources": ["../a.vibe.parse.ts", "../a.vibe"]`, and there is no `a.vibe.parse.ts`. The mappings use only `a.vibe`, so go-to-definition reaches the right file; a tool that checks every listed source reports the first one missing. Declaration maps also carry no `sourcesContent`, as with TypeScript's own `declarationMap`, even with `inlineSources`; only the JavaScript maps embed the source.
+
 ## Specification examples the compiler does not pass yet
 
 The specification marks each example the compiler does not pass yet with `// compiler-gap: pending VIP-N`, and the docs check fails as soon as such an example passes, so this list stays current:
