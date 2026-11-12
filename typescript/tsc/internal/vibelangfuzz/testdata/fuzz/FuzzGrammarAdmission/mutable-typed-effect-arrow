@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:mutable-typed-effect-arrow\nconst f = effect (p: { mutable n: number }): number!! => { return try Effect.succeed(p.n) }")

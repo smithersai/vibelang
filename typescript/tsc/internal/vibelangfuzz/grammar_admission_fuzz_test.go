@@ -483,6 +483,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-bang-triple-equals", "declare const a: number\nconst strict = a as number!!=== a"},
 	{"effect-type-bang-arrow", "const arrow = effect (x: number): number!!=> x + 1"},
 	{"effect-type-bang-mixed-equality", "declare const a: number\nconst d: number!!= a\nconst spaced = a as number!! != null\nconst different = a as number!! !== a"},
+	{"mutable-typed-effect-arrow", "const f = effect (p: { mutable n: number }): number!! => { return try Effect.succeed(p.n) }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1458,6 +1459,16 @@ func grammarAdmissionForm(source string) string {
 	if grammarProducerArgument(declarationTokens) {
 		return "admission:producer-cover-grammar"
 	}
+	// VIP-15 keeps native writable defaults and adopts no mutable modifier,
+	// yet the parser consumes a mutable member marker (registry key
+	// admission:mutable-default, pending). Key the program by it before the
+	// callable-kind guesses below: they look only at the tokens before => or
+	// a function body, so a typed Effect arrow with a try body
+	// (`effect (p: { mutable n: number }): number!! => { return try p.n }`)
+	// would read as a plain arrow and take a key with no pending line.
+	if grammarMutableMemberMarker(ts) {
+		return "admission:mutable-default"
+	}
 	for i, tok := range ts {
 		// EffectFunction = EffectModifier [no LineTerminator here] "function":
 		// `effect` on the line before is its own statement after ASI.
@@ -1727,9 +1738,6 @@ func grammarAdmissionForm(source string) string {
 	if grammarIsOperandPrecedence(ts) {
 		return "admission:is-operand-precedence"
 	}
-	// VIP-15 keeps native writable defaults and adopts no mutable modifier,
-	// yet the parser consumes a mutable member marker (registry key
-	// admission:mutable-default, pending). Key the program by it.
 	if grammarAmbientCustomDeclaration(ts) {
 		return "admission:ambient-custom-declaration"
 	}
@@ -1738,9 +1746,6 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarPatternNameObject(ts) {
 		return "admission:pattern-name-object"
-	}
-	if grammarMutableMemberMarker(ts) {
-		return "admission:mutable-default"
 	}
 	return ""
 }
