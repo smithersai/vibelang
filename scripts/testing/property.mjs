@@ -1,3 +1,4 @@
+import { propertySlice, slicedCheck } from "./property-slice.mjs"
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join, resolve } from "node:path"
@@ -61,13 +62,15 @@ export async function checkProperty(fc, {
       process.stderr.write(`known failure ${file}: ${regression.rule}\n`)
     }
   }
+  const slice = env.FC_PATH === undefined ? propertySlice(env) : { index: 0, count: 1 }
+  if (slice.count > 1 && env.FC_SEED === undefined) throw new Error("a property slice requires a shared FC_SEED")
   const parameters = {
     numRuns: integer(env, "FC_RUNS", numRuns, 1, Number.MAX_SAFE_INTEGER),
     ...(env.FC_SEED === undefined ? {} : { seed: integer(env, "FC_SEED", 0, -2147483648, 2147483647) }),
     ...(env.FC_PATH === undefined ? {} : { path: env.FC_PATH })
   }
   process.stderr.write(`property ${name}: ${parameters.numRuns} runs (${rule})\n`)
-  const result = await fc.check(fc.asyncProperty(arbitrary, check), parameters)
+  const result = await fc.check(fc.asyncProperty(arbitrary, slicedCheck(check, slice)), parameters)
   if (!result.failed && !result.interrupted) return
   const input = result.counterexample?.[0]
   const replay = `FC_PROPERTY=${quote(name)} FC_SEED=${result.seed} FC_PATH=${quote(result.counterexamplePath ?? "")} ${command}`

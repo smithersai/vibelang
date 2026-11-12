@@ -1,3 +1,4 @@
+import { assertPropertySlice } from "../../../../scripts/testing/property-slice.mjs"
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -95,7 +96,7 @@ test("private declarations never mask compiler errors or failing tests", async (
 })
 
 test("only the boolean private true exempts declaration identity across declaration changes", async () => {
-  await fc.assert(fc.asyncProperty(
+  await assertPropertySlice(fc, fc.asyncProperty(
     fc.constantFrom(true, false, undefined, "true", 1, null),
     fc.stringMatching(/^[a-z][a-z0-9]{0,10}$/),
     async (privateValue, name) => {
@@ -141,7 +142,7 @@ test("a run that includes private declarations fails a private package's emit er
 })
 
 test("property: with private declarations included, any exported type change in a private package fails verify", async () => {
-  await fc.assert(fc.asyncProperty(
+  await assertPropertySlice(fc, fc.asyncProperty(
     fc.stringMatching(/^[a-z][a-z0-9]{0,10}$/),
     fc.constantFrom(["string", "number"], ["number", "boolean"], ["readonly string[]", "string[]"]),
     async (name, [from, to]) => {
@@ -179,7 +180,7 @@ test("private API opt-in keeps an unexported declaration private", async () => {
 
 test("t3code-private-declaration-inventory: only selected added exports change an opted-in API", async () => {
   let models = 0
-  await fc.assert(fc.asyncProperty(fc.boolean(), fc.boolean(), fc.boolean(), async (includePrivate, extraDeclaration, closed) => {
+  await assertPropertySlice(fc, fc.asyncProperty(fc.boolean(), fc.boolean(), fc.boolean(), async (includePrivate, extraDeclaration, closed) => {
     models++
     const result = await fixture({ ...t3code.manifest, ...(closed ? { exports: { ".": "./main.d.ts" } } : {}) }, {
       includePrivate, extraDeclaration, before: t3code.before, after: t3code.before

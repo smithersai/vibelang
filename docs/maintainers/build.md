@@ -209,6 +209,35 @@ exact file ownership, automatic admission of new files, duplicate rejection,
 bounded timeouts and the reporter command. No failed, skipped or pending test
 is changed by the split.
 
+Seven slow files run as grouped leaves: `node-ambient-context.property`,
+`oracle-gate`, `earlier-declarations.property`, `public-declarations.property`,
+`private-declarations.property`, `ambient-roots.property` and `oracle`.
+`migrateGroupedFiles` in `scripts/testing/migrate-shards.mjs` lists them. Each
+top-level test name gets an exact name pattern; up to three control tests share
+one leaf, `//packages:<file label>-group-NN`. The file's long generated property
+runs as `<file label>-group-NN-samples-I`, one leaf for each `I/N` sample
+partition. The previous file or `-generated`/`-controls` label remains an
+`S.Suite` over its leaves, so `smthrs ci` on it still runs every test once.
+
+A sample partition sets `VIBELANG_PROPERTY_SLICE=I/N`.
+`scripts/testing/property-slice.mjs` evaluates sample `k` only in partition
+`k mod N`. Every partition still generates the full seeded sequence with the
+original run count and explicit examples. After a failure the partition keeps
+evaluating, so fast-check shrinks with the original oracle and reports the same
+counterexample. The ambient-context property has no seed in its source, so its
+partitions share `FC_SEED=27121`; a property slice without a shared seed fails.
+A replay with `FC_PATH` ignores the slice.
+
+`scripts/property-slice.test.mjs` checks that the partitions together evaluate
+every sample once and keep counterexamples and shrinking.
+`scripts/migrate-test-inventory.test.mjs` checks that every registered name of a
+grouped file has exactly one owner, or one owner per partition:
+
+```sh
+node --test scripts/property-slice.test.mjs scripts/parallel-property.test.mjs \
+  scripts/migrate-test-inventory.test.mjs
+```
+
 The migration progress reporter prints the selected-file list, failure details, aggregate counts and a heartbeat every 30 seconds. A `test-failed` record retains Node's `todo` and `skip` flags and reasons, so an expected todo failure remains distinguishable from an ordinary failure even when the command succeeds. Successful tests and file summaries update counts without consuming the graph's live output budget. Pending files remain named, and a failed file includes its captured output and unabridged assertion error. A file that cannot load or a terminated run remains incomplete, and Node retains responsibility for the exit status. `scripts/migrate-progress.test.mjs` checks late failures beyond 200 files, real child processes, full assertion witnesses, missing file summaries and termination against an unmodified Node runner.
 
 The `//:release` target runs Node's test files with `--test-concurrency=4`.

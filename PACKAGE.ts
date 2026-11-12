@@ -623,6 +623,7 @@ const targets = {
       S.file("packages/create-vibelang/bun.lock"),
       S.glob("packages/create-vibelang/test/**"),
       S.file("scripts/testing/property.mjs"),
+      S.file("scripts/testing/property-slice.mjs"),
       S.glob("templates/app/**"),
       S.file("docs/user/llms-essentials.md")
     ],

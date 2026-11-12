@@ -25,6 +25,52 @@ export const migrateParallelFiles = [...Object.keys(migrateNamePartitions).filte
 export const migrateComputedNames = {
   "migrate/test/implicit-root-context.property.test.mjs": "(?:native|stock|explicit) output context preserves .* API results"
 }
+export const migrateGroupedFiles = {
+  "migrate/test/node-ambient-context.property.test.mjs": 4,
+  "migrate/test/oracle-gate.test.mjs": 3,
+  "migrate/test/earlier-declarations.property.test.mjs": 6,
+  "migrate/test/public-declarations.property.test.mjs": 4,
+  "migrate/test/private-declarations.property.test.mjs": 6,
+  "migrate/test/ambient-roots.property.test.mjs": 4,
+  "migrate/test/oracle.test.mjs": 8,
+}
+const samplePropertyNames = {
+  "migrate/test/oracle-gate.test.mjs": "generated stock-oracle gates distinguish shipped declarations from source-only packages",
+  "migrate/test/private-declarations.property.test.mjs": "only the boolean private true exempts declaration identity across declaration changes",
+  "migrate/test/oracle.test.mjs": "property: equivalent spelling proves the API, while type, documentation or file changes invalidate its comparison closure",
+  "migrate/test/node-ambient-context.property.test.mjs": "property: configured ambient contexts preserve identity and expose real type changes",
+  "migrate/test/earlier-declarations.property.test.mjs": "foldkit-11: setup reports exactly the earlier declarations whose members a new toolchain changes",
+  "migrate/test/public-declarations.property.test.mjs": "public declaration graph: imports, exports, import types, require and references expose transitive additions",
+  "migrate/test/ambient-roots.property.test.mjs": "handwritten-root resolution follows TypeScript file-before-directory priority and preserves APIs",
+}
+export function splitSlowMigration(shard, readSource) {
+  if (!Object.hasOwn(migrateGroupedFiles, shard.file)) return [shard]
+  const text = readSource(shard.file)
+  const names = [...text.matchAll(/^test\(("(?:[^"\\]|\\.)*")/gm)].map(match => JSON.parse(match[1]))
+  if (shard.file.endsWith("node-ambient-context.property.test.mjs")) {
+    const layout = /const layouts = (\[[^\n]+\])/.exec(text)
+    if (!layout) throw new Error("missing ambient layout inventory")
+    names.push(...JSON.parse(layout[1]).map(layout => "configured Node types retain self-comparison and snapshot identity: " + layout))
+  }
+  const selected = names.filter(name => !shard.namePattern || new RegExp(shard.namePattern).test(name))
+  if (!selected.length) throw new Error("empty migration name partition: " + shard.label)
+  const parts = selected.flatMap((name, index) => {
+    const count = name === samplePropertyNames[shard.file] ? migrateGroupedFiles[shard.file] : 1
+    const base = { ...shard, compatibilityLabel: shard.label,
+      namePattern: "^" + escapeRegExp(name) + "$", label: shard.label + "-group-" + String(index + 1).padStart(2, "0") }
+    return count > 1 ? Array.from({ length: count }, (_, i) => ({
+      ...base, label: base.label + "-samples-" + (i + 1), propertySlice: (i + 1) + "/" + count
+    })) : [base]
+  })
+  const samples = parts.filter(part => part.propertySlice)
+  const controls = parts.filter(part => !part.propertySlice)
+  const grouped = []
+  for (let at = 0; at < controls.length; at += 3) {
+    const batch = controls.slice(at, at + 3)
+    grouped.push({ ...batch[0], namePattern: batch.map(part => part.namePattern).join("|") })
+  }
+  return [...samples, ...grouped]
+}
 const escapeRegExp = value => RegExp.escape(value)
 export function migrateShards(files = migrateTestFiles(), readSource = file => readFileSync(flowRoot + file, "utf8")) {
   const shards = files.filter(file => !Object.hasOwn(migrateDedicated, file)).flatMap(file => {
@@ -40,12 +86,14 @@ export function migrateShards(files = migrateTestFiles(), readSource = file => r
       { label: label + "-controls", file, namePattern: "^(?:" + [...controls.map(escapeRegExp), ...(migrateComputedNames[file] ? [migrateComputedNames[file]] : [])].join("|") + ")$", parallel: migrateParallelFiles.includes(file) },
     ]
   })
-  const labels = shards.map(shard => shard.label)
+  const expanded = shards.flatMap(shard => splitSlowMigration(shard, readSource))
+  const labels = expanded.map(shard => shard.label)
   if (new Set(labels).size !== labels.length) throw new Error("duplicate migration shard labels")
   if (new Set(files).size !== files.length) throw new Error("duplicate migration test files")
-  return shards
+  return expanded
 }
 const quote = value => "'" + value.replaceAll("'", "'\\''") + "'"
-export const migrateShardShell = shard => "cd .smithers/flows && node --test " +
+export const migrateShardShell = shard => "cd .smithers/flows && " +
+  (shard.propertySlice ? "VIBELANG_PROPERTY_SLICE=" + shard.propertySlice + " FC_SEED=27121 " : "") + "node --test " +
   "--test-reporter=../../scripts/testing/migrate-progress.mjs --test-reporter-destination=stderr " +
   (shard.namePattern ? "--test-name-pattern=" + quote(shard.namePattern) + " " : "") + quote(shard.file)

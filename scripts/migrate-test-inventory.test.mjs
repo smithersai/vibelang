@@ -14,11 +14,11 @@ test("the migration compatibility label groups independent bounded tests", async
   const graph = JSON.parse(run.stdout)
   assert.equal(graph.targets.find(t => t.label === "//packages:migrate-test")?.target, "Suite")
   const { migrateDedicated, migrateShards } = await import("./testing/migrate-shards.mjs")
-  const expected = [...migrateShards().map(s => s.label), ...Object.values(migrateDedicated)]
+  const expected = [...migrateShards().map(s => s.label), ...Object.values(migrateDedicated), ...new Set(migrateShards().map(s => s.compatibilityLabel).filter(Boolean))]
     .map(label => "//packages:" + label).sort()
   const members = graph.edges.filter(e => e.from === "//packages:migrate-test").map(e => e.to).sort()
   assert.deepEqual(members, expected, "the executable suite must include every owner exactly once")
-  for (const label of expected) assert.ok(graph.edges.some(e =>
+  for (const label of expected.filter(label => !migrateShards().some(s => "//packages:" + s.compatibilityLabel === label))) assert.ok(graph.edges.some(e =>
     e.from === label && e.to === "//:migration-sources"),
   label + " must retain the migration source dependency")
   const source = readFileSync(new URL("../packages/PACKAGE.ts", import.meta.url), "utf8")
@@ -29,7 +29,7 @@ test("the migration compatibility label groups independent bounded tests", async
 })
 
 test("every migrate and convert file has exactly one compatibility-suite owner", async () => {
-  const { migrateDedicated, migrateNamePartitions, migrateShards, migrateTestFiles } = await import("./testing/migrate-shards.mjs")
+  const { migrateDedicated, migrateGroupedFiles, migrateNamePartitions, migrateShards, migrateTestFiles } = await import("./testing/migrate-shards.mjs")
   const files = migrateTestFiles()
   const candidates = globSync([".smithers/flows/migrate/test/**/*.test.*", ".smithers/flows/convert/**/*.test.*"], { cwd: root })
     .map(file => file.replace(".smithers/flows/", "")).sort()
@@ -41,7 +41,8 @@ test("every migrate and convert file has exactly one compatibility-suite owner",
   for (const file of files) {
     const owners = shards.filter(s => s.file === file)
     const expected = Object.hasOwn(migrateDedicated, file) ? 0 : Object.hasOwn(migrateNamePartitions, file) ? 2 : 1
-    assert.equal(owners.length, expected, file + " has the wrong number of owners")
+    if (Object.hasOwn(migrateGroupedFiles, file)) assert.ok(owners.length >= expected, file)
+    else assert.equal(owners.length, expected, file + " has the wrong number of owners")
     if (owners.length > 1) assert.ok(owners.every(s => s.namePattern), file + " repeats without a name partition")
   }
 })
@@ -62,7 +63,7 @@ test("shard commands run exactly their file without external slice state or weak
   for (const shard of migrateShards()) {
     const shell = migrateShardShell(shard)
     assert.ok(shell.endsWith("'" + shard.file + "'"), shard.label)
-    assert.match(shell, /^cd \.smithers\/flows && node --test /)
+    assert.match(shell, /^cd \.smithers\/flows && (?:VIBELANG_PROPERTY_SLICE=\d+\/\d+ FC_SEED=27121 )?node --test /)
     assert.match(shell, /--test-reporter=\.\.\/\.\.\/scripts\/testing\/migrate-progress\.mjs/)
     if (!shard.namePattern) assert.ok(!shell.includes("--test-name-pattern"))
     assert.doesNotMatch(shell, /--test-(?:skip-pattern|only|shard)|migrate-slice|(?:bun|npm) install/)
@@ -79,7 +80,7 @@ test("name partitions cover actual Node execution and admit a new neighbouring t
   for (const [file, generated] of Object.entries(migrateNamePartitions)) {
     const source = readFileSync(flowRoot + file, "utf8") + '\ntest("future neighbour [.*] 雪", () => {})\n'
     const parts = migrateShards([file], () => source)
-    assert.equal(parts.length, 2)
+    assert.ok(parts.length >= 2)
     let names = [...source.matchAll(/^test\(("(?:[^"\\]|\\.)*")/gm)].map(m => JSON.parse(m[1]))
     assert.ok(names.includes(generated))
     const { createRequire } = await import("node:module")
@@ -143,8 +144,33 @@ test("name partitions cover actual Node execution and admit a new neighbouring t
       assert.ok((await import("node:fs")).existsSync(trace), JSON.stringify({ pattern: part.namePattern, stdout: run.stdout, stderr: run.stderr }))
       const actual = readFileSync(trace, "utf8").trim().split("\n").map(JSON.parse)
       assert.deepEqual(actual.sort(), names.filter(name => new RegExp(part.namePattern).test(name)).sort())
-      selected.push(...actual)
+      if (!part.propertySlice || part.propertySlice.startsWith("1/")) selected.push(...actual)
     }
     assert.deepEqual(selected.sort(), names.sort(), "every test must run in exactly one real Node invocation")
+  }
+})
+
+test("slow-file groups cover every registered name and every property slice once", async () => {
+  const { migrateGroupedFiles, migrateShards, flowRoot } = await import("./testing/migrate-shards.mjs")
+  for (const file of Object.keys(migrateGroupedFiles)) {
+    const env={...process.env}; delete env.NODE_TEST_CONTEXT
+    const run=spawnSync(process.execPath,[root+"scripts/testing/node-test-names.mjs",flowRoot+file],
+      {cwd:root,env,encoding:"utf8",timeout:20_000})
+    assert.equal(run.status,0,run.stdout+run.stderr)
+    const line=run.stdout.split("\n").find(line=>line.startsWith("NODE_TEST_NAMES "))
+    assert.ok(line,file)
+    const names=JSON.parse(line.slice(16))
+    const parts=migrateShards([file])
+    for(const name of names) {
+      const owners=parts.filter(part=>new RegExp(part.namePattern).test(name))
+      assert.ok(owners.length,file+": "+name)
+      const slices=owners.map(part=>part.propertySlice).filter(Boolean)
+      if(slices.length) {
+        const count=Number(slices[0].split("/")[1])
+        assert.equal(owners.length,count,name)
+        assert.deepEqual(slices.sort(),Array.from({length:count},(_,i)=>(i+1)+"/"+count).sort())
+      }else assert.equal(owners.length,1,name)
+    }
+    for(const part of parts) assert.ok(names.some(name=>new RegExp(part.namePattern).test(name)),part.label)
   }
 })

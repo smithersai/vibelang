@@ -1,3 +1,4 @@
+import { assertPropertySlice } from "../../../../scripts/testing/property-slice.mjs"
 import { createRequire } from "node:module"
 // The declaration gate answers to the repository's own compiler (oracle.mjs):
 // alchemy-23's native baseline skipped packages/aws's Pipes/builders.d.ts
@@ -121,7 +122,7 @@ test("a missing or unavailable stock oracle cannot certify a migrated declaratio
 })
 
 test("property: equivalent spelling proves the API, while type, documentation or file changes invalidate its comparison closure", () => {
-  fc.assert(fc.property(
+  assertPropertySlice(fc, fc.property(
     fc.array(fc.record({
       type: fc.constantFrom("string", "number", "boolean", '"a" | "b"', "ReadonlyArray<string>"),
       change: fc.constantFrom("same", "spelling", "type", "docs", "missing")
@@ -175,7 +176,7 @@ test("documentation is part of the stock oracle, while equivalent spelling with 
 })
 
 test("property: oracle availability gates only the migrated modules in its declaration projects", () => {
-  fc.assert(fc.property(
+  assertPropertySlice(fc, fc.property(
     fc.uniqueArray(fc.stringMatching(/^[a-z][a-z0-9]{0,7}$/), { minLength: 1, maxLength: 12 }),
     fc.array(fc.boolean(), { minLength: 1, maxLength: 12 }),
     fc.constantFrom("available", "missing", "unavailable"), fc.boolean(),
@@ -210,7 +211,7 @@ test("alchemy: the declaration build compiler wins over a different typecheck co
 
 test("property: declaration script selection ignores manifest insertion order and missing primary compilers", () => {
   const fc = require("fast-check")
-  fc.assert(fc.property(fc.shuffledSubarray(["typecheck", "lint:types", "build:package"], { minLength: 3, maxLength: 3 }), fc.constantFrom("tsrs", "tsgo"), fc.boolean(), (order, compiler, installed) => {
+  assertPropertySlice(fc, fc.property(fc.shuffledSubarray(["typecheck", "lint:types", "build:package"], { minLength: 3, maxLength: 3 }), fc.constantFrom("tsrs", "tsgo"), fc.boolean(), (order, compiler, installed) => {
     const scripts = Object.fromEntries(order.map(name => [name, name === "build:package" ? compiler + " -b" : "tsc --noEmit"]))
     const root = tree({
       "package.json": JSON.stringify({ scripts }),
@@ -226,7 +227,7 @@ test("property: declaration script selection ignores manifest insertion order an
 
 test("property: stock emission retries only an unsupported Go flag and preserves the compiler, other flags and exit diagnostics", async () => {
   const fc = require("fast-check")
-  await fc.assert(fc.asyncProperty(fc.boolean(), fc.boolean(), async (supportsSingle, failsEmit) => {
+  await assertPropertySlice(fc, fc.asyncProperty(fc.boolean(), fc.boolean(), async (supportsSingle, failsEmit) => {
     const root = tree({ "tsconfig.json": "{}", "compiler.cjs": [
       "#!/usr/bin/env node",
       'const fs=require("node:fs"),p=require("node:path"),args=process.argv.slice(2)',

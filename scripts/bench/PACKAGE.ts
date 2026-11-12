@@ -10,7 +10,7 @@ export const Package = S.Package({ targets: {
       S.file("//experiments/package.json"), S.file("//experiments/bun.lock"),
       S.file("gen-synthetic.mjs"), S.file("gen-synthetic.test.mjs"),
       S.file("//packages/compiler/package.json"), S.file("//packages/compiler/bun.lock"),
-      S.file("//scripts/testing/property.mjs")
+      S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs")
     ],
     tools: [S.Host.bin("node")],
     sandbox: "none",

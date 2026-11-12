@@ -1,3 +1,4 @@
+import { assertPropertySlice } from "../../../../scripts/testing/property-slice.mjs"
 import assert from "node:assert/strict"
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -154,7 +155,7 @@ test("stock declarations excluded from the published package do not create an AP
 })
 
 test("generated stock-oracle gates distinguish shipped declarations from source-only packages", async () => {
-  await fc.assert(fc.asyncProperty(fc.boolean(), fc.boolean(), async (publishDeclarations, identical) => {
+  await assertPropertySlice(fc, fc.asyncProperty(fc.boolean(), fc.boolean(), async (publishDeclarations, identical) => {
     await fixture(async ({ run, p }) => {
       const result = await verify({ run, batch: "01" })
       const unproven = publishDeclarations && !identical

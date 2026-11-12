@@ -74,7 +74,7 @@ const runtimeTest = (files: readonly string[]) => S.Shell.Test({
     ...files.map(file => S.file(file)), S.glob("runtime/tests/**", { exclude: ["**/*.test.*"] }),
     ...(files.includes("runtime/tests/readme-exports.test.ts") ? [S.file("runtime/README.md")] : []),
     ...(files.includes("runtime/tests/package-budget.test.ts") && !files.includes("runtime/tests/package.test.ts") ? [S.file("runtime/tests/package.test.ts")] : []),
-    S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/001-functions.md"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/001-functions.md"),
     S.file("//experiments/tests/conformance/model-laws.ts"), S.file("//experiments/package.json"), S.file("//experiments/bun.lock")],
   tools: [S.Host.bin("bun"), S.Host.bin("node")],
   sandbox: "none",
@@ -86,7 +86,7 @@ const runtimeTests = S.Suite({ tests: runtimeTestEntries.map(([, target]) => tar
 const runtimeKernelContracts = S.Shell.Test({
   summary: "Runtime wrappers preserve full Exits, interruption masks and finalizer traces against Effect.",
   shell: "cd packages/runtime && bun test --timeout 60000 tests/kernel.property.test.ts",
-  data: [runtimeDist, ...install, S.file("runtime/tests/kernel.property.test.ts"), S.file("runtime/tests/property-programs.ts"), S.glob("runtime/tests/property-regressions/**"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/history/src/217-part2-ch17-failures.md"), S.file("//docs/design/history/src/320-part3-ch20-machine.md")],
+  data: [runtimeDist, ...install, S.file("runtime/tests/kernel.property.test.ts"), S.file("runtime/tests/property-programs.ts"), S.glob("runtime/tests/property-regressions/**"), S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//docs/design/history/src/217-part2-ch17-failures.md"), S.file("//docs/design/history/src/320-part3-ch20-machine.md")],
   tools: [S.Host.bin("bun"), S.Host.bin("node")],
   sandbox: "none",
   timeout: "2m"
@@ -142,7 +142,7 @@ const compilerTest = (files: readonly string[], names?: readonly string[]) => S.
     ...(files.includes("compiler/test/watch-intermediate.test.mjs") ? [S.file("compiler/test/watch-warning.test.mjs")] : []),
     ...(files.includes("compiler/test/migrate-inputs.test.mjs") ? [S.file("PACKAGE.ts"), S.file("test-inventory.json"), S.file("test-groups.json"), S.file("test-batches.json"), S.file("//scripts/testing/package-declarations.mjs")] : []), S.file("ts-mapper/prelude.d.ts"), S.file("//scripts/generate-projection-prelude.mjs"), migrationSources,
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"), S.file("//docs/tools/lint-code-assignments.json"),
-    S.file("//scripts/testing/node-failures.mjs"), S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/004-match.md"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("//scripts/testing/node-failures.mjs"), S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/004-match.md"), S.file("//docs/design/src/005-services.md"), S.file("//docs/design/src/007-tooling.md"),
     S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"),
     S.file("vite/src/vibe-directive.js"), S.file("unplugin/src/vibe-directive.js"),
     S.file("//typescript/vibelang/lsp-format-shape.mjs"), S.file("//typescript/vibelang/lsp-connection.mjs"),
@@ -231,7 +231,7 @@ const migrateLoaderValidation = S.Shell.Test({
 // migration tests import shared helpers, fixtures and package adapters.
 const migrateTestData = [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
   S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
-  S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"),
+  S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"),
   S.file("//scripts/testing/migrate-progress.mjs"), S.file("//scripts/testing/migrate-shards.mjs"),
   S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
   S.file("//docs/user/src/setup/migrating-retired-forms.md"),
@@ -244,6 +244,12 @@ const migrateTestTargets = Object.fromEntries(migrateShards().map(shard => [shar
   sandbox: "none",
   timeout: "10m"
 })]))
+
+const migrateCompatibilityTargets = Object.fromEntries(
+  [...new Set(migrateShards().map(shard => shard.compatibilityLabel).filter(Boolean))].map(label => [
+    label, S.Suite({ tests: migrateShards().filter(shard => shard.compatibilityLabel === label).map(shard => migrateTestTargets[shard.label]) })
+  ])
+)
 
 const migrateHelperIdentity = S.Shell.Test({
   summary: "Preserve authored helper declarations while accepting generated never contracts.",
@@ -307,6 +313,7 @@ const migrateQuotedRules = S.Shell.Test({
 // S.Suite keeps the old command selecting all files, with no second test run.
 const migrateTest = S.Suite({ tests: [
   ...Object.values(migrateTestTargets),
+  ...Object.values(migrateCompatibilityTargets),
   migrateSourceChildNative, migrateToolchainBaseline, migrateQuotedRules
 ] })
 
@@ -333,7 +340,7 @@ const pluginTest = (name: "vite" | "unplugin", files: readonly string[], names?:
     S.file("//scripts/testing/run-package-test.mjs"), S.file("//scripts/testing/package-fixtures.mjs"),
     S.glob("vite/src/**"), S.file("vite/package.json"), S.file("vite/bun.lock"),
     S.glob("unplugin/src/**"), S.file("unplugin/package.json"), S.file("unplugin/bun.lock"),
-    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/007-tooling.md"),
     migrationSources, ...experimentInstall, ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],
   sandbox: "none",
@@ -378,7 +385,7 @@ const sourceMapToolsTestEntries = testEntries("source-map-tools", inventory["sou
   data: [sourceMapToolsPrepare, compilerNative, compilerSupport, ...files.map(file => S.file(file)),
     S.file("//scripts/testing/run-package-test.mjs"), S.file("//scripts/testing/package-fixtures.mjs"),
     S.glob("vite/**", { exclude: ["**/*.test.mjs"] }), S.glob("unplugin/**", { exclude: ["**/*.test.mjs"] }),
-    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/property-slice.mjs"), S.file("//scripts/testing/spec-path.mjs"),
     S.file("//docs/design/src/005-services.md"), S.file("//docs/maintainers/source-maps.md"),
     S.file("//experiments/package.json"), S.file("//experiments/bun.lock"),
     S.file("//typescript/vibelang/lsp-connection.mjs"), S.file("//typescript/vibelang/lsp-framing.mjs"),
@@ -443,6 +450,7 @@ export const Package = S.Package({
     "vite-paths-imports-copy": vitePathsImportsCopy,
     "migrate-test": migrateTest,
     ...migrateTestTargets,
+    ...migrateCompatibilityTargets,
     "migrate-lost-wrapper": migrateLostWrapper,
     "migrate-record-provenance": migrateRecordProvenance,
     "migrate-warning-provenance": migrateWarningProvenance,
