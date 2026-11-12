@@ -438,6 +438,43 @@ it.effect("greets", effect () => { assert.strictEqual(greet("Vite"), "Hello, Vit
   assert.match(result.output, /1 passed/)
 })
 
+// With the Effect plugin on, @effect/vitest's it reports unstableApiUsage
+// (EK38130), a warning that makes `vibelang -p` exit non-zero unless
+// ignoreEffectWarningsInTscExitCode is set. Vitest still loads the test and
+// prints the warning alone, never the compiler's file listing.
+test("an Effect plugin warning fails no Vitest module load, with or without ignoreEffectWarningsInTscExitCode", async (t) => {
+  const root = await fixture(t)
+  await writeFile(join(root, "vitest.config.ts"), `
+import { defineConfig } from "vitest/config"
+import vibelang from ${JSON.stringify(join(packageRoot, "src/index.js"))}
+export default defineConfig({
+  plugins: [vibelang({ compiler: ${JSON.stringify(compiler)} })],
+  test: { include: ["src/**/*.test.vibe"] }
+})
+`)
+  await mkdir(join(root, "src"))
+  await writeFile(join(root, "src/greet.vibe"), 'export function greet(name: string) { return `Hello, ${name}!` }\n')
+  await writeFile(join(root, "src/greet.test.vibe"), `import { assert, it } from "@effect/vitest"
+import { greet } from "./greet.vibe"
+it.effect("greets", effect () => { assert.strictEqual(greet("Vite"), "Hello, Vite!") })
+`)
+  const configPath = join(root, "tsconfig.json")
+  const config = JSON.parse(await readFile(configPath, "utf8"))
+  config.include = ["src"]
+  for (const ignore of [false, true]) {
+    config.compilerOptions.plugins = [{ name: "@effect/language-service", ignoreEffectWarningsInTscExitCode: ignore }]
+    await writeFile(configPath, JSON.stringify(config))
+    const built = await runChild(compiler, ["-p", "tsconfig.json", "--noEmit", "--pretty", "false"], { cwd: root, env: process.env })
+    assert.match(built.output, /warning EK38130: unstableApiUsage/, built.output)
+    assert.equal(built.code !== 0, !ignore, built.output)
+    const result = await runVitest(root)
+    assert.equal(result.code, 0, result.output)
+    assert.match(result.output, /1 passed/)
+    assert.match(result.output, /warning EK38130: unstableApiUsage/)
+    assert.doesNotMatch(result.output, /bundled:\/\/\/|did not compile/)
+  }
+})
+
 test("Vite hot updates ignore diagnostics in unserved TypeScript sources", async (t) => {
   const root = await fixture(t)
   const configPath = join(root, "tsconfig.json")

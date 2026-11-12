@@ -19,8 +19,10 @@ import { basename, dirname, isAbsolute, join, parse, relative, resolve } from "n
 import { launcherBinary, loaderRecord, loaderRecordFile, parseJsonc, projectCache } from "./cache.mjs"
 
 const slash = (path) => path.replaceAll("\\", "/")
-const located = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(\w+\d+):\s?(.*)$/
-const global = /^(error|warning)\s+(\w+\d+):\s?(.*)$/
+const located = /^(.+?)\((\d+),(\d+)\):\s+(error|warning|suggestion)\s+(\w+\d+):\s?(.*)$/
+const global = /^(error|warning|suggestion)\s+(\w+\d+):\s?(.*)$/
+// The codes of the imported Effect lint rules (EK3801 to EK38130 and later).
+const importedLint = /^EK38\d{2,}$/
 // Under --project-emit the compiler names each category and code its exit
 // status leaves out, such as an imported Effect lint error under the plugin's
 // ignoreEffectErrorsInTscExitCode: `VIBELANG-EXIT-IGNORED: error EK3889`.
@@ -67,6 +69,7 @@ function command(compiler, args) {
  * program read and the diagnostics it reported. A diagnostic's position is
  * 1-based, as the compiler prints it. exitIgnored holds `<category> <code>`
  * for each kind of diagnostic that leaves the compiler's exit status alone.
+ * text is the output without the file listing and those trailer lines.
  */
 export function parseOutput(output, root) {
   const files = []
@@ -76,6 +79,7 @@ export function parseOutput(output, root) {
   const lines = output.split(/\r?\n/)
   const library = /^bundled:\/\/\/libs\/lib\.[^/\s]+\.d\.ts$/
   const libraryListings = new Set()
+  const listed = new Set()
   let listing = true
   // A library block ends at a filesystem listing or the end of the output.
   // Source excerpts can quote the same URLs before continuing their message.
@@ -92,6 +96,7 @@ export function parseOutput(output, root) {
     let match
     if ((match = line.match(exitIgnoredLine))) {
       exitIgnored.add(`${match[1]} ${match[2]}`)
+      listed.add(index)
       diagnostic = undefined
     } else if ((match = line.match(located))) {
       diagnostic = {
@@ -107,6 +112,7 @@ export function parseOutput(output, root) {
     } else if (libraryListings.has(index)) {
       // Embedded standard libraries belong to the compiler's file listing.
       // They have no filesystem path to watch or fingerprint.
+      listed.add(index)
       diagnostic = undefined
     } else if (isAbsolute(line.trim()) &&
       // A multiline message can quote source comments at column zero.
@@ -114,12 +120,14 @@ export function parseOutput(output, root) {
       // comment. Once file listing starts, missing paths remain inputs too.
       !(diagnostic && /^\/[*/]/.test(line.trim()) && !existsSync(line.trim()))) {
       files.push(line.trim())
+      listed.add(index)
       diagnostic = undefined
     } else if (diagnostic && line) {
       diagnostic.text += "\n" + line
     }
   }
-  return { files, diagnostics, exitIgnored }
+  const text = lines.filter((_, index) => !listed.has(index)).join("\n").trim()
+  return { files, diagnostics, exitIgnored, text }
 }
 
 const imported = /^\s+Imported via (".*"|'.*') from file '(.+?)'(?: with packageId '[^']*')?( to import .+)?$/
@@ -202,7 +210,7 @@ function projectProgram({ project, root, compiler }) {
   root = resolve(root ?? dirname(project))
   compiler ??= findCompiler(root)
   const [file, argv] = command(compiler, ["--project", project, "--pretty", "false", "--explainFiles", "--listFilesOnly"])
-  const run = spawnSync(file, argv, { cwd: root, encoding: "utf8", maxBuffer: 1 << 30 })
+  const run = spawnSync(file, argv, { cwd: root, env: compilerEnvironment(root), encoding: "utf8", maxBuffer: 1 << 30 })
   if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
   const output = run.stdout + run.stderr
   const { files, roots, imports, diagnostics } = parseExplainFiles(output, root)
@@ -260,22 +268,30 @@ export function moduleDeclarationSource(path) {
 //   inputs       project source files the result depends on
 //   errors       all project error diagnostics that fail the build; loaders
 //                select by source
-//   warnings     all other project diagnostics: warnings, and errors the
-//                build's exit status leaves out, as the Effect plugin's
+//   warnings     all project warnings, including imported Effect warnings
+//                that make the build exit non-zero, and errors the build's
+//                exit status leaves out, as the Effect plugin's
 //                ignoreEffectErrorsInTscExitCode does for its lint rules
 // and every file the compiler read, dependencies included, for the cache.
+// Suggestions are for the editor and `vibelang lint`: loaders report none.
 function collect({ status, signal, output }, root, out) {
-  const { files, diagnostics, exitIgnored } = parseOutput(output, root)
+  const { files, diagnostics, exitIgnored, text } = parseOutput(output, root)
   // Dependencies are contracts too; their sources change only on install.
   const inputs = files.filter((path) => !slash(path).includes("/node_modules/"))
   // A loader fails a module on the errors that fail `vibelang -p`, and
-  // reports the rest as the build prints them.
+  // reports the warnings as the build prints them. A warning never fails a
+  // load, even an imported Effect warning that makes `vibelang -p` exit
+  // non-zero, as it does unless ignoreEffectWarningsInTscExitCode is set.
   const fails = (diagnostic) => diagnostic.category === "error" && !exitIgnored.has(`error ${diagnostic.code}`)
   const errors = diagnostics.filter(fails)
-  const warnings = diagnostics.filter((diagnostic) => !fails(diagnostic))
-  if (status !== 0 && !errors.length) {
-    // A crash or an unknown flag prints no diagnostic; report the raw output.
-    errors.push({ category: "error", code: "vibelang", text: output.trim() || `exited with ${signal || status}` })
+  const warnings = diagnostics.filter((diagnostic) => !fails(diagnostic) && diagnostic.category !== "suggestion")
+  // Such a warning or suggestion explains the exit status. A status nothing
+  // explains, a crash, a signal or an unknown flag, fails the compile with
+  // the compiler's output, less its file listing.
+  const counted = diagnostics.some((diagnostic) => diagnostic.category !== "error" && importedLint.test(diagnostic.code) &&
+    !exitIgnored.has(`${diagnostic.category} ${diagnostic.code}`))
+  if (status !== 0 && !errors.length && (signal || !counted)) {
+    errors.push({ category: "error", code: "vibelang", text: text || `exited with ${signal || status}` })
   }
   const outputs = new Map()
   // Bundlers ask by the listed path; Node asks by the real path. A map names
@@ -315,7 +331,12 @@ function collect({ status, signal, output }, root, out) {
 }
 
 // A compiler belongs to the caller even when a launcher sits between them.
-const compilerEnvironment = () => ({ ...process.env, VIBELANG_COMPILER_PARENT_PID: String(process.pid) })
+// The compiler prints a diagnostic's path relative to its working directory,
+// which Go reads from PWD when PWD names that directory. A shell's PWD may
+// spell it through a symlink, /tmp/demo for /private/tmp/demo, so name the
+// directory the child runs in, or the printed path resolves against the
+// wrong one.
+const compilerEnvironment = (cwd) => ({ ...process.env, PWD: resolve(cwd), VIBELANG_COMPILER_PARENT_PID: String(process.pid) })
 
 const elapsed = (started) => `${Math.round(performance.now() - started)}ms`
 
@@ -412,7 +433,7 @@ export function projectBackend({ root, compiler, cache, debug = () => {}, preser
     const [file, argv] = command(compiler, args)
     return new Promise((accept, reject) => {
       let output = "", error
-      const child = spawn(file, argv, { cwd: root, env: compilerEnvironment(), stdio: ["ignore", "pipe", "pipe"] })
+      const child = spawn(file, argv, { cwd: root, env: compilerEnvironment(root), stdio: ["ignore", "pipe", "pipe"] })
       children.add(child)
       child.stdout.setEncoding("utf8").on("data", (data) => { output += data })
       child.stderr.setEncoding("utf8").on("data", (data) => { output += data })
@@ -490,7 +511,7 @@ function compileOnce(project, root, compiler, stages = stopwatch(), loader = tru
   const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
   try {
     const [file, argv] = command(compiler, emitArgs(project, root, out, loader, extra))
-    const run = stages.time("compiler", () => spawnSync(file, argv, { cwd: root, env: compilerEnvironment(), encoding: "utf8", maxBuffer: 1 << 30 }))
+    const run = stages.time("compiler", () => spawnSync(file, argv, { cwd: root, env: compilerEnvironment(root), encoding: "utf8", maxBuffer: 1 << 30 }))
     if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
     return stages.time("collect", () => collect({ status: run.status, signal: run.signal, output: run.stdout + run.stderr }, root, out))
   } finally {

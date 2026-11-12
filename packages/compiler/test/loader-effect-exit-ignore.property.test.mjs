@@ -13,9 +13,10 @@ import { reportWarnings } from "../diagnostics.mjs"
 // The Effect plugin's ignoreEffectErrorsInTscExitCode and
 // ignoreEffectWarningsInTscExitCode keep imported lint diagnostics out of a
 // build's exit status; they still print. A loader fails a module on exactly
-// the diagnostics that fail `vibelang -p`, so a project the CLI builds also
-// loads through vibelang/register, compileProjectSync and the bundler plugins'
-// projects().
+// the errors that fail `vibelang -p`, so a project the CLI builds also loads
+// through vibelang/register, compileProjectSync and the bundler plugins'
+// projects(). A warning or a suggestion never fails a load, even one that
+// makes `vibelang -p` exit non-zero.
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const compiler = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
 const register = fileURLToPath(new URL("../register.mjs", import.meta.url))
@@ -32,7 +33,9 @@ const rules = {
   unknownInEffectCatch: {
     code: "EK38122",
     source: 'import { Effect } from "effect"\nexport const value = Effect.tryPromise({ try: () => Promise.resolve(1), catch: (error) => error })\n'
-  }
+  },
+  // A warning by default, as @effect/vitest's it reports it.
+  unstableApiUsage: { code: "EK38130", source: "export const value = FileSystem.FileSystem\n" }
 }
 const typeError = 'export const wrong: number = "text"\n'
 
@@ -48,13 +51,14 @@ function project(t) {
   return root
 }
 
-function write(root, { rule, severity, ignoreErrors, ignoreWarnings, wrong }) {
+function write(root, { rule, severity, ignoreErrors, ignoreWarnings, ignoreSuggestions = true, wrong }) {
   writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
     compilerOptions: {
       target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: true, types: [], noEmit: true,
       plugins: [{
         name: "@effect/language-service", diagnosticSeverity: { [rule]: severity },
-        ignoreEffectErrorsInTscExitCode: ignoreErrors, ignoreEffectWarningsInTscExitCode: ignoreWarnings
+        ignoreEffectErrorsInTscExitCode: ignoreErrors, ignoreEffectWarningsInTscExitCode: ignoreWarnings,
+        ignoreEffectSuggestionsInTscExitCode: ignoreSuggestions
       }]
     },
     include: ["src"]
@@ -143,9 +147,84 @@ for (const [name, run] of [
       const refused = run(root, env)
       assert.notEqual(refused.status, 0)
       assert.match(refused.stderr, new RegExp(`did not compile[^]*error ${code}:`))
+
+      // A warning fails no load, whether or not the build fails on it.
+      for (const ignoreWarnings of [false, true]) {
+        write(root, { rule, severity: "warning", ignoreErrors: false, ignoreWarnings, wrong: false })
+        assert.equal(cli(root).status !== 0, !ignoreWarnings)
+        const warned = run(root, env)
+        assert.equal(warned.status, 0, warned.stdout + warned.stderr)
+        assert.match(warned.stdout, /^loaded /m)
+        const lines = warned.stderr.split("\n").filter((line) => line.startsWith(`${name}: `) && line.includes(` warning ${code}: `))
+        assert.equal(lines.length, 1, `${rule}, ignoreWarnings ${ignoreWarnings}: ${warned.stderr}`)
+        assert.ok(lines[0].startsWith(`${name}: ${join(root, "src/a.vibe")}:`), lines[0])
+        assert.doesNotMatch(warned.stderr, /bundled:\/\/\//)
+      }
     }
   })
 }
+
+test("an imported Effect warning or suggestion fails no load, with or without its ignore option", { skip, timeout: 300000 }, async (t) => {
+  const root = project(t)
+  const project_ = join(root, "tsconfig.json")
+  const file = join(root, "src/a.vibe")
+  for (const rule of Object.keys(rules)) {
+    const { code } = rules[rule]
+    for (const [severity, option] of [["warning", "ignoreWarnings"], ["suggestion", "ignoreSuggestions"]]) {
+      for (const ignored of [false, true]) {
+        write(root, { rule, severity, ignoreErrors: false, ignoreWarnings: true, [option]: ignored, wrong: false })
+        const built = cli(root)
+        const context = `${rule} ${severity}, ${option} ${ignored}: ${built.output}`
+        // Chapter 7, Reporting and exit status: warnings affect exit status
+        // unless ignoreEffectWarningsInTscExitCode is true; suggestions only
+        // when ignoreEffectSuggestionsInTscExitCode is false.
+        assert.equal(built.status !== 0, !ignored, context)
+        assert.match(built.output, new RegExp(`${severity} ${code}:`), context)
+        for (const scope of [false, true]) {
+          const result = compileProjectSync({ project: project_, root, compiler, cache: false, [loaderScope]: scope })
+          assert.deepEqual(result.errors, [], context)
+          // A warning is reported as the build prints it; a suggestion is
+          // the editor's and `vibelang lint`'s.
+          assert.deepEqual(result.warnings.map((d) => `${d.category} ${d.code}`), severity === "warning" ? [`warning ${code}`] : [], context)
+          assert.ok(result.outputs.has(file), context)
+        }
+        const modules = projects({ root, project: project_, compiler, cache: false })
+        try {
+          const module = await modules.load(file)
+          assert.deepEqual(module.errors, [], context)
+          assert.doesNotMatch(module.code, /did not compile/)
+        } finally {
+          await modules.close()
+        }
+      }
+    }
+  }
+})
+
+test("a compile from a shell whose PWD names the project through a symlink reports the real file", { skip, timeout: 120000 }, (t) => {
+  // root is two levels below the temporary directory; its symlink is one, so
+  // a path printed relative to the symlink resolves elsewhere from root.
+  const base = realpathSync(mkdtempSync(join(tmpdir(), "vibelang-loader-pwd-")))
+  t.after(() => rmSync(base, { recursive: true, force: true }))
+  const root = join(base, "real/project")
+  mkdirSync(join(root, "src"), { recursive: true })
+  mkdirSync(join(root, "node_modules"))
+  symlinkSync(realpathSync(effect), join(root, "node_modules/effect"))
+  symlinkSync(runtime, join(root, "node_modules/vibelang-runtime"))
+  writeFileSync(join(root, "package.json"), '{"type":"module"}')
+  symlinkSync(root, join(base, "logical"))
+  write(root, { rule: "unstableApiUsage", severity: "warning", ignoreErrors: false, ignoreWarnings: false, wrong: true })
+  const pwd = process.env.PWD
+  process.env.PWD = join(base, "logical")
+  try {
+    const result = compileProjectSync({ project: join(root, "tsconfig.json"), root, compiler, cache: false })
+    assert.deepEqual(result.errors.map((d) => `${d.file} ${d.code}`), [`${join(root, "src/a.vibe")} TS2322`])
+    assert.deepEqual(result.warnings.map((d) => `${d.file} ${d.code}`), [`${join(root, "src/a.vibe")} EK38130`])
+  } finally {
+    if (pwd === undefined) delete process.env.PWD
+    else process.env.PWD = pwd
+  }
+})
 
 test("reportWarnings prints a module's warnings and the project-wide ones once per compile", () => {
   const a = "/project/src/a.vibe", b = "/project/src/b.vibe"
@@ -178,14 +257,19 @@ test("CLI exit status and loader errors agree over imported rules, severities an
       severity: fc.constantFrom("error", "warning", "suggestion", "off"),
       ignoreErrors: fc.boolean(),
       ignoreWarnings: fc.boolean(),
+      ignoreSuggestions: fc.boolean(),
       wrong: fc.boolean()
     }),
     async (input) => {
       write(root, input)
       const built = cli(root)
-      const fails = built.status !== 0
+      // Chapter 7, Reporting and exit status: each ignore option keeps its
+      // category of imported diagnostic out of the exit status.
+      const counted = { error: !input.ignoreErrors, warning: !input.ignoreWarnings, suggestion: !input.ignoreSuggestions, off: false }
+      const fails = input.wrong || (input.severity === "error" && counted.error)
       const visible = input.severity === "error" || input.severity === "warning"
       const context = JSON.stringify({ input, output: built.output })
+      assert.equal(built.status !== 0, fails || counted[input.severity], context)
       for (const scope of [false, true]) {
         const result = compileProjectSync({ project: project_, root, compiler, cache: false, [loaderScope]: scope })
         assert.equal(result.errors.length > 0, fails, context)
@@ -209,6 +293,24 @@ test("CLI exit status and loader errors agree over imported rules, severities an
       }
     }
   ), { numRuns: 24 })
+})
+
+test("parseOutput reads suggestions as diagnostics and keeps listings out of its text", () => {
+  const root = "/project"
+  const parsed = parseOutput([
+    "src/a.vibe(1,21): warning EK38130: unstableApiUsage: `effect/FileSystem#FileSystem` is an unstable API.",
+    "src/a.vibe(2,24): suggestion EK3858: lazyEffect: Exported declaration 'main' returns a lazy Effect.",
+    "/project/src/a.vibe",
+    "bundled:///libs/lib.es5.d.ts",
+    "bundled:///libs/lib.dom.d.ts",
+    "VIBELANG-EXIT-IGNORED: error EK3889"
+  ].join("\n"), root)
+  assert.deepEqual(parsed.diagnostics.map((d) => `${d.category} ${d.code} ${d.line}`), ["warning EK38130 1", "suggestion EK3858 2"])
+  assert.equal(parsed.diagnostics[0].text, "unstableApiUsage: `effect/FileSystem#FileSystem` is an unstable API.")
+  assert.equal(parsed.text, [
+    "src/a.vibe(1,21): warning EK38130: unstableApiUsage: `effect/FileSystem#FileSystem` is an unstable API.",
+    "src/a.vibe(2,24): suggestion EK3858: lazyEffect: Exported declaration 'main' returns a lazy Effect."
+  ].join("\n"))
 })
 
 test("parseOutput reads the compiler's exit-ignored lines apart from diagnostics and listings", () => {

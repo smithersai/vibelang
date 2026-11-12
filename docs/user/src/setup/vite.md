@@ -300,7 +300,10 @@ Set up the editor: [VS Code and Cursor](vscode.md), [Neovim](neovim.md), [Zed](z
 The source loaders compile the whole project for type-directed emit, but report
 only diagnostics for the source being loaded and project-wide errors, including
 configuration diagnostics. Multiline warnings can include source excerpts, including comments resembling network paths and labels resembling library URLs; these remain diagnostic text and do not add watched files or trigger another compile.
-An unrelated file's type errors do not prevent loading a clean module. Run
+An unrelated file's type errors do not prevent loading a clean module. A
+warning never prevents loading: with the Effect plugin on, `@effect/vitest`'s
+`it` reports `EK38130` (`unstableApiUsage`), which the plugin prints while the
+test loads, whether or not `ignoreEffectWarningsInTscExitCode` is set. Run
 `vibelang -p tsconfig.json` to check every project file.
 
 

@@ -68,7 +68,9 @@ test("diagnostic parsing preserves multiline detail, CRLF, global messages and d
     diagnostics: [
       { file: join(root, "src/main.vibe"), line: 2, column: 17, category: "error", code: "TS2322", text: "Type 'string' is not assignable.\n  Type detail\n    Nested detail" },
       { category: "warning", code: "EK9204", text: "unreachable catch" }
-    ], files: [join(root, "src/main.vibe"), join(root, "src/type-only.ts")], exitIgnored: new Set()
+    ], files: [join(root, "src/main.vibe"), join(root, "src/type-only.ts")], exitIgnored: new Set(),
+    // The output less its file listing, for a compile that fails without a diagnostic.
+    text: [input.split("\r\n").slice(0, 4).join("\n"), "", "ordinary banner"].join("\n")
   })
 })
 

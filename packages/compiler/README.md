@@ -361,10 +361,13 @@ The public `compileProjectSync` and `projectBackend().compile` results include
 errors and warnings from every project input, including native TypeScript
 files. Their output maps contain the project’s own `.vibe` modules. Public
 compiles use a separate cache from loader compiles and never reuse a narrowed
-loader record. `errors` holds the diagnostics that fail a `vibelang -p` build;
+loader record. `errors` holds the errors that fail a `vibelang -p` build;
 an imported Effect lint error that the plugin's `ignoreEffectErrorsInTscExitCode`
 keeps out of the build's exit status is reported in `warnings` instead, so it
-fails no module load. `compileProjectSync`, `projectBackend`, and
+fails no module load. A warning never fails a load either: an imported Effect
+warning that makes `vibelang -p` exit non-zero, as it does unless
+`ignoreEffectWarningsInTscExitCode` is set, is in `warnings`. Suggestions are
+in neither list. `compileProjectSync`, `projectBackend`, and
 `projects` take `cache: false` to turn the cache off, or `cache: { directory }`
 to move it.
 
