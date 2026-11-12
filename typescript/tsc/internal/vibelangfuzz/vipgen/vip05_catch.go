@@ -15,10 +15,12 @@ import (
 //	x catch effect { … }       Effect.catch(x, () => Effect.gen(…))
 //
 // catch runs its Effect, as try does, so inside Effect.gen the reference
-// runs Effect.catch's Effect with yield*. A plain handler's throw is a
-// JavaScript exception, so a defect; an effect handler's throw fails again,
-// typed (VIP-4). Each form is its own construct, so a compiler that lowers
-// one form and not another has a pending line for the other.
+// runs Effect.catch's Effect with yield*. A plain handler never throws: a
+// `throw` inside it, or a call known to throw, is EK0401 (VIP-4, amended
+// 2026-10-31), so a plain handler returns its fallback value; an effect
+// handler's throw fails again, typed (VIP-4). Each form is its own
+// construct, so a compiler that lowers one form and not another has a
+// pending line for the other.
 
 // catchRuns is the reading every form shares.
 const catchRuns = "catch runs `e` (\"`e catch y` runs `e`\"), as try does, so inside Effect.gen the suite runs the table's Effect with yield*, as VIP-5 reads try. The table is not a code block."
@@ -37,11 +39,12 @@ func init() {
 			Quote:    "| `x catch (e) => f(e)` (a plain function; a `throw` inside is `EK0401`, VIP-4, amended 2026-10-31) | `Effect.catch(x, (e) => Effect.succeed(f(e)))` |",
 			Reading:  catchRuns,
 		}},
-		// The probe's plain handler throws what it caught: a defect, not a
-		// typed failure.
+		// The probe's plain handler logs an event and returns 1, the
+		// fallback value: a throw in it would be EK0401, so the probe
+		// could never compile.
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			e := g.Name("e")
-			h := &CatchFunction{Param: e, Body: []Stmt{&Event{Label: g.Label()}, &PlainThrow{Value: &Ref{Name: e}}}}
+			h := &CatchFunction{Param: e, Body: []Stmt{&Event{Label: g.Label()}, &Return{Value: &Num{Value: 1}}}}
 			return catchFocus(g, s, h)
 		},
 		Stmt: func(g *Gen, s *Scope) Stmt {
@@ -50,16 +53,9 @@ func init() {
 			if g.Chance(2) {
 				h.Body = append(h.Body, &Event{Label: g.Label()})
 			}
-			switch g.Intn(4) {
-			case 1:
-				h.Body = append(h.Body, &PlainThrow{Value: &Ref{Name: e}})
-			case 2:
-				h.Body = append(h.Body, &PlainThrow{Value: g.Value(s)})
-			default:
-				h.Body = append(h.Body, &Return{Value: g.Num(s)})
-				if g.Chance(2) {
-					h.Param = ""
-				}
+			h.Body = append(h.Body, &Return{Value: g.Num(s)})
+			if g.Chance(2) {
+				h.Param = ""
 			}
 			return catchStmt(g, s, h)
 		},
@@ -76,7 +72,7 @@ func init() {
 			Reading:  catchRuns + " The handler is an effect function, whose body VIP-2 reads as Effect.gen(function* () { … }).",
 		}},
 		// The probe's effect handler throws what it caught: the same typed
-		// failure, where the plain handler's probe dies.
+		// failure, which a plain handler cannot throw (EK0401).
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			e := g.Name("e")
 			h := &CatchEffectFunction{Param: e, Body: []Stmt{&Event{Label: g.Label()}, &Throw{Value: &Ref{Name: e}}}}
@@ -225,7 +221,8 @@ func (c *Catch) Effect(w *Writer) {
 
 // A CatchFunction is a plain handler, `(e) => { … }`, read as
 // `(e) => Effect.succeed(((e) => { … })(e))`: the handler is called with the
-// failure and its result succeeds, so its throw is a JavaScript exception.
+// failure and its result succeeds. Its body never throws (a throw in a
+// plain handler is EK0401), so it ends in a return.
 type CatchFunction struct {
 	Param string
 	Body  []Stmt
@@ -258,19 +255,6 @@ func (h *CatchEffectFunction) Effect(w *Writer) {
 	w.Write("(" + h.Param + ") => Effect.gen(function* () ")
 	w.Block(h.Body)
 	w.Write(")")
-}
-
-// A PlainThrow is JavaScript's throw in a plain function, which both prints
-// write as is: a JavaScript exception, never VIP-4's typed failure.
-type PlainThrow struct{ Value Expr }
-
-func (t *PlainThrow) Vibe(w *Writer)   { t.print(w) }
-func (t *PlainThrow) Effect(w *Writer) { t.print(w) }
-func (t *PlainThrow) Ends() bool       { return true }
-
-func (t *PlainThrow) print(w *Writer) {
-	w.Write("throw ")
-	w.Node(t.Value)
 }
 
 // A catchEdge is a scoped block of fixed probe code. It prints a leading `;`

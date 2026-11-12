@@ -342,7 +342,7 @@ func (g *Gen) finish(s *Scope, body []Stmt) []Stmt {
 
 func isThrow(st Stmt) bool {
 	switch st.(type) {
-	case *Throw, *PlainThrow:
+	case *Throw:
 		return true
 	}
 	return false
