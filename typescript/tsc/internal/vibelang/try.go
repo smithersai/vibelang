@@ -89,6 +89,9 @@ func checkTry(c *checker.Checker, file *ast.SourceFile, call, operand *ast.Node)
 		note(d, "To run it as yield* {0} does, write try {0}.asEffect().", expressionText(file, operand))
 	case c.GetPromisedTypeOfPromise(t) != nil:
 		note(d, "Wrap the promise: try Effect.tryPromise(() => {0}).", expressionText(file, operand))
+	case namespaceServiceKey(c, operand, t) != "":
+		key := expressionText(file, operand) + "." + namespaceServiceKey(c, operand, t)
+		note(d, "{0} is a module, not a service; its service key is {1}: write try {1}.", expressionText(file, operand), key)
 	case ast.IsCallExpression(ast.SkipParentheses(operand)) && !parser.IsVibeLangSynthesizedCall(ast.SkipParentheses(operand)) && tryOperationName(ast.SkipParentheses(operand)) == "" && !isTryCall(ast.SkipParentheses(operand)):
 		// A do or match expression, try.all and the other operations and an
 		// inner try are calls only as the parser writes them: the source has
@@ -228,4 +231,28 @@ var EK1803 = message(1803, errorCategory, parser.TryOperationNameMessage)
 
 func init() {
 	registry[EK1803.Code] = EK1803
+}
+
+// namespaceServiceKey returns the name of the export of t, a module namespace
+// such as FileSystem, that shares the module's name and is an Effect, such as
+// the service key FileSystem.FileSystem, or "". `try FileSystem` then means
+// `try FileSystem.FileSystem`, not removing try.
+func namespaceServiceKey(c *checker.Checker, operand *ast.Node, t *checker.Type) string {
+	inner := ast.SkipParentheses(operand)
+	var name string
+	switch {
+	case ast.IsIdentifier(inner):
+		name = inner.Text()
+	case ast.IsPropertyAccessExpression(inner):
+		name = inner.Name().Text()
+	default:
+		return ""
+	}
+	if t.Symbol() == nil || t.Symbol().Flags()&(ast.SymbolFlagsValueModule|ast.SymbolFlagsNamespaceModule) == 0 {
+		return ""
+	}
+	if member := c.GetPropertyOfType(t, name); member != nil && isEffectOperandType(c, c.GetTypeOfSymbol(member)) {
+		return name
+	}
+	return ""
 }

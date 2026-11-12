@@ -1,0 +1,8 @@
+// expect: EK0502
+export effect function main() {
+  const fs = try FileSystem
+  return fs
+}
+
+// FileSystem is the module; its service key is FileSystem.FileSystem. EK0502
+// names that key instead of advising to remove try.
