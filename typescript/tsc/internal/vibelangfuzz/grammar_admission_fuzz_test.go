@@ -514,6 +514,10 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"override-parameter-property", grammarDirectedTypeForms[5]},
 	{"import-type-jsdoc-nonnull-prefix", grammarImportJsdocForms[5]},
 	{"import-type-jsdoc-nullable", grammarImportJsdocForms[0]},
+	{"catch-parameter-initializer", "try {} catch (e = 1) {}"},
+	{"import-type-default-named", "import type T, { U } from \"./m\";"},
+	{"import-attribute-value", "import x from \"./m\" with { type: 1 };"},
+	{"catch-annotated-initializer", "try {} catch (e: unknown = 1) {}"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1421,6 +1425,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarTryAssignmentTarget(ts) {
 		return "admission:try-assignment-target"
+	}
+	if grammarCatchAnnotatedInitializer(ts) {
+		return "admission:catch-annotated-initializer"
 	}
 	if grammarParenthesizedEffectTrailingBang(ts) || grammarAssertionEffectTrailingBang(ts) {
 		return "admission:effect-type-trailing-bang"
@@ -2518,6 +2525,14 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	case 1024, 1028, 1029, 1030, 1031, 1038, 1040, 1042, 1044,
 		1070, 1071, 1079, 1089, 1090, 1091, 1097, 1098, 1120, 1123, 1184, 1187, 1188, 1189, 1190, 1191, 1193, 1242, 1243, 1248,
 		1273, 1274, 1275, 1277, 1317, 1433, 1491, 1495, 5086, 18010, 18019:
+		return true
+	// checkGrammarVariableDeclaration: TypeScript parses an initializer on a
+	// catch clause variable, then rejects the shape (TS1197).
+	// checkGrammarImportClause: a type-only import clause parses with a default
+	// and bindings, then the shape is rejected (TS1363).
+	// checkGrammarImportAttributes: an attribute value parses as any expression,
+	// then a value that is not a string literal is rejected (TS2858).
+	case 1197, 1363, 2858:
 		return true
 	// checkGrammarAccessor rejects accessor arity, type parameters, setter
 	// return annotations, and optional/rest/initialized setter parameters.

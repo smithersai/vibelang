@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:catch-parameter-initializer\ntry {} catch (e = 1) {}")
