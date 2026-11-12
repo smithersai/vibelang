@@ -13,6 +13,8 @@ export const facts = {
   newIssue: `${repo}/issues/new/choose`,
   newBug: `${repo}/issues/new?template=bug.yml`,
   newIdea: `${repo}/issues/new?template=idea.yml`,
+  // Language proposals go to the factory, a new implementation with no compiler yet.
+  factory: "https://lang.smithers.sh",
   newQuestion: `${repo}/issues/new?template=question.yml`,
   // The starter's docs index complements the packaged skill.
   languageRules: "https://vibelang.sh/llms.txt",
@@ -83,11 +85,11 @@ export const releaseSteps: readonly string[] = [
 
 export const contributing: Document = {
   title: "Contributing to {{name}}",
-  intro: "Bug reports with a minimal reproduction, ideas, docs fixes and focused pull requests are welcome. {{name}} is v0, so the language still changes in breaking ways.\n\n{{noOwnFixes}}",
+  intro: "Bug reports with a minimal reproduction, docs fixes and focused pull requests are welcome here. Propose a change to the language at the [{{name}} factory]({{factory}}): its repository is a new implementation of {{name}} with no compiler yet, so an accepted proposal there does not change the compiler published from this repository. {{name}} is v0, so the language still changes in breaking ways.\n\n{{noOwnFixes}}",
   sections: [
     {
       heading: "How work moves",
-      body: `1. **Open an issue.** A [bug report]({{newBug}}) needs a minimal reproduction: the smallest program and command that show the bug on the latest version. An [idea]({{newIdea}}) starts as an issue too, before any code.
+      body: `1. **Open an issue.** A [bug report]({{newBug}}) needs a minimal reproduction: the smallest program and command that show the bug on the latest version. A change to the language starts as a proposal at the [factory]({{factory}}), not as an issue here.
 2. **A maintainer accepts it for discussion.** The \`accepted\` label opens the design discussion. A \`timeline:\` label gives the maintainer's estimate of when it could land, and a \`commitment:\` label says whether maintainers plan to build it. See [the labels](MAINTAINERS.md#labels).
 3. **Accepted issues get a proof of concept.** When a maintainer accepts an issue, they link a proof of concept as a draft pull request titled \`poc: #<n>\` that you can check out and run. Everyone can try it before the design is settled. It is a starting point, not a merge candidate.
 4. **Open a pull request** that links the accepted issue. A typo fix needs no issue.`

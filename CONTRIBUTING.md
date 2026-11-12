@@ -2,13 +2,13 @@
 
 # Contributing to VibeLang
 
-Bug reports with a minimal reproduction, ideas, docs fixes and focused pull requests are welcome. VibeLang is v0, so the language still changes in breaking ways.
+Bug reports with a minimal reproduction, docs fixes and focused pull requests are welcome here. Propose a change to the language at the [VibeLang factory](https://lang.smithers.sh): its repository is a new implementation of VibeLang with no compiler yet, so an accepted proposal there does not change the compiler published from this repository. VibeLang is v0, so the language still changes in breaking ways.
 
 VibeLang ships no quick fixes or codemods of its own before its first release. TypeScript's built-in code fixes remain available.
 
 ## How work moves
 
-1. **Open an issue.** A [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml) needs a minimal reproduction: the smallest program and command that show the bug on the latest version. An [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml) starts as an issue too, before any code.
+1. **Open an issue.** A [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml) needs a minimal reproduction: the smallest program and command that show the bug on the latest version. A change to the language starts as a proposal at the [factory](https://lang.smithers.sh), not as an issue here.
 2. **A maintainer accepts it for discussion.** The `accepted` label opens the design discussion. A `timeline:` label gives the maintainer's estimate of when it could land, and a `commitment:` label says whether maintainers plan to build it. See [the labels](MAINTAINERS.md#labels).
 3. **Accepted issues get a proof of concept.** When a maintainer accepts an issue, they link a proof of concept as a draft pull request titled `poc: #<n>` that you can check out and run. Everyone can try it before the design is settled. It is a starting point, not a merge candidate.
 4. **Open a pull request** that links the accepted issue. A typo fix needs no issue.
@@ -105,4 +105,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>3,147 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>3,194 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
