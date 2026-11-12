@@ -506,6 +506,18 @@
   margin-top: 0.5rem;
 }
 
+/* A long path, URL or code span has no break opportunity. On a phone it ran past
+   the article's clipped right edge; let it wrap instead. Vocs sets external links
+   inline-block, which only anywhere can shrink, and code in a link inherits it.
+   Links in tables keep their width because the table scrolls. */
+[data-v-content] :not(pre, a) > code {
+  overflow-wrap: break-word;
+}
+
+[data-v-content] a:not(table a) {
+  overflow-wrap: anywhere;
+}
+
 /* Keep wide tables reachable and visibly focused for keyboard scrolling. */
 [data-v-table-wrapper]:focus-visible {
   outline: 2px solid currentColor;

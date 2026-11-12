@@ -2,6 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
 import { fileURLToPath } from 'node:url'
+import { existsSync, readdirSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { routeBuiltSite } from './built-site.mjs'
 
 const site = fileURLToPath(new URL('../dist/public', import.meta.url))
@@ -33,4 +35,63 @@ test('home install commands and Compatibility note keep their width on a phone a
       await context.close()
     }
   } finally { await browser.close() }
+})
+
+// Long paths, URLs and code spans have no break opportunity, so on a phone they ran past the
+// right edge, where the article's overflow-x: hidden cut them off. Content inside a scrolling
+// container (code blocks, tables) may be wider: the reader can scroll it.
+function cutOff() {
+  const width = document.documentElement.clientWidth
+  const scrolls = element => {
+    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+      if (/auto|scroll/.test(getComputedStyle(parent).overflowX)) return parent.getBoundingClientRect().right <= width + 1
+    }
+    return false
+  }
+  const name = element => element.tagName.toLowerCase() + ' "' + (element.textContent ?? '').trim().slice(0, 50) + '"'
+  const result = []
+  if (document.scrollingElement.scrollWidth > width) result.push(`page scrolls sideways to ${document.scrollingElement.scrollWidth} px`)
+  for (const element of document.querySelectorAll('header *, nav *, main *')) {
+    const style = getComputedStyle(element)
+    if (style.display === 'none' || style.visibility === 'hidden' || style.position === 'fixed') continue
+    const box = element.getBoundingClientRect()
+    if (box.width === 0 && box.height === 0) continue
+    if (scrolls(element)) continue
+    if (box.right > width + 1 && box.left < width) result.push(`${name(element)} ends at ${Math.round(box.right)} px`)
+    const ownText = [...element.childNodes].some(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim())
+    if (ownText && box.width < 2) result.push(`${name(element)} is ${box.width} px wide`)
+  }
+  return result
+}
+
+test('no docs page cuts off or collapses text at 390 px', { timeout: 10 * 60_000 }, async () => {
+  const pages = ['/']
+  const walk = dir => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      const path = join(dir, entry.name)
+      if (existsSync(join(path, 'index.html'))) pages.push('/' + relative(site, path))
+      walk(path)
+    }
+  }
+  walk(site)
+  assert(pages.length > 200, `expected the whole built site, found ${pages.length} pages`)
+  const browser = await launch()
+  const problems = []
+  try {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
+    await routeBuiltSite(context, site)
+    // Four tabs share the pages, which keeps the whole site near a minute.
+    const queue = pages.sort()
+    await Promise.all(Array.from({ length: 4 }, async () => {
+      const page = await context.newPage()
+      for (let path = queue.shift(); path !== undefined; path = queue.shift()) {
+        await page.goto('https://vibelang.sh' + path, { waitUntil: 'networkidle' })
+        for (const problem of await page.evaluate(cutOff)) problems.push(`${path}: ${problem}`)
+      }
+    }))
+    await context.close()
+  } finally { await browser.close() }
+  problems.sort()
+  assert.deepEqual(problems, [], `${problems.length} elements cut off or collapsed at 390 px:\n${problems.join('\n')}`)
 })
