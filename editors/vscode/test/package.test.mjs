@@ -2,7 +2,7 @@
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
 import { readFileSync, readdirSync } from "node:fs"
-import { join } from "node:path"
+import { join, posix } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { build } from "esbuild"
@@ -11,7 +11,7 @@ import { assertLanguageIcons } from "./icon-assertions.mjs"
 const root = fileURLToPath(new URL("../", import.meta.url))
 // Point at node_modules/vibelang/editor/vibelang.vsix to check the npm distribution too.
 const archive = process.env.VIBELANG_VSIX ?? join(root, "vibelang.vsix")
-const packed = (path) => execFileSync("unzip", ["-p", archive, "extension/" + path.replace(/^\.\//, "")])
+const packed = (path) => execFileSync("unzip", ["-p", archive, "extension/" + path.replace(/^\.\//, "")], { maxBuffer: 64 * 1024 * 1024 })
 const notices = packed("ThirdPartyNotices.txt").toString()
 
 test("the VSIX ships the complete VibeLang MIT license", () => {
@@ -78,5 +78,27 @@ test("the VSIX ships the declared VibeLang icons without stale branding", () => 
   assert.deepEqual(icons(manifest), icons(source), "packaged language icon declarations match the source")
   for (const file of new Set(Object.values(icons(manifest)))) {
     assert.deepEqual(packed(file), readFileSync(join(root, file)), file + ": the packaged icon matches the source")
+  }
+})
+
+test("the VSIX manifest names its license and source repository", () => {
+  const manifest = JSON.parse(packed("package.json").toString())
+  assert.equal(manifest.license, "MIT")
+  assert.deepEqual(manifest.repository, {
+    type: "git", url: "git+https://github.com/smithersai/vibelang.git", directory: "editors/vscode"
+  })
+})
+
+test("every source map the VSIX JavaScript names is in the VSIX and carries its sources", () => {
+  const entries = execFileSync("unzip", ["-Z1", archive], { encoding: "utf8" }).trim().split("\n")
+  const scripts = entries.filter((entry) => entry.startsWith("extension/") && /\.[cm]?js$/.test(entry))
+  assert.ok(scripts.includes("extension/dist/extension.js"))
+  for (const script of scripts) {
+    const url = /\/\/# sourceMappingURL=(\S+)\s*$/.exec(packed(script.slice("extension/".length)).toString())?.[1]
+    if (url === undefined || url.startsWith("data:")) continue
+    const map = posix.join(posix.dirname(script), url)
+    assert.ok(entries.includes(map), script + " names " + url + ", which the VSIX does not ship")
+    const { sources, sourcesContent } = JSON.parse(packed(map.slice("extension/".length)).toString())
+    assert.equal(sourcesContent?.length, sources.length, map + ": every source has its content")
   }
 })

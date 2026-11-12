@@ -1,5 +1,6 @@
 **
 !dist/extension.js
+!dist/extension.js.map
 !syntaxes/**
 !icons/**
 !language-configuration.json

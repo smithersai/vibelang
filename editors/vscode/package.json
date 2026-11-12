@@ -4,6 +4,16 @@
   "description": "VibeLang language support: the vibelang language server, diagnostics with EK codes, hovers with inferred contracts, and syntax highlighting for .vibe and .vibex files.",
   "version": "0.0.13",
   "publisher": "vibelang",
+  "license": "MIT",
+  "homepage": "https://vibelang.sh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smithersai/vibelang.git",
+    "directory": "editors/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/smithersai/vibelang/issues"
+  },
   "private": true,
   "type": "commonjs",
   "engines": {
@@ -240,7 +250,7 @@
   },
   "scripts": {
     "build": "tsc --noEmit -p . && node scripts/build.mjs",
-    "package": "bun run build && vsce package --no-dependencies --allow-missing-repository --out vibelang.vsix && node --test test/*.test.mjs",
+    "package": "bun run build && vsce package --no-dependencies --out vibelang.vsix && node --test test/*.test.mjs",
     "test": "node test/run.mjs",
     "test:grammar": "node --test scripts/vibelang-grammar.test.mjs",
     "test:unit": "bun test --coverage test/unit.test.ts",
