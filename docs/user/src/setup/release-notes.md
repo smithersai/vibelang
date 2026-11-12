@@ -504,6 +504,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Visiting an internal declaration-file URL could show a blank page with a successful status. These URLs now show the normal missing-page response.
 
+- The Installation page showed "With Bun (optional):" as its search snippet and description. It now opens with a sentence saying what the page does.
+
 - Screen readers could miss the site logo and alpha notice when navigating by page regions. The header, home link and release notice now belong to named landmarks.
 
 - Missing pages had no main landmark for screen-reader navigation. The error message and home link now share a main landmark.

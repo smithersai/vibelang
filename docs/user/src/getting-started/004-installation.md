@@ -1,5 +1,7 @@
 # Installation
 
+Create a VibeLang project from the starter with npm, or with Bun if you use it.
+
 ```sh
 npm create vibelang@latest my-app
 cd my-app
