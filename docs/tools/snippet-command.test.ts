@@ -1,5 +1,7 @@
 import { expect, test } from "bun:test"
-import { readFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { createRequire } from "node:module"
 import { command } from "./check-snippets"
 import { checkProperty } from "../../scripts/testing/property.mjs"
@@ -10,8 +12,10 @@ const fc = require("fast-check")
 function running(pid: number) {
   try {
     process.kill(pid, 0)
-    // A reparented child can await init's reap after it has stopped executing.
-    return process.platform !== "linux" || readFileSync("/proc/" + pid + "/stat", "utf8").split(") ")[1][0] !== "Z"
+    // A killed process stops executing before it leaves /proc: it is a zombie (Z) until its new parent
+    // reaps it, then dead (X) while the kernel releases it. Neither runs code. Counting X as running
+    // flipped this check from false to true between two reads under load (Z, then X, then gone).
+    return process.platform !== "linux" || !["Z", "X"].includes(readFileSync("/proc/" + pid + "/stat", "utf8").split(") ")[1][0])
   } catch (error) {
     if (["ESRCH", "ENOENT"].includes((error as NodeJS.ErrnoException).code!)) return false
     throw error
@@ -45,7 +49,11 @@ test("one snippet timeout leaves another concurrent command running", async () =
 async function descendant({ exits, stream, depth, noise }: { exits: boolean; stream: "stdout" | "stderr" | "both"; depth: number; noise: number }) {
   // Every witness terminates on its own on the old implementation, too: the
   // delayed marker proves escape without relying on a CI-speed assertion.
-  let script = "sleep 1; echo ESCAPED >&" + (stream === "stderr" ? 2 : 1)
+  // A descendant that outlives the deadline also leaves this marker, so its survival is observable
+  // after the output pipes have closed.
+  const scratch = mkdtempSync(join(tmpdir(), "snippet-descendant-"))
+  const marker = join(scratch, "escaped")
+  let script = "sleep 1; echo ESCAPED >&" + (stream === "stderr" ? 2 : 1) + "; : > " + quote(marker)
   for (let i = 0; i < depth; i++) script = "sh -c " + quote(script) + " & wait"
   script = "trap '' TERM; " + script
   const redirects = stream === "stdout" ? "2>/dev/null" : stream === "stderr" ? ">/dev/null" : ""
@@ -58,9 +66,15 @@ async function descendant({ exits, stream, depth, noise }: { exits: boolean; str
     expect(result.stderr).toBe("雪😀".repeat(noise))
     if (exits) expect(result.exitCode).toBe(0)
     else expect(result.exitCode).not.toBe(0)
-    for (let attempt = 0; attempt < 100 && running(pid); attempt++) await Bun.sleep(10)
+    // The group SIGKILL has landed once command() returns. Wait for the exit itself under a generous
+    // cap rather than a fixed second, then check the marker: a survivor would write it about 1 s after
+    // the deadline, a killed process never does.
+    const cap = Date.now() + 10_000
+    while (running(pid) && Date.now() < cap) await Bun.sleep(10)
     expect(running(pid)).toBe(false)
+    expect(existsSync(marker)).toBe(false)
   } finally {
+    rmSync(scratch, { recursive: true, force: true })
     if (Number.isSafeInteger(pid) && pid > 1 && running(pid)) {
       try { process.kill(pid, "SIGKILL") }
       catch (error) { if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error }
