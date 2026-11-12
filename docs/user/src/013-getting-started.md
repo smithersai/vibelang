@@ -37,10 +37,11 @@ A build writes JavaScript to `dist/`, and for stock TypeScript tools a declarati
 
 ## Your first program
 
-The starter's behavior fits in one file. An `effect` function returns an Effect, `throw` fails it with a typed error, `try` runs an Effect, and `catch` handles the failure:
+The starter's behavior fits in one file. An `effect` function returns an Effect, `throw` fails it with a typed error, `try` runs an Effect, `catch` handles the failure, and `NodeRuntime.runMain` starts `main`:
 
 ```vibe
-// run: try main()
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+
 error EmptyName
 
 effect function greeting(name: string) {
@@ -53,6 +54,8 @@ effect function main() {
   const recovered = greeting("") catch (error) => `Recovered from ${error._tag}`
   try Console.log(recovered)
 }
+
+NodeRuntime.runMain(main())
 // Output: Hello, VibeLang!
 // Output: Recovered from EmptyName
 ```

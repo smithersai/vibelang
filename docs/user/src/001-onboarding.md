@@ -34,7 +34,8 @@ await Effect.runPromise(main)
 ```
 
 ```vibe
-// run: try main()
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
+
 interface User { id: string; name: string }
 
 error UserNotFound { id: string }
@@ -59,10 +60,12 @@ effect function main() {
     try Console.log(try greet("ada"))
   }
 }
+
+NodeRuntime.runMain(main())
 // Output: Hello, Ada
 ```
 
-Both programs print `Hello, Ada`, and both run on Effect. `error` declares the tagged error class, `service` declares the dependency, `effect function` returns an Effect, `try` runs one, `catch` handles the declared failure, and `provide` supplies the layer. The compiler infers the type of `greet` as `string!!Users`, which is `Effect<string, never, Users>`: it returns a `string`, has no expected failure, and needs the `Users` service. TypeScript code that imports `greet` sees that Effect type.
+Both programs print `Hello, Ada`, and both run on Effect. `error` declares the tagged error class, `service` declares the dependency, `effect function` returns an Effect, `try` runs one, `catch` handles the declared failure, and `provide` supplies the layer. Neither program starts by itself: `Effect.runPromise(main)` starts the TypeScript one and `NodeRuntime.runMain(main())` starts the VibeLang one, at the bottom of the module. The compiler infers the type of `greet` as `string!!Users`, which is `Effect<string, never, Users>`: it returns a `string`, has no expected failure, and needs the `Users` service. TypeScript code that imports `greet` sees that Effect type.
 
 VibeLang is v0. The language will change in major, breaking ways, and it is not ready for production use.
 
