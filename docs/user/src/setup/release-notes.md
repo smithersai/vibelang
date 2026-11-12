@@ -26,6 +26,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - The `vibelang-runtime` package page told readers to run `vibelang --fix`, which the compiler rejects with `TS5023`. The page no longer mentions the option.
 - `vibelang-ast-grep --help` compiled the parser library into a file named `--help` in the current directory. It now prints the usage and exits with status 0, and any other option is a usage error with status 2.
 - When the installed `effect` was not the version `vibelang-runtime` pins, the load error named `vibelang-runtime@0.0.11` whatever runtime was installed. It now names only the two Effect versions and the install command, as in `vibelang-runtime requires effect@4.1.1; found effect@4.1.0`.
+- The documentation sidebar listed "Control operations and handlers" under VibeLang features, although handlers are an open proposal and not part of the language. The entry and its page are now titled "Handlers (open proposal, not in the alpha)".
+
 - Searching the website for `install` listed ten sections headed "Install" from other pages, Alchemy first, and left out the Installation page. A search for a word that starts a page title now lists that page first.
 
 - A link to a website page other than the home page previewed with only the page name, such as "Cheat sheet", as its title. The preview title now names the site too: "Cheat sheet | VibeLang".

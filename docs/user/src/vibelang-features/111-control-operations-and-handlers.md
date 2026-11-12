@@ -1,4 +1,4 @@
-# Control operations and handlers
+# Handlers (open proposal, not in the alpha)
 
 Effect handlers are an open proposal in VIP-35. They are not part of the language or the first release.
 

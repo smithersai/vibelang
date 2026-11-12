@@ -190,7 +190,7 @@ Code example count: one example per fenced code block in the source body, includ
 
 ### VibeLang features
 
-- [Control operations and handlers](src/vibelang-features/111-control-operations-and-handlers.md)
+- [Handlers (open proposal, not in the alpha)](src/vibelang-features/111-control-operations-and-handlers.md)
 - [Producers](src/vibelang-features/112-producers.md)
 - [Building an HTTP API](src/vibelang-features/113-building-an-http-api.md)
 - [VibeLang for Effect users](src/vibelang-features/114-vibelang-for-effect-users.md)

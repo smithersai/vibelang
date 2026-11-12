@@ -480,7 +480,7 @@ Inside an Effect function, `throw` adds an expected failure to the function's er
 
 The transitional bare `Effect<A, E, R>` alias reports `EK4856`. Its migration fix uses `A!E!R` only when the existing position and channels need no new parentheses; otherwise it retains the position and writes `Effect.Effect<A, E, R>`. Existing parentheses, explicit default slots and comments are preserved. It retains the qualified spelling when shorthand would change declaration bytes, including existing grouping that declaration output would otherwise remove. Local and imported types named `Effect` keep their meaning. `EK4833` then writes the grouped shorthand, such as `(number | string)!!`, because the added parentheses leave declaration bytes unchanged. Where `EK4833` cannot keep source-written parentheses or comments, its note says which, and the qualified spelling stays.
 
-See [Control operations and handlers](111-control-operations-and-handlers.md) for the proposal's status.
+See [Handlers (open proposal, not in the alpha)](111-control-operations-and-handlers.md) for the proposal's status.
 
 An inferred return declaration preserves a written assertion such as `value as ReturnType<typeof create>` and the import that names `create`. This also applies to a migrated helper that still writes `: infer _`. It needs no public return annotation to retain that spelling.
 

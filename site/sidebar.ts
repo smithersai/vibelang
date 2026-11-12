@@ -734,7 +734,7 @@ export const sidebar = [
     "text": "VibeLang features",
     "items": [
       {
-        "text": "Control operations and handlers",
+        "text": "Handlers (open proposal, not in the alpha)",
         "link": "/vibelang-features/111-control-operations-and-handlers"
       },
       {
