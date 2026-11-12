@@ -121,11 +121,15 @@ test("no page in the sitemap may teach vibelang --fix, which the compiler reject
   assert.ok(problems.includes("/extra: teaches `vibelang --fix` 2 time(s); the compiler rejects it (TS5023)"), problems.join("\n"))
 })
 
-test("the release notes may keep vibelang --fix in earlier releases, never in the current one", async () => {
+test("the release notes are history: vibelang --fix may appear in any section, on no other page", async () => {
   const history = pages["/setup/release-notes"].replace("<p>vibelang@0.0.2</p>", "<p>vibelang@0.0.2: run vibelang --fix</p>")
   assert.deepEqual(await fixture({ "/setup/release-notes": history }).check(), [])
+  // Before a publish the first section is the previous release, which documented the option,
+  // and a release's own bug list names it.
   const current = pages["/setup/release-notes"].replace("<p>Changed from 0.0.2</p>", "<p>Run vibelang --fix</p>")
-  assert.ok((await fixture({ "/setup/release-notes": current }).check()).some(p => p.startsWith("/setup/release-notes: teaches")))
+  assert.deepEqual(await fixture({ "/setup/release-notes": current }).check(), [])
+  const elsewhere = await fixture({ "/setup/release-notes": current, "/extra": "<p>Run vibelang --fix.</p>" }).check()
+  assert.deepEqual(elsewhere, ["/extra: teaches `vibelang --fix` 1 time(s); the compiler rejects it (TS5023)"])
 })
 
 test("ESLint's own --fix and other compiler flags pass", async () => {

@@ -137,9 +137,10 @@ export async function deployedReleaseProblems({
   for (const [index, route] of releaseRoutes.entries()) {
     problems.push(...releasePageProblems(route, bodies[index], { version, expectedOutput, exactOutput, platforms }))
   }
-  // Every page in the sitemap: none may teach `vibelang --fix`, which is not a
-  // compiler option (TS5023). The release notes keep earlier releases' history,
-  // so only their current section counts.
+  // Every page in the sitemap except the release notes: none may teach
+  // `vibelang --fix`, which is not a compiler option (TS5023). The release notes
+  // are history. Before a publish their first section is the previous release,
+  // which documented the option, and a release's own bug list names it.
   const sitemap = await get(new URL("/sitemap.xml", baseUrl), "/sitemap.xml")
   if (sitemap !== undefined) {
     const routes = [...new Set([...sitemap.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/g)].map(([, loc]) => new URL(loc).pathname))]
@@ -152,11 +153,8 @@ export async function deployedReleaseProblems({
     for (const route of routes) {
       const body = fetched.get(route)
       if (body === undefined) continue
-      let text = /\.(?:md|txt)$/.test(route) ? body : visibleText(body)
-      if (route.startsWith("/setup/release-notes")) {
-        const headings = [...text.matchAll(new RegExp("^##\\s+v?" + semver + "\\s*$", "gm"))]
-        text = headings[0] ? text.slice(headings[0].index, headings[1]?.index ?? text.length) : text
-      }
+      if (route.startsWith("/setup/release-notes")) continue
+      const text = /\.(?:md|txt)$/.test(route) ? body : visibleText(body)
       const count = text.match(/\bvibelang\s+--fix\b/g)?.length ?? 0
       if (count) problems.push(`${route}: teaches \`vibelang --fix\` ${count} time(s); the compiler rejects it (TS5023)`)
     }
