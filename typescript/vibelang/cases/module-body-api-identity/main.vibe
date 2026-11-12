@@ -1,0 +1,17 @@
+// VIP-40: a module-block split preserves API identity through body re-exports.
+// rule-evidence: docs/design/src/001-functions.md#declaration-output docs/design/vips/0040-module-declarations.md#emit-declarations-source-maps
+module parse {
+  /** Parse a port.
+   * @throws {RangeError}
+   */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!Number.isInteger(n) || n < 1 || n > 65535) throw new RangeError("bad port")
+    return n
+  }
+  /** A parser with one nominal identity. */
+  export class Parser {
+    private readonly brand = undefined
+  }
+}
+export { port, Parser } from parse

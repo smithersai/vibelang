@@ -588,6 +588,27 @@ For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it, and for each `x.
 
 <a id="api-identity"></a>**API identity.** Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin: the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export, with one exception: the emitted declaration may add VIP-27’s generated `@throws {never}` contract where the twin has no authored throw contract. No other JSDoc difference is allowed, and an authored `@throws` must remain unchanged. Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count. Every rule that requires declarations to match, migration included, means this.
 
+- **Clarified 2026-11-12:** A migration that moves code into a `module` block keeps the same public API; the published declaration may re-export from the body's declaration file. The exported names, types and JSDoc stay the same, and type identity is preserved through the re-export. Byte identity, apart from the generated `@throws {never}`, still holds for every conversion without a module-block split.
+
+For example, moving a parser into `module parse` may replace the declarations in `main.d.ts` with a re-export:
+
+```ts
+// main.d.ts
+export { port } from "./main.vibe.parse.js";
+```
+
+The package also publishes `main.vibe.parse.d.ts`, with the original declaration and its JSDoc:
+
+```ts
+// main.vibe.parse.d.ts
+/** Parse a port.
+ * @throws {RangeError}
+ */
+export declare function port(raw: string): number;
+```
+
+Both entry points refer to the same `port` declaration; consumers of `main.d.ts` see the same exported name, function type and JSDoc as before the split.
+
 Compare the ordinary stock-`tsc` twin without adding generated tags to it. Preserve its source documentation; only the generated contract described above is an allowed addition in the emitted declaration. Authored throw tags must remain unchanged. The output tag stays out of `.vibe` source, where it is `EK0406`. Effectful signatures and re-exported foreign callables retain their own declaration rules.
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare. Ordinary interface and object-type properties, including optional members and index signatures, keep exactly the source's written `readonly` modifiers, including in nested object types; class fields keep their written modifiers too. Each keeps its source form: a function declaration is a `declare function`, and a `const` holding an arrow is a `declare const`. A `service`, `error`, `schema`, `schema error` or `data` declaration is declared as TypeScript's declaration emit of its Effect TypeScript counterpart, which introduces a `Name_base` constant for a class-call heritage such as `Context.Service<…>()("k")`. The output imports every name the source had in scope without an import: each root module as `import { Effect, Stream } from "effect"`, each subpath namespace from its subpath, and a module whose bare name is a JavaScript global's (`Array`, `Console`) under a fresh alias, as emitted code does ([Services](005-services.md#effects-modules-are-in-scope)). A declaration writes such a name only where the source writes it: an inferred signature that a library declares with a name the file never writes keeps TypeScript's import type, so `Schema.decodeUnknownSync(Schema.String)` declares `options?: import("effect/SchemaAST").ParseOptions`. A form that stands for a module writes its name: an Effect function, `A!E!R`, `try` or a bare Effect global such as `sleep` writes `Effect`, which its Effect TypeScript imports. Nothing in it depends on `vibe.effectModules` or `vibe.effectGlobals`. The generic-`data` helper for `data Outcome<A>` is named `$Outcome$Definition`; if the module already declares that name, the compiler appends `$2`, `$3`, … and takes the first free name, so the name is the same on every build (VIP-28, amended). Noncomputed object and class member names do not occupy that helper binding. Generated matcher declarations follow [VIP-27's published matcher boundary](../vips/0027-declaration-output.md#decision).
