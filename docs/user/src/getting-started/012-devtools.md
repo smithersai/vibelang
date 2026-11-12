@@ -233,7 +233,7 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Correctness | `classSelfMismatch` | Not needed: a `service` has no `Self` parameter | `service Users { find(id: string): User!NotFound }` |
 | Correctness | `duplicatePackage` | EK4803, warning | two versions of `effect` in one program |
 | Correctness | `effectFnImplicitAny` | Not needed: parameters are TypeScript's, so `strict` reports TS7006 | `effect function load(id) { … }` |
-| Correctness | `floatingEffect` | `EK3801`, error on selected inputs | A discarded Effect value or `effect { … }` block; write `void (expression)` to preserve the deliberate discard |
+| Correctness | `floatingEffect` | `EK3801`, error on selected inputs, with the `@effect/language-service` plugin; `EK4801`, error, without it | A discarded Effect value or `effect { … }` block; write `void (expression)` to preserve the deliberate discard |
 | Correctness | `genericEffectServices` | Covered: EK3005 | `service Repo<T> { … }` |
 | Correctness | `missingEffectContext` | Covered: `EK9202` (interim) at a contract, `EK9211` at a runner | `effect function f(): User!NotFound { return try (try Users).find(id) }` is `EK9202` |
 | Correctness | `missingEffectError` | Covered: `EK9201` (interim) | `effect function f(): User!! { return try (try Users).find(id) }` |
