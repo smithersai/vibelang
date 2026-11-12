@@ -2,15 +2,18 @@
 
 > **Warning:** VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
 
-The VibeLang runtime: the one-shot continuation kernel and the helpers the
-[`vibelang`](https://www.npmjs.com/package/vibelang) compiler emits. It runs on
-Effect 4's fibers, scopes, and services.
+The helpers that JavaScript compiled by the
+[`vibelang`](https://www.npmjs.com/package/vibelang) compiler imports. Each
+helper gives a VibeLang form the behavior of the Effect code it replaces, on
+Effect 4's fibers, scopes, and services. Some helpers are built on an internal
+one-shot continuation kernel: `x catch h`, for example, compiles to the
+kernel's `catchExpected`, which recovers as `Effect.catch` does.
 
-The first release uses ordinary services and providers. The compiler rejects
-`control`, `handle`, and continuation-runtime references with `EK3501`, and
-`select` blocks with `EK4607`. Code that depended on continuations needs an
-explicit service or an Effect redesign. VIP-35 remains open and is outside the
-first release.
+The first release uses ordinary services and providers. `.vibe` code cannot
+reference the continuation API: the compiler rejects `control`, `handle`, and
+continuation-runtime references with `EK3501`, and `select` blocks with
+`EK4607`. Code that depends on continuations needs an explicit service or
+Effect redesign. VIP-35 remains open and is outside the first release.
 
 ## Install
 
@@ -123,10 +126,10 @@ or runtime references valid in first-release `.vibe` source.
 | `$assertMatch` | Require a successful pattern match | — |
 | `$asyncHatch` | Adapt an asynchronous hatch and its optional AbortSignal | — |
 | `$await` | Lower a retired await form | — |
-| `$awaitAll` | Type of a removed `await.all` (`EK1802`) | VIP-18 |
-| `$awaitAllSettled` | Type of a removed `await.allSettled` | VIP-18 |
-| `$awaitAny` | Type of a removed `await.any` | VIP-18 |
-| `$awaitRace` | Type of a removed `await.race` | VIP-18 |
+| `$awaitAll` | Type of a retired `await.all`, which the compiler reads to report `EK1802`; compiled code never calls it | VIP-18 |
+| `$awaitAllSettled` | Type of a retired `await.allSettled`, read to report `EK1802`; compiled code never calls it | VIP-18 |
+| `$awaitAny` | Type of a retired `await.any`, read to report `EK1802`; compiled code never calls it | VIP-18 |
+| `$awaitRace` | Type of a retired `await.race`, read to report `EK1802`; compiled code never calls it | VIP-18 |
 | `$catchCause` | Recover a complete Cause while preserving control abandonment | — |
 | `$defineProperty` | Captured Object.defineProperty intrinsic | — |
 | `$eager` | Track eager-call depth and its shared limit | — |

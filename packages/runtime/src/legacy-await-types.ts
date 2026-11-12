@@ -2,7 +2,8 @@ import type * as Deferred from "effect/Deferred"
 import type * as Effect from "effect/Effect"
 import type * as Fiber from "effect/Fiber"
 
-// Type-only recorder for vibelang --fix; no runtime implementation.
+// Types of the retired await operations, read to report EK1802; no runtime
+// implementation.
 /** An element of an await operation's operand. */
 // The declaration admits a Fiber and a Deferred only so that the compiler's
 // EK4609 or EK4610 is the one error at such an element; no program that

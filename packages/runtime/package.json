@@ -1,7 +1,7 @@
 {
   "name": "vibelang-runtime",
   "version": "0.0.13",
-  "description": "The VibeLang continuation kernel and generated-code runtime helpers.",
+  "description": "The helpers that JavaScript compiled by the VibeLang compiler imports.",
   "keywords": [
     "vibelang",
     "effect",

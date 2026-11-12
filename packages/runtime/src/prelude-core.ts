@@ -106,7 +106,7 @@ const joinSchemaErrorFamilies = (error: object, own: SchemaAST.AST): void => {
 /**
  * VIP-7/VIP-13/VIP-29: an error declaration matches a subject tagged with its
  * name, across package copies, or an instance of its class. The instance test
- * keeps a family's base matching the subclasses that `vibelang --fix` writes
+ * keeps a family's base matching subclasses declared
  * with their own tags (D278, VIP-34), as instanceof does. Both matcher modes
  * extract the original subject; the closure keeps its tag and class
  * independently of the call receiver.
