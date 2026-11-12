@@ -520,6 +520,9 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"catch-annotated-initializer", "try {} catch (e: unknown = 1) {}"},
 	{"import-type-asserts-predicate", grammarImportAssertsForms[0]},
 	{"import-type-this-predicate", grammarImportAssertsForms[4]},
+	{"schema-jsdoc-dotted-generic", "schema S { a: Array.<string> }"},
+	{"schema-predicate-field-type", "schema S { a: asserts x }"},
+	{"experimental-gated-body", "workflow W { async static readonly maxRounds = 2; effect call(repo: string) { return 1 } }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1476,6 +1479,12 @@ func grammarAdmissionForm(source string) string {
 	if grammarDynamicImportArity(ts) {
 		return "admission:dynamic-import-arity"
 	}
+	if grammarSchemaPredicateFieldType(ts) {
+		return "admission:schema-predicate-field-type"
+	}
+	if grammarSchemaJSDocDottedFieldType(ts) {
+		return "admission:schema-jsdoc-dotted-field-type"
+	}
 	if grammarSchemaJSDocFieldType(ts) {
 		return "admission:schema-jsdoc-field-type"
 	}
@@ -1790,6 +1799,10 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarPatternNameObject(ts) {
 		return "admission:pattern-name-object"
+	}
+	// Last: a task or workflow body the experimental gate hides from its member checks.
+	if grammarExperimentalGatedBody(ts) {
+		return "admission:experimental-gated-body"
 	}
 	return ""
 }

@@ -30,6 +30,16 @@ func TestGrammarAdmissionSchemaJSDocQuoted(t *testing.T) {
 // Recognize prefix and postfix types inside a schema body or type alias;
 // optional property markers and Effect type bangs remain separate.
 func grammarSchemaJSDocFieldType(ts []grammarToken) bool {
+	return grammarSchemaJSDocTypeForm(ts, false)
+}
+
+// A dotted generic stays separate from the prefix and postfix forms:
+// those forms have already regained their native syntax rejection.
+func grammarSchemaJSDocDottedFieldType(ts []grammarToken) bool {
+	return grammarSchemaJSDocTypeForm(ts, true)
+}
+
+func grammarSchemaJSDocTypeForm(ts []grammarToken, dotted bool) bool {
 	prefixes := map[string]bool{"?": true, "??": true, "!": true, "*": true}
 	beforeType := map[string]bool{":": true, "[": true, "(": true, ",": true, "<": true, "|": true, "&": true, "=>": true, "readonly": true}
 	for i, tok := range ts {
@@ -117,12 +127,17 @@ func grammarSchemaJSDocFieldType(ts []grammarToken) bool {
 					break aliasType
 				}
 			}
-			if !callable && prefixes[ts[k].text] && (alias && k == start || k > start && beforeType[ts[k-1].text]) {
+			if !dotted && !callable && prefixes[ts[k].text] && (alias && k == start || k > start && beforeType[ts[k-1].text]) {
+				return true
+			}
+			// The JSDoc dotted generic `Array.<T>` maps silently in a schema field,
+			// where TypeScript reports TS8020.
+			if dotted && !callable && k > start && k+1 < len(ts) && ts[k].text == "." && ts[k+1].text == "<" && (ts[k-1].kind == 'w' || ts[k-1].kind == 's') {
 				return true
 			}
 			// Native source types recover postfix ? as JSDoc nullable syntax.
 			// A tuple's own optional element marker is ordinary TypeScript.
-			if !callable && ts[k].text == "?" && k > start && !ts[k].nl {
+			if !dotted && !callable && ts[k].text == "?" && k > start && !ts[k].nl {
 				previous := ts[k-1]
 				typeEnd := previous.kind == 'w' || previous.kind == 's' || previous.kind == 'n' ||
 					previous.text == ")" || previous.text == "]" || previous.text == ">" || previous.text == "}"

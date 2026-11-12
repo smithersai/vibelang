@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:experimental-gated-body\nworkflow W { async static readonly maxRounds = 2; effect call(repo: string) { return 1 } }")
