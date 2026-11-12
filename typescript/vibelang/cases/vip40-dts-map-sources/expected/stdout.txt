@@ -4,4 +4,4 @@ result 80
 d.ts throws true
 d.ts port true
 main.vibe.parse.js.map sources ["main.vibe"] full sourcesContent true port line true column true
-main.vibe.parse.d.ts.map sources ["main.vibe"] full sourcesContent true port line true column true
+main.vibe.parse.d.ts.map sources ["main.vibe"] no sourcesContent true port line true column true

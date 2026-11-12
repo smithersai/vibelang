@@ -46,5 +46,8 @@ test("VIP-39 lists the </ case as row 39 and counts it", () => {
   const row = vip.split("\n").find(l => l.startsWith("| 39 | "))
   assert.ok(row.includes("`a </b/.source.length`") && row.includes("`LessThanSlashToken`") && row.includes("write a space"))
   assert.ok(vip.includes("Rows 1–5 and 39 are the only places where `.vibe` text changes meaning in `.vibex`."))
-  assert.ok(vip.includes("except that `</` is one token in every `.vibex` context (row 39): write `when < /re/:`."))
+  assert.ok(vip.includes("except that `</` is one token in every `.vibex` context (row 39)."))
+  // A relational pattern's operand is never a regular expression, so the spec must not teach `when < /re/:`.
+  assert.ok(!/write `when < \/re\/:`/.test(vip) && !row.includes("`when < /b/:`. No pattern-only"))
+  assert.ok(vip.includes("a regular-expression pattern is `when /re/:`"))
 })

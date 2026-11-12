@@ -2691,7 +2691,7 @@ export declare function decodeUnknownSync<T>(s: Schema.Decoder<T>): {
 
 **Not in the alpha.** VIP-43 is accepted, but the alpha does not support it and 0.0.13 implements none of it: the vibelang prove command this appendix describes does not exist yet. Its rules become part of the language when the compiler implements them.
 
-Source: [VIP-43](../vips/0043-theorems.md), accepted 2026-11-07 and not implemented yet. The rules below are part of the language; until the compiler implements them, it reads `theorem`, `spec` and `proof` as identifiers and the proof statement names as ordinary names, and it reports none of the codes in [Details](#details).
+Source: [VIP-43](../vips/0043-theorems.md), accepted 2026-11-07 and not implemented yet. The rules below are part of the language; until the compiler implements them, it reads `theorem`, `spec` and `proof` as identifiers and the proof statement names as ordinary names, it reports none of the codes in [Details](#details), it has no `vibelang prove` command, and a `vibe.proofDir` key in a config is an unknown `vibe` option, `EK3007`.
 
 A theorem states a fact about plain functions for every input in the [model](#the-trust-boundary). `vibelang prove` proves it by lowering the source to [LemmaScript](https://github.com/midspiral/LemmaScript)'s annotated TypeScript and running LemmaScript's `lsc` with the Dafny verifier. All proof syntax erases: compiled JavaScript and declarations are the same as for the program without it.
 
@@ -3140,7 +3140,7 @@ vibelang prove [-p <project>] [--strict]
 
 | Key | Meaning |
 | --- | --- |
-| `vibe.proofDir` | String; default `"proofs"`. The proof directory. A relative path uses the declaring config's directory; a leading `${configDir}` uses the selected config's directory. A wrong type is `EK3007`. |
+| `vibe.proofDir` | String; default `"proofs"`. The proof directory. A relative path uses the declaring config's directory; a leading `${configDir}` uses the selected config's directory. A wrong type is `EK3007`. Not implemented yet: until VIP-43 is, the compiler reports any `vibe.proofDir` as an unknown option, `EK3007`. |
 
 #### Steps
 

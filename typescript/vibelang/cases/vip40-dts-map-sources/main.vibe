@@ -1,4 +1,5 @@
-// VIP-40: the maps name main.vibe with its full sourcesContent — spec-rule: docs/design/vips/0040-module-declarations.md#5aba7d453a08e321
+// VIP-40: the maps name main.vibe — spec-rule: docs/design/vips/0040-module-declarations.md#ec1f2e958fe8cbb9
+// VIP-40: only the JavaScript map carries sourcesContent — spec-rule: docs/design/vips/0040-module-declarations.md#6cffcfd992cb0113
 import { port } from parse
 import type { Shape } from shapes
 

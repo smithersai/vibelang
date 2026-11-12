@@ -1,0 +1,5 @@
+// expect: TS1003
+// VIP-39: a relational pattern never takes a regular expression, so `when < /b/:` is TS1003 in .vibex too — spec-rule: docs/design/vips/0039-vibex.md#e5bfeddaff116d6a
+// VIP-39: `</` is not the issue here; the spaced `< /b/` is still not a relational operand — spec-rule: docs/design/vips/0039-vibex.md#ecc9ccb1b6412270
+export const vowel = (s: string) => match (s) { when /[aeiou]/: "vowel"; default: "other"; }
+export const below = (s: string) => match (s) { when < /b/: "below"; default: "other"; }

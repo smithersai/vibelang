@@ -1,1 +1,1 @@
-vip40 The body declaration map main.vibe.parse.d.ts.map lists a virtual main.vibe.parse.ts source before main.vibe and its sourcesContent is not the .vibe text. Rule: docs/design/vips/0040-module-declarations.md#5aba7d453a08e321
+vip40 The body declaration map main.vibe.parse.d.ts.map lists a virtual main.vibe.parse.ts source before main.vibe. Rule: docs/design/vips/0040-module-declarations.md#ec1f2e958fe8cbb9

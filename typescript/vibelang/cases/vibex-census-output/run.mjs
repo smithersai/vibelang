@@ -10,7 +10,7 @@
 // VIP-39 Declarations. x.vibex writes the public x.d.ts to outDir and: docs/design/vips/0039-vibex.md#fca61b52912d1637
 // VIP-39 The public x.d.ts is byte-identical to the one the: docs/design/vips/0039-vibex.md#9a2d1686fdcb1c40
 // VIP-39 VIP-27 is unchanged a converted component gains throws exactly: docs/design/vips/0039-vibex.md#7738a5896ab23ddb
-// VIP-39 Source maps. x.js.map x.jsx.map and x.d.ts.map name x.vibex with: docs/design/vips/0039-vibex.md#d1ed4010f488080c
+// VIP-39 Source maps. x.js.map x.jsx.map and x.d.ts.map name x.vibex; only the JavaScript map carries sourcesContent: docs/design/vips/0039-vibex.md#c8eef91d4ba0d144
 // VIP-39 Diagnostics. JSX errors keep their TypeScript codes VibeLang errors: docs/design/vips/0039-vibex.md#600ee6e6f420abfe
 // VIP-39 EK39xx stays reserved for it: docs/design/vips/0039-vibex.md#a783d4c45fc3a6e3
 // VIP-39 vibe .vibex .ts and .tsx import and re-export each: docs/design/vips/0039-vibex.md#e2cb59239e362386
@@ -136,7 +136,7 @@ check("declaration-map-content",()=>{
  const a=compile("declaration-map-content",{"App.vibex":source},{sourceMap:true,inlineSources:true,declarationMap:true});clean(a)
  const map=JSON.parse(read(a,"out/App.d.ts.map"))
  assert.ok(map.sources.some(p=>p.endsWith("App.vibex")))
- assert.ok(map.sourcesContent?.includes(source),"VIP-39 requires sourcesContent in the declaration map")
+ assert.equal(map.sourcesContent,undefined,"VIP-39: a declaration map carries no sourcesContent, as TypeScript writes none in a .d.ts.map")
 })
 for(const mode of ["preserve","react"]) for(const kind of ["none","declarations","only","noEmit"]) check("collision-tsx:"+mode+":"+kind,()=>{
  const a=compile("collision-tsx-"+mode+"-"+kind,{"App.tsx":"export const a=1","App.vibex":"export const b=2"},

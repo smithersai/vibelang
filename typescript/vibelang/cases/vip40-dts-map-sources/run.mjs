@@ -42,6 +42,11 @@ function firstSegments(mappings) {
   return lines
 }
 const source = readFileSync(new URL("main.vibe", dir), "utf8")
+// VIP-40: under inlineSources the JavaScript map carries the full .vibe text; the declaration map carries no
+// sourcesContent, as TypeScript 5.9.3 writes none in a .d.ts.map even with --inlineSources.
+const content = (name, map) => name.endsWith(".d.ts.map")
+  ? " no sourcesContent " + (map.sourcesContent === undefined)
+  : " full sourcesContent " + (map.sourcesContent?.[0] === source)
 const sourceLines = source.split("\n")
 for (const name of ["main.vibe.parse.js.map", "main.vibe.parse.d.ts.map"]) {
   const map = JSON.parse(text(name))
@@ -50,6 +55,6 @@ for (const name of ["main.vibe.parse.js.map", "main.vibe.parse.d.ts.map"]) {
   const mapped = firstSegments(map.mappings)[at]
   const want = sourceLines.findIndex((line) => line.includes("export function port("))
   console.log(name + " sources " + JSON.stringify(map.sources.map((s) => s.split("/").pop())) +
-    " full sourcesContent " + (map.sourcesContent?.[0] === source) +
+    content(name, map) +
     " port line " + (mapped?.line === want) + " column " + (mapped?.column === sourceLines[want].indexOf("export")))
 }

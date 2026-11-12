@@ -1,0 +1,5 @@
+// expect: EK3007
+// Appendix F: until VIP-43 is implemented, `vibe.proofDir` is an unknown vibe option — spec-rule: docs/design/src/900-appendices.md#9106a4543556296a
+// Appendix F: the compiler reads no proof configuration yet — spec-rule: docs/design/src/900-appendices.md#12367e437832353b
+// rule-evidence: docs/design/src/900-appendices.md#configuration docs/design/src/900-appendices.md#appendix-f-theorems-and-proofs-vip-43
+export const x = 1

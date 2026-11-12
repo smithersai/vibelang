@@ -1,0 +1,5 @@
+// expect: TS1003
+// VIP-39: a relational pattern's operand is never a regular expression, in .vibe as in .vibex — spec-rule: docs/design/vips/0039-vibex.md#2e7c8ef1253e0a04
+// VIP-39 amendment: `when < /re/:` is TS1003; a regular-expression pattern is `when /re/:` — spec-rule: docs/design/vips/0039-vibex.md#7dae349729dc8a4d
+export const vowel = (s: string) => match (s) { when /[aeiou]/: "vowel"; default: "other"; }
+export const below = (s: string) => match (s) { when < /b/: "below"; default: "other"; }

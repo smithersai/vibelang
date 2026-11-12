@@ -1,4 +1,4 @@
 import {test} from "node:test"
-// Chapter 007 / all formatter frontends have language plugin integration: docs/design/src/007-tooling.md#d7102488b4651923
+// Chapter 007 / Oxfmt has no plugin interface; its scripts run vibelang-format: docs/design/src/007-tooling.md#9b3a007ec75cfcf0
 // Oxfmt currently exposes no external language-plugin API; migrated scripts append vibelang-format instead.
-test.todo("Chapter 007 / an Oxfmt language plugin formats raw .vibe through the repository formatter command")
+test.todo("Chapter 007 / a pinned Oxfmt repository's migrated format script formats .vibe through vibelang-format")
