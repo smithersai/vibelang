@@ -130,5 +130,6 @@ for item in $todo; do
 done
 
 [ -n "$dry" ] && { echo "publish: dry run passed for $version"; exit 0; }
-echo "publish: published VibeLang $version. Check it from the public registry with:"
+echo "publish: published VibeLang $version. Deploy vibelang.sh for it, then check both from the public registry:"
+echo "  sh scripts/release/deploy-site.sh $version"
 echo "  sh scripts/release/verify-published.sh $version"

@@ -21,11 +21,15 @@ const pages = {
   "/setup/release-notes": `<h1>Release notes</h1><h2 id="latest">${version}</h2><p>Changed from 0.0.2</p><h2>0.0.2</h2><p>vibelang@0.0.2</p>`,
   "/setup/release-notes.md": `# Release notes\n\n## ${version}\nChanges from 0.0.2\n\n## 0.0.2\nvibelang@0.0.2\n`
 }
+// The sitemap lists the HTML pages; /extra is a page outside the release routes.
+const sitemap = ["/", "/getting-started/004-installation", "/setup/release-notes", "/extra"]
+  .map(path => `<url><loc>https://vibelang.sh${path}</loc></url>`).join("")
+const served = { "/sitemap.xml": `<urlset>${sitemap}</urlset>`, "/extra": "<h1>Extra</h1><p>Run <code>vibelang format</code>.</p>" }
 function fixture(overrides = {}, npm = latest, checkout = manifest) {
   const calls = []
   const fetchImpl = async (url, options) => {
     calls.push([String(url), options])
-    const body = String(url) === registryUrl ? JSON.stringify(npm) : { ...pages, ...overrides }[new URL(url).pathname]
+    const body = String(url) === registryUrl ? JSON.stringify(npm) : { ...pages, ...served, ...overrides }[new URL(url).pathname]
     return new Response(body ?? "missing", { status: body === undefined ? 404 : 200 })
   }
   return { calls, check: () => deployedReleaseProblems({ baseUrl, registryUrl, manifest: checkout, typescriptVersion: "7.1.0-dev", fetchImpl }) }
@@ -33,7 +37,7 @@ function fixture(overrides = {}, npm = latest, checkout = manifest) {
 test("checks every served surface and npm latest, ignoring historical releases and HTML metadata", async () => {
   const { check, calls } = fixture()
   assert.deepEqual(await check(), [])
-  assert.deepEqual(calls.map(([url]) => new URL(url).pathname).sort(), [...Object.keys(pages), "/vibelang/latest"].sort())
+  assert.deepEqual(calls.map(([url]) => new URL(url).pathname).sort(), [...Object.keys(pages), ...Object.keys(served), "/vibelang/latest"].sort())
   for (const [, options] of calls) {
     assert.equal(options.cache, "no-store")
     assert.equal(options.headers["Cache-Control"], "no-cache")
@@ -110,4 +114,24 @@ test("scoped Windows packages are recognized only when published", async () => {
   ]))
   assert.deepEqual(await fixture(updated, npm, npm).check(), [])
   assert.ok((await fixture({ "/setup.md": pages["/setup.md"] + "\n@smthrs/cli-win32-x64" }).check()).some(p => p.includes("absent from npm latest")))
+})
+
+test("no page in the sitemap may teach vibelang --fix, which the compiler rejects", async () => {
+  const problems = await fixture({ "/extra": "<h1>Extra</h1><pre><span>vibelang</span> <span>--fix</span></pre><p>Run vibelang --fix again.</p>" }).check()
+  assert.ok(problems.includes("/extra: teaches `vibelang --fix` 2 time(s); the compiler rejects it (TS5023)"), problems.join("\n"))
+})
+
+test("the release notes may keep vibelang --fix in earlier releases, never in the current one", async () => {
+  const history = pages["/setup/release-notes"].replace("<p>vibelang@0.0.2</p>", "<p>vibelang@0.0.2: run vibelang --fix</p>")
+  assert.deepEqual(await fixture({ "/setup/release-notes": history }).check(), [])
+  const current = pages["/setup/release-notes"].replace("<p>Changed from 0.0.2</p>", "<p>Run vibelang --fix</p>")
+  assert.ok((await fixture({ "/setup/release-notes": current }).check()).some(p => p.startsWith("/setup/release-notes: teaches")))
+})
+
+test("ESLint's own --fix and other compiler flags pass", async () => {
+  assert.deepEqual(await fixture({ "/extra": "<p>Run <code>eslint --fix</code> and <code>vibelang --noEmit</code>.</p>" }).check(), [])
+})
+
+test("a missing sitemap fails the check instead of skipping the page scan", async () => {
+  assert.ok((await fixture({ "/sitemap.xml": undefined }).check()).some(p => p.startsWith("/sitemap.xml: fetch failed")))
 })

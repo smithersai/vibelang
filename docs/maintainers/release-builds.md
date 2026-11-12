@@ -123,3 +123,35 @@ compiler's version manifest, each platform package it lists and the runtime,
 Vite plugin, starter and bundler plugin. A failure names the package and field
 before running app checks. Set `VIBELANG_REGISTRY` to select the registry for
 both metadata verification and app checks.
+
+## Docs site deployment
+
+vibelang.sh is one static site, built from `site/` and deployed to Cloudflare by
+`sh scripts/deploy-docs.sh` through the alchemy stack in `site/alchemy.run.ts`.
+The site states the release that npm's `latest` tag serves: `deploy-docs.sh`
+snapshots npm latest before it builds, checks every docs example against that
+release's compiler, and its `postdeploy` step (`docs/tools/deployed-release.mjs`)
+reads the served pages back and fails if any page names another version.
+
+Nothing in this repository deploys the site on a push or a publish. A maintainer
+runs a deploy loop outside the repository that calls `deploy-docs.sh` when
+`main` or npm latest moves; it holds the Cloudflare credentials. So the site
+keeps describing the previous release after `publish.sh` until a deploy runs,
+and keeps it for as long as deploys fail.
+
+A release therefore deploys the site itself, after `publish.sh`:
+
+```sh
+sh scripts/release/deploy-site.sh <version>
+sh scripts/release/verify-published.sh <version>
+```
+
+`deploy-site.sh` refuses to deploy until npm latest is `<version>`, then runs
+`deploy-docs.sh`. `verify-published.sh` checks the registry manifests for home
+paths, scaffolds and tests an app from the registry, then runs `scripts/release/live-site.mjs --version <version>` against
+the live site, so it fails while the installation page, home page, setup Markdown
+or release notes still name another version, or while any page in the sitemap
+teaches `vibelang --fix` (only the release notes' current section counts).
+`live-site.mjs` uses only Node's built-ins, so both scripts run from a release
+bundle that holds `scripts/release/` and nothing else. `VIBELANG_REGISTRY` and
+`VIBELANG_SITE_URL` point both checks at a rehearsal registry and site.
