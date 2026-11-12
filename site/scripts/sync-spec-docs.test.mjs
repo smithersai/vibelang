@@ -55,8 +55,8 @@ test('page titles are the inventory labels, not the first heading', () => {
   const { put, load } = fixture()
   put('docs/design/src/101-calls.md', '## Part I. Examples\n\n### 1. Calls\n')
   const spec = load()
-  assert.ok(spec.convert('101-calls.md', facts).startsWith('---\ntitle: "1. Calls"\n---'))
-  assert.ok(spec.convert('000-intro.md', facts).startsWith('---\ntitle: "Introduction"\n---'))
+  assert.ok(spec.convert('101-calls.md', facts).startsWith('---\ntitle: "1. Calls"\n'))
+  assert.ok(spec.convert('000-intro.md', facts).startsWith('---\ntitle: "Introduction"\n'))
 })
 test('missing chapters, user pages, headings and ambiguous fragments fail', () => {
   const { put, load } = fixture()
@@ -99,7 +99,7 @@ test('VIPs render from docs/design/vips: README order, links, escaping and missi
   ])
   assert.deepEqual([...vips.pages.keys()], ['index.mdx', '0001-one.mdx', '0002-two.mdx'])
   const one = vips.pages.get('0001-one.mdx')
-  assert.ok(one.startsWith('---\ntitle: "VIP-1: one"\n---\n\n# VIP-1: `one`'))
+  assert.ok(one.startsWith('---\ntitle: "VIP-1: one"\ndescription: "VIP-1: one. A VibeLang improvement proposal: the decision, its reasons and its history."\n---\n\n# VIP-1: `one`'))
   for (const text of ['[two](/vips/0002-two#why)', '[index](/vips/)', '[repo](https://github.com/smithersai/vibelang/blob/main/README.md)', '\\{braces\\}', 'const x = { a: 1 }']) assert.ok(one.includes(text), text)
   put('docs/design/vips/0003-three.md', '# VIP-3: Three\n')
   assert.throws(() => loadVips(path.join(root, 'docs')), /missing from README/)
@@ -147,4 +147,21 @@ test('a video line in a chapter becomes a player, not an unresolvable link', () 
   const body = load().convert('000-intro.md', facts)
   assert.ok(body.includes('<source src="/videos/spec-walkthrough.mp4" type="video/mp4" />'), body)
   assert.ok(body.includes('<figcaption>The specification overview</figcaption>'), body)
+})
+
+// Without a description, Vocs gives every spec and VIP page the site's tagline, so a
+// shared link or a search result could not tell one page from another.
+test('every specification and VIP page has its own description', () => {
+  const { root, load } = fixture()
+  const spec = load()
+  const description = body => JSON.parse(body.match(/^description: (.+)$/m)?.[1] ?? 'null')
+  const chapters = ['000-intro.md', '101-calls.md', '202-rules.md'].map(file => description(spec.convert(file, facts)))
+  assert.equal(chapters[0], 'The VibeLang specification: the syntax, meaning and diagnostics of the language, as its accepted improvement proposals (VIPs) define them.')
+  assert.equal(chapters[1], 'Calls, from the VibeLang specification: the rules the accepted improvement proposals (VIPs) set for this part of the language.')
+  const vips = loadVips(path.join(root, 'docs')).pages
+  const pages = ['index.mdx', '0001-one.mdx', '0002-two.mdx'].map(file => description(vips.get(file)))
+  assert.equal(pages[0], 'VibeLang improvement proposals (VIPs): each language decision, with its status, its reasons and its history.')
+  assert.equal(pages[2], 'VIP-2: Two. A VibeLang improvement proposal: the decision, its reasons and its history.')
+  const all = [...chapters, ...pages]
+  assert.equal(new Set(all).size, all.length, JSON.stringify(all))
 })

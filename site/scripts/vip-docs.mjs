@@ -4,6 +4,13 @@ import { readFences, convertText, fence } from './docs-markdown.mjs'
 
 const REPO = 'https://github.com/smithersai/vibelang/blob/main/'
 
+// A VIP's first paragraph is its status line, so each page gets a summary of what it
+// is for search results and link previews instead of the site default.
+export function describeVip(file, title) {
+  if (file === 'README.md') return 'VibeLang improvement proposals (VIPs): each language decision, with its status, its reasons and its history.'
+  return `${title}${/[.?!]$/.test(title) ? '' : '.'} A VibeLang improvement proposal: the decision, its reasons and its history.`
+}
+
 // Renders docs/design/vips: README.md becomes /vips/, each NNNN-*.md becomes /vips/NNNN-*.
 // The records stay the only source; the pages and sidebar are generated from them.
 export function loadVips(root) {
@@ -56,7 +63,7 @@ export function loadVips(root) {
       if (part.type === 'code') out.push(fence(part))
       else out.push(convertText(part.line, file, href => link(href, file)))
     }
-    return `---\ntitle: ${JSON.stringify(titles.get(file))}\n---\n\n${out.join('\n').replace(/\n+$/, '')}\n`
+    return `---\ntitle: ${JSON.stringify(titles.get(file))}\ndescription: ${JSON.stringify(describeVip(file, titles.get(file)))}\n---\n\n${out.join('\n').replace(/\n+$/, '')}\n`
   }
   const pages = new Map([['index.mdx', convert('README.md')], ...records.map(f => [f.replace(/\.md$/, '.mdx'), convert(f)])])
   return { pages, sidebar }

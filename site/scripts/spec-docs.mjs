@@ -12,6 +12,13 @@ export function substituteFacts(raw, facts) {
   })
 }
 
+// A chapter's first paragraph lists its source VIPs, which says nothing in a search
+// result or a link preview, so each page states what it is instead of the site default.
+export function describeChapter(file, title) {
+  if (file === '000-intro.md') return 'The VibeLang specification: the syntax, meaning and diagnostics of the language, as its accepted improvement proposals (VIPs) define them.'
+  return `${title.replace(/^\d+\.\s+/, '')}, from the VibeLang specification: the rules the accepted improvement proposals (VIPs) set for this part of the language.`
+}
+
 // Stable specification heading IDs, including duplicate heading suffixes.
 const slug = s => s.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s/g, '-')
 export function loadSpec(root) {
@@ -118,7 +125,7 @@ export function loadSpec(root) {
     }
     if (callout) out.push(':::')
     const title = labels.get(file)
-    return `---\ntitle: ${JSON.stringify(title)}\n---\n\n${out.join('\n').replace(/\n+$/, '')}\n`
+    return `---\ntitle: ${JSON.stringify(title)}\ndescription: ${JSON.stringify(describeChapter(file, title))}\n---\n\n${out.join('\n').replace(/\n+$/, '')}\n`
   }
   return { chapters, sidebar, link, convert, counts: () => ({ links, proposed, notDesigned }) }
 }
