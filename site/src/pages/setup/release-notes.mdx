@@ -11,7 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ## 0.0.13
 
-0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](/setup/alpha) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules compile only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).
+0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](/setup/alpha) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are refused at their direct uses, such as `Experimental.Durable.x`, without `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).
 
 Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml). Propose a change to the language with an [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml).
 
@@ -1046,7 +1046,7 @@ These features come from VIPs 55 to 72, which are open proposals. They are not p
 
 #### `task` and `workflow` declarations (VIP-55)
 
-- `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules compile only in a project that opts in with `"vibe": { "experimental": ["builtins"] }`. Without it, the first use in a file is `EK3013`, which names the open proposal and the opt-in. Elsewhere `task` and `workflow` stay ordinary names.
+- `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are refused at their direct uses, such as `Experimental.Durable.x`, in a project that does not opt in with `"vibe": { "experimental": ["builtins"] }`: the first such use in a file is `EK3013`, which names the open proposal and the opt-in. Elsewhere `task` and `workflow` stay ordinary names.
 - `task` and `workflow` declarations were syntax errors. They now parse, type-check and format: a task's `A!E` annotation is its boundary, and a task called outside a workflow is `EK5502`.
 
 - A declared `task` or `workflow` could not run: calling a workflow needed an engine nothing provided. Declarations now run on `Experimental.Durable`: `provide Layer.provideMerge(W.layer, Experimental.Durable.memory) { try W(a) }` journals each step, an equal input joins the recorded run, and a crashed run resumes without repeating finished steps.

@@ -30,6 +30,10 @@ In a `.vibex` file, `return` inside a `do` expression in a JSX attribute or chil
 
 With `declarationMap` on, the declaration map of a `module` body lists a source that is never written. For `module parse { … }` in `a.vibe`, `dist/a.vibe.parse.d.ts.map` has `"sources": ["../a.vibe.parse.ts", "../a.vibe"]`, and there is no `a.vibe.parse.ts`. The mappings use only `a.vibe`, so go-to-definition reaches the right file; a tool that checks every listed source reports the first one missing. Declaration maps also carry no `sourcesContent`, as with TypeScript's own `declarationMap`, even with `inlineSources`; only the JavaScript maps embed the source.
 
+## The experimental opt-in
+
+- Without `"vibe": { "experimental": ["builtins"] }`, `EK3013` refuses `task` and `workflow` declarations and the direct uses of the eight experimental modules, such as `Experimental.Durable.x` and imports from `vibelang-runtime/experimental`. It does not yet catch an alias (`const E = Experimental`, then `E.Durable`), destructuring (`const { Memory } = Experimental`) or element access (`Experimental["Durable"]`): those compile without the opt-in, and the modules they reach are still experimental.
+
 ## Specification examples the compiler does not pass yet
 
 The specification marks each example the compiler does not pass yet with `// compiler-gap: pending VIP-N`, and the docs check fails as soon as such an example passes, so this list stays current:
