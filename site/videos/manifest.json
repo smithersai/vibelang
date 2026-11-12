@@ -1,0 +1,94 @@
+{
+  "schema": 1,
+  "about": "The VibeLang version each video on vibelang.sh shows, or null when the recording does not say. docs/tools/site-videos.mjs checks it.",
+  "videos": {
+    "agent-loop.mp4": {
+      "version": "0.0.12",
+      "poster": "agent-loop.jpg"
+    },
+    "concurrent.mp4": {
+      "version": null,
+      "poster": "concurrent.jpg"
+    },
+    "contract.mp4": {
+      "version": null,
+      "poster": "contract.jpg"
+    },
+    "eco-format.mp4": {
+      "version": null,
+      "poster": "eco-format.jpg"
+    },
+    "eco-lint-effect.mp4": {
+      "version": "0.0.12",
+      "poster": "eco-lint-effect.jpg"
+    },
+    "eco-lint-eslint.mp4": {
+      "version": "0.0.12",
+      "poster": "eco-lint-eslint.jpg"
+    },
+    "eco-lint-oxlint.mp4": {
+      "version": null,
+      "poster": "eco-lint-oxlint.jpg"
+    },
+    "eco-tsc.mp4": {
+      "version": null,
+      "poster": "eco-tsc.jpg"
+    },
+    "eco-vitest.mp4": {
+      "version": "0.0.12",
+      "poster": "eco-vitest.jpg"
+    },
+    "ecosystem.mp4": {
+      "version": null,
+      "poster": "ecosystem.jpg"
+    },
+    "infer.mp4": {
+      "version": null,
+      "poster": "infer.jpg"
+    },
+    "nvim-lsp.mp4": {
+      "version": null,
+      "poster": "nvim-lsp.jpg"
+    },
+    "periodic.mp4": {
+      "version": "0.0.11",
+      "poster": "periodic.jpg"
+    },
+    "race.mp4": {
+      "version": null,
+      "poster": "race.jpg"
+    },
+    "retry.mp4": {
+      "version": null,
+      "poster": "retry.jpg"
+    },
+    "runthrough.mp4": {
+      "version": null,
+      "poster": "runthrough.jpg"
+    },
+    "spec-walkthrough.mp4": {
+      "version": "0.0.12",
+      "poster": "spec-walkthrough.jpg"
+    },
+    "term-create.mp4": {
+      "version": "0.0.6",
+      "poster": "term-create.jpg"
+    },
+    "term-test.mp4": {
+      "version": "0.0.12",
+      "poster": "term-test.jpg"
+    },
+    "type-flip.mp4": {
+      "version": null,
+      "poster": "type-flip.jpg"
+    },
+    "vite-dev.mp4": {
+      "version": "0.0.12",
+      "poster": "vite-dev.jpg"
+    },
+    "webpack.mp4": {
+      "version": null,
+      "poster": "webpack.jpg"
+    }
+  }
+}

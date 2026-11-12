@@ -101,6 +101,17 @@ fi
 echo "deploy-docs: checking the published token counts"
 bun "$root/docs/tools/token-counts.ts" --check
 
+# A page must not play an older compiler's output. VIBELANG_STALE_VIDEOS_REASON
+# ships videos recorded with another release, and is printed.
+if [ -n "${VIBELANG_STALE_VIDEOS_REASON:-}" ]; then
+	echo "deploy-docs: shipping videos not recorded with $release: $VIBELANG_STALE_VIDEOS_REASON"
+	node "$root/docs/tools/site-videos.mjs"
+else
+	echo "deploy-docs: checking that every embedded video records vibelang $release"
+	node "$root/docs/tools/site-videos.mjs" --release "$release" ||
+		{ echo "deploy-docs: re-record the videos above with $release, or set VIBELANG_STALE_VIDEOS_REASON to say why they ship" >&2; exit 1; }
+fi
+
 echo "deploy-docs: checking the brand gate"
 node "$root/scripts/brand-gate.mjs" --root "$root"
 (cd "$root/site" && npm ci && npm run test:infrastructure && npm run typecheck && npm run build && npm run test:llms)

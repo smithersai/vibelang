@@ -21,7 +21,7 @@ test("release docs checks can load all runtime platform peers from an extracted 
       mkdirSync(join(dir, path), { recursive: true })
     }
     copyFileSync(join(root, "scripts/deploy-docs.sh"), join(dir, "scripts/deploy-docs.sh"))
-    for (const file of ["published-site.mjs", "release-docs.mjs"]) copyFileSync(join(root, "docs/tools", file), join(dir, "docs/tools", file))
+    for (const file of ["published-site.mjs", "release-docs.mjs", "site-videos.mjs"]) copyFileSync(join(root, "docs/tools", file), join(dir, "docs/tools", file))
     const nativePlatform = `${process.platform}-${process.arch === "arm64" ? "arm64" : "x64"}`
     put("packages/compiler/package.json", JSON.stringify({ version: "0.0.11", optionalDependencies: { ["vibelang-" + nativePlatform]: "0.0.11" } }))
     put("packages/runtime/package.json", JSON.stringify({ version: "0.0.11", peerDependencies: { effect: "4.1.0" } }))
@@ -47,22 +47,36 @@ exit 0
 `, 0o755)
     put("bin/npm", "#!/bin/sh\nprintf 'site npm %s\\n' \"$*\"\n", 0o755)
     put("scripts/brand-gate.mjs", "")
+    put("site/videos/manifest.json", JSON.stringify({ schema: 1, videos: {} }))
     for (const [source, name] of [["compiler", "vibelang-" + nativePlatform], ["runtime", "vibelang-runtime"]]) {
       const tar = spawnSync("tar", ["czf", join(dir, "tarballs", name + "-0.0.11.tgz"), "-C", join(dir, source), "package"], { encoding: "utf8" })
       assert.equal(tar.status, 0, tar.stderr)
     }
-    const result = spawnSync("sh", [join(dir, "scripts/deploy-docs.sh"), "--dry-run"], {
-      encoding: "utf8",
-      timeout: 30000,
+    const options = {
       env: { ...process.env, PATH: join(dir, "bin") + ":" + process.env.PATH,
         DEPLOY_TEST_NODE: process.execPath, DEPLOY_TEST_ROOT: dir,
         VIBELANG_RELEASE_VERSION: "0.0.11", VIBELANG_RELEASE_TARBALLS: join(dir, "tarballs"),
         VIBELANG_SKIP_RELEASE_SNIPPETS: "0", VIBELANG_DOCS_HOVERS: "1" }
-    })
+    }
+    const result = spawnSync("sh", [join(dir, "scripts/deploy-docs.sh"), "--dry-run"], { encoding: "utf8", timeout: 30000, ...options })
     assert.equal(result.status, 0, result.stdout + result.stderr)
     assert.match(result.stdout, /Totals: all runtime peers resolved/)
+    assert.match(result.stdout, /site-videos: every embedded video records VibeLang 0\.0\.11/)
     assert.match(result.stdout, /site npm run build/)
     assert.match(result.stdout, /nothing deployed/)
+
+    // A video recorded with another release stops the deploy unless a reason ships it.
+    put("site/src/pages/index.mdx", '<video poster="/videos/old.jpg"><source src="/videos/old.mp4" /></video>\n')
+    put("site/public/videos/old.mp4", "v")
+    put("site/public/videos/old.jpg", "p")
+    put("site/videos/manifest.json", JSON.stringify({ schema: 1, videos: { "old.mp4": { version: "0.0.10", poster: "old.jpg" } } }))
+    const deploy = env => spawnSync("sh", [join(dir, "scripts/deploy-docs.sh"), "--dry-run"], { encoding: "utf8", timeout: 30000, env: { ...options.env, ...env } })
+    const stale = deploy({})
+    assert.equal(stale.status, 1, stale.stdout + stale.stderr)
+    assert.match(stale.stderr, /old\.mp4: records VibeLang 0\.0\.10, but the site states 0\.0\.11/)
+    const shipped = deploy({ VIBELANG_STALE_VIDEOS_REASON: "re-recording is scheduled" })
+    assert.equal(shipped.status, 0, shipped.stdout + shipped.stderr)
+    assert.match(shipped.stdout, /shipping videos not recorded with 0\.0\.11: re-recording is scheduled/)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
