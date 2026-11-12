@@ -510,6 +510,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Missing pages had no main landmark for screen-reader navigation. The error message and home link now share a main landmark.
 
+- Two docs pages had the browser title "Introduction" and two shared "Getting Started", and three ended in "in VibeLang" before the site name. Each docs page title is now unique and names its topic once.
+
 - Constructor and base-class references could use the reserved names `fork` and `join` inside effect code. They now report `EK1702`.
 - The global `tryPromise` reported `EK0401` for a call known to throw inside its thunk, such as `tryPromise(() => load())` with `load` declared `@throws`, while `Effect.tryPromise` admitted it. Both spellings now admit the call, in the function and the options form.
 

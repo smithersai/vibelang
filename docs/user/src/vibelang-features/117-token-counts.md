@@ -168,7 +168,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Scope](../resource-management/030-scope.md) | 2,800 |
 | **Observability** | **6,900** |
 | [Logging](../observability/031-logging.md) | 2,100 |
-| [Metrics](../observability/032-metrics.md) | 1,500 |
+| [Metrics](../observability/032-metrics.md) | 1,400 |
 | [Tracing](../observability/033-tracing.md) | 2,500 |
 | [Tracking Fibers](../observability/034-tracking-fibers.md) | 900 |
 | [Configuration](../035-configuration.md) | 2,900 |
@@ -201,7 +201,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Operations](../stream/057-operations.md) | 4,300 |
 | [Resourceful Streams](../stream/058-resourceful-streams.md) | 760 |
 | **Sink** | **4,400** |
-| [Introduction](../sink/059-introduction.md) | 650 |
+| [Introduction](../sink/059-introduction.md) | 660 |
 | [Creating Sinks](../sink/060-creating.md) | 2,200 |
 | [Operations](../sink/061-operations.md) | 830 |
 | [Leftovers](../sink/062-leftovers.md) | 680 |

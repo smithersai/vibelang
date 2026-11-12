@@ -1,4 +1,4 @@
-# Introduction
+# Introduction to Resource Management
 
 Resources need cleanup on success, failure, and cancellation. Use `ensuring` for unconditional cleanup, `scoped` for resource ownership, and Effect's outcome-aware combinators when release depends on how work ended.
 

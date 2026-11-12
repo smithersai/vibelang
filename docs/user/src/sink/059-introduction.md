@@ -1,4 +1,4 @@
-# Introduction
+# Introduction to Sinks
 
 A Sink describes how to consume a Stream into one result. Use one to make a consumption rule reusable: take a header, count records, accumulate totals, or run work for every element. Building a Sink consumes nothing.
 

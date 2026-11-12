@@ -1,4 +1,4 @@
-# Metrics in VibeLang
+# Metrics
 
 Effect's `Metric` module counts events, records current values, and measures distributions over time. Metric constructors build values exactly as in Effect; updates, state reads, and instrumented programs return Effects that run with `try`.
 

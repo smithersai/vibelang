@@ -1,4 +1,4 @@
-# Tracing in VibeLang
+# Tracing
 
 Tracing records an operation's duration and its relation to other operations. VibeLang uses Effect's spans, attributes, and exporters, so traces connect work across services. Functions are untraced by default; add spans around the operations you want to observe.
 

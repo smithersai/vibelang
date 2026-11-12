@@ -1,4 +1,4 @@
-# Getting Started
+# Getting Started with Schema
 
 `Schema` uses the same descriptions and interpreters as in Effect. Start with a struct, extract its types, then pick a parser whose failure behavior fits the caller. The [call rules](085-introduction.md#configuring-compiler-prerequisites) apply to the plain builders below.
 
