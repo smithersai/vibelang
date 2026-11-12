@@ -15,6 +15,26 @@ continuation-runtime references with `EK3501`, and `select` blocks with
 `EK4607`. Code that depends on continuations needs an explicit service or
 Effect redesign. VIP-35 remains open and is outside the first release.
 
+## What is in the alpha
+
+VibeLang 0.0.13 is the alpha: the core language of the 33 accepted VIPs
+numbered 1 to 41. Exports built from the open proposals VIPs 55 to 72 are
+experimental and not part of the alpha. They are the `task` and `workflow`
+helpers (`$task`, `$workflow` and the other exports whose decision is VIP-55),
+and the [open-proposal modules](#open-proposal-modules-opt-in) `Human`,
+`Fuzz`, `FuzzSimulation`, `Durable`, `Eval`, `Test`, `Memory` and `Scorer`.
+`.vibe` code that uses one compiles only in a project that opts in, in
+`tsconfig.json`, `jsconfig.json` or `vibe.config.json`:
+
+```json
+{ "vibe": { "experimental": ["builtins"] } }
+```
+
+Without the opt-in, the first use in a file reports `EK3013`. The other
+`Experimental` modules, such as `Experimental.FileSystem` and
+`Experimental.Encoding`, are VIP-33's [platform additions](#experimental-platform-apis):
+they are core and need no opt-in.
+
 ## Install
 
 ```sh
@@ -117,6 +137,9 @@ different patch version and Effect 3.
 Every export from the package root. `$` marks compiler helpers; types have no
 JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../docs/design/history/DECISIONS.md).
 
+A row whose decision is VIP-55 is an open proposal: it is experimental and
+needs the [opt-in](#what-is-in-the-alpha).
+
 The continuation exports below remain for legacy artifacts and migration
 verification. Their presence in this package does not make the retired forms
 or runtime references valid in first-release `.vibe` source.
@@ -143,8 +166,8 @@ or runtime references valid in first-release `.vibe` source.
 | `$global` | Captured global object, for a global failure class such as SyntaxError that a binding of the module shadows | — |
 | `$is` | Test a lowered pattern; optional third argument retains a member pattern receiver | — |
 | `$join` | Join a fiber or collection of fibers | — |
-| `$task` | Build a `task` declaration's value from its boundary signature, options, schemas and implementation | VIP-55 |
-| `$workflow` | Build a `workflow` declaration's value from its options, schemas and body | VIP-55 |
+| `$task` | Build a `task` declaration's value from its boundary signature, options, schemas and implementation | VIP-55 (open, experimental) |
+| `$workflow` | Build a `workflow` declaration's value from its options, schemas and body | VIP-55 (open, experimental) |
 | `DurableOptions` | Type of a declaration's `static readonly` options | VIP-55 |
 | `Task` | Type of a `task` declaration's value | VIP-55 |
 | `Workflow` | Type of a `workflow` declaration's value | VIP-55 |
@@ -270,22 +293,31 @@ or runtime references valid in first-release `.vibe` source.
 
 The kernel's implementation modules are private package files; their source
 stays in `src/kernel/` so the original law and trace suites can test the
-continuation machine directly. Generated code uses the package root and the
-`vibelang-runtime/data-methods` subpath described below. Tests and
+continuation machine directly. Code the `vibelang` compiler generates imports
+its helpers from `vibelang-runtime/internal`, as [Install](#install) says;
+applications import from the package root. Only the prototype text-only
+projector also imports `vibelang-runtime/data-methods`, described below. Tests and
 instrumentation import the kernel module itself from `vibelang-runtime/kernel`,
 such as its `hooks`, which report each capture and resumption; the compiler's
 acceptance case `stack-depth` uses them to check that loops run in constant stack.
 
 ## Data method dispatch
 
-`vibelang-runtime/data-methods` exports `$method`, the helper the compiler
-imports for data-first method calls, and the `MethodCandidate` type. A callable
+`vibelang-runtime/data-methods` exports `$method`, the helper the prototype
+text-only projector ([Fast calls without types](#fast-calls-without-types))
+imports for data-first method calls, and the `MethodCandidate` type. The
+`vibelang` compiler resolves a data-first method call from types and does not
+import it. A callable
 member on the receiver runs with that receiver. Otherwise, exactly one
 matching Effect module candidate receives the value as its first argument.
 An absent or ambiguous candidate keeps JavaScript's missing-method failure.
 Applications normally let the compiler emit this import.
 
 ## Experimental platform APIs
+
+These modules are VIP-33's platform additions, part of the core alpha; they
+need no opt-in. The [open-proposal modules](#open-proposal-modules-opt-in)
+that share the `vibelang-runtime/experimental` path are listed separately.
 
 `vibelang-runtime/experimental` holds what VibeLang adds where Effect lacks a
 platform API (D313), one module per service, each also a subpath:
@@ -326,20 +358,29 @@ The remaining individual subpaths are:
 | `vibelang-runtime/experimental/Window` | Window operations |
 | `vibelang-runtime/experimental/ChildProcess` | Experimental child-process compatibility helpers |
 | `vibelang-runtime/experimental/Headers` | Experimental header compatibility helpers |
-| `vibelang-runtime/experimental/Human` | Questions a durable workflow asks a person, and the answers that wake it |
 | `vibelang-runtime/experimental/NodeStream` | Experimental Node stream compatibility helpers |
 | `vibelang-runtime/experimental/Request` | Experimental request compatibility helpers |
 | `vibelang-runtime/experimental/Stdio` | Effect standard I/O plus `awaitInputClosed` |
 | `vibelang-runtime/experimental/Dns` | Typed DNS resolution |
+| `vibelang-runtime/experimental/Encoding` | Pure `decodeBase64Lenient`, requiring no layer |
+| `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns` layer |
+
+### Open-proposal modules (opt-in)
+
+These modules are built from open proposals (VIPs 56, 60, 66, 69, 70 and 71). They are
+experimental, not part of the alpha, and `.vibe` code that names one, through
+`Experimental` or its subpath, needs the [opt-in](#what-is-in-the-alpha).
+
+| Subpath | Purpose |
+| --- | --- |
+| `vibelang-runtime/experimental/Durable` | A journaled engine for Effect's `Workflow` and `Activity`: crashed runs resume and skip finished steps |
+| `vibelang-runtime/experimental/Human` | Questions a durable workflow asks a person, and the answers that wake it |
+| `vibelang-runtime/experimental/Eval` | Eval suites, runs, baselines, regression comparison and a gate with a CI exit code |
+| `vibelang-runtime/experimental/Scorer` | Scorers with a stable identity: `exact`, `contains`, `checks`, `rubric` (a model judge) and `make`; `bind` scores a durable workflow's live runs into a memory or SQL score store |
+| `vibelang-runtime/experimental/Memory` | Facts that outlive a run, recalled by query within a byte budget |
 | `vibelang-runtime/experimental/Fuzz` | Feedback-guided fuzzing over a Schema or an Effect `Arbitrary`: shrunk, replayable findings and a corpus store |
 | `vibelang-runtime/experimental/FuzzSimulation` | An execution mode for `Fuzz` that makes fiber scheduling and virtual time part of the input |
-| `vibelang-runtime/experimental/Durable` | A journaled engine for Effect's `Workflow` and `Activity`: crashed runs resume and skip finished steps |
-| `vibelang-runtime/experimental/Eval` | Eval suites, runs, baselines, regression comparison and a gate with a CI exit code |
 | `vibelang-runtime/experimental/Test` | Test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording, `decisions`, the same for a `DecisionModel`, `record`, which records what the file is missing, `modelServer`, the recording served over HTTP, `durable` and `restartable` engines with `crash`, `host`, a machine of fixed files and scripted commands, `journal` and `divergence` assertions over a durable run, and `conformance.engine()`, nine cases that certify a workflow engine |
-| `vibelang-runtime/experimental/Memory` | Facts that outlive a run, recalled by query within a byte budget |
-| `vibelang-runtime/experimental/Encoding` | Pure `decodeBase64Lenient`, requiring no layer |
-| `vibelang-runtime/experimental/Scorer` | Scorers with a stable identity: `exact`, `contains`, `checks`, `rubric` (a model judge) and `make`; `bind` scores a durable workflow's live runs into a memory or SQL score store |
-| `vibelang-runtime/experimental/platform-worker` | `ExperimentalWorkerDns` layer |
 
 ### Browser conformance tests
 
@@ -353,6 +394,11 @@ fixture failures include page errors and console errors.
 `vibelang-runtime/experimental/NetAddress` exports the pure `isIPv6` predicate. It delegates address grammar to Effect and preserves Node-compatible scoped literals without a Node import, service or layer.
 
 ## Fast calls without types
+
+> **Prototype.** This section describes the executable rendering of the
+> text-only projector, which only the unpublished TypeScript 7 content mapper
+> runs. Its call rules (L2, L3) are not the language's: the `vibelang` compiler
+> decides from types.
 
 The text-only projector (decision (B)) can't see types, so `$isRun`, `$direct`,
 and the fast-call helpers decide at run time what the fork decided from types.
