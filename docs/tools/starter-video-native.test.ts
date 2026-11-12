@@ -32,4 +32,7 @@ test("the recorded starter tests run with generated names on the native compiler
       } finally { rmSync(temp, { recursive: true, force: true }) }
     },
   ), { numRuns: 12, examples: [["Ada"], ["$&"], ['a\nb"c'], ["雪"], [" "]] })
-}, 60_000)
+  // Measured 2026-11-12: 52.0 s and 63.4 s alone on a quiet 4-vCPU box, and 60 s timeouts under load in the
+  // 0.0.13 release trains. A limit inside its own run time fails at random, so this one is about three times
+  // the slowest quiet run.
+}, 180_000)
