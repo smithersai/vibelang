@@ -2,7 +2,7 @@
 
 **Status:** accepted, 2026-11-03. Will: "Are you asking me if I accept a vip I already asked you to add?" Replaces denied [VIP-25](0025-inline-modules-denied.md).
 
-Before its first release, VibeLang ships no quick fixes or codemods of its own (PROC-29). TypeScript's built-in code fixes remain available.
+Before its first release, VibeLang ships no quick fixes or codemods of its own. TypeScript's built-in code fixes remain available.
 
 **One sentence.** `module name { … }` at a `.vibe` file's top level is a TC39 module declaration whose body is a TypeScript module, checked, emitted, declared, linted and formatted exactly as a sibling `.ts` file would be, and imported only with `import … from name`.
 

@@ -4,17 +4,17 @@ title: "VIP-61: Experimental.Trigger and Experimental.WorkQueue: cron triggers a
 
 # VIP-61: `Experimental.Trigger` and `Experimental.WorkQueue`: cron triggers and durable queues
 
-**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval. Will has not reviewed this VIP's decisions.
 
 ## Will's words
 
-> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+> Ok so give me a list of [the reference engine's] features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
 
 ## Summary
 
 **One sentence.** `Experimental.Trigger` starts a workflow on a schedule or from a verified webhook, and `Experimental.WorkQueue` hands work from a workflow to a pool of workers and parks until one answers.
 
-**One paragraph.** A workflow needs something to start it and somewhere to send slow work. Smithers has both: `@smthrs/triggers` keeps cron triggers as durable rows and decides what an occurrence means when the last run is still going or the host was down, and `DurableQueue` in `@smthrs/flow` persists a request and its result. This VIP ports both. A trigger is typed by the workflow it starts, so its `input` is the workflow's parameter tuple. A cron expression runs nothing until a host registers the trigger and drives the scheduler. Effect's own `Cron` module, in scope today, parses the expressions.
+**One paragraph.** A workflow needs something to start it and somewhere to send slow work. The reference engine (an existing Effect durable-execution framework these built-ins are modelled on) has both: its triggers package keeps cron triggers as durable rows and decides what an occurrence means when the last run is still going or the host was down, and `DurableQueue` in its flow package persists a request and its result. This VIP ports both. A trigger is typed by the workflow it starts, so its `input` is the workflow's parameter tuple. A cron expression runs nothing until a host registers the trigger and drives the scheduler. Effect's own `Cron` module, in scope today, parses the expressions.
 
 ```text
  "0 3 * * *" ──► Trigger ──► claim the occurrence ──► start Report("#ops")      one run per occurrence, across hosts
@@ -50,9 +50,9 @@ export effect function main() {
 
 ### `Experimental.Trigger`
 
-In scope with no import, as [VIP-33](/vips/0033-platform-stdlib) rules. Its code is `vibelang-runtime/experimental/Trigger`. It ports `@smthrs/triggers`.
+In scope with no import, as [VIP-33](/vips/0033-platform-stdlib) rules. Its code is `vibelang-runtime/experimental/Trigger`. It ports the reference engine's triggers package.
 
-| Call | Meaning | Smithers |
+| Call | Meaning | Reference engine |
 | --- | --- | --- |
 | `Trigger.cron(W, options)` | Declare a schedule for workflow `W`. An Effect that fails with `TriggerError` on a bad expression | `Trigger.make` |
 | `Trigger.layer(triggers)` | Register the triggers and run the scheduler for the life of the scope | `SqlTriggerStore`, `Scheduler` |
@@ -82,7 +82,7 @@ Rules:
 
 ### `Experimental.WorkQueue`
 
-It ports `DurableQueue` from `@smthrs/flow`. Effect's `Queue` and `DurableQueue` keep their names and meanings.
+It ports `DurableQueue` from the reference engine's flow package. Effect's `Queue` and `DurableQueue` keep their names and meanings.
 
 ```ts
 // proposed
@@ -97,7 +97,7 @@ export effect function render() {
 }
 ```
 
-| Call | Meaning | Smithers |
+| Call | Meaning | Reference engine |
 | --- | --- | --- |
 | `WorkQueue.make(name, { payload, success?, error?, key })` | Declare a queue | `DurableQueue.make` |
 | `WorkQueue.process(queue, payload)` | Offer the payload, park, resume with the worker's result | `DurableQueue.process` |
@@ -111,72 +111,72 @@ export effect function render() {
 
 ### What must be built
 
-Smithers' scheduler launches through a `Runner` port, and its `Webhook` and `DispatchReader` reach `@smthrs/control`, a product. The port keeps the `Runner` port and supplies one adapter over [std-durable](/vips/0060-std-durable)'s engine. That adapter is new code.
+The reference engine's scheduler launches through a `Runner` port, and its `Webhook` and `DispatchReader` reach the reference engine's control package, a product. The port keeps the `Runner` port and supplies one adapter over [std-durable](/vips/0060-std-durable)'s engine. That adapter is new code.
 
 ### Host needs
 
 A SQL store, which std-durable already provides, a clock, and for webhooks an HTTP server. A scheduler needs a process that stays up or a host that wakes it; a browser tab is neither. Which host qualifies is VIP-54's question.
 
-## Claude's decisions
+## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
 
-- In scope with no import, as [VIP-33](/vips/0033-platform-stdlib) rules. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Its code is `vibelang-runtime/experimental/Trigger`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- It ports `@smthrs/triggers`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Trigger.cron(W, options)`: Meaning: Declare a schedule for workflow `W`. An Effect that fails with `TriggerError` on a bad expression; Smithers: `Trigger.make`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- An Effect that fails with `TriggerError` on a bad expression | `Trigger.make` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Trigger.layer(triggers)`: Meaning: Register the triggers and run the scheduler for the life of the scope; Smithers: `SqlTriggerStore`, `Scheduler`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Trigger.webhook(W, { path, verify, input })`: Meaning: A verified HTTP door that starts `W` or sends a signal; Smithers: `Channel`, `Webhook`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Trigger.fires(id)`: Meaning: The fire ledger for one trigger; Smithers: `DispatchReader`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Options of `Trigger.cron`: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Option `id`: Values: A stable name; Default: Required. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Option `cron`: Values: A five-field expression. One the calendar never satisfies is refused; Default: Required. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- One the calendar never satisfies is refused | Required | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Option `timezone`: Values: An IANA zone; Default: `"UTC"`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Option `input`: Values: `W`'s parameter tuple; Default: Required. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Option `overlap`: Values: `"skip"`, `"buffer-one"`, `"supersede"`; Default: `"skip"`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Option `catchUp`: Values: `"none"`, `"one"`, `"all"`, bounded by `maxCatchUp`; Default: `"none"`, with `maxCatchUp` 0. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Option `enabled`: Values: boolean; Default: `true`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Rules: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **A trigger is a durable row.** Two hosts over one database claim occurrences through a lease. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **One occurrence starts one run.** Dispatch is at-least-once: a lease recovery can launch the same occurrence again. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- The scheduler passes one idempotency key per occurrence, and the engine deduplicates on it, so a retried dispatch joins the run it already started (`agent/triggers/README.md`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Two occurrences are two runs, even with equal input.** A plain `try Report("#ops")` twice joins one run ([durable-tasks-workflows](/vips/0055-durable-tasks-workflows)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A trigger's key holds the trigger id and the scheduled instant, so tonight's run is not last night's. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **A trigger grants nothing.** A scheduled run has the authority a person starting it would have. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A webhook's verified payload names a workflow; it cannot widen what that workflow may do. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **`verify` receives the raw request bytes** before anything is parsed. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Catch-up is bounded.** A host that was down for a month launches at most `maxCatchUp` missed occurrences. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- It ports `DurableQueue` from `@smthrs/flow`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Effect's `Queue` and `DurableQueue` keep their names and meanings. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `WorkQueue.make(name, { payload, success?, error?, key })`: Meaning: Declare a queue; Smithers: `DurableQueue.make`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `WorkQueue.process(queue, payload)`: Meaning: Offer the payload, park, resume with the worker's result; Smithers: `DurableQueue.process`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `WorkQueue.worker(queue, handler, { concurrency })`: Meaning: A layer that runs the handler for each item; Smithers: `DurableQueue.worker`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- `key` is required. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- It scopes an occurrence counter; a replay of the same offer derives the same item. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- The queue never drops an item. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A delivery that could not start is redelivered. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Until the handler's exit is recorded, a crash runs the handler again. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A handler makes its side effects idempotent. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- The waiting run shows the reason `event`, as a signal does. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- It is a request and its answer, not a broker. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- It promises no order across hosts and no batch acknowledgement. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Smithers' scheduler launches through a `Runner` port, and its `Webhook` and `DispatchReader` reach `@smthrs/control`, a product. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- The port keeps the `Runner` port and supplies one adapter over [std-durable](/vips/0060-std-durable)'s engine. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- That adapter is new code. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A SQL store, which std-durable already provides, a clock, and for webhooks an HTTP server. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A scheduler needs a process that stays up or a host that wakes it; a browser tab is neither. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Which host qualifies is VIP-54's question. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- In scope with no import, as [VIP-33](/vips/0033-platform-stdlib) rules. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Its code is `vibelang-runtime/experimental/Trigger`. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- It ports the reference engine's triggers package. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Trigger.cron(W, options)`: Meaning: Declare a schedule for workflow `W`. An Effect that fails with `TriggerError` on a bad expression; Reference engine: `Trigger.make`. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- An Effect that fails with `TriggerError` on a bad expression | `Trigger.make` | [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Trigger.layer(triggers)`: Meaning: Register the triggers and run the scheduler for the life of the scope; Reference engine: `SqlTriggerStore`, `Scheduler`. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Trigger.webhook(W, { path, verify, input })`: Meaning: A verified HTTP door that starts `W` or sends a signal; Reference engine: `Channel`, `Webhook`. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Trigger.fires(id)`: Meaning: The fire ledger for one trigger; Reference engine: `DispatchReader`. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Options of `Trigger.cron`: [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Option `id`: Values: A stable name; Default: Required. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Option `cron`: Values: A five-field expression. One the calendar never satisfies is refused; Default: Required. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- One the calendar never satisfies is refused | Required | [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Option `timezone`: Values: An IANA zone; Default: `"UTC"`. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Option `input`: Values: `W`'s parameter tuple; Default: Required. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Option `overlap`: Values: `"skip"`, `"buffer-one"`, `"supersede"`; Default: `"skip"`. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Option `catchUp`: Values: `"none"`, `"one"`, `"all"`, bounded by `maxCatchUp`; Default: `"none"`, with `maxCatchUp` 0. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Option `enabled`: Values: boolean; Default: `true`. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Rules: [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A trigger is a durable row.** Two hosts over one database claim occurrences through a lease. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **One occurrence starts one run.** Dispatch is at-least-once: a lease recovery can launch the same occurrence again. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The scheduler passes one idempotency key per occurrence, and the engine deduplicates on it, so a retried dispatch joins the run it already started (`agent/triggers/README.md`). [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Two occurrences are two runs, even with equal input.** A plain `try Report("#ops")` twice joins one run ([durable-tasks-workflows](/vips/0055-durable-tasks-workflows)). [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A trigger's key holds the trigger id and the scheduled instant, so tonight's run is not last night's. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A trigger grants nothing.** A scheduled run has the authority a person starting it would have. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A webhook's verified payload names a workflow; it cannot widen what that workflow may do. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **`verify` receives the raw request bytes** before anything is parsed. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Catch-up is bounded.** A host that was down for a month launches at most `maxCatchUp` missed occurrences. [Design](#experimentaltrigger) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- It ports `DurableQueue` from the reference engine's flow package. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Effect's `Queue` and `DurableQueue` keep their names and meanings. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `WorkQueue.make(name, { payload, success?, error?, key })`: Meaning: Declare a queue; Reference engine: `DurableQueue.make`. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `WorkQueue.process(queue, payload)`: Meaning: Offer the payload, park, resume with the worker's result; Reference engine: `DurableQueue.process`. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `WorkQueue.worker(queue, handler, { concurrency })`: Meaning: A layer that runs the handler for each item; Reference engine: `DurableQueue.worker`. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `key` is required. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- It scopes an occurrence counter; a replay of the same offer derives the same item. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The queue never drops an item. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A delivery that could not start is redelivered. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Until the handler's exit is recorded, a crash runs the handler again. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A handler makes its side effects idempotent. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The waiting run shows the reason `event`, as a signal does. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- It is a request and its answer, not a broker. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- It promises no order across hosts and no batch acknowledgement. [Design](#experimentalworkqueue) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The reference engine's scheduler launches through a `Runner` port, and its `Webhook` and `DispatchReader` reach the reference engine's control package, a product. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The port keeps the `Runner` port and supplies one adapter over [std-durable](/vips/0060-std-durable)'s engine. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- That adapter is new code. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A SQL store, which std-durable already provides, a clock, and for webhooks an HTTP server. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A scheduler needs a process that stays up or a host that wakes it; a browser tab is neither. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Which host qualifies is VIP-54's question. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 
 ### Adopted review answers
 
-- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
-- Each trigger occurrence creates its own run even when inputs are equal; ordinary equal-input workflow calls join the first run, and `W.start` explicitly starts another. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review decision](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#2-does-running-a-workflow-twice-with-the-same-input-run-it-twice).
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. [Review question 1](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- Each trigger occurrence creates its own run even when inputs are equal; ordinary equal-input workflow calls join the first run, and `W.start` explicitly starts another. [Review decision](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#2-does-running-a-workflow-twice-with-the-same-input-run-it-twice).
 
 ## Compared
 
-The trigger in Smithers 1.x. It type-checks against `@smthrs/triggers` 1.0.0-rc.16.
+The trigger in the reference engine 1.x. It type-checks against the reference engine's triggers package 1.0.0-rc.16.
 
 ```ts
 import * as Trigger from "@smthrs/triggers/Trigger"
@@ -194,19 +194,19 @@ export const nightly = Trigger.make({
 })
 ```
 
-| Program | Vibe, proposed | Smithers 1.x |
+| Program | Vibe, proposed | Reference engine 1.x |
 | --- | --- | --- |
 | The trigger, with a one-line target on the Vibe side | 76 tokens, 12 lines | 92 tokens, 13 lines |
 | The queue, its worker and one `process` call | 98 tokens, 9 lines | 119 tokens, 13 lines |
 
-Tokens are o200k_base. The counts are close because a trigger is already a small record. The gain is typing: Smithers names the flow by a string, `flowId`, and takes `input` as untyped JSON. `Trigger.cron(Report, …)` takes the workflow, and a wrong `input` is a type error.
+Tokens are o200k_base. The counts are close because a trigger is already a small record. The gain is typing: the reference engine names the flow by a string, `flowId`, and takes `input` as untyped JSON. `Trigger.cron(Report, …)` takes the workflow, and a wrong `input` is a type error.
 
-**Checked.** `Trigger.cron` compiles under `vibelang` 0.0.13 against a declaration of the proposed module, with an `effect function` standing in for the workflow, and the compiler infers `input` as the target's parameter tuple. The queue example compiles the same way. `workflow` is new. Both Smithers programs type-check. The `overlap` and `catchUp` values and their defaults are read from `agent/triggers/src/Schedule.ts`.
+**Checked.** `Trigger.cron` compiles under `vibelang` 0.0.13 against a declaration of the proposed module, with an `effect function` standing in for the workflow, and the compiler infers `input` as the target's parameter tuple. The queue example compiles the same way. `workflow` is new. Both reference engine programs type-check. The `overlap` and `catchUp` values and their defaults are read from `agent/triggers/src/Schedule.ts`.
 
 ## Principles
 
 - **TypeScript-first.** Function calls over a record.
-- **Effect-second.** Effect's `Cron` parses and steps the expressions; Smithers' `Cron` module is "typed wrappers around Effect's cron". Effect also has `ClusterCron`, which fires on a cluster singleton and has no overlap policy, catch-up or fire ledger.
+- **Effect-second.** Effect's `Cron` parses and steps the expressions; the reference engine's `Cron` module is "typed wrappers around Effect's cron". Effect also has `ClusterCron`, which fires on a cluster singleton and has no overlap policy, catch-up or fire ledger.
 - **Optimized for agentic programs.** A nightly agent run and a webhook-started run are a few lines each.
 - **Highly forkable.** A fork adds a trigger kind by adding a function that starts a workflow.
 - **Factory-first.** The factory's scheduled reviews are triggers in its source.
@@ -221,12 +221,12 @@ Tokens are o200k_base. The counts are close because a trigger is already a small
 - **A `cron` member on `workflow`**, such as `static readonly cron = "0 3 * * *"`. One workflow often has several schedules with different inputs, and a schedule is deployment, not definition.
 - **Effect's `ClusterCron`.** It needs a cluster and decides nothing about overlap or downtime.
 - **A queue as a `task` with a concurrency member.** It hides that the work runs in another process with its own delivery guarantees.
-- **Leave triggers to the Smithers product.** The CLI manages schedules. A program that ships as a library needs to declare its own.
+- **Leave triggers to the reference engine.** Its CLI manages schedules. A program that ships as a library needs to declare its own.
 
 ## Follow-up questions
 
 1. **A workflow the file cannot import.** A trigger for a workflow deployed elsewhere needs a string. Recommendation: accept `Trigger.cron("reports#Nightly", { input })` with `input` typed `unknown` and checked against the workflow's schema when it is registered.
-2. **Webhook verification presets.** Smithers ships the verify-then-map door, not GitHub or Stripe verifiers. Should the standard library? Recommendation: no; those are integrations.
+2. **Webhook verification presets.** The reference engine ships the verify-then-map door, not GitHub or Stripe verifiers. Should the standard library? Recommendation: no; those are integrations.
 3. **A changed schedule.** When a trigger's expression changes, are its missed occurrences kept or dropped? Recommendation: dropped, and the change is recorded in the fire ledger.
 
 ## Depends on

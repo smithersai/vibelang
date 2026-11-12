@@ -2,7 +2,7 @@
 
 **Status:** denied by Will, 2026-10-28. There is no trailing-block syntax. A function argument is written as an ordinary argument.
 
-Before its first release, VibeLang ships no quick fixes or codemods of its own (PROC-29). TypeScript's built-in code fixes remain available.
+Before its first release, VibeLang ships no quick fixes or codemods of its own. TypeScript's built-in code fixes remain available.
 
 ```ts
 withSpan("load", () => { … })          // a function argument, as in TypeScript

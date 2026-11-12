@@ -41,8 +41,8 @@ export workflow CountIssues {
 
 export effect function main() {
   provide Layer.provideMerge(CountIssues.layer, Experimental.Durable.memory) {
-    const first = try CountIssues("smithersai/smithers")
-    const again = try CountIssues("smithersai/smithers")
+    const first = try CountIssues("smithersai/vibelang")
+    const again = try CountIssues("smithersai/vibelang")
     return first + again
   }
 }
@@ -66,7 +66,7 @@ export effect function main() {
 - A `retryPolicy` with neither `maxAttempts` nor `expirationMs` never gives up, and draws the warning `EK5509`.
 - `return Fix.to(issue, attempt + 1)` ends this round and starts the next in the same run, as a loop would; `static readonly maxRounds` bounds the rounds. A handoff stands only after `return` (`EK5508`), and a workflow that hands off to itself needs no return type.
 - `try Review.child(patch)` in a workflow runs `Review` as a separate run and waits for it.
-- `try Triage("smithersai/smithers")` runs the workflow to completion. Its type requires Effect's `WorkflowEngine`, which `Experimental.Durable.memory` provides, so a program that runs a workflow without an engine has a missing requirement. `Triage.layer` holds the workflow and the tasks it calls; a task without a body gets its implementation from `Charge.toLayer(effect (order) => …)`.
+- `try Triage("smithersai/vibelang")` runs the workflow to completion. Its type requires Effect's `WorkflowEngine`, which `Experimental.Durable.memory` provides, so a program that runs a workflow without an engine has a missing requirement. `Triage.layer` holds the workflow and the tasks it calls; a task without a body gets its implementation from `Charge.toLayer(effect (order) => …)`.
 
 ## Rules
 

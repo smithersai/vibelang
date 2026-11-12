@@ -4,17 +4,17 @@ title: "VIP-72: Experimental.Otlp: logs, metrics and traces over OTLP, scrubbed 
 
 # VIP-72: `Experimental.Otlp`: logs, metrics and traces over OTLP, scrubbed and bounded
 
-**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval. Will has not reviewed this VIP's decisions.
 
 ## Will's words
 
-> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+> Ok so give me a list of [the reference engine's] features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
 
 ## Summary
 
 **One sentence.** Logging, metrics and tracing are Effect's and already in scope, Effect's own OTLP exporter already compiles in Vibe 0.0.13, and `Experimental.Otlp` adds the three things an agentic program needs on top: redaction, a bounded transport that counts what it drops, and a copy of each run's logs in its journal.
 
-**One paragraph.** This is the smallest VIP in the set, and it says so. A Vibe program already writes `try logInfo(…)`, `try withSpan(effect { … }, "name")` and `Metric.counter(…)`, and `provide Otlp.layerJson({ baseUrl, resource })` already sends all three to a collector. Smithers' `@smthrs/observability` composes that same exporter "with the journal's redaction rules", so a credential in a log line never leaves the process, and bounds the transport so telemetry cannot grow without limit. It allocates no OpenTelemetry SDK and resolves no `node:` built-in, so it runs unchanged on Node, on Bun and in a browser. This VIP ports that composition. Telemetry describes a run; it is never the run's record, and losing it never fails a step.
+**One paragraph.** This is the smallest VIP in the set, and it says so. A Vibe program already writes `try logInfo(…)`, `try withSpan(effect { … }, "name")` and `Metric.counter(…)`, and `provide Otlp.layerJson({ baseUrl, resource })` already sends all three to a collector. The observability package of the reference engine (an existing Effect durable-execution framework these built-ins are modelled on) composes that same exporter "with the journal's redaction rules", so a credential in a log line never leaves the process, and bounds the transport so telemetry cannot grow without limit. It allocates no OpenTelemetry SDK and resolves no `node:` built-in, so it runs unchanged on Node, on Bun and in a browser. This VIP ports that composition. Telemetry describes a run; it is never the run's record, and losing it never fails a step.
 
 ```text
  try logInfo("triage started")        ─┐
@@ -46,9 +46,9 @@ export effect function triageToday() {
 
 ### Module
 
-Two additions, each named after the Effect module it extends, as [VIP-33](/vips/0033-platform-stdlib) rules. Both are in scope with no import, and their code is `vibelang-runtime/experimental/Otlp` and `…/Logger`. They port `@smthrs/observability`. `Logger`, `Tracer`, `Metric`, `Otlp`, `OtlpTracer`, `OtlpLogger`, `OtlpMetrics` and `PrometheusMetrics` stay Effect's.
+Two additions, each named after the Effect module it extends, as [VIP-33](/vips/0033-platform-stdlib) rules. Both are in scope with no import, and their code is `vibelang-runtime/experimental/Otlp` and `…/Logger`. They port the reference engine's observability package. `Logger`, `Tracer`, `Metric`, `Otlp`, `OtlpTracer`, `OtlpLogger`, `OtlpMetrics` and `PrometheusMetrics` stay Effect's.
 
-| Call | Meaning | Smithers |
+| Call | Meaning | Reference engine |
 | --- | --- | --- |
 | `Experimental.Otlp.layer({ url, service, version?, attributes?, headers? })` | A layer that exports logs, metrics and traces over OTLP/HTTP, scrubbed and bounded | `Otlp.layerFetch`, `Resource` |
 | `Experimental.Otlp.relay(options)` | An HTTP handler that receives a browser's OTLP exports on your own route | `OtlpRelay.serve` |
@@ -62,53 +62,53 @@ Two additions, each named after the Effect module it extends, as [VIP-33](/vips/
 3. **A resource is validated when the layer is built.** Identity fields and attribute keys hold at most 1,024 UTF-16 code units. A bad resource fails with `InvalidResourceConfiguration`.
 4. **The transport is capped at 1 MiB a request.** A batch over the cap is discarded, counted, and reported by one `Warn` log with code `otlp_export_discarded` and a reason (`oversized`, `stalled` or `saturated`), at most once a minute. The warning never enters the exporter.
 5. **Ambient resource configuration is ignored.** An environment variable cannot enlarge a resource after it was validated.
-6. **No SDK.** `Experimental.Otlp.layer` uses Effect's exporter and `HttpClient`. A host that wants the OpenTelemetry SDK imports Smithers' `NodeOtel` or `BrowserOtel` from npm.
-7. **What the standard library emits.** Every module in this set records spans and metrics for its own work: a span per durable step, per model call with token usage, per tool call. A failed span carries its failure's tag and code, never its message. A metric label is a bounded vocabulary: a run id is never a label. A replayed step is not counted as a new model call. Effect's `Telemetry` module in `effect/ai` already defines the model-call attributes, and Smithers' `RunMetrics` in `@smthrs/flow` defines the run and step metrics.
+6. **No SDK.** `Experimental.Otlp.layer` uses Effect's exporter and `HttpClient`. A host that wants the OpenTelemetry SDK imports the reference engine's `NodeOtel` or `BrowserOtel` from npm.
+7. **What the standard library emits.** Every module in this set records spans and metrics for its own work: a span per durable step, per model call with token usage, per tool call. A failed span carries its failure's tag and code, never its message. A metric label is a bounded vocabulary: a run id is never a label. A replayed step is not counted as a new model call. Effect's `Telemetry` module in `effect/ai` already defines the model-call attributes, and the reference engine's `RunMetrics` in its flow package defines the run and step metrics.
 8. **Content is off by default.** Prompts, completions, file contents and shell output are not exported. Turning them on is a separate, named option, not a log level.
 
 ### Host needs
 
 `HttpClient`. `Experimental.Logger.journal` also needs the journal, which [std-durable](/vips/0060-std-durable) provides.
 
-## Claude's decisions
+## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
 
-- The same program compiles under `vibelang` 0.0.13 today with Effect's exporter, unscrubbed and unbounded: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Two additions, each named after the Effect module it extends, as [VIP-33](/vips/0033-platform-stdlib) rules. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Both are in scope with no import, and their code is `vibelang-runtime/experimental/Otlp` and `…/Logger`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- They port `@smthrs/observability`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- `Logger`, `Tracer`, `Metric`, `Otlp`, `OtlpTracer`, `OtlpLogger`, `OtlpMetrics` and `PrometheusMetrics` stay Effect's. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Otlp.layer({ url, service, version?, attributes?, headers? })`: Meaning: A layer that exports logs, metrics and traces over OTLP/HTTP, scrubbed and bounded; Smithers: `Otlp.layerFetch`, `Resource`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Otlp.relay(options)`: Meaning: An HTTP handler that receives a browser's OTLP exports on your own route; Smithers: `OtlpRelay.serve`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Otlp.dropped`: Meaning: The counter of discarded batches; Smithers: `flows_observability_otlp_dropped`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Logger.journal`: Meaning: A layer that mirrors each log record of a durable run into that run's journal; Smithers: `JournalLogger`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Removing the layer removes telemetry and changes nothing else.** An export that fails never fails or retries the step that logged. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Records are scrubbed before export.** The rules are the journal's: a value shaped like a credential becomes `[REDACTED]`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **A resource is validated when the layer is built.** Identity fields and attribute keys hold at most 1,024 UTF-16 code units. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A bad resource fails with `InvalidResourceConfiguration`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **The transport is capped at 1 MiB a request.** A batch over the cap is discarded, counted, and reported by one `Warn` log with code `otlp_export_discarded` and a reason (`oversized`, `stalled` or `saturated`), at most once a minute. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- The warning never enters the exporter. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Ambient resource configuration is ignored.** An environment variable cannot enlarge a resource after it was validated. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **No SDK.** `Experimental.Otlp.layer` uses Effect's exporter and `HttpClient`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A host that wants the OpenTelemetry SDK imports Smithers' `NodeOtel` or `BrowserOtel` from npm. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **What the standard library emits.** Every module in this set records spans and metrics for its own work: a span per durable step, per model call with token usage, per tool call. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A failed span carries its failure's tag and code, never its message. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A metric label is a bounded vocabulary: a run id is never a label. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A replayed step is not counted as a new model call. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Effect's `Telemetry` module in `effect/ai` already defines the model-call attributes, and Smithers' `RunMetrics` in `@smthrs/flow` defines the run and step metrics. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Content is off by default.** Prompts, completions, file contents and shell output are not exported. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Turning them on is a separate, named option, not a log level. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- `HttpClient`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- `Experimental.Logger.journal` also needs the journal, which [std-durable](/vips/0060-std-durable) provides. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The same program compiles under `vibelang` 0.0.13 today with Effect's exporter, unscrubbed and unbounded: [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Two additions, each named after the Effect module it extends, as [VIP-33](/vips/0033-platform-stdlib) rules. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Both are in scope with no import, and their code is `vibelang-runtime/experimental/Otlp` and `…/Logger`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- They port the reference engine's observability package. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `Logger`, `Tracer`, `Metric`, `Otlp`, `OtlpTracer`, `OtlpLogger`, `OtlpMetrics` and `PrometheusMetrics` stay Effect's. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Experimental.Otlp.layer({ url, service, version?, attributes?, headers? })`: Meaning: A layer that exports logs, metrics and traces over OTLP/HTTP, scrubbed and bounded; Reference engine: `Otlp.layerFetch`, `Resource`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Experimental.Otlp.relay(options)`: Meaning: An HTTP handler that receives a browser's OTLP exports on your own route; Reference engine: `OtlpRelay.serve`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Experimental.Otlp.dropped`: Meaning: The counter of discarded batches; Reference engine: `flows_observability_otlp_dropped`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Experimental.Logger.journal`: Meaning: A layer that mirrors each log record of a durable run into that run's journal; Reference engine: `JournalLogger`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Removing the layer removes telemetry and changes nothing else.** An export that fails never fails or retries the step that logged. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Records are scrubbed before export.** The rules are the journal's: a value shaped like a credential becomes `[REDACTED]`. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A resource is validated when the layer is built.** Identity fields and attribute keys hold at most 1,024 UTF-16 code units. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A bad resource fails with `InvalidResourceConfiguration`. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **The transport is capped at 1 MiB a request.** A batch over the cap is discarded, counted, and reported by one `Warn` log with code `otlp_export_discarded` and a reason (`oversized`, `stalled` or `saturated`), at most once a minute. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The warning never enters the exporter. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Ambient resource configuration is ignored.** An environment variable cannot enlarge a resource after it was validated. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **No SDK.** `Experimental.Otlp.layer` uses Effect's exporter and `HttpClient`. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A host that wants the OpenTelemetry SDK imports the reference engine's `NodeOtel` or `BrowserOtel` from npm. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **What the standard library emits.** Every module in this set records spans and metrics for its own work: a span per durable step, per model call with token usage, per tool call. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A failed span carries its failure's tag and code, never its message. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A metric label is a bounded vocabulary: a run id is never a label. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A replayed step is not counted as a new model call. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Effect's `Telemetry` module in `effect/ai` already defines the model-call attributes, and the reference engine's `RunMetrics` in its flow package defines the run and step metrics. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Content is off by default.** Prompts, completions, file contents and shell output are not exported. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Turning them on is a separate, named option, not a log level. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `HttpClient`. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `Experimental.Logger.journal` also needs the journal, which [std-durable](/vips/0060-std-durable) provides. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 
 ### Adopted review answers
 
-- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. [Review question 1](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
 
 ## Compared
 
-The same program in Smithers 1.x. It type-checks against `@smthrs/observability` 1.0.0-rc.16.
+The same program in the reference engine 1.x. It type-checks against the reference engine's observability package 1.0.0-rc.16.
 
 ```ts
 import { Otlp } from "@smthrs/observability"
@@ -126,9 +126,9 @@ export const program = Effect.logInfo("triage started").pipe(
 | --- | --- | --- |
 | Vibe, proposed | 51 | 5 |
 | Vibe 0.0.13 today, with Effect's `Otlp.layerJson` | 58 | 5 |
-| Smithers 1.x | 83 | 9 |
+| Reference engine 1.x | 83 | 9 |
 
-**Checked.** Both Vibe examples use only existing syntax. The second compiles under `vibelang` 0.0.13 with nothing declared: `Otlp`, `withSpan` and `logInfo` are Effect's. The first compiles against a declaration of `Experimental.Otlp.layer`. The Smithers program type-checks as shown.
+**Checked.** Both Vibe examples use only existing syntax. The second compiles under `vibelang` 0.0.13 with nothing declared: `Otlp`, `withSpan` and `logInfo` are Effect's. The first compiles against a declaration of `Experimental.Otlp.layer`. The reference engine program type-checks as shown.
 
 ## Principles
 
@@ -147,13 +147,13 @@ export const program = Effect.logInfo("triage started").pipe(
 
 - **Add nothing.** Effect's `Otlp.layerJson` works today. A program then exports whatever it logs, unscrubbed and unbounded. For an agentic program that is the failure this module exists to prevent.
 - **One module named `Observe`.** A fifth name beside `Otlp`, `Logger`, `Tracer` and `Metric`. VIP-33 names an addition after the Effect module it extends, and each of these two extends one.
-- **The OpenTelemetry SDK as the default.** It pulls `async_hooks` and cannot bundle for a browser. Smithers keeps it at a separate subpath for that reason.
+- **The OpenTelemetry SDK as the default.** It pulls `async_hooks` and cannot bundle for a browser. The reference engine keeps it at a separate subpath for that reason.
 - **A `trace` or `span` keyword.** `withSpan` is one call, and `Effect.fn("name")` already names a function's span.
 
 ## Follow-up questions
 
 1. **Scrubbing upstream.** Redaction before export belongs in Effect's exporter. Recommendation: propose it to Effect and retire `Experimental.Otlp.layer` when it lands.
-2. **Span and metric names.** Rule 7 defers the table. Smithers' names today carry `smithers_` and `flows_` prefixes. Should Vibe's standard library keep them, so Smithers dashboards work, or rename to `vibe_`? Recommendation: keep Smithers' names; a rename breaks every existing dashboard for no gain.
+2. **Span and metric names.** Rule 7 defers the table. The reference engine's names today carry a prefix named after the engine and a `flows_` prefix. Should Vibe's standard library keep them, so the reference engine's dashboards work, or rename to `vibe_`? Recommendation: keep the reference engine's names; a rename breaks every existing dashboard for no gain.
 3. **A local sink when the collector is down.** The drop warning goes to the program's own logger. Is that enough for a headless host? Recommendation: yes for the first release; the counter is the durable signal.
 
 ## Depends on

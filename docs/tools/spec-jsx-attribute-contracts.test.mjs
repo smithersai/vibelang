@@ -40,6 +40,6 @@ test("VIP-39 makes the attribute a VIP-4 assignability site and the tag not one"
   assert.ok(bullet.includes("is `EK0402` against an untagged `onClick`, in `onClick={handler}` and in a spread `{...{ onClick: handler }}` alike"))
   assert.ok(bullet.includes("The check of a tag against `JSX.ElementType` or `JSX.ElementClass` is not an assignability site"))
   // The rejected row the tag sentence rests on, and the chapter rule it applies.
-  assert.ok(vip.includes("| JSX elements as throw-tracked calls of the factory | Sol |"))
+  assert.ok(vip.includes("| JSX elements as throw-tracked calls of the factory | React's `jsx()` doesn't call the component"))
   assert.match(read("docs/design/src/003-failures.md"), /The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members/)
 })

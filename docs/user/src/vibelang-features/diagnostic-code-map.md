@@ -51,7 +51,7 @@ The temporary `EK92xx` codes preserve older checks whose numbers Appendix B reas
 
 ## Appendix B reference
 
-Registration reserves a code; it does not mean the compiler already implements every rule. The chapters describe the intended language; the VIP implementation lanes own remaining behavior gaps.
+Registration reserves a code; it does not mean the compiler already implements every rule. The chapters describe the intended language; [Known limitations](../setup/known-limitations.md) lists the behavior the compiler does not implement yet.
 
 | Code | Rule |
 | --- | --- |

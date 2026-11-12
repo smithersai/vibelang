@@ -12,4 +12,4 @@ VIP-27 writes `@throws` on every exported function, `@throws {never}` included, 
 
 ## History
 
-The loop: Astra raised it three rounds running (round 9 M2, round 10 M3, round 11 M3). Each round blocked one way to replace a certified export, and the next round found another (a write through a mutable alias, for example).
+The loop: one reviewer raised it three rounds running (round 9 M2, round 10 M3, round 11 M3). Each round blocked one way to replace a certified export, and the next round found another (a write through a mutable alias, for example).

@@ -1,6 +1,6 @@
 # Migrating retired forms
 
-Each retired or legacy form reports a diagnostic. This page names each form and what to write instead. VibeLang ships no automatic rewrite for these forms (PROC-29): edit each reported site by hand. The [specification](https://vibelang.sh/spec/007-tooling#compiler-and-tooling-requirements) states each form's diagnostic. This page is not normative: where it and the specification differ, the specification and the compiler's tests decide.
+Each retired or legacy form reports a diagnostic. This page names each form and what to write instead. VibeLang ships no automatic rewrite for these forms: edit each reported site by hand. The [specification](https://vibelang.sh/spec/007-tooling#compiler-and-tooling-requirements) states each form's diagnostic. This page is not normative: where it and the specification differ, the specification and the compiler's tests decide.
 
 ## General migration rules
 

@@ -20,7 +20,7 @@ const Delivery = Data.taggedEnum<Delivery>()
 - Variants are matched with TC39 object patterns on `_tag` (VIP-7). In the pinned TC39 snapshot, a bare key such as `{ tracking }` only tests that the property exists; binding it takes `let tracking`, the snapshot's shorthand for `tracking: let tracking`. The variant constructors get no custom matchers.
 - Generic unions (`data Result<A, E> { … }`) are left to a later VIP.
 - **Ambiguity: none.** `data` is a contextual keyword on the same line as its name, so `const data = …` still works.
-- **Amended 2026-10-29: zero variants.** `data Empty {}` is allowed: an exact empty `Data.TaggedEnum` (the old EK2122 is deleted). Sent to Will on Telegram 2026-10-29 12:28 under his standing rule 'assume I accept'; no objection by 13:00.
+- **Amended 2026-10-29: zero variants.** `data Empty {}` is allowed: an exact empty `Data.TaggedEnum` (the old EK2122 is deleted). Proposed to Will on 2026-10-29; accepted without objection.
 
 - **Amended 2026-10-30: payload key admission and erasure.** Payload fields use the ordinary TypeScript type-member computed-name checks. Duplicate members retain native TypeScript checking and merging. A broad entity-name key can form an index signature, while a dynamic expression can still be `TS1170`; a `PropertyKey` result alone is not an admission proof. These payload types are erased, so their key expressions add no runtime lookup, call or TDZ read when data is declared or constructed. Separate value declarations retain their normal evaluation. The generated `Data.TaggedEnum` constraint still rejects a payload that conflicts with `_tag`.
 

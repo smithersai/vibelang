@@ -2,7 +2,7 @@
 
 **Status:** accepted by Will, 2026-10-28.
 
-Before its first release, VibeLang ships no quick fixes or codemods of its own (PROC-29). TypeScript's built-in code fixes remain available.
+Before its first release, VibeLang ships no quick fixes or codemods of its own. TypeScript's built-in code fixes remain available.
 
 ## Decision
 
@@ -23,7 +23,7 @@ match (e) {
 - Class arms use the class's `Symbol.customMatcher`. VibeLang's `error` classes get a matcher that tests `_tag`, so `when NotFound:` matches across copies of a package.
 - **Clarified 2026-11-03: the matcher key.** The runtime initialization authorized by VIP-31 defines the global `Symbol.customMatcher` when absent as `Symbol.for("Symbol.customMatcher")`, with the descriptors and initialization order in [Runtime guarantees](../src/008-runtime.md). An existing host symbol keeps its identity; own matchers and runtime helpers use that actual key. Native counterparts choose the host key when present and the registry key otherwise. This does not patch Effect or install matcher methods on built-in constructors.
 - **Condition: no run-time patching of Effect.** Until Effect ships custom matchers for `Option`, `Exit`, `Result` and its tagged errors, the compiler keeps today's fixed checks for them (D208). We propose the matchers upstream.
-- **Amended 2026-10-29: what the exhaustiveness check covers.** Literal unions, `boolean`, `data` unions, `error` unions and enums. A guarded arm covers nothing. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: what the exhaustiveness check covers.** Literal unions, `boolean`, `data` unions, `error` unions and enums. A guarded arm covers nothing. Proposed to Will on 2026-10-29; accepted without objection.
 - **Amended 2026-10-29: the retained tagged-error checks.** The retained checks for Effect's tagged errors are each module's own guard, as D208 compiles `Option.Some` to `Option.isSome`: twelve effect 4.1.1 constructors with a literal `_tag` and a companion `isX` guard (`Cause.TimeoutError` → `Cause.isTimeoutError(s)`, `Schema.SchemaError` → `Schema.isSchemaError(s)`, and the others listed in the spec's Pattern matching chapter). Each is recognized by resolved binding, aliases included and shadowing excluded. A bare pattern runs the guard; an extractor matches `[s]`; arity mismatch is a failed match. The subject's static type never chooses the test. Every other constructor uses ordinary class matching (amended below). A VIP-32 Effect version bump regenerates the list. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 53).
 - **Amended 2026-10-29: `async match` in effect code.** `async match` in effect code is a plain async boundary inside its own `async` arrow, run through an explicit bridge: `try promise(() => async match (b) { … })`. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 65).
 - **Amended 2026-10-30: class patterns on ordinary classes test `instanceof`.** The pinned draft's inherited `Function.prototype` matcher reads a `[[ConstructedBy]]` internal slot that only an engine can record, so compiled JavaScript can't emulate it for classes and objects from untouched `.ts` or `.js` code. A class with its own `Symbol.customMatcher` (VibeLang `error`, `schema error` and generated matchers, and the retained Effect checks above) uses that matcher; any other class matches when `subject instanceof C`, then destructures as the draft says. No helper patches `Function.prototype` or records construction. So an object whose prototype changed after construction doesn't match its class, and `Object.create(C.prototype)` does; when engines ship the draft's matcher, VibeLang follows it in a VIP. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 67).
@@ -246,9 +246,9 @@ No reviewer raised a `match` issue in round 11.
 
 The TC39 pattern-matching proposal; Effect's `Match.exhaustive`; Rust's and Swift's exhaustive `match` and `switch`.
 
-## Claude's decisions
+## Maintainers' decisions
 
-- **Amended 2026-11-10: literal discriminants.** Codex Sol, lane `fix-match-exhaustive`, extends `EK4701` to incomplete matches over unions discriminated by any literal-typed field, including nested unions and mixtures of `_tag` and other fields. This supersedes the earlier subject restriction to `_tag`; the bounded coverage rules are in [Exhaustiveness](../src/004-match.md#exhaustiveness). The old `EK0708` is retired. The controlled census observed zero affected files across the five example repositories and the documentation site (13,219 `.vibe` plus 56 `.vibex`, 1,909 candidates, 114 positive controls), subject to unresolved type contexts and the documented enumeration bounds. This decision uses the pre-alpha optimistic approval in ruling 16. Will may overturn it. The diagnostic changes no runtime tests, result inference or narrowing.
+- **Amended 2026-11-10: literal discriminants.** The maintainers extend `EK4701` to incomplete matches over unions discriminated by any literal-typed field, including nested unions and mixtures of `_tag` and other fields. This supersedes the earlier subject restriction to `_tag`; the bounded coverage rules are in [Exhaustiveness](../src/004-match.md#exhaustiveness). The old `EK0708` is retired. The controlled census observed zero affected files across the five example repositories and the documentation site (13,219 `.vibe` plus 56 `.vibex`, 1,909 candidates, 114 positive controls), subject to unresolved type contexts and the documented enumeration bounds. The diagnostic changes no runtime tests, result inference or narrowing.
 
 ## Will's words
 

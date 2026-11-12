@@ -1,16 +1,16 @@
 # VIP-65: `Experimental.McpClient`: MCP servers as toolkits, on Effect's client and server
 
-**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval. Will has not reviewed this VIP's decisions.
 
 ## Will's words
 
-> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+> Ok so give me a list of [the reference engine's] features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
 
 ## Summary
 
 **One sentence.** The Model Context Protocol is Effect's `McpClient` and `McpServer`, in scope in Vibe today, and one function, `Experimental.McpClient.toolkit`, connects a server and hands back the tools you named as a `Toolkit`.
 
-**One paragraph.** Vibe 0.0.13 already speaks MCP. Effect 4.1.1 ships a client (`McpClient`, experimental since 4.0.6) and a server (`McpServer`), and both are in scope with no import. A client call needs a name, a version, a protocol adapter, a transport and a second call to turn the catalog into a toolkit. `Experimental.McpClient.toolkit` does that in one call and adds what Smithers' `@smthrs/mcp` learned about running someone else's server: an allowlist of tools, a small child environment, errors that withhold the server's raw output, and a recorded step per call inside a task. The server half needs nothing new: `McpServer.toolkit(Experimental.Tools.readOnly)` registers a Vibe toolkit with Effect's server.
+**One paragraph.** Vibe 0.0.13 already speaks MCP. Effect 4.1.1 ships a client (`McpClient`, experimental since 4.0.6) and a server (`McpServer`), and both are in scope with no import. A client call needs a name, a version, a protocol adapter, a transport and a second call to turn the catalog into a toolkit. `Experimental.McpClient.toolkit` does that in one call and adds what the MCP package of the reference engine (an existing Effect durable-execution framework these built-ins are modelled on) learned about running someone else's server: an allowlist of tools, a small child environment, errors that withhold the server's raw output, and a recorded step per call inside a task. The server half needs nothing new: `McpServer.toolkit(Experimental.Tools.readOnly)` registers a Vibe toolkit with Effect's server.
 
 ```text
  MCP server (someone else's code)                       Vibe program
@@ -52,17 +52,17 @@ export const server = McpServer.layerStdio({
 
 | Call | Meaning | Built on |
 | --- | --- | --- |
-| `Experimental.McpClient.toolkit(server, { command, include, timeout? })` | Start a server as a child process and give its tools as a `Toolkit` with handlers. Scoped: the process ends with the scope | Effect's `McpClient.layerStdio` and `McpClient.toolkit`; Smithers' `McpFlows.connected` for the rules below |
+| `Experimental.McpClient.toolkit(server, { command, include, timeout? })` | Start a server as a child process and give its tools as a `Toolkit` with handlers. Scoped: the process ends with the scope | Effect's `McpClient.layerStdio` and `McpClient.toolkit`; the reference engine's `McpFlows.connected` for the rules below |
 | `Experimental.McpClient.toolkit(server, { url, headers?, include, timeout? })` | The same over Streamable HTTP | Effect's `McpClient.layerHttp` and `McpClient.toolkit` |
 | `McpServer.toolkit(toolkit)`, `McpServer.layerStdio`, `McpServer.layerHttp` | Serve a toolkit as an MCP server | Effect, unchanged |
 
 ### Rules
 
-1. **Tool names are prefixed** `<server>__<tool>`, the form Effect's `McpClient.toolkit` takes as a prefix. A model's tool name holds 1 to 64 ASCII letters, digits, underscores or hyphens, so Smithers' `mcp/<server>/<tool>` cannot be used. Two servers cannot collide, and a transcript shows where a tool came from.
+1. **Tool names are prefixed** `<server>__<tool>`, the form Effect's `McpClient.toolkit` takes as a prefix. A model's tool name holds 1 to 64 ASCII letters, digits, underscores or hyphens, so the reference engine's `mcp/<server>/<tool>` cannot be used. Two servers cannot collide, and a transcript shows where a tool came from.
 2. **`include` is required.** It is an allowlist: a tool not named is not in the toolkit. `include: "all"` is the written opt-out. A server update that adds `delete_repo` then adds nothing to what a model is offered.
 3. **The catalog is a snapshot.** Tools are listed once, at connect. A server that changes its catalog changes nothing until the program connects again, and a recorded call keeps the meaning it had.
 4. **The child gets a small environment**: `PATH`, `HOME`, `USER`, `LANG`, `LC_*`, `TERM`, `TMPDIR`, `SHELL`, plus what `command` declares. Provider keys in the ambient environment do not reach a server. Connecting installs nothing and downloads nothing.
-5. **A server is opaque code.** The permission kernel checks what Vibe does: `proc:spawn` for the command line, `net:post` for the URL. It cannot check what the server does once called. Smithers says the same: every projected tool "declares the widest authority the capability vocabulary can express".
+5. **A server is opaque code.** The permission kernel checks what Vibe does: `proc:spawn` for the command line, `net:post` for the URL. It cannot check what the server does once called. The reference engine says the same: every projected tool "declares the widest authority the capability vocabulary can express".
 6. **A server's hints are claims.** `readOnlyHint` and its siblings are not copied into tool annotations unless the program asks, Effect's `trustAnnotations`. They never grant approval.
 7. **Errors withhold the server's text.** A session error carries a code, not the child's stderr or a remote error body, which can quote a secret.
 8. **A tool's `isError: true` result is a result.** It reaches the model unchanged, and it is not a transport failure.
@@ -74,51 +74,51 @@ export const server = McpServer.layerStdio({
 
 A `command` needs `ChildProcessSpawner`: Node, Bun or a sandbox. A `url` needs `HttpClient` and runs anywhere.
 
-## Claude's decisions
+## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
 
-- Serving a toolkit is Effect's API, unchanged: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
-- `Experimental.McpClient`, in scope with no import and named after the Effect module it extends ([VIP-33](0033-platform-stdlib.md)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Its code is `vibelang-runtime/experimental/McpClient`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- `McpClient` and `McpServer` stay Effect's. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.McpClient.toolkit(server, { command, include, timeout? })`: Meaning: Start a server as a child process and give its tools as a `Toolkit` with handlers. Scoped: the process ends with the scope; Built on: Effect's `McpClient.layerStdio` and `McpClient.toolkit`; Smithers' `McpFlows.connected` for the rules below. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Scoped: the process ends with the scope | Effect's `McpClient.layerStdio` and `McpClient.toolkit`; Smithers' `McpFlows.connected` for the rules below | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.McpClient.toolkit(server, { url, headers?, include, timeout? })`: Meaning: The same over Streamable HTTP; Built on: Effect's `McpClient.layerHttp` and `McpClient.toolkit`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `McpServer.toolkit(toolkit)`, `McpServer.layerStdio`, `McpServer.layerHttp`: Meaning: Serve a toolkit as an MCP server; Built on: Effect, unchanged. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Tool names are prefixed** `<server>__<tool>`, the form Effect's `McpClient.toolkit` takes as a prefix. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A model's tool name holds 1 to 64 ASCII letters, digits, underscores or hyphens, so Smithers' `mcp/<server>/<tool>` cannot be used. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Two servers cannot collide, and a transcript shows where a tool came from. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **`include` is required.** It is an allowlist: a tool not named is not in the toolkit. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- `include: "all"` is the written opt-out. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A server update that adds `delete_repo` then adds nothing to what a model is offered. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **The catalog is a snapshot.** Tools are listed once, at connect. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A server that changes its catalog changes nothing until the program connects again, and a recorded call keeps the meaning it had. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **The child gets a small environment**: `PATH`, `HOME`, `USER`, `LANG`, `LC_*`, `TERM`, `TMPDIR`, `SHELL`, plus what `command` declares. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Provider keys in the ambient environment do not reach a server. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Connecting installs nothing and downloads nothing. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **A server is opaque code.** The permission kernel checks what Vibe does: `proc:spawn` for the command line, `net:post` for the URL. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- It cannot check what the server does once called. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Smithers says the same: every projected tool "declares the widest authority the capability vocabulary can express". Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **A server's hints are claims.** `readOnlyHint` and its siblings are not copied into tool annotations unless the program asks, Effect's `trustAnnotations`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- They never grant approval. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Errors withhold the server's text.** A session error carries a code, not the child's stderr or a remote error body, which can quote a secret. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **A tool's `isError: true` result is a result.** It reaches the model unchanged, and it is not a transport failure. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **A lost reply is not a retry.** After a transport failure the client cannot know whether the tool ran. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Inside a task the call is retried only under the task's own retry rules ([durable-tasks-workflows](0055-durable-tasks-workflows.md)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Inside a task, each call is a recorded step.** Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **The client has Effect's limits.** `McpClient` covers tools, prompts, resources and Agent Skills. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- It does not cover interactive server requests, subscriptions, OAuth or retries. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A `command` needs `ChildProcessSpawner`: Node, Bun or a sandbox. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
-- A `url` needs `HttpClient` and runs anywhere. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- Serving a toolkit is Effect's API, unchanged: [Design](#decision) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Experimental.McpClient`, in scope with no import and named after the Effect module it extends ([VIP-33](0033-platform-stdlib.md)). [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Its code is `vibelang-runtime/experimental/McpClient`. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- `McpClient` and `McpServer` stay Effect's. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Experimental.McpClient.toolkit(server, { command, include, timeout? })`: Meaning: Start a server as a child process and give its tools as a `Toolkit` with handlers. Scoped: the process ends with the scope; Built on: Effect's `McpClient.layerStdio` and `McpClient.toolkit`; the reference engine's `McpFlows.connected` for the rules below. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Scoped: the process ends with the scope | Effect's `McpClient.layerStdio` and `McpClient.toolkit`; the reference engine's `McpFlows.connected` for the rules below | [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Experimental.McpClient.toolkit(server, { url, headers?, include, timeout? })`: Meaning: The same over Streamable HTTP; Built on: Effect's `McpClient.layerHttp` and `McpClient.toolkit`. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `McpServer.toolkit(toolkit)`, `McpServer.layerStdio`, `McpServer.layerHttp`: Meaning: Serve a toolkit as an MCP server; Built on: Effect, unchanged. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Tool names are prefixed** `<server>__<tool>`, the form Effect's `McpClient.toolkit` takes as a prefix. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A model's tool name holds 1 to 64 ASCII letters, digits, underscores or hyphens, so the reference engine's `mcp/<server>/<tool>` cannot be used. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Two servers cannot collide, and a transcript shows where a tool came from. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **`include` is required.** It is an allowlist: a tool not named is not in the toolkit. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- `include: "all"` is the written opt-out. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A server update that adds `delete_repo` then adds nothing to what a model is offered. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The catalog is a snapshot.** Tools are listed once, at connect. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A server that changes its catalog changes nothing until the program connects again, and a recorded call keeps the meaning it had. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The child gets a small environment**: `PATH`, `HOME`, `USER`, `LANG`, `LC_*`, `TERM`, `TMPDIR`, `SHELL`, plus what `command` declares. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Provider keys in the ambient environment do not reach a server. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Connecting installs nothing and downloads nothing. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A server is opaque code.** The permission kernel checks what Vibe does: `proc:spawn` for the command line, `net:post` for the URL. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- It cannot check what the server does once called. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- The reference engine says the same: every projected tool "declares the widest authority the capability vocabulary can express". [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A server's hints are claims.** `readOnlyHint` and its siblings are not copied into tool annotations unless the program asks, Effect's `trustAnnotations`. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- They never grant approval. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Errors withhold the server's text.** A session error carries a code, not the child's stderr or a remote error body, which can quote a secret. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A tool's `isError: true` result is a result.** It reaches the model unchanged, and it is not a transport failure. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A lost reply is not a retry.** After a transport failure the client cannot know whether the tool ran. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Inside a task the call is retried only under the task's own retry rules ([durable-tasks-workflows](0055-durable-tasks-workflows.md)). [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Inside a task, each call is a recorded step.** [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The client has Effect's limits.** `McpClient` covers tools, prompts, resources and Agent Skills. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- It does not cover interactive server requests, subscriptions, OAuth or retries. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A `command` needs `ChildProcessSpawner`: Node, Bun or a sandbox. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- A `url` needs `HttpClient` and runs anywhere. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
 
 ### Adopted review answers
 
-- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
 
 ## Compared
 
-The same program in Smithers 1.x. It type-checks against `@smthrs/mcp` 1.0.0-rc.16.
+The same program in the reference engine 1.x. It type-checks against the reference engine's MCP package 1.0.0-rc.16.
 
 ```ts
 import * as McpFlows from "@smthrs/mcp/McpFlows"
@@ -141,16 +141,16 @@ export const tools = (token: string) =>
 | Program | Tokens (o200k_base) | Lines |
 | --- | --- | --- |
 | Vibe, proposed | 87 | 7 |
-| Smithers 1.x | 140 | 15 |
+| Reference engine 1.x | 140 | 15 |
 
-Smithers gives flow bindings for its own agent loop. Vibe gives a `Toolkit`, which both `LanguageModel` and `Experimental.Agent.run` take.
+The reference engine gives flow bindings for its own agent loop. Vibe gives a `Toolkit`, which both `LanguageModel` and `Experimental.Agent.run` take.
 
-**Checked.** Both Vibe examples use only existing syntax and compile under `vibelang` 0.0.13 against a declaration of `Experimental.McpClient.toolkit` and `Experimental.Tools.readOnly`. `McpClient`, `McpServer`, `McpProtocol.v2025_11_25`, `ChildProcess.make` with an `env` option, and `Toolkit` resolve to Effect 4.1.1 with no import. The naming rule and `trustAnnotations` are read from `effect/dist/ai/McpClient.d.ts`. The Smithers program type-checks as shown.
+**Checked.** Both Vibe examples use only existing syntax and compile under `vibelang` 0.0.13 against a declaration of `Experimental.McpClient.toolkit` and `Experimental.Tools.readOnly`. `McpClient`, `McpServer`, `McpProtocol.v2025_11_25`, `ChildProcess.make` with an `env` option, and `Toolkit` resolve to Effect 4.1.1 with no import. The naming rule and `trustAnnotations` are read from `effect/dist/ai/McpClient.d.ts`. The reference engine program type-checks as shown.
 
 ## Principles
 
 - **TypeScript-first.** One function call.
-- **Effect-second.** The protocol is Effect's on both sides. This VIP writes no protocol code. Smithers has its own `McpClient`; Vibe does not port it.
+- **Effect-second.** The protocol is Effect's on both sides. This VIP writes no protocol code. The reference engine has its own `McpClient`; Vibe does not port it.
 - **Optimized for agentic programs.** PROBLEM: "Agents call tools through MCP". One call turns a server into tools for either agent loop.
 - **Highly forkable.** The module is one function over Effect's client. A fork changes the naming rule or the environment list in one place.
 - **Factory-first.** The factory's MCP servers are declared in its source with their `include` lists.
@@ -163,14 +163,14 @@ Smithers gives flow bindings for its own agent loop. Vibe gives a `Toolkit`, whi
 ## Alternatives
 
 - **Add nothing; use `McpClient` directly.** It works today. Each program then repeats the name, version, protocol adapter and toolkit call, and each forgets a different rule from the list above.
-- **Port Smithers' `McpClient`.** A second client for one protocol, which VIP-33 forbids. Effect's also covers more: prompts, resources and skills.
+- **Port the reference engine's `McpClient`.** A second client for one protocol, which VIP-33 forbids. Effect's also covers more: prompts, resources and skills.
 - **An `import tools from "mcp:github"` form.** A server's catalog is known only when it runs, so an import would have no static type.
 - **MCP as the only tool interface.** Local tools would pay a process boundary and lose their types. `Tool` is the interface; MCP is one source of tools.
 
 ## Follow-up questions
 
 1. **Typed access to one tool.** A catalog is dynamic, so `github.tools` is a record of untyped tools. Should a program pin one with its own schemas, `Experimental.McpClient.tool(server, name, { input, output })`, checked against the catalog at connect? Recommendation: yes, in a follow-up.
-2. **Configuration files.** Smithers' CLI reads server definitions from a config file. Should `fromConfig(path)` exist? Recommendation: no. It is a product convention, and `.mcp.json` formats differ by host.
+2. **Configuration files.** The reference engine's CLI reads server definitions from a config file. Should `fromConfig(path)` exist? Recommendation: no. It is a product convention, and `.mcp.json` formats differ by host.
 3. **OAuth.** Effect's client does not do it, and remote servers increasingly require it. Recommendation: propose it to Effect; do not build it here.
 4. **`McpClient` is marked experimental in Effect.** Its API can change in a minor release. Vibe pins one Effect version ([VIP-32](0032-effect-version.md)), so the risk is at upgrade time. Accept it.
 

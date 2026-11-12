@@ -1,6 +1,6 @@
 # VIP-57: `schema service` and worker imports: threads and other machines behind one typed boundary
 
-**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval. Will has not reviewed this VIP's decisions.
 
 ## Will's words
 > Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
@@ -105,7 +105,7 @@ provide Layer.provide(Experimental.Rpc.client(Stats), RpcClient.layerProtocolHtt
 | On a machine made for the job | `provide Experimental.Sandbox.container(…) { … }`: the same `FileSystem` and `ChildProcess` code runs there | [std-sandbox](0067-std-sandbox.md) |
 | As a durable step on another engine | `static readonly placement = { remote: "compute" }` on a `task` | [durable-tasks-workflows](0055-durable-tasks-workflows.md) |
 
-A placed task compiles to Smithers' `PlacedAction.layer(T, Placement.remote({ target }), body)`, and the serving engine exposes it with `FlowProxy.toRpcGroup([PlacedAction.served(T)])`. A lost reply is asked again under the same invocation key, so the holder joins the run it recorded. Two gaps in Smithers at `main@origin` `bcf8076a4ff4` must close first (`engine/src/PlacedAction.ts`, `engine/src/Hosts.ts`):
+A placed task compiles to `PlacedAction.layer(T, Placement.remote({ target }), body)` in the reference engine (an existing Effect durable-execution framework these built-ins are modelled on), and the serving engine exposes it with `FlowProxy.toRpcGroup([PlacedAction.served(T)])`. A lost reply is asked again under the same invocation key, so the holder joins the run it recorded. Two gaps in the reference engine at `main@origin` `bcf8076a4ff4` must close first (`engine/src/PlacedAction.ts`, `engine/src/Hosts.ts`):
 
 - `PlacedAction.layer` calls `action.toLayer` with no `implementationVersion`, so a versioned task cannot be placed.
 - `Hosts` resolves a target nobody bound to `Here`, so the body runs in the caller's process. Vibe must refuse an unbound target.
@@ -160,71 +160,71 @@ Codes are assigned when this VIP is built.
 | `worker-default-export` | A module imported `with { type: "worker" }` has no default-export `Layer`, or provides a service that is not a `schema service` |
 | `worker-binding` | A worker import names anything but a default binding |
 
-## Claude's decisions
+## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
 
-- Every member is a method that returns an Effect. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- A property is an error. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- Every parameter, success type and error type is a durable boundary type (VIP-44). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- A type with no schema form is `EK2109`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- The declaration is still a `service`: the same key, the same `Stats.Shape`, the same `Layer.succeed(Stats, …)`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- A local layer provides it with no serialization. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- The compiler also generates the service's Rpc group, one Rpc per member, with the payload keyed by parameter name. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- A member may return a `Stream`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- It becomes a streaming Rpc. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- Only the declared members cross. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- Services the implementation uses are built on the far side from its own layer; none is serialized out of the caller. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
-- `import w from "./m.vibe" with { type: "worker" }` binds `w` to a handle for the module as a worker entry. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- It imports no code into this thread. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Import attributes are ECMAScript 2025; the value `"worker"` is Vibe's. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- The module's default export is a `Layer`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Every service it provides is a `schema service`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Its requirements are services the worker's host provides. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- The compiler emits a worker entry that serves those services, and the bundler plugins emit it as its own chunk. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- A worker is a separate realm with separate module state. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- **It is not a security boundary.** A sandbox is ([std-sandbox](0067-std-sandbox.md)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Values are copied through their schemas. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- Nothing is shared or transferred unless a schema says so. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
-- In scope as `Experimental.Rpc`, named after the Effect module it extends ([VIP-33](0033-platform-stdlib.md)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Its code is `vibelang-runtime/experimental/Rpc`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Rpc.workers(w, { size })` or `{ minSize, maxSize, timeToLive }`, with optional `concurrency`: Gives: A layer that provides `w`'s services from a pool of threads; Effect code underneath: `RpcClient.layerProtocolWorker(options)`, `RpcClient.make(group)`, the host's `Worker.Spawner`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Rpc.client(Stats)`: Gives: A layer that provides `Stats` by calling a server; Effect code underneath: `RpcClient.make(group)`; needs `RpcClient.Protocol`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Experimental.Rpc.serve(Stats)`: Gives: A layer that serves `Stats` to callers; Effect code underneath: `RpcServer.layer(group)`; needs `Stats` and `RpcServer.Protocol`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- The transport is Effect's and is chosen with `provide`: `RpcClient.layerProtocolHttp`, `RpcServer.layerProtocolHttp`, the socket protocols, and `RpcSerialization.layerNdjson` or another serializer. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- VIP-44's serialization rules apply unchanged. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Failures.** A transport failure is a defect, unless the member's declared error type includes Effect's `RpcClientError`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Then the member fails with it, typed. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Limits.** A pool bounds its threads (`size`) and the calls each runs at once (`concurrency`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- Message size is the transport's bound. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Cancellation.** Interrupting the calling fiber sends Rpc's interrupt to the far side. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- It does not prove the far side stopped. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- A pool's scope owns its threads and ends them when it closes. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
-- To run code On another thread: Use: A worker import and `Experimental.Rpc.workers`; Defined in: This VIP. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- To run code On another machine you run: Use: `Experimental.Rpc.serve` there, `Experimental.Rpc.client` here; Defined in: This VIP. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- To run code On a machine made for the job: Use: `provide Experimental.Sandbox.container(…) { … }`: the same `FileSystem` and `ChildProcess` code runs there; Defined in: [std-sandbox](0067-std-sandbox.md). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- To run code As a durable step on another engine: Use: `static readonly placement = { remote: "compute" }` on a `task`; Defined in: [durable-tasks-workflows](0055-durable-tasks-workflows.md). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- A placed task compiles to Smithers' `PlacedAction.layer(T, Placement.remote({ target }), body)`, and the serving engine exposes it with `FlowProxy.toRpcGroup([PlacedAction.served(T)])`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- A lost reply is asked again under the same invocation key, so the holder joins the run it recorded. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- Two gaps in Smithers at `main@origin` `bcf8076a4ff4` must close first (`engine/src/PlacedAction.ts`, `engine/src/Hosts.ts`): Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- `PlacedAction.layer` calls `action.toLayer` with no `implementationVersion`, so a versioned task cannot be placed. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- `Hosts` resolves a target nobody bound to `Here`, so the body runs in the caller's process. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- Vibe must refuse an unbound target. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
-- For `stats.vibe`, beside the ordinary service: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
-- For the worker entry of `stats.vibe`: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
-- For `Experimental.Rpc.workers(statsWorker, { size: 4 })`: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
-- Codes are assigned when this VIP is built. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
-- Slug `schema-service-member`: When: A member is a property, or does not return an Effect or a Stream. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
-- Slug `worker-default-export`: When: A module imported `with { type: "worker" }` has no default-export `Layer`, or provides a service that is not a `schema service`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
-- Slug `worker-binding`: When: A worker import names anything but a default binding. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
+- Every member is a method that returns an Effect. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- A property is an error. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- Every parameter, success type and error type is a durable boundary type (VIP-44). [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- A type with no schema form is `EK2109`. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- The declaration is still a `service`: the same key, the same `Stats.Shape`, the same `Layer.succeed(Stats, …)`. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- A local layer provides it with no serialization. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- The compiler also generates the service's Rpc group, one Rpc per member, with the payload keyed by parameter name. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- A member may return a `Stream`. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- It becomes a streaming Rpc. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- Only the declared members cross. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- Services the implementation uses are built on the far side from its own layer; none is serialized out of the caller. [Design](#schema-service) · [Review](reviews/2026-11-09-built-in-set.md).
+- `import w from "./m.vibe" with { type: "worker" }` binds `w` to a handle for the module as a worker entry. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- It imports no code into this thread. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- Import attributes are ECMAScript 2025; the value `"worker"` is Vibe's. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- The module's default export is a `Layer`. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- Every service it provides is a `schema service`. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- Its requirements are services the worker's host provides. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- The compiler emits a worker entry that serves those services, and the bundler plugins emit it as its own chunk. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- A worker is a separate realm with separate module state. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- **It is not a security boundary.** A sandbox is ([std-sandbox](0067-std-sandbox.md)). [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- Values are copied through their schemas. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- Nothing is shared or transferred unless a schema says so. [Design](#worker-imports) · [Review](reviews/2026-11-09-built-in-set.md).
+- In scope as `Experimental.Rpc`, named after the Effect module it extends ([VIP-33](0033-platform-stdlib.md)). [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- Its code is `vibelang-runtime/experimental/Rpc`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Experimental.Rpc.workers(w, { size })` or `{ minSize, maxSize, timeToLive }`, with optional `concurrency`: Gives: A layer that provides `w`'s services from a pool of threads; Effect code underneath: `RpcClient.layerProtocolWorker(options)`, `RpcClient.make(group)`, the host's `Worker.Spawner`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Experimental.Rpc.client(Stats)`: Gives: A layer that provides `Stats` by calling a server; Effect code underneath: `RpcClient.make(group)`; needs `RpcClient.Protocol`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Experimental.Rpc.serve(Stats)`: Gives: A layer that serves `Stats` to callers; Effect code underneath: `RpcServer.layer(group)`; needs `Stats` and `RpcServer.Protocol`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- The transport is Effect's and is chosen with `provide`: `RpcClient.layerProtocolHttp`, `RpcServer.layerProtocolHttp`, the socket protocols, and `RpcSerialization.layerNdjson` or another serializer. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- VIP-44's serialization rules apply unchanged. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Failures.** A transport failure is a defect, unless the member's declared error type includes Effect's `RpcClientError`. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- Then the member fails with it, typed. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Limits.** A pool bounds its threads (`size`) and the calls each runs at once (`concurrency`). [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- Message size is the transport's bound. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Cancellation.** Interrupting the calling fiber sends Rpc's interrupt to the far side. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- It does not prove the far side stopped. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- A pool's scope owns its threads and ends them when it closes. [Design](#experimentalrpc) · [Review](reviews/2026-11-09-built-in-set.md).
+- To run code On another thread: Use: A worker import and `Experimental.Rpc.workers`; Defined in: This VIP. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- To run code On another machine you run: Use: `Experimental.Rpc.serve` there, `Experimental.Rpc.client` here; Defined in: This VIP. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- To run code On a machine made for the job: Use: `provide Experimental.Sandbox.container(…) { … }`: the same `FileSystem` and `ChildProcess` code runs there; Defined in: [std-sandbox](0067-std-sandbox.md). [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- To run code As a durable step on another engine: Use: `static readonly placement = { remote: "compute" }` on a `task`; Defined in: [durable-tasks-workflows](0055-durable-tasks-workflows.md). [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- A placed task compiles to the reference engine's `PlacedAction.layer(T, Placement.remote({ target }), body)`, and the serving engine exposes it with `FlowProxy.toRpcGroup([PlacedAction.served(T)])`. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- A lost reply is asked again under the same invocation key, so the holder joins the run it recorded. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- Two gaps in the reference engine at `main@origin` `bcf8076a4ff4` must close first (`engine/src/PlacedAction.ts`, `engine/src/Hosts.ts`): [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- `PlacedAction.layer` calls `action.toLayer` with no `implementationVersion`, so a versioned task cannot be placed. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Hosts` resolves a target nobody bound to `Here`, so the body runs in the caller's process. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- Vibe must refuse an unbound target. [Design](#four-scales) · [Review](reviews/2026-11-09-built-in-set.md).
+- For `stats.vibe`, beside the ordinary service: [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- For the worker entry of `stats.vibe`: [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- For `Experimental.Rpc.workers(statsWorker, { size: 4 })`: [Design](#what-the-compiler-emits) · [Review](reviews/2026-11-09-built-in-set.md).
+- Codes are assigned when this VIP is built. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
+- Slug `schema-service-member`: When: A member is a property, or does not return an Effect or a Stream. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
+- Slug `worker-default-export`: When: A module imported `with { type: "worker" }` has no default-export `Layer`, or provides a service that is not a `schema service`. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
+- Slug `worker-binding`: When: A worker import names anything but a default binding. [Design](#diagnostics) · [Review](reviews/2026-11-09-built-in-set.md).
 
 ### Adopted review answers
 
-- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
 
 ## Compared
 
-The same program in Effect TypeScript: three files, which type-check on `effect` 4.1.1 and `@effect/platform-node` 4.1.1. Smithers 1.x has no thread abstraction of its own; a Smithers program writes this.
+The same program in Effect TypeScript: three files, which type-check on `effect` 4.1.1 and `@effect/platform-node` 4.1.1. The reference engine 1.x has no thread abstraction of its own; a program on the reference engine writes this.
 
 ```ts
 // Effect TS: stats.ts

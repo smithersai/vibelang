@@ -654,7 +654,7 @@ effect function sampleRate() {
 
 Effect defines durable workflows: `Workflow.make` declares a workflow and its payload, `Activity.make` a recorded step, and both run on Effect's `WorkflowEngine` service. Effect's one local engine, `WorkflowEngine.layerMemory`, forgets every run when the process exits. `Experimental.Durable` adds the engine that remembers. Each step's start and result go to an append-only journal, one per run. A run that stopped part way, because its process crashed or was killed, resumes the next time anything executes it with the same input: the body runs again, and each step the journal finished returns its recorded result instead of running.
 
-`Experimental.Durable.task(key, options)` declares a step with a payload. Its implementation is a layer, `Task.toLayer(handler)`, so a test swaps it by providing another. Inside a workflow, calling the task runs one step; two calls of one task are two steps. `key` names the step in the journal, so keep it while runs that used it are stored. Options keep Smithers' names: `payload`, `success`, `error`, `tier` (`"sealed"`, `"compensable"` or `"irreversible"`, recorded with the step), `retryPolicy` and `attemptTimeoutMs`.
+`Experimental.Durable.task(key, options)` declares a step with a payload. Its implementation is a layer, `Task.toLayer(handler)`, so a test swaps it by providing another. Inside a workflow, calling the task runs one step; two calls of one task are two steps. `key` names the step in the journal, so keep it while runs that used it are stored. Options keep the names of the durable-execution library they port: `payload`, `success`, `error`, `tier` (`"sealed"`, `"compensable"` or `"irreversible"`, recorded with the step), `retryPolicy` and `attemptTimeoutMs`.
 
 ```vibe
 const Charge = Experimental.Durable.task("shop#Charge", { payload: { order: Schema.String }, success: Schema.Number })
@@ -696,7 +696,7 @@ The engine keeps these guarantees:
 
 A `retryPolicy` is data, `{ initialMs, factor, maxMs, maxAttempts?, expirationMs?, jitterRatio? }`. With one, a typed failure is retried, and each attempt is its own journaled step. The delay before attempt `n` is `initialMs * factor ** (n - 2)`, at most `maxMs`, so it depends only on the attempt number the journal keeps, and a restart neither loses nor repeats a retry. `expirationMs` bounds the sum of those delays. With no policy, a typed failure is recorded and returned, not retried.
 
-A task may cache its successful result: `cache: { ttlMs?, scope? }`, Smithers' `Action.withCache`. An equal call within the scope returns the stored result without running the handler. Calls are equal when their payloads have the same identity, or their `idempotencyKey` values when the task sets one, under the same `implementationVersion`.
+A task may cache its successful result: `cache: { ttlMs?, scope? }`, the ported library's `Action.withCache`. An equal call within the scope returns the stored result without running the handler. Calls are equal when their payloads have the same identity, or their `idempotencyKey` values when the task sets one, under the same `implementationVersion`.
 
 | `scope` | Reuses a result |
 | --- | --- |
@@ -733,11 +733,11 @@ export effect function forkAt(run: string, seq: number) {
 }
 ```
 
-`fork`, `rewind` and `replay` fail with `Experimental.Durable.TimeTravelError`, whose `code` is one of Smithers' twelve. This engine raises `not_found` for an unknown run, `invalid` for a position outside the journal, `busy` when this engine is running the run, `irreversible` when a rewind would remove an irreversible task's step, because no engine can unsend an email, and `compensation_failed` when it would remove a compensable one, because undoing a step is not built yet. A rewind claims the run, so another engine still driving it dies with `FenceLost` at its next write. Note that `fork` is a reserved word in Effect code: name the result `copy`, as above.
+`fork`, `rewind` and `replay` fail with `Experimental.Durable.TimeTravelError`, whose `code` is one of the ported library's twelve. This engine raises `not_found` for an unknown run, `invalid` for a position outside the journal, `busy` when this engine is running the run, `irreversible` when a rewind would remove an irreversible task's step, because no engine can unsend an email, and `compensation_failed` when it would remove a compensable one, because undoing a step is not built yet. A rewind claims the run, so another engine still driving it dies with `FenceLost` at its next write. Note that `fork` is a reserved word in Effect code: name the result `copy`, as above.
 
 ## Evals and scorers
 
-A test asserts that an answer equals something. A model's answer rarely equals anything; it is better or worse than the last one. `Experimental.Eval` runs a fixed set of cases against a target, `Experimental.Scorer` grades each answer from 0 to 1, and a gate compares the scores with a committed baseline and returns an exit code. Both modules are pure: no layer, no platform. They port Smithers' `@smthrs/evals` and `@smthrs/scorers`, and a baseline is the same versioned JSON (VIP-69).
+A test asserts that an answer equals something. A model's answer rarely equals anything; it is better or worse than the last one. `Experimental.Eval` runs a fixed set of cases against a target, `Experimental.Scorer` grades each answer from 0 to 1, and a gate compares the scores with a committed baseline and returns an exit code. Both modules are pure: no layer, no platform. They port an existing Effect library's evaluation and scoring packages, and a baseline is the same versioned JSON (VIP-69).
 
 ```text
  cases ──► target ──► output ──► scorers ──► scores in [0, 1] ──► compare with baseline ──► gate
@@ -780,7 +780,7 @@ A case's `input` is the array of the target's arguments, typed from the target, 
 | `Experimental.Eval.suite(name, { target, cases, scorers, trials?, concurrency?, gate? })` | Declares a suite. Runs nothing and never throws. |
 | `Experimental.Eval.run(suite, { runId?, trials?, k? })` | Runs every case `trials` times and grades every answer with every scorer. Fails with `invalid_suite`, naming the field, before running anything if the suite is malformed. |
 | `Experimental.Eval.baseline(run)` | A baseline from the run's successful scores. |
-| `Experimental.Eval.write(baseline)`, `Experimental.Eval.load(text)` | A baseline as text to commit, one record per line, and back. `load` also reads Smithers' baselines. |
+| `Experimental.Eval.write(baseline)`, `Experimental.Eval.load(text)` | A baseline as text to commit, one record per line, and back. `load` also reads that library's baselines. |
 | `Experimental.Eval.compare(baseline, run, { absolute?, relative? }?)` | Regressions, nondeterminism and missing scores, as a value. |
 | `Experimental.Eval.gate(report, { mean?, min?, perCase?, tolerance? })` | A pure function from a report to `{ verdict, exitCode, summary }`. |
 | `Experimental.Eval.fromJsonLines(text, { name, target, scorers, … })` | A suite whose cases are JSON Lines, one `{ "name", "input", "expected"? }` per line. |
@@ -1208,7 +1208,7 @@ export effect function certify() {
 
 ## Memory
 
-A model's context is gone when its process exits, and a durable run's journal records only what that run did. `Experimental.Memory` keeps what a later run should still know: facts a program writes now and recalls in a later run, ranked by a query and cut to a byte budget so the answer fits in a prompt. It ports `@smthrs/memory`.
+A model's context is gone when its process exits, and a durable run's journal records only what that run did. `Experimental.Memory` keeps what a later run should still know: facts a program writes now and recalls in a later run, ranked by a query and cut to a byte budget so the answer fits in a prompt. It ports an existing Effect memory package.
 
 ```vibe
 export effect function notes() {
@@ -1262,7 +1262,7 @@ export effect function answer(question: string) {
 
 Recalled text is data. It grants no capability, and a fact a model wrote is an assertion, not an instruction.
 
-Pick the store with one layer. `Experimental.Memory.test` keeps facts in a fresh store in this process. `Experimental.Memory.layerSql({ recall? })` keeps them in a SQL database through Effect's `SqlClient`: provide one of Effect's clients, such as `SqliteClient.layer({ filename })` from `@effect/sql-sqlite-node` or `@effect/sql-sqlite-bun`, or `PgClient.layer` from `@effect/sql-pg`, and a later run recalls what an earlier one remembered. Its tables are `@smthrs/memory`'s (`memory_facts`, `memory_notes`, `memory_note_supersedes`, `memory_threads` and `memory_messages`), created if missing, so a Smithers store and a VibeLang store read each other's rows. `Experimental.Memory.layerStore(store, { recall? })` runs over any `Experimental.Memory.Store`, which is how a host keeps memory in its own database; layers built over one store share its facts. `Experimental.Memory.makeMemoryStore()` makes a store in this process's memory, so a test can run one program, start another over the same store, and recall what the first remembered. `recall` replaces the ranking with any `Experimental.Memory.Recall`; `Experimental.Memory.keyword` is the default, and the byte budget applies to every ranking. There is no default store: a program that calls `remember` with none provided has a missing `Experimental.Memory.Memory` requirement.
+Pick the store with one layer. `Experimental.Memory.test` keeps facts in a fresh store in this process. `Experimental.Memory.layerSql({ recall? })` keeps them in a SQL database through Effect's `SqlClient`: provide one of Effect's clients, such as `SqliteClient.layer({ filename })` from `@effect/sql-sqlite-node` or `@effect/sql-sqlite-bun`, or `PgClient.layer` from `@effect/sql-pg`, and a later run recalls what an earlier one remembered. Its tables are those of the memory package it ports (`memory_facts`, `memory_notes`, `memory_note_supersedes`, `memory_threads` and `memory_messages`), created if missing, so a store that package wrote and a VibeLang store read each other's rows. `Experimental.Memory.layerStore(store, { recall? })` runs over any `Experimental.Memory.Store`, which is how a host keeps memory in its own database; layers built over one store share its facts. `Experimental.Memory.makeMemoryStore()` makes a store in this process's memory, so a test can run one program, start another over the same store, and recall what the first remembered. `recall` replaces the ranking with any `Experimental.Memory.Recall`; `Experimental.Memory.keyword` is the default, and the byte budget applies to every ranking. There is no default store: a program that calls `remember` with none provided has a missing `Experimental.Memory.Memory` requirement.
 
 Every failure is an `Experimental.Memory.MemoryError` with a stable `code` and, when an input field is at fault, its `path`. Input is checked before any read or write:
 

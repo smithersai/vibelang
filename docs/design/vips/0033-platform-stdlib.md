@@ -2,7 +2,7 @@
 
 **Status:** accepted, 2026-10-29: Will's 10-26 rulings, re-presented against VIP-1 to VIP-32 and recorded under his standing approval of recommendations.
 
-Before its first release, VibeLang ships no quick fixes or codemods of its own (PROC-29). TypeScript's built-in code fixes remain available.
+Before its first release, VibeLang ships no quick fixes or codemods of its own. TypeScript's built-in code fixes remain available.
 
 ## Decision
 

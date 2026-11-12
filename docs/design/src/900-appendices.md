@@ -2435,7 +2435,7 @@ The compiler also prints `EK0204`, a compiler gap rather than a language rule. W
 | --- | --- | --- | --- |
 | `EK0204` | compiler gap, not a language rule: a `return`, `var`, jump, `await` or `yield` that would leave a `do` the compiler still compiles to a function; admitted completions keep VIP-2’s meaning | 2 | [Running Effects](002-running.md#do-expressions) |
 
-The existing migration diagnostics retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules.
+The existing migration diagnostics retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules. A release number in a row names a past release whose behaviour the diagnostic reports: the 0.0.10 release, for example, read a block after an Effect dual as the dual's program by look-ahead.
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
@@ -2625,7 +2625,7 @@ The proposals page lists further ideas, each to get its own VIP: durable executi
 
 A VibeLang example the compiler does not yet pass starts with `// compiler-gap: pending VIP-N`, and every Effect TypeScript example that names functions it doesn't declare starts with `// fragment`. The snippet checker reports a `compiler-gap` block as a known gap, not a failure.
 
-[Documentation check isolation and retained compiler logs](https://github.com/smithersai/vibelang/blob/vibe/CONTRIBUTING.md#test-your-change).
+[Documentation check isolation and retained compiler logs](https://github.com/smithersai/vibelang/blob/main/CONTRIBUTING.md#test-your-change).
 
 To check the specification's examples:
 

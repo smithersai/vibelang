@@ -218,15 +218,15 @@ export default Deployment.make({
 
 ### VibeLang today
 
-- Effect 4's `effect/workflow` modules (`Workflow`, `Activity`, `DurableClock`, `DurableDeferred`, `DurableQueue`) work from `.vibe` files. A workflow body is an ordinary VibeLang function. Every execution, first or replay, reruns the body from the start, and side effects belong in activities (decision D42).
+- Effect 4's `effect/workflow` modules (`Workflow`, `Activity`, `DurableClock`, `DurableDeferred`, `DurableQueue`) work from `.vibe` files. A workflow body is an ordinary VibeLang function. Every execution, first or replay, reruns the body from the start, and side effects belong in activities (decision D42 in the [earlier design's decision log](https://github.com/smithersai/vibelang/blob/main/docs/design/history/DECISIONS.md)).
 - `Workflow.make` and `Activity.make` take explicit `Schema` values for the payload, success, and error. The earlier design derived these codecs from the Action's signature.
-- The specification keeps durable execution out of the language: "It needs serializable continuations, a different machine" ([specification](https://vibelang.sh/spec/), chapter 18).
+- The earlier specification kept durable execution out of the language: "It needs serializable continuations, a different machine" ([the earlier specification](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/318-part3-ch18-why.md), chapter 18).
 - Missing: Action and Flow declarations, codecs derived from signatures, a static Plan, inspection before execution, approval, content-cache reuse, and multi-artifact deployment builds.
 - The prelude's `sleep` is `Effect.sleep` and takes a duration such as `"5 millis"`. A durable timer needs a different name, as Effect's `DurableClock.sleep` has.
 
 ### Open questions and design notes
 
-- The earlier design changed models twice in ten days: a static Plan IR (August 21, 2026), then ordinary-body replay under a journaling handler (August 27), then static keyed Plans that match Smithers 1.0 (September 6). Effect's workflow engine uses body replay today. Replay keeps loops, mutation, and recursion inside a Flow, but loses static detection of version divergence, a signable artifact that says what a Flow will do, and implicit parallelism of independent Actions. Static Plans keep all three and refuse loops and mutation. A proposal has to choose one model first.
+- The earlier design changed models twice in ten days: a static Plan IR (August 21, 2026), then ordinary-body replay under a journaling handler (August 27), then static keyed Plans (September 6). Effect's workflow engine uses body replay today. Replay keeps loops, mutation, and recursion inside a Flow, but loses static detection of version divergence, a signable artifact that says what a Flow will do, and implicit parallelism of independent Actions. Static Plans keep all three and refuse loops and mutation. A proposal has to choose one model first.
 - Four identities stay distinct: the run-local node key, the downstream idempotency key, the memo key, and the content key.
 - A memoized answer, such as a model response, must never be promoted to a shared content-cache entry.
 - Neither sealing nor compensation gives exactly-once external effects. The destination has to deduplicate an idempotency key, honor a fencing token, or join a transaction.
@@ -339,7 +339,7 @@ function handleSignup(
 
 The same type reflection was meant to derive encoders and decoders, equality and hashing, durable boundary codecs, JSON Schema and OpenAPI descriptions, and RPC bindings.
 
-**VibeLang today.** `schema SignupRequest { email: string; age: number }` declares an Effect `Schema.Struct` and its type in one statement (decision D133), and `Schema.decodeUnknownEffect(SignupRequest)(input)` decodes untrusted input. Effect's Schema derives JSON Schema, equivalence, and arbitrary values from a schema. Missing: a schema for a type you did not declare with `schema`, such as an interface from a `.ts` package or a type alias; `schema` fields accept only primitives, literals, unions, arrays, tuples, records, object types, and other schemas (other types are EK2109).
+**VibeLang today.** `schema SignupRequest { email: string; age: number }` declares an Effect `Schema.Struct` and its type in one statement (decision D133 in the [earlier design's decision log](https://github.com/smithersai/vibelang/blob/main/docs/design/history/DECISIONS.md)), and `Schema.decodeUnknownEffect(SignupRequest)(input)` decodes untrusted input. Effect's Schema derives JSON Schema, equivalence, and arbitrary values from a schema. Missing: a schema for a type you did not declare with `schema`, such as an interface from a `.ts` package or a type alias; `schema` fields accept only primitives, literals, unions, arrays, tuples, records, object types, and other schemas (other types are EK2109).
 
 **Open questions.** The earlier docs left the set of reifiable types open: structural data, tagged unions, tuples, and arrays qualify; functions, erased nominal facts, and unconstrained `any` need an explicit codec. An unsupported type must produce a diagnostic, never a wider validator.
 
@@ -546,7 +546,7 @@ if (const user = cache.get(id); user !== undefined) {
 }
 ```
 
-**VibeLang today.** `if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause))` binds `cause` for the rest of the condition and the then branch (decision D211). The names do not reach the `else` branch, and the pattern must match a value; it does not declare one from an arbitrary expression.
+**VibeLang today.** `if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause))` binds `cause` for the rest of the condition and the then branch (decision D211 in the [earlier design's decision log](https://github.com/smithersai/vibelang/blob/main/docs/design/history/DECISIONS.md)). The names do not reach the `else` branch, and the pattern must match a value; it does not declare one from an arbitrary expression.
 
 **Design notes.** The earlier compiler implemented this form as a patch that added 89 lines to its TypeScript fork. Its policy allowed new grammar only for an active TC39 proposal, and this was the only form that qualified.
 

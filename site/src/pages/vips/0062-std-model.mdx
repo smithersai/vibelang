@@ -4,12 +4,12 @@ title: "VIP-62: Experimental.Model: language models and decision models with no 
 
 # VIP-62: `Experimental.Model`: language models and decision models with no SDK
 
-**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval. Will has not reviewed this VIP's decisions.
 
 ## Will's words
 > Vibelang is meant to have most of the features of durable execution agents etc. built into it. What is that status? Are the VIP open or are VIP missing for things like adding llm calls or jev calls to language sandboxing durable execution etc?
 
-> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+> Ok so give me a list of [the reference engine's] features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
 
 ## Summary
 
@@ -17,7 +17,7 @@ title: "VIP-62: Experimental.Model: language models and decision models with no 
 
 **One sentence.** A Vibe program calls a model through Effect's `LanguageModel` and `DecisionModel`, which are already in scope, and one new module, `Experimental.Model`, turns a string such as `"anthropic:claude-sonnet-5-5"` into the layer that serves them.
 
-**One paragraph.** Vibe 0.0.13 already has the calling half. `LanguageModel.generateText`, `generateObject` and `streamText`, `DecisionModel.decide`, `Decision`, `EmbeddingModel`, `Chat`, `Tool` and `Toolkit` are Effect modules in scope with no import. Effect also publishes the provider half, as packages with no vendor SDK and no dependencies: `@effect/ai-anthropic`, `@effect/ai-openai` and `@effect/ai-openai-compat`. What is missing is everything between a program and those packages: one string that names a model, a key that never enters the program, a record of each call inside a durable step, a quota that parks a run, and Jev, which Will calls "jev calls". `Experimental.Model` adds those. It bundles Effect's provider packages, so a program installs nothing, and it takes from Smithers' `@smthrs/model` only what Effect lacks.
+**One paragraph.** Vibe 0.0.13 already has the calling half. `LanguageModel.generateText`, `generateObject` and `streamText`, `DecisionModel.decide`, `Decision`, `EmbeddingModel`, `Chat`, `Tool` and `Toolkit` are Effect modules in scope with no import. Effect also publishes the provider half, as packages with no vendor SDK and no dependencies: `@effect/ai-anthropic`, `@effect/ai-openai` and `@effect/ai-openai-compat`. What is missing is everything between a program and those packages: one string that names a model, a key that never enters the program, a record of each call inside a durable step, a quota that parks a run, and Jev, which Will calls "jev calls". `Experimental.Model` adds those. It bundles Effect's provider packages, so a program installs nothing, and it takes from the model package of the reference engine (an existing Effect durable-execution framework these built-ins are modelled on) only what Effect lacks.
 
 ```text
  your code                         interface (Effect, in scope today)      provider
@@ -25,7 +25,7 @@ title: "VIP-62: Experimental.Model: language models and decision models with no 
  LanguageModel.generateObject ──►  LanguageModel  ◄── Model.use("anthropic:claude-sonnet-5-5") ──► @effect/ai-anthropic
  LanguageModel.streamText     ──►                 ◄── Model.use("openai:gpt-6.1-sol")          ──► @effect/ai-openai
                                                   ◄── Model.compatible({ baseUrl, model })     ──► @effect/ai-openai-compat
- DecisionModel.decide         ──►  DecisionModel  ◄── Model.decide()                           ──► Jev, through Smithers' Evaluator
+ DecisionModel.decide         ──►  DecisionModel  ◄── Model.decide()                           ──► Jev, through the reference engine's Evaluator
 ```
 
 ## Decision
@@ -79,12 +79,12 @@ Only `Experimental.Model` is new in both examples.
 | Call | Provides | Built on |
 | --- | --- | --- |
 | `Model.use(seat)` | `LanguageModel` | Effect's `AnthropicLanguageModel.model`, `OpenAiLanguageModel.model` and their `layerConfig` clients |
-| `Model.use([seatA, seatB])` | `LanguageModel`, falling back in order | Smithers' ordered seat list (`agent/README.md`) |
+| `Model.use([seatA, seatB])` | `LanguageModel`, falling back in order | The reference engine's ordered seat list (`agent/README.md`) |
 | `Model.compatible({ id, baseUrl, model, apiKey?, protocol? })` | `LanguageModel` from any OpenAI-compatible server | `@effect/ai-openai-compat` |
-| `Model.decide(seat?)` | `DecisionModel`. With no argument, Jev | Smithers' `Evaluator.layerVercelGateway`, `EvaluatorBackup.fromModel` |
+| `Model.decide(seat?)` | `DecisionModel`. With no argument, Jev | The reference engine's `Evaluator.layerVercelGateway`, `EvaluatorBackup.fromModel` |
 | `Model.embed(seat)` | `EmbeddingModel` | Effect's `OpenAiEmbeddingModel.model` |
-| `Model.proxy(options)` and `Model.proxied({ url })` | An HTTP handler that serves a model, and a `LanguageModel` that calls it | Smithers' `ModelProxy.serve`, `ModelProxy.layerClient` |
-| `Model.contextWindow(modelId)`, `Model.cost(usage, modelId)` | Catalog facts and USD cost | Smithers' `ModelCatalog`, `Pricing` |
+| `Model.proxy(options)` and `Model.proxied({ url })` | An HTTP handler that serves a model, and a `LanguageModel` that calls it | The reference engine's `ModelProxy.serve`, `ModelProxy.layerClient` |
+| `Model.contextWindow(modelId)`, `Model.cost(usage, modelId)` | Catalog facts and USD cost | The reference engine's `ModelCatalog`, `Pricing` |
 
 ### Rules
 
@@ -96,7 +96,7 @@ Only `Experimental.Model` is new in both examples.
 6. **Inside a task, a call is a recorded step.** A resumed run reads the recorded answer and usage. A crash before the call is recorded can call the provider again: delivery is at-least-once, and a streamed prefix is not a record.
 7. **A model answer is never shared across runs.** It is memoized for its run only.
 8. **Retries do not multiply.** The provider client retries transport faults within a bound. Inside a task that declares a `retryPolicy`, the client's own retry is off, so one layer retries one failure.
-9. **A quota parks.** A provider refusal that names a reset time parks a durable run until then instead of failing it (Smithers' `QuotaPolicy`).
+9. **A quota parks.** A provider refusal that names a reset time parks a durable run until then instead of failing it (the reference engine's `QuotaPolicy`).
 10. **A decision is evidence, not permission.** An unreachable decision model fails; it never answers yes. A fallback to a language model is opt-in, and the record says which answered.
 11. **A browser holds no key.** It provides `Model.proxied({ url })`, and a server mounts `Model.proxy`.
 12. **The permission is `model:call`.** Under [capabilities](/vips/0058-capabilities), a model request needs it.
@@ -104,68 +104,68 @@ Only `Experimental.Model` is new in both examples.
 ### What must be built
 
 - **Seat resolution and bundling.** A table from provider name to Effect's package, shipped with `vibelang-runtime` at the pinned Effect version ([VIP-32](/vips/0032-effect-version)).
-- **Recording.** Smithers records a model call in `ModelStep.run`, over its own `Model.stream` events. The port records at Effect's `LanguageModel` service instead, so any provider is recorded the same way.
-- **`DecisionModel` over Smithers' `Evaluator`.** No adapter exists at `main@origin` `bcf8076a4ff4`. The two have the same shape: one JSON state and a map of typed questions out, one typed answer per question back. It is `DecisionModel.make({ decide })`.
+- **Recording.** The reference engine records a model call in `ModelStep.run`, over its own `Model.stream` events. The port records at Effect's `LanguageModel` service instead, so any provider is recorded the same way.
+- **`DecisionModel` over the reference engine's `Evaluator`.** No adapter exists at `main@origin` `bcf8076a4ff4`. The two have the same shape: one JSON state and a map of typed questions out, one typed answer per question back. It is `DecisionModel.make({ decide })`.
 
 ### Host needs
 
 `HttpClient` only. The module runs on Node, Bun, a Cloudflare Worker and in a browser.
 
-## Claude's decisions
+## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
 
-- A decision model answers typed questions about one input in one call: Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Only `Experimental.Model` is new in both examples. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- `Experimental.Model`, in scope with no import and named after the Effect module it extends, `effect/ai`'s `Model`: a layer that carries its provider's name. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Its code is `vibelang-runtime/experimental/Model`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A bare `Model` stays `EK1401` in Vibe, because Effect exports it from two subpaths. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Model.use(seat)`: Provides: `LanguageModel`; Built on: Effect's `AnthropicLanguageModel.model`, `OpenAiLanguageModel.model` and their `layerConfig` clients. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Model.use([seatA, seatB])`: Provides: `LanguageModel`, falling back in order; Built on: Smithers' ordered seat list (`agent/README.md`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Model.compatible({ id, baseUrl, model, apiKey?, protocol? })`: Provides: `LanguageModel` from any OpenAI-compatible server; Built on: `@effect/ai-openai-compat`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Model.decide(seat?)`: Provides: `DecisionModel`. With no argument, Jev; Built on: Smithers' `Evaluator.layerVercelGateway`, `EvaluatorBackup.fromModel`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- With no argument, Jev | Smithers' `Evaluator.layerVercelGateway`, `EvaluatorBackup.fromModel` | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Model.embed(seat)`: Provides: `EmbeddingModel`; Built on: Effect's `OpenAiEmbeddingModel.model`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Model.proxy(options)` and `Model.proxied({ url })`: Provides: An HTTP handler that serves a model, and a `LanguageModel` that calls it; Built on: Smithers' `ModelProxy.serve`, `ModelProxy.layerClient`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Call `Model.contextWindow(modelId)`, `Model.cost(usage, modelId)`: Provides: Catalog facts and USD cost; Built on: Smithers' `ModelCatalog`, `Pricing`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **A seat is a string**, `provider:modelId`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- It holds no key and no endpoint, so it is safe in source and in a plan. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Keys come from `Config`.** `Model.use("anthropic:…")` reads `ANTHROPIC_API_KEY` as a redacted config value inside the layer. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- `.vibe` code has no `process.env`, and a key never enters a request's recorded form. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **An unknown seat fails when the layer is built**, with `Model.ModelUnresolved`, not halfway through a run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **`protocol` matters.** Responses and Chat Completions are different wire formats. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- `"chat"` is the default for `Model.compatible`, because Ollama, Cerebras, Gemini's compatibility layer and most self-hosted servers speak it. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- "OpenAI-compatible" names a wire family; it does not promise every server accepts every option. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Structured output is Effect's.** `generateObject` takes a `schema`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A provider that enforces JSON Schema gets it, and the answer is still decoded locally. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A miss fails with `AiError`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Inside a task, a call is a recorded step.** A resumed run reads the recorded answer and usage. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A crash before the call is recorded can call the provider again: delivery is at-least-once, and a streamed prefix is not a record. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **A model answer is never shared across runs.** It is memoized for its run only. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Retries do not multiply.** The provider client retries transport faults within a bound. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- Inside a task that declares a `retryPolicy`, the client's own retry is off, so one layer retries one failure. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **A quota parks.** A provider refusal that names a reset time parks a durable run until then instead of failing it (Smithers' `QuotaPolicy`). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **A decision is evidence, not permission.** An unreachable decision model fails; it never answers yes. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- A fallback to a language model is opt-in, and the record says which answered. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **A browser holds no key.** It provides `Model.proxied({ url })`, and a server mounts `Model.proxy`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **The permission is `model:call`.** Under [capabilities](/vips/0058-capabilities), a model request needs it. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Seat resolution and bundling.** A table from provider name to Effect's package, shipped with `vibelang-runtime` at the pinned Effect version ([VIP-32](/vips/0032-effect-version)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **Recording.** Smithers records a model call in `ModelStep.run`, over its own `Model.stream` events. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- The port records at Effect's `LanguageModel` service instead, so any provider is recorded the same way. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- **`DecisionModel` over Smithers' `Evaluator`.** No adapter exists at `main@origin` `bcf8076a4ff4`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- The two have the same shape: one JSON state and a map of typed questions out, one typed answer per question back. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- It is `DecisionModel.make({ decide })`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- `HttpClient` only. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
-- The module runs on Node, Bun, a Cloudflare Worker and in a browser. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A decision model answers typed questions about one input in one call: [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Only `Experimental.Model` is new in both examples. [Design](#decision) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `Experimental.Model`, in scope with no import and named after the Effect module it extends, `effect/ai`'s `Model`: a layer that carries its provider's name. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Its code is `vibelang-runtime/experimental/Model`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A bare `Model` stays `EK1401` in Vibe, because Effect exports it from two subpaths. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Model.use(seat)`: Provides: `LanguageModel`; Built on: Effect's `AnthropicLanguageModel.model`, `OpenAiLanguageModel.model` and their `layerConfig` clients. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Model.use([seatA, seatB])`: Provides: `LanguageModel`, falling back in order; Built on: the reference engine's ordered seat list (`agent/README.md`). [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Model.compatible({ id, baseUrl, model, apiKey?, protocol? })`: Provides: `LanguageModel` from any OpenAI-compatible server; Built on: `@effect/ai-openai-compat`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Model.decide(seat?)`: Provides: `DecisionModel`. With no argument, Jev; Built on: the reference engine's `Evaluator.layerVercelGateway`, `EvaluatorBackup.fromModel`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- With no argument, Jev | The reference engine's `Evaluator.layerVercelGateway`, `EvaluatorBackup.fromModel` | [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Model.embed(seat)`: Provides: `EmbeddingModel`; Built on: Effect's `OpenAiEmbeddingModel.model`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Model.proxy(options)` and `Model.proxied({ url })`: Provides: An HTTP handler that serves a model, and a `LanguageModel` that calls it; Built on: the reference engine's `ModelProxy.serve`, `ModelProxy.layerClient`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Call `Model.contextWindow(modelId)`, `Model.cost(usage, modelId)`: Provides: Catalog facts and USD cost; Built on: the reference engine's `ModelCatalog`, `Pricing`. [Design](#module) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A seat is a string**, `provider:modelId`. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- It holds no key and no endpoint, so it is safe in source and in a plan. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Keys come from `Config`.** `Model.use("anthropic:…")` reads `ANTHROPIC_API_KEY` as a redacted config value inside the layer. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `.vibe` code has no `process.env`, and a key never enters a request's recorded form. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **An unknown seat fails when the layer is built**, with `Model.ModelUnresolved`, not halfway through a run. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **`protocol` matters.** Responses and Chat Completions are different wire formats. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `"chat"` is the default for `Model.compatible`, because Ollama, Cerebras, Gemini's compatibility layer and most self-hosted servers speak it. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- "OpenAI-compatible" names a wire family; it does not promise every server accepts every option. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Structured output is Effect's.** `generateObject` takes a `schema`. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A provider that enforces JSON Schema gets it, and the answer is still decoded locally. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A miss fails with `AiError`. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Inside a task, a call is a recorded step.** A resumed run reads the recorded answer and usage. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A crash before the call is recorded can call the provider again: delivery is at-least-once, and a streamed prefix is not a record. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A model answer is never shared across runs.** It is memoized for its run only. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Retries do not multiply.** The provider client retries transport faults within a bound. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- Inside a task that declares a `retryPolicy`, the client's own retry is off, so one layer retries one failure. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A quota parks.** A provider refusal that names a reset time parks a durable run until then instead of failing it (the reference engine's `QuotaPolicy`). [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A decision is evidence, not permission.** An unreachable decision model fails; it never answers yes. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- A fallback to a language model is opt-in, and the record says which answered. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **A browser holds no key.** It provides `Model.proxied({ url })`, and a server mounts `Model.proxy`. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **The permission is `model:call`.** Under [capabilities](/vips/0058-capabilities), a model request needs it. [Design](#rules) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Seat resolution and bundling.** A table from provider name to Effect's package, shipped with `vibelang-runtime` at the pinned Effect version ([VIP-32](/vips/0032-effect-version)). [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **Recording.** The reference engine records a model call in `ModelStep.run`, over its own `Model.stream` events. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The port records at Effect's `LanguageModel` service instead, so any provider is recorded the same way. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- **`DecisionModel` over the reference engine's `Evaluator`.** No adapter exists at `main@origin` `bcf8076a4ff4`. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The two have the same shape: one JSON state and a map of typed questions out, one typed answer per question back. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- It is `DecisionModel.make({ decide })`. [Design](#what-must-be-built) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- `HttpClient` only. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
+- The module runs on Node, Bun, a Cloudflare Worker and in a browser. [Design](#host-needs) · [Review](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md).
 
 ### Adopted review answers
 
-- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
-- Effect's provider packages call model providers. Smithers supplies the composition above them. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review decision](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#3-whose-code-calls-the-model-provider).
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. [Review question 1](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- Effect's provider packages call model providers. The reference engine supplies the composition above them. [Review decision](https://github.com/smithersai/vibelang/blob/main/docs/design/vips/reviews/2026-11-09-built-in-set.md#3-whose-code-calls-the-model-provider).
 
 ## Compared
 
-The first example in Smithers 1.x. It type-checks against `@smthrs/model` 1.0.0-rc.16.
+The first example in the reference engine 1.x. It type-checks against the reference engine's model package 1.0.0-rc.16.
 
 ```ts
 import { Model, ModelEvent, ModelRequest, RequestExecutor, Route } from "@smthrs/model"
@@ -200,13 +200,13 @@ export const layer = (apiKey: string) =>
 | --- | --- | --- |
 | Label one issue: Vibe, proposed | 101 | 12 |
 | Label one issue: Vibe 0.0.13 today, importing `@effect/ai-anthropic` | 152 | 19 |
-| Label one issue: Smithers 1.x | 317 | 26 |
+| Label one issue: reference engine 1.x | 317 | 26 |
 | Classify and rate one issue with Jev: Vibe, proposed | 136 | 18 |
-| Classify and rate one issue with Jev: Smithers 1.x | 199 | 19 |
+| Classify and rate one issue with Jev: reference engine 1.x | 199 | 19 |
 
-Today's program replaces the `provide` line with `Layer.provide(AnthropicLanguageModel.model("claude-sonnet-5-5"), AnthropicClient.layerConfig({ apiKey: Config.Redacted("ANTHROPIC_API_KEY") }))` and one import. The Jev twin in Smithers uses `Classifier.make`, `Classifier.choice`, `Classifier.score` and `Evaluator.layerVercelGateway`.
+Today's program replaces the `provide` line with `Layer.provide(AnthropicLanguageModel.model("claude-sonnet-5-5"), AnthropicClient.layerConfig({ apiKey: Config.Redacted("ANTHROPIC_API_KEY") }))` and one import. The Jev twin in the reference engine uses `Classifier.make`, `Classifier.choice`, `Classifier.score` and `Evaluator.layerVercelGateway`.
 
-**Checked.** Both proposed examples use only existing syntax and compile under `vibelang` 0.0.13 against a declaration of `Experimental.Model`; every `LanguageModel`, `Decision` and `DecisionModel` call resolves to Effect 4.1.1 with no import. Today's program compiles under `vibelang` 0.0.13 against `@effect/ai-anthropic` 4.1.1, whose peer is `effect ^4.1.1` and which has no dependencies. Both Smithers programs type-check as shown.
+**Checked.** Both proposed examples use only existing syntax and compile under `vibelang` 0.0.13 against a declaration of `Experimental.Model`; every `LanguageModel`, `Decision` and `DecisionModel` call resolves to Effect 4.1.1 with no import. Today's program compiles under `vibelang` 0.0.13 against `@effect/ai-anthropic` 4.1.1, whose peer is `effect ^4.1.1` and which has no dependencies. Both reference engine programs type-check as shown.
 
 ## Principles
 
@@ -224,16 +224,16 @@ Today's program replaces the `provide` line with `Layer.provide(AnthropicLanguag
 
 ## Alternatives
 
-- **Smithers' routes as the provider code**, behind Effect's interface. `@smthrs/model` has routes for Anthropic Messages, OpenAI Responses and both OpenAI-compatible protocols, and one retry path. It would be a second implementation of what Effect ships, which VIP-33 forbids in Will's words. It also cannot run today: published Smithers requires `effect` 4.0.5. See open question 1.
-- **Expose Smithers' `Model.stream` as the interface.** It is a stream of events with no structured output and no tool resolution. Effect already wrote the higher interface.
+- **The reference engine's routes as the provider code**, behind Effect's interface. The reference engine's model package has routes for Anthropic Messages, OpenAI Responses and both OpenAI-compatible protocols, and one retry path. It would be a second implementation of what Effect ships, which VIP-33 forbids in Will's words. It also cannot run today: the published reference engine requires `effect` 4.0.5. See open question 1.
+- **Expose the reference engine's `Model.stream` as the interface.** It is a stream of events with no structured output and no tool resolution. Effect already wrote the higher interface.
 - **A `model` keyword or a prompt literal.** Nothing here needs the compiler.
 - **Seats as values, `Model.anthropic("claude-sonnet-5-5")`.** Typed, and it cannot be read from a config file or a markdown header. A string can.
 
 ## Follow-up questions
 
-1. **Provider code (decided).** Effect's packages are the provider implementation; Smithers supplies the higher-level composition. See the Claude's decisions section.
+1. **Provider code (decided).** Effect's packages are the provider implementation; the reference engine supplies the higher-level composition. See the Maintainers' decisions section.
 2. **Is Jev the default decision model?** `Model.decide()` with no argument reaches Jev through the Vercel AI Gateway and needs `AI_GATEWAY_API_KEY`. Recommendation: yes, with `Model.decide(seat)` as the explicit alternative.
-3. **Subscription seats.** Smithers can serve a seat from a signed-in Claude Code or Codex subscription (`OpenAIChatGPT`). Should a language's standard library read another product's login? Recommendation: no. Keep it in the Smithers product and let it provide the layer.
+3. **Subscription seats.** The reference engine can serve a seat from a signed-in Claude Code or Codex subscription (`OpenAIChatGPT`). Should a language's standard library read another product's login? Recommendation: no. Keep it in the reference engine and let it provide the layer.
 4. **`Prompt`.** Effect's `Prompt` is ambiguous in Vibe (`effect/ai` and `effect/cli`), so building a multi-message prompt needs an import today. Should `effect/ai` win in scope? Recommendation: yes; it belongs in [VIP-14](/vips/0014-effect-modules-in-scope)'s precedence table.
 
 ## Depends on

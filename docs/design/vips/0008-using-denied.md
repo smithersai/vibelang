@@ -2,7 +2,7 @@
 
 **Status:** denied by Will, 2026-10-28. VibeLang has no special syntax for Effect resources. `using` keeps exactly TypeScript's meaning, and Effect resources use Effect's own `scoped` (a VIP-6 global).
 
-Before its first release, VibeLang ships no quick fixes or codemods of its own (PROC-29). TypeScript's built-in code fixes remain available.
+Before its first release, VibeLang ships no quick fixes or codemods of its own. TypeScript's built-in code fixes remain available.
 
 ```ts
 effect function load(p, q) {
@@ -24,7 +24,7 @@ const load = (p, q) => Effect.gen(function* () {
 ```
 *Corrected 2026-11-02: the Effect TS counterpart keeps `using f = openFile(p)` in the outer generator, with `Effect.scoped` inside it, matching the source's two bodies; it had dropped the declaration, so it neither acquired nor disposed the file (found by the round-9 review).*
 
-- **Amended 2026-10-29: a warning for `using` in effect code.** There it leaks on a failure or interruption, so it gets a warning, with manual guidance to use `acquireDisposable` inside `scoped`. `using` keeps TypeScript's meaning. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+- **Amended 2026-10-29: a warning for `using` in effect code.** There it leaks on a failure or interruption, so it gets a warning, with manual guidance to use `acquireDisposable` inside `scoped`. `using` keeps TypeScript's meaning. Proposed to Will on 2026-10-29; accepted without objection.
 
 The warning amendment above is historical; its accepted authority is [VIP-34's native-resource warning](0034-compiler-and-tooling.md#decision). This VIP remains denied and adds no language rule.
 

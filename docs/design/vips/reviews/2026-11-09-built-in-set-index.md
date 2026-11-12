@@ -15,7 +15,7 @@
  │  LanguageModel  DecisionModel  Decision  EmbeddingModel  Chat  Tool  Toolkit                 │   used as they are
  │  McpClient  McpServer  Rpc  RpcClient  RpcServer  Worker  Otlp  Cron  TestClock              │
  └─────────────────────────────────────────────────────────────────────────────────────────────┘
- ┌─ outside the language: Smithers' products ──────────────────────────────────────────────────┐
+ ┌─ outside the language: the reference engine's products ─────────────────────────────────────┐
  │  CLI · build · control plane · UI · integrations · notifications                             │
  └─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -47,7 +47,7 @@ export effect function main() {
 
 | Slug | Title | Home | One sentence | Depends on (in this set) |
 | --- | --- | --- | --- | --- |
-| [durable-tasks-workflows](../0055-durable-tasks-workflows.md) | `task` and `workflow`, durable steps and the plan the compiler derives | language | A `task` is one recorded step and a `workflow` is a plan over tasks; the compiler derives schemas, Smithers declarations and the static plan. | std-durable, capabilities |
+| [durable-tasks-workflows](../0055-durable-tasks-workflows.md) | `task` and `workflow`, durable steps and the plan the compiler derives | language | A `task` is one recorded step and a `workflow` is a plan over tasks; the compiler derives schemas, the reference engine's declarations and the static plan. | std-durable, capabilities |
 | [durable-waits](../0056-durable-waits.md) | Durable waits: timers, signals and human answers | language | Inside a workflow a wait parks the run, and the compiler lowers three library calls to plan nodes, with no keyword. | durable-tasks-workflows, std-durable |
 | [workers-remote](../0057-workers-remote.md) | `schema service` and worker imports | language | `schema service` declares a service whose calls can cross a boundary, and a layer decides whether it runs here, on worker threads or on another machine. | none |
 | [capabilities](../0058-capabilities.md) | Capabilities: a permission kernel in the standard library | library (decided) | `Experimental.Capability` puts a check in front of every platform service a program can reach; the language adds no syntax. | none |
@@ -91,11 +91,11 @@ A VIP needs only VIPs on the levels above it. The graph has no cycle. The table 
 | A new standard-library module | `Experimental.Agent`, in scope with no import. Its code is `vibelang-runtime/experimental/Agent`, the path Vibe 0.0.13 already uses for `Experimental.Dns` |
 | An addition to an Effect module | Under that module's name: `Experimental.Model`, `Experimental.McpClient`, `Experimental.Rpc`, `Experimental.Otlp`, `Experimental.Logger` |
 | A host layer | Imported from `vibelang-runtime/experimental/platform-node` and its siblings. Which host has what is VIP-54's question |
-| A durable step, a plan of steps | `task`, `workflow`. Smithers calls them an action and a flow |
-| One execution of a workflow | A run, with a run id. Smithers' `executionId` |
+| A durable step, a plan of steps | `task`, `workflow`. The reference engine calls them an action and a flow |
+| One execution of a workflow | A run, with a run id. The reference engine's `executionId` |
 | The durable name of a declaration | Its tag, `"<package>#<Name>"`, or `static readonly key` |
 | Calling a durable declaration | `try T(a)`, `try W(a)`, `spawn W(a)`, `try W.start(a)` |
-| A member that sets an option | `static readonly`, under Smithers' own option name |
+| A member that sets an option | `static readonly`, under the reference engine's own option name |
 | A model, written down | A seat, `"provider:modelId"` |
 | A set of tools | Effect's `Toolkit` |
 | A diagnostic not yet numbered | A slug, such as `workflow-try`, until the VIP is built |
@@ -107,17 +107,17 @@ Tables and diagrams drop the `Experimental.` prefix once a VIP has introduced it
 1. **Syntax only where the compiler must derive something.** `task` and `workflow` derive schemas, tags and a plan. `schema service` derives an Rpc group. Durable waits add recognition and no keyword. Everything else is a library call.
 2. **Effect's module where one exists** ([VIP-33](../0033-platform-stdlib.md): "Make sure you do NOT implement anything that is already in effect"). A probe of `vibelang` 0.0.13 shows `LanguageModel`, `DecisionModel`, `Decision`, `EmbeddingModel`, `Chat`, `Tool`, `Toolkit`, `McpClient`, `McpServer`, `McpProtocol`, `Rpc`, `RpcGroup`, `RpcClient`, `RpcServer`, `Worker`, `Otlp`, `Cron` and `TestClock` in scope with no import. No VIP here renames, wraps or reimplements them. Model providers are Effect's own packages.
 3. **What Effect lacks goes under `Experimental`**, as VIP-33 says in Will's words. It costs 43 tokens across the 18 examples, 29 uses. Whether these modules should be promoted to bare names is recorded in the comparative review.
-4. **Smithers is the implementation of what Effect lacks.** Each standard-library VIP names the Smithers package it ports and the calls it maps to, read at `main@origin` `bcf8076a4ff4`.
+4. **The reference engine (an existing Effect durable-execution framework these built-ins are modelled on) is the implementation of what Effect lacks.** Each standard-library VIP names the reference engine package it ports and the calls it maps to, read at `main@origin` `bcf8076a4ff4`.
 5. **Hosts are VIP-54's question.** Each VIP states what its module needs from a host and stops there.
 6. **Every claim says how it was checked.** See below.
 
 ## What "Checked" means in each VIP
 
 - **Vibe examples.** An example that uses only existing syntax was compiled with `vibelang` 0.0.13 on `effect` 4.1.1, against type declarations of the proposed module. That checks the syntax and the proposed types, including inference. Twenty-one examples compile. An example with new syntax is marked `// proposed`; its bodies were compiled as ordinary `effect function`s where possible.
-- **Smithers comparisons.** Each was type-checked with `tsc` 5.9.3 against the published `@smthrs/*` 1.0.0-rc.16 on `effect` 4.0.5, or with `vibelang` 0.0.13 on `effect` 4.1.1 for the Effect-only programs and the emitted program. Two were not: `@smthrs/secrets` and `@smthrs/fuzz` are not on npm, so their programs follow the package README.
+- **Reference engine comparisons.** Each was type-checked with `tsc` 5.9.3 against the reference engine's published 1.0.0-rc.16 packages on `effect` 4.0.5, or with `vibelang` 0.0.13 on `effect` 4.1.1 for the Effect-only programs and the emitted program. Two were not: the reference engine's secrets and fuzz packages are not on npm, so their programs follow the package README.
 - **Tokens.** OpenAI `o200k_base` through js-tiktoken 1.0.21, over each program's complete text, the comparison’s `o200k_base` counting method.
 
-| VIP | Vibe, proposed | Smithers 1.x or Effect TypeScript |
+| VIP | Vibe, proposed | Reference engine 1.x or Effect TypeScript |
 | --- | --- | --- |
 | durable-tasks-workflows | 268 | 547 (its emitted program), 442 (home page sample) |
 | durable-waits | 133 | 299 |
@@ -143,19 +143,19 @@ The pairs are not all the same size of program; each VIP says where its two side
 
 ## What must exist before any of this runs
 
-1. **A Smithers release on Effect 4.1.1.** Published `@smthrs/*` 1.0.0-rc.16 requires `effect` 4.0.5, and Vibe 0.0.13 pins 4.1.1. Smithers `main` is on 4.1.1.
-2. **Four adapters.** Effect `Tool` to and from a Smithers flow binding ([std-tools](../0064-std-tools.md)); Smithers' `Model.stream` over Effect's `LanguageModel` ([std-agent](../0063-std-agent.md)); Effect's `DecisionModel` over Smithers' `Evaluator` ([std-model](../0062-std-model.md)); a scheduler `Runner` over the durable engine ([std-triggers](../0061-std-triggers.md)).
-3. **Two fixes to placed actions** in Smithers ([workers-remote](../0057-workers-remote.md)).
-4. **Two private packages published:** `@smthrs/secrets` and `@smthrs/fuzz`.
-5. **VIP-44's storage rows.** Its identity rows landed in Smithers on 2026-11-09; its serializer rows have not ([std-durable](../0060-std-durable.md)).
+1. **A reference engine release on Effect 4.1.1.** The reference engine's published 1.0.0-rc.16 packages require `effect` 4.0.5, and Vibe 0.0.13 pins 4.1.1. The reference engine's `main` is on 4.1.1.
+2. **Four adapters.** Effect `Tool` to and from a reference engine flow binding ([std-tools](../0064-std-tools.md)); the reference engine's `Model.stream` over Effect's `LanguageModel` ([std-agent](../0063-std-agent.md)); Effect's `DecisionModel` over the reference engine's `Evaluator` ([std-model](../0062-std-model.md)); a scheduler `Runner` over the durable engine ([std-triggers](../0061-std-triggers.md)).
+3. **Two fixes to placed actions** in the reference engine ([workers-remote](../0057-workers-remote.md)).
+4. **Two private packages published:** the reference engine's secrets and fuzz packages.
+5. **VIP-44's storage rows.** Its identity rows landed in the reference engine on 2026-11-09; its serializer rows have not ([std-durable](../0060-std-durable.md)).
 
 ## What stays out
 
-VIP-43 (proofs), VIP-44 (durable values) and VIP-54 (platform model) are not redone. Generated views, the database package, artifacts and sync are out of scope. Smithers' CLI, build, control plane, UI, integrations and notifications stay products: where a program needs one of their behaviors, such as answering a human question or listing runs, the matching library call is in a VIP above.
+VIP-43 (proofs), VIP-44 (durable values) and VIP-54 (platform model) are not redone. Generated views, the database package, artifacts and sync are out of scope. The reference engine's CLI, build, control plane, UI, integrations and notifications stay products: where a program needs one of their behaviors, such as answering a human question or listing runs, the matching library call is in a VIP above.
 
 ## Sources
 
-- Smithers 1.x at `main@origin` `bcf8076a4ff4c1d667ddd09c5015474123a8b744`: each package's `README.md`, its `docs/`, and the source files named in each VIP. Both drafts read `2da147d2d610`. The 34 commits since include VIP-44's three identity changes and one engine-store fix; the rest are Smithers' product apps.
+- The reference engine 1.x at `main@origin` `bcf8076a4ff4c1d667ddd09c5015474123a8b744`: each package's `README.md`, its `docs/`, and the source files named in each VIP. Both drafts read `2da147d2d610`. The 34 commits since include VIP-44's three identity changes and one engine-store fix; the rest are the reference engine's product apps.
 - Vibe: `docs/design/vips/README.md`, VIP-9, VIP-14, VIP-33 and VIP-44 at `vibe@origin` `f2c643b42dcd`; `site/src/pages/proposals.mdx`; `skills/vibelang/SKILL.md` and `vibelang-runtime`'s export map in the 0.0.13 tarballs.
 - Effect 4.1.1: `effect/ai`, `effect/rpc`, `effect/workers`, `effect/workflow`, `effect/observability`, read from the installed package; `@effect/ai-anthropic` and `@effect/ai-openai-compat` 4.1.1, read from their npm tarballs.
-- lang: `PRINCIPLES.md`, `THESIS.md`, `GOAL.md`, `PROBLEM.md`, `OVERVIEW.md`, `factory/vips.md`, `factory/rulings.md`, `examples/problem/`, and the open VIP-54 draft.
+- The project's planning notes: its principles, thesis, goal, problem statement and overview, its VIP and decision logs, its problem examples, and the open VIP-54 draft.

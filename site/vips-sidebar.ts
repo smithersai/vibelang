@@ -209,7 +209,7 @@ export const vipsSidebar = [
             "link": "/vips/0042-vibelang-in-ts-files-open"
           },
           {
-            "text": "53. Renaming VibeLang to SmithersScript",
+            "text": "53. Renaming VibeLang",
             "link": "/vips/0053-rename-smithersscript-open"
           },
           {

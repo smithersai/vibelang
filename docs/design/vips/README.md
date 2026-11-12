@@ -1,8 +1,8 @@
 # VibeLang improvement proposals
 
-Will decides each VibeLang language decision as a VIP, one at a time. Nothing is part of the language until an accepted VIP or one of its public amendments states it; old VibeLang is only a reference. The most fundamental decisions come first, and the most controversial come next. Each accepted VIP is recorded here with Will's words. Where an accepted VIP or its public amendment disagrees with the specification, the VIP wins until the specification is rewritten to match it. Authorized clarifications are recorded in public amendments to the relevant VIP and its affected chapter, including the applicable pinned references and explicit reconciliation notes. VIPs never contradict each other: a later VIP that changes an earlier one also updates it.
+Will, VibeLang's owner, decides each VibeLang language decision as a VIP, one at a time. Nothing is part of the language until an accepted VIP or one of its public amendments states it; old VibeLang is only a reference. The most fundamental decisions come first, and the most controversial come next. Each accepted VIP is recorded here with Will's words. Where an accepted VIP or its public amendment disagrees with the specification, the VIP wins until the specification is rewritten to match it. Authorized clarifications are recorded in public amendments to the relevant VIP and its affected chapter, including the applicable pinned references and explicit reconciliation notes. VIPs never contradict each other: a later VIP that changes an earlier one also updates it.
 
-VibeLang ships no quick fixes or codemods of its own before its first release; they are tech debt, and they may come back after release. TypeScript's own code fixes stay. This rule replaces the earlier rule that every retirement ship a codemod and pass a retirement gate (ruling PROC-29). Will, on the language's principles: “since vibelang hasn't been released yet if we have implemented --fix already thats tech debt. Maybe we do that after we release but it shouldn't be in the principles and it shouldn't be in the language yet.” Asked whether that applies to VibeLang now: “If we added --fix ourselves yes it shoudln't be there maybe we add it later but it's tech debt. If --fix was already in ts obviously it should still be there for ts though”.
+VibeLang ships no quick fixes or codemods of its own before its first release; they are tech debt, and they may come back after release. TypeScript's own code fixes stay. This rule replaces the earlier rule that every retirement ship a codemod and pass a retirement gate. Will, on the language's principles: “since vibelang hasn't been released yet if we have implemented --fix already thats tech debt. Maybe we do that after we release but it shouldn't be in the principles and it shouldn't be in the language yet.” Asked whether that applies to VibeLang now: “If we added --fix ourselves yes it shoudln't be there maybe we add it later but it's tech debt. If --fix was already in ts obviously it should still be there for ts though”.
 
 | VIP | Title | Status |
 | --- | --- | --- |
@@ -42,21 +42,17 @@ VibeLang ships no quick fixes or codemods of its own before its first release; t
 | [43](0043-theorems.md) | `theorem` and `spec`, proofs in TypeScript's own syntax | accepted 2026-11-07 |
 | [44](0044-durable-values.md) | Durable values | accepted 2026-11-06 |
 
-The [built-in set index](reviews/2026-11-09-built-in-set-index.md) and [comparative review and adopted decisions](reviews/2026-11-09-built-in-set.md) accompany optimistically accepted VIPs 55–72. Each records Claude's decisions separately from Will's words.
+The [built-in set index](reviews/2026-11-09-built-in-set-index.md) and [comparative review and adopted decisions](reviews/2026-11-09-built-in-set.md) accompany optimistically accepted VIPs 55–72. Each records the maintainers' decisions separately from Will's words.
 
 ## Acceptance
 
 Will personally approves each VIP. An agent review never accepts a VIP.
 
-During pre-alpha, VIPs are accepted optimistically under Will's standing approval. Their Status line records the optimistic acceptance and says that Will has not reviewed the VIP's decisions. Each VIP separates his verbatim words from Claude's decisions and records which models and lanes decided each point, so Will can overturn any of Claude's choices. After alpha, each VIP again needs Will's own words of approval.
+During pre-alpha, Will gave standing approval, on 2026-11-09, for VIPs to be accepted before he reviews each of their decisions; he said it ends with the alpha. Such a VIP's Status line records that acceptance and says that Will has not reviewed the VIP's decisions. Each VIP separates his verbatim words from the maintainers' decisions. After alpha, each VIP again needs Will's own words of approval.
 
-Will's ruling 16, 2026-11-09 at 19:19 PST:
+The specification as a whole is accepted when four independent reviewers each answer LGTM with a grade of A- or better on the same revision. Will's acceptance rule counts A-.
 
-> "16 yes we optimistically approve VIP now in pre alpha. This won't be true post alpha."
-
-The specification as a whole is accepted when four reviewers, Codex Astra, Codex Sol, Claude Fable and Claude Opus, each answer LGTM with a grade of A- or better on the same revision. Will's acceptance rule counts A-.
-
-The specification passed this gate at panel v6 on 2026-10-29 UTC: Codex Astra gave A, Codex Sol A, Claude Fable A- and Claude Opus A-. The round records revision 2d7d13086e6dd64480b60de7dbb1cf2aeac520c7; all four reviewers graded the same specification snapshot. Panels v9, v10 and v11 passed again with the same four grades.
+The specification passed this gate on 2026-10-29 UTC with grades A, A, A- and A-. All four reviewers graded the same snapshot, revision 2d7d13086e6dd64480b60de7dbb1cf2aeac520c7. Three later panels passed again with the same four grades.
 
 After acceptance, later specification changes need only the automated checks to keep it self-consistent while it is built optimistically and fuzz tested. A full panel reviews the specification again before each release.
 
@@ -85,14 +81,14 @@ Listed for a future decision; not part of the language.
 | [36](0036-manifest-open.md) | The declaration manifest | open 2026-10-29 |
 | [37](0037-effectify-the-universe-open.md) | Effectify the universe | open 2026-10-29 |
 | [42](0042-vibelang-in-ts-files-open.md) | VibeLang in `.ts` files | open 2026-11-05 |
-| [53](0053-rename-smithersscript-open.md) | Renaming VibeLang to SmithersScript | open 2026-11-07 |
+| [53](0053-rename-smithersscript-open.md) | Renaming VibeLang | open 2026-11-07 |
 | [54](0054-consistent-platform-code-open.md) | One consistent model for platform-specific code | open 2026-11-09 |
 | — | From the proposals page (`site/src/pages/proposals.mdx`), each to get its own VIP: [Durable execution](../../../site/src/pages/proposals.mdx#durable-execution), [Compile-time evaluation (`comptime`)](../../../site/src/pages/proposals.mdx#compile-time-evaluation), [Build-time host selection](../../../site/src/pages/proposals.mdx#build-time-host-selection), [Validators derived from types](../../../site/src/pages/proposals.mdx#validators-derived-from-types), [Typed asset imports](../../../site/src/pages/proposals.mdx#typed-asset-imports), [Custom loaders](../../../site/src/pages/proposals.mdx#custom-loaders), [Rust and Zig source imports](../../../site/src/pages/proposals.mdx#rust-and-zig-source-imports), [Coding-agent library](../../../site/src/pages/proposals.mdx#coding-agent-library), [Typed workers](../../../site/src/pages/proposals.mdx#typed-workers), [Shared structs](../../../site/src/pages/proposals.mdx#shared-structs), [Declarations in conditionals](../../../site/src/pages/proposals.mdx#declarations-in-conditionals), [Toolchain commands](../../../site/src/pages/proposals.mdx#toolchain-commands), [Bundler plugins](../../../site/src/pages/proposals.mdx#bundler-plugins), [Mandatory compiler options](../../../site/src/pages/proposals.mdx#mandatory-compiler-options), [TC39 adopt-early list](../../../site/src/pages/proposals.mdx#tc39-adopt-early-list) | open 2026-10-29 |
 
 
 ## Optimistically accepted built-ins
 
-These VIPs are accepted under the pre-alpha standing approval. Their decisions are attributed to the authors, merger and adopter; Will has not reviewed the individual choices.
+These VIPs are accepted under the pre-alpha standing approval. Their decisions are the maintainers'; Will has not reviewed the individual choices.
 
 | VIP | Title | Status |
 | --- | --- | --- |

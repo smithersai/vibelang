@@ -70,7 +70,7 @@ This turns an error into accepted code, so it is not a retirement.
 
 ## Identity is fixed
 
-Identity decides what counts as the same input. Smithers derives it today in `flow/src/Flow/ExecutionIds.ts`:
+Identity decides what counts as the same input. The durable engine these packages come from derives it today in `flow/src/Flow/ExecutionIds.ts`:
 
 ```ts
 // fragment
@@ -187,7 +187,7 @@ const decodeExit = (s, schema, bytes) => {
 | A durable call | `snapshot`, then `identity` where a later VIP needs a hash |
 | `provide RpcSerialization.layerX { }` | An ordinary `provide`, unchanged |
 
-## Changes to Smithers
+## Changes to the durable engine
 
 | Where | Change | Why | Layer |
 | --- | --- | --- | --- |
@@ -198,7 +198,7 @@ const decodeExit = (s, schema, bytes) => {
 | `@smthrs/canonical`, `Canonical` | None | Reused as it is | Values |
 | `@smthrs/flows`, `flow/src/Action/make.ts` | Stored results move from a fixed `Schema.toCodecJson` to `RpcSerialization.codecFor` | Representation is injected | Stores |
 | `@smthrs/flows`, `engine/src/FlowEngine/layerMemory.ts` | `snapshot` copies through `makeEffect`, so it must also sort | The body must see what was hashed | Tasks |
-| `smithers-build` | Replace `Schema.declare` references in payloads with values that have a JSON codec | `layerMemory.ts` copies through `makeEffect` because these references have no JSON form, and this VIP requires one | Tasks |
+| The engine's build tooling | Replace `Schema.declare` references in payloads with values that have a JSON codec | `layerMemory.ts` copies through `makeEffect` because these references have no JSON form, and this VIP requires one | Tasks |
 
 ## Differences from superjson
 

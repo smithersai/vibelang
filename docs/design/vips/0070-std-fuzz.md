@@ -1,16 +1,16 @@
 # VIP-70: `Experimental.Fuzz`: fuzzing and deterministic fiber simulation
 
-**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval (ruling 19:19 PST). Will has not reviewed this VIP's decisions.
+**Status:** accepted optimistically, 2026-11-09, under Will's pre-alpha standing approval. Will has not reviewed this VIP's decisions.
 
 ## Will's words
 
-> Ok so give me a list of smithers features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
+> Ok so give me a list of [the reference engine's] features. We need to figure out what the VIP should look like. Some of the features outside of durable execution likely should simply be in the standard library I'm guessing but we should enumerate all of them
 
 ## Summary
 
 **One sentence.** `Experimental.Fuzz.run` generates inputs from a schema, keeps the ones that made the program do something new, mutates them, and reports a shrunk, replayable failure; with `Experimental.FuzzSimulation` it also chooses how fibers interleave.
 
-**One paragraph.** Property testing runs a law on random inputs. It misses a failure that hides behind conditions random inputs rarely meet together: a magic number, a protocol prefix, a precise sequence of commands, one interleaving of two fibers. Smithers' `@smthrs/fuzz` finds those. It uses the spans an Effect program already has as coverage, so `Effect.fn("Bank.withdraw")` is a coverage point with no instrumentation. Its simulation mode makes the scheduler and the clock part of the input, so a race is found, shrunk and replayed the same way a bad value is. This VIP ports it unchanged and adds one convenience: a Vibe `schema` is accepted where an `Arbitrary` is.
+**One paragraph.** Property testing runs a law on random inputs. It misses a failure that hides behind conditions random inputs rarely meet together: a magic number, a protocol prefix, a precise sequence of commands, one interleaving of two fibers. The fuzz package of the reference engine (an existing Effect durable-execution framework these built-ins are modelled on) finds those. It uses the spans an Effect program already has as coverage, so `Effect.fn("Bank.withdraw")` is a coverage point with no instrumentation. Its simulation mode makes the scheduler and the clock part of the input, so a race is found, shrunk and replayed the same way a bad value is. This VIP ports it unchanged and adds one convenience: a Vibe `schema` is accepted where an `Arbitrary` is.
 
 ```text
  seed ─► pick a kept input ─► mutate ─► generate a value ─► run the property
@@ -39,7 +39,7 @@ export effect function campaign() {
 
 ### Module
 
-`Experimental.Fuzz` and `Experimental.FuzzSimulation`, in scope with no import. Their code is `vibelang-runtime/experimental/Fuzz`. Of this set's modules, this one fits [VIP-33](0033-platform-stdlib.md)'s rule most exactly: Smithers keeps the source "file for file with `smithersai/effect`" at a named commit, "because we intend to contribute it to Effect".
+`Experimental.Fuzz` and `Experimental.FuzzSimulation`, in scope with no import. Their code is `vibelang-runtime/experimental/Fuzz`. Of this set's modules, this one fits [VIP-33](0033-platform-stdlib.md)'s rule most exactly: the reference engine keeps the source "file for file with `smithersai/effect`" at a named commit, "because we intend to contribute it to Effect".
 
 | Call | Meaning |
 | --- | --- |
@@ -66,66 +66,66 @@ Options of `Fuzz.run`: `seed`, `executions`, `duration`, `plateau`, `maxFindings
 9. **The closed world has edges.** Real I/O, a foreign Promise, `Date.now` and shared mutable state are outside it, and a property that touches them is not deterministic. A synchronous loop that never yields cannot be interrupted; bound such a property with a process or a worker.
 10. **In a test,** `it.effect.fuzz` runs a property under the fuzzer for a bounded number of executions ([std-test](0071-std-test.md)).
 
-Evidence from the Smithers guide (`packages/fuzz/docs/README.md`): a parser with a four-byte magic number passes `checkEffect` after 100,000 runs. `Fuzz.run` finds the crash with each of seeds 1 to 8, in a median of 93,017.5 executions, guided only by the parser's own spans. Two withdrawals that read, check and write a balance are found as a lost update at execution 5 under the simulation and shrunk to amounts `[1, 1]`.
+Evidence from the reference engine's fuzz guide (`packages/fuzz/docs/README.md`): a parser with a four-byte magic number passes `checkEffect` after 100,000 runs. `Fuzz.run` finds the crash with each of seeds 1 to 8, in a median of 93,017.5 executions, guided only by the parser's own spans. Two withdrawals that read, check and write a balance are found as a lost update at execution 5 under the simulation and shrunk to amounts `[1, 1]`.
 
 ### Host needs
 
 None. The package runs in a browser, a Worker, Node and Bun. A file-backed corpus needs `FileSystem` and lives with the test integration.
 
-## Claude's decisions
+## Maintainers' decisions
 
-This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Optimistic acceptance records the authorship below; Will has not reviewed these choices and may overturn them.
+This is the decision record for the design above, including each API signature, rule and diagnostic table entry. The code examples illustrate those decisions. Will has not reviewed these choices.
 
-- `Experimental.Fuzz` and `Experimental.FuzzSimulation`, in scope with no import. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Their code is `vibelang-runtime/experimental/Fuzz`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Of this set's modules, this one fits [VIP-33](0033-platform-stdlib.md)'s rule most exactly: Smithers keeps the source "file for file with `smithersai/effect`" at a named commit, "because we intend to contribute it to Effect". Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Fuzz.run(input, property, options?)`: Meaning: Run a campaign. `input` is a schema or an `Arbitrary`. Gives a report. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- `input` is a schema or an `Arbitrary`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Gives a report | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Fuzz.target(input, property, { id, revision, codec? })`, `Fuzz.runTarget(target, options)`: Meaning: A property with a stable identity, so a corpus store can keep its failures between runs. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Fuzz.observe(label)`: Meaning: Record that execution reached a stage. Does nothing outside a fuzz run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Does nothing outside a fuzz run | Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Fuzz.score(label, value)`: Meaning: A number to maximize, which turns a needle into a hill. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Fuzz.formatReport(report)`: Meaning: A printable diagnostic, or `undefined` when the run passed. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `Fuzz.Corpus`: Meaning: The service that stores inputs and confirmed failures. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Call `FuzzSimulation.execution()`: Meaning: An execution mode in which fiber scheduling and time are fuzzed. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- Options of `Fuzz.run`: `seed`, `executions`, `duration`, `plateau`, `maxFindings`, `feedback`, `execution`, `replay`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
-- **The property contract is `Arbitrary.checkEffect`'s.** Return `true`, or an Effect of `true`, to pass. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Returning anything else, failing or dying is a finding. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A defect is a finding because a crash is what fuzzing looks for. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **A run stops at the first of** `duration` (10 seconds when no budget is given), `executions`, `plateau` and `maxFindings` (1 by default). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A run bounded only by `duration` does not run the same number of executions on every machine. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Feedback comes from five sources**: spans, on by default; the exit tag and each error tag; `Fuzz.observe` labels; `Fuzz.score` values; and the structure of the generated input. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A report that lists only structure and causes says nothing measured coverage. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **A finding has a signature**: `ReturnedFalse`, `PropertyError:<tag>`, `Died:<constructor>` or `Deadlock`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Shrinking keeps the signature, so one failure never shrinks into another. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **A finding is confirmed.** Its final input is run once more. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- One that does not fail the same way twice is reported as flaky, never as falsified. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **A finding replays.** `finding.replay` is a token holding the generator tape, the schedule tape and the shrink path. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- `Fuzz.run(input, property, { replay })` reproduces it. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A token replayed against a changed generator is a mismatch, not a pass. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Confirmed failures are saved as values**, encoded with the schema's JSON codec, so they survive a change to the generator. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Kept inputs are a search cache tied to `revision`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **Simulation is a closed world.** Under `FuzzSimulation.execution()`, each execution has its own scheduler and a virtual clock that jumps to the next timer when nothing can run. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A program with nothing runnable, no pending timer and an unfinished property is a `Deadlock` finding. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **The closed world has edges.** Real I/O, a foreign Promise, `Date.now` and shared mutable state are outside it, and a property that touches them is not deterministic. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- A synchronous loop that never yields cannot be interrupted; bound such a property with a process or a worker. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- **In a test,** `it.effect.fuzz` runs a property under the fuzzer for a bounded number of executions ([std-test](0071-std-test.md)). Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Evidence from the Smithers guide (`packages/fuzz/docs/README.md`): a parser with a four-byte magic number passes `checkEffect` after 100,000 runs. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- `Fuzz.run` finds the crash with each of seeds 1 to 8, in a median of 93,017.5 executions, guided only by the parser's own spans. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- Two withdrawals that read, check and write a balance are found as a lost update at execution 5 under the simulation and shrunk to amounts `[1, 1]`. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
-- None. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
-- The package runs in a browser, a Worker, Node and Bun. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
-- A file-backed corpus needs `FileSystem` and lives with the test integration. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
-- `Experimental.FuzzSimulation` has its own subpath, `vibelang-runtime/experimental/FuzzSimulation`, beside `vibelang-runtime/experimental/Fuzz`, as every `Experimental` module does; the upstream copy keeps it under `testing/`. Author: vip-std-fuzz (Claude Opus 5.5). [Design](#module).
+- `Experimental.Fuzz` and `Experimental.FuzzSimulation`, in scope with no import. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Their code is `vibelang-runtime/experimental/Fuzz`. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Of this set's modules, this one fits [VIP-33](0033-platform-stdlib.md)'s rule most exactly: the reference engine keeps the source "file for file with `smithersai/effect`" at a named commit, "because we intend to contribute it to Effect". [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Fuzz.run(input, property, options?)`: Meaning: Run a campaign. `input` is a schema or an `Arbitrary`. Gives a report. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- `input` is a schema or an `Arbitrary`. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Gives a report | [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Fuzz.target(input, property, { id, revision, codec? })`, `Fuzz.runTarget(target, options)`: Meaning: A property with a stable identity, so a corpus store can keep its failures between runs. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Fuzz.observe(label)`: Meaning: Record that execution reached a stage. Does nothing outside a fuzz run. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Does nothing outside a fuzz run | [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Fuzz.score(label, value)`: Meaning: A number to maximize, which turns a needle into a hill. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Fuzz.formatReport(report)`: Meaning: A printable diagnostic, or `undefined` when the run passed. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `Fuzz.Corpus`: Meaning: The service that stores inputs and confirmed failures. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Call `FuzzSimulation.execution()`: Meaning: An execution mode in which fiber scheduling and time are fuzzed. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- Options of `Fuzz.run`: `seed`, `executions`, `duration`, `plateau`, `maxFindings`, `feedback`, `execution`, `replay`. [Design](#module) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The property contract is `Arbitrary.checkEffect`'s.** Return `true`, or an Effect of `true`, to pass. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Returning anything else, failing or dying is a finding. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A defect is a finding because a crash is what fuzzing looks for. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A run stops at the first of** `duration` (10 seconds when no budget is given), `executions`, `plateau` and `maxFindings` (1 by default). [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A run bounded only by `duration` does not run the same number of executions on every machine. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Feedback comes from five sources**: spans, on by default; the exit tag and each error tag; `Fuzz.observe` labels; `Fuzz.score` values; and the structure of the generated input. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A report that lists only structure and causes says nothing measured coverage. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A finding has a signature**: `ReturnedFalse`, `PropertyError:<tag>`, `Died:<constructor>` or `Deadlock`. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Shrinking keeps the signature, so one failure never shrinks into another. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A finding is confirmed.** Its final input is run once more. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- One that does not fail the same way twice is reported as flaky, never as falsified. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **A finding replays.** `finding.replay` is a token holding the generator tape, the schedule tape and the shrink path. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Fuzz.run(input, property, { replay })` reproduces it. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A token replayed against a changed generator is a mismatch, not a pass. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Confirmed failures are saved as values**, encoded with the schema's JSON codec, so they survive a change to the generator. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Kept inputs are a search cache tied to `revision`. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **Simulation is a closed world.** Under `FuzzSimulation.execution()`, each execution has its own scheduler and a virtual clock that jumps to the next timer when nothing can run. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A program with nothing runnable, no pending timer and an unfinished property is a `Deadlock` finding. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **The closed world has edges.** Real I/O, a foreign Promise, `Date.now` and shared mutable state are outside it, and a property that touches them is not deterministic. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- A synchronous loop that never yields cannot be interrupted; bound such a property with a process or a worker. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- **In a test,** `it.effect.fuzz` runs a property under the fuzzer for a bounded number of executions ([std-test](0071-std-test.md)). [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Evidence from the reference engine's fuzz guide (`packages/fuzz/docs/README.md`): a parser with a four-byte magic number passes `checkEffect` after 100,000 runs. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Fuzz.run` finds the crash with each of seeds 1 to 8, in a median of 93,017.5 executions, guided only by the parser's own spans. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- Two withdrawals that read, check and write a balance are found as a lost update at execution 5 under the simulation and shrunk to amounts `[1, 1]`. [Design](#rules) · [Review](reviews/2026-11-09-built-in-set.md).
+- None. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- The package runs in a browser, a Worker, Node and Bun. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- A file-backed corpus needs `FileSystem` and lives with the test integration. [Design](#host-needs) · [Review](reviews/2026-11-09-built-in-set.md).
+- `Experimental.FuzzSimulation` has its own subpath, `vibelang-runtime/experimental/FuzzSimulation`, beside `vibelang-runtime/experimental/Fuzz`, as every `Experimental` module does; the upstream copy keeps it under `testing/`. [Design](#module).
 
 ### Adopted review answers
 
-- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. Authors: vip-fable (Fable 5.2) and vip-astra (Codex Astra); merged by vip-final (Fable 5.2); adopted by lang-5e. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
+- Keep `Experimental.X` names under VIP-33. Promotion to a bare module name requires a later decision. [Review question 1](reviews/2026-11-09-built-in-set.md#1-experimentalagent-or-agent).
 
 ## Compared
 
-The same campaign in Smithers 1.x, in the form of the guide's first example.
+The same campaign in the reference engine 1.x, in the form of the guide's first example.
 
 ```ts
 import { Fuzz } from "@smthrs/fuzz"
@@ -151,9 +151,9 @@ export const main = Effect.gen(function*() {
 | Program | Tokens (o200k_base) | Lines |
 | --- | --- | --- |
 | Vibe, proposed | 90 | 11 |
-| Smithers 1.x | 143 | 18 |
+| Reference engine 1.x | 143 | 18 |
 
-**Checked.** The Vibe example uses only existing syntax and compiles under `vibelang` 0.0.13 against a declaration of `Experimental.Fuzz`. The Smithers program is not type-checked here: `@smthrs/fuzz` is private to the Smithers repository and is not on npm.
+**Checked.** The Vibe example uses only existing syntax and compiles under `vibelang` 0.0.13 against a declaration of `Experimental.Fuzz`. The reference engine program is not type-checked here: its fuzz package is private to the reference engine's repository and is not on npm.
 
 ## Principles
 
@@ -166,7 +166,7 @@ export const main = Effect.gen(function*() {
 ## What this changes
 
 - `Experimental.Fuzz` and `Experimental.FuzzSimulation` are new. No grammar changes.
-- `Fuzz.run` accepts a schema directly. Smithers' takes an `Arbitrary`; the port adds one overload that calls `Arbitrary.schema`.
+- `Fuzz.run` accepts a schema directly. The reference engine's takes an `Arbitrary`; the port adds one overload that calls `Arbitrary.schema`.
 
 ## Alternatives
 
@@ -177,9 +177,9 @@ export const main = Effect.gen(function*() {
 
 ## Follow-up questions
 
-1. **Fuzzing a workflow.** A `workflow` has a plan, and a durable engine has crash points. A fuzzer that picks where the process dies would test replay directly. Smithers' testing package has restart suites, not a crash fuzzer. Recommendation: a follow-up VIP once [std-durable](0060-std-durable.md) is built.
+1. **Fuzzing a workflow.** A `workflow` has a plan, and a durable engine has crash points. A fuzzer that picks where the process dies would test replay directly. The reference engine's testing package has restart suites, not a crash fuzzer. Recommendation: a follow-up VIP once [std-durable](0060-std-durable.md) is built.
 2. **The package is private.** Porting it means publishing it or waiting for Effect. Recommendation: publish it in `vibelang-runtime` and keep the file-for-file copy, so the move to Effect's own module is a change of import.
-3. **Upstream timing.** When Effect ships a `Fuzz` module, `Experimental.Fuzz` is retired and bare `Fuzz` is Effect's ([VIP-14](0014-effect-modules-in-scope.md)). Who proposes it upstream, and when? Recommendation: the Smithers team, after one Vibe release has used it.
+3. **Upstream timing.** When Effect ships a `Fuzz` module, `Experimental.Fuzz` is retired and bare `Fuzz` is Effect's ([VIP-14](0014-effect-modules-in-scope.md)). Who proposes it upstream, and when? Recommendation: the reference engine's team, after one Vibe release has used it.
 
 ## Depends on
 

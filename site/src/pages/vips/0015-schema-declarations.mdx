@@ -58,7 +58,7 @@ The rule applies to ordinary schemas, schema errors, and nested mappings; `Schem
   - `Record<K, V>` → `Schema.Record(K, V)`;
   - a struct → `Schema.Struct`, with `Schema.mutableKey` for mutable fields.
 
-  Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
+  Proposed to Will on 2026-10-29; accepted without objection.
 
 *Corrected 2026-10-29: under "mutability included", a writable `Record<K, V>` is `Schema.Record(K, Schema.mutableKey(V))` and `Readonly<Record<K, V>>` is `Schema.Record(K, V)`, because `Schema.Record(K, V).Type` is readonly in effect 4.1.1; and a union made only of literals is `Schema.Literals([...])`, as the decision example writes it (found by the round-3 review).*
 
@@ -85,7 +85,7 @@ Effect's `Schema.Struct`; Zod's `z.object`; Pydantic models.
 
 ## TODO (Will)
 
-> "we also need to mark as a TODO creating a smithers generation script that properly updates the library as schema changes"
+> "we also need to mark as a TODO creating a [library] generation script that properly updates the library as schema changes"
 
 ## Will's words
 

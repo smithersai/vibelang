@@ -11,7 +11,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 ## Method
 
-- **Tokenizer:** OpenAI's `o200k_base` encoding, through js-tiktoken 1.0.21. No Anthropic count is published: no verified offline tokenizer exists for current Claude models, and these docs do not estimate one.
+- **Tokenizer:** OpenAI's `o200k_base` encoding, through js-tiktoken 1.0.21. No Anthropic count is published: Anthropic offers no verified offline tokenizer for its current models, and these docs do not estimate one.
 - **Pages:** each file's exact, complete Markdown source, nothing stripped. This page is not counted.
 - **Cheat-sheet pairs:** each entry's paired code blocks as written, after removing the docs checker's directives. Imports written in those blocks are counted. Shared declarations and companion files outside the paired blocks are excluded. Some fragments need a surrounding `Effect.gen` body.
 - **Script:** `docs/tools/token-counts.ts` in the VibeLang repository measures every number below. `bun docs/tools/token-counts.ts --check` fails when this page drifts from what it measures, and `--write` updates it.
@@ -120,7 +120,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | **Start a project** | **8,300** |
 | [New project](/setup/new-project) | 690 |
 | [Existing project](/setup/existing-project) | 4,300 |
-| [Migrating retired forms](/setup/migrating-retired-forms) | 3,400 |
+| [Migrating retired forms](/setup/migrating-retired-forms) | 3,300 |
 | **Build and test** | **23,000** |
 | [vibelang CLI](/setup/vibelang-cli) | 18,000 |
 | [Vite and Vitest](/setup/vite) | 4,700 |

@@ -2,7 +2,7 @@
 
 **Status:** accepted by Will, 2026-10-28.
 
-Before its first release, VibeLang ships no quick fixes or codemods of its own (PROC-29). TypeScript's built-in code fixes remain available.
+Before its first release, VibeLang ships no quick fixes or codemods of its own. TypeScript's built-in code fixes remain available.
 
 ## Decision
 
