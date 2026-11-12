@@ -33,7 +33,7 @@ const fs = require("node:fs"), path = require("node:path")
 const name = path.basename(process.argv[1]), args = process.argv.slice(2)
 const bunfig = fs.existsSync("bunfig.toml") ? fs.readFileSync("bunfig.toml", "utf8") : null
 const config = name === "dprint" && fs.existsSync("dprint.json") ? fs.readFileSync("dprint.json", "utf8") : null
-fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({ name, args, cwd: process.cwd(), registry: process.env.pnpm_config_registry, bunfig, config, isolated: fs.existsSync("node_modules/.bun") }) + "\\n")
+fs.appendFileSync(process.env.PROBE_LOG, JSON.stringify({ name, args, cwd: process.cwd(), registry: process.env.pnpm_config_registry, cacheDir: process.env.pnpm_config_cache_dir, workspace: fs.existsSync("pnpm-workspace.yaml"), bunfig, config, isolated: fs.existsSync("node_modules/.bun") }) + "\\n")
 const bins = app => {
   fs.mkdirSync(path.join(app, "node_modules/.bin"), { recursive: true })
   for (const bin of ["vibelang", "vibelang-format", "dprint"]) fs.symlinkSync(process.env.PROBE_TOOL, path.join(app, "node_modules/.bin", bin))
@@ -230,4 +230,18 @@ test("installed-package verification resolves an unhoisted optional platform pac
   assert.notEqual(mismatched.status, 0, "a public package with the same version must not stand in for the candidate")
   assert.match(mismatched.stderr, /formatter checksum/)
 
+})
+
+// The pnpm leg once scaffolded with --no-install and wrote its own
+// pnpm-workspace.yaml allowing dprint's build before installing, so it passed
+// while a newcomer's `pnpm create vibelang` failed with ERR_PNPM_IGNORED_BUILDS.
+test("pnpm rehearses the newcomer's pnpm create, install included, with no settings of its own", t => {
+  const { result, calls } = probe(t, "pnpm")
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  const create = calls.find(c => c.name === "pnpm" && c.args[0] === "create")
+  assert.deepEqual(create.args, ["create", "vibelang@0.0.12", "pnpm-app"])
+  assert.ok(!calls.some(c => c.name === "pnpm" && c.args[0] === "install"), "the create command must do the install")
+  assert.ok(!calls.some(c => c.workspace), "the rehearsal must not write pnpm-workspace.yaml")
+  // pnpm create reuses a cached create-vibelang of the same version.
+  assert.match(create.cacheDir ?? "", /vibelang-check\.[^/]+\/pnpm-cache$/)
 })

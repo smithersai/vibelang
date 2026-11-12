@@ -113,8 +113,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [What is in the alpha](../setup/alpha.md) | 2,600 |
 | [Known limitations](../setup/known-limitations.md) | 1,100 |
 | [Source maps](../setup/source-maps.md) | 1,000 |
-| **Start a project** | **8,300** |
-| [New project](../setup/new-project.md) | 690 |
+| **Start a project** | **8,500** |
+| [New project](../setup/new-project.md) | 810 |
 | [Existing project](../setup/existing-project.md) | 4,300 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,400 |
 | **Build and test** | **23,000** |

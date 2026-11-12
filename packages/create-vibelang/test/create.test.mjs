@@ -328,3 +328,37 @@ test("the starter has format, lint and check scripts, and its README names them"
   assert.match(readme, /`vibelang format --write`/)
   assert.match(readme, /`vibelang lint`/)
 })
+
+// pnpm 11 and later exit 1 with ERR_PNPM_IGNORED_BUILDS on dprint's install
+// script unless the project allows it, so `pnpm create vibelang` failed at its
+// own install. The pnpm settings live in pnpm-workspace.yaml, written before
+// the install runs; other managers get no such file.
+for (const manager of ["npm", "bun", "pnpm", "yarn"]) {
+  test(`${manager} gets ${manager === "pnpm" ? "a pnpm-workspace.yaml that allows dprint's build" : "no pnpm-workspace.yaml"} before its install`, (t) => {
+    const directory = scratch(t)
+    const bin = join(directory, "bin")
+    mkdirSync(bin)
+    writeFileSync(join(bin, manager), `#!${process.execPath}\nimport { writeFileSync, existsSync, readFileSync } from "node:fs"\nwriteFileSync(${JSON.stringify(join(directory, "install.json"))}, JSON.stringify({ workspace: existsSync("pnpm-workspace.yaml") ? readFileSync("pnpm-workspace.yaml", "utf8") : null }))\n`, { mode: 0o755 })
+    const result = spawnSync(process.execPath, [create, "app"], {
+      cwd: directory, encoding: "utf8",
+      env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, npm_config_user_agent: `${manager}/11.25.0` }
+    })
+    assert.equal(result.status, 0, result.stderr)
+    const { workspace } = JSON.parse(readFileSync(join(directory, "install.json"), "utf8"))
+    if (manager !== "pnpm") return assert.equal(workspace, null)
+    const template = JSON.parse(readFileSync(new URL("../../../templates/app/package.json", import.meta.url), "utf8"))
+    const effect = template.overrides["@effect/platform-node-shared"]
+    assert.equal(workspace, `overrides:\n  "@effect/platform-node-shared": "${effect}"\nallowBuilds:\n  dprint: true\n`)
+    const guide = readFileSync(new URL("../../../docs/user/src/setup/existing-project.md", import.meta.url), "utf8")
+    assert.ok(guide.includes("```yaml\n" + workspace + "```"), "the starter's pnpm settings must be the existing-project guide's block")
+  })
+}
+
+test("--no-install with pnpm still writes pnpm-workspace.yaml for the later install", (t) => {
+  const directory = scratch(t)
+  const result = spawnSync(process.execPath, [create, "app", "--no-install"], {
+    cwd: directory, encoding: "utf8", env: { ...process.env, npm_config_user_agent: "pnpm/11.25.0" }
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(readFileSync(join(directory, "app/pnpm-workspace.yaml"), "utf8"), /^allowBuilds:\n  dprint: true$/m)
+})

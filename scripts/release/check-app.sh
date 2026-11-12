@@ -29,6 +29,9 @@ export npm_config_userconfig="$scratch/home/.npmrc" NPM_CONFIG_USERCONFIG="$scra
 export npm_config_registry="$registry" NPM_CONFIG_REGISTRY="$registry" BUN_CONFIG_REGISTRY="$registry"
 # pnpm 11 and later use their own configuration environment namespace.
 export pnpm_config_registry="$registry" PNPM_CONFIG_REGISTRY="$registry"
+# A fresh store and cache: pnpm create keeps create-vibelang in its dlx cache
+# and reuses it for the same version, so a rerun would scaffold an earlier candidate.
+export pnpm_config_store_dir="$scratch/pnpm-store" pnpm_config_cache_dir="$scratch/pnpm-cache"
 export npm_config_cache="$scratch/npm-cache" BUN_INSTALL_CACHE_DIR="$scratch/bun-cache"
 # bun create runs bunx, which keeps create-vibelang under $TMPDIR across runs
 # and reuses it even when the registry has a newer tarball of that version, so
@@ -56,7 +59,9 @@ for manager in "$@"; do
   tool=$manager
   case $manager in
     npm) step "npm create vibelang@$version"; npm create "vibelang@$version" "$manager-app" ;;
-    pnpm) step "pnpm create vibelang@$version"; pnpm create "vibelang@$version" "$manager-app" --no-install ;;
+    # The command a newcomer runs, install included: a rehearsal that scaffolded
+    # with --no-install and wrote its own pnpm settings passed while this failed.
+    pnpm) step "pnpm create vibelang@$version"; pnpm create "vibelang@$version" "$manager-app" ;;
     bun) step "bun create vibelang@$version"; bun create "vibelang@$version" "$manager-app" ;;
     bun-isolated) tool=bun; step "bun create vibelang@$version"; bun create "vibelang@$version" "$manager-app" ;;
     *) echo "check-app: unknown package manager $manager" >&2; exit 1 ;;
@@ -71,15 +76,6 @@ for manager in "$@"; do
     bun install --linker isolated
     [ -d node_modules/.bun ] && [ -L node_modules/vibelang ] || {
       echo "check-app: $manager: bun install did not produce the isolated layout" >&2; exit 1; }
-  fi
-  if [ "$manager" = pnpm ]; then
-    # pnpm requires explicit approval for dprint's binary-install script.
-    # Keep isolated dependency linking and a fresh content-addressable store.
-    cat >pnpm-workspace.yaml <<EOF
-allowBuilds:
-  dprint: true
-storeDir: $scratch/pnpm-store
-EOF
   fi
   [ -d node_modules ] || { step "install"; "$tool" install; }
   if [ "$manager" = npm ]; then

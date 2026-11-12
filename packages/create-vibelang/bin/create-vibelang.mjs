@@ -57,6 +57,7 @@ try {
   manifest.devDependencies["vibelang"] = own.version
   manifest.devDependencies["vibelang-vite"] = own.version
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + "\n")
+  if (manager === "pnpm") writeFileSync(join(directory, "pnpm-workspace.yaml"), pnpmWorkspace(manifest))
 
   // AGENTS.md names the commands with the manager that created the app, as the
   // next steps below do, so an agent's first command is one this machine has.
@@ -106,6 +107,17 @@ VibeLang is v0. The language will change in major, breaking ways. It is not suit
 function packageName(name) {
   const cleaned = name.toLowerCase().replace(/[^a-z0-9._~-]+/g, "-").replace(/^[._-]+/, "").replace(/-+$/, "").slice(0, 214)
   return !cleaned || ["node_modules", "favicon.ico"].includes(cleaned) ? "vibelang-app" : cleaned
+}
+
+// pnpmWorkspace holds the settings pnpm reads only from pnpm-workspace.yaml,
+// as the existing-project guide documents. pnpm 11 and later fail an install
+// with ERR_PNPM_IGNORED_BUILDS when a dependency's build script is neither
+// allowed nor denied, and vibelang depends on dprint, whose script installs its
+// binary. pnpm also takes the transitive Effect pin from here, not from the
+// manifest's npm overrides.
+function pnpmWorkspace(manifest) {
+  const pins = Object.entries(manifest.overrides ?? {}).map(([name, version]) => `  ${JSON.stringify(name)}: ${JSON.stringify(version)}\n`).join("")
+  return (pins ? `overrides:\n${pins}` : "") + "allowBuilds:\n  dprint: true\n"
 }
 
 // packageManager reports the tool that ran this script, from the user agent
