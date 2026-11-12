@@ -72,6 +72,24 @@ export default defineConfig({
     dark: '/logo-dark.svg',
   },
   renderStrategy: 'full-static',
+  search: {
+    query: {
+      // Vocs's default document boost (search priority over path depth), tripled for a
+      // section of a page whose title starts with a query term. Without it, "install"
+      // listed every section headed "Install" and left the Installation page out of the
+      // first ten results, because "installation" matches only as a prefix. Vocs sends
+      // this function to the browser, so it must not use anything from outside it.
+      boostDocument: (_id, term, stored) => {
+        const href = typeof stored?.href === 'string' ? stored.href : ''
+        const priority = typeof stored?.searchPriority === 'number' ? stored.searchPriority : 1
+        const depth = Math.max(href.split('/').filter(Boolean).length, 1)
+        const titles = Array.isArray(stored?.titles) ? stored.titles : []
+        const page = String(titles[0] ?? stored?.title ?? '').toLowerCase()
+        const named = page.split(/[^\p{L}\p{N}]+/u).some((word) => word !== '' && word.startsWith(term))
+        return (priority / depth) * (named ? 3 : 1)
+      },
+    },
+  },
   sidebar: [...sidebar, ...specSidebar, ...vipsSidebar],
   socials: [{ icon: 'github', link: 'https://github.com/smithersai/vibelang' }],
   title: 'VibeLang',
