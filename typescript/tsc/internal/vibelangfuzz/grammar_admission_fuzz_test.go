@@ -432,6 +432,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"import-phase-source", "function s(specifier: string) { return import.source(specifier) }"},
 	{"import-phase-defer", "function d(specifier: string) { return import.defer(specifier) }"},
 	{"import-phase-source-options", "function s(specifier: string) { return import.source(specifier, { with: { type: \"json\" } }) }"},
+	{"import-phase-source-arity", "function s(specifier: string) { return import.source() }"},
 	{"ambient-object-pattern", "declare const { customMatcher: key }: typeof Symbol;"},
 	{"ambient-array-pattern", "declare let [first, second]: number[];"},
 	{"ambient-export-pattern", "export declare const { a }: { a: number };"},

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-phase-source-arity\nfunction s(specifier: string) { return import.source() }")

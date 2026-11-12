@@ -24,6 +24,7 @@ FuzzGrammarAdmission admission:module-require-identifier compiler VIP-40 and App
 FuzzGrammarAdmission corpus:module-require-identifier compiler VIP-40 and Appendix A: require(identifier) has no native ExternalModuleReference derivation; EK4006 names a missing module, not syntax rejection
 FuzzGrammarAdmission admission:dynamic-import-arity compiler Appendix A: inherited ImportCall requires one or two arguments; native TS1450 is CategoryMessage and the VibeLang build-exit filter ignores it
 FuzzGrammarAdmission corpus:native-dynamic-import-arity compiler Appendix A: an empty native ImportCall has no derivation but reports only message TS1450, which does not affect the VibeLang build
+FuzzGrammarAdmission corpus:import-phase-source-arity compiler Appendix A: an empty phase ImportCall (`import.source()`) has no derivation but reports only message TS1450, which does not affect the VibeLang build
 FuzzGrammarAdmission admission:module-specifier-keyword compiler Appendix A ModuleSpecifier and VIP-40: strict reserved source identifiers become module-reference strings before native identifier checking
 FuzzGrammarAdmission corpus:module-specifier-keyword compiler Appendix A ModuleSpecifier and VIP-40: import static reports only EK4006 and a following name error
 FuzzGrammarAdmission corpus:module-require-reserved-identifier compiler Appendix A and VIP-40: a reserved identifier in require shares the existing nonliteral ExternalModuleReference gap
