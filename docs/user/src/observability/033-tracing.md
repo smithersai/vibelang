@@ -85,7 +85,7 @@ report.csv
 1 true true
 ```
 
-This source version exports OTLP/HTTP directly under `effect/observability`. The layer batches ended spans, sends them with the supplied HTTP client and serialization, and flushes when its scope shuts down. Provide it around the application's lifetime, so requests don't each create and close an exporter.
+Effect 4.1.1, the version VibeLang pins, exports OTLP/HTTP directly under `effect/observability`. The layer batches ended spans, sends them with the supplied HTTP client and serialization, and flushes when its scope shuts down. Provide it around the application's lifetime, so requests don't each create and close an exporter.
 
 An application that already owns an OpenTelemetry SDK tracer provider initializes its compatible bridge in a TypeScript bootstrap or adapter and provides the resulting Effect layer to VibeLang. Wrap a synchronous SDK call that may throw with `Effect.try` and run it with `try`; wrap a Promise with `tryPromise` and run it with `try`. A synchronous SDK context callback must compile to plain JavaScript, so it can't call services or run other Effect operations.
 
