@@ -116,6 +116,11 @@ func getQualifiedLeftMeaning(rightMeaning ast.SymbolFlags) ast.SymbolFlags {
 }
 
 func (c *Checker) getWithAlternativeContainers(container *ast.Symbol, symbol *ast.Symbol, enclosingDeclaration *ast.Node, meaning ast.SymbolFlags) []*ast.Symbol {
+	if owner := c.moduleBodyOwner(container, symbol, enclosingDeclaration); owner != nil {
+		// The owner comes first, as the declaring file does in the TypeScript
+		// twin; the body's own file remains a fallback.
+		return append(c.getWithAlternativeContainers(owner, symbol, enclosingDeclaration, meaning), container)
+	}
 	additionalContainers := core.MapNonNil(container.Declarations(), func(d *ast.Node) *ast.Symbol {
 		return c.getFileSymbolIfFileSymbolExportEqualsContainer(d, container)
 	})
@@ -164,6 +169,37 @@ func (c *Checker) getWithAlternativeContainers(container *ast.Symbol, symbol *as
 	}
 	res = append(res, reexportContainers...)
 	return res
+}
+
+// moduleBodyOwner returns the module that owns container, the source file of
+// a VibeLang module body (VIP-40), when that module exports symbol. In the
+// TypeScript twin the owner declares the binding itself, so a reference the
+// declaration emitter or editor writes from another file names the owner:
+// import("./lib.js").Provider, not import("./lib.vibe.graph.js").Provider. A
+// body binding the owner does not export, and a reference from the owner or
+// one of its bodies, keep the body's file.
+func (c *Checker) moduleBodyOwner(container *ast.Symbol, symbol *ast.Symbol, enclosingDeclaration *ast.Node) *ast.Symbol {
+	if container.Flags()&ast.SymbolFlagsValueModule == 0 {
+		return nil
+	}
+	declaration := ast.GetDeclarationOfKind(container, ast.KindSourceFile)
+	if declaration == nil {
+		return nil
+	}
+	owner := declaration.AsSourceFile().CanonicalSourceFile()
+	if owner == nil || owner.Symbol == nil {
+		return nil
+	}
+	if enclosingDeclaration != nil {
+		if from := ast.GetSourceFileOfNode(enclosingDeclaration); from == owner || from.CanonicalSourceFile() == owner {
+			return nil
+		}
+	}
+	ownerSymbol := c.getSymbolOfDeclaration(owner.AsNode())
+	if ownerSymbol == nil || ownerSymbol == container || c.getAliasForSymbolInContainer(ownerSymbol, symbol) == nil {
+		return nil
+	}
+	return ownerSymbol
 }
 
 func (c *Checker) getAlternativeContainingModules(symbol *ast.Symbol, enclosingDeclaration *ast.Node) []*ast.Symbol {

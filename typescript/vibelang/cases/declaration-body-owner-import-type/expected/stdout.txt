@@ -1,0 +1,1 @@
+body types in an inferred declaration name the owner module, as the TypeScript twin does

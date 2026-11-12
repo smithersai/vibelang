@@ -1,0 +1,11 @@
+// The owner re-exports its module body, so a declaration that infers a body
+// type names the owner, as typescript/lib.ts declares the type itself.
+export * from graph
+
+module graph {
+  export interface Provider<A> {
+    readonly value: A
+  }
+
+  export const make = <A>(value: A): Provider<A> => ({ value })
+}

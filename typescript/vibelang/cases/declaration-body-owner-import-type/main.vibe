@@ -1,0 +1,6 @@
+// No module body here: this declaration file must match typescript/main.ts
+// byte for byte, so the inferred Provider names ./lib.js, not the body file.
+import { make } from "./lib.js"
+
+export const node = make(1)
+export const nodes = [make("a"), make(true)] as const

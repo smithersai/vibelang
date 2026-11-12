@@ -22,6 +22,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Published declaration checks rejected unchanged recursive types or reached TypeScript's depth limit when a module-body split added a redundant `export {}`. They now recognize the same API while still checking type changes, documentation and module scope.
 
+- A declaration that inferred a type from another module's module body named the body's internal file, as in `import("./layer-node.vibe.graph.js").Provider`, so a file without a module body no longer matched its TypeScript declaration byte for byte. It now names the module that re-exports the type, `import("./layer-node.js").Provider`, as TypeScript does.
+
 - Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.
 
 - Strict TypeScript configurations importing entries such as `vibelang/eslint` failed with `TS7016` because their types were missing. Every public JavaScript entry now ships declarations for both `bundler` and `node16` module resolution.

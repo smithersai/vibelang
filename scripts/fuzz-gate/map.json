@@ -1,5 +1,6 @@
 {
   "shadowed-import-declarations": {"paths": ["^typescript/tsc/internal/vibelang/(declarations|moduleservices)\\.go$", "^typescript/tsc/internal/vibelangfuzz/shadowed_import_declaration_fuzz_test\\.go$", "^typescript/tsc/internal/vibelangfuzz/declaration_namespace_shadow_fuzz_test\\.go$", "^typescript/tsc/internal/vibelangfuzz/testdata/pending/declaration-namespace-shadow\\.txt$"], "tests": ["TestShadowedImportDeclarationQuoted", "FuzzShadowedImportDeclaration", "TestDeclarationNamespaceShadowQuoted", "TestDeclarationNamespaceShadowWitness", "FuzzDeclarationNamespaceShadow"]},
+  "module-body-owner-import-type": {"paths": ["^typescript/tsc/internal/checker/symbolaccessibility\\.go$", "^typescript/tsc/internal/vibelangfuzz/module_body_owner_import_type_fuzz_test\\.go$", "^typescript/tsc/internal/vibelangfuzz/testdata/corpus/opencode-layer-node-body-provider\\.json$"], "tests": ["TestModuleBodyOwnerImportTypeQuoted", "TestModuleBodyOwnerImportTypeCorpus", "FuzzModuleBodyOwnerImportType"]},
   "format": {
     "paths": ["^typescript/tsc/internal/vibelangfmt/", "^typescript/tsc/internal/format/vibelang", "^typescript/tsc/internal/vibelangfuzz/format", "^docs/design/src/007-tooling\\.md$"],
     "tests": ["FuzzFormat", "TestToolsFormatSemanticContract"]

@@ -1,0 +1,13 @@
+{
+  "source": "opencode util effect/layer-node: a module graph body declares Provider, the owner re-exports it, and effect/app-node-platform infers Provider through effect/app-node without a module body of its own",
+  "vibe": {
+    "lib.vibe": "export * as LayerNode from \"./lib.js\"\n\nexport * from graph\n\nmodule graph {\n  export interface Provider<A> {\n    readonly value: A\n  }\n\n  export const make = <A>(value: A): Provider<A> => ({ value })\n}\n",
+    "mid.ts": "import { make } from \"./lib.js\"\n\nexport const makeGlobalNode = <A>(value: A) => make(value)\n",
+    "main.vibe": "import { makeGlobalNode } from \"./mid.js\"\n\nexport const filesystem = makeGlobalNode({ service: \"FileSystem\" })\n\nexport * as LayerNodePlatform from \"./main.js\"\n"
+  },
+  "twin": {
+    "lib.ts": "export * as LayerNode from \"./lib.js\"\n\nexport interface Provider<A> {\n  readonly value: A\n}\n\nexport const make = <A>(value: A): Provider<A> => ({ value })\n",
+    "mid.ts": "import { make } from \"./lib.js\"\n\nexport const makeGlobalNode = <A>(value: A) => make(value)\n",
+    "main.ts": "import { makeGlobalNode } from \"./mid.js\"\n\nexport const filesystem = makeGlobalNode({ service: \"FileSystem\" })\n\nexport * as LayerNodePlatform from \"./main.js\"\n"
+  }
+}
