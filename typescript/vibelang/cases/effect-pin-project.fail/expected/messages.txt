@@ -1,5 +1,7 @@
 The resolved effect is 4.1.0; VibeLang
 The resolved @effect/platform-node is 4.1.0; VibeLang
 pins 4.1.1: upgrade both together.
-Install effect@4.1.1 where this project resolves it
-Install @effect/platform-node@4.1.1 where this project resolves it
+Install effect@4.1.1 where this project resolves it: VibeLang 
+Install @effect/platform-node@4.1.1 where this project resolves it: VibeLang 
+supports no other effect version.
+supports no other @effect/platform-node version.

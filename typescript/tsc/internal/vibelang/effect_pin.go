@@ -76,7 +76,9 @@ func effectPinDiagnostics(p *compiler.Program) []*ast.Diagnostic {
 			message = format(effectPinDiagnostic.Text, []any{version, Version, supportedEffectVersion})
 		}
 		d := ast.NewExternalDiagnostic(anchor, core.NewTextRange(0, 0), diagnosticSource, errorCategory, EK3201.Code, message)
-		note(d, "Install {0}@{1} where this project resolves it, or move to the VibeLang release that pins {0}@{2}.", name, supportedEffectVersion, version)
+		// The compiler knows only its own pin, not whether any VibeLang
+		// release pins the resolved version, so the note offers none.
+		note(d, "Install {0}@{1} where this project resolves it: VibeLang {2} supports no other {0} version.", name, supportedEffectVersion, Version)
 		result = append(result, d)
 	}
 	return result
