@@ -77,6 +77,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - A computed matcher member after a line break could be split into a separate array expression. It now continues the matcher lookup, and empty or malformed brackets keep their syntax errors.
 
+- The CLI guide said Bun ignores source maps under `vibelang/bun`, while Source maps said a module Bun runs without transpiling maps to `.vibe` lines. The CLI guide now states that condition and links the limits.
+
 - Invalid service signatures and constructors could hide unknown names and type errors in their types or bodies. These independent errors now appear alongside `EK0902`.
 
 - A `constructor` in a service with member signatures that called `super()` reported "'super' can only be referenced in a derived class" next to `EK0902`, though the service extends `Context.Service`. Only `EK0902` is reported now; `super` in a class nested inside the constructor still reports it.
