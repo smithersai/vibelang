@@ -38,7 +38,7 @@ Bisection narrows a Go target (`//:go-vibelangfuzz`, its topic targets and
 builds `//packages:runtime-dist`, and the flow runs `go test -run
 '^(<names>)$'` with the package and environment `PACKAGE.ts` gives the target
 (`GO_TARGETS` in `lib/steps.mjs`; a test checks them against `PACKAGE.ts`). A
-whole `//:go-vibelangfuzz` run took over 15 minutes on loaded nyc-01; one test
+whole `//:go-vibelangfuzz` run took over 15 minutes on a loaded build host; one test
 takes its compile. The graph cannot run part of a target, because its cache
 would record the part's pass as the target's. A commit where the tests do not
 build is untestable. Reproduce runs whole targets unless `--tests` names a Go

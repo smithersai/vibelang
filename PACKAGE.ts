@@ -632,7 +632,7 @@ const targets = {
   }),
   "spec-coverage-census": S.Shell.Run({
     summary: "Inventory main rules with passing, pending, missing and tag-linked evidence.",
-    shell: 'bun docs/tools/coverage-census.ts --revision "$CENSUS_REVISION" --out "${CENSUS_OUT:-$HOME/vibe/review-spec/coverage}"',
+    shell: 'bun docs/tools/coverage-census.ts --revision "$CENSUS_REVISION" --out "${CENSUS_OUT:-.cache/coverage-census}"',
     env: { CENSUS_REVISION: process.env.CENSUS_REVISION ?? "main@github", CENSUS_OUT: process.env.CENSUS_OUT ?? "" },
     data: [tree],
     tools: [bun, S.Host.bin("jj")],

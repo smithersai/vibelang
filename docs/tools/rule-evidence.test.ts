@@ -120,6 +120,23 @@ test("removing a credit never hides a rule change made with it", () => {
   expect(changedRules([doc('Use `Model.use("anthropic:claude-opus")` here.', 'Use `Model.use("anthropic:claude-fable")` here.')])).toHaveLength(1)
 })
 
+test("removing a private home path and its build host changes no normative sentences", () => {
+  const home = "~" + "/migrate/TOOL-RISK.md", host = "nyc" + "-02"
+  for (const [before, after] of [
+    ["The tool-risk report (2026-10-29, `" + home + "` on " + host + ") found that Effect lint blocks `lint`.",
+      "The tool-risk report (2026-10-29) found that Effect lint blocks `lint`."],
+    ["The census (`" + home + "`) lists each `EK4701` site.", "The census lists each `EK4701` site."],
+  ]) expect(changedRules([doc(after, before)])).toEqual([])
+})
+
+test("removing a private location never hides a rule change made with it", () => {
+  const before = "The tool-risk report (2026-10-29, `" + "~" + "/migrate/TOOL-RISK.md` on " + "nyc" + "-02) found that Effect lint blocks `lint`."
+  for (const after of [
+    "The tool-risk report (2026-10-29) found that Effect lint blocks `lint:effect`.",
+    "The tool-risk report (2026-10-29, `docs/TOOL-RISK.md`) found that Effect lint blocks `lint`.",
+  ]) expect(changedRules([doc(after, before)])).toHaveLength(1)
+})
+
 test("editorial parentheses and discovery clauses normalize prose presentation", () => {
   for (const [before, after] of [
     ["The `rule` applies (editorial note).", "THE `rule` applies!"],

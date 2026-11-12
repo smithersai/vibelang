@@ -2,8 +2,8 @@
 # Disk-backed, restartable 15-minute census. No compiler build or agent process.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-out="${CENSUS_OUT:-$HOME/vibe/review-spec/coverage}"
-state="${CENSUS_STATE:-$HOME/vibe/fix/alpha/coverage-census-scratch/watch}"
+out="${CENSUS_OUT:-.cache/coverage-census}"
+state="${CENSUS_STATE:-.cache/coverage-census-watch}"
 mkdir -p "$state" "$out"
 exec 9>"$state/lock"
 flock -n 9 || { echo "coverage census watcher already running"; exit 0; }

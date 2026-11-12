@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process"
 import ts from "typescript"
 import { isGeneratedCensusSection } from "../../scripts/grammar-census.mjs"
+import { buildHostName, privateHomePath } from "./public-hygiene.mjs"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -143,7 +144,11 @@ const hasRuleContent = (text: string) => /[\x60\x00\p{N}]|[<>=+*/{}\[\]\\|&!%?^~
 // attribution column ("Found by", "Author") name who decided, not what the rule says.
 const agentName = String.raw`(?:Codex (?:Sol|Astra|Terra)|Claude (?:Fable|Opus)|GPT-\d[\w.-]*|Codex|Claude|Sol|Astra|Opus|Fable|Kimi)`
 const attributionCell = new RegExp(String.raw`^\s*(?:(?:${agentName}|all four)(?:\s*\([^()]*\))?(?:\s*,\s*|\s*$))+$|^\s*(?:Found by|Authors?)\s*$`)
+// Public pages name no build host and no private home path (docs/tools/public-hygiene.mjs). Removing
+// such a location, a code span holding a private home path and the host it sat on, is editorial too.
+const privateLocation = new RegExp(String.raw`(?:\s*,)?\s*\x60[^\x60]*(?:${privateHomePath.source})[^\x60]*\x60(?:\s+on\s+(?:${buildHostName.source}))?`, "g")
 function withoutAgentCredit(text: string): string {
+  text = text.replace(privateLocation, "")
   // A table row may be split into several sentences; only a cell between two pipes is a cell.
   const cells = text.split(/(?<!\\)\|/)
   if (cells.length > 2) text = cells.filter((cell, i) => i === 0 || i === cells.length - 1 || !attributionCell.test(cell)).join("|")

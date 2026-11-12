@@ -152,7 +152,7 @@ Under Will's 2026-11-03 retire-needs-fix rule, a partial extraction that leaves 
 
 ## Reproduction receipts
 
-The original source is Smithers main `3f8204b3b386`, copied read-only from the nyc-02 repository without `.jj` or `.git`. A second private copy contains the migration of that same main used for the reported post-upgrade sites. Its lockfile pins Effect 4.1.1; untouched main pins Effect 4.0.5. Neither live tree was changed. All installs, compilations and migration replays ran through `run-heavy --where cfbox`.
+The original source is Smithers main `3f8204b3b386`, copied read-only from a maintainer's repository without `.jj` or `.git`. A second private copy contains the migration of that same main used for the reported post-upgrade sites. Its lockfile pins Effect 4.1.1; untouched main pins Effect 4.0.5. Neither live tree was changed. All installs, compilations and migration replays ran on a remote build machine.
 
 The shipped control uses the compiler in main's frozen installation, **VibeLang 0.0.8 (TypeScript 7.1.0-dev)**. The `c3292f2c8df3` tarball in the migration environment is a different 0.0.11 artifact, not a Vibe commit and not the shipped 0.0.8 control.
 
@@ -175,7 +175,7 @@ Canonical private receipts are `smithers-ek9206-ek4402-replay/results/original-c
 
 ## Checker-history boundary
 
-The history search was narrowed to the checker files, then the complete compiler source at each adjacent parent/child pair was built independently on cfbox. These are actual revision snapshots, not a current compiler with an individual file transplanted. The reduced harness uses Effect 4.1.1, `@types/node` 26.4.1 and the local 0.0.11 runtime tarball; the parent and child see the same dependencies and source. All four compiler builds exit 0.
+The history search was narrowed to the checker files, then the complete compiler source at each adjacent parent/child pair was built independently on a remote build machine. These are actual revision snapshots, not a current compiler with an individual file transplanted. The reduced harness uses Effect 4.1.1, `@types/node` 26.4.1 and the local 0.0.11 runtime tarball; the parent and child see the same dependencies and source. All four compiler builds exit 0.
 
 | Rule | Last accepting parent | First rejecting child in the integration lineage | Reduced result |
 | --- | --- | --- | --- |

@@ -2,7 +2,6 @@
 import { spawnSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readFileSync, renameSync, readdirSync, writeFileSync } from "node:fs"
-import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import ts from "typescript"
 import * as portable from "./spec-normative"
@@ -300,7 +299,7 @@ async function main() {
     const result = args[at + 1]; args.splice(at, 2); return result
   }
   const revision = value("--revision", "main@github")
-  const out = resolve(value("--out", join(homedir(), "vibe/review-spec/coverage")))
+  const out = resolve(value("--out", ".cache/coverage-census"))
   const excludeDir = resolve(value("--not-rules", join(out, "not-rules")))
   const twins = args.includes("--compile-twins")
   if (twins) args.splice(args.indexOf("--compile-twins"), 1)

@@ -447,7 +447,7 @@ Run `bun docs/tools/coverage-census.ts`, or the Smithers target
 `//:spec-coverage-census`, to inventory the rules in an immutable
 `main@github` snapshot. Use `--revision <revision>` to pin another snapshot
 and `--out <directory>` to change the output directory (default:
-`~/vibe/review-spec/coverage`). The script writes `CENSUS.md`,
+`.cache/coverage-census` in the checkout). The script writes `CENSUS.md`,
 `CENSUS.csv`, `PERCENT` and `REVISION`. CSV starts with
 `rule,test,missing` and includes chapter, line, sentence, confidence, evidence
 kind and reason. A rule's ID is its source path and the first 16 hexadecimal
@@ -511,7 +511,7 @@ default lists twin candidates without counting them.
 `scripts/coverage-census-watch.sh` fetches and checks `main@github` every
 15 minutes, rerunning the census when main changes (test-only changes can close
 gaps too), and when collector code or exclusion CSVs change. It uses a singleton lock and stores its PID, last check, fetch/run
-logs and history under `~/vibe/fix/alpha/coverage-census-scratch/watch`.
+logs and history under `.cache/coverage-census-watch`.
 `CENSUS_OUT` and `CENSUS_STATE` override the destinations;
 `CENSUS_ONCE=1` performs one check. Collection or matching failures preserve the prior published
 inventory and retry on the next interval. `PERCENT` is published after both
