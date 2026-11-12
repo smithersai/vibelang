@@ -80,7 +80,7 @@ func explainExperimentalName(c *checker.Checker, file *ast.SourceFile, all []*as
 			continue
 		}
 		all[i] = note(d.Clone(), "{0} is VibeLang's experimental {0} module, available as Experimental.{0}.", name.Text())
-		notePlatformAPI(all[i], platformAPI{service: key})
+		notePlatformAPI(c, all[i], platformAPI{service: key})
 	}
 	return all
 }

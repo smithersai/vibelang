@@ -1,0 +1,7 @@
+// expect: EK4402
+export effect function main() {
+  console.log("hello")
+}
+
+// With vibe.effectModules false, Console is not in scope, so EK4402's advice
+// imports it rather than saying it comes from the prelude (VIP-14).

@@ -1,0 +1,2 @@
+Use Console:   try Console.log(message)
+Import it with   import { Console } from "effect"

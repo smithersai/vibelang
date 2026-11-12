@@ -7,6 +7,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
 // VibeLang's standard library is Effect's (design D6, Chapter 11). Node.js
@@ -522,7 +523,7 @@ func checkPlatform(c *checker.Checker, file *ast.SourceFile) {
 			if arguments := node.Arguments(); len(arguments) > 0 && ast.IsStringLiteralLike(arguments[0]) {
 				if r, ok := platformModuleOf(arguments[0].Text()); ok {
 					d := report(c, arguments[0], platformModule, arguments[0].Text())
-					notePlatformAPI(d, platformAPI{service: r})
+					notePlatformAPI(c, d, platformAPI{service: r})
 				}
 			}
 			// VIP-33 applies throughout the file. Native callback/throw semantics
@@ -557,7 +558,7 @@ func checkPlatformImport(c *checker.Checker, node *ast.Node) {
 	reportBinding := func(at *ast.Node, local string, decl *ast.Node) {
 		ref := platformRef{replacement: replacement, module: module, name: importedName(module, decl)}
 		d := report(c, at, platformValueImport, local, module)
-		notePlatformAPI(d, platformAPIOf(ref, nil))
+		notePlatformAPI(c, d, platformAPIOf(ref, nil))
 	}
 	if ast.IsImportEqualsDeclaration(node) {
 		if !node.IsTypeOnly() {
@@ -572,7 +573,7 @@ func checkPlatformImport(c *checker.Checker, node *ast.Node) {
 		clause := node.ImportClause()
 		if clause == nil {
 			d := report(c, specifier, platformModule, module)
-			notePlatformAPI(d, platformAPI{service: replacement})
+			notePlatformAPI(c, d, platformAPI{service: replacement})
 			return
 		}
 		if clause.IsTypeOnly() {
@@ -595,7 +596,7 @@ func checkPlatformImport(c *checker.Checker, node *ast.Node) {
 		}
 		if declaration.ExportClause == nil || !ast.IsNamedExports(declaration.ExportClause) {
 			d := report(c, specifier, platformModule, module)
-			notePlatformAPI(d, platformAPI{service: replacement})
+			notePlatformAPI(c, d, platformAPI{service: replacement})
 			return
 		}
 		elements = declaration.ExportClause.Elements()
@@ -898,7 +899,7 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 		message = &warning
 	}
 	d := report(c, use, message, name)
-	notePlatformAPI(d, platformAPIOf(ref, members))
+	notePlatformAPI(c, d, platformAPIOf(ref, members))
 
 }
 
@@ -1017,7 +1018,7 @@ func isValueUse(id *ast.Node) bool {
 // notePlatformAPI adds the lines that say what replaces api: the Effect API,
 // the import that brings it in, and the layer that provides it. For an API
 // Effect lacks, they direct the caller to a TypeScript adapter.
-func notePlatformAPI(d *ast.Diagnostic, api platformAPI) {
+func notePlatformAPI(c *checker.Checker, d *ast.Diagnostic, api platformAPI) {
 	s := platformServices[api.service]
 	if s == nil {
 		note(d, "Effect, VibeLang's standard library, has no service for it yet, so escape to TypeScript for now.")
@@ -1027,21 +1028,51 @@ func notePlatformAPI(d *ast.Diagnostic, api platformAPI) {
 		note(d, "Move the platform code into a .ts module and expose it through an Effect; wrapping it inside a .vibe file does not grant host access.")
 		return
 	}
-	if example := cmp.Or(api.example, s.example); example != "" {
-		note(d, "Use {0}:   {1}", s.use, example)
-	} else {
-		note(d, "Use {0}.", s.use)
+	use := s.use
+	if preludeImportMissing(c, d, api.service) {
+		use = strings.TrimSuffix(use, ", from the prelude")
 	}
-	noteService(d, s)
+	if example := cmp.Or(api.example, s.example); example != "" {
+		note(d, "Use {0}:   {1}", use, example)
+	} else {
+		note(d, "Use {0}.", use)
+	}
+	noteService(c, d, api.service, s)
 	if api.note != "" {
 		note(d, api.note)
 	}
 }
 
-// noteService adds the lines that say how to bring s into a .vibe file.
-func noteService(d *ast.Diagnostic, s *platformService) {
+// platformPreludeImports are the imports that bring in the prelude services that
+// platformServices names, for a project whose vibe.effectModules is false
+// (VIP-14), where the prelude does not supply them.
+var platformPreludeImports = map[string]string{
+	"Inspectable": `import { Inspectable } from "effect"`,
+	"Schedule":    `import { Schedule } from "effect"`,
+	"Clock":       `import { Clock } from "effect"`,
+	"Config":      `import { Config } from "effect"`,
+	"Console":     `import { Console } from "effect"`,
+	"Stream":      `import { Stream } from "effect"`,
+	"PubSub":      `import { Stream } from "effect"`,
+}
+
+// preludeImportMissing reports whether key names a prelude service that d's
+// file does not have in scope, because its project turns Effect modules off.
+func preludeImportMissing(c *checker.Checker, d *ast.Diagnostic, key string) bool {
+	if d == nil || d.File() == nil || platformPreludeImports[key] == "" {
+		return false
+	}
+	options := optionsFor(c, d.File())
+	return options != nil && options.VibeLang != nil && options.VibeLang.EffectModules == core.TSFalse
+}
+
+// noteService adds the lines that say how to bring s, platformServices[key],
+// into a .vibe file.
+func noteService(c *checker.Checker, d *ast.Diagnostic, key string, s *platformService) {
 	if s.imports != "" {
 		note(d, "Import it with   {0}", s.imports)
+	} else if preludeImportMissing(c, d, key) {
+		note(d, "Import it with   {0}", platformPreludeImports[key])
 	}
 	if s.provider != "" {
 		note(d, "Provide it in main with {0}.", s.provider)
@@ -1111,7 +1142,7 @@ func checkClockRead(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	d := report(c, call, EK4402, text)
 	note(d, "Use {0}.", read.use)
 	if s := platformServices[read.service]; s != nil {
-		noteService(d, s)
+		noteService(c, d, read.service, s)
 	}
 	note(d, read.test)
 }
