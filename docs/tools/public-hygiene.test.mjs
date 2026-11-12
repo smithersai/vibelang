@@ -4,7 +4,7 @@ import { lstatSync, readFileSync, readdirSync } from "node:fs"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
-import { pendingPrivateLocations, privateInfrastructureProblems, publicHygiene } from "./public-hygiene.mjs"
+import { privateInfrastructureProblems, publicHygiene } from "./public-hygiene.mjs"
 import fc from "fast-check"
 
 const root = process.env.VIBELANG_HYGIENE_ROOT ?? fileURLToPath(new URL("../../", import.meta.url))
@@ -165,12 +165,6 @@ test("published pages reject build hosts, private home paths and agent session n
     ["packages/runtime/README.md", "logs in ~/vibe/fix/alpha/x", "a private home path"],
     ["README.md", "measured on nyc1", "a build host name"],
   ]) assert.ok(publicHygiene(file, text).some(p => p.startsWith(problem)), file + ": " + text)
-})
-
-test("each pending private location still appears, once, in its file", () => {
-  for (const [file, phrase] of Object.entries(pendingPrivateLocations)) {
-    assert.equal(readFileSync(resolve(root, file), "utf8").split(phrase).length - 1, 1, file + ": remove its pendingPrivateLocations entry")
-  }
 })
 
 test("the published-page rule keeps public names, portable homes and unpublished sources", () => {

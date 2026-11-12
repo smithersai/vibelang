@@ -30,4 +30,4 @@
 
 ## Context
 
-The tool-risk report (2026-10-29, `~/migrate/TOOL-RISK.md` on nyc-02) found type-aware Effect lint was the one tool with no workaround: it blocks alchemy's `lint` and foldkit's `lint:effect`.
+The tool-risk report (2026-10-29) found type-aware Effect lint was the one tool with no workaround: it blocks alchemy's `lint` and foldkit's `lint:effect`.

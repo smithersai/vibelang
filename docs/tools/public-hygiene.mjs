@@ -45,15 +45,8 @@ const privateInfrastructure = [
   ["a private home path", privateHomePath],
   ["an agent session name", /(?<![\w/.-])(?:claude|codex|effectscript|smithers|kimi|opus|fable)-\d+[a-z]?\b(?![\w.-]*\/)/],
 ]
-// The VIP-38 context sentence keeps its report location until its own change lands with the
-// evidence the spec rule check asks for. Only this exact phrase in these two files is exempt.
-export const pendingPrivateLocations = {
-  "docs/design/vips/0038-effect-lint-built-in.md": "(2026-10-29, `" + "~" + "/migrate/TOOL-RISK.md` on " + "nyc" + "-02)",
-  "site/src/pages/vips/0038-effect-lint-built-in.mdx": "(2026-10-29, `" + "~" + "/migrate/TOOL-RISK.md` on " + "nyc" + "-02)",
-}
 export function privateInfrastructureProblems(file, text) {
   if (!publishedFile(file)) return []
-  if (pendingPrivateLocations[file]) text = text.split(pendingPrivateLocations[file]).join("")
   return privateInfrastructure.flatMap(([what, pattern]) => {
     const match = pattern.exec(text)
     return match ? [what + ": " + JSON.stringify(match[0])] : []
