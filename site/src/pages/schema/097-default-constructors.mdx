@@ -18,6 +18,11 @@ effect function makeLabels() {
   const byId = try LabelsById.makeEffect({ handling: label.text })
   return { label, byId }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try makeLabels()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -36,6 +41,9 @@ const CaseCount = Schema.FiniteFromString.check(
 effect function makeCaseCount(value: number) {
   return try CaseCount.makeEffect(value)
 }
+// Run in an effect function:
+//   try Console.log(try makeCaseCount(6))
+//   try Effect.catch(makeCaseCount(0), (issue) => Console.log(issue._tag))
 ```
 
 ```text
@@ -61,6 +69,10 @@ function constructAsOption(value: number) {
 effect function constructWithExpectedFailure(value: number) {
   return try CaseCount.makeEffect(value)
 }
+// Run in an effect function:
+//   try Console.log(try constructOrExplain(6))
+//   try Console.log(constructAsOption(0).isNone())
+//   try Effect.catch(constructWithExpectedFailure(0), (error) => Console.log("Construction rejected"))
 ```
 
 ```text
@@ -87,6 +99,11 @@ effect function makePacking() {
   return try Packing.makeEffect({})
 }
 // { handling: "standard", dimensions: { unit: "cm", width: 10 }, labels: [] }
+// Run in an effect function:
+//   const first = try makePacking()
+//   const second = try makePacking()
+//   try Console.log(try Effect.try(() => JSON.stringify(first)))
+//   try Console.log(first.labels === second.labels)
 ```
 
 ```text
@@ -110,6 +127,11 @@ const ReturnPacking = Schema.Struct({
 effect function makeReturnPacking() {
   return try ReturnPacking.makeEffect({ reason: "inspection" })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try makeReturnPacking()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -130,6 +152,10 @@ class PackingRequest extends Schema.Class<PackingRequest>("PackingRequest")({
 effect function createPackingRequest(reference: string) {
   return try PackingRequest.makeEffect({ reference })
 }
+// Run in an effect function:
+//   const value = try createPackingRequest("pkg-94")
+//   try Console.log(value instanceof PackingRequest)
+//   try Console.log(try Effect.try(() => JSON.stringify(value)))
 ```
 
 ```text

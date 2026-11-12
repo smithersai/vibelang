@@ -14,6 +14,9 @@ const instant = DateTime.makeUnsafe("2026-04-12T10:00:00Z")
 const paris = DateTime.setZone(instant, DateTime.zoneMakeNamedUnsafe("Europe/Paris"))
 instant.epochMilliseconds === paris.epochMilliseconds // true
 DateTime.formatIsoZoned(paris) // "2026-04-12T12:00:00.000+02:00[Europe/Paris]"
+// Run in an effect function:
+//   try Console.log(instant.epochMilliseconds === paris.epochMilliseconds)
+//   try Console.log(DateTime.formatIsoZoned(paris))
 ```
 
 ```text
@@ -39,6 +42,7 @@ const localAppointment = DateTime.makeZoned(
 const serialized = DateTime.makeZonedFromString(
   "2026-04-12T10:00:00.000+02:00[Europe/Paris]"
 )
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Option.getOrNull(Option.map(text, DateTime.formatIso)), Option.getOrNull(Option.map(epoch, DateTime.formatIso)), Option.getOrNull(Option.map(parts, DateTime.formatIso)), DateTime.formatIso(date), Option.isNone(invalid), Option.getOrNull(Option.map(localAppointment, DateTime.formatIsoZoned)), Option.getOrNull(Option.map(serialized, DateTime.formatIsoZoned))])))
 ```
 
 ```text
@@ -57,6 +61,11 @@ effect function timestamp() {
   return DateTime.formatIso(now)
 }
 // string!!
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     try TestClock.setTime(0)
+//     try Console.log(try timestamp())
+//   }
 ```
 
 ```text
@@ -77,6 +86,7 @@ function describe(value: unknown) {
   }
   return "unknown"
 }
+// Run in an effect function: try Console.log(describe(null), describe(instant), describe(paris), describe(DateTime.setZoneOffset(instant, 3600000)))
 ```
 
 ```text
@@ -103,6 +113,14 @@ const base = DateTime.makeUnsafe("2026-04-12T10:00:00Z")
 const optional = DateTime.setZoneNamed(base, "Asia/Tokyo")
 const known = DateTime.setZoneNamedUnsafe(base, "Asia/Tokyo")
 const shiftedView = DateTime.setZoneOffset(base, 9 * 60 * 60 * 1000)
+// Run in an effect function:
+//   try Console.log(Option.isSome(named), Option.isSome(parsed), DateTime.zoneToString(fixed), Option.isSome(optional))
+//   try Console.log(DateTime.formatIsoZoned(known))
+//   try Console.log(DateTime.formatIsoOffset(shiftedView))
+//   provide TestClock.layer() {
+//     try TestClock.setTime(0)
+//     try Console.log(DateTime.formatIsoZoned(try inTokyo()))
+//   }
 ```
 
 ```text
@@ -126,6 +144,9 @@ Duration.toHours(DateTime.distance(start, end)) // 3
 DateTime.toEpochMillis(start) // numeric Unix timestamp
 const native = DateTime.toDateUtc(start)
 const calendarDate = DateTime.removeTime(start)
+// Run in an effect function:
+//   try Console.log(DateTime.isLessThan(start, end), Equal.equals(DateTime.min(start, end), start), Equal.equals(DateTime.max(start, end), end), Duration.toHours(DateTime.distance(start, end)), Duration.toHours(DateTime.distance(end, start)))
+//   try Console.log(DateTime.toEpochMillis(start), native.toISOString(), DateTime.formatIso(calendarDate))
 ```
 
 ```text
@@ -149,6 +170,10 @@ const localParts = DateTime.toParts(evening)
 const utcParts = DateTime.toPartsUtc(evening)
 const rescheduled = DateTime.setParts(evening, { hour: 9, minute: 0 })
 const utcEdited = DateTime.setPartsUtc(evening, { hour: 9 })
+// Run in an effect function:
+//   try Console.log(DateTime.getPart(evening, "day"), DateTime.getPartUtc(evening, "day"), localParts.hour, utcParts.hour)
+//   try Console.log(DateTime.formatIsoZoned(rescheduled))
+//   try Console.log(DateTime.formatIso(utcEdited))
 ```
 
 ```text
@@ -177,6 +202,7 @@ DateTime.formatIsoDate(appointment) // "2026-04-12"
 DateTime.formatIsoDateUtc(appointment) // "2026-04-12"
 DateTime.formatIsoOffset(appointment) // "2026-04-12T12:00:00.000+02:00"
 DateTime.format(appointment, { locale: "en-GB", dateStyle: "long" })
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([DateTime.formatIso(tomorrow), DateTime.formatIso(previous), DateTime.formatIso(elapsedHour), DateTime.formatIso(earlier), DateTime.formatIso(dayStart), DateTime.formatIso(dayEnd), DateTime.formatIso(rounded), DateTime.formatIsoDate(appointment), DateTime.formatIsoDateUtc(appointment), DateTime.formatIsoOffset(appointment), DateTime.format(appointment, { locale: "en-GB", dateStyle: "long" })])))
 ```
 
 ```text
@@ -196,6 +222,11 @@ effect function localDate() {
 effect function main() {
   provide DateTime.layerCurrentZoneNamed("Asia/Tokyo") { return try localDate() }
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     try TestClock.setTime(0)
+//     try Console.log(try main())
+//   }
 ```
 
 ```text

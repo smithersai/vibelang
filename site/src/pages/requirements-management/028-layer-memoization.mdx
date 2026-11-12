@@ -54,6 +54,11 @@ effect function documentLabels() {
 effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try documentLabels()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: Prefix initialized
 // Output: ["Monthly report","Monthly archive"]
 ```
@@ -75,6 +80,11 @@ effect function isolatedLabels() {
     return [(try Heading).value, (try Footer).value]
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try isolatedLabels()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: Prefix initialized
 // Output: Prefix initialized
 // Output: ["Monthly report","Monthly archive"]
@@ -103,6 +113,15 @@ effect function oneSharedReadBoundary() {
     return [first, second]
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try twoLocalReads()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   {
+//     const jsonValue = try oneSharedReadBoundary()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: Prefix initialized
 // Output: Prefix initialized
 // Output: ["Monthly","Monthly"]
@@ -127,6 +146,11 @@ effect function manualSharing() {
     return reads
   })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try manualSharing()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: Prefix initialized
 // Output: ["Monthly","Monthly"]
 ```

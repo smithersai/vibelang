@@ -20,6 +20,9 @@ effect function sameShipment(left: unknown, right: unknown) {
   const b = try Schema.decodeUnknownEffect(Shipment)(right)
   return Schema.toEquivalence(Shipment)(a, b)
 }
+// Run in an effect function:
+//   try Console.log(try sameShipment({ reference: "pkg-94", stops: ["east"], extra: 1 }, { reference: "pkg-94", stops: ["east"], extra: 2 }))
+//   try Console.log(try sameShipment({ reference: "pkg-94", stops: ["east"] }, { reference: "pkg-94", stops: ["west"] }))
 ```
 
 ```text
@@ -48,6 +51,9 @@ function sameRef() {
   const afternoon = new ShipmentRef("ref-61", "afternoon")
   return Schema.toEquivalence(ShipmentRefSchema)(morning, afternoon) // true
 }
+// Run in an effect function:
+//   try Console.log(sameUnknown({ stops: ["east"] }, { stops: ["east"] }))
+//   try Console.log(sameRef())
 ```
 
 ```text
@@ -67,6 +73,9 @@ const ShipmentIdentity = Shipment.pipe(Schema.overrideToEquivalence(
 function sameIdentity(left: typeof Shipment.Type, right: typeof Shipment.Type) {
   return Schema.toEquivalence(ShipmentIdentity)(left, right)
 }
+// Run in an effect function:
+//   try Console.log(sameIdentity({ reference: "pkg-94", stops: ["east"] }, { reference: "pkg-94", stops: ["west"] }))
+//   try Console.log(sameIdentity({ reference: "pkg-94", stops: [] }, { reference: "pkg-95", stops: [] }))
 ```
 
 ```text

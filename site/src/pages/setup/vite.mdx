@@ -154,6 +154,7 @@ Create `src/greet.vibe`:
 export effect function greet(name: string) {
   return `Hello, ${name}!`
 }
+// Run in an effect function: try Console.log(try greet("Vite"))
 // Output: Hello, Vite!
 ```
 
@@ -166,6 +167,7 @@ import { Effect } from "effect"
 import { greet } from "./greet.vibe"
 
 export const message = Effect.runSync(greet("Vite"))
+// Run: console.log(message)
 // Output: Hello, Vite!
 ```
 

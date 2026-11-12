@@ -23,6 +23,9 @@ effect function exportRows(accepted: boolean) {
   }, Console.log("Export finished"))
 }
 // string!ExportRejected
+// Run in an effect function:
+//   try Console.log(try exportRows(true))
+//   try Effect.catch(exportRows(false), (error) => Console.log(error._tag))
 // Output: Export started
 // Output: Export finished
 // Output: Export complete
@@ -49,6 +52,9 @@ effect function observedExport(accepted: boolean) {
     }
   })
 }
+// Run in an effect function:
+//   try Console.log(try observedExport(true))
+//   try Effect.catch(observedExport(false), (error) => Console.log(error._tag))
 // Output: Export started
 // Output: Export finished
 // Output: Export succeeded
@@ -73,6 +79,9 @@ effect function reportFailedExport(accepted: boolean) {
     }
   })
 }
+// Run in an effect function:
+//   try Console.log(try reportFailedExport(true))
+//   try Effect.catch(reportFailedExport(false), (error) => Console.log(error._tag))
 // Output: Export started
 // Output: Export finished
 // Output: Export complete
@@ -111,6 +120,7 @@ effect function withLease() {
   )
 }
 // string!!LeaseStore
+// Run in an effect function: provide LeaseStore = { acquire: () => succeed({ id: "test-lease" }), release: (lease) => Console.log(`Released ${lease.id}`) } { try Console.log(try withLease()) }
 // Output: Working with lease test-lease
 // Output: Releasing after Success
 // Output: Released test-lease
@@ -149,6 +159,9 @@ const LeaseStoreTest = Layer.succeed(LeaseStore, {
 effect function example() {
   provide LeaseStoreTest { return try leaseId() }
 }
+// Run in an effect function:
+//   try Console.log(try example())
+//   provide LeaseStore = { acquire: () => succeed({ id: "owned" }), release: (lease) => Console.log(`Released ${lease.id}`) } { try Console.log(try leaseId()) }
 // Output: test-lease
 // Output: Released owned
 // Output: owned

@@ -11,6 +11,11 @@ A Sink describes how to consume a Stream into one result. Use one to make a cons
 
 ```vibe
 const header: Sink.Sink<Array<string>, string, string, never, never> = Sink.take<string>(2)
+// Run in an effect function:
+//   {
+//     const jsonValue = try Stream.run(Stream.make("one", "two", "three"), header)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["one","two"]
 ```
 
@@ -28,6 +33,11 @@ effect function parseHeader() {
 }
 // Array<string>!!
 // Returns ["format-v2", "length-64"].
+// Run in an effect function:
+//   {
+//     const jsonValue = try parseHeader()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["format-v2","length-64"]
 ```
 
@@ -43,6 +53,11 @@ effect function headerWithLeftovers() {
   return try Stream.run(Stream.fromArray(["header", "first", "second"]), sink)
 }
 // Returns { header: ["header"], rest: ["first", "second"] }.
+// Run in an effect function:
+//   {
+//     const jsonValue = try headerWithLeftovers()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"header":["header"],"rest":["first","second"]}
 ```
 

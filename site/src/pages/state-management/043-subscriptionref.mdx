@@ -23,6 +23,13 @@ effect function advance(progress: SubscriptionRef.SubscriptionRef<{
     completed: state.completed + 1
   }))
 }
+// Run in an effect function:
+//   const progress = try makeProgress()
+//   try advance(progress)
+//   {
+//     const jsonValue = try SubscriptionRef.get(progress)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"completed":1,"total":12}
 ```
 
@@ -39,6 +46,11 @@ effect function renameStatus() {
   return { before, after }
 }
 // Returns { before: "starting", after: "RUNNING" }.
+// Run in an effect function:
+//   {
+//     const jsonValue = try renameStatus()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"before":"starting","after":"RUNNING"}
 ```
 
@@ -52,6 +64,11 @@ effect function currentSnapshot() {
   const changes = SubscriptionRef.changes(count)
   return try Stream.runCollect(Stream.take(changes, 1)) // [7]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try currentSnapshot()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [7]
 ```
 
@@ -80,6 +97,7 @@ effect function observeTwoClients() {
   join first
   join second
 }
+// Run in an effect function: try observeTwoClients()
 // Output: observed 0
 // Output: observed 0
 // Output: observed 1

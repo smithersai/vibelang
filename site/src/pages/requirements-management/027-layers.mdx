@@ -32,6 +32,7 @@ effect function report(title: string) {
 effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
+// Run in an effect function: provide Reports = { render: effect (title) => `report/${title}` } { try Console.log(try report("Inventory")) }
 // Output: report/Inventory
 ```
 
@@ -65,6 +66,7 @@ const PrinterLive = Layer.effect(Printer, effect {
   }
 })
 // Layer<Printer, never, Settings>
+// Run in an effect function: provide Settings = { prefix: "test" } { provide PrinterLive { const printer = try Printer; try printer.print("ready") } }
 // Output: test: ready
 ```
 
@@ -93,6 +95,7 @@ const ReportsLive = Layer.effect(Reports, effect {
   }
 })
 // Layer<Reports, never, Settings | Printer>
+// Run in an effect function: provide SettingsLive { provide PrinterLive { provide ReportsLive { try Console.log(try report("Inventory")) } } }
 // Output: reports: Rendering report
 // Output: reports/Inventory
 ```
@@ -112,6 +115,7 @@ const Merged = Layer.merge(SettingsLive, PrinterLive)
 
 const Many = Layer.mergeAll(SettingsLive, PrinterLive, ReportsLive)
 // Layer<Settings | Printer | Reports, never, Settings | Printer>
+// Run in an effect function: provide SettingsLive { provide PrinterLive { provide Merged { const printer = try Printer; try printer.print("merged") }; provide Many { try Console.log(try report("many")) } } }
 // Output: reports: merged
 // Output: reports: Rendering report
 // Output: reports/many
@@ -133,6 +137,14 @@ const ReportsReady = Layer.provide(ReportsLive, PrinterAndSettings)
 
 const AppLive = ReportsLive.pipe(Layer.provideMerge(PrinterAndSettings))
 // Layer<Reports | Printer | Settings, never, never>
+// Run in an effect function:
+//   provide PrinterReady {
+//     const printer = try Printer
+//     try printer.print("ready")
+//   }
+//   provide PrinterAndSettings { try Console.log((try Settings).prefix) }
+//   provide ReportsReady { try Console.log(try report("wired")) }
+//   provide AppLive { try Console.log(try report("app")) }
 // Output: reports: ready
 // Output: reports
 // Output: reports: Rendering report
@@ -165,6 +177,12 @@ effect function withBuiltContext() {
     provide context { return try report("Inventory") }
   })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try main()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(try withBuiltContext())
 // Output: reports: Rendering report
 // Output: reports: Rendering report
 // Output: ["reports/Inventory","reports/Forecast"]
@@ -194,6 +212,7 @@ const ObservedReports = ReportsUnavailable
   |> Layer.tapError(%, (error) => Console.log(`Reports initialization failed: ${error._tag}`))
 
 const ResilientReports = Layer.catch(ObservedReports, () => ReportsFallback)
+// Run in an effect function: provide ResilientReports { try Console.log(try report("Inventory")) }
 // Output: Reports initialization failed: InitializationFailed
 // Output: Offline report: Inventory
 ```
@@ -217,6 +236,11 @@ effect function makeBanner(): Banner.Shape!!Settings {
 const BannerWithoutDependencies = Layer.effect(Banner, makeBanner())
 
 const BannerLive = Layer.provide(BannerWithoutDependencies, SettingsLive)
+// Run in an effect function:
+//   provide BannerLive {
+//     const banner = try Banner
+//     try Console.log(try banner.text("Orders"))
+//   }
 // Output: reports: Orders
 ```
 
@@ -254,6 +278,11 @@ effect function testBannerWithInlineSettings() {
     }
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try testBannerDependency(), try testBannerDirectly(), try testBannerWithInlineSettings()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["test: Orders","fixture/Orders","inline: Orders"]
 ```
 

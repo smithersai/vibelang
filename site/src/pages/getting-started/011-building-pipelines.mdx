@@ -21,6 +21,7 @@ effect function priceLabel() {
   return 9 |> addMargin(%) |> double(%) |> `Price: ${%}`
 }
 // string!!; "Price: 24"
+// Run in an effect function: try Console.log(try priceLabel())
 // Output: Price: 24
 ```
 
@@ -32,6 +33,7 @@ Effect operators take Effect values directly, so nest them:
 effect function preparedPrice() {
   return try withSpan(timeout(priceLabel(), "1 second"), "price-label")
 }
+// Run in an effect function: try Console.log(try preparedPrice())
 // Output: Price: 24
 ```
 
@@ -53,6 +55,7 @@ effect function recordPrice() {
   try log(`price=${try adjustedPrice()}`)
   return "recorded"
 }
+// Run in an effect function: try Console.log(try adjustedPrice())
 // Output: 29
 ```
 
@@ -74,6 +77,7 @@ effect function total() {
   return reduced + 2
 }
 // number!InvalidRate
+// Run in an effect function: try Console.log(try total())
 // Output: 27.52
 ```
 
@@ -95,6 +99,7 @@ effect function validated(value: number) {
   return try fromResult(checked)
 }
 // number!string
+// Run in an effect function: try Console.log([try positive(2), try validated(0)].join(", "))
 // Output: 2, 0
 ```
 
@@ -119,6 +124,11 @@ function warnings(readings: Stream.Stream<number>) {
     Stream.take(3)
   )
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [nickname(-1), try Stream.runCollect(warnings(Stream.make(24, 26, 30, 28, 40)))]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["anonymous",["26 C","30 C","28 C"]]
 ```
 
@@ -130,6 +140,7 @@ To pass a function as a callback, use its module name:
 function totals(values: ReadonlyArray<Option.Option<number>>) {
   return values.map(Option.getOrElse(() => 0))
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(totals([Option.some(2), Option.none()]))))
 // Output: [2,0]
 ```
 
@@ -141,6 +152,7 @@ effect function quotedTotal() {
   try Console.log(`quoted amount=${amount}`)
   return amount
 }
+// Run in an effect function: try Console.log(try quotedTotal())
 // Output: quoted amount=27.52
 // Output: 27.52
 ```
@@ -157,6 +169,7 @@ effect function summary() {
   }, { concurrency: 2 })
   return `${details.label}, total=${details.price}`
 }
+// Run in an effect function: try Console.log(try summary())
 // Output: Price: 24, total=27.52
 ```
 
@@ -172,6 +185,7 @@ effect function saveNotice() {
   try notice
   try Console.log("finished")
 }
+// Run in an effect function: try saveNotice()
 // Output: saved
 // Output: finished
 ```

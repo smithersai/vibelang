@@ -98,6 +98,13 @@ export effect function quote(sku: string, quantity: number) {
 export effect function quoteCart() {
   return try.all [quote("tea", 2), quote("coffee", 3)]
 }
+// Run in an effect function:
+//   provide InventoryLive {
+//     try Console.log((try quoteCart()).join("\n"))
+//     try Console.log(try quote("missing", 1))
+//     const inventory = try Inventory
+//     try Console.log(inventory.reserve("coffee", 3) catch (error) => `${error._tag} ${error.sku} ${error.available}`)
+//   }
 ```
 
 ```text
@@ -118,6 +125,7 @@ import { ManagedRuntime } from "effect"
 import { InventoryLive } from "./cart.vibe"
 
 export const runtime = ManagedRuntime.make(InventoryLive)
+// Run: return import("./cart.vibe").then(({ quoteCart }) => runtime.runPromise(quoteCart())).then((lines) => console.log(lines.join("\n"))).finally(() => runtime.dispose())
 ```
 
 ```text

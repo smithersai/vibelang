@@ -27,6 +27,7 @@ effect function pauseBeforeRetry() {
 }
 
 const backoff = Schedule.exponential("50 millis")
+// Run in an effect function: try Console.log(Number.isFinite(try pauseBeforeRetry()))
 // Output: true
 ```
 
@@ -54,6 +55,7 @@ import { Array as Arr } from "effect"
 function firstTwo(values: ReadonlyArray<number>) {
   return Arr.take(values, 2)
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(firstTwo([1, 2, 3]))))
 // Output: [1,2]
 ```
 
@@ -71,6 +73,7 @@ A subpath package's modules need no import either. The emitted JavaScript import
 function hexOf(text: string) {
   return Hex.encode(new TextEncoder().encode(text))
 }
+// Run in an effect function: try Console.log(hexOf("hi"))
 // Output: 6869
 ```
 
@@ -123,6 +126,11 @@ function firstOr(values: Chunk.Chunk<number>, fallback: number): number {
   const first: Option.Option<number> = Chunk.head(values)
   return Option.getOrElse(first, () => fallback)
 }
+// Run in an effect function:
+//   provide Path.layer, FileSystem.layerNoop({ readFileString: effect (path) => `read ${path}` }) {
+//     try Console.log(try readConfig("/srv"))
+//     try Console.log(firstOr(Chunk.empty(), 7))
+//   }
 // Output: read /srv/config.json
 // Output: 7
 ```
@@ -151,6 +159,7 @@ function expirationWindow() {
   return Duration.toMillis(short)
 }
 // number
+// Run in an effect function: try Console.log(expirationWindow())
 // Output: 15000
 ```
 
@@ -175,6 +184,7 @@ effect function example() {
     return "ready"
   })
 }
+// Run in an effect function: try Console.log(try example())
 // Output: ready
 ```
 

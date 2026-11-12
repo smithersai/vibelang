@@ -113,7 +113,12 @@ executes the emitted module; declaring `main` alone does not call it. Use
 `// run: try main()` to invoke an Effect function named `main` from the checker. Start a standalone
 program with an explicit top-level runner. A hook imports the module first, so
 its top-level statements still run; examples with a runner must finish on
-their own. Markers never make a function run in the published example itself.
+their own. Markers never make a function run in the published example itself, but the
+published example shows them: the site and the Markdown copies render the
+header as a `// Run in an effect function:` comment (`// Run:` for `ts`)
+above the first `// Output:` line, split at top-level semicolons, and drop an
+empty `// Output:` marker. `published-run-lines.test.ts` checks every
+published page and Markdown copy.
 
 The `check:snippets` package script and the pre-deploy snippet check both use
 `--run`. Both also test the locally scaffolded starter, including Vitest without

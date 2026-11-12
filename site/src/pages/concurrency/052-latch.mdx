@@ -20,6 +20,7 @@ effect function initializeThenWork() {
   try Latch.open(ready)
   return join worker
 }
+// Run in an effect function: try Console.log(try initializeThenWork())
 // Output: processing enabled
 ```
 
@@ -36,6 +37,7 @@ effect function reopenGate() {
   try Latch.open(gate)
   return join waiting
 }
+// Run in an effect function: try Console.log(try reopenGate())
 // Output: allowed again
 ```
 
@@ -50,6 +52,9 @@ effect function createGates() {
   const active = try Latch.make(true)    // Open from the start.
   return { starting, paused, active }
 }
+// Run in an effect function:
+//   const gates = try createGates()
+//   try Console.log(Latch.isOpen(gates.starting), Latch.isOpen(gates.paused), Latch.isOpen(gates.active))
 // Output: false false true
 ```
 
@@ -64,6 +69,7 @@ effect function gatedExclusiveWork() {
   try Latch.await(initialized)
   return try Semaphore.withPermits(exclusive, 1, Console.log("updating shared device"))
 }
+// Run in an effect function: try gatedExclusiveWork()
 // Output: updating shared device
 ```
 

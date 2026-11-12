@@ -17,6 +17,7 @@ interface Contact {
 
 const named: Contact = { name: "Mina", nickname: Option.some("Mi") }
 const unnamed: Contact = { name: "Sol", nickname: Option.none() }
+// Run in an effect function: try Console.log(Option.getOrNull(named.nickname), Option.isNone(unnamed.nickname))
 ```
 
 ```text
@@ -39,6 +40,10 @@ function label(value: Option.Option<number>) {
   if (Option.isSome(value)) return `Limit: ${value.value}`
   return "No limit"
 }
+// Run in an effect function:
+//   try Console.log(Option.isNone(positive(-2)), Option.isSome(present), Option.isNone(absent))
+//   try Console.log(label(present))
+//   try Console.log(label(absent))
 ```
 
 ```text
@@ -56,6 +61,9 @@ function describe(value: Option.Option<string>) {
     when Option.None: "Anonymous";
   }
 }
+// Run in an effect function:
+//   try Console.log(describe(Option.some("Mina")))
+//   try Console.log(describe(Option.none()))
 ```
 
 ```text
@@ -77,6 +85,9 @@ function streetLabel(address: Option.Option<Address>) {
   const trimmed = Option.map(street, (value) => value.trim())
   return Option.filter(trimmed, (value) => value.length > 0)
 }
+// Run in an effect function:
+//   try Console.log(Option.getOrNull(streetLabel(Option.some({ street: Option.some(" Main St ") }))))
+//   try Console.log(Option.isNone(streetLabel(Option.some({ street: Option.some(" ") }))), Option.isNone(streetLabel(Option.none())))
 ```
 
 ```text
@@ -98,6 +109,11 @@ function extract(value: Option.Option<string>) {
 }
 
 const certain = Option.getOrThrow(Option.some("known"))
+// Run in an effect function:
+//   try Console.log(try Effect.try(() => JSON.stringify([extract(Option.some("Mina")), extract(Option.none())])))
+//   try Console.log(certain)
+//   const failed = try exit(Effect.try(() => Option.getOrThrow(Option.none())))
+//   if (Exit.isFailure(failed)) try Console.log(Cause.hasDies(failed.cause), Cause.hasFails(failed.cause))
 ```
 
 ```text
@@ -121,6 +137,7 @@ function choose(
 const first = Option.firstSomeOf([
   Option.none(), Option.some("regional"), Option.some("global")
 ]) // Some containing "regional"
+// Run in an effect function: try Console.log(Option.getOrNull(choose(Option.some("preferred"), Option.some("backup"))), Option.getOrNull(choose(Option.none(), Option.some("backup"))), Option.getOrNull(first))
 ```
 
 ```text
@@ -136,6 +153,7 @@ Option.fromNullishOr(null) // None
 Option.fromNullishOr(undefined) // None
 Option.fromNullishOr(0) // Some containing 0
 Option.fromNullishOr("") // Some containing ""
+// Run in an effect function: try Console.log(Option.isNone(Option.fromNullishOr(null)), Option.isNone(Option.fromNullishOr(undefined)), Option.getOrNull(Option.fromNullishOr(0)), try Effect.try(() => JSON.stringify(Option.getOrNull(Option.fromNullishOr("")))))
 ```
 
 ```text
@@ -158,6 +176,12 @@ effect function requiredPair() {
     fromOption(Option.some(3))
   ])
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try requiredPair()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(requiredName(Option.none()) catch (error) => error._tag)
 ```
 
 ```text
@@ -179,6 +203,11 @@ function combine(
   const fields = Option.all({ name, count })
   return { record, tuple, fields }
 }
+// Run in an effect function:
+//   const result = combine(Option.some("Mina"), Option.some(3))
+//   try Console.log(try Effect.try(() => JSON.stringify([Option.getOrNull(result.record), Option.getOrNull(result.tuple), Option.getOrNull(result.fields)])))
+//   const absent = combine(Option.none(), Option.some(3))
+//   try Console.log(Option.isNone(absent.record), Option.isNone(absent.tuple), Option.isNone(absent.fields))
 ```
 
 ```text
@@ -205,6 +234,9 @@ export function combineOptions(
     return { title, total }
   })
 }
+// Run:
+//   console.log(JSON.stringify(Option.getOrNull(combineOptions(Option.some(" Daily "), Option.some(3)))))
+//   console.log(Option.isNone(combineOptions(Option.none(), Option.some(3))))
 ```
 
 ```text
@@ -218,6 +250,7 @@ function combinedData() {
     title: title.trim(), total
   }))
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(Option.getOrNull(combinedData()))))
 ```
 
 ```text
@@ -239,6 +272,9 @@ const sorted = Effect.Array.sort(items, ascending)
 // [None, Some(2), Some(8)]
 const descending = Effect.Array.sort(items, Order.flip(ascending))
 // [Some(8), Some(2), None]
+// Run in an effect function:
+//   try Console.log(same(Option.some(4), Option.some(4)), same(Option.none(), Option.some(4)))
+//   try Console.log(try Effect.try(() => JSON.stringify([sorted.map((item) => Option.getOrNull(item)), descending.map((item) => Option.getOrNull(item))])))
 ```
 
 ```text

@@ -22,6 +22,7 @@ effect function runRegisteredWork() {
   return try scoped(registeredWork())
 }
 // string!!
+// Run in an effect function: try Console.log(try runRegisteredWork())
 // Output: Work scope closed with Success
 // Output: Prepared
 ```
@@ -44,6 +45,7 @@ effect function manuallyManagedWork() {
     (scope, outcome) => Scope.close(scope, outcome)
   )
 }
+// Run in an effect function: try Console.log(try manuallyManagedWork())
 // Output: Work scope closed with Success
 // Output: Second finalizer
 // Output: First finalizer
@@ -76,6 +78,7 @@ effect function copyLabels() {
   })
 }
 // string!!
+// Run in an effect function: try Console.log(try copyLabels())
 // Output: Opened source
 // Output: Opened destination
 // Output: Closed destination
@@ -158,6 +161,11 @@ effect function pending() {
   const outcome = try Fiber.await(child)
   return [describe(outcome), events]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = { succeeds: try run("succeed"), fails: try run("fail"), dies: try run("die"), pending: try pending() }
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"succeeds":["success",["open","body","closed"]],"fails":["failure",["open","body","closed"]],"dies":["defect",["open","body","closed"]],"pending":["interrupted",["open","closed"]]}
 ```
 
@@ -190,6 +198,9 @@ effect function observeOwnership() {
     try Console.log("Local closed; caller buffer still open")
   })
 }
+// Run in an effect function:
+//   try nestedLifetimes()
+//   try observeOwnership()
 // Output: Opened session
 // Output: Opened request
 // Output: session/request
@@ -243,6 +254,9 @@ effect function setupProject() {
   })
 }
 // string!SetupFailed!ProjectSteps
+// Run in an effect function:
+//   provide ProjectSteps = { create: effect (stage) => { try Console.log(`create ${stage}`); return stage }, remove: (id) => Console.log(`remove ${id}`), finish: () => succeed("ready") } { try Console.log(try setupProject()) }
+//   provide ProjectSteps = { create: effect (stage) => { try Console.log(`create ${stage}`); if (stage === "index") throw new SetupFailed({ stage }); return stage }, remove: (id) => Console.log(`remove ${id}`), finish: () => succeed("ready") } { try Effect.catch(setupProject(), (error) => Console.log(error.stage)) }
 // Output: create storage
 // Output: create index
 // Output: ready
@@ -267,6 +281,9 @@ effect function exerciseRollback() {
   const outcome = try result(Effect.provide(setupProject(), testLayer))
   return { outcome, removed } // removed: ["index", "storage"]
 }
+// Run in an effect function:
+//   const result = try exerciseRollback()
+//   try Console.log(try Effect.try(() => JSON.stringify({ outcome: result.outcome._tag, removed: result.removed })))
 // Output: {"outcome":"Failure","removed":["index","storage"]}
 ```
 

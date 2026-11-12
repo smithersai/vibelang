@@ -14,6 +14,7 @@ Order.String("amber", "violet") // -1
 Order.Number(7, 7) // 0
 Order.BigInt(11n, 3n) // 1
 Order.Date(new Date("2026-01-01"), new Date("2026-02-01")) // -1
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Order.String("amber", "violet"), Order.Number(7, 7), Order.BigInt(11n, 3n), Order.Date(new Date("2026-01-01"), new Date("2026-02-01"))])))
 // Output: [-1,0,1,-1]
 ```
 
@@ -29,6 +30,7 @@ const sorted = Effect.Array.sort(input, Order.Number)
 const mutableCopy = [...input]
 mutableCopy.sort(Order.Number)
 // mutableCopy: [2, 6, 9]
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([sorted, input, mutableCopy])))
 // Output: [[2,6,9],[9,2,6],[2,6,9]]
 ```
 
@@ -49,6 +51,7 @@ byPriority(
   { priority: 1, title: "Publish" },
   { priority: 3, title: "Review" }
 ) // -1
+// Run in an effect function: try Console.log(byPriority({ priority: 1, title: "Publish" }, { priority: 3, title: "Review" }))
 // Output: -1
 ```
 
@@ -71,6 +74,7 @@ const tasks = Effect.Array.sort([
   { priority: 2, title: "Archive" }
 ], taskOrder)
 // Publish, Archive, Review
+// Run in an effect function: try Console.log(tasks.map((task) => task.title).join(", "))
 // Output: Publish, Archive, Review
 ```
 
@@ -81,6 +85,7 @@ const tasks = Effect.Array.sort([
 ```vibe
 const descending = Order.flip(Order.Number)
 Effect.Array.sort([5, 12, 3], descending) // [12, 5, 3]
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(Effect.Array.sort([5, 12, 3], descending))))
 // Output: [12,5,3]
 ```
 
@@ -97,6 +102,7 @@ less(3, 7) // true
 greater(7, 3) // true
 atMost(7, 7) // true
 atLeast(7, 7) // true
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([less(3, 7), greater(7, 3), atMost(7, 7), atLeast(7, 7)])))
 // Output: [true,true,true,true]
 ```
 
@@ -108,6 +114,7 @@ These helpers turn an order, primitive or derived, into boolean tests. Equality 
 Order.min(Order.Number)(13, 8) // 8
 Order.max(Order.Number)(13, 8) // 13
 Order.min(Order.flip(Order.Number))(13, 8) // 13
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Order.min(Order.Number)(13, 8), Order.max(Order.Number)(13, 8), Order.min(Order.flip(Order.Number))(13, 8)])))
 // Output: [8,13,13]
 ```
 
@@ -124,6 +131,7 @@ clamp(30) // 30
 clamp(70) // 50
 inside(10) // true
 inside(51) // false
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([clamp(4), clamp(30), clamp(70), inside(10), inside(51)])))
 // Output: [10,30,50,true,false]
 ```
 

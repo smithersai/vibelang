@@ -21,6 +21,12 @@ const DispatchStandard = Schema.toStandardSchemaV1(Dispatch, {
 function standardMetadata() {
   return DispatchStandard["~standard"].vendor // "effect"
 }
+// Run in an effect function:
+//   try Console.log(standardMetadata())
+//   {
+//     const jsonValue = try tryPromise(() => Promise.resolve(DispatchStandard["~standard"].validate({ reference: "pkg-94", count: "2" })))
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -49,6 +55,15 @@ effect function validateDispatch(input: unknown) {
 error ValidationBoundaryError {
   cause: unknown
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try validateDispatch({ reference: "pkg-94", count: "2" })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   {
+//     const jsonValue = try validateDispatch({})
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -72,6 +87,11 @@ const BrokenStandard = Schema.toStandardSchemaV1(BrokenLabel)
 effect function inspectBrokenValidation() {
   return try tryPromise(() => Promise.resolve(BrokenStandard["~standard"].validate("crate")))
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspectBrokenValidation()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text

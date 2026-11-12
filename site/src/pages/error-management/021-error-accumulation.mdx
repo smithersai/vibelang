@@ -29,6 +29,12 @@ effect function validateTeam() {
   )
 }
 // string[]![InvalidHandle, ...InvalidHandle[]]
+// Run in an effect function:
+//   try Console.log(try validateHandle(" RIVER "))
+//   {
+//     const jsonValue = (try flip(validateTeam())).map((error) => error.input)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -45,6 +51,9 @@ effect function checkTeamOnly() {
     concurrency: 2
   })
 }
+// Run in an effect function:
+//   try checkTeamOnly()
+//   try Console.log("All handles valid")
 ```
 
 ```text
@@ -68,6 +77,11 @@ effect function inspectTeam() {
   }
 }
 // { handles: string[]; rejected: number }!!
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspectTeam()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"handles":["river"],"rejected":2}
 ```
 

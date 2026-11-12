@@ -34,7 +34,6 @@ effect function check(condition: boolean, message: string) {
   try Effect.try(() => assert.isTrue(condition, message))
 }
 
-// Output:
 it.effect("a deadline returns the fallback", () => effect {
   const pending = fork timeoutOrElse(effect {
     try sleep("10 minutes")
@@ -60,6 +59,7 @@ effect function standaloneClockExample() {
     return try Clock.currentTimeMillis // 7000
   }
 }
+// Run in an effect function: try Console.log(try standaloneClockExample())
 ```
 
 ```text
@@ -73,7 +73,6 @@ Outside the test harness, provide `TestClock.layer()` yourself. Real time passin
 ```vibe
 import { it } from "@effect/vitest"
 
-// Output:
 it.effect("emits once per interval", () => scoped(effect {
   const queue = try Queue.unbounded<string>()
   const worker = fork.scoped effect {
@@ -107,7 +106,6 @@ effect function isExpired(createdAt: number, lifetimeMillis: number) {
   return (try Clock.currentTimeMillis) - createdAt >= lifetimeMillis
 }
 
-// Output:
 it.effect("expires at the boundary", () => effect {
   const createdAt = try Clock.currentTimeMillis
   try TestClock.adjust("9 seconds")
@@ -124,7 +122,6 @@ Application code reads time with `Clock`: `try Clock.currentTimeMillis` reads th
 ```vibe
 import { it } from "@effect/vitest"
 
-// Output:
 it.effect("completes a deferred after a delay", () => scoped(effect {
   const ready = try Deferred.make<number>()
   const worker = fork.scoped effect {

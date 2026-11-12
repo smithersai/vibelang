@@ -20,6 +20,7 @@ effect function displayDispatch(input: unknown) {
   return Schema.toFormatter(Dispatch)(dispatch)
 }
 // For { depot: "east", counts: [2, 4] }, produces a readable object representation.
+// Run in an effect function: try Console.log(try displayDispatch({ depot: "east", counts: [2, 4] }))
 ```
 
 ```text
@@ -44,6 +45,7 @@ effect function displayManifest(input: unknown) {
       : undefined
   })(manifest)
 }
+// Run in an effect function: try Console.log(try displayManifest({ label: "crate", weight: 2 }))
 ```
 
 ```text

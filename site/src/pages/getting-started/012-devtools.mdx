@@ -16,6 +16,7 @@ effect function sample() {
   return "sample"
 }
 // string!!
+// Run in an effect function: try Console.log(try sample())
 // Output: sample
 ```
 
@@ -71,6 +72,7 @@ effect function accepted(value: number) {
   return value + 1
 }
 // number!Rejected
+// Run in an effect function: try Console.log(try accepted(2))
 // Output: 3
 ```
 
@@ -140,6 +142,7 @@ Each entry gives the condition and the repair. The examples and language-service
 effect function checked(value: number): number!Rejected {
   return try accepted(value)
 }
+// Run in an effect function: try Console.log(try checked(2))
 // Output: 3
 ```
 
@@ -217,6 +220,7 @@ effect function discard() {
   // @vibelang-diagnostics-next-line EK4804:off
   throw new Error("unused")
 }
+// Run in an effect function: try Console.log(discard() catch () => 0)
 // Output: 0
 ```
 
@@ -481,6 +485,7 @@ The TypeScript projection retains `effect` on named functions and class methods,
 effect function tracedSample() {
   return try withSpan(sample(), "sample")
 }
+// Run in an effect function: try Console.log(try tracedSample())
 // Output: sample
 ```
 

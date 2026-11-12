@@ -30,6 +30,16 @@ effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 
+// Run in an effect function:
+//   {
+//     const jsonValue = try recordBatch()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(String((try Metric.value(bytes)).count))
+//   {
+//     const jsonValue = try recordBatch()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -49,6 +59,7 @@ const completions = Metric.withConstantInput(
 effect function instrumentedValue() {
   return try trackSuccesses(effect { return "processed" }, completions)
 }
+// Run in an effect function: try Console.log(try instrumentedValue(), (try Metric.value(completions)).count)
 ```
 
 ```text
@@ -79,6 +90,13 @@ effect function recordSizes() {
     summary: try Metric.value(recentSizes)
   }
 }
+// Run in an effect function:
+//   const result = try recordSizes()
+//   {
+//     const jsonValue = { count: result.histogram.count, sum: result.histogram.sum, min: result.histogram.min, max: result.histogram.max, buckets: result.histogram.buckets }
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(result.summary.count, result.summary.sum, result.summary.min, result.summary.max)
 ```
 
 ```text
@@ -101,6 +119,14 @@ effect function render() {
     return "rendered"
   }, renderTime)
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const worker = fork render()
+//     try TestClock.adjust("30 millis")
+//     try Console.log(join worker)
+//     const state = try Metric.value(renderTime)
+//     try Console.log(state.count, state.sum, state.min, state.max)
+//   }
 ```
 
 ```text
@@ -121,6 +147,11 @@ effect function recordOutcomes() {
   try Metric.update(outcomes, "accepted")
   return (try Metric.value(outcomes)).occurrences
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = Array.from(try recordOutcomes()).sort(([a], [b]) => Order.String(a, b))
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -148,6 +179,10 @@ effect function attributed() {
     }
   }
 }
+// Run in an effect function:
+//   const result = try attributed()
+//   try Console.log(result.requests.count, result.failures.count)
+//   try Console.log((try Metric.value(apiRequests)).count, (try Metric.value(failures)).count)
 ```
 
 ```text

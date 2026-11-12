@@ -447,6 +447,9 @@ import { loadModule } from "./load-module.ts"
 effect function loadData() {
   return try Effect.tryPromise(() => loadModule("data:text/javascript,export default 1"))
 }
+// Run in an effect function:
+//   const value = try loadData()
+//   try Console.log(value.default)
 // Output: 1
 ```
 

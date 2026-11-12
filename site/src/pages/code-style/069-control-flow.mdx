@@ -31,6 +31,11 @@ effect function announceIfEnabled(enabled: boolean) {
     return "announced"
   }, succeed(enabled))
 }
+// Run in an effect function:
+//   try Console.log(Option.isNone(optionalSize(-1)), Option.getOrNull(optionalSize(3)), try requiredSize(3))
+//   try Console.log(requiredSize(-1) catch (error) => `${error._tag} ${error.size}`)
+//   try Console.log(Option.isNone(try announceIfEnabled(false)))
+//   try Console.log(Option.getOrNull(try announceIfEnabled(true)))
 ```
 
 ```text
@@ -73,6 +78,11 @@ effect function formattedPair() {
     (value, unit) => `${value} ${unit}`
   )
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try sequentialPair(), try concurrentPair(), try formattedPair()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -100,6 +110,12 @@ effect function logAttempts() {
     try Console.log(`attempt ${attempt}`)
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspectPages()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try logAttempts()
 // Output: [1,2,3]
 // Output: attempt 1
 // Output: attempt 2
@@ -117,6 +133,7 @@ effect function operatorLoop() {
     step: () => { index++ }
   })
 }
+// Run in an effect function: try operatorLoop()
 ```
 
 ```text
@@ -145,6 +162,12 @@ effect function prepareAll() {
 effect function logAll() {
   try forEach([3, 5, 8], (id) => Console.log(`id ${id}`), { discard: true })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try prepareAll()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try logAll()
 ```
 
 ```text
@@ -172,6 +195,11 @@ effect function collected() {
 // tuple: [12, "ready"]
 // object: { count: 12, status: "ready" }
 // array contains the two prepared values in iteration order.
+// Run in an effect function:
+//   {
+//     const jsonValue = try collected()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"tuple":[12,"ready"],"object":{"count":12,"status":"ready"},"array":["prepared-3","prepared-5"]}
 ```
 
@@ -199,6 +227,12 @@ effect function collectOutcomes() {
   return try all([load(3), load(5), load(8)], { mode: "result" })
 }
 // [Result.succeed("item-3"), Result.fail(Unavailable), Result.succeed("item-8")]
+// Run in an effect function:
+//   try Console.log(stopAtFailure() catch (error) => error._tag)
+//   {
+//     const jsonValue = (try collectOutcomes()).map((result) => Result.isSuccess(result) ? result.success : result.failure._tag)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: loaded 3
 // Output: Unavailable
 // Output: loaded 3

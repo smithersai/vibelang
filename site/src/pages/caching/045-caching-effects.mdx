@@ -27,6 +27,11 @@ effect function memoizeLengths() {
   return { first, again, other, lookups }
 }
 // Returns { first: 6, again: 6, other: 4, lookups: 2 }.
+// Run in an effect function:
+//   {
+//     const jsonValue = try memoizeLengths()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"first":6,"again":6,"other":4,"lookups":2}
 ```
 
@@ -47,6 +52,11 @@ effect function cachedSettings() {
   const again = try settings
   return { first, again, loads }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try cachedSettings()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"first":{"theme":"dark","revision":1},"again":{"theme":"dark","revision":1},"loads":1}
 ```
 
@@ -64,6 +74,11 @@ effect function expiringSnapshot() {
   const fresh = try snapshot
   return { first, same, fresh } // { first: 1, same: 1, fresh: 2 }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try expiringSnapshot()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"first":1,"same":1,"fresh":2}
 ```
 
@@ -83,6 +98,11 @@ effect function reloadableSnapshot() {
   const fresh = try snapshot
   return { first, fresh } // { first: 1, fresh: 2 }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try reloadableSnapshot()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"first":1,"fresh":2}
 ```
 

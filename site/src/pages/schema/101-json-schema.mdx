@@ -18,6 +18,10 @@ const Depot = Schema.Struct({
 function depotDocument() {
   return Schema.toJsonSchemaDocument(Depot)
 }
+// Run in an effect function:
+//   const document = depotDocument()
+//   try Console.log(document.dialect)
+//   try Console.log(try Effect.try(() => JSON.stringify(document.schema)))
 ```
 
 ```text
@@ -38,6 +42,7 @@ function alternateDrafts() {
   const draft04 = JsonSchema.toDocumentDraft04(document)
   return { draft07, draft04 }
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(alternateDrafts())))
 ```
 
 ```text
@@ -62,6 +67,7 @@ function nameDocument() {
     includeAnnotationKey: (key) => key.startsWith("x-")
   })
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(nameDocument().schema)))
 ```
 
 ```text
@@ -83,6 +89,7 @@ const DepotRequest = Schema.Struct({
 function requestDocument() {
   return Schema.toJsonSchemaDocument(DepotRequest)
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(requestDocument().schema)))
 ```
 
 ```text
@@ -108,6 +115,7 @@ const DepotTree = Schema.Struct({
 function treeDocument() {
   return Schema.toJsonSchemaDocument(DepotTree)
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(treeDocument())))
 ```
 
 ```text
@@ -126,6 +134,7 @@ function strictDocument() {
     includeAnnotationKey: (key) => key.startsWith("x-")
   })
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(strictDocument().schema)))
 ```
 
 ```text
@@ -142,6 +151,7 @@ const DepotText = Schema.fromJsonString(Depot)
 function jsonTextDocument() {
   return Schema.toJsonSchemaDocument(DepotText)
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(jsonTextDocument().schema)))
 ```
 
 ```text

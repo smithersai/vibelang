@@ -162,6 +162,7 @@ export effect function greet() {
   const greeting = try fs.readFileString("./greeting.txt")
   try Console.log(greeting.trim())
 }
+// Run in an effect function: provide FileSystem.layerNoop({ readFileString: () => succeed("  Hello, VibeLang!\n") }) { try greet() }
 // Output: Hello, VibeLang!
 ```
 

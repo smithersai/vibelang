@@ -14,6 +14,11 @@ effect function collectLabels() {
   return try Stream.runCollect(Stream.make("north", "south", "west"))
 }
 // Array<"north" | "south" | "west">!!
+// Run in an effect function:
+//   {
+//     const jsonValue = try collectLabels()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["north","south","west"]
 ```
 
@@ -29,6 +34,7 @@ effect function announce() {
   })
 }
 // void!!
+// Run in an effect function: try announce()
 // Output: starting build
 // Output: starting test
 // Output: starting package
@@ -47,6 +53,7 @@ effect function reachBudget() {
   })
   return total // 16
 }
+// Run in an effect function: try Console.log(try reachBudget())
 // Output: 16
 ```
 
@@ -67,6 +74,9 @@ effect function totalWithProgress() {
     return next
   })
 }
+// Run in an effect function:
+//   try Console.log(try totalBytes())
+//   try Console.log(try totalWithProgress())
 // Output: 896
 // Output: processed 256 bytes
 // Output: processed 768 bytes
@@ -84,6 +94,11 @@ effect function readHeader() {
   return try Stream.run(source, Sink.take<string>(2))
 }
 // Returns ["version", "length"].
+// Run in an effect function:
+//   {
+//     const jsonValue = try readHeader()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["version","length"]
 ```
 

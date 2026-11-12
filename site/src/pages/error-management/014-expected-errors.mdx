@@ -28,6 +28,9 @@ effect function normalizeCode(input: string) {
   return code.toUpperCase()
 }
 // string!InvalidCode
+// Run in an effect function:
+//   try Console.log(try normalizeCode(" pen "))
+//   try Console.log((try flip(normalizeCode(" ")))._tag)
 ```
 
 ```text
@@ -124,6 +127,9 @@ function quantityOr(text: string, fallback: number): number {
     return fallback
   }
 }
+// Run in an effect function:
+//   try Console.log(quantityOr("3", 0))
+//   try Console.log(quantityOr("x", 0))
 // Output: 3
 // Output: 0
 ```
@@ -183,6 +189,9 @@ effect function quantity(text: string) {
     return try die(error.cause)
   }
 }
+// Run in an effect function:
+//   try Console.log(try quantity("3"))
+//   try Console.log((try flip(quantity("x")))._tag)
 ```
 
 ```text
@@ -201,6 +210,9 @@ effect function port(env: Map<string, string>) {
   return env.get("PORT") ?? throw new MissingPort()
 }
 // string!MissingPort
+// Run in an effect function:
+//   try Console.log(try port(new Map([["PORT", "3000"]])))
+//   try Console.log((try flip(port(new Map())))._tag)
 ```
 
 ```text
@@ -219,6 +231,10 @@ effect function findItem(input: string) {
   return { code, label: "Fountain pen" }
 }
 // { code: string; label: string }!(InvalidCode | ItemMissing)
+// Run in an effect function:
+//   try Console.log((try findItem("pen")).label)
+//   try Console.log((try flip(findItem("book")))._tag)
+//   try Console.log((try flip(findItem("")))._tag)
 ```
 
 ```text
@@ -244,6 +260,12 @@ effect function optionalItem(input: string) {
   const item = try option(findItem(input))
   return Option.isNone(item) ? "No item" : item.value.label
 }
+// Run in an effect function:
+//   try Console.log(try inspectItem("pen"))
+//   try Console.log(try inspectItem(""))
+//   try Console.log(try inspectItem("book"))
+//   try Console.log(try optionalItem("pen"))
+//   try Console.log(try optionalItem("book"))
 ```
 
 ```text
@@ -265,6 +287,10 @@ effect function itemLabel(input: string) {
   } catch (error) => `Unavailable (${error._tag})`
 }
 // string!!
+// Run in an effect function:
+//   try Console.log(try itemLabel("pen"))
+//   try Console.log(try itemLabel(""))
+//   try Console.log(try itemLabel("book"))
 ```
 
 ```text
@@ -284,6 +310,10 @@ effect function itemLabelInline(input: string) {
   return item.label
 }
 // string!!
+// Run in an effect function:
+//   try Console.log(try itemLabelInline("pen"))
+//   try Console.log(try itemLabelInline(""))
+//   try Console.log(try itemLabelInline("book"))
 ```
 
 ```text
@@ -319,6 +349,11 @@ effect function labelByTag(input: string) {
     (error) => succeed({ code: error.code, label: "Out of catalog" })
   )
 }
+// Run in an effect function:
+//   try Console.log(try labelOrMissing("book"))
+//   try Console.log((try flip(labelOrMissing("")))._tag)
+//   try Console.log((try labelByTag("book")).label)
+//   try Console.log((try flip(labelByTag("")))._tag)
 ```
 
 ```text
@@ -358,6 +393,12 @@ effect function withPredicate(input: string) {
     () => succeed({ code: "", label: "Out of catalog" })
   )
 }
+// Run in an effect function:
+//   try Console.log((try withTagTable("")).label)
+//   try Console.log((try withFilter("book")).label)
+//   try Console.log((try withPredicate("book")).label)
+//   try Console.log((try flip(withFilter("")))._tag)
+//   try Console.log((try flip(withPredicate("")))._tag)
 ```
 
 ```text
@@ -403,6 +444,10 @@ effect function exposeReasons() {
   return try unwrapReason(remoteLabel(), "CatalogError")
 }
 // string!(Busy | Rejected)
+// Run in an effect function:
+//   try Console.log(try explainBusy())
+//   try Console.log(try explainReasons())
+//   try Console.log((try flip(exposeReasons()))._tag)
 ```
 
 ```text
@@ -442,6 +487,11 @@ error Normalized {
 function normalizedError(input: string) {
   return new Normalized({ code: input.trim().toUpperCase() })
 }
+// Run in an effect function:
+//   try Console.log(try describeFailure(new Missing({ code: "E1", path: "/a" })))
+//   try Console.log(try describeFailure(new Expired({ code: "E2" })))
+//   try Console.log(match (new Missing({ code: "E1", path: "/a" })) { when Missing: true; default: false; })
+//   try Console.log(normalizedError(" pen ").label)
 ```
 
 ```text
@@ -480,6 +530,9 @@ effect function describeFamily(error: FileError) {
     when ExpiredFile(let e): `expired ${e.code}`;
   }
 }
+// Run in an effect function:
+//   try Console.log(try describeFamily(new MissingFile({ code: "E1", path: "/a" })))
+//   try Console.log(try describeFamily(new ExpiredFile({ code: "E2" })))
 ```
 
 ```text
@@ -508,6 +561,9 @@ effect function decodeStoreError() {
     default: false;
   }
 }
+// Run in an effect function:
+//   try Console.log(try encodeStoreError())
+//   try Console.log(try decodeStoreError())
 ```
 
 ```text

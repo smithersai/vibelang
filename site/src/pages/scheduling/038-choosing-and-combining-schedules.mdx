@@ -15,6 +15,13 @@ const afterCompletion = Schedule.spaced("20 seconds")
 const cadence = Schedule.fixed("20 seconds")
 const backoff = Schedule.exponential("300 millis")
 const calendar = Schedule.cron("15 4 * * *", "UTC")
+// Run in an effect function:
+//   const rules: ReadonlyArray<Schedule.Schedule<unknown, unknown, Cron.CronParseError>> = [immediate, afterCompletion, cadence, backoff, calendar]
+//   for (const rule of rules) {
+//     const step = try Schedule.toStep(rule)
+//     const outcome = try result(step(Date.parse("2026-11-02T00:00:00Z"), undefined))
+//     if (Result.isSuccess(outcome)) try Console.log(Duration.toMillis(outcome.success[1]))
+//   }
 // Output: 0
 // Output: 20000
 // Output: 20000
@@ -43,6 +50,12 @@ effect function runChecks() {
     try sleep("2 seconds")
   }, Schedule.spaced("6 seconds").pipe(Schedule.upTo({ times: 2 })))
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const worker = fork runChecks()
+//     try TestClock.adjust("18 seconds")
+//     join worker
+//   }
 // Output: checking 0
 // Output: checking 8000
 // Output: checking 16000
@@ -65,6 +78,7 @@ const firstThree = Schedule.while(
   Schedule.spaced("1 second"),
   ({ attempt }) => attempt <= 3
 )
+// Run in an effect function: try Random.withSeed(effect { const rules: ReadonlyArray<Schedule.Schedule<unknown>> = [bounded, firstThree]; for (const rule of rules) { const step = try Schedule.toStep(rule); let now = 0; const waits: number[] = []; for (let i = 0; i < 10; i++) { const outcome = try result(step(now, undefined)); if (Result.isFailure(outcome)) break; const ms = Duration.toMillis(outcome.success[1]); waits.push(ms); now += ms }; try Console.log(waits.length, waits.every((ms) => ms >= 0 && ms <= 9600)) } }, "docs-schedule")
 // Output: 6 true
 // Output: 3 true
 ```
@@ -78,6 +92,21 @@ const policy = Schedule.max([
   Schedule.exponential("400 millis"),
   Schedule.spaced("2 seconds")
 ]).pipe(Schedule.upTo({ times: 4 }))
+// Run in an effect function:
+//   const step = try Schedule.toStep(policy)
+//   let now = 0
+//   const waits: number[] = []
+//   for (let i = 0; i < 5; i++) {
+//     const outcome = try result(step(now, undefined))
+//     if (Result.isFailure(outcome)) break
+//     const ms = Duration.toMillis(outcome.success[1])
+//     waits.push(ms)
+//     now += ms
+//   }
+//   {
+//     const jsonValue = waits
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [2000,2000,2000,3200]
 ```
 
@@ -90,6 +119,21 @@ const startupAndSteady = Schedule.min([
   Schedule.spaced("500 millis").pipe(Schedule.upTo({ times: 2 })),
   Schedule.fixed("12 seconds")
 ])
+// Run in an effect function:
+//   const step = try Schedule.toStep(startupAndSteady)
+//   let now = 0
+//   const waits: number[] = []
+//   for (let i = 0; i < 5; i++) {
+//     const outcome = try result(step(now, undefined))
+//     if (Result.isFailure(outcome)) break
+//     const ms = Duration.toMillis(outcome.success[1])
+//     waits.push(ms)
+//     now += ms
+//   }
+//   {
+//     const jsonValue = waits
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [500,500,11000,12000,12000]
 ```
 
@@ -102,6 +146,21 @@ const reconnect = Schedule.spaced("150 millis").pipe(
   Schedule.upTo({ times: 2 }),
   Schedule.concat(Schedule.spaced("3 seconds").pipe(Schedule.upTo({ times: 5 })))
 )
+// Run in an effect function:
+//   const step = try Schedule.toStep(reconnect)
+//   let now = 0
+//   const waits: number[] = []
+//   for (let i = 0; i < 8; i++) {
+//     const outcome = try result(step(now, undefined))
+//     if (Result.isFailure(outcome)) break
+//     const ms = Duration.toMillis(outcome.success[1])
+//     waits.push(ms)
+//     now += ms
+//   }
+//   {
+//     const jsonValue = waits
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [150,150,3000,3000,3000,3000,3000]
 ```
 

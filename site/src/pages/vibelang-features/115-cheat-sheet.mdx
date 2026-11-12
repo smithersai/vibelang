@@ -29,6 +29,7 @@ effect function release(version: string) {
   const approval = try Approval
   return (try approval.approve(`deploy ${version}`)) ? `released ${version}` : "declined"
 }
+// Run in an effect function: provide Approval = { approve: (_request) => succeed(true) } { { const jsonValue = [try getUser("1"), try getOrders("1"), try release("v1")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 // Output: [{"id":"1","name":"Ada"},1,"released v1"]
 ```
 
@@ -47,6 +48,7 @@ type Load = () => string!!
 effect function hello(id: string): string!NotFound!never {
   return `Hello, ${(try getUser(id)).name}`
 }
+// Run in an effect function: try Console.log(try hello("1"))
 // Output: Hello, Ada
 ```
 
@@ -99,6 +101,7 @@ class Failure extends Data.TaggedError("Failure" as string)<{ readonly code: str
 class Refused extends Failure {
   override readonly _tag = "Refused"
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([new Invalid(" x ").label, new Refused({ code: "r" })._tag])))
 // Output: ["invalid x","Refused"]
 ```
 
@@ -195,6 +198,15 @@ const UsersLive = Layer.effect(Users, effect {
     region: "eu"
   })
 })
+// Run in an effect function:
+//   provide UsersLive {
+//     const users = try Users
+//     {
+//       const jsonValue = try users.find("1")
+//       try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//     }
+//     try Console.log(users.region)
+//   }
 // Output: {"id":"1","name":"Ada"}
 // Output: eu
 ```
@@ -219,6 +231,11 @@ schema Account {
   readonly nickname?: string
   readonly role: "admin" | "member"
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try Schema.decodeUnknownEffect(Account)({ id: "1", role: "admin" })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"id":"1","role":"admin"}
 ```
 
@@ -241,6 +258,9 @@ type Account = typeof Account.Type
 
 ```vibe [VibeLang]
 schema Role = "admin" | "member"
+// Run in an effect function:
+//   try Console.log(Schema.is(Role)("admin"))
+//   try Console.log(Schema.is(Role)("owner"))
 // Output: true
 // Output: false
 ```
@@ -263,6 +283,7 @@ data Delivery {
   Waiting
   Sent { tracking: string }
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Delivery.Waiting(), Delivery.Sent({ tracking: "parcel-8" })])))
 // Output: [{"_tag":"Waiting"},{"tracking":"parcel-8","_tag":"Sent"}]
 ```
 
@@ -306,6 +327,9 @@ effect function greetUser(id: string) {
     return user.name
   }, "greetUser")
 }
+// Run in an effect function:
+//   const output = try Console.Console
+//   try Console.log(try Effect.provide(greetUser("1"), Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))])))
 // Output: Hello, Ada
 // Output: Ada
 ```
@@ -332,6 +356,7 @@ effect function fastest() {
   const user = try getUser("1")
   return try race(getUser("1"), getUser("2"))
 }
+// Run in an effect function: try Console.log((try fastest()).name)
 // Output: Ada
 ```
 
@@ -354,6 +379,11 @@ effect function program() {
     return try users.find("1")
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try program()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"id":"1","name":"Ada"}
 ```
 
@@ -379,6 +409,7 @@ effect function roll(): number!! {
     return try Random.nextInt
   }
 }
+// Run in an effect function: try Console.log(try roll())
 // Output: 4
 ```
 
@@ -406,6 +437,11 @@ effect function describe(id: string) {
     when NotFound: `no user ${e.id}`;
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try describe("1"), try describe("missing")]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["Ada","no user missing"]
 ```
 
@@ -427,6 +463,11 @@ const describe = (id: string) =>
 effect function nameOrGuest(id: string) {
   return effect { return (try getUser(id)).name } catch () => "guest"
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try nameOrGuest("1"), try nameOrGuest("missing")]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["Ada","guest"]
 ```
 
@@ -450,6 +491,11 @@ effect function nameOrReason(id: string) {
     when NotFound: `no user ${e.id}`;
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try nameOrReason("1"), try nameOrReason("missing")]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["Ada","no user missing"]
 ```
 
@@ -472,6 +518,9 @@ const nameOrReason = (id: string) =>
 export effect function main() {
   try log("Hello")
 }
+// Run in an effect function:
+//   const output = try Console.Console
+//   try Effect.provide(main(), Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))]))
 // Output: Hello
 ```
 
@@ -505,6 +554,9 @@ effect function safe(id: string) {
     when Exit.Failure(let cause): `failed: ${Cause.pretty(cause)}`;
   }
 }
+// Run in an effect function:
+//   try Console.log(try safe("1"))
+//   try Console.log((try safe("missing")).includes("NotFound"))
 // Output: Ada
 // Output: true
 ```
@@ -532,6 +584,11 @@ effect function logged() {
   }
   return outcome.value
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try logged()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"id":"1","name":"Ada"}
 ```
 
@@ -552,6 +609,10 @@ const logged = getUser("1").pipe(
 effect function tracked() {
   return try onExit(getUser("1"), (outcome) => log(`lookup ${outcome._tag}`))
 }
+// Run in an effect function:
+//   const output = try Console.Console
+//   const user = try Effect.provide(tracked(), Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))]))
+//   try Console.log(user.name)
 // Output: lookup Success
 // Output: Ada
 ```
@@ -576,6 +637,7 @@ effect function outcome() {
   if (result is Exit.Failure) try interrupt
   return result
 }
+// Run in an effect function: try Console.log((try outcome())._tag)
 // Output: Success
 ```
 
@@ -612,6 +674,11 @@ effect function cancellable() {
     return try getOrders("1")
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try guarded(), try cancellable()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [{"user":{"id":"1","name":"Ada"},"orders":1},1]
 ```
 
@@ -641,6 +708,7 @@ A tagged template is a call of its tag. If `sql` returns an Effect, the statemen
 effect function ready() {
   try Console.log(Hex.encode("ready"))
 }
+// Run in an effect function: try ready()
 // Output: 7265616479
 ```
 
@@ -662,6 +730,7 @@ effect function size(path: string) {
   const fs = try FileSystem.FileSystem
   return (try fs.readFileString(path)).length
 }
+// Run in an effect function: provide FileSystem.layerNoop({ readFileString: () => succeed("hello") }) { try Console.log(try size("notes.txt")) }
 // Output: 5
 ```
 
@@ -688,6 +757,11 @@ effect function patient() {
   try sleep("10 millis")
   return try timeout(retry(getUser("1"), Schedule.recurs(2)), "1 second")
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try patient()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"id":"1","name":"Ada"}
 ```
 
@@ -713,6 +787,11 @@ function hot() {
     Stream.take(2)
   )
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try Stream.runCollect(hot())
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["25 C","30 C"]
 ```
 
@@ -737,6 +816,7 @@ Stream transformations construct a Stream. Run it with a Stream consumer such as
 effect function shout() {
   return (try getUser("1")).name |> %.toUpperCase() |> `${%}!`
 }
+// Run in an effect function: try Console.log(try shout())
 // Output: ADA!
 ```
 
@@ -760,6 +840,9 @@ effect function findUser(users: Map<string, User>, id: string) {
   if (user === undefined) throw new NotFound({ id })
   return user
 }
+// Run in an effect function:
+//   try Console.log((try findUser(new Map([["1", { id: "1", name: "Ada" }]]), "1")).name)
+//   try Console.log((try result(findUser(new Map<string, User>(), "missing")))._tag)
 // Output: Ada
 // Output: Failure
 ```
@@ -787,6 +870,7 @@ effect function label(id: string) {
   }
   return name
 }
+// Run in an effect function: try Console.log(try label("1"))
 // Output: short
 ```
 
@@ -827,6 +911,7 @@ effect function loaded() {
     return user.name
   }, "load")
 }
+// Run in an effect function: try Console.log(try loaded())
 // Output: Ada
 ```
 
@@ -856,7 +941,6 @@ it.live("finds a user", () => effect {
   const user = try getUser("1")
   try Effect.try(() => assert.strictEqual(user.name, "Ada"))
 })
-// Output:
 ```
 
 `it.live` uses the live clock, because this page's `getUser` sleeps. Under `it.effect`'s test clock, a sleeping test must advance it with `TestClock.adjust`.
@@ -876,6 +960,7 @@ function phaseLabel(phase: "draft" | "published") {
     when "published": "Published";
   }
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([phaseLabel("draft"), phaseLabel("published")])))
 // Output: ["Draft","Published"]
 ```
 
@@ -903,6 +988,7 @@ function describeFailure(failure: NotFound | Timeout) {
     when Timeout: "retry";
   }
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([describeFailure(new NotFound({ id: "7" })), describeFailure(new Timeout())])))
 // Output: ["no user 7","retry"]
 ```
 
@@ -930,6 +1016,7 @@ function deliveryLabel(delivery: Delivery) {
     default: "unknown";
   }
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([deliveryLabel(Delivery.Waiting()), deliveryLabel(Delivery.Sent({ tracking: "parcel-8" }))])))
 // Output: ["waiting","sent parcel-8"]
 ```
 
@@ -958,6 +1045,11 @@ function greet(name: Option.Option<string>) {
 function failed(outcome: Exit.Exit<User, NotFound>) {
   return outcome is Exit.Failure
 }
+// Run in an effect function:
+//   try Console.log(greet(Option.some("Ada")))
+//   try Console.log(greet(Option.none()))
+//   try Console.log(failed(Exit.fail(new NotFound({ id: "7" }))))
+//   try Console.log(failed(Exit.succeed({ id: "1", name: "Ada" })))
 // Output: Hello, Ada
 // Output: Hello
 // Output: true
@@ -982,6 +1074,9 @@ function firstFailure(outcome: Exit.Exit<User, NotFound>) {
   if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause)) return Cause.pretty(cause)
   return "ok"
 }
+// Run in an effect function:
+//   try Console.log(firstFailure(Exit.succeed({ id: "1", name: "Ada" })))
+//   try Console.log(firstFailure(Exit.fail(new NotFound({ id: "7" }))).includes("NotFound"))
 // Output: ok
 // Output: true
 ```
@@ -1061,6 +1156,13 @@ effect function wrappedCalls(text: string, path: string, ticker: EventEmitter) {
 async function greetFromTypeScript() {
   return await runPromise(greetUser("1"))
 }
+// Run in an effect function:
+//   const output = try Console.Console
+//   provide Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))]) {
+//     const ticker = try sync(() => makeTicker())
+//     const value = try wrappedCalls('{"ok":true}', ".", ticker)
+//     try Console.log(try Effect.try(() => JSON.stringify({ ...value, up: typeof value.up, key: value.key.type, free: typeof value.free })))
+//   }
 // Output: Hello, Ada
 // Output: {"up":"number","parsed":{"ok":true},"key":"secret","free":"number","tick":7,"name":"Ada"}
 ```
@@ -1105,6 +1207,7 @@ export function isSymbolicLink(path: string): boolean {
 import { isSymbolicLink } from "./links.ts"
 
 const linked = (path: string) => sync(() => isSymbolicLink(path))
+// Run in an effect function: try Console.log(try linked("."))
 // Output: false
 ```
 
@@ -1138,6 +1241,11 @@ effect function both() {
   const orders = fork getOrders("1")
   return [join user, join orders]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try both()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [{"id":"1","name":"Ada"},1]
 ```
 
@@ -1160,6 +1268,11 @@ effect function many() {
   const pair = try all({ user: getUser("1"), orders: getOrders("1") }, { concurrency: "unbounded" })
   return { user, orders, pair }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try many()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"user":{"id":"1","name":"Ada"},"orders":1,"pair":{"user":{"id":"1","name":"Ada"},"orders":1}}
 ```
 
@@ -1181,6 +1294,18 @@ effect function outcomes() {
   const results = try.allSettled [getUser("1"), getOrders("1")]
   return { fastest, results }
 }
+// Run in an effect function:
+//   const value = try outcomes()
+//   try Console.log(value.fastest.name)
+//   try Console.log(try Effect.try(() => JSON.stringify(value.results.map((result) => result._tag))))
+//   {
+//     const jsonValue = (try.allSettled [getUser("missing"), getOrders("1")]).map((result) => result._tag)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   {
+//     const jsonValue = (try.all [exit(die("defect")), exit(getOrders("1"))]).map((e) => e._tag)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: Ada
 // Output: ["Success","Success"]
 // Output: ["Failure","Success"]
@@ -1206,6 +1331,7 @@ effect function withHeartbeat() {
     return try getUser("1")
   })
 }
+// Run in an effect function: provide Logger.layer([]) { try Console.log((try withHeartbeat()).name) }
 // Output: Ada
 ```
 
@@ -1231,6 +1357,7 @@ effect function background() {
   try Scope.close(scope, Exit.void)
   return fiber
 }
+// Run in an effect function: try Console.log(Exit.isFailure(try Fiber.await(try background())))
 // Output: true
 ```
 
@@ -1253,6 +1380,7 @@ effect function signal() {
   try Deferred.succeed(ready, "go")
   return try Deferred.await(ready)
 }
+// Run in an effect function: try Console.log(try signal())
 // Output: go
 ```
 
@@ -1281,6 +1409,7 @@ effect function next() {
     }
   ]
 }
+// Run in an effect function: try Console.log(try next())
 // Output: ran build
 ```
 
@@ -1304,6 +1433,9 @@ effect function logAll(ids: string[]) {
     try log((try getUser(id)).name)
   }
 }
+// Run in an effect function:
+//   const output = try Console.Console
+//   try Effect.provide(logAll(["1", "2"]), Logger.layer([Logger.make(({ message }) => output.log(...(message as unknown[])))]))
 // Output: Ada
 // Output: Ada
 ```

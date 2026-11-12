@@ -43,6 +43,10 @@ const TrackingCode = Schema.TemplateLiteral(["pkg_", Schema.String])
 
 enum Priority { Normal = "normal", Urgent = "urgent" }
 const PrioritySchema = Schema.Enum(Priority)
+// Run in an effect function:
+//   try Console.log(Schema.is(Measurement)(Infinity), Schema.is(UnrestrictedNumber)(Infinity))
+//   try Console.log(Schema.is(MarkerSchema)(Marker), Schema.is(MarkerSchema)(Symbol("shipping/marker")))
+//   try Console.log(Schema.is(PendingState)("sent"), Schema.is(TrackingCode)("pkg_76"), Schema.is(PrioritySchema)("urgent"))
 ```
 
 ```text
@@ -64,6 +68,11 @@ effect function locateBin(input: unknown) {
   return try Schema.decodeUnknownEffect(BinPosition)(input)
 }
 // "bin:12/upper" becomes ["bin:", 12, "/", "upper"]
+// Run in an effect function:
+//   {
+//     const jsonValue = try locateBin("bin:12/upper")
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -89,6 +98,9 @@ effect function describeLocation(input: unknown) {
   const location = try Schema.decodeUnknownEffect(Location)(input)
   return location._tag === "Warehouse" ? location.aisle : String(location.route)
 }
+// Run in an effect function:
+//   try Console.log(try describeLocation({ _tag: "Warehouse", aisle: "A3" }))
+//   try Console.log(try describeLocation({ _tag: "Courier", route: 7 }))
 ```
 
 ```text
@@ -121,6 +133,10 @@ const BoundedReadings = Schema.TupleWithRest(
   Schema.Tuple([Schema.String]),
   [Schema.Finite, Schema.Boolean]
 )
+// Run in an effect function:
+//   try Console.log(Schema.is(Coordinate)([1, 2]), Schema.is(Extended)([1, 2, "dock", true]))
+//   try Console.log(Schema.is(Readings)(["sensor"]), Schema.is(Readings)(["sensor", 2, true]), Schema.is(Readings)(["sensor", true]))
+//   try Console.log(Schema.is(BoundedReadings)(["sensor", 1, 2, false]))
 ```
 
 ```text
@@ -149,6 +165,12 @@ effect function addLabel(input: unknown) {
   labels.push("inspected")
   return labels
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try addLabel(["fragile"])
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(Schema.is(RequiredLabels)([]))
 ```
 
 ```text
@@ -177,6 +199,12 @@ const LabeledCounters = Schema.StructWithRest(
   Schema.Struct({ total: Schema.Int }),
   [Schema.Record(Schema.String, Schema.Int)]
 )
+// Run in an effect function:
+//   {
+//     const jsonValue = try Schema.decodeUnknownEffect(NormalizedStock)({ NORTH: 2, north: 3 })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(Schema.is(RegionalStock)({ east: 1 }), Schema.is(LabeledCounters)({ total: 3, east: 3 }))
 ```
 
 ```text
@@ -210,6 +238,12 @@ const Marked = Schema.Struct({
 effect function createPacked() {
   return try Packed.makeEffect({ reference: "box-76", weight: 2 })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try createPacked()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(Schema.is(Packed)({ reference: "box-76", weight: 2 }))
 ```
 
 ```text
@@ -235,6 +269,9 @@ const PalletSchema = Schema.instanceOf(Pallet).check(
 effect function readPallet(input: unknown) {
   return try Schema.decodeUnknownEffect(PalletSchema)(input)
 }
+// Run in an effect function:
+//   try Console.log((try readPallet(new Pallet("P-1"))).code)
+//   try Effect.catch(readPallet({ code: "P-1" }), (error) => Console.log(error._tag))
 ```
 
 ```text
@@ -253,6 +290,12 @@ const Patch = Package.mapFields(Struct.map(Schema.optionalKey))
 const LoosePatch = Package.mapFields(Struct.map(Schema.optional))
 const RequiredPatch = Patch.mapFields(Struct.map(Schema.requiredKey))
 const Editable = Package.mapFields(Struct.map(Schema.mutableKey))
+// Run in an effect function:
+//   {
+//     const jsonValue = try Schema.decodeUnknownEffect(PackageSummary)({ reference: "box-76", weight: 2, comment: "ok" })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(Schema.is(Patch)({ comment: undefined }), Schema.is(LoosePatch)({ comment: undefined }), Schema.is(RequiredPatch)({}))
 ```
 
 ```text

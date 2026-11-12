@@ -24,6 +24,7 @@ effect function loadWithRetries() {
     return "Snapshot ready"
   }, { times: 3 })
 }
+// Run in an effect function: try Console.log(try loadWithRetries())
 ```
 
 ```text
@@ -54,6 +55,7 @@ effect function sendTransient() {
     while: (error) => error.transient
   })
 }
+// Run in an effect function: try Console.log((try flip(sendTransient())).transient)
 ```
 
 ```text
@@ -76,6 +78,9 @@ effect function sendWithBackoff() {
 effect function sendThreeMoreTimes() {
   return try retry(sendRequest(), Schedule.recurs(3))
 }
+// Run in an effect function:
+//   try Console.log((try flip(sendWithBackoff()))._tag)
+//   try Console.log((try flip(sendThreeMoreTimes()))._tag)
 ```
 
 ```text
@@ -98,6 +103,7 @@ effect function sendOrQueue() {
     }
   )
 }
+// Run in an effect function: try Console.log(try sendOrQueue())
 ```
 
 ```text

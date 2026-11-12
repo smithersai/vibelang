@@ -16,6 +16,7 @@ effect function pathSeparator() {
   const path = try Path.Path
   return path.sep
 }
+// Run in an effect function: provide NodePath.layer { try Console.log(try pathSeparator()) }
 // Output: /
 ```
 
@@ -41,6 +42,7 @@ effect function describeReport() {
     rebuilt: path.format(parsed)
   }
 }
+// Run in an effect function: provide NodePath.layer { { const jsonValue = try describeReport(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 // Output: {"joined":"reports/weekly.txt","normalized":"reports/weekly.txt","base":"weekly.txt","directory":"reports","extension":".txt","absolute":false,"rebuilt":"reports/weekly.txt"}
 ```
 
@@ -66,6 +68,7 @@ effect function asFileUrl(file: string) {
   const url = try path.toFileUrl(absolute)
   return try path.fromFileUrl(url)
 }
+// Run in an effect function: provide NodePath.layer { try Console.log(try asFileUrl("/reports/weekly.txt")) }
 // Output: /reports/weekly.txt
 ```
 

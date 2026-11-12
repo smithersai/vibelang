@@ -35,6 +35,11 @@ effect function quantityMessage(value: number) {
   })
 }
 // string!string
+// Run in an effect function:
+//   try Console.log(try publicQuantity(2))
+//   try Console.log(try flip(publicQuantity(0)))
+//   try Console.log(try quantityMessage(2))
+//   try Console.log(try flip(quantityMessage(0)))
 ```
 
 ```text
@@ -68,6 +73,11 @@ effect function cappedQuantity(value: number) {
     () => succeed(20)
   )
 }
+// Run in an effect function:
+//   try Console.log(try boundedQuantity(20))
+//   try Console.log(try flip(boundedQuantity(21)))
+//   try Console.log(try cappedQuantity(21))
+//   try Console.log((try flip(cappedQuantity(0)))._tag)
 ```
 
 ```text
@@ -97,6 +107,10 @@ effect function observeDefect() {
     () => Console.log("Inventory defect recorded")
   )
 }
+// Run in an effect function:
+//   try Console.log(try observeQuantity(2))
+//   try Console.log((try flip(observeQuantity(0)))._tag)
+//   try Console.log(try matchCause(observeDefect(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
 ```
 
 ```text
@@ -130,6 +144,18 @@ effect function quantityOrErrorValue(value: number) {
   return quantity(value) catch effect (error) => error
 }
 // (number | InvalidQuantity)!!
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspectQuantity(2)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   {
+//     const jsonValue = try inspectQuantity(0)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(try quantityOrErrorValue(2))
+//   const value = try quantityOrErrorValue(0)
+//   try Console.log(typeof value === "number" ? value : value._tag)
 ```
 
 ```text
@@ -148,6 +174,7 @@ effect function rejectedQuantity() {
   return try flip(quantity(0))
 }
 // InvalidQuantity!number
+// Run in an effect function: try Console.log((try rejectedQuantity())._tag)
 ```
 
 ```text

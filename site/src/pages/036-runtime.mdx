@@ -16,6 +16,10 @@ effect function operation() {
 }
 
 const outcome = Effect.runPromiseExit(operation())
+// Run in an effect function:
+//   const result = try promise(() => outcome)
+//   try Console.log(result._tag)
+//   if (Exit.isSuccess(result)) try Console.log(result.value)
 // Output: Success
 // Output: complete
 ```
@@ -41,6 +45,7 @@ effect function label() {
 }
 
 const result = Effect.runSyncWith(context)(label())
+// Run in an effect function: try Console.log(result)
 // Output: [queued]
 ```
 
@@ -65,6 +70,7 @@ effect function startup() {
   }
   try log("visible after")
 }
+// Run in an effect function: provide Visible { try startup() }
 // Output: visible before
 // Output: visible after
 ```
@@ -85,6 +91,7 @@ effect function roll(): number!! {
     return try Random.nextInt
   }
 }
+// Run in an effect function: try Console.log(try roll())
 // Output: 4
 ```
 
@@ -106,6 +113,7 @@ export effect function notify(message: string) {
   const notifications = try Notifications
   try notifications.send(message)
 }
+// Run in an effect function: provide NotificationsLive { try notify("direct event") }
 // Output: direct event
 ```
 
@@ -125,6 +133,7 @@ export async function example() {
     await runtime.dispose()
   }
 }
+// Run: return example()
 // Output: first event
 // Output: second event
 ```
@@ -148,6 +157,9 @@ export function makeNotificationHost() {
     close: () => runtime.dispose()
   }
 }
+// Run:
+//   const host = makeNotificationHost()
+//   return host.onMessage("framework event").finally(() => host.close())
 // Output: framework event
 ```
 

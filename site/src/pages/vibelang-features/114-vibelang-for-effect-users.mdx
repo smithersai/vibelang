@@ -22,6 +22,7 @@ effect function greet(name: string) {
 effect function main() {
   return try retry(greet("Ada"), Schedule.recurs(2))
 }
+// Run in an effect function: try Console.log(try main())
 // Output: Hello, Ada
 // Output: Hello, Ada
 ```
@@ -280,6 +281,11 @@ effect function sequential() {
 effect function concurrent() {
   return try.all [greet("Ada"), greet("Grace")]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try sequential(), try concurrent()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: Hello, Ada
 // Output: Hello, Grace
 // Output: Hello, Ada
@@ -352,6 +358,9 @@ effect function reportTime() {
   try Console.log(now)
   return now
 }
+// Run in an effect function:
+//   const clock = try Clock.Clock
+//   provide Clock.Clock = { ...clock, currentTimeMillis: succeed(123), currentTimeMillisUnsafe: () => 123 } { try Console.log(try reportTime()) }
 // Output: 123
 // Output: 123
 ```
@@ -472,6 +481,11 @@ effect function displayName(id: string) {
     when Missing: `Unknown user: ${error.id}`;
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try displayName("ada"), try displayName("missing")]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["Ada","Unknown user: missing"]
 ```
 

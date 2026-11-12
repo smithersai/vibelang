@@ -20,6 +20,11 @@ effect function countLocally() {
   try Ref.update(counter, (n) => n + 1)
   return try Ref.get(counter)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try countLocally(), try countLocally()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [1,1]
 ```
 
@@ -37,6 +42,11 @@ effect function allocateIds() {
   return { first, second, current }
 }
 // Returns { first: 100, second: 101, current: 102 }.
+// Run in an effect function:
+//   {
+//     const jsonValue = try allocateIds()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"first":100,"second":101,"current":102}
 ```
 
@@ -53,6 +63,7 @@ effect function countCompleted() {
   }
   return try Ref.get(completed) // 4
 }
+// Run in an effect function: try Console.log(try countCompleted())
 // Output: 4
 ```
 
@@ -82,6 +93,11 @@ effect function handleRequests() {
     return try requests.read()
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try handleRequests(), try handleRequests()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [2,2]
 ```
 
@@ -103,6 +119,11 @@ effect function collectNames() {
     return try Ref.get(names)
   })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = (try collectNames()).toSorted()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["east","west"]
 ```
 

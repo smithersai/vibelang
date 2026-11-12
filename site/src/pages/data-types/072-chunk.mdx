@@ -17,6 +17,7 @@ function collectBatches(batches: ReadonlyArray<ReadonlyArray<string>>) {
   }
   return result
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(Chunk.toReadonlyArray(collectBatches([["queued"], ["running", "done"]])))))
 ```
 
 ```text
@@ -32,6 +33,7 @@ const empty = Chunk.empty<string>()
 const pair = Chunk.make("north", "south")
 const fromArray = Chunk.fromIterable(["east", "west"])
 const fromSet = Chunk.fromIterable(new Set(["center"]))
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Chunk.toReadonlyArray(empty), Chunk.toReadonlyArray(pair), Chunk.toReadonlyArray(fromArray), Chunk.toReadonlyArray(fromSet)])))
 ```
 
 ```text
@@ -48,6 +50,7 @@ function ownedBatch() {
   return Chunk.fromArrayUnsafe(values)
   // Ownership is handed to the chunk. Never mutate values afterward.
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(Chunk.toReadonlyArray(ownedBatch()))))
 ```
 
 ```text
@@ -64,6 +67,7 @@ const extended = Chunk.appendAll(original, Chunk.make("published"))
 const remaining = Chunk.drop(extended, 1)
 Chunk.toReadonlyArray(original) // ["draft", "review"]
 Chunk.toReadonlyArray(remaining) // ["review", "published"]
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Chunk.toReadonlyArray(original), Chunk.toReadonlyArray(remaining)])))
 ```
 
 ```text
@@ -80,6 +84,7 @@ const same = Chunk.make({ code: "A" }, { code: "B" })
 const reversed = Chunk.make({ code: "B" }, { code: "A" })
 Equal.equals(first, same) // true
 Equal.equals(first, reversed) // false
+// Run in an effect function: try Console.log(Equal.equals(first, same), Equal.equals(first, reversed))
 ```
 
 ```text
@@ -95,6 +100,7 @@ const nonempty = Chunk.toReadonlyArray(Chunk.make(7, 8))
 const none = Chunk.toReadonlyArray(Chunk.empty<number>())
 const mutableCopy = [...nonempty]
 mutableCopy.push(9)
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([nonempty, none, mutableCopy])))
 ```
 
 ```text

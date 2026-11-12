@@ -27,6 +27,9 @@ effect function makePrices() {
   })
 }
 // Cache.Cache<string, number, MissingProduct>!!Products
+// Run in an effect function:
+//   const prices = try Effect.provide(makePrices(), Layer.succeed(Products, { price: (sku) => succeed(42) }))
+//   try Console.log(try Cache.get(prices, "ink"))
 // Output: 42
 ```
 
@@ -53,6 +56,11 @@ effect function concurrentLookup() {
   return { values, calls }
 }
 // Returns { values: ["NORTH", "NORTH", "NORTH"], calls: 1 }.
+// Run in an effect function:
+//   {
+//     const jsonValue = try concurrentLookup()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"values":["NORTH","NORTH","NORTH"],"calls":1}
 ```
 
@@ -68,6 +76,10 @@ effect function makePermanentNames() {
     lookup: (id: string) => succeed(`item-${id}`)
   })
 }
+// Run in an effect function:
+//   const names = try makePermanentNames()
+//   try Console.log(try Cache.get(names, "ink"))
+//   try Console.log(try Cache.get(names, "blue"))
 // Output: item-ink
 // Output: item-blue
 ```
@@ -87,6 +99,11 @@ effect function inspect() {
     entries: Array.from(try Cache.entries(cache))
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspect()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"present":true,"size":1,"keys":["paper"],"entries":[["paper",5]]}
 ```
 
@@ -109,6 +126,11 @@ effect function refreshExample() {
   try Cache.invalidateAll(cache)
   return { first, refreshed, reloaded }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try refreshExample()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"first":"profile:1","refreshed":"profile:2","reloaded":"profile:3"}
 ```
 

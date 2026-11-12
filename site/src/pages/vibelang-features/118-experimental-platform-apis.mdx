@@ -77,6 +77,7 @@ Effect 4.0.6 and 4.1.1 already provide `Base64` and `Base64Url` in `effect/encod
 export effect function decodeLenient(input: string) {
   return try Effect.fromResult(Experimental.Encoding.decodeBase64Lenient(input))
 }
+// Run in an effect function: try Console.log((try decodeLenient(" Z g ")).length)
 // Output: 1
 ```
 
@@ -99,6 +100,7 @@ export effect function authoritativeTxt(server: string, fqdn: string) {
   const dns = try Experimental.Dns.Dns
   return try dns.resolveTxtAt(server, fqdn)
 }
+// Run in an effect function: provide Experimental.Dns.layerTest({ resolveTxtAt: (_server, _name) => succeed(["challenge-value"]) }) { try Console.log((try authoritativeTxt("192.0.2.53", "_acme-challenge.example.test"))[0]) }
 // Output: challenge-value
 ```
 
@@ -137,6 +139,7 @@ effect function runnable() {
     return { script: canRun(`${dir}/build.sh`) catch () => false, notes: canRun(`${dir}/notes.txt`) catch () => false }
   })
 }
+// Run in an effect function: provide ExperimentalNodeServices.layer { { const jsonValue = try runnable(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 // Output: {"script":true,"notes":false}
 ```
 
@@ -173,6 +176,7 @@ effect function signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
   const crypto = try Experimental.Crypto.Crypto
   return Hex.encode(try crypto.hmac("SHA-256", secret, new TextEncoder().encode(body)))
 }
+// Run in an effect function: provide ExperimentalNodeServices.layer { try Console.log(try signature(Redacted.make(new TextEncoder().encode("Jefe")), "what do ya want for nothing?")) }
 // Output: 5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843
 ```
 
@@ -330,6 +334,7 @@ export effect function platformName() {
   const process = try Experimental.Process.Process
   return (try process.platform) === "win32" ? "Windows" : "POSIX"
 }
+// Run in an effect function: provide Experimental.Process.layerTest({ platform: succeed("win32") }) { try Console.log(try platformName()) }
 // Output: Windows
 ```
 
@@ -348,6 +353,7 @@ export effect function lead(name: string) {
     try Console.log("another tab took the lock")
   })
 }
+// Run in an effect function: provide Experimental.Locks.layerTest({ hold: () => succeed({ lost: Effect.void }) }) { try lead("engine") }
 // Output: leading engine
 // Output: another tab took the lock
 ```
@@ -373,6 +379,7 @@ export effect function reducedMotion() {
   const mediaQuery = try Experimental.MediaQuery.MediaQuery
   return try mediaQuery.matches("(prefers-reduced-motion: reduce)")
 }
+// Run in an effect function: provide Experimental.MediaQuery.layerTest({ matches: effect (query) => query === "(prefers-reduced-motion: reduce)" }) { try Console.log(try reducedMotion()) }
 // Output: true
 ```
 
@@ -399,6 +406,7 @@ export effect function closeMenu() {
   try animations.settled("#menu-items")
   return `closed at ${time}`
 }
+// Run in an effect function: provide Experimental.Animations.layerTest({ nextFrame: Effect.succeed(16) }) { try Console.log(try closeMenu()) }
 // Output: closed at 16
 ```
 
@@ -444,6 +452,7 @@ export effect function preview(file: Blob) {
   const reader = try Experimental.FileReader.FileReader
   return try reader.readAsDataUrl(file)
 }
+// Run in an effect function: provide Experimental.FileReader.layerTest() { try Console.log(try preview(try Effect.try(() => note()))) }
 // Output: data:text/plain;base64,aGk=
 ```
 
@@ -480,6 +489,7 @@ export effect function follow(element: Element) {
   })
   return resizes
 }
+// Run in an effect function: provide Experimental.ResizeObserver.layerTest({ observe: effect (_element, onResize) => onResize([]) }) { try Console.log(try Effect.scoped(follow({} as Element))) }
 // Output: 1
 ```
 
@@ -568,6 +578,7 @@ export effect function canShareMemory() {
   const browser = try Experimental.BrowserInfo.BrowserInfo
   return (try browser.crossOriginIsolated) && !(try browser.userAgent).includes("Firefox/")
 }
+// Run in an effect function: provide Experimental.BrowserInfo.layerTest({ crossOriginIsolated: Effect.succeed(true) }) { try Console.log(try canShareMemory()) }
 // Output: true
 ```
 
@@ -597,6 +608,7 @@ effect function install() {
   const child = try Experimental.ChildProcess.ChildProcess
   return try child.runInherited("package-manager", ["install"], { cwd: "/test/work", shell: false })
 }
+// Run in an effect function: provide Experimental.ChildProcess.layerTest() { try Console.log(try install()) }
 // Output: 0
 ```
 
@@ -686,6 +698,7 @@ export effect function placeOrder(order: string) {
     return try Order.execute({ order })
   }
 }
+// Run in an effect function: try Console.log(try placeOrder("A-1"))
 // Output: 6
 ```
 
@@ -786,6 +799,7 @@ export effect function nightly() {
   const report = try Experimental.Eval.compare(try Experimental.Eval.load(committed), run)
   return Experimental.Eval.gate(report, greeting.gate).summary
 }
+// Run in an effect function: try Console.log(try nightly())
 // Output: passed
 ```
 
@@ -867,6 +881,7 @@ export effect function judged() {
   const result = try polite.score({ input: "Greet Ada", output: "Hello, Ada" })
   return result.score
 }
+// Run in an effect function: try Console.log(try judged())
 // Output: 1
 ```
 
@@ -933,6 +948,7 @@ export effect function decided() {
   const result = try greets.score({ input: "Ada", output: "Hello, Ada" })
   return result.score
 }
+// Run in an effect function: try Console.log(try decided())
 // Output: 0.75
 ```
 
@@ -968,6 +984,7 @@ export effect function scoredRuns() {
     return (try store.aggregate()).count
   }
 }
+// Run in an effect function: try Console.log(try scoredRuns())
 // Output: 1
 ```
 
@@ -1011,6 +1028,7 @@ export effect function labelCrash() {
     return result.type
   }
 }
+// Run in an effect function: try Console.log(try labelCrash())
 // Output: bug
 ```
 
@@ -1121,6 +1139,7 @@ export effect function changedFiles() {
     return `${manifest}: ${status.length} changed`
   }
 }
+// Run in an effect function: try Console.log(try changedFiles())
 // Output: {"name":"demo"}: 2 changed
 ```
 
@@ -1177,6 +1196,7 @@ export effect function crashMidStep() {
     return `${total}: ${done.join(", ")}`
   }
 }
+// Run in an effect function: try Console.log(try crashMidStep())
 // Output: 6: step 1, step 2, step 3
 ```
 

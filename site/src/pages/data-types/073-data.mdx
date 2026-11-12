@@ -33,6 +33,11 @@ function describe(delivery: Delivery) {
     when { _tag: "Rejected", let reason }: `Rejected: ${reason}`;
   }
 }
+// Run in an effect function:
+//   try Console.log(describe(Delivery.Waiting()))
+//   try Console.log(describe(sent))
+//   try Console.log(describe(Delivery.Rejected({ reason: "address missing" })))
+//   try Console.log(Equal.equals(sent, Delivery.Sent({ tracking: "parcel-8" })))
 ```
 
 ```text
@@ -80,6 +85,9 @@ function count(state: LoadState<ReadonlyArray<string>, string>) {
     default: 0;
   }
 }
+// Run in an effect function:
+//   try Console.log(try Effect.try(() => JSON.stringify([loaded, failed, idle])))
+//   try Console.log(count(loaded), count(idle))
 ```
 
 ```text
@@ -137,6 +145,7 @@ function makeRoute(name: string) {
   return { _tag: "Route" as const, name }
 }
 Equal.equals(makeRoute("inbox"), makeRoute("inbox")) // true
+// Run in an effect function: try Console.log(Equal.equals(first, second), Equal.equals(["inbox", 5] as const, ["inbox", 5] as const), Equal.equals([2, 4, 6], [2, 4, 6]), Equal.equals(makeRoute("inbox"), makeRoute("inbox")))
 ```
 
 ```text
@@ -160,6 +169,7 @@ const label = new Label({ text: "pending" })
 label.upper // "PENDING"
 Equal.equals(label, new Label({ text: "pending" })) // true
 new Archived({ documentId: "doc-3" })._tag // "Archived"
+// Run in an effect function: try Console.log(label.upper, Equal.equals(label, new Label({ text: "pending" })), new Archived({ documentId: "doc-3" })._tag)
 ```
 
 ```text
@@ -192,6 +202,11 @@ const describe = Delivery.$match({
   Rejected: ({ reason }) => `Rejected: ${reason}`
 })
 describe(sent) // "Tracking: parcel-8"
+// Run in an effect function:
+//   try Console.log(isSent(sent))
+//   try Console.log(describe(waiting))
+//   try Console.log(describe(sent))
+//   try Console.log(describe(rejected))
 ```
 
 ```text
@@ -220,6 +235,7 @@ const LoadState = Data.taggedEnum<LoadStateDefinition>()
 const loaded = LoadState.Ready({ value: ["one", "two"] })
 const failed = LoadState.Failed({ error: "offline" })
 const idle = LoadState.Idle()
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([loaded, failed, idle])))
 ```
 
 ```text
@@ -265,6 +281,13 @@ effect function documentOrDraft(id: string) {
     when DocumentMissing: ({ id: "draft" });
   }
 }
+// Run in an effect function:
+//   try Console.log(new InvalidDocument({ message: "invalid", line: 3 }).line)
+//   {
+//     const jsonValue = [try documentOrDraft("doc-3"), try documentOrDraft("")]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(requireDocument("") catch (error) => error._tag)
 ```
 
 ```text
@@ -289,6 +312,12 @@ effect function decodeDocument(text: string) {
   })
 }
 // any!DocumentDecodeError
+// Run in an effect function:
+//   {
+//     const jsonValue = try decodeDocument("{\"id\":3}")
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(decodeDocument("{") catch (error) => `${error._tag} ${error.cause instanceof SyntaxError}`)
 ```
 
 ```text

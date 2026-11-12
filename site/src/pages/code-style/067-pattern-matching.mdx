@@ -23,6 +23,11 @@ function describeJob(input: { state: string; attempts: number }) {
     default: `state: ${input.state}`;
   }
 }
+// Run in an effect function:
+//   try Console.log(describeInput(3))
+//   try Console.log(describeInput("news"))
+//   try Console.log(describeJob({ state: "queued", attempts: 2 }))
+//   try Console.log(describeJob({ state: "done", attempts: 1 }))
 ```
 
 ```text
@@ -57,6 +62,11 @@ function jobLabel(job: Job) {
     when { _tag: "Done", let output }: output;
   }
 }
+// Run in an effect function:
+//   try Console.log(classifyRetry({ status: "failed", attempts: 3 }), classifyRetry({ status: "failed", attempts: 2 }), classifyRetry({ status: "done", attempts: 5 }))
+//   try Console.log(jobLabel({ _tag: "Queued" }))
+//   try Console.log(jobLabel({ _tag: "Running", worker: "w-1" }))
+//   try Console.log(jobLabel({ _tag: "Done", output: "report.csv" }))
 ```
 
 ```text
@@ -84,6 +94,9 @@ function weekend(day: string) {
     default: false;
   }
 }
+// Run in an effect function:
+//   try Console.log(availability("active"), availability("paused"), availability("closed"))
+//   try Console.log(weekend("Saturday"), weekend("Sunday"), weekend("Monday"))
 ```
 
 ```text
@@ -102,6 +115,9 @@ function display(input: number | boolean): string {
     when Boolean: input ? "enabled" : "disabled";
   }
 }
+// Run in an effect function:
+//   const rendered = try Effect.try(() => [display(3), display(true), display(false)])
+//   try Console.log(...rendered)
 ```
 
 ```text
@@ -121,6 +137,7 @@ function phaseLabel(phase: Phase) {
     when "published": "Published";
   }
 }
+// Run in an effect function: try Console.log(phaseLabel("draft"), phaseLabel("published"))
 ```
 
 ```text
@@ -154,6 +171,10 @@ function commandResult(command: Command) {
     default: Result.fail(command);
   }
 }
+// Run in an effect function:
+//   try Console.log(withDefault("start"), withDefault("stop"))
+//   try Console.log(Option.getOrNull(optionalCommand("start")), Option.isNone(optionalCommand("help")))
+//   try Console.log(Result.getOrElse(commandResult("start"), (error) => error), Result.getOrElse(commandResult("help"), (error) => error))
 ```
 
 ```text
@@ -178,6 +199,7 @@ const describe = pipe(
 function describeAll(inputs: ReadonlyArray<number | string>) {
   return inputs.map(describe)
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(describeAll([3, "news"]))))
 ```
 
 ```text

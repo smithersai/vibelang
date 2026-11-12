@@ -21,6 +21,9 @@ effect function chooseQueues() {
 effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
+// Run in an effect function:
+//   const queues = try chooseQueues()
+//   try Console.log(queues.jobs.capacity, queues.optionalEvents.capacity, queues.recentPositions.capacity, queues.unrestricted.capacity)
 // Output: 32 32 32 Infinity
 ```
 
@@ -43,6 +46,11 @@ effect function rejectedBatch() {
   const queue = try Queue.dropping<number>(2)
   return try Queue.offerAll(queue, [10, 20, 30]) // [30]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try offerWithBackpressure(), try rejectedBatch()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [[10,20],[30]]
 ```
 
@@ -61,6 +69,12 @@ effect function consumeBatches() {
   const empty = try Queue.clear(queue)           // []
   return { first, optional, pair, batch, empty }
 }
+// Run in an effect function:
+//   const result = try consumeBatches()
+//   {
+//     const jsonValue = [result.first, Option.getOrElse(result.optional, () => 0), result.pair, result.batch, result.empty]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [1,2,[3,4],[5,6],[]]
 ```
 
@@ -79,6 +93,11 @@ effect function inspectQueue() {
   }
 }
 // Returns { capacity: 2, size: 1, full: false }.
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspectQueue()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"capacity":2,"size":1,"full":false}
 ```
 
@@ -105,6 +124,13 @@ effect function stopImmediately() {
   try Queue.shutdown(queue)
   return try Fiber.await(waiter)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try finishNormally()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   const stopped = try stopImmediately()
+//   try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 // Output: [7,8]
 // Output: queue closed
 // Output: true
@@ -130,6 +156,7 @@ effect function handoff() {
   try send(Queue.asEnqueue(queue), "ready")
   return try receive(Queue.asDequeue(queue))
 }
+// Run in an effect function: try Console.log(try handoff())
 // Output: ready
 ```
 

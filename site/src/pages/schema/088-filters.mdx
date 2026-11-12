@@ -17,6 +17,9 @@ const ShelfCode = Schema.String.check(
 effect function readShelf(input: unknown) {
   return try Schema.decodeUnknownEffect(ShelfCode)(input)
 }
+// Run in an effect function:
+//   try Console.log(try readShelf("S-12"))
+//   try Effect.catch(readShelf("A-12"), (error) => Console.log(error.message))
 ```
 
 ```text
@@ -38,6 +41,9 @@ const FourDigits = Schema.String.check(
     toJsonSchema: () => ({ pattern: "^[0-9]{4}$" })
   })
 )
+// Run in an effect function:
+//   try Console.log(Schema.is(FourDigits)("1234"))
+//   try Effect.catch(Schema.decodeUnknownEffect(FourDigits)("abc"), (error) => Console.log(error.message))
 ```
 
 ```text
@@ -70,6 +76,7 @@ const DispatchWindow = Schema.Struct({
 effect function validateWindow(input: unknown) {
   return try Schema.decodeUnknownEffect(DispatchWindow)(input, { errors: "all" })
 }
+// Run in an effect function: try Effect.catch(validateWindow({ start: 2, end: 1, destination: "" }), (error) => Console.log(error.message))
 ```
 
 ```text
@@ -93,6 +100,7 @@ const Count = Schema.Finite.check(
 const Ratio = Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }))
 const Batch = Schema.Array(Schema.String).check(Schema.isBetweenLength(1, 8))
 const Serial = Schema.BigInt.check(Schema.isGreaterThanBigInt(0n))
+// Run in an effect function: try Console.log(Schema.is(Label)(" ok"), Schema.is(Count)(4), Schema.is(Count)(3), Schema.is(Ratio)(2), Schema.is(Batch)([]), Schema.is(Serial)(1n))
 ```
 
 ```text
@@ -121,6 +129,10 @@ const HoldDuration = Schema.Duration.check(
     minimum: Duration.seconds(1), maximum: Duration.seconds(30)
   }))
 )
+// Run in an effect function:
+//   try Console.log(Schema.is(ShipDate)(new Date("2026-06-01T00:00:00Z")), Schema.is(ShipDate)(new Date("invalid")))
+//   try Console.log(Schema.is(try sync(() => boundedPriceSchema()))(try sync(() => BigDecimal.fromStringUnsafe("1.25"))))
+//   try Console.log(Schema.is(HoldDuration)(Duration.seconds(5)), Schema.is(HoldDuration)(Duration.seconds(31)))
 ```
 
 ```text

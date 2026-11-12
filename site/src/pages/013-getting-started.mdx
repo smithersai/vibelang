@@ -57,6 +57,7 @@ effect function main() {
   const recovered = greeting("") catch (error) => `Recovered from ${error._tag}`
   try Console.log(recovered)
 }
+// Run in an effect function: try main()
 // Output: Hello, VibeLang!
 // Output: Recovered from EmptyName
 ```

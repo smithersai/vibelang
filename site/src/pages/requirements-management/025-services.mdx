@@ -26,6 +26,12 @@ service Reporter {
 effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
+// Run in an effect function:
+//   provide Sequence = { next: effect () => 17 }, Reporter = { write: (message) => Console.log(message) } {
+//     const sequence = try Sequence
+//     const reporter = try Reporter
+//     try reporter.write(`ticket-${try sequence.next()}`)
+//   }
 // Output: ticket-17
 ```
 
@@ -121,6 +127,7 @@ effect function lookup(query: string) {
   const search = try Search
   return `${prefix}${try search.find(query)}`
 }
+// Run in an effect function: provide Prefix = "> ", Search = { find: effect (query) => `hit:${query}` } { try Console.log(try lookup("vibe")) }
 // Output: > hit:vibe
 ```
 
@@ -152,6 +159,9 @@ effect function readImplementation() {
   return try sequence.next()
 }
 // number!!Sequence
+// Run in an effect function:
+//   try Console.log(try fixedLabel())
+//   provide Sequence = { next: effect () => 23 } { try Console.log(try nextLabel(), try readImplementation()) }
 // Output: ticket-17
 // Output: ticket-23 23
 ```
@@ -174,6 +184,7 @@ effect function endpoint(path: string) {
   return `${settings.baseUrl}/${path}`
 }
 // string!!Settings
+// Run in an effect function: provide Settings = { baseUrl: "https://example.test" } { try Console.log(try endpoint("tickets")) }
 // Output: https://example.test/tickets
 ```
 
@@ -215,6 +226,11 @@ const ReporterTest = Layer.succeed(Reporter, {
 effect function testAnnouncement() {
   provide Layer.merge(SequenceTest, ReporterTest) { return try announceTicket() }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try testAnnouncement()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: "ticket-17"
 ```
 
@@ -230,6 +246,7 @@ const testContext = Context.add(
 effect function testWithContext() {
   provide testContext { return try announceTicket() }
 }
+// Run in an effect function: try Console.log(try testWithContext())
 // Output: ticket-17
 ```
 
@@ -245,6 +262,9 @@ effect function optionalAnnouncement(message: string) {
   return true
 }
 // boolean!!
+// Run in an effect function:
+//   try Console.log(try optionalAnnouncement("hello"))
+//   provide Reporter = { write: (message) => Console.log(message) } { try Console.log(try optionalAnnouncement("hello")) }
 // Output: false
 // Output: hello
 // Output: true
@@ -268,6 +288,7 @@ const ReporterLive = Layer.effect(Reporter, effect {
   }
 })
 // Layer<Reporter, never, ReportSettings>
+// Run in an effect function: provide ReportSettings = { prefix: "audit" } { provide ReporterLive { const reporter = try Reporter; try reporter.write("ready") } }
 // Output: audit: ready
 ```
 

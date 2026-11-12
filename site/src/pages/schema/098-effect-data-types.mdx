@@ -21,6 +21,11 @@ effect function configurationExample() {
   })
   return try DispatchConfig.parse(provider)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try configurationExample()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -42,6 +47,12 @@ effect function decodeContainers() {
   const exit = try Schema.decodeUnknownEffect(CountExit)(Exit.succeed("9"))
   return { option, result, exit }
 }
+// Run in an effect function:
+//   const values = try decodeContainers()
+//   try Console.log(values.option.isSome() ? values.option.value : "none")
+//   try Console.log(values.result.isFailure() ? values.result.failure : "success")
+//   try Console.log(values.exit._tag)
+//   try Console.log(try values.exit)
 ```
 
 ```text
@@ -59,6 +70,11 @@ effect function encodeResult() {
   return try Schema.encodeEffect(codec)(Result.succeed(9))
 }
 // { _tag: "Success", success: "9" }
+// Run in an effect function:
+//   {
+//     const jsonValue = try encodeResult()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -93,6 +109,18 @@ effect function collectionsFromJson() {
   const map = try Schema.decodeUnknownEffect(mapCodec)([["cold", "4"]])
   return { set, map }
 }
+// Run in an effect function:
+//   const values = try collectionsFromJson()
+//   try Console.log(try Effect.try(() => JSON.stringify(Array.from(values.set))))
+//   try Console.log(try Effect.try(() => JSON.stringify(Array.from(values.map))))
+//   {
+//     const jsonValue = Array.from(try Schema.decodeUnknownEffect(NativeSet)(new Set(["4", "7"])))
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   {
+//     const jsonValue = Array.from(try Schema.decodeUnknownEffect(NativeMap)(new Map([["cold", "4"]])))
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -116,6 +144,10 @@ effect function durations() {
   return { milliseconds, nanoseconds, json }
 }
 // json: { _tag: "Millis", value: 3000 }
+// Run in an effect function:
+//   const value = try durations()
+//   try Console.log(value.milliseconds, Duration.toMillis(value.nanoseconds))
+//   try Console.log(try Effect.try(() => JSON.stringify(value.json)))
 ```
 
 ```text
@@ -135,6 +167,11 @@ const NonSerializableToken = Schema.Redacted(Schema.String, {
 effect function readToken(input: unknown) {
   return try Schema.decodeUnknownEffect(AccessToken)(input)
 }
+// Run in an effect function:
+//   const value = try readToken("example-token")
+//   try Console.log(String(value))
+//   const codec = Schema.toCodecJson(NonSerializableToken)
+//   try Effect.catch(Schema.encodeEffect(codec)(value), (error) => Console.log(error._tag))
 ```
 
 ```text

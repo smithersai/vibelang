@@ -23,6 +23,9 @@ effect function startupMessage() {
 effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
+// Run in an effect function:
+//   const liveClock = try Clock.Clock
+//   provide Random.Random = { nextDoubleUnsafe: () => 0.25, nextIntUnsafe: () => 12 }, Clock.Clock = { ...liveClock, currentTimeMillis: succeed(1000), currentTimeMillisUnsafe: () => 1000 } { try startupMessage() }
 // Output: Started at 1000; sample=0.25
 ```
 
@@ -37,6 +40,7 @@ effect function configuredPort() {
   return try Port
 }
 // number!Config.ConfigError
+// Run in an effect function: provide ConfigProvider.layer(ConfigProvider.fromUnknown({})) { try Console.log(try configuredPort()) }
 // Output: 3000
 ```
 
@@ -50,6 +54,7 @@ effect function fixedRandomSample() {
     return try Random.next
   }
 }
+// Run in an effect function: try Console.log(try fixedRandomSample())
 // Output: 0.25
 ```
 
@@ -68,6 +73,9 @@ effect function defaultLabel(id: number) {
   return `${settings.prefix} ${id}`
 }
 // string!!
+// Run in an effect function:
+//   try Console.log(try defaultLabel(17))
+//   provide DisplaySettings = { prefix: "Order" } { try Console.log(try defaultLabel(17)) }
 // Output: Ticket 17
 // Output: Order 17
 ```
@@ -86,6 +94,9 @@ effect function reproduciblePairs() {
   const second = try Random.withSeed(pair(), "documentation-seed")
   return { first, second }
 }
+// Run in an effect function:
+//   const pairs = try reproduciblePairs()
+//   try Console.log(try stringify(pairs.first) === try stringify(pairs.second), pairs.first[0] !== pairs.first[1])
 // Output: true true
 ```
 

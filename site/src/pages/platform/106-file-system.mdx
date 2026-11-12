@@ -14,6 +14,7 @@ effect function readSettings() {
   const fs = try FileSystem.FileSystem
   return try fs.readFileString("./settings.json")
 }
+// Run in an effect function: provide FileSystem.layerNoop({ readFileString: () => succeed('{"theme":"dark"}') }) { try Console.log(try readSettings()) }
 // Output: {"theme":"dark"}
 ```
 
@@ -33,6 +34,7 @@ effect function saveSummary(text: string) {
   const content = try fs.readFileString("./output/summary.txt", "utf8")
   return { content, entries: try fs.readDirectory("./output") }
 }
+// Run in an effect function: provide NodeFileSystem.layer { { const jsonValue = try saveSummary("ready"); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 // Output: {"content":"ready","entries":["summary.txt"]}
 ```
 
@@ -64,6 +66,7 @@ effect function fileSize(path: string) {
     return (try file.stat).size
   })
 }
+// Run in an effect function: provide NodeFileSystem.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const path = try fs.makeTempFileScoped(); try fs.writeFileString(path, "hello"); try Console.log(String(try fileSize(path))) }) }
 // Output: 5
 ```
 
@@ -107,6 +110,7 @@ export const FilesTest = FileSystem.layerNoop({
   exists: (path) => succeed(path === "/fixtures/title.txt"),
   readFileString: () => succeed("Release notes")
 })
+// Run in an effect function: provide FilesTest { try Console.log(try readFixture()) }
 // Output: Release notes
 ```
 
@@ -121,7 +125,6 @@ it.effect("reads the configured title", () => effect {
     try Effect.try(() => assert.strictEqual(title, "Release notes"))
   }
 })
-// Output:
 ```
 
 `FileSystem.layerNoop` supplies a complete service with the methods you override. Its other methods fail or die; it is not an in-memory file system. Override every operation the test exercises, so unexpected access exposes a missing test behavior.

@@ -16,6 +16,10 @@ String(exampleKey) // "<redacted>"
 effect function reportConfiguration() {
   try Console.log(try Effect.try(() => JSON.stringify({ apiKey: exampleKey })))
 }
+// Run in an effect function:
+//   try Console.log(String(exampleKey))
+//   try reportConfiguration()
+//   try Console.log(try Effect.try(() => JSON.stringify(exampleKey)))
 ```
 
 ```text
@@ -39,6 +43,7 @@ effect function authenticate(token: Redacted.Redacted<string>) {
   return try client.authenticate(raw)
 }
 // boolean!Cause.UnknownError!CredentialsClient
+// Run in an effect function: provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try authenticate(Redacted.make("example-token")), try authenticate(Redacted.make("wrong-token"))) }
 ```
 
 ```text
@@ -54,6 +59,12 @@ effect function useOnce(raw: string) {
   const token = Redacted.make(raw)
   return try ensuring(authenticate(token), sync(() => Redacted.wipeUnsafe(token)))
 }
+// Run in an effect function:
+//   provide Layer.succeed(CredentialsClient, { authenticate: (token) => succeed(token === "example-token") }) { try Console.log(try useOnce("example-token")) }
+//   const wiped = Redacted.make("example-token")
+//   Redacted.wipeUnsafe(wiped)
+//   const failed = try exit(Effect.try(() => Redacted.value(wiped)))
+//   try Console.log(Exit.isFailure(failed), String(wiped))
 ```
 
 ```text
@@ -72,6 +83,7 @@ const second = Redacted.make("example-a")
 const third = Redacted.make("example-b")
 same(first, second) // true
 same(first, third) // false
+// Run in an effect function: try Console.log(same(first, second), same(first, third))
 ```
 
 ```text

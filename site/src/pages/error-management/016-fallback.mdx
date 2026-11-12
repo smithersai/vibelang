@@ -26,6 +26,7 @@ effect function title() {
   return latestTitle() catch effect () => try cachedTitle()
 }
 // string!!
+// Run in an effect function: try Console.log(try title())
 ```
 
 ```text
@@ -44,6 +45,7 @@ effect function titleInline() {
   }
 }
 // string!!
+// Run in an effect function: try Console.log(try titleInline())
 ```
 
 ```text
@@ -70,6 +72,7 @@ effect function titleOrPlaceholder() {
   return latestTitle() catch () => "No title available"
 }
 // string!!
+// Run in an effect function: try Console.log(try titleOrPlaceholder())
 ```
 
 ```text
@@ -90,6 +93,11 @@ effect function lookup(): Lookup!! {
     return { _tag: "Found" as const, title: try latestTitle() }
   } catch () => ({ _tag: "Offline" as const })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try lookup()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -108,6 +116,7 @@ effect function bestTitle() {
     succeed("Untitled issue")
   ])
 }
+// Run in an effect function: try Console.log(try bestTitle())
 ```
 
 ```text

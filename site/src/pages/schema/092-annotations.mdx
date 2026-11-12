@@ -24,6 +24,7 @@ const Destination = Schema.String.annotate({
 const Request = Schema.Struct({
   destination: Destination.annotateKey({ messageMissingKey: "Destination is required" })
 })
+// Run in an effect function: for (const input of [{}, { destination: 1 }, { destination: "" }]) { try Effect.catch(Schema.decodeUnknownEffect(Request)(input), (error) => Console.log(error.message)) }
 ```
 
 ```text
@@ -56,6 +57,12 @@ const Labels = Schema.Array(ReviewedLabel)
 effect function reviewLabels(input: unknown) {
   return try Schema.decodeUnknownEffect(Labels)(input, { concurrency: 3 })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try reviewLabels(["north", "south"])
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Effect.catch(reviewLabels([""]), (error) => Console.log(error.message))
 ```
 
 ```text
@@ -79,6 +86,10 @@ const OptionalLabel = Schema.String.pipe(
 effect function readLabel(input: unknown) {
   return try Schema.decodeUnknownEffect(OptionalLabel)(input)
 }
+// Run in an effect function:
+//   try Console.log(try readLabel("crate"))
+//   try Console.log(try readLabel(42))
+//   try Effect.catch(Schema.encodeUnknownEffect(OptionalLabel)(42), (error) => Console.log(error._tag))
 ```
 
 ```text
@@ -110,6 +121,7 @@ const DepotCode = Schema.String.annotate({ [InternalOnly]: true })
 function isInternal(schema: Schema.Top) {
   return Schema.resolveAnnotations(schema)?.[InternalOnly] ?? false
 }
+// Run in an effect function: try Console.log(isInternal(DepotCode), isInternal(Schema.String))
 ```
 
 ```text

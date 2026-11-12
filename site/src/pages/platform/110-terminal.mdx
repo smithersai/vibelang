@@ -15,6 +15,7 @@ effect function dimensions() {
   return { columns: try terminal.columns, rows: try terminal.rows }
 }
 // { columns: number; rows: number }!!Terminal.Terminal
+// Run in an effect function: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { { const jsonValue = try dimensions(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 // Output: {"columns":80,"rows":24}
 ```
 
@@ -48,6 +49,7 @@ effect function askName() {
   try terminal.display(`Hello, ${name.trim() || "visitor"}.\n`)
 }
 // void!(Terminal.QuitError | PlatformError.PlatformError)!Terminal.Terminal
+// Run in an effect function: provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: succeed(" Ada "), display: (text) => Console.log(text.trimEnd()) }) { try askName() }
 // Output: Your name:
 // Output: Hello, Ada.
 ```
@@ -63,6 +65,11 @@ effect function askNameOrQuit() {
     default: throw error;
   }
 }
+// Run in an effect function:
+//   provide Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: fail(new Terminal.QuitError()), display: (text) => Console.log(text.trimEnd()) }) {
+//     try askNameOrQuit()
+//     try Console.log("quit handled")
+//   }
 // Output: Your name:
 // Output: quit handled
 ```
@@ -115,6 +122,9 @@ export effect function main() {
   }
 }
 
+// Run in an effect function:
+//   const inputs = ["no", "2", "19", "11"]
+//   provide Random.Random = { nextIntUnsafe: () => 0, nextDoubleUnsafe: () => 0.5 }, Terminal.Terminal = Terminal.make({ columns: succeed(80), rows: succeed(24), readInput: Queue.unbounded<Terminal.UserInput>(), size: Queue.unbounded<Terminal.Size, Cause.Done>(), readLine: Effect.suspend(() => { const input = inputs.shift(); return input === undefined ? fail(new Terminal.QuitError()) : succeed(input) }), display: (text) => Console.log(text.trimEnd()) }) { try main() }
 // Output: Guess an integer from 1 to 20. You have five guesses.
 // Output: Guess 1:
 // Output: Enter a whole number from 1 to 20.

@@ -18,6 +18,11 @@ effect function inspectRemainder() {
   return try Stream.run(source, sink)
 }
 // { selected: [21, 34], leftover: [55, 89] }
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspectRemainder()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"selected":[21,34],"leftover":[55,89]}
 ```
 
@@ -32,6 +37,12 @@ effect function inspectSmallBatches() {
   return try Stream.run(source, sink)
 }
 // { first: Option.some(21), leftover: [34] }
+// Run in an effect function:
+//   const remainder = try inspectSmallBatches()
+//   {
+//     const jsonValue = { first: Option.getOrElse(remainder.first, () => 0), leftover: remainder.leftover }
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"first":21,"leftover":[34]}
 ```
 
@@ -50,6 +61,11 @@ effect function discardRemainder() {
   return try Stream.run(Stream.fromArray([21, 34, 55, 89]), sink)
 }
 // { selected: [21, 34], leftover: [] }
+// Run in an effect function:
+//   {
+//     const jsonValue = try discardRemainder()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"selected":[21,34],"leftover":[]}
 ```
 

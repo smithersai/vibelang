@@ -33,6 +33,7 @@ effect function buildDashboard() {
   return join chart
 }
 // string!!
+// Run in an effect function: try Console.log(try buildDashboard())
 // Output: preparing dashboard frame
 // Output: chart
 ```
@@ -74,6 +75,7 @@ effect function inspectChild() {
   }
   return outcome
 }
+// Run in an effect function: try Console.log(Exit.isFailure(try inspectChild()))
 // Output: renderer stopped render failed
 // Output: true
 ```
@@ -98,6 +100,7 @@ effect function stopWorker() {
   try Fiber.interrupt(worker)
   try Console.log("worker has terminated")
 }
+// Run in an effect function: try stopWorker()
 // Output: worker finalizer
 // Output: worker has terminated
 ```
@@ -131,6 +134,11 @@ effect function pollStatus(cancelled: boolean) {
   }
   if (cancelled) try interrupt
 }
+// Run in an effect function:
+//   try saveReport()
+//   try pollStatus(false)
+//   const stopped = try exit(pollStatus(true))
+//   try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 // Output: saving; an interruption waits until the block ends
 // Output: saved
 // Output: true
@@ -166,6 +174,7 @@ effect function combine() {
   return `${name}: ${count}`
 }
 // string!!
+// Run in an effect function: try Console.log(try combine())
 // Output: Inventory: 18
 ```
 
@@ -192,6 +201,19 @@ effect function nextEvent(jobs: Queue.Queue<string>, shutdown: Deferred.Deferred
   ]
 }
 // string!!
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const jobs = try Queue.unbounded<string>()
+//     const shutdown = try Deferred.make<void>()
+//     try Queue.offer(jobs, "build")
+//     try Console.log(try nextEvent(jobs, shutdown))
+//     try Deferred.succeed(shutdown, undefined)
+//     try Console.log(try nextEvent(jobs, shutdown))
+//     const neverShutdown = try Deferred.make<void>()
+//     const idle = fork nextEvent(jobs, neverShutdown)
+//     try TestClock.adjust("30 seconds")
+//     try Console.log(join idle)
+//   }
 // Output: job: build
 // Output: shutdown
 // Output: idle
@@ -213,6 +235,7 @@ effect function printAll(ids: ReadonlyArray<string>) {
     try Console.log(try fetchPage(id))
   }
 }
+// Run in an effect function: try printAll(["a", "", "b"])
 // Output: page a
 // Output: page b
 ```
@@ -243,6 +266,7 @@ effect function request() {
     try Deferred.await(started)
   }), Console.log("request finishing"))
 }
+// Run in an effect function: try request()
 // Output: progress reporter stopped
 // Output: request finishing
 ```
@@ -271,6 +295,14 @@ effect function detachedExample() {
   const independent = fork.detached sleep("50 millis")
   join independent
 }
+// Run in an effect function:
+//   const owner = try Scope.make()
+//   const background = try inCallerScope(owner)
+//   try Scope.close(owner, Exit.succeed(undefined))
+//   const stopped = try Fiber.await(background)
+//   try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
+//   try detachedExample()
+//   try Console.log("detached finished")
 // Output: true
 // Output: detached finished
 ```
@@ -293,6 +325,7 @@ effect function waitForReady() {
   try Console.log("initialization is complete")
   join worker
 }
+// Run in an effect function: try waitForReady()
 // Output: worker initialized
 // Output: initialization is complete
 ```

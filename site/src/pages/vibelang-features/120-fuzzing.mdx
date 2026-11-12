@@ -43,6 +43,7 @@ export effect function firstRun() {
   const report = try Experimental.Fuzz.run(Schema.Array(Byte), parse, { seed: 1, executions: 50_000 })
   return report._tag === "Falsified" ? report.findings[0].input : report._tag
 }
+// Run in an effect function: try Console.log(try firstRun())
 // Output: [ 127, 69 ]
 ```
 
@@ -86,6 +87,7 @@ export effect function climb() {
   }, { seed: 1, executions: 100_000, feedback: [] })
   return report._tag === "Falsified" ? report.findings[0].input : report._tag
 }
+// Run in an effect function: try Console.log(try climb())
 // Output: 777777777
 ```
 
@@ -121,6 +123,7 @@ export effect function twice() {
     return [first._tag, second._tag === "Falsified" ? second.findings[0].execution : second._tag]
   }
 }
+// Run in an effect function: try Console.log(try twice())
 // Output: [ 'Falsified', 0 ]
 ```
 
@@ -156,6 +159,7 @@ export effect function lostUpdate() {
   })
   return report._tag === "Falsified" ? report.findings[0].input : report._tag
 }
+// Run in an effect function: try Console.log(try lostUpdate())
 // Output: [ 1, 1 ]
 ```
 

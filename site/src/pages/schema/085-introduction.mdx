@@ -20,6 +20,12 @@ effect function readSettings(input: unknown) {
   return try Schema.decodeUnknownEffect(Settings)(input)
 }
 // typeof Settings.Type!Schema.SchemaError
+// Run in an effect function:
+//   {
+//     const jsonValue = try readSettings({ label: "depot" })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(Schema.is(Settings)({ label: "depot", hint: undefined }))
 ```
 
 ```text
@@ -40,6 +46,7 @@ const Line = Schema.Struct({ sku: Schema.NonEmptyString, quantity: Quantity })
 // Views of the same value, retaining different information:
 const decodedView: Schema.Schema<typeof Line.Type> = Line
 const completeView: Schema.Codec<typeof Line.Type, typeof Line.Encoded> = Line
+// Run in an effect function: try Console.log(decodedView === Line, completeView === Line)
 ```
 
 ```text
@@ -65,6 +72,15 @@ effect function unpack() {
 effect function pack(parcel: Parcel) {
   return try Schema.encodeEffect(Parcel)(parcel)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try unpack()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   {
+//     const jsonValue = try pack({ weight: 3.75 })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -83,6 +99,12 @@ effect function inspectBoundary(incoming: unknown, outgoing: unknown) {
   return { quantity, text }
 }
 // { quantity: number; text: string }!Schema.SchemaError
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspectBoundary("3.75", 2)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Effect.catch(inspectBoundary(3, "2"), (error) => Console.log(error._tag))
 ```
 
 ```text
@@ -106,6 +128,9 @@ effect function normalizeText() {
   const value = try Schema.decodeEffect(Schema.Trim)("  dispatch  ")
   return try Schema.encodeEffect(Schema.Trim)(value) // "dispatch"
 }
+// Run in an effect function:
+//   try Console.log(try roundTrip(3.75))
+//   try Console.log(try normalizeText())
 ```
 
 ```text

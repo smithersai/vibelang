@@ -21,6 +21,7 @@ effect function inspectExport() {
   if (Exit.isFailure(outcome)) return outcome.cause.reasons.length
   return 0
 }
+// Run in an effect function: try Console.log(try inspectExport())
 ```
 
 ```text
@@ -44,6 +45,13 @@ function constantSuccess() {
   return Exit.succeed(12)
 }
 // Exit.Exit<number>
+// Run in an effect function:
+//   const outcomes = sampleOutcomes()
+//   try Console.log(Exit.isSuccess(outcomes.successful), Exit.isFailure(outcomes.failed), Exit.isSuccess(constantSuccess()))
+//   if (Exit.isFailure(outcomes.failed)) {
+//     const tags = outcomes.failed.cause.reasons.map((reason) => reason._tag)
+//     try Console.log(try Effect.try(() => JSON.stringify(tags)))
+//   }
 ```
 
 ```text
@@ -62,6 +70,9 @@ function describe<A, E>(outcome: Exit.Exit<A, E>) {
     when Exit.Failure(let cause): Cause.pretty(cause);
   }
 }
+// Run in an effect function:
+//   try Console.log(describe(Exit.succeed(12)))
+//   try Console.log(describe(Exit.failCause(Cause.empty)) === "")
 ```
 
 ```text
@@ -79,6 +90,10 @@ function asResult<A, E>(outcome: Exit.Exit<A, E>) {
   return Result.fail(outcome.cause)
 }
 // Result.Result<A, Cause.Cause<E>>
+// Run in an effect function:
+//   try Console.log(try Effect.try(() => Result.getOrThrow(asResult(Exit.succeed(12)))))
+//   const failed = asResult(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken"))))
+//   if (Result.isFailure(failed)) try Console.log(try Effect.try(() => JSON.stringify(failed.failure.reasons.map((reason) => reason._tag))))
 ```
 
 ```text
@@ -95,6 +110,10 @@ effect function replay<A, E>(outcome: Exit.Exit<A, E>) {
   return try outcome
 }
 // A!E
+// Run in an effect function:
+//   try Console.log(try replay(Exit.succeed(12)))
+//   const failed = try exit(replay(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken")))))
+//   if (Exit.isFailure(failed)) try Console.log(try Effect.try(() => JSON.stringify(failed.cause.reasons.map((reason) => reason._tag))))
 ```
 
 ```text

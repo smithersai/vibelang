@@ -22,6 +22,11 @@ effect function encodeAudit(input: unknown) {
   return try Schema.encodeEffect(jsonCodec)(value)
 }
 // The JSON representation contains date and bigint strings.
+// Run in an effect function:
+//   {
+//     const jsonValue = try encodeAudit({ created: new Date("2026-01-02T00:00:00Z"), sequence: 12n, labels: ["fragile"] })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -42,6 +47,11 @@ effect function encodeSearch() {
   return try Schema.encodeEffect(codec)({ offset: 20, archived: false, labels: ["large"] })
 }
 // { offset: "20", archived: "false", labels: ["large"] }
+// Run in an effect function:
+//   {
+//     const jsonValue = try encodeSearch()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -62,6 +72,9 @@ effect function slotRepresentation(input: unknown) {
   const structural = try Schema.encodeEffect(codec)(slot)
   return try Schema.decodeUnknownEffect(codec)(structural)
 }
+// Run in an effect function:
+//   const slot = try slotRepresentation({ row: 2, column: 3 })
+//   try Console.log(slot instanceof Slot, slot.row, slot.column)
 ```
 
 ```text
@@ -92,6 +105,11 @@ effect function encodeDepot() {
   return try Schema.encodeEffect(codec)(new DepotRef("nw", 14))
 }
 // { region: "nw", number: "14" }
+// Run in an effect function:
+//   {
+//     const jsonValue = try encodeDepot()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -108,6 +126,7 @@ Without a hook, JSON uses an unconstrained JSON fallback and parsing can still f
 function describeDepotJson() {
   return Schema.toJsonSchemaDocument(DepotRefSchema)
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(describeDepotJson())))
 ```
 
 ```text

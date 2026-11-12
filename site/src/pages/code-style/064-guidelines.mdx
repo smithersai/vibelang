@@ -74,6 +74,9 @@ function parseDecimalTokens(tokens: ReadonlyArray<string>) {
 effect function printValues(values: ReadonlyArray<number>) {
   try forEach(values, (value) => Console.log(value), { discard: true })
 }
+// Run in an effect function:
+//   try Console.log(try Effect.try(() => JSON.stringify(parseDecimalTokens(["10", "10", "10"]))))
+//   try printValues([10, 20])
 // Output: [10,10,10]
 // Output: 10
 // Output: 20

@@ -60,6 +60,7 @@ effect function subtotal() {
 
 const total = Effect.runSync(subtotal())
 // total: number, 56
+// Run in an effect function: try Console.log(total)
 // Output: 56
 ```
 
@@ -74,6 +75,8 @@ effect function preparedMessage() {
 }
 
 const pending = Effect.runPromise(preparedMessage())
+// pending: Promise<string>
+// Run in an effect function: try Console.log(try promise(() => pending))
 // Output: prepared
 ```
 
@@ -93,6 +96,7 @@ const immediate = Effect.runSyncExit(validate(""))
 const eventual = Effect.runPromiseExit(preparedMessage())
 // immediate: Exit<number, BadInput>
 // eventual: Promise<Exit<string, never>>
+// Run in an effect function: try Console.log(immediate._tag)
 // Output: Failure
 ```
 
@@ -111,6 +115,7 @@ Effect.runPromise(effect {
   try sleep("650 millis")
   try Fiber.interrupt(running)
 })
+// Run in an effect function: try Console.log(Exit.isFailure(try Fiber.await(running)))
 // Output: true
 ```
 

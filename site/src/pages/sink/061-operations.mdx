@@ -16,6 +16,7 @@ effect function countItems() {
   return try Stream.run(Stream.make({ quantity: 7 }, { quantity: 11 }), quantities)
 }
 // Returns 18.
+// Run in an effect function: try Console.log(try countItems())
 // Output: 18
 ```
 
@@ -31,6 +32,10 @@ const parsedTotal = Sink.mapInputEffect(Sink.sum, effect (raw: string) => {
   if (!Number.isFinite(value)) throw new InvalidQuantity({ raw })
   return value
 })
+// Run in an effect function:
+//   try Console.log(try Stream.run(Stream.make("7", "11"), parsedTotal))
+//   const outcome = try result(Stream.run(Stream.make("bad"), parsedTotal))
+//   if (Result.isFailure(outcome)) match (outcome.failure) { when InvalidQuantity: try Console.log(outcome.failure._tag, outcome.failure.raw); }
 // Output: 18
 // Output: InvalidQuantity bad
 ```
@@ -46,6 +51,11 @@ effect function totalReport() {
   return try Stream.run(Stream.make(7, 11), report)
 }
 // Returns { total: 18, unit: "items" }.
+// Run in an effect function:
+//   {
+//     const jsonValue = try totalReport()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"total":18,"unit":"items"}
 ```
 
@@ -63,6 +73,7 @@ effect function byteReport() {
   return try Stream.run(Stream.make({ bytes: 128 }, { bytes: 256 }), report)
 }
 // Returns "384 bytes".
+// Run in an effect function: try Console.log(try byteReport())
 // Output: 384 bytes
 ```
 
@@ -76,6 +87,11 @@ effect function positiveBatches() {
   const batches = Stream.transduce(positive, Sink.take<number>(3))
   return try Stream.runCollect(batches) // [[4, 8, 12], [16]]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try positiveBatches()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [[4,8,12],[16]]
 ```
 

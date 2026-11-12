@@ -20,6 +20,7 @@ function invoiceUrl(id: InvoiceId) {
 function customerUrl(id: CustomerId) {
   return `/customers/${id}`
 }
+// Run in an effect function: try Console.log(invoiceUrl("inv-3" as InvoiceId), customerUrl("customer-5" as CustomerId))
 ```
 
 ```text
@@ -38,6 +39,7 @@ function knownInvoice(raw: string) {
   const id = InvoiceId(raw)
   return { id, url: `/invoices/${id}` }
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(knownInvoice("inv-3"))))
 ```
 
 ```text
@@ -62,6 +64,9 @@ effect function parseAmount(raw: number) {
   return fromResult(WholeCents.result(raw)) catch effect (cause) => { throw new InvalidAmount({ cause }) }
 }
 // WholeCents!InvalidAmount
+// Run in an effect function:
+//   try Console.log(try parseAmount(125))
+//   try Console.log(parseAmount(1.5) catch (error) => error._tag)
 ```
 
 ```text
@@ -78,6 +83,11 @@ function inspectAmount(raw: number) {
   const valid = WholeCents.is(raw)
   return { optional, result, valid }
 }
+// Run in an effect function:
+//   const valid = inspectAmount(125)
+//   const invalid = inspectAmount(1.5)
+//   try Console.log(Option.isSome(valid.optional), Result.isSuccess(valid.result), valid.valid)
+//   try Console.log(Option.isNone(invalid.optional), Result.isFailure(invalid.result), invalid.valid)
 ```
 
 ```text
@@ -109,6 +119,9 @@ effect function chargeAmount(raw: number) {
   return fromResult(Charge.result(raw)) catch effect (cause) => { throw new InvalidCharge({ cause }) }
 }
 // chargeAmount(125) succeeds; -5 and 1.5 fail with InvalidCharge.
+// Run in an effect function:
+//   try Console.log(try chargeAmount(125))
+//   for (const input of [-5, 1.5]) { try Console.log(chargeAmount(input) catch (error) => error._tag) }
 ```
 
 ```text

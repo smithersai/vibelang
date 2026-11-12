@@ -30,6 +30,19 @@ export const UsersLive = Layer.effect(Users, effect {
     }
   }
 })
+// Run in an effect function:
+//   provide UsersLive {
+//     const users = try Users
+//     {
+//       const jsonValue = try users.create("Ada")
+//       try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//     }
+//     const repeated = try result(users.create("Ada"))
+//     match (repeated) {
+//       when Result.Failure(let error): try Console.log(error.name)
+//       default: undefined
+//     }
+//   }
 // Output: {"id":"1","name":"Ada"}
 // Output: Ada
 ```
@@ -57,6 +70,7 @@ export effect function createUser() {
 
 export const Routes = HttpRouter.add("POST", "/users", createUser())
 export const App = HttpRouter.provideRequest(UsersLive)(Routes)
+// Run in an effect function: try scoped(effect { const app = try HttpRouter.toHttpEffect(App); const statuses: number[] = []; for (const body of [{ name: "Ada" }, { name: "Ada" }, { name: 123 }]) { const client = try HttpClientRequest.bodyJson(HttpClientRequest.post("http://local/users"), body); const request = HttpServerRequest.fromClientRequest(client); statuses.push((try provideService(app, HttpServerRequest.HttpServerRequest, request)).status) }; try Console.log(try Effect.try(() => JSON.stringify(statuses))) })
 // Output: [201,409,400]
 ```
 
@@ -82,6 +96,11 @@ const Live = server(3000)
 export effect function main() {
   try Layer.launch(Live)
 }
+// Run in an effect function:
+//   provide Logger.layer([]) {
+//     try scoped(effect { try Layer.build(server(0)); try Console.log("server acquired") })
+//     try Console.log("server released")
+//   }
 // Output: server acquired
 // Output: server released
 ```

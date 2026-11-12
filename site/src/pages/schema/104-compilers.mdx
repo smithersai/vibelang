@@ -19,6 +19,12 @@ export const Parcel = Schema.Struct({
 effect function readParcel(input: unknown) {
   return try Schema.decodeUnknownEffect(Parcel)(input)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try readParcel({ reference: "pkg-94", count: 2 })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Effect.catch(readParcel({ reference: "pkg-94", count: "2" }), (error) => Console.log(error._tag))
 ```
 
 ```text
@@ -44,6 +50,12 @@ const CompiledParcel = Schema.Struct({
 effect function receiveCompiled(input: unknown) {
   return try Schema.decodeUnknownEffect(CompiledParcel)(input)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try receiveCompiled({ reference: "pkg-94", count: 2 })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Effect.catch(receiveCompiled({}), (error) => Console.log(error.message))
 ```
 
 ```text
@@ -60,6 +72,11 @@ function enableSelectedDirections() {
   SchemaJITCompiler.enable(SchemaAST.toType(Schema.FiniteFromString.ast))
   SchemaJITCompiler.enable(SchemaAST.flip(Schema.FiniteFromString.ast))
 }
+// Run in an effect function:
+//   enableSelectedDirections()
+//   try Console.log(try Schema.decodeEffect(Schema.FiniteFromString)("2"))
+//   try Console.log(Schema.is(Schema.toType(Schema.FiniteFromString))(2))
+//   try Console.log(try Schema.encodeEffect(Schema.FiniteFromString)(2))
 ```
 
 ```text
@@ -95,6 +112,7 @@ export const buildSchemas = () => Effect.provide(
   }),
   [NodeFileSystem.layer, NodePath.layer]
 )
+// Run: return Effect.flatMap(buildSchemas(), (result) => Console.log(`Prepared ${result.schemas} schema exports`))
 ```
 
 ```text
@@ -112,6 +130,7 @@ export effect function main() {
 }
 
 await runPromise(main())
+// Run in an effect function: void 0
 ```
 
 ```text
@@ -159,6 +178,7 @@ function generateSource() {
     { ast: SchemaAST.flip(Parcel.ast), operations: ["decode"] }
   ])
 }
+// Run in an effect function: try Console.log(generateSource().includes("export function install"))
 ```
 
 ```text
@@ -184,6 +204,12 @@ effect function parseNormally(input: unknown) {
     errors: "all", onExcessProperty: "error"
   })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try parseNormally({ reference: "pkg-94", count: 2 })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Effect.catch(parseNormally({ reference: "pkg-94", count: 2, extra: true }), (error) => Console.log(error.message))
 ```
 
 ```text

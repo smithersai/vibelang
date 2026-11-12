@@ -28,6 +28,7 @@ effect function firstAlert() {
   return alert
 }
 // (number | undefined)!!
+// Run in an effect function: try Console.log(try firstAlert())
 // Output: sensor closed
 // Output: 25
 ```
@@ -84,6 +85,7 @@ effect function firstLargeFile(directory: string) {
   }
   return found
 }
+// Run in an effect function: provide NodeServices.layer { try scoped(effect { const fs = try FileSystem.FileSystem; const dir = try fs.makeTempDirectoryScoped(); try fs.writeFileString(`${dir}/a.txt`, "short"); try fs.writeFileString(`${dir}/b.txt`, "x".repeat(1001)); try Console.log((try firstLargeFile(dir)) === `${dir}/b.txt`) }) }
 // Output: true
 ```
 
@@ -104,6 +106,11 @@ effect function alerts() {
   for try (const alert of selected) result.push(alert)
   return result
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try alerts()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: sensor closed
 // Output: ["25 C","28 C"]
 ```
@@ -124,6 +131,7 @@ effect function sumStream() {
   }
   return total
 }
+// Run in an effect function: try Console.log(try sumStream())
 // Output: 6
 ```
 
@@ -153,6 +161,7 @@ For JavaScript iterables, use `for (using value of source)` when each element ne
 function* countdown(from: number): Generator<number> {
   for (let n = from; n > 0; n--) yield n
 }
+// Run in an effect function: try Console.log([...countdown(3)].join(","))
 // Output: 3,2,1
 ```
 

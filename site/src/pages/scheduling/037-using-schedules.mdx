@@ -16,6 +16,12 @@ effect function heartbeat() {
     Schedule.spaced("15 seconds")
   )
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const worker = fork heartbeat()
+//     try TestClock.adjust("46 seconds")
+//     try Fiber.interrupt(worker)
+//   }
 // Output: worker available
 // Output: worker available
 // Output: worker available
@@ -40,6 +46,11 @@ effect function waitForBuild() {
   return { status, checks }
 }
 // { status: string; checks: number }!!
+// Run in an effect function:
+//   {
+//     const jsonValue = try waitForBuild()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"status":"ready","checks":4}
 ```
 
@@ -54,6 +65,13 @@ effect function delayedCleanup() {
     Schedule.spaced("30 minutes")
   )
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const worker = fork delayedCleanup()
+//     try Console.log("before first sweep")
+//     try TestClock.adjust("60 minutes")
+//     try Fiber.interrupt(worker)
+//   }
 // Output: before first sweep
 // Output: sweeping expired sessions
 // Output: sweeping expired sessions
@@ -75,6 +93,7 @@ effect function reserveSlot() {
   }, Schedule.recurs(3))
 }
 // string!Busy
+// Run in an effect function: try Console.log(try reserveSlot())
 // Output: reserved
 ```
 
@@ -100,6 +119,13 @@ effect function sampleContinuously() {
     try Console.log(...sample)
   }, Schedule.spaced("5 seconds"))
 }
+// Run in an effect function:
+//   let reads = 0
+//   provide Layer.mergeAll(TestClock.layer(), Layer.succeed(Sensor, { read: effect () => { reads++; if (reads !== 2) throw new SensorOffline(); return 22 } })) {
+//     const worker = fork sampleContinuously()
+//     try TestClock.adjust("11 seconds")
+//     try Fiber.interrupt(worker)
+//   }
 // Output: sample unavailable SensorOffline
 // Output: sample 22
 // Output: sample unavailable SensorOffline

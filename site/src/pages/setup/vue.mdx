@@ -121,6 +121,15 @@ export effect function loadBoard(): Board!!Todos {
   const todos = try Todos
   return { todos: try todos.list(), messages }
 }
+// Run in an effect function:
+//   provide TodosLive {
+//     {
+//       const jsonValue = try loadBoard()
+//       try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//     }
+//     const todos = try Todos
+//     try Console.log(todos.complete(99) catch (error) => `${error._tag} ${error.id}`)
+//   }
 ```
 
 ```text
@@ -139,6 +148,7 @@ import { ManagedRuntime } from "effect"
 import { TodosLive } from "./todos.vibe"
 
 export const runtime = ManagedRuntime.make(TodosLive)
+// Run: return import("./todos.vibe").then(({ completeTodo, loadBoard }) => runtime.runPromise(completeTodo(3)).then(() => runtime.runPromise(loadBoard()))).then((board) => console.log(JSON.stringify(board))).finally(() => runtime.dispose())
 ```
 
 ```text

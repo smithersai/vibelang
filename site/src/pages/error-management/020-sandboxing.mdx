@@ -23,6 +23,12 @@ effect function sandboxedRow() {
   return try sandbox(readRow())
 }
 // never!Cause.Cause<InvalidRow>
+// Run in an effect function:
+//   try Console.log((try flip(readRow())).line)
+//   {
+//     const jsonValue = (try flip(sandboxedRow())).reasons.map((reason) => reason._tag)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -42,6 +48,11 @@ effect function rowFailureKinds() {
     return "interruption"
   })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try rowFailureKinds()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -61,6 +72,7 @@ effect function rowOrPlaceholder() {
     return try failCause(cause)
   }
 }
+// Run in an effect function: try Console.log(try rowOrPlaceholder())
 ```
 
 ```text
@@ -80,6 +92,7 @@ effect function readWithInspection(): never!InvalidRow {
   }
 }
 // never!InvalidRow
+// Run in an effect function: try Console.log((try flip(readWithInspection())).line)
 ```
 
 ```text

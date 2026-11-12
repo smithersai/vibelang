@@ -32,6 +32,12 @@ effect function download() {
   }, policy)
 }
 // string!Throttled
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const worker = fork download()
+//     try TestClock.adjust("5 seconds")
+//     try Console.log(join worker)
+//   }
 // Output: archive ready
 ```
 
@@ -68,6 +74,12 @@ effect function waitForArchive() {
   return status.path
 }
 // string!PollLimit
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const worker = fork waitForArchive()
+//     try TestClock.adjust("1 second")
+//     try Console.log(join worker)
+//   }
 // Output: /archives/week.csv
 ```
 
@@ -84,6 +96,13 @@ effect function readWithDeadline() {
     "350 millis"
   )
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const worker = fork result(readWithDeadline())
+//     try TestClock.adjust("1 second")
+//     const outcome = join worker
+//     if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag)
+//   }
 // Output: TimeoutError
 ```
 
@@ -106,6 +125,12 @@ effect function reconnect() {
     return "connected"
   }, phases)
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const worker = fork reconnect()
+//     try TestClock.adjust("5 seconds")
+//     try Console.log(join worker)
+//   }
 // Output: connected
 ```
 
@@ -138,6 +163,12 @@ effect function observedRequest() {
     return "accepted"
   }, policy)
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     const worker = fork observedRequest()
+//     try TestClock.adjust("1 second")
+//     try Console.log(join worker)
+//   }
 // Output: retry planned { retry: 1, status: 503, delayMs: 250 }
 // Output: retry planned { retry: 2, status: 503, delayMs: 500 }
 // Output: accepted

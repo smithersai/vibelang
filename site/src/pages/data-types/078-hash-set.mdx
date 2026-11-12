@@ -21,6 +21,9 @@ function buildLocal() {
   MutableHashSet.add(working, "blue")
   return HashSet.fromIterable(working)
 }
+// Run in an effect function:
+//   try Console.log(HashSet.has(snapshot, "red"), HashSet.has(revised, "red"))
+//   try Console.log(try Effect.try(() => JSON.stringify(Array.from(buildLocal()).sort())))
 ```
 
 ```text
@@ -38,6 +41,7 @@ const b = { region: "west", active: true }
 Equal.equals(a, b) // true
 HashSet.size(HashSet.make(a, b)) // 1
 new Set([a, b]).size // 2
+// Run in an effect function: try Console.log(Equal.equals(a, b), HashSet.size(HashSet.make(a, b)), new Set([a, b]).size)
 ```
 
 ```text
@@ -59,6 +63,7 @@ const exclusive = HashSet.difference(changed, other)
 const large = HashSet.filter(together, (n) => n > 5)
 const labels = HashSet.map(large, (n) => `item-${n}`)
 const sum = HashSet.reduce(initial, 0, (total, n) => total + n)
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Array.from(initial).sort(Order.Number), Array.from(changed).sort(Order.Number), Array.from(together).sort(Order.Number), Array.from(common).sort(Order.Number), Array.from(exclusive).sort(Order.Number), Array.from(large).sort(Order.Number), Array.from(labels).sort(), sum, HashSet.size(empty)])))
 ```
 
 ```text
@@ -76,6 +81,7 @@ HashSet.size(allowed) // 3
 HashSet.some(allowed, (name) => name.startsWith("a")) // true
 HashSet.every(allowed, (name) => name.length > 0) // true
 HashSet.isSubset(HashSet.make("read"), allowed) // true
+// Run in an effect function: try Console.log(HashSet.has(allowed, "write"), HashSet.size(allowed), HashSet.some(allowed, (name) => name.startsWith("a")), HashSet.every(allowed, (name) => name.length > 0), HashSet.isSubset(HashSet.make("read"), allowed))
 ```
 
 ```text
@@ -97,6 +103,9 @@ function uniqueRegions(regions: ReadonlyArray<string>) {
   MutableHashSet.clear(seen)
   return { count, containsUnknown, values }
 }
+// Run in an effect function:
+//   const result = uniqueRegions(["west", "west", ""])
+//   try Console.log(result.count, result.containsUnknown, try Effect.try(() => JSON.stringify(result.values.sort())))
 ```
 
 ```text
@@ -117,6 +126,7 @@ function snapshots(values: ReadonlyArray<number>) {
   }
   return history
 }
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(snapshots([2, 2, 4]).map((set) => HashSet.size(set)))))
 ```
 
 ```text
@@ -136,6 +146,9 @@ const native = new Set(regions)
 effect function report() {
   for (const region of Array.from(regions).sort()) try Console.log(region)
 }
+// Run in an effect function:
+//   try Console.log(try Effect.try(() => JSON.stringify([array.sort(), copy.sort(), Array.from(native).sort()])))
+//   try report()
 ```
 
 ```text

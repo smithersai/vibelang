@@ -21,6 +21,13 @@ effect function application() {
   try log("Index build started")
   try log("Index build completed")
 }
+// Run in an effect function:
+//   provide NodeFileSystem.layer {
+//     provide FileLogger { try application() }
+//     const fs = try FileSystem.FileSystem
+//     const text = try fs.readFileString("./application.log")
+//     try Console.log(text.includes("Index build started") && text.indexOf("Index build started") < text.indexOf("Index build completed"))
+//   }
 // Output: true
 ```
 

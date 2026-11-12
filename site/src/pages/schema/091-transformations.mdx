@@ -20,6 +20,9 @@ const Availability = Schema.Literals(["ready", "held"]).pipe(
 effect function readAvailability(input: unknown) {
   return try Schema.decodeUnknownEffect(Availability)(input)
 }
+// Run in an effect function:
+//   try Console.log(try readAvailability("ready"), try readAvailability("held"))
+//   try Console.log(try Schema.encodeEffect(Availability)(true))
 ```
 
 ```text
@@ -42,6 +45,9 @@ const NumericAvailability = Schema.FiniteFromString.pipe(
 effect function readNumericAvailability() {
   return try Schema.decodeEffect(NumericAvailability)("12") // true
 }
+// Run in an effect function:
+//   try Console.log(try readNumericAvailability())
+//   try Console.log(try Schema.encodeEffect(NumericAvailability)(true))
 ```
 
 ```text
@@ -66,6 +72,9 @@ const DeliveryMode = Schema.String.pipe(
     encode: SchemaGetter.passthrough()
   })
 )
+// Run in an effect function:
+//   try Console.log(try Schema.decodeUnknownEffect(DeliveryMode)(" RAIL "))
+//   try Effect.catch(Schema.decodeUnknownEffect(DeliveryMode)("air"), (error) => Console.log(error.message))
 ```
 
 ```text
@@ -113,6 +122,9 @@ const TestRoutes = Layer.succeed(Routes, {
 effect function previewRoute() {
   provide TestRoutes { return try readRoute("coastal") }
 }
+// Run in an effect function:
+//   try Console.log(try previewRoute())
+//   provide Routes = { effect check(code) { throw new UnknownRoute({ code }) } } { try Effect.catch(readRoute("missing"), (error) => Console.log(error.message)) }
 ```
 
 ```text
@@ -135,6 +147,9 @@ const Initial = Schema.NonEmptyString.pipe(
 effect function readInitial(input: unknown) {
   return try Schema.decodeUnknownEffect(Initial)(input)
 }
+// Run in an effect function:
+//   try Console.log(try readInitial("Ada"))
+//   try Effect.catch(Schema.encodeEffect(Initial)("A"), (error) => Console.log(error.message))
 ```
 
 ```text
@@ -168,6 +183,13 @@ const DeferredLabel = Schema.String.pipe(
 effect function readNumbers() {
   return try Schema.decodeEffect(SemicolonNumbers)("2;5;8")
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try readNumbers()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(try Schema.decodeEffect(DeferredLabel)("crate"))
+//   try Effect.catch(Schema.decodeEffect(DeferredLabel)("x"), (error) => Console.log(error.message))
 ```
 
 ```text
@@ -199,6 +221,11 @@ effect function decodeTextFormats() {
   const hex = try Schema.decodeEffect(Schema.StringFromHex)("6372617465")
   return { trimmed, lower, data, base64, hex }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try decodeTextFormats()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -222,6 +249,10 @@ const Manifest = Schema.Struct({
 effect function readManifest(input: unknown) {
   return try Schema.decodeUnknownEffect(Manifest)(input)
 }
+// Run in an effect function:
+//   const value = try readManifest({ units: "3.5", sequence: "12", departure: "2026-01-02T00:00:00Z", price: "1.25" })
+//   try Console.log(value.units, String(value.sequence), value.departure.toISOString(), BigDecimal.format(value.price))
+//   try Effect.catch(readManifest({ units: "Infinity", sequence: "12", departure: "invalid", price: "bad" }), (error) => Console.log(error._tag))
 ```
 
 ```text

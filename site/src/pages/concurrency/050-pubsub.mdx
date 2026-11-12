@@ -24,6 +24,11 @@ effect function broadcast() {
 effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try broadcast()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["deployment complete","deployment complete"]
 ```
 
@@ -40,6 +45,10 @@ effect function makeHubs() {
     unlimited: try PubSub.unbounded<string>()
   }
 }
+// Run in an effect function:
+//   const hubs = try makeHubs()
+//   try Console.log(PubSub.capacity(hubs.reliable), PubSub.capacity(hubs.bestEffort), PubSub.capacity(hubs.latest), PubSub.capacity(hubs.unlimited))
+//   for (const hub of Object.values(hubs)) { try PubSub.shutdown(hub) }
 // Output: 64 64 64 9007199254740991
 ```
 
@@ -55,6 +64,12 @@ effect function listen(hub: PubSub.PubSub<string>) {
     try Console.log("notification", message)
   })
 }
+// Run in an effect function:
+//   const hub = try PubSub.bounded<string>(2)
+//   const listener = try forkChild(listen(hub), { startImmediately: true })
+//   try PubSub.publish(hub, "ready")
+//   try Fiber.join(listener)
+//   try PubSub.shutdown(hub)
 // Output: notification ready
 ```
 
@@ -74,6 +89,11 @@ effect function batch() {
     return { accepted, messages }
   }), PubSub.shutdown(hub))
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try batch()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"accepted":true,"messages":["queued","started","finished"]}
 ```
 
@@ -95,6 +115,11 @@ effect function inspect() {
     }
   }), PubSub.shutdown(hub))
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspect()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"capacity":5,"size":1,"empty":false,"full":false}
 ```
 
@@ -114,6 +139,7 @@ effect function ownHub() {
   try PubSub.awaitShutdown(hub)
   return try PubSub.isShutdown(hub)
 }
+// Run in an effect function: try Console.log(try ownHub())
 // Output: last update
 // Output: true
 ```

@@ -1,5 +1,5 @@
 import { renderSiteRelease } from "./published-site.mjs"
-import { stripRunDirectives, stripDecisionReferences, stripVideos } from "../../site/scripts/user-docs.mjs"
+import { publishRunDirectives, stripDecisionReferences, stripVideos } from "../../site/scripts/user-docs.mjs"
 // Markdown copies and llms.txt for the single Vocs site. Extracted from the former renderer.
 import { Marked, type Tokens } from "marked"
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
@@ -72,14 +72,14 @@ export function buildMarkdown(site: string, facts: Record<string, string>, relea
   }
   // Read a snapshot: writers can keep working, and validation and rendering use the same bytes.
   const sourceEffect = release ? JSON.parse(readFileSync(join(repo, "packages/runtime/package.json"), "utf8")).peerDependencies.effect : undefined
-  const sources = new Map(files(src).map(path => [path, renderSiteRelease(path, stripDecisionReferences(stripVideos(stripRunDirectives(readFileSync(join(src, path), "utf8")))), release, sourceEffect)]))
+  const sources = new Map(files(src).map(path => [path, renderSiteRelease(path, stripDecisionReferences(stripVideos(publishRunDirectives(readFileSync(join(src, path), "utf8")))), release, sourceEffect)]))
   const errors: string[] = []
   for (const name of readdirSync(design).filter(f => f.endsWith(".md")).sort()) {
     const markdown = readFileSync(join(design, name), "utf8").replace(/\{\{(\w+)\}\}/g, (match, fact: string) => {
       if (!(fact in facts)) errors.push(`docs/design/src/${name}: unknown placeholder ${match}`)
       return facts[fact] ?? match
     })
-    sources.set(`spec/${name}`, stripVideos(stripRunDirectives(markdown)))
+    sources.set(`spec/${name}`, stripVideos(publishRunDirectives(markdown)))
     if (!order.some(p => p.path === `spec/${name}`)) errors.push(`inventory.md: the sidebar is missing docs/design/src/${name}`)
   }
   for (const page of order) if (!sources.has(page.path)) errors.push(`inventory.md: missing ${where(page.path)}`)
@@ -170,7 +170,7 @@ export function buildMarkdown(site: string, facts: Record<string, string>, relea
   // without reading pages first (check-snippets compiles its blocks). An agent
   // harness may show only the first 2,000 bytes of a large file, so the title,
   // summary and essentials come first and must fit in that.
-  const essentials = stripRunDirectives(readFileSync(join(root, "llms-essentials.md"), "utf8")).trim()
+  const essentials = publishRunDirectives(readFileSync(join(root, "llms-essentials.md"), "utf8")).trim()
     .replace(/\]\((?!https?:)([^)]+\.md)\)/g, (_, page: string) => `](${origin}/${page})`)
   const llms = [
     "# VibeLang",

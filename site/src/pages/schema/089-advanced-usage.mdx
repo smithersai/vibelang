@@ -22,6 +22,9 @@ const ShelfSchema = Schema.declare(
 effect function readShelf(input: unknown) {
   return try Schema.decodeUnknownEffect(ShelfSchema)(input)
 }
+// Run in an effect function:
+//   try Console.log((try readShelf(new Shelf("S-12"))).code)
+//   try Effect.catch(readShelf({ code: "S-12" }), (error) => Console.log(error._tag))
 ```
 
 ```text
@@ -49,6 +52,9 @@ function BoxSchema<S extends Schema.Constraint>(value: S) {
 }
 
 const BoxedCount = BoxSchema(Schema.FiniteFromString)
+// Run in an effect function:
+//   try Console.log((try Schema.decodeUnknownEffect(BoxedCount)(new Box("12"))).value)
+//   try Console.log((try Schema.encodeEffect(BoxedCount)(new Box(12))).value)
 ```
 
 ```text
@@ -83,6 +89,10 @@ const PortableShelf = Schema.declare(
     toEquivalence: () => (left, right) => left.code === right.code
   }
 )
+// Run in an effect function:
+//   const codec = Schema.toCodecJson(PortableShelf)
+//   try Console.log(try Schema.encodeEffect(codec)(new Shelf("S-12")))
+//   try Console.log((try Schema.decodeUnknownEffect(codec)("S-12")) instanceof Shelf)
 ```
 
 ```text
@@ -101,6 +111,10 @@ type ShelfId = typeof ShelfId.Type
 type TrackingId = string & Brand.Brand<"TrackingId">
 const TrackingId = Brand.nominal<TrackingId>()
 const TrackingIdSchema = Schema.String.pipe(Schema.fromBrand("TrackingId", TrackingId))
+// Run in an effect function:
+//   try Console.log(try ShelfId.makeEffect("rack-18"))
+//   try Console.log(try TrackingIdSchema.makeEffect("pkg-76"))
+//   try Console.log(Schema.is(ShelfId)(""))
 ```
 
 ```text
@@ -123,6 +137,12 @@ effect function createParcel() {
   const shelf = try ShelfId.makeEffect("rack-18")
   return try Parcel.makeEffect({ shelf })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try createParcel()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(Schema.is(Parcel)({ shelf: "rack-18" }))
 ```
 
 ```text
@@ -146,6 +166,14 @@ const WithDecodeDefault = Schema.Struct({
   copies: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultType(Effect.succeed(1))),
   rank: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(0)))
 })
+// Run in an effect function:
+//   try Console.log(Schema.is(Presence)({ requiredUndefined: undefined, requiredNullable: null }))
+//   try Console.log(Schema.is(Presence)({ exact: undefined, requiredUndefined: undefined, requiredNullable: null }))
+//   {
+//     const jsonValue = try Schema.decodeUnknownEffect(WithDecodeDefault)({ copies: undefined })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Effect.catch(Schema.decodeUnknownEffect(WithDecodeDefault)({ rank: undefined }), (error) => Console.log(error._tag))
 ```
 
 ```text
@@ -178,6 +206,13 @@ effect function readPreferences() {
   return try Schema.decodeUnknownEffect(Preferences)({ weight: undefined, alias: null })
 }
 // All three fields contain Option.none().
+// Run in an effect function:
+//   const value = try readPreferences()
+//   try Console.log(value.note.isNone(), value.weight.isNone(), value.alias.isNone())
+//   {
+//     const jsonValue = try Schema.encodeEffect(Preferences)(value)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -220,6 +255,13 @@ const Form = Schema.Struct({
     })
   )
 })
+// Run in an effect function:
+//   const value = try Schema.decodeUnknownEffect(Form)({ note: "", memo: "" })
+//   try Console.log(try Effect.try(() => JSON.stringify(value)))
+//   {
+//     const jsonValue = try Schema.encodeEffect(Form)(value)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -236,6 +278,11 @@ const Address = Schema.Struct({ city: Schema.String })
 const Destination = Schema.Struct({ ...Address.fields, dock: Schema.Int })
 const Routed = Destination.pipe(Schema.fieldsAssign({ route: Schema.String }))
 const WireDestination = Routed.pipe(Schema.encodeKeys({ dock: "dock_number" }))
+// Run in an effect function:
+//   {
+//     const jsonValue = try Schema.encodeEffect(WireDestination)({ city: "Oslo", dock: 2, route: "north" })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -274,6 +321,15 @@ const Leaf = Schema.Struct({ owner: Schema.NullOr(Branch) })
 effect function readCrate(input: unknown) {
   return try Schema.decodeUnknownEffect(Crate)(input)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try readCrate({ count: "2", children: [{ count: "1", children: [] }] })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   {
+//     const jsonValue = try Schema.decodeUnknownEffect(Branch)({ leaves: [{ owner: null }] })
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text

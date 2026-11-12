@@ -86,6 +86,13 @@ export effect function greet(id: string) {
     when UserNotFound: `No user ${error.id}`;
   }
 }
+// Run in an effect function:
+//   provide UsersLive {
+//     try Console.log(try greet("42"))
+//     try Console.log(try greet("404"))
+//     const users = try Users
+//     try Console.log(users.find("404") catch (error) => `${error._tag} ${error.id}`)
+//   }
 ```
 
 ```text
@@ -105,6 +112,7 @@ import { ManagedRuntime } from "effect"
 import { UsersLive } from "./users.vibe"
 
 export const runtime = ManagedRuntime.make(UsersLive)
+// Run: return import("./users.vibe").then(({ greet }) => runtime.runPromise(greet("42"))).then(console.log).finally(() => runtime.dispose())
 ```
 
 ```text

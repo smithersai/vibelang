@@ -4,12 +4,13 @@ import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { buildMarkdown } from "./markdown"
 
-test("published Markdown omits harness directives and preserves example outputs", () => {
+test("published Markdown shows run statements, omits other harness directives and preserves example outputs", () => {
   const dir = mkdtempSync(join(tmpdir(), "vibelang-markdown-"))
   try {
     buildMarkdown(dir, { testCount: "123", testFiles: "4", kernelLines: "567" })
     const page = readFileSync(join(dir, "setup/vite.md"), "utf8")
     expect(page).not.toMatch(/^\s*\/\/ run:/m)
+    expect(page).toMatch(/^\s*\/\/ Run in an effect function:/m)
     expect(page).not.toMatch(/^\s*\/\/ pending:/m)
     expect(page).toContain("// Output: Hello, Vite!")
     expect(page).toContain('export effect function greet(name: string)')

@@ -19,7 +19,7 @@ function render(markdown) {
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
-test('rendered user docs hide harness directives in paired and single examples, preserving output and code', () => {
+test('rendered user docs show run statements above their output in paired and single examples, preserving code', () => {
   const page = render([
     '# Example', '', 'A runnable example.', '',
     '```ts effect', '// run: console.log(value)', 'const value = 1', '// Output: 1', '```', '',
@@ -28,6 +28,9 @@ test('rendered user docs hide harness directives in paired and single examples, 
     'The prose marker // run: is ordinary text.', ''
   ].join('\n'))
   assert.doesNotMatch(page, /^\s*\/\/ run:/m)
+  assert.match(page, /\/\/ Run: console\.log\(value\)\n\/\/ Output: 1/)
+  assert.match(page, /\/\/ Run in an effect function: Console\.log\(value\)\n\/\/ Output: 1/)
+  assert.match(page, /  \/\/ Run: console\.log\(text\)\n  \/\/ Output: text/)
   assert.match(page, /:::code-group/)
   assert.match(page, /\/\/ Output: 1/)
   assert.match(page, /\/\/ Output: text/)

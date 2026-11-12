@@ -19,6 +19,9 @@ effect function inspectCount(input: unknown) {
   return try Schema.decodeUnknownEffect(CountValue)(input)
 }
 // Accepts 4. Rejects "4", 0, and 1.5.
+// Run in an effect function:
+//   try Console.log(try inspectCount(4))
+//   for (const value of ["4", 0, 1.5]) { try Effect.catch(inspectCount(value), (error) => Console.log(error._tag)) }
 ```
 
 ```text
@@ -42,6 +45,11 @@ effect function inspectWireName(input: unknown) {
   return try Schema.decodeUnknownEffect(NameInput)(input)
 }
 // " x " passes unchanged: it has length 3 before trimming.
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspectWireName(" x ")
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -65,6 +73,12 @@ effect function compareViews() {
   const count = try Schema.decodeUnknownEffect(NumberOnly)(8) // 8
   return { text, count }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try compareViews()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Effect.catch(Schema.decodeUnknownEffect(ParcelCount)("00"), (error) => Console.log(error._tag))
 ```
 
 ```text

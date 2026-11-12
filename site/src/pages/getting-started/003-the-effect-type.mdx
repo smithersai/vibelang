@@ -25,6 +25,7 @@ effect function convert(amount: number, currency: string) {
   return amount * (try rates.lookup(currency))
 }
 // number!MissingRate!Rates
+// Run in an effect function: try Console.log(try Effect.provide(convert(30, "EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 // Output: 60
 ```
 
@@ -60,6 +61,7 @@ effect function anyRate(currency: string) {
   return try rates.lookup(currency)
 }
 // Inferred: number!MissingRate!Rates
+// Run in an effect function: try Console.log(try Effect.provide(safeRate("EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 // Output: 2
 ```
 
@@ -103,6 +105,7 @@ effect function checkedConversion(amount: number, currency: string) {
   return try convert(amount, currency)
 }
 // Infers number, MissingRate, and Rates.
+// Run in an effect function: try Console.log(try Effect.provide(checkedConversion(30, "EUR"), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 // Output: 60
 ```
 
@@ -127,6 +130,7 @@ effect function displayedPrice() {
   const amount = try conversion
   return try orDie(Effect.try(() => amount.toFixed(2)))
 }
+// Run in an effect function: try Console.log(try Effect.provide(displayedPrice(), Layer.succeed(Rates, { lookup: effect (_currency) => 2 })))
 // Output: 60.00
 ```
 
@@ -146,6 +150,7 @@ export effect function double(amount: number) {
   return amount * 2
 }
 // number!!
+// Run in an effect function: try Console.log(try double(30))
 // Output: 60
 ```
 

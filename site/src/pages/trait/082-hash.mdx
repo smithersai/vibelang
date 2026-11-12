@@ -14,6 +14,7 @@ const first = { section: "billing", page: 2 }
 const same = { section: "billing", page: 2 }
 Equal.equals(first, same) // true
 Hash.hash(first) === Hash.hash(same) // true
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Equal.equals(first, same), Hash.hash(first) === Hash.hash(same)])))
 // Output: [true,true]
 ```
 
@@ -37,6 +38,7 @@ class GridCell implements Equal.Equal {
 
 Hash.hash(new GridCell(3, 7)) === Hash.hash(new GridCell(3, 7)) // true
 Equal.equals(new GridCell(3, 7), new GridCell(3, 8)) // false
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Hash.hash(new GridCell(3, 7)) === Hash.hash(new GridCell(3, 7)), Equal.equals(new GridCell(3, 7), new GridCell(3, 8))])))
 // Output: [true,false]
 ```
 
@@ -52,6 +54,7 @@ const equivalent = new GridCell(3, 7)
 const cells = HashSet.make(first, equivalent)
 HashSet.size(cells) // 1
 Hash.hash(first) === Hash.hash(equivalent) // true
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([HashSet.size(cells), Hash.hash(first) === Hash.hash(equivalent)])))
 // Output: [1,true]
 ```
 

@@ -16,6 +16,7 @@ Object.is(left, right) // false
 Equal.equals(left, right) // true
 Equal.equals([1, { n: 2 }], [1, { n: 3 }]) // false
 Equal.equals(new Set([2, 5]), new Set([5, 2])) // true
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Object.is(left, right), Equal.equals(left, right), Equal.equals([1, { n: 2 }], [1, { n: 3 }]), Equal.equals(new Set([2, 5]), new Set([5, 2]))])))
 // Output: [false,true,false,true]
 ```
 
@@ -46,6 +47,7 @@ Equal.equals(
   new DocumentRevision("doc-8", 2, "reader-a"),
   new DocumentRevision("doc-8", 2, "reader-b")
 ) // true
+// Run in an effect function: try Console.log(Equal.equals(new DocumentRevision("doc-8", 2, "reader-a"), new DocumentRevision("doc-8", 2, "reader-b")))
 // Output: true
 ```
 
@@ -65,6 +67,7 @@ Equal.equals(record, { state: "ready" }) // true
 const owned = { state: "ready" }
 Equal.byReferenceUnsafe(owned)
 Equal.equals(owned, { state: "ready" }) // false
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([Equal.equals(reference, { state: "ready" }), Equal.equals(reference, reference), Equal.equals(record, { state: "ready" }), Equal.equals(owned, { state: "ready" })])))
 // Output: [false,true,true,false]
 ```
 
@@ -85,6 +88,7 @@ const byFolder = HashMap.set(
 )
 HashMap.size(byFolder) // 1
 Option.getOrElse(HashMap.get(byFolder, { folder: "inbox" }), () => 0) // 9
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify([HashSet.size(seen), HashMap.size(byFolder), Option.getOrElse(HashMap.get(byFolder, { folder: "inbox" }), () => 0)])))
 // Output: [1,1,9]
 ```
 

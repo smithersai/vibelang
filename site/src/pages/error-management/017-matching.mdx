@@ -25,6 +25,9 @@ effect function countLabel(raw: number) {
   })
 }
 // string!!
+// Run in an effect function:
+//   try Console.log(try countLabel(3))
+//   try Console.log(try countLabel(-1))
 ```
 
 ```text
@@ -49,6 +52,9 @@ effect function reportCount(raw: number) {
     }
   })
 }
+// Run in an effect function:
+//   try Console.log(try reportCount(3))
+//   try Console.log(try reportCount(-1))
 ```
 
 ```text
@@ -79,6 +85,9 @@ effect function reportOutcome() {
     onSuccess: () => succeed("Ready")
   })
 }
+// Run in an effect function:
+//   try Console.log(try outcomeLabel())
+//   try Console.log(try reportOutcome())
 ```
 
 ```text
@@ -100,7 +109,9 @@ effect function ignoreRejectedCount() {
 effect function discardBoundaryOutcome() {
   try ignoreCause(die(new Error("isolated task failed")))
 }
-// Output:
+// Run in an effect function:
+//   try ignoreRejectedCount()
+//   try discardBoundaryOutcome()
 ```
 
 `ignore` discards the success value and typed failures; causes without an expected failure propagate, and so do causes with a defect, but an expected failure beside an interruption is consumed with it. `ignoreCause` consumes the full failure cause, even one with no expected failure; use it only where losing both diagnostics and cancellation is deliberate.

@@ -16,6 +16,7 @@ function failureKinds() {
   return cause.reasons.map((reason) => reason._tag)
 }
 // ["Fail", "Die"]
+// Run in an effect function: try Console.log(try Effect.try(() => JSON.stringify(failureKinds())))
 ```
 
 ```text
@@ -45,6 +46,11 @@ effect function inspectDelivery() {
   }
   return { expected: false, defective: false, interrupted: false }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspectDelivery()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -69,6 +75,11 @@ effect function validatePorts() {
   })
 }
 // number[]![InvalidPort, ...InvalidPort[]]
+// Run in an effect function:
+//   {
+//     const jsonValue = (try flip(validatePorts())).map((error) => error.port)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text

@@ -36,6 +36,7 @@ effect function invoice(quantity: number) {
   try Console.log(`subtotal=${subtotal}`)
   return subtotal
 }
+// Run in an effect function: try Console.log(try Effect.provide(invoice(3), ConfigProvider.layer(ConfigProvider.fromUnknown({ UNIT_PRICE: 4 }))))
 // Output: subtotal=12
 // Output: 12
 ```
@@ -56,6 +57,7 @@ effect function greeting() {
   const label = try delayedLabel("sora")
   return `Hello ${label}`
 }
+// Run in an effect function: try Console.log(try greeting())
 // Output: Hello SORA
 ```
 
@@ -76,6 +78,7 @@ effect function reportEven(values: ReadonlyArray<number>) {
   }
   return count
 }
+// Run in an effect function: try Console.log(try reportEven([1, 2, 3, 4, -1, 6]))
 // Output: even=2
 // Output: even=4
 // Output: 2
@@ -97,6 +100,7 @@ effect function titleLength(title: string | undefined) {
 effect function optionalTitle(title: string | undefined) {
   return titleLength(title) catch () => 0
 }
+// Run in an effect function: try Console.log(try optionalTitle(undefined))
 // Output: 0
 ```
 
@@ -120,6 +124,7 @@ effect function label() {
   const prefixer = new Prefixer("item")
   return try prefixer.format("marker")
 }
+// Run in an effect function: try Console.log(try label())
 // Output: formatting label
 // Output: item: marker
 ```
@@ -144,6 +149,11 @@ effect function firstTwo() {
   }
   return values
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try firstTwo()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [0,1]
 ```
 

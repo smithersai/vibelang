@@ -19,6 +19,11 @@ effect function compare() {
   return [try Stream.runCollect(direct), try Stream.runCollect(piped)]
 }
 // Both arrays are [1, 2, 3].
+// Run in an effect function:
+//   {
+//     const jsonValue = try compare()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -40,6 +45,11 @@ effect function methods() {
     pairs: try Stream.runCollect(Stream.zipLeft(Stream.make(1, 2), Stream.make(3, 4)))
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try methods()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -75,6 +85,7 @@ effect function directLookup() {
 effect function nestedLookup() {
   return try timeout(retry(lookup(), { times: 2 }), "1 second")
 }
+// Run in an effect function: try Console.log(try directLookup(), try nestedLookup())
 ```
 
 ```text
@@ -93,6 +104,7 @@ effect function boundedLookup() {
 const reusableLookup = lookup()
   |> retry(%, { times: 2 })
   |> timeout(%, "1 second")
+// Run in an effect function: try Console.log(try boundedLookup(), try reusableLookup)
 ```
 
 ```text

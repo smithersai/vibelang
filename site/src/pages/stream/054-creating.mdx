@@ -19,6 +19,11 @@ const powers = Stream.take(Stream.iterate(2, (n) => n * 2), 4)
 effect function readPowers() {
   return try Stream.runCollect(powers) // [2, 4, 8, 16]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try Stream.runCollect(labels), try Stream.runCollect(absent), try Stream.runCount(signal), try Stream.runCollect(pages), try readPowers()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [["queued","running","complete"],[],1,[4,5,6,7],[2,4,8,16]]
 ```
 
@@ -37,6 +42,11 @@ effect function readClosed() {
     when SourceClosed: ["source unavailable"];
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try Stream.runCollect(ready), try readClosed()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [["ready"],["source unavailable"]]
 ```
 
@@ -57,6 +67,7 @@ const codes = Stream.fromIterableEffect(effect {
   const catalog = try Catalog
   return try catalog.codes()
 })
+// Run in an effect function: provide Catalog = { codes: effect () => ["A", "B"] } { { const jsonValue = [try Stream.runCollect(fromArray), try Stream.runCollect(fromBatches), try Stream.runCollect(fromSet), try Stream.runCollect(codes)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 // Output: [[11,22],[11,22,33],["east","west"],["A","B"]]
 ```
 
@@ -77,6 +88,7 @@ export function rows(fail = false): AsyncIterable<string> {
     }
   }
 }
+// Run: return (async () => { const values = []; for await (const row of rows()) values.push(row); console.log(JSON.stringify(values)); try { for await (const row of rows(true)) {} } catch (error) { console.log((error as Error).message) } })()
 // Output: ["row-a","row-b"]
 // Output: iterator failed
 ```
@@ -91,6 +103,13 @@ error IteratorFailed {
 function adaptRows(rows: AsyncIterable<string>) {
   return Stream.fromAsyncIterable(rows, (cause) => new IteratorFailed({ cause }))
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try Stream.runCollect(adaptRows(rows()))
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   const outcome = try result(Stream.runCollect(adaptRows(rows(true))))
+//   if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag)
 // Output: ["row-a","row-b"]
 // Output: IteratorFailed
 ```
@@ -111,6 +130,9 @@ const notices = Stream.callback<string>(effect (queue) => {
 effect function readNotices() {
   return try Stream.runCollect(notices) // ["connected", "ready"]
 }
+// Run in an effect function:
+//   const clock = try Clock.Clock
+//   provide Clock.Clock = { ...clock, currentTimeMillis: succeed(123), currentTimeMillisUnsafe: () => 123 } { { const jsonValue = [try Stream.runCollect(timestamp), try readNotices()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 // Output: [[123],["connected","ready"]]
 ```
 
@@ -133,6 +155,11 @@ const sessionNames = Stream.fromEffect(openSession()).pipe(
   Stream.map((session) => session.name),
   Stream.scoped
 )
+// Run in an effect function:
+//   {
+//     const jsonValue = try Stream.runCollect(sessionNames)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: open session
 // Output: close session
 // Output: ["metrics"]
@@ -155,6 +182,11 @@ effect function countdown() {
   })
   return try Stream.runCollect(source) // [3, 2, 1]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try Stream.runCollect(Stream.take(pings, 3)), try Stream.runCollect(rounds), try Stream.runCount(Stream.take(times, 2)), try countdown()]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [["ping","ping","ping"],["start","finish","start","finish","start","finish"],2,[3,2,1]]
 ```
 
@@ -170,6 +202,9 @@ const samples = Stream.mapEffect(Stream.tick("250 millis"), () => Clock.currentT
 effect function collectSamples() {
   return try Stream.runCollect(Stream.take(samples, 4))
 }
+// Run in an effect function:
+//   const values = try collectSamples()
+//   try Console.log(values.length, values.every(Number.isFinite))
 // Output: 4 true
 ```
 
@@ -195,6 +230,7 @@ const names = Stream.paginate(0, effect (cursor) => {
   const page = try directory.page(cursor)
   return [page.names, Option.fromUndefinedOr(page.next)] as const
 })
+// Run in an effect function: provide Directory = { page: effect (cursor) => ({ names: [String(cursor)], next: cursor < 2 ? cursor + 1 : undefined }) } { { const jsonValue = [try Stream.runCollect(halving), try Stream.runCollect(names)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
 // Output: [[32,16,8,4,2],["0","1","2"]]
 ```
 
@@ -214,6 +250,17 @@ effect function queuedNumbers() {
 function fromBroadcast(bus: PubSub.PubSub<string>) {
   return Stream.fromPubSub(bus)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try queuedNumbers()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   const bus = try PubSub.unbounded<string>({ replay: 1 })
+//   try PubSub.publish(bus, "broadcast")
+//   {
+//     const jsonValue = try Stream.runCollect(Stream.take(fromBroadcast(bus), 1))
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [8,13]
 // Output: ["broadcast"]
 ```
@@ -229,6 +276,11 @@ const pulses = Stream.fromSchedule(policy)
 effect function readPulses() {
   return try Stream.runCollect(pulses) // [0, 1, 2]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try readPulses()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [0,1,2]
 ```
 

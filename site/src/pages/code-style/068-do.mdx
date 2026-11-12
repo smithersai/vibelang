@@ -24,6 +24,13 @@ effect function example() {
     return "complete"
   })
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     try TestClock.setTime(0)
+//     const worker = fork example()
+//     try TestClock.adjust("40 millis")
+//     try Console.log(join worker)
+//   }
 ```
 
 ```text
@@ -47,6 +54,14 @@ effect function readInterval() {
   )
 }
 // Returns { started, value, finished }.
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     try TestClock.setTime(0)
+//     const worker = fork readInterval()
+//     try TestClock.adjust("40 millis")
+//     const value = join worker
+//     try Console.log(try Effect.try(() => JSON.stringify(value)))
+//   }
 ```
 
 ```text
@@ -68,6 +83,14 @@ effect function intervalRecord() {
     Effect.let("millis", ({ started, finished }) => finished - started)
   )
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     try TestClock.setTime(0)
+//     const worker = fork intervalRecord()
+//     try TestClock.adjust("40 millis")
+//     const value = join worker
+//     try Console.log(try Effect.try(() => JSON.stringify(value)))
+//   }
 ```
 
 ```text
@@ -86,6 +109,14 @@ effect function intervalRecord() {
   const millis = finished - started
   return { started, finished, millis }
 }
+// Run in an effect function:
+//   provide TestClock.layer() {
+//     try TestClock.setTime(0)
+//     const worker = fork intervalRecord()
+//     try TestClock.adjust("40 millis")
+//     const value = join worker
+//     try Console.log(try Effect.try(() => JSON.stringify(value)))
+//   }
 ```
 
 ```text

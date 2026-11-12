@@ -23,6 +23,11 @@ const tagged = Stream.catch(
   Stream.map(primary, (value) => Result.succeed(value)),
   () => Stream.map(Stream.make("cached"), (value) => Result.fail(value))
 )
+// Run in an effect function:
+//   {
+//     const jsonValue = [try readRecovered(), (try Stream.runCollect(tagged)).map((outcome) => outcome._tag)]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [["live-a","live-b","cached"],["Success","Success","Failure"]]
 ```
 
@@ -33,6 +38,11 @@ const boundary = Stream.catchDefect(
   Stream.die(new Error("decoder invariant failed")),
   () => Stream.succeed("unreadable")
 )
+// Run in an effect function:
+//   {
+//     const jsonValue = try Stream.runCollect(boundary)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["unreadable"]
 ```
 
@@ -55,6 +65,13 @@ const selected = Stream.catchFilter(
 )
 
 const defectOnly = Stream.catchCauseFilter(Stream.die("corrupt frame"), Cause.findDie, () => Stream.empty)
+// Run in an effect function:
+//   {
+//     const jsonValue = [try Stream.runCollect(recoverKnown(Stream.fail(new NotReady()))), try Stream.runCollect(selected), try Stream.runCollect(defectOnly)]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   const outcome = try result(Stream.runCollect(recoverKnown(Stream.fail(new AccessDenied()))))
+//   if (Result.isFailure(outcome)) match (outcome.failure) { when AccessDenied: try Console.log(outcome.failure._tag); }
 // Output: [["pending"],["try later"],[]]
 // Output: AccessDenied
 ```
@@ -74,6 +91,9 @@ effect function consumeChecked() {
     Console.log("consumer finished")
   )
 }
+// Run in an effect function:
+//   const outcome = try result(consumeChecked())
+//   if (Result.isFailure(outcome)) try Console.log(outcome.failure)
 // Output: input failed; closing reader
 // Output: consumer finished
 // Output: read failed
@@ -94,6 +114,9 @@ const readings = Stream.fromEffect(effect {
   const sensor = try Sensor
   return try sensor.read()
 }).pipe(Stream.retry(Schedule.recurs(3)))
+// Run in an effect function:
+//   let attempts = 0
+//   provide Sensor = { read: effect () => { attempts++; if (attempts < 4) throw new Offline(); return 42 } } { { const jsonValue = try Stream.runCollect(readings); try Console.log(try Effect.try(() => JSON.stringify(jsonValue)), attempts) } }
 // Output: [42] 4
 ```
 
@@ -109,6 +132,10 @@ function keepSyntaxErrors(source: Stream.Stream<string, Error>) {
   })
 }
 // The returned Stream has E = SyntaxError.
+// Run in an effect function:
+//   const outcome = try result(Stream.runCollect(keepSyntaxErrors(Stream.fail(new SyntaxError("bad syntax")))))
+//   if (Result.isFailure(outcome)) try Console.log(outcome.failure.message)
+//   try Console.log(Exit.isFailure(try exit(Stream.runCollect(keepSyntaxErrors(Stream.fail(new Error("defect")))))))
 // Output: bad syntax
 // Output: true
 ```
@@ -133,6 +160,11 @@ const fallbackWhenIdle = Stream.timeoutOrElse(Stream.never, {
   duration: "3 seconds",
   orElse: () => Stream.make("backup-a", "backup-b")
 })
+// Run in an effect function:
+//   {
+//     const jsonValue = try.all [Stream.runCollect(endWhenIdle), effect { const outcome = try result(Stream.runCollect(failWhenIdle)); return outcome._tag }, effect { const outcome = try exit(Stream.runCollect(defectWhenIdle)); return Exit.isFailure(outcome) }, Stream.runCollect(fallbackWhenIdle)]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [[],"Failure",true,["backup-a","backup-b"]]
 ```
 

@@ -32,6 +32,11 @@ effect function runTasks() {
 effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try runTasks()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: starting 1
 // Output: starting 2
 // Output: starting 1
@@ -87,6 +92,9 @@ effect function cancelWork() {
   try Fiber.interrupt(worker)
   return try Fiber.await(worker)
 }
+// Run in an effect function:
+//   const stopped = try cancelWork()
+//   try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 // Output: true
 ```
 
@@ -107,6 +115,9 @@ effect function cancelWithCleanup() {
   try Deferred.await(started)
   try Fiber.interrupt(worker)
 }
+// Run in an effect function:
+//   try cancelWithCleanup()
+//   try Console.log("interrupt returned")
 // Output: released worker resources
 // Output: worker cancelled
 // Output: interrupt returned
@@ -130,6 +141,9 @@ effect function cancelBatch() {
     }, Console.log("branch finished"))
   }
 }
+// Run in an effect function:
+//   const stopped = try exit(cancelBatch())
+//   try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 // Output: branch finished
 // Output: branch finished
 // Output: branch finished
@@ -172,6 +186,11 @@ effect function raceExamples() {
   ]
   return { firstSuccess, anySuccess, firstCompletion }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try raceExamples()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"firstSuccess":"replica","anySuccess":"east","firstCompletion":"primary"}
 ```
 
@@ -195,6 +214,13 @@ effect function inspectRace() {
   }
   return { outcome, winners }
 }
+// Run in an effect function:
+//   const result = try inspectRace()
+//   try Console.log(Result.isFailure(result.outcome))
+//   {
+//     const jsonValue = result.winners
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: first completion failed primary offline
 // Output: true
 // Output: [0]

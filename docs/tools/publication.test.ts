@@ -5,6 +5,7 @@ import { join, resolve } from "node:path"
 import { leaks } from "./leaks"
 import { buildMarkdown } from "./markdown"
 import { publicationText } from "../../site/scripts/publication.mjs"
+import { publishRunDirectives } from "../../site/scripts/user-docs.mjs"
 
 test("publication keeps refusals after normalizing known build metadata", () => {
   const normalized = publicationText('{"id":"/build/site/src/pages/setup.mdx#install","example":"/home/user/report.pdf"}', "/build/site")
@@ -38,7 +39,7 @@ test("Markdown module preserves visible code, strips repository targets and move
     const repo = resolve(import.meta.dir, "../..")
     const source = readFileSync(join(repo, "docs/user/src/001-onboarding.md"), "utf8")
     const copy = readFileSync(join(dir, "001-onboarding.md"), "utf8")
-    for (const match of source.matchAll(/^\x60{3}[^\n]*\n[\s\S]*?^\x60{3}/gm)) expect(copy).toContain(match[0].replace(/^\s*\/\/\s*(?:run|pending):.*\n/gm, ""))
+    for (const match of source.matchAll(/^\x60{3}[^\n]*\n[\s\S]*?^\x60{3}/gm)) expect(copy).toContain(publishRunDirectives(match[0]))
     const appendix = readFileSync(join(dir, "spec/900-appendices.md"), "utf8")
     expect(appendix).not.toContain("{{testCount}}")
     expect(appendix).not.toMatch(/\]\([^)]*\.\.\//)

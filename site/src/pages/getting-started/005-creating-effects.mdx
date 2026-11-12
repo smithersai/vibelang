@@ -37,6 +37,7 @@ effect function reserve(item: string, available: boolean) {
   return { item, reserved: true }
 }
 // { item: string; reserved: boolean }!Unavailable
+// Run in an effect function: try Console.log((try reserve("notebook", true)).item)
 // Output: notebook
 ```
 
@@ -53,6 +54,7 @@ effect function attemptReservation(item: string, available: boolean) {
   return outcome.success.item
 }
 // string!!
+// Run in an effect function: try Console.log(try attemptReservation("notebook", false))
 // Output: notebook
 ```
 
@@ -67,6 +69,7 @@ effect function token() {
   const random = try SecureRandom.SecureRandom
   return try random.randomBytes(16)
 }
+// Run in an effect function: provide NodeCrypto.layer { try Console.log((try token()).length) }
 // Output: 16
 ```
 
@@ -92,6 +95,7 @@ effect function freeBlocks(path: string) {
   })
 }
 // number!StatFailed
+// Run in an effect function: try Console.log((try freeBlocks(".")) > 0)
 // Output: true
 ```
 
@@ -127,6 +131,7 @@ function slug(title: string) {
   s = s.replaceAll(/[^a-z0-9]+/g, "-")
   return s
 }
+// Run in an effect function: try Console.log(slug("Hello VibeLang"))
 // Output: hello-vibelang
 ```
 
@@ -155,6 +160,7 @@ effect function sign(secret: string, text: string) {
   return try tryPromise({ try: () => hmac(secret, text), catch: (cause) => new SigningFailed({ cause }) })
 }
 // ArrayBuffer!SigningFailed
+// Run in an effect function: try Console.log((try sign("secret", "parcel")).byteLength)
 // Output: 32
 ```
 
@@ -184,6 +190,7 @@ effect function readAndReport(source: Source) {
   try Console.log(`reading=${reading}`)
   return reading
 }
+// Run in an effect function: try Console.log(try readAndReport({ read: (onValue: (n: number) => void) => { onValue(7); return () => {} } }))
 // Output: reading=7
 // Output: 7
 ```
@@ -217,6 +224,7 @@ import { isSymbolicLink } from "./links.js"
 effect function linked(path: string) {
   return try sync(() => isSymbolicLink(path))
 }
+// Run in an effect function: try Console.log(try linked("."))
 // Output: false
 ```
 
@@ -240,6 +248,11 @@ effect function counters() {
   return [try next, try next]
 }
 // number[]!!; returns [1, 2]
+// Run in an effect function:
+//   {
+//     const jsonValue = try counters()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [1,2]
 ```
 
@@ -257,6 +270,7 @@ effect function checkedQuantity(n: number) {
   return n
 }
 // number!Unavailable
+// Run in an effect function: try Console.log(try countdown(3))
 // Output: 3
 ```
 

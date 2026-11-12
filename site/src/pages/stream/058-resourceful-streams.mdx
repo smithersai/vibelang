@@ -26,6 +26,11 @@ const lines = Stream.fromEffect(acquireRelease(
 effect function readLines() {
   return try Stream.runCollect(lines)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try readLines()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: reader opened
 // Output: reader closed
 // Output: ["header","entry-a","entry-b"]
@@ -50,6 +55,13 @@ effect function readWithDeadline() {
     "100 millis"
   )
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try readHeader()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   const outcome = try result(readWithDeadline())
+//   if (Result.isFailure(outcome)) try Console.log(outcome.failure._tag)
 // Output: reader opened
 // Output: reader closed
 // Output: ["header"]
@@ -71,6 +83,11 @@ const audited = Stream.ensuring(lines, effect {
 effect function readAudited() {
   return try Stream.runCollect(audited)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try readAudited()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: reader opened
 // Output: reader closed
 // Output: reader resources released

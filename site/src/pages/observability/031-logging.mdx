@@ -19,6 +19,14 @@ effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 
+// Run in an effect function:
+//   const records: unknown[] = []
+//   const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) })
+//   provide Logger.layer([capture]) { try reportProgress() }
+//   {
+//     const jsonValue = records
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -40,6 +48,14 @@ effect function diagnostics() {
     try logFatal("application cannot start")
   }
 }
+// Run in an effect function:
+//   const records: unknown[] = []
+//   const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) })
+//   provide Logger.layer([capture]) { try diagnostics() }
+//   {
+//     const jsonValue = records
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -67,6 +83,17 @@ effect function scopedAnnotations() {
   })
   try logInfo("outside importer scope")
 }
+// Run in an effect function:
+//   const records: unknown[] = []
+//   const capture = Logger.make(({ message, fiber }) => { records.push([message, fiber.getRef(References.CurrentLogAnnotations)]) })
+//   provide Logger.layer([capture]) {
+//     try annotatedExport()
+//     try scopedAnnotations()
+//   }
+//   {
+//     const jsonValue = records
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -85,6 +112,21 @@ effect function timedExport() {
     try logInfo("output written")
   }, "write-output")
 }
+// Run in an effect function:
+//   const records: unknown[] = []
+//   const capture = Logger.make(({ message, fiber, date }) => { records.push([message, fiber.getRef(References.CurrentLogSpans).map(([label, start]) => [label, date.getTime() - start])]) })
+//   provide TestClock.layer() {
+//     try TestClock.setTime(0)
+//     provide Logger.layer([capture]) {
+//       const worker = fork timedExport()
+//       try TestClock.adjust("30 millis")
+//       join worker
+//     }
+//   }
+//   {
+//     const jsonValue = records
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -111,6 +153,17 @@ effect function quiet() {
 effect function configured() {
   provide ConfiguredLevel { try logDebug("configuration loaded") }
 }
+// Run in an effect function:
+//   const records: unknown[] = []
+//   const capture = Logger.make(({ logLevel, message }) => { records.push([logLevel, message]) })
+//   provide Logger.layer([capture]) {
+//     try quiet()
+//     provide ConfigProvider.layer(ConfigProvider.fromUnknown({ LOG_LEVEL: "Debug" })) { try configured() }
+//   }
+//   {
+//     const jsonValue = records
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -133,6 +186,11 @@ effect function captureLogs() {
   }
   return records
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try captureLogs()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -152,6 +210,15 @@ const JsonLogs = Logger.layer([Logger.consoleJson, Logger.tracerLogger])
 effect function jsonExample() {
   provide JsonLogs { try logInfo("started", { workers: 4 }) }
 }
+// Run in an effect function:
+//   const lines: string[] = []
+//   const original = try Console.Console
+//   try provideService(jsonExample(), Console.Console, { ...original, log: (line: string) => { lines.push(line) } })
+//   const records = try Effect.forEach(lines, (line) => Effect.try(() => JSON.parse(line)))
+//   {
+//     const jsonValue = records.map((record) => [record.level, record.message])
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -174,6 +241,11 @@ effect function consoleAndCapture() {
   provide destinations { try logInfo("job finished") }
   return auditMessages
 }
+// Run in an effect function:
+//   const lines: unknown[][] = []
+//   const original = try Console.Console
+//   const audit = try provideService(consoleAndCapture(), Console.Console, { ...original, log: (...args: ReadonlyArray<unknown>) => { lines.push([...args]) } })
+//   try Console.log(try stringify(audit), lines.length, (try stringify(lines)).includes("job finished"))
 ```
 
 ```text

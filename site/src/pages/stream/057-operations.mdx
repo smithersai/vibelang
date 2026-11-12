@@ -19,6 +19,7 @@ const last = Stream.takeRight(observed, 2)
 effect function readFirst() {
   return try Stream.runCollect(first) // [10, 11, 12]
 }
+// Run in an effect function: try Effect.provide(effect { { const jsonValue = try readFirst(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; provide Logger.layer([]) { { const jsonValue = [try Stream.runCollect(below), try Stream.runCollect(through), try Stream.runCollect(last)]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } } }, Logger.layer([Logger.withConsoleLog(Logger.make(({ message }) => (message as unknown[])[0]))]))
 // Output: reading 10
 // Output: reading 11
 // Output: reading 12
@@ -48,6 +49,7 @@ export function countRows(rows: AsyncIterable<string>): Effect.Effect<number, Er
     catch: (cause) => cause instanceof Error ? cause : new Error(String(cause))
   })
 }
+// Run: return Effect.runPromise(countRows({ async *[Symbol.asyncIterator]() { yield "a"; yield "b" } })).then((count) => console.log(count))
 // Output: 2
 ```
 
@@ -63,6 +65,7 @@ effect function exportRows(source: Stream.Stream<string>) {
   const exporter = try Exporter
   return try exporter.write(rows)
 }
+// Run in an effect function: provide Exporter = { write: (rows) => countRows(rows) } { try Console.log(try exportRows(Stream.make("a", "b"))) }
 // Output: 2
 ```
 
@@ -79,6 +82,7 @@ effect function printBatches() {
     }
   })
 }
+// Run in an effect function: try printBatches()
 // Output: [30,31]
 // Output: [32,33]
 // Output: [34]
@@ -105,6 +109,11 @@ const totals = Stream.mapAccum(Stream.make(4, 7, 9), () => 0, (total, n) => {
   const next = total + n
   return [next, [next]] as const
 })
+// Run in an effect function:
+//   {
+//     const jsonValue = [try Stream.runCollect(labels), try Stream.runCollect(upper), try Stream.runCollect(signals), try Stream.runCollect(words), try Stream.runCollect(totals)]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [["item-4","item-7","item-9"],["ITEM-4","ITEM-7","ITEM-9"],[null,null,null],["red","green","blue"],[4,11,20]]
 ```
 
@@ -127,6 +136,11 @@ effect function inspect() {
     running: try Stream.runCollect(running)  // [0, 2, 4, 9, 14, 16]
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspect()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"large":[5,5],"changes":[2,5,2],"running":[0,2,4,9,14,16]}
 ```
 
@@ -145,6 +159,11 @@ const neighbors = Stream.zipWithPreviousAndNext(sizes)
 effect function readPairs() {
   return try Stream.runCollect(pairs) // [[5, "small"], [8, "large"]]
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = [try readPairs(), try Stream.runCollect(descriptions), try Stream.runCollect(indexed), (try Stream.runCollect(neighbors)).map(([previous, value, next]) => [Option.getOrNull(previous), value, Option.getOrNull(next)])]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [[[5,"small"],[8,"large"]],["small: 5","large: 8"],[["small",0],["large",1]],[[null,5,8],[5,8,13],[8,13,null]]]
 ```
 
@@ -161,6 +180,11 @@ const names = Stream.crossWith(
   Stream.make("blue", "gray"),
   (fabric, color) => `${color} ${fabric}`
 )
+// Run in an effect function:
+//   {
+//     const jsonValue = [try Stream.runCollect(variants), try Stream.runCollect(names)]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [[["linen","blue"],["linen","gray"],["wool","blue"],["wool","gray"]],["blue linen","gray linen","blue wool","gray wool"]]
 ```
 
@@ -179,6 +203,11 @@ effect function partitionReadings() {
     return try.all [Stream.runCollect(even), Stream.runCollect(odd)]
   })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try partitionReadings()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [[10,12,14,16,18],[11,13,15,17,19]]
 ```
 
@@ -198,6 +227,11 @@ const summaries = Stream.flatMap(groups, ([region, group]) =>
   }), { concurrency: "unbounded" })
 const batches = Stream.grouped(requests, 2)
 const timedBatches = Stream.groupedWithin(requests, 20, "1 second")
+// Run in an effect function:
+//   {
+//     const jsonValue = [(try Stream.runCollect(summaries)).sort((a, b) => a.region.localeCompare(b.region)), try Stream.runCollect(batches), try Stream.runCollect(timedBatches)]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [[{"region":"east","bytes":20},{"region":"west","bytes":25}],[[{"region":"west","bytes":10},{"region":"east","bytes":20}],[{"region":"west","bytes":15}]],[[{"region":"west","bytes":10},{"region":"east","bytes":20},{"region":"west","bytes":15}]]]
 ```
 
@@ -214,6 +248,11 @@ const expanded = Stream.flatMap(primary, (label) => Stream.make(label, label.toU
 const merged = Stream.merge(primary, secondary, { haltStrategy: "both" })
 const alternating = Stream.interleave(primary, secondary)
 const selected = Stream.interleaveWith(primary, secondary, Stream.make(true, false, false, true, false))
+// Run in an effect function:
+//   {
+//     const jsonValue = [try Stream.runCollect(sequential), try Stream.runCollect(flattened), try Stream.runCollect(expanded), (try Stream.runCollect(merged)).sort(), try Stream.runCollect(alternating), try Stream.runCollect(selected)]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [["a1","a2","b1","b2","b3"],["a1","a2","b1","b2","b3"],["a1","A1","a2","A2"],["a1","a2","b1","b2","b3"],["a1","b1","a2","b2","b3"],["a1","b1","b2","a2","b3"]]
 ```
 
@@ -233,6 +272,9 @@ const bracketed = Stream.intersperseAffixes(fields, { start: "[", middle: ",", e
 effect function formatFields() {
   return try Stream.mkString(bracketed) // "[name,email,role]"
 }
+// Run in an effect function:
+//   try Console.log(try Stream.mkString(separated))
+//   try Console.log(try formatFields())
 // Output: name,email,role
 // Output: [name,email,role]
 ```
@@ -256,6 +298,15 @@ effect function shareReadings() {
 }
 
 const buffered = Stream.buffer(Stream.range(1, 12), { capacity: 3 })
+// Run in an effect function:
+//   {
+//     const jsonValue = try shareReadings()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   {
+//     const jsonValue = try Stream.runCollect(buffered)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: audit 1
 // Output: audit 2
 // Output: audit 3
@@ -294,6 +345,11 @@ const paced = Stream.range(1, 10).pipe(
     burst: 1
   })
 )
+// Run in an effect function:
+//   {
+//     const jsonValue = [try Stream.runCollect(settled), try Stream.runCollect(paced)]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [["cat","cats"],[1,2,3,4,5,6,7,8,9,10]]
 ```
 
@@ -310,6 +366,7 @@ const announcements = Stream.schedule(
 effect function announce() {
   try Stream.runForEach(announcements, (message) => Console.log(message))
 }
+// Run in an effect function: try announce()
 // Output: prepare
 // Output: deploy
 // Output: verify

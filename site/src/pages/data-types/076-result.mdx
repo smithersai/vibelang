@@ -17,6 +17,7 @@ function parseCount(text: string) {
     : Result.fail("Expected a nonnegative integer")
 }
 // Result.Result<number, string>
+// Run in an effect function: try Console.log(Result.isSuccess(parseCount("6")), Result.isFailure(parseCount("-1")), Result.isFailure(parseCount("")))
 ```
 
 ```text
@@ -38,6 +39,10 @@ function label(result: Result.Result<number, string>) {
   if (Result.isSuccess(result)) return `Count: ${result.success}`
   return `Rejected: ${result.failure}`
 }
+// Run in an effect function:
+//   try Console.log(Result.isResult(accepted), Result.isSuccess(accepted), Result.isFailure(rejected))
+//   try Console.log(label(accepted))
+//   try Console.log(label(rejected))
 ```
 
 ```text
@@ -63,6 +68,9 @@ function summarize(result: Result.Result<number, string>) {
     onFailure: (error) => `Rejected ${error}`
   })
 }
+// Run in an effect function:
+//   try Console.log(summarize(Result.succeed(6)))
+//   try Console.log(summarize(Result.fail("invalid")))
 ```
 
 ```text
@@ -94,6 +102,12 @@ effect function validatePair() {
     fromResult(Result.succeed("ready"))
   ])
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try validatePair()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try Console.log(requireCount("-1") catch (error) => `${error._tag} ${error.input}`)
 ```
 
 ```text
@@ -116,6 +130,14 @@ function combine(
   const record = Result.all({ name, count })
   return { chained, tuple, record }
 }
+// Run in an effect function:
+//   const result = combine(Result.succeed(" Weekly "), Result.succeed(6))
+//   {
+//     const jsonValue = [try Effect.try(() => Result.getOrThrow(result.chained)), try Effect.try(() => Result.getOrThrow(result.tuple)), try Effect.try(() => Result.getOrThrow(result.record))]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   const failed = combine(Result.fail("missing"), Result.fail("invalid"))
+//   try Console.log(Result.getOrElse(failed.chained, (error) => error), Result.getOrElse(failed.tuple, (error) => error), Result.getOrElse(failed.record, (error) => error))
 ```
 
 ```text
@@ -140,6 +162,9 @@ export function combineResults(
     return { title: normalized, count: total }
   })
 }
+// Run:
+//   console.log(JSON.stringify(Result.getOrThrow(combineResults(Result.succeed(" Weekly "), Result.succeed(6)))))
+//   console.log(Result.getOrElse(combineResults(Result.fail("missing"), Result.succeed(6)), (error) => error))
 ```
 
 ```text
@@ -153,6 +178,11 @@ function combinedData() {
     title: title.trim(), count
   }))
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try Effect.try(() => Result.getOrThrow(combinedData()))
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text

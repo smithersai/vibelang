@@ -30,6 +30,11 @@ effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 
+// Run in an effect function:
+//   {
+//     const jsonValue = try runGroup()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -56,6 +61,7 @@ effect function replacePreview() {
     return join current
   })
 }
+// Run in an effect function: try Console.log(try replacePreview())
 ```
 
 ```text
@@ -76,6 +82,7 @@ effect function waitForAllTracked() {
     return try FiberSet.size(workers) // 0
   })
 }
+// Run in an effect function: try Console.log(try waitForAllTracked())
 ```
 
 ```text
@@ -102,6 +109,7 @@ effect function serveBriefly() {
   })
   try Console.log("worker scope has closed")
 }
+// Run in an effect function: try serveBriefly()
 ```
 
 ```text

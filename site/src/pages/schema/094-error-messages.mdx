@@ -22,6 +22,9 @@ effect function explainPackage(input: unknown) {
   } catch (error) => error.message
 }
 // { label: 7, pieces: "several" } reports both expected types and their paths.
+// Run in an effect function:
+//   try Console.log(try explainPackage({ label: 7, pieces: "several" }))
+//   try Console.log(try explainPackage({ label: "crate", pieces: 2 }))
 ```
 
 ```text
@@ -42,6 +45,7 @@ const Count = Schema.Finite.annotate({ expected: "a finite package count" })
 const LabeledPackage = Schema.Struct({ tracking: Tracking, count: Count }).annotate({
   identifier: "LabeledPackage"
 })
+// Run in an effect function: for (const input of [{ tracking: 1, count: 1 }, { tracking: "pkg", count: NaN }, { tracking: "pkg", count: "1" }]) { try Effect.catch(Schema.decodeUnknownEffect(LabeledPackage)(input), (error) => Console.log(error.message)) }
 ```
 
 ```text
@@ -80,6 +84,9 @@ const TrackingText = Schema.String.check(
   Schema.isMinLength(4, { message: "Reference needs at least four characters" }),
   Schema.isMaxLength(24, { message: "Reference is too long" })
 )
+// Run in an effect function:
+//   for (const input of [2, "no", "1.5"]) { try Effect.catch(Schema.decodeUnknownEffect(WholeCount)(input), (error) => Console.log(error.message)) }
+//   try Effect.catch(Schema.decodeUnknownEffect(TrackingText)("x"), (error) => Console.log(error.message))
 ```
 
 ```text
@@ -111,6 +118,9 @@ effect function explainOrders(input: unknown) {
     return "Accepted"
   } catch (error) => error.message
 }
+// Run in an effect function:
+//   try Console.log(try explainOrders({ contacts: [], delivery: "air" }))
+//   try Console.log(try explainOrders({ contacts: [1], delivery: "courier" }))
 ```
 
 ```text
@@ -140,6 +150,9 @@ const Coordinates = Schema.Tuple([
 effect function readCoordinates(input: unknown) {
   return try Schema.decodeUnknownEffect(Coordinates)(input, { errors: "all" })
 }
+// Run in an effect function:
+//   try Effect.catch(Schema.decodeUnknownEffect(Dispatch)({}), (error) => Console.log(error.message))
+//   try Effect.catch(readCoordinates([]), (error) => Console.log(error.message))
 ```
 
 ```text

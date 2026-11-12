@@ -16,6 +16,9 @@ effect function decodeOpcode(opcode: number) {
   return "start"
 }
 // string!!
+// Run in an effect function:
+//   try Console.log(try decodeOpcode(1))
+//   try Console.log(try matchCause(decodeOpcode(2), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
 ```
 
 ```text
@@ -37,6 +40,9 @@ A TypeScript `as` or angle-bracket assertion, `satisfies`, or non-null assertion
 effect function firstLabel(labels: ReadonlyArray<string>) {
   return fromOption(Option.fromNullishOr(labels[0])) catch () => "No label"
 }
+// Run in an effect function:
+//   try Console.log(try firstLabel(["one"]))
+//   try Console.log(try firstLabel([]))
 ```
 
 ```text
@@ -67,6 +73,9 @@ effect function startupWithMessage() {
     mapError(requireSetting("region"), (error) => new Error(`Startup needs ${error.name}`))
   )
 }
+// Run in an effect function:
+//   try Console.log(try matchCause(startup(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
+//   try Console.log(try matchCause(startupWithMessage(), { onFailure: (cause) => Cause.hasDies(cause), onSuccess: () => false }))
 ```
 
 ```text
@@ -86,6 +95,7 @@ effect function inspectStartup() {
   }
   return "started"
 }
+// Run in an effect function: try Console.log(try inspectStartup())
 ```
 
 ```text
@@ -108,6 +118,9 @@ effect function isolateDecoder(opcode: number) {
     return try die(defect)
   })
 }
+// Run in an effect function:
+//   try Console.log(try isolateDecoder(1))
+//   try Console.log(try isolateDecoder(2))
 ```
 
 ```text
@@ -132,6 +145,9 @@ effect function decoderBoundary(opcode: number) {
   }
   return try failCause(cause)
 }
+// Run in an effect function:
+//   try Console.log(try decoderBoundary(1))
+//   try Console.log(try decoderBoundary(2))
 ```
 
 ```text

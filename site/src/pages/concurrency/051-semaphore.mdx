@@ -18,6 +18,9 @@ effect function makeUploadLimit() {
 effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
+// Run in an effect function:
+//   const limit = try makeUploadLimit()
+//   try Console.log(try Semaphore.withPermits(limit, 3, effect { return "three permits acquired" }))
 // Output: three permits acquired
 ```
 
@@ -35,6 +38,11 @@ effect function uploadAll() {
       return file
     }), { concurrency: "unbounded" })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try uploadAll()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: upload started a.csv
 // Output: upload started b.csv
 // Output: upload started c.csv
@@ -55,6 +63,11 @@ effect function weightedJobs() {
       return `job using ${weight} units`
     }), { concurrency: 3 })
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try weightedJobs()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["job using 1 units","job using 2 units","job using 3 units"]
 ```
 
@@ -77,6 +90,7 @@ effect function releaseOnFailure() {
     return "next job can enter"
   })
 }
+// Run in an effect function: try Console.log(try releaseOnFailure())
 // Output: first job rejected Rejected
 // Output: next job can enter
 ```

@@ -21,6 +21,9 @@ effect function previewWithDeadline() {
   return try timeout(buildPreview(), "500 millis")
 }
 // string!Cause.TimeoutError
+// Run in an effect function:
+//   try Console.log(try buildPreview())
+//   try Console.log((try flip(previewWithDeadline()))._tag)
 ```
 
 ```text
@@ -38,6 +41,7 @@ effect function previewLabel() {
     return "Preview still unavailable"
   }
 }
+// Run in an effect function: try Console.log(try previewLabel())
 ```
 
 ```text
@@ -55,6 +59,7 @@ effect function optionalPreview() {
   const preview = try timeoutOption(buildPreview(), "500 millis")
   return Option.isNone(preview) ? "No preview yet" : preview.value
 }
+// Run in an effect function: try Console.log(try optionalPreview())
 ```
 
 ```text
@@ -84,6 +89,9 @@ effect function requiredPreview(documentId: string) {
   })
 }
 // string!PreviewDeadline
+// Run in an effect function:
+//   try Console.log(try previewOrPlaceholder())
+//   try Console.log((try flip(requiredPreview("doc-1"))).documentId)
 ```
 
 ```text
@@ -102,6 +110,7 @@ effect function protectedPreview() {
     "500 millis"
   )
 }
+// Run in an effect function: try Console.log((try flip(protectedPreview()))._tag)
 ```
 
 ```text

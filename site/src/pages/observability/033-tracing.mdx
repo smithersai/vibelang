@@ -21,6 +21,11 @@ effect function stringify(value: unknown) {
   return try Effect.try(() => JSON.stringify(value))
 }
 
+// Run in an effect function:
+//   const spans: Tracer.NativeSpan[] = []
+//   const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } })
+//   try Console.log(try withTracer(requestTrace(), tracer))
+//   try Console.log(spans[0].name, spans[0].status._tag, Option.isNone(spans[0].parent))
 ```
 
 ```text
@@ -40,6 +45,11 @@ effect function renderReport(format: string) {
   }, "render-report", { attributes: { "report.format": format } })
 }
 // string!!
+// Run in an effect function:
+//   const spans: Tracer.NativeSpan[] = []
+//   const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } })
+//   try Console.log(try withTracer(renderReport("csv"), tracer))
+//   try Console.log(spans[0].name, spans[0].attributes.get("report.format"), spans[0].status._tag)
 ```
 
 ```text
@@ -80,6 +90,10 @@ const Tracing = OtlpTracer.layer({
 effect function exportedReport() {
   provide Tracing { return try renderReport("csv") }
 }
+// Run in an effect function:
+//   const { requests, collector } = collectorFixture()
+//   try Console.log(try provideService(exportedReport(), FetchHttpClient.Fetch, collector))
+//   try Console.log(requests.length, (try stringify(requests)).includes("render-report"), (try stringify(requests)).includes("report-worker"))
 ```
 
 ```text
@@ -106,6 +120,12 @@ effect function failingRender() {
   if (Exit.isFailure(outcome)) try logError("render failed", outcome.cause)
   return outcome
 }
+// Run in an effect function:
+//   const spans: Tracer.NativeSpan[] = []
+//   const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } })
+//   const outcome = try withTracer(Effect.provide(failingRender(), Logger.layer([])), tracer)
+//   try Console.log(Exit.isFailure(outcome), spans[0].attributes.get("report.format"))
+//   if (spans[0].status._tag === "Ended") try Console.log(Exit.isFailure(spans[0].status.exit))
 ```
 
 ```text
@@ -127,6 +147,12 @@ effect function tracedLogs() {
     }, "generate-artifact")
   }
 }
+// Run in an effect function:
+//   const spans: Tracer.NativeSpan[] = []
+//   const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } })
+//   const original = try Console.Console
+//   try withTracer(provideService(tracedLogs(), Console.Console, { ...original, log: () => {} }), tracer)
+//   try Console.log(try stringify(spans[0].events.map(([name]) => name)), spans[0].status._tag)
 ```
 
 ```text
@@ -152,6 +178,17 @@ effect function generate() {
     return { template, output }
   }, "generate-report")
 }
+// Run in an effect function:
+//   const spans: Tracer.NativeSpan[] = []
+//   const tracer = Tracer.make({ span(options) { const span = new Tracer.NativeSpan(options); spans.push(span); return span } })
+//   {
+//     const jsonValue = try withTracer(generate(), tracer)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   {
+//     const jsonValue = spans.map((span) => [span.name, Option.getOrElse(Option.map(span.parent, (parent) => parent.spanId === spans[0].spanId), () => false), span.traceId === spans[0].traceId, span.status._tag])
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 ```
 
 ```text
@@ -169,6 +206,10 @@ import { collectorFixture } from "./collector.ts"
 effect function demonstration() {
   provide Tracing { try generate() }
 }
+// Run in an effect function:
+//   const { requests, collector } = collectorFixture()
+//   try provideService(demonstration(), FetchHttpClient.Fetch, collector)
+//   try Console.log(requests.length, (try stringify(requests)).includes("generate-report"), (try stringify(requests)).includes("load-template"), (try stringify(requests)).includes("render-report"))
 ```
 
 ```text
@@ -198,6 +239,10 @@ const VendorTracing = Layer.unwrap(effect {
 effect function productionReport() {
   provide VendorTracing { return try generate() }
 }
+// Run in an effect function:
+//   const { requests, collector } = collectorFixture()
+//   provide ConfigProvider.layer(ConfigProvider.fromUnknown({ TRACE_ENDPOINT: "http://collector.invalid/v1/traces" })) { { const jsonValue = try provideService(productionReport(), FetchHttpClient.Fetch, collector); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
+//   try Console.log(requests.length, (try stringify(requests)).includes("generate-report"))
 ```
 
 ```text

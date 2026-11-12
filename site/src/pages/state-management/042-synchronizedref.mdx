@@ -20,6 +20,11 @@ effect function recordRevisions() {
   }
   return try SynchronizedRef.get(revisions)
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = (try recordRevisions()).toSorted((a, b) => a - b)
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [1,2,3]
 ```
 
@@ -35,6 +40,11 @@ effect function inspect() {
   const after = try SynchronizedRef.get(state)
   return { before, after }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try inspect()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"before":{"version":0,"ready":false},"after":{"version":1,"ready":true}}
 ```
 
@@ -59,6 +69,11 @@ effect function refreshTwice() {
   return try.all [refresh(), refresh()]
 }
 // [number, number]!RefreshFailed!Versions
+// Run in an effect function:
+//   provide Versions = { loadAfter: effect (version) => { try sleep("10 millis"); return version + 1 } } { { const jsonValue = try refreshTwice(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) } }
+//   const state = try SynchronizedRef.make(0)
+//   try Effect.catch(SynchronizedRef.updateEffect(state, effect () => { throw new RefreshFailed() }), (error) => Console.log(error._tag))
+//   try Console.log(try SynchronizedRef.updateAndGetEffect(state, (n) => succeed(n + 1)))
 // Output: [1,2]
 // Output: RefreshFailed
 // Output: 1

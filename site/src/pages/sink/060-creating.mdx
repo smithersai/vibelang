@@ -20,6 +20,11 @@ effect function endpoints() {
 }
 // first: Some("opening"), last: Some("closing")
 // prefix: ["opening", "middle"]
+// Run in an effect function:
+//   {
+//     const jsonValue = [Option.getOrElse((try endpoints()).first, () => ""), Option.getOrElse((try endpoints()).last, () => ""), (try endpoints()).prefix]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["opening","closing",["opening","middle"]]
 ```
 
@@ -41,6 +46,13 @@ effect function drainObserved() {
   const source = Stream.tap(Stream.make("ready", "done"), (s) => Console.log(s))
   try Stream.run(source, Sink.drain)
 }
+// Run in an effect function:
+//   const summary = try summarize()
+//   {
+//     const jsonValue = [summary.count, summary.sum, Duration.isDuration(summary.duration)]
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
+//   try drainObserved()
 // Output: [3,30,true]
 // Output: ready
 // Output: done
@@ -59,6 +71,7 @@ const print = Sink.forEach(effect (line: string) => {
 effect function writeRecords() {
   try Stream.run(Stream.make("created", "approved"), print)
 }
+// Run in an effect function: try writeRecords()
 // Output: record: created
 // Output: record: approved
 ```
@@ -78,6 +91,10 @@ effect function rejectInput() {
   return try Stream.run(Stream.make(40, 50), Sink.fail(new Rejected()))
 }
 // never!Rejected
+// Run in an effect function:
+//   try Console.log(try immediateResult())
+//   const tag = rejectInput() catch (error) => match (error) { when Rejected: error._tag; }
+//   try Console.log(tag)
 // Output: already complete
 // Output: Rejected
 ```
@@ -96,6 +113,11 @@ effect function collectSamples() {
   }
 }
 // all: [8, 5, -1, 13], firstTwo: [8, 5], positivePrefix: [8, 5]
+// Run in an effect function:
+//   {
+//     const jsonValue = try collectSamples()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: {"all":[8,5,-1,13],"firstTwo":[8,5],"positivePrefix":[8,5]}
 ```
 
@@ -115,6 +137,11 @@ effect function collectUnique() {
   return try Stream.run(Stream.make("oak", "oak", "ash", "elm", "pine"), threeUnique)
 }
 // Set containing "oak", "ash", "elm".
+// Run in an effect function:
+//   {
+//     const jsonValue = Array.from(try collectUnique())
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: ["oak","ash","elm"]
 ```
 
@@ -144,6 +171,11 @@ effect function summarizeStations() {
   ), twoStations)
 }
 // Map with "hill" -> 7 and "lake" -> 8.
+// Run in an effect function:
+//   {
+//     const jsonValue = Array.from(try summarizeStations())
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [["hill",7],["lake",8]]
 ```
 
@@ -171,6 +203,11 @@ effect function foldSamples() {
     first: try Stream.run(source, firstThree) // 28
   }
 }
+// Run in an effect function:
+//   {
+//     const jsonValue = try Effect.provide(foldSamples(), Logger.layer([Logger.withConsoleLog(Logger.make(({ message }) => (message as unknown[])[0]))]))
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: adding 7
 // Output: adding 9
 // Output: adding 12
@@ -199,6 +236,11 @@ effect function firstBatch() {
   return try Stream.run(Stream.make({ bytes: 60 }, { bytes: 55 }, { bytes: 10 }), packets)
 }
 // Returns the 60-byte and 55-byte packets.
+// Run in an effect function:
+//   {
+//     const jsonValue = try firstBatch()
+//     try Console.log(try Effect.try(() => JSON.stringify(jsonValue)))
+//   }
 // Output: [{"bytes":60},{"bytes":55}]
 ```
 
