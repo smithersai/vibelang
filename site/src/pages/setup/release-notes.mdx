@@ -17,8 +17,11 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 ### Bugs fixed since 0.0.12
 
+- Strict TypeScript configurations importing entries such as `vibelang/eslint` failed with `TS7016` because their types were missing. Every public JavaScript entry now ships declarations for both `bundler` and `node16` module resolution.
+
 - Publishing a release exposed the publisher's home directory in npm metadata. Release scripts now publish unchanged archives from neutral staging and reject registry entries that expose a home path.
 
+- The React Native guide and the `vibelang` package page showed a CommonJS `metro.config.js`, and the package page a CommonJS `babel.config.js`, for an app whose `package.json` has `"type": "module"`. Metro failed with `require is not defined in ES module scope`. Both pages now name the files `metro.config.cjs` and `babel.config.cjs`.
 - With no `project` option, the Vite plugin and the bundler plugins read the root's `tsconfig.json` even when a `vibe.config.json` was beside it, so they compiled with settings the compiler ignored. They now read the root's `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, as the compiler does.
 - Some docs examples taught forms the compiler warns about, such as a service member typed `Effect.Effect<{…}, never, never>` on the Stream page (`EK4833`). The docs check now fails an example that draws a warning, and those examples use the forms the compiler asks for; an example that shows a flagged form on purpose says so with `// expect-warning:`.
 - The specification marked 185 of its examples `// compiler-gap: pending VIP-N`, but 184 of those markers were stale: the compiler already did what the text says. They are gone, the docs check now compiles every specification example and fails on a marker whose example passes, and the two real gaps are listed on [Known limitations](/setup/known-limitations#specification-examples-the-compiler-does-not-pass-yet).
