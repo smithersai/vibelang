@@ -8,7 +8,7 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 [Get started](https://vibelang.sh) · [Cheat sheet](https://vibelang.sh/vibelang-features/115-cheat-sheet) · [Contribute](CONTRIBUTING.md)
 
 > [!IMPORTANT]
-> VibeLang 0.0.13 is the first alpha release. The alpha [specification](https://vibelang.sh/spec) is final, and every example on this page compiles and runs with it.
+> VibeLang 0.0.13 is the first alpha release. The core alpha [specification](https://vibelang.sh/spec), the 33 accepted VIPs, is final, and every example on this page compiles and runs with it. Features built from open proposals are experimental and need an opt-in: see [what is in the alpha](https://vibelang.sh/setup/alpha).
 
 > [!WARNING]
 > VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
@@ -202,4 +202,4 @@ Report a bug in the published packages, with a minimal reproduction, in [Issues]
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,479 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,518 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
