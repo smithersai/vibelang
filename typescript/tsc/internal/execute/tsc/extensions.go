@@ -16,6 +16,22 @@ type Identity struct {
 	Version     string                         // the line --version prints
 	Icon        string                         // the two letters in the --help header's icon, such as "ES"
 	HelpOptions []*tsoptions.CommandLineOption // help-only additions or replacements by name
+	Commands    []HelpCommand                  // the compiler's own subcommands, listed in --help before its flags
+}
+
+// HelpCommand is one subcommand that --help lists: the example commands and
+// what they do.
+type HelpCommand struct {
+	Examples    []string
+	Description string
+}
+
+// helpCommands returns the identified compiler's subcommands, or none.
+func helpCommands() []HelpCommand {
+	if identity != nil {
+		return identity.Commands
+	}
+	return nil
 }
 
 var identity *Identity

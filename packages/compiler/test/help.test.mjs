@@ -17,6 +17,17 @@ function checkHelp(args) {
   assert.equal(result.status, 0, result.stdout + result.stderr)
   assert.equal(result.stderr, "")
   const sections = result.stdout.split(/\n\s*\n/)
+  // The subcommands the vibelang command runs, which no flag list shows.
+  assert.match(result.stdout, /^COMMANDS$/m)
+  for (const [command, description] of [
+    ["vibelang lint", /lint rules, and Effect.s when compilerOptions\.plugins names @effect\/language-service, without writing files/],
+    ["vibelang format --check", /formatting of \.vibe/],
+    ["vibelang agents init", /Sets up coding agents/]
+  ]) {
+    const section = sections.find((text) => text.split("\n").some((line) => line.trim() === command))
+    assert.ok(section, `missing ${command} in ${args.join(" ")}`)
+    assert.match(section.replace(/\s+/g, " "), description)
+  }
   for (const [flag, description] of [
     ["lsp", /Start the language server/],
     ["stdio", /Use standard input and output/],

@@ -42,9 +42,19 @@ func init() {
 		Version:     "VibeLang " + Version + " (" + base + ")",
 		Icon:        "EK",
 		HelpOptions: helpOptions(),
+		Commands:    helpCommands,
 	})
 	// The language server's initialize response names it too.
 	lsp.SetServerInfo("vibelang", Version+" ("+base+")")
+}
+
+// helpCommands are the subcommands the vibelang command runs itself: lint in
+// this binary (cmd/tsc), format and agents in the npm package's launcher
+// (packages/compiler/bin/vibelang).
+var helpCommands = []tsc.HelpCommand{
+	{Examples: []string{"vibelang lint", "vibelang lint -p ./path/to/tsconfig.json"}, Description: "Type-checks the project and reports VibeLang's lint rules, and Effect's when compilerOptions.plugins names @effect/language-service, without writing files."},
+	{Examples: []string{"vibelang format --check", "vibelang format --write src/main.vibe"}, Description: "Checks or rewrites the formatting of .vibe, .vibex and // @vibe TypeScript files."},
+	{Examples: []string{"vibelang agents init"}, Description: "Sets up coding agents (Claude Code, Codex, opencode, Cursor, VS Code) for the .vibe files in a repository."},
 }
 
 // Help metadata stays separate from the option parser: the entry point handles

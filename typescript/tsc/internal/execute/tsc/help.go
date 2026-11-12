@@ -99,6 +99,7 @@ func printEasyHelp(sys System, locale locale.Locale, simpleOptions []*tsoptions.
 	example([]string{"tsc -p ./path/to/tsconfig.json"}, diagnostics.Compiles_the_TypeScript_project_located_at_the_specified_path)
 	example([]string{"tsc --help --all"}, diagnostics.An_expanded_version_of_this_information_showing_all_possible_compiler_options)
 	example([]string{"tsc --noEmit", "tsc --target esnext"}, diagnostics.Compiles_the_current_project_with_additional_settings)
+	output = append(output, helpCommandsOutput(colors)...)
 
 	var cliCommands []*tsoptions.CommandLineOption
 	var configOpts []*tsoptions.CommandLineOption
@@ -124,6 +125,8 @@ func printAllHelp(sys System, locale locale.Locale, options []*tsoptions.Command
 	var output []string
 	msg := helpTitle(locale)
 	output = append(output, getHeader(sys, msg)...)
+
+	output = append(output, helpCommandsOutput(createColors(sys))...)
 
 	// ALL COMPILER OPTIONS section
 	afterCompilerOptions := diagnostics.You_can_learn_about_all_of_the_compiler_options_at_0.Localize(locale, "https://aka.ms/tsc")
@@ -432,4 +435,21 @@ func getPrettyOutput(colors *colors, left string, right string, rightAlignOfLeft
 
 func getDisplayNameTextOfOption(option *tsoptions.CommandLineOption) string {
 	return "--" + option.Name + core.IfElse(option.ShortName != "", ", -"+option.ShortName, "")
+}
+
+// helpCommandsOutput lists the identified compiler's own subcommands in a
+// COMMANDS section; stock tsc has none and prints nothing.
+func helpCommandsOutput(colors *colors) []string {
+	commands := helpCommands()
+	if len(commands) == 0 {
+		return nil
+	}
+	output := []string{colors.bold("COMMANDS"), "\n", "\n"}
+	for _, command := range commands {
+		for _, example := range command.Examples {
+			output = append(output, "  ", colors.blue(example), "\n")
+		}
+		output = append(output, "  ", command.Description, "\n", "\n")
+	}
+	return output
 }
