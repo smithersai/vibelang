@@ -1,2 +1,2 @@
-await.race was removed by VIP-18: write try.all, try.race, try.any or try.allSettled over an array of Effects, or try all({ … }, { concurrency: "unbounded" }) for an object.
+await.race was removed by VIP-18: write try.race over an array of Effects.
 await in a hatch body is JavaScript's await, which needs an async function.
