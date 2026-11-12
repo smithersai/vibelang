@@ -885,10 +885,31 @@ func isWrittenEffectReference(t *ast.Node) bool {
 	name := t.AsTypeReferenceNode().TypeName
 	switch name.Kind {
 	case ast.KindIdentifier:
-		return name.Text() == "Effect"
+		if name.Text() != "Effect" {
+			return false
+		}
+		decl := formsTypeBinding(name, name.Text())
+		if decl == nil {
+			return true
+		}
+		// A written Effect module import occupies the namespace/value meaning,
+		// while the transitional bare type still names the prelude alias.
+		if decl.Kind == ast.KindImportSpecifier {
+			imported := name.Text()
+			if property := decl.AsImportSpecifier().PropertyName; property != nil {
+				imported = property.Text()
+			}
+			if formsModuleSpecifier(decl) == "effect" && imported == "Effect" {
+				return true
+			}
+		}
+		if decl.Kind == ast.KindNamespaceImport && formsModuleSpecifier(decl) == "effect/Effect" {
+			return true
+		}
+		return (&Resolver{}).isEffectTypeNode(t, 0)
 	case ast.KindQualifiedName:
 		q := name.AsQualifiedName()
-		return q.Right.Text() == "Effect" && q.Left.Kind == ast.KindIdentifier && q.Left.Text() == "Effect"
+		return q.Right.Text() == "Effect" && q.Left.Kind == ast.KindIdentifier && q.Left.Text() == "Effect" && (&Resolver{}).isEffectTypeNode(t, 0)
 	}
 	return false
 }

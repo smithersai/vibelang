@@ -8194,7 +8194,7 @@ typescript/vibelang/cases/rerun-rest-parameters/main.vibe:24:22 lambda effectFn 
 typescript/vibelang/cases/rerun-rest-parameters/main.vibe:2:24 lambda effectFn keyword
 typescript/vibelang/cases/rerun-rest-parameters/main.vibe:3:25 lambda effectFn keyword
 typescript/vibelang/cases/rerun-rest-parameters/main.vibe:8:27 lambda effectFn keyword
-typescript/vibelang/cases/reserved-fiber-type-controls/main.vibe:15:30 lambda plain fallback
+typescript/vibelang/cases/reserved-fiber-type-controls/main.vibe:15:30 lambda plain annotation
 typescript/vibelang/cases/resolved-try-signature-strict.fail/main.vibe:10:45 lambda plain table
 typescript/vibelang/cases/resolved-try-signature-strict.fail/main.vibe:12:32 lambda choice fallback
 typescript/vibelang/cases/resolved-try-signature-strict.fail/main.vibe:14:40 lambda choice fallback
@@ -11190,7 +11190,7 @@ typescript/vibelang/cases/witness-legacy-infer-slot-admission.fail/main.vibe:35:
 typescript/vibelang/cases/witness-legacy-infer-slot-admission.fail/main.vibe:36:28 lambda effectFn annotation
 typescript/vibelang/cases/witness-legacy-infer-slot-admission.fail/main.vibe:40:24 lambda plain annotation
 typescript/vibelang/cases/witness-legacy-infer-slot-admission.fail/main.vibe:59:25 lambda plain annotation
-typescript/vibelang/cases/witness-legacy-infer-slot-admission.fail/shadow.vibe:3:25 lambda effectFn annotation
+typescript/vibelang/cases/witness-legacy-infer-slot-admission.fail/shadow.vibe:3:25 lambda plain annotation
 typescript/vibelang/cases/witness-legacy-infer-slot-table.fail/row2.vibe:1:18 lambda effectFn annotation
 typescript/vibelang/cases/witness-main-lexical-binding/constant.vibe:12:21 lambda effectFn keyword
 typescript/vibelang/cases/witness-main-lexical-binding/variable.vibe:12:19 lambda effectFn keyword

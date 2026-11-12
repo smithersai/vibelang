@@ -533,7 +533,7 @@ func (p *projector) effectType(node *ast.Node, slotsOnly bool) {
 // serviceKey mirrors the native compiler literal key override (VIP-9).
 func (p *projector) serviceKey(class *ast.Node) string {
 	for _, member := range class.Members() {
-		if ast.IsPropertyDeclaration(member) && ast.IsStatic(member) && ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) && member.Name() != nil && member.Name().Text() == "key" && member.Initializer() != nil && ast.IsStringLiteralLike(member.Initializer()) {
+		if ast.IsPropertyDeclaration(member) && ast.IsStatic(member) && ast.HasSyntacticModifier(member, ast.ModifierFlagsReadonly) && member.Name() != nil && ast.IsIdentifier(member.Name()) && member.Name().Text() == "key" && member.Initializer() != nil && ast.IsStringLiteralLike(member.Initializer()) {
 			return member.Initializer().Text()
 		}
 	}

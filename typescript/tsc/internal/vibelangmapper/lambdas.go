@@ -450,11 +450,12 @@ func (p *projector) d4ServiceMember(fn *ast.Node) bool {
 		return false
 	}
 	service := resolver.serviceClassOf(key)
-	if service == nil || member.Name() == nil {
+	name, named := formsPropertyName(member)
+	if service == nil || !named {
 		return false
 	}
 	for _, declaration := range service.Members() {
-		if declaration.Name() != nil && declaration.Name().Text() == member.Name().Text() && ast.IsMethodDeclaration(declaration) {
+		if declared, ok := formsPropertyName(declaration); ok && declared == name && ast.IsMethodDeclaration(declaration) {
 			ret := declaration.Type()
 			return ret != nil && isWrittenEffectReference(ret) && ret.AsTypeReferenceNode().TypeName.Kind == ast.KindIdentifier
 		}

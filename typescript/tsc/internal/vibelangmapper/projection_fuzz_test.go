@@ -97,7 +97,11 @@ func FuzzProjectionSpans(f *testing.F) {
 	for _, tc := range projectionCases {
 		f.Add(tc.source)
 	}
-	for _, source := range []string{"", "\x00", "service", "function f( {", "// 😀\u2028export const café = 1", "service S { read(): #Bad!0 }", "function f(xs: number[]) { for concurrent (const x of xs)"} {
+	for _, source := range []string{
+		`type Effect = "burn" | "freeze"; function pick(): Effect { return "burn" }`,
+		`const k = "key"; service Users { static readonly [k] = "app/Users"; find(id: string): string! }`,
+		`function f(): Effect<{ [Symbol.iterator]: number }> { return () => 1 }`,
+		"", "\x00", "service", "function f( {", "// 😀\u2028export const café = 1", "service S { read(): #Bad!0 }", "function f(xs: number[]) { for concurrent (const x of xs)"} {
 		f.Add(source)
 	}
 	f.Fuzz(func(t *testing.T, source string) {

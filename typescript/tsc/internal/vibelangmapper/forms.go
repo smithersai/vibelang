@@ -230,7 +230,7 @@ func (f Forms) Agreed() bool { return !slices.Contains(f.Agree, false) }
 // in any change that moves a decision, so a table change says whether its
 // inputs or its rules moved; scripts/check-forms-table.sh checks the
 // decisions themselves.
-const RulesVersion = 11
+const RulesVersion = 12
 
 // Header is the table's first line: what generated it, from what.
 type Header struct {

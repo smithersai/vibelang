@@ -46,7 +46,7 @@ func (p *projector) keyOwnedMember(access *ast.Node) bool {
 	}
 	if service != nil {
 		for _, member := range service.Members() {
-			if member.Name() != nil && member.Name().Text() == access.Name().Text() && !ast.IsStatic(member) {
+			if name, ok := formsPropertyName(member); ok && name == access.Name().Text() && !ast.IsStatic(member) {
 				return false
 			}
 		}

@@ -257,6 +257,8 @@ An instance method body, a value initializer, or an accessor is `EK0902`; declar
 - a `get` or `set` accessor without a body, such as `get value(): number`, with or without a modifier such as `abstract`. Declare a property, such as `readonly value: number`, or a method;
 - static members other than `static readonly key` and `static readonly defaultValue`: other static fields, methods, accessors and initialization blocks.
 
+`static readonly [key]` is rejected; the derived key remains.
+
 Rejected static members, signatures, constructors and index signatures still report independent TypeScript errors in their written types, initializers and bodies, such as an unknown name or a wrong argument type. An instance implementation or initializer does not hide errors on other static members, and independent errors in a rejected call signature's key or type parameters are still reported.
 
 A member can have a symbol key, such as `[Symbol.iterator](): Iterator<number>`. It is part of `Name.Shape`, as in a TypeScript interface; end the member before it with `;`, because `[` otherwise continues that member.

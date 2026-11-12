@@ -93,13 +93,17 @@ func (p *projector) interleavedServiceDeclaration(node *ast.Node) {
 			if ast.IsStatic(member) || !ast.IsMethodDeclaration(member) || member.Name() == nil {
 				continue
 			}
+			memberName, ok := formsPropertyName(member)
+			if !ok {
+				continue
+			}
 			arity := len(member.Parameters())
 			for _, parameter := range member.Parameters() {
 				if parameter.AsParameterDeclaration().DotDotDotToken != nil {
 					arity = -1
 				}
 			}
-			fields = append(fields, member.Name().Text(), strconv.Itoa(arity))
+			fields = append(fields, memberName, strconv.Itoa(arity))
 		}
 		p.plan.markFields(editControl, partWhole, node.End(), node.End(), fields...)
 	}

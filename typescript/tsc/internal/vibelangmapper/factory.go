@@ -126,6 +126,9 @@ func (r *Resolver) effectSuccess(t *ast.Node, depth int) *ast.Node {
 		return nil
 	}
 	t = formsUnwrapType(t)
+	if t == nil || t.Kind != ast.KindTypeReference {
+		return nil
+	}
 	if len(t.TypeArguments()) > 0 {
 		return formsUnwrapType(t.TypeArguments()[0])
 	}
@@ -342,11 +345,11 @@ func (r *Resolver) acceptsFunctionValue(t *ast.Node, depth int) bool {
 			if member.QuestionToken() != nil || member.Kind == ast.KindCallSignature {
 				continue
 			}
-			name := member.Name()
-			if name == nil {
+			name, ok := formsPropertyName(member)
+			if !ok {
 				return false
 			}
-			switch name.Text() {
+			switch name {
 			case "length", "name", "apply", "call", "bind", "prototype", "arguments", "caller", "toString":
 			default:
 				return false

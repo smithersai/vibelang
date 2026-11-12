@@ -1963,17 +1963,15 @@ func (r *Resolver) typeLiteral(t *ast.Node, depth int) *ast.Node {
 	return nil
 }
 
-// localType returns the top-level type alias or interface a written type
-// reference names, when this file declares it without type parameters.
+// localType returns a lexical type alias or interface that needs no
+// instantiation. A nearer generic declaration still shadows an outer alias.
 func (r *Resolver) localType(ref *ast.Node) *ast.Node {
 	name := ref.AsTypeReferenceNode().TypeName
 	if !ast.IsIdentifier(name) {
 		return nil
 	}
-	for _, s := range r.file.Statements.Nodes {
-		if (s.Kind == ast.KindTypeAliasDeclaration || s.Kind == ast.KindInterfaceDeclaration) && s.Name().Text() == name.Text() && s.TypeParameters() == nil {
-			return s
-		}
+	if d := formsTypeBinding(name, name.Text()); d != nil && (d.Kind == ast.KindTypeAliasDeclaration || d.Kind == ast.KindInterfaceDeclaration) && len(d.TypeParameters()) == 0 {
+		return d
 	}
 	return nil
 }
@@ -2077,6 +2075,22 @@ func (r *Resolver) isEffectTypeNode(t *ast.Node, depth int) bool {
 	}
 	root := name.Text()
 	decl := r.binding(name, root)
+	// Type-only declarations shadow a bare type, but not the value namespace
+	// in Effect.Effect. Value lookup deliberately excludes these declarations.
+	if len(parts) == 0 {
+		if local := formsTypeBinding(name, root); local != nil {
+			switch local.Kind {
+			case ast.KindTypeAliasDeclaration:
+				// Other written aliases keep their existing form. Factories
+				// follow those aliases separately in factoryEffectType.
+				return root == "Effect" && depth < 4 && r.isEffectTypeNode(local.Type(), depth+1)
+			case ast.KindInterfaceDeclaration, ast.KindTypeParameter, ast.KindClassDeclaration, ast.KindEnumDeclaration, ast.KindModuleDeclaration:
+				return false
+			default:
+				decl = local
+			}
+		}
+	}
 	switch {
 	case decl == nil:
 		if len(parts) == 0 {
@@ -2096,14 +2110,12 @@ func (r *Resolver) isEffectTypeNode(t *ast.Node, depth int) bool {
 		return r.canonicalIsEffect(key)
 	case decl.Kind == ast.KindNamespaceImport && len(parts) > 0:
 		return r.canonicalIsEffect(formsModuleSpecifier(decl) + "#" + strings.Join(parts, "."))
-	case decl.Kind == ast.KindTypeAliasDeclaration && depth < 4:
-		return r.isEffectTypeNode(decl.Type(), depth+1)
 	}
 	return false
 }
 
 func (r *Resolver) canonicalIsEffect(key string) bool {
-	if key == "effect/Effect#Effect" || key == "effect#Effect.Effect" {
+	if key == "effect/Effect#Effect" || key == "effect#Effect.Effect" || key == "prelude#Effect.Effect" {
 		return true
 	}
 	return r.table != nil && r.table.Canonical(key) == "effect/Effect#Effect"

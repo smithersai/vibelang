@@ -2388,3 +2388,7 @@ typescript/vibelang/cases/match-extractor-iterator-lookup/main.vibe:15:17 lambda
 typescript/vibelang/cases/match-symbol-custom-matcher/main.vibe:12:3 lambda: plain fallback -> plain protocol # The native Symbol.customMatcher member retains its protocol context; its plain function kind is unchanged.
 
 typescript/vibelang/cases/w01-004-custom-matcher-ambient/main.vibe:17:3 lambda: plain fallback -> plain protocol # The ambiently declared well-known symbol remains a computed protocol key instead of a parser intrinsic; the method stays plain.
+
+# rules 12: local type declarations named Effect retain their own type meaning (VIP-14).
+typescript/vibelang/cases/witness-legacy-infer-slot-admission.fail/shadow.vibe:3:25 lambda: effectFn annotation -> plain annotation # The local Effect type shadows the prelude, so the arrow keeps its plain return contract.
+typescript/vibelang/cases/reserved-fiber-type-controls/main.vibe:15:30 lambda: plain fallback -> plain annotation # The lexical Callable alias supplies the arrow's plain function annotation; its function kind stays plain.
