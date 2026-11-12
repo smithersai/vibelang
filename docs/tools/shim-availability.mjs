@@ -63,6 +63,13 @@ export function shimAvailabilityProblems(text, { versions = [], preparedVersions
   if (!versions.length && !preparedVersions.length && !unavailable) {
     problems.push(file + ": state that the replacement package is not available from npm")
   }
+  // A prepared source version is not a release: until npm records a version, no page may say a
+  // release includes the replacement package.
+  const included = /\b(?:is\s+)?(?:included|shipped|published)\s+in\s+(?:the\s+)?(?:VibeLang\s+)?\d+\.\d+\.\d+(?:\s+release)?\b/i.exec(text)
+  if (included && !versions.length) {
+    const line = text.slice(0, included.index).split("\n").length
+    problems.push(file + ":" + line + ": a release does not include the replacement package until npm records a version")
+  }
   for (const match of text.matchAll(/\bnpm:vibelang-typescript(?:@(\d+\.\d+\.\d+(?:[-+][\w.-]+)?))?/g)) {
     if (match[1] ? !versions.includes(match[1]) && !preparedVersions.includes(match[1]) : !versions.length) {
       const line = text.slice(0, match.index).split("\n").length
@@ -93,7 +100,7 @@ export function checkShimAvailability(repository = root) {
   const versions = registryVersions(publication.versions)
   const preparedVersions = preparedShimVersions(repository)
   const open = proposalIsOpen(readFileSync(join(repository, "docs/design/vips/0042-vibelang-in-ts-files-open.md"), "utf8"))
-  return ["docs/user/src/setup/typescript-shim.md", "packages/typescript-shim/README.md"].flatMap(file =>
+  return ["docs/user/src/setup/typescript-shim.md", "packages/typescript-shim/README.md", "docs/user/src/setup/known-limitations.md"].flatMap(file =>
     shimAvailabilityProblems(readFileSync(join(repository, file), "utf8"), { versions, preparedVersions, open, file }))
 }
 

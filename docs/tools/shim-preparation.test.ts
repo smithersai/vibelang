@@ -22,6 +22,8 @@ function fixture({ compiler = "0.0.12", published = "0.0.11", shim = "7.1.12", v
   const text = "Experimental preview.\nnpm install typescript@npm:vibelang-typescript" + (alias ? "@" + alias : "") + "\n"
   write("docs/user/src/setup/typescript-shim.md", text)
   write("packages/typescript-shim/README.md", text)
+  // shimAvailability also reads Known limitations, which mentions the shim without an npm alias.
+  write("docs/user/src/setup/known-limitations.md", "The experimental TypeScript shim is a last resort.\n")
   return { root, write, text, close: () => rmSync(root, { recursive: true, force: true }) }
 }
 

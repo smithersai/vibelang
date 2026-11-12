@@ -50,3 +50,11 @@ test("generated publication states only admit aliases for recorded versions", ()
     assert.deepEqual(shimAvailabilityProblems(intro, { versions: published ? [version] : [], open }), [])
   }), { seed: 421106, numRuns: 200 })
 })
+
+test("a page may not say a release includes the replacement package before npm records it", () => {
+  const claim = "The experimental shim is a last resort.\nIt is included in the VibeLang 0.0.13 release under open VIP-42.\n"
+  assert.deepEqual(shimAvailabilityProblems(claim, { preparedVersions: ["7.1.13"], file: "limits.md" }),
+    ["limits.md:2: a release does not include the replacement package until npm records a version"])
+  assert.deepEqual(shimAvailabilityProblems(claim, { versions: ["7.1.13"], file: "limits.md" }), [])
+  assert.deepEqual(shimAvailabilityProblems("An experimental preview, not published to npm.\n", { file: "limits.md" }), [])
+})

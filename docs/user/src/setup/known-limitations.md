@@ -22,7 +22,7 @@ callee's callable type, such as `() => number!NotFound`, instead of erasing it.
 
 The experimental TypeScript mapper keeps an exported function’s written Effect contract, such as `number!!`, even when its body is pure. Its projected type has no `$plain` member.
 
-After the supported CLI, plugins and editor routes, the experimental [TypeScript shim](typescript-shim.md) is a last resort for projects that cannot change TypeScript file names. It is included in the VibeLang 0.0.13 release under open VIP-42. Stock readers can accept a marked file with different meaning.
+After the supported CLI, plugins and editor routes, the experimental [TypeScript shim](typescript-shim.md) is a last resort for projects that cannot change TypeScript file names. Under open VIP-42, the `vibelang` compiler recognizes a `.ts` file whose first line is `// @vibe`; the `vibelang-typescript` replacement package that runs it as `tsc` is a source-checkout preview and is not published to npm. Stock readers can accept a marked file with different meaning.
 
 Mapper failures `EK9001` through `EK9006` have [repair guidance in the diagnostic reference](../vibelang-features/diagnostic-code-map.md#typescript-mapper-failures).
 
