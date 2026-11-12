@@ -99,7 +99,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,900 |
 | **Core Concepts** | **23,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,500 |
-| [Running Effects](../getting-started/009-running-effects.md) | 2,100 |
+| [Running Effects](../getting-started/009-running-effects.md) | 2,000 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 2,100 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,000 |
 | [Devtools](../getting-started/012-devtools.md) | 14,000 |

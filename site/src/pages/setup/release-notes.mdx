@@ -73,6 +73,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Invalid global object accesses could hide errors in computed keys and type assertions; those errors are now reported alongside the access diagnostic.
 
+- Five guides told readers to apply VibeLang editor actions, such as "Annotate as the fork infers" for `EK9101` and a parenthesizing action for `EK0510`, which the alpha does not ship. They now say which edit to write.
+
 - A computed matcher member after a line break could be split into a separate array expression. It now continues the matcher lookup, and empty or malformed brackets keep their syntax errors.
 
 - Invalid service signatures and constructors could hide unknown names and type errors in their types or bodies. These independent errors now appear alongside `EK0902`.

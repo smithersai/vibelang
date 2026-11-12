@@ -134,7 +134,7 @@ Each entry gives the condition and the repair. The examples and language-service
 | EK4819 | Registered for `yield effect` in a TypeScript Effect generator; currently not emitted in `.ts` files. | In TypeScript use `yield* effect`; in VibeLang write an effect function with `try`. |
 | EK4820 | Registered for a non-returning `yield* effect` whose success type is `never`; currently not emitted in `.ts` files. | In TypeScript write `return yield* effect` so control flow narrows; in VibeLang run the Effect with `try`. |
 | EK9100 | The editor's text-only projection needs a written type to choose a form. | Add the annotation requested by the message. |
-| EK9101 | An editor-only suggestion: the text-only projection cannot safely select a data-type method from the receiver's written type or access syntax. | Apply "Annotate as the fork infers", which writes the checker's receiver type as an annotation, or call the module function explicitly; optional or uncalled accesses need a direct call. |
+| EK9101 | An editor-only suggestion: the text-only projection cannot safely select a data-type method from the receiver's written type or access syntax. | Write a type annotation on the receiver, or call the module function explicitly; optional or uncalled accesses need a direct call. |
 
 ## Configure compiler checks
 

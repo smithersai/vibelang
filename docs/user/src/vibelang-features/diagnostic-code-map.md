@@ -129,7 +129,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK4610` | lint warning: `await` on a `Deferred` in an `async` function; use `await runPromise(Deferred.await(deferred))` |
 | `EK4701` | a `match` with no `default` over a finite union that misses a case; a guarded arm covers nothing |
 
-`EK0510` reports an unparenthesized `try`, `fork` or `join` on the left of `**`. The editor action wraps the whole execution expression, such as `(try program) ** 2`, in parentheses. Native TypeScript unary expressions retain `TS17006`.
+`EK0510` reports an unparenthesized `try`, `fork` or `join` on the left of `**`. Parenthesize the whole execution expression, as in `(try program) ** 2`. Native TypeScript unary expressions retain `TS17006`.
 
 `EK4004` applies when a module name is used as a value. Imported or re-exported member names, destructuring property keys, labels, and names in `import.meta` or `new.target` do not read that binding. Re-export members with `export { member } from name`; exporting the module name itself is an error.
 

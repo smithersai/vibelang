@@ -102,7 +102,7 @@ In current source, `try make()` intentionally runs the result whenever it passes
 
 A value that fails that operand test, such as `Option.some(1)` or `Result.succeed(2)`, keeps `EK0502`, whatever methods the value has; write no conversion such as `asEffect()` ([VIP-5](https://vibelang.sh/vips/0005-try-runs-effects#decision), amended).
 
-A plain catch handler returns its result as data, including an error or an `Effect` value, and reports the `EK0508` advisory. Select the editor action to run the returned `Effect` only when that is the intended behavior.
+A plain catch handler returns its result as data, including an error or an `Effect` value, and reports the `EK0508` advisory. To run the returned `Effect` instead, write `effect` before the handler, as in `x catch effect (e) => …`, only when that is the intended behavior.
 
 ## Callback completion values
 
