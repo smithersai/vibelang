@@ -1,0 +1,2 @@
+In a .vibe file process is platform code: with those types installed it is EK4402, because VibeLang code does not use the platform directly.
+Use Config, from the prelude:   try Config.String("NAME")

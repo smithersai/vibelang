@@ -1,0 +1,7 @@
+// expect: TS2591
+export effect function main() {
+  return process.env.HOME
+}
+
+// With "types": [], TypeScript advises installing @types/node, which would
+// only turn this into EK4402. The note names the Effect replacement.
