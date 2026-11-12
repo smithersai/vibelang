@@ -518,6 +518,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"import-type-default-named", "import type T, { U } from \"./m\";"},
 	{"import-attribute-value", "import x from \"./m\" with { type: 1 };"},
 	{"catch-annotated-initializer", "try {} catch (e: unknown = 1) {}"},
+	{"import-type-asserts-predicate", grammarImportAssertsForms[0]},
+	{"import-type-this-predicate", grammarImportAssertsForms[4]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

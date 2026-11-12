@@ -121,6 +121,30 @@ UnshapedElementList UnshapedElement
 			}, "ts", false)
 		}
 	}
+	// parseNonArrayType also reads `asserts` Identifier, `asserts this`, both
+	// with `is` Type, and `this is` Type (parseAssertsTypePredicate,
+	// parseThisTypePredicate) in any type position; the checker reports
+	// TS1228 outside a return type, which the arguments never reach. The
+	// identifier predicate `x is T` is read in return types only.
+	for _, name := range []string{"PrimaryType", "ArrowSafePrimaryType"} {
+		scoped, ok := copies[g.index[name]]
+		if !ok {
+			continue
+		}
+		for _, subject := range [][]grammarGsym{
+			{{kind: grammarSymClass, text: "IdentifierReference"}},
+			{{kind: grammarSymTok, text: "this"}},
+		} {
+			asserted := append([]grammarGsym{{kind: grammarSymTok, text: "asserts"}, {kind: grammarSymNoLT}}, subject...)
+			g.add(scoped, asserted, "ts", false)
+			g.add(scoped, append(slices.Clone(asserted), grammarGsym{kind: grammarSymTok, text: "is"}, grammarGsym{kind: grammarSymNT, nt: scopedType, text: g.names[scopedType]}), "ts", false)
+		}
+		g.add(scoped, []grammarGsym{
+			{kind: grammarSymTok, text: "this"}, {kind: grammarSymNoLT},
+			{kind: grammarSymTok, text: "is"},
+			{kind: grammarSymNT, nt: scopedType, text: g.names[scopedType]},
+		}, "ts", false)
+	}
 	if postfix, ok := copies[g.index["PostfixType"]]; ok {
 		g.add(postfix, []grammarGsym{
 			{kind: grammarSymNT, nt: postfix, text: g.names[postfix]},
