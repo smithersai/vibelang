@@ -46,7 +46,9 @@ func TestRenderExec(t *testing.T) {
 }
 
 // emitCases are the executable rendering's rules: a source, text its
-// JavaScript must contain, and text it must not.
+// JavaScript must contain, and text it must not. Rows that record the
+// retired implicit-effects language are listed in
+// testdata/legacy-language.txt (TestLegacyLanguageCensus).
 var emitCases = []struct {
 	name     string
 	source   string

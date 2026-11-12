@@ -25,6 +25,9 @@ var testContext = FileContext{FileName: "/app/src/main.vibe", ModuleKey: "app/sr
 
 // projectionCases are the lowering rules, one source and its virtual
 // TypeScript each, without the prelude import line (TestImportLine).
+// Many rows record the retired implicit-effects language, not the current
+// one: testdata/legacy-language.txt lists them, and TestLegacyLanguageCensus
+// rejects a new one. Write a new row with `effect` and `try`.
 var projectionCases = []struct {
 	name        string
 	source      string

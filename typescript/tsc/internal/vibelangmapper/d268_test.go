@@ -171,7 +171,8 @@ func TestD268NamespaceCallback(t *testing.T) {
 // compiler case name: its copy in testdata/pre-vip1 when the VIP-1 flip
 // migrated it, or file itself. The projector still infers pre-VIP-1 forms
 // (D500, D147) until the flip's slice 2b deletes its form resolver, so it
-// runs the case as it was written for those rules.
+// runs the case as it was written for those rules. The frozen copies are
+// lines of testdata/legacy-language.txt: none may be added.
 func preVIP1(name, file string) string {
 	frozen := filepath.Join("testdata", "pre-vip1", name, filepath.Base(file))
 	if _, err := os.Stat(frozen); err == nil {

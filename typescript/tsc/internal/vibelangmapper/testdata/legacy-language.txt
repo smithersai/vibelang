@@ -1,0 +1,121 @@
+# Golden rows and frozen files that record the retired implicit-effects
+# language (see legacy_language_census_test.go). This is a worklist, not a
+# set of approved lowerings: retiring the mapper's form resolver rewrites
+# each row in the current language and deletes its line. TestLegacyLanguageCensus
+# derives the rows from projectionCases, emitCases and the frozen
+# directories and fails when one is not listed here; a line is table, rules,
+# row name, separated by tabs. A line whose row was rewritten is logged, and
+# UPDATE_LEGACY_CENSUS=1 drops it. New rows are written with `effect` and
+# `try`. Tests that write their sources inline
+# (the form resolver's, the purity split's and the contract adapters') are
+# outside the census and are rewritten with the resolver.
+emit	catch-value	a catch fallback in a pipe keeps the evaluated topic
+emit	implicit-effect	a function in value position is the Effect wrapper (L2)
+emit	implicit-effect	a function that holds a using gets a Scope of its own, and no fast entry
+emit	implicit-effect	a module that calls a runner itself gets no entry statement
+emit	implicit-effect	a pure function splits into f$direct and its Effect wrapper (D10)
+emit	implicit-effect	a same-file pure call is direct, and pure groups recurse on the JavaScript stack
+emit	implicit-effect	a tagged error value call replays through a generator
+emit	implicit-effect	a value call runs a key or an Effect value, and calls a function (D90)
+emit	implicit-effect	all receives programs instead of completed strings
+emit	implicit-effect	an entry module runs main when the host starts it (D135)
+emit	implicit-effect	async sync hatch binds inputs before the AbortSignal
+emit	implicit-effect	by name topic is a cold generator and module value pipes stay plain
+emit	implicit-effect	chained Config value calls adapt the result before invoking it
+emit	implicit-effect	composed call channel witnesses never execute
+emit	implicit-effect	concurrent loops defer bodies and continue returns from one item
+emit	implicit-effect	direct recursion counts eager depth
+emit	implicit-effect	export specifiers do not shadow a pure declaration
+emit	implicit-effect	fiber forms in do bodies retain executable run boundaries
+emit	implicit-effect	interleaved static service retains its key and erased instance shape
+emit	implicit-effect	mutual recursion counts only cycle members
+emit	implicit-effect	pinned service tail lambda has an Effect boundary
+emit	implicit-effect	recursion through a lambda starts on the fiber
+emit	implicit-effect	service value calls bind ordinary methods and evaluate the receiver once
+emit	implicit-effect	using region in loop retains per iteration scope and jump dispatch
+emit	implicit-effect,try-statement	region var storage escapes while its initializer runs at its source site
+emit	implicit-effect,try-statement	regions keep the checking rendering's completions, defined at run time
+emit	sync-value	library data call stays lazy plain TypeScript
+frozen	pre-migration-copy	testdata/pre-vip1/catch-expression/main.vibe
+frozen	pre-migration-copy	testdata/pre-vip1/contextual-effect-fields/main.vibe
+frozen	pre-migration-copy	testdata/pre-vip1/discarded-effect-call/main.vibe
+frozen	pre-migration-copy	testdata/pre-vip1/pipe-generic-stages/main.vibe
+frozen	pre-migration-copy	testdata/pre-vip1/program-values/main.vibe
+frozen	pre-migration-copy	testdata/purity/ch13-plain.vibe
+frozen	pre-migration-copy	testdata/purity/plain-functions.vibe
+projection	catch-value	catch expression defers a value fallback (D236)
+projection	catch-value	catch expression retains this in both operands
+projection	catch-value	catch expression statement guards ASI
+projection	catch-value	catch expression stays in its conditional branch (D237)
+projection	catch-value	catch expressions associate to the left (D237)
+projection	catch-value	catch in a pipe body captures its topic (D237)
+projection	catch-value	nullish coalescing stays inside the catch (D237)
+projection	implicit-effect	L8 leaves an external key owned member on the key
+projection	implicit-effect	Match generic stages retain contextual pipe inference
+projection	implicit-effect	a chained Config value call runs the returned data
+projection	implicit-effect	a function that only throws keeps A void
+projection	implicit-effect	a match expression in an Effect body runs as a program (D206)
+projection	implicit-effect	a match statement and an is test
+projection	implicit-effect	a method takes the form its body decides
+projection	implicit-effect	a nested function declaration is its own Effect
+projection	implicit-effect	a pinned service alias contributes R in a tail only lambda
+projection	implicit-effect	a plain generator retains calls and delegation beside Effect iteration (VIP-21)
+projection	implicit-effect	a provide block provides its layers to a region (D172, D173)
+projection	implicit-effect	a returned match returns from its arms, exhaustively (D209)
+projection	implicit-effect	a run in an unbraced body takes no semicolon
+projection	implicit-effect	a service keeps multiline empty channels around interleaved statics
+projection	implicit-effect	a written catch helper call keeps ordinary call semantics
+projection	implicit-effect	all takes its array elements by name
+projection	implicit-effect	an infer channel wraps the body in $contract (D57)
+projection	implicit-effect	calls in a nested lambda stay
+projection	implicit-effect	calls run in a function body
+projection	implicit-effect	composed calls keep separate error channel witnesses
+projection	implicit-effect	concurrent bounded single statement
+projection	implicit-effect	concurrent unbounded with continue
+projection	implicit-effect	concurrent written null single statement
+projection	implicit-effect	concurrent written undefined single statement
+projection	implicit-effect	data method call punctuation skips comments
+projection	implicit-effect	data method uses the module behind a local shadow
+projection	implicit-effect	data predicate narrows the original receiver
+projection	implicit-effect	effect modules and JavaScript globals are not keys
+projection	implicit-effect	external service Effect member is a receiver preserving value call
+projection	implicit-effect	hatch body retains plain JavaScript member semantics
+projection	implicit-effect	join a held Fiber
+projection	implicit-effect	join an annotated collection
+projection	implicit-effect	join an array of Fibers
+projection	implicit-effect	join an object of Fibers
+projection	implicit-effect	methods of a class that implements a service are Effect functions (D92)
+projection	implicit-effect	module predicate retains stock narrowing
+projection	implicit-effect	module runner takes a call by name
+projection	implicit-effect	nested and chained calls
+projection	implicit-effect	nested pipe bodies have distinct lexical topics
+projection	implicit-effect	omitted dependencies of a contract are never (VIP-3)
+projection	implicit-effect	pipe topics use the data method module behind a local shadow
+projection	implicit-effect	program topic defers the input and retries the same program
+projection	implicit-effect	service member calls read the service (D41)
+projection	implicit-effect	stored iterable programs convert at the collection boundary
+projection	implicit-effect	stored pipe programs and generic stages keep their forms
+projection	implicit-effect	stored record fields adapt function values before holding calls cold
+projection	implicit-effect	stream topic method result metadata survives a chain
+projection	implicit-effect	throw fails
+projection	implicit-effect	unproven predicate retains narrowing syntax
+projection	implicit-effect	using acquires its initializer by name in the block's Scope (D47, D14)
+projection	implicit-effect	using in a loop body keeps a statement block
+projection	implicit-effect	written Effect contracts infer channels from the body (D57)
+projection	implicit-effect,fork-call,join-method	a held fork program joins through its declared module
+projection	implicit-effect,layer-declaration	a layer with statements builds in an Effect
+projection	implicit-effect,layer-declaration	a layer without statements succeeds with its members
+projection	implicit-effect,sync-value	hatch value is deferred and its inputs run
+projection	implicit-effect,sync-value	library data call is evaluated lazily in a hatch
+projection	implicit-effect,try-statement	a break that leaves a region is a jump the loop takes
+projection	implicit-effect,try-statement	a jump that leaves two regions passes the completion on
+projection	implicit-effect,try-statement	a never completing try has no void success path
+projection	implicit-effect,try-statement	a region that no jump leaves dispatches nothing
+projection	implicit-effect,try-statement	a tail region falls off its end for TypeScript's reachability
+projection	implicit-effect,try-statement	function scoped var escapes a region and a for initializer
+projection	implicit-effect,try-statement	interruption blocks and finally (exit) are regions (D178-D180)
+projection	implicit-effect,try-statement	returns leave a try statement through its completion
+projection	implicit-run	an explicit Effect modifier selects a class method
+projection	mutable-member	an error with a class's members keeps them, its fields declared (D278)
+projection	mutable-member	members keep TypeScript's mutability, and mutable goes
+projection	mutable-member	schema primitives optional literals arrays and readonly
