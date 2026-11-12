@@ -8,6 +8,7 @@ import { preloadRegister } from "./oxlint-plugins.mjs"
 import { addVitePlusIgnores, addEslintIgnore, addEslintImportParsers, addEslintVibe, declarationIgnores, emittedIgnore, jsxSidecarIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
 import { wireTsdownConfigs } from "./tsdown.mjs"
+import { dprintConfigNames, editDprintConfig, prettierConfig, readDprintConfig } from "./formatter-configs.mjs"
 
 // An ast-grep rule's ignores gain the declaration sidecars, x.d.vibe.ts, which
 // a TypeScript rule otherwise scans as TypeScript, reporting each finding of a
@@ -265,15 +266,24 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   // earlier setup's own plugin when recognizing that configuration.
   const dprintPlugin = "npm:vibelang/dprint-plugin.json"
   const dprintTypescriptPlugin = "https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"
-  const dprintConfigs = all.filter(f => /(^|\/)dprint\.json$/.test(f))
-  const pinned = new Set(dprintConfigs.filter(f => {
-    const plugins = (JSON.parse(readFileSync(join(root, f), "utf8")).plugins ?? [])
-      .filter(plugin => plugin !== dprintPlugin)
+  const dprintPaths = new Set(all.filter(f => dprintConfigNames.includes(posix.basename(f))))
+  const dprintFiles = new Map()
+  for (const file of dprintPaths) {
+    const text = readFileSync(join(root, file), "utf8")
+    try { dprintFiles.set(file, { text, config: readDprintConfig(text) }) }
+    catch { warnings.push(file + ": add VibeLang formatter plugins, includes and excludes by hand; expected a JSONC object with string lists") }
+  }
+  const dprintConfigs = [...dprintFiles.keys()]
+  const pinned = new Set(dprintConfigs.filter(file => {
+    const plugins = (dprintFiles.get(file).config.plugins ?? []).filter(plugin => plugin !== dprintPlugin)
     return plugins.every(p => /@[0-9a-f]{64}$/.test(p))
   }))
   const dprintConfigOf = dir => {
     for (let d = dir; ; d = posix.dirname(d)) {
-      if (dprintConfigs.includes(posix.join(d, "dprint.json"))) return posix.join(d, "dprint.json")
+      for (const name of dprintConfigNames) {
+        const file = posix.join(d, name)
+        if (dprintPaths.has(file)) return dprintFiles.has(file) ? file : null
+      }
       if (d === ".") return null
     }
   }
@@ -327,9 +337,11 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
       }
       if (next !== command) pkg.scripts[name] = next
     }
-    if (pkg.prettier && typeof pkg.prettier === "object") {
-      pkg.prettier.plugins = [...new Set([...(pkg.prettier.plugins ?? []), "vibelang/prettier"])]
-      needsCompiler = true
+    if (pkg.prettier !== undefined) {
+      if (prettierConfig(pkg.prettier)) {
+        pkg.prettier.plugins = [...new Set([...(pkg.prettier.plugins ?? []), "vibelang/prettier"])]
+        needsCompiler = true
+      } else warnings.push(file + ": add the vibelang/prettier plugin by hand")
     }
     // A script that loads the root ESLint config needs nothing of its own: the
     // config resolves vibelang/eslint from the root, which gets vibelang below.
@@ -346,25 +358,30 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   }
   // JSON Prettier configurations cover editor invocations too.
   for (const file of all.filter(f => /(^|\/)(?:\.prettierrc(?:\.json)?|prettier\.config\.json)$/.test(f))) {
-    const config = JSON.parse(readFileSync(join(root, file), "utf8"))
+    let config
+    try {
+      config = JSON.parse(readFileSync(join(root, file), "utf8"))
+      if (!prettierConfig(config)) throw new Error("unsupported Prettier configuration")
+    } catch { warnings.push(file + ": add the vibelang/prettier plugin by hand"); continue }
     config.plugins = [...new Set([...(config.plugins ?? []), "vibelang/prettier"])]
     write(file, JSON.stringify(config, null, 2) + "\n")
     needsCompiler = true
   }
   for (const file of dprintConfigs) {
-    const config = JSON.parse(readFileSync(join(root, file), "utf8"))
+    const { text, config } = dprintFiles.get(file)
+    const lists = {}
     if (pinned.has(file)) {
       const plugins = (config.plugins ?? []).filter(plugin => plugin !== dprintPlugin)
-      config.plugins = plugins.length ? plugins : [dprintTypescriptPlugin]
+      lists.plugins = plugins.length ? plugins : [dprintTypescriptPlugin]
     } else {
       const plugins = config.plugins ?? []
-      config.plugins = [...new Set([...plugins, ...plugins.some(p => /typescript.*\.wasm/.test(p)) ? [] : [dprintTypescriptPlugin], dprintPlugin])]
-      config.includes = [...new Set([...(config.includes ?? ["**/*"]), "**/*.vibe"])]
+      lists.plugins = [...new Set([...plugins, ...plugins.some(p => /typescript.*\.wasm/.test(p)) ? [] : [dprintTypescriptPlugin], dprintPlugin])]
+      lists.includes = [...new Set([...(config.includes ?? ["**/*"]), "**/*.vibe"])]
       needsCompiler = true
     }
     // The declaration sidecars are vibelang's output, in its format.
-    config.excludes = [...new Set([...(config.excludes ?? []), ...declarationIgnores.map(pattern => `**/${pattern}`), emittedIgnore])]
-    write(file, JSON.stringify(config, null, 2) + "\n")
+    lists.excludes = [...new Set([...(config.excludes ?? []), ...declarationIgnores.map(pattern => `**/${pattern}`), emittedIgnore])]
+    write(file, editDprintConfig(text, config, lists))
   }
   if (pinned.size) warnings.push(`${pinned.size} dprint configuration${pinned.size === 1 ? " pins" : "s pin"} every plugin by checksum (${[...pinned].slice(0, 3).join(", ")}${pinned.size > 3 ? ", …" : ""}), and VibeLang's dprint plugin, npm:vibelang/dprint-plugin.json, has none: dprint leaves .vibe files there to vibelang-format, which their dprint scripts now run`)
   // ESLint lints x.d.vibe.ts as TypeScript wherever a files glob takes *.ts.

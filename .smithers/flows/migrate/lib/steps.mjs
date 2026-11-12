@@ -15,6 +15,7 @@ import { generatedTree, ownedPathSources, ownedToolConfigs } from "./tool-config
 // an earlier one recorded. A step that has already recorded its result returns
 // it without running again.
 import { wireTestProjects } from "./test-projects.mjs"
+import { dprintConfigNames, readDprintConfig } from "./formatter-configs.mjs"
 import { wireDeclarationRedirects } from "./declaration-redirects.mjs"
 import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { basename, dirname, join, posix, relative, resolve } from "node:path"
@@ -287,12 +288,12 @@ async function formatWritten(t, files, log) {
  */
 export function vibeDprintConfig(t, file) {
   for (let dir = posix.dirname(file); ; dir = posix.dirname(dir)) {
-    for (const name of ["dprint.json", ".dprint.json", "dprint.jsonc", ".dprint.jsonc"]) {
+    for (const name of dprintConfigNames) {
       const path = join(t, dir, name)
       if (!existsSync(path)) continue
       const text = readFileSync(path, "utf8")
       let parsed
-      try { parsed = JSON.parse(text) } catch { try { parsed = JSON.parse(text.replace(/^\s*\/\/.*$/gm, "").replace(/,(\s*[}\]])/g, "$1")) } catch { return null } }
+      try { parsed = readDprintConfig(text) } catch { return null }
       return (parsed.plugins ?? []).some((plugin) => /(?:^|[/:])vibelang\/dprint-plugin\.json(?:@|$)/.test(plugin)) ? posix.join(dir, name) : null
     }
     if (dir === "." || dir === "/") return null

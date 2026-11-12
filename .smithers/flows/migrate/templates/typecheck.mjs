@@ -17,7 +17,7 @@ export function jsonc(text) {
       else if (c === "\\") escaped = true
       else if (c === '"') string = false
     } else if (c === '"') { string = true; out += c }
-    else if (c === "/" && next === "/") { while (i < text.length && text[i] !== "\n") i++; out += "\n" }
+    else if (c === "/" && next === "/") { while (i < text.length && text[i] !== "\n" && text[i] !== "\r") i++; out += "\n" }
     else if (c === "/" && next === "*") {
       i += 2
       while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) i++

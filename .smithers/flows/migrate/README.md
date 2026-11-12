@@ -428,6 +428,8 @@ A script that runs `tsc` through Bun's shell (`` $`bunx tsc --emitDeclarationOnl
 
 A script that builds with `Bun.build` and runs `tsc` through Bun's shell (`` $`bunx tsc --emitDeclarationOnly` ``) runs `vibelang` after setup, which also compiles the package's `.vibe` modules; `tsc` in `package.json` scripts was already `vibelang`.
 
+Setup leaves YAML or unsupported Prettier configurations unchanged and warns with the file name to add `vibelang/prettier` by hand. It reads `dprint.json`, `.dprint.json`, `dprint.jsonc` and `.dprint.jsonc` as JSONC, preserving comments and unrelated settings when editing plugins, includes and excludes. Invalid dprint data is left unchanged with a warning naming the file. Formatter discovery uses the same JSONC reader.
+
 Setup keeps formatters and linters off generated declaration sidecars, including `x.d.vibe.ts`, `x.d.vibex.ts`, `x.vibe.platform.d.ts` and `x.vibex.platform.d.ts`. Authored `.ts`, `.vibe`, `.vibex` and `.platform.ts` implementations remain selected. Rerunning setup refreshes Oxlint, ESLint, dprint and `.prettierignore` without duplicating its entries.
 
 Generated `module` companions remain implementation files. Runtime and `publishConfig.exports` wildcard maps gain exact `null` exclusions for compiler-proven companion outputs. The migration journals its exclusions and removes them when an output disappears or the package is restored, preserving authored exact entries.

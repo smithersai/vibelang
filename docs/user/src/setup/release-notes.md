@@ -222,6 +222,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - Publishing a release exposed the publisher's home directory in npm metadata. Release scripts now publish unchanged archives from neutral staging and reject registry entries that expose a home path.
 
 - The React Native guide and the `vibelang` package page showed a CommonJS `metro.config.js`, and the package page a CommonJS `babel.config.js`, for an app whose `package.json` has `"type": "module"`. Metro failed with `require is not defined in ES module scope`. Both pages now name the files `metro.config.cjs` and `babel.config.cjs`.
+- Migration setup crashed on a YAML `.prettierrc` or a commented `dprint.json`, sometimes after changing other files. It now leaves unsupported Prettier settings unchanged with a warning naming the file and updates dprint settings while preserving comments.
+
 - With no `project` option, the Vite plugin and the bundler plugins read the root's `tsconfig.json` even when a `vibe.config.json` was beside it, so they compiled with settings the compiler ignored. They now read the root's `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, as the compiler does.
 - Requesting signature help inside a qualified extractor pattern could crash the language server. These queries now keep working while a pattern is being edited.
 - Formatting `fork.in(scope)work()` could fail even though a space between the scope and operand is optional. It now formats normally and keeps the scope call and operand separate.

@@ -184,7 +184,7 @@ are implementation details, not a user language-plugin registration API.
 Migration therefore appends `vibelang-format --check` or `--write` to
 Oxfmt and Vite+ format scripts. The same check extends Vite+ staged hooks.
 Raw `oxfmt file.vibe` remains unsupported; use the migrated script.
-Existing dprint JSON configs gain the shipped plugin and `.vibe` includes. A configuration that pins every existing plugin by checksum keeps that list; its `dprint` format and check scripts run `vibelang-format` afterward. Older setup output that already contains an unpinned shipped plugin is not yet recognized as a pinned configuration.
+Migration setup leaves YAML or unsupported Prettier configurations unchanged and warns with the file name to add `vibelang/prettier` by hand. Existing dprint JSON and JSONC configs gain the shipped plugin and `.vibe` includes while preserving comments and unrelated settings. Invalid dprint data is left unchanged with a warning naming the file. A configuration that pins every existing plugin by checksum keeps that list; its `dprint` format and check scripts run `vibelang-format` afterward. Older setup output that already contains an unpinned shipped plugin is not yet recognized as a pinned configuration.
 
 ## ESLint a repository runs itself
 
