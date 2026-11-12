@@ -8,6 +8,7 @@ Effect's custom error values can be yielded inside TypeScript generators. An eff
 
 ```vibe
 // run: try Console.log(try requireText("doc-1", "Hello")); try Console.log((try flip(requireText("doc-1", " "))).documentId)
+// expect-warning: EK4830
 class EmptyDocument extends Data.Error<{
   readonly documentId: string
 }> {}
@@ -77,6 +78,7 @@ Give distinct error cases distinct tags. Tag-based matching compares strings, so
 
 ```vibe
 // run: const longTitle = try orDie(Effect.try(() => "x".repeat(81))); try Console.log(try displayTitle("")); try Console.log(try editableTitle("")); try Console.log(try displayTitle("Draft")); try Console.log(try editableTitle("Draft")); try Console.log((try flip(displayTitle(longTitle)))._tag); try Console.log((try flip(editableTitle(longTitle)))._tag)
+// expect-warning: EK4835
 effect function displayTitle(text: string) {
   return try catchTag(title(text), "EmptyTitle", () => succeed("Untitled"))
 }

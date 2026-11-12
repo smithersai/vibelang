@@ -80,19 +80,19 @@ A nested Effect needs grouping when rewritten to shorthand: `Effect.Effect<Effec
 ## Check selected channels
 
 ```vibe
-effect function rate(currency: string): Effect.Effect<number, MissingRate, Rates> {
+effect function rate(currency: string): number!MissingRate!Rates {
   const rates = try Rates
   return try rates.lookup(currency)
 }
 // Checks number, MissingRate, and Rates.
 
-effect function rateOrDie(currency: string): Effect.Effect<number, never, Rates> {
+effect function rateOrDie(currency: string): number!!Rates {
   const rates = try Rates
   return try orDie(rates.lookup(currency))
 }
 // Checks number, never, and Rates.
 
-effect function label(currency: string): Effect.Effect<string, MissingRate, Rates> {
+effect function label(currency: string): string!MissingRate!Rates {
   const rates = try Rates
   const amount = try rates.lookup(currency)
   return try orDie(Effect.try(() => amount.toFixed(2)))

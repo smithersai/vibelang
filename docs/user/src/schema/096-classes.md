@@ -187,9 +187,9 @@ class Packed extends Schema.TaggedClass<Packed>()("Packed", {
   reference: Schema.String
 }) {}
 
-class MissingPackage extends Schema.TaggedError<MissingPackage>()("MissingPackage", {
-  reference: Schema.String
-}) {}
+schema error MissingPackage {
+  reference: string
+}
 
 class InsuredPackage extends Package.extend<InsuredPackage>("InsuredPackage")({
   insuredValue: Schema.Finite
@@ -211,7 +211,7 @@ pkg-94: 100
 MissingPackage
 ```
 
-`TaggedClass` adds `_tag` with a constructor default. `Schema.TaggedError` also supplies Error behavior and a serializable schema. A constructed instance is data until thrown or run with `try`; `new` constructs it without running it. Throw it for an expected failure. The example's contract also keeps the constructor's issue channel: `try MissingPackage.makeEffect({ reference })` constructs the error, then `throw` fails with it. For errors that need no serialization, use an `error` declaration.
+`TaggedClass` adds `_tag` with a constructor default. A `schema error` declaration is a `Schema.TaggedError` class, which also supplies Error behavior and a serializable schema. A constructed instance is data until thrown or run with `try`; `new` constructs it without running it. Throw it for an expected failure. The example's contract also keeps the constructor's issue channel: `try MissingPackage.makeEffect({ reference })` constructs the error, then `throw` fails with it. For errors that need no serialization, use an `error` declaration.
 
 `extend` adds fields and keeps inherited behavior; give each extension its own identifier. Schema data-class inheritance is separate from service declarations, whose implementations use object literals or `implements`.
 

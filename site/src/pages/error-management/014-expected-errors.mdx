@@ -178,12 +178,9 @@ export function parseQuantity(text: string): number {
 import { InvalidQuantity, parseQuantity } from "./quantity.ts"
 
 effect function quantity(text: string) {
-  return Effect.try({
-    try: () => parseQuantity(text),
-    catch: (cause) => cause
-  }) catch effect (cause) => {
-    if (cause instanceof InvalidQuantity) throw cause
-    return try die(cause)
+  return Effect.try(() => parseQuantity(text)) catch effect (error) => {
+    if (error.cause instanceof InvalidQuantity) throw error.cause
+    return try die(error.cause)
   }
 }
 ```
@@ -193,7 +190,7 @@ effect function quantity(text: string) {
 InvalidQuantity
 ```
 
-`quantity` calls the TypeScript `parseQuantity` through `Effect.try`: an `InvalidQuantity` it throws is an expected failure in `E`, and any other exception is promoted to a defect with `die`. The callbacks are plain TypeScript functions and capture local variables normally; the effect handler fails with the selected error or runs `die` with `try`.
+`quantity` calls the TypeScript `parseQuantity` through `Effect.try`, which fails with a `Cause.UnknownError` whose `cause` holds the thrown value. The effect handler rethrows an `InvalidQuantity` as an expected failure in `E` and promotes any other exception to a defect with `try die(...)`. The callback is a plain TypeScript function and captures local variables normally.
 
 ## Failing in an expression
 
@@ -304,6 +301,7 @@ A catch expression gives its recovered value directly. If the handler returns a 
 ## Recovering selected failures
 
 ```vibe
+// expect-warning: EK4835
 effect function labelOrMissing(input: string) {
   return effect {
     return (try findItem(input)).label
@@ -337,6 +335,7 @@ The handler's failure type is the error channel, which an effect function or blo
 Calls to unannotated Vibe helpers participate in the same inference as foreign Effects and helpers with written contracts. Even an infallible helper contributes its success type and `never` error channel. For example, running a helper returning `number!!` beside an Effect returning `(string | undefined)!(Error | ApiError)!` infers `Error`, as the equivalent `Effect.fn` does. A helper whose success type is already covered by the other Effect can be absorbed instead, leaving its channel as written. If an existing `catchTag` relied on a subclass that native inference absorbs, preserve the local program's former error channel with an explicit return contract.
 
 ```vibe
+// expect-warning: EK4835
 effect function withTagTable(input: string) {
   return try catchTags(findItem(input), {
     InvalidCode: () => succeed({ code: "", label: "Enter a code" }),

@@ -12,7 +12,8 @@ const compiler = defaultCompiler()
 test.skipIf(!existsSync(compiler))("isolates run-mode output across projects when the second has a warning", async () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-isolation-test-"))
   try {
-    for (const [name, warning] of [["first", ""], ["second", 'export effect function constant() { return Effect.succeed(1) catch () => 2 }']] as const) {
+    // The second block expects its EK9204 warning, which would otherwise fail it.
+    for (const [name, warning] of [["first", ""], ["second", '// expect-warning: EK9204\nexport effect function constant() { return Effect.succeed(1) catch () => 2 }']] as const) {
       writeFileSync(join(root, `${name}.md`), [
         "```vibe", warning, `export effect function main() { try Console.log("${name}") }`, "await runPromise(main())", `// Output: ${name}`, "```"
       ].join("\n"))

@@ -132,6 +132,7 @@ The Effect TypeScript counterpart, `class Search extends Context.Service<Search,
 
 ```vibe
 // run: try Console.log(try fixedLabel()); provide Sequence = { next: effect () => 23 } { try Console.log(try nextLabel(), try readImplementation()) }
+// expect-warning: EK4836
 effect function nextLabel() {
   const sequence = try Sequence
   return `ticket-${try sequence.next()}`
@@ -229,12 +230,12 @@ const testContext = Context.add(
 )
 
 effect function testWithContext() {
-  return try Effect.provide(announceTicket(), testContext)
+  provide testContext { return try announceTicket() }
 }
 // Output: ticket-17
 ```
 
-A `Context` holds existing implementations; a `Layer` describes how to build them. A `provide` block takes layers and `Key = value` entries, or a single `Context`. `testWithContext` passes its `Context` to `Effect.provide` directly, which works too. `provide` is a statement, not an expression: return the value from inside its block. Keep resource-owning implementations within the lifetime that created them.
+A `Context` holds existing implementations; a `Layer` describes how to build them. A `provide` block takes layers and `Key = value` entries, or a single `Context`, as `testWithContext` shows. `provide` is a statement, not an expression: return the value from inside its block. Keep resource-owning implementations within the lifetime that created them.
 
 ## Requesting optional services
 

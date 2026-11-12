@@ -169,6 +169,7 @@ A `default` arm comes last and receives every unmatched input. When the caller n
 
 ```vibe
 // run: try Console.log(try Effect.try(() => JSON.stringify(describeAll([3, "news"]))))
+// expect-warning: EK4839
 const describe = pipe(
   Match.type<number | string>(),
   Match.when(Match.number, (n) => `count ${n}`),

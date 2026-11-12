@@ -184,10 +184,10 @@ const halving = Stream.unfold(32, effect (n) => {
 })
 
 service Directory {
-  page(cursor: number): Effect.Effect<{
+  page(cursor: number): {
     names: ReadonlyArray<string>
     next: number | undefined
-  }, never, never>
+  }!!
 }
 
 const names = Stream.paginate(0, effect (cursor) => {

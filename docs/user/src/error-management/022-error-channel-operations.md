@@ -127,7 +127,7 @@ effect function inspectQuantity(value: number) {
 }
 
 effect function quantityOrErrorValue(value: number) {
-  return quantity(value) catch (error) => error
+  return quantity(value) catch effect (error) => error
 }
 // (number | InvalidQuantity)!!
 ```

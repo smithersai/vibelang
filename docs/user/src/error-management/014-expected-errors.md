@@ -177,12 +177,9 @@ export function parseQuantity(text: string): number {
 import { InvalidQuantity, parseQuantity } from "./quantity.ts"
 
 effect function quantity(text: string) {
-  return Effect.try({
-    try: () => parseQuantity(text),
-    catch: (cause) => cause
-  }) catch effect (cause) => {
-    if (cause instanceof InvalidQuantity) throw cause
-    return try die(cause)
+  return Effect.try(() => parseQuantity(text)) catch effect (error) => {
+    if (error.cause instanceof InvalidQuantity) throw error.cause
+    return try die(error.cause)
   }
 }
 ```
@@ -192,7 +189,7 @@ effect function quantity(text: string) {
 InvalidQuantity
 ```
 
-`quantity` calls the TypeScript `parseQuantity` through `Effect.try`: an `InvalidQuantity` it throws is an expected failure in `E`, and any other exception is promoted to a defect with `die`. The callbacks are plain TypeScript functions and capture local variables normally; the effect handler fails with the selected error or runs `die` with `try`.
+`quantity` calls the TypeScript `parseQuantity` through `Effect.try`, which fails with a `Cause.UnknownError` whose `cause` holds the thrown value. The effect handler rethrows an `InvalidQuantity` as an expected failure in `E` and promotes any other exception to a defect with `try die(...)`. The callback is a plain TypeScript function and captures local variables normally.
 
 ## Failing in an expression
 
@@ -309,6 +306,7 @@ A catch expression gives its recovered value directly. If the handler returns a 
 
 ```vibe
 // run: try Console.log(try labelOrMissing("book")); try Console.log((try flip(labelOrMissing("")))._tag); try Console.log((try labelByTag("book")).label); try Console.log((try flip(labelByTag("")))._tag)
+// expect-warning: EK4835
 effect function labelOrMissing(input: string) {
   return effect {
     return (try findItem(input)).label
@@ -343,6 +341,7 @@ Calls to unannotated Vibe helpers participate in the same inference as foreign E
 
 ```vibe
 // run: try Console.log((try withTagTable("")).label); try Console.log((try withFilter("book")).label); try Console.log((try withPredicate("book")).label); try Console.log((try flip(withFilter("")))._tag); try Console.log((try flip(withPredicate("")))._tag)
+// expect-warning: EK4835
 effect function withTagTable(input: string) {
   return try catchTags(findItem(input), {
     InvalidCode: () => succeed({ code: "", label: "Enter a code" }),

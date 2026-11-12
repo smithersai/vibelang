@@ -51,9 +51,9 @@ A schema is an immutable description; adding fields, checks, or annotations prod
 
 ```vibe
 // run: { const jsonValue = try unpack(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; { const jsonValue = try pack({ weight: 3.75 }); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
-const Parcel = Schema.Struct({ weight: Schema.FiniteFromString })
+schema Parcel { readonly weight: Schema.FiniteFromString }
+// Parcel: { readonly weight: number }
 
-type Parcel = typeof Parcel.Type       // { readonly weight: number }
 type ParcelWire = typeof Parcel.Encoded // { readonly weight: string }
 
 effect function unpack() {

@@ -43,6 +43,7 @@ A `schema` body holds only typed fields, written `name: Type` or `name?: Type`. 
 ## Extracting decoded, encoded, and service types
 
 ```vibe
+// expect-warning: EK4841
 type Shipment = typeof Shipment.Type
 type ShipmentWire = typeof Shipment.Encoded
 type ReadServices = typeof Shipment.DecodingServices

@@ -11,6 +11,7 @@ Effect's custom error values can be yielded inside TypeScript generators. An eff
 ## Defining an error without a tag
 
 ```vibe
+// expect-warning: EK4830
 class EmptyDocument extends Data.Error<{
   readonly documentId: string
 }> {}
@@ -77,6 +78,7 @@ Give distinct error cases distinct tags. Tag-based matching compares strings, so
 ## Recovering failures by tag
 
 ```vibe
+// expect-warning: EK4835
 effect function displayTitle(text: string) {
   return try catchTag(title(text), "EmptyTitle", () => succeed("Untitled"))
 }

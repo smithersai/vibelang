@@ -5,8 +5,10 @@ import { dirname, join, posix, relative, resolve } from "node:path"
 import { createRequire } from "node:module"
 
 const repo = resolve(import.meta.dir, "../..")
-export type Diagnostic = { code: string; message: string; line?: number; column?: number }
-export type Block = { number: number; line: number; endLine?: number; language: "vibe" | "ts"; source: string; filename?: string; types?: string[]; firstLine: string; expected: string[]; fragment: boolean; comparison?: boolean; gap?: string; output?: string; run?: string; pending?: string[]; marker?: number; inherited?: boolean; imports?: string[] }
+// A warning is a diagnostic too: an example that draws one fails unless its
+// header expects it, so the docs never teach a form the compiler flags.
+export type Diagnostic = { code: string; message: string; line?: number; column?: number; severity?: "warning" }
+export type Block = { number: number; line: number; endLine?: number; language: "vibe" | "ts"; source: string; filename?: string; types?: string[]; firstLine: string; expected: string[]; fragment: boolean; comparison?: boolean; warns?: string[]; gap?: string; output?: string; run?: string; pending?: string[]; marker?: number; inherited?: boolean; imports?: string[] }
 export type Result = Block & { status: "ok" | "fragment" | "pending" | "compiler-gap" | "fail"; diagnostics: Diagnostic[]; reason?: string; execution?: Execution }
 export type Execution = { phase: "compile" | "run"; status: "passed" | "failed"; expectedStdout: string; stdout: string; stderr: string; exitCode: number; timedOut: boolean }
 
@@ -64,7 +66,8 @@ export function extract(markdown: string, options: { inlineExamples?: boolean } 
     blocks.push({ number, line: start + 1, endLine: i + 1, language, source: body.join("\n"), filename, output, run,
       types: header.match(/\/\/ types:\s*([^\n]+)/)?.[1].split(/[\s,]+/).filter(Boolean),
       firstLine: body.find(l => l.trim() && !/^\s*\/\//.test(l)) ?? body[0] ?? "",
-      expected: [...(header.match(/\/\/ expect-error:\s*([^\n]+)/)?.[1] ?? "").matchAll(/(?:EK|TS)\d+/g)].map(m => m[0]),
+      expected: [...header.matchAll(/\/\/ expect-(?:error|warning):\s*([^\n]+)/g)].flatMap(m => [...m[1].matchAll(/(?:EK|TS)\d+/g)].map(c => c[0])),
+      warns: [...header.matchAll(/\/\/ expect-warning:\s*([^\n]+)/g)].flatMap(m => [...m[1].matchAll(/(?:EK|TS)\d+/g)].map(c => c[0])),
       comparison: lang === "ts" && role === "effect",
       // A block written in a form the compiler doesn't implement yet names the
       // VIPs it waits for; it stays out of the program, as a fragment does.
@@ -129,6 +132,12 @@ function localImport(from: string, to: string): string {
   return path.startsWith(".") ? path : "./" + path
 }
 
+// A block that expects only warnings compiles, runs and declares names as any
+// other block does; one that expects an error deliberately fails.
+export function failsOnPurpose(block: Block): boolean {
+  return block.expected.some(code => !(block.warns ?? []).includes(code))
+}
+
 function missing(d: Diagnostic) {
   return d.code === "TS2304" || d.code === "TS2552" ||
     (d.code === "TS2307" && /module ['"]\.{1,2}\//.test(d.message))
@@ -151,8 +160,8 @@ export function classify(block: Block, diagnostics: Diagnostic[]): Result {
 export function parseDiagnostics(output: string): { file?: string; diagnostic: Diagnostic }[] {
   const result: { file?: string; diagnostic: Diagnostic }[] = []
   for (const line of output.split(/\r?\n/)) {
-    const m = /^(.*)\((\d+),(\d+)\): error ((?:TS|EK)\d+): (.*)$/.exec(line)
-    if (m) result.push({ file: m[1], diagnostic: { code: m[4], message: m[5], line: +m[2], column: +m[3] } })
+    const m = /^(.*)\((\d+),(\d+)\): (error|warning) ((?:TS|EK)\d+): (.*)$/.exec(line)
+    if (m) result.push({ file: m[1], diagnostic: { code: m[5], message: m[6], line: +m[2], column: +m[3], ...(m[4] === "warning" ? { severity: "warning" as const } : {}) } })
     else {
       const global = /^error ((?:TS|EK)\d+): (.*)$/.exec(line)
       if (global) result.push({ diagnostic: { code: global[1], message: global[2] } })
@@ -378,7 +387,7 @@ export function writeProject(dir: string, blocks: Block[], options: { exportFunc
     writeFileSync(join(dir, filename), `${prefix}${source}\nexport { ${[...names].filter(n => !exported.has(n)).join(", ")} }\n`)
     // An example that deliberately fails or opts out cannot supply reliable
     // definitions to later examples. Other blocks share their latest names.
-    if (!block.fragment && !block.gap && !block.expected.length) for (const name of names) scope.set(name, { from: filename, value: !typeOnly.has(name) || values.some(v => v.startsWith(`const ${name} =`)) })
+    if (!block.fragment && !block.gap && !failsOnPurpose(block)) for (const name of names) scope.set(name, { from: filename, value: !typeOnly.has(name) || values.some(v => v.startsWith(`const ${name} =`)) })
   }
   writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: {
     strict: true, target: "ESNext", module: "NodeNext", moduleResolution: "NodeNext",
@@ -451,7 +460,7 @@ async function runVitest(dir: string, emitted: string, helper: string | undefine
 }
 
 export async function runBlock(dir: string, blocks: Block[], result: Result, compiler: string, timeout: number): Promise<Result> {
-  if (result.status !== "ok" || result.expected.length || result.diagnostics.length) {
+  if (result.status !== "ok" || failsOnPurpose(result) || result.diagnostics.some(d => d.severity !== "warning")) {
     return { ...result, status: "fail", reason: `Output assertion cannot run a ${result.status} block or a block with expected diagnostics` }
   }
   // Emit only this entry and its imports. Other examples on the page can
@@ -529,7 +538,7 @@ async function compilePage(dir: string, blocks: Block[], page: string, compiler:
   // A syntax error stops TypeScript's semantic pass for the entire program.
   // Probe without semantic checking, then check each entry and its imports
   // separately when syntax errors exist. Negative examples keep their errors.
-  const syntax = parsed.length ? await check(config, "syntax", ["--noCheck"]) : []
+  const syntax = parsed.some(d => d.diagnostic.severity !== "warning") ? (await check(config, "syntax", ["--noCheck"])).filter(d => d.diagnostic.severity !== "warning") : []
   if (!syntax.length) return blocks.map(block => classify(block, diagnosticsFor(block, parsed)))
   const syntaxFiles = new Set(syntax.flatMap(d => d.file ? [localFile(d.file)] : []))
   const ts = typescript()
@@ -605,7 +614,7 @@ export async function retirable(dir: string, blocks: Block[], page: string, comp
     const failed = trying.filter(block => results.find(r => r.number === block.number)!.status !== "ok")
     for (const block of failed) refused.set(block.number, [...new Set(results.find(r => r.number === block.number)!.diagnostics.map(d => `${d.code} ${d.message.split("\n")[0]}`))].join("; "))
     if (failed.length) { trying = without(failed); continue }
-    const runnable = results.filter(block => block.status === "ok" && !block.expected.length)
+    const runnable = results.filter(block => block.status === "ok" && !failsOnPurpose(block))
     const wrong: Block[] = []
     for (const block of trying) {
       if (block.output === undefined) continue
@@ -680,7 +689,7 @@ async function main() {
       const results = await compilePage(dir, blocks, page, compiler, keep)
       // Automatic fragments have been identified by the page check. Do not
       // import their missing fixtures into otherwise independent run examples.
-      const runnableBlocks = results.filter(block => block.status === "ok" && !block.expected.length)
+      const runnableBlocks = results.filter(block => block.status === "ok" && !failsOnPurpose(block))
       if (run) for (let i = 0; i < results.length; i++) {
         if (results[i].output !== undefined && results[i].status !== "pending") results[i] = await runBlock(join(dir, `run-${results[i].number}`), runnableBlocks, results[i], compiler, timeout)
       }

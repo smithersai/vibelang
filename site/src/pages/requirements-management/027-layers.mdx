@@ -106,6 +106,7 @@ A factory can register `try addFinalizer(...)` or acquire with `try acquireRelea
 ## Merging independent layers
 
 ```vibe
+// expect-warning: EK4807
 const Merged = Layer.merge(SettingsLive, PrinterLive)
 // Layer<Settings | Printer, never, Settings>
 
@@ -161,7 +162,7 @@ effect function main() {
 effect function withBuiltContext() {
   return try scoped(effect {
     const context = try Layer.build(AppLive)
-    return try Effect.provide(report("Inventory"), context)
+    provide context { return try report("Inventory") }
   })
 }
 // Output: reports: Rendering report
@@ -224,6 +225,7 @@ A service declares only its members, besides `static readonly key` and `defaultV
 ## Replacing services in tests
 
 ```vibe
+// expect-warning: EK4808
 const SettingsTest = Layer.succeed(Settings, {
   prefix: "test"
 })

@@ -46,15 +46,14 @@ effect function configuredPort() {
 
 ```vibe
 effect function fixedRandomSample() {
-  return try provideService(Random.next, Random.Random, {
-    nextDoubleUnsafe: () => 0.25,
-    nextIntUnsafe: () => 12
-  })
+  provide Random.Random = { nextDoubleUnsafe: () => 0.25, nextIntUnsafe: () => 12 } {
+    return try Random.next
+  }
 }
 // Output: 0.25
 ```
 
-`Effect.provideService` overrides a default reference for its program. The implementation has Effect 4's synchronous `Random` interface; both callbacks only return constants, so they qualify as plain JavaScript functions. Override any other default reference the same way, with a complete implementation.
+`provide Random.Random = …` overrides a default reference inside its block. The implementation has Effect 4's synchronous `Random` interface; both callbacks only return constants, so they qualify as plain JavaScript functions. Override any other default reference the same way, with a complete implementation.
 
 An override holds across pauses, is inherited by new child fibers, and leaves unrelated programs unchanged. Prefer a module helper when it supplies the behavior without implementing a whole service.
 
@@ -73,7 +72,7 @@ effect function defaultLabel(id: number) {
 // Output: Order 17
 ```
 
-A service with `static readonly defaultValue = () => implementation` compiles to a `Context.Reference` and exports its `Shape` type in declaration files, so using it adds nothing to `R`; override it with `Effect.provideService` as above. Effect's own `Context.Reference(key, { defaultValue })` works unchanged and returns a key as data. A service that declares `static readonly default = implementation` draws one `EK4855` at the declaration. Its value is ordinary cached static data, not a `Context.Reference` fallback. For a local key, write its native `Context.Service` class, retaining `default` and its existing reads. The initializer still runs once at the declaration, repeated reads return the same value, and looking up an unprovided key still fails. Shape references use `Context.Service.Shape<typeof S>`. Choose a `defaultValue` factory explicitly when Reference fallback is the behavior you intend.
+A service with `static readonly defaultValue = () => implementation` compiles to a `Context.Reference` and exports its `Shape` type in declaration files, so using it adds nothing to `R`; override it with a `provide Key = value` block as above. Effect's own `Context.Reference(key, { defaultValue })` works unchanged and returns a key as data. A service that declares `static readonly default = implementation` draws one `EK4855` at the declaration. Its value is ordinary cached static data, not a `Context.Reference` fallback. For a local key, write its native `Context.Service` class, retaining `default` and its existing reads. The initializer still runs once at the declaration, repeated reads return the same value, and looking up an unprovided key still fails. Shape references use `Context.Service.Shape<typeof S>`. Choose a `defaultValue` factory explicitly when Reference fallback is the behavior you intend.
 
 ## Reproducible random computations
 

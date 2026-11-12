@@ -49,6 +49,8 @@ test("a pair counts the program, not the docs checker's lines", () => {
   const code = "// run: Console.log(f())\nfunction f() { return 1 }\n// Output: 1\n// Output:"
   expect(program(code)).toBe("function f() { return 1 }")
   expect(count(program(code))).toBe(count("function f() { return 1 }"))
+  // An expected warning's header is the checker's line too.
+  expect(program("// expect-warning: EK4830\n// expect-error: EK0103\nfunction f() { return 1 }")).toBe("function f() { return 1 }")
 })
 
 test("counts exact text with the o200k_base encoding", () => {

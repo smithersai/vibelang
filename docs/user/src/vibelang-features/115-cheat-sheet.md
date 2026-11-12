@@ -91,6 +91,7 @@ class Refused extends Failure {
 
 ```vibe es
 // run: try Console.log(try Effect.try(() => JSON.stringify([new Invalid(" x ").label, new Refused({ code: "r" })._tag])))
+// expect-warning: EK4830
 class Invalid extends Data.TaggedError("Invalid")<{ readonly code: string }> {
   constructor(input: string) {
     super({ code: input.trim() })

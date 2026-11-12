@@ -246,6 +246,7 @@ const idle = LoadState.Idle()
 
 ```vibe
 // run: try Console.log(new InvalidDocument({ message: "invalid", line: 3 }).line); { const jsonValue = [try documentOrDraft("doc-3"), try documentOrDraft("")]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }; try Console.log(requireDocument("") catch (error) => error._tag)
+// expect-warning: EK4830
 class InvalidDocument extends Data.Error<{
   message: string
   line: number

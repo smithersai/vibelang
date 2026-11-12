@@ -53,9 +53,9 @@ A schema is an immutable description; adding fields, checks, or annotations prod
 ## Distinguishing decoded and encoded views
 
 ```vibe
-const Parcel = Schema.Struct({ weight: Schema.FiniteFromString })
+schema Parcel { readonly weight: Schema.FiniteFromString }
+// Parcel: { readonly weight: number }
 
-type Parcel = typeof Parcel.Type       // { readonly weight: number }
 type ParcelWire = typeof Parcel.Encoded // { readonly weight: string }
 
 effect function unpack() {

@@ -45,7 +45,7 @@ fragments. By default no snippet executes; `--run` also checks declared output
 
 | Status | Meaning |
 | --- | --- |
-| `ok` | No unexpected errors; all declared expected codes occur |
+| `ok` | No unexpected errors or warnings; all declared expected codes occur |
 | `fragment` | Only TS2304, TS2552, or TS2307 for a relative import; or an explicit opt-out |
 | `compiler-gap` | A checked example has a documented compiler disagreement |
 | `fail` | Another error, a missing expected diagnostic, or a stale gap marker |
@@ -54,6 +54,9 @@ Use a header comment before the code:
 
 - `// expect-error: EK9201` declares an intentionally invalid example; separate
   several codes with spaces. Unexpected diagnostics still fail.
+- A compiler warning fails the example that draws it, so the docs never teach a
+  form the compiler flags: write the form the warning asks for. An example that
+  shows the flagged form on purpose names the code in `// expect-warning: EK4833`.
 - `// types: node` opts that page project into Node ambient declarations; the
   default is `"types": []`, matching the starter. Document the declaration
   package and tsconfig prerequisite beside any example that needs it.

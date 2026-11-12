@@ -187,8 +187,10 @@ import { assert, it } from "@effect/vitest"
 import { completeTodo, loadBoard, TodoNotFound, Todos, TodosLive } from "./todos.vibe"
 
 it.effect("completes a todo", () => effect {
-  const message = try Effect.provide(completeTodo(2), TodosLive)
-  try Effect.try(() => assert.strictEqual(message, "Completed: Write the service"))
+  provide TodosLive {
+    const message = try completeTodo(2)
+    try Effect.try(() => assert.strictEqual(message, "Completed: Write the service"))
+  }
 })
 
 it.effect("fails with TodoNotFound for an unknown id", () => effect {
@@ -206,16 +208,20 @@ it.effect("fails with TodoNotFound for an unknown id", () => effect {
 })
 
 it.effect("recovers TodoNotFound in completeTodo", () => effect {
-  const message = try Effect.provide(completeTodo(99), TodosLive)
-  try Effect.try(() => assert.strictEqual(message, "No todo #99"))
+  provide TodosLive {
+    const message = try completeTodo(99)
+    try Effect.try(() => assert.strictEqual(message, "No todo #99"))
+  }
 })
 
 it.effect("loads the board after both completions", () => effect {
-  const board = try Effect.provide(loadBoard(), TodosLive)
-  try Effect.try(() => {
-    assert.deepStrictEqual(board.messages, ["Completed: Write the service", "No todo #99"])
-    assert.deepStrictEqual(board.todos.map((todo) => todo.done), [true, true, false])
-  })
+  provide TodosLive {
+    const board = try loadBoard()
+    try Effect.try(() => {
+      assert.deepStrictEqual(board.messages, ["Completed: Write the service", "No todo #99"])
+      assert.deepStrictEqual(board.todos.map((todo) => todo.done), [true, true, false])
+    })
+  }
 })
 ```
 

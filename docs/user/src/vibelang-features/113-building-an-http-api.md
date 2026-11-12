@@ -96,7 +96,7 @@ import { main } from "./server.vibe"
 NodeRuntime.runMain(main())
 ```
 
-`node start.js` starts the application by calling `NodeRuntime.runMain(main())`. Importing `server.js` from a test or another module starts nothing.
+`node dist/start.js` starts the application by calling `NodeRuntime.runMain(main())`. Importing `server.js` from a test or another module starts nothing.
 
 ## Test a route without a socket
 
@@ -110,16 +110,20 @@ effect function request(body: unknown) {
   return HttpServerRequest.fromClientRequest(client)
 }
 
-it.effect("validates bodies and rejects duplicate names", () => scoped(effect {
+it.live("validates bodies and rejects duplicate names", () => scoped(effect {
   const app = try HttpRouter.toHttpEffect(App)
-  const created = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
-  const conflict = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: "Ada" }))
-  const bad = try provideService(app, HttpServerRequest.HttpServerRequest, try request({ name: 123 }))
-  try Effect.try(() => assert.deepStrictEqual([created.status, conflict.status, bad.status], [201, 409, 400]))
+  const statuses: number[] = []
+  for (const body of [{ name: "Ada" }, { name: "Ada" }, { name: 123 }]) {
+    provide HttpServerRequest.HttpServerRequest = try request(body) {
+      statuses.push((try app).status)
+    }
+  }
+  try Console.log(try Effect.try(() => JSON.stringify(statuses)))
+  try Effect.try(() => assert.deepStrictEqual(statuses, [201, 409, 400]))
 }))
-// Output:
+// Output: [201,409,400]
 ```
 
 `try HttpRouter.toHttpEffect(App)` builds a request Effect without starting a server; hold it as `app`, then provide a request for each execution. The scope shares the service layer across these requests and releases it after the test; a new test scope builds a fresh user registry.
 
-Import assertions from `@effect/vitest`; an assertion may throw, so wrap it in `Effect.try`; a failed assertion then fails the test. The [installation guide](../getting-started/004-installation.md) sets up the compiler and test plugin. `examples/http-api` holds the complete project, including its Vite configuration.
+`it.live` runs the test with live services, so `Console.log` prints the statuses; `it.effect` would provide a test console that records them instead. Import assertions from `@effect/vitest`; an assertion may throw, so wrap it in `Effect.try`; a failed assertion then fails the test. The [installation guide](../getting-started/004-installation.md) sets up the compiler and test plugin. [`examples/http-api`](https://github.com/smithersai/vibelang/tree/main/examples/http-api) holds the complete project, including its Vite configuration.

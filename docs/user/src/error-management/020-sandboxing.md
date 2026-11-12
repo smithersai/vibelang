@@ -53,12 +53,12 @@ Effect 4 stores reasons in a flat readonly array; one outcome can hold several, 
 ```vibe
 // run: try Console.log(try rowOrPlaceholder())
 effect function rowOrPlaceholder() {
-  return try Effect.catch(sandboxedRow(), effect (cause) => {
+  return sandboxedRow() catch effect (cause) => {
     if (!Cause.hasDies(cause) && !Cause.hasInterrupts(cause)) {
       return "Malformed row omitted"
     }
     return try failCause(cause)
-  })
+  }
 }
 ```
 
@@ -73,11 +73,11 @@ This boundary recovers only causes made entirely of domain failures; checking on
 ```vibe
 // run: try Console.log((try flip(readWithInspection())).line)
 effect function readWithInspection(): never!InvalidRow {
-  return try Effect.catch(sandboxedRow(), effect (cause) => {
+  return sandboxedRow() catch effect (cause) => {
     const kinds = cause.reasons.map((reason) => reason._tag)
     try Console.log("Row computation stopped", try orDie(Effect.try(() => JSON.stringify(kinds))))
     return try failCause(cause)
-  })
+  }
 }
 // never!InvalidRow
 ```

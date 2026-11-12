@@ -49,10 +49,10 @@ No limit
 ```vibe
 // run: try Console.log(describe(Option.some("Mina"))); try Console.log(describe(Option.none()))
 function describe(value: Option.Option<string>) {
-  return Option.match(value, {
-    onNone: () => "Anonymous",
-    onSome: (name) => `Signed in as ${name}`
-  })
+  return match (value) {
+    when Option.Some(let name): `Signed in as ${name}`;
+    when Option.None: "Anonymous";
+  }
 }
 ```
 
@@ -61,7 +61,7 @@ Signed in as Mina
 Anonymous
 ```
 
-`Option.match` handles both cases and removes the wrapper. Its callbacks only compute values; when handling presence needs services or other Effects, use a branch inside an effect function and run Effects with `try`.
+A `match` with `Option.Some` and `Option.None` arms handles both cases and removes the wrapper. In a plain function its arms only compute values; when handling presence needs services or other Effects, write the `match` inside an effect function and run Effects with `try` in its arms.
 
 ## Mapping, sequencing, and filtering present values
 

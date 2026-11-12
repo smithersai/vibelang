@@ -244,6 +244,7 @@ const idle = LoadState.Idle()
 ## Defining ordinary and tagged errors
 
 ```vibe
+// expect-warning: EK4830
 class InvalidDocument extends Data.Error<{
   message: string
   line: number

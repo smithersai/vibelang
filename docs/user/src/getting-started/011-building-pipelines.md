@@ -104,6 +104,7 @@ effect function validated(value: number) {
 
 ```vibe
 // run: { const jsonValue = [nickname(-1), try Stream.runCollect(warnings(Stream.make(24, 26, 30, 28, 40)))]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+// expect-warning: EK4840
 function nickname(id: number) {
   return Option.some(id).pipe(
     Option.filter((n) => n > 0),

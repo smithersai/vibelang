@@ -89,9 +89,10 @@ effect function readPrefix() {
 }
 
 effect function twoLocalReads() {
-  const first = try Effect.provide(readPrefix(), PrefixLive)
-  const second = try Effect.provide(readPrefix(), PrefixLive)
-  return [first, second]
+  const reads: string[] = []
+  provide PrefixLive { reads.push(try readPrefix()) }
+  provide PrefixLive { reads.push(try readPrefix()) }
+  return reads
 }
 
 effect function oneSharedReadBoundary() {
@@ -120,10 +121,10 @@ effect function manualSharing() {
     const owner = try scope
     const first = try Layer.buildWithMemoMap(PrefixLive, memoMap, owner)
     const second = try Layer.buildWithMemoMap(PrefixLive, memoMap, owner)
-    return [
-      try Effect.provide(readPrefix(), first),
-      try Effect.provide(readPrefix(), second)
-    ]
+    const reads: string[] = []
+    provide first { reads.push(try readPrefix()) }
+    provide second { reads.push(try readPrefix()) }
+    return reads
   })
 }
 // Output: Prefix initialized

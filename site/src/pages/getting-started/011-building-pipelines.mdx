@@ -103,6 +103,7 @@ effect function validated(value: number) {
 ## Call a data type's module functions
 
 ```vibe
+// expect-warning: EK4840
 function nickname(id: number) {
   return Option.some(id).pipe(
     Option.filter((n) => n > 0),

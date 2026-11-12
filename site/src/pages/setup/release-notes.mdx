@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.12
 
+- Some docs examples taught forms the compiler warns about, such as a service member typed `Effect.Effect<{…}, never, never>` on the Stream page (`EK4833`). The docs check now fails an example that draws a warning, and those examples use the forms the compiler asks for; an example that shows a flagged form on purpose says so with `// expect-warning:`.
 - A `try` written inside the callback of `sync`, `Effect.try` or `tryPromise`, such as `try sync(() => try load())`, compiled with no diagnostic and was left out of the output, so the callback returned the Effect itself where the source asked for its value. It now reports `EK0501`, as a `try` in any other plain function does; run the Effect outside the callback.
 - Published packages could reuse an older compiler, include local scratch files, or leave Windows without a compiler after a rehearsal. Packaging now requires matching committed sources and successful builds, includes only tracked sources, restores the selected platforms on every run, and checks the requested Bun starter version.
 - On a fresh checkout, a project whose `.vibe` files hold module bodies, such as a `tsconfig.json` with `include: ["."]`, got a loader record that `checkLoaderRecord` called stale at once (`gained or lost a file`), because the record's own compile wrote each body's `x.vibe.<name>.d.ts` after listing the directory. Those declarations now count as outputs, and the record holds right after it is written.
@@ -6275,6 +6276,7 @@ program, as `yield* decide(flag)` does in TypeScript. In 0.0.1 it silently held
 the program.
 
 ```vibe
+// expect-warning: EK4833
 error Rejected
 
 function decide(flag: boolean): Effect.Effect<number> | Effect.Effect<never, Rejected> {

@@ -69,11 +69,26 @@ test("explicit gaps remain checked, and stale markers fail", () => {
   expect(classify(gap, [diagnostic("TS2304")]).status).toBe("fail")
   expect(classify({ ...block, fragment: true }, [diagnostic("TS1005")]).status).toBe("fragment")
 })
-test("parses native ES and TS errors and ignores notes and warnings", () => {
+test("parses native ES and TS errors and located warnings, and ignores notes", () => {
   expect(parseDiagnostics("block-2.vibe(4,8): error EK9201: failure escapes\n  Widen the contract.\nblock-3.vibe(1,1): warning EK9204: unreachable\nerror TS18003: No inputs were found")).toEqual([
     { file: "block-2.vibe", diagnostic: { code: "EK9201", message: "failure escapes", line: 4, column: 8 } },
+    { file: "block-3.vibe", diagnostic: { code: "EK9204", message: "unreachable", line: 1, column: 1, severity: "warning" } },
     { diagnostic: { code: "TS18003", message: "No inputs were found" } }
   ])
+})
+// An example that draws a warning teaches a form the compiler flags, such as
+// Effect.Effect<A, never, never> where the compiler asks for A!!.
+test("a warning fails an example unless an expect-warning header names it", () => {
+  const warning = { code: "EK4833", message: "write number!!", severity: "warning" as const }
+  expect(classify(block, [warning]).status).toBe("fail")
+  const [expected] = extract("```vibe\n// expect-warning: EK4833\nconst n = 1\n```")
+  expect(expected.expected).toEqual(["EK4833"])
+  expect(classify(expected, [warning]).status).toBe("ok")
+  expect(classify(expected, []).status).toBe("fail")
+  const [both] = extract("```vibe\n// expect-error: EK0103\n// expect-warning: EK4836\nconst n = 1\n```")
+  expect(both.expected).toEqual(["EK0103", "EK4836"])
+  // A gap whose only remaining diagnostic is a warning is not stale.
+  expect(classify({ ...block, gap: "pending VIP-34" }, [warning]).status).toBe("compiler-gap")
 })
 
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -86,7 +101,8 @@ test.skipIf(!existsSync(compiler))("checks shared declarations, schema type/valu
   try {
     writeFileSync(join(root, "page.md"), [
       "```vibe", "// descriptor.vibe", "export const Item = Schema.Struct({ name: Schema.String })", "```",
-      "```vibe", "type Item = typeof Item.Type", "function read(input: unknown) { return Schema.decodeUnknownEffect(Item)(input) }", "```",
+      // A type alias beside a schema constant draws EK4841, which asks for a schema alias.
+      "```vibe", "// expect-warning: EK4841", "type Item = typeof Item.Type", "function read(input: unknown) { return Schema.decodeUnknownEffect(Item)(input) }", "```",
       "```vibe", "import { Item } from './descriptor.vibe'", "const sample = { name: 'Ada' } satisfies typeof Item.Type", "```",
       "```vibe", "// expect-error: TS2322", "const invalid: number = 'text'", "```"
     ].join("\n"))
@@ -115,6 +131,26 @@ test.skipIf(!existsSync(compiler))("an explicit fragment's syntax error hides no
       "```vibe", "// fragment", "export function name() { ... }", "```"
     ])).toEqual({ status: 1, blocks: [["fail", ["TS2322"]], ["fragment", []]] })
     expect(await check(["```vibe", "// fragment", "const = ;", "```"])).toEqual({ status: 0, blocks: [["fragment", []]] })
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+// The Effect spelling of a service member's type draws EK4833, so a page that
+// teaches it fails until it writes the form the warning asks for.
+test.skipIf(!existsSync(compiler))("a compiler warning fails the example that draws it", async () => {
+  const root = mkdtempSync(join(tmpdir(), "snippet-check-test-"))
+  const check = async (lines: string[]) => {
+    writeFileSync(join(root, "page.md"), lines.join("\n"))
+    const output = join(root, "report.json")
+    const child = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", root, "--compiler", relative(process.cwd(), compiler), "--json", output], { stdout: "pipe", stderr: "pipe" })
+    const status = await child.exited
+    const [page] = JSON.parse(readFileSync(output, "utf8")).pages
+    return { status, blocks: page.blocks.map((b: any) => [b.status, b.diagnostics.map((d: any) => d.code)]) }
+  }
+  const member = (type: string) => ["```vibe", "service Directory {", `  page(cursor: number): ${type}`, "}", "```"]
+  try {
+    expect(await check(member("Effect.Effect<{ names: ReadonlyArray<string> }, never, never>"))).toEqual({ status: 1, blocks: [["fail", ["EK4833"]]] })
+    expect(await check(member("{ names: ReadonlyArray<string> }!!"))).toEqual({ status: 0, blocks: [["ok", []]] })
+    expect(await check(["```vibe", "// expect-warning: EK4833", ...member("Effect.Effect<number, never, never>").slice(1)])).toEqual({ status: 0, blocks: [["ok", ["EK4833"]]] })
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 

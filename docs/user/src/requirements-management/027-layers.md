@@ -106,6 +106,7 @@ A factory can register `try addFinalizer(...)` or acquire with `try acquireRelea
 
 ```vibe
 // run: provide SettingsLive { provide PrinterLive { provide Merged { const printer = try Printer; try printer.print("merged") }; provide Many { try Console.log(try report("many")) } } }
+// expect-warning: EK4807
 const Merged = Layer.merge(SettingsLive, PrinterLive)
 // Layer<Settings | Printer, never, Settings>
 
@@ -163,7 +164,7 @@ effect function main() {
 effect function withBuiltContext() {
   return try scoped(effect {
     const context = try Layer.build(AppLive)
-    return try Effect.provide(report("Inventory"), context)
+    provide context { return try report("Inventory") }
   })
 }
 // Output: reports: Rendering report
@@ -229,6 +230,7 @@ A service declares only its members, besides `static readonly key` and `defaultV
 
 ```vibe
 // run: { const jsonValue = [try testBannerDependency(), try testBannerDirectly(), try testBannerWithInlineSettings()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+// expect-warning: EK4808
 const SettingsTest = Layer.succeed(Settings, {
   prefix: "test"
 })

@@ -115,8 +115,10 @@ import { assert, it } from "@effect/vitest"
 import { FilesTest, readFixture } from "./files.vibe"
 
 it.effect("reads the configured title", () => effect {
-  const title = try Effect.provide(readFixture(), FilesTest)
-  try Effect.try(() => assert.strictEqual(title, "Release notes"))
+  provide FilesTest {
+    const title = try readFixture()
+    try Effect.try(() => assert.strictEqual(title, "Release notes"))
+  }
 })
 // Output:
 ```

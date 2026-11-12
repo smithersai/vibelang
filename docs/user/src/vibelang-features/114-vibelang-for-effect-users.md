@@ -306,7 +306,7 @@ including private and computed fields; lazy captures preserve that naming contex
 When TypeScript captures configuration before returning an Effect, keep that phase in a plain function with a declared Effect return and return an Effect value:
 
 ```vibe
-export const capture = (input: { value: number }): Effect.Effect<number, never, never> => {
+export const capture = (input: { value: number }): number!! => {
   const snapshot = input.value
   return effect { return snapshot }
 }
