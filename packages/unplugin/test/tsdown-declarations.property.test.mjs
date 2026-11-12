@@ -60,6 +60,11 @@ const typeForms = {
   }
 }
 
+// rolldown-plugin-dts keeps every TypeScript program it makes in one
+// module-level context unless a build asks for its own, so the dozens of
+// builds this file runs in one process would keep dozens of programs alive.
+const dts = { newContext: true }
+
 const dirs = { internal: "internal/", sibling: "", deep: "core/internal/" }
 
 function sources(shape, ext) {
@@ -108,7 +113,7 @@ async function emit(shape, ext) {
     const system = "src/" + dirs[shape.dir] + "system." + ext
     const entry = shape.layout === "entries" ? ["src/services.ts", system] : ["src/services.ts"]
     process.chdir(root)
-    await build({ entry, format: "esm", dts: true, unbundle: shape.unbundle, plugins: [vibelang()], outDir: "dist", exports: false, logLevel: "silent" })
+    await build({ entry, format: "esm", dts, unbundle: shape.unbundle, plugins: [vibelang()], outDir: "dist", exports: false, logLevel: "silent" })
     process.chdir(previous)
     const files = await list(join(root, "dist"))
     const form = typeForms[shape.typeForm]
@@ -167,4 +172,19 @@ test("property: tsdown declarations of a .vibe module and its importers match th
     name: "tsdown-vibe-declarations", rule, command: "node --test test/tsdown-declarations.property.test.mjs",
     arbitrary: shapes.filter(outsideKnownGaps), check, numRuns: 12, regressions
   })
+})
+
+// A finished build's TypeScript program is garbage.
+test("repeated tsdown declaration builds keep no TypeScript program alive", { timeout: 300000 }, async () => {
+  const { setFlagsFromString } = await import("node:v8")
+  const { runInNewContext } = await import("node:vm")
+  setFlagsFromString("--expose-gc")
+  const gc = runInNewContext("gc")
+  const shape = { layout: "importer", unbundle: false, annotation: "explicit", form: "named", typeForm: "effect", dir: "internal" }
+  const settled = () => { gc(); gc(); return process.memoryUsage().heapUsed }
+  await emit(shape, "ts")
+  const before = settled()
+  for (let i = 0; i < 3; i++) await emit(shape, "ts")
+  const grown = (settled() - before) / 1048576
+  assert.ok(grown < 64, "three builds kept " + grown.toFixed(0) + " MB of heap")
 })
