@@ -392,6 +392,7 @@
       "runtime/tests/package-budget.test.ts",
       "runtime/tests/package-error-matcher.property.test.ts",
       "runtime/tests/package.test.ts",
+      "runtime/tests/package-source-maps.test.mjs",
       "runtime/tests/producer-yield-result.property.test.ts",
       "runtime/tests/producers.test.ts",
       "runtime/tests/provider-order.property.test.ts",
