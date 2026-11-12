@@ -9,10 +9,12 @@ import (
 
 // TypeScript's checkImportType does not walk checkSourceElements(typeArguments).
 // Consequently checkGrammarTypeArguments does not reject an empty or trailing
-// list anywhere inside those type arguments. Appendix A delegates native types
-// to TypeScript. Copy the type subtree with the two unchecked list alternatives;
-// expression initializers and computed property expressions keep their native
-// grammar, and a type reference outside an import argument keeps TS1099/TS1009.
+// list anywhere inside those type arguments, and checkTypeReferenceNode does
+// not report the JSDoc-style dot before a list (TS8020) there either. Appendix
+// A delegates native types to TypeScript. Copy the type subtree with the two
+// unchecked list alternatives and the dotted reference; expression
+// initializers and computed property expressions keep their native grammar,
+// and a type reference outside an import argument keeps TS1099/TS1009/TS8020.
 func (g *grammarCfg) importTypeArgumentRecovery() {
 	selected := map[int]bool{}
 	for _, name := range strings.Fields(`
@@ -81,6 +83,22 @@ UnshapedElementList UnshapedElement
 		{kind: grammarSymNT, nt: list, text: g.names[list]},
 		{kind: grammarSymTok, text: ","}, {kind: grammarSymTok, text: ">"},
 	}, "ts", false)
+	// parseEntityName consumes a dot before `<` wherever a type reference is
+	// read (a JSDoc-style generic), and the checker reports it as TS8020 from
+	// checkTypeReferenceNode, which an import type's arguments never reach.
+	// Admit the dotted reference inside them at any depth; the list must start
+	// on the dot's line, as in parseTypeReference.
+	typeName := g.index["TypeName"]
+	for _, name := range []string{"TypeReference", "ArrowSafePrimaryType"} {
+		if scoped, ok := copies[g.index[name]]; ok {
+			g.add(scoped, []grammarGsym{
+				{kind: grammarSymNT, nt: typeName, text: "TypeName"},
+				{kind: grammarSymTok, text: "."},
+				{kind: grammarSymNoLT},
+				{kind: grammarSymNT, nt: arguments, text: g.names[arguments]},
+			}, "ts", false)
+		}
+	}
 	for i := range g.rules {
 		if g.names[g.rules[i].lhs] == "ImportType" {
 			g.rules[i].rhs = rewrite(g.rules[i].rhs)

@@ -477,6 +477,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"arrow-parenthesized-reserved-shorthand-return", "const f = (): ({ class }) => ({ class: 1 })"},
 	{"async-arrow-parenthesized-return", "const f = async (): (Promise<number>) => 1"},
 	{"import-type-dotted-arguments", grammarImportTypeDottedArgumentForms[0]},
+	{"import-type-nested-dotted-reference", grammarImportNestedDottedWitness},
 	{"unicode-other-id-start", "const \u2118x = 1; export const v = \u2118x"},
 	{"unicode-other-id-continue", "const a\u00b7b = 1; export const v = a\u00b7b"},
 	{"effect-type-bang-double-equals", "declare const a: number\nconst loose = a as number!!== a"},
