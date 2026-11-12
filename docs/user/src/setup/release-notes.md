@@ -26,6 +26,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - The `vibelang-runtime` package page told readers to run `vibelang --fix`, which the compiler rejects with `TS5023`. The page no longer mentions the option.
 - `vibelang-ast-grep --help` compiled the parser library into a file named `--help` in the current directory. It now prints the usage and exits with status 0, and any other option is a usage error with status 2.
 - When the installed `effect` was not the version `vibelang-runtime` pins, the load error named `vibelang-runtime@0.0.11` whatever runtime was installed. It now names only the two Effect versions and the install command, as in `vibelang-runtime requires effect@4.1.1; found effect@4.1.0`.
+- A link to a website page other than the home page previewed with only the page name, such as "Cheat sheet", as its title. The preview title now names the site too: "Cheat sheet | VibeLang".
+
 - In search results and link previews, every specification and VIP page on the website showed the site tagline as its description. Each page now describes itself.
 
 - On a phone, long file paths, URLs and code spans in the documentation ran past the right edge of the page and were cut off. They now wrap onto the next line.

@@ -41,6 +41,7 @@ const runs = [
   ["site/scripts/specification-video-playback.test.mjs", "site/package.json", "scripts/specification-video-playback.test.mjs"],
   ["site/scripts/proposal-overview.test.mjs", "site/package.json", "scripts/proposal-overview.test.mjs"],
   ["site/scripts/mobile-layout.test.mjs", "site/package.json", "scripts/mobile-layout.test.mjs"],
+  ["site/scripts/share-metadata.test.mjs", "site/package.json", "scripts/share-metadata.test.mjs"],
   ["site/scripts/starter-video.test.mjs", "site/package.json", "scripts/starter-video.test.mjs"],
   ["site/scripts/starter-video-playback.test.mjs", "site/package.json", "scripts/starter-video-playback.test.mjs"],
   ["site/scripts/compiler-video.test.mjs", "site/package.json", "scripts/compiler-video.test.mjs"],

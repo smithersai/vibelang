@@ -43,12 +43,18 @@ export default defineConfig({
     'Write Effect programs in TypeScript syntax, with typed errors and services the compiler checks.',
   ogImageUrl: 'https://vibelang.sh/social-card.png',
   // Vocs renders its /404 route to the published dist/public/404.html.
-  head: (path) => ({
+  head: (path, { frontmatter }) => ({
     ...(path === '/404' ? {
       title: 'Page not found | VibeLang',
       canonical: false,
     } : {}),
     meta: {
+      // Vocs gives og:title and twitter:title the bare page name ("Cheat sheet"); a shared
+      // link names the site too, as the page's <title> does through titleTemplate.
+      ...(frontmatter?.title && !frontmatter.title.includes('VibeLang') ? {
+        ogTitle: `${frontmatter.title} | VibeLang`,
+        twitterTitle: `${frontmatter.title} | VibeLang`,
+      } : {}),
       ...(path === '/404' ? {
         robots: 'noindex',
         description:
