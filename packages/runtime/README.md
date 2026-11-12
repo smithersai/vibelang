@@ -2,12 +2,12 @@
 
 > **Warning:** VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
 
-The helpers that JavaScript compiled by the
+The runtime for VibeLang programs: the helpers that JavaScript compiled by the
 [`vibelang`](https://www.npmjs.com/package/vibelang) compiler imports. Each
 helper gives a VibeLang form the behavior of the Effect code it replaces, on
-Effect 4's fibers, scopes, and services. Some helpers are built on an internal
-one-shot continuation kernel: `x catch h`, for example, compiles to the
-kernel's `catchExpected`, which recovers as `Effect.catch` does.
+Effect 4's fibers, scopes, and services: `x catch h`, for example, compiles to
+a helper call that recovers as `Effect.catch` does. Install it beside
+`vibelang`; your own code rarely imports it directly.
 
 The first release uses ordinary services and providers. `.vibe` code cannot
 reference the continuation API: the compiler rejects `control`, `handle`, and
@@ -47,9 +47,11 @@ runtime requires **effect@4.1.1 exactly**: the kernel accesses that version's
 fiber continuation stack. Install one copy of `effect`; with two, a Scope can
 miss fibers it must stop.
 
-## Build and test
+## Build and test in the repository
 
-For contributors, from this directory of the VibeLang repository:
+These commands apply to a checkout of the
+[VibeLang repository](https://github.com/smithersai/vibelang), not to the
+installed package. From `packages/runtime`:
 
 ```sh
 bun install
@@ -71,29 +73,27 @@ only under Bun; Vitest cannot load that module. Fast-call suite only:
 From the repository root, `sh scripts/test-node-versions.sh` checks Node 22.22.3
 and current Node 24: it runs `tests/node-compat.mjs` directly under Node, the
 Bun suite with that Node on PATH for its subprocess consumers, and the compiler
-package tests. Build the native compiler/runtime and install experiments first.
+package tests. Build the native compiler and install the test dependencies first.
 
 The Node floor includes the imported-CommonJS `require(esm)` cache and synchronous loader-hook fixes in
 [Node 22.22.3](https://nodejs.org/en/blog/release/v22.22.3) (Node.js #59679).
 Earlier Node 22 versions fail compiler import-hook consumers with
 `ERR_VM_MODULE_LINK_FAILURE`, even though they supply the individual APIs.
 
-The shared kernel model suite imports `experiments/tests/conformance/model-laws.ts`.
-Before the full suite, install its pinned dependencies once from this directory:
-`(cd ../../experiments && bun install --frozen-lockfile)`.
+The full suite also runs the repository's shared kernel law suite. Install its
+pinned dependencies once, as the repository's
+[CONTRIBUTING.md](https://github.com/smithersai/vibelang/blob/main/CONTRIBUTING.md)
+describes.
 
 The tests cover each helper module, resource and interruption behavior, and
 isolated Node, Bun, and browser bundle consumers, and compile a TypeScript
 consumer against the declarations.
 
-The original suites still run from the repository root:
+## Import paths
 
-```sh
-(cd experiments && bun test)                  # 148 kernel law tests
-bun prototype/esc/examples/run-all.ts          # 46 compiler examples
-```
-
-Generated JavaScript can compose helpers directly:
+Code the `vibelang` compiler generates imports its helpers from
+`vibelang-runtime/internal`. The package root re-exports the same helpers, so
+hand-written JavaScript can compose them from `vibelang-runtime`:
 
 ```js
 import { Effect, $bind, $program } from "vibelang-runtime"
@@ -119,7 +119,7 @@ const interrupted = Effect.interrupt
 const yielded = Effect.andThen(Effect.yieldNow, Effect.succeed(1))
 ```
 
-Generated modules import compiler helpers from `vibelang-runtime/internal`. This compiler-owned entry preserves the Effect version check and helper identities without loading the optional `Experimental` namespace. Core helpers import the Effect subpaths they use, so unrelated Effect modules also stay out of their dependency graph. The public package root and experimental subpaths retain their existing exports. Keep the compiler and runtime versions aligned.
+The compiler-owned `vibelang-runtime/internal` entry preserves the Effect version check and helper identities without loading the optional `Experimental` namespace. Core helpers import the Effect subpaths they use, so unrelated Effect modules also stay out of their dependency graph. The public package root and experimental subpaths retain their existing exports. Keep the compiler and runtime versions aligned.
 
 ## Effect version guard
 
@@ -279,7 +279,7 @@ or runtime references valid in first-release `.vibe` source.
 | `Layer` | Supply the prelude Layer namespace | D4 |
 | `Schema` | Supply the prelude Schema namespace | D4 |
 | `Scope` | Supply the prelude Scope namespace | D48 |
-| `Experimental` | Supply the prelude Experimental namespace: VibeLang's additions where Effect lacks an API | D313 |
+| `Experimental` | Supply the prelude Experimental namespace: VibeLang's additions where Effect lacks an API | VIP-33 |
 | `TaggedError` | Expose Effect's `Data.TaggedError` | D3 |
 | `pipe` | Supply the prelude pipeline function | D8 |
 | `Exit` | Expose Effect completion values to TypeScript adapters | D43 |
@@ -294,8 +294,8 @@ or runtime references valid in first-release `.vibe` source.
 The kernel's implementation modules are private package files; their source
 stays in `src/kernel/` so the original law and trace suites can test the
 continuation machine directly. Code the `vibelang` compiler generates imports
-its helpers from `vibelang-runtime/internal`, as [Install](#install) says;
-applications import from the package root. Only the prototype text-only
+its helpers from `vibelang-runtime/internal`, as [Import paths](#import-paths)
+says; hand-written code imports from the package root. Only the prototype text-only
 projector also imports `vibelang-runtime/data-methods`, described below. Tests and
 instrumentation import the kernel module itself from `vibelang-runtime/kernel`,
 such as its `hooks`, which report each capture and resumption; the compiler's
@@ -320,7 +320,7 @@ need no opt-in. The [open-proposal modules](#open-proposal-modules-opt-in)
 that share the `vibelang-runtime/experimental` path are listed separately.
 
 `vibelang-runtime/experimental` holds what VibeLang adds where Effect lacks a
-platform API (D313), one module per service, each also a subpath:
+platform API (VIP-33), one module per service, each also a subpath:
 `vibelang-runtime/experimental/FileSystem` (Effect's `FileSystem` plus
 `access` with `executable`, `open` with `nonBlocking` and `File.chmod`),
 `vibelang-runtime/experimental/Crypto` (the members of Effect 4.0's `Crypto`,

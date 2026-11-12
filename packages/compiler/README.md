@@ -2,6 +2,11 @@
 
 > **Warning:** VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
 
+0.0.13 is the alpha. It supports the core language: the 33 accepted VIPs numbered 1 to 41.
+Features built from open proposals (`task`, `workflow`, and the `Experimental.Durable`, `Human`, `Eval`, `Scorer`, `Memory`, `Fuzz`, `FuzzSimulation` and `Test` modules)
+need `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json`. Without it the compiler reports `EK3013`.
+[What is in the alpha](https://vibelang.sh/setup/alpha) has the detail. Report a bug in [Issues](https://github.com/smithersai/vibelang/issues/new/choose).
+
 The VibeLang compiler and language server. VibeLang is a readable syntax for
 Effect that compiles to JavaScript with TypeScript declarations: `vibelang` checks `.vibe` and `.ts` files
 together and emits JavaScript that runs on Effect 4. Enable `declaration`
@@ -173,20 +178,17 @@ name>.json`, with every input named by content rather than by timestamp:
 
 Paths are relative to the workspace, the nearest directory at or above the
 project that holds a lockfile, so a record holds in any checkout. On a cache
-miss, a loader checks the record input by input, about 150 ms for opencode's
+miss, a loader checks the record input by input, about 150 ms for a workspace of
 five packages and 3,000 files; when all hold it uses the recorded result and
 caches it, and when any differs it compiles as before. A record only ever
 saves a compile: a stale one costs nothing but the compile.
 `VIBELANG_DISABLE_CACHE=1` turns records off too.
 
-The migrate flow writes a record for each project a migrated package's
-`.vibe` modules compile with, with the package's installed `vibelang/project`,
-each time it writes the packages' emitted JavaScript. It writes the records
-after it has emitted and routed every package, because a record names each
-`package.json` its compile read and routing rewrites them, then checks each
-record against the final tree with `checkLoaderRecord`, which returns
-`{ modules }` or the `{ miss }` a cold loader would see. To write one
-yourself, after changing a package:
+A record names each `package.json` its compile read, so a build step that
+rewrites `package.json` files writes its records after that rewrite.
+`checkLoaderRecord` checks a record against the current tree and returns
+`{ modules }`, or the `{ miss }` a cold loader would see. To write a record
+after changing a package:
 
 ```sh
 node -e 'import("vibelang/project").then(p => console.log(p.writeLoaderRecord({ project: process.argv[1] })))' packages/protocol/tsconfig.json
@@ -236,11 +238,11 @@ Bun first resolves it by path (the entry, a relative or absolute import), and
 leaves a bare specifier to Bun; `VIBELANG_BUN_DEBUG=1` prints how many
 resolutions reached it.
 
-A package that the migrate flow migrated may name its emitted JavaScript,
-committed under `.vibelang/js/`, as its `default` export, for consumers that
+A package may name its emitted JavaScript, committed under
+`.vibelang/js/`, as its `default` export, for consumers that
 load no plugin, such as the `bun build` CLI and plain `node`. Both loaders run
 the source instead: `vibelang/register` follows the output’s source map or
-migration-generated source header, and `vibelang/bun` loads a re-export of that
+generated source header, and `vibelang/bun` loads a re-export of that
 source, so it has one instance whichever way it is imported. A mapless mirrored
 path redirects only when one source matches the project’s inherited `jsx` mode;
 ambiguous siblings leave the emitted module in place. The Bun re-export preserves
