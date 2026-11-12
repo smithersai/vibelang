@@ -1,0 +1,11 @@
+// expect: EK2004
+declare const chunks: AsyncIterable<number>
+export effect function array() { for try (const x of [1, 2]) { } }
+export effect function set() { for try (const x of new Set([1])) { } }
+export effect function chunked() { for try (const x of chunks) { } }
+export effect function effect() { for try (const x of Effect.succeed(1)) { } }
+
+// EK2004 names the conversion that fits the operand: Stream.fromIterable for an
+// array or other Iterable, Stream.fromAsyncIterable for an AsyncIterable, and
+// none for an Effect, whose iterator is the yield* adapter.
+// Appendix B: EK2004 — spec-rule: docs/design/src/002-running.md#for-try

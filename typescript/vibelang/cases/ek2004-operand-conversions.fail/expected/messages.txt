@@ -1,0 +1,4 @@
+main.vibe(3,54): error EK2004: for try requires a Stream; convert this array with Stream.fromIterable first.
+main.vibe(4,52): error EK2004: for try requires a Stream; convert this Iterable with Stream.fromIterable first.
+main.vibe(5,56): error EK2004: for try requires a Stream; convert this AsyncIterable with Stream.fromAsyncIterable first.
+main.vibe(6,55): error EK2004: for try requires a Stream.

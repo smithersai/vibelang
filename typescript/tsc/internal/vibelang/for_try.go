@@ -11,7 +11,13 @@ var (
 	EK2001     = message(2001, errorCategory, "for try consumes a Stream inside effect code; move this loop into an effect function or block.")
 	EK2002     = message(2002, errorCategory, "return cannot leave a for try body; use break to stop consuming the Stream, then return after the loop.")
 	EK2003     = message(2003, errorCategory, "A labeled jump cannot leave a for try body; move the decision after the loop.")
-	EK2004     = message(2004, errorCategory, "for try requires a Stream; convert an AsyncIterable with Stream.fromAsyncIterable first.")
+	EK2004     = message(2004, errorCategory, "for try requires a Stream.")
+	// EK2004's conversion hint follows the operand's type: an AsyncIterable
+	// converts with Stream.fromAsyncIterable, an array or other Iterable with
+	// Stream.fromIterable, and any other operand gets no conversion.
+	ek2004AsyncIterable = EK2004.With("for try requires a Stream; convert this AsyncIterable with Stream.fromAsyncIterable first.")
+	ek2004Array         = EK2004.With("for try requires a Stream; convert this array with Stream.fromIterable first.")
+	ek2004Iterable      = EK2004.With("for try requires a Stream; convert this Iterable with Stream.fromIterable first.")
 	forTryHead = message(parser.StreamHeadDiagnosticCode, errorCategory, parser.StreamHeadDiagnosticText)
 )
 
@@ -36,7 +42,7 @@ func checkForTry(c *checker.Checker, file *ast.SourceFile) {
 				coverExactErrorCodes(c, n.Expression(), 2488, 2504)
 			}
 			if !forTryOperandType(c, c.GetTypeAtLocation(n.Expression())) {
-				report(c, n.Expression(), EK2004)
+				report(c, n.Expression(), forTryOperandMessage(c, c.GetTypeAtLocation(n.Expression())))
 				// TypeScript reports a nullable operand by name (18047 to 18049) or
 				// as an object (2531 to 2533); EK2004 says the same of this operand.
 				coverExactErrorCodes(c, n.Expression(), 18047, 18048, 18049, 2531, 2532, 2533)
@@ -104,6 +110,53 @@ func forTryOperandType(c *checker.Checker, t *checker.Type) bool {
 	}
 	any := c.GetAnyType()
 	return c.IsTypeAssignableTo(t, c.NewTypeReference(base, []*checker.Type{any, any, any}))
+}
+
+// forTryOperandMessage picks EK2004's text for a rejected operand of type t.
+// An AsyncIterable is checked first, as for await does. A nullable operand
+// gets no conversion: neither Stream constructor accepts undefined or null.
+func forTryOperandMessage(c *checker.Checker, t *checker.Type) *Message {
+	if t == nil {
+		return EK2004
+	}
+	apparent := c.GetApparentType(t)
+	has := func(name string) bool {
+		return c.GetPropertyOfType(apparent, c.GetPropertyNameForKnownSymbolName(name)) != nil
+	}
+	switch {
+	case has("asyncIterator"):
+		return ek2004AsyncIterable
+	case c.IsArrayLikeType(t):
+		return ek2004Array
+	case has("iterator") && !effectYieldAdapter(c, apparent):
+		return ek2004Iterable
+	}
+	return EK2004
+}
+
+// effectYieldAdapter reports whether t's [Symbol.iterator] is one of Effect's
+// yield* adapters (EffectIterator, OptionIterator, ResultIterator). Iterating
+// such a value gives the value itself, not elements, so Stream.fromIterable
+// would make a one-element Stream of it.
+func effectYieldAdapter(c *checker.Checker, t *checker.Type) bool {
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		for _, member := range t.Types() {
+			if effectYieldAdapter(c, c.GetApparentType(member)) {
+				return true
+			}
+		}
+		return false
+	}
+	method := c.GetTypeOfPropertyOfType(t, c.GetPropertyNameForKnownSymbolName("iterator"))
+	if method == nil {
+		return false
+	}
+	for _, signature := range c.GetSignaturesOfType(method, checker.SignatureKindCall) {
+		if result := c.GetReturnTypeOfSignature(signature); result != nil && result.Symbol() != nil && declaredInEffect(result.Symbol()) {
+			return true
+		}
+	}
+	return false
 }
 
 func isReturnKeyword(file *ast.SourceFile, n *ast.Node) bool {
