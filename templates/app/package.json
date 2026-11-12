@@ -7,7 +7,10 @@
     "build": "vibelang",
     "start": "vibelang && node --enable-source-maps dist/main.js",
     "dev": "node scripts/dev.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "format": "vibelang format --write",
+    "lint": "vibelang lint -p tsconfig.test.json",
+    "check": "vibelang format --check && vibelang lint -p tsconfig.test.json"
   },
   "dependencies": {
     "effect": "4.1.1",

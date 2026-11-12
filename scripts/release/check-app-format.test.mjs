@@ -119,6 +119,8 @@ for (const manager of managers) {
     const dprint = index(c => c.name === "dprint" && c.args[0] === "check")
     assert.ok(build >= 0 && tested > build && dprint > tested, JSON.stringify(calls.map(c => [c.name, ...c.args])))
     assert.equal(calls[dprint].config, documentedConfig, "dprint.json must be the guide's block, byte for byte")
+    const check = index(c => c.args[0] === "run" && c.args[1] === "check")
+    assert.ok(check > tested, "the starter's check script runs after test")
   })
 }
 

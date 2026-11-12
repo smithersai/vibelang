@@ -316,3 +316,15 @@ test("the starter turns on Effect's lint rules and stays clean under them", () =
   const main = readFileSync(new URL("src/main.vibe", template), "utf8")
   assert.match(main, /^effect function main\(\)/m, "an exported zero-argument effect function reports lazyEffect")
 })
+
+test("the starter has format, lint and check scripts, and its README names them", () => {
+  const template = new URL("../../../templates/app/", import.meta.url)
+  const { scripts } = JSON.parse(readFileSync(new URL("package.json", template), "utf8"))
+  assert.equal(scripts.format, "vibelang format --write")
+  assert.equal(scripts.lint, "vibelang lint -p tsconfig.test.json")
+  assert.equal(scripts.check, "vibelang format --check && vibelang lint -p tsconfig.test.json")
+  const readme = readFileSync(new URL("README.md", template), "utf8")
+  for (const script of ["format", "check"]) assert.match(readme, new RegExp(`^bun run ${script}$`, "m"))
+  assert.match(readme, /`vibelang format --write`/)
+  assert.match(readme, /`vibelang lint`/)
+})

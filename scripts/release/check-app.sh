@@ -137,6 +137,8 @@ JS
   /usr/bin/grep -Fq 'Recovered from EmptyName' "$scratch/$manager-start.txt"
   step "run test"
   "$tool" run test
+  step "run check"
+  "$tool" run check
   # Format the built app with the dprint.json the formatting guide documents,
   # byte for byte, so the rehearsal checks what a user copies. After build and
   # test, the compiler's generated declarations are present.

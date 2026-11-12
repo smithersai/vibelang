@@ -88,6 +88,24 @@ test("a scaffold installs, tests source without a build, builds, starts, and rep
 export effect function later() { try sleep("1 millis"); return 7 }
 export function plain(value: number): number { return value + 1 }
 `)
+  for (const script of ["format", "lint", "check"]) {
+    const ran = run("bun", ["run", script], app)
+    assert.equal(ran.status, 0, `${script}: ${ran.output}`)
+  }
+  const ugly = join(app, "src/ugly.vibe")
+  writeFileSync(ugly, "export const   value=1\n")
+  const unformatted = run("bun", ["run", "check"], app)
+  assert.equal(unformatted.status, 1, unformatted.output)
+  assert.match(unformatted.output, /ugly\.vibe/)
+  assert.equal(run("bun", ["run", "format"], app).status, 0)
+  assert.equal(readFileSync(ugly, "utf8"), "export const value = 1\n")
+  rmSync(ugly)
+  const testDrop = join(app, "src/drop.test.vibe")
+  writeFileSync(testDrop, 'import { it } from "@effect/vitest"\nit.effect("drops", effect () => { Effect.succeed(1) })\n')
+  const lintedTests = run("bun", ["run", "lint"], app)
+  assert.equal(lintedTests.status, 1, lintedTests.output)
+  assert.match(lintedTests.output, /drop\.test\.vibe.*EK3801/, "lint covers the test files")
+  rmSync(testDrop)
   const floating = join(app, "src/floating.vibe")
   writeFileSync(floating, "export effect function dropped() { Effect.succeed(1) }\n")
   const linted = run(join(app, "node_modules/.bin/vibelang"), ["lint"], app)

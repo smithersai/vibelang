@@ -6,6 +6,8 @@
 bun run start
 bun run dev
 bun run test
+bun run format
+bun run check
 ```
 
 This project was created from the VibeLang starter. If its dependencies are not
@@ -18,6 +20,8 @@ only after the compiler is watching; press Ctrl+C to stop both. Vitest runs
 checks the project with `vibelang`, serves compiled JavaScript from
 `node_modules/.vibelang/`, and maps assertion stacks to the original `.vibe`
 lines. `test` needs no prior build.
+
+`format` formats the `.vibe` files with `vibelang format --write`. `lint` runs `vibelang lint`, the type checker with VibeLang's and Effect's lint rules, over sources and tests; `check` runs `vibelang format --check`, then `lint`, and fails on either, for CI.
 
 Each build also writes a declaration pair per module for stock TypeScript tools,
 `greeting.d.vibe.ts` and the forwarding `greeting.d.ts`, with hidden
