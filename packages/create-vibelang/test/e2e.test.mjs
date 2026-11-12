@@ -2,7 +2,7 @@
 // documented workspace setup first, then node --test test/e2e.test.mjs.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
@@ -63,13 +63,27 @@ test("a scaffold installs, tests source without a build, builds, starts, and rep
   assert.match(started.output, /Hello, VibeLang!/)
   assert.match(started.output, /Recovered from EmptyName/)
   const greeting = readFileSync(join(app, "dist/greeting.js"), "utf8")
+
+  // After start and test, src/ holds only sources, and a first commit of the
+  // project tracks no generated declaration, receipt or build output.
+  assert.deepEqual(readdirSync(join(app, "src")).sort(), ["cli.ts", "greeting.test.vibe", "greeting.vibe", "main.vibe"])
+  assert.ok(existsSync(join(app, ".vibe/declarations/greeting.d.vibe.ts")), "declarations go to vibe.sidecarDir")
+  const git = (...args) => run("git", ["-c", "user.name=starter", "-c", "user.email=starter@example.invalid", ...args], app)
+  assert.equal(git("init", "-q").status, 0)
+  assert.equal(git("add", "-A").status, 0)
+  assert.equal(git("commit", "-qm", "starter").status, 0)
+  assert.equal(git("status", "--porcelain").stdout, "")
+  const tracked = git("ls-files").stdout.split("\n").filter(Boolean)
+  const generated = tracked.filter((file) => /\.d\.(?:vibe\.|vibex\.)?ts$|\.vibelang-sidecar-|^dist\/|^\.vibe\/|^node_modules\//.test(file))
+  assert.deepEqual(generated, [], "the first commit tracks generated files")
+  rmSync(join(app, ".git"), { recursive: true, force: true })
   assert.doesNotMatch(greeting, /\.vibe["']/)
 
   // A TypeScript entry point need not be imported by any .vibe file.
-  writeFileSync(join(app, "src/t5.vibe"), `export function clampAll(values: ReadonlyArray<number>) {
-  return forEach(values, (value) => Math.min(10, Math.max(0, value)))
+  writeFileSync(join(app, "src/t5.vibe"), `export effect function clampAll(values: ReadonlyArray<number>) {
+  return try forEach(values, (value) => succeed(Math.min(10, Math.max(0, value))))
 }
-export function later() { sleep("1 millis"); return 7 }
+export effect function later() { try sleep("1 millis"); return 7 }
 export function plain(value: number): number { return value + 1 }
 `)
   const caller = join(app, "src/use.ts")
@@ -101,11 +115,11 @@ console.log(plain(4))
 
   const main = join(app, "src/main.vibe")
   const original = readFileSync(main, "utf8")
-  writeFileSync(main, 'service Required { read(): string!! }\nexport function main() { Console.log(Required.read()) }\n')
+  writeFileSync(main, 'import * as NodeRuntime from "@effect/platform-node/NodeRuntime"\nservice Required { read(): string!! }\nexport effect function main() { const required = try Required; try Console.log(try required.read()) }\nNodeRuntime.runMain(main())\n')
   rmSync(join(app, "dist"), { recursive: true, force: true })
   const missing = run("bun", ["run", "build"], app)
   assert.notEqual(missing.status, 0, missing.output)
-  assert.match(missing.output, /error EK3205/)
+  assert.match(missing.output, /error EK9211: Nothing provides Required/)
   assert.ok(!existsSync(join(app, "dist/main.js")), "missing provider prevents emit")
   writeFileSync(main, original)
 
@@ -114,5 +128,5 @@ console.log(plain(4))
   const failed = run("bun", ["run", "test"], app)
   assert.equal(failed.status, 1, failed.output)
   assert.match(failed.output, /1 failed/)
-  assert.match(failed.output, /greeting\.test\.vibe:5:\d+/)
+  assert.match(failed.output, /greeting\.test\.vibe:6:\d+/)
 })

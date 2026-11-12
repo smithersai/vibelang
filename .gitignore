@@ -16,6 +16,7 @@ packages/compiler/native/
 packages/compiler/dprint-plugin.json
 templates/app/dist/
 templates/app/.prototype/
+templates/app/.vibe/
 dist-npm/
 .wrangler/
 # Declaration sidecars emitted beside sources by compiler checks.

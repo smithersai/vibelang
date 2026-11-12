@@ -288,3 +288,21 @@ test("filesystem failures report the target and recovery without a stack trace",
   }
   assert.equal(readFileSync(join(directory, "parent"), "utf8"), "preserve")
 })
+
+// The compiler writes a declaration pair and ownership receipts per module.
+// They belong in vibe.sidecarDir, which .gitignore and dprint skip, so a first
+// `git add .` commits only sources and the formatting guide's dprint check passes.
+test("the starter keeps generated declarations in an ignored sidecar directory", () => {
+  const template = new URL("../../../templates/app/", import.meta.url)
+  const tsconfig = JSON.parse(readFileSync(new URL("tsconfig.json", template), "utf8"))
+  const sidecarDir = tsconfig.vibe.sidecarDir
+  assert.equal(sidecarDir, ".vibe/declarations")
+  assert.deepEqual(tsconfig.compilerOptions.rootDirs, [tsconfig.compilerOptions.rootDir, sidecarDir])
+  const ignored = readFileSync(new URL(".gitignore", template), "utf8").split("\n").filter((line) => line && !line.startsWith("#"))
+  assert.ok(ignored.some((line) => sidecarDir.startsWith(line.replace(/\/$/, "") + "/") || line === sidecarDir + "/"), `.gitignore must list ${sidecarDir}`)
+  for (const output of ["dist/", "node_modules/"]) assert.ok(ignored.includes(output), output)
+  // Every test extension Vitest runs stays out of the build.
+  const vitest = readFileSync(new URL("vitest.config.ts", template), "utf8")
+  assert.match(vitest, /include: \["src\/\*\*\/\*\.test\.\{vibe,vibex\}"\]/)
+  assert.deepEqual(tsconfig.exclude, ["src/**/*.test.vibe", "src/**/*.test.vibex"])
+})

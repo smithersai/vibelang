@@ -43,6 +43,7 @@ if (["npm", "bun", "pnpm"].includes(name) && args[0] === "create") {
   bins(app)
   fs.mkdirSync(path.join(app, "src"))
   fs.writeFileSync(path.join(app, "src/main.vibe"), "export const value = 42\\n")
+  fs.writeFileSync(path.join(app, ".gitignore"), "node_modules/\\ndist/\\n.vibe/\\n")
 }
 // bun install --linker isolated: packages live under node_modules/.bun and
 // node_modules/<name> is a link; PROBE_FLAT installs a hoisted tree instead.
@@ -55,6 +56,13 @@ if (name === "bun" && args[0] === "install") {
 if (name === "node") process.stdin.resume()
 if (name === "vibelang") console.log("VibeLang 0.0.12 (fixture)")
 if (args[0] === "run" && args[1] === "start") console.log("Hello, VibeLang!\\nRecovered from EmptyName")
+// A build writes declarations to the starter's ignored sidecar directory, or
+// beside the source with PROBE_BESIDE, as a starter without vibe.sidecarDir did.
+if (args[0] === "run" && args[1] === "build") {
+  const dir = process.env.PROBE_BESIDE ? "src" : ".vibe/declarations"
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, "main.d.vibe.ts"), "export declare const value = 42;\\n")
+}
 if (name === "dprint") {
   const config = JSON.parse(fs.readFileSync("dprint.json", "utf8"))
   if (!config.plugins.includes("npm:vibelang/dprint-plugin.json")) process.exit(91)
@@ -120,6 +128,17 @@ test("the rehearsal fails when the formatting guide has no dprint.json block", t
   assert.match(result.stderr, /no dprint\.json in docs\/user\/src\/setup\/formatting\.md/)
   assert.ok(!calls.some(c => c.name === "dprint"))
 })
+
+for (const manager of managers) {
+  test(`${manager} fails the rehearsal when a first commit tracks generated declarations`, t => {
+    const clean = probe(t, manager)
+    assert.equal(clean.result.status, 0, clean.result.stdout + clean.result.stderr)
+    assert.match(clean.result.stdout, /first commit tracks no generated file/)
+    const { result } = probe(t, manager, "", 23, { PROBE_BESIDE: "1" })
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /tracks generated files:\nsrc\/main\.d\.vibe\.ts/)
+  })
+}
 
 // verify-published.sh <version> must scaffold that version: the latest tag
 // can name another release.

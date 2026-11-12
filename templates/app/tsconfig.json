@@ -6,6 +6,10 @@
     "strict": true,
     "sourceMap": true,
     "rootDir": "src",
+    "rootDirs": [
+      "src",
+      ".vibe/declarations"
+    ],
     "outDir": "dist",
     "noEmitOnError": true,
     "rewriteRelativeImportExtensions": true,
@@ -16,9 +20,11 @@
     "src"
   ],
   "exclude": [
-    "src/**/*.test.vibe"
+    "src/**/*.test.vibe",
+    "src/**/*.test.vibex"
   ],
   "vibe": {
-    "severities": {}
+    "severities": {},
+    "sidecarDir": ".vibe/declarations"
   }
 }

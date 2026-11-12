@@ -38,6 +38,8 @@ Recovered from EmptyName
 
 `npm run dev` (or `bun run dev`) waits until the compiler is watching before starting Node, then recompiles on every change and restarts Node when the output changes. Ctrl+C stops both watchers.
 
+A build writes JavaScript to `dist/`, and for stock TypeScript tools a declaration pair per module, such as `greeting.d.vibe.ts` and the forwarding `greeting.d.ts`, with hidden `.vibelang-sidecar-*.owner` receipts, into `.vibe/declarations/`; the starter's `.gitignore` lists both folders, so `src/` holds only your sources.
+
 ## Your first program
 
 The starter's behavior fits in one file. An `effect` function returns an Effect, `throw` fails it with a typed error, `try` runs an Effect, and `catch` handles the failure:

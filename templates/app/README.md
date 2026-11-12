@@ -14,10 +14,16 @@ installed yet, for example after `--no-install`, run `bun install` first.
 `start` builds the project and prints `Hello, VibeLang!` and
 `Recovered from EmptyName`. `dev` builds once, starts `vibelang --watch`, then starts Node's output watcher
 only after the compiler is watching; press Ctrl+C to stop both. Vitest runs
-`src/**/*.test.vibe` through `vibelang-vite` and `@effect/vitest`. The plugin
+`src/**/*.test.vibe` and `src/**/*.test.vibex` through `vibelang-vite` and `@effect/vitest`. The plugin
 checks the project with `vibelang`, serves compiled JavaScript from
 `node_modules/.vibelang/`, and maps assertion stacks to the original `.vibe`
 lines. `test` needs no prior build.
+
+Each build also writes a declaration pair per module for stock TypeScript tools,
+`greeting.d.vibe.ts` and the forwarding `greeting.d.ts`, with hidden
+`.vibelang-sidecar-*.owner` receipts. `vibe.sidecarDir` in `tsconfig.json` keeps
+them in `.vibe/declarations/`, which `.gitignore` lists with `dist/`, so `src/`
+holds only your sources.
 
 Edit `src/main.vibe` for the service and layer, and `src/greeting.vibe` for
 a typed failure. Look up the service with `try Greeter`, then call its methods;

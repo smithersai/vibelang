@@ -1,7 +1,8 @@
 #!/bin/sh
 # Scaffolds a new VibeLang app from a registry with each named package manager,
 # then installs, checks the installed formatter, builds, starts, and tests it,
-# and checks the built app with the dprint.json the formatting guide documents.
+# checks the built app with the dprint.json the formatting guide documents, and
+# checks that a first git commit of it tracks no generated file.
 # Checks the compiler version and resolves optional packages without hoisting.
 # npm also reinstalls from its generated lockfile with npm ci. bun-isolated
 # scaffolds with Bun, then reinstalls with Bun's isolated linker, the layout
@@ -147,6 +148,19 @@ JS
     *) "$tool" add --save-dev --save-exact dprint@0.64.3 ;;
   esac
   node_modules/.bin/dprint check
+  # A first commit of the built and tested app tracks only its sources: the
+  # starter's .gitignore covers the declarations, receipts and build output.
+  step "first commit tracks no generated file"
+  git init -q
+  git add -A
+  git -c user.name=check-app -c user.email=check-app@example.invalid commit -qm starter
+  generated=$(git ls-files | /usr/bin/grep -E '\.d\.(vibe\.|vibex\.)?ts$|\.vibelang-sidecar-|^dist/|^\.vibe/|^node_modules/' || true)
+  if [ -n "$generated" ] || [ -n "$(git status --porcelain)" ]; then
+    echo "check-app: $manager: the first commit tracks generated files:" >&2
+    echo "$generated" >&2
+    exit 1
+  fi
+  rm -rf .git
   # A warning used to exit 0 while suppressing emit under noEmitOnError.
   # Import that module through Vite, which always enables noEmitOnError.
   step "Vite warning-only .vibe import"

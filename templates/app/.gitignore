@@ -1,2 +1,4 @@
 node_modules/
 dist/
+# Declarations the compiler writes for stock TypeScript tools (vibe.sidecarDir).
+.vibe/

@@ -42,7 +42,7 @@ try {
   mkdirSync(directory, { recursive: true })
   cpSync(template, directory, {
     recursive: true,
-    filter: (path) => !["node_modules", "dist", "bun.lock", ".prototype"].includes(basename(path))
+    filter: (path) => !["node_modules", "dist", ".vibe", "bun.lock", ".prototype"].includes(basename(path))
   })
   // npm drops .gitignore from published packages, so the template stores dotfiles without the dot.
   for (const name of ["gitignore", "gitattributes"]) {

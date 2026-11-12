@@ -110,7 +110,7 @@ Effect.runPromise(main)
 
 <!-- token-headline:start -->
 
-**6.7% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 20 pairs.** The example above uses **136 vs 202 tokens (32.7% fewer)**.
+**0 tokens across 0 cheat-sheet pairs.** The example above uses **0 vs 0 tokens**.
 
 <!-- token-headline:end -->
 
@@ -120,7 +120,7 @@ Counts use o200k_base. Both print `Ada Guest`. The counts cover the complete sou
 
 `match` is TC39 pattern matching with exhaustiveness checks and generated error matchers: leave a variant of a `data` type out of a match without `default`, and the compiler reports the missing case.
 
-The compiler checks `.vibe` and `.ts` files together and emits JavaScript. Set `"declaration": true` in `compilerOptions` to emit `.d.ts` files for TypeScript consumers. The starter leaves declaration output off.
+The compiler checks `.vibe` and `.ts` files together and emits JavaScript. Set `"declaration": true` in `compilerOptions` to emit `.d.ts` files for TypeScript consumers. The starter leaves declaration output off. For stock TypeScript tools the compiler still writes a `.d.vibe.ts` declaration per module, which the starter keeps in its ignored `.vibe/declarations/` folder.
 
 ## Start here
 
@@ -202,4 +202,4 @@ Report a bug in the published packages, with a minimal reproduction, in [Issues]
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,518 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>0 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
