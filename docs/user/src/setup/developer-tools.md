@@ -579,6 +579,8 @@ for handwritten source declarations. A changed published copy therefore remains
 visible even when its source copy is unchanged. Conflicting declarations and
 missing alias targets still fail verification.
 
+If TypeScript cannot finish an API identity probe, the failure names the package entry, exported binding, whether its type or value was compared, and the generated assertion. Verification remains unavailable until the error is resolved. Errors in shared helper code retain their own location rather than being assigned to an unrelated export.
+
 Temporary build fixtures keep their original source kind when the flow proves that their input paths stay inside a fresh `mkdtemp` or `mkdtempSync` directory. Real source imports still follow the renamed module.
 
 A solution-style package keeps each referenced project's declarations and compiler logs in a separate bounded identity, including config paths such as `config/build.json` and `config__build.json`. Verification names every project sharing an ambiguous legacy output directory and requires a fresh setup; unambiguous legacy snapshots remain readable.

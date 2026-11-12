@@ -2211,9 +2211,11 @@ function checkComparison(ts, plan, progress) {
     const line = d.file && d.start !== undefined ? d.file.getLineAndCharacterOfPosition(d.start).line : -1
     if (d.file?.fileName === probe && assignmentLines.has(line) && d.code === 2344) continue
     const check = d.file?.fileName === probe && d.code === 2344 ? byLine.get(line) : undefined
+    const context = d.file?.fileName === probe ? byLine.get(line) ?? assignmentLines.get(line) : undefined
     const item = check
       ? { entrypoint: check.entrypoint, export: check.export, aspect: check.aspect, mutuallyAssignable: !assignmentFailures.has(check), diagnostic: diagnosticText(d), probe: lines[line] }
-      : { diagnostic: diagnosticText(d), file: d.file?.fileName, line: line + 1,
+      : { ...(context ? { entrypoint: context.entrypoint, export: context.export, aspect: context.aspect, probe: lines[line] } : {}),
+          diagnostic: diagnosticText(d), file: d.file?.fileName, line: line + 1,
           blocking: !d.file || d.file.fileName === probe || [before, after].some(base =>
             (d.file.fileName === base || ownsFile(base, d.file.fileName)) && !d.file.fileName.includes("/node_modules/")) }
     const key = JSON.stringify(item)

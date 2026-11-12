@@ -1,0 +1,14 @@
+{
+  "repo": "opencode",
+  "pattern": "non-assertion API-probe errors omit the entry, exported binding and generated assertion",
+  "property": "api-identity-probe-diagnostic-context",
+  "spec": "docs/design/src/001-functions.md#api-identity",
+  "rule": "the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check)",
+  "diagnostics": {
+    "2304": "Cannot find name '__missing'.",
+    "2322": "Type 'string' is not assignable to type 'number'.",
+    "2344": "Type 'false' does not satisfy the constraint 'true'.",
+    "2589": "Type instantiation is excessively deep and possibly infinite.",
+    "2590": "Expression produces a union type that is too complex to represent."
+  }
+}
