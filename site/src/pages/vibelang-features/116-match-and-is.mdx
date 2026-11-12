@@ -516,8 +516,8 @@ The TypeScript mapper supports binding `is` tests in `for` heads, including pare
 A `const` destructuring declaration in a `for` initializer keeps TypeScript’s
 constant-assignment checks when the loop head contains an `is` binding. An
 assignment to one of its names reports `TS2588`. For source accepted before
-this check, the manual change writes `let` in that initializer,
-preserving the earlier emitted behavior and closure captures.
+this check, write `let` in that initializer, which preserves the earlier
+emitted behavior and closure captures.
 
 A `for…of` loop whose head contains an `is` binding keeps TypeScript’s errors for its operand. An `unknown` or possibly missing operand is reported as for the same loop without the binding: by its written name (`TS18046`, `TS18048`), or as `Object` for a call or a parenthesized expression (`TS2571`, `TS2532`).
 

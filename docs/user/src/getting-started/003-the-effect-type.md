@@ -72,7 +72,7 @@ A following `as` or `satisfies` still continues the expression: `x as A!! as B` 
 
 Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, R>` for TypeScript callers. `Effect.Effect<A, E, R>` is accepted anywhere a type is.
 
-A nested Effect needs grouping when rewritten to shorthand: `Effect.Effect<Effect.Effect<number>>` becomes `(number!!)!!`. An array already supplies a type boundary, so `Effect.Effect<Array<Effect.Effect<number>>>` becomes `Array<number!!>!!`. The `EK4833` repair adds required parentheses while retaining declaration output; source-written parentheses and comments still have their preservation checks.
+A nested Effect needs grouping when rewritten to shorthand: `Effect.Effect<Effect.Effect<number>>` becomes `(number!!)!!`. An array already supplies a type boundary, so `Effect.Effect<Array<Effect.Effect<number>>>` becomes `Array<number!!>!!`. When you resolve `EK4833` by writing the shorthand, add those parentheses; declaration output stays the same.
 
 ## Check selected channels
 

@@ -257,7 +257,7 @@ Guards and assertions check the decoded type: a numeric `pieces` is valid, a str
 
 `Schema.decodeUnknownEffect(Shipment)(input)` returns an Effect. Inside an `effect` function, `try` runs it and gives the shipment. Use `catch` on the Effect value to recover from schema failures. A `const` that holds a `Schema.Struct` draws EK4832 when a `schema` declaration writes the same struct, and an explicit edit can use the declaration ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)).
 
-A value named `string`, `number` or another type keyword keeps its library form when its bare name would select a different schema. Qualified references such as `holder.string` remain eligible for a preserving repair.
+A value named `string`, `number` or another type keyword keeps its library form when its bare name would select a different schema. A qualified reference such as `holder.string` keeps naming that value inside a `schema` declaration, so a struct that uses one can still be rewritten as a declaration by hand.
 
 [Upstream page](https://effect.website/docs/v4/schema/getting-started)
 

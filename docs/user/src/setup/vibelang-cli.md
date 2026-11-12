@@ -151,7 +151,7 @@ The repository migration flow, with `"platformModuleBodies": true`, keeps a newl
 
 A returned Effect stays success data without an own `EK4802` warning; write `return try program` explicitly to run it. Own `EK4802` is reserved for inferred Effect arguments at plain generic calls.
 
-For a current generic call such as `expect(awaited())`, the `EK4802` repair writes `expect(try awaited())` when the function's written error and requirement channels accept it. To pass the unrun program intentionally, write the call's Effect type argument explicitly. Arrays and callbacks need a repair where their Effects are constructed; an Effect returned as data has no automatic execution repair.
+For a current generic call such as `expect(awaited())`, write `expect(try awaited())` for `EK4802` when the function's written error and requirement channels accept it. To pass the unrun program intentionally, write the call's Effect type argument explicitly. Arrays and callbacks need a repair where their Effects are constructed; an Effect returned as data has no automatic execution repair.
 
 For a monorepo, use `vibelang -b -w <solution-or-consuming-project>` to watch and rebuild the project-reference graph. Ordinary `-w` watches the selected project's compilation inputs; it does not keep referenced libraries built. For example:
 
@@ -161,7 +161,7 @@ vibelang -b -w packages/app
 
 Generator teaching fixes handle omitted array elements in `Effect.fn` and `Effect.fnUntraced` parameters without crashing. Supported calls retain deferred binding inside their cold bodies. Named spans and stages whose binding boundary must remain in the original generator stay in their valid native form; fixes elsewhere in the project still run.
 
-Repeated foreign calls in one effect function can be fixed together without redeclaring their captured inputs. The repair preserves argument evaluation order and existing narrowed property types.
+Repeated foreign calls in one effect function can be bridged together without redeclaring their captured inputs. Keep the arguments' evaluation order and the existing narrowed property types when you do.
 
 ### Lint Effect code
 

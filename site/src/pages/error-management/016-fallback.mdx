@@ -132,13 +132,11 @@ Mixing `catch` with `??`, `||` or `&&` without parentheses reports `EK0512`. Wri
 
 A catch expression can try the cache before applying a default: `effect { return latestTitle() catch effect () => try cachedTitle() } catch () => "Untitled issue"`. The cache runs after the primary fails, and the title is used after the cache fails. Each recovery uses Effect's cause policy.
 
-The `EK0509` manual change for a callable value such as `x catch onErr` writes a function literal and chooses a parameter name that does not shadow a name visible to the handler. Escaped identifier spellings and comments do not change that choice. 
+For `EK0509` on a callable value such as `x catch onErr`, write a function literal, `x catch (e) => onErr(e)`, with a parameter name that does not shadow a name visible to the handler.
 
-A handler written as a parameter list followed directly by a block, `x catch (e) { … }`, is missing its `=>`. It reports the `EK0509` syntax diagnostic while retaining the file's independent errors. The manual change writes `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own; write `x catch (e) => { … }` instead for a plain fallback. Comments and line breaks before the body remain after the inserted arrow.
+A handler written as a parameter list followed directly by a block, `x catch (e) { … }`, is missing its `=>`. It reports the `EK0509` syntax diagnostic while retaining the file's independent errors. Write `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own, or `x catch (e) => { … }` for a plain fallback. Keep comments and line breaks before the body after the arrow you add.
 
-For an `async` or generator handler, removing `async` or `*` is offered only when the handler uses no `await` or `yield` at its own function level. Nested functions keep their own modifiers. Otherwise, the diagnostic asks for an explicit body conversion, and CLI and editor offer no modifier edit.
-
-Modifier repairs keep comments after `async` and around `*`, including JSDoc comments.
+For an `async` or generator handler, remove `async` or `*` yourself when the handler uses no `await` or `yield` at its own function level; nested functions keep their own modifiers. Otherwise, the diagnostic asks you to convert the body explicitly. When you remove a modifier, keep the comments after `async` and around `*`, including JSDoc comments.
 
 ## Coming from Effect
 
