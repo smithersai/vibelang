@@ -55,7 +55,7 @@ BunRuntime.runMain(main())
 running on Bun
 ```
 
-Choose the runtime that matches the host and install its platform package. The application still uses Effect's services, not Node.js modules or browser globals.
+Choose the runtime that matches the host and install its platform package at the Effect version VibeLang pins. The starter already depends on `@effect/platform-node`; for Bun, run `bun add --exact @effect/platform-bun@4.1.1`, or `npm install --save-exact @effect/platform-bun@4.1.1`. The application still uses Effect's services, not Node.js modules or browser globals.
 
 | Host | Runtime | Import |
 | --- | --- | --- |

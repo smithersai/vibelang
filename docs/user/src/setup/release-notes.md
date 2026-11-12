@@ -636,6 +636,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Screen-reader navigation could not distinguish the site menu, documentation sidebar and page outline. Each navigation landmark now has its own name.
 
+- The guidelines page imported `@effect/platform-bun`, which the starter does not include, and gave no install command, so its Bun sample failed with `TS2307`. It now gives the `bun add` and `npm install` commands at Effect 4.1.1.
+
 - The homepage suggested Node versions that the packages do not support. It now lists both supported Node release lines and their minimum versions.
 
 - Copying either homepage greeting example printed nothing. Both examples now start their Effect and print `Hello, Ada`.
