@@ -2,9 +2,9 @@
 // publication unless --dry-run is present. No registry or credentials are used.
 import assert from "node:assert/strict"
 import { execFileSync, spawnSync } from "node:child_process"
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { fixtureCheckout, fixtureRevision, fixtureDprint } from "./fixture-checkout.mjs"
@@ -60,6 +60,9 @@ if (args[0] === "view") {
   process.exit(0)
 }
 if (args[0] === "publish") {
+  const file = args[1].slice(args[1].lastIndexOf("/") + 1)
+  const original = readFileSync(${JSON.stringify(tarballs)} + "/" + file)
+  if (!readFileSync(args[1]).equals(original)) { console.error("staged bytes changed"); process.exit(97) }
   if (!args.includes("--dry-run")) { console.error("test refuses live publication"); process.exit(99) }
   process.exit(process.env.TEST_FAIL_PUBLISH ? 1 : 0)
 }
@@ -73,7 +76,7 @@ function run(f, env = {}, args = ["--dry-run"], timeout = 60_000) {
   const started = performance.now()
   const result = spawnSync("sh", [join(f.root, "scripts/release/publish.sh"), ...args], {
     encoding: "utf8", timeout, input: "",
-    env: { PATH: `${f.checkout.bin}:${f.bin}:${process.env.PATH}`, VIBELANG_REGISTRY: "http://127.0.0.1:1/unused/", ...env }
+    env: { HOME: f.root, PATH: `${f.checkout.bin}:${f.bin}:${process.env.PATH}`, VIBELANG_REGISTRY: "http://127.0.0.1:1/unused/", ...env }
   })
   const calls = readFileSync(f.calls, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line))
   if (result.error || result.signal || result.status === null) {
@@ -91,7 +94,7 @@ test("offline dry-run checks archives in manifest order without requiring login"
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /not logged in to npm; the dry run continues/)
   assert.match(result.stdout, /dry run passed for 0\.0\.1/)
-  assert.deepEqual(result.publishes.map((args) => args[1]), names.map((name) => join(f.tarballs, `${name}-0.0.1.tgz`)))
+  assert.deepEqual(result.publishes.map((args) => basename(args[1])), names.map((name) => `${name}-0.0.1.tgz`))
   for (const args of result.publishes) {
     assert.deepEqual(args.slice(2), ["--registry", "http://127.0.0.1:1/unused/", "--access", "public", "--dry-run"])
   }
@@ -172,7 +175,7 @@ test("a dry run with VIBELANG_SKIP does not strip the vibelang tarball a later r
   const skipped = run(f, { VIBELANG_SKIP: "win32" })
   assert.equal(skipped.status, 0, skipped.stderr)
   assert.deepEqual(optional(f), ["vibelang-linux-x64"])
-  assert.deepEqual(skipped.publishes.map((args) => args[1]), ["vibelang-linux-x64", "vibelang"].map((name) => join(f.tarballs, `${name}-0.0.1.tgz`)))
+  assert.deepEqual(skipped.publishes.map((args) => basename(args[1])), ["vibelang-linux-x64", "vibelang"].map((name) => `${name}-0.0.1.tgz`))
   writeFileSync(f.calls, "")
   const full = run(f)
   assert.equal(full.status, 0, full.stderr)
@@ -216,4 +219,51 @@ function rewrite(f, change) {
   const manifest = JSON.parse(readFileSync(path, "utf8"))
   change(manifest)
   writeFileSync(path, JSON.stringify(manifest))
+}
+
+test("publication stages identical bytes outside the publisher home and bundle, then cleans up", (t) => {
+  const f = fixture(t)
+  // A caller-controlled temp directory under HOME must not affect staging.
+  const result = run(f, { HOME: f.root, TMPDIR: f.root })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.publishes.length, names.length)
+  for (const [, file] of result.publishes) {
+    assert.ok(!file.includes(f.root), "npm must not receive the publisher home or bundle path")
+    assert.match(file, /^(?:\/private)?\/tmp\/vibelang-publish\.[^/]+\//)
+    assert.equal(existsSync(dirname(file)), false, "staging is removed on success")
+  }
+})
+
+test("failed publication removes staging and a rerun resumes with identical packages skipped", (t) => {
+  const f = fixture(t)
+  const failed = run(f, { TEST_FAIL_PUBLISH: "1" })
+  assert.equal(failed.status, 1, failed.stderr)
+  assert.equal(existsSync(dirname(failed.publishes[0][1])), false)
+  writeFileSync(f.calls, "")
+  const resumed = run(f, { TEST_EXISTING: "vibelang-linux-x64@" })
+  assert.equal(resumed.status, 0, resumed.stderr)
+  assert.deepEqual(resumed.publishes.map((args) => basename(args[1])),
+    ["vibelang-runtime-0.0.1.tgz", "vibelang-0.0.1.tgz"])
+})
+
+test("a staging path containing HOME is refused with one reason before publication", (t) => {
+  const f = fixture(t)
+  const result = run(f, { HOME: "/tmp" })
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stderr, /^publish: refusing .*home path\n$/)
+  assert.equal(result.publishes.length, 0)
+})
+
+for (const segment of ["Users", "home"]) {
+  test(segment + ": resolved staging paths with a home-directory segment are refused", (t) => {
+    const f = fixture(t)
+    const stage = join(f.root, segment, "publisher", "stage")
+    mkdirSync(stage, { recursive: true })
+    writeFileSync(join(f.bin, "mktemp"), "#!/bin/sh\nprintf '%s\\n' '" + stage + "'\n", { mode: 0o755 })
+    const result = run(f, { HOME: join(f.root, "unrelated") })
+    assert.equal(result.status, 1, result.stdout + result.stderr)
+    assert.match(result.stderr, /^publish: refusing .*home path\n$/)
+    assert.equal(result.publishes.length, 0)
+    assert.equal(existsSync(stage), false)
+  })
 }

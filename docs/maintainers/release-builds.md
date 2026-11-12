@@ -106,3 +106,20 @@ Keep its local module dependencies, including `scripts/release/zip-times.mjs`,
 in that fixture when the packager gains an import. Its smoke check must reach
 all six missing-binary diagnostics without building or staging packages;
 the generated invalid-pin controls then check the actual metadata policy.
+
+## Publisher paths in registry metadata
+
+`publish.sh` copies the selected tarballs to a private staging directory under
+`/tmp`, publishes those copies and removes staging on exit, including failure.
+The copied archives retain their bytes. Staging ignores `TMPDIR`, resolves the
+directory's physical path and refuses a tarball argument containing `HOME` or
+a macOS or Linux home-directory path. npm records an absolute `_resolved` even
+when its tarball argument is relative, so changing directories within the
+release bundle does not protect the publisher's path.
+
+After publishing, `verify-published.sh <version>` checks that no entry holds a
+local home path. It scans every string field, including nested fields, in the
+compiler's version manifest, each platform package it lists and the runtime,
+Vite plugin, starter and bundler plugin. A failure names the package and field
+before running app checks. Set `VIBELANG_REGISTRY` to select the registry for
+both metadata verification and app checks.

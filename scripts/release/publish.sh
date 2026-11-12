@@ -83,6 +83,27 @@ for item in $(node -e 'for (const p of require(process.argv[1]).packages) consol
 done
 [ -n "$todo" ] || { echo "publish: every package not skipped is already on npm at $version."; exit 0; }
 
+# npm records an absolute _resolved even for a relative tarball argument.
+# Ignore TMPDIR: it may point into the publisher's home or release bundle.
+stage=$(mktemp -d /tmp/vibelang-publish.XXXXXX)
+trap 'rm -rf "$stage"' EXIT
+trap 'exit 1' HUP INT TERM
+stage=$(CDPATH= cd -- "$stage" && pwd -P)
+for item in $todo; do
+  file=${item##*=}
+  publish_path="$stage/$file"
+  case $publish_path in
+    */Users/*|*/home/*)
+      echo "publish: refusing npm tarball argument containing a home path" >&2; exit 1 ;;
+  esac
+  if [ -n "${HOME:-}" ]; then
+    case $publish_path in
+      *"$HOME"*) echo "publish: refusing npm tarball argument containing a home path" >&2; exit 1 ;;
+    esac
+  fi
+  cp "$tarballs/$file" "$publish_path"
+done
+
 if [ -z "$dry" ] && [ -z "$otp" ]; then
   printf 'npm one-time password (press Enter if your account does not use one): '
   read -r otp
@@ -94,7 +115,7 @@ for item in $todo; do
   package_version=${rest%%=*}
   file=${rest#*=}
   while :; do
-    set -- npm publish "$tarballs/$file" --registry "$registry" --access public
+    set -- npm publish "$stage/$file" --registry "$registry" --access public
     [ -z "$otp" ] || set -- "$@" --otp "$otp"
     [ -z "$dry" ] || set -- "$@" --dry-run
     if "$@"; then
