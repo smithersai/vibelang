@@ -366,3 +366,57 @@ test("configuration diagnostics retain their original location at every load", {
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /tsconfig\.json:1:\d+ - error TS5024/)
 })
+
+// A JSX runtime small enough to print: each element is its type and props.
+const jsxRuntime = {
+  "node_modules/tiny-jsx/package.json": JSON.stringify({
+    name: "tiny-jsx", type: "module",
+    exports: { "./jsx-runtime": { types: "./jsx-runtime.d.ts", default: "./jsx-runtime.js" } }
+  }),
+  "node_modules/tiny-jsx/jsx-runtime.js": "export const jsx = (type, props) => ({ type, props })\nexport const jsxs = jsx\nexport const Fragment = \"fragment\"\n",
+  "node_modules/tiny-jsx/jsx-runtime.d.ts": [
+    "export declare function jsx(type: unknown, props: unknown): JSX.Element",
+    "export declare const jsxs: typeof jsx",
+    "export declare const Fragment: unique symbol",
+    "export declare namespace JSX { interface Element { type: unknown; props: unknown } interface IntrinsicElements { [name: string]: unknown } }",
+    ""
+  ].join("\n")
+}
+const jsxProject = (jsx) => JSON.stringify({
+  compilerOptions: { ...JSON.parse(tsconfig([])).compilerOptions, jsx, jsxImportSource: "tiny-jsx" },
+  include: ["src/**/*"]
+})
+const row = "export function Row(props: { label: string }) { return <p>{props.label}</p> }\n"
+
+test("runs .vibex modules, as an entry and imported from TypeScript and .vibe", { skip }, (t) => {
+  const { run } = project(t, {
+    ...jsxRuntime,
+    "tsconfig.json": jsxProject("react-jsx"),
+    "src/Row.vibex": row,
+    // VibeLang code prints nothing itself (EK4402), so the entry only has to load.
+    "src/app.vibex": "import { Row } from \"./Row.vibex\"\nexport const element = Row({ label: \"entry\" })\n",
+    "src/use.vibe": "import { Row } from \"./Row.js\"\nexport const element = Row({ label: \"vibe\" })\n",
+    "src/main.ts": "import { Row } from \"./Row.vibex\"\nimport { element } from \"./use.vibe\"\nconsole.log(JSON.stringify([Row({ label: \"ts\" }), element]))\n"
+  }, "vibelang-register-vibex-")
+  const entry = run("src/app.vibex")
+  assert.equal(entry.status, 0, entry.stderr)
+  assert.equal(entry.stderr, "")
+  const result = run("src/main.ts")
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), [
+    { type: "p", props: { children: "ts" } }, { type: "p", props: { children: "vibe" } }
+  ])
+})
+
+test("names the jsx option when a .vibex module compiles to preserved JSX", { skip }, (t) => {
+  const { run } = project(t, {
+    ...jsxRuntime,
+    "tsconfig.json": jsxProject("preserve"),
+    "src/Row.vibex": row,
+    "src/main.ts": "import { Row } from \"./Row.vibex\"\nconsole.log(typeof Row)\n"
+  }, "vibelang-register-vibex-preserve-")
+  const result = run("src/main.ts")
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /ERR_VIBELANG_JSX/)
+  assert.match(result.stderr, /"jsx": "react-jsx"/)
+})

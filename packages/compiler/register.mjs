@@ -5,7 +5,9 @@ import { extensionlessImport } from "./relative-imports.mjs"
 import { sourceOfEmitted } from "./emitted-js.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
 import { fileHasVibeDirective } from "./source.mjs"
-// node --import vibelang/register: Node loads .vibe modules from source.
+// node --import vibelang/register: Node loads .vibe and .vibex modules from source.
+// A .vibex module runs when its project's jsx option emits JavaScript, such as
+// react-jsx; Node cannot run the JSX that preserve keeps.
 //
 // A .vibe module keeps its source URL as its identity, so a program that also
 // imports .ts files sees one copy of each module. Its JavaScript comes from one
@@ -134,6 +136,9 @@ function emitted(file) {
     throw failure("ERR_VIBELANG_COMPILE", `vibelang: ${project} did not compile\n${errors.map(formatDiagnostic).join("\n")}`)
   }
   const output = result.outputs.get(file)
+  if (output !== undefined && /\.jsx$/.test(output.map.file ?? "")) {
+    throw failure("ERR_VIBELANG_JSX", `vibelang/register: ${project} compiles ${file} to preserved JSX, which Node cannot run; set "jsx": "react-jsx" (or "react", "react-jsxdev") to load it with Node`)
+  }
   if (output === undefined) {
     compiled.missing.add(file)
     if (result.files.some((source) => source === file || realpathSync(source) === file)) {
@@ -146,7 +151,7 @@ function emitted(file) {
 
 // vibelang rewrites a .vibe module's relative imports to the emitted .js names.
 // From source, those names are the .vibe or TypeScript files beside it.
-const sources = { ".js": [".vibe", ".ts", ".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] }
+const sources = { ".js": [".vibe", ".vibex", ".ts", ".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] }
 const clean = (url) => url.replace(/[?#].*$/, "")
 
 // A module declaration's output that is not on disk: the compile serves it.
@@ -157,8 +162,8 @@ function moduleOutput(url) {
   return source !== undefined && !existsSync(path) && existsSync(source) ? path : undefined
 }
 
-// A module vibelang compiles: a .vibe module, or a .ts module with the directive.
-const compiledSource = (url) => url.startsWith("file:") && (clean(url).endsWith(".vibe") || fileHasVibeDirective(fileURLToPath(clean(url))))
+// A module vibelang compiles: a .vibe or .vibex module, or a .ts module with the directive.
+const compiledSource = (url) => url.startsWith("file:") && (/\.vibex?$/.test(clean(url)) || fileHasVibeDirective(fileURLToPath(clean(url))))
 
 // A module whose imports vibelang rewrote: a compiled source or a module declaration's.
 const compiled = (url) => compiledSource(url) || moduleOutput(url) !== undefined
@@ -211,7 +216,7 @@ registerHooks({
       // TypeScript and JavaScript siblings; declarations have no runtime source.
       const source = extensionlessImport(dirname(fileURLToPath(parent)), clean(specifier))
       const nativeSource = source && /\.(?:tsx?|jsx?)$/.test(source) && !source.endsWith(".d.ts")
-      if (source?.endsWith(".vibe") || nativeSource && compiled(parent)) {
+      if (/\.vibex?$/.test(source ?? "") || nativeSource && compiled(parent)) {
         return resolved(nextResolve(pathToFileURL(source).href + target.search + target.hash, context))
       }
       if (error.code !== "ERR_MODULE_NOT_FOUND" || !compiled(parent)) throw error

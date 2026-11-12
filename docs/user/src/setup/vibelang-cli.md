@@ -436,6 +436,12 @@ The hook also supports `import "vibelang/register"` or
 `await import("vibelang/register")` from a TypeScript configuration file.
 It ships declarations for strict type checking and exports no values.
 
+The hook loads `.vibex` modules too, when the project's `jsx` option emits
+JavaScript: `"react-jsx"`, `"react-jsxdev"` or `"react"`. Node cannot run JSX,
+so under `"jsx": "preserve"` a `.vibex` module fails to load with
+`ERR_VIBELANG_JSX`; run it with the [Bun preload](#run-sources-with-bun) or a
+bundler instead.
+
 The first `.vibe` import compiles the project in the nearest `tsconfig.json`.
 For calls into a referenced project, loaders use the same foreign-call classification as a project compile, even when a loader reads TypeScript sources instead of built declarations. Written `@throws` contracts apply in both modes.
 `require()` and `createRequire()` calls through a migrated package’s emitted exports load the same source module as an `import`.
