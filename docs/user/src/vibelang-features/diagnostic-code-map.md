@@ -124,6 +124,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK3004` | `instanceof` a service, or a class pattern naming one |
 | `EK3005` | a service declares type parameters or captures an enclosing type parameter |
 | `EK3006` | an error code or an unknown code in `vibe.severities`; remove the entry |
+| `EK3013` | a `task` or `workflow` declaration, or a use of an experimental module such as `Experimental.Durable`, in a project without `"vibe": { "experimental": ["builtins"] }`; add the opt-in to `tsconfig.json` or `vibe.config.json` |
 | `EK4402` | a value import of a Node builtin, with or without `node:` (`node:fs`, `fs`), or a reference to a banned platform global, in a `.vibe` file |
 | `EK4609` | lint warning: `await` on a `Fiber` in an `async` function; use `await runPromise(Fiber.join(fiber))` |
 | `EK4610` | lint warning: `await` on a `Deferred` in an `async` function; use `await runPromise(Deferred.await(deferred))` |

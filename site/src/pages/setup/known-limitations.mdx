@@ -35,9 +35,20 @@ In a `.vibex` file, `return` inside a `do` expression in a JSX attribute or chil
 
 With `declarationMap` on, the declaration map of a `module` body lists a source that is never written. For `module parse { … }` in `a.vibe`, `dist/a.vibe.parse.d.ts.map` has `"sources": ["../a.vibe.parse.ts", "../a.vibe"]`, and there is no `a.vibe.parse.ts`. The mappings use only `a.vibe`, so go-to-definition reaches the right file; a tool that checks every listed source reports the first one missing. Declaration maps also carry no `sourcesContent`, as with TypeScript's own `declarationMap`, even with `inlineSources`; only the JavaScript maps embed the source.
 
+After `"type": "module"` is added to a project's `package.json`, `node --import vibelang/register` can keep running the CommonJS it compiled before, and fails with `ReferenceError: exports is not defined in ES module scope`. Run it once with `VIBELANG_DISABLE_CACHE=1` to compile it again; the next release keys the compile cache on the module format.
+
 ## The experimental opt-in
 
-- Without `"vibe": { "experimental": ["builtins"] }`, `EK3013` refuses every use in a `.vibe` or `.vibex` file that resolves to one of the eight experimental modules or to `task` and `workflow` support. It cannot see a use whose target the compiler does not resolve, such as `(globalThis as any).Experimental`, `(Experimental as any).Durable` or a dynamic `import()` with a computed specifier, and it does not check `.ts` files or a dependency's JavaScript that use the modules themselves.
+- Without `"vibe": { "experimental": ["builtins"] }`, `EK3013` refuses `task` and `workflow` declarations and these uses of the eight experimental modules in a `.vibe` or `.vibex` file: a member access or type name such as `Experimental.Durable` or `typeof Experimental.Durable`, an alias such as `const E = Experimental`, destructuring, element access with a literal key, the `Experimental` export of `vibelang-runtime`, a namespace import or `export *` of `vibelang-runtime/experimental`, an import or dynamic `import()` of a module's subpath, and a re-export from another `.ts` or `.vibe` file.
+- These spellings still compile and run without the opt-in. The next release refuses them:
+  - an assignment pattern: `let D; ({ Durable: D } = Experimental)`
+  - a computed name in a binding pattern: `const { ["Durable"]: D } = Experimental`
+  - element access with a key typed as a union or a type parameter: `Experimental[k]` where `k: "Durable" | "Fuzz"`
+  - enumerating the namespace: `Object.entries(Experimental)`
+  - a named import of the durable helpers from the runtime's internal entry: `import { $task } from "vibelang-runtime/internal"`
+  - an import of a module's file by path: `import { memory } from "./node_modules/vibelang-runtime/dist/experimental/Durable.js"`
+- The check also cannot see a use whose target the compiler does not resolve, such as `(globalThis as any).Experimental`, `Reflect.get(Experimental, "Durable")` or a dynamic `import()` with a computed specifier. It does not check `.ts` files or a dependency's JavaScript that use the modules themselves.
+- `vibelang lint -p tsconfig.json` reads only `tsconfig.json`, as `vibelang -p tsconfig.json` does. With the opt-in only in `vibe.config.json`, it reports `EK3013` where `vibelang` passes. Put the opt-in in `tsconfig.json`, or run `vibelang lint` without `-p`.
 
 ## Specification examples the compiler does not pass yet
 
