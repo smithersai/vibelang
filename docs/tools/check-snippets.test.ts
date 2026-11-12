@@ -69,6 +69,12 @@ test("explicit gaps remain checked, and stale markers fail", () => {
   expect(classify(gap, [diagnostic("TS2304")]).status).toBe("fail")
   expect(classify({ ...block, fragment: true }, [diagnostic("TS1005")]).status).toBe("fragment")
 })
+// A fragment opts out of checking, so its gap marker could never be found stale.
+test("a compiler-gap marker on an explicit fragment fails", () => {
+  const [both] = extract("```vibe\n// fragment\n// compiler-gap: pending VIP-29\nconst n = 1\n```")
+  expect(classify(both, []).status).toBe("fail")
+  expect(classify(both, [diagnostic("EK2117")]).status).toBe("fail")
+})
 test("parses native ES and TS errors and located warnings, and ignores notes", () => {
   expect(parseDiagnostics("block-2.vibe(4,8): error EK9201: failure escapes\n  Widen the contract.\nblock-3.vibe(1,1): warning EK9204: unreachable\nerror TS18003: No inputs were found")).toEqual([
     { file: "block-2.vibe", diagnostic: { code: "EK9201", message: "failure escapes", line: 4, column: 8 } },

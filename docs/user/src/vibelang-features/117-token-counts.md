@@ -110,7 +110,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 2,100 |
-| [Known limitations](../setup/known-limitations.md) | 730 |
+| [Known limitations](../setup/known-limitations.md) | 940 |
 | [Source maps](../setup/source-maps.md) | 1,000 |
 | **Start a project** | **8,300** |
 | [New project](../setup/new-project.md) | 690 |
@@ -288,13 +288,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Introduction](../../../design/src/000-intro.md) | 3,100 |
 | **The language** | **130,000** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 14,000 |
-| [2. Running Effects](../../../design/src/002-running.md) | 30,000 |
+| [2. Running Effects](../../../design/src/002-running.md) | 29,000 |
 | [3. Failures](../../../design/src/003-failures.md) | 11,000 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 24,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 15,000 |
-| [6. Data](../../../design/src/006-data.md) | 9,300 |
+| [6. Data](../../../design/src/006-data.md) | 9,200 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 17,000 |
-| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 8,000 |
+| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
 | **Appendices** | **150,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 120,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |

@@ -148,6 +148,8 @@ export function classify(block: Block, diagnostics: Diagnostic[]): Result {
   const absent = block.expected.filter(c => !codes.has(c))
   const unexpected = diagnostics.filter(d => !block.expected.includes(d.code))
   if (block.pending) return { ...block, diagnostics, status: "pending", reason: `Waits for ${block.pending.join(", ")}` }
+  // A fragment is never checked, so a compiler-gap marker on it could never go stale.
+  if (block.fragment && block.gap) return { ...block, diagnostics, status: "fail", reason: "A fragment's compiler-gap marker is never checked; remove the fragment or the marker" }
   if (block.fragment) return { ...block, diagnostics, status: "fragment", reason: "Explicit fragment" }
   if (block.gap) {
     if (!absent.length && !unexpected.some(d => !missing(d))) return { ...block, diagnostics, status: "fail", reason: "Stale compiler-gap marker; remove it" }

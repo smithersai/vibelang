@@ -10,7 +10,9 @@ test("alpha limitations are discoverable and link to current setup and resource 
   for (const phrase of ["macOS arm64/x64", "Linux arm64/x64", "Windows arm64/x64", "Bun runtime", "effect@" + pin, "VS Code", "Cursor", "VSIX", "Marketplace", "Open VSX", "v0: breaking changes expected", "allowArbitraryExtensions", ".d.vibe.ts", "vibelang-ts-mapper", "experimental and unpublished", "tsc --runExternalCode"]) {
     assert.ok(text.includes(phrase), "missing limitation: " + phrase)
   }
-  const bullets = text.split("\n").filter(line => line.startsWith("- "))
+  // The platform list leads the page; later sections such as the specification's
+  // compiler gaps keep their own lists and tests.
+  const bullets = text.split("\n## ")[0].split("\n").filter(line => line.startsWith("- "))
   assert.equal(bullets.length, 6)
   for (const bullet of bullets) {
     const link = /\]\(([^)]+)\)/.exec(bullet)?.[1]

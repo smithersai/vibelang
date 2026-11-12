@@ -18,7 +18,6 @@ Synchronous VibeLang code never throws (VIP-4, amended 2026-10-31): a function t
 A throw expression follows [VIP-41](../vips/0041-throw-expressions.md) and its [pinned TC39 proposal](../vips/tc39-throw-expressions/README.md). Its syntax restriction is `EK1010`; [Appendix A](900-appendices.md#throwexpression) gives the grammar.
 
 ```vibe es
-// compiler-gap: pending VIP-4
 effect function load(id: string) {
   const user = try findUser(id)
   if (!user) throw new NotFound({ id })
@@ -48,7 +47,7 @@ function load(id: string) {
 - TypeScript's `try { } catch { }` statement stays allowed.
 
 ```vibe es
-// compiler-gap: pending VIP-4
+// expect-error: EK0401
 function check(s: string) { if (!s) throw new Error("empty"); return s } // EK0401
 const parsed = (s: string) => JSON.parse(s)                               // EK0401: JSON.parse throws SyntaxError
 effect function guest() { return fail("x") catch (e) => { throw e } }   // EK0401: a plain handler
@@ -75,7 +74,6 @@ VIP-7's direct match-arm body has its separate `"throw" Expression` production: 
 In effect code a throw expression fails the Effect, exactly as the corresponding throw statement does (VIP-41). Its counterpart is `yield* Effect.fail(e)` in the same expression position, with type `never`:
 
 ```vibe es
-// compiler-gap: pending VIP-41
 error Missing
 effect function required(value: string | undefined) {
   const v = value ?? throw new Missing()
@@ -149,6 +147,7 @@ const builtins = Effect.gen(function* () {
 
 ```vibe es
 // compiler-gap: pending VIP-4
+// expect-error: EK0403
 effect function f(xs: number[], s: string, v: object) {
   xs.push(1)                                          // implicit: a frozen receiver is receiver state
   const n = s.length                                  // no throw
@@ -165,7 +164,6 @@ The normative [`throws.json`](https://github.com/smithersai/vibelang/blob/main/d
 A generated `schema error` constructor has thrown type `never`, a static contract. Effect 4.1.1 validates its fields; invalid input can throw a plain `Error`, which becomes a defect inside `Effect.gen`.
 
 ```vibe es
-// compiler-gap: pending VIP-29
 schema error Invalid { name: Schema.NonEmptyString }
 effect function invalid() { throw new Invalid({ name: "" }) } // defect, not typed failure
 ```
@@ -201,7 +199,7 @@ Written `@throws` types retain their TypeScript structure. An inline type such a
 `EK0404` uses the Promise test of [Result tests](002-running.md#result-tests): `never`, `any` and `unknown` never trigger it; any union with at least one `PromiseLike` member does. For a tagged template, apply this test to the selected tag signature's result. Keep the original native invocation inside the bridge thunk, preserving its receiver, cached template object identity, once-only substitutions and evaluation order.
 
 ```vibe es
-// compiler-gap: pending VIP-4
+// expect-error: EK0404
 async function tag(_parts: TemplateStringsArray) { return 7 }
 effect function unwrappedTag() { const p = tag`x`; return 0 } // EK0404
 effect function wrappedTag() { return try tryPromise(() => tag`x`) } // Success(7)
@@ -220,10 +218,13 @@ function wrappedTag() {
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-4
+// expect-error: EK0404
 function maybeQuery(): Promise<number> | undefined { return undefined }
+effect function unwrappedQuery() {
+  const p = maybeQuery() // EK0404: may produce a Promise
+  return 0
+}
 effect function mixed() {
-  // const p = maybeQuery() // EK0404: may produce a Promise
   return try tryPromise(async () => maybeQuery())
 }
 ```
@@ -240,7 +241,7 @@ Effect code calls a function whose thrown type is `never` directly. Promise-prod
 A dynamic import uses the same explicit Promise bridge. Enclose the complete native import expression, including its arguments, in the thunk once per execution; bridging never admits a forbidden literal module specifier. The local `worker.mjs` fixture exports `const value = 7` with matching declarations.
 
 ```vibe es
-// compiler-gap: pending VIP-4
+// expect-error: EK0404
 effect function unwrappedImport() { const module = import("./worker.mjs"); return 0 } // EK0404
 effect function importedValue() {
   const module = try tryPromise(() => import("./worker.mjs"))
@@ -250,7 +251,8 @@ type Worker = typeof import("./worker.mjs") // erased type query
 ```
 
 ```ts effect
-// fragment: ./worker.mjs exports const value = 7 and has matching declarations
+// fragment
+// ./worker.mjs exports const value = 7 and has matching declarations.
 import { Effect } from "effect"
 
 function importedValue() {
@@ -267,8 +269,8 @@ export { importedValue }
 A call known to throw in a plain `catch` handler's parameters or body is `EK0401`. Use an effect handler and bridge the call in its body:
 
 ```vibe es
-// compiler-gap: pending VIP-4, VIP-5
-// fragment: source: string!Error; parse(e: Error): string is imported with a written @throws tag
+// fragment
+// source: string!Error; parse(e: Error): string is imported with a written @throws tag.
 source catch (e) => parse(e) // EK0401
 source catch effect (e) => try Effect.try(() => parse(e))
 ```
@@ -280,7 +282,6 @@ function parse(e: Error): string { throw e }
 const recovered = Effect.catch(source, (e) => Effect.try(() => parse(e)))
 ```
 ```vibe es
-// compiler-gap: pending VIP-4
 error BadInput
 effect function parsed(s: string) {
   return try Effect.try({ try: () => parse(s), catch: () => new BadInput() })
@@ -311,8 +312,8 @@ function parsed(s: string) {
 - **Arguments** are evaluated by the caller. **Wrapper thunks** run inside the Effect.
 
 ```vibe es
-// compiler-gap: pending VIP-4
-// fragment: s: string and q: string are supplied by the enclosing scope
+// fragment
+// s: string and q: string are supplied by the enclosing scope.
 effect function a(p = parse(s)) { return p }          // EK0401: a default known to throw
 async function resolved() { return 1 }
 effect function b2(p = resolved()) { return p }      // allowed: p is a Promise
@@ -330,7 +331,6 @@ effect function c({ id }: User) { return id }         // c() from untyped JS giv
 Bodyless plain and `async` overload signatures are methods in both error forms, as in a TypeScript class; they execute no code themselves. For example, `labels()` gives an Effect with `Success(["ok", 7])`:
 
 ```vibe es
-// compiler-gap: pending VIP-13, VIP-29
 error Plain {
   label(x: string): string;
   label(x: number): number;
@@ -376,14 +376,13 @@ In a `schema error` body, a computed key is `EK2117` unless its well-typed runti
 Known numeric and symbol domains, including unique symbols, cannot become that string key. Safe literals, literal unions, templates and their brands remain admitted; `never` has no possible key. Reject `any`, `unknown`, unresolved/cyclic domains or any other unprovable exclusion conservatively. Ordinary TypeScript invalid-key errors remain independent. Use a literal key or a symbol when needed. Accepted keys keep their existing evaluation order and are emitted as written: no decoder/refinement is executed to prove exclusion, no value is unwrapped and no runtime tag guard is added.
 
 ```vibe es
-// fragment
-// compiler-gap: pending VIP-29
+// expect-error: EK2117
 enum Field { Tag = "_tag", Count = "count" }
 declare const field: Field
-schema error Bad { [field]: number } // reserved-tag diagnostic: Field.Tag remains possible
+schema error Bad { [field]: number } // EK2117: Field.Tag remains possible
 schema error Good { [Field.Count]: number }
 function generic<K extends string>(key: K) {
-  schema error AlsoBad { [key]: number } // the string constraint may be "_tag"
+  schema error AlsoBad { [key]: number } // EK2117: the string constraint may be "_tag"
 }
 ```
 
@@ -410,7 +409,6 @@ decode({ _tag: "Dynamic", actual: 1, other: 2 })  // Success: other is stripped
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-13
 function plainKey() {
   error Plain { [field]: number }
   const field = "actual"
@@ -438,7 +436,6 @@ const evaluatedSchemaKey = Effect.sync(() => {
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-13
 error Access {
   role:
     | "admin"
@@ -465,7 +462,7 @@ Diagnostics from compiler-generated superclass calls do not accompany a rejected
 A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form. This includes both `EK0104` and `EK0105` for `async effect get x() { }`. Check the ambient-context rule before classifying members. Otherwise a member gets one diagnostic: the first row that names it. The general member rule, `EK1304`, applies only when no specific member rule applies. For example, `_tag = 1` reports `EK2117`; `static x = 1` reports the static-member rule, not the general member rule.
 
 ```vibe es
-// compiler-gap: pending VIP-1, VIP-13
+// expect-error: EK0104, EK0105
 error BadMember { async effect get value() { return 1 } } // EK0104 and EK0105; no extra EK1304
 ```
 
@@ -476,7 +473,6 @@ error BadMember { async effect get value() { return 1 } } // EK0104 and EK0105; 
 User-written `static` members and setters are forbidden in both forms. The compiler-supplied matcher below is the exception; its `Symbol.customMatcher` shim is described in [Pattern matching](004-match.md#class-patterns).
 
 ```vibe es
-// compiler-gap: pending VIP-13
 error NotFound {
   id: string
   get message() { return `no user ${this.id}` }
@@ -530,7 +526,6 @@ Neither form accepts type parameters. For example, `error Invalid<T> { value: T 
 `schema error Name { fields }` combines `error` and the field mapping of `schema` declarations ([Data](006-data.md#schema-declarations)). Fields are written as TypeScript types and mapped to Schemas. Encoding follows those codecs' `Encoded` representations; JSON, worker messages and RPC transports must support that representation. The declaration adds no implicit wire conversion. For JSON, choose compatible field codecs, such as `Schema.BigIntFromString` for a bigint encoded as a string. The body rules, and their diagnostics, are those of `error` declarations. Referenced field schemas also obey the [decoded-key modifier checks](006-data.md#schema-declarations): every payload field is effectively readonly, even without a written `readonly`, so a mutable-key reference is `EK2109`. Nested mutable values remain mutable.
 
 ```vibe es
-// compiler-gap: pending VIP-29
 schema error NotFound { id: string }
 schema error Timeout
 ```

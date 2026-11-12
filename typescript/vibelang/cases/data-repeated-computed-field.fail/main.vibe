@@ -1,0 +1,13 @@
+// expect: TS2300 TS2717
+// rule-evidence: docs/design/src/006-data.md#meaning
+// A repeated computed field is a duplicate member, checked as in
+// TypeScript 7: TS2300 on each declaration even when the types match,
+// and TS2717 too when they differ.
+const slot = "x" as const
+
+export data Repeated { Row { [slot]: number; ["x"]: number } }
+
+export type IncompatibleComputed = {
+  ["x"]: number
+  ["x"]: string
+}

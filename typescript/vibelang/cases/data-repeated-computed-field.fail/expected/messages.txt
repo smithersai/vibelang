@@ -1,0 +1,5 @@
+main.vibe(8,30): error TS2300: Duplicate identifier '["x"]'.
+main.vibe(8,46): error TS2300: Duplicate identifier '["x"]'.
+main.vibe(11,3): error TS2300: Duplicate identifier '["x"]'.
+main.vibe(12,3): error TS2300: Duplicate identifier '["x"]'.
+main.vibe(12,3): error TS2717: Subsequent property declarations must have the same type.  Property '["x"]' must be of type 'number', but here has type 'string'.

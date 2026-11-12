@@ -9,7 +9,7 @@ Source: [VIP-7](/vips/0007-match).
 ## Syntax and meaning
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-warning: EK4834
 effect function label(d: { _tag: "Sent"; tracking: string } | { _tag: "Waiting" }) {
   const tracking = "outer"
   return match (d) {
@@ -44,6 +44,7 @@ The first `label` counterpart uses a short object test because its subject type 
 Invalid `match`/`is` grammar and pattern-specific early errors use `EK0707` when no more specific diagnostic is assigned. The message identifies the rejected form and a valid repair. Do not add it to a specific diagnostic for the same rejection, including arm separation, matcher admission, arity lint, ordinary-class extraction, parameter-home bindings, outward async-match jumps, exhaustiveness or service patterns. Independent native lexical, type and name errors, including errors in valid embedded expressions, retain TypeScript's diagnostics; malformed native templates do not become `EK0707` merely by appearing in a match.
 
 ```vibe
+// expect-error: EK0707
 const bad = match (s) { when `tag-${kind}`: 1; default: 0; } // EK0707
 const good = match (s) { when let v and if (v === `tag-${kind}`): 1; default: 0; }
 const nativeError = match (s) { when let v and if (missingName): 1; default: 0; } // TS2304
@@ -73,7 +74,6 @@ console.log(patternSyntaxExit) // Success([1, 0, 0])
 A primitive template pattern is a `NoSubstitutionTemplate`, such as `` `tag-A` ``. An interpolated template in pattern position is `EK0707`; ordinary interpolation remains valid in guards and arm expressions. This follows the pinned formal grammar where the explainer leaves interpolation unsettled. A no-substitution template uses general `SameValueZero`: equal strings match and every non-string subject fails without coercion, as for a string literal.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function templateLabel(s: unknown, kind: string) {
   return match (s) {
     when `tag-A`: "literal";
@@ -115,7 +115,6 @@ The pinned matching operations obey these behavioral invariants, with the draft 
 | Inclusive relations | On the admitted string, number or bigint subject, `<= bound` and `>= bound` mean ordinary `subject <= bound` and `subject >= bound`, with once-only bound evaluation and native coercion order. Unordered/`NaN` comparisons fail both; other subject types fail before bound evaluation. The draft's reversed inclusive bounds are not adopted. |
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 effect function evaluationWitness() {
   let reads = 0
   const restSubject = { get value() { return ++reads } }
@@ -178,7 +177,6 @@ const armValueExit = Effect.runSyncExit(Effect.sync(() => armBeforeClose(armOrde
 The pinned draft's `FinishMatch` appends every abrupt completion to its errors, so read literally it turns `return 7` into `throw 7`. Its own notes intend otherwise, and VibeLang reads that step as "a throw completion" (the snapshot's reconciliations). The rule is the `for…of` rule because a jump out of an arm is the same completion as a jump out of a loop body:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function* numbers(log: string[]) { try { yield 1; yield 2 } finally { log.push("closed") } }
 function first(log: string[]) {
   const v = match (numbers(log)) { when [let a, ...]: do { return a }; default: 0; }
@@ -235,7 +233,6 @@ if (!Exit.isFailure(implicitExit) || implicitLog.join() !== "closed") throw new 
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function* two() { yield 1; yield 2 }
 function pairs(g: Generator<number, void, unknown>) {
   return match (g) { when [let a]: a; when [let a, let b]: a + b; default: 0; }
@@ -267,7 +264,8 @@ const pairCacheExit = Effect.runSyncExit(Effect.sync(pairCacheWitness)) // Succe
 - No-match `TypeError`, implicit matcher reads/calls and protocol checks are implicit throws: never tracked, and defects in effect code. Written calls in subjects, guards, arms and call-only predicates are tracked normally ([Thrown types](/spec/003-failures#thrown-types)).
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-4, VIP-7
+// expect-error: EK0401
+// expect-warning: EK4804
 function plainArm(b: boolean) {
   return match (b) { when true: 1; default: throw new Error("missing"); } // EK0401
 }
@@ -299,7 +297,6 @@ function asyncArm(b: boolean) {
 The empty array pattern uses [ArrayPattern](/spec/900-appendices#arraypattern) with its one nullable-list derivation. It matches an empty iterable, including an empty string, and is not a wildcard or an array-only test. Every array pattern and extractor list receives a cached Iterator Record; its finishing paths never receive the original subject instead of that record.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function empty(xs: Iterable<unknown>) {
   return match (xs) { when []: "empty"; default: "not empty"; }
 }
@@ -324,7 +321,7 @@ const emptyPatternExit = Effect.runSyncExit(Effect.sync(() => [empty([]), empty(
 A `match` in a destructuring or parameter default follows [Destructuring and parameter defaults](/spec/002-running#destructuring-and-parameter-defaults). A `match` inside a larger expression follows the shared [evaluation-order rule](/spec/002-running#evaluation-order). `eval` and `arguments` are compile errors anywhere in `.vibe`, including subjects, guards and arms ([Legacy JavaScript](/spec/001-functions#direct-eval); VIP-1, amended).
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-warning: EK4834
 effect function defaultBit(o: { x?: number }, b: boolean) {
   const { x = match (b) { when true: try succeed(7); default: 0; } } = o
   return x
@@ -351,7 +348,7 @@ An `is` in a loop head uses the pinned loop-head/per-iteration scopes. Each comp
 These bindings take part in TypeScript's definite-assignment and use-before-declaration checks, as a `let` assigned where the pattern runs would. A read on a path where the binding may not have run, because short-circuiting skipped it or the pattern failed before reaching it, follows TypeScript’s definite-assignment checks (`TS2454`), including its exemptions for `any`, `unknown`, `void` and types containing `undefined`; a read before the binding's position in its scope is `TS2448`. In `for (init; test; update)`, a direct read in `update` of a binding from `test` follows the same type-dependent `TS2454` checks: `update` starts in a fresh iteration environment before the `test` that initializes that cell. The previous body's initialization is not carried forward. Bindings introduced by `update` also start uninitialized; a read after that update's own pattern initializes its binding follows ordinary definite-assignment checking. A read those checks can't see, such as one inside a closure, throws `ReferenceError` while the cell is uninitialized.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-error: TS2451
 function nameOf(value: { name: string } | undefined) {
   if (value is { let name }) return name
   return "missing"
@@ -367,8 +364,7 @@ effect function skippedBinding() {
 } // Die(ReferenceError)
 function pick(a: unknown, b: unknown) {
   if (a is { id: let id }) return id
-  // @ts-expect-error: TS2451, id is already declared in this block
-  if (b is { id: let id }) return id
+  if (b is { id: let id }) return id // TS2451 on both bindings, as for two let declarations: id is already declared in this block
   return 0
 }
 function pickOk(a: unknown, b: unknown) {
@@ -439,7 +435,6 @@ Patterns type as the TypeScript counterpart this chapter shows for them, under t
 The table shows `tsc --strict` types. Other options change a binding as they change its counterpart's value: with `exactOptionalPropertyTypes`, `{ let x }` on `{ x?: number }` binds `number`; `strictNullChecks: false` removes the strict null distinctions. A pattern reads an element or key only after proving it exists, so `noUncheckedIndexedAccess` adds no `undefined` to that generated read. Actual payload `undefined` remains: `[let v]` on `(number | undefined)[]` binds `number | undefined`. A pattern key is not dotted property access, so `noPropertyAccessFromIndexSignature` reports no `TS4111` at it. Written reads such as `s[0]` or `s.a` in an arm or guard keep both options ([VIP-7](/vips/0007-match#decision), amended).
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function isText(s: string | number): s is string { return typeof s === "string" }
 function classify(s: string | number) {
   return match (s) { when isText: s.length; default: String(s); }
@@ -482,7 +477,6 @@ The object row describes narrowing; evaluation uses the cache/property algorithm
 Generated error matchers deliberately trust `_tag`: a matching foreign object need not carry every field or getter promised by the local error type (VIP-13). TypeScript intuition: the table keeps the subject’s own tagged members when available, but for `unknown` the fallback declared class type can still promise a getter absent from a foreign object.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 error NotFound { id: string }
 error Timeout
 function errorId(e: NotFound | Timeout) {
@@ -504,7 +498,6 @@ errorId(new NotFound({ id: "42" })) // "42"
 In `errorLabel` ([Retained fixed patterns](/spec/004-match#retained-fixed-patterns)) `t` is `Cause.TimeoutError`, and the function's type is `"TimeoutError" | "invalid" | "other"`.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 class Numeric {
   static [Symbol.customMatcher](s: unknown, _options: { matchType: "extractor" }): false | [number] {
     return typeof s === "number" ? [s] : false
@@ -577,7 +570,7 @@ Every other home follows the pinned explainer's rule that the usual binding scop
 A test binding is available to its following body, but not to the next update's direct reads. Creating a closure does not read the cell; invoking it before the test initializes that iteration's cell throws `ReferenceError`.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-error: TS2454
 function updateRead(next: () => number, use: (n: number) => void) {
   for (; next() is let v; use(v)) {} // TS2454: this iteration's v is unassigned
 }
@@ -595,7 +588,7 @@ function updateBinding(next: () => number, use: (n: number) => void) {
 Each home holds one name once. Two top-level patterns that bind one name in the same home are a redeclaration, TypeScript's `TS2451`, as two `let` declarations in one block are; so is a binding that collides with another lexical declaration of that home, and a collision with a parameter keeps the native diagnostic for that collision. Inside one top-level pattern the pinned duplicate-initialization rule and its `or` exception stay. Separate blocks and match arms are separate homes, so braces or distinct names are the repair.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-error: TS2451
 function pick(a: unknown, b: unknown) {
   if (a is { id: let id }) return id
   if (b is { id: let id }) return id   // TS2451: Cannot redeclare block-scoped variable 'id'
@@ -611,7 +604,6 @@ function pickOk(a: unknown, b: unknown) {
 Each binding stays in TDZ until its pattern runs, under the checks in [`is` expressions](/spec/004-match#is-expressions).
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function drain(it: Iterator<number>) {
   const out: (() => number)[] = []
   for (; it.next() is { done: false, value: let v }; ) out.push(() => v)
@@ -660,7 +652,6 @@ const loopHomesExit = Effect.runSyncExit(Effect.sync(() => [drain([1, 2, 3][Symb
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 effect function alternative() {
   return match ([5]) { when ([let x and String]) or { length: let x }: x; default: 0; }
 } // Success(1): the failed left alternative initialized x with 5, the right replaces it with 1
@@ -730,7 +721,7 @@ One algorithm decides every subject (VIP-7, amended):
 - **Clarified 2026-11-10: untested optional fields and class arms.** The maintainers rule that an optional literal field no pattern tests is not a discriminant and that a class pattern covers its instances. Effect adds an optional boolean field to every `Error`, so without this rule `match (e) { when Error: ... }` reported `Error` as left.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-error: EK4701
 function signedZero(n: 0 | 1) {
   return match (n) { when -0: "negative"; when 1: "one"; }
 } // EK4701: positive zero is not covered
@@ -758,23 +749,25 @@ const unsignedZeroExit = Effect.runSyncExit(Effect.sync(() => [allZero(0), allZe
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
-match (o) { when Option.Some(let v): v; when Option.None: 0; }          // ok: Option<number>, covered
-match (o) { when Option.Some: 1; when Option.None: 0; }                  // ok: a bare pattern covers its case
-match (r) { when NotFound: 1; when undefined: 2; }                       // ok: NotFound | undefined
+// expect-error: EK4701
+error NotFound { id: string }
 data Delivery { Waiting; Sent { tracking: string } }
-declare const d: Delivery
-match (d) { when { _tag: "Sent", let tracking }: 1; }                    // EK4701: Waiting not covered
-match (d) { when { _tag: "Sent" } or { _tag: "Waiting" }: 1; }          // ok
-match (plain) { when { _tag: "Sent" }: 1; } // plain: { _tag: "Sent" } | { _tag: "Waiting" }: EK4701
-match (s) { when { _tag: "A" }: 1; }        // s: { _tag: "A"; x: number } | { _tag: "A"; y: number }: ok
-match (s) { when { _tag: "A", let x }: x; } // EK4701: the y member is left
-match (o) { when { _tag: "A" }: 1; when { _tag: "B" }: 2; } // o: { _tag?: "A" } | { _tag: "B" }: EK4701: the absent-tag case remains uncovered; only a bare binding covers it
-match (u) { when { _tag: "A" }: 1; when { _tag: "C" }: 3; } // u: { _tag: "A" | "B" } | { _tag: "C" }: EK4701: "B" is left
-match (w) { when { _tag: "A" }: 1; } // w: { _tag: "A" } | { _tag: string }: no check, as for a switch
-match (k) { when { kind: "a" }: 1; } // k: { kind: "a" } | { kind: "b" }: EK4701: "b" is left
-match (n) { when 1: "a"; }                                               // n: number: no check
-match (b) { when true and if (flag): 1; when false: 0; }                 // EK4701: a guarded arm covers nothing
+type Tagged = { _tag: "A"; x: number } | { _tag: "A"; y: number }
+function c1(o: Option.Option<number>) { return match (o) { when Option.Some(let v): v; when Option.None: 0; } } // ok: covered
+function c2(o: Option.Option<number>) { return match (o) { when Option.Some: 1; when Option.None: 0; } }        // ok: a bare pattern covers its case
+function c3(r: NotFound | undefined) { return match (r) { when NotFound: 1; when undefined: 2; } }             // ok
+function c4(d: Delivery) { return match (d) { when { _tag: "Sent", let tracking }: 1; } }                       // EK4701: Waiting not covered
+function c5(d: Delivery) { return match (d) { when { _tag: "Sent" } or { _tag: "Waiting" }: 1; } }             // ok
+function c6(plain: { _tag: "Sent" } | { _tag: "Waiting" }) { return match (plain) { when { _tag: "Sent" }: 1; } } // EK4701
+function c7(s: Tagged) { return match (s) { when { _tag: "A" }: 1; } }                                          // ok
+function c8(s: Tagged) { return match (s) { when { _tag: "A", let x }: x; } }                                   // EK4701: the y member is left
+// EK4701: the absent-tag case remains uncovered; only a bare binding covers it
+function c9(o: { _tag?: "A" } | { _tag: "B" }) { return match (o) { when { _tag: "A" }: 1; when { _tag: "B" }: 2; } }
+function c10(u: { _tag: "A" | "B" } | { _tag: "C" }) { return match (u) { when { _tag: "A" }: 1; when { _tag: "C" }: 3; } } // EK4701: "B" is left
+function c11(w: { _tag: "A" } | { _tag: string }) { return match (w) { when { _tag: "A" }: 1; } }             // no check, as for a switch
+function c12(k: { kind: "a" } | { kind: "b" }) { return match (k) { when { kind: "a" }: 1; } }               // EK4701: "b" is left
+function c13(n: number) { return match (n) { when 1: "a"; } }                                                   // no check
+function c14(b: boolean, flag: boolean) { return match (b) { when true and if (flag): 1; when false: 0; } }    // EK4701: a guarded arm covers nothing
 ```
 
 ```ts [Effect]
@@ -854,7 +847,7 @@ function payload(p: Payload) {
 A finite generic constraint is checked for every admitted instantiation; an open parameter retains the ordinary no-match `TypeError`:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-error: EK4701
 type TaggedDomain = { readonly _tag: "A" } | { readonly _tag: "B" }
 function tags<T extends TaggedDomain>(s: T) {
   return match (s) { when { _tag: "A" }: 1; when { _tag: "B" }: 2; } // exhaustive
@@ -916,7 +909,6 @@ An explicit class written by an error migration keeps that generated matcher's n
 A generated error matcher tests the tag of the subject, including a foreign plain object with that tag, then whether the subject is an instance of its class:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 error SameTag {}
 declare const same: SameTag | { readonly _tag: "SameTag"; source: string }
 match (same) { when SameTag: 1; } // exhaustive: both members have the recognized tag
@@ -937,7 +929,6 @@ const sameTagExit = Effect.runSyncExit(Effect.sync(() => [
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 effect function bit(b: boolean) {
   return match (b) { when true: 1; when false: 0; }
 }
@@ -964,7 +955,7 @@ function bit(b: boolean) {
 <a id="async-match-jumps"></a>`EK0706` reports a jump out of an `async match`: a `return` that belongs to the `async match`, or a `break` or `continue` whose target is outside it. The rule covers the subject, patterns, guards and arm expressions, including a `do` expression in them. A `return` in a nested function belongs to that function, and a `break` or `continue` whose target is inside the `async match` follows the ordinary rules. Ownership and targets come from the source, not from the generated async function; a `break` or `continue` with no target anywhere keeps TypeScript's own error. No manual change rewrites the jump, because no jump can cross the `Promise` boundary.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-error: EK0706
 function outward(xs: number[]) {
   for (const x of xs) {
     const early = async match (x) { when 0: do { return 1 }; default: 0; } // EK0706: the return belongs to the async match
@@ -1015,7 +1006,6 @@ const inwardExit = await Effect.runPromiseExit(Effect.promise(inward)) // Succes
 `asyncLabel` shows the async-function behavior:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function asyncLabel(s: Promise<string>) {
   return async match (await s) {
     when "sent": await Promise.resolve("sent");
@@ -1047,7 +1037,6 @@ function asyncNested(s: Promise<string>) {
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function grammarAsync() {
   return async match (await Promise.resolve(7)) { when 7: await Promise.resolve(9); default: 0; }
 } // the plain outer function returns Promise<number>
@@ -1069,7 +1058,6 @@ const grammarAsyncExit = await Effect.runPromiseExit(Effect.promise(grammarAsync
 Inside effect code, a direct `async match` is a compile error under the [Promise-bridge rule](/spec/003-failures#calls-in-effect-code): like a Promise-returning call or `new` expression, it must run inside an explicit bridge's thunk. Its subject, tests and arms form a plain async boundary (`[~Effect, +Await]`): `await` is allowed there and effect `try` is not, as in a nested TypeScript async function. For example:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 effect function asyncBit(b: boolean) {
   return try promise(() => async match (b) {
     when true: await Promise.resolve(1);
@@ -1103,7 +1091,7 @@ A binding-free test remains allowed. A binding in an explicit source block withi
 A repair preserves eager, left-to-right, once-only initialization, parameter/body environment separation, `length`, TDZ and closure identity. An explicit local block can return the needed result; a different explicit parameter is an option only when it preserves the intended API. There is no generic move-to-body manual change. Execution and exception boundaries retain the [shared default rules](/spec/002-running#destructuring-and-parameter-defaults).
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-error: EK0705
 function bad(a = (1 is let captured)) { return a } // EK0705
 function nested({ a = (1 is const captured) } = {}) {} // EK0705
 function key({ [(1 is let captured) ? "x" : "y"]: value }: { x?: number; y?: number } = {}) {} // EK0705
@@ -1152,7 +1140,6 @@ const readerScopeExit = Effect.runSyncExit(Effect.sync(() => {
 A [RegularExpressionPattern](/spec/900-appendices#regularexpressionpattern) admits a bare `RegularExpressionLiteral` or its extractor suffix `(MatchList)`, including the nullable list `()`. It evaluates the literal once at its pattern position and matches as the same named `RegExp` value does. The runtime emulates the draft's `RegExp.prototype` matcher without patching the prototype: a bare pattern calls `test`; a non-global extractor returns `[regexp[Symbol.match](subject)]`, failing on `null`. A global extractor returns `Array.from(regexp[Symbol.matchAll](subject))` directly, failing when empty. Thus a non-global regex extracts one match array, not separate capture arguments; a global regex extracts one element per match. Calls preserve the regex receiver and the draft's observable property reads and `lastIndex` effects.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function digits(s: string) {
   return match (s) {
     when /(\d+)-(\d+)/(let m): m[1] + m[2];
@@ -1196,7 +1183,6 @@ For an ordinary class without an own matcher, the draft’s successful test retu
 After own matchers, fixed patterns, built-ins and declaration diagnostics, dispatch uses the callee’s static signatures: a construct signature selects `instanceof`, including ES5 constructors declared as constructable; call signatures only select `C(subject, { matchType })`, preserving a member receiver. A bare call-only pattern requires a return type assignable to `boolean`; an extractor requires `Iterable<unknown> | false`. Other return types, and callees with neither signature (`any`, `unknown`, `Function`, non-callable objects), are `EK0702`; write test the call in a guard. Type predicates narrow as ordinary TypeScript calls do. The global `Function` still reports `EK0107`; use a `typeof` guard.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function isText(s: unknown): s is string { return typeof s === "string" }
 function callableLabel(s: unknown) {
   return match (s) { when isText: s.toUpperCase(); when Array.isArray: s.length; default: 0; }
@@ -1218,12 +1204,15 @@ callableLabel([1, 2]) // 2
 An ordinary-class extractor without an own matcher is `EK0704`, with any argument count, including `()`. An inherited matcher does not count. Manual changes: `when C:`; or, when the arguments bind the constructor’s parameter properties, `when C and { p1: let a, p2: let b }:`. A bypass through `any` retains the draft’s run-time `TypeError` on recognition.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-error: EK0704
 class Point { constructor(readonly x: number, readonly y: number) {} }
 function sum(p: unknown) {
   return match (p) { when Point and { x: let x, y: let y }: x + y; default: 0; }
 }
-// when Point(let x, let y): is EK0704; when Point: is a bare instanceof test.
+function extracted(p: unknown) {
+  return match (p) { when Point(let x, let y): x + y; default: 0; } // EK0704
+}
+// when Point: is a bare instanceof test.
 ```
 
 ```ts [Effect]
@@ -1239,7 +1228,6 @@ sum(new Point(2, 3)) // 5
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 class A {
   static [Symbol.customMatcher](s: unknown, _options: { matchType: "boolean" }) {
     return s === "inherited"
@@ -1285,13 +1273,12 @@ builtin(Object.create(TypeError.prototype)) // "type"
 Zero-argument extractors: `Option.None()` matches (`[]`); `NotFound()` and the thirty-four retained error constructors with `()` never match (`[s]`). When a class or fixed pattern's extracted list has a statically known length (an `error` or `schema error` class and the thirty-four retained errors: 1; `Option.Some`, `Exit.*`, `Result.*`: 1; `Option.None`: 0) and its known length lies outside the admitted interval of an extractor without a rest pattern: required positions through total positions, counting every elision slot and counting optional elements only in the maximum, VibeLang reports the VIP-38 lint warning `EK0703`, with the suggested spellings `when X:` and, for a singleton list, `when X(let e):`. The interval controls only this warning; actual list patterns still decide matching. For example, `Option.None(1?)` admits its empty extracted list and is not warned.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
+// expect-warning: EK0703
 match (e) { when NotFound(): 1; default: 0; }      // warning EK0703: never matches; write NotFound or NotFound(let e)
 match (o) { when Option.None(): 1; default: 0; }   // ok: its list is []
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 class Foreign {}
 effect function classify(x: unknown) {
   return match (x) { when Foreign: "yes"; default: "no"; }
@@ -1370,7 +1357,6 @@ VIP-7 keeps today's fixed checks until Effect ships matchers: the six `Option`, 
 The tagged-error guards recognize Effect's brands across installed copies and reject an unbranded object with only the same `_tag`. Every other constructor, including `Config.ConfigError` (no guard), `PlatformError.BadArgument` and `PlatformError.SystemError`, follows [Class patterns](/spec/004-match#class-patterns): its own `Symbol.customMatcher` if present, otherwise `instanceof`. `cli/CliError` is a union with no constructor; its members and nested reason classes without companion guards use ordinary class matching. A VIP-32 Effect version bump updates this inventory.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 import * as O from "effect/Option"
 effect function unwrap(s: unknown) {
   return match (s) {
@@ -1404,7 +1390,6 @@ function unwrap(s: unknown) {
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 function errorLabel(e: unknown) {
   return match (e) {
     when Cause.TimeoutError(let t): t._tag;
@@ -1429,7 +1414,6 @@ function errorLabel(e: unknown) {
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 errorLabel(new Cause.TimeoutError())        // "TimeoutError"
 errorLabel({ _tag: "TimeoutError" })        // "other": no Effect brand
 ```
@@ -1445,7 +1429,6 @@ taggedErrorLabel({ _tag: "TimeoutError" })  // "other"
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 import * as CryptoError from "effect/crypto/CryptoError"
 function cryptoLabel(e: unknown) {
   return match (e) { when CryptoError.CryptoError(let c): c._tag; default: "other"; }

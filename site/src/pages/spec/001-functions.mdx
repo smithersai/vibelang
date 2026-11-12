@@ -33,7 +33,7 @@ A function's kind is decided by a keyword on the function, never by its body or 
 `effect` and `async` on one function or block, in either order, is a compile error (`EK0105`; VIP-1/VIP-2). Both orders parse as an [EffectModifier](/spec/900-appendices#effectmodifier), so this code is reported instead of a generic syntax error. On a function, remove one modifier. On a block, remove `async`, retaining `effect { B }`; `async { B }` is not admitted. No Effect TypeScript counterpart combines an `Effect.gen` with a Promise-returning `async` function.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1, VIP-2
+// expect-error: EK0105, EK0104
 effect async function f() { }   // EK0105: pick effect or async
 async effect function g() { }   // EK0105
 const h = async effect () => 1  // EK0105
@@ -44,7 +44,7 @@ const b = async effect { return 7 } // EK0105: remove async
 
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
+// expect-error: EK0109
 // Arrow-head syntax controls
 const f: (x: number) => (number!!) = effect x: number!! => x // EK0109: parenthesize x
 const g: (x: number) => (number!!) = effect <T> x => x       // EK0109: parenthesize parameters
@@ -55,7 +55,6 @@ const c: (x: number) => (number!!) = effect x => x             // allowed
 
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
 effect function pick(x: string): string!!;
 effect function pick(x: number): number!!;
 effect function pick(x: string | number) { return x }
@@ -88,7 +87,7 @@ console.log(JSON.stringify(result))
 A signature without a return annotation exposes `any`, as the `async` signature does:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
+// expect-error: TS7010
 effect function untyped(x: string);            // TS7010 under noImplicitAny; exposes any
 effect function untyped(x: string) { return x }
 effect function typed(x: string): string!!;
@@ -109,7 +108,8 @@ const exposed: number = untyped("ok") // any: the implementation does not type t
 The forbidden modifier positions have their own code; ordinary identifier names remain available:
 
 ```vibe
-// compiler-gap: pending VIP-1
+// expect-error: EK0108, TS1222
+// expect-warning: EK4854
 abstract class Bad { abstract effect read(): number!! } // EK0108
 declare effect function ambientRead(): number!!         // EK0108
 interface BadMember { effect read(): number!! }         // EK0108
@@ -134,7 +134,8 @@ class OrdinaryValue { effect(): number { return 1 } }   // a method named effect
 | A banned use of `eval`, `Function`, `arguments`, `var` or `with` anywhere in a `.vibe` file, plain functions included, as [Legacy JavaScript](/spec/001-functions#direct-eval) defines it | `EK0107` |
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
+// expect-error: EK0103, EK0106
+effect function main() { return 1 }
 async function a() { await main() }                 // EK0103: write await runPromise(main())
 async function b(x: any) { return await x }         // ok: any is not an Effect for EK0103
 effect function n(): number { return 1 }            // EK0106: write number!! or leave it out
@@ -155,7 +156,6 @@ Forbidden `await` in directly evaluated formal-parameter initialization of an Ef
 Calling an `effect` function returns its Effect unrun, as calling an `async` function returns a Promise. Running that Effect runs the body.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
 effect function load(id: string) { return try fetchUser(id) }
 const loadArrow = effect (id: string) => try fetchUser(id)
 const loadBare = (ids: string[]) => ids.map(effect id => try fetchUser(id))
@@ -209,7 +209,6 @@ Parameters, defaults included, are bound when the function is called, before `Ef
 <a id="source-names"></a>**Source names.** Generated captures preserve the source [NamedEvaluation](https://tc39.es/ecma262/#sec-runtime-semantics-namedevaluation) context. A value-only evaluation of an anonymous function or class cannot gain a name from a private variable or assignment; preserve a name the source explicitly requests. This covers pipe topics, `do`/`match` values and completion records. The naming context must be preserved or suppressed before creation, rather than repairing `.name` afterward: a class static initializer may already have observed it. Parentheses alone do not suppress source name inference. How the compiler preserves that context is its choice. A `do` completion and an array operand are value-only positions; a lifted object property initializer keeps the property's requested name, including computed and symbol keys.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1, VIP-2, VIP-23
 function readName(f: () => number) { return f.name }
 effect function names() {
   const n = (() => 7) |> readName(%)
@@ -253,7 +252,7 @@ Property names on ordinary objects, such as `o.arguments`, `o.eval` and `{ var: 
 With these five uses gone, no lowering has to hide its generator or generated names from evaluated code, and every declaration in a body is block-scoped or a parameter, so no lowering lifts a binding out of a block. [Region bodies](/spec/002-running#region-bodies), [Evaluation order](/spec/002-running#evaluation-order), [Pattern matching](/spec/004-match) and [Runtime guarantees](/spec/008-runtime) refer to this rule. Such code lives in a `.ts` file or a `module` body ([VIP-40](/vips/0040-module-declarations)).
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
+// expect-error: EK0107
 effect function count(x: number) { return arguments.length }   // error: `arguments` in a .vibe file
 effect function count2(...xs: number[]) { return xs.length }   // write a rest parameter
 function total(xs: number[]) { var t = 0; for (const x of xs) t += x; return t }   // error: `var`; write `let t = 0`
@@ -274,7 +273,6 @@ function count2(...xs: number[]) { return Effect.gen(function* () { return xs.le
 `count2(1, 2, 3)` succeeds with 3.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
 class Counter extends Base {
   n = 7
   effect value() { return this.n + super.offset() }
@@ -301,7 +299,8 @@ A decorator expression on an `effect` method evaluates in its enclosing source c
 An `effect` function's return type is an Effect, as an `async` function's is a Promise. It can be written, or left out and inferred:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
+// fragment
+// User, NotFound, Users, fetchUser, Row and queryDb are declared elsewhere.
 effect function load(id: string): User!NotFound!Users { return try fetchUser(id) }             // written
 effect function load2(id: string) { return try fetchUser(id) }                                 // inferred: the same type
 async function get(q: string): Promise<Row[]> { return await queryDb(q) }                      // as in TypeScript
@@ -310,8 +309,8 @@ async function get(q: string): Promise<Row[]> { return await queryDb(q) }       
 An inferred type takes its success from what the function returns, a `return` in a parameter default included, and its errors and requirements from the Effects its body runs, exactly as `Effect.gen` infers them. So `g` in [Meaning](/spec/001-functions#meaning) returns `Effect.Effect<number | null>`. A recursive function whose type can't be inferred gets TypeScript's own TS7022, TS7023 or TS7024, and no VibeLang diagnostic (VIP-1, amended); write the return type:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
-effect function down(n: number) { return n ? try down(n - 1) : 0 }             // TS7023, TS7024
+// expect-error: TS7023
+effect function down(n: number) { return n ? try down(n - 1) : 0 }             // TS7023
 effect function down2(n: number): number!! { return n ? try down2(n - 1) : 0 } // compiles
 ```
 
@@ -325,7 +324,6 @@ function down2(n: number): Effect.Effect<number> { return Effect.gen(function* (
 Plain functions have JavaScript's stack limit; recursion that must be stack-safe is written as an `effect` function. Running a recursive Effect with `try` uses Effect's stack-safe execution, as `yield*` does inside `Effect.gen` (VIP-1, amended). A plain recursion's stack overflow is an implicit `RangeError`, untracked and a defect when it occurs in effect code. The exact failing depth depends on the runtime.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1
 function depth(n: number): number { return n === 0 ? 0 : 1 + depth(n - 1) }
 effect function depthE(n: number): number!! {
   return n === 0 ? 0 : 1 + (try depthE(n - 1))
@@ -362,7 +360,8 @@ In these examples `queryDb` is a Promise-returning function imported from a `.ts
 [EffectType](/spec/900-appendices#effecttype). `A!B!C` is always the three-slot form, never `(A!B)!C`; write the parentheses to nest. A line break ends an Effect type, as it ends TypeScript's postfix type operators: each `!`, and the slot after it, start on the line where the previous slot ends, and a slot in parentheses may span lines. Only the optional `R` after `!!` excludes an unparenthesized `{`; required error and requirement slots admit object types, so `): number!! {` begins the body; write `A!!({ … })` for a type-literal requirement. Otherwise, among complete source parses, prefer consuming an ordinary TypeScript source operand on that line as `R`: a negative literal type such as `-1` is consumed as `R`, so `x as A!! - 1` asserts `A!!-1`. Write `(x as A!!) - 1` for subtraction. Parser-only JSDoc type forms are excluded, including inside parentheses ([operand boundaries](/spec/900-appendices#effectoperand)). Directly after `A!`, where the next `!` completes `A!!`, the scanner reads that `!` as one token and rescans from the next character, as TypeScript rescans `>` after type arguments: `A!!= v` is `A!! = v`, `A!!== v` is `A!! == v`, `A!!=== v` is `A!! === v` and `(): A!!=> e` is `(): A!! => e`. Anywhere else `!=` and `!==` stay equality operators, as in TypeScript:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-3
+// fragment
+// The comments give each line's parse; User, load and x are declared elsewhere.
 const e: User!!= load()     // const e: User!! = load()
 const f = effect (x: number): number!!=> x   // effect (x: number): number!! => x
 const same = e as User!!=== e  // (e as User!!) === e
@@ -376,7 +375,7 @@ const a: User!(
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-3
+// expect-error: TS17019
 const b: User!
   NotFound = load()         // syntax error (TS17019): this ! has no slot on its line
 ```
@@ -384,9 +383,11 @@ const b: User!
 A line break also ends the type, so this is two statements, as in TypeScript:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-3
+declare const x: unknown, flag: boolean
+interface User { name: string }
+declare function stop(): void
 const y = x as User
-!flag && fail()
+!flag && stop()
 ```
 
 An enclosing optional tuple element keeps TypeScript's omission and indexed `undefined`: `[A!E?]` and `[A!!?]` mark the whole Effect element optional. [The operand boundaries](/spec/900-appendices#effectoperand) also distinguish optional `R` from a following comparison, element access or `as`/`satisfies` continuation. The choice is among complete source parses, with present-`R` priority and no symbol lookup; a contextual type alias named `as` or `satisfies` remains usable.
@@ -428,13 +429,15 @@ Function types, interface or bodyless call signatures, standalone type aliases, 
 The repair writes checker-proved inferred channel types, preserving declaration types and runtime behavior, or refuses with an explanation if it cannot name those types safely. It may remove the whole return annotation only on an explicitly `effect`-marked callable when every channel is `infer` and preservation is proved. It does not offer that removal merely because an unmarked callable's annotation belongs to the set. These are VIP-34's preserving-fix checks, not permission for partial inference in new source.
 
 ```vibe
-// compiler-gap: pending VIP-3
+// expect-error: EK4857, TS1338
 effect function f(): Effect.Effect<number, infer E, never> { return 1 } // EK4857, not TS1338
 effect function g(): number!(infer E) { return 1 } // TS1338: parenthesized channel, outside the legacy set
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-3
+interface User { id: string }
+error NotFound { id: string }
+service Users { find(id: string): User!NotFound }
 effect function load(id: string): User!NotFound!Users { return try (try Users).find(id) }
 interface UserStore { find(id: string): User!NotFound }
 ```
@@ -448,7 +451,7 @@ interface UserStore { find(id: string): Effect.Effect<User, NotFound> }
 `!` does not mix with `|`, `&`, conditional types, or a function or constructor type in a slot, without parentheses: each is a syntax error that requires parentheses (VIP-3, amended; `EK0301`). A slot holds such a type only in parentheses, as in `User!(NotFound | Timeout)`. Each slot is a type-operator-level type, as an operand of `&` is in TypeScript (`keyof A & B` is `(keyof A) & B`): `keyof`, `readonly`, `[]` and `[K]` bind tighter than `!`.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-3
+// expect-error: EK0301
 type T = A | B!E       // syntax error
 type H = A!() => B     // syntax error (EK0301): write A!(() => B)
 type U = (A | B)!E     // ok
@@ -472,7 +475,7 @@ type M = Effect.Effect<A, E>[]
 The same rule covers a conditional type's parts, so an Effect type there is parenthesized. A function or constructor type's return is a whole type, as `() => A | B` is `() => (A | B)` in TypeScript, so `=> A!E` needs no parentheses (VIP-3, amended); `=> A!E | B` still mixes `!` and `|`:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-3
+// expect-error: EK0301
 type F = (id: string) => User!NotFound     // ok: (id: string) => (User!NotFound)
 type G = () => A!E | B                     // syntax error: write () => (A!E) | B or () => A!(E | B)
 type N = new () => A!E                     // ok
@@ -516,7 +519,6 @@ To share the value, `a.vibe` exports `policySecret` and `b.vibe` imports it. Add
 - There is no magic entry point. A function named `main` is an ordinary function, and you run it with a runner yourself, exactly as in Effect TypeScript. An exported `const main` or `let main` is an ordinary lexical binding: a read before initialization throws JavaScript’s `ReferenceError`.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-26
 import { NodeRuntime } from "@effect/platform-node"
 export effect function main() { try log("started") }
 NodeRuntime.runMain(main())     // exactly as in Effect TS
@@ -525,7 +527,7 @@ NodeRuntime.runMain(main())     // exactly as in Effect TS
 or, with top-level await:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-26
+// expect-error: EK0103
 export effect function main() { try log("started") }
 await runPromise(main())
 await main()                    // EK0103: the Effect would never run
@@ -540,7 +542,6 @@ A body is an external module before binding and checking, even without written i
 Body outputs use the source file's full basename, including `.vibe` or `.vibex`, followed by `.` and the encoded module name. Encoding keeps `a`–`z`, `0`–`9` and `_`; every other Unicode code point becomes `-`, its code point in lowercase hexadecimal without leading zeros, and `-`, without case folding or Unicode normalization. The identifier's decoded name is encoded, so escapes and literal characters agree. Thus `module Über` in `main.vibex` has stem `main.vibex.-dc-ber`. JavaScript, declarations, maps and loader requests share that stem; [VIP-40](/vips/0040-module-declarations#emit-declarations-source-maps) specifies the output suffixes.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-40
 module parse {
   /** @throws {RangeError} */
   export function port(raw: string): number {
@@ -605,7 +606,6 @@ Compare the ordinary stock-`tsc` twin without adding generated tags to it. Prese
 The recursive builder below has the same ordinary TypeScript counterpart. Its inferred declaration contains `named: (value: string) => /*elided*/ any`.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1, VIP-27
 export const from = (value: string) => makeBuilder({ value })
 const makeBuilder = (state: { value: string }) => ({
   state,
@@ -622,7 +622,6 @@ const makeBuilder = (state: { value: string }) => ({
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-27
 // load.vibe
 export effect function load(id: string) { return try fetchUser(id) }
 export function users(ids: string[]) { return Stream.fromIterable(ids) }

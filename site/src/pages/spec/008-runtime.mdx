@@ -105,7 +105,6 @@ if (trace.join() !== "parameter,body,body") throw new Error("body did not rerun"
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 const timeout = new Cause.TimeoutError()
 const matched = match (timeout) {
   when Cause.TimeoutError(let e): e;
@@ -125,7 +124,6 @@ if (Cause.isTimeoutError({ _tag: "TimeoutError" })) throw new Error("tag-only ma
 
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 const isText = (x: unknown): x is string => typeof x === "string"
 const textMatch = match ("ok" as unknown) { when isText: true; default: false; }
 ```
@@ -141,7 +139,6 @@ if (!textMatch) throw new Error("predicate match lost")
 A prototype change exposes the ordinary-class divergence (the shared fixture is `foreign.ts`):
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 import { Foreign, real, fake } from "./foreign.ts"
 effect function classify(x: unknown) {
   return match (x) { when Foreign: "yes"; default: "no"; }
@@ -166,7 +163,6 @@ if (Effect.runSync(classify(fake)) !== "yes") throw new Error("prototype match l
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 const arrayMatch = match ([]) { when Array: true; default: false; }
 const errorMatch = match (new TypeError("bad")) { when TypeError: true; default: false; }
 ```
@@ -180,7 +176,6 @@ if (!Effect.runSync(Effect.succeed(arrayMatch && errorMatch))) throw new Error("
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-22
 effect function binding() {
   let x = 0
   const read = () => x
@@ -204,7 +199,6 @@ if (Effect.runSync(binding()) !== 1) throw new Error("binding changed")
 ```
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-7
 class Point { constructor(readonly x: number) {} }
 const point: unknown = new Point(7)
 // when Point(let x): is EK0704; use the class test and object pattern:
@@ -221,7 +215,7 @@ if (coordinate !== 7) throw new Error("class test lost")
 A default's suspensions and jumps stay in the enclosing function:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-2
+// expect-warning: EK4834
 effect function defaults() {
   const { x = do { try succeed(7) } } = {}
   const { y = do { return x } } = {}
@@ -296,7 +290,7 @@ if (outcome.value.started !== 8 || outcome.value.consumed !== 1) {
 `using` keeps TypeScript’s meaning ([VIP-8](/vips/0008-using-denied), denied). It disposes when JavaScript control leaves its scope, including by `return` or a JavaScript throw; on a success `Exit`, the disposer runs as in TypeScript. A non-success `Exit` of an Effect run by `try` [abandons](/spec/008-runtime#abandonment) the generator without unwinding that scope. Use Effect’s `scoped`, `acquireRelease`, `acquireDisposable` or `addFinalizer` for cleanup on every Effect exit. `using` in effect code gets a warning (`EK0801`), with a manual change to `acquireDisposable` inside `scoped`; the warning does not change disposal semantics.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-34
+// expect-warning: EK0801
 // openFile is the plain helper in the shared TypeScript fixture below.
 import { openFile } from "./resource.ts"
 effect function unsafe(defect = false) {
@@ -355,7 +349,6 @@ if (unsafeTrace.length !== 0 || safeTrace.join() !== "dispose") throw new Error(
 ## Region finalizer observations
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-2, VIP-12
 effect function normalObservation() { return do { provide observed { 7 } } }
 effect function returnObservation() { provide observed { return 7 } }
 ```
@@ -399,7 +392,6 @@ if (first.value.$fiber !== 1 || second.value.$fiber !== 2 ||
 <a id="unchecked-delegation"></a>Unchecked `try` operands keep ECMA-262's [delegated yield evaluation](https://tc39.es/ecma262/multipage/ecmascript-language-functions-and-classes.html#sec-generator-function-definitions-runtime-semantics-evaluation) inside the accepted `Effect.gen` counterpart, without a runtime Effect guard ([`try`](/spec/002-running#try)). A noniterable defects with its native `TypeError`; an unchecked iterable can complete normally. Native iterator getters, calls, results and errors keep their reached order and identity. This does not change static operand admission or Effect's generator abandonment. An unchecked result does not erase the callee's thrown contract: a call through `any` still needs a failure boundary, while a callable declared in `.vibe` outside a `module` body with an `any` result has thrown type `never`.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-5
 effect function unchecked(value: any) { return try value }
 // unchecked(5) defects with TypeError; unchecked([]) succeeds with undefined.
 ```
@@ -431,7 +423,6 @@ if (await (5 as any) !== 5) throw new Error("native await identity changed")
 <a id="iterable-lifecycle"></a>The `for concurrent` iterable's lifecycle is pinned `Effect.forEach` behavior ([Running Effects](/spec/002-running#for-concurrent)), not native `for…of` backpressure or closing. This finite witness records pulling before explicitly closing its remaining test iterator. The endless-input consequence follows from synchronous materialization; it does not require running an endless probe.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-19
 effect function visit(items: Iterable<number>) {
   for concurrent(2) (const item of items) {
     if (item === 1) throw "bad"
@@ -486,7 +477,6 @@ if (visit(2) !== "1,2" || iteratorCalls !== 0) throw new Error("parallel array r
 <a id="for-try-fiber-owner"></a>A plain `fork` in a `for try` item belongs to the current consuming fiber ([Running Effects](/spec/002-running#for-try)), not to the item. This witness waits for the child to start, lets the item and loop finish, then releases and joins it from the continuing owner. The gates establish this trace without promising scheduling order for unrelated fibers.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-20
 effect function consume(items: Stream.Stream<number>) {
   for try (const item of items) { fork work(item) }
   try parentWork() // plain children may still run while this consuming fiber continues

@@ -194,7 +194,7 @@ The `EK4833` advisory treats a custom qualified alias named `Effect` as an equiv
 For example, the `EK4830` repair may replace this class with `error Missing { id: string }` while preserving `Fail(Missing { id: "x" })`:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1, VIP-13
+// expect-warning: EK4830
 class Missing extends Data.TaggedError("Missing")<{ readonly id: string }> {}
 effect function program() { throw new Missing({ id: "x" }) }
 ```
@@ -213,7 +213,7 @@ console.log(JSON.stringify([reason._tag, reason.error._tag, reason.error.id]))
 Only the first line of `demo` warns. The other three run their Effect in a child fiber or as an element, where the suggested form would change meaning: a `throw` in place of `fork Effect.fail("boom")` would fail `demo` itself, while the child's failure lets `demo` go on and inspect it.
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-34
+// expect-warning: EK4834
 effect function demo(e: number!string, h: (x: string) => number!!) {
   const one = try Effect.succeed(1)              // EK4834
   const child = fork Effect.catch(e, h)          // no EK4835: recovery stays in the child

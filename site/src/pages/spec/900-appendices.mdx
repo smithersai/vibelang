@@ -31,7 +31,7 @@ VIP-17’s outside-code identifier promise is contextual: a plain class’s stat
 The field and enum calls below are ordinary helper calls; the class head keeps the enclosing Effect context, and the nested block establishes its own. The Effect gives `Success([2, 3, 7])`:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1, VIP-2, VIP-5, VIP-17
+// expect-warning: EK4834
 import { Effect } from "effect"
 function join(n: number): number { return n + 1 }
 function fork(n: number): number { return n + 2 }
@@ -71,7 +71,7 @@ class Plain { static { join(9); fork(9) } }
 Execution stays forbidden in the initializer or static block itself:
 
 ```vibe
-// compiler-gap: pending VIP-1, VIP-5, VIP-17
+// expect-error: EK1701, EK0501
 import { Effect } from "effect"
 effect function badStatic() {
   class Reserved { static { join(1) } } // EK1701
@@ -238,7 +238,6 @@ EffectShorthand = ("effect" | "async") [no LineTerminator here] [lookahead ∉ {
 The identifier-spelled expression operators `as`, `satisfies` and `is` retain their expression reading after a value named `effect` or `async`; they cannot select recovery for an invalid function shorthand. In particular, both statements below are VIP-7 `is` expressions, and the Effect succeeds with `2`:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-1, VIP-7
 class Point {}
 effect function operatorHeads() {
   const effect: unknown = new Point()
@@ -346,7 +345,6 @@ At the optional `R` boundary after `!!`, prefer the present `R` among complete s
 Only ordinary TypeScript source types are operands. The parser-only JSDoc forms `?T`, `T?`, `!T` and `*` are excluded, including inside parentheses; explicitly writing one gives the ordinary invalid-type diagnostic. At the optional-slot boundary, `?` and `*` instead remain expression operators where the surrounding expression admits them. An additional `!` follows the existing bang and non-null rules, rather than starting a JSDoc requirement. All existing line-break and union, intersection, function-type and conditional-type restrictions still apply.
 
 ```vibe
-// compiler-gap: pending VIP-3
 declare const x: unknown
 type NegativeRequirement = number!!-1
 const chosen = x as number!! ? 1 : 2 // omitted R, then conditional
@@ -379,7 +377,6 @@ A leading `<` does not start a type at the type-operator level: `x as A!! < 3` o
 In an expression, `x as A!! as B` and `x as A!! satisfies B` retain the ordinary chained assertion or check when consuming the keyword as `R` would strand `B`. Priority is between complete source parses, not parser-recovery trees. This is not a token ban: TypeScript allows type aliases named `as` and `satisfies`, so a pure type `A!!as`, a required or parenthesized slot using those aliases, and `x as A!!as satisfies unknown` retain their valid present-`R` parse. When both complete source parses survive, prefer the present `R`, with no symbol lookup. A complete source parse includes TypeScript’s automatic semicolon insertion. With `x as A!!as` at the end of a line and `B` on the next, both parses complete: the present `R` ends the statement by ASI, leaving `B` a second statement, and the chained assertion continues across the line break, so the present `R` wins. On one line, `x as A!! as B` has no semicolon to insert after `as`, so only the chained assertion completes.
 
 ```vibe
-// compiler-gap: pending VIP-3
 type RequiredObjects = number!{ reason: string }!{ service: number }
 type OptionalError = [number!string?]
 type OptionalSuccess = [number!!?]
@@ -402,7 +399,7 @@ function assertions(x: unknown) {
 }
 
 function lineBreak(x: unknown, B: unknown) {
-  x as number!!as
+  const asserted = x as number!!as
   B // a second statement: the assertion above supplies R = as
 }
 
@@ -894,7 +891,6 @@ for concurrent (const x of xs) (try g(x));     no limit; the body is a parenthes
 Both loop layouts have the same Effect counterpart and give `Success(3)` here:
 
 ```vibe [VibeLang]
-// compiler-gap: pending VIP-19
 effect function multilineTotal() {
   let total = 0
   for
@@ -2641,7 +2637,7 @@ When the compiler implements VIP-N:
 
 1. Run the command above. A block whose marker is stale fails with "Stale compiler-gap marker; remove it": the compiler reports no code beyond the block's `// expect-error:` header, apart from names the block doesn't declare. The checker reads expected codes only from that header, not from trailing comments, so a stale result alone proves nothing about the codes a block's comments promise: `effect function n(): number { return 1 }   // EK0106` reports stale while the compiler prints no diagnostic for it.
 2. Write every code the block's comments promise in an `// expect-error:` header, such as `// expect-error: EK0103, EK0106`, a syntax error's code included, and rerun. Delete the block's `// compiler-gap: pending VIP-N` line only if it still passes. If the block only names functions it doesn't declare (`fetchUser`), declare them in the block or a page fixture, or mark it `// fragment`.
-3. When a page has no `compiler-gap` markers left, add `docs/design/src` to the snippet step of the merge queue's gate (`//:snippets`), so the examples stay checked.
+3. The snippet step of the merge queue's gate runs the command above on every change, so a stale marker fails the gate, and so does a marker on a block marked as a fragment, which is never checked.
 4. To make an Effect TypeScript example checked, replace `// fragment` with the declarations it needs; the checker compiles ```` ```ts effect ```` blocks as comparisons.
 
 ## Appendix E. Shipped `@throws` and `@rethrows` annotations

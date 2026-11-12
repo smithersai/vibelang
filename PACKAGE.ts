@@ -702,9 +702,11 @@ const targets = {
     [bun, node],
     "5m"
   ),
+  // The specification's examples are checked too, so a compiler-gap marker
+  // whose block now compiles fails here instead of going stale.
   snippets: check(
-    "Compile every code block in the docs.",
-    "bun docs/tools/check-snippets.ts",
+    "Compile every code block in the docs and the specification.",
+    "bun docs/tools/check-snippets.ts && bun docs/tools/check-snippets.ts --root docs/design/src",
     [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"]],
     [bun, node]
   ),

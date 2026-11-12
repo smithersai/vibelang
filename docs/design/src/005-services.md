@@ -9,7 +9,6 @@ Sources: [VIP-9](../vips/0009-service-declarations.md), [VIP-12](../vips/0012-pr
 [ServiceDeclaration](900-appendices.md#servicedeclaration), whose members are TypeScript [Member](900-appendices.md#member) signatures, a [KeyMember](900-appendices.md#keymember) and a [DefaultMember](900-appendices.md#defaultmember). The parse is wider than the language: it accepts type parameters and any TypeScript class member, so that the static rules below reject them with their codes. Each member has one parse: a member that parses as a [KeyMember](900-appendices.md#keymember), a [DefaultMember](900-appendices.md#defaultmember), a `PropertySignature` or a `MethodSignature` is that member; any other member is a rejected `ClassElement` or TypeScript type member. Members are separated as in an `interface`: `a: number, b: string` and `a: number; b: string` are two property signatures, and `a: number b: string` on one line is a syntax error, `EK0908`. A member with a body ends at its `}`, as in a class, so `m() { } n(): void` on one line is two members and gets the body rule below. A member's type is parsed greedily, as in TypeScript, so a line break ends a member only after its type is complete. The optional `R` after `!!` starts on the same line and never with `{` (write `A!!({ … })`), so `now(): number!!` ends its member at the line break:
 
 ```vibe es
-// compiler-gap: pending VIP-9
 service Auth {
   role:
     | "admin"
@@ -29,7 +28,6 @@ Legacy `service class Name { members }` is not a service production and reports 
 ### Meaning
 
 ```vibe es
-// compiler-gap: pending VIP-9
 // src/users.vibe in the package @acme/app
 service Users {
   find(id: string): User!NotFound
@@ -46,7 +44,6 @@ declare namespace Users { type Shape = $Users$Shape }
 - **A written whole shape (VIP-9, amended).** In `service Name: Type { … }` the TypeScript type annotation supplies the exact Shape; the required body admits only the existing `key` and `defaultValue` members. Pass the written type directly to `Context.Service<Name, Type>` (or `Context.Reference<Type>` for a default), preserving its name and modifiers. This form adds no shape helper and no namespace, so, as for a service inside a function, `Name.Shape` names that type only inside the declaration's own body; elsewhere `Name.Shape` is not declared (`TS2702` in the twin): write the type, or `Context.Service.Shape<typeof Name>`. Existing key, default, ambient and generic-capture rules apply.
 
 ```vibe es
-// compiler-gap: pending VIP-9
 import { Context } from "effect";
 export type Shape = { readonly value: string };
 service Port: Shape { static readonly key = "probe/Port" }
@@ -77,7 +74,6 @@ export {};
 **The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name: the `name` in the package's `package.json`, `/`, the file's package-relative path without its extension, `#`, the service name. The package is the file's Node package scope, the nearest ancestor directory with a `package.json`; if that file has no string `name`, the service has no derived key (`EK0903` below). The path's segments are joined with `/` on every OS, as in an import specifier, and only the final extension is removed: `src\users.vibe` on Windows gives `src/users`. A service can write it explicitly instead, as a migrated service does to keep its key:
 
   ```vibe es
-  // compiler-gap: pending VIP-9
   service Clock {
     static readonly key = "app/Clock"
     now(): number!never
@@ -93,7 +89,6 @@ export {};
 - **A default.** `static readonly defaultValue`, of the type of `Context.Reference`'s `defaultValue` (`() => Shape`), makes the service a `Context.Reference`. Nothing has to provide it, and providing it overrides the default. It may carry a type annotation, as `key` may: `static readonly defaultValue: () => Flags.Shape = …`.
 
   ```vibe es
-  // compiler-gap: pending VIP-9
   service Flags {
     static readonly defaultValue = () => ({ newCheckout: false })
     newCheckout: boolean
@@ -111,7 +106,6 @@ export {};
 - **Inside a function or block** the counterpart is a private named member type and the class (or `const`), without a namespace, because TypeScript allows a `namespace` only at the top level of a module or namespace (TS1235). Inside the service's own members `Users.Shape` names that private type, by [VIP-9](../vips/0009-service-declarations.md)'s type-only hook, so recursive members work. Elsewhere `Users.Shape` is not declared; write `Context.Service.Shape<typeof Users>`:
 
   ```vibe es
-  // compiler-gap: pending VIP-9
   effect function test() {
     service Users { static readonly key = "test/Users"; find(id: string): User!NotFound }
     const fake: Context.Service.Shape<typeof Users> = { find: (id) => succeed(user) }
@@ -143,7 +137,7 @@ export {};
 A service's resolved member contracts cannot capture a type parameter from an enclosing scope (`EK3005`). Follow aliases, constraints, defaulted type arguments and callable throw metadata by type-parameter identity. A member-local generic parameter is allowed when its contract is independent of outer parameters; a concrete service inside a generic function is also allowed. Explicit keys and duplicate-key checks are unchanged.
 
 ```vibe es
-// compiler-gap: pending VIP-9
+// expect-error: EK3005
 function storeKey<T>() {
   service Store { static readonly key = "test/Store"; value: T } // EK3005
   return Store
@@ -188,7 +182,7 @@ The initializer runs once, eagerly at the declaration's existing execution point
 When computing a factory needs an Effect, compute the value in the surrounding Effect body first:
 
 ```vibe es
-// compiler-gap: pending VIP-9
+// expect-warning: EK4834
 let initializerRuns = 0; let fallbackCalls = 0
 function join(factory: () => { n: number }) { initializerRuns++; return factory }
 effect function localDefault() {
@@ -234,7 +228,7 @@ A service's `Shape` is the written member object, so self- and mutually recursiv
 There is no `Users.find(id)` shorthand ([VIP-10](../vips/0010-service-call-shorthand-denied.md), denied). Get the service with `try`, then call it:
 
 ```vibe es
-// compiler-gap: pending VIP-9
+service Users { find(id: string): string!! }
 effect function load(id: string) {
   const users = try Users
   return try users.find(id)
@@ -258,7 +252,7 @@ A service is a key, not a class you use.
 Inherited ambient context is a source property, not a check for an own `declare` token. Ordinary native ambient classes/consts and generated `.d.ts` counterparts retain TypeScript's rules; import an existing service key when only its type declaration is available. These rejected source forms have no runtime counterpart:
 
 ```vibe es
-// compiler-gap: pending VIP-9
+// expect-error: EK0907
 export {} // the declare-global control is in a module
 declare namespace Ambient {
   service Users { static readonly key = "ambient/Users"; n: number } // EK0907
@@ -315,18 +309,27 @@ A member gets one diagnostic: the first row below that names it. The general mem
 | `export default service S { }` | `EK0905` | `export default` takes a function, class or expression, as in ECMAScript; write `export { S as default }` |
 
 ```vibe es
-// compiler-gap: pending VIP-9
+// expect-error: EK3002, EK3003, EK3004
+service Users { find(id: string): string!! }
+declare const impl: unknown
 class FakeUsers extends Users { }        // EK3002
 const u = new Users()                    // EK3003
 if (impl instanceof Users) { }           // EK3004
-match (impl) { when Users: 1; }          // EK3004: always false
+match (impl) { when Users: 1; default: 0; } // EK3004: always false
+```
+
+A heritage clause is a syntax error, so it stops the semantic checks above; it is shown alone:
+
+```vibe es
+// expect-error: EK0904
+service Users { find(id: string): string!! }
 service Admins extends Users { }         // EK0904
 ```
 
 A service in a file outside any package (or in one whose `package.json` has no string `name`), or declared inside a function or block, has no derived key: omitting `static readonly key` there is a compile error (`EK0903`); write an explicit key.
 
 ```vibe es
-// compiler-gap: pending VIP-9
+// fragment
 // /repo/tools/x.vibe, no package.json
 service Users { }                                      // error: write static readonly key
 service Users { static readonly key = "tools/Users" }  // ok
@@ -350,7 +353,6 @@ The retired `with Provider { … }` spelling is invalid syntax; it has no traili
 `provide` is a contextual keyword, and its providers and block are on one line, as with `async` (VIP-12): [ProvideStatement](900-appendices.md#providestatement) puts `[no LineTerminator here]` after `provide`, on both sides of each comma and before the block's `{`. At a statement start, `provide` is a keyword when the tokens from `provide` through that `{` parse as a valid [ProvideStatement](900-appendices.md#providestatement) head, or the bounded provider-comma recovery below applies; otherwise it is an identifier, in any code. When both readings parse, the provide statement wins, as an arrow head does: `provide / a / { }` provides the regex `/a/`, not TypeScript's `(provide / a) / {}`. Inside a provider, line breaks are free, as in any expression:
 
 ```vibe es
-// compiler-gap: pending VIP-12
 effect function test() {
   provide AppLive, Users = {
     find: (id: string) => fetchUser(id) } {
@@ -369,7 +371,7 @@ At a statement start, a head is recovered as `provide` when it otherwise parses 
 Only actual provider-list separators use this recovery. Line breaks inside calls, arrays and object expressions remain ordinary expression trivia. The formatter does not introduce separator breaks; compose multiline providers inside parentheses, for example with `Layer.mergeAll(...)`. Invalid recovered heads have no lowering or runtime counterpart.
 
 ```vibe es
-// compiler-gap: pending VIP-12
+// expect-error: EK1202
 effect function badAfter() {
   provide A,
   B { try work() } // EK1202
@@ -416,7 +418,6 @@ console.log(providerRecoveryExit) // Success([7, 7, 2, [2, 3], 9, 8])
 `provide AppLive,` with `Users = testUsers {` on the next line is a syntax error (`EK1202`): the break follows a comma.
 
 ```vibe es
-// compiler-gap: pending VIP-12
 effect function local() {
   const provide = makeProvider()   // a local named provide
   provide(x)                       // a call: no same-line {
@@ -430,7 +431,6 @@ Trailing blocks don't exist ([VIP-11](../vips/0011-trailing-blocks-denied.md)), 
 The provider is an expression position, so `effect {` starts an [EffectBlock](900-appendices.md#effectblock), even when a local binding is named `effect`. Write `provide (effect) { … }` to provide that binding. `provide effect { … }` does not mean that binding followed by the body: the braces belong to the Effect block, leaving no provide body. With another block, `provide effect { … } { … }` parses with an Effect-block provider; it still fails the ordinary `Effect.provide` type check because a cold Effect is neither a Layer nor a Context. The parse does not inspect the local binding's type or run the Effect automatically.
 
 ```vibe es
-// compiler-gap: pending VIP-12
 effect function providerName() {
   const effect = Layer.empty
   provide (effect) { }
@@ -473,7 +473,6 @@ VibeLang adds no typing rules of its own: Effect's `provide` types everything.
 `provide providers { … }` is exact sugar for `Effect.provide`. It is a statement that runs where it stands, and every Effect inside it is still run with `try`. A provider is a Layer (or, alone, a `Context`), or `Key = value`, which means `Layer.succeed(Key, value)`. One provider lowers to `Effect.provide(gen, p)`; two or more lower to `Effect.provide(gen, [p1, …, pn])`. Effect's overloads then decide what a provider may be: a sole provider may be a `Layer` or a `Context`; in a list each is a `Layer`. Where two providers supply one service, the later wins. As `Effect.provide` documents in effect 4.1.1, a layer an enclosing `provide` already built is reused, and a sibling `provide` builds its own copy. A fiber forked inside the block keeps the block's services after the layer is released, as in `Effect.provide`; use `fork.scoped` inside `scoped(effect { … })` to tie it to a scope.
 
 ```vibe es
-// compiler-gap: pending VIP-12
 effect function test() {
   provide AppLive { try a() }
   provide AppLive, Users = testUsers {
@@ -501,7 +500,6 @@ The keyword removes the global of the same name, so Effect's function is written
 Layers are composed with Effect's own Layer API; there is no `wire` ([VIP-24](../vips/0024-wire-denied.md), denied):
 
 ```vibe es
-// compiler-gap: pending VIP-12
 const AppLive = UsersLive.pipe(Layer.provide(DbLive), Layer.provideMerge(ConfigLive))
 ```
 
@@ -522,7 +520,6 @@ When a later VIP adds a keyword with the name of an Effect export, that global i
 No language feature wraps TypeScript into an Effect. Effect's own functions do (`tryPromise`, `sync`, `callback`, `Effect.try`), and their arrows capture locals as in Effect TypeScript.
 
 ```vibe es
-// compiler-gap: pending VIP-6
 effect function lookup(q: string, s: string) {
   const r = try tryPromise((signal) => queryDb(q, { signal }))   // queryDb is from a .ts module
   const n = try sync(() => Date.now())                  // Date.now throws never (Appendix E)
@@ -576,7 +573,6 @@ const output = Console$.log("hi")
 The prelude preserves each imported signature’s thrown contract. An npm signature without `@throws` throws `unknown`, so these non-effectful calls use `Effect.try` bridges; an actual explicit annotation keeps its ordinary contract ([Thrown types](003-failures.md#thrown-types)).
 
 ```vibe es
-// compiler-gap: pending VIP-14
 effect function preludeExamples() {
   const Port = Schema.Number
   const two = try Effect.try(() => pipe(1, (n: number) => n + 1)) // a root function, from effect/Function
@@ -675,7 +671,7 @@ The restrictions below apply to VibeLang code. A named top-level `module` body i
    A name that two subpaths export, or a subpath and the root, is not in scope bare: using it is a compile error (`EK1401`) that names every exporter and offers one import per exporter. In effect 4.1.1 this covers `Model` (`effect/ai`, `effect/schema`), `Prompt` (`effect/ai`, `effect/cli`) and `Utils` (`effect`, `effect/rpc`). `Model.make(…)` is that error; `import { Model } from "effect/ai"` fixes it.
 
 ```vibe es
-// compiler-gap: pending VIP-33
+// expect-error: EK4402
 effect function readConfig(path: string) {
   const fs = try FileSystem.FileSystem               // the module FileSystem exports the service key FileSystem
   return try fs.readFileString(path)
@@ -717,7 +713,9 @@ During migration, `EK4402` in a formerly accepted `sync`, `callback`, `Effect.tr
 So a statically named member of the standard `globalThis` whose name is banned is `EK4402`, including `globalThis.fetch`, `globalThis["fetch"]`, `globalThis.process` and `globalThis["setTimeout"]`. A property on an unrelated object, such as `client.fetch` or `client.timeout`, is a different symbol. `window.fetch` is already rejected because `window` itself is banned. A banned global read as a member is `EK4402` only through a host receiver: a chain of member reads rooted at a global binding, such as `globalThis` or `window`. A member of a value the code was given, such as the page that `try (try Experimental.Window.Window).current` injects, a parameter or an import, is that value's member, even when its symbol is the global's: `page.KeyboardEvent` and `page.Element.prototype` are the injected page's, while `globalThis.window.KeyboardEvent` and `globalThis["WheelEvent"]` are `EK4402`. The value reached the host where it was made, through a service or a `.ts` file. Only value positions are `EK4402`: a type query such as `type Timer = ReturnType<typeof setTimeout>` is erased and allowed, as `import type` is. A key that is not statically known stays unchecked; this is not a sandbox.
 
 ```vibe es
-// compiler-gap: pending VIP-33
+// expect-error: EK4402
+declare const url: string, f: () => void, blob: Blob, a: AbortSignal, b: AbortSignal, s: string
+declare const key: keyof typeof AbortSignal, client: { timeout(ms: number): void }
 globalThis.fetch(url)                         // EK4402: use HttpClient
 globalThis["setTimeout"](f, 10)               // EK4402: use sleep
 AbortSignal.timeout(100)                      // EK4402: it starts a timer; use Effect.timeout
@@ -745,7 +743,7 @@ The banned globals ("All web apis and all node.js apis should be wrapped and eff
 It also includes every other host global, such as `history`, `requestAnimationFrame`, `FileReader`, `WebAssembly`, and window properties such as `name`, `status` and `open`, so a stray `name` that would read `window.name` is an error.
 
 ```vibe es
-// compiler-gap: pending VIP-33
+// expect-error: EK4402
 history.pushState({}, "", "/x")       // EK4402: move to a .ts file or wrap it in a service
 requestAnimationFrame(draw)           // EK4402
 const r = new FileReader()            // EK4402: use FileSystem
@@ -768,6 +766,7 @@ const program = Effect.gen(function* () {
 VibeLang imposes no additional restriction on `import.meta` syntax. Members are checked against the program's `ImportMeta` declarations. With `vite/client`, `glob`, `env` and `hot` have Vite's declared types; with `@types/node`, Node's metadata such as `dirname` has Node's declared type. An undeclared member receives TypeScript's ordinary diagnostic, not `EK4402`. Aliases, destructuring, computed access, arguments and spreads follow TypeScript too. `import.meta.url` keeps its ordinary module identity. The bundler or host supplies the behavior, as it does for TypeScript; migration preserves these expressions in their original module.
 
 ```vibe es
+// compiler-gap: pending VIP-33
 export const metadata: ImportMeta = import.meta
 export const { url } = import.meta
 export const computed: string = import.meta["url"]
@@ -801,7 +800,6 @@ const program = Effect.gen(function* () {
 Bare `Worker` is Effect's `effect/workers` namespace, by the precedence above, as `Headers`, `Response` and `Event` are. The ban on `Worker` covers the host binding only: `globalThis.Worker`, `globalThis["Worker"]` and `self.Worker` are `EK4402`. A local or imported `Worker` shadows as usual, and `new Worker(url)` on the namespace gets TypeScript's own "not constructable" error. An explicit import names the same namespace:
 
 ```vibe es
-// compiler-gap: pending VIP-33
 import { Worker as EffectWorker } from "effect/workers"
 const workerSpawner = EffectWorker.Spawner
 ```
@@ -814,19 +812,21 @@ const workerSpawner = EffectWorker.Spawner
 ECMAScript library globals (`Date.now`, `Math.random`, `JSON`, `Intl`) and web data utilities with no I/O (`URL`, `URLSearchParams`, `TextEncoder`, `TextDecoder`, `structuredClone`, `atob`, `btoa`, `AbortController`, `AbortSignal`) stay allowed, apart from the [three members](#reaches-the-platform) that reach the host. The web-utility allowlist is closed: a name can be added later, never removed. `Intl` is an [ECMAScript internationalization library](https://tc39.es/ecma402/#intl-object) declaration and needs no allowlist entry.
 
 ```vibe es
-// compiler-gap: pending VIP-33
+// expect-error: EK4402
 console.log("hi")            // EK4402: write try Console.log("hi")
 setTimeout(f, 10)            // EK4402: write try sleep("10 millis"), then f()
 const u = new URL(s)         // ok
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-33
+// expect-error: EK4402
+// types: node
 import { readFileSync } from "fs"         // EK4402: same builtin as node:fs
 import "node:fs/promises"                 // EK4402: loads the module
 export { statSync } from "node:fs"        // EK4402
 const cp = import("node:child_process")   // EK4402
 import type { Stats } from "node:fs"      // ok: erased
+declare const name: string
 const m = import(name)                    // ok: a computed specifier is not checked
 ```
 

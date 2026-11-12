@@ -14,7 +14,7 @@ A `schema` declaration requires a field body or `= type`; a `data` declaration r
 The incomplete forms below have no runtime counterpart. The repairs retain the existing declaration meanings, including empty bodies, schema aliases and bodyless errors:
 
 ```vibe es
-// compiler-gap: pending VIP-9, VIP-15, VIP-16
+// expect-error: EK0906, EK1503, EK1604, EK0907
 service MissingService // EK0906
 schema MissingSchema // EK1503
 data MissingData // EK1604
@@ -56,7 +56,6 @@ console.log(declarationRepairExit) // Success([0, 0, "ok", "Allowed", "AlsoAllow
 `schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name. Mappings preserve TypeScript mutability: properties are writable unless `readonly`; arrays and tuples are mutable unless `readonly`.
 
 ```vibe es
-// compiler-gap: pending VIP-15
 schema Address
 { city: string }
 schema User {
@@ -133,7 +132,6 @@ The rule applies to ordinary schemas, schema errors, and nested mappings; `Schem
 Tuple element labels (`[name: A, count?: B]`) do not change the mapping. Optional and rest tuples omit `Schema.mutable` when `readonly`; rest elements map recursively, with any trailing required elements passed after the rest schema to `Schema.TupleWithRest`.
 
 ```vibe es
-// compiler-gap: pending VIP-15
 schema TupleForms {
   token: symbol;
   optional: [name: string, count?: number];
@@ -162,7 +160,6 @@ tupleForms.optional.push(3)
 A noncomputed field named `__proto__` denotes an own data field, including quoted or escaped names and fields in nested structs. Its generated schema-fields object uses `["__proto__"]`, preserving the field instead of invoking JavaScript object-literal prototype-setting semantics. Already-computed keys keep their existing evaluation order.
 
 ```vibe es
-// compiler-gap: pending VIP-15
 schema Sample {
   kind: "sample";
   value: string | null;
@@ -197,7 +194,6 @@ sample.counts.a = 2
 The numeric keys below use call, parenthesized and element-access expressions. All pass native runtime object-key checks; the schema error also satisfies the existing reserved-`_tag` check because its key domain is numeric.
 
 ```vibe es
-// compiler-gap: pending VIP-15, VIP-29
 let schemaKeyCalls = 0
 function schemaKey(): number { schemaKeyCalls++; return 42 }
 const Box = { get field(): number { schemaKeyCalls++; return 43 } }
@@ -233,7 +229,6 @@ console.log(runtimeKeysExit) // Success([3, 1, 2, false, true, 7])
 Referenced schemas must preserve the source's decoded-key modifiers. At every required field, required fixed tuple slot (before or after a rest), and `Record` value, the inferred schema type's `"~type.optionality"` must be `"required"`. At every effectively readonly field or readonly `Record` value, `"~type.mutability"` must be `"readonly"`; all `schema error` payload fields are effectively readonly even without a written `readonly`. These checks apply at the mapped position, recursively in nested structs and schema errors, through aliases and unions. A conflicting or unprovable flag is `EK2109`: use an unmodified value schema and write modifiers on the declaration. Writable and optional source positions retain the mappings above. The checks describe decoded `Type`; encoded-key and constructor-input defaults keep Effect's behavior. Field readonlyness is shallow and does not freeze nested mutable values.
 
 ```vibe es
-// compiler-gap: pending VIP-15, VIP-29
 const OptionalNumber = Schema.optional(Schema.Number)
 const MutableString = Schema.mutableKey(Schema.String)
 // schema Bad { must: OptionalNumber; readonly frozen: MutableString; tuple: [OptionalNumber]; entries: Record<"a", OptionalNumber> }
@@ -270,7 +265,6 @@ decodeFlagIntent({ must: undefined, frozen: "ok", tuple: [undefined], entries: {
 A schema's encoded representation follows its field codecs. JSON and other transports must support that representation; a declaration does not automatically convert unsupported values or property keys. For example, raw `Schema.BigInt` encodes a bigint, which JSON cannot serialize, while `Schema.BigIntFromString` encodes a string. Ordinary JSON omits object properties with `undefined`, symbol or function values, ignores symbol keys, and converts nonfinite numbers to `null`. Cycles and user serialization hooks retain their ordinary JSON behavior. Choose codecs and a transport that preserve the required data, including for [schema errors](003-failures.md#schema-error-declarations).
 
 ```vibe es
-// compiler-gap: pending VIP-15, VIP-29
 schema error BigCount { count: bigint }
 schema error JsonCount { count: Schema.BigIntFromString }
 ```
@@ -292,7 +286,6 @@ const jsonRoundTripExit = Schema.decodeUnknownExit(JsonCount)(JSON.parse(JSON.st
 Refinements and transformations stay Schema constants. In a schema type, an identifier or qualified name is looked up as a value and must satisfy Effect's `Schema.Top`; a type of the same name is not expanded. Imports and shadowing follow TypeScript value lookup. The generic built-in rows first identify the library type binding as specified above. `typeof Name.Type` is the declared type.
 
 ```vibe es
-// compiler-gap: pending VIP-15
 import { NonEmptyString } from "effect/Schema"
 schema Profile { name: NonEmptyString; title: Schema.String }
 // type Role = "admin" | "member"
@@ -310,7 +303,6 @@ type Profile = typeof Profile.Type
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-15
 const key = Symbol("key")
 schema Keys { "a-b": string; 1: number; [key]: boolean }
 ```
@@ -327,7 +319,6 @@ type Keys = typeof Keys.Type
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-15
 const field: string = "actual"
 schema Dynamic { [field]: number }
 ```
@@ -387,7 +378,6 @@ One written, nongeneric `type X = typeof X.Type` in the same scope replaces the 
 `data Name { Variant; Variant { fields } }` declares Effect's `Data.TaggedEnum` type and its `Data.taggedEnum` constructors under one name. Zero variants are allowed: `data Empty {}` maps to `type Empty = Data.TaggedEnum<{}>; const Empty = Data.taggedEnum<Empty>()`.
 
 ```vibe es
-// compiler-gap: pending VIP-16
 data Delivery
 {
   Waiting;
@@ -420,7 +410,6 @@ if ((typeof d === "object" || typeof d === "function") && d !== null && "_tag" i
 `$is` and `$match` are reserved variant names in every `data` declaration, generic or not (`EK1602`): Effect's `Data.taggedEnum` uses those properties as helpers, so calling them does not construct the named variant. Rename the variant and its resolved references, for example to a fresh `Is` or `Match`. Other names retain the same constructors and nonthrowing contract.
 
 ```vibe es
-// compiler-gap: pending VIP-16
 // data Invalid { $is; $match; Normal } // EK1602 on each reserved name
 // data InvalidGeneric<A> { $match { value: A } } // EK1602
 data SafeNames { Is; Match; Normal }
@@ -438,7 +427,6 @@ const safeNameExit = Effect.runSyncExit(Effect.sync(() => [SafeNames.Is(), SafeN
 A data payload is emitted as a TypeScript type literal in `Data.TaggedEnum`. Its computed key expressions are type checked and erased: declaring or constructing data does not run those expressions. Ordinary value declarations keep their evaluation; a separate key initializer still runs where its statement stands. Schema field keys retain their documented runtime evaluation.
 
 ```vibe es
-// compiler-gap: pending VIP-16
 let keyReads = 0; let initializerRuns = 0
 const Keys = { get field(): number { keyReads++; return 1 } }
 const initializedKey = (++initializerRuns, 2)
@@ -473,26 +461,27 @@ const dataKeyExit = Effect.runSyncExit(observeDataKeys())
 console.log(dataKeyExit) // Success([0, 1, "read", "eager", 0])
 ```
 
-Computed payload members use TypeScript's own duplicate-member checks. The repeated computed field below is admitted with matching types; incompatible computed declarations instead receive the native `TS2717` check.
+Computed payload members use TypeScript's own duplicate-member checks. TypeScript 7 reports `TS2300` on each declaration of a repeated computed field, even when the types match, and adds `TS2717` when they differ.
 
 ```vibe es
-// compiler-gap: pending VIP-16
+// expect-error: TS2300
 const slot = "x" as const
-data Repeated { Row { [slot]: number; ["x"]: number } }
+data Repeated { Row { [slot]: number; ["x"]: number } } // TS2300 on both members
 effect function readRepeated() { return Repeated.Row({ x: 7 }).x }
 ```
 
 ```ts effect
+// expect-error: TS2300
 import { Data, Effect } from "effect"
 
 const slot = "x" as const
 type Repeated = Data.TaggedEnum<{
-  Row: { readonly [slot]: number; readonly ["x"]: number }
+  Row: { readonly [slot]: number; readonly ["x"]: number } // TS2300 on both members
 }>
 const Repeated = Data.taggedEnum<Repeated>()
 type IncompatibleComputed = {
-  ["x"]: number
-  // @ts-expect-error TS2717: subsequent computed members must have the same type
+  ["x"]: number // TS2300
+  // @ts-expect-error TS2300 and TS2717: subsequent computed members must have the same type
   ["x"]: string
 }
 const duplicateKeyExit = Effect.runSyncExit(Effect.sync(() => Repeated.Row({ x: 7 }).x))
@@ -533,7 +522,6 @@ const namedDataExit = Effect.runSyncExit(Effect.sync(() => D.A())) // Success({ 
 A `data` declaration may have up to 4 type parameters, the limit of Effect's own `WithGenerics`. Parameters map by position to `this["A"]`, `this["B"]`, `this["C"]` and `this["D"]`, whatever their source names. Constraints such as `<A extends string>` and defaults such as `<A = string>` are compile errors (`EK2126` and `EK2803`). Write a default on a separate TypeScript type alias. TypeScript variance annotations `in` and `out` are preserved on the generated type alias and checked by TypeScript; `const` is rejected on the source parameter with TypeScript’s `TS1277`, as on a type alias. The helper for `data Outcome<A, E>` is named `$Outcome$Definition`, or `$Outcome$Definition$2`, `$3`, … when the module already declares that name, so it never collides with a user name and is the same on every build. Noncomputed object and class member names do not occupy that helper's lexical name.
 
 ```vibe es
-// compiler-gap: pending VIP-28
 data Outcome<A, E> { Ok { value: A }; Err { error: E } }
 ```
 
@@ -553,7 +541,6 @@ const Outcome = Data.taggedEnum<$Outcome$Definition>()
 | a default on a type parameter; move it to a separate type alias | `EK2803` |
 
 ```vibe es
-// compiler-gap: pending VIP-28
 // data Box<A = string> { Value { value: A } } // EK2803
 data Box<A> { Value { value: A } }
 type StringBox<A = string> = Box<A>
@@ -574,8 +561,7 @@ const boxed: StringBox = Box.Value({ value: "hello" })
 ### Shadowing mapped built-ins
 
 ```vibe es
-// fragment
-// compiler-gap: pending VIP-15
+// expect-error: EK2109
 export {}
 type Record<K, V> = { k: K; v: V }
 schema S { a: Record<string, number> } // EK2109: no Schema value for the local type
@@ -641,7 +627,6 @@ export type Message = typeof Message.Type;
 With `strict` and `exactOptionalPropertyTypes` enabled, the same optional-key contract is written as follows. Missing keys decode successfully; a present `undefined` fails for `name` and succeeds for `explicit`.
 
 ```vibe es
-// compiler-gap: pending VIP-15
 schema Exact {
   readonly name?: string
   readonly explicit?: string | undefined

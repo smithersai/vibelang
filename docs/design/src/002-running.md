@@ -51,7 +51,6 @@ Writing the call's type arguments explicitly opts out: `expect<Effect.Effect<num
 `try e` is `yield* e`. It runs `e` and gives its success value. A failure propagates to the enclosing Effect. The static operand test adds no runtime Effect guard: an unchecked `any` follows native delegation, including its iterator errors, rather than Promise adoption or identity on a non-Promise value. A noniterable such as `5`, `undefined` or an ordinary Promise produces a native `TypeError` defect; an unchecked empty iterable can complete with `undefined`, and an ordinary iterator can delegate Effects or return a value. This does not admit typed arrays or generators as Effect operands. See the [checked runtime witness](008-runtime.md#unchecked-delegation).
 
 ```vibe es
-// compiler-gap: pending VIP-5
 effect function load(id: string) {
   const u = try fetchUser(id)
   try sleep("1 second")
@@ -73,7 +72,6 @@ function load(id: string) {
 The structural test admits both values below; running `operands()` gives `Success(15)`:
 
 ```vibe es
-// compiler-gap: pending VIP-5
 import { Config, Exit } from "effect"
 effect function operands() {
   const a = try Exit.succeed(8)
@@ -148,6 +146,7 @@ After a parenthesized handler, a function expression handler or a block-bodied a
 A block-bodied arrow closes at its `}`; a following conditional tests the recovered value, and a following `catch` runs that value if it is an Effect. The plain handler in `closedCatchChain` deliberately returns an unrun Effect (`EK0508` warning); the second `catch` runs it.
 
 ```vibe es
+// expect-warning: EK0508, EK9204
 effect function closedCatchConditional() {
   return fail("e") catch () => { return true } ? 1 : 2
 }
@@ -188,7 +187,8 @@ if (Effect.runSync(closedCatchConditional) !== 1 || Effect.runSync(closedCatchCh
 For a malformed handler consisting of a parameter list followed directly by a block, as in `try x catch (e) { B }`, recovery reports `EK0509` and does not additionally report `EK0505` for that same expression. The handler has no admitted function literal yet; this priority does not suppress independent source-context or separate syntax diagnostics. A repaired, well-formed `try x catch (e) => B` still gets `EK0505`. Write `x catch effect (e) => { B }` for an Effect handler, or `x catch (e) => { B }` for a plain fallback. Their throw and result rules remain distinct. Offer a mechanical repair only when the recovered parameters, body and source jump targets form the selected valid function literal; do not move outward jumps, invent bindings or implicitly run a plain handler's returned Effect.
 
 ```vibe es
-// compiler-gap: pending VIP-5
+// expect-warning: EK4834, EK9204
+// expect-error: EK0509
 effect function malformedCatchHandler() {
   return try fail("x") catch (e) { return 0 } // EK0509, without a redundant EK0505
 }
@@ -220,7 +220,8 @@ function repairedPlainCatchHandler() {
 For `EK0505`'s head search, [runtime-erased TypeScript expression wrappers](https://github.com/microsoft/TypeScript/blob/v5.9.3/src/compiler/transformers/ts.ts) are transparent along the unary/binary path: `as`, angle-bracket assertions where admitted, `satisfies`, non-null `!` and type-only instantiation expressions that add no call. Actual source parentheses still stop the search; grouping added by emission is not a source grouping choice. Ordinary TypeScript checks on each wrapper still apply, and calls, literals, source functions and the other existing barriers retain their rules.
 
 ```vibe es
-// compiler-gap: pending VIP-5
+// expect-warning: EK4833
+// expect-error: EK0505
 import { Effect } from "effect"
 type Nested = Effect.Effect<Effect.Effect<number, string>, string>
 effect function rejectedCatchHeads(nested: Nested, genericEffect: (<T>() => T) & Nested) {
@@ -250,7 +251,6 @@ function groupedHead(nested: Nested) {
 <a id="result-tests"></a>**Result tests.** `EK0103` and `EK0508` ask: may this value be an unrun Effect? A type answers yes when it is not `never`, `any` or `unknown` and at least one union member is an Effect. `EK0404` and `EK0507` ask whether a Promise or thenable may be left unhandled, using the same type predicate with `PromiseLike` in place of Effect, as typescript-eslint's `no-floating-promises` does. [Effectful callables](003-failures.md#effectful-callables) keep their every-member test, because they ask the opposite question. The [operand test](#operand-test) of `try` (`EK0502`), `catch` (`EK0506`) and `fork` (`EK1703`) uses assignability to `Effect.Effect<any, any, any>`. The four concurrent array operations require assignability to `ReadonlyArray<Effect.Effect<any, any, any>>` (`EK1801`); `for concurrent` requires `Iterable<unknown>` (`EK1901`), and `for try` requires `Stream.Stream<any, any, any>` (`EK2004`). These are ordinary TypeScript assignability tests, with the project's compiler options; `any` and `never` pass. Every other chapter names its test.
 
 ```vibe es
-// compiler-gap: pending VIP-5
 // fragment
 async function a(x: any) { return await x }                         // ok: any fails the result test
 async function b(e: Effect.Effect<number> | undefined) { return await e }   // EK0103: e may be an Effect
@@ -268,7 +268,7 @@ effect function c() { const p = maybeQuery() }                      // EK0404: P
 | `(try x) catch (e) => y`, `x` succeeding with an Effect | `yield* Effect.catch(yield* x, (e) => Effect.succeed(y))` |
 
 ```vibe es
-// compiler-gap: pending VIP-5
+// expect-warning: EK9204
 effect function load(id: string) {
   const g = fetchUser(id) catch () => guest
   const h = fetchUser(id) catch effect (e) => match (e) {
@@ -301,8 +301,8 @@ A handler's parameter may have a type annotation, checked as for a TypeScript ar
 A plain handler whose result type is an Effect gets a VIP-38 lint warning (`EK0508`), with the suggested spelling `catch effect (e) => try …`:
 
 ```vibe es
-// compiler-gap: pending VIP-38
-// fragment: inside an effect function
+// fragment
+// Inside an effect function:
 fetchUser(id) catch (e) => fetchUser("guest")              // warning: the fallback is an unrun Effect
 fetchUser(id) catch effect (e) => try fetchUser("guest")   // the fix: Effect.catch(fetchUser(id), () => fetchUser("guest"))
 ```
@@ -310,8 +310,8 @@ fetchUser(id) catch effect (e) => try fetchUser("guest")   // the fix: Effect.ca
 A `throw` in a plain handler is `EK0401`, with the suggested spelling `catch effect (e) => { … }`, which makes the throw a typed failure.
 
 ```vibe es
-// compiler-gap: pending VIP-4, VIP-5
-// fragment: inside an effect function
+// fragment
+// Inside an effect function:
 fetchUser(id) catch (e) => { throw new Wrapped(e) }                          // EK0401: use catch effect
 fetchUser(id) catch effect (e) => { throw new Wrapped(e) }                   // the fix: fails with Wrapped
 fetchUser(id) catch (e) => { try { throw e } catch { return 0 } }            // EK0401: even when a try statement catches it
@@ -323,7 +323,6 @@ fetchUser(id) catch (e) => () => { throw e }                                 // 
 `await` keeps exactly JavaScript's meaning and belongs to `async` functions and the module top level. `await`, `for await` and `await using` inside effect code are errors (`EK0102`), regardless of whether the operand is a Promise, Effect, fiber, Deferred or ordinary value, and so is `await` on an Effect inside an `async` function ([Functions](001-functions.md#static-rules)). `await fiber` and `await deferred` keep TypeScript's native `await` behavior and get VIP-38 lint warnings (`EK4609` and `EK4610`). In the existing `async` context, suggest `await runPromise(Fiber.join(fiber))` or `await runPromise(Deferred.await(deferred))`, using the explicit Promise bridge from VIP-1 and VIP-5. The Effect-body forms `join fiber` and `try Deferred.await(deferred)` do not run in an ordinary `async` body; suggesting them there would introduce `EK1701` or `EK0501`. Reporting the warning does not run either object or change the original result.
 
 ```vibe es
-// compiler-gap: pending VIP-5
 async function asyncFiberValue(fiber: Fiber.Fiber<number>) {
   return await runPromise(Fiber.join(fiber))
 }
@@ -388,7 +387,7 @@ The other constructs follow the Promise they mirror: `effect { }` builds a cold 
 The `await` analogy specifies source placement, precedence and evaluation order, not Promise-job scheduling. Use explicit `try yieldNow` to request a cooperative yield; it gives no global ordering guarantee for unrelated fibers. The short default-scheduler reference below observes different orders; synchronous work can also reach Effect's cooperative scheduling budget.
 
 ```vibe es
-// compiler-gap: pending VIP-5, VIP-17
+// expect-warning: EK4834
 effect function effectOrder() {
   const events: string[] = []
   fork effect { events.push("child") }
@@ -434,9 +433,8 @@ Within the Effect, a successful `try` gives the immediate success value unchange
 The imported `returnEffectInGen` lint reports returned Effects in generators under `EK38103`, with the pinned eligibility, configuration and default `"suggestion"` category ([imported lint codes](900-appendices.md#imported-lint-codes); VIP-38). Returning an Effect is not a separate `EK4802` trigger; that code covers [inferred Effect arguments](#inferred-effect-arguments). A lint’s configured severity does not change the returned value.
 
 ```vibe es
-// compiler-gap: pending VIP-1
-effect function boxedReturn(inner: Effect.Effect<number>) { return inner }
-effect function unboxedReturn(inner: Effect.Effect<number>) { return try inner }
+effect function boxedReturn(inner: number!!) { return inner }
+effect function unboxedReturn(inner: number!!) { return try inner }
 ```
 
 ```ts effect
@@ -462,7 +460,6 @@ For `inner = succeed(7)`, running `boxedReturn(inner)` gives `Success(inner)`, w
 `effect { … }` is an expression. It builds an Effect from the block without running it. Each time the Effect runs, the block runs again. It is `Effect.gen(function* () { … })`, and the same as `(effect () => { … })()`. Inside it, `try` runs Effects. Its `this`, `super` and `new.target` are the enclosing function's, passed in as for an `effect` arrow ([Functions](001-functions.md#meaning)).
 
 ```vibe es
-// compiler-gap: pending VIP-2
 effect function demo() {
   const p = effect { try Console.log("hi"); return 1 }   // an Effect, not yet run
   try p                                              // prints "hi", gives 1
@@ -529,7 +526,6 @@ const contextual: { value: 1 } = condition ? { value: 1 } : { value: 1 }
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-1, VIP-2
 effect function leaveDo() {
   const neverValue = do { return 7 }
   return neverValue // unreachable; neverValue has type never
@@ -562,7 +558,6 @@ function finalParameterVar(x = do { var y = 1 }) {} // EK0201, EK0203
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-2, VIP-19, VIP-20
 const value = do { switch (0) {} 7 } // 7
 const empty = do { switch (0) {} }   // undefined
 effect function first(rows: Stream.Stream<number>) {
@@ -600,7 +595,6 @@ The counterparts give `Success(7)`, `Success(undefined)`, `Success(7)` and `Succ
 <a id="jumps-from-expressions"></a>**Jumps from expressions.** `do` gives an expression completions no other expression has: `return`, `break` and `continue`. Around it, each stays what it is. ECMA-262 and the pinned drafts say "abrupt" in steps written when an expression could only throw, and VibeLang reads those steps as "throw": [`FinishMatch`](004-match.md#leaving-a-match), and the parameter steps of [`async` functions and generators](#parameter-defaults). The [snapshot's README](../vips/tc39-do-expressions/README.md) lists them.
 
 ```vibe es
-// compiler-gap: pending VIP-2
 const x = do { const a = 1; a + 1 }    // 2
 effect function total(o: Calc) {
   return o.add(try a(), match (n()) { when 1: 10; default: 0; })
@@ -631,7 +625,7 @@ Three things can happen in a default:
 <a id="parameter-defaults"></a>**Parameter defaults.** A parameter default can't run an Effect, as `async function g(x = await p)` is a SyntaxError. Directly evaluated formal-parameter initialization of an Effect function, arrow, method or producer rejects `await` with `EK0102` and `yield` with `EK2104`, as native async and generator parameters cannot suspend. This includes destructuring defaults and computed binding keys, and stops at nested source callable or context boundaries; it does not extend effect code into a parameter list. A `try` there remains `EK0501`.
 
 ```vibe
-// compiler-gap: pending VIP-1, VIP-21
+// expect-error: EK0102 EK2104 EK0501
 effect function badParameterAwait(value = await Promise.resolve(7)) { return 0 } // EK0102
 effect function* badParameterYield(value = yield 7) { } // EK2104
 effect function badParameterTry(value = try succeed(7)) { return 0 } // EK0501
@@ -667,7 +661,7 @@ Everything else JavaScript with the `do` proposal allows there stays, including 
 Parameters are bound at the call, left to right, so earlier defaults have run, later ones don't run, and `length` is unchanged. A default sees the parameter scope, not the body's bindings: in `function g(a = do { return 0 }, b = () => y) { const y = "body"; return b() }`, `b` reads the outer `y`. The `return` adds the type of `7` to the function's result, as any `return` does. A throw in a default follows the kind of function: an `async` function rejects; an implicit throw makes a plain function's call throw, and an `effect` function's call give an Effect that dies; a written `throw` outside an `async` function is `EK0401` ([Code outside the generator](003-failures.md#code-outside-the-generator)).
 
 ```vibe es
-// compiler-gap: pending VIP-2
+// expect-warning: EK4834
 effect function f() { const { x = do { return 9 } } = {}; return 0 }        // Success(9)
 effect function g() { const { x = do { try succeed(7) } } = {}; return x }  // Success(7)
 effect function e(x = do { return null }) { return 1 }                      // e() gives Success(null)
@@ -717,7 +711,7 @@ Each row runs the function with the iterable `xs` described; unless the row says
 [ForkExpression](900-appendices.md#forkexpression) and [JoinExpression](900-appendices.md#joinexpression). `fork` and `join` are reserved wherever [Appendix A](900-appendices.md#the-effect-parameter) parses `[+Effect]`, including parameter lists and static blocks that inherit that reservation. They cannot name a variable, parameter or label there; in an expression they begin a fiber operation. As property names they stay ordinary names. Class field and enum member initializers reset to `[~Effect]`, so ordinary helper calls to `fork` or `join` remain calls. A static block in a plain context also keeps those identifiers under VIP-17’s outside-code promise; a static block inheriting Effect reservation receives `EK1701` for the recognized operation because it cannot execute Effects. So an imported function named `join` can't be called in effect code; rename it at the import: `import { join as joinText } from "./strings.vibe"`. The owner forms `fork.in(…)`, `fork.scoped` and `fork.detached` are productions in JavaScript's `keyword.name` shape, like `new.target` and `import.meta`, not property reads. Their tokens may be separated as `new . target`'s may ([TryAll](900-appendices.md#tryall)). As with `await`, the operand may start on the next line. A [ForkOperand](900-appendices.md#forkoperand) never contains a top-level comma, so `const f = fork a(), g = fork b()` declares two fibers.
 
 ```vibe es
-// compiler-gap: pending VIP-17
+// expect-error: EK1702
 const sep = (xs: string[]) => xs.join("/")      // outside effect code: a method named join
 effect function names(parts: Fiber.Fiber<string[]>) {
   const xs = join(parts)             // joins the fiber parts
@@ -731,7 +725,7 @@ effect function bad(join: number) { }  // EK1702: join is reserved here, as awai
 The inherited reservation covers the whole head, including defaults and destructuring; it does not turn an ordinary `async` arrow into an Effect arrow. Its body can declare `fork` or `join` and uses native `await`. Outside an enclosing Effect reservation those two names also remain ordinary parameters, as VIP-17 requires.
 
 ```vibe es
-// compiler-gap: pending VIP-17
+// expect-error: EK1702
 effect function badArrowHead() {
   const f = async (join: number) => 1 // EK1702
   return 0
@@ -779,8 +773,7 @@ A line break after `fork` or `join` changes nothing, as after `await`: `join` th
 <a id="fork-operand"></a>`fork e` evaluates `e` now, on the caller, as `const p = work(await id())` calls `id` and `work` now, and runs only the Effect that `e` gives on the new fiber. So a failure of `id` in `fork worker(try id())` is the caller's, as a rejection of `await id()` is. Handling a failure on the child keeps that split, as `.catch(h)` does on a Promise:
 
 ```vibe es
-// compiler-gap: pending VIP-17
-effect function start(id: Effect.Effect<number, string>) {
+effect function start(id: number!string) {
   const child = fork Effect.catch(worker(try id), (e) => Effect.succeed(recover(e)))
   return "started"
 }
@@ -816,7 +809,6 @@ if (failed._tag !== "Failure") throw new Error("the operand left the caller")
 | `join f` | `yield* Fiber.join(f)` | |
 
 ```vibe es
-// compiler-gap: pending VIP-17
 effect function both() {
   const f = fork worker()
   const mine = try other()
@@ -879,7 +871,6 @@ These are TC39's await operations, run with `try` instead of `await`. The names 
 | `try.allSettled [a(), b()]` | `yield* Effect.all([Effect.exit(a()), Effect.exit(b())], { concurrency: "unbounded" })`; any other operand `xs`: `const $xs = xs; yield* Effect.all($xs.map(Effect.exit), { concurrency: "unbounded" })` | every element's `Exit` (success, failure, defect or interruption), a tuple for an array literal, as `Promise.allSettled` keeps one; the whole never fails, as `Promise.allSettled` never rejects; it can still be interrupted from outside. A non-literal tuple whose elements differ in type is TypeScript's error there, as in Effect TypeScript; write the elements out: `try.allSettled [t[0], t[1]]`. A literal with a spread element is built once, natively, in element order, as `[a(), ...xs, b()]` is: each spread uses its value's own iterator, so any iterable works and an array's own `Symbol.iterator` decides its elements. The counterpart then wraps that one array by index, `const $source = [a(), ...xs, b()]; yield* Effect.all($source.map(Effect.exit), { concurrency: "unbounded" })`, and iterates no array the compiler creates, so a changed `Array.prototype[Symbol.iterator]` sees exactly the calls `[a(), ...xs, b()]` makes; `try.allSettled [...new Set([a()])]` gives `[Exit]` for `a()`. TypeScript types the spread part as an array, not a tuple; the `.map` describes evaluation and widens no literal's type |
 
 ```vibe es
-// compiler-gap: pending VIP-18
 effect function page(id: string) {
   const [u, o] = try.all [fetchUser(id), fetchOrders(id)]
   const both = try all({ u: fetchUser(id), o: fetchOrders(id) }, { concurrency: "unbounded" })   // an object: the all global
@@ -929,7 +920,6 @@ function page(id: string) {
 Items run concurrently by default. With a positive integer `n`, `for concurrent(n)` runs at most `n` items at once; under Effect `4.1.1`, numeric limits below `1` run every item sequentially as `1` does. Other numbers retain Effect's native behavior. `n` is any Effect `Concurrency`, which in Effect 4.1.1 is a number or `"unbounded"`, passed unchanged to `concurrency`, without range checks or rounding (VIP-19, amended). Evaluate the limit once before entering the operand's head environment. Whether an item gets its own fiber is `Effect.forEach`'s choice. Effect 4.1.1 resolves a numeric limit `n` to `Math.max(1, n)` and takes its sequential branch exactly when that is `1`: every limit at or below `1` runs the items in order on the enclosing fiber. Every other limit, `NaN` and `"unbounded"` included, takes its parallel branch, which forks one fiber per item and starts another item only while fewer are running than the resolved limit: at most `ceil(n)` at once, and one at a time for `NaN`. So a `fork` child in the body is owned by the item's fiber, and interrupted when the item ends, in the parallel branch, and by the enclosing fiber under `for concurrent(1)`. All items join before the loop ends, and one failure interrupts the rest. Results are discarded; `try.all ids.map(…)` keeps them.
 
 ```vibe es
-// compiler-gap: pending VIP-19
 effect function numericLimit(limit: number | "unbounded") {
   let active = 0
   let maximum = 0
@@ -972,7 +962,6 @@ function numericLimit(limit: Types.Concurrency) {
 Pulling and iterator closing are also those of pinned `Effect.forEach`, not native `for…of`. At effective concurrency `1`, it pulls incrementally and does not call the iterator's `return()` merely because an item Effect fails. In the parallel branch, which every limit not resolving to `1` takes, `NaN` included, `Array.fromIterable` materializes a non-array iterable before any item Effect starts; an existing array is reused by reference, with later indexed reads and without invoking its custom iterator. A limit bounds running items, not pulling. An endless non-array iterable cannot finish that initial parallel materialization, so a would-be item failure cannot stop it. The omitted limit is `"unbounded"`; numeric limits retain Effect's own behavior without a new validation or normalization rule. No additional `IteratorClose`, streaming prefetch or snapshot copy is introduced. Native iteration errors retain their defect behavior. See the [finite lifecycle witness](008-runtime.md#iterable-lifecycle).
 
 ```vibe es
-// compiler-gap: pending VIP-19
 effect function syncAll(ids: string[]) {
   for concurrent (const id of ids) { if (id === "") continue; try syncOne(id) }
   for concurrent(limit()) (const id of ids) { if (id === "") continue; try syncOne(id) }   // limit() first
@@ -1009,7 +998,6 @@ function run(ids: string[]) {
 The head is a `const` or `let` declaration, destructuring included: ECMAScript's `ForDeclaration`, `LetOrConst ForBinding` (VIP-19, amended). `var` and an assignment head, `for concurrent (x of xs)`, are syntax errors (`EK1906`). In both `for concurrent` and `for try`, head bindings are uninitialized in a separate lexical environment while evaluating the right-hand operand, as in ECMA-262's [ForIn/OfHeadEvaluation](https://tc39.es/ecma262/2025/multipage/ecmascript-language-statements-and-declarations.html#sec-runtime-semantics-forinofheadevaluation). In `for concurrent(n)`, the limit is evaluated before entering this head environment. A closure created there captures those uninitialized cells, which are distinct from the bindings initialized for each item; calling it after the loop still encounters their temporal dead zone. The item arrives under a fresh parameter, and the head's declaration runs first in the item's generator, so a default or computed key in it may run Effects and a failure there fails that item. The body keeps its own block scope:
 
 ```vibe es
-// compiler-gap: pending VIP-19
 effect function saveAll(entries: Array<[string, number]>) {
   for concurrent (let [k, v] of entries) { try save(k, v) }
 }
@@ -1028,7 +1016,6 @@ function saveAll(entries: Array<[string, number]>) {
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-19, VIP-20
 effect function headScope() {
   let read = (): number => 0
   let x = 42
@@ -1090,7 +1077,6 @@ Native `for...of` and `for await` keep TypeScript's protocol checks and JavaScri
 The item callback runs on the current consuming fiber; an item or source callable activation creates no new fiber owner. A plain `fork` child may outlive the item and successful loop completion while its owning fiber continues, is not implicitly joined, and is interrupted when that owner terminates. The consuming fiber can itself be a concurrent item's fiber or another explicitly created child. `fork.in`, `fork.scoped` and `fork.detached` retain their own native owners; `Stream` finalization and the loop's `break` and failure behavior are unchanged. This ownership rule adds no child-start ordering or per-item scope. See the [gated ownership witness](008-runtime.md#for-try-fiber-owner).
 
 ```vibe es
-// compiler-gap: pending VIP-20
 effect function saveAll(rows: Stream.Stream<Row>) {
   for try (const row of rows) {
     if (row.skip) continue
@@ -1120,7 +1106,6 @@ function saveAll(rows: Stream.Stream<Row>) {
 A `break` or `continue` naming the `for try` itself means the unlabeled one, as in JavaScript and as `for concurrent` rules:
 
 ```vibe es
-// compiler-gap: pending VIP-20
 effect function first(rows: Stream.Stream<number>) {
   scan: for try (const row of rows) {
     if (row === 0) break scan   // return false
@@ -1132,7 +1117,7 @@ effect function first(rows: Stream.Stream<number>) {
 The head and its lowering are as for `for concurrent` (VIP-20, amended): a `const` or `let` declaration, run first in the element's generator.
 
 ```vibe es
-// compiler-gap: pending VIP-20
+// expect-warning: EK4834
 effect function first() {
   let out = 0
   for try (const [n = try succeed(7)] of Stream.make([undefined] as const)) { out = n }   // one element, the tuple [undefined]
@@ -1175,7 +1160,7 @@ For `EK2104` on `yield* e` in a nonproducer Effect body when `e` is an Effect, w
 `EK2104` does not require an outer producer:
 
 ```vibe
-// compiler-gap: pending VIP-1, VIP-21
+// expect-error: EK2104
 effect function invalid() { yield 1 } // EK2104: no producer body owns this yield
 effect function* outer() {
   const p = effect { yield 1 }       // EK2104: the block is a separate activation
@@ -1192,7 +1177,6 @@ effect function permitted() {
 `effect function*` returns a Stream, as `async function*` returns an AsyncIterable. Its body is effect code: `yield x` emits `x`, and `try` and the other constructs run Effects. A `yield` expression belongs to a producer or native generator body of its own activation, as in JavaScript: a nested callable cannot yield through an outer producer. In an `effect` function, effect arrow or `effect` block that is not itself a producer, it is `EK2104`, whether or not an outer producer exists. `yield` in a nested `effect` block, an `effect` arrow or an `effect function` handler is `EK2104`; each of those bodies is a nonproducer activation. A nested native generator retains its own TypeScript `yield`; a plain nongenerator function or arrow retains TypeScript’s own restrictions and diagnostics. A `provide` block, an interruption block, a `for try` body and a `for concurrent` body are not producers: `yield x` there is `yield* Queue.offer(queue, x)` on the enclosing producer's queue, as `yield` in a nested block of an `async function*` yields from that function. In a `for concurrent` body, each item's fiber offers its own elements, so elements arrive in offer order. It compiles to `Stream.callback` with one element of buffer. For one sequential emitter, the producer may run up to two elements ahead of its consumer: one in the buffer and one waiting to be offered. With concurrent yields, each active item fiber can evaluate a value before waiting in `Queue.offer`; the one-element buffer does not bound all pending offers or upstream work. Unbounded concurrency has no constant global lead bound. A finite concurrency limit bounds active pending emitters in addition to the buffered element and work already consumed. Exact pull semantics are not provided. `yield x` evaluates to `undefined`, as in an `async function*` consumed by `for await`: it is `(yield* Queue.offer(queue, x), undefined)`. A `yield` with no operand is `yield undefined`, so it offers `undefined`. A failure run by `try` in the body fails the stream. A written `Stream.Stream<A, E, R>` return contract checks each `yield x` against `A`, and the escaping errors and supplied requirements against `E` and `R`. Annotation compatibility is as in TypeScript on the `Stream.callback` counterpart: aliases, `any`, `unknown` and compatible unions are admitted; an incompatible annotation, including `never` for a returning producer, is `EK2102`. A union within a Stream channel is an ordinary channel type. Where the annotation supplies no single Stream channel contract, infer the body channels and check the resulting Stream against the annotation. When it is not written, `A` is the union of the `yield` operands' types, widened as for an `async function*`, or `never` with no `yield`; `E` and the body requirements `RBody` are inferred as for an `effect` function ([Functions](001-functions.md#return-types)); the resulting `Stream` requires `Exclude<RBody, Scope.Scope>` because `Stream.callback` supplies its own `Scope.Scope`. All other service requirements remain. Written `Stream` annotations keep their ordinary contract checks; this subtraction does not apply to ordinary Effect functions, foreign `Stream` values or values of type `Scope.Scope`. So `effect function* f() { yield 1; yield "a" }` returns `Stream.Stream<number | string>`. The callback takes the body types as `Stream.callback<A, E, RBody>`; its resulting environment is `Exclude<RBody, Scope.Scope>`. Effect 4.1.1 needs these type arguments because it cannot infer them from the callback. The generator gets the function's `this`, `super` and `new.target` as an `effect` function's does ([Functions](001-functions.md#meaning)); how the compiler passes these bindings is its choice.
 
 ```vibe es
-// compiler-gap: pending VIP-21
 effect function* ticks() {
   yield 1
   try sleep("1 second")
@@ -1252,7 +1236,6 @@ class Feed {
 ### Meaning
 
 ```vibe es
-// compiler-gap: pending VIP-22
 effect function pay(card: Card, user: User) {
   uninterruptible {
     const receipt = try charge(card)
@@ -1282,7 +1265,7 @@ function pay(card: Card, user: User) {
 Resolve `restore` in the same source activation as its lexical mask. A nested effect callable or `effect` block may introduce its own `uninterruptible` mask and restore that one. Generated callbacks for transparent regions and `for try` do not create a source activation boundary; the separate `for concurrent` ban above remains unchanged.
 
 ```vibe es
-// compiler-gap: pending VIP-22
+// expect-error: EK2202
 effect function invalidCapture() {
   uninterruptible {
     effect function later() { restore { return 7 } } // EK2202: outer mask
@@ -1308,7 +1291,6 @@ const delayedOwnMask = Effect.uninterruptibleMask(() => Effect.succeed(ownMask))
 The following reference enters interruptibly and requests interruption while both masks are active. The inner `restore` keeps its masked entry state, so the two recorded statements run; leaving the outer mask delivers the pending interruption. The fixture observes both the interruption Exit and the named `events` trace.
 
 ```vibe es
-// compiler-gap: pending VIP-22
 effect function nestedRestore(events: string[]) {
   const self = try Effect.withFiberSucceed(fiber => fiber)
   uninterruptible {
@@ -1355,7 +1337,7 @@ A *region body* is source code that the lowering moves into a generated callback
 For either loop, its whole item region includes head binding initialization and the body, excluding nested source functions. The existing outward-jump restrictions cover that whole region. Limit and iterable/Stream operand evaluation remain in the enclosing activation before item work; a `return` in a `do` there keeps its ordinary enclosing target. The pinned `do` proposal's independent early errors for `break` and `continue` in heads still apply.
 
 ```vibe es
-// compiler-gap: pending VIP-19, VIP-20
+// expect-error: EK1904 EK2002
 effect function rejectedHeads(rows: Array<{ n?: number }>, stream: Stream.Stream<{ n?: number }>) {
   for concurrent (const { n = do { return 7 } } of rows) {} // EK1904
   for try (const { n = do { return 7 } } of stream) {}       // EK2002
@@ -1391,7 +1373,6 @@ Syntax-directed `do` checks traverse these transparent source blocks as ordinary
 The source completion, including its value and target, remains separate from that payload. Thus a normal region ending in `7` can supply a `do` result of `7` while its layer's finalizer sees `Exit.succeed(undefined)`. A return crossing nested transparent regions supplies its value at each boundary, after inner finalizers succeed. Compiler control records never appear in the primitive success channel, and a real returned record-shaped object or Effect remains ordinary data. Tracking is fresh per execution and item, preserving cold reruns and reentrancy. A body or finalizer that fails, dies or is interrupted transfers no pending source completion; Effect decides the resulting Exit and cause combination. An inner transparent region finishes before an enclosing item's separate `for try` or `for concurrent` callback protocol runs.
 
 ```vibe es
-// compiler-gap: pending VIP-2, VIP-12, VIP-22
 effect function regionValues() {
   const provided = do { provide Layer.empty { 7 } }
   const masked = do { uninterruptible { 7 } }
@@ -1456,7 +1437,6 @@ const regionCompletions = Effect.gen(function* () {
 
 
 ```vibe es
-// compiler-gap: pending VIP-2, VIP-12
 effect function observedNormal() { return do { provide observed { 7 } } }
 effect function observedReturn(value: unknown) { provide observed { return value } }
 effect function observedBreak() { outer: while (true) { provide observed { break outer } }; return 7 }
@@ -1516,7 +1496,7 @@ const observerCleanupFailure = Effect.gen(function* () {
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-12
+// fragment
 effect function find(ids: string[]) {
   outer: for (const id of ids) {
     provide Users = testUsers {
@@ -1555,7 +1535,6 @@ function find(ids: string[]) {
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-22
 effect function f(xs: number[]) {
   let n = 0
   for (const x of xs) {
@@ -1594,7 +1573,6 @@ function f(xs: number[]) {
 The missing-topic early error applies `ContainsOuterTopic` to the body's `AssignmentExpression` child; the [PipeBody](900-appendices.md#pipebody) boundary still returns `false`, so an inner topic cannot satisfy an outer body. A body whose whole unparenthesized expression is a pipe is also an early error, making a chain sequential and left-associated. Parenthesized nested pipes retain their separate topic scopes. The existing conditional, yield, assignment and arrow covering-production errors remain, and an [EffectArrow](900-appendices.md#effectarrow) is an arrow here. These adopted pipe grammar and early errors use `EK2301` unless a more specific code applies; parenthesize a whole arrow body, `x |> (() => %)`. A pipe input cannot end in an open arrow handler, so a `|>` after `catch () => y` belongs to the handler's body, at the right edge of a pipe body too ([CatchExpression](900-appendices.md#catchexpression)). `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, the environment it just acquired. Binary XOR `^` and XOR assignment `^=` keep their TypeScript meanings; the snapshot's duplicated `%` does not remove them, and `%` remains the topic or modulo according to its syntactic position.
 
 ```vibe es
-// compiler-gap: pending VIP-23
 effect function run(id: string) {
   const n = fetchUser(id) |> retry(%, policy) |> timeout(%, "1 second")
   return try n
@@ -1612,7 +1590,7 @@ function run(id: string) {
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-23
+// expect-error: EK2301
 const one = 1 |> % + 1                     // 2
 const chain = 1 |> % + 1 |> % * 2           // 4: left-associated
 const nested = 1 |> (% + 1 |> % * 2)        // 4: explicit nesting
@@ -1622,14 +1600,14 @@ const value = 7 |> %                       // 7
 const obj = {}; const same = obj |> % === obj // true
 const xor = 1 ^ 3; let assigned = 1; assigned ^= 3 // both 2
 const modulo = 7 |> % % 4                  // 3
-const bad = 1 |> f()                       // EK2301: missing topic
+const bad = 1 |> render()                  // EK2301: missing topic
 const outer = 1 |> (2 |> % + 1)            // EK2301: outer body has no topic
 ```
 
 An unparenthesized conditional at either end of a pipe is `EK2301`: `x |> % ? 1 : 2 // EK2301`; write `(x |> %) ? 1 : 2` or `x |> (% ? 1 : 2)`.
 
 ```vibe es
-// compiler-gap: pending VIP-5, VIP-23
+// expect-error: EK2301
 effect function rightEdge() {
   const x = succeed(5)
   const a = x |> % catch () => 0 |> % + 1            // 5: + 1 belongs to the handler
