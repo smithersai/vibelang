@@ -652,6 +652,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Copying either homepage greeting example printed nothing. Both examples now start their Effect and print `Hello, Ada`.
 
+- The site home did not say what the alpha supports or which features are experimental. It now says that the alpha is the language the accepted VIPs and the specification define, and that features built from open proposals are experimental and can change in any release.
+
 - When the migrate flow moved a function with an inferred return type into a `.platform.ts` sibling, the sibling also imported host types that only another imported type used, such as `Leaf` beside `View` for `type View = { leaf: Leaf }`. Under `noUnusedLocals` that reported `TS6196`. The sibling now imports only the types its moved code reads.
 
 - File-system replacement hints could construct an operation without running it. They now show the outer `try` for reads, writes and other operations that return Effects.
