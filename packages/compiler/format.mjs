@@ -330,6 +330,8 @@ export function formatFiles(args, command = "vibelang-format") {
         if (check) { console.error(file + ": needs formatting"); failed = true }
         else writeFileSync(file, after)
       } catch (error) {
+        // formatText already names the file; name it once.
+        if (error.message.startsWith(file + ": ")) throw error
         throw new Error(file + ": " + error.message, { cause: error })
       }
     }

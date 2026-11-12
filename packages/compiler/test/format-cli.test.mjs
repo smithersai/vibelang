@@ -23,6 +23,17 @@ const run = (entry, dir, args) => spawnSync(process.execPath, [entry[1], ...entr
 })
 
 for (const entry of entries) {
+  test(entry[0] + " formatter names an unparsable file once", () => project(dir => {
+    mkdirSync(join(dir, "src"))
+    writeFileSync(join(dir, "src", "broken.vibe"), "export const a = {\n  b: : 1\n}\n")
+    for (const mode of ["--check", "--write"]) {
+      const result = run(entry, dir, [mode, "src/broken.vibe"])
+      assert.notEqual(result.status, 0, result.stderr)
+      const output = result.stderr + result.stdout
+      assert.match(output, /src\/broken\.vibe: vibelang format: 2:\d+:/, output)
+      assert.equal(output.split("src/broken.vibe").length, 2, output)
+    }
+  }))
   test(entry[0] + " formatter preserves adjacent schemas and written alias documentation", () => project(dir => {
     const source = "import { Schema } from 'effect';\n/** Value docs. */ export schema Message { id: string } /** Type docs. */ export type Message = typeof Message.Type\n"
     writeFileSync(join(dir, "existing.vibe"), source)
