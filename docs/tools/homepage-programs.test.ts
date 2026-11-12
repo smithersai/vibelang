@@ -42,8 +42,9 @@ for (const language of ["vibe", "ts"] as const) {
     expect(example).toBeDefined()
     await fc.assert(fc.asyncProperty(fc.string({ unit: "grapheme", maxLength: 16 }), async name => {
       expect(example!.source).toContain('name: "Ada"')
-      await greeting(example!.source.replace('name: "Ada"', "name: " + JSON.stringify(name)), language, "Hello, " + name)
-    }), { numRuns: 8, examples: [[""], ["Ada"], ["line\nbreak"], ['quote"slash\\']] })
+      // A replacer function: a string replacement would read $$, $& and $1 in the generated name as patterns.
+      await greeting(example!.source.replace('name: "Ada"', () => "name: " + JSON.stringify(name)), language, "Hello, " + name)
+    }), { numRuns: 8, examples: [[""], ["Ada"], ["line\nbreak"], ['quote"slash\\'], ["$$ and $& and $1"]] })
   }, runTestLimit)
 
   test("the homepage " + language + " greeting runs its missing-user fallback", async () => {
