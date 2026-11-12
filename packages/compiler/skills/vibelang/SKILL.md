@@ -42,7 +42,7 @@ VibeLang ships no quick fixes or codemods of its own before its first release. T
 | `Schema.Literals([...])` and its type | `schema Code = "a" \| "b"` |
 | `Data.TaggedEnum<{ … }>` and `Data.taggedEnum` | `data Delivery { Waiting; Sent { tracking: string } }`; `Delivery.Waiting()`, `Delivery.Sent({ tracking })`; generic `data Outcome<A, E> { Ok { value: A }; Err { error: E } }` (up to four type parameters) |
 | `Match.value(x)…Match.exhaustive` | `match (x) { when "a": 1; when { _tag: "Sent", let tracking }: tracking; default: 0; }` |
-| `Effect.forkChild(w)`, `forkIn(w, scope)`, `forkScoped(w)`, `forkDetach(w)` | `fork w()`, `try Effect.forkIn(w(), scope)`, `try Effect.forkScoped(w())`, `try Effect.forkDetach(w())` |
+| `Effect.forkChild(w)`, `forkIn(w, scope)`, `forkScoped(w)`, `forkDetach(w)` | `fork w()`, `fork.in(scope) w()`, `fork.scoped w()` (adds `Scope` to the requirements), `fork.detached w()` |
 | `Fiber.join(f)` | `join f` |
 | `Effect.all([a, b], { concurrency: "unbounded" })` | `try.all [a(), b()]`; `try all([a(), b()])` runs them one at a time, as `Effect.all` does |
 | `Effect.raceAllFirst`, `Effect.raceAll` | `try.race [a(), b()]` (first to finish), `try.any [a(), b()]` (first success) |
@@ -89,6 +89,8 @@ Readonly applies to the property, not recursively to its value.
 
 ## Idioms
 
+Each `section/page` reference below is a page at `https://vibelang.sh/section/page`.
+
 - Errors: an `error` per failure, `throw` to fail, `x catch () => fallback` for a default, `match` to choose: `error-management/014-expected-errors`, `error-management/016-fallback`, `error-management/017-matching`.
 - Services: `service Name: Type { … }` takes its whole shape from the written type; its required body admits only `static readonly key` and `static readonly defaultValue`. Body-only services keep their member rules. Only `service` declarations (abstract classes are ordinary); `service class` is `EK0909`; write `service Name` without `class`; `static readonly key = "app/Users"` overrides the derived key, and `static readonly defaultValue = () => shape` supplies a `Context.Reference` default checked as `() => Users.Shape`; `Layer.effect(S, effect { … })`, `provide` once around `main`: `requirements-management/025-services`, `requirements-management/027-layers`. Retired `layer Name: Service { … }` declarations fail with `EK2121`; write the matching `Layer.effect` or `Layer.succeed` call.
 - Retries and timeouts: pass the Effect to `retry` and `timeout`, or pipe it: `error-management/018-retrying`, `error-management/019-timing-out`.
@@ -96,9 +98,10 @@ Readonly applies to the property, not recursively to its value.
 - Resources: `scoped` and `acquireRelease`: `resource-management/029-introduction`.
 - Data: mapped generic collections use resolved TypeScript-library bindings; a shadowing type alias supplies no decoder (`EK2109`). `schema` declarations, fields of any schema (`Schema.NumberFromString`), and `Schema.Struct` for struct checks and `optionalKey`: `schema/087-basic-usage`. Tagged unions: `data`, `data-types/073-data`.
 - Matching: `vibelang-features/116-match-and-is`. Producers: `vibelang-features/112-producers`. Handlers are an open proposal, not a feature: `vibelang-features/111-control-operations-and-handlers`.
+- JSX: a `.vibex` file is a `.vibe` file with `.tsx`'s JSX; where the two compete for `<` in expression position, JSX wins (VIP-39).
 - Platform services: `platform/105-introduction`; each Node.js or web global's replacement: `platform/platform-globals`.
 - TypeScript at the edges: `Effect.try`, `tryPromise`, `runPromise`: `vibelang-features/114-vibelang-for-effect-users`.
-- Every form beside its Effect code: `vibelang-features/115-cheat-sheet`. The language decisions: `docs/design/vips/`.
+- Every form beside its Effect code: `vibelang-features/115-cheat-sheet`. The language decisions: `https://vibelang.sh/vips`.
 
 ```vibe
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"

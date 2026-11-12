@@ -17,7 +17,10 @@ test("each fork form the shipped skill teaches compiles with the release compile
   const row = skill.split("\n").find(line => line.startsWith("| `Effect.forkChild(w)`"))
   assert.ok(row, "the skill must retain its fork comparison")
   const forms = [...row.split("|")[2].matchAll(/`([^`]+)`/g)].map(match => match[1])
+  const compiled = forms.filter(form => !form.startsWith("Scope"))
   assert.ok(forms.length > 0, "the fork comparison must teach a form")
+  // VIP-17's forms, not the Effect calls they replace.
+  assert.deepEqual(forms.filter(form => !form.startsWith("Scope")), ["fork w()", "fork.in(scope) w()", "fork.scoped w()", "fork.detached w()"])
   const dir = realpathSync(mkdtempSync(join(tmpdir(), "release-skill-fork-")))
   t.after(() => rmSync(dir, { recursive: true, force: true }))
   mkdirSync(join(dir, "node_modules"))
@@ -31,7 +34,7 @@ test("each fork form the shipped skill teaches compiles with the release compile
   // Compile the taught operands with single-line and multiline bodies. Each
   // function keeps its fiber local, so scope-escape diagnostics cannot hide a
   // parser or type error in the form itself.
-  for (const [i, form] of forms.entries()) {
+  for (const [i, form] of compiled.entries()) {
     for (const [j, separator] of [" ", "\n", " /* fork form */\n"].entries()) {
       writeFileSync(join(dir, `form-${i}-${j}.vibe`),
         `export {}\neffect function w() { return 1 }\neffect function check(scope: Scope.Scope) {${separator}const fiber = ${form};${separator}try Fiber.join(fiber)${separator}}\n`)

@@ -7,7 +7,7 @@
 // 000-intro.md: compiler-gap markers classify a failing marked snippet as pending
 // rule: docs/design/src/000-intro.md#d9a91bb53ca0982d
 import { expect, test } from "bun:test"
-import { blockFilenames, classify, defaultCompiler, experimentalSection, extract, linkModules, markdownPages, normalizeOutput, parseDiagnostics, runBlock, writeProject } from "./check-snippets"
+import { blockFilenames, classify, defaultCompiler, experimentalSection, extract, linkModules, markdownPages, normalizeOutput, selectedMarkdownPages, parseDiagnostics, runBlock, writeProject } from "./check-snippets"
 
 const block = extract('```ts\nconst answer = 42\n```')[0]
 const diagnostic = (code: string, message = "example") => ({ code, message })
@@ -376,6 +376,11 @@ test("onboarding pages include the starter and check their inline wrapper exampl
 test("the user docs check includes the README, so a stale pending marker there fails", () => {
   const repo = resolve(import.meta.dir, "../..")
   expect(markdownPages(join(repo, "docs/user"))).toContain(join(repo, "README.md"))
+})
+
+test("the user docs check includes the skill agents load, so its examples compile", () => {
+  const repo = resolve(import.meta.dir, "../..")
+  expect(selectedMarkdownPages(join(repo, "docs/user"), "")).toContain(join(repo, "packages/compiler/skills/vibelang/SKILL.md"))
 })
 
 test("snippet projects share the Effect resolved from an npm-installed runtime", () => {

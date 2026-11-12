@@ -188,7 +188,9 @@ export function markdownPages(root: string): string[] {
 
 // Validate the page selection before setup or replacing earlier receipts.
 export function selectedMarkdownPages(root: string, filter: string): string[] {
-  const pages = markdownPages(root).filter(page => relative(root, page).includes(filter))
+  // Agents load the skill, so its examples are checked with the user docs.
+  const skill = root === join(repo, "docs/user") ? [join(repo, "packages/compiler/skills/vibelang/SKILL.md")] : []
+  const pages = [...markdownPages(root), ...skill].filter(page => relative(root, page).includes(filter))
   if (!pages.length) throw new Error("No Markdown pages match " + (filter ? "--filter " + JSON.stringify(filter) : "--root"))
   return pages
 }
