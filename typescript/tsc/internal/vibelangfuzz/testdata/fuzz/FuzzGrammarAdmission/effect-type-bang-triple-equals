@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:effect-type-bang-triple-equals\ndeclare const a: number\nconst strict = a as number!!=== a")

@@ -6,7 +6,7 @@ import "testing"
 // template in a substitution, and a signed exponent, each found by surveying
 // the compiler cases the lab did not derive. The lexer keeps longest-match
 // tokens; a program the first read refuses is read again with `>=` and a
-// post-bang `!=` split.
+// post-bang `!=` or `!==` split and rejoined to a following `>` or `=`.
 func TestGrammarLexTemplateAndExponent(t *testing.T) {
 	for _, c := range []struct {
 		source string
@@ -49,6 +49,11 @@ func TestGrammarRescannedTokens(t *testing.T) {
 		{"Set<string>=> f", []string{"Set", "<", "string", ">", "=>", "f"}},
 		{"number!!= 1", []string{"number", "!", "!", "=", "1"}},
 		{"a >= b", []string{"a", ">", "=", "b"}},
+		{"number!!== 1", []string{"number", "!", "!", "==", "1"}},
+		{"number!!=== 1", []string{"number", "!", "!", "===", "1"}},
+		{"(x: number): number!!=> x", []string{"(", "x", ":", "number", ")", ":", "number", "!", "!", "=>", "x"}},
+		{"x: number!!= 1; y!! != null", []string{"x", ":", "number", "!", "!", "=", "1", ";", "y", "!", "!", "!=", "null"}},
+		{"x: number!!= 1; y!! !== z", []string{"x", ":", "number", "!", "!", "=", "1", ";", "y", "!", "!", "!==", "z"}},
 	} {
 		got, ok := grammarRescannedTokens(grammarLexSource(c.source))
 		if !ok {
@@ -70,7 +75,9 @@ func TestGrammarRescannedTokens(t *testing.T) {
 			}
 		}
 	}
-	if _, ok := grammarRescannedTokens(grammarLexSource("a != b; c > d")); ok {
-		t.Error("a program with nothing to rescan reports a split")
+	for _, source := range []string{"a != b; c > d", "n!! != null", "n!! !== m"} {
+		if _, ok := grammarRescannedTokens(grammarLexSource(source)); ok {
+			t.Errorf("a program with nothing to rescan reports a split: %q", source)
+		}
 	}
 }

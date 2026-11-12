@@ -479,6 +479,10 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"import-type-dotted-arguments", grammarImportTypeDottedArgumentForms[0]},
 	{"unicode-other-id-start", "const \u2118x = 1; export const v = \u2118x"},
 	{"unicode-other-id-continue", "const a\u00b7b = 1; export const v = a\u00b7b"},
+	{"effect-type-bang-double-equals", "declare const a: number\nconst loose = a as number!!== a"},
+	{"effect-type-bang-triple-equals", "declare const a: number\nconst strict = a as number!!=== a"},
+	{"effect-type-bang-arrow", "const arrow = effect (x: number): number!!=> x + 1"},
+	{"effect-type-bang-mixed-equality", "declare const a: number\nconst d: number!!= a\nconst spaced = a as number!! != null\nconst different = a as number!! !== a"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -816,10 +820,16 @@ func grammarAdmissionMismatch(source string) (bool, string) {
 // grammarRescannedTokens splits the punctuators TypeScript rescans after a
 // type: the `>` that closes a type argument or parameter list is scanned
 // apart from a following `=`, `=>` or `>=` (`Promise<number>= p`,
-// `Set<string>=> x`), and the `=` after an effect type's bang
-// (`number!!= e`). The lexer joins them by longest match, so a program the
-// first read refused is read again with every `>=` and every `!=` after `!`
-// split. A split never adds a derivation the joined tokens already had.
+// `Set<string>=> x`), and the punctuator that follows an effect type's
+// completing bang. Chapter 001 (VIP-3): directly after `A!`, the `!` that
+// completes `A!!` is one token and scanning resumes at the next character,
+// so `A!!= v` is `A!! = v`, `A!!== v` is `A!! == v`, `A!!=== v` is
+// `A!! === v` and `(): A!!=> e` is `(): A!! => e`. The lexer joins them by
+// longest match (`!`, `!=` or `!==`), so a program the first read refused is
+// read again with every `>=` split, and every `!=` or `!==` directly after a
+// lone `!` split with its remainder rejoined to a following `>` or `=`.
+// After a completed `!!`, `!=` and `!==` stay equality operators. A split
+// never adds a derivation the joined tokens already had.
 func grammarRescannedTokens(toks []grammarToken) ([]grammarToken, bool) {
 	var out []grammarToken
 	split := false
@@ -835,14 +845,34 @@ func grammarRescannedTokens(toks []grammarToken) ([]grammarToken, bool) {
 			} else {
 				out = append(out, grammarToken{text: "=", kind: 'p'})
 			}
-		case t.kind == 'p' && t.text == "!=" && i > 0 && toks[i-1].text == "!" && !t.nl:
+		case t.kind == 'p' && (t.text == "!=" || t.text == "!==") && grammarCompletingBang(toks, i):
 			split = true
-			out = append(out, grammarToken{text: "!", kind: 'p'}, grammarToken{text: "=", kind: 'p'})
+			out = append(out, grammarToken{text: "!", kind: 'p'})
+			rest := t.text[1:]
+			if i+1 < len(toks) && toks[i+1].kind == 'p' && !toks[i+1].nl {
+				switch {
+				case rest == "=" && toks[i+1].text == ">":
+					rest, i = "=>", i+1
+				case rest == "==" && toks[i+1].text == "=":
+					rest, i = "===", i+1
+				}
+			}
+			out = append(out, grammarToken{text: rest, kind: 'p'})
 		default:
 			out = append(out, t)
 		}
 	}
 	return out, split
+}
+
+// grammarCompletingBang reports that the `!=` or `!==` at i starts with the
+// bang completing an effect type: it follows a lone `!` on the same line,
+// and that `!` does not itself complete a `!!`.
+func grammarCompletingBang(toks []grammarToken, i int) bool {
+	if i == 0 || toks[i].nl || toks[i-1].text != "!" {
+		return false
+	}
+	return !(i > 1 && toks[i-2].text == "!" && !toks[i-1].nl)
 }
 
 func checkGrammarAdmission(t *testing.T, w *Workspace, key, source string) {

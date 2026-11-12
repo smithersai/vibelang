@@ -25,6 +25,10 @@ var grammarSurveyedFormSeeds = map[string]bool{
 	"ambient-export-pattern":                   true,
 	"arrow-parenthesized-effect-return":        true,
 	"arrow-single-parenthesized-effect-return": true,
+	"effect-type-bang-double-equals":           true,
+	"effect-type-bang-triple-equals":           true,
+	"effect-type-bang-arrow":                   true,
+	"effect-type-bang-mixed-equality":          true,
 }
 
 func TestGrammarAdmissionSurveyedForms(t *testing.T) {
