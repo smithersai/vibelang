@@ -22,8 +22,8 @@
  * - Every failure is a {@link MemoryError} with a stable `code`.
  * - Nothing is deleted unless the program asks.
  *
- * This module ports `@smthrs/memory`: the namespaces, the limits, keyword
- * ranking and the byte cap are Smithers' own.
+ * This module provides namespaces, limits, keyword ranking and a byte cap
+ * compatible with `@smthrs/memory`.
  *
  * @experimental
  * @since 0.0.13
@@ -81,7 +81,7 @@ export interface Namespace {
 }
 
 /**
- * A stable failure code: Smithers' eleven.
+ * A stable failure code.
  *
  * @category errors
  * @since 0.0.13
@@ -465,7 +465,7 @@ const ARRAY_BRACKETS_BYTES = 2
 const SEPARATOR_BYTES = 1
 
 /**
- * Smithers' byte cap: rows are taken whole, best first, while they fit; the
+ * The byte cap takes whole rows, best first, while they fit; the
  * first row that does not fit is cut to the longest prefix of its text that
  * does, and nothing after it is taken. Rows with empty text are dropped. The
  * result is empty or, serialized as JSON, at most `maxBytes` UTF-8 bytes.
@@ -517,7 +517,7 @@ export const layerStore = (store: Store, options?: { readonly recall?: Recall | 
  * `@effect/sql-sqlite-node` or `@effect/sql-sqlite-bun`, or `PgClient.layer`
  * from `@effect/sql-pg`. Facts outlive the process, so a later run recalls
  * what an earlier one remembered. The table is `@smthrs/memory`'s
- * `memory_facts`, created if missing, so a Smithers store and this one read
+ * `memory_facts`, created if missing, so the two stores read
  * each other's facts. A SQL failure is a {@link MemoryError} with the code
  * `store`.
  *

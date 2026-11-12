@@ -27,7 +27,7 @@ function metadataFixture(t) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-effect-peer-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   for (const path of [
-    "scripts/release/make-packages.mjs", "scripts/release/zip-times.mjs", "scripts/release/revision.mjs", "scripts/template-files.mjs", "docs/tools/release-docs.mjs",
+    "scripts/release/make-packages.mjs", "scripts/release/zip-times.mjs", "scripts/release/packed-hygiene.mjs", "scripts/release/revision.mjs", "scripts/template-files.mjs", "docs/tools/release-docs.mjs",
     "typescript/tsc/internal/vibelang/identity.go",
     ...["compiler", "runtime", "vite", "unplugin", "create-vibelang", "typescript-shim"].map(name => "packages/" + name + "/package.json"),
     "templates/app/package.json",

@@ -25,7 +25,7 @@
  * fails with `invalid_suite` naming the offending field. `gate` is a pure
  * function from a report to a verdict and an exit code.
  *
- * Ported from Smithers' `@smthrs/evals` (`Suite`, `Runner`, `Baseline`,
+ * Compatible with `@smthrs/evals` (`Suite`, `Runner`, `Baseline`,
  * `Regression`, `Gate`, `Trials`); a baseline is the same versioned JSON.
  *
  * @experimental
@@ -760,7 +760,7 @@ export const fromJsonLines = <
 // ---------------------------------------------------------------------------
 
 /**
- * The baseline format version, Smithers' `Baseline.version`.
+ * The baseline format version.
  *
  * @category baselines
  * @since 0.0.13
@@ -865,7 +865,7 @@ const validateBaseline = (value: unknown): Effect.Effect<Baseline, EvalError> =>
   }
   let suite = artifact.suite as string | undefined
   if (suite === undefined) {
-    // A Smithers baseline written before `suite` was a top-level field.
+    // A legacy baseline written before `suite` was a top-level field.
     const first = records[0]
     if (first === undefined) return Effect.fail(baselineError("Cannot infer the baseline's suite: it has no records", "suite"))
     if (records.some((record) => record.suite !== first.suite)) {
@@ -913,7 +913,7 @@ const recordOrder = (left: BaselineRecord, right: BaselineRecord): number =>
 /**
  * A baseline as text to commit: canonical JSON (keys sorted, records sorted),
  * one record per line so a review sees one changed line per changed score.
- * The text is Smithers' baseline format and reads back with {@link load}.
+ * The versioned baseline format reads back with {@link load}.
  *
  * @category baselines
  * @since 0.0.13
@@ -934,7 +934,7 @@ export const write = (baseline: Baseline): string => {
 }
 
 /**
- * Reads a baseline written by {@link write} or by Smithers.
+ * Reads a baseline written by {@link write} or in the compatible legacy format.
  *
  * @category baselines
  * @since 0.0.13

@@ -102,7 +102,7 @@ a version bump does not require copying those fixes into the new list.
 
 The Effect-pin metadata tests execute the real packager in a temporary tree.
 Keep its local module dependencies, including `scripts/release/zip-times.mjs`,
-`scripts/release/revision.mjs` and `scripts/template-files.mjs`,
+`scripts/release/revision.mjs`, `scripts/release/packed-hygiene.mjs` and `scripts/template-files.mjs`,
 in that fixture when the packager gains an import. Its smoke check must reach
 all six missing-binary diagnostics without building or staging packages;
 the generated invalid-pin controls then check the actual metadata policy.
@@ -155,3 +155,5 @@ teaches `vibelang --fix` (only the release notes' current section counts).
 `live-site.mjs` uses only Node's built-ins, so both scripts run from a release
 bundle that holds `scripts/release/` and nothing else. `VIBELANG_REGISTRY` and
 `VIBELANG_SITE_URL` point both checks at a rehearsal registry and site.
+
+Package assembly scans every packed file, including source maps and their embedded sources, for unrelated hosting product names. Only scoped package names and repository URLs are exempt. The same check covers packages held back from publication; a failure lists the package, file and line.

@@ -1,6 +1,6 @@
 /**
  * Text helpers shared by `Experimental.Eval` and `Experimental.Scorer`,
- * ported from Smithers' `@smthrs/evals` and `@smthrs/scorers`: control
+ * compatible with `@smthrs/evals` and `@smthrs/scorers`: control
  * characters that would corrupt a CI log line, the canonical-JSON loss check
  * a scorer identity needs, and the matchers behind `Scorer.checks`.
  *

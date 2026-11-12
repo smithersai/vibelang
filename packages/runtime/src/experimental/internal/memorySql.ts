@@ -3,8 +3,8 @@
  * holds the rows: `@effect/sql-sqlite-node` or `-bun` for one file,
  * `@effect/sql-pg` for a server. The tables are `@smthrs/memory`'s
  * (`memory_facts`, `memory_notes`, `memory_note_supersedes`,
- * `memory_threads`, `memory_messages`), created if missing, so a Smithers
- * store and this one read each other's rows: a fact's value is
+ * `memory_threads`, `memory_messages`), created if missing, so the two
+ * stores read each other's rows: a fact's value is
  * `{ "content": text }`, and a value of another shape reads as its JSON
  * text. Each write that checks before it inserts runs in one transaction. A
  * SQL failure is a memory failure with the code `store`.
@@ -41,7 +41,7 @@ interface MessageRecord {
   readonly at: number | string | bigint
 }
 
-/** A fact's recallable text, as Smithers projects it. */
+/** A fact's recallable text. */
 export const searchableText = (value: unknown): string => {
   if (typeof value === "string") return value
   if (typeof value === "object" && value !== null && "content" in value && typeof value.content === "string") {
@@ -158,7 +158,7 @@ export const make = (fail: Fail, compareMessages: (left: Message, right: Message
             FROM memory_facts
             WHERE namespace_kind = ${namespace.kind} AND namespace_id = ${namespace.id}
               AND (ttl_ms IS NULL OR updated_at_ms + ttl_ms > ${now})`
-          // A note drops out once an accepted note supersedes it, as in Smithers.
+          // A note drops out once an accepted note supersedes it.
           const notes = yield* sql<NoteRecord>`SELECT notes.id AS "key", notes.namespace_kind AS "kind",
               notes.namespace_id AS "namespace", notes.text AS "text", notes.created_at_ms AS "createdAt"
             FROM memory_notes notes

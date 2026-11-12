@@ -263,7 +263,7 @@ export const history = (run: string): Stream.Stream<JournalEntry, never, Durable
   Stream.unwrap(Effect.map(Effect.service(Durable), (durable) => Stream.fromIterableEffect(durable.internals.store.entries(run))))
 
 /**
- * Smithers' retry policy, as data. The delay before attempt `n + 1` is
+ * The retry policy, as data. The delay before attempt `n + 1` is
  * `initialMs * factor ** (n - 1)`, at most `maxMs`. With neither
  * `maxAttempts` nor `expirationMs` the policy never gives up.
  *
@@ -292,7 +292,7 @@ export interface RetryPolicy {
 export type Tier = "sealed" | "compensable" | "irreversible"
 
 /**
- * The options of {@link task}, under Smithers' names.
+ * The options of {@link task}.
  *
  * @category models
  * @since 0.0.13
@@ -317,7 +317,7 @@ export interface TaskOptions<Payload extends Schema.Struct.Fields, Success exten
 }
 
 /**
- * Smithers' `Action.withCache`. A successful result is stored under a key
+ * Caches a successful result under a key
  * made of the scope, the task's key, its `implementationVersion` and the
  * call's idempotency key, and an equal call within the scope returns it
  * without running the handler.
@@ -604,7 +604,7 @@ export interface Position {
 }
 
 /**
- * Why {@link fork} or {@link rewind} refused, from Smithers' closed list.
+ * Why {@link fork} or {@link rewind} refused.
  * This engine raises `not_found`, `invalid`, `busy`, `irreversible` and
  * `compensation_failed`; the others are reserved for engines that need them.
  *
@@ -859,7 +859,7 @@ export interface Signal<Name extends string, S extends Schema.Top> {
 export const signal: <const Name extends string, S extends Schema.Top>(name: Name, schema: S) => Signal<Name, S> = waits.signal
 
 /**
- * Why a run waits: Smithers' waiting reasons.
+ * Why a run waits.
  *
  * @category waits
  * @since 0.0.13

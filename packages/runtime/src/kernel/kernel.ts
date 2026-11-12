@@ -340,7 +340,7 @@ const afterAbandon = (exit: Exit.Exit<unknown, unknown>, unwound: Exit.Exit<unkn
 
 // A continuation cannot outlive the fiber that captured it: only that fiber
 // can resume or abandon it, so once the fiber exits nobody could ever release
-// the segment (Codex review R5). The first `transfer` on a fiber installs this
+// the segment. The first `transfer` on a fiber installs this
 // frame at the bottom of its stack. When the fiber's computation finishes by
 // any path, the frame abandons every transferred continuation still
 // suspended, newest first, before the fiber's Exit is published; cleanup
@@ -443,8 +443,8 @@ const unwrap = (target: Continuation | Suspended) => (target instanceof Suspende
 // A tail-resume request: the value a compiled clause RETURNS (never yields)
 // when its last action is resuming. `return yield* resume(k, v)` inside a
 // generator clause keeps the clause's Iterator frame above Owner(k) until the
-// resumed computation finishes, so a producer leaks two frames per element
-// (Codex R10, Fable finding 1). `return tailResume(k, v)` ends the generator
+// resumed computation finishes, so a producer leaks two frames per element.
+// `return tailResume(k, v)` ends the generator
 // first; the ClauseFrame under it then resumes with Owner(k) on top, which
 // `resumeWith` drops: constant stack (K11). Only for a resume in tail
 // position: one that no try/catch/finally or `using` region of the clause
@@ -649,7 +649,7 @@ export const handle = <A, E, R>(
 // defect re-fails with its failures elected to defects; otherwise the
 // handler receives the first failure, and an interruption or a further
 // failure beside it is dropped (K14). On Effect 4.0.5, Effect.catch also
-// recovered a cause with a defect and dropped the defect (Codex review R1).
+// recovered a cause with a defect and dropped the defect.
 // One rule is VibeLang's own: a cause that carries an abandonment's sentinel
 // interrupt passes through untouched, because recovering a failure raised
 // while a handler abandons a continuation would resume abandoned code (K14d).
@@ -773,8 +773,8 @@ export const suspend = <A>(
   } as any)
 
 // Handoff for producers that cannot act on a `false` from `resume`, such as
-// event sources whose shutdown is asynchronous. Adapted from the independent
-// Codex design (experiments/reference-machine/kernel.ts `handoff`).
+// event sources whose shutdown is asynchronous. Cancellation waits for the
+// producer to stop delivering and releases values that arrive too late.
 //
 // Protocol: `register` receives `deliver` and returns `cancelAndJoin`, an
 // effect that completes only once the producer can no longer deliver. A value

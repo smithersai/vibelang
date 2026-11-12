@@ -21,7 +21,7 @@
  *   not a credential: the endpoint that calls {@link answer} authorizes its
  *   caller first.
  *
- * The logic is Smithers' `HumanTask`, over Effect's `DurableDeferred` and
+ * Built over Effect's `DurableDeferred` and
  * `DurableClock`.
  *
  * @experimental

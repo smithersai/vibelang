@@ -1,6 +1,6 @@
 /**
  * Where live scores persist: a memory store and one over Effect's
- * `SqlClient`, ported from Smithers' `ScoreStore` and `SqlScoreStore`. Each
+ * `SqlClient`. Each
  * observation has an identity, and `recordOnce` keeps the first observation
  * of an identity, so a run that is executed, joined or resumed again records
  * its score once. One table, created if missing: `score_observations`.

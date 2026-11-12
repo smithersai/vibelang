@@ -1,6 +1,6 @@
 /**
- * The rubric judge's prompt and the parser of its reply, ported from
- * Smithers' `Rubric`: criteria scored 1 to 5, fenced data the judge must not
+ * The rubric judge's prompt and the parser of its reply:
+ * criteria scored 1 to 5, fenced data the judge must not
  * follow, and a reply that must hold one JSON object with a score for every
  * criterion.
  *

@@ -18,6 +18,7 @@
 // refuses tarballs assembled with --rehearsal or --skip-build.
 import { releaseDocsProblems, typescriptShimPatch } from "../../docs/tools/release-docs.mjs"
 import { readRecord, sourceRevision, trackedFiles } from "./revision.mjs"
+import { packedHygiene } from "./packed-hygiene.mjs"
 import { zipFixedTimes } from "./zip-times.mjs"
 import { isTemplateFile } from "../template-files.mjs"
 import { execFileSync } from "node:child_process"
@@ -303,6 +304,7 @@ const manifest = []
 for (const entry of order) {
   if (entry.name === "vibelang") writeDprintPlugin(entry.dir, manifest)
   const [packed] = JSON.parse(execFileSync("npm", ["pack", entry.dir, "--pack-destination", tarballs, "--json", "--silent"], { encoding: "utf8" }))
+  problems.push(...packedHygiene(join(tarballs, packed.filename)).map(line => entry.name + ": " + line))
   const paths = new Map(packed.files.map((file) => [file.path, file]))
   for (const required of entry.required) {
     if (!paths.has(required)) problems.push(`${entry.name}: tarball lacks ${required}`)

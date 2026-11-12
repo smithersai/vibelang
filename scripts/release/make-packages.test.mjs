@@ -53,7 +53,7 @@ const checkouts = new Map()
 function fixture(t, checkout = {}) {
   const root = mkdtempSync(join(tmpdir(), "vibelang-release-test-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
-  for (const path of ["scripts/release/make-packages.mjs", "scripts/release/zip-times.mjs", "scripts/release/revision.mjs", "scripts/template-files.mjs", "docs/tools/release-docs.mjs", "LICENSE", "typescript/LICENSE.txt", "typescript/NOTICE.txt", "typescript/tsc/internal/vibelang/identity.go",
+  for (const path of ["scripts/release/make-packages.mjs", "scripts/release/zip-times.mjs", "scripts/release/packed-hygiene.mjs", "scripts/release/revision.mjs", "scripts/template-files.mjs", "docs/tools/release-docs.mjs", "LICENSE", "typescript/LICENSE.txt", "typescript/NOTICE.txt", "typescript/tsc/internal/vibelang/identity.go",
     ...["compiler", "runtime", "vite", "create-vibelang", "unplugin", "typescript-shim"].flatMap((name) => [`packages/${name}/package.json`, `packages/${name}/README.md`]),
     ...["bin", "lib", "launcher.mjs", "tsc"].map((name) => `packages/typescript-shim/${name}`),
     ...compilerSources, "editors/tree-sitter-vibelang/tree-sitter.json",
@@ -514,3 +514,48 @@ for (const [phase, output] of [
     assert.equal(existsSync(join(root, "dist-npm/tarballs/manifest.json")), false)
   })
 }
+
+test("packed release files contain no hosting product prose or reviewer provenance, including embedded sources", { timeout: 120_000 }, t => {
+  const root = fixture(t)
+  cpSync(join(repo, "packages/runtime/dist"), join(root, "packages/runtime/dist"), { recursive: true })
+  const result = assemble(root)
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+})
+
+test("release assembly rejects leaks in declarations, maps, plugins, compiler docs and the held-back shim", { timeout: 120_000 }, t => {
+  const root = fixture(t)
+  const leaks = ["packages/runtime/dist/index.d.ts", "packages/vite/src/index.js",
+    "packages/compiler/README.md", "packages/compiler/skills/vibelang/SKILL.md",
+    "packages/typescript-shim/README.md", "templates/app/AGENTS.md"]
+  for (const path of leaks) writeFileSync(join(root, path), readFileSync(join(root, path), "utf8") + "\n// Smithers leak\n")
+  writeFileSync(join(root, "packages/runtime/dist/index.js.map"),
+    JSON.stringify({ version: 3, sources: ["source.ts"], sourcesContent: ["// SMITHERS leak"] }))
+  const result = assemble(root)
+  assert.equal(result.status, 1)
+  for (const path of ["dist/index.d.ts", "dist/index.js.map", "src/index.js",
+    "package/README.md", "skills/vibelang/SKILL.md", "template/AGENTS.md"]) {
+    assert.ok(result.stderr.includes(path), result.stderr)
+  }
+  assert.match(result.stderr, /vibelang-typescript: package\/README.md/)
+  assert.match(result.stderr, /sourcesContent\[0\]/)
+})
+
+test("release assembly rejects reviewer provenance in shipped source, declarations and maps", { timeout: 120_000 }, t => {
+  const root = fixture(t)
+  for (const path of ["packages/runtime/dist/index.d.ts", "packages/vite/src/index.js",
+    "packages/compiler/README.md", "packages/compiler/skills/vibelang/SKILL.md",
+    "packages/typescript-shim/README.md", "templates/app/AGENTS.md"]) {
+    writeFileSync(join(root, path), readFileSync(join(root, path), "utf8") + "\n// Fable finding 1\n")
+  }
+  writeFileSync(join(root, "packages/runtime/dist/index.js.map"),
+    JSON.stringify({ version: 3, sources: ["source.ts"], sourcesContent: ["// Codex review R5"] }))
+  const result = assemble(root)
+  assert.equal(result.status, 1)
+  for (const path of ["dist/index.d.ts", "dist/index.js.map", "src/index.js",
+    "package/README.md", "skills/vibelang/SKILL.md", "template/AGENTS.md"]) {
+    assert.ok(result.stderr.includes(path), result.stderr)
+  }
+  assert.match(result.stderr, /vibelang-typescript: package\/README.md/)
+  assert.match(result.stderr, /sourcesContent\[0\]/)
+  assert.match(result.stderr, /\[reviewer provenance\]/)
+})

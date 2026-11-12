@@ -1,5 +1,5 @@
-/** Minimal generator protocol and helpers copied from smithersai/effect
- * packages/effect/src/internal/arbitrary/model.ts at fc84e193be6b202f34a7351cdfb693629c95a38c.
+/** Minimal generator protocol and helpers copied from
+ * https://github.com/smithersai/effect/blob/fc84e193be6b202f34a7351cdfb693629c95a38c/packages/effect/src/internal/arbitrary/model.ts.
  * No public API exposes these helpers; Effect 4.1.1's Arbitrary.gen uses this identical protocol.
  * @since 4.0.0
  */

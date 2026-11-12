@@ -24,7 +24,7 @@
  * run of the workflow is graded once, sampled by a rule a replay repeats, and
  * kept in a {@link ScoreStore}, in memory or in a SQL database.
  *
- * Ported from Smithers' `@smthrs/scorers` (`Scorer`, `Scorers`, `Checks`,
+ * Compatible with `@smthrs/scorers` (`Scorer`, `Scorers`, `Checks`,
  * `Rubric`, `Binding`, `Sampling`, `ScoreStore`, `SqlScoreStore`).
  *
  * @experimental

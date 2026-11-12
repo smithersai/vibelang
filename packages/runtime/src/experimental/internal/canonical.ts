@@ -3,7 +3,7 @@
  * sets and maps in sorted order, encoded with its Schema's JSON codec, and
  * written as RFC 8785 canonical JSON. Equal values give equal text however
  * their sets, maps and object keys were built, and a SHA-256 of that text is
- * the value's hash. `sortCollections` is ported from Smithers'
+ * the value's hash. `sortCollections` is compatible with
  * `@smthrs/canonical`, which defines it for the same VIP.
  *
  * @internal

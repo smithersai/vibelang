@@ -19,7 +19,7 @@ const sourceConditions = (conditions = []) => conditions.includes("vibelang-sour
 // passes its server conditions to the Node processes that run tests as
 // --conditions, and a package's `module` export is often bundler-only ESM.
 // Vite's own, `module` included, made Node load @opentelemetry/api's build/esm
-// in Smithers' tests. Vitest sets VITEST before it loads the config.
+// in integration tests. Vitest sets VITEST before it loads the config.
 function sourceConditionConfig(config) {
   const condition = "vibelang-source"
   const conditions = (current, defaults) => current?.includes(condition) ? {} : { conditions: [...(current ? [] : defaults), condition] }
