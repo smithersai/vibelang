@@ -59,6 +59,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Vite's child-timeout test could fail on a busy machine even after the child was killed. It now checks the deadline's kill signal and child shutdown without counting startup delays.
 
+- `(Effect).Array`, and every other collision qualifier written with the implicit `Effect` in parentheses, was `TS2339`, though `Effect.Array` names Effect's `Array` module. Parentheses around the implicit `Effect` now change nothing, as in TypeScript.
+
 - Contributor tests could report a missing or mismatched `typescript` installation as a generator failure. They now report the required version and its installation command before running reference programs.
 
 - A site deployment could fail because release notes mentioned an older package version in a bug description. Historical entries now pass the version check, while install commands on other pages still require the current version.

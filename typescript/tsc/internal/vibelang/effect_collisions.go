@@ -26,7 +26,8 @@ func effectCollisionProperty(c *checker.Checker, node *ast.Node, receiver *check
 	var left *ast.Node
 	switch {
 	case ast.IsPropertyAccessExpression(node):
-		left = node.Expression()
+		// (Effect).M is Effect.M: parentheses change no reference, as in TypeScript.
+		left = ast.SkipParentheses(node.Expression())
 	case ast.IsQualifiedName(node) && ast.IsPartOfTypeQuery(node):
 		left = node.AsQualifiedName().Left // typeof Effect.M
 	default:

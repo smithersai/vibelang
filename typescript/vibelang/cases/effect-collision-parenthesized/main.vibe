@@ -1,0 +1,10 @@
+// expect-result: [1,3,["a"]]
+// VIP-14: parentheses around the implicit Effect change nothing, as in
+// TypeScript: (Effect).Array is Effect.Array, effect/Array's module.
+const first = Option.getOrNull((Effect).Array.head([1, 2]))
+const length = ((Effect)).String.length("abc")
+const keys = (Effect).Record.keys({ a: 1 })
+
+export effect function main() {
+  return [first, length, keys]
+}
