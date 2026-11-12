@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "about": "The VibeLang version each video on vibelang.sh shows, or null when the recording does not say. docs/tools/site-videos.mjs checks it.",
+  "about": "The VibeLang version each video on vibelang.sh shows, or null when the recording does not say. docs/tools/site-videos.mjs checks it. An entry with \"removed\" names a video taken off the site, with the reason; no page may embed it and its files are not served.",
   "videos": {
     "agent-loop.mp4": {
       "version": "0.0.12",
@@ -51,7 +51,7 @@
       "poster": "nvim-lsp.jpg"
     },
     "periodic.mp4": {
-      "version": "0.0.11",
+      "version": "0.0.13",
       "poster": "periodic.jpg"
     },
     "race.mp4": {
@@ -67,7 +67,7 @@
       "poster": "runthrough.jpg"
     },
     "spec-walkthrough.mp4": {
-      "version": "0.0.12",
+      "removed": "teaches retired forms; needs a new script",
       "poster": "spec-walkthrough.jpg"
     },
     "term-create.mp4": {

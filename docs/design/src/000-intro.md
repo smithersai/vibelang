@@ -2,8 +2,6 @@
 
 This specification defines VibeLang as the accepted VibeLang Improvement Proposals (VIPs) and their public amendments define it, and nothing more. Each VIP lives in [`docs/design/vips/`](../vips/README.md), with the reasons for the decision and its history. Where this text and an accepted VIP or its public amendment disagree, the VIP wins and this text is the bug. Authorized clarifications are recorded in public amendments to the relevant VIP and its affected chapter, with the applicable pinned references and explicit reconciliation notes. Where a VIP is silent, its TypeScript or pinned TC39 counterpart applies.
 
-![Compiler demonstrations of Effects, typed recovery, services and data](/videos/spec-walkthrough.mp4)
-
 Declaration serialization has one explicit exception for [cyclic inferred types](001-functions.md#declaration-output); ordinary TypeScript recursion checking still applies.
 
 The previous specification and its decision log (`D1` to `D558`) are in `docs/design/history/`. They are historical and not normative: nothing in them is part of the language unless a VIP adds it. Every pre-VIP form no VIP adds is retired: the compiler rejects it with a clear error, and the release notes list it. Data-type methods such as `x.map` on `Option` and `Stream` are among them. The migration sections of [Tooling](007-tooling.md), whose titles name a migration or a legacy form, and [Appendix B's transitional diagnostics](900-appendices.md#transitional-compiler-diagnostics) specify those migrations and interim diagnostics. They are requirements on the toolchain during the upgrade, not forms of the language.

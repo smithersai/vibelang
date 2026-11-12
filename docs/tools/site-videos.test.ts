@@ -86,3 +86,42 @@ test("the release check fails for a video recorded with another version or none"
     "site/public/videos/unknown.mp4: records no VibeLang version, but the site states 1.2.3; re-record it with 1.2.3 and update site/videos/manifest.json"
   ])
 })
+
+const removed = (reason: string) => JSON.stringify({ schema: 1, videos: { "demo.mp4": { version: "1.2.3", poster: "demo.jpg" }, "old.mp4": { removed: reason, poster: "old.jpg" } } })
+
+test("a removed video passes when no page embeds it and its files are gone, also at release", () => {
+  const files = {
+    "site/src/pages/a.mdx": page("demo"),
+    "site/public/videos/demo.mp4": "v", "site/public/videos/demo.jpg": "p",
+    "site/videos/manifest.json": removed("teaches retired forms; needs a new script")
+  }
+  expect(check(files)).toEqual([])
+  expect(check(files, { release: "1.2.3" })).toEqual([])
+})
+
+test("a removed video that a page still embeds fails", () => {
+  const problems = check({
+    "site/src/pages/a.mdx": page("demo") + page("old"),
+    "site/public/videos/demo.mp4": "v", "site/public/videos/demo.jpg": "p",
+    "site/public/videos/old.mp4": "v", "site/public/videos/old.jpg": "p",
+    "site/videos/manifest.json": removed("teaches retired forms")
+  })
+  expect(problems.join("\n")).toMatch(/old\.mp4 was removed \(teaches retired forms\), but site\/src\/pages\/a\.mdx still embeds it/)
+})
+
+test("a removed video's file left in the site fails, and the removal needs a reason", () => {
+  const problems = check({
+    "site/src/pages/a.mdx": page("demo"),
+    "site/public/videos/demo.mp4": "v", "site/public/videos/demo.jpg": "p",
+    "site/public/videos/old.mp4": "v",
+    "site/videos/manifest.json": removed(" ")
+  })
+  expect(problems).toContain("site/public/videos/old.mp4: no page links it, but the site serves it; delete it")
+  expect(problems).toContain(`site/videos/manifest.json: old.mp4 needs "removed": the reason it was taken off the site`)
+})
+
+test("the specification walkthrough is off the site until it is re-scripted", () => {
+  const manifest = JSON.parse(readFileSync(join(repo, "site/videos/manifest.json"), "utf8"))
+  expect(manifest.videos["spec-walkthrough.mp4"].removed).toBe("teaches retired forms; needs a new script")
+  expect(readFileSync(join(repo, "docs/design/src/000-intro.md"), "utf8")).not.toContain("/videos/spec-walkthrough")
+})

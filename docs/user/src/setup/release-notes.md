@@ -471,6 +471,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The site still served a recording of the retired `vibelang --fix` that no page linked, and nothing tied a page's video to the compiler version it shows. The recording is gone, and the site deploy now refuses a video recorded with a release other than the one the site states.
 
+- The specification overview played a walkthrough that teaches forms 0.0.13 rejects. It is off the site until it is re-recorded, and the cheat sheet now plays a 0.0.13 recording.
+
 - A child config that set `vibelang.diagnostics` to `null` to clear an inherited legacy severity map was rejected with TS5024. An explicit `null`, like `{}`, now replaces the inherited map with no entries.
 
 - The proposal overview displayed internal review metadata. It now states the retirement rule without those details.

@@ -38,7 +38,6 @@ const runs = [
   ["site/scripts/patch-vocs-page-landmarks.test.mjs", "site/package.json", "scripts/patch-vocs-page-landmarks.test.mjs"],
   ["site/scripts/heading-order.test.mjs", "site/package.json", "scripts/heading-order.test.mjs"],
   ["site/scripts/table-headers.test.mjs", "site/package.json", "scripts/table-headers.test.mjs"],
-  ["site/scripts/specification-video-playback.test.mjs", "site/package.json", "scripts/specification-video-playback.test.mjs"],
   ["site/scripts/proposal-overview.test.mjs", "site/package.json", "scripts/proposal-overview.test.mjs"],
   ["site/scripts/mobile-layout.test.mjs", "site/package.json", "scripts/mobile-layout.test.mjs"],
   ["site/scripts/share-metadata.test.mjs", "site/package.json", "scripts/share-metadata.test.mjs"],

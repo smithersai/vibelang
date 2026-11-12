@@ -58,6 +58,10 @@ export function videoManifestProblems(repository = root, { release } = {}) {
 
   for (const [video, { poster, pages }] of embeds) {
     const entry = videos[video]
+    if (entry?.removed) {
+      problems.push(`site/videos/manifest.json: ${video} was removed (${entry.removed}), but ${pages[0]} still embeds it`)
+      continue
+    }
     if (!entry) {
       problems.push(`site/videos/manifest.json: ${video} is embedded by ${pages[0]} but has no entry; record the VibeLang version it shows`)
       continue
@@ -65,6 +69,10 @@ export function videoManifestProblems(repository = root, { release } = {}) {
     if (entry.poster !== poster) problems.push(`site/videos/manifest.json: ${video} lists poster ${entry.poster}, but ${pages[0]} uses ${poster}`)
   }
   for (const [video, entry] of Object.entries(videos)) {
+    if (entry.removed !== undefined) {
+      if (typeof entry.removed !== "string" || !entry.removed.trim()) problems.push(`site/videos/manifest.json: ${video} needs "removed": the reason it was taken off the site`)
+      continue
+    }
     if (!embeds.has(video)) problems.push(`site/videos/manifest.json: ${video} is listed but no page embeds it; remove the entry and the file`)
     if (entry.version !== null && !/^\d+\.\d+\.\d+$/.test(entry.version ?? "")) problems.push(`site/videos/manifest.json: ${video} needs "version": the VibeLang version it shows, or null when unknown`)
   }
@@ -88,6 +96,7 @@ export function videoManifestProblems(repository = root, { release } = {}) {
   for (const { path, receipt } of receipts) {
     const video = digests.get(receipt.videoSha256)
     if (!video) continue
+    if (videos[video].removed !== undefined) continue
     const recorded = videos[video].version
     if (receipt.compilerVersion && recorded !== receipt.compilerVersion) {
       problems.push(`site/videos/manifest.json: ${video} records ${recorded}, but ${path} recorded it with ${receipt.compilerVersion}`)
@@ -102,6 +111,7 @@ export function videoManifestProblems(repository = root, { release } = {}) {
 
   if (release !== undefined) {
     for (const [video, entry] of Object.entries(videos)) {
+      if (entry.removed !== undefined) continue
       if (entry.version !== release) {
         const shown = entry.version === null ? "records no VibeLang version" : `records VibeLang ${entry.version}`
         problems.push(`site/public/videos/${video}: ${shown}, but the site states ${release}; re-record it with ${release} and update site/videos/manifest.json`)
