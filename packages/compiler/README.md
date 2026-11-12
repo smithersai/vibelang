@@ -477,7 +477,7 @@ for configuration formats and Oxfmt integration.
 ## Build an ast-grep grammar
 
 `vibelang/ast-grep` exports `buildAstGrep(output)`, also available as
-`vibelang-ast-grep <output>`. It compiles every shipped tree-sitter grammar
+`vibelang-ast-grep [output]` (`--help` prints its usage). It compiles every shipped tree-sitter grammar
 into one shared library and returns its absolute path. It requires a C
 compiler; Windows developers use WSL. Register the library and the appropriate
 `vibe` or `vibex` grammar in `sgconfig.yml`. See

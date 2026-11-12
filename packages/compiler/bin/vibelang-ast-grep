@@ -1,4 +1,16 @@
 #!/usr/bin/env node
 import { buildAstGrep } from "../ast-grep.mjs"
-try { console.log(buildAstGrep(process.argv[2])) }
-catch (error) { console.error(error.message); process.exitCode = 1 }
+const usage = `Usage: vibelang-ast-grep [output]
+
+Compiles every tree-sitter grammar shipped with vibelang into one ast-grep parser library at output
+(default: vibelang.dylib on macOS, vibelang.so elsewhere) and prints its path. Requires a C compiler.`
+const args = process.argv.slice(2)
+if (args.length === 1 && (args[0] === "--help" || args[0] === "-h")) console.log(usage)
+else if (args.length > 1 || args.some(arg => arg.startsWith("-"))) {
+  // An option is never an output path: refuse it rather than compile into a file named after it.
+  console.error(usage)
+  process.exitCode = 2
+} else {
+  try { console.log(buildAstGrep(args[0])) }
+  catch (error) { console.error(error.message); process.exitCode = 1 }
+}

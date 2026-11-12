@@ -414,8 +414,10 @@ repeated setup. Typed or uncertain entries keep their native preloads.
 
 ## ast-grep
 
-`vibelang-ast-grep <output>` compiles every parser declared by
+`vibelang-ast-grep [output]` compiles every parser declared by
 `editors/tree-sitter-vibelang/tree-sitter.json` into one shared library.
+The default output is `vibelang.dylib` on macOS and `vibelang.so` elsewhere;
+`vibelang-ast-grep --help` prints the usage, and any other option exits with status 2.
 The compiler npm release includes the manifest and each grammar's `src`
 directory; a C compiler is required. Legacy packages with a single flat
 parser remain supported.

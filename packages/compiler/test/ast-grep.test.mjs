@@ -1,9 +1,9 @@
 import assert from "node:assert/strict"
-import { execFileSync } from "node:child_process"
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs"
+import { execFileSync, spawnSync } from "node:child_process"
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import { pathToFileURL } from "node:url"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import { test } from "node:test"
 import fc from "fast-check"
 
@@ -53,4 +53,35 @@ test("generated grammar layouts preserve every exported parser symbol", native, 
   fc.assert(fc.property(fc.uniqueArray(fc.constantFrom("vibex", "nested/tsx", "other"), { minLength: 1, maxLength: 3 }), paths => {
     build([".", ...paths])
   }), { seed: 3912, numRuns: 12 })
+})
+
+const astGrepBin = fileURLToPath(new URL("../bin/vibelang-ast-grep", import.meta.url))
+const emptyDir = t => {
+  const dir = mkdtempSync(join(tmpdir(), "vibelang-ast-grep-cli-"))
+  t.after(() => rmSync(dir, { recursive: true, force: true }))
+  return dir
+}
+
+test("vibelang-ast-grep --help and -h print usage and write no file", t => {
+  const dir = emptyDir(t)
+  for (const flag of ["--help", "-h"]) {
+    const result = spawnSync(process.execPath, [astGrepBin, flag], { cwd: dir, encoding: "utf8" })
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, /^Usage: vibelang-ast-grep \[output\]/)
+  }
+  assert.deepEqual(readdirSync(dir), [])
+})
+
+test("vibelang-ast-grep refuses any other option or extra argument with usage and status 2", t => {
+  const dir = emptyDir(t)
+  const option = fc.array(fc.constantFrom(..."abcdhvxyz=-0"), { maxLength: 8 }).map(chars => "-" + chars.join(""))
+    .filter(arg => arg !== "-h" && arg !== "--help")
+  const argv = fc.oneof(option.map(arg => [arg]), fc.tuple(option, fc.constantFrom("out.so", "--help")),
+    fc.constant(["a.so", "b.so"]), fc.constant(["--help", "-h"]))
+  fc.assert(fc.property(argv, args => {
+    const result = spawnSync(process.execPath, [astGrepBin, ...args], { cwd: dir, encoding: "utf8" })
+    assert.equal(result.status, 2, JSON.stringify(args))
+    assert.match(result.stderr, /^Usage: vibelang-ast-grep \[output\]/)
+    assert.deepEqual(readdirSync(dir), [], JSON.stringify(args))
+  }), { seed: 1013, numRuns: 12 })
 })
