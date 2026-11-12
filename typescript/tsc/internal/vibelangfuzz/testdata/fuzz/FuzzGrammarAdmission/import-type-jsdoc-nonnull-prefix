@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-type-jsdoc-nonnull-prefix\ntype A = import(\"./m\").T<!Array.<Missing<>,>>;")

@@ -15,6 +15,10 @@ import (
 // unchecked list alternatives and the dotted reference; expression
 // initializers and computed property expressions keep their native grammar,
 // and a type reference outside an import argument keeps TS1099/TS1009/TS8020.
+// TypeScript's parser also reads the JSDoc type forms `?T`, `T?`, `*` and
+// `!T` in a type position and reports them from the checker (TS17019,
+// TS17020, TS8020), which an import type's arguments never reach either, so
+// the scoped copies take those forms too.
 func (g *grammarCfg) importTypeArgumentRecovery() {
 	selected := map[int]bool{}
 	for _, name := range strings.Fields(`
@@ -98,6 +102,31 @@ UnshapedElementList UnshapedElement
 				{kind: grammarSymNT, nt: arguments, text: g.names[arguments]},
 			}, "ts", false)
 		}
+	}
+	// parseNonArrayType reads `*` (JSDocAllType), `?` Type (JSDocNullableType)
+	// and `!` NonArrayType (JSDocNonNullableType); parsePostfixTypeOrHigher
+	// reads a postfix `?` on the same line. The checker reports them where it
+	// checks the type, which an import type's arguments never reach.
+	scopedType := copies[g.index["Type"]]
+	for _, name := range []string{"PrimaryType", "ArrowSafePrimaryType"} {
+		if scoped, ok := copies[g.index[name]]; ok {
+			g.add(scoped, []grammarGsym{{kind: grammarSymTok, text: "*"}}, "ts", false)
+			g.add(scoped, []grammarGsym{
+				{kind: grammarSymTok, text: "?"},
+				{kind: grammarSymNT, nt: scopedType, text: g.names[scopedType]},
+			}, "ts", false)
+			g.add(scoped, []grammarGsym{
+				{kind: grammarSymTok, text: "!"},
+				{kind: grammarSymNT, nt: scoped, text: g.names[scoped]},
+			}, "ts", false)
+		}
+	}
+	if postfix, ok := copies[g.index["PostfixType"]]; ok {
+		g.add(postfix, []grammarGsym{
+			{kind: grammarSymNT, nt: postfix, text: g.names[postfix]},
+			{kind: grammarSymNoLT},
+			{kind: grammarSymTok, text: "?"},
+		}, "ts", false)
 	}
 	for i := range g.rules {
 		if g.names[g.rules[i].lhs] == "ImportType" {

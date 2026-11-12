@@ -512,6 +512,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"export-star-as-string", grammarDirectedForms[14]},
 	{"import-type-attributes", grammarDirectedTypeForms[0]},
 	{"override-parameter-property", grammarDirectedTypeForms[5]},
+	{"import-type-jsdoc-nonnull-prefix", grammarImportJsdocForms[5]},
+	{"import-type-jsdoc-nullable", grammarImportJsdocForms[0]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
