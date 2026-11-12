@@ -54,6 +54,8 @@ test("a scaffold installs, tests source without a build, builds, starts, and rep
   writeFileSync(cli, 'export const greeting: string = "from TypeScript"\n')
   const built = run("bun", ["run", "build"], app)
   assert.equal(built.status, 0, built.output)
+  // The starter turns Effect's lint rules on, and its own code reports none.
+  assert.doesNotMatch(built.output, /\b(?:error|warning|suggestion) [A-Z]+\d+/, "the starter builds without diagnostics")
   assert.ok(existsSync(join(app, "dist/cli.js")), "standalone TypeScript is emitted")
   assert.ok(!existsSync(join(app, "dist/greeting.test.js")), "source tests are not emitted")
   assert.ok(existsSync(join(app, "dist/main.js")))
@@ -86,6 +88,12 @@ test("a scaffold installs, tests source without a build, builds, starts, and rep
 export effect function later() { try sleep("1 millis"); return 7 }
 export function plain(value: number): number { return value + 1 }
 `)
+  const floating = join(app, "src/floating.vibe")
+  writeFileSync(floating, "export effect function dropped() { Effect.succeed(1) }\n")
+  const linted = run(join(app, "node_modules/.bin/vibelang"), ["lint"], app)
+  assert.equal(linted.status, 1, linted.output)
+  assert.match(linted.output, /error EK3801: floatingEffect/, "vibelang lint runs Effect's rules on the starter")
+  rmSync(floating)
   const caller = join(app, "src/use.ts")
   const source = `import { Effect } from "effect"
 import { clampAll, later, plain } from "./t5.vibe"
@@ -115,7 +123,7 @@ console.log(plain(4))
 
   const main = join(app, "src/main.vibe")
   const original = readFileSync(main, "utf8")
-  writeFileSync(main, 'import * as NodeRuntime from "@effect/platform-node/NodeRuntime"\nservice Required { read(): string!! }\nexport effect function main() { const required = try Required; try Console.log(try required.read()) }\nNodeRuntime.runMain(main())\n')
+  writeFileSync(main, 'import * as NodeRuntime from "@effect/platform-node/NodeRuntime"\nservice Required { read(): string!! }\neffect function main() { const required = try Required; try Console.log(try required.read()) }\nNodeRuntime.runMain(main())\n')
   rmSync(join(app, "dist"), { recursive: true, force: true })
   const missing = run("bun", ["run", "build"], app)
   assert.notEqual(missing.status, 0, missing.output)

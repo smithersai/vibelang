@@ -41,7 +41,7 @@ export async function recordCompilerFeedback() {
     const after = readFileSync(corrected, 'utf8')
     writeFileSync(join(app, 'src/main.vibe'), source)
     const diagnostic = recordingOutput(run(['bun', 'run', 'build'], app, 1), app)
-    if (!/EK4801/.test(diagnostic)) throw new Error('Expected the real floating-Effect diagnostic.')
+    if (!/error EK3801: floatingEffect:/.test(diagnostic)) throw new Error("Expected the starter's floatingEffect diagnostic.")
     writeFileSync(join(app, 'src/main.vibe'), after)
     const output = recordingOutput(run(['bun', 'run', 'start'], app), app)
     if (!output.includes('Hello, Ada!')) throw new Error('The corrected program must run its greeting.')

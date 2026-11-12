@@ -176,6 +176,18 @@ The recording enables `@effect/language-service` in the project's `compilerOptio
 
 Lint leaves existing declaration sidecars and incremental build information unchanged and creates no output files.
 
+Without a `@effect/language-service` plugin entry, `vibelang lint` runs only VibeLang's own checks. The starter's `tsconfig.json` turns the plugin on:
+
+```json
+{
+  "compilerOptions": {
+    "plugins": [{ "name": "@effect/language-service", "diagnosticSeverity": { "unstableApiUsage": "off" } }]
+  }
+}
+```
+
+Effect 4.1.1 marks `NodeRuntime.runMain` `@stability unstable`, so `unstableApiUsage` (`EK38130`) warns at each call, and, as in Effect's TypeScript compiler, an imported warning fails the build. The starter pins Effect to one exact version, so an Effect update is already a deliberate change; remove the override to see each unstable API a project uses. `lazyEffect` (`EK3858`) suggests a constant in place of an exported zero-argument `effect function`, so the starter's `main` is not exported.
+
 `vibelang` runs Effect's type-aware lint rules, the `effecttsgo/*` rules of [`@effect/tsgo`](https://github.com/Effect-TS/tsgo), inside the compiler on selected `.ts` and `.vibe` inputs (VIP-38), keeping the pinned upstream rule/file eligibility and declaration/library exclusions. VibeLang-specific language checks remain confined to `.vibe`. They run wherever VibeLang reports diagnostics: every `vibelang` build, the language server, and `vibelang lint` for CI. The repository's existing Effect language-service configuration, the `@effect/language-service` plugin in `tsconfig.json`, selects and configures them, so a lint script covers `.vibe` as it covers `.ts`. A `vibe.severities` entry only overrides a rule of the resolved plugin. It does not activate an absent plugin or override `diagnosticSeverity: null` or `diagnostics: false`:
 
 ```json

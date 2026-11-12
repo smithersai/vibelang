@@ -4,9 +4,9 @@ Run the setup command in an existing project directory containing `package.json`
 
 `npx vibelang agents init` sets up a repository's coding agents for `.vibe` files. Each agent gets the VibeLang skill, instructions in `AGENTS.md`, the language server where it has an LSP client, and a check after each edit that returns the errors to the agent. Each part uses the agent's own configuration files.
 
-![The compiler tells the agent what to write instead](/videos/agent-loop.mp4)
+![The compiler reports a discarded Effect, and the agent runs it with try](/videos/agent-loop.mp4)
 
-The example adds `try` to run a discarded Effect, then checks that the program prints its greeting.
+In a new starter, Effect's `floatingEffect` rule reports the discarded Effect as `EK3801`. The example adds `try` to run it, then checks that the program prints its greeting.
 
 ## 1. Set up the repository
 

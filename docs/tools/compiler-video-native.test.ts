@@ -10,7 +10,7 @@ const repo = resolve(import.meta.dir, "../..")
 const before = readFileSync(join(repo, "site/videos/compiler-feedback/before.vibe"), "utf8")
 const after = readFileSync(join(repo, "site/videos/compiler-feedback/after.vibe"), "utf8")
 
-test("the recorded feedback rejects discarded Effects and runs their correction", async () => {
+test("the starter rejects a discarded Effect with Effect's floatingEffect rule and runs its correction", async () => {
   await fc.assert(fc.asyncProperty(
     fc.stringMatching(/^[A-Za-z]{1,16}$/),
     async name => {
@@ -28,7 +28,10 @@ test("the recorded feedback rejects discarded Effects and runs their correction"
         const rejected = await command([defaultCompiler(), "--noEmit"], app)
         expect([1, 2]).toContain(rejected.exitCode)
         expect(rejected.signalCode).toBe(null)
-        expect(rejected.stdout + rejected.stderr).toContain("EK4801")
+        // The starter turns on @effect/language-service, so its imported floatingEffect
+        // rule reports the discarded Effect as EK3801 rather than the plugin-less EK4801.
+        expect(rejected.stdout + rejected.stderr).toContain("error EK3801: floatingEffect:")
+        expect(rejected.stdout + rejected.stderr).not.toContain("EK4801")
         writeFileSync(file, variant(after))
         const built = await command([defaultCompiler()], app)
         expect(built.exitCode).toBe(0)

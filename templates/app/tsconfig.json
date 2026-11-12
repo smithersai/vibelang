@@ -14,7 +14,15 @@
     "noEmitOnError": true,
     "rewriteRelativeImportExtensions": true,
     "skipLibCheck": true,
-    "types": []
+    "types": [],
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "unstableApiUsage": "off"
+        }
+      }
+    ]
   },
   "include": [
     "src"

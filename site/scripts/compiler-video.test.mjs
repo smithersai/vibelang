@@ -16,7 +16,7 @@ test('the compiler-feedback recording contains an observed diagnostic and passin
   assert.equal(proof.commands.length, 2)
   assert.equal(proof.commands[0].command, 'bun run build')
   assert.equal(proof.commands[0].exitCode, 1)
-  assert.match(proof.commands[0].output, /EK4801/)
+  assert.match(proof.commands[0].output, /error EK3801: floatingEffect:/)
   assert.equal(proof.commands[1].command, 'bun run start')
   assert.equal(proof.commands[1].exitCode, 0)
   assert.match(proof.commands[1].output, /Hello, Ada!/)

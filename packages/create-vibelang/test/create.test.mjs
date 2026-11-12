@@ -306,3 +306,13 @@ test("the starter keeps generated declarations in an ignored sidecar directory",
   assert.match(vitest, /include: \["src\/\*\*\/\*\.test\.\{vibe,vibex\}"\]/)
   assert.deepEqual(tsconfig.exclude, ["src/**/*.test.vibe", "src/**/*.test.vibex"])
 })
+
+// vibelang lint runs Effect's rules only with this plugin entry. The override
+// keeps NodeRuntime.runMain, which Effect marks unstable, from failing builds.
+test("the starter turns on Effect's lint rules and stays clean under them", () => {
+  const template = new URL("../../../templates/app/", import.meta.url)
+  const tsconfig = JSON.parse(readFileSync(new URL("tsconfig.json", template), "utf8"))
+  assert.deepEqual(tsconfig.compilerOptions.plugins, [{ name: "@effect/language-service", diagnosticSeverity: { unstableApiUsage: "off" } }])
+  const main = readFileSync(new URL("src/main.vibe", template), "utf8")
+  assert.match(main, /^effect function main\(\)/m, "an exported zero-argument effect function reports lazyEffect")
+})

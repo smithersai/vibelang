@@ -7,7 +7,7 @@ service Greeter {
 
 const GreeterLive = Layer.succeed(Greeter, { greet: greeting })
 
-export effect function main() {
+effect function main() {
   provide GreeterLive {
     const greeter = try Greeter
     try Console.log(try greeter.greet("VibeLang"))

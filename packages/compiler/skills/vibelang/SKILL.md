@@ -85,7 +85,7 @@ Readonly applies to the property, not recursively to its value.
 
 ## Linting
 
-`vibelang lint` runs Effect's rules. A repository's Oxlint rules run on `.vibe` through the lint script setup wires: ESLint for JS plugin rules, and `node .vibelang/oxlint.mjs --vibe-native` for Oxlint's native rules on the projected TypeScript. To see what a linter reads, run `vibelang --ts-projection src/app.vibe < src/app.vibe`; reports on generated code are dropped. The native pass does not fix projected text. In file-list runners, `--fix` applies the ESLint pass's source fixes to selected `.vibe` and `.vibex` files.
+`vibelang lint` runs Effect's rules when the project's `compilerOptions.plugins` names `@effect/language-service`, as the starter's `tsconfig.json` does; without that entry it runs only VibeLang's own checks. A repository's Oxlint rules run on `.vibe` through the lint script setup wires: ESLint for JS plugin rules, and `node .vibelang/oxlint.mjs --vibe-native` for Oxlint's native rules on the projected TypeScript. To see what a linter reads, run `vibelang --ts-projection src/app.vibe < src/app.vibe`; reports on generated code are dropped. The native pass does not fix projected text. In file-list runners, `--fix` applies the ESLint pass's source fixes to selected `.vibe` and `.vibex` files.
 
 ## Idioms
 
