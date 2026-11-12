@@ -14,6 +14,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The experimental opt-in section implied that every alias and subpath import was checked. It now states the support boundary and documents union-typed aliases and inline module bridges that can run experimental operations without opting in.
 
+- Moving a declaration into a module body could make an unchanged recursive type alias fail API verification. The check now recognizes the alias's unchanged bindings and dependencies while still rejecting changed types or documentation.
+
 - Known limitations omitted type-only experimental references and said re-exports through TypeScript were refused. It now lists the indexed, utility, mapped and conditional types that pass without opt-in, and explains which bridge files pass.
 
 - Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.

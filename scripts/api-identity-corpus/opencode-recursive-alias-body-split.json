@@ -1,0 +1,18 @@
+{
+  "issue": "opencode: an unchanged recursive alias loses identity when an unrelated cyclic dependency moves behind a named body re-export",
+  "property": "api-identity-recursive-alias-body-split",
+  "rule": "the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check)",
+  "spec": "docs/design/src/001-functions.md#api-identity",
+  "before": {
+    "runtime.d.ts": "import { Effect } from \"effect\";\nimport type { Interpreter } from \"./interpreter.js\";\nexport type Services<T> = ServicesOf<T, []>;\ntype ServicesOf<T, Depth extends ReadonlyArray<unknown>> = Depth[\"length\"] extends 8 ? never : T extends { readonly _tag: \"CodeModeTool\"; readonly execute: (input: unknown) => Effect.Effect<unknown, unknown, infer R> } ? R : T extends object ? string extends keyof T ? ServicesOf<T[string], [...Depth, unknown]> : ServicesOf<T[keyof T], [...Depth, unknown]> : never;\nexport declare class Runtime<R> { readonly interpreter: Interpreter<R> }\n",
+    "interpreter.d.ts": "import type { Runtime } from \"./runtime.js\";\nexport declare class Interpreter<R> { private root; readonly runtime: Runtime<R>; readonly runner: import(\"./runner.js\").Runner<R> }\n",
+    "runner.d.ts": "import type { Interpreter } from \"./interpreter.js\";\nexport type Signal = { readonly value: string };\n/** Scheduler. */ export declare class Runner<R> { private root; readonly interpreter: Interpreter<R>; run(): Signal }\n"
+  },
+  "after": {
+    "runtime.d.ts": "import { Effect } from \"effect\";\nimport type { Interpreter } from \"./interpreter.js\";\nexport type Services<T> = ServicesOf<T, []>;\ntype ServicesOf<T, Depth extends ReadonlyArray<unknown>> = Depth[\"length\"] extends 8 ? never : T extends { readonly _tag: \"CodeModeTool\"; readonly execute: (input: unknown) => Effect.Effect<unknown, unknown, infer R> } ? R : T extends object ? string extends keyof T ? ServicesOf<T[string], [...Depth, unknown]> : ServicesOf<T[keyof T], [...Depth, unknown]> : never;\nexport declare class Runtime<R> { readonly interpreter: Interpreter<R> }\n",
+    "interpreter.d.ts": "export * from \"./interpreter.vibe.body.js\";\n",
+    "interpreter.vibe.body.d.ts": "import type { Runtime } from \"./runtime.js\";\nexport declare class Interpreter<R> { private root; readonly runtime: Runtime<R>; readonly runner: import(\"./runner.js\").Runner<R> }\n",
+    "runner.d.ts": "export type Signal = { readonly value: string };\nexport { Runner } from \"./runner.vibe.body.js\";\n",
+    "runner.vibe.body.d.ts": "import type { Interpreter } from \"./interpreter.js\";\nimport type { Signal } from \"./runner.js\";\n/** Scheduler. */ export declare class Runner<R> { private root; readonly interpreter: Interpreter<R>; run(): Signal }\n"
+  }
+}

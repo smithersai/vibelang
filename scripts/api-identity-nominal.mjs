@@ -6,7 +6,7 @@
 import { relative, resolve } from "node:path"
 import { ownsFile } from "./api-identity-ownership.mjs"
 
-export function alignNominalIdentity(ts, program, before, after, brandFile, entryMaps, ambientNames = new Map()) {
+export function alignNominalIdentity(ts, program, before, after, brandFile, entryMaps, ambientNames = new Map(), sameAlias = () => false) {
   const printer = ts.createPrinter()
   const checker = program.getTypeChecker()
   const factory = ts.factory
@@ -177,7 +177,8 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     append(b.source, `export type ${id}_form = <${parameters}>() => ${withoutInfer(b)};\n`)
     forwarded.set(b.statement, { file: a.source.fileName, id })
     inferProofs.push({ entrypoint: a.path, export: name, a: `import(${JSON.stringify(a.source.fileName)}).${id}_form`,
-      b: `import(${JSON.stringify(b.source.fileName)}).${id}_form` })
+      b: `import(${JSON.stringify(b.source.fileName)}).${id}_form`,
+      bindingIdentity: sameAlias(checker.getSymbolAtLocation(a.statement.name), checker.getSymbolAtLocation(b.statement.name)) })
   }
   const afterBindings = inferBindings(after)
   for (const [key, a] of inferBindings(before)) {

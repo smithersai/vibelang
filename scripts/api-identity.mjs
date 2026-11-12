@@ -782,6 +782,82 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
   return equivalent
 }
 
+// Prove an alias independently of unrelated declarations in its source file.
+// Equal printed syntax is necessary, but every referenced binding must also
+// correspond: a local alias is followed recursively, while other declarations
+// require the complete module-closure proof. Bound parameters and infer/member
+// symbols correspond only at the same positions inside the paired aliases.
+// Failed dependencies invalidate their ancestors, including recursive cycles.
+function typeAliasIdentity(ts, checker, equivalents) {
+  const printer = ts.createPrinter({ removeComments: true })
+  const text = node => ts.isSourceFile(node) ? printer.printFile(node) :
+    printer.printNode(ts.EmitHint.Unspecified, node, node.getSourceFile())
+  const canonical = file => equivalents.get(file) ?? file
+  const path = node => {
+    const parts = []
+    while (node.parent) {
+      const children = []
+      ts.forEachChild(node.parent, child => { children.push(child) })
+      parts.push(children.indexOf(node))
+      node = node.parent
+    }
+    return parts.join(".")
+  }
+  const unalias = symbol => symbol?.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol
+  const moduleBinding = (a, b) => {
+    const left = a.declarations ?? [], right = b.declarations ?? []
+    return left.length > 0 && left.length === right.length && left.every((decl, i) => {
+      const other = right[i]
+      return canonical(decl.getSourceFile().fileName) === canonical(other.getSourceFile().fileName) &&
+        decl.kind === other.kind && path(decl) === path(other) && text(decl) === text(other)
+    })
+  }
+  return (left, right) => {
+    const pairs = new Map(), nodes = []
+    function pair(a, b) {
+      a = unalias(a); b = unalias(b)
+      if (!a || !b) return { good: false, parents: [] }
+      if (pairs.get(a)?.has(b)) return pairs.get(a).get(b)
+      const node = { good: true, parents: [] }
+      if (!pairs.has(a)) pairs.set(a, new Map())
+      pairs.get(a).set(b, node); nodes.push(node)
+      if (a === b || moduleBinding(a, b)) return node
+      const ad = a.declarations, bd = b.declarations
+      if (ad?.length !== 1 || bd?.length !== 1 ||
+          !ts.isTypeAliasDeclaration(ad[0]) || !ts.isTypeAliasDeclaration(bd[0]) ||
+          text(ad[0]) !== text(bd[0])) { node.good = false; return node }
+      const corresponding = new Map()
+      function align(x, y) {
+        if (x.kind !== y.kind) { node.good = false; return }
+        corresponding.set(x, y)
+        const xs = [], ys = []
+        ts.forEachChild(x, child => { xs.push(child) })
+        ts.forEachChild(y, child => { ys.push(child) })
+        if (xs.length !== ys.length) { node.good = false; return }
+        xs.forEach((child, index) => align(child, ys[index]))
+      }
+      align(ad[0], bd[0])
+      for (const [x, y] of corresponding) {
+        const importLiteral = ts.isStringLiteral(x) && ts.isLiteralTypeNode(x.parent) &&
+          ts.isImportTypeNode(x.parent.parent)
+        if (!ts.isIdentifier(x) && !importLiteral) continue
+        const as = unalias(checker.getSymbolAtLocation(x)), bs = unalias(checker.getSymbolAtLocation(y))
+        const bound = as?.declarations?.length && as.declarations.length === bs?.declarations?.length &&
+          as.declarations.every((decl, i) => corresponding.get(decl) === bs.declarations[i])
+        if (bound) continue
+        const dependency = pair(as, bs)
+        dependency.parents.push(node)
+        if (!dependency.good) node.good = false
+      }
+      return node
+    }
+    const root = pair(left, right), bad = nodes.filter(node => !node.good)
+    for (let i = 0; i < bad.length; i++) for (const parent of bad[i].parents)
+      if (parent.good) { parent.good = false; bad.push(parent) }
+    return root.good
+  }
+}
+
 // Declarations that neither snapshot emitted. The checker reads only emitted
 // trees, so the caller supplies each missing declaration's emit diagnostics:
 // { before: { "dir/x.d.ts": [{ code, file, line, column }] }, after: { ... } },
@@ -1481,7 +1557,8 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   progress("nominal-identity", { publicEntries: nominalRoots.length, batchEntries: roots.length, reusedAlignment: Boolean(nominalSaved) })
   const nominalProgram = nominalSaved ? undefined : nominalRoots.every(file => program.getSourceFile(file))
     ? program : ts.createProgram(nominalRoots, compilerOptions, host, program)
-  const nominal = nominalSaved ?? alignNominalIdentity(ts, nominalProgram, before, after, join(repo, ".api-identity-brands.d.cts"), nominalEntries, ambient.names)
+  const nominal = nominalSaved ?? alignNominalIdentity(ts, nominalProgram, before, after, join(repo, ".api-identity-brands.d.cts"), nominalEntries, ambient.names,
+    typeAliasIdentity(ts, nominalProgram.getTypeChecker(), equivalents))
   if (nominalKey) options.identityReuse.nominal.set(nominalKey, nominal)
   if (nominal.size > 1) {
     for (const [path, text] of nominal) {
@@ -1670,7 +1747,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   const imports = []
   const bridges = new Map()
   const genericBridges = new Map()
-  let counter = 0, sharedExportProofs = 0
+  let counter = 0, sharedExportProofs = 0, declarationExportProofs = 0
   const exportReference = (path, name) => {
     // TypeScript accepts keyword export aliases, but a type query through
     // import("...").await reports TS1262 in the generated module. A quoted
@@ -1994,7 +2071,10 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
     }
   }
   progress("export-surface")
-  for (const proof of nominal.inferProofs ?? []) recordCheck(proof.entrypoint, proof.export, proof.a, proof.b, proof.aspect ?? "type")
+  for (const proof of nominal.inferProofs ?? []) {
+    if (proof.bindingIdentity) declarationExportProofs++
+    else recordCheck(proof.entrypoint, proof.export, proof.a, proof.b, proof.aspect ?? "type")
+  }
   for (const key of keys) {
     if (absentEntries.has(key)) continue
     if (!left[key] || !right[key]) {
@@ -2023,7 +2103,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       }
     }
   }
-  progress("export-comparison-plan", { sharedExportProofs, structuralProbes: checks.length,
+  progress("export-comparison-plan", { sharedExportProofs, declarationExportProofs, structuralProbes: checks.length,
     errorWalkTypes, errorWalkCacheHits, closedErrorTypes })
   for (const [path, text] of bridges) virtual.set(resolve(path), text)
   for (const [from, to] of equivalents) {
