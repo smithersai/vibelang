@@ -1,9 +1,9 @@
 ---
-title: "Getting Started"
+title: "Getting Started with Schema"
 description: "Schema uses the same descriptions and interpreters as in Effect. Start with a struct, extract its types, then pick a parser whose failure behavior fits the caller. The call rules apply to the..."
 ---
 
-# Getting Started
+# Getting Started with Schema
 
 `Schema` uses the same descriptions and interpreters as in Effect. Start with a struct, extract its types, then pick a parser whose failure behavior fits the caller. The [call rules](/schema/085-introduction#configuring-compiler-prerequisites) apply to the plain builders below.
 
@@ -92,6 +92,7 @@ An optional field `name?: T` accepts a missing key. Whether it also accepts a pr
 
 ```vibe
 schema Nickname { name?: string | undefined }
+// Run in an effect function: try Console.log(Schema.is(Nickname)({}), Schema.is(Nickname)({ name: undefined }))
 ```
 
 ```text

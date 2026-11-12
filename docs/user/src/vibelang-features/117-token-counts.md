@@ -93,7 +93,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,700 |
 | **Learning Path** | **15,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 3,000 |
-| [Installation](../getting-started/004-installation.md) | 3,300 |
+| [Installation](../getting-started/004-installation.md) | 3,400 |
 | [Creating Effects](../getting-started/005-creating-effects.md) | 4,500 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,900 |
@@ -113,10 +113,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [What is in the alpha](../setup/alpha.md) | 2,600 |
 | [Known limitations](../setup/known-limitations.md) | 1,300 |
 | [Source maps](../setup/source-maps.md) | 1,000 |
-| **Start a project** | **8,500** |
+| **Start a project** | **8,800** |
 | [New project](../setup/new-project.md) | 810 |
 | [Existing project](../setup/existing-project.md) | 4,300 |
-| [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,400 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,700 |
 | **Build and test** | **23,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 18,000 |
 | [Vite and Vitest](../setup/vite.md) | 4,800 |
@@ -158,10 +158,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Error Channel Operations](../error-management/022-error-channel-operations.md) | 1,400 |
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,200 |
-| **Requirements Management** | **13,000** |
-| [Managing Services](../requirements-management/025-services.md) | 6,500 |
+| **Requirements Management** | **12,000** |
+| [Managing Services](../requirements-management/025-services.md) | 5,900 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
-| [Managing Layers](../requirements-management/027-layers.md) | 3,900 |
+| [Managing Layers](../requirements-management/027-layers.md) | 3,800 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |
 | **Resource Management** | **4,700** |
 | [Introduction](../resource-management/029-introduction.md) | 1,900 |

@@ -133,6 +133,7 @@ For an old `finally (exit) { ... }` clause in effect code, use native `Effect.on
 effect function cleanup(outcome: Exit.Exit<unknown, unknown>) {
   try Console.log(outcome._tag, Exit.isSuccess(outcome) ? outcome.value : "failed")
 }
+// Run in an effect function: try Console.log("result", try Effect.onExit(Effect.succeed(12), (outcome) => cleanup(outcome)), try Effect.onExit(Effect.succeed(12), (outcome) => cleanup(Exit.isSuccess(outcome) ? Exit.void : outcome)))
 ```
 
 ```text

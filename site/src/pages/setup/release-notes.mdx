@@ -31,9 +31,21 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - The `vibelang-runtime` package page told readers to run `vibelang --fix`, which the compiler rejects with `TS5023`. The page no longer mentions the option.
 - `vibelang-ast-grep --help` compiled the parser library into a file named `--help` in the current directory. It now prints the usage and exits with status 0, and any other option is a usage error with status 2.
 - When the installed `effect` was not the version `vibelang-runtime` pins, the load error named `vibelang-runtime@0.0.11` whatever runtime was installed. It now names only the two Effect versions and the install command, as in `vibelang-runtime requires effect@4.1.1; found effect@4.1.0`.
+- The documentation sidebar listed "Control operations and handlers" under VibeLang features, although handlers are an open proposal and not part of the language. The entry and its page are now titled "Handlers (open proposal, not in the alpha)".
+
+- Searching the website for `install` listed ten sections headed "Install" from other pages, Alchemy first, and left out the Installation page. A search for a word that starts a page title now lists that page first.
+
+- A link to a website page other than the home page previewed with only the page name, such as "Cheat sheet", as its title. The preview title now names the site too: "Cheat sheet | VibeLang".
+
+- In search results and link previews, every specification and VIP page on the website showed the site tagline as its description. Each page now describes itself.
+
+- On a phone, long file paths, URLs and code spans in the documentation ran past the right edge of the page and were cut off. They now wrap onto the next line.
+
+- A docs example could show output that came from statements the page never showed, such as a test clock, a capturing logger or a provided layer, so the code as shown printed something else or nothing. Each example now shows those statements in a `// Run in an effect function:` comment above its output, and the docs check fails a page that hides them.
 - A `try` written inside the callback of `sync`, `Effect.try` or `tryPromise`, such as `try sync(() => try load())`, compiled with no diagnostic and was left out of the output, so the callback returned the Effect itself where the source asked for its value. It now reports `EK0501`, as a `try` in any other plain function does; run the Effect outside the callback.
 
 - The first complete programs on the Welcome and Getting Started pages declared `main` but never started it, so copied into a project, built and run with `node dist/main.js`, they printed nothing. Both listings now end with `NodeRuntime.runMain(main())`, as the starter does, and the docs check runs them as copied in a fresh starter.
+- The Exit page said native `Effect.onExit` passes cleanup `Exit.void` on success. It passes the program's own exit, value included. The page now says so and shows how to give cleanup `Exit.void`, as an old `finally (exit)` clause received, while the program keeps its value.
 - Published packages could reuse an older compiler, include local scratch files, or leave Windows without a compiler after a rehearsal. Packaging now requires matching committed sources and successful builds, includes only tracked sources, restores the selected platforms on every run, and checks the requested Bun starter version.
 - Schema Getting Started said an optional field `name?: T` accepts a present `undefined`. Under `exactOptionalPropertyTypes: true`, which the Schema Introduction recommends, it rejects one. The page now gives both settings, shows `name?: T | undefined` for a field that accepts `undefined` under either, and links Basic Usage.
 - On a fresh checkout, a project whose `.vibe` files hold module bodies, such as a `tsconfig.json` with `include: ["."]`, got a loader record that `checkLoaderRecord` called stale at once (`gained or lost a file`), because the record's own compile wrote each body's `x.vibe.<name>.d.ts` after listing the directory. Those declarations now count as outputs, and the record holds right after it is written.
