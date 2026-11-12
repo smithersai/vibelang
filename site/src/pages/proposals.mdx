@@ -1,698 +1,128 @@
 ---
 title: "Proposals"
-description: "Features from VibeLang's earlier design that the current language does not have yet, with their proposed syntax. Each one is a proposal, not a commitment."
+description: "Where each idea from VibeLang's earlier design stands in 0.0.13: shipped, proposed as a VIP, or without a proposal."
 ---
 
 # Proposals
 
-VibeLang had an earlier design, documented on this site until October 2026, that kept functions eager and returned failures as `Result` values instead of building on Effect. This page lists the features from that design that the current language does not have yet, or has only in part. Each section is a proposal, not a commitment: it records what the feature did, the syntax the earlier docs proposed, what VibeLang offers today, and the open questions the earlier docs left. Features the current language already has are listed at the end, with their old and new syntax.
+A change to VibeLang is decided as a VibeLang improvement proposal (VIP). The [VIP index](/vips/) lists every proposal and its status; an open VIP is not part of the language.
 
-Code marked **Adapted** rewrites an original example in current VibeLang syntax: `Result<A, E>` becomes `A!E`, the postfix `!` propagation operator goes away because calls run and failures propagate, and `class X extends Error` becomes `error X { ... }`. Code marked **Original** is quoted from the earlier docs as proposed. Neither compiles today.
+VibeLang had an earlier design, documented on this site until October 2026, that kept functions eager and returned failures as `Result` values instead of building on Effect. This page records where each feature of that design stands today. A feature with no VIP is only an idea: to pursue one, propose it as a VIP.
 
 ## Summary
 
-| Proposal | Status | What VibeLang has today |
+| Idea from the earlier design | Where it stands | What to use today |
 | --- | --- | --- |
-| [Durable execution](#durable-execution) | Partial | Effect's `effect/workflow` library |
-| [Compile-time evaluation](#compile-time-evaluation) | Not in VibeLang | Nothing |
-| [Build-time host selection](#build-time-host-selection) | Not in VibeLang | Platform layers chosen at run time |
-| [Validators derived from types](#validators-derived-from-types) | Partial | `schema` declarations |
-| [Typed asset imports](#typed-asset-imports) | Not in VibeLang | `FileSystem` reads at run time |
-| [Custom loaders](#custom-loaders) | Not in VibeLang | Nothing |
-| [Rust and Zig source imports](#rust-and-zig-source-imports) | Not in VibeLang | Node-API npm packages behind a hatch |
-| [Coding-agent library](#coding-agent-library) | Partial | Effect's AI modules |
-| [Typed workers](#typed-workers) | Partial | Effect's `effect/workers` modules |
-| [Shared structs](#shared-structs) | Not in VibeLang | Nothing |
-| [Declarations in conditionals](#declarations-in-conditionals) | Partial | `is` bindings in conditions |
-| [Toolchain commands](#toolchain-commands) | Partial | `vibelang`, `create-vibelang`, the language server, Vitest |
-| [Bundler plugins](#bundler-plugins) | Partial | Vite/Vitest and the shipped unplugin adapters |
-| [Mandatory compiler options](#mandatory-compiler-options) | Not in VibeLang | The starter sets `strict` |
-| [JSX source files](#jsx-source-files) | Accepted as VIP-39, not yet built | `.tsx` files call `.vibe` code |
-| [TC39 adopt-early list](#tc39-adopt-early-list) | Not in VibeLang | A different set of TC39 forms |
+| [Durable execution](#durable-execution) | Proposed in VIP-44, VIP-55, VIP-56 and VIP-60 | Effect's `effect/workflow` modules |
+| [Coding-agent library](#coding-agent-library) | Proposed in VIP-62 to VIP-65; not in 0.0.13 | Effect's AI modules |
+| [Typed workers](#typed-workers) | Proposed in VIP-57; not in 0.0.13 | Effect's `effect/workers` modules |
+| [Build-time host selection](#build-time-host-selection) | VIP-54 asks for one model of platform-specific code | Platform layers chosen at run time |
+| [Validators derived from types](#validators-derived-from-types) | Partly shipped as `schema` declarations (VIP-15) | `schema` declarations |
+| [Declarations in conditionals](#declarations-in-conditionals) | Partly shipped as `is` bindings (VIP-7) | `is` bindings in conditions |
+| [JSX source files](#jsx-source-files) | Shipped as `.vibex` (VIP-39) | `.vibex` files |
+| [Toolchain commands](#toolchain-commands) | Shipped under other names | `vibelang`, `create-vibelang`, the dprint plugin, Vitest |
+| [Bundler plugins](#bundler-plugins) | Shipped | `vibelang-vite` and `vibelang-unplugin` |
+| [Effect handlers](#effect-handlers) | Open proposal VIP-35; not in 0.0.13 | Services and layers |
+| [Compile-time evaluation](#compile-time-evaluation) | No VIP | Nothing |
+| [Typed asset imports](#typed-asset-imports) | No VIP | `FileSystem` reads at run time |
+| [Custom loaders](#custom-loaders) | No VIP | Nothing |
+| [Rust and Zig source imports](#rust-and-zig-source-imports) | No VIP | Node-API npm packages behind a hatch |
+| [Shared structs](#shared-structs) | No VIP | Workers exchange messages |
+| [Mandatory compiler options](#mandatory-compiler-options) | No VIP | The starter sets `strict` |
+| [TC39 adopt-early list](#tc39-adopt-early-list) | No VIP | A different set of TC39 forms |
 
-## Durable execution
+## Proposed as VIPs
 
-**Status: partial.** Effect's workflow library runs from `.vibe` files today. The language feature does not exist.
+### Durable execution
 
-The design is being decided layer by layer; [VIP-44](/vips/0044-durable-values) covers values.
+A workflow that journals each completed step, so a restart resumes the run instead of repeating finished work. [VIP-55](/vips/0055-durable-tasks-workflows) proposes `task` and `workflow` declarations, [VIP-56](/vips/0056-durable-waits) durable timers and signals, [VIP-60](/vips/0060-std-durable) the `Experimental.Durable` runtime, and [VIP-44](/vips/0044-durable-values) durable values. 0.0.13 includes an experimental implementation, described on [Tasks and workflows](/vibelang-features/119-tasks-and-workflows). Effect's `effect/workflow` modules (`Workflow`, `Activity`, `DurableClock`, `DurableDeferred`, `DurableQueue`) work from `.vibe` files.
 
-In the earlier design, durable execution was part of the language. An **Action** declares a typed operation whose implementation is supplied later. Passing a function to `durable(...)` makes a **Flow** that connects Actions. The compiler turned each Flow into a static **Plan** without running it, and the runtime journaled every completed Action so that a restart resumed the run instead of repeating finished work.
+### Coding-agent library
 
-### Proposed syntax
+A library for agents that write and run code on each turn in a sandbox with no ambient authority. [VIP-62](/vips/0062-std-model) proposes model calls, [VIP-63](/vips/0063-std-agent) the agent loop, [VIP-64](/vips/0064-std-tools) standard tools and [VIP-65](/vips/0065-std-mcp) MCP clients. 0.0.13 ships none of them. Effect's AI modules call models and tools from `.vibe` files.
 
-:::code-group
+### Typed workers
 
-```vibe [Adapted]
-import { Action, durable } from "vibelang:flows"
+Calls across a worker boundary that keep their success and failure types, with derived transport codecs. [VIP-57](/vips/0057-workers-remote) proposes `schema service` and worker imports. 0.0.13 does not ship them. Effect's worker modules run code on worker threads.
 
-abstract class Compile extends Action<
-  (input: CompileInput) => CompileOutput!CompileError
-> {}
+### Build-time host selection
 
-abstract class Package extends Action<
-  (input: PackageInput) => Artifact!PackageError
-> {}
+Choosing a platform implementation at build time and dropping the others from the output. [VIP-54](/vips/0054-consistent-platform-code-open) is an early proposal for one consistent model of platform-specific code; it selects no model yet. Today a program provides a platform layer at run time.
 
-const Build = durable((input: BuildInput) => {
-  const compiled = Compile.run({ source: input.source })
-  return Package.run({ code: compiled.code })
-})
-```
+### Effect handlers
 
-```ts [Original]
-import { Action, durable } from "vibelang:flows"
+Effect handlers (`control`, `handle`, `resume`, `abandon`) remain an open proposal in [VIP-35](/vips/0035-handlers-open) and are not part of the first release. The compiler and runtime have no handler implementation. Use services and layers for the use cases on the [proposal status page](/vibelang-features/111-control-operations-and-handlers).
 
-abstract class Compile extends Action<
-  (input: CompileInput) => Result<CompileOutput, CompileError>
-> {}
+## Partly shipped
 
-abstract class Package extends Action<
-  (input: PackageInput) => Result<Artifact, PackageError>
-> {}
+### Validators derived from types
 
-const Build = durable(function Build(
-  input: BuildInput,
-): Result<Artifact, CompileError | PackageError> {
-  const compiled = Compile.run({ source: input.source })!
-  return Package.run({ code: compiled.code })
-})
-```
+A `schema` declaration ([VIP-15](/vips/0015-schema-declarations)) gives one source for a schema and its type. Deriving a schema from an existing TypeScript type has no VIP.
 
-:::
+### Declarations in conditionals
 
-- `durable` and `Action` come from `vibelang:flows`, a compiler-owned virtual module. `durable` is an imported function, not a keyword: the compiler recognizes the resolved import, so an alias keeps the meaning and an unrelated function named `durable` stays ordinary.
-- The argument to `durable(...)` must be a function the compiler can resolve statically. A function chosen at run time is a compile error.
-- The compiler derives the input, success, and failure codecs from the Action's signature. Authors never repeat those types as schema arguments.
-- Inside a Flow, `Compile.run(...)` creates a node in the Plan. Reading `compiled.code` and passing it to `Package.run` creates a data edge. Compiling and inspecting a Flow never runs the Flow or an Action implementation.
+`is` patterns ([VIP-7](/vips/0007-match)) bind names in an `if` or `while` condition. A general declaration in a condition, such as `if (const user = cache.get(id); user !== undefined)`, has no VIP.
 
-### Fan-out and branches
+## Shipped features
 
-:::code-group
+### JSX source files
 
-```vibe [Adapted]
-import { Action, durable, fanOut } from "vibelang:flows"
+A `.vibex` file is a `.vibe` file read the way TypeScript reads `.tsx` ([VIP-39](/vips/0039-vibex)).
 
-abstract class Double extends Action<(input: number) => number!!> {}
+### Toolchain commands
 
-export const MapValues = durable((input: readonly number[]) => {
-  return fanOut(input, (n) => n, (n: number) => Double.run(n))
-})
-
-export const Choose = durable((input: number) => {
-  return input > 0 ? Double.run(input) : Double.run(-input)
-})
-```
-
-```ts [Original]
-import { Action, durable, fanOut } from "vibelang:flows"
-
-abstract class Double extends Action<
-  (input: number) => Result<number, never>
-> {}
-
-export const MapValues = durable((input: readonly number[]) => {
-  return fanOut(input, n => n, (n: number): Result<number, never> => {
-    return Double.run(n)!
-  })
-})
-
-export const Choose = durable((input: number) => {
-  return input > 0 ? Double.run(input) : Double.run(-input)
-})
-```
-
-:::
-
-- `fanOut(items, key, body)` runs the body once per item. The key function gives each item a stable address; duplicate keys are refused.
-- A conditional publishes both arms in the Plan, and execution runs only the selected arm. `&&`, `||`, `??`, and `if` with an early `return` follow the same rule.
-- Ordinary loops and mutation inside a Flow are refused. A collection whose size depends on an Action's answer needed a bounded-round driver, which was never delivered.
-- The ledger names `sequential`, an explicit ordering barrier, and `loopWhile` as compiler-owned combinators. The earlier docs show no example of either.
-
-### Inspect a Plan before it runs
-
-```bash
-vibe plan build.vibe --input input.json --providers providers.json \
-  --planId docs/build --outFile build.plan.json --format json
-```
-
-```json
-[
-  {
-    "actionId": "build.vibe#Double",
-    "implementationId": "double/v1",
-    "implementationDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "tier": "sealed",
-    "effects": { "boundaryMode": "hard", "reads": [], "writes": [] },
-    "layers": [],
-    "capabilities": []
-  }
-]
-```
-
-`vibe plan` checked the source and the input, then wrote canonical Plan bytes: every node, dependency edge, node key, declared effect, and two digests (`baseDigest` for the first graph, `digest` for the current one). The providers file names each Action's implementation, its digest, its recovery tier, and its declared effects. A Plan is not approval: execution also required authenticated source, provider, and runtime artifacts, and approval of the whole invocation, which binds the Flow identity, the exact input, the authority granted, and the deployment.
-
-### Recovery and reuse
-
-The earlier design kept recovery and reuse as separate policies on each implementation:
-
-- **Recovery tier.** `sealed` work is hermetic and eligible for a shared cache. `compensable` work can repeat with a rollback path. `irreversible` work is never retried automatically after an ambiguous crash. An earlier draft spelled the retry permission as `repeatable`, `downstream-deduplicated`, or `manual`.
-- **Reuse.** `execution` reuses nothing across runs. `memo` makes the first committed answer canonical for an explicit key, such as a model response. `content` asserts that the same complete inputs reproduce an equivalent result.
-
-```ts [Original]
-import { Provider } from "vibelang/durable/bun"
-
-const CompileLive = Provider.provide(Compile, compileWithEsbuild, {
-  implementationId: "compile-bun",
-  implementationVersion: "1.0.0",
-  recovery: { mode: "repeatable", maxAttempts: 2 },
-  reuse: { kind: "content" },
-  target: "typescript-bun",
-})
-```
-
-### Timers, signals, and execution handles
-
-The earlier docs marked these spellings provisional.
-
-```ts [Original]
-import { durable, sleep, waitSignal } from "vibelang:flows"
-
-export const Pause = durable((input: { delayMs: number }) => {
-  sleep(input.delayMs)
-  return { done: true }
-})
-
-const Approval = durable(function Approval(input: { requestId: string }) {
-  const decision = waitSignal<{ approved: boolean; ticket: string }>(
-    "approval.decided",
-  )
-  return { requestId: input.requestId, decision: decision }
-})
-
-const handle = executor.start(input, { executionId: "build-42" })
-const output = await handle.result()
-```
-
-- A durable timer persists its absolute wake time before it waits, so a restart does not restart the delay. A waiting timer or signal holds no worker.
-- A signal delivery names the exact execution and signal, carries an idempotency key, and is checked against the payload schema the compiler derived from `waitSignal<T>`.
-- A handle exposes `status()`, `result()`, `cancel(reason)`, and `signal(signalId, { idempotencyKey, payload })`. `executor.resume(executionId)` rebuilds a handle from the stored input.
-
-### Deployment
-
-A deployment build emitted a coordinator, one tree-shaken worker bundle per worker pool, a routing manifest, derived codecs, and a signed envelope. Placement belonged to the deployment, not the Action, so one Action could have several implementations on different pools. The earlier docs gave this shape and called the exact syntax open:
-
-```ts [Original]
-import { Deployment, Layer, Worker } from "vibelang/provider"
-
-export default Deployment.make({
-  workers: [
-    Worker.pool("build", {
-      target: "typescript-node",
-      sandbox: "container",
-      placement: { region: "us-west", cpu: 4 },
-      layer: BuildActions
-    })
-  ]
-})
-```
-
-### VibeLang today
-
-- Effect 4's `effect/workflow` modules (`Workflow`, `Activity`, `DurableClock`, `DurableDeferred`, `DurableQueue`) work from `.vibe` files. A workflow body is an ordinary VibeLang function. Every execution, first or replay, reruns the body from the start, and side effects belong in activities (decision D42 in the [earlier design's decision log](https://github.com/smithersai/vibelang/blob/main/docs/design/history/DECISIONS.md)).
-- `Workflow.make` and `Activity.make` take explicit `Schema` values for the payload, success, and error. The earlier design derived these codecs from the Action's signature.
-- The earlier specification kept durable execution out of the language: "It needs serializable continuations, a different machine" ([the earlier specification](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/318-part3-ch18-why.md), chapter 18).
-- Missing: Action and Flow declarations, codecs derived from signatures, a static Plan, inspection before execution, approval, content-cache reuse, and multi-artifact deployment builds.
-- The prelude's `sleep` is `Effect.sleep` and takes a duration such as `"5 millis"`. A durable timer needs a different name, as Effect's `DurableClock.sleep` has.
-
-### Open questions and design notes
-
-- The earlier design changed models twice in ten days: a static Plan IR (August 21, 2026), then ordinary-body replay under a journaling handler (August 27), then static keyed Plans (September 6). Effect's workflow engine uses body replay today. Replay keeps loops, mutation, and recursion inside a Flow, but loses static detection of version divergence, a signable artifact that says what a Flow will do, and implicit parallelism of independent Actions. Static Plans keep all three and refuse loops and mutation. A proposal has to choose one model first.
-- Four identities stay distinct: the run-local node key, the downstream idempotency key, the memo key, and the content key.
-- A memoized answer, such as a model response, must never be promoted to a shared content-cache entry.
-- Neither sealing nor compensation gives exactly-once external effects. The destination has to deduplicate an idempotency key, honor a fencing token, or join a transaction.
-- A Flow must not read the clock, randomness, the environment, or I/O except through declared boundaries.
-- Left open in the earlier docs: the encoding of persisted IDs, the wire format, schema migration for in-flight runs, bounded rounds for runtime-sized collections, cleanup-completion precedence, and a packaged scheduler and journal host.
-
-## Compile-time evaluation
-
-**Status: not in VibeLang.**
-
-The `comptime(...)` intrinsic ran deterministic code during compilation. Its result could be a value, a function that runs only at build time, or a real type. Compilation failed if the work needed a runtime value, so nothing moved silently to run time.
-
-```ts [Original]
-import { comptime, embed } from "vibelang:comptime"
-
-const routes = comptime(parseRoutes(embed("./routes.json")))
-
-const parseRoutesAtBuild = comptime(parseRoutes)
-const settingsRoute = parseRoutesAtBuild(embed("./settings.json"))
-
-const Account = comptime(deriveType(JSON.parse(embed("./account.model.json"))))
-
-function displayName(account: Account) {
-  return `${account.name} (${account.plan})`
-}
-```
-
-- `comptime` and `embed` come from the compiler-owned `vibelang:comptime` module. Like `durable`, `comptime` is an imported function recognized by its resolved binding, not a keyword.
-- `comptime(value)` evaluates during the build. `comptime(fn)` marks a function as build-time without calling it; every call of the result runs during the build.
-- Comptime is hermetic. It cannot read the filesystem, network, environment, clock, randomness, or mutable host state. Files enter only through tracked imports and `embed`, and each one becomes an incremental build dependency.
-- A result is cached by content: the compiler version, the evaluated code, the options, the target, the source bytes, and every transitive input's hash.
-- The compiler also folds constants on its own when every input is known, without `comptime`.
-
-**VibeLang today.** VibeLang has no compile-time evaluation. A `schema` declaration produces a type from a schema, which covers one use of comptime; generated code and types otherwise need a separate build step.
-
-**Open questions.**
-
-- The earlier docs left the rules for computed, mapped, conditional, and generic type results unspecified, and required unsupported type production to fail compilation.
-- The prototype refused reading one comptime binding inside another `comptime(...)` call.
-- Under VibeLang's call rule, a call to an Effect function runs where it stands. A comptime proposal has to say which services, if any, a build-time call may use. The earlier design allowed none beyond tracked inputs: a function that needs `HttpClient` could not run at comptime without a comptime-safe implementation.
-
-## Build-time host selection
-
-**Status: not in VibeLang.**
-
-`comptime.target` named the selected output host, so a program could pick an implementation at build time and drop the others from the artifact.
-
-```ts [Original]
-import { comptime } from "vibelang:comptime"
-
-const implementations = {
-  node: NodeFileSystem,
-  bun: BunFileSystem,
-  deno: DenoFileSystem,
-}
-
-const FileSystemLive = comptime(implementations[comptime.target])
-```
-
-**VibeLang today.** A program chooses its host at run time by providing a platform layer from `@effect/platform-node`, `@effect/platform-bun`, or `@effect/platform-browser`. No build step drops the implementations a host does not use.
-
-**Design notes.** The intended target names were `node`, `bun`, `deno`, `browser`, and `edge`. The shipped CLI hard-coded the target to `"node-es2022"`, so none of those names was reachable, and reading `comptime.target` in code kept at run time was refused.
-
-## Validators derived from types
-
-**Status: partial.** A `schema` declaration gives one source for a schema and its type. Deriving a schema from an existing type is missing.
-
-The earlier design derived a runtime validator from an ordinary TypeScript type at compile time, so a type written once also checked untrusted data.
-
-:::code-group
-
-```vibe [Adapted]
-import { comptime } from "vibelang:comptime"
-import { Schema } from "vibelang:schema"
-
-type SignupRequest = {
-  email: string
-  age: number
-}
-
-const SignupRequestSchema = comptime(Schema.derive<SignupRequest>())
-
-function handleSignup(body: unknown) {
-  const request = SignupRequestSchema.parse(body)
-  return Users.create(request)
-}
-```
-
-```ts [Original]
-import { comptime } from "vibelang:comptime"
-import { Schema } from "vibelang:schema"
-
-type SignupRequest = {
-  email: string
-  age: number
-}
-
-const SignupRequestSchema = comptime(Schema.derive<SignupRequest>())
-
-function handleSignup(
-  body: unknown,
-): Result<User, ValidationError | CreateUserError> {
-  const users = Users.context()
-  const request = SignupRequestSchema.parse(body)!
-  return users.create(request)
-}
-```
-
-:::
-
-The same type reflection was meant to derive encoders and decoders, equality and hashing, durable boundary codecs, JSON Schema and OpenAPI descriptions, and RPC bindings.
-
-**VibeLang today.** `schema SignupRequest { email: string; age: number }` declares an Effect `Schema.Struct` and its type in one statement (decision D133 in the [earlier design's decision log](https://github.com/smithersai/vibelang/blob/main/docs/design/history/DECISIONS.md)), and `Schema.decodeUnknownEffect(SignupRequest)(input)` decodes untrusted input. Effect's Schema derives JSON Schema, equivalence, and arbitrary values from a schema. Missing: a schema for a type you did not declare with `schema`, such as an interface from a `.ts` package or a type alias; `schema` fields accept only primitives, literals, unions, arrays, tuples, records, object types, and other schemas (other types are EK2109).
-
-**Open questions.** The earlier docs left the set of reifiable types open: structural data, tagged unions, tuples, and arrays qualify; functions, erased nominal facts, and unconstrained `any` need an explicit codec. An unsupported type must produce a diagnostic, never a wider validator.
-
-## Typed asset imports
-
-**Status: not in VibeLang.**
-
-Non-code files imported as typed modules at compile time, selected by standard import attributes. The import added no runtime filesystem dependency.
-
-```ts [Original]
-import config from "./config.json" with { type: "json" }
-import literals from "./config.json" with { type: "json", mode: "const" }
-import systemPrompt from "./system.md" with { type: "text" }
-import guide from "./guide.md" with { type: "markdown" }
-import Prompt from "./coding-agent.mdx" with { type: "mdx" }
-import icon from "./icon.png" with { type: "bytes" }
-
-// typeof literals:
-// {
-//   readonly mode: "production"
-//   readonly ports: readonly [80, 443]
-// }
-```
-
-- `mode: "const"` gives JSON a deeply readonly, literal-preserving type. A plain `{ type: "json" }` import keeps TypeScript's widening.
-- `text` gives a string, so a Markdown prompt goes straight into a model request. `bytes` gives the raw bytes. `mdx` gives a typed component module.
-- File extensions never select a loader; only the `type` attribute does.
-
-**VibeLang today.** VibeLang documents no asset imports for `.vibe` files. A program reads a file at run time through `FileSystem`, which adds `FileSystem.FileSystem` to its requirements and `PlatformError` to its failures.
-
-**Open questions.** The earlier docs left the `markdown` and `mdx` module shapes open, along with JSX runtime selection, component injection, and frontmatter typing. Raw `text` and `bytes` imports were meant to converge with the TC39 Import Text and Import Bytes proposals.
-
-## Custom loaders
-
-**Status: not in VibeLang.**
-
-A project could register a compile-time loader for another import `type`, such as YAML, SQL, or GraphQL. The loader turned the file into a checked typed module, and every file it read became a tracked build dependency.
-
-```ts [Original]
-import { comptime } from "vibelang:comptime"
-
-const loadYaml = async (asset, context) => {
-  const value = parseYaml(asset.text())
-  const schema = await context.import("./config.schema.json", {
-    type: "json",
-    mode: "const",
-  })
-  const config = validate(schema.module.value, value)
-
-  return {
-    format: "yaml",
-    value: config,
-    emittedTypeScript: emitLiteralModule(config),
-    declaration: emitDeclaration(config),
-    diagnostics: [],
-    spans: [],
-  }
-}
-
-export default comptime.loader("yaml", loadYaml)
-```
-
-**VibeLang today.** Nothing. This proposal depends on [compile-time evaluation](#compile-time-evaluation).
-
-**Open questions.** The earlier docs called `comptime.loader(type, load)` the intended shape, not a locked one. Built-in loaders take precedence and duplicate registrations fail. Still open: registration and discovery for package loaders, cycles between code and loaded assets, auxiliary output files, and sandboxing and resource limits for third-party loaders. A loader result was keyed by source bytes, the resolved loader, all attributes, compiler and loader ABI versions, the target, and every transitive input.
-
-## Rust and Zig source imports
-
-**Status: not in VibeLang.**
-
-A `.rs` or `.zig` file imported like a module. The compiler ran the foreign toolchain, built a Wasm module that the JavaScript host calls, and generated typed bindings, so no hand-written declaration file was needed.
-
-```ts [Original]
-import { tokenize } from "./parser.rs" with { type: "rust" }
-import { hashMany } from "./hash.zig" with { type: "zig" }
-
-const tokens = tokenize(source)
-const digest = hashMany(chunks)
-```
-
-**VibeLang today.** Node-API npm packages, including napi-rs packages, import as ordinary dependencies. Calling one from `.vibe` needs a boundary hatch such as `sync(...)` or `try(...)`, or a trusted contract. The earlier compiler never implemented foreign source imports either; it refused them with `VIBE5213`.
-
-**Open questions.** The earlier docs left open the configuration for choosing Wasm, Node-API, or another artifact, ABI layout, ownership, allocation, async callbacks, error translation, linking, Rust features, Zig build options, and cross-compilation. The toolchain versions, feature flags, and foreign dependency graph were to be part of the cache key.
-
-## Coding-agent library
-
-**Status: partial.** Effect's AI modules call models and tools from `.vibe` today. The code-writing agent, its sandbox, and MDX prompts are missing.
-
-The earlier design specified a library, not language syntax, for agents that write ordinary TypeScript on each turn. The generated program ran in a sandbox with no ambient authority and could call only the functions passed to it.
-
-```ts [Original]
-import { CodingAgent, TypeScriptSandbox } from "@vibelang/agent"
-import CodingPrompt from "./coding-agent.mdx" with { type: "mdx" }
-
-const Coder = CodingAgent.make({
-  model,
-  prompt: CodingPrompt,
-  sandbox: TypeScriptSandbox.make({
-    timeout: "30s",
-    memory: "512mb",
-  }),
-  functions: {
-    readFile: ReadFile,
-    editFile: EditFile,
-    build: Build,
-  },
-})
-
-const result = (await Coder.run({ task }))!
-```
-
-The model writes one entry point per turn, typed against a `Functions` declaration generated from the passed Action, Flow, and callback signatures:
-
-```ts [Original]
-export default async function turn(functions: Functions) {
-  const source = await functions.readFile({ path: "src/index.ts" })
-  return functions.build({ source })
-}
-```
-
-```mdx [Original]
-<System>You are a coding agent.</System>
-
-<Context>
-  <File path="README.md" />
-</Context>
-
-<Task>{task}</Task>
-```
-
-- Each turn renders the prompt, calls the model, extracts TypeScript, type-checks it against `Functions`, optionally returns diagnostics for repair, runs accepted code in the sandbox, and records the results.
-- The sandbox, not the type checker, is the security boundary. It enforces isolation, time, memory, output, and call limits.
-- With durable execution, a model request becomes a memoized Action, compilation a content-cached Action, and the turn protocol a Flow, so a replay reuses the recorded model response instead of calling the model again.
-
-**VibeLang today.** Effect's `LanguageModel.generateText`, `Tool.make`, `Toolkit.make`, and `Chat` work from `.vibe` files. In current syntax `Coder.run` would be an Effect call: `(await Coder.run({ task }))!` becomes `Coder.run({ task })` inside a function. Missing: the code-writing loop, the sandbox with an explicit function table, MDX prompt components, and durable turns, which depend on [durable execution](#durable-execution) and [typed asset imports](#typed-asset-imports).
-
-**Open questions.** The earlier docs left open the prompt component vocabulary, the completion and result protocol, the sandbox backend interface and default limits, how diagnostics and observations enter the next turn, and stable identity for generated calls inside data-dependent loops.
-
-## Typed workers
-
-**Status: partial.** Effect's worker modules run code on worker threads today. The typed module-expression syntax is missing.
-
-A worker was declared inline with a module expression. Calls across the worker boundary kept their success and failure types, and the compiler derived the export allowlist and the transport codecs.
-
-:::code-group
-
-```vibe [Adapted]
-const analytics = spawn module {
-  export function summarize(values: Float64Array): Summary!InvalidSample {
-    return Statistics.summarize(values)
-  }
-}
-
-const [stats, metadata] = await.all [
-  analytics.summarize(samples),
-  fetchMetadata(datasetId),
-]
-```
-
-```ts [Original]
-const analytics = spawn module {
-  export function summarize(
-    values: Float64Array,
-  ): Result<Summary, InvalidSample> {
-    return Statistics.summarize(values)
-  }
-}
-
-const [stats, metadata] = try await.all(
-  analytics.summarize(samples),
-  fetchMetadata(datasetId),
-)
-```
-
-:::
-
-The earlier docs also allowed a library form, `TypedWorker.spawn<Contract>(moduleUrl, options)`, with the same contract.
-
-**VibeLang today.** Effect's `effect/workers` modules (`Worker`, `WorkerRunner`) replace `worker_threads` and Web Workers. You define the message protocol yourself; the compiler derives nothing from the worker's exports.
-
-**Open questions.** The earlier docs did not lock the `spawn module { ... }` syntax, which builds on the TC39 Module Expressions proposal. The boundary was to enforce bounded active calls, timeouts, message limits, replay protection, and idempotent termination. A worker realm is not a security sandbox.
-
-## Shared structs
-
-**Status: not in VibeLang.**
-
-Shared structs over `SharedArrayBuffer` gave workers an explicit, high-throughput way to share data, with the compiler checking the cross-realm layout and failure transport. Ordinary mutable objects were never shared silently between realms. The earlier docs gave no syntax.
-
-**VibeLang today.** VibeLang documents no shared-memory types; workers exchange messages.
-
-**Open questions.** Declaration syntax, memory layout, synchronization primitives, and host support were all open. The design followed the TC39 Structs proposal and scheduled it after lower-risk concurrency work. The later prototype refused `SharedArrayBuffer` and `Atomics` in `.vibe` files as determinism hazards, so the earlier design never reconciled this proposal with its own determinism rules.
-
-## Declarations in conditionals
-
-**Status: partial.** `is` patterns bind names in an `if` or `while` condition. A general declaration in a condition is missing.
-
-A declaration inside an `if` condition stays in scope for the whole construct, including every `else` branch, and goes out of scope after it. It was the only grammar form the September 2026 design added, adopted early from a TC39 Stage 1 proposal.
-
-```ts [Original]
-if (const user = cache.get(id); user !== undefined) {
-  render(user)
-} else {
-  renderMiss()
-}
-```
-
-**VibeLang today.** `if (outcome is Exit.Failure(let cause) && Cause.hasFails(cause))` binds `cause` for the rest of the condition and the then branch (decision D211 in the [earlier design's decision log](https://github.com/smithersai/vibelang/blob/main/docs/design/history/DECISIONS.md)). The names do not reach the `else` branch, and the pattern must match a value; it does not declare one from an arbitrary expression.
-
-**Design notes.** The earlier compiler implemented this form as a patch that added 89 lines to its TypeScript fork. Its policy allowed new grammar only for an active TC39 proposal, and this was the only form that qualified.
-
-## Toolchain commands
-
-**Status: partial.** Checking, compiling, the language server, scaffolding, and tests exist under other names. `run`, `inspect`, `format`, `doctor`, and the durable `plan` and `build` commands are missing.
-
-The earlier design planned one `vibe` command in the style of Go's toolchain:
-
-```bash
-vibe init
-vibe check src/index.vibe
-vibe compile src/index.vibe --outDir build --declaration --sourceMap
-vibe run src/index.vibe -- arg1 arg2
-vibe test
-vibe inspect src/index.vibe --format json
-vibe plan src/build.vibe --input preview.json --providers providers.json --planId build/preview
-vibe build --outDir dist
-vibe format . --check
-vibe lsp
-vibe doctor --format json
-```
+The earlier design planned one `vibe` command. Today each job has its own tool:
 
 | Earlier command | VibeLang today |
 | --- | --- |
 | `vibe init` | `bun create vibelang my-app` or `npm create vibelang@latest my-app` |
 | `vibe check` | `vibelang --noEmit` |
 | `vibe compile --declaration` | `vibelang`, with `declaration` set in `tsconfig.json` |
-| `vibe run` | The starter's `bun run start` script, which builds and runs Node |
+| `vibe run` | The starter's `start` script, which builds and runs Node |
 | `vibe test` | Vitest with `vibelang-vite` and `@effect/vitest` |
+| `vibe format` | dprint with the `vibelang` plugin ([Formatting](/setup/formatting)) |
 | `vibe lsp` | `vibelang --lsp --stdio` |
-| `vibe inspect` | Editor hovers show inferred contracts; there is no JSON report |
-| `vibe plan`, `vibe build` | Missing; see [durable execution](#durable-execution) |
-| `vibe format` | Missing as a command |
-| `vibe doctor` | Missing |
+| `vibe inspect`, `vibe doctor` | No command; editor hovers show inferred contracts |
 
-**Design notes.** `vibe inspect` reported the project graph, public failure and requirement rows, capability paths, tracked comptime and loader inputs, and generated modules as JSON without running the program. `vibe doctor` checked the compiler, host, foreign toolchains, signing setup, and sandbox providers against the project.
+### Bundler plugins
 
-## Bundler plugins
+`vibelang-vite` serves Vite and Vitest, and `vibelang-unplugin` serves webpack, Rspack, Rollup, Rolldown, esbuild and Bun. See [Setup](/setup).
 
-**Status: partial.** VibeLang 0.0.13 ships `vibelang-vite` for Vite and Vitest, and `vibelang-unplugin` for webpack, Rspack, Rollup, Rolldown, esbuild, and Bun. See [Setup](/setup) for installation and configuration. Dedicated Rsbuild and Farm adapters from the original proposal remain missing.
+## No VIP yet
 
-`vibelang/unplugin` ran the same checked project pipeline as the CLI inside nine bundlers: `vibelang.vite`, `vibelang.rollup`, `vibelang.rolldown`, `vibelang.webpack`, `vibelang.rspack`, `vibelang.rsbuild`, `vibelang.esbuild`, `vibelang.farm`, and `vibelang.bun`. All took the same options.
+### Compile-time evaluation
 
-```ts [Original]
-import { build } from "esbuild"
-import vibelang from "vibelang/unplugin"
+A `comptime(...)` intrinsic that ran deterministic code during compilation and failed the build if the work needed a run-time value.
 
-await build({
-  entryPoints: ["src/main.vibe"],
-  bundle: true,
-  platform: "node",
-  format: "esm",
-  outfile: "dist/main.mjs",
-  sourcemap: true,
-  plugins: [vibelang.esbuild({
-    root: process.cwd(),
-    entries: ["src/main.vibe"],
-    target: "node-es2022",
-  })],
-})
-```
+### Typed asset imports
 
-**VibeLang today.** `vibelang-vite` supports Vite 7 and 8 and Vitest 5: `vibelang({ project: "tsconfig.app.json" })` in the plugin list.
+Non-code files imported as typed modules at compile time through import attributes, with no run-time filesystem dependency.
 
-**Design notes.** The earlier plugin checked the whole program before it emitted any module, refused query variants such as `main.vibe?raw`, and composed source maps from the parser's spans. Its transform-only mode refused 21.5% of call sites in multi-module programs, because a call's lowering needed facts from other files.
+### Custom loaders
 
-## Smaller proposals
+Project-registered compile-time loaders for other import types, such as YAML, SQL or GraphQL, each read file tracked as a build dependency.
+
+### Rust and Zig source imports
+
+A `.rs` or `.zig` file imported like a module, compiled to Wasm with generated typed bindings.
+
+### Shared structs
+
+Shared-memory structs over `SharedArrayBuffer`, with the compiler checking their cross-realm layout.
 
 ### Mandatory compiler options
 
-**Status: not in VibeLang.** The earlier compiler refused a `.vibe` project whose `tsconfig.json` left off any of `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `isolatedModules`, `verbatimModuleSyntax`, or `useDefineForClassFields` (`VIBE6001`), rejected eleven forbidden options (`VIBE6002`), and rejected options it could not classify (`VIBE6003`). Imported `.ts` files kept their own configuration. Today the starter sets `strict`, and the specification sets no mandatory options.
-
-### JSX source files
-
-**Status: accepted as [VIP-39](/vips/0039-vibex), not yet built.** A `.vibex` file is a `.vibe` file read the way TypeScript reads `.tsx`. Until the compiler supports it, components live in `.tsx` files that call `.vibe` functions through a runtime.
+The earlier compiler refused a project whose `tsconfig.json` left off `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `isolatedModules`, `verbatimModuleSyntax` or `useDefineForClassFields`. Today the starter sets `strict`, and the specification sets no mandatory options.
 
 ### TC39 adopt-early list
 
-**Status: not in VibeLang.** The earlier design committed to adopting these proposals early, as their stages stood on August 23, 2026. Its docs gave no VibeLang syntax for them.
-
-| Proposal | Stage then | Note |
-| --- | --- | --- |
-| Source Phase Imports | 3 | On the adopt-early list |
-| Error Stack Accessor, `Error.captureStackTrace` | 3, 2 | The ledger's "cheap stack capture" |
-| Discard (`void`) Bindings | 2 | On the adopt-early list |
-| Async Iterator helpers, including unordered | 2, 1 | On the adopt-early list |
-| Cancellation API | 1 | Cancellation as a typed failure provided through capabilities |
-
-VibeLang today adopts a different set: throw expressions, `do` expressions, block params, the Hack pipe operator, await operations, and pattern matching. Two of those reverse the earlier design: Block Params was one of its standing rejections, and it took no position on the pipeline operator. Await Dictionary and Concurrency Control appear in the shipped table as `await.all { }` and `for concurrent`. Module Expressions, Structs, Import Text, Import Bytes, and Declarations in Conditionals have their own sections above.
-
-## Withdrawn in the earlier design
-
-The earlier design removed these features itself before October 2026. They are recorded here so readers can find them; none is proposed.
-
-| Feature | Original syntax | Why it was withdrawn | Today |
-| --- | --- | --- | --- |
-| Labeled break values and loop `else` | `break :search value`, `for (...) { ... } else -1` | No TC39 proposal; a `let` or a function expresses both | `do { ... }` gives a block a value; there is no loop `else` |
-| `defer` and `errdefer` | `defer file.close()`, `errdefer transaction.rollback()` | Not TC39 proposals; `using` covers scope exit | `using`, `try`/`finally`, and `finally (exit)` |
-| Near-native target through LLVM | None | A second runtime and ABI that did not serve a TypeScript-first product | TypeScript and JavaScript output only |
-| Wasm compilation target | None | Same; Wasm stayed a library format for foreign modules | TypeScript and JavaScript output only |
-| Native pin, the `TypeScript` requirement, and portability classes | `native function checksum(bytes: Uint8Array): Digest` | With one target, every program depends on JavaScript, so the requirement carried no information | Nothing |
-| Host-module requirement | `Module<"node:fs">` | Withdrawn with the native pin | EK4402 refuses running Node built-ins in `.vibe` files |
-
-Effect handlers remain an open proposal in VIP-35 and are not part of the first release. The compiler and runtime have no handler implementation. Use services and layers for the use cases described on the [proposal status page](/vibelang-features/111-control-operations-and-handlers).
-
-## Shipped features
-
-These features from the earlier design exist in VibeLang today, most with new syntax. The [cheat sheet](/vibelang-features/115-cheat-sheet) shows the current forms next to Effect code.
-
-| Feature | Earlier VibeLang | VibeLang today |
-| --- | --- | --- |
-| Source files | `.vibe`; imported `.ts` and `.js` keep TypeScript behavior | The same |
-| Failure in the type | `Result<User, NotFound>` | `User!NotFound`, which is `Effect<User, NotFound>` |
-| Error declarations | `class NotFound extends Error { ... }` | `error NotFound { id: string }` |
-| `return` and `throw` | `throw` produces the Result's error variant | `throw` adds an expected failure to the error channel |
-| Propagation and must-use | `getUser(id)!`, earlier `getUser(id).unwrap()`; a discarded Result is an error | `getUser(id)`: calls run, and an uncaught failure propagates |
-| Recovery | `.match({ ok, error })`, `.recover(...)`, `.unwrapOr(...)` | `try`/`catch`, `x catch () => fallback`, `x catch (e) => ...` |
-| Exhaustive error matching | `error.match({ NotFound: ..., Timeout: ... })` | `match (e) { when NotFound: ...; when Timeout: ...; }` |
-| Defects | `Reflect.panic(...)` and the `panic` channel | `die(...)`; defects and interruption bypass `catch` |
-| Foreign calls | `Result.try(...)`, `Result.tryPromise(...)`, `@throws {never}`, `@throws {T}` | `sync(...)`, `try(...)`, and `callback(...)` hatches; trusted contracts |
-| Capabilities | `abstract class Clock extends Context`, `Clock.context()` | `service Clock { ... }`, `Clock.now()` |
-| Layers | `Layer.succeed`, `Layer.merge`, `Layer.provide(App, () => ...)` | `Layer.succeed`, `Layer.effect(Users, effect { ... })`, `wire(...)`, `provide App { ... }` |
-| Platform as a capability | No ambient `process`, filesystem, network, clock, or randomness | The same, enforced by EK4402 and EK4403; use `FileSystem`, `Clock`, `Random` |
-| Absence | `Optional<T>`, later `T \| undefined` | `T \| undefined`, and Effect's `Option` with methods and `match` |
-| Expression `if` and `switch` | `if (c) a else b`, switch in expression position | `do { ... }` and `match (x) { when ...: ...; }` |
-| Throw expressions | `config.port ?? throw new InvalidConfig("port")` | The same |
-| Scope cleanup | `using` | `using` |
-| Promise discipline | Promise `.then`, `.catch`, `.finally` banned; every Promise awaited | No `await` in `.vibe`; promises only inside `async` hatches |
-| Structured joins | `await.all(a, b)`, later `Promise.all` with `Result.all` | `await.all [a(), b()]`, `await.race`, `await.any`, `await.allSettled` |
-| Keyed joins | `allKeyed({ profile, activity })`, `allSettledKeyed` | `await.all { profile: ..., activity: ... }` |
-| Bounded fan-out | `Governor.withLimit(n)`, `mapUnordered` | `for concurrent(n) (const x of xs) ...` |
-| Streams and coordination | `Stream`, `Queue`, `Semaphore`, `Channel` from `vibelang/concurrency` | Effect's `Stream`, `Queue`, and `Semaphore` |
-| Cancellation | `Cancellation.context().checkpoint()!` | Interruption: `interrupt()`, `interruptible { }`, `uninterruptible { }` |
-| Rows on function values | Failure and requirement rows carried by function values | Function types such as `(id: string) => User!NotFound` |
-| Declarations keep contracts | `vibe compile --declaration` | `.d.ts` files with `Effect.Effect<A, E, R>` |
-| Diagnostic codes | `VIBE1206` and other `VIBE` codes | `EK4401` and other `EK` codes |
-| Standard library | `vibelang/platform`, `vibelang/data`, `vibelang/schema`, `vibelang/concurrency` | Effect 4's modules |
-| Effect interop | A planned bridge for milestone M4 | `.vibe` functions are Effects; `.ts` code runs them with `Effect.runPromise` |
-| Native npm packages | Ordinary imports of Node-API packages | Ordinary imports, called through a hatch or a trusted contract |
+The earlier design planned to adopt Source Phase Imports, the Error Stack Accessor, Discard (`void`) Bindings, Async Iterator helpers and the Cancellation API early. VibeLang adopts a different set: throw expressions, `do` expressions, the Hack pipe operator and pattern matching.
 
 ## Sources
 
 The earlier design is preserved in the `smithersai/vibelang` repository at two revisions:
 
-- [`c60eca97`](https://github.com/smithersai/vibelang/tree/c60eca975b01a6778fdad81e5f54d72091481298/docs) (August 21, 2026): `Result` with `.unwrap()`, `Optional<T>`, expression control flow, native and Wasm targets, and the first durable Plan design. Its long-form drafts are `docs/DURABLE_EXECUTION.md`, `docs/AGENT_LIBRARY.md`, and `docs/ASSET_LOADERS.md`.
-- [`ebe89a2b`](https://github.com/smithersai/vibelang/tree/ebe89a2bc72f1603059dea7b10e661bb0e5c7c49/docs) (September 10, 2026): postfix `!`, TypeScript as the only target, the bundler plugin, the diagnostics and TC39 reference pages, and static keyed Plans.
+- [`c60eca97`](https://github.com/smithersai/vibelang/tree/c60eca975b01a6778fdad81e5f54d72091481298/docs) (August 21, 2026): `Result` with `.unwrap()`, native and Wasm targets, and the first durable Plan design.
+- [`ebe89a2b`](https://github.com/smithersai/vibelang/tree/ebe89a2bc72f1603059dea7b10e661bb0e5c7c49/docs) (September 10, 2026): postfix `!`, TypeScript as the only target, the bundler plugin and static keyed Plans.
 
-The current language's decisions are in its decision log and [specification](https://vibelang.sh/spec/).
+The current language is defined by its [specification](/spec/) and the accepted VIPs.
