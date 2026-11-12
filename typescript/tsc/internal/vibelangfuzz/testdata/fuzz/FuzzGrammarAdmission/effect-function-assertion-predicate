@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:effect-function-assertion-predicate\neffect function f(x: unknown): asserts x { }")

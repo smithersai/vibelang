@@ -421,6 +421,48 @@ func grammarSemicolonInsertion(alts [][]grammarNelem) {
 	}
 }
 
+// grammarAdoptSubsetAlternatives gives an Appendix A production whose comment
+// says it is parsed as TypeScript parses it the TypeScript subset's
+// alternatives of the same name, skipping the ones the appendix already
+// writes. ReturnType is written ":" Type; TypeScript's annotation also reads
+// ":" TypePredicate.
+func grammarAdoptSubsetAlternatives(d *grammarNdef, tsDefs map[string]grammarNdef) {
+	ts, ok := tsDefs[d.name]
+	if !ok {
+		return
+	}
+	written := map[string]bool{}
+	for _, alt := range d.alts {
+		written[grammarElemsKey(alt)] = true
+	}
+	for i, alt := range ts.alts {
+		if alt == nil || written[grammarElemsKey(alt)] {
+			continue
+		}
+		d.alts = append(d.alts, alt)
+		d.prose = append(d.prose, ts.prose[i])
+	}
+}
+
+// grammarElemsKey renders an alternative's notation elements for comparison.
+func grammarElemsKey(elems []grammarNelem) string {
+	var b strings.Builder
+	for _, e := range elems {
+		if e.sym != nil {
+			fmt.Fprintf(&b, "%v:%s", e.sym.kind, e.sym.text)
+		}
+		b.WriteString(e.name)
+		for _, alt := range e.alts {
+			b.WriteString("(" + grammarElemsKey(alt) + ")")
+		}
+		if e.suffix != 0 {
+			b.WriteByte(e.suffix)
+		}
+		b.WriteByte(' ')
+	}
+	return b.String()
+}
+
 // grammarSplitLookahead splits a lookahead set at the commas between its
 // members. A quoted "," is a member, as in ThrowExpressionInvalidPunctuator.
 func grammarSplitLookahead(set string) []string {
@@ -1051,6 +1093,16 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		for _, c := range a.defs[i].comments {
 			if strings.Contains(c, "semicolon insertion") {
 				grammarSemicolonInsertion(a.defs[i].alts)
+			}
+		}
+	}
+	// "(TypeScript's return-type annotation, parsed as TypeScript parses it;
+	// …)": the production is the subset's definition of the same name, so its
+	// alternatives are TypeScript's, a type predicate after ":" included.
+	for i := range a.defs {
+		for _, c := range a.defs[i].comments {
+			if strings.Contains(c, "parsed as TypeScript parses it") {
+				grammarAdoptSubsetAlternatives(&a.defs[i], tsDefs)
 			}
 		}
 	}

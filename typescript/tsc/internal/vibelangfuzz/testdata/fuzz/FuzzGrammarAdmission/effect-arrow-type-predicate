@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:effect-arrow-type-predicate\nconst f = effect (x: unknown): x is string => true")
