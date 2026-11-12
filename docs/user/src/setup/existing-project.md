@@ -185,7 +185,7 @@ Code written for an earlier VibeLang release can use forms that are now retired,
 
 Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](vibelang-cli.md#let-typescript-tools-read-vibe-modules).
 
-Declaration identity checks follow namespace re-exports through native module bodies. Forwarding an unchanged binding keeps its API; changed member types, export names and documentation still fail the check. Ordinary object values and declared mutable namespaces retain their mutability checks.
+Declaration identity checks follow namespace re-exports through native module bodies. This includes self-re-exports and cycles between module namespaces when a binding moves behind a named re-export. Forwarding an unchanged binding keeps its API; changed member types, export names and documentation still fail the check. Ordinary object values and declared mutable namespaces retain their mutability checks.
 
 An unchanged recursive type alias retains its identity when an unrelated declaration in its dependency graph moves into a module body. The check follows the alias's referenced bindings, including private aliases and imported types; a changed dependency, constraint or branch still fails verification.
 

@@ -1,0 +1,14 @@
+{
+  "repo": "opencode",
+  "pattern": "a self namespace with a binding moved behind a named module-body re-export",
+  "property": "api-identity-recursive-module-namespace",
+  "spec": "docs/design/src/001-functions.md#api-identity",
+  "rule": "Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count.",
+  "before": {
+    "index.d.ts": "export * as Self from \"./index.js\";\n/** Reads a value. */ export declare const get: (value: string) => number;\nexport declare const version: 1;\n"
+  },
+  "after": {
+    "index.d.ts": "export * as Self from \"./index.js\";\nexport { get } from \"./index.vibe.body.js\";\nexport declare const version: 1;\n",
+    "index.vibe.body.d.ts": "/** Reads a value. */ export declare const get: (value: string) => number;\n"
+  }
+}

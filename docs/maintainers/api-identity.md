@@ -58,6 +58,8 @@ comparison, and reject unrelated browser libraries. Actual peer-qualified
 resolution, distinct nominal types, copied and self comparisons, changed-peer
 negatives and twelve generated samples remain required.
 
+Imported module namespace values compare through `readonly` property views, including named re-exports. A recursive edge to the same pair of namespaces returns to the enclosing view instead of restoring the raw module type. Every other member remains in the strict comparison; a mismatched cycle pair retains its original types. Ordinary objects and declared namespaces keep their written mutability. The `recursive-namespace-views` profiling record reports these paired recursive edges in `recursiveNamespaceViews`. The minimized module-body corpus and generated self and mutual cycles retain changed-type, documentation, export-name, runtime-export and nominal-identity controls.
+
 Generic aliases of global library types are instantiated through their published names in the probe. The checker never appends exports to a global script such as `lib.es5.d.ts`, which would remove its declarations from the global environment.
 Corresponding nominal declarations in the two snapshots share virtual identity
 keys, so unchanged private classes, enums and `unique symbol` keys compare as

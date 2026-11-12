@@ -1743,6 +1743,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
       ...(symbol.flags & ts.SymbolFlags.Type ? [checker.getDeclaredTypeOfSymbol(symbol)] : []),
       ...(d && symbol.flags & ts.SymbolFlags.Value ? [checker.getTypeOfSymbolAtLocation(symbol, d)] : [])]
   }
+  let recursiveNamespaceViews = 0
   const checks = []
   const imports = []
   const bridges = new Map()
@@ -1943,10 +1944,21 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
         const moduleNamespace = symbol => !!(symbol.flags & ts.SymbolFlags.Namespace) && symbol.declarations?.length &&
           symbol.declarations.every(node => ts.isSourceFile(node) && ts.isExternalModule(node) &&
             !node.statements.some(statement => ts.isExportAssignment(statement) && statement.isExportEquals))
-        const namespaceViews = (left, right, leftPath, rightPath, seen = new Set()) => {
-          if (!moduleNamespace(left) || !moduleNamespace(right) || seen.has(left) || seen.has(right))
-            return ["typeof " + leftPath, "typeof " + rightPath]
-          const next = new Set([...seen, left, right])
+        const namespaceViews = (left, right, leftPath, rightPath, trail = []) => {
+          const original = ["typeof " + leftPath, "typeof " + rightPath]
+          if (!moduleNamespace(left) || !moduleNamespace(right)) return original
+          const cycle = trail.find(([a, b]) => a === left || b === right)
+          if (cycle) {
+            if (cycle[0] !== left || cycle[1] !== right) return original
+            // This edge returns to the same pair of module namespaces. Its
+            // readonly shape is already being checked by the enclosing view.
+            // A raw typeof here would restore tsc's different readonly flags
+            // for local bindings and named re-exports. Keep every other member
+            // in the strict probe; objects and declared namespaces stay raw.
+            recursiveNamespaceViews++
+            return ["never", "never"]
+          }
+          const next = [...trail, [left, right]]
           const rightExports = new Map(checker.getExportsOfModule(right).map(member => [member.name, unalias(member)]))
           const nested = []
           for (const member of checker.getExportsOfModule(left)) {
@@ -2105,6 +2117,7 @@ function prepareComparison(ts, before, after, options, progress, allEntrypoints)
   }
   progress("export-comparison-plan", { sharedExportProofs, declarationExportProofs, structuralProbes: checks.length,
     errorWalkTypes, errorWalkCacheHits, closedErrorTypes })
+  progress("recursive-namespace-views", { recursiveNamespaceViews })
   for (const [path, text] of bridges) virtual.set(resolve(path), text)
   for (const [from, to] of equivalents) {
     const text = bridges.get(from)

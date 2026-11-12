@@ -16,6 +16,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Moving a declaration into a module body could make an unchanged recursive type alias fail API verification. The check now recognizes the alias's unchanged bindings and dependencies while still rejecting changed types or documentation.
 
+- Moving a binding into a module body could make declaration checks reject an unchanged module that re-exports itself. Checks now accept its unchanged public API and still report changed exports.
+
 - Known limitations omitted type-only experimental references and said re-exports through TypeScript were refused. It now lists the indexed, utility, mapped and conditional types that pass without opt-in, and explains which bridge files pass.
 
 - Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.
