@@ -142,7 +142,7 @@ bun run test
 
 The starter's `start` script runs Node and uses `@effect/platform-node`, even when Bun installs its dependencies. To use Bun as the runtime, see [Run sources with Bun](docs/user/src/setup/vibelang-cli.md#run-sources-with-bun).
 
-You need Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.4 or later. Bun is optional. `npm run start` prints:
+You need Node 22.22.3 (22.x) or Node 24.11.1 or later. If you use Bun, use Bun 1.4 or later. To [run sources with Bun](docs/user/src/setup/vibelang-cli.md#run-sources-with-bun), use Bun 1.4.2 or later. Bun is optional. `npm run start` prints:
 
 ```text
 Hello, VibeLang!
@@ -202,4 +202,4 @@ Report a bug in the published packages, with a minimal reproduction, in [Issues]
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,444 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,479 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
