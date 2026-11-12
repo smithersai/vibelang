@@ -8,9 +8,9 @@ Effect 4's fibers, scopes, and services.
 
 The first release uses ordinary services and providers. The compiler rejects
 `control`, `handle`, and continuation-runtime references with `EK3501`, and
-`select` blocks with `EK4607`. Run `vibelang --fix` for supported private
-service patterns; continuation-dependent code needs an explicit service or
-Effect redesign. VIP-35 remains open and is outside the first release.
+`select` blocks with `EK4607`. Code that depended on continuations needs an
+explicit service or an Effect redesign. VIP-35 remains open and is outside the
+first release.
 
 ## Install
 
@@ -123,10 +123,10 @@ or runtime references valid in first-release `.vibe` source.
 | `$assertMatch` | Require a successful pattern match | — |
 | `$asyncHatch` | Adapt an asynchronous hatch and its optional AbortSignal | — |
 | `$await` | Lower a retired await form | — |
-| `$awaitAll` | Type of a removed `await.all`, which `vibelang --fix` reads to rewrite it (`EK1802`) | VIP-18 |
-| `$awaitAllSettled` | Type of a removed `await.allSettled`, read by `vibelang --fix` | VIP-18 |
-| `$awaitAny` | Type of a removed `await.any`, read by `vibelang --fix` | VIP-18 |
-| `$awaitRace` | Type of a removed `await.race`, read by `vibelang --fix` | VIP-18 |
+| `$awaitAll` | Type of a removed `await.all` (`EK1802`) | VIP-18 |
+| `$awaitAllSettled` | Type of a removed `await.allSettled` | VIP-18 |
+| `$awaitAny` | Type of a removed `await.any` | VIP-18 |
+| `$awaitRace` | Type of a removed `await.race` | VIP-18 |
 | `$catchCause` | Recover a complete Cause while preserving control abandonment | — |
 | `$defineProperty` | Captured Object.defineProperty intrinsic | — |
 | `$eager` | Track eager-call depth and its shared limit | — |

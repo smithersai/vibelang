@@ -31,3 +31,9 @@ test("README export audit rejects omissions and prefix collisions", () => {
     assert.deepEqual(missing(mutated), [specifier])
   }), {seed: 74173, numRuns: 200})
 })
+
+test("README never tells a user to run vibelang --fix", () => {
+  // The README is the npm package page. The compiler has no --fix option (TS5023), so
+  // the page must not send a user to it.
+  assert.doesNotMatch(readme, /vibelang(?:\s+[^\s`|]+)*\s+--fix\b/)
+})
