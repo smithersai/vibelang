@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:effect-type-line-break-equality\ndeclare const a: number\nconst loose = a as number!\n!== a")

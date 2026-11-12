@@ -241,6 +241,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"provider-expression", "effect function f(K, L) { provide K => 1, L { 1; } }"},
 	{"effect-type-trailing-bang", "type T = number!string!;"},
 	{"effect-type-line-break", "type T = number !\n! ;"},
+	{"effect-type-line-break-equality", "declare const a: number\nconst loose = a as number!\n!== a"},
 	{"service-class", "service class S { n: number }"},
 	{"try-in-generator-effect-identifier", "function* g() { effect % try 1; }"},
 	{"try-in-generator", "function* g() { try 1; }"},
@@ -994,8 +995,10 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			delete(lastBang, depth)
 		case "!":
 			// EffectType has [no LineTerminator here] around each bang: neither the
-			// next bang nor the next slot may start a line.
-			if i+1 < len(ts) && ts[i+1].nl && (ts[i+1].text == "!" || (ts[i+1].kind != 'p' || ts[i+1].text == "(") && grammarInTypeAlias(ts, i)) && i > 0 && (ts[i-1].kind != 'p' || slices.Contains([]string{")", "]", "}"}, ts[i-1].text)) {
+			// next bang nor the next slot may start a line. The next bang may be
+			// fused with an equality operator (`!=`, `!==`): the compiler takes
+			// it as the second bang but never rescans it across the line break.
+			if i+1 < len(ts) && ts[i+1].nl && (ts[i+1].text == "!" || ts[i+1].text == "!=" || ts[i+1].text == "!==" || (ts[i+1].kind != 'p' || ts[i+1].text == "(") && grammarInTypeAlias(ts, i)) && i > 0 && (ts[i-1].kind != 'p' || slices.Contains([]string{")", "]", "}"}, ts[i-1].text)) {
 				return "admission:effect-type-line-break"
 			}
 			// A!E! with no R: only the omitted-E form A!! ends in a bang. The

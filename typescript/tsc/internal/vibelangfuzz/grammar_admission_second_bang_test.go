@@ -75,6 +75,11 @@ var grammarSecondBangSources = []string{
 	"type T = (number!string\n!{ value: number });",
 	"type T = (number!string /* newline */\r\n!boolean);",
 	"type T = (number!string\n!boolean); type U = (string!number\n!boolean);",
+	// The second bang fused with an equality operator on the next line.
+	"declare const a : number\nconst\nloose = a as number !\n!== a",
+	"declare const a: number\nconst loose = a as number!\n!== a",
+	"declare const a: number\nconst loose = a as number!\n!= a",
+	"declare const a: number\nconst d: number!\n! = a",
 }
 
 func TestGrammarAdmissionSecondBangKeys(t *testing.T) {
@@ -92,6 +97,17 @@ func TestGrammarAdmissionSecondBangKeys(t *testing.T) {
 	} {
 		if grammarSecondBangLineBreak(grammarLexSource(source)) {
 			t.Errorf("independent or valid syntax entered the second-bang family: %s", source)
+		}
+	}
+	// A completed `!!` or no bang before the equality operator derives as a
+	// comparison and takes no line-break key.
+	for _, source := range []string{
+		"declare const a: number\nconst loose = a as number!!\n!== a",
+		"declare const a: number\nconst loose = a as number!!== a",
+		"declare const a: number\nconst loose = a as number\n!== a",
+	} {
+		if got := grammarAdmissionForm(source); got == "admission:effect-type-line-break" {
+			t.Errorf("a completed or absent bang before the equality operator entered the line-break family: %s", source)
 		}
 	}
 	const independent = "type T = (number!string\n!boolean); const b = x is 1 + 1;"
