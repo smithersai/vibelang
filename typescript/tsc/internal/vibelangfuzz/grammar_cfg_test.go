@@ -594,15 +594,16 @@ NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" Ret
 InterfaceDeclaration = "interface" BindingIdentifier DeclarationTypeParameters? InterfaceExtends? ObjectType
 InterfaceExtends = "extends" TypeReference | InterfaceExtends "," TypeReference
 TypeAliasDeclaration = "type" [no LineTerminator here] BindingIdentifier DeclarationTypeParameters? "=" Type StatementEnd
-ImportDeclaration = "import" ImportClause "from" StringLiteral WithClause? StatementEnd | "import" StringLiteral WithClause? StatementEnd
+ImportDeclaration = "import" ImportClause "from" StringLiteral WithClause? StatementEnd | "import" StringLiteral WithClause? StatementEnd | "import" ImportPhase PhaseImportClause "from" StringLiteral WithClause? StatementEnd
 WithClause = "with" "{" "}" | "with" "{" WithEntries ","? "}"
 WithEntries = WithEntry | WithEntries "," WithEntry
 WithEntry = IdentifierName ":" StringLiteral | StringLiteral ":" StringLiteral
-TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier WithClause? StatementEnd | "import" ModuleSpecifier WithClause? StatementEnd
+TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier WithClause? StatementEnd | "import" ModuleSpecifier WithClause? StatementEnd | "import" ImportPhase PhaseImportClause "from" ModuleSpecifier WithClause? StatementEnd
 ImportEqualsDeclaration = "import" BindingIdentifier "=" ModuleReference StatementEnd | "import" "type" BindingIdentifier "=" ModuleReference StatementEnd
 ModuleReference = "require" "(" StringLiteral ")" | TypeName
 ModuleBody = Statement | ModuleBody Statement
 ImportClause = BindingIdentifier | NamespaceImport | NamedImports | BindingIdentifier "," NamespaceImport | BindingIdentifier "," NamedImports | "type" BindingIdentifier | "type" NamespaceImport | "type" NamedImports
+PhaseImportClause = BindingIdentifier | NamespaceImport | NamedImports | BindingIdentifier "," NamespaceImport | BindingIdentifier "," NamedImports
 NamespaceImport = "*" "as" BindingIdentifier
 NamedImports = "{" "}" | "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier

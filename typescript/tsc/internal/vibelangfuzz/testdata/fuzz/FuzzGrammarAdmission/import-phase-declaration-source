@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-phase-declaration-source\nmodule M { }\nimport source x from M;")

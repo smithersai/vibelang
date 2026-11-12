@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-phase-declaration-defer\nmodule M { }\nimport defer * as ns from M;")

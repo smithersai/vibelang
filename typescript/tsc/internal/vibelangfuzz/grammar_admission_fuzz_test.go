@@ -501,6 +501,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"import-type-nested-argument-combined", grammarImportNestedArgumentForms[2]},
 	{"effect-arrow-type-predicate", grammarEffectPredicateReturnForms[2]},
 	{"effect-function-assertion-predicate", grammarEffectPredicateReturnForms[7]},
+	{"import-phase-declaration-defer", grammarImportPhaseDeclarationForms[0]},
+	{"import-phase-declaration-source", grammarImportPhaseDeclarationForms[7]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
