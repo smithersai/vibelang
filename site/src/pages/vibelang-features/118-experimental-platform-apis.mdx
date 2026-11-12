@@ -680,7 +680,6 @@ Effect defines durable workflows: `Workflow.make` declares a workflow and its pa
 `Experimental.Durable.task(key, options)` declares a step with a payload. Its implementation is a layer, `Task.toLayer(handler)`, so a test swaps it by providing another. Inside a workflow, calling the task runs one step; two calls of one task are two steps. `key` names the step in the journal, so keep it while runs that used it are stored. Options keep the names of the durable-execution library they port: `payload`, `success`, `error`, `tier` (`"sealed"`, `"compensable"` or `"irreversible"`, recorded with the step), `retryPolicy` and `attemptTimeoutMs`.
 
 ```vibe
-// experimental: builtins
 const Charge = Experimental.Durable.task("shop#Charge", { payload: { order: Schema.String }, success: Schema.Number })
 
 const Order = Experimental.Durable.workflow("shop#Order", { payload: { order: Schema.String }, success: Schema.Number })
@@ -751,7 +750,6 @@ A position is `{ run, seq }`: a run and a sequence number in its journal.
 The std-durable VIP's example reads a run's events and forks it:
 
 ```vibe
-// experimental: builtins
 export effect function forkAt(run: string, seq: number) {
   const events = try Stream.runCollect(Stream.map(Experimental.Durable.history(run), (entry) => entry.eventType))
   const copy = try Experimental.Durable.fork({ run, seq })
@@ -775,7 +773,6 @@ A test asserts that an answer equals something. A model's answer rarely equals a
 ```
 
 ```vibe
-// experimental: builtins
 effect function greet(name: string) {
   return `Hello, ${name}`
 }
@@ -863,7 +860,6 @@ Each check of `Experimental.Scorer.checks` is plain data, so the list is the sco
 `model` is the judge's seat, such as `"anthropic:claude-sonnet-5-5"`, and is part of the scorer's identity, so a different judge is a different scorer. `layer` is the Effect `LanguageModel` that answers for that seat: a provider's layer in production, a scripted model in a test. Nothing defaults to the model under test, which would grade itself.
 
 ```vibe
-// experimental: builtins
 import * as LanguageModel from "effect/ai/LanguageModel"
 
 // A scripted judge stands in for a provider in this example.
@@ -890,7 +886,6 @@ The judge reads the case input as context: a suite's single argument, or the arg
 In a test, the judge is `Experimental.Test.replay(recorded)` from [Testing agentic programs](#testing-agentic-programs): it answers from a recording and never calls a provider. A recorded rubric call holds both of the judge's messages, the instructions and the fenced answer, so make the recording with `Experimental.Test.record` rather than by hand. Pass the replay as `layer` and also provide it around the runs. The enclosing `provide` builds it once, so each recorded verdict is claimed once and `Experimental.Test.unconsumed` sees what is left. Without it, each score builds its own copy of the layer, as Effect's `provide` does for sibling calls, and every score replays from the first recording.
 
 ```vibe
-// experimental: builtins
 const criteria = [{ id: "polite", question: "Is the reply polite?", low: "rude", high: "courteous" }]
 
 effect function greet(name: string) {
@@ -931,7 +926,6 @@ Every `meta` also holds `judge`, the seat. A classify decision needs `pass`, the
 
 ```vibe
 // A scripted judge stands in for a provider in this example.
-// experimental: builtins
 const judge = Layer.effect(DecisionModel.DecisionModel, DecisionModel.make({
   decide: () => Effect.succeed({
     answers: { verdict: { _tag: "Probability", probability: 0.75 } },
@@ -961,7 +955,6 @@ In a test, the judge is `Experimental.Test.decisions(recorded)` from [Testing ag
 `Experimental.Scorer.bind(scorer, W, { sampling })` scores the live runs of a durable workflow `W`. It is a layer over the `WorkflowEngine`: when a run of `W` finishes with a result, the scorer grades `{ input: payload, output: result }`, and the score store keeps the observation under the run's execution id. A run executed again, joined or resumed records its score once. A run that fails is not scored.
 
 ```vibe
-// experimental: builtins
 const Double = Experimental.Durable.workflow("docs#Double", { payload: { n: Schema.Number }, success: Schema.Number })
 
 const doubled = Experimental.Scorer.make({
@@ -1007,7 +1000,6 @@ A test of an agentic program needs a model that holds still. `Experimental.Test`
 `Experimental.Test.replay(fixture)` is a `LanguageModel` that answers from a recording and never calls a provider, so a test runs with no key and no network. A program asks through whatever `LanguageModel` is in scope, so the test changes no line of it:
 
 ```vibe
-// experimental: builtins
 schema Label { type: "bug" | "feature" | "question" | "chore" }
 
 const recorded = {
@@ -1056,7 +1048,6 @@ The layer also provides `Experimental.Test.Recording`. `try Experimental.Test.un
 `Experimental.Test.record(path, { live })` makes a recording. It replays the file at `path` as `replay` does, claiming each recorded call once; a request the file does not answer goes to the `live` model, such as a provider's layer, and the answer is appended to the file before the caller sees it. Recording and replaying are two calls, so a deleted fixture never turns a free test run into a paid one: switch a test to `record` to refresh its fixture, then back to `replay`.
 
 ```vibe
-// experimental: builtins
 import { NodeFileSystem } from "@effect/platform-node"
 
 export effect function labelLive(seat: Layer.Layer<LanguageModel.LanguageModel>) {
@@ -1078,7 +1069,6 @@ export effect function labelLive(seat: Layer.Layer<LanguageModel.LanguageModel>)
 `Experimental.Test.decisions(fixture)` is the same double for Effect's `DecisionModel`. Each recorded call holds the `request` a provider received, its encoded input as `state`, and the provider's `response`, its `answers` by decision name; `request.decisions` is compared only when present. Effect validates each recorded answer against the program's decision definition as it would a provider's, so a `Classify` answer carries its `probabilities`, a label the definition does not have is `Invalid`, and a `Refusal` is refused. Each recording is claimed once, and a request none matches dies with `Experimental.Test.UnrecordedDecision`.
 
 ```vibe
-// experimental: builtins
 const recorded = {
   calls: [{
     request: { state: { title: "Crash on start" } },
@@ -1104,7 +1094,6 @@ export effect function triageCrash() {
 A layer replaces a model only inside one process. A program under test that reaches its model over HTTP, such as a coding agent run as a child process, needs a server. `Experimental.Test.modelServer({ fixture })` answers Chat Completions requests, `POST /v1/chat/completions`, from a recording: point the program's OpenAI-compatible base URL at it.
 
 ```vibe
-// experimental: builtins
 import { ExperimentalNodeHttpServer } from "vibelang-runtime/experimental/platform-node"
 
 const recorded = { calls: [{ request: { prompt: "hello" }, response: [{ type: "text", text: "hi there" }] }] }
@@ -1124,7 +1113,6 @@ The server reads a request's messages as the prompt Effect's `LanguageModel` sen
 `Experimental.Test.host({ files, commands })` provides Effect's `FileSystem`, `Path` and `ChildProcessSpawner` for a machine described in the test: the files that exist, by path, and what each command prints. Nothing reaches the operating system, so the test runs the same on every machine.
 
 ```vibe
-// experimental: builtins
 const machine = Experimental.Test.host({
   files: { "/repo/package.json": `{"name":"demo"}` },
   commands: { "git status --short": { stdout: " M src/a.ts\n M src/b.ts\n" } }
@@ -1159,7 +1147,6 @@ Each build of the layer starts from its options again.
 `Experimental.Test.restartable` is the engine a crash test uses. Provide it where the program provides its engine. `try Experimental.Test.crash` kills the engine the way a killed process stops: every run it was driving stops at once, and a fresh engine starts over the same store with the program's workflows registered again. The next execution of a stopped run resumes it. A step that finished before the crash returns its recorded result, and a step that had not finished runs again.
 
 ```vibe
-// experimental: builtins
 const done: Array<string> = []
 const reached = Deferred.makeUnsafe<void>()
 const blocked = { step: 2 }
@@ -1216,7 +1203,6 @@ Step 2 blocks before its effect, so the crash interrupts it unfinished. Step 1 i
 A step name matches by its journal name or by its task key, which matches every occurrence. `attempts` counts retries; `starts` counts every time the step started, so a step that ran again after `Experimental.Test.crash` has two starts and one attempt.
 
 ```vibe
-// experimental: builtins
 export effect function checkOrder(run: string) {
   const journal = try Experimental.Test.journal(run)
   try journal.executedInOrder(["shop#Reserve", "shop#Charge"])
@@ -1244,7 +1230,6 @@ export effect function checkOrder(run: string) {
 | `race/recorded-loser` | after a restart, leave the recorded loser lost |
 
 ```vibe
-// experimental: builtins
 const subject = Effect.sync(() => Experimental.Durable.layerStore(Experimental.Durable.makeMemoryStore()))
 
 export effect function certify() {
@@ -1263,7 +1248,6 @@ export effect function certify() {
 A model's context is gone when its process exits, and a durable run's journal records only what that run did. `Experimental.Memory` keeps what a later run should still know: facts a program writes now and recalls in a later run, ranked by a query and cut to a byte budget so the answer fits in a prompt. It ports an existing Effect memory package.
 
 ```vibe
-// experimental: builtins
 export effect function notes() {
   provide Experimental.Memory.test {
     try Experimental.Memory.remember({ bank: "global-notes", key: "release", text: "cut 0.1.0" })
@@ -1282,7 +1266,6 @@ A fact lives in a bank, the public spelling of a namespace: `kind-id`, where the
 A note is never edited. `Experimental.Memory.note(bank, text, { id?, supersedes? })` appends one and returns `{ id }`; a correction is a new note that names the notes it replaces in `supersedes`, an id or an array of ids, and a superseded note drops out of recall. Recall returns a note as a row whose key is its id. Writing a note again with the same `id`, bank, text and `supersedes` does nothing, so a retried write is safe; without an `id`, each call appends a new note.
 
 ```vibe
-// experimental: builtins
 export effect function correct() {
   try Experimental.Memory.note("agent-ci", "tests take 4 minutes", { id: "n1" })
   try Experimental.Memory.note("agent-ci", "tests take 9 minutes", { id: "n2", supersedes: "n1" })
@@ -1308,7 +1291,6 @@ Every recall has a byte budget, because recalled rows become part of a prompt. T
 `Experimental.Memory.tools(bank)` is a model's memory: Effect's `Toolkit` with a `remember` tool (`{ key, text }`) and a `recall` tool (`{ query, maxBytes? }`), bound to `bank`. Pass it as a language model's `toolkit`. No tool takes a bank, so the model reaches no other bank, and a memory failure is returned to the model as `{ code, message, path? }` rather than ending the call. To give a model memory beside other tools, merge `Experimental.Memory.toolkit` into a larger toolkit and provide `Experimental.Memory.layerTools(bank)`.
 
 ```vibe
-// experimental: builtins
 export effect function answer(question: string) {
   const response = try LanguageModel.generateText({ prompt: question, toolkit: Experimental.Memory.tools("agent-support") })
   return response.text
@@ -1338,7 +1320,6 @@ A store reports its own failures, such as a SQL error, with the code `store`.
 Nothing is deleted unless the program asks. `Experimental.Memory.sweep({ ttl?, keep? })` deletes facts whose `ttlMs` has passed, facts not written within `ttl` (any Effect `Duration` input, such as `"30 days"`) when it is given, and each thread's messages beyond its newest `keep` when it is given, and returns `{ facts, messages }`, the number of each it deleted. Notes stay, because a superseded note is already out of recall. A sweep is a finite Effect: run it when the program chooses, or schedule it with `Effect.schedule`. It deletes rows only, so a recorded step that recalled a row still holds what it recalled.
 
 ```vibe
-// experimental: builtins
 export effect function tidy() {
   return try Experimental.Memory.sweep({ ttl: "30 days", keep: 200 })
 }
@@ -1358,7 +1339,6 @@ A workflow that waits a week for an approval must not keep a process alive for a
 | `try Experimental.Human.confirm(name, prompt)`, and `ask`, `select`, `json` | `Experimental.Human.answer(W, run, name, value)` records an answer | `approval` |
 
 ```vibe
-// experimental: builtins
 schema Paid { amount: number }
 export const paid = Experimental.Durable.signal("paid", Paid)
 

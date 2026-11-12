@@ -93,3 +93,15 @@ test('Markdown copies drop video lines but keep them inside code fences', async 
   const text = ['Intro.', '', '![Caption](/videos/a-1.mp4)', '', '```md', '![Caption](/videos/a-1.mp4)', '```', '![Image](/images/a.png)'].join('\n')
   assert.equal(stripVideos(text), ['Intro.', '', '', '```md', '![Caption](/videos/a-1.mp4)', '```', '![Image](/images/a.png)'].join('\n'))
 })
+
+test('rendered user docs drop the snippet checker experimental marker, not the code or the prose', () => {
+  const page = render([
+    '# Example', '', 'Opt in with "vibe": { "experimental": ["builtins"] }. The prose marker // experimental: builtins stays.', '',
+    '```vibe', '// experimental: builtins', 'task Fetch {}', '```', '',
+    '```ts', 'const marker = "// experimental: builtins"', '```', ''
+  ].join('\n'))
+  assert.doesNotMatch(page, /^\s*\/\/ experimental:/m)
+  assert.match(page, /task Fetch \{\}/)
+  assert.match(page, /const marker = "\/\/ experimental: builtins"/)
+  assert.match(page, /The prose marker \/\/ experimental: builtins stays/)
+})

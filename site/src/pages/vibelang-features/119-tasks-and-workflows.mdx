@@ -10,7 +10,6 @@ description: "A task is one recorded step of a durable run, and a workflow is a 
 A `task` is one recorded step of a durable run, and a `workflow` is a plan over tasks. Both are written like a `service`: a class-shaped body with one `effect call` method and `static readonly` options. They run on `Experimental.Durable`, which journals each step: a run that crashes resumes where it stopped, and a finished step never runs twice.
 
 ```vibe
-// experimental: builtins
 schema Issue { number: number; title: string }
 
 task FetchIssues {
@@ -32,7 +31,6 @@ export workflow Triage {
 Run a workflow inside its layer and an engine. A second run with an equal input joins the first, so nothing calls the task again:
 
 ```vibe
-// experimental: builtins
 schema Ticket { number: number; title: string }
 
 task ListIssues {

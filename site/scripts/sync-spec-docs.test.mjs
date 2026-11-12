@@ -65,6 +65,15 @@ test('missing chapters, user pages, headings and ambiguous fragments fail', () =
     assert.throws(() => load().convert('000-intro.md', facts), /Unresolvable/)
   }
 })
+test('spec pages drop the snippet checker experimental marker inside code only', () => {
+  const { put, load } = fixture()
+  put('docs/design/src/101-calls.md', '# Calls\n\n## Shared\n\nThe marker // experimental: builtins in prose stays.\n\n```vibe\n// experimental: builtins\ntask Fetch {}\n```\n')
+  const body = load().convert('101-calls.md', facts)
+  assert.ok(!/^\s*\/\/ experimental:/m.test(body), body)
+  assert.ok(body.includes('task Fetch'), body)
+  assert.ok(body.includes('The marker // experimental: builtins in prose stays.'), body)
+})
+
 test('callouts preserve status text and continuation, while code remains literal', () => {
   const { put, load } = fixture()
   put('docs/design/src/000-intro.md', '# Intro\n\n> **Proposed.** Future {syntax}.\n> More.\n\n> **Not designed yet.** Unknown.\n\n```text\n> **Proposed.** {literal}\n```\n')

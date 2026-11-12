@@ -48,6 +48,11 @@ function escapeText(text, fromRel, convertLink) {
     .replace(/\u0000(\d+)\u0000/g, (_, n) => `<a id="${ids[n]}"></a>`)
 }
 
+// `// experimental: builtins` tells the snippet checker which vibe.experimental
+// features a block needs. It is not the opt-in (a file holding only that comment
+// still reports EK3013), so rendered pages, user docs and spec alike, drop it.
+const EXPERIMENTAL_MARKER = /^\s*\/\/\s*experimental:/
+
 export function readFences(lines) {
   // Splits a page into text lines and fenced blocks.
   const parts = []
@@ -61,7 +66,7 @@ export function readFences(lines) {
     const body = []
     let j = i + 1
     while (j < lines.length && !(lines[j].trim().startsWith(marker) && lines[j].trim().replace(/[`~]/g, '') === '')) {
-      body.push(lines[j])
+      if (!EXPERIMENTAL_MARKER.test(lines[j])) body.push(lines[j])
       j++
     }
     const [lang = '', role = ''] = info.trim().split(/\s+/)
