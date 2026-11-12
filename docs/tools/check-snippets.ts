@@ -458,8 +458,17 @@ async function runVitest(dir: string, emitted: string, helper: string | undefine
   } })}\n`)
   const require = createRequire(join(repo, "docs/tools/package.json"))
   const vitest = join(dirname(require.resolve("vitest/package.json")), "vitest.mjs")
-  return command(["node", vitest, "run", "--config", "$docs-vitest.config.mjs"], dir, timeout)
+  // testTimeout and hookTimeout hold the example to the deadline. Booting Vitest
+  // and transforming its imports is the runner's own work, like compiling, so the
+  // process gets that much more on top (1.6 to 9.5 s measured on a loaded host).
+  const executed = await command(["node", vitest, "run", "--config", "$docs-vitest.config.mjs"], dir, timeout + VITEST_STARTUP_MS)
+  // A test or hook past the deadline is the example timing out, as when the
+  // process deadline kills it.
+  return { ...executed, timedOut: executed.timedOut || /\b(?:Test|Hook) timed out in \d+ms\b/.test(executed.stdout + executed.stderr) }
 }
+
+// The same bound a block's compile gets.
+const VITEST_STARTUP_MS = 60_000
 
 export async function runBlock(dir: string, blocks: Block[], result: Result, compiler: string, timeout: number): Promise<Result> {
   if (result.status !== "ok" || failsOnPurpose(result) || result.diagnostics.some(d => d.severity !== "warning")) {
