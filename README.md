@@ -8,7 +8,7 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 [Get started](https://vibelang.sh) · [Cheat sheet](https://vibelang.sh/vibelang-features/115-cheat-sheet) · [Contribute](CONTRIBUTING.md)
 
 > [!IMPORTANT]
-> The alpha [specification](https://vibelang.sh/spec) is final. The initial alpha release is expected in the coming days.
+> VibeLang 0.0.13 is the first alpha release. The alpha [specification](https://vibelang.sh/spec) is final, and every example on this page compiles and runs with it.
 
 > [!WARNING]
 > VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
@@ -39,7 +39,6 @@ Effect gives you typed failures, dependency injection, concurrency and resource 
 Plain and `async` functions are TypeScript's, so your `.ts` code and npm packages call as they do in TypeScript. The compiler tracks what a function may throw, and Effect code calls one that may throw through Effect's own `Effect.try` ([TypeScript boundaries](https://vibelang.sh/vibelang-features/114-vibelang-for-effect-users#keep-platform-work-in-effect)):
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-6, VIP-13
 import { parseSettings } from "./settings.ts"
 error BadSettings { cause: unknown }
 
@@ -55,7 +54,6 @@ Here is one program in both languages: a typed failure, an injected service, two
 **VibeLang**
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-9, VIP-12, VIP-13, VIP-18, VIP-26
 error UserNotFound { id: string }
 service Users {
   find(id: string): string!UserNotFound
@@ -154,7 +152,6 @@ Recovered from EmptyName
 Replace `src/main.vibe` with this program and run `npm run start` again:
 
 ```vibe
-// pending: VIP-1, VIP-4, VIP-5, VIP-13, VIP-26
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 
 error EmptyName
@@ -205,4 +202,4 @@ Report a bug with a minimal reproduction, or propose an idea, in [Issues](https:
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>2,455 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,391 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

@@ -373,6 +373,11 @@ test("onboarding pages include the starter and check their inline wrapper exampl
   }
 })
 
+test("the user docs check includes the README, so a stale pending marker there fails", () => {
+  const repo = resolve(import.meta.dir, "../..")
+  expect(markdownPages(join(repo, "docs/user"))).toContain(join(repo, "README.md"))
+})
+
 test("snippet projects share the Effect resolved from an npm-installed runtime", () => {
   const root = mkdtempSync(join(tmpdir(), "snippet-installed-runtime-"))
   const previous = process.env.VIBELANG_RUNTIME_DIR

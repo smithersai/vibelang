@@ -105,3 +105,13 @@ test("8: cache startup and formatter requirements state their measured limits", 
   assert.match(formatting, /0\.50\.2/)
   assert.match(formatting, /npm:vibelang\/dprint-plugin\.json/)
 })
+
+test("the README says which release is the alpha, and marks none of its examples as waiting", () => {
+  const text = read("README.md")
+  const box = text.slice(text.indexOf("> [!IMPORTANT]"), text.indexOf("> [!WARNING]"))
+  assert.match(box, /VibeLang 0\.0\.13 is the first alpha release\./)
+  assert.doesNotMatch(box, /expected|coming days|soon/i)
+  // A pending marker tells the snippet checker the block waits for a VIP; on the
+  // README a reader takes it to mean the feature is not built.
+  assert.doesNotMatch(text, /^\/\/ pending(?:-decision)?:/m)
+})

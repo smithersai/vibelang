@@ -181,7 +181,8 @@ export function markdownPages(root: string): string[] {
   const walk = (path: string): string[] => readdirSync(path, { withFileTypes: true }).flatMap(e =>
     e.isDirectory() ? (join(path, e.name) === join(root, "site") ? [] : walk(join(path, e.name))) : e.name.endsWith(".md") ? [join(path, e.name)] : [])
   const pages = walk(root)
-  if (root === join(repo, "docs/user")) pages.push(join(repo, "templates/app/AGENTS.md"))
+  // The README is the first page most readers see; its examples are checked with the user docs.
+  if (root === join(repo, "docs/user")) pages.push(join(repo, "templates/app/AGENTS.md"), join(repo, "README.md"))
   return [...new Set(pages)].sort()
 }
 
