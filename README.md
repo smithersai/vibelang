@@ -110,7 +110,7 @@ Effect.runPromise(main)
 
 <!-- token-headline:start -->
 
-**0 tokens across 0 cheat-sheet pairs.** The example above uses **0 vs 0 tokens**.
+**6.7% fewer tokens across 47 cheat-sheet pairs; VibeLang is longer in 20 pairs.** The example above uses **136 vs 202 tokens (32.7% fewer)**.
 
 <!-- token-headline:end -->
 
@@ -202,4 +202,4 @@ Report a bug in the published packages, with a minimal reproduction, in [Issues]
 
 [MIT](LICENSE), except the TypeScript fork in [`typescript/`](typescript/) and the compiler packages built from it, `vibelang` and `vibelang-<platform>`, which use the [Apache License 2.0](typescript/LICENSE.txt) and keep its [notices](typescript/NOTICE.txt).
 
-<sub>0 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,554 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

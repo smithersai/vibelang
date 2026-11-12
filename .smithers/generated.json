@@ -2,7 +2,7 @@
   "version": 2,
   "flow": "docs",
   "source": ".smithers/flows/docs/flow.ts",
-  "digest": "315f1ea1f97fe728477b3ce42aef3aa17cf9bbdfc2912aef477b831afd143409",
+  "digest": "085c093e88869c93414f5b323f5310be97b6ba955963d1919f9aa4d61f6f9ec6",
   "inputs": [
     {
       "path": ".smithers/flows/docs/project.ts",
@@ -10,7 +10,7 @@
     },
     {
       "path": ".smithers/flows/docs/render.ts",
-      "sha256": "4261c9a5e9635d96af06e5b4cbc4bcde31104f8d13aea005b53906f2c26fc2f7"
+      "sha256": "bab54312f7c56bcad785d88961da71326d6d72cc812a40cb88fbc9237e394e18"
     },
     {
       "path": ".smithers/flows/docs/flow.ts",
@@ -30,7 +30,7 @@
     },
     {
       "path": "README.md",
-      "sha256": "254719bd6eacb4494ee69abee2db837ac347a68932cfd8d7851eb1a80bffc9e2"
+      "sha256": "7c8401d10b1d03f5e71c68b190ab8cf77ad1e11e93043733e115ea1c51259342"
     },
     {
       "path": "docs/user/llms-essentials.md",
@@ -38,12 +38,12 @@
     },
     {
       "path": "packages/compiler/skills/vibelang/SKILL.md",
-      "sha256": "2c86c76a7807215ca9287ee7302d1bbcd656618c305c3ece24f51a0fe6fd8105"
+      "sha256": "4b2818eb48398430de11705df76a219abdd22b9fb8076bcb06b97ee5f1ca5c0b"
     }
   ],
   "outputs": {
     "README.md": {
-      "sha256": "4a00648502ce8e5520f13b008546491a12593f6c47aa0131070d2dd3954b00ee"
+      "sha256": "ec8f456d0a5eab8616c9e2436d2c4c7206ce37357c64ab5394115590bdfb43b5"
     },
     "CONTRIBUTING.md": {
       "sha256": "ba365cde63ef37c81c5d72eee666d5db073c635594d680c1e700f9a84de01bf2"
@@ -52,10 +52,10 @@
       "sha256": "ecdf8b416bc19d18ad865329113fd740bd827cec8cddb1c17da789bca81bf392"
     },
     "AGENTS.md": {
-      "sha256": "2b3ae9ffd77ddc323b7a33baab82c7c1f0fb87053070aef44c4436555212391f"
+      "sha256": "13fd6a3410c1fa763dcaeb6331e0fc68c2e65cd2cf613ec060856fe275f5c378"
     },
     "templates/app/AGENTS.md": {
-      "sha256": "eeae5d9cb1ded0baf0d0664b4daf893fe3af77d38b9075b229b5349ed60fdbcd"
+      "sha256": "ac902292810ecd20a6dc3b36c4fbeda24128b4742d3d0b42231fec043ecad490"
     }
   }
 }
