@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:export-as-namespace\nexport as namespace Lib;")

@@ -519,7 +519,8 @@ func grammarSplitLookahead(set string) []string {
 const grammarTsSubset = `
 Script = ScriptItem*
 ScriptItem = Statement
-Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | ForStatement | ForInStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration | DoWhileStatement | DeclareExpressionStatement
+Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | ForStatement | ForInStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration | DoWhileStatement | DeclareExpressionStatement | DebuggerStatement
+DebuggerStatement = "debugger" StatementEnd
 SwitchStatement = "switch" "(" Expression ")" "{" CaseClause* "}"
 CaseClause = "case" Expression ":" Statement* | "default" ":" Statement*
 Declaration = DecoratorList DecoratedClassExport | DecoratorList "abstract" [no LineTerminator here] ClassDeclaration | HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ImportEqualsDeclaration | ExportDeclaration | "declare" [no LineTerminator here] DeclareDeclaration | "abstract" [no LineTerminator here] ClassDeclaration | NamespaceDeclaration | EnumDeclaration
@@ -534,7 +535,7 @@ FunctionBody = Statement*
 VariableStatement = LetOrConst BindingList StatementEnd | "using" [no LineTerminator here] BindingList StatementEnd | "await" "using" [no LineTerminator here] BindingList StatementEnd
 LetOrConst = "const" | "let" | "var"
 BindingList = LexicalBinding | BindingList "," LexicalBinding
-LexicalBinding = BindingIdentifier TypeAnnotation? Initializer? | BindingPattern TypeAnnotation? Initializer
+LexicalBinding = BindingIdentifier TypeAnnotation? Initializer? | BindingIdentifier [no LineTerminator here] "!" TypeAnnotation? Initializer? | BindingPattern TypeAnnotation? Initializer
 AmbientVariableStatement = LetOrConst AmbientBindingList StatementEnd
 AmbientBindingList = AmbientBinding | AmbientBindingList "," AmbientBinding
 AmbientBinding = BindingIdentifier TypeAnnotation? Initializer? | BindingPattern TypeAnnotation? Initializer?
@@ -588,8 +589,8 @@ OptionalClassMethod = "*" PropertyName "?" TypeParameters? "(" FormalParameters 
 ClassMemberModifiers = ClassMemberModifier | ClassMemberModifiers ClassMemberModifier
 ClassMemberModifier = "static" | "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here] | "override" [no LineTerminator here] | "abstract" [no LineTerminator here] | "declare" [no LineTerminator here] | "accessor" [no LineTerminator here]
 FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName [no LineTerminator here] "!" TypeAnnotation? Initializer? StatementEnd | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? "=" "throw" UnaryExpression LineTerminator [lookahead ∈ { "*" }]
-MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "*" PropertyName TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd | GetAccessor | "set" PropertyName "(" FormalParameter ")" Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" ReturnAnnotation? Block
-GetAccessor = "get" PropertyName "(" ")" ReturnAnnotation? Block
+MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "*" PropertyName TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? StatementEnd | GetAccessor | "set" PropertyName "(" FormalParameter ")" Block | "set" PropertyName "(" FormalParameter ")" StatementEnd | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" ReturnAnnotation? Block
+GetAccessor = "get" PropertyName "(" ")" ReturnAnnotation? Block | "get" PropertyName "(" ")" ReturnAnnotation? StatementEnd
 NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" ReturnAnnotation? Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" ReturnAnnotation? Block
 InterfaceDeclaration = "interface" BindingIdentifier DeclarationTypeParameters? InterfaceExtends? ObjectType
 InterfaceExtends = "extends" TypeReference | InterfaceExtends "," TypeReference
@@ -608,11 +609,11 @@ NamespaceImport = "*" "as" BindingIdentifier
 NamedImports = "{" "}" | "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
 ImportSpecifier = BindingIdentifier | ModuleExportName "as" BindingIdentifier | "type" BindingIdentifier | "type" ModuleExportName "as" BindingIdentifier
-ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" ImportEqualsDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd | "export" "declare" [no LineTerminator here] DeclareDeclaration | "export" "abstract" [no LineTerminator here] ClassDeclaration | "export" NamespaceDeclaration | "export" EnumDeclaration | "export" "default" "abstract" [no LineTerminator here] ClassDeclaration | "export" "default" InterfaceDeclaration
+ExportDeclaration = ReExportDeclaration | "export" VariableStatement | "export" HoistableDeclaration | "export" ClassDeclaration | "export" InterfaceDeclaration | "export" TypeAliasDeclaration | "export" ImportEqualsDeclaration | "export" "type"? NamedExports StatementEnd | "export" "default" DefaultExportDeclaration | "export" "default" [lookahead ∉ { "function", "class", "async" [no LineTerminator here] "function" }] AssignmentExpression StatementEnd | "export" "declare" [no LineTerminator here] DeclareDeclaration | "export" "abstract" [no LineTerminator here] ClassDeclaration | "export" NamespaceDeclaration | "export" EnumDeclaration | "export" "default" "abstract" [no LineTerminator here] ClassDeclaration | "export" "default" "abstract" [no LineTerminator here] ClassExpression | "export" "default" InterfaceDeclaration | "export" "as" "namespace" IdentifierName StatementEnd
 DecoratedClassExport = "export" ClassDeclaration | "export" "abstract" [no LineTerminator here] ClassDeclaration | "export" "default" "abstract"? ClassExpression
 DefaultExportDeclaration = FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression
 ReExportDeclaration = "export" "type"? ExportFromClause "from" StringLiteral WithClause? StatementEnd
-ExportFromClause = "*" | "*" "as" IdentifierName | NamedExports
+ExportFromClause = "*" | "*" "as" ModuleExportName | NamedExports
 NamedExports = "{" "}" | "{" ExportSpecifiers ","? "}"
 ExportSpecifiers = ExportSpecifier | ExportSpecifiers "," ExportSpecifier
 ExportSpecifier = ModuleExportName | ModuleExportName "as" ModuleExportName | "type" ModuleExportName | "type" ModuleExportName "as" ModuleExportName
@@ -673,7 +674,7 @@ ClassExpression = DecoratorList? "class" BindingIdentifier? TypeParameters? Clas
 ParenthesizedExpression = "(" Expression ")"
 ArrowFunction = ArrowParameters [no LineTerminator here] "=>" ConciseBody | TypeParameters? "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody | TypeParameters "(" FormalParameters ")" [no LineTerminator here] "=>" ConciseBody
 ArrowParameters = BindingIdentifier | "(" FormalParameters ")"
-AsyncArrowFunction = "async" [no LineTerminator here] ArrowParameters [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody
+AsyncArrowFunction = "async" [no LineTerminator here] ArrowParameters [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] TypeParameters "(" FormalParameters ")" ReturnAnnotation [no LineTerminator here] "=>" ConciseBody | "async" [no LineTerminator here] TypeParameters "(" FormalParameters ")" [no LineTerminator here] "=>" ConciseBody
 ConciseBody = [lookahead ∉ { "{" }] AssignmentExpression | Block
 FormalParameters = FormalParameterList? | FormalParameterList ","
 FormalParameterList = FormalParameter | "this" TypeAnnotation | FormalParameterList "," FormalParameter

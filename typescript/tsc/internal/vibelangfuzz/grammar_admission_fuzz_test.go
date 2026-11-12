@@ -503,6 +503,13 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-function-assertion-predicate", grammarEffectPredicateReturnForms[7]},
 	{"import-phase-declaration-defer", grammarImportPhaseDeclarationForms[0]},
 	{"import-phase-declaration-source", grammarImportPhaseDeclarationForms[7]},
+	{"abstract-member-signature", grammarDirectedForms[2]},
+	{"definite-assignment-binding", grammarDirectedForms[4]},
+	{"export-as-namespace", grammarDirectedForms[6]},
+	{"async-arrow-type-parameters", grammarDirectedForms[7]},
+	{"debugger-statement", grammarDirectedForms[10]},
+	{"export-default-abstract-class", grammarDirectedForms[12]},
+	{"export-star-as-string", grammarDirectedForms[14]},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {

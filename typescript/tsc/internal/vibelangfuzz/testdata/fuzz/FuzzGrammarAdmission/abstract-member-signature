@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:abstract-member-signature\nabstract class A { abstract m(): void; protected abstract get g(): number }")

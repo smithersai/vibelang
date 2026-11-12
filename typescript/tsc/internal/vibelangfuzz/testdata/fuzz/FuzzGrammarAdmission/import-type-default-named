@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-type-default-named\nimport type T, { U } from \"./m\";")

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:export-star-as-string\nexport * as \"ns name\" from \"./m\";")

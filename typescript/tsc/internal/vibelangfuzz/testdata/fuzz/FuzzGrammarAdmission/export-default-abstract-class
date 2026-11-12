@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:export-default-abstract-class\nexport default abstract class {}")

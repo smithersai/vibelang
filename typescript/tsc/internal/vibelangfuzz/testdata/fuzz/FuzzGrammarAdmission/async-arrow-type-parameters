@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:async-arrow-type-parameters\nconst a2 = async <T,>(x: T) => x;")
