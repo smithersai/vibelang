@@ -61,6 +61,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Calling a service key with arguments could hide errors in nested calls; those argument errors are now reported alongside the service diagnostic.
 
+- The Services guide opened with a keyword-escape rule, which was also its search snippet, and ran about 2,000 words of diagnostics before its second sample. It now teaches declaring, requesting and supplying services first and lists the rules in a reference section at the end; older service forms are on Migrating retired forms. Seven other guides no longer open with a diagnostic code.
+
 - Extending a service key could hide unknown names and type errors in the base expression or its type arguments. Those independent errors now appear alongside `EK3002`.
 
 - An `effect` modifier on an `interface` or type literal method could also report a misleading return-type error. It now reports `EK0108` while keeping the signature's written return type.

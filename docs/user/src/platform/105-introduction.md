@@ -1,8 +1,8 @@
 # Introduction to Effect Platform
 
-VibeLang reaches files, paths, processes, HTTP, randomness, and terminals through Effect's platform services. Write the application against those services; the entry module provides the platform's implementations to `main()` and passes that Effect to a runner. Node's globals and the web's I/O globals are not in scope in a `.vibe` file, and it imports no `node:*` module as a value (EK4402); it needs no wrapper of its own around one.
+VibeLang reaches files, paths, processes, HTTP, randomness, and terminals through Effect's platform services. Write the application against those services; the entry module provides the platform's implementations to `main()` and passes that Effect to a runner. Node's globals and the web's I/O globals are not in scope in a `.vibe` file, and it imports no `node:*` module as a value; it needs no wrapper of its own around one.
 
-Bare internal Node builtins, including `_http_client` and `_tls_wrap`, have the same `EK4402` import rule as `node:fs`. Legacy builtin names from supported Node 22/24 remain reserved across runtimes; move their value imports to a `.ts` module.
+Importing one as a value is `EK4402`. Bare internal Node builtins, including `_http_client` and `_tls_wrap`, have the same `EK4402` import rule as `node:fs`. Legacy builtin names from supported Node 22/24 remain reserved across runtimes; move their value imports to a `.ts` module.
 
 The pure helpers `AbortSignal` and `URL` remain available, but `AbortSignal.timeout`, `URL.createObjectURL` and `URL.revokeObjectURL` reach the host and report `EK4402`. Grouping and erased TypeScript assertions on a `globalThis` receiver retain the same rule. Move those operations into a sibling `.ts` module; `Effect.try`, `Effect.tryPromise` and `Effect.sync` arrows inside `.vibe` files keep the same restriction.
 

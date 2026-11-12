@@ -1,13 +1,13 @@
 ---
 title: "Running Effects"
-description: "Runners start a program at an application boundary. Inside an effect function, try runs an Effect on the current fiber, so reserve runners for entry points and framework adapters. try before a..."
+description: "Runners start a program at an application boundary. Inside an effect function, try runs an Effect on the current fiber, so reserve runners for entry points and framework adapters."
 ---
 
 # Running Effects
 
-Runners start a program at an application boundary. Inside an effect function, `try` runs an Effect on the current fiber, so reserve runners for entry points and framework adapters. `try` before a value that is not an Effect, such as a number or a promise, is `EK0502`: drop the `try`, or wrap a promise with `Effect.tryPromise`.
+Runners start a program at an application boundary. Inside an effect function, `try` runs an Effect on the current fiber, so reserve runners for entry points and framework adapters.
 
-A `try` runs one Effect, including when parentheses, `as`, `satisfies` or a conditional wrap its operand. If that Effect succeeds with another Effect, the returned Effect stays cold until its own execution site. Plain calls inside the operand construct their values in source order.
+`try` before a value that is not an Effect, such as a number or a promise, is `EK0502`: drop the `try`, or wrap a promise with `Effect.tryPromise`. A `try` runs one Effect, including when parentheses, `as`, `satisfies` or a conditional wrap its operand. If that Effect succeeds with another Effect, the returned Effect stays cold until its own execution site. Plain calls inside the operand construct their values in source order.
 
 Call a runner at module top level, in an `async` function, or in a plain function or callback (one that `effect` does not mark), such as a `describe` body or framework route handler, wherever it is passed. A runner directly inside code a fiber runs (an `effect` function or block) is EK1005; run the Effect with `try` or use `fork` instead. Tests in `.vibe` use `it.effect` from `@effect/vitest`; Promise-style tests stay in `.ts`.
 

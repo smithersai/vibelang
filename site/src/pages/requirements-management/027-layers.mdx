@@ -38,22 +38,6 @@ effect function stringify(value: unknown) {
 
 On this page, `Printer` depends on `Settings`, and `Reports` on both. `Layer.Layer<Out, E, In>` gives the services produced, construction failures, and construction requirements; the global `Layer` namespace holds the constructors and that type.
 
-A `provide` block does not create a fiber owner. A child started with `fork` can be joined after the block and keeps the provided services even after the layer is released, as with `Effect.provide`. Use `fork.scoped` inside `scoped(effect { … })` to end a child with that scope.
-
-A `provide` statement requires effect code. At module scope, `EK1201` points to moving it into an `effect function` or `effect { }` block.
-
-In an expression, a variable named `provide` keeps its TypeScript meaning. For example, `return provide / scale / { value: 2 }.value` is division. At a statement start, `provide /pattern/ { … }` still reads as a provider block.
-
-A variable named `provide` also keeps native postfix operations in expressions: `provide++ / scale`, `provide-- / scale` and `provide! / scale` have their TypeScript meaning. Generic instantiations, such as `provide<number>`, also keep their native parse before division.
-
-Write the keyword `provide` without Unicode escapes. An escaped spelling used as the keyword reports `TS1260`, as for TypeScript’s `async` keyword. An explicit edit can use the keyword without escapes. Escaped ordinary identifiers still work in bindings, calls and expressions such as `return pr\u006fvide / scale`.
-
-An object literal can start a provider: `provide { layer: Layer.empty }.layer { … }`. Member reads, getter calls, nested objects and `Key = value` entries follow the ordinary provider expression grammar. Provider expressions are evaluated once, from left to right.
-
-Do not break immediately before or after a provider-separating comma (`EK1202`). Line breaks inside a provider expression remain allowed; use `Layer.mergeAll(...)` for multiline composition. The compiler still checks the recovered body, including `EK1201` for a block outside effect code and independent type errors.
-
-A `provide` block takes layers and `Key = value` entries, separated by commas, and Effect's own `provide` types them. A provider typed as `any` follows Effect's overloads too: its error and requirement types remain `unknown`. A concrete `never` provider adds no error or requirement types, and keeps any service requirements its body still needs. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once.
-
 ## Preventing dependency leakage
 
 ```vibe
@@ -70,9 +54,9 @@ const PrinterLive = Layer.effect(Printer, effect {
 // Output: test: ready
 ```
 
-`Layer.effect(Printer, effect { ... })` builds a `Printer`: `effect { ... }` is the layer's Effect, passed as an ordinary argument to `Layer.effect`. Its statements, `try Settings` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `effect print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. The older `layer Live: Service { ... }` form has a manual change to an ordinary `Layer.effect(Service, effect { ... })` call for setup, or `Layer.succeed(Service, { ... })` without setup. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
+`Layer.effect(Printer, effect { ... })` builds a `Printer`: `effect { ... }` is the layer's Effect, passed as an ordinary argument to `Layer.effect`. Its statements, `try Settings` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `effect print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
 
-`Layer.mergeAll` builds its inputs independently. If one input needs a service supplied by another, `EK4807` points to `Layer.provide` or `Layer.provideMerge` to supply that construction dependency. Use `Layer.provideMerge` when both outputs should remain available. Choosing a sibling provider instead of a caller-supplied provider changes behavior and the layer's requirement type, so `EK4807` has no automatic composition repair.
+`Layer.mergeAll` builds its inputs independently. If one input needs a service supplied by another, `EK4807` points to `Layer.provide` or `Layer.provideMerge` to supply that construction dependency. Use `Layer.provideMerge` when both outputs should remain available. Choosing a sibling provider instead of a caller-supplied provider changes behavior and the layer's requirement type, so choose the composition explicitly.
 
 Keep method requirements at `never` when dependencies are implementation details, so a test can provide a simple fake without recreating the production graph.
 
@@ -101,8 +85,6 @@ const ReportsLive = Layer.effect(Reports, effect {
 ```
 
 Use `Layer.succeed` for an existing implementation or constant factory, `Layer.effect` for a factory that performs Effect operations, and `Layer.sync` for a plain synchronous constructor, such as `(): Users.Shape => …`, that needs no Effect work. Constructing a layer value doesn't run its initialization program.
-
-Legacy layer declarations report `EK2121` as an error. Rewrite `layer Live: Service { … }` to `Layer.succeed(Service, { … })` when it has no setup statements, or `Layer.effect(Service, effect { … })` when it does. Setup stays inside the Effect and runs when the layer builds. Use an explicit Effect namespace when a local `Layer` binding would capture the call.
 
 A factory can register `try addFinalizer(...)` or acquire with `try acquireRelease(...)`; `Layer.effect` supplies the construction scope and removes `Scope` from the layer's input requirements. Acquire a returned service's resources with `try acquireRelease(...)`; a lexical `using` releases a TypeScript disposable when the factory returns.
 
@@ -155,7 +137,7 @@ const AppLive = ReportsLive.pipe(Layer.provideMerge(PrinterAndSettings))
 
 `Layer.provide(consumer, dependencies)` feeds dependency outputs into the consumer and keeps the consumer's outputs; `provideMerge` also keeps the dependency outputs. Here `PrinterAndSettings` supplies the dependencies of `ReportsLive`, and `AppLive` retains all three services.
 
-Inputs the composition doesn't provide stay in the resulting layer's `In`, so a partial graph is valid; a layer that needs the service it provides still needs it from outside. At a runner, missing providers report `EK9211` with the unsatisfied inputs. A written contract that excludes a remaining requirement reports `EK9202`, an interim code.
+Inputs the composition doesn't provide stay in the resulting layer's `In`, so a partial graph is valid; a layer that needs the service it provides still needs it from outside. At a runner, missing providers report `EK9211` with the unsatisfied inputs. A written contract that excludes a remaining requirement reports `EK9202`.
 
 Reuse one layer value when several paths need a shared instance: equivalent reconstructed layer values have different memoization identities.
 
@@ -294,15 +276,40 @@ A `provide` block keeps ordinary source completion values inside `do`: `do { 19;
 
 ## Coming from Effect
 
-`service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide(…)` draws `EK4836` only as the direct operand of bare `try`, including erased expression wrappers; a stored Effect, `fork` operand or batch element keeps its call without a warning. A safe statement or return has a manual change to write a `provide` block; a wrapped operand keeps its written type effects and explains why it has no automatic fix. Explicit type arguments on `Effect.provide` also retain the call and explain why the written contract has no automatic block rewrite. `Effect.provideService` retains its native call: `provide Key = value` builds a `Layer`, changing `Scope` and `Layer.CurrentMemoMap`. `EK4836` explains why the service call has no automatic block rewrite.
+`service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide(…)` draws `EK4836` only as the direct operand of bare `try`, including erased expression wrappers; a stored Effect, `fork` operand or batch element keeps its call without a warning. Rewrite such a statement or return as a `provide` block. A wrapped operand, or a call with explicit type arguments, keeps its written type effects; keep the call there. `Effect.provideService` keeps its native call, because `provide Key = value` builds a `Layer`, which changes `Scope` and `Layer.CurrentMemoMap`.
 
-A line break before or after a provider-separating comma keeps the `provide` reading and reports `EK1202`. Keep the providers on one line, or compose them inside `Layer.mergeAll(…)`, where line breaks remain allowed. A line break inside a block comment has no automatic fix; move the comment or compose the providers inside `Layer.mergeAll(…)`.
+A line break before or after a provider-separating comma keeps the `provide` reading and reports `EK1202`. Keep the providers on one line, or compose them inside `Layer.mergeAll(…)`, where line breaks remain allowed. When the line break is inside a block comment, move the comment or compose the providers inside `Layer.mergeAll(…)`.
+
+## `provide` statement rules
+
+A `provide` block takes layers and `Key = value` entries, separated by commas, and Effect's own `provide` types them. A provider typed as `any` follows Effect's overloads too: its error and requirement types remain `unknown`. A concrete `never` provider adds no error or requirement types, and keeps any service requirements its body still needs. Any construction errors and requirements that `Effect.provide` leaves unsatisfied remain in the enclosing Effect's type. Provider expressions run once, in source order, before any layer builds; repeating the same layer value builds it once.
+
+A `provide` statement requires effect code. At module scope, `EK1201` points to moving it into an `effect function` or `effect { }` block.
+
+A `provide` block does not create a fiber owner. A child started with `fork` can be joined after the block and keeps the provided services even after the layer is released, as with `Effect.provide`. Use `fork.scoped` inside `scoped(effect { … })` to end a child with that scope.
+
+An object literal can start a provider: `provide { layer: Layer.empty }.layer { … }`. Member reads, getter calls, nested objects and `Key = value` entries follow the ordinary provider expression grammar. Provider expressions are evaluated once, from left to right.
+
+Do not break immediately before or after a provider-separating comma (`EK1202`). Line breaks inside a provider expression remain allowed; use `Layer.mergeAll(...)` for multiline composition. The compiler still checks the recovered body, including `EK1201` for a block outside effect code and independent type errors.
+
+A compound assignment, such as `||=`, `&&=`, `??=` or `+=`, is not a provider by itself: write it in parentheses, as in `provide (live ||= fallback) { … }`. Without them the line is not a `provide` statement and reports TypeScript's syntax errors. Assignments inside a conditional branch or a `Key = value` right-hand side keep their ordinary expression meaning.
+
+
+### `provide` as an identifier
+
+In an expression, a variable named `provide` keeps its TypeScript meaning. For example, `return provide / scale / { value: 2 }.value` is division. At a statement start, `provide /pattern/ { … }` still reads as a provider block.
+
+A variable named `provide` also keeps native postfix operations in expressions: `provide++ / scale`, `provide-- / scale` and `provide! / scale` have their TypeScript meaning. Generic instantiations, such as `provide<number>`, also keep their native parse before division.
+
+Write the keyword `provide` without Unicode escapes. An escaped spelling used as the keyword reports `TS1260`, as for TypeScript’s `async` keyword. Escaped ordinary identifiers still work in bindings, calls and expressions such as `return pr\u006fvide / scale`.
+
+### Older VibeLang forms
+
+Legacy layer declarations report `EK2121` as an error. Rewrite `layer Live: Service { … }` to `Layer.succeed(Service, { … })` when it has no setup statements, or `Layer.effect(Service, effect { … })` when it does. Setup stays inside the Effect and runs when the layer builds. Use an explicit Effect namespace when a local `Layer` binding would capture the call.
 
 For an old compiler-intrinsic `wire(A, B)` call, write the resolved `Layer.provideMerge` composition explicitly.
 
 To update an old `with Live { … }` provider block, replace `with` with `provide` in effect code. The old header reports ordinary syntax errors, including when the provider is conditional (`with cond ? A : B { … }`) or a binding (`with Service = value { … }`).
-
-A compound assignment, such as `||=`, `&&=`, `??=` or `+=`, is not a provider by itself: write it in parentheses, as in `provide (live ||= fallback) { … }`. Without them the line is not a `provide` statement and reports TypeScript's syntax errors. Assignments inside a conditional branch or a `Key = value` right-hand side keep their ordinary expression meaning.
 
 ---
 

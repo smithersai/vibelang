@@ -1,10 +1,10 @@
 # Expected Errors
 
-Write `error` and `schema error` without Unicode escapes (`TS1260`).
-
 ![Delete the catch and the failure moves into the type](/videos/type-flip.mp4)
 
 Expected errors are situations callers can handle: invalid input, a denied operation, an unavailable dependency. VibeLang infers them in `E` and narrows them inside a catch expression.
+
+Write `error` and `schema error` without Unicode escapes (`TS1260`).
 
 [Upstream page](https://effect.website/docs/v4/error-management/expected-errors)
 

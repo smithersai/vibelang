@@ -111,6 +111,16 @@ A bare `: infer _` return annotation on a plain callback has no TypeScript meani
 
 For a plain function that returns an `Effect`, replace a retired `infer` return slot with the channels of the returned program: its real errors and the service requirements its callbacks introduce. A retired placeholder is not a requirement of a generic call or its handler. Keep the function's own type parameters when they describe those channels.
 
+## Legacy service forms
+
+`service class Users { … }` is retired and reports `EK0909`. Remove `class`, keeping the service key, shape and comments between the keywords.
+
+The transitional `static readonly default = implementation` form reports the `EK4855` migration warning. For a local service, write the equivalent native `Context.Service` class and keep the cached static field, its key, its value and type reads, and the shape's mutable members. This keeps eager initialization and adds no missing-provider fallback. Exported keys, commented service bodies and keys that also declare `defaultValue` need the same native class. The legacy field needs an initializer: `static readonly default: Shape` without a value is `EK0902`.
+
+Writing `static readonly defaultValue = () => implementation` instead chooses a `Context.Reference` fallback. Adding `readonly` to an old mutable `defaultValue` chooses that fallback too, so make that change as a deliberate migration. When upgrading a legacy service that used the old readonly default, write `readonly` on those fields and their nested type members to keep the earlier declarations.
+
+Older compilers derived directory-prefixed keys for services in a package whose `package.json` has `"name": ""`. To keep those identities, write the old keys explicitly with `static readonly key` before upgrading consumers.
+
 ## Migration setup
 
 The API check supports `exports` that point at generated declaration sidecars through `rootDirs`. A sidecar must match the selected project's emitted declaration and have one source owner; changed or ambiguous mirrors keep the batch under review.

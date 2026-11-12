@@ -1,8 +1,8 @@
 # Basic Usage
 
-Write the `schema` keyword without Unicode escapes (`TS1260`). Escaped schema names and ordinary identifiers keep working.
-
 Schema constructors work as in Effect. Combine small descriptions into arrays, objects, and alternatives, then run a parser inside a function. Plain builders follow the [call rules](085-introduction.md#configuring-compiler-prerequisites).
+
+Write the `schema` keyword without Unicode escapes (`TS1260`). Escaped schema names and ordinary identifiers keep working.
 
 In a schema declaration, a field named `__proto__` is an own data field. The generated schema uses `["__proto__"]` as its key, including quoted or escaped source names and fields in nested structs. Decoding validates and preserves that field like any other field; encoding includes it.
 

@@ -1,10 +1,10 @@
 # Data
 
+A `data` declaration declares a tagged union: Effect's own `Data.TaggedEnum` type and the `Data.taggedEnum` constructors, under one name, which `match` takes apart. The rest of `Data` works in VibeLang exactly as in Effect: use it for classes and errors with Effect's equality and hashing. Generated `data` builders and type references always use Effect's `Data`; a local value or type parameter named `Data` keeps its ordinary source meaning without capturing them.
+
 Decorators are not admitted on a `data` declaration (`TS1206`), as on its native TypeScript constant or type alias.
 
 Write the `data` keyword without Unicode escapes (`TS1260`). Escaped data names and ordinary identifiers keep working.
-
-A `data` declaration declares a tagged union: Effect's own `Data.TaggedEnum` type and the `Data.taggedEnum` constructors, under one name, which `match` takes apart. The rest of `Data` works in VibeLang exactly as in Effect: use it for classes and errors with Effect's equality and hashing. Generated `data` builders and type references always use Effect's `Data`; a local value or type parameter named `Data` keeps its ordinary source meaning without capturing them.
 
 ## Declaring tagged unions with data
 
