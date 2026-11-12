@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:override-parameter-property\nclass B { } class C extends B { constructor(override readonly w: boolean) { super() } }")

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:import-type-attributes\ntype A = import(\"./m\", { with: { \"resolution-mode\": \"import\" } }).T;")
