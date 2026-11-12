@@ -242,6 +242,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-trailing-bang", "type T = number!string!;"},
 	{"effect-type-line-break", "type T = number !\n! ;"},
 	{"effect-type-line-break-equality", "declare const a: number\nconst loose = a as number!\n!== a"},
+	{"try-assignment-target", grammarTryAssignmentSources[0]},
 	{"service-class", "service class S { n: number }"},
 	{"try-in-generator-effect-identifier", "function* g() { effect % try 1; }"},
 	{"try-in-generator", "function* g() { try 1; }"},
@@ -1400,6 +1401,9 @@ func grammarAdmissionForm(source string) string {
 	}
 	if grammarSecondBangLineBreak(ts) {
 		return "admission:effect-type-line-break"
+	}
+	if grammarTryAssignmentTarget(ts) {
+		return "admission:try-assignment-target"
 	}
 	if grammarParenthesizedEffectTrailingBang(ts) || grammarAssertionEffectTrailingBang(ts) {
 		return "admission:effect-type-trailing-bang"
