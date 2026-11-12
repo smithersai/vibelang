@@ -231,9 +231,9 @@ through Vite and the coverage provider. Each check removes its temporary project
 compiler output.
 
 The template and the users, http-api, and resilience examples also use this
-plugin for their source tests. Their advanced language features require the
-corresponding compiler lanes; the acceptance fixtures above use explicit Effect
-imports and plain and Effect functions supported by the initial compiler.
+plugin for their source tests. They use more of the language than the
+acceptance fixtures above, which need only explicit Effect imports and plain and
+Effect functions.
 
 The source loaders compile the whole project for type-directed emit, but report
 only diagnostics for the source being loaded and project-wide errors, including
