@@ -78,6 +78,48 @@ test("EK1010 attribution-only privacy edit changes no normative sentences in all
   }
 })
 
+test("removing an agent, lane, ruling, veto or attribution column changes no normative sentences", () => {
+  const record = "**Amended 2026-11-10: literal discriminants.** Codex Sol, lane `fix-match-exhaustive`, promotes the warning to error `EK4701` under the pre-alpha optimistic approval in ruling 16. The census found zero affected `.vibe` files. Will may overturn this decision."
+  const credited = "**Amended 2026-11-10: literal discriminants.** The maintainers promote the warning to error `EK4701`. The census found zero affected `.vibe` files."
+  const vip = "- **Amended 2026-11-10: literal discriminants.** Codex Sol, lane `fix-match-exhaustive`, extends `EK4701` to unions. This decision uses the pre-alpha optimistic approval in ruling 16. Will may overturn it. The diagnostic changes no `Exit`."
+  const vipCredited = "- **Amended 2026-11-10: literal discriminants.** The maintainers extend `EK4701` to unions. The diagnostic changes no `Exit`."
+  const table = (by: boolean) => [
+    "| # | `.vibex` snippet | Rule |" + (by ? " Found by |" : ""),
+    "| --- | --- | --- |" + (by ? " --- |" : ""),
+    "| 1 | `const id = <T>(x: T) => x` | write `<T,>` |" + (by ? " Opus (fork, join), Fable |" : ""),
+    "| 2 | `when < 5` | a comparison |" + (by ? " all four (Fable: no gap; probe disagrees) |" : ""),
+    "| 3 | `fork <A/>` | `UnaryExpression` |" + (by ? " Astra, Sol |" : ""),
+  ].join("\n") + "\n"
+  for (const [before, after] of [
+    [record, credited],
+    [vip, vipCredited],
+    [table(true), table(false)],
+    ["| Idea | Author | Why not |\n| --- | --- | --- |\n| A `ScriptKindVibeX` | Astra (as fallback) | It reorders `try`. Fable's claim that `<A/>` is a call is wrong. |\n",
+      "| Idea | Why not |\n| --- | --- |\n| A `ScriptKindVibeX` | It reorders `try`. The claim that `<A/>` is a call is wrong. |\n"],
+    ["| 1 | `<T>(x: T) => x` | `.tsx`'s. Write `<T,>` instead | all four |\n", "| 1 | `<T>(x: T) => x` | `.tsx`'s. Write `<T,>` instead |\n"],
+    ["An element is not a throw-tracked call (Opus), and a plain component stays plain (VIP-1 precondition; Opus, Fable) in `.vibex`.",
+      "An element is not a throw-tracked call, and a plain component stays plain (VIP-1 precondition) in `.vibex`."],
+    ["A `catch` handler is a function literal (decided detail 85; found by the round-19 Fable review).", "A `catch` handler is a function literal (decided detail 85; found by the round-19 review)."],
+    ["**Status:** accepted, 2026-10-31. Merged from four submissions (Codex Astra, Codex Sol, Claude Opus, Claude Fable); `.tsx` decides.",
+      "**Status:** accepted, 2026-10-31. Merged from four submissions; `.tsx` decides."],
+  ]) expect(changedRules([doc(after, before)])).toEqual([])
+})
+
+test("removing a credit never hides a rule change made with it", () => {
+  const record = "Codex Sol, lane `fix-match`, promotes the warning to error `EK4701` under the pre-alpha optimistic approval in ruling 16."
+  for (const after of [
+    "The maintainers promote the warning to error `EK4702`.",
+    "The maintainers demote the warning to error `EK4701`.",
+    "The maintainers promote the warning to error `EK4701` before the first release.",
+  ]) expect(changedRules([doc(after, record)])).toHaveLength(1)
+  // Only an attribution cell may go: dropping a rule-bearing cell, or a cell beside the credit, is a change.
+  const row = "| 1 | `const id = <T>(x: T) => x` | write `<T,>` | Opus |"
+  expect(changedRules([doc("| 1 | `const id = <T>(x: T) => x` | Opus |", row)])).toHaveLength(1)
+  expect(changedRules([doc("| 1 | `const id = <T>(x: T) => x` |", row)])).toHaveLength(1)
+  // A model identifier in code is part of the rule.
+  expect(changedRules([doc('Use `Model.use("anthropic:claude-opus")` here.', 'Use `Model.use("anthropic:claude-fable")` here.')])).toHaveLength(1)
+})
+
 test("editorial parentheses and discovery clauses normalize prose presentation", () => {
   for (const [before, after] of [
     ["The `rule` applies (editorial note).", "THE `rule` applies!"],

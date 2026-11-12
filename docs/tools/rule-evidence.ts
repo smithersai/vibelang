@@ -133,7 +133,32 @@ const ruleWords = new Set([
 const hasRuleContent = (text: string) => /[\x60\x00\p{N}]|[<>=+*/{}\[\]\\|&!%?^~]|[\w$]\.[\w$]/u.test(text) ||
   (text.match(/[A-Za-z_$][\w$]*/g) ?? []).some(word => ruleWords.has(word.toLowerCase()) || /[A-Z_$]/.test(word))
 
+// Public pages credit decisions to the maintainers, never to an agent, model, lane or ruling
+// (docs/tools/check-public-provenance.mjs). Removing such a credit is editorial: an agent or model
+// name, a "Name, lane `x`, decides" subject, the pre-alpha approval and veto clauses, and a table's
+// attribution column ("Found by", "Author") name who decided, not what the rule says.
+const agentName = String.raw`(?:Codex (?:Sol|Astra|Terra)|Claude (?:Fable|Opus)|GPT-\d[\w.-]*|Codex|Claude|Sol|Astra|Opus|Fable|Kimi)`
+const attributionCell = new RegExp(String.raw`^\s*(?:(?:${agentName}|all four)(?:\s*\([^()]*\))?(?:\s*,\s*|\s*$))+$|^\s*(?:Found by|Authors?)\s*$`)
+function withoutAgentCredit(text: string): string {
+  // A table row may be split into several sentences; only a cell between two pipes is a cell.
+  const cells = text.split(/(?<!\\)\|/)
+  if (cells.length > 2) text = cells.filter((cell, i) => i === 0 || i === cells.length - 1 || !attributionCell.test(cell)).join("|")
+  text = text
+    .replace(new RegExp(String.raw`^((?:\*\*[^*]+\*\*\s+)?)${agentName}, lane \x60[a-z][a-z0-9-]*\x60, ([a-z]+?)s\b`), "$1The maintainers $2")
+    .replace(/\s*This decision uses the pre-alpha optimistic approval in ruling \d+\./g, "")
+    .replace(/\s+under the pre-alpha optimistic approval in ruling \d+/g, "")
+    .replace(/\s*Will may overturn (?:it|this decision)\./g, "")
+  const parts = text.split(/(\x60+[^\x60]*\x60+)/g)
+  return parts.map((part, i) => i % 2 ? part : part
+    .replace(new RegExp(String.raw`\b${agentName}'s\s+`, "g"), "the ")
+    .replace(new RegExp(String.raw`\s*\b${agentName}\b`, "g"), "")
+    .replace(/([(;,])(?:\s*(?:and\s+)?[;,])+/g, "$1")
+    .replace(/[;,]\s*\)/g, ")")
+    .replace(/\(\s*\)/g, "")).join("")
+}
+
 function attributionComparable(text: string): string {
+  text = withoutAgentCredit(text)
   const protectedSpans: string[] = []
   const protect = (part: string) => "\x00" + (protectedSpans.push(
     part.replace(/\x00(\d+)\x00/g, (_, index) => protectedSpans[Number(index)])) - 1) + "\x00"
