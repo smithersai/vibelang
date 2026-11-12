@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert"
 import { createRequire } from "node:module"
 import { join } from "node:path"
 import { test } from "node:test"
-import { compilerPackage, hooks, project, refHandler, refReadLine } from "./helpers.mjs"
+import { compilerPackage, documentedConfigs, hooks, project, refHandler, refReadLine } from "./helpers.mjs"
 
 const require = createRequire(import.meta.url)
 const babel = require("@babel/core")
@@ -61,3 +61,25 @@ test("JavaScript already compiled from a .vibe module parses as it is", (t) => {
   })
   assert.equal(code, "export const n = 1;")
 })
+
+// The Babel configs the compiler README and the React Native guide show load
+// in an app whose package.json has "type": "module".
+for (const page of ["packages/compiler/README.md", "docs/user/src/setup/react-native.md"]) {
+  test(`${page}: the documented Babel config loads in a "type": "module" app`, async (t) => {
+    const configs = documentedConfigs(page, "babel.config")
+    assert.equal(configs.length, 1)
+    const [{ name, text }] = configs
+    const root = project(t, {
+      "package.json": '{"name":"app","private":true,"type":"module"}',
+      [name]: text,
+      "src/a.js": "export const a = 1\n",
+      "node_modules/babel-preset-expo/package.json": '{"name":"babel-preset-expo","version":"0.0.0","main":"index.js"}',
+      "node_modules/babel-preset-expo/index.js": "module.exports = () => ({})\n"
+    })
+    const config = await babel.loadPartialConfigAsync({ cwd: root, root, filename: join(root, "src/a.js") })
+    assert.equal(config.config, join(root, name))
+    assert.deepEqual(config.options.presets.map(preset => preset.file.resolved), [
+      join(root, "node_modules/babel-preset-expo/index.js"), join(compilerPackage, "babel.cjs")
+    ])
+  })
+}

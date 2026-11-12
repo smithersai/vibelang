@@ -5,11 +5,11 @@ import { createRequire, SourceMap } from "node:module"
 import { join } from "node:path"
 import { test } from "node:test"
 import { runInNewContext } from "node:vm"
-import { compilerPackage, project, tools } from "./helpers.mjs"
+import { compilerPackage, documentedConfigs, project, tools } from "./helpers.mjs"
 
 const require = createRequire(import.meta.url)
 const Metro = require("metro")
-const { getDefaultConfig, mergeConfig } = require("metro-config")
+const { getDefaultConfig, loadConfig, mergeConfig } = require("metro-config")
 const { withVibeLang } = require(join(compilerPackage, "metro.cjs"))
 
 // The types erase, so the marker's line in the emitted JavaScript (1) is not
@@ -128,3 +128,24 @@ test("withVibeLang keeps the app's transformer and config, and accepts a promise
   assert.deepEqual((await withVibeLang(config)).resolver.sourceExts, ["ts", "js", "vibe", "vibex"])
   assert.equal(process.env.VIBELANG_METRO_TRANSFORMER, "/app/transformer.js")
 })
+
+// A VibeLang app's package.json has "type": "module"
+// (docs/user/src/setup/existing-project.md), so the CommonJS config these
+// pages show loads only under a .cjs name.
+for (const page of ["packages/compiler/README.md", "docs/user/src/setup/react-native.md"]) {
+  test(`${page}: the documented Metro config loads in a "type": "module" app`, async (t) => {
+    const configs = documentedConfigs(page, "metro.config")
+    assert.equal(configs.length, 1)
+    const [{ name, text }] = configs
+    const root = project(t, {
+      "package.json": '{"name":"app","private":true,"type":"module"}',
+      [name]: text,
+      // The guide's Expo import; Expo's getDefaultConfig wraps Metro's own.
+      "node_modules/expo/package.json": '{"name":"expo","version":"0.0.0"}',
+      "node_modules/expo/metro-config.js": 'module.exports = { getDefaultConfig: root => require("metro-config").getDefaultConfig(root) }\n'
+    }, ["metro", "metro-config", "metro-runtime", "metro-transform-worker", "metro-babel-transformer"])
+    const config = await loadConfig({ cwd: root })
+    assert.ok(config.resolver.sourceExts.includes("vibe"), String(config.resolver.sourceExts))
+    assert.equal(config.transformer.babelTransformerPath, join(compilerPackage, "metro.cjs"))
+  })
+}

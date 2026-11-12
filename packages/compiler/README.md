@@ -269,8 +269,12 @@ see this [Bun runtime limitation](https://github.com/oven-sh/bun/issues/40579).
 
 ## Bundle .vibe modules with Metro
 
+Save the config as `metro.config.cjs` in a package whose `package.json` has
+`"type": "module"`, which a VibeLang app has; a `metro.config.js` there is
+loaded as an ES module, where `require` is not defined.
+
 ```js
-// metro.config.js
+// metro.config.cjs
 const { getDefaultConfig } = require("expo/metro-config") // or @react-native/metro-config
 const { withVibeLang } = require("vibelang/metro")
 
@@ -294,9 +298,11 @@ A tool that parses one file at a time cannot read a `.vibe` module's source.
 Babel reads it through the `vibelang/babel` preset:
 
 ```js
-// babel.config.js
+// babel.config.cjs
 module.exports = { presets: ["babel-preset-expo", "vibelang/babel"] }
 ```
+
+The file is `babel.config.cjs` for the same reason as `metro.config.cjs`.
 
 The preset parses a `.vibe` module from its project's JavaScript and moves the
 syntax tree back to `.vibe` positions, so the React Compiler checks and

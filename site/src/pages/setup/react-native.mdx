@@ -9,10 +9,10 @@ Add VibeLang to a React Native or Expo app that bundles with Metro. Install the 
 
 ## 1. Configure Metro
 
-Wrap the config that `metro.config.js` exports in `withVibeLang`, keeping everything else:
+Wrap the config that the Metro config file exports in `withVibeLang`, keeping everything else. Save it as `metro.config.cjs` because `package.json` has `"type": "module"`: Node loads a `metro.config.js` that uses `require` and `module.exports` as an ES module and fails with `require is not defined in ES module scope`. Rename an existing CommonJS `metro.config.js`:
 
 ```js
-// metro.config.js
+// metro.config.cjs
 const { getDefaultConfig } = require("expo/metro-config")
 const { withVibeLang } = require("vibelang/metro")
 

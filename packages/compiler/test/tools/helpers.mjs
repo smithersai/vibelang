@@ -1,6 +1,6 @@
 // A scratch project for the tool adapter tests: this checkout's vibelang
 // package, effect, and the pinned tools installed beside the test.
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -17,6 +17,20 @@ export const tsconfig = JSON.stringify({
   },
   include: ["src"]
 })
+
+/** The repository's checkout, for reading the pages that document these adapters. */
+export const repository = fileURLToPath(new URL("../../../../", import.meta.url))
+
+/**
+ * The config files a page shows: each `js` block whose first line is a comment
+ * naming the file, such as `// metro.config.cjs`, as `{ name, text }`.
+ */
+export function documentedConfigs(page, prefix) {
+  const text = readFileSync(join(repository, page), "utf8")
+  return [...text.matchAll(/^```js\n\/\/ (\S+)[^\n]*\n([\s\S]*?)^```$/gm)]
+    .filter(([, name]) => name.startsWith(prefix))
+    .map(([, name, body]) => ({ name, text: body }))
+}
 
 /** Writes `files` under a new directory whose node_modules links vibelang, effect and `linked` tools. */
 export function project(t, files, linked = []) {

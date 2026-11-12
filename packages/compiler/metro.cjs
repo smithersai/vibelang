@@ -1,7 +1,7 @@
 "use strict"
 // vibelang/metro: Metro bundles .vibe and .vibex modules.
 //
-//   // metro.config.js
+//   // metro.config.cjs (an app's package.json has "type": "module")
 //   module.exports = require("vibelang/metro").withVibeLang(config)
 //
 // withVibeLang adds .vibe to the resolver's source extensions, after
