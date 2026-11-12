@@ -7,7 +7,7 @@ export function projectOf(file: string): string
  * .vibe module `file`. Throws an Error with code ERR_VIBELANG_COMPILE on the
  * module's errors, and ERR_VIBELANG_PROJECT when the project does not include it.
  */
-export function emitModule(file: string): Output
+export function emitModule(file: string, options?: { preserveJsx?: boolean | "react" }): Output
 /**
  * The module's emitted JavaScript when `file` is a .vibe module and `text` is
  * its source as on disk (or omitted), else undefined.
@@ -15,5 +15,7 @@ export function emitModule(file: string): Output
 export function toolSource(file: string, text?: string | Uint8Array): Output | undefined
 /** The arguments of `tool(filename, text, options)` with a .vibe module's source replaced by its JavaScript (`lang: "jsx"`). */
 export function toolArguments<O extends object | undefined>(filename: string, text: string, options: O): [string, string, O & { lang?: "jsx" }]
+/** Convert an emitted position (1-based line, 0-based column) to its source position. */
+export function sourcePosition(map: Output["map"]): (line: number, column: number) => { line: number; column: number }
 /** Moves every `loc` of a Babel or ESTree tree parsed from emitted JavaScript to its .vibe position, in place. Returns `ast`. */
 export function remapLocations<T>(ast: T, map: Output["map"]): T

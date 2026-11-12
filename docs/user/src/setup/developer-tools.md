@@ -1,5 +1,12 @@
 # Developer tools after migration
 
+The `vibelang` package ships TypeScript declarations for every public JavaScript
+entry. A strict TypeScript tool configuration can import `vibelang/eslint`,
+`vibelang/oxlint`, `vibelang/knip`, `vibelang/prettier`, `vibelang/format`,
+`vibelang/ast-grep`, `vibelang/metro` or `vibelang/babel` with `bundler` or
+`node16` module resolution, without a local `.d.ts` shim. Use the Node
+`vibelang/register` preload with Node and the `vibelang/bun` preload with Bun.
+
 Effect packages keep their identity when a package manager stores them in a numbered or content-addressed directory and links them as `effect`. Foreign `Effect` values and `Context.Reference` keys remain valid operands of `try`; their physical storage directory does not need to be named `effect`.
 
 The migration setup extends the repository's existing format and lint scripts,

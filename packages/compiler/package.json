@@ -30,20 +30,50 @@
       "types": "./emit.d.mts",
       "default": "./emit.mjs"
     },
-    "./binary": "./binary.mjs",
+    "./binary": {
+      "types": "./binary.d.mts",
+      "default": "./binary.mjs"
+    },
     "./register": {
       "types": "./register.d.mts",
       "default": "./register.mjs"
     },
-    "./eslint": "./eslint.mjs",
-    "./oxlint": "./oxlint.mjs",
-    "./knip": "./knip.mjs",
-    "./bun": "./bun.mjs",
-    "./metro": "./metro.cjs",
-    "./babel": "./babel.cjs",
-    "./prettier": "./prettier.mjs",
-    "./format": "./format.mjs",
-    "./ast-grep": "./ast-grep.mjs",
+    "./eslint": {
+      "types": "./eslint.d.mts",
+      "default": "./eslint.mjs"
+    },
+    "./oxlint": {
+      "types": "./oxlint.d.mts",
+      "default": "./oxlint.mjs"
+    },
+    "./knip": {
+      "types": "./knip.d.mts",
+      "default": "./knip.mjs"
+    },
+    "./bun": {
+      "types": "./bun.d.mts",
+      "default": "./bun.mjs"
+    },
+    "./metro": {
+      "types": "./metro.d.cts",
+      "default": "./metro.cjs"
+    },
+    "./babel": {
+      "types": "./babel.d.cts",
+      "default": "./babel.cjs"
+    },
+    "./prettier": {
+      "types": "./prettier.d.mts",
+      "default": "./prettier.mjs"
+    },
+    "./format": {
+      "types": "./format.d.mts",
+      "default": "./format.mjs"
+    },
+    "./ast-grep": {
+      "types": "./ast-grep.d.mts",
+      "default": "./ast-grep.mjs"
+    },
     "./source": {
       "types": "./source.d.mts",
       "default": "./source.mjs"
@@ -60,6 +90,7 @@
   "files": [
     "bin",
     "binary.mjs",
+    "binary.d.mts",
     "compiler-override.mjs",
     "editor",
     "agents.mjs",
@@ -70,8 +101,11 @@
     "inline-source-map.mjs",
     "dprint-plugin.json",
     "eslint.mjs",
+    "eslint.d.mts",
     "oxlint.mjs",
+    "oxlint.d.mts",
     "knip.mjs",
+    "knip.d.mts",
     "project.mjs",
     "relative-imports.mjs",
     "emitted-js.mjs",
@@ -80,19 +114,25 @@
     "emit.mjs",
     "emit.d.mts",
     "metro.cjs",
+    "metro.d.cts",
     "babel.cjs",
+    "babel.d.cts",
     "register.mjs",
     "register.d.mts",
     "register-prefill.mjs",
     "bun.mjs",
+    "bun.d.mts",
     "bun-export-surface.mjs",
     "README.md",
     "LICENSE",
     "NOTICE",
     "skills/vibelang/SKILL.md",
     "format.mjs",
+    "format.d.mts",
     "prettier.mjs",
+    "prettier.d.mts",
     "ast-grep.mjs",
+    "ast-grep.d.mts",
     "source.mjs",
     "source.d.mts",
     "vibe-directive.mjs",
@@ -128,13 +168,17 @@
   "peerDependencies": {
     "@babel/core": "^7.29.0",
     "effect": "4.1.1",
-    "metro": ">=0.87.0"
+    "metro": ">=0.87.0",
+    "typescript": "*"
   },
   "peerDependenciesMeta": {
     "@babel/core": {
       "optional": true
     },
     "metro": {
+      "optional": true
+    },
+    "typescript": {
       "optional": true
     }
   }

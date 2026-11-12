@@ -161,3 +161,6 @@ export function projects(options: {
   invalidate(): void
   load(file: string): Promise<Loaded>
 }
+
+/** The executable and argument vector used to invoke the selected compiler. */
+export function compilerCommand(compiler: string, args: string[]): [string, string[]]

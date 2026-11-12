@@ -1,0 +1,5 @@
+{
+  "property": "packed-public-entry-types",
+  "rule": "A strict TypeScript consumer resolves the public ESLint parser from the installed package without a declaration shim.",
+  "source": "import vibelang from \"vibelang/eslint\"\nexport const parserName: string = vibelang.meta.name\nexport const eslintParser = vibelang"
+}

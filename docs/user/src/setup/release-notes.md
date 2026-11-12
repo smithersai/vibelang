@@ -12,6 +12,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 ### Bugs fixed since 0.0.12
 
+- Strict TypeScript configurations importing entries such as `vibelang/eslint` failed with `TS7016` because their types were missing. Every public JavaScript entry now ships declarations for both `bundler` and `node16` module resolution.
+
 - Publishing a release exposed the publisher's home directory in npm metadata. Release scripts now publish unchanged archives from neutral staging and reject registry entries that expose a home path.
 
 - With no `project` option, the Vite plugin and the bundler plugins read the root's `tsconfig.json` even when a `vibe.config.json` was beside it, so they compiled with settings the compiler ignored. They now read the root's `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, as the compiler does.

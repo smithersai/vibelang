@@ -10,6 +10,13 @@ to emit `.d.ts` files. Documentation:
 
 Built project references retain native exports through TypeScript barrels. Their declarations keep the native twin's relative import names, and consumers resolve the corresponding `.vibe` or `.vibex` declaration outputs.
 
+Every public JavaScript entry, including `vibelang/eslint`, `vibelang/oxlint`,
+`vibelang/knip`, `vibelang/prettier`, `vibelang/format`, `vibelang/ast-grep`,
+`vibelang/metro` and `vibelang/babel`, ships TypeScript declarations. Strict
+TypeScript configurations can import these entries with `bundler` or `node16`
+module resolution without local declaration shims. The Node and Bun preloads
+remain side-effect imports for their respective runtimes.
+
 ## Start a project
 
 ```sh
