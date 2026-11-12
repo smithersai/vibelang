@@ -45,7 +45,9 @@ const GUIDE = "../user/src/vibelang-features/114-vibelang-for-effect-users.md"
 test("every measurement record in the user guides names its release's Effect pin", () => {
   const found = pages("../user/src/").flatMap(page => problems(read("../user/src/" + page)).map(problem => page + ": " + problem))
   assert.deepEqual(found, [])
-  assert.deepEqual(records(read(GUIDE)).map(record => [record.release, record.effect]), [["0.0.9", RELEASE_PINS["0.0.9"]]])
+  // The guide's Runtime cost section now states the committed benchmark run,
+  // which runtime-cost-benchmark.test.mjs checks against its results.json.
+  assert.deepEqual(records(read(GUIDE)), [])
 })
 
 test("the recorded pins agree with the release notes", () => {

@@ -1,0 +1,16 @@
+{
+  "name": "vibelang-benchmark-runtime-cost",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vibelang -p .",
+    "bench": "node run.mjs"
+  },
+  "dependencies": {
+    "effect": "4.1.1",
+    "vibelang-runtime": "0.0.13"
+  },
+  "devDependencies": {
+    "vibelang": "0.0.13"
+  }
+}

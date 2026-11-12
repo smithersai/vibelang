@@ -452,17 +452,19 @@ Use `try withSpan(effect { ... }, "checkout")` for a named operation, as you wou
 
 VibeLang forms compile to their Effect equivalents. They preserve the same `Exit` and finalizer order.
 
-These are single-machine observations from the 0.0.9 alpha review on Linux x64, Node 26 and Effect 4.0.5. They are not a performance guarantee. The benchmark timed sequential loops with `Clock.currentTimeMillis`, with 200,000 calls for the success-only comparison and 1,000,000 for recovery and plain functions. The step increments a number and fails every 250,000th value; recovery resets it to zero. The success-only loop ends before that failure.
+The [runtime cost benchmark](https://github.com/smithersai/vibelang/tree/main/docs/user/benchmarks/runtime-cost) produced this table with the 0.0.13 compiler built from commit `d8981f70`, Node 26.5.0 and Effect 4.1.1 on Linux x64. It ran on one shared server with an AMD EPYC 7443P 24-Core Processor and 48 logical CPUs while other jobs ran: the 1-minute load average was 39 at the start and 41 at the end. These are single-machine observations, not a performance guarantee.
 
-| Loop | Observed time |
-| --- | ---: |
-| 200,000 Effect-contracted VibeLang calls without `catch` | 550 to 610 ms, about 2.9 µs per call |
-| 200,000 `Effect.fn` generator calls | 860 to 1,200 ms |
-| 1,000,000 `step(n) catch () => 0` expressions | 3.0 to 3.8 s |
-| 1,000,000 `Effect.succeed`/`Effect.fail` steps with `Effect.orElseSucceed` | About 0.33 s |
-| 1,000,000 plain-function calls | About 3 ms |
+Each loop ran in its own Node process: 2 untimed warm-up runs, then 10 timed runs, each one `Effect.runSync` call timed with `performance.now()`. The step increments a number and fails when the next value is a multiple of 250,000; recovery resets it to zero. The 200,000-call loops end before that failure. Run `node run.mjs` in the benchmark directory to measure your own machine.
 
-Effect-contracted calls were in the same order of cost as `Effect.fn` generators. The `catch` loop cost more than the hand-written `Effect.orElseSucceed` loop. A plain function, `double(n: number): number`, adds no Effect wrapper, and a plain function is called directly from Effect code. Measure your own workload, including tracing, before choosing a boundary for a hot loop.
+| Loop | Min | Median | Max | Median per call |
+| --- | ---: | ---: | ---: | ---: |
+| 200,000 Effect-contracted VibeLang calls without `catch` | 228 ms | 246 ms | 376 ms | 1,229 ns |
+| 200,000 `Effect.fn` generator calls | 524 ms | 527 ms | 532 ms | 2,634 ns |
+| 1,000,000 `step(n) catch () => 0` expressions | 1,302 ms | 1,397 ms | 1,482 ms | 1,397 ns |
+| 1,000,000 `Effect.succeed`/`Effect.fail` steps with `Effect.orElseSucceed` | 186 ms | 188 ms | 192 ms | 188 ns |
+| 1,000,000 `plainStep(n)` plain-function calls from effect code | 0.8 ms | 0.9 ms | 0.9 ms | 0.9 ns |
+
+`Effect.fn` generator calls took about 2 times as long as Effect-contracted VibeLang calls; each `Effect.fn` call also captures a call-site stack frame. The `catch` loop took about 7 times as long as the hand-written `Effect.orElseSucceed` loop. Its step is a generator-based effect function, the same step as in the first row, and the compiled `catch` evaluates the operand and the handler inside `Effect.sync`; the `orElseSucceed` step returns `Effect.succeed` or `Effect.fail` directly. A plain function, `plainStep(n: number): number`, adds no Effect wrapper, and effect code calls it directly. Measure your own workload, including tracing, before choosing a boundary for a hot loop.
 
 ## Catch expected failures only
 

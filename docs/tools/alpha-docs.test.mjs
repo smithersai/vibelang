@@ -91,7 +91,8 @@ test("7: Effect users can find tracing limits, a debugging recipe and measured c
   assert.match(tools, /Effect\.runPromise\(main\(\)\)/)
   assert.match(tools, /error\.stack/)
   const effects = read("docs/user/src/vibelang-features/114-vibelang-for-effect-users.md")
-  for (const term of ["single-machine", "2.9", "Effect.fn", "catch () => 0", "Effect.orElseSucceed", "200,000", "1,000,000", "Clock.currentTimeMillis"]) assert.ok(effects.includes(term), term)
+  // "1,229 ns" is the measured median per call of the first row in docs/user/benchmarks/runtime-cost/results.json.
+  for (const term of ["single-machine", "1,229 ns", "Effect.fn", "catch () => 0", "Effect.orElseSucceed", "200,000", "1,000,000", "Clock.currentTimeMillis"]) assert.ok(effects.includes(term), term)
 })
 
 test("8: cache startup and formatter requirements state their measured limits", () => {

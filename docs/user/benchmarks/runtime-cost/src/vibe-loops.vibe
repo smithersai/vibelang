@@ -1,0 +1,37 @@
+// The VibeLang loops. `step` is an Effect-contracted function: its
+// signature `number!Overflow` is `Effect.Effect<number, Overflow>`.
+// It increments `n` and fails every 250,000th value.
+export error Overflow { value: number }
+
+export effect function step(n: number): number!Overflow {
+  const next = n + 1
+  if (next % 250_000 === 0) throw new Overflow({ value: next })
+  return next
+}
+
+// Success only: with fewer than 250,000 calls the loop never fails.
+export effect function tryLoop(count: number): number!Overflow {
+  let n = 0
+  for (let i = 0; i < count; i++) n = try step(n)
+  return n
+}
+
+// Recovery: `catch` resets `n` to zero on each failure.
+export effect function catchLoop(count: number) {
+  let n = 0
+  for (let i = 0; i < count; i++) n = step(n) catch () => 0
+  return n
+}
+
+// A plain function with the same arithmetic. It has no Effect wrapper,
+// and effect code calls it directly.
+export function plainStep(n: number): number {
+  const next = n + 1
+  return next % 250_000 === 0 ? 0 : next
+}
+
+export effect function plainLoop(count: number) {
+  let n = 0
+  for (let i = 0; i < count; i++) n = plainStep(n)
+  return n
+}

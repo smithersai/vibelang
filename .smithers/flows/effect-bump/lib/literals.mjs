@@ -23,7 +23,8 @@ export const EXEMPT = [
   ["typescript/tsc/internal/vibelang/testdata/effect-pin/**", GUARD],
   ["typescript/tsc/internal/vibelangfuzz/effect_pin_fuzz_test.go", GUARD],
   ["scripts/deploy-docs.test.mjs", "a fixture manifest whose version is arbitrary"],
-  ["docs/tools/published-site-unit.test.mjs", "a fixture manifest whose version is arbitrary"]
+  ["docs/tools/published-site-unit.test.mjs", "a fixture manifest whose version is arbitrary"],
+  ["docs/user/benchmarks/runtime-cost/results.json", "a measurement on the old Effect; rerun the benchmark, which docs/tools/runtime-cost-benchmark.test.mjs requires"]
 ]
 
 const matcher = (glob) =>

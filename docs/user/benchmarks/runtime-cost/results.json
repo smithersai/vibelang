@@ -1,0 +1,138 @@
+{
+  "method": {
+    "timer": "performance.now() around Effect.runSync, one Node process per loop",
+    "warmupRuns": 2,
+    "trials": 10,
+    "pinnedCpu": null
+  },
+  "machine": {
+    "os": "Linux 7.0.0-38-generic",
+    "arch": "x64",
+    "cpuModel": "AMD EPYC 7443P 24-Core Processor",
+    "logicalCpus": 48,
+    "loadAverageStart": [
+      39.22,
+      40.1,
+      40.87
+    ],
+    "loadAverageEnd": [
+      40.87,
+      40.48,
+      40.98
+    ]
+  },
+  "versions": {
+    "node": "v26.5.0",
+    "compiler": "VibeLang 0.0.13 (TypeScript 7.1.0-dev)",
+    "compilerCommit": "d8981f70",
+    "effect": "4.1.1",
+    "vibelangRuntime": "0.0.13"
+  },
+  "loops": [
+    {
+      "id": "vibelang-try",
+      "label": "200,000 Effect-contracted VibeLang calls without `catch`",
+      "calls": 200000,
+      "trialsMs": [
+        242.9,
+        242.823,
+        359.832,
+        376.043,
+        310.965,
+        260.417,
+        242.057,
+        248.689,
+        239.793,
+        227.703
+      ],
+      "minMs": 227.703,
+      "medianMs": 245.794,
+      "maxMs": 376.043,
+      "medianNsPerCall": 1228.972
+    },
+    {
+      "id": "effect-fn",
+      "label": "200,000 `Effect.fn` generator calls",
+      "calls": 200000,
+      "trialsMs": [
+        532.087,
+        527.406,
+        524.677,
+        524.935,
+        527.034,
+        527.143,
+        524.743,
+        524.264,
+        526.413,
+        528.257
+      ],
+      "minMs": 524.264,
+      "medianMs": 526.724,
+      "maxMs": 532.087,
+      "medianNsPerCall": 2633.619
+    },
+    {
+      "id": "vibelang-catch",
+      "label": "1,000,000 `step(n) catch () => 0` expressions",
+      "calls": 1000000,
+      "trialsMs": [
+        1397.755,
+        1390.853,
+        1406.986,
+        1375.934,
+        1379.278,
+        1395.27,
+        1439.717,
+        1482.223,
+        1429.408,
+        1302.283
+      ],
+      "minMs": 1302.283,
+      "medianMs": 1396.513,
+      "maxMs": 1482.223,
+      "medianNsPerCall": 1396.513
+    },
+    {
+      "id": "effect-or-else-succeed",
+      "label": "1,000,000 `Effect.succeed`/`Effect.fail` steps with `Effect.orElseSucceed`",
+      "calls": 1000000,
+      "trialsMs": [
+        188.325,
+        189.761,
+        191.513,
+        188.506,
+        191.143,
+        188.278,
+        185.88,
+        187.549,
+        187.192,
+        188.024
+      ],
+      "minMs": 185.88,
+      "medianMs": 188.302,
+      "maxMs": 191.513,
+      "medianNsPerCall": 188.302
+    },
+    {
+      "id": "plain-function",
+      "label": "1,000,000 `plainStep(n)` plain-function calls from effect code",
+      "calls": 1000000,
+      "trialsMs": [
+        0.882,
+        0.864,
+        0.867,
+        0.886,
+        0.888,
+        0.857,
+        0.853,
+        0.846,
+        0.845,
+        0.845
+      ],
+      "minMs": 0.845,
+      "medianMs": 0.86,
+      "maxMs": 0.888,
+      "medianNsPerCall": 0.86
+    }
+  ]
+}

@@ -16,7 +16,8 @@ test("a literal moves only as a whole version", () => {
 test("the pin guards, lockfiles, manifests and fixtures keep the old version", () => {
   for (const file of ["package.json", "packages/runtime/package.json", "packages/runtime/bun.lock", "site/package-lock.json",
     ".smithers/flows/effect-bump/eval.ts", ".smithers/flows/migrate/test/corpus/x.json", "packages/runtime/tests/package.test.ts",
-    "typescript/tsc/internal/vibelang/effect_pin_test.go", "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0/index.d.ts"]) {
+    "typescript/tsc/internal/vibelang/effect_pin_test.go", "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0/index.d.ts",
+    "docs/user/benchmarks/runtime-cost/results.json"]) {
     assert.ok(exemption(file), file)
   }
   for (const file of ["docs/user/src/setup/release-notes.md", "packages/runtime/tests/kernel.property.test.ts", "typescript/vibelang/cases/a/run.mjs",
