@@ -80,13 +80,31 @@ schema Batch {
 {"shipments":[{"tracking":"box-76","pieces":2}]}
 ```
 
-`schema Batch { ... }` declares both the struct `Batch` and its decoded type, the type `Batch`. A field names its type; a schema such as `Shipment` stands for its own decoded type. A field's type maps to a schema when it is a primitive (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined` or `null`), a literal, a union, an array, a tuple, a `Record`, an object type, or another schema's name, and an optional field `name?: T` accepts a missing key or `undefined`, through `Schema.optional`. Any other type is `EK2109`. `unknown`, `any`, `never`, `object` and `void` are not primitives: name their schema, as in `payload: Schema.Unknown`. A field is writable unless written `readonly`. Array, tuple, and `Record` mappings preserve collection mutability: `T[]`, `Array<T>`, and `[A, B]` use `Schema.mutable`; `Record<K, V>` uses `Schema.mutableKey` on its value schema. The `readonly T[]`, `ReadonlyArray<T>`, `readonly [A, B]`, and `Readonly<Record<K, V>>` forms remain readonly. JavaScript objects are not frozen.
+`schema Batch { ... }` declares both the struct `Batch` and its decoded type, the type `Batch`. A field names its type; a schema such as `Shipment` stands for its own decoded type. A field's type maps to a schema when it is a primitive (`string`, `number`, `boolean`, `bigint`, `symbol`, `undefined` or `null`), a literal, a union, an array, a tuple, a `Record`, an object type, or another schema's name. Any other type is `EK2109`. `unknown`, `any`, `never`, `object` and `void` are not primitives: name their schema, as in `payload: Schema.Unknown`. A field is writable unless written `readonly`. Array, tuple, and `Record` mappings preserve collection mutability: `T[]`, `Array<T>`, and `[A, B]` use `Schema.mutable`; `Record<K, V>` uses `Schema.mutableKey` on its value schema. The `readonly T[]`, `ReadonlyArray<T>`, `readonly [A, B]`, and `Readonly<Record<K, V>>` forms remain readonly. JavaScript objects are not frozen.
 
 `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` use their resolved TypeScript-library type bindings. A local or imported type with the same spelling does not receive that mapping; without a suitable Schema value it reports `EK2109`. A value-only name does not replace the separate library type. For example, a local `type Record<K, V> = { k: K; v: V }` supplies no decoder for `schema S { a: Record<string, number> }`. Write `schema Entry { k: string; v: number }` and use `a: Entry` instead.
 
 An explicitly `readonly` field requires a referenced codec whose decoded key is readonly. Aliased, mutable or uncertain key flags report `EK2109`; to preserve the existing codec, write explicit `Schema.Struct` values. The required-key and readonly-key checks are independent. A reference widened to `Schema.Top` can report both `EK2109` messages at the same field because neither decoded flag is proven. This promise is shallow: a readonly field can still contain a mutable array.
 
 Write `readonly` once per field. Repeating it reports TypeScript’s `TS1030`.
+
+An optional field `name?: T` accepts a missing key. Whether it also accepts a present `undefined` depends on `exactOptionalPropertyTypes`, which the [introduction](/schema/085-introduction#configuring-compiler-prerequisites) recommends. With it on, `name?: T` maps to `Schema.optionalKey` and rejects `{ name: undefined }`; write `name?: T | undefined` to accept it. With it off, `name?: T` maps to `Schema.optional` and accepts both. [Basic Usage](/schema/087-basic-usage) explains the mapping.
+
+```vibe
+schema Nickname { name?: string | undefined }
+```
+
+```text
+true true
+```
+
+The same program, with each field spelling and setting, prints:
+
+| `exactOptionalPropertyTypes` | Field | Output |
+| --- | --- | --- |
+| `true` | `name?: string` | `true false` |
+| `false` | `name?: string` | `true true` |
+| `true` | `name?: string \| undefined` | `true true` |
 
 These grammar errors do not depend on the field’s type: a field whose type is not a schema reports `EK2109` for the type and keeps the `TS1070`, `TS1030` or `TS1247` of its spelling, as does a sibling field of the same declaration, a member of an object type under a type operator or an Effect type, and an untyped member with an initializer. A JSDoc type such as `?string`, `string?`, `!string` or `*` is not a TypeScript type: the field reports `EK2109` and TypeScript’s `TS17020`, `TS17019` or `TS8020`; write `string | null | undefined`, `string | undefined` or `string`.
 

@@ -483,7 +483,7 @@ async function runVitest(dir: string, emitted: string, helper: string | undefine
 // The same bound a block's compile gets.
 const VITEST_STARTUP_MS = 60_000
 
-export async function runBlock(dir: string, blocks: Block[], result: Result, compiler: string, timeout: number): Promise<Result> {
+export async function runBlock(dir: string, blocks: Block[], result: Result, compiler: string, timeout: number, compilerOptions: Record<string, unknown> = {}): Promise<Result> {
   if (result.status !== "ok" || failsOnPurpose(result) || result.diagnostics.some(d => d.severity !== "warning")) {
     return { ...result, status: "fail", reason: `Output assertion cannot run a ${result.status} block or a block with expected diagnostics` }
   }
@@ -501,7 +501,8 @@ export async function runBlock(dir: string, blocks: Block[], result: Result, com
   // The 0.0.1 release suppresses emit on warnings with noEmitOnError, yet
   // exits 0. Permit warning-only output; compiler errors still stop execution
   // below. Each run writes only to its own dist directory.
-  Object.assign(config.compilerOptions, { noEmit: false, noEmitOnError: false, outDir: "dist", rootDir: "." })
+  // A test may run a block under other compiler options, such as exactOptionalPropertyTypes.
+  Object.assign(config.compilerOptions, compilerOptions, { noEmit: false, noEmitOnError: false, outDir: "dist", rootDir: "." })
   config.files = [filename]
   writeFileSync(join(dir, "tsconfig.json"), JSON.stringify(config))
   const compiled = await command([compiler, "--pretty", "false", "-p", join(dir, "tsconfig.json")], dir, 60000)
