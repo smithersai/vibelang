@@ -36,3 +36,30 @@ test("Exit output checks keep narrowing for varied payloads", async () => {
     expect(result.status, result.execution?.stdout).toBe("ok")
   }), { seed: 7702, numRuns: 8 })
 }, 60000)
+
+// Native Effect.onExit passes cleanup the program's own exit, value included; an old
+// `finally (exit)` clause received Exit.void on success. The page must say which is which,
+// and its example must show both while the program keeps its value.
+const page = () => readFileSync(new URL("../user/src/data-types/077-exit.md", import.meta.url), "utf8")
+const onExitExample = () => {
+  const blocks = extract(page()).filter(block => block.run?.includes("Effect.onExit"))
+  expect(blocks.length).toBe(1)
+  return blocks[0]
+}
+
+test("the Effect.onExit example shows cleanup gets the program's value, and the old contract's Exit.void", async () => {
+  const block = onExitExample()
+  expect(block.output).toBe("Success 12\nSuccess undefined\nresult 12 12")
+  const result = await observe(block)
+  expect(result.execution?.stdout, result.reason).toBe(block.output + "\n")
+  expect(page()).not.toMatch(/native `Effect\.onExit`, which passes the successful cleanup input `Exit\.void`/)
+}, 30000)
+
+test("Effect.onExit hands cleanup any success value and still returns it", async () => {
+  await fc.assert(fc.asyncProperty(fc.integer({ min: -1000000, max: 1000000 }), async (value) => {
+    const block = onExitExample()
+    block.run = block.run!.replaceAll("Effect.succeed(12)", "Effect.succeed(" + value + ")")
+    const result = await observe(block)
+    expect(result.execution?.stdout, result.reason).toBe(`Success ${value}\nSuccess undefined\nresult ${value} ${value}\n`)
+  }), { seed: 7711, numRuns: 4 })
+}, 60000)

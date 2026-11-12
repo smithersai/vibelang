@@ -108,4 +108,19 @@ effect function replay<A, E>(outcome: Exit.Exit<A, E>) {
 
 `const outcome = Exit.succeed(value)` still builds an exit object; `try outcome` propagates it, and `try exit(work())` captures a program's outcome. Exit extends Effect, and its constructors return data.
 
-For an old `finally (exit) { ... }` clause in effect code, use native `Effect.onExit`, which passes the successful cleanup input `Exit.void` and a failure’s original cause.
+For an old `finally (exit) { ... }` clause in effect code, use native `Effect.onExit`. It passes cleanup the program's own exit: on success an `Exit.Success` holding the program's value, and on failure the original cause. The old clause received `Exit.void` on success instead. To keep that contract, convert the exit cleanup receives, not the program, so the program still returns its value:
+
+```vibe
+// run: try Console.log("result", try Effect.onExit(Effect.succeed(12), (outcome) => cleanup(outcome)), try Effect.onExit(Effect.succeed(12), (outcome) => cleanup(Exit.isSuccess(outcome) ? Exit.void : outcome)))
+effect function cleanup(outcome: Exit.Exit<unknown, unknown>) {
+  try Console.log(outcome._tag, Exit.isSuccess(outcome) ? outcome.value : "failed")
+}
+```
+
+```output
+Success 12
+Success undefined
+result 12 12
+```
+
+The first call is native `Effect.onExit`; the second gives cleanup `Exit.void` on success, as the old clause did. Wrapping the whole program in `Effect.asVoid` would also give cleanup `Exit.void`, but the program would then return `undefined` instead of its value.

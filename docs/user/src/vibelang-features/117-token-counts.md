@@ -222,7 +222,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [DateTime](../data-types/074-datetime.md) | 3,100 |
 | [Duration](../data-types/075-duration.md) | 1,300 |
 | [Result](../data-types/076-result.md) | 1,600 |
-| [Exit](../data-types/077-exit.md) | 1,200 |
+| [Exit](../data-types/077-exit.md) | 1,400 |
 | [HashSet](../data-types/078-hash-set.md) | 1,600 |
 | [Option](../data-types/079-option.md) | 2,400 |
 | [Redacted](../data-types/080-redacted.md) | 740 |
