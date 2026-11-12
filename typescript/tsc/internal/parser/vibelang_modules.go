@@ -169,6 +169,29 @@ func (p *Parser) isVibeLangModuleImport() bool {
 	return (p.isVibeLangFile() || p.vibelangTypeScript) && p.token != ast.KindEqualsToken && p.token != ast.KindCommaToken && p.token != ast.KindFromKeyword && p.canParseSemicolon()
 }
 
+// nextTokenIsVibeLangModuleSpecifier reports whether the `from` after an
+// import's first word is followed by an identifier module specifier (VIP-40)
+// rather than by a phase import's own `from`: `import defer from text;` is a
+// default import named defer, as `import defer from "./text"` is in
+// TypeScript, while `import defer from from text;` is a deferred import whose
+// default binding is from.
+func (p *Parser) nextTokenIsVibeLangModuleSpecifier() bool {
+	if !p.isVibeLangFile() && !p.vibelangTypeScript {
+		return false
+	}
+	return p.nextToken() != ast.KindFromKeyword && p.isIdentifier()
+}
+
+// isVibeLangPhaseWordModuleImport reports whether the word defer or source
+// after import, followed by an explicit end of statement, names a module
+// declaration: `import defer;` imports the module defer for its effects
+// (VIP-40). A line break alone keeps TypeScript's phase reading, so
+// `import defer` on one line and `* as ns from text` on the next stay a
+// deferred import.
+func (p *Parser) isVibeLangPhaseWordModuleImport() bool {
+	return (p.isVibeLangFile() || p.vibelangTypeScript) && (p.token == ast.KindSemicolonToken || p.token == ast.KindCloseBraceToken || p.token == ast.KindEndOfFile)
+}
+
 // parseVibeLangModuleImport finishes `import text;`, whose identifier is
 // already parsed.
 func (p *Parser) parseVibeLangModuleImport(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, name *ast.Node) *ast.Node {

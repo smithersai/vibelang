@@ -2680,8 +2680,12 @@ func (p *Parser) shouldParseImportPhaseModifier() bool {
 	case ast.KindCommaToken, ast.KindEqualsToken:
 		return false
 	case ast.KindFromKeyword:
-		if p.lookAhead((*Parser).nextTokenIsTokenStringLiteral) {
-			return false
+		if p.lookAhead((*Parser).nextTokenIsTokenStringLiteral) || p.lookAhead((*Parser).nextTokenIsVibeLangModuleSpecifier) {
+			return false // import defer from text; (vibelang_modules.go)
+		}
+	case ast.KindSemicolonToken, ast.KindCloseBraceToken, ast.KindEndOfFile:
+		if p.isVibeLangPhaseWordModuleImport() {
+			return false // import defer; (vibelang_modules.go)
 		}
 	}
 	return true

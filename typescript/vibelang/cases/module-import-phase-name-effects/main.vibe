@@ -1,0 +1,10 @@
+// expect-result: "module source ran"
+// docs/design/vips/0040-module-declarations.md — An identifier module specifier names a module declaration of the same file; a module named defer or source is imported for its effects like any other.
+module source {
+  export const ran = "module source ran"
+}
+import source;
+import { ran } from source
+export effect function main() {
+  return ran
+}

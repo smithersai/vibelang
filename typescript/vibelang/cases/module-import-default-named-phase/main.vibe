@@ -1,0 +1,11 @@
+// expect-result: "text: text: a b"
+// docs/design/vips/0040-module-declarations.md — An identifier module specifier names a module declaration of the same file; a default import named defer or source from one is an ordinary import.
+module text {
+  export default function label(parts: string[]): string { return "text: " + parts.join(" ") }
+}
+import defer from text
+import source from text
+export effect function main() {
+  const inner = try Effect.try(() => defer(["a"]))
+  return try Effect.try(() => source([inner, "b"]))
+}
