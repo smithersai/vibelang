@@ -35,7 +35,7 @@ func FuzzVibexResolution(f *testing.F) {
 	startShortBudget(f)
 	keys := []string{"runtime-js", "runtime-jsx", "explicit-vibe", "explicit-vibex", "paired-sidecar"}
 	for _, key := range keys {
-		for _, n := range []uint8{0, 1, 2, 3, 7, 15} {
+		for _, n := range []uint8{0, 1, 2, 3, 4, 7, 8, 12, 15} {
 			f.Add(key, n)
 		}
 	}
@@ -104,7 +104,10 @@ func FuzzVibexResolution(f *testing.F) {
 			} // only the alternate source remains
 			files["/repo/"+stem+suffix+".tsx"] = ""
 		case "paired-sidecar":
-			suffixes = []string{suffix, suffix + ".d.vibex"}
+			// Put any platform suffix in the written basename. Both the source
+			// and its sidecar are reachable without a configured suffix trick.
+			written = suffix + ".vibex"
+			suffixes = nil
 			files["/repo/"+stem+suffix+".d.vibex.ts"] = ""
 		}
 		// Every rule except the alternate-only source has a JSX source available.
@@ -122,6 +125,20 @@ func FuzzVibexResolution(f *testing.F) {
 		want := "/repo/" + stem + suffix + target
 		if string(got.ResolvedFileName) != want {
 			Gap(t, "FuzzVibexResolution", key, "VIP-39: %s resolved to %s, want %s (variation %d)", written, got.ResolvedFileName, want, n)
+		}
+		if key == "paired-sidecar" {
+			delete(files, want)
+			resolver = module.NewResolver(module.ResolverOptions{
+				Host: vibexResolutionHost{vfstest.FromMap(files, tspath.CaseSensitive)}, CompilerOptions: opts,
+			})
+			sidecar, _, err := resolver.ResolveModuleName("./"+stem+written, "/repo/main.ts", core.ModuleKindESNext, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantSidecar := "/repo/" + stem + suffix + ".d.vibex.ts"
+			if string(sidecar.ResolvedFileName) != wantSidecar {
+				Gap(t, "FuzzVibexResolution", key, "VIP-39: without live source, resolved %s, want reachable sidecar %s", sidecar.ResolvedFileName, wantSidecar)
+			}
 		}
 	})
 }

@@ -104,7 +104,7 @@ func FuzzVarDenial(f *testing.F) {
 			if key == "generator-do-loop-head" {
 				items = "do { " + items + " }"
 			}
-			source = "export function load(): number { var" + gap + "value = 0; for (var" + gap + head + " of " + items + ") { value += 1 }; return value }"
+			source = "export function* load() { var" + gap + "value = 0; for (var" + gap + head + " of " + items + ") { yield value; value += 1 }; return value }"
 			want = 2
 		case "property-control":
 			source, want = "export const row = { var: 1 }; export const value = row.var", 0

@@ -1,7 +1,5 @@
-// docs/design/vips/0038-effect-lint-built-in.md#81e3ccaf6abbb10b
-// VIP-38: arity mutations and native Option/Exit/Result/error singleton and empty matcher lengths.
-// docs/design/vips/0038-effect-lint-built-in.md#d0d923b2591ebf17
-// VIP-38: arity mutations and native Option/Exit/Result/error singleton and empty matcher lengths.
+// docs/design/src/004-match.md#class-patterns
+// Chapter 4 (VIP-7): fixed matcher extraction-list arity.
 package vibelangfuzz
 
 import (

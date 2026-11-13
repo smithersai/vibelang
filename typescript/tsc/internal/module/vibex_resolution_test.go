@@ -62,7 +62,8 @@ func TestVibexResolutionSuffixesAndExports(t *testing.T) {
 	}{
 		{"directory", "./dir", "/repo/dir/index.vibex", nil, map[string]string{"/repo/dir/index.vibex": ""}},
 		{"suffix", "./d.js", "/repo/d.web.vibex", []string{".web", ""}, map[string]string{"/repo/d.web.vibex": "", "/repo/d.vibex": ""}},
-		{"paired-sidecar", "./d.js", "/repo/d.vibex", []string{"", ".d.vibex"}, map[string]string{"/repo/d.vibex": "", "/repo/d.d.vibex.ts": ""}},
+		{"paired-sidecar", "./d.vibex", "/repo/d.vibex", nil, map[string]string{"/repo/d.vibex": "", "/repo/d.d.vibex.ts": ""}},
+		{"suffix-sidecar", "./d.js", "/repo/d.vibex", []string{"", ".d.vibex"}, map[string]string{"/repo/d.vibex": "", "/repo/d.d.vibex.ts": ""}},
 		{"explicit-sidecar", "./d.vibex", "/repo/d.d.vibex.ts", nil, map[string]string{"/repo/d.d.vibex.ts": ""}},
 		{"exports", "pkg", "/repo/node_modules/pkg/d.d.vibex.ts", nil, map[string]string{
 			"/repo/node_modules/pkg/package.json": `{"name":"pkg","exports":{".":{"types":"./d.d.vibex.ts","default":"./d.js"}}}`,

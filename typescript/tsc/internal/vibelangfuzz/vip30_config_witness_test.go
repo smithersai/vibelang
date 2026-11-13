@@ -60,44 +60,77 @@ func TestNativeModuleDetectionMeaning(t *testing.T) {
 	}
 }
 
-// VIP-30: interim EK92xx codes, warnings such as EK9204 included, are not
-// vibe.severities keys. Each entry is EK3006 at its key and changes nothing:
-// the dead catch still reports EK9204 as its default warning.
+// VIP-30 rejects interim severity keys independently of whether a transitional
+// compiler still emits their diagnostics. Invalid entries leave all other
+// diagnostics unchanged, including their severity and source range.
+func TestInterimSeverityEntriesQuoted(t *testing.T) {
+	quote := "Interim `EK92xx` codes are not configurable through `vibe.severities`, even when printed as warnings; an entry is `EK3006`."
+	if !strings.Contains(SpecText("../vips/0030-config-files.md"), quote) {
+		t.Fatalf("VIP-30 no longer says %q", quote)
+	}
+}
+
 func TestInterimSeverityEntriesRejected(t *testing.T) {
+	TestInterimSeverityEntriesQuoted(t)
 	w := NewWorkspace(t)
-	source := "export effect function main() {\n  try {\n    try Effect.succeed(0)\n    return 1\n  } catch (e) {\n    return 2\n  }\n}\n"
-	for _, code := range []string{"EK9204", "EK9201"} {
-		for _, severity := range []string{"error", "warning", "suggestion", "off"} {
-			t.Run(code+"/"+severity, func(t *testing.T) {
-				config := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"types":[],"noEmit":true},"vibe":{"severities":{"` + code + `":"` + severity + `"}},"files":["main.vibe"]}`
-				result, err := w.Compile(context.Background(), Project{Files: map[string]string{"main.vibe": source, "package.json": `{"type":"module"}`}, Config: config})
-				if err != nil {
-					t.Fatal(err)
-				}
-				defer result.Remove()
-				rejected, dead := 0, 0
-				for _, d := range result.Diagnostics {
-					if !IsEK(d) {
-						continue
+	source := "export effect function main() { return Effect.succeed(2) catch (e) => 0 }\n"
+	for _, extra := range []string{"", "export const invalid: number = \"text\";\n"} {
+		compile := func(entry string) *Result {
+			config := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"types":[],"noEmit":true},"vibe":{` + entry + `},"files":["main.vibe"]}`
+			result, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source + extra, "package.json": `{"type":"module"}`}, Config: config})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(result.Remove)
+			return result
+		}
+		keys := func(result *Result, code string) []string {
+			var got []string
+			rejected := 0
+			for _, diagnostic := range result.Diagnostics {
+				if IsEK(diagnostic) && diagnostic.Code() == 3006 {
+					rejected++
+					if code == "" || diagnostic.Category().Name() != "error" || diagnostic.File() == nil ||
+						diagnostic.File().Text()[diagnostic.Pos():diagnostic.End()] != `"`+code+`"` {
+						t.Fatalf("wrong EK3006: %s", diagnostic.String())
 					}
-					switch d.Code() {
-					case 3006:
-						rejected++
-						// rule-evidence: docs/design/vips/0030-config-files.md#c77e9663aa746fc7 | **Amended 2026-11-01: interim severity codes.** Interim `EK92xx` codes are not configurable through `vibe.severities`, even when printed as warnings; an entry is `EK3006`.
-						if d.Category().Name() != "error" || d.File() == nil || d.File().Text()[d.Pos():d.End()] != `"`+code+`"` {
-							t.Fatalf("wrong EK3006: %s", d.String())
-						}
-					case 9204:
-						dead++
-						if d.Category().Name() != "warning" {
-							t.Fatalf("an EK3006 entry changed EK9204's default: %s", d.String())
-						}
+					continue
+				}
+				file := ""
+				if diagnostic.File() != nil {
+					file = filepath.Base(diagnostic.File().FileName().AsString())
+				}
+				got = append(got, fmt.Sprintf("%s:%s:%d:%s:%d:%d:%s", file, diagnostic.Source(),
+					diagnostic.Code(), diagnostic.Category().Name(), diagnostic.Pos(), diagnostic.End(), diagnostic.MessageText()))
+			}
+			want := 1
+			if code == "" {
+				want = 0
+			}
+			if rejected != want {
+				t.Fatalf("EK3006=%d, want %d: %v", rejected, want, diagnosticTexts(result.Diagnostics))
+			}
+			slices.Sort(got)
+			return got
+		}
+		baseline := compile("")
+		wantCodes := []string{}
+		if extra != "" {
+			wantCodes = []string{"TS2322"}
+		}
+		if got := vibexNativeCodes(baseline); !slices.Equal(got, wantCodes) {
+			t.Fatalf("witness requires an admitted catch expression and only the deliberate type error: %v", got)
+		}
+		want := keys(baseline, "")
+		for _, code := range []string{"EK9204", "EK9201"} {
+			for _, severity := range []string{"error", "warning", "suggestion", "off"} {
+				t.Run(fmt.Sprintf("%s/%s/type-error=%v", code, severity, extra != ""), func(t *testing.T) {
+					result := compile(`"severities":{"` + code + `":"` + severity + `"}`)
+					if got := keys(result, code); !slices.Equal(got, want) {
+						t.Fatalf("rejected entry changed diagnostics: got %v, without entry %v", got, want)
 					}
-				}
-				if rejected != 1 || dead != 1 {
-					t.Fatalf("EK3006=%d EK9204=%d, want 1 and 1: %v", rejected, dead, diagnosticTexts(result.Diagnostics))
-				}
-			})
+				})
+			}
 		}
 	}
 }

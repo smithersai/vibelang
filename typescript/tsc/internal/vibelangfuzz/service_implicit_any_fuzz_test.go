@@ -36,7 +36,9 @@ func FuzzServiceImplicitAny(f *testing.F) {
 		{"generic-method-omitted", "read<T>(x:T)", true, 7010},
 	}
 	for _, r := range rules {
-		f.Add(r.key, uint8(0))
+		for _, shape := range []uint8{0, 1, 2} {
+			f.Add(r.key, shape)
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, shape uint8) {

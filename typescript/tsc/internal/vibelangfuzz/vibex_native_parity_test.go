@@ -3,9 +3,15 @@ package vibelangfuzz
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 const vibexNativeTarget = "FuzzVibexNativeParity"
@@ -84,7 +90,70 @@ func vibexNativeCodes(result *Result) []string {
 	return codes
 }
 
-// r4 ASTRA-1/2 and OPUS-2/3/4/6: native JSX grammar/options/output do not
+// Identical native sources require the same error codes and source ranges.
+func vibexNativeDiagnosticRanges(result *Result) []string {
+	keys := []string{}
+	for _, diagnostic := range result.Diagnostics {
+		if diagnostic.Category().Name() == "error" {
+			prefix := "TS"
+			if IsEK(diagnostic) {
+				prefix = "EK"
+			}
+			keys = append(keys, fmt.Sprintf("%s%d:%d:%d", prefix, diagnostic.Code(), diagnostic.Pos(), diagnostic.End()-diagnostic.Pos()))
+		}
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+// Throw-expression controls use an IIFE, so their emitted text and diagnostic
+// ranges differ intentionally. All byte-identical inputs use exact equality.
+func vibexNativeOutputMatches(key, native, vibe string) bool {
+	if native == "" || vibe == "" {
+		return false
+	}
+	if key == "nullish-throw" {
+		return strings.Contains(native, "<Box") == strings.Contains(vibe, "<Box")
+	}
+	return native == vibe
+}
+
+func TestVibexNativeOutputOracle(t *testing.T) {
+	for _, row := range []struct{ key, native, mutant string }{
+		{"space-regexp", "export const value = a < /b/.source.length;", "export const value = false;"},
+		{"element", "h(Box, { value: 1 });", "otherFactory(Box, { value: 1 });"},
+		{"element", "jsxDEV(Box, {}, void 0, false, source, this);", "jsxDEV(Box, {}, void 0, false);"},
+		{"generator-argument", "Effect.gen(makeGenerator());", "Effect.gen(makeGenerator);"},
+		{"plain", "export const value = 1;", ""},
+	} {
+		if !vibexNativeOutputMatches(row.key, row.native, row.native) {
+			t.Fatalf("%s: identical output was rejected", row.key)
+		}
+		if vibexNativeOutputMatches(row.key, row.native, row.mutant) {
+			t.Fatalf("%s: changed output escaped the oracle: %s", row.key, row.mutant)
+		}
+	}
+	if !vibexNativeOutputMatches("nullish-throw", "x ?? (() => { throw <Box/>; })()", "x ?? throw <Box/>") ||
+		vibexNativeOutputMatches("nullish-throw", "throw <Box/>", "throw h(Box, null)") {
+		t.Fatal("rewritten throw control must retain JSX preservation")
+	}
+}
+
+func TestVibexNativeDiagnosticOracle(t *testing.T) {
+	result := func(pos, end int) *Result {
+		return &Result{Diagnostics: []*ast.Diagnostic{
+			ast.NewExternalDiagnostic(nil, core.NewTextRange(pos, end), "TS", diagnostics.CategoryError, 1005, "expected token"),
+		}}
+	}
+	want := vibexNativeDiagnosticRanges(result(3, 5))
+	for _, span := range [][2]int{{4, 6}, {3, 6}} {
+		if slices.Equal(want, vibexNativeDiagnosticRanges(result(span[0], span[1]))) {
+			t.Fatalf("changed diagnostic range escaped the oracle: %v", span)
+		}
+	}
+}
+
+// Native JSX grammar, options and output do not
 // change under a .vibex rename. This deliberately tests no Effect syntax:
 // each ordinary .tsx control is the identical spec-prescribed counterpart.
 // Chapter 007 / vibex scanning, generic heads, JSX diagnostics and five emit modes match TSX: docs/design/src/007-tooling.md#afd1a269444d0083
@@ -163,9 +232,12 @@ func FuzzVibexNativeParity(f *testing.F) {
 				reference = result
 				continue
 			}
-			expected, actual := vibexNativeCodes(reference), vibexNativeCodes(result)
+			expected, actual := vibexNativeDiagnosticRanges(reference), vibexNativeDiagnosticRanges(result)
+			if shape.key == "nullish-throw" {
+				expected, actual = vibexNativeCodes(reference), vibexNativeCodes(result)
+			}
 			if !slices.Equal(expected, actual) {
-				Gap(t, vibexNativeTarget, gapKey, "VIP-39: identical native JSX source/options require codes %v; got %v\n%s", expected, actual, shape.source)
+				Gap(t, vibexNativeTarget, gapKey, "VIP-39: identical native JSX source/options require diagnostics %v; got %v\n%s", expected, actual, shape.source)
 			}
 			if len(expected) == 0 {
 				suffix := "/main.js"
@@ -189,9 +261,16 @@ func FuzzVibexNativeParity(f *testing.F) {
 				if vibeOutput == "" {
 					Gap(t, vibexNativeTarget, gapKey, "VIP-39: expected output %s is missing", suffix)
 				}
-				// Ordinary JSX emission must preserve JSX in the same modes as .tsx.
-				if shape.key == "element" && strings.Contains(nativeOutput, "<Box") != strings.Contains(vibeOutput, "<Box") {
-					Gap(t, vibexNativeTarget, gapKey, "VIP-39: JSX preservation differs from native output under %s", mode)
+				if mode == "react-jsxdev" {
+					// Native JSX development metadata names the actual input file.
+					// Normalize only that generated literal, retaining every argument.
+					nativeName := strconv.Quote(filepath.ToSlash(filepath.Join(reference.Dir, "main.tsx")))
+					vibeName := strconv.Quote(filepath.ToSlash(filepath.Join(result.Dir, "main.vibex")))
+					nativeOutput = strings.ReplaceAll(nativeOutput, nativeName, `"main.tsx"`)
+					vibeOutput = strings.ReplaceAll(vibeOutput, vibeName, `"main.tsx"`)
+				}
+				if !vibexNativeOutputMatches(shape.key, nativeOutput, vibeOutput) {
+					Gap(t, vibexNativeTarget, gapKey, "VIP-39: emitted text differs from native output under %s\nnative:\n%s\nvibex:\n%s", mode, nativeOutput, vibeOutput)
 				}
 			}
 		}

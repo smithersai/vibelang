@@ -1233,3 +1233,25 @@ checks inherited callable generic heads, plain value-parameter boundaries and in
 type-syntax context for callable types, inferred names and mapped keys. The
 grammar admission witnesses remain keyed corpus inputs after their pending
 markers are removed.
+
+## Native JSX and static-rule witnesses
+
+`FuzzVibexNativeParity` compares error codes and source ranges for identical
+`.tsx` and `.vibex` inputs, then compares their emitted JavaScript or JSX
+text, normalizing only the generated source filename in development JSX metadata.
+The throw-expression control uses a native IIFE, so it compares error
+codes and JSX preservation instead. `FuzzVibexOutputSuffix` checks emitted
+text as well as output paths and maps. Mutated factory calls, development JSX
+arguments and generator arguments exercise the text oracle.
+
+The interim-severity configuration witness compares every diagnostic with
+the same project without the entry, after requiring exactly one `EK3006`
+error at the rejected key. It uses an admitted catch expression and requires
+no transitional warning to survive.
+
+`FuzzOptionalExtractorArgs` cites Chapter 4's class-pattern rule (VIP-7).
+Required and optional positions cover both ends of the admitted arity interval.
+Resolver seeds include native competitors independently; the paired-sidecar
+witness uses an explicit source extension and proves the sidecar is reachable
+after removing the live source. Service seeds cover all three member separators,
+and generator `var` witnesses contain actual generator functions and yields.

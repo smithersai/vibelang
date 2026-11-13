@@ -10,39 +10,40 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// docs/design/vips/0038-effect-lint-built-in.md#81e3ccaf6abbb10b
-// docs/design/vips/0038-effect-lint-built-in.md#5e2640df1640bef7
-// VIP-38: fixed extractor arity uses the required-to-total interval.
-const optionalExtractorTarget = "FuzzVIP38OptionalExtractorArgs"
+// Chapter 4, Class patterns (VIP-7): fixed extractor arity uses the
+// required-to-total interval.
+// docs/design/src/004-match.md#class-patterns
+const optionalExtractorTarget = "FuzzOptionalExtractorArgs"
 
 var optionalExtractorKeys = []string{
 	"none:optional:1", "none:optional:2", "some:optional:1", "some:optional:2",
 	"none:required:0", "some:required:0", "some:required:1",
+	"none:required:1", "none:required:2", "some:required:2",
 }
 var optionalExtractorQuotes = []string{
 	"required positions through total positions, counting every elision slot and counting optional elements only in the maximum",
 	"For example, `Option.None(1?)` admits its empty extracted list and is not warned.",
 }
 
-func TestVIP38OptionalExtractorQuoted(t *testing.T) {
+func TestOptionalExtractorQuoted(t *testing.T) {
 	text := SpecText("004-match.md")
 	for _, quote := range optionalExtractorQuotes {
 		if !strings.Contains(text, quote) {
-			t.Fatalf("VIP-38 no longer says %q", quote)
+			t.Fatalf("Chapter 4 no longer says %q", quote)
 		}
 	}
 }
 
 // Keyed mutations vary literal values, separators, required/optional slots and
 // zero/one/two positions; optional slots count only toward the maximum arity.
-func FuzzVIP38OptionalExtractorArgs(f *testing.F) {
+func FuzzOptionalExtractorArgs(f *testing.F) {
 	startShortBudget(f)
 	for _, key := range optionalExtractorKeys {
 		f.Add([]byte(key))
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
-		TestVIP38OptionalExtractorQuoted(t)
+		TestOptionalExtractorQuoted(t)
 		key, tail, _ := strings.Cut(string(data), "|")
 		if !slices.Contains(optionalExtractorKeys, key) {
 			if len(data) == 0 {
@@ -103,7 +104,7 @@ func FuzzVIP38OptionalExtractorArgs(f *testing.F) {
 			want = 1
 		}
 		if len(errors) != 0 || warnings != want {
-			Gap(t, optionalExtractorTarget, key, "stage=parse/check VIP-38 optional arity: want EK0703=%d and no errors, got warnings=%d errors=%v\n%s", want, warnings, errors, source)
+			Gap(t, optionalExtractorTarget, key, "stage=parse/check chapter 4 optional arity: want EK0703=%d and no errors, got warnings=%d errors=%v\n%s", want, warnings, errors, source)
 		}
 		ExpectPending(t, optionalExtractorTarget, key)
 		ExpectPending(t, optionalExtractorTarget, specCorpusKey(t))

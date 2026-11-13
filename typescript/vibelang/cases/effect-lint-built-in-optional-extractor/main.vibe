@@ -1,4 +1,4 @@
-// docs/design/vips/0038-effect-lint-built-in.md#5e2640df1640bef7
+// docs/design/src/004-match.md#class-patterns
 // VIP-38: effect-lint-built-in-optional-extractor.
 import {Option,Effect} from "effect"
 export effect function main(): number!! { return match (Option.none()) { when Option.None(1?): 1; default: 0; } }

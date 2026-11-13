@@ -37,8 +37,6 @@ func FuzzVibexOutputSuffix(f *testing.F) {
 			f.Add(shape, mode, uint8(7))
 		}
 	}
-	// Foldkit: generic components and callbacks must keep the JSX output suffix.
-	f.Add("component", "preserve", uint8(13))
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, shape, mode string, variant uint8) {
 		TestVibexOutputSuffixQuoted(t)
@@ -79,7 +77,7 @@ func FuzzVibexOutputSuffix(f *testing.F) {
 		if got := module.TryGetJSExtensionForFile(stem+".vibex", &core.CompilerOptions{Jsx: jsxMode}); got != suffix {
 			Gap(t, "FuzzVibexOutputSuffix", shape+":"+mode+":module-extension", "VIP-39: module specifiers require %s, got %q", suffix, got)
 		}
-		var nativePreserves bool
+		var nativeOutput string
 		for _, ext := range []string{".tsx", ".vibex"} {
 			file := stem + ext
 			opts := map[string]any{
@@ -136,11 +134,10 @@ func FuzzVibexOutputSuffix(f *testing.F) {
 			if sm.File != "main"+suffix || !slices.ContainsFunc(sm.Sources, func(s string) bool { return strings.HasSuffix(s, stem+ext) }) {
 				Gap(t, "FuzzVibexOutputSuffix", shape+":"+mode+":source-map", "%s: map names wrong output/source: %+v", file, sm)
 			}
-			preserves := strings.Contains(output, "<div") || strings.Contains(output, "<Box") || strings.Contains(output, "<>")
 			if ext == ".tsx" {
-				nativePreserves = preserves
-			} else if preserves != nativePreserves {
-				Gap(t, "FuzzVibexOutputSuffix", shape+":"+mode+":jsx", "VIP-39: JSX preservation differs from native TSX")
+				nativeOutput = output
+			} else if !vibexNativeOutputMatches(shape, nativeOutput, output) {
+				Gap(t, "FuzzVibexOutputSuffix", shape+":"+mode+":jsx", "VIP-39: emitted text differs from native TSX\nnative:\n%s\nvibex:\n%s", nativeOutput, output)
 			}
 			if variant&2 != 0 {
 				dir := "out"
