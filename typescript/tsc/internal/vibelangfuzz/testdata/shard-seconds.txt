@@ -79,7 +79,6 @@
 23 TestMigrationDeclarationFixWitnesses
 23 TestQuickFixAPIObserves
 22 FuzzInstantiatedDefaultCallbacks
-22 FuzzStockSuppressedNamespaceAPI
 22 TestMigrationExistingPlatformBodyNeighborhood
 22 TestTscDeclarationSpellingMatrix
 21 FuzzDeclarationServiceUse
@@ -96,7 +95,7 @@
 19 FuzzVIPLegacyForkOptions
 19 TestForeignLazyThunksNeighborhood
 19 TestLintDefectBridge
-18 FuzzDoDeclarationBytes
+18 FuzzDoDeclarationIdentity
 18 FuzzEffectGlobals
 18 FuzzFileSystemServiceAdvice
 18 FuzzGeneratedDefectBridgeFixTwin

@@ -37,6 +37,7 @@ func FuzzDeclarationStyleRules(f *testing.F) {
 	}
 	for _, rule := range rules {
 		f.Add(rule.key, uint8(0))
+		f.Add(rule.key, uint8(128))
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, variant uint8) {
@@ -85,7 +86,11 @@ func FuzzDeclarationStyleRules(f *testing.F) {
 			t.Fatalf("unconfigured control has errors: %v", baseline.Diagnostics)
 		}
 		if rule.key != "default-sibling" {
-			config["vibelang"] = map[string]any{"declarationImportStyle": rule.style}
+			if variant&128 != 0 {
+				config["compilerOptions"].(map[string]any)["vibelang"] = map[string]any{"declarationImportStyle": rule.style}
+			} else {
+				config["vibelang"] = map[string]any{"declarationImportStyle": rule.style}
+			}
 		}
 		text, err := json.Marshal(config)
 		if err != nil {
@@ -97,10 +102,24 @@ func FuzzDeclarationStyleRules(f *testing.F) {
 		}
 		defer r.Remove()
 		var errors []string
+		warnings := 0
 		for _, d := range r.Diagnostics {
+			if IsEK(d) && d.Code() == 3011 {
+				if d.Category() != diagnostics.CategoryWarning {
+					t.Fatalf("EK3011 must be a warning: %s", d.String())
+				}
+				warnings++
+			}
 			if d.Category() == diagnostics.CategoryError {
 				errors = append(errors, d.String())
 			}
+		}
+		wantWarnings := 1
+		if rule.key == "default-sibling" {
+			wantWarnings = 0
+		}
+		if warnings != wantWarnings {
+			Gap(t, "FuzzDeclarationStyleRules", "warning:"+rule.key, "VIP-30: want %d EK3011 warnings, got %d", wantWarnings, warnings)
 		}
 		if len(errors) != 0 {
 			Gap(t, "FuzzDeclarationStyleRules", "control:"+rule.key, "chapter 007 declaration style must be admitted: %v", errors)
@@ -119,7 +138,7 @@ func FuzzDeclarationStyleRules(f *testing.F) {
 		if want, ok := baseline.Outputs["out/main.d.ts"]; !ok || declaration != want {
 			Gap(t, "FuzzDeclarationStyleRules", "ignored:"+rule.key, "VIP-30 %q: configured declaration %q differs from unconfigured %q", declarationStyleQuote, declaration, want)
 		}
-		for _, kind := range []string{"control:", "sibling:", "ignored:"} {
+		for _, kind := range []string{"control:", "sibling:", "ignored:", "warning:"} {
 			ExpectPending(t, "FuzzDeclarationStyleRules", kind+rule.key)
 		}
 		ExpectPending(t, "FuzzDeclarationStyleRules", specCorpusKey(t))

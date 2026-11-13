@@ -14,45 +14,6 @@ func TestLayerAssertionDeclarationsQuoted(t *testing.T) {
 	chapterSays(t, "001-functions.md", "Declarations are exactly what idiomatic Effect TypeScript would declare.")
 }
 
-// layerAssertionKeys are the shapes around Alchemy's GetPullRequestLocal: a
-// layer annotated with a never error channel whose program is asserted
-// `as never` (or through unknown to a written Effect type). Stock TypeScript honours the assertion and declares the written
-// Layer<Service, never>; a conversion must not widen it to the program's
-// own error type.
-var layerAssertionKeys = []string{"fail-never", "die-never", "succeed-never", "typed-assertion"}
-
-func layerAssertionSource(key string, mode uint8) string {
-	program := "Effect.fail(\"bad\") as never"
-	switch key {
-	case "die-never":
-		program = "Effect.die(\"bad\") as never"
-	case "succeed-never":
-		program = "Effect.succeed(1) as never"
-	case "typed-assertion":
-		program = "Effect.fail(\"bad\") as unknown as Effect.Effect<number>"
-	}
-	imports := "import * as Effect from \"effect/Effect\";\nimport * as Layer from \"effect/Layer\";\nimport * as Context from \"effect/Context\";\n"
-	if mode&1 != 0 {
-		imports = "import { Context, Effect, Layer } from \"effect\";\n"
-	}
-	annotation := "Layer.Layer<Service, never>"
-	if mode&2 != 0 {
-		annotation = "Layer.Layer<Service>"
-	}
-	doc := ""
-	if mode&4 != 0 {
-		doc = "/** The service layer. */\n"
-	}
-	source := imports +
-		"class Service extends Context.Service<Service, number>()(\"Service\") {}\n" +
-		"export { Service };\n" +
-		doc + "export const layer: " + annotation + " = Layer.effect(Service, " + program + ");\n"
-	if mode&8 != 0 {
-		source = strings.ReplaceAll(source, "\n", "\r\n")
-	}
-	return source
-}
-
 // The keyed Alchemy minimum must pass the rename gate, not be admitted away.
 func TestLayerAssertionDeclarationWitness(t *testing.T) {
 	TestLayerAssertionDeclarationsQuoted(t)

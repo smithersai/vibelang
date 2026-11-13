@@ -22,26 +22,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// TestDeclarationImportStyleMatrix enforces Chapter 1,
-// docs/design/src/001-functions.md, Declaration output, Specifiers: "A
-// package whose sources spell relative imports another way keeps that
-// spelling with the project setting vibelang.declarationImportStyle:
-// "extensionless" declares ./user, ".ts" declares ./user.ts, and ".js" is the
-// default. Every other specifier stays as the source wrote it, ./plain.ts
-// included, under every setting, as tsc keeps it in the declaration of a .ts
-// file." (detail 263) and "An import the declaration file adds ... takes the
-// quotes of the file's first written import or export specifier".
-//
-// Oracle: for each module mode × setting × quote × written specifier × import
-// form, a .vibe module's declaration equals, byte for byte, stock tsc's
-// declaration of its untouched .ts twin, which writes each ./leaf.vibe import
-// in the setting's spelling and every other specifier as the .vibe file does.
-// Module nodenext has no extensionless relative import, so it skips those
-// cells. Witnesses:
-// Smithers' Bind.vibe declared "./Contribution.js" for "./Contribution.ts",
-// opencode's "./runtime.vibe" declared "./runtime.js" for "./runtime", and
-// foldkit's added import { Effect } from "effect" in single-quoted files
-// (inbox/migrate-smithers.md, 2026-10-31).
+// TestDeclarationImportStyleMatrix checks Chapter 1's TypeScript declaration
+// spelling across module modes, quotes, written specifiers and import forms.
+// Chapter 7 retires declarationImportStyle; warning and ignored-value coverage
+// belongs to FuzzDeclarationStyleRules.
 // Chapter 007 / public declaration styles and compatibility sidecar scope: docs/design/src/007-tooling.md#56e3469cde8b8996
 func TestDeclarationImportStyleMatrix(t *testing.T) {
 	// Spec rule: docs/design/src/001-functions.md#3d7f3621cc0534f3
@@ -56,7 +40,6 @@ func TestDeclarationImportStyleMatrix(t *testing.T) {
 	tsc := StockTypeScript(t)
 	w := NewWorkspace(t)
 	modes := []string{"bundler", "nodenext"}
-	styles := []struct{ name string }{{".js"}, {"extensionless"}, {".ts"}}
 	quotes := []string{`"`, `'`}
 	// Each source spelling and whether it names the migrated twin.
 	specifiers := []struct {
@@ -80,7 +63,7 @@ func TestDeclarationImportStyleMatrix(t *testing.T) {
 	}
 	leaf := "export type T = { readonly n: number }\nexport const value: number = 1\nexport const make = (): T => ({ n: value })\n"
 	for _, mode := range modes {
-		for _, style := range styles {
+		for _, style := range []struct{ name string }{{".js"}} {
 			for _, quote := range quotes {
 				for _, specifier := range specifiers {
 					for _, form := range forms {
@@ -106,6 +89,7 @@ func TestDeclarationImportStyleMatrix(t *testing.T) {
 							if err != nil {
 								t.Fatal(err)
 							}
+							defer vibe.Remove()
 							if HasError(vibe.Diagnostics) {
 								t.Fatalf("the .vibe project has errors: %v\n%s", SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)), source)
 							}
@@ -161,7 +145,7 @@ func TestDeclarationImportStyleInferredImportType(t *testing.T) {
 	schema := "export type MessageUnion<A> = { readonly _tag: \"m\"; readonly value: A }\nexport const makeMessage = <A>(value: A): MessageUnion<A> => ({ _tag: \"m\", value })\n"
 	outputs := []string{"out/query/keyedQuery.d.ts", "out/query/indirect.d.ts", "out/query/viaMessage.d.ts"}
 	for _, mode := range []string{"bundler", "nodenext"} {
-		for _, style := range []string{".js", "extensionless", ".ts"} {
+		for _, style := range []string{".js"} {
 			for _, quote := range []string{`"`, `'`} {
 				quoteName := map[string]string{`"`: "double", `'`: "single"}[quote]
 				// files is the project whose schema/index is schemaFile and whose
@@ -199,6 +183,7 @@ func TestDeclarationImportStyleInferredImportType(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+					defer vibe.Remove()
 					if HasError(vibe.Diagnostics) {
 						t.Fatalf("the .vibe project has errors: %v", SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)))
 					}
@@ -272,7 +257,7 @@ func TestDeclarationImportStyleInferredImportType(t *testing.T) {
 // type. Witness: foldkit's devTools/store.d.ts printed one double-quoted
 // import per name, import { HashMap } from "effect" and three more, where the
 // baseline printed import { Effect, HashMap, HashSet, Option, SubscriptionRef }
-// from 'effect' (foldkit-91).
+// from 'effect'.
 func TestDeclarationEffectModuleImports(t *testing.T) {
 	// Spec rule: docs/design/src/001-functions.md#b4422e525c73acaf
 	// Chapter 001: added Effect import joins written imports and preserves order/quotes (TestDeclarationEffectModuleImports).
@@ -337,6 +322,7 @@ func TestDeclarationEffectModuleImports(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
+					defer vibe.Remove()
 					if HasError(vibe.Diagnostics) {
 						t.Fatalf("the .vibe project has errors: %v\n%s", SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)), source.String()+body.String())
 					}

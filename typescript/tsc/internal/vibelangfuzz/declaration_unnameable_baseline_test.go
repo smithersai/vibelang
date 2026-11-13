@@ -13,7 +13,7 @@ import (
 )
 
 // TestDeclarationUnnameableBaseline covers t3code's CodexThreadRevert.ts
-// (inbox/migrate-t3code.md, declaration:baseline-ts4023-codex-thread-revert).
+// and its unnameable service type.
 // The original Effect.fn value takes Pick<Client["Service"], "request">, whose
 // service shape holds a module-private interface, so stock tsc stops with
 // TS4023 and writes no declaration. Its VibeLang conversion is an Effect

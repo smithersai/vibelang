@@ -38,7 +38,7 @@ func dataSchemaLibraryArrayRules() []dataRule {
 				{"element", "const n:string=" + position.access + "[0]", "TS2322"},
 			} {
 				source := binding.declaration + " " + declaration + " function f(s:S){" + operation.body + "}"
-				rules = append(rules, dataRule{"schema-library-array-" + binding.key + "-" + position.key + "-" + operation.key, chapter, quote, source, operation.code, "impl-hunt-data"})
+				rules = append(rules, dataRule{"schema-library-array-" + binding.key + "-" + position.key + "-" + operation.key, chapter, quote, source, operation.code})
 			}
 		}
 	}

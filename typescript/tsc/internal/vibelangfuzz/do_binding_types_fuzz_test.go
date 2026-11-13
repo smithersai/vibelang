@@ -35,7 +35,7 @@ func TestDoBindingTypesQuoted(t *testing.T) {
 // counterpart, as chapter 000 requires. Defaults have the same normal
 // result; the do additionally has an outward return to exercise its lowering.
 // TypeScript 5.9.3 independently confirms TS2493 for a missing non-default tuple
-// slot, and TS2322 for an incompatible written default (lane native receipt).
+// slot, and TS2322 for an incompatible written default.
 func FuzzDoBindingTypes(f *testing.F) {
 	startShortBudget(f)
 	type witness struct{ key, setup, pattern, rhs, suffix string }

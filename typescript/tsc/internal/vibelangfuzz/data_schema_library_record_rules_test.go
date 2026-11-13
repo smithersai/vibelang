@@ -25,15 +25,15 @@ func dataSchemaLibraryRecordRules() []dataRule {
 				{"value", "const n:string=" + position.access + ".x", "TS2322"},
 			} {
 				source := binding.declaration + " " + declaration + " function f(s:S){" + operation.body + "}"
-				rules = append(rules, dataRule{"schema-library-record-" + binding.key + "-" + position.key + "-" + operation.key, chapter, quote, source, operation.code, "impl-hunt-data"})
+				rules = append(rules, dataRule{"schema-library-record-" + binding.key + "-" + position.key + "-" + operation.key, chapter, quote, source, operation.code})
 			}
 		}
 	}
 	rules = append(rules,
-		dataRule{"schema-library-record-value-only", chapter, quote, "const Record=1; schema S=Record<\"x\",number>; function f(s:S){s.x=1}", "", "impl-hunt-data"},
-		dataRule{"schema-library-record-custom-type", chapter, quote, "type Record<K,V>={key:K;value:V}; schema S=Record<string,number>", "EK2109", "impl-hunt-data"},
-		dataRule{"schema-library-record-wrong-arity", chapter, quote, "schema S=globalThis.Record<string>", "EK2109", "impl-hunt-data"},
-		dataRule{"schema-library-readonly-record-alias", chapter, quote, "namespace N { export import Freeze=globalThis.Readonly; export import Dictionary=globalThis.Record }; schema S=N.Freeze<N.Dictionary<\"x\",number>>; function f(s:S){const n:number=s.x}", "", "impl-hunt-data"},
+		dataRule{"schema-library-record-value-only", chapter, quote, "const Record=1; schema S=Record<\"x\",number>; function f(s:S){s.x=1}", ""},
+		dataRule{"schema-library-record-custom-type", chapter, quote, "type Record<K,V>={key:K;value:V}; schema S=Record<string,number>", "EK2109"},
+		dataRule{"schema-library-record-wrong-arity", chapter, quote, "schema S=globalThis.Record<string>", "EK2109"},
+		dataRule{"schema-library-readonly-record-alias", chapter, quote, "namespace N { export import Freeze=globalThis.Readonly; export import Dictionary=globalThis.Record }; schema S=N.Freeze<N.Dictionary<\"x\",number>>; function f(s:S){const n:number=s.x}", ""},
 	)
 	return rules
 }

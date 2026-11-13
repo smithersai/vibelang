@@ -37,14 +37,14 @@ func schemaMemberDomainRules() []dataRule {
 			rules = append(rules, dataRule{
 				"schema-member-domain-" + context.key + "-" + member.key,
 				chapter, memberQuote, fmt.Sprintf(context.template, member.source),
-				"only:" + context.code, "conf-auto-schema-member-domain",
+				"only:" + context.code,
 			})
 		}
 	}
 	return append(rules, dataRule{
 		"schema-member-domain-fields", chapter, "properties are writable unless `readonly`",
 		"schema S { n: number; readonly name?: string; inner: { value: number } }; schema T = { n: number }",
-		"", "conf-auto-schema-member-domain",
+		"",
 	})
 }
 

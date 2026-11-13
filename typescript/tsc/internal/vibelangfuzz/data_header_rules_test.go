@@ -7,7 +7,7 @@ import "fmt"
 func dataHeaderRules() []dataRule {
 	var rules []dataRule
 	add := func(key, quote, source, code string) {
-		rules = append(rules, dataRule{"data-header-" + key, "006-data.md", quote, source, code, "conf-auto-data-header-contextual-name"})
+		rules = append(rules, dataRule{"data-header-" + key, "006-data.md", quote, source, code})
 	}
 	const required = "a recognized data header missing its variant body is " + "\x60EK1604\x60"
 	const contextual = "the keyword and the name on one line, where a declaration can start"
@@ -21,7 +21,7 @@ func dataHeaderRules() []dataRule {
 	}
 	for _, op := range []string{"as", "satisfies", "is"} {
 		for _, gap := range []string{" ", " /* keep */ "} {
-			prefix := "const data=1; type T=number; "
+			prefix := "const data=1; const T=1; type T=number; "
 			key := fmt.Sprintf("%s-%d", op, len(gap))
 			operand := " T"
 			if op == "is" {

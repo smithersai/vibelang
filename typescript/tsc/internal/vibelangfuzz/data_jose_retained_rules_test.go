@@ -19,9 +19,9 @@ func dataJoseRetainedRules() []dataRule {
 			{"extra", "(let first,let second)", "true", "boolean|null"},
 		} {
 			source := binding.decl + "function probe(value:unknown):" + shape.typ + "{return match(value){when " + binding.matcher + shape.pattern + ":" + shape.result + ";default:null;}}"
-			rules = append(rules, dataRule{"jose-retained-" + binding.key + "-" + shape.key, "004-match.md", retained, source, "", "compiler"})
+			rules = append(rules, dataRule{"jose-retained-" + binding.key + "-" + shape.key, "004-match.md", retained, source, ""})
 		}
-		rules = append(rules, dataRule{"jose-retained-" + binding.key + "-is", "004-match.md", retained, binding.decl + "function probe(value:unknown):boolean{return value is " + binding.matcher + "}", "", "compiler"})
+		rules = append(rules, dataRule{"jose-retained-" + binding.key + "-is", "004-match.md", retained, binding.decl + "function probe(value:unknown):boolean{return value is " + binding.matcher + "}", ""})
 	}
 	const ordinary = "An ordinary-class extractor without an own matcher is `EK0704`, with any argument count, including `()`"
 	for _, suffix := range []string{"()", "(let found)"} {
@@ -30,7 +30,7 @@ func dataJoseRetainedRules() []dataRule {
 			key = "capture"
 		}
 		source := "class JoseError {} function probe(value:unknown){return match(value){when JoseError" + suffix + ":true;default:false;}}"
-		rules = append(rules, dataRule{"jose-retained-shadow-" + key, "004-match.md", ordinary, source, "only:EK0704", "compiler"})
+		rules = append(rules, dataRule{"jose-retained-shadow-" + key, "004-match.md", ordinary, source, "only:EK0704"})
 	}
 	return rules
 }

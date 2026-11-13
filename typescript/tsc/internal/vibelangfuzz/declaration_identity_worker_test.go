@@ -292,7 +292,7 @@ func TestDeclarationIdentityWorkerStrictAPI(t *testing.T) {
 		{"channel", effect + "export type Value=Effect.Effect<number,string>;\n", effect + "export type Value=Effect.Effect<number,Error>;\n", ""},
 		{"documentation", "/** old */\nexport declare const value:string;\n", "/** changed */\nexport declare const value:string;\n", ""},
 		{"name", "export declare const value:string;\n", "export declare const renamed:string;\n", ""},
-		{"missing", "export {Value} from \"pmfix-worker-missing-package\";\n", "export {Value} from \"pmfix-worker-missing-package\";\n", "TS2307"},
+		{"missing", "export {Value} from \"missing-package\";\n", "export {Value} from \"missing-package\";\n", "TS2307"},
 		{"namespace", effect + "export type Value=Effect<number>;\n", effect + "export type Value=Effect<number>;\n", "TS2709"},
 		{"after-errors", "export declare const value:string;\n", "export declare const value:string;\n", ""},
 	} {

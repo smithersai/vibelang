@@ -21,7 +21,7 @@ func dataRegExpValueRules() []dataRule {
 				expr = "match(x){when " + input.matcher + `(let m):m[0];default:"none";}`
 			}
 			source := input.prefix + "export function f(" + input.parameters + "){return " + expr + ";}"
-			rules = append(rules, dataRule{"match-regexp-value-" + input.key + "-" + context, "004-match.md", quote, source, "", "impl-hunt-data"})
+			rules = append(rules, dataRule{"match-regexp-value-" + input.key + "-" + context, "004-match.md", quote, source, ""})
 		}
 	}
 	for _, input := range []struct{ key, prefix, parameters string }{
@@ -36,7 +36,7 @@ func dataRegExpValueRules() []dataRule {
 				expr = `match(x){when r(let m):m;default:0;}`
 				key = "extractor"
 			}
-			rules = append(rules, dataRule{"match-regexp-value-control-" + input.key + "-" + key, "004-match.md", quote, input.prefix + "export function f(" + input.parameters + "){return " + expr + ";}", "only:EK0702", "impl-hunt-data"})
+			rules = append(rules, dataRule{"match-regexp-value-control-" + input.key + "-" + key, "004-match.md", quote, input.prefix + "export function f(" + input.parameters + "){return " + expr + ";}", "only:EK0702"})
 		}
 	}
 	return rules

@@ -29,7 +29,7 @@ func dataSchemaBindingScopeRules() []dataRule {
 			source := home.prefix + declaration + " " + home.body + home.suffix
 			source = strings.ReplaceAll(source, "USE", builtin.use)
 			source = strings.ReplaceAll(source, "ESCAPED", builtin.escaped)
-			rules = append(rules, dataRule{"schema-binding-scope-" + builtin.key + "-" + home.key, chapter, quote, source, home.code, "impl-hunt-data"})
+			rules = append(rules, dataRule{"schema-binding-scope-" + builtin.key + "-" + home.key, chapter, quote, source, home.code})
 		}
 	}
 	return rules

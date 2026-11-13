@@ -39,7 +39,7 @@ func TestDoParameterDefaultQuoted(t *testing.T) {
 // fulfilment, and the declaration output of an untyped parameter.
 func TestDoParameterDefaultReturn(t *testing.T) {
 	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node is not installed")
+		Missing(t, "TestDoParameterDefaultReturn needs node on PATH")
 	}
 	w := NewWorkspace(t)
 	for _, test := range []struct {

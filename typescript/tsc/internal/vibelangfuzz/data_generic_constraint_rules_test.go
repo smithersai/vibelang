@@ -21,7 +21,7 @@ func dataGenericConstraintRules() []dataRule {
 			{"default", "default: 0;", ""},
 		} {
 			source := "function f<" + domain.parameters + ">(x:T) { return match(x) { when " + domain.first + ": 1; " + strings.ReplaceAll(arms.tail, "SECOND", domain.second) + " } }"
-			rules = append(rules, dataRule{"exhaustive-generic-" + domain.key + "-" + arms.key, chapter, quote, source, arms.code, "impl-hunt-data"})
+			rules = append(rules, dataRule{"exhaustive-generic-" + domain.key + "-" + arms.key, chapter, quote, source, arms.code})
 		}
 	}
 	for _, open := range []struct{ key, parameters string }{
@@ -31,7 +31,7 @@ func dataGenericConstraintRules() []dataRule {
 		{"mixed", "T extends 'A' | { count: number }"},
 	} {
 		source := "function f<" + open.parameters + ">(x:T) { return match(x) { when let item and if(false): 0; } }"
-		rules = append(rules, dataRule{"exhaustive-generic-open-" + open.key, chapter, quote, source, "", "impl-hunt-data"})
+		rules = append(rules, dataRule{"exhaustive-generic-open-" + open.key, chapter, quote, source, ""})
 	}
 	for _, typ := range []struct{ key, source, code string }{
 		{"void", "void", ""},
@@ -40,7 +40,7 @@ func dataGenericConstraintRules() []dataRule {
 		{"undefined-union", "undefined | true", "only:EK4701"},
 	} {
 		source := "function f(x:" + typ.source + ") { return match(x) { when let item and if(false): 0; } }"
-		rules = append(rules, dataRule{"exhaustive-domain-" + typ.key, chapter, "Any other member (`string`, `number`, an object or class instance with no finite discriminant, `unknown`, `any`) turns the check off", source, typ.code, "impl-hunt-data"})
+		rules = append(rules, dataRule{"exhaustive-domain-" + typ.key, chapter, "Any other member (`string`, `number`, an object or class instance with no finite discriminant, `unknown`, `any`) turns the check off", source, typ.code})
 	}
 	return rules
 }

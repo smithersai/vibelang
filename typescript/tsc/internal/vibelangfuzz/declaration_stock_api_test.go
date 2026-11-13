@@ -107,7 +107,7 @@ func TestDeclarationIdentitySuppressionAPIControls(t *testing.T) {
 		"canonical":             {"import * as Effect from \"effect/Effect\"\nexport type Canonical=Effect.Effect<number>\n", false},
 		"unexported-error":      {"import * as Effect from \"effect/Effect\"\n// @ts-expect-error Local namespace misuse does not escape the API.\ntype Local=Effect<number>\nexport type Canonical=Effect.Effect<number>\n", false},
 		"unrelated-suppression": {"// @ts-expect-error Intentional local assignment failure.\nconst local:string=1\nexport const value=1\n", false},
-		"unresolved-export":     {"// @ts-ignore Deliberately unresolved, never a namespace-type eligibility waiver.\nexport type Missing=import(\"pmfix-stock-api-missing-package\").Missing\n", true},
+		"unresolved-export":     {"// @ts-ignore Deliberately unresolved, never a namespace-type eligibility waiver.\nexport type Missing=import(\"missing-package\").Missing\n", true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			stock, _, why := declarationIdentityProjects(Archive(map[string]string{"main.ts": row.source}))
@@ -153,7 +153,7 @@ func TestDeclarationIdentityPreflightWorkerParity(t *testing.T) {
 		"local":                 effect + "// @ts-expect-error This local misuse does not escape the API.\ntype Local=Effect<string>\nexport type Public=Effect.Effect<string>\n",
 		"erased-import":         effect + "// @ts-expect-error This unresolved export must not be waived.\nexport type Wrong=Effect<boolean>\n",
 		"unrelated-suppression": "// @ts-expect-error Intentional local assignment failure.\nconst local:string=1\nexport const value=1\n",
-		"unresolved-export":     "// @ts-ignore Deliberately unresolved, never a namespace-type eligibility waiver.\nexport type Missing=import(\"pmfix-stock-api-missing-package\").Missing\n",
+		"unresolved-export":     "// @ts-ignore Deliberately unresolved, never a namespace-type eligibility waiver.\nexport type Missing=import(\"missing-package\").Missing\n",
 	}
 	names := slices.Sorted(maps.Keys(sources))
 	nonEmpty := 0
@@ -195,69 +195,4 @@ func TestDeclarationIdentityPreflightWorkerParity(t *testing.T) {
 	if nonEmpty < 2*3 {
 		t.Fatalf("vacuous parity: %d of %d preflights reported errors; want the three erroneous controls in both rounds", nonEmpty, 2*len(names))
 	}
-}
-
-func FuzzStockSuppressedNamespaceAPI(f *testing.F) {
-	startShortBudget(f)
-	for _, key := range []string{"exported", "local", "unresolved", "erased-import", "valid"} {
-		f.Add(key, "Effect", "number")
-		f.Add(key, "Fx", "string")
-	}
-	w := NewWorkspace(f)
-	api, tsc := declarationIdentityAPI(f), StockTypeScript(f)
-	f.Fuzz(func(t *testing.T, key, alias, argument string) {
-		TestDeclarationIdentityStockAPIQuoted(t)
-		switch key {
-		case "exported", "local", "unresolved", "erased-import", "valid":
-		default:
-			key = "exported"
-		}
-		if alias != "Fx" && alias != "Effect" && alias != "Eff" {
-			alias = "Effect"
-		}
-		switch argument {
-		case "number", "string", "boolean":
-		default:
-			argument = "number"
-		}
-		source := "import * as " + alias + " from \"effect/Effect\"\n"
-		switch key {
-		case "exported":
-			source += "// @ts-expect-error A namespace is not a type.\nexport type Wrong=" + alias + "<" + argument + ">\n"
-			source += "export type Canonical=" + alias + ".Effect<" + argument + ">\n"
-		case "erased-import":
-			source += "// @ts-expect-error This unresolved export must not be waived.\nexport type Wrong=" + alias + "<" + argument + ">\n"
-		case "local":
-			source += "// @ts-expect-error This local misuse does not escape the API.\ntype Local=" + alias + "<" + argument + ">\nexport type Public=" + alias + ".Effect<" + argument + ">\n"
-		case "unresolved":
-			source += "// @ts-ignore An unresolved export must never be waived.\nexport type Missing=import(\"pmfix-stock-api-missing-package\").Missing\n"
-		case "valid":
-			source += "export type Public=" + alias + ".Effect<" + argument + ">\n"
-		}
-		stock, _, why := declarationIdentityProjects(Archive(map[string]string{"main.ts": source}))
-		if why != "" {
-			t.Fatal(why)
-		}
-		dir := emitDeclarationIdentityStock(t, w, tsc, stock)
-		defer os.RemoveAll(dir)
-		reason, err := declarationIdentitySuppressedStockAPI(t.Context(), api, dir, stock)
-		switch key {
-		case "exported":
-			if err != nil || reason == "" {
-				t.Fatalf("exported erroneous namespace has no API: %q %v", reason, err)
-			}
-		case "erased-import":
-			if err == nil || !strings.Contains(err.Error(), "TS2304") {
-				t.Fatalf("an erased import must remain an explicit failure: %q %v", reason, err)
-			}
-		case "unresolved":
-			if err == nil || !strings.Contains(err.Error(), "TS2307") {
-				t.Fatalf("missing dependency was waived: %q %v", reason, err)
-			}
-		default:
-			if err != nil || reason != "" {
-				t.Fatalf("valid exported API was rejected: %q %v", reason, err)
-			}
-		}
-	})
 }

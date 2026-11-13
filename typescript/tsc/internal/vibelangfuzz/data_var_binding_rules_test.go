@@ -35,7 +35,7 @@ func dataVarBindingRules() []dataRule {
 					"pattern-binding-" + p.key + "-" + form + "-" + binding,
 					"004-match.md",
 					"Pattern bindings use `let` or `const`; `when var x:` is `EK0107`, as `var` is everywhere in `.vibe`.",
-					source, code, "impl-hunt-data",
+					source, code,
 				})
 			}
 		}

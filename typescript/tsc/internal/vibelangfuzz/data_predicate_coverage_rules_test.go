@@ -31,7 +31,7 @@ func dataPredicateCoverageRules() []dataRule {
 		if tc.missing {
 			code = "only:EK4701"
 		}
-		rules = append(rules, dataRule{"predicate-coverage-" + tc.name, "004-match.md", "user-matcher patterns cover nothing", tc.source, code, "impl-hunt-data"})
+		rules = append(rules, dataRule{"predicate-coverage-" + tc.name, "004-match.md", "user-matcher patterns cover nothing", tc.source, code})
 	}
 	return rules
 }

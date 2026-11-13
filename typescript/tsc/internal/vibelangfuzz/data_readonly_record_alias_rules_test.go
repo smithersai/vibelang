@@ -26,7 +26,7 @@ func dataReadonlyRecordAliasRules() []dataRule {
 				name := "schema-readonly-map-" + binding.key + "-" + group.key + "-" + operation.key
 				inner := group.left + binding.inner + "<\"x\"," + operation.value + ">" + group.right
 				text := binding.declaration + " schema S=" + binding.outer + "<" + inner + ">;function f(s:S){" + operation.body + "}"
-				rules = append(rules, dataRule{name, chapter, quote, text, operation.code, "impl-hunt-data"})
+				rules = append(rules, dataRule{name, chapter, quote, text, operation.code})
 			}
 		}
 	}
@@ -35,7 +35,7 @@ func dataReadonlyRecordAliasRules() []dataRule {
 		{"readonly-write", "schema S=Readonly<Record<\"x\",number>>;function f(s:S){s.x=1}", "only:TS2540"},
 		{"nested-mutable", "schema S=Readonly<Record<\"x\",number[]>>;function f(s:S){s.x.push(1)}", ""},
 	} {
-		rules = append(rules, dataRule{"schema-readonly-map-control-" + control.name, chapter, quote, control.source, control.code, "impl-hunt-data"})
+		rules = append(rules, dataRule{"schema-readonly-map-control-" + control.name, chapter, quote, control.source, control.code})
 	}
 	return rules
 }

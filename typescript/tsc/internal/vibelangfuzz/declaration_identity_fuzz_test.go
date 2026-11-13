@@ -224,7 +224,7 @@ func mutabilityErrors(ds []*ast.Diagnostic) bool {
 // meaning outside Effect code", for member mutability: Chapter 1 says the
 // declaration keeps "exactly the source's written readonly modifiers", so a
 // renamed module whose writes stock tsc accepts must not report TS2540 or
-// TS2542 (foldkit-10: the checker kept the retired readonly default while the
+// TS2542 (Foldkit: the checker kept the retired readonly default while the
 // declaration printed the members writable).
 func CheckDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive string) {
 	checkDeclarationIdentity(t, w, tsc, api, archive, declarationIdentityProbeFor(t, api))

@@ -14,8 +14,7 @@ import (
 
 const doNarrowingTarget = "FuzzDoShortCircuitNarrowing"
 
-// Principle 4 lists `throw` until fold-details folds nothrow-impl.patch; this
-// part reads the same before and after.
+// Ordinary expressions keep TypeScript narrowing around do expressions.
 const doNarrowingQuote = "classes, `do` expressions and the pipe operator keep their TypeScript or pinned TC39 meaning."
 
 func TestDoShortCircuitNarrowingQuoted(t *testing.T) {

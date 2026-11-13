@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-const nativeImporterQuote = "Declarations are API-identical to `tsc`'s for the Effect TypeScript twin"
+const nativeImporterQuote = "Synthesized import types use TypeScript’s spelling for the twin under the same imports and tsconfig."
 const nativeImporterTarget = "FuzzDeclarationNativeImporter"
 
 var nativeImporterKeys = []string{"ts-importer", "tsx-importer", "vibe-importer", "ts-control"}
@@ -85,11 +85,7 @@ func nativeImporterModule(t *testing.T, declaration string) string {
 	if m == nil {
 		t.Fatalf("no inferred Providers module in declaration:\n%s", declaration)
 	}
-	name := m[1]
-	for _, ext := range []string{".ts", ".js", ".vibe"} {
-		name = strings.TrimSuffix(name, ext)
-	}
-	return name
+	return m[1]
 }
 
 func FuzzDeclarationNativeImporter(f *testing.F) {
@@ -111,6 +107,7 @@ func FuzzDeclarationNativeImporter(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer got.Remove()
 		if HasError(got.Diagnostics) {
 			t.Fatalf("invalid native-import project: %v", SortedKeys(Keys(got.Dir, got.Diagnostics)))
 		}

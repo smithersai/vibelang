@@ -25,7 +25,6 @@ func dataHelperNameRules() []dataRule {
 		out = append(out, dataRule{
 			name: fmt.Sprintf("generic-helper-names-%d", n), chapter: "006-data.md", quote: quote,
 			source: "type $G$Definition=string; type $G$Definition$2=number; export data G<" + strings.Join(params, ",") + "> { V {" + strings.Join(fields, ";") + "} }",
-			owner:  "vip-core2",
 		})
 	}
 	return out

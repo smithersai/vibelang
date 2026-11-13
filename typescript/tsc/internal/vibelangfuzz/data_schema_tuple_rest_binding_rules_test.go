@@ -30,7 +30,7 @@ func dataSchemaTupleRestBindingRules() []dataRule {
 					body += ";s.push(1)"
 				}
 				source := binding.decl + "schema S=" + tuple + ";function f(s:S){" + body + "}"
-				rules = append(rules, dataRule{"schema-tuple-rest-binding-" + key, chapter, quote, source, "", "impl-hunt-data"})
+				rules = append(rules, dataRule{"schema-tuple-rest-binding-" + key, chapter, quote, source, ""})
 			}
 		}
 		for _, shape := range []struct{ key, tuple string }{
@@ -38,7 +38,13 @@ func dataSchemaTupleRestBindingRules() []dataRule {
 			{"optional-after-rest", "readonly [...REST,string?]"},
 		} {
 			source := binding.decl + "schema S=" + strings.ReplaceAll(shape.tuple, "REST", binding.use+"<number>")
-			rules = append(rules, dataRule{"schema-tuple-rest-binding-" + binding.key + "-" + shape.key, "000-intro.md", nativeGrammarQuote, source, "error", "impl-hunt-data"})
+			rules = append(rules, dataRule{"schema-tuple-rest-binding-" + binding.key + "-" + shape.key, "000-intro.md", nativeGrammarQuote, source, "only:" + map[string]string{"two-rests": "TS1265", "optional-after-rest": "TS1266"}[shape.key]})
+			control := "readonly [...REST]"
+			if shape.key == "optional-after-rest" {
+				control = "readonly [...REST,string]"
+			}
+			rules = append(rules, dataRule{"schema-tuple-rest-binding-" + binding.key + "-" + shape.key + "-control", "000-intro.md", nativeGrammarQuote, binding.decl + "schema S=" + strings.ReplaceAll(control, "REST", binding.use+"<number>"), ""})
+
 		}
 	}
 	for _, binding := range []struct{ key, decl, use string }{
@@ -51,7 +57,7 @@ func dataSchemaTupleRestBindingRules() []dataRule {
 			{"rest", "[...REST]"}, {"label", "[...items:REST]"}, {"nested-tail", "readonly [...[...REST],boolean]"},
 		} {
 			source := binding.decl + "schema S=" + strings.ReplaceAll(shape.tuple, "REST", binding.use+"<number>")
-			rules = append(rules, dataRule{"schema-tuple-rest-binding-" + binding.key + "-" + shape.key, chapter, quote, source, "only:EK2109", "impl-hunt-data"})
+			rules = append(rules, dataRule{"schema-tuple-rest-binding-" + binding.key + "-" + shape.key, chapter, quote, source, "only:EK2109"})
 		}
 	}
 	return rules

@@ -8,7 +8,7 @@ import (
 )
 
 // Fuzz coverage for the effect-code half of chapter 7's EK4834-EK4836 rule
-// (lane pmfix-ek4834). 9421d41b dropped the check that try runs the call, so
+// A missing check that try runs the call allowed
 // try Effect.succeed(1) in a plain arrow warned beside its EK0501. The
 // neighbourhood: each family, wrapped or not, as the direct try operand in
 // every kind of code a try can stand in. Only effect code may warn. The rule

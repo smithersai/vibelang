@@ -15,8 +15,7 @@ const declarationOrderQuote = "Declarations are exactly what idiomatic Effect Ty
 // declarationOrderFunctions are plain functions whose return type is a union
 // of object literals, to which the checker adds each missing property as
 // `name?: never`. Its readonly-ness must follow the function's own literal,
-// whatever function the checker reached first (t3code's AttachmentUpload,
-// drive-t3code-server 22:53Z).
+// whatever function the checker reached first (t3code's AttachmentUpload).
 func declarationOrderFunctions(choice uint32) []string {
 	names := []string{"status", "kind", "id"}
 	values := []string{"1", "\"done\"", "true"}
@@ -29,7 +28,7 @@ func declarationOrderFunctions(choice uint32) []string {
 		if bits&16 != 0 {
 			constant = " as const"
 		}
-		fns = append(fns, fmt.Sprintf("export function f%d(b: boolean): infer _ {\n  if (b) return { %s: %s }%s\n  return {}\n}\n", i, name, value, constant))
+		fns = append(fns, fmt.Sprintf("export function f%d(b: boolean) {\n  if (b) return { %s: %s }%s\n  return {}\n}\n", i, name, value, constant))
 	}
 	return fns
 }
@@ -78,10 +77,14 @@ func checkDeclarationOrder(t *testing.T, w *Workspace, choice uint32) {
 		defer result.Remove()
 		for _, d := range result.Diagnostics {
 			if d.Category() == diagnostics.CategoryError {
-				t.Skipf("not a program of accepted constructs: %s", d.String())
+				t.Fatalf("valid declaration-order source was rejected: %s", d.String())
 			}
 		}
-		return declarationsByFunction(result.Outputs["out/main.d.ts"])
+		functions := declarationsByFunction(result.Outputs["out/main.d.ts"])
+		if len(functions) != 3 {
+			t.Fatalf("expected three emitted functions, got %v", functions)
+		}
+		return functions
 	}
 	forward, backward := emit([]int{0, 1, 2}), emit([]int{2, 1, 0})
 	for name, text := range forward {

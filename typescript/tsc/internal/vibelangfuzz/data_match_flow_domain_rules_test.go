@@ -17,7 +17,7 @@ func dataMatchFlowDomainRules() []dataRule {
 			{"default", "when true:1;default:0;", ""},
 		} {
 			source := "export function f(" + input.parameters + "){" + input.prefix + "return match(" + input.subject + "){" + shape.arms + "};}"
-			rules = append(rules, dataRule{"match-flow-domain-" + input.key + "-" + shape.key, "004-match.md", quote, source, shape.code, "impl-hunt-data"})
+			rules = append(rules, dataRule{"match-flow-domain-" + input.key + "-" + shape.key, "004-match.md", quote, source, shape.code})
 		}
 	}
 	for _, input := range []struct{ key, source, code string }{
@@ -30,7 +30,7 @@ func dataMatchFlowDomainRules() []dataRule {
 		{"open", "export function f(x:boolean|number){return match(x){when true:1;};}", ""},
 		{"widened", "export function f(x:boolean|number,n:number){if(typeof x!==\"boolean\")return 0;x=n;return match(x){when let v and if(false):1;};}", ""},
 	} {
-		rules = append(rules, dataRule{"match-flow-domain-" + input.key, "004-match.md", quote, input.source, input.code, "impl-hunt-data"})
+		rules = append(rules, dataRule{"match-flow-domain-" + input.key, "004-match.md", quote, input.source, input.code})
 	}
 	return rules
 }

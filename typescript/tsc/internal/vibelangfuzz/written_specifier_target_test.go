@@ -11,6 +11,8 @@ import (
 
 // Declaration spelling follows Chapter 1, while Chapter 7 keeps written
 // TypeScript source imports within TypeScript's native substitutions.
+const declarationThrowsContractQuote = "functions, methods, constructors, callable `const`s, `async` functions, and each call, construct or method signature of an exported `interface`, type literal or `type` alias carry `@throws {never}`."
+
 const writtenSpecifierKeptQuote = "written `./user.js`, `./App.jsx`, `./user` and native `./plain.ts` keep their spelling."
 
 func TestWrittenSpecifierMigratedTargetQuoted(t *testing.T) { requireWrittenSpecifierQuotes(t) }

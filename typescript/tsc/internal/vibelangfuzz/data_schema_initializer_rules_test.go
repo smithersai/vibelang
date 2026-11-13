@@ -26,10 +26,10 @@ func dataSchemaInitializerRules() []dataRule {
 				{"comment", "/* keep */ (1 + 2)"},
 			} {
 				source := strings.Replace(home.source, "%FIELD%", field.source+" = "+expr.source+";", 1)
-				rules = append(rules, dataRule{"schema-initializer-" + home.key + "-" + field.key + "-" + expr.key, chapter, quote, source, "only:TS1247", "impl-hunt-data"})
+				rules = append(rules, dataRule{"schema-initializer-" + home.key + "-" + field.key + "-" + expr.key, chapter, quote, source, "only:TS1247"})
 			}
 			source := strings.Replace(home.source, "%FIELD%", field.source+";", 1)
-			rules = append(rules, dataRule{"schema-initializer-" + home.key + "-" + field.key + "-valid", chapter, quote, source, "", "impl-hunt-data"})
+			rules = append(rules, dataRule{"schema-initializer-" + home.key + "-" + field.key + "-valid", chapter, quote, source, ""})
 		}
 	}
 	return rules

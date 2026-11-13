@@ -15,7 +15,7 @@ func dataComputedPresenceRules() []dataRule {
 				"function f(x:unknown){return match(x){when {child:{[" + key + "]" + suffix + "}}:1;default:0;}}",
 				"effect function f(x:unknown){return match(x){when {[" + key + "]" + suffix + "}:1;default:0;}}",
 			} {
-				rules = append(rules, dataRule{fmt.Sprintf("computed-presence-%d-%d-%d", i, j, k), "006-data.md", quote, decl + source, "", "impl-hunt-data"})
+				rules = append(rules, dataRule{fmt.Sprintf("computed-presence-%d-%d-%d", i, j, k), "006-data.md", quote, decl + source, ""})
 			}
 		}
 	}

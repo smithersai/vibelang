@@ -32,7 +32,7 @@ func orPatternBindingRules() []dataRule {
 			rules = append(rules, dataRule{
 				name:    fmt.Sprintf("or-pattern-binding-%d-%d", home, shape),
 				chapter: "004-match.md", quote: quote,
-				source: fmt.Sprintf(form, pattern), owner: "impl-hunt-data",
+				source: fmt.Sprintf(form, pattern),
 			})
 		}
 	}
@@ -42,7 +42,7 @@ func orPatternBindingRules() []dataRule {
 			chapter: "004-match.md",
 			quote:   "Ordinary TDZ before first initialization, user-facing `const` immutability, and duplicate-initialization restrictions outside that authorized replacement remain.",
 			source:  fmt.Sprintf(form, "({ a: const v } or { b: const v }) and if (do { v = 1; true })"),
-			code:    "only:TS2588", owner: "impl-hunt-data",
+			code:    "only:TS2588",
 		})
 	}
 	for home, form := range forms {
@@ -51,7 +51,7 @@ func orPatternBindingRules() []dataRule {
 			rules = append(rules, dataRule{
 				name:    fmt.Sprintf("or-pattern-name-hygiene-%d-%d", home, shape),
 				chapter: "004-match.md", quote: quote,
-				source: strings.ReplaceAll(source, " v", " "+name), owner: "impl-hunt-data",
+				source: strings.ReplaceAll(source, " v", " "+name),
 			})
 		}
 	}
@@ -61,7 +61,7 @@ func orPatternBindingRules() []dataRule {
 			chapter: "004-match.md",
 			quote:   "Pattern bindings use `let` or `const`; `when var x:` is `EK0107`, as `var` is everywhere in `.vibe`.",
 			source:  fmt.Sprintf(form, "{ a: var v } or { b: let v }"),
-			code:    "only:EK0107", owner: "impl-hunt-data",
+			code:    "only:EK0107",
 		})
 	}
 	for home, form := range forms {
@@ -74,14 +74,14 @@ func orPatternBindingRules() []dataRule {
 				chapter: "004-match.md",
 				quote:   "Pattern bindings use `let` or `const`; `when var x:` is `EK0107`, as `var` is everywhere in `.vibe`.",
 				source:  fmt.Sprintf(form, variant.pattern),
-				code:    variant.code, owner: "impl-hunt-data",
+				code:    variant.code,
 			})
 		}
 	}
 	rules = append(rules, []dataRule{
-		{name: "or-pattern-unbraced-for-let", chapter: "004-match.md", quote: "an `is` pattern binding in an unbraced statement body", source: "export function f(xs:unknown[]){for(const s of xs) if(s is {a:let v} or {b:let v}) return 1; return 0}", code: "only:EK0705", owner: "impl-hunt-data"},
-		{name: "or-pattern-unbraced-for-const", chapter: "004-match.md", quote: "an `is` pattern binding in an unbraced statement body", source: "export function f(xs:unknown[]){for(const s of xs) if(s is {a:const v} or {b:const v}) return 1; return 0}", code: "only:EK0705", owner: "impl-hunt-data"},
-		{name: "or-pattern-unbraced-label", chapter: "004-match.md", quote: "an `is` pattern binding in an unbraced statement body", source: "export function f(xs:unknown[]){for(const s of xs) label: if(s is {a:let v} or {b:let v}) return 1; return 0}", code: "only:EK0705", owner: "impl-hunt-data"},
+		{name: "or-pattern-unbraced-for-let", chapter: "004-match.md", quote: "an `is` pattern binding in an unbraced statement body", source: "export function f(xs:unknown[]){for(const s of xs) if(s is {a:let v} or {b:let v}) return 1; return 0}", code: "only:EK0705"},
+		{name: "or-pattern-unbraced-for-const", chapter: "004-match.md", quote: "an `is` pattern binding in an unbraced statement body", source: "export function f(xs:unknown[]){for(const s of xs) if(s is {a:const v} or {b:const v}) return 1; return 0}", code: "only:EK0705"},
+		{name: "or-pattern-unbraced-label", chapter: "004-match.md", quote: "an `is` pattern binding in an unbraced statement body", source: "export function f(xs:unknown[]){for(const s of xs) label: if(s is {a:let v} or {b:let v}) return 1; return 0}", code: "only:EK0705"},
 	}...)
 	return rules
 }

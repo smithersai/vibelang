@@ -16,7 +16,7 @@ func dataMatchProtoRules() []dataRule {
 				"function f(x:unknown){return match(x){when {child:" + pattern + "}:1;default:0;}}",
 				"effect function f(x:unknown){return match(x){when " + pattern + ":1;default:0;}}",
 			} {
-				rules = append(rules, dataRule{fmt.Sprintf("proto-property-rejected-%d-%d-%d", i, j, k), "004-match.md", quote, source, "only:EK0707", "impl-hunt-data"})
+				rules = append(rules, dataRule{fmt.Sprintf("proto-property-rejected-%d-%d-%d", i, j, k), "004-match.md", quote, source, "only:EK0707"})
 			}
 		}
 	}
@@ -28,7 +28,7 @@ func dataMatchProtoRules() []dataRule {
 			"function f(x:unknown){return match(x){when " + pattern + ":1;default:0;}}",
 			"function f(x:unknown){return x is " + pattern + "}",
 		} {
-			rules = append(rules, dataRule{fmt.Sprintf("proto-property-control-%d-%d", i, j), "004-match.md", quote, source, "", "impl-hunt-data"})
+			rules = append(rules, dataRule{fmt.Sprintf("proto-property-control-%d-%d", i, j), "004-match.md", quote, source, ""})
 		}
 	}
 
@@ -37,14 +37,14 @@ func dataMatchProtoRules() []dataRule {
 			"function f(x:unknown){return match(x){when {" + key + "?}:1;default:0;}}",
 			"function f(x:unknown){return x is {" + key + "?}}",
 		} {
-			rules = append(rules, dataRule{fmt.Sprintf("proto-property-optional-%d-%d", i, j), "004-match.md", quote, source, "only:EK0707", "impl-hunt-data"})
+			rules = append(rules, dataRule{fmt.Sprintf("proto-property-optional-%d-%d", i, j), "004-match.md", quote, source, "only:EK0707"})
 		}
 	}
 	for i, expression := range []string{
 		`match(x){when {__proto__, "__proto__"}:1;default:0;}`,
 		`x is {__proto__, "__proto__"}`,
 	} {
-		rules = append(rules, dataRule{fmt.Sprintf("proto-property-two-errors-%d", i), "004-match.md", quote, "function f(x:unknown){return " + expression + "}", "only:EK0707,EK0707", "impl-hunt-data"})
+		rules = append(rules, dataRule{fmt.Sprintf("proto-property-two-errors-%d", i), "004-match.md", quote, "function f(x:unknown){return " + expression + "}", "only:EK0707,EK0707"})
 	}
 	return rules
 }

@@ -20,7 +20,7 @@ func dataNestedIsRules() []dataRule {
 			rules = append(rules, dataRule{
 				fmt.Sprintf("nested-is-%s%s", shape.name, suffix), "004-match.md",
 				"`x is P` has type `boolean` and narrows `x` as a type predicate where `P` narrows.",
-				source, "", "impl-hunt-data",
+				source, "",
 			})
 		}
 	}

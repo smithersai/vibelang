@@ -27,8 +27,8 @@ func TestDoContextualResultQuoted(t *testing.T) { requireDoContextualResultQuote
 // alternatives a do expression's normal result comes from, so a literal _tag
 // stays a literal instead of widening to string (TS2322).
 //
-// Witness: foldkit-121, experimental/machine/machine.vibe selectFromGuardList,
-// a match arm whose do block ends in a conditional (inbox/migrate-foldkit.md).
+// Witness: Foldkit's experimental/machine/machine.vibe selectFromGuardList,
+// a match arm whose do block ends in a conditional.
 // Neighbourhood: the context's source (match arm, annotated const, arrow return
 // type, call argument, return statement) x the contributing form (conditional,
 // nested conditional, parenthesized conditional, object literal, conditional
@@ -49,7 +49,7 @@ declare function take(selection: Selection): void
 		{"discarded-intermediate", `({ _tag: "Unrelated" }); guarded.condition ? { _tag: "SelectedEdge", value: 1 } : { _tag: "IgnoredEdge", reason: "GuardFailed" }`},
 	}
 	contexts := []struct{ key, source string }{
-		// foldkit-121's shape: the match result is the arrow's written return type.
+		// The match shape: the match result is the arrow's written return type.
 		{"match-arm", "export const select = (edge: Edge): Selection => match (edge) {\n  when { _tag: \"When\" } and let guarded: do { %BODY% };\n  when { _tag: \"Otherwise\" }: ({ _tag: \"SelectedEdge\", value: 0 });\n  default: match (void 0 as unknown) { when 0: (void 0 as never); };\n}\n"},
 		{"annotated-const", "export function select(guarded: { readonly condition: boolean }) {\n  const selection: Selection = do { %BODY% }\n  return selection\n}\n"},
 		{"arrow-return", "export const select = (guarded: { readonly condition: boolean }): Selection => do { %BODY% }\n"},

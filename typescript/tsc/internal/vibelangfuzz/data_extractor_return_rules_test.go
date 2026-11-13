@@ -45,7 +45,7 @@ func dataExtractorReturnRules() []dataRule {
 			}
 			name := fmt.Sprintf("extractor-return-%s-%d", tc.name, i)
 			source := "declare function matcher" + tc.parameters + "(s: unknown): " + tc.result + suffix + ";\nfunction f(s: unknown) { return match(s) { when matcher(let value): value; default: 0; } }"
-			rules = append(rules, dataRule{name, "004-match.md", quote, source, code, "impl-hunt-data"})
+			rules = append(rules, dataRule{name, "004-match.md", quote, source, code})
 		}
 	}
 	return rules

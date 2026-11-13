@@ -32,7 +32,7 @@ func TestDoNeverCompletionQuoted(t *testing.T) {
 	chapterSays(t, "002-running.md", doLiteralCompletionQuote)
 }
 
-// PREVIEW-15 d1-d6, followed by neighbours that spill conditional and logical
+// Abrupt completions, followed by neighbours that spill conditional and logical
 // values, preserve finally completions or retain the parameter IIFE boundary.
 func TestDoNeverCompletion(t *testing.T) {
 	TestDoNeverCompletionQuoted(t)

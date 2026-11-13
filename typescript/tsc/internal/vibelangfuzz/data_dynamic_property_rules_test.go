@@ -33,7 +33,7 @@ func dataDynamicPropertyRules() []dataRule {
 				"function f(x:unknown){return match(x){when {child:{[" + tc.key + "]:let value}}:" + arm + ";default:0;}}",
 				"effect function f(x:unknown){return match(x){when {[" + tc.key + "]:let value}:" + arm + ";default:0;}}",
 			} {
-				rules = append(rules, dataRule{fmt.Sprintf("dynamic-property-unknown-%d-%d-%d", i, j, k), "004-match.md", quote, tc.decl + source, code, "impl-hunt-data"})
+				rules = append(rules, dataRule{fmt.Sprintf("dynamic-property-unknown-%d-%d-%d", i, j, k), "004-match.md", quote, tc.decl + source, code})
 			}
 		}
 	}

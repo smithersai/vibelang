@@ -44,13 +44,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // Static rules only. Runtime meanings belong to FuzzVIPDifferential.
 // Each quote is checked against the current chapter before compiling a witness.
 type dataRule struct {
-	name, chapter, quote, source, code, owner string
+	name, chapter, quote, source, code string
 }
 
 func dataRules() []dataRule {
@@ -58,8 +59,8 @@ func dataRules() []dataRule {
 	const data = "006-data.md"
 	const errors = "003-failures.md"
 	var rules []dataRule
-	add := func(name, chapter, quote, source, code, owner string) {
-		rules = append(rules, dataRule{name, chapter, quote, source, code, owner})
+	add := func(name, chapter, quote, source, code string) {
+		rules = append(rules, dataRule{name, chapter, quote, source, code})
 	}
 	for _, c := range []struct{ name, source string }{
 		{"final-semicolon", `function f() { return match(1) { default: 0 } }`},
@@ -73,16 +74,16 @@ func dataRules() []dataRule {
 		}
 		if c.name == "default-last" {
 			quote = "`default` appears at most once, last"
-			code = "error"
+			code = "only:EK0707"
 		}
-		add(c.name, match, quote, c.source, code, "vip-match")
+		add(c.name, match, quote, c.source, code)
 	}
 	// The formatter programs fixture exposed the binding/template neighbour of
 	// the final-separator rule. The same valid source must also remain admitted.
 	add("final-semicolon-binding-template", match, "Separate arms with `;`, including the final arm",
-		"effect function f(x: { id: string } | null) { return match (x) { when { let id }: `value ${id}`; default: 'retry' } }", "EK0701", "relic-control")
+		"effect function f(x: { id: string } | null) { return match (x) { when { let id }: `value ${id}`; default: 'retry' } }", "EK0701")
 	add("final-semicolon-binding-template-valid", match, "Separate arms with `;`, including the final arm",
-		"effect function f(x: { id: string } | null) { return match (x) { when { let id }: `value ${id}`; default: 'retry'; } }", "", "relic-control")
+		"effect function f(x: { id: string } | null) { return match (x) { when { let id }: `value ${id}`; default: 'retry'; } }", "")
 	for _, c := range []struct{ name, decl, typ, arms string }{
 		{"literal", "", `"a" | "b"`, `when "a": 1;`},
 		{"boolean", "", "boolean", "when true: 1;"},
@@ -90,9 +91,9 @@ func dataRules() []dataRule {
 		{"error", "error A; error B", "A | B", "when A: 1;"},
 		{"enum", "enum E { A, B }", "E", "when E.A: 1;"},
 	} {
-		add("exhaustive-"+c.name, match, "into a union of members", c.decl+"\nfunction f(x: "+c.typ+") { return match(x) { "+c.arms+" } }", "EK4701", "vip-match")
+		add("exhaustive-"+c.name, match, "into a union of members", c.decl+"\nfunction f(x: "+c.typ+") { return match(x) { "+c.arms+" } }", "EK4701")
 	}
-	add("guard-not-cover", match, "Only an unguarded arm covers anything.", `function f(x:boolean) { return match(x) { when true and if (true): 1; when false: 0; } }`, "EK4701", "vip-match")
+	add("guard-not-cover", match, "Only an unguarded arm covers anything.", `function f(x:boolean) { return match(x) { when true and if (true): 1; when false: 0; } }`, "EK4701")
 	// Decided detail 67b: a class pattern naming a data declaration or a schema is EK0702.
 	for _, c := range []struct{ name, source string }{
 		{"data-type", "data D { A; B { n: number } }\nfunction f(x: unknown) { return match (x) { when D: 1; default: 0; } }"},
@@ -103,12 +104,12 @@ func dataRules() []dataRule {
 		{"schema-alias", "schema S = string | number\nfunction f(x: unknown) { return match (x) { when S: 1; default: 0; } }"},
 		{"context-reference", "import * as Context from \"effect/Context\"\nconst R = Context.Reference<number>(\"R\", { defaultValue: () => 1 })\nfunction f(x: unknown) { return match (x) { when R: 1; default: 0; } }"},
 	} {
-		add("class-pattern-"+c.name, match, "a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`", c.source, "EK0702", "impl-hunt-data")
+		add("class-pattern-"+c.name, match, "a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`", c.source, "EK0702")
 	}
-	add("class-pattern-variant-control", match, "a class pattern naming a `data` declaration or variant, a `schema`", "data D { A; B { n: number } }\nfunction f(x: unknown) { return match (x) { when D.A: 1; when D.B { let n }: n; default: 0; } }", "only:EK0702,EK0702", "impl-hunt-data")
+	add("class-pattern-variant-control", match, "a class pattern naming a `data` declaration or variant, a `schema`", "data D { A; B { n: number } }\nfunction f(x: unknown) { return match (x) { when D.A: 1; when D.B { let n }: n; default: 0; } }", "only:EK0702,EK0702")
 	// Decided detail 25: data Empty {} with zero variants is allowed:
 	// an exact empty Data.TaggedEnum (delete EK2122).
-	add("empty-data", data, "Zero variants are allowed", `data Empty {}; const empty: Empty = null as never`, "", "vip-core2")
+	add("empty-data", data, "Zero variants are allowed", `data Empty {}; const empty: Empty = null as never`, "")
 	for n := 1; n <= 4; n++ {
 		params := []string{"First", "Second", "Third", "Fourth"}[:n]
 		var fields, args []string
@@ -116,13 +117,13 @@ func dataRules() []dataRule {
 			fields = append(fields, fmt.Sprintf("f%d:%s", i, p))
 			args = append(args, "number")
 		}
-		add(fmt.Sprintf("generic-%d-hygiene", n), data, "so it never collides with a user name and is the same on every build", `type GDefinition = string; const prior:GDefinition="user"; data G<`+strings.Join(params, ",")+`> { V { `+strings.Join(fields, ";")+` } }; const g:G<`+strings.Join(args, ",")+`> = null as never`, "", "vip-core2")
+		add(fmt.Sprintf("generic-%d-hygiene", n), data, "so it never collides with a user name and is the same on every build", `type GDefinition = string; const prior:GDefinition="user"; data G<`+strings.Join(params, ",")+`> { V { `+strings.Join(fields, ";")+` } }; const g:G<`+strings.Join(args, ",")+`> = null as never`, "")
 	}
-	add("generic-limit", data, "more than 4 type parameters; remove parameters beyond the limit of 4", `data G<A,B,C,D,E> { V { a:A;b:B;c:C;d:D;e:E } }`, "EK2801", "vip-core2")
+	add("generic-limit", data, "more than 4 type parameters; remove parameters beyond the limit of 4", `data G<A,B,C,D,E> { V { a:A;b:B;c:C;d:D;e:E } }`, "EK2801")
 	// Decided detail 27: Constraints on generic data type parameters
 	// (<A extends string>) are a compile error, since VIP-28 does not add
 	// them (EK2126 keeps that part). Chapter 6 shows plain parameters only.
-	add("generic-constraint", data, "Constraints such as `<A extends string>` and defaults such as `<A = string>` are compile errors", `data G<A extends string> { V { value:A } }`, "EK2126", "vip-core2")
+	add("generic-constraint", data, "Constraints such as `<A extends string>` and defaults such as `<A = string>` are compile errors", `data G<A extends string> { V { value:A } }`, "EK2126")
 
 	for _, c := range []struct{ name, field, mutation, code string }{
 		{"field", "readonly x:number", "s.x=2", "TS2540"},
@@ -131,7 +132,7 @@ func dataRules() []dataRule {
 		{"record", "x:Readonly<Record<string,number>>", "s.x.a=2", "TS2542"},
 		{"nested", "x:{readonly n:number}", "s.x.n=2", "TS2540"},
 	} {
-		add("schema-readonly-"+c.name, data, "Mappings preserve TypeScript mutability", `schema S { `+c.field+` }; function f(s:S) { `+c.mutation+` }`, c.code, "vip-decls")
+		add("schema-readonly-"+c.name, data, "Mappings preserve TypeScript mutability", `schema S { `+c.field+` }; function f(s:S) { `+c.mutation+` }`, c.code)
 	}
 	// VIP-15 shares Field grammar with schema errors: the optional modifier
 	// admits exactly one token, in each mapped declaration position.
@@ -150,32 +151,31 @@ func dataRules() []dataRule {
 			}
 			add(fmt.Sprintf("schema-readonly-modifier-%s-%d", c.name, n), "900-appendices.md",
 				`Field = "readonly"? PropertyName "?"? ":" Type Separator`,
-				fmt.Sprintf(c.template, modifiers), code, "impl-hunt-data")
+				fmt.Sprintf(c.template, modifiers), code)
 		}
 	}
-	add("schema-writable", data, "properties are writable unless `readonly`; arrays and tuples are mutable unless `readonly`.", `schema S { n:number; xs:number[]; pair:[number,number]; counts:Record<string,number> }; function f(s:S) { s.n=2; s.xs.push(2); s.pair[0]=3; s.counts.a=4 }`, "", "vip-decls")
-	add("schema-shallow-readonly", data, "`Schema.mutableKey` changes the property, not its nested value", `schema S { readonly xs:number[] }; function f(s:S) { s.xs.push(2) }`, "", "vip-decls")
-	add("schema-shallow-mutable", data, "`Schema.mutable` changes an array or tuple, not its elements.", `schema S { xs:{readonly n:number}[] }; function f(s:S) { s.xs[0].n=2 }`, "TS2540", "vip-decls")
-	add("schema-unmapped", data, "a field type outside the mapping", `schema S { x: () => void }`, "EK2109", "vip-decls")
-	add("schema-error-bodyless", errors, "Omitting the body means no fields", `schema error Timeout; const e:Timeout=new Timeout()`, "", "vip-decls")
-	add("schema-error-readonly", errors, "Every field is readonly", `schema error E { n:number }; function f(e:E) { e.n=2 }`, "TS2540", "vip-decls")
+	add("schema-writable", data, "properties are writable unless `readonly`; arrays and tuples are mutable unless `readonly`.", `schema S { n:number; xs:number[]; pair:[number,number]; counts:Record<string,number> }; function f(s:S) { s.n=2; s.xs.push(2); s.pair[0]=3; s.counts.a=4 }`, "")
+	add("schema-shallow-readonly", data, "`Schema.mutableKey` changes the property, not its nested value", `schema S { readonly xs:number[] }; function f(s:S) { s.xs.push(2) }`, "")
+	add("schema-shallow-mutable", data, "`Schema.mutable` changes an array or tuple, not its elements.", `schema S { xs:{readonly n:number}[] }; function f(s:S) { s.xs[0].n=2 }`, "TS2540")
+	add("schema-unmapped", data, "a field type outside the mapping", `schema S { x: () => void }`, "EK2109")
+	add("schema-error-bodyless", errors, "Omitting the body means no fields", `schema error Timeout; const e:Timeout=new Timeout()`, "")
+	add("schema-error-readonly", errors, "Every field is readonly", `schema error E { n:number }; function f(e:E) { e.n=2 }`, "TS2540")
 	for _, c := range []struct{ name, source, quote string }{
 		{"constructor", `schema error E { constructor() {} }`, "a constructor in an `error` or `schema error` body"},
 		{"tag", `schema error E { _tag:string }`, "a `_tag` member in an `error` or `schema error` body"},
 		{"static", `schema error E { static x=1 }`, "User-written `static` members and setters are forbidden in both forms."},
 		{"setter", `schema error E { set x(v:number) {} }`, "User-written `static` members and setters are forbidden in both forms."},
 		{"generics", `schema error E<T> { n:T }`, "Neither form accepts type parameters."},
-		{"extends", `schema error A; schema error B extends A {}`, "an `extends` clause"},
 	} {
 		code := map[string]string{"constructor": "EK1301", "tag": "EK2117", "static": "EK1302", "setter": "EK1302", "generics": "EK1303", "extends": "EK2117"}[c.name]
-		add("schema-error-"+c.name, errors, c.quote, c.source, code, "vip-decls")
+		add("schema-error-"+c.name, errors, c.quote, c.source, code)
 	}
-	add("schema-error-method-getter", errors, "Fields, methods and getters may be interleaved", `schema error E { n:number; get doubled() { return this.n*2 }; m:number; value() { return this.m } }; function f(e:E):number { return e.doubled+e.value() }`, "", "vip-decls")
-	add("data-required-field", data, "declares Effect's "+"`Data.TaggedEnum` type", `data D { V { n:number } }; const d=D.V({})`, "error", "vip-core2")
-	add("schema-readonly-optional", data, "readonly optional field", `schema S { readonly x?:number }; function f(s:S) { s.x=2 }`, "TS2540", "vip-decls")
-	add("schema-record-key", data, "Record keys must satisfy Effect’s `Schema.Record.Key` constraint.", `schema S { x:Record<boolean,number> }`, "error", "vip-decls")
-	add("schema-contextual", data, "the keyword and the name on one line, where a declaration can start", `const schema=1; const data=2; export const sum=schema+data`, "", "vip-decls")
-	add("schema-error-alias", errors, "differ at the next token.", `schema error = string; const s:error="ok"`, "", "vip-decls")
+	add("schema-error-method-getter", errors, "Fields, methods and getters may be interleaved", `schema error E { n:number; get doubled() { return this.n*2 }; m:number; value() { return this.m } }; function f(e:E):number { return e.doubled+e.value() }`, "")
+	add("data-required-field", data, "declares Effect's "+"`Data.TaggedEnum` type", `data D { V { n:number } }; const d=D.V({})`, "only:TS2741")
+	add("schema-readonly-optional", data, "readonly optional field", `schema S { readonly x?:number }; function f(s:S) { s.x=2 }`, "TS2540")
+	add("schema-record-key", data, "Record keys must satisfy Effect’s `Schema.Record.Key` constraint.", `schema S { x:Record<boolean,number> }`, "only:TS2345")
+	add("schema-contextual", data, "the keyword and the name on one line, where a declaration can start", `const schema=1; const data=2; export const sum=schema+data`, "")
+	add("schema-error-alias", errors, "differ at the next token.", `schema error = string; const s:error="ok"`, "")
 	for _, c := range []struct{ name, typ, value string }{
 		{"string", "string", `"ok"`},
 		{"number", "number", "7"},
@@ -196,7 +196,7 @@ func dataRules() []dataRule {
 		{"readonly-record", "Readonly<Record<string,number>>", "{a:7}"},
 		{"nested", "{active:boolean}", "{active:true}"},
 	} {
-		add("mapping-"+c.name, data, "In this table, `S`, `A` and `B` are the recursively mapped schemas", "schema S = "+c.typ+"; const x:S="+c.value, "", "vip-decls")
+		add("mapping-"+c.name, data, "In this table, `S`, `A` and `B` are the recursively mapped schemas", "schema S = "+c.typ+"; const x:S="+c.value, "")
 	}
 	// VIP-15 tuple syntax and mutability are static admission rules. Native
 	// cases compare decode Exits; these keyed mutations exercise both alias
@@ -234,13 +234,13 @@ func dataRules() []dataRule {
 				} else if strings.Contains(tuple.name, "optional") {
 					quote = "With `exactOptionalPropertyTypes` off, optional tuple elements use `Schema.optional`, as optional fields do:"
 				}
-				add(name, data, quote, source, "", "impl-hunt-data")
+				add(name, data, quote, source, "")
 			}
 		}
 	}
-	add("data-readonly", data, "Variant payload properties are readonly in the resulting type", `data D { V { n:number } }; function f(d:D) { d.n=2 }`, "TS2540", "vip-core2")
-	add("data-optional", data, "[Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are those of `schema` declarations.", `data D { V { n?:number } }; const a:D=D.V({}); const b:D=D.V({n:undefined})`, "", "vip-core2")
-	add("schema-reference", data, "Refinements and transformations stay Schema constants", `const N=Schema.NumberFromString; schema S { n:N }; const s:S={n:7}`, "", "vip-decls")
+	add("data-readonly", data, "Variant payload properties are readonly in the resulting type", `data D { V { n:number } }; function f(d:D) { d.n=2 }`, "TS2540")
+	add("data-optional", data, "[Field](900-appendices.md#field) and [Separator](900-appendices.md#separator) are those of `schema` declarations.", `data D { V { n?:number } }; const a:D=D.V({}); const b:D=D.V({n:undefined})`, "")
+	add("schema-reference", data, "Refinements and transformations stay Schema constants", `const N=Schema.NumberFromString; schema S { n:N }; const s:S={n:7}`, "")
 
 	for n := 1; n <= 4; n++ {
 		params := []string{"First", "Second", "Third", "Fourth"}[:n]
@@ -259,36 +259,36 @@ func dataRules() []dataRule {
 				values = append(values, fmt.Sprintf("f%d:%s", i, value))
 			}
 			source := "data G<" + strings.Join(params, ",") + "> { V { " + strings.Join(fields, ";") + " } }; const g:G<" + strings.Join(args, ",") + ">=G.V({" + strings.Join(values, ",") + "})"
-			add(fmt.Sprintf("generic-%d-position-%d", n, bad+1), data, "Parameters map by position to `this[\"A\"]`, `this[\"B\"]`, `this[\"C\"]` and `this[\"D\"]`, whatever their source names.", source, "TS2322", "vip-core2")
+			add(fmt.Sprintf("generic-%d-position-%d", n, bad+1), data, "Parameters map by position to `this[\"A\"]`, `this[\"B\"]`, `this[\"C\"]` and `this[\"D\"]`, whatever their source names.", source, "TS2322")
 		}
 	}
 
-	add("generic-default", data, "defaults such as `<A = string>` are compile errors", `data Box<A = string> { Value { value:A } }`, "EK2803", "vip-core2")
+	add("generic-default", data, "defaults such as `<A = string>` are compile errors", `data Box<A = string> { Value { value:A } }`, "EK2803")
 	for _, c := range []struct{ name, pattern string }{
 		{"empty-extractor", "A()"}, {"constrained-extractor", `A({ id: "x" })`},
 	} {
-		add("exhaustive-"+c.name, match, "`when NotFound():` and `when NotFound({ id: \"x\" }):` cover nothing.", `error A { id:string }; function f(x:A) { return match(x) { when `+c.pattern+`: 1; } }`, "EK4701", "vip-match")
+		add("exhaustive-"+c.name, match, "`when NotFound():` and `when NotFound({ id: \"x\" }):` cover nothing.", `error A { id:string }; function f(x:A) { return match(x) { when `+c.pattern+`: 1; } }`, "EK4701")
 	}
 	for _, c := range []struct{ name, decl string }{
 		{"alias", "type T = string"}, {"interface", "interface T { x:string }"}, {"class", "class T {}"}, {"enum", "enum T { A }"},
 	} {
-		add("schema-nonvalue-"+c.name, data, "A reference with no suitable Schema value is `EK2109`", c.decl+`; schema S { x:T }`, "EK2109", "vip-decls")
+		add("schema-nonvalue-"+c.name, data, "A reference with no suitable Schema value is `EK2109`", c.decl+`; schema S { x:T }`, "EK2109")
 	}
-	add("schema-key-types", data, "string, numeric or computed field key", `const key:unique symbol=Symbol(); schema S { "text":string; 7:number; [key]:boolean }; const s:S={"text":"ok",7:1,[key]:true}`, "", "vip-decls")
-	add("data-variant-newline", data, "A variant's `{` starts its field body even after line breaks", "data D { V\n\n{ n:number }; W }; const d:D=D.V({n:1})", "", "vip-core2")
+	add("schema-key-types", data, "string, numeric or computed field key", `const key:unique symbol=Symbol(); schema S { "text":string; 7:number; [key]:boolean }; const s:S={"text":"ok",7:1,[key]:true}`, "")
+	add("data-variant-newline", data, "A variant's `{` starts its field body even after line breaks", "data D { V\n\n{ n:number }; W }; const d:D=D.V({n:1})", "")
 	for _, decl := range []string{"schema", "data"} {
 		for _, name := range []string{"as", "satisfies"} {
-			add(decl+"-body-required-"+name, data, "Unlike `error`, neither has a bodyless form.", "const "+decl+"=1; type T=number; "+decl+" "+name+" T;", "error", "vip-decls")
+			add(decl+"-body-required-"+name, data, "Unlike `error`, neither has a bodyless form.", "const "+decl+"=1; const T=1; type T=number; "+decl+" "+name+" T;", "only:"+map[string]string{"schema": "EK1503", "data": "EK1604"}[decl])
 		}
 	}
 
 	for _, c := range []struct{ name, member string }{
-		{"initializer", "id = 1"}, {"private", "private id:string"}, {"private-name", "#id = 1"}, {"declare", "declare id:string"}, {"accessor", "accessor id = 1"}, {"index", "[id:string]:string"},
+		{"initializer", "id = 1"}, {"private", "private id:string"}, {"private-name", "#id = 1"}, {"declare", "declare id:string"}, {"accessor", "accessor id = 1"},
 	} {
-		add("schema-error-member-"+c.name, errors, "any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element", "schema error E { "+c.member+" }", "EK1304", "vip-decls")
+		add("schema-error-member-"+c.name, errors, "any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element", "schema error E { "+c.member+" }", "EK1304")
 	}
 
-	add("empty-data-never", data, "Zero variants are allowed", `data Empty {}; const x:Empty={_tag:"Unexpected"}`, "TS2322", "vip-core2")
+	add("empty-data-never", data, "Zero variants are allowed", `data Empty {}; const x:Empty={_tag:"Unexpected"}`, "TS2322")
 
 	for n := 1; n <= 4; n++ {
 		params := []string{"First", "Second", "Third", "Fourth"}[:n]
@@ -299,38 +299,55 @@ func dataRules() []dataRule {
 			fields = append(fields, fmt.Sprintf("f%d:%s", i, param))
 			payload = append(payload, fmt.Sprintf("f%d:%s", i, values[i]))
 		}
-		add(fmt.Sprintf("generic-%d-distinct-positions", n), data, "Parameters map by position", "data G<"+strings.Join(params, ",")+"> { V { "+strings.Join(fields, ";")+" } }; const g:G<"+strings.Join(args, ",")+">=G.V({"+strings.Join(payload, ",")+"})", "", "vip-core2")
+		add(fmt.Sprintf("generic-%d-distinct-positions", n), data, "Parameters map by position", "data G<"+strings.Join(params, ",")+"> { V { "+strings.Join(fields, ";")+" } }; const g:G<"+strings.Join(args, ",")+">=G.V({"+strings.Join(payload, ",")+"})", "")
 	}
 
-	add("schema-keyword-name-as", "006-data.md", "the keyword and the name on one line, where a declaration can start", "schema as = string; const x:as=\"ok\"", "", "vip-decls")
-	add("data-keyword-name-as", "006-data.md", "the keyword and the name on one line, where a declaration can start", "data as { V }; const x:as=as.V()", "", "vip-decls")
-	add("schema-keyword-name-satisfies", "006-data.md", "the keyword and the name on one line, where a declaration can start", "schema satisfies = string; const x:satisfies=\"ok\"", "", "vip-decls")
-	add("data-keyword-name-satisfies", "006-data.md", "the keyword and the name on one line, where a declaration can start", "data satisfies { V }; const x:satisfies=satisfies.V()", "", "vip-decls")
-	add("schema-named-error-body", "003-failures.md", "`schema error { id: string }` is a schema named `error`", "schema error { id:string }; const x:error={id:\"ok\"}", "", "vip-decls")
-	add("schema-body-newline", "006-data.md", "schema Address\n{ city: string }", "schema S\n{ n:number }; const x:S={n:1}", "", "vip-decls")
-	add("schema-alias-newline", "006-data.md", "schema Code\n  = \"root_missing\" | \"read_failed\"", "schema S\n = \"a\" | \"b\"; const x:S=\"a\"", "", "vip-decls")
-	add("data-body-newline", "006-data.md", "data Delivery\n{", "data D\n{ V }; const x:D=D.V()", "", "vip-decls")
-	add("schema-type-continuation", "006-data.md", "a line break separates members only after the type is complete", "schema S { role:\n | \"a\"\n | \"b\"\n }; const x:S={role:\"a\"}", "", "vip-decls")
-	add("data-written-readonly", "006-data.md", "a variant's fields may be `readonly`", "data D { V { readonly n:number } }; const x:D=D.V({n:1})", "", "vip-core2")
-	add("schema-field-separator", "006-data.md", schemaFieldSeparatorQuote, "schema S { a:string b:number }", "only:EK1504", "impl-hunt-data")
-	add("schema-error-field-separator", "006-data.md", "Fields use TypeScript's type-member separators", "schema error E { a:string b:number }", "error", "vip-decls")
-	add("data-field-separator", data, "A missing separator between two variants or two fields of a variant, `data D { A B }` or `A { x: number y: string }`, is `EK1605`.", "data D { V { a:string b:number } }", "only:EK1605", "impl-hunt-data")
-	add("schema-error-priority-tag-initializer", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { _tag = 1 }", "only:EK2117", "vip-decls")
-	add("schema-error-priority-static-initializer", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { static x = 1 }", "only:EK1302", "vip-decls")
-	add("schema-error-priority-setter", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { set x(v:number) {} }", "only:EK1302", "vip-decls")
-	add("schema-error-priority-constructor", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { constructor(){super({})} }", "only:EK1301", "vip-decls")
+	add("schema-keyword-name-as", "006-data.md", "the keyword and the name on one line, where a declaration can start", "schema as = string; const x:as=\"ok\"", "")
+	add("data-keyword-name-as", "006-data.md", "the keyword and the name on one line, where a declaration can start", "data as { V }; const x:as=as.V()", "")
+	add("schema-keyword-name-satisfies", "006-data.md", "the keyword and the name on one line, where a declaration can start", "schema satisfies = string; const x:satisfies=\"ok\"", "")
+	add("data-keyword-name-satisfies", "006-data.md", "the keyword and the name on one line, where a declaration can start", "data satisfies { V }; const x:satisfies=satisfies.V()", "")
+	add("schema-named-error-body", "003-failures.md", "`schema error { id: string }` is a schema named `error`", "schema error { id:string }; const x:error={id:\"ok\"}", "")
+	add("schema-body-newline", "006-data.md", "schema Address\n{ city: string }", "schema S\n{ n:number }; const x:S={n:1}", "")
+	add("schema-alias-newline", "006-data.md", "schema Code\n  = \"root_missing\" | \"read_failed\"", "schema S\n = \"a\" | \"b\"; const x:S=\"a\"", "")
+	add("data-body-newline", "006-data.md", "data Delivery\n{", "data D\n{ V }; const x:D=D.V()", "")
+	add("schema-type-continuation", "006-data.md", "a line break separates members only after the type is complete", "schema S { role:\n | \"a\"\n | \"b\"\n }; const x:S={role:\"a\"}", "")
+	add("data-written-readonly", "006-data.md", "a variant's fields may be `readonly`", "data D { V { readonly n:number } }; const x:D=D.V({n:1})", "")
+	add("schema-field-separator", "006-data.md", schemaFieldSeparatorQuote, "schema S { a:string b:number }", "only:EK1504")
+	add("schema-error-field-separator", errors, "two members on one line with no separator, in either error form", "schema error E { a:string b:number }", "only:EK1306")
+	add("data-field-separator", data, "A missing separator between two variants or two fields of a variant, `data D { A B }` or `A { x: number y: string }`, is `EK1605`.", "data D { V { a:string b:number } }", "only:EK1605")
+	add("schema-error-priority-tag-initializer", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { _tag = 1 }", "only:EK2117")
+	add("schema-error-priority-static-initializer", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { static x = 1 }", "only:EK1302")
+	add("schema-error-priority-setter", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { set x(v:number) {} }", "only:EK1302")
+	add("schema-error-priority-constructor", "003-failures.md", "Otherwise a member gets one diagnostic: the first row that names it.", "schema error E { constructor(){super({})} }", "only:EK1301")
 
-	add("combined-guard-grouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when (if(x>0) and if(x<10)) or if(x===100):1;default:0;}}", "", "vip-match")
-	add("combined-guard-ungrouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when if(x>0) and if(x<10) or if(x===100):1;default:0;}}", "error", "vip-match")
-	add("not-guard-grouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when (not if(x>0)) and if(x<10):1;default:0;}}", "", "vip-match")
-	add("not-guard-ungrouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when not if(x>0) and if(x<10):1;default:0;}}", "error", "vip-match")
+	add("combined-guard-grouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when (if(x>0) and if(x<10)) or if(x===100):1;default:0;}}", "")
+	add("combined-guard-ungrouped", match, "Invalid `match`/`is` grammar and pattern-specific early errors use `EK0707` when no more specific diagnostic is assigned.", "function f(x:number){return match(x){when if(x>0) and if(x<10) or if(x===100):1;default:0;}}", "only:EK0707")
+	add("not-guard-grouped", "../vips/tc39-pattern-matching/explainer.md", "there is no precedence relationship between them.", "function f(x:number){return match(x){when (not if(x>0)) and if(x<10):1;default:0;}}", "")
+	add("not-guard-ungrouped", match, "Invalid `match`/`is` grammar and pattern-specific early errors use `EK0707` when no more specific diagnostic is assigned.", "function f(x:number){return match(x){when not if(x>0) and if(x<10):1;default:0;}}", "only:EK0707")
 
-	add("data-constructor-nothrow", data, "A generated variant constructor has the static contract `@throws {never}`", `data D { V { n:number } }; effect function f() { return D.V({n:1}) }`, "", "vip-core2")
-	add("schema-error-constructor-nothrow", errors, "A generated `schema error` constructor has thrown type `never`", `schema error E { n:number }; effect function f() { return new E({n:1}) }`, "", "vip-decls")
-	add("schema-reference-alias", data, "Imports and shadowing follow TypeScript value lookup.", `import { NumberFromString as Parsed } from "effect/Schema"; schema S { n:Parsed }; const s:S={n:7}`, "", "vip-decls")
-	add("schema-reference-shadow", data, "a type of the same name is not expanded.", `type Count=boolean; const Count=Schema.NumberFromString; schema S { n:Count }; const s:S={n:7}`, "", "vip-decls")
-	add("async-match-direct", match, "Inside effect code, a direct `async match` is a compile error", `effect function f(){return async match(true){default:1;}}`, "error", "vip-match")
-	add("async-match-effect-try", match, "`await` is allowed there and effect `try` is not", `effect function f(){return try promise(()=>async match(true){default:try succeed(1);})}`, "error", "vip-match")
+	add("data-constructor-nothrow", data, "A generated variant constructor has the static contract `@throws {never}`", `data D { V { n:number } }; effect function f() { return D.V({n:1}) }`, "")
+	add("schema-error-constructor-nothrow", errors, "A generated `schema error` constructor has thrown type `never`", `schema error E { n:number }; effect function f() { return new E({n:1}) }`, "")
+	add("schema-reference-alias", data, "Imports and shadowing follow TypeScript value lookup.", `import { NumberFromString as Parsed } from "effect/Schema"; schema S { n:Parsed }; const s:S={n:7}`, "")
+	add("schema-reference-shadow", data, "a type of the same name is not expanded.", `type Count=boolean; const Count=Schema.NumberFromString; schema S { n:Count }; const s:S={n:7}`, "")
+	add("async-match-direct", errors, "In effect code, a call (runtime `import()` included), `new` expression, tagged template or `async match` producing a Promise or thenable", `effect function f(){return async match(true){default:1;}}`, "only:EK0404")
+	add("async-match-effect-try", "002-running.md", "`try` outside effect code", `effect function f(){return try promise(()=>async match(true){default:try succeed(1);})}`, "only:EK0501")
+
+	// Each formerly wildcard rejection has a neighbour that must compile.
+	for _, c := range []struct{ key, chapter, quote, source string }{
+		{"default-last-control", match, "`default` appears at most once, last", "function f(){return match(1){when 1:1;default:0;}}"},
+		{"data-required-field-control", data, "declares Effect's `Data.TaggedEnum` type", "data D { V { n:number } }; const d=D.V({n:1})"},
+		{"schema-record-key-control", data, "Record keys must satisfy Effect’s `Schema.Record.Key` constraint.", "schema S { x:Record<string,number> }"},
+		{"schema-error-field-separator-control", data, "Fields use TypeScript's type-member separators", "schema error E { a:string; b:number }"},
+		{"async-match-direct-control", match, "Inside effect code, a direct `async match` is a compile error", "effect function f(){return try promise(()=>async match(true){default:1;})}"},
+		{"async-match-effect-try-control", match, "`await` is allowed there and effect `try` is not", "effect function f(){return try promise(()=>async match(true){default:await Promise.resolve(1);})}"},
+	} {
+		add(c.key, c.chapter, c.quote, c.source, "")
+	}
+	for _, decl := range []string{"schema", "data"} {
+		for _, name := range []string{"as", "satisfies"} {
+			add(decl+"-body-required-"+name+"-control", data, "Unlike `error`, neither has a bodyless form.", "const "+decl+"=1; const T=1; type T=number; ("+decl+" "+name+" T);", "")
+		}
+	}
 
 	rules = append(rules, dataHeaderRules()...)
 	rules = append(rules, dataDynamicPropertyRules()...)
@@ -377,7 +394,7 @@ func dataRules() []dataRule {
 	rules = append(rules, schemaGroupedLiteralRules()...)
 	rules = append(rules, dataAmbientDeclarationRules()...)
 	rules = append(rules, dataVariantPatternRetirementRules()...)
-	return append(rules, dataUnreachableMatchRules()...)
+	return rules
 }
 
 const dataRuleTarget = "FuzzDataSpecRules"
@@ -399,7 +416,7 @@ func checkDataRule(t *testing.T, w *Workspace, c dataRule, trivia uint8) {
 	source := strings.Repeat("/* trivia */\n", int(trivia)%4) + c.source + "\nexport {}\n"
 	files := map[string]string{"main.vibe": source}
 	project := Project{Files: files}
-	if strings.HasPrefix(c.name, "is-unsettled-catch-control-") {
+	if strings.HasPrefix(c.name, "is-unsettled-catch-") {
 		// These controls isolate pattern-binding placement in a plain native
 		// catch. Disable TypeScript's independent unknown catch-variable default;
 		// the pattern must still be checked and may not invent a lexical home.
@@ -412,41 +429,53 @@ func checkDataRule(t *testing.T, w *Workspace, c dataRule, trivia uint8) {
 	defer r.Remove()
 	r.Diagnostics = append(r.Diagnostics, dataDeclarationDiagnostics(t, w, c, r)...)
 	checkDataHelperName(t, c, r)
-	wantCode := strings.TrimPrefix(c.code, "only:")
 	var got []string
-	var gotCodes []string
-	matched := false
 	for _, d := range r.Diagnostics {
-		if d.Category() != diagnostics.CategoryError {
-			continue
-		}
-		got = append(got, specDiagnosticText(d))
-		gotCodes = append(gotCodes, diagnosticKey(d))
-		match := wantCode == "error" || diagnosticKey(d) == wantCode
-		if c.name == "generic-limit" {
-			// "the message names the limit"
-			match = match && (strings.Contains(specDiagnosticText(d), "4") || strings.Contains(specDiagnosticText(d), "four"))
-		}
-		matched = matched || match
-	}
-	if strings.HasPrefix(c.code, "only:") {
-		wantCodes := strings.Split(wantCode, ",")
-		slices.Sort(wantCodes)
-		slices.Sort(gotCodes)
-		if !slices.Equal(gotCodes, wantCodes) {
-			matched = false
-		} else if len(wantCodes) > 1 {
-			matched = true
+		if d.Category() == diagnostics.CategoryError {
+			got = append(got, specDiagnosticText(d))
 		}
 	}
 	key := "feature:" + c.name
-	if (c.code == "" && len(got) > 0) || (c.code != "" && !matched) {
+	if !dataRuleDiagnosticsMatch(c, r.Diagnostics) {
 		Gap(t, dataRuleTarget, key, "%s: %q; expected diagnostic %q (empty means acceptance), got %v\n%s", c.chapter, c.quote, c.code, got, Archive(files))
 	}
 	ExpectPending(t, dataRuleTarget, key)
 	if corpus := specCorpusKey(t); corpus != "" {
 		ExpectPending(t, dataRuleTarget, corpus)
 	}
+}
+
+// A bare code permits repeated occurrences of that code only. only: pins
+// the complete multiset, including repeated codes; an empty code accepts no errors.
+func dataRuleDiagnosticsMatch(c dataRule, ds []*ast.Diagnostic) bool {
+	var got []string
+	for _, d := range ds {
+		if d.Category() != diagnostics.CategoryError {
+			continue
+		}
+		got = append(got, diagnosticKey(d))
+		if c.name == "generic-limit" && !strings.Contains(specDiagnosticText(d), "4") && !strings.Contains(specDiagnosticText(d), "four") {
+			return false
+		}
+	}
+	if c.code == "" {
+		return len(got) == 0
+	}
+	if strings.HasPrefix(c.code, "only:") {
+		want := strings.Split(strings.TrimPrefix(c.code, "only:"), ",")
+		slices.Sort(want)
+		slices.Sort(got)
+		return slices.Equal(got, want)
+	}
+	if len(got) == 0 {
+		return false
+	}
+	for _, code := range got {
+		if code != c.code {
+			return false
+		}
+	}
+	return true
 }
 
 func TestDataSpecRules(t *testing.T) {

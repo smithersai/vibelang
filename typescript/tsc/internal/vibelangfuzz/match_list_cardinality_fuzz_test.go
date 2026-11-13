@@ -31,7 +31,7 @@ func dataListPatternGrammarRules() []dataRule {
 				source = "function f(s:{items:readonly number[]}){return match(s){when {items:" + p.text + "}:true;default:false;}}"
 			}
 			key := "list-grammar-" + p.key + "-" + form
-			rules = append(rules, dataRule{key, "004-match.md", p.quote, source, "", "impl-hunt-data"})
+			rules = append(rules, dataRule{key, "004-match.md", p.quote, source, ""})
 
 		}
 	}

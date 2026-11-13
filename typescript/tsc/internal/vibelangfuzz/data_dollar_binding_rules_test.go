@@ -13,7 +13,7 @@ func dataDollarBindingRules() []dataRule {
 			rules = append(rules, dataRule{
 				fmt.Sprintf("is-dollar-name-%d-%s", i, binding), "004-match.md",
 				"Pattern bindings use `let` or `const`",
-				source, "", "impl-hunt-data",
+				source, "",
 			})
 		}
 	}

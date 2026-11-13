@@ -16,7 +16,7 @@ func TestDeclarationAssertedReturnQuoted(t *testing.T) {
 }
 
 // An inferred return retains a source assertion's utility type and imported
-// name. The native counterpart omits only the inference placeholder.
+// name. Both counterparts infer the return without a written annotation.
 func FuzzDeclarationAssertedReturn(f *testing.F) {
 	startShortBudget(f)
 	keys := []string{"arrow", "function", "expression", "method"}
@@ -53,7 +53,7 @@ func FuzzDeclarationAssertedReturn(f *testing.F) {
 			}
 		}
 		project := func(twin bool) Project {
-			extension, annotation := "vibe", ": infer _"
+			extension, annotation := "vibe", ""
 			if twin {
 				extension, annotation = "ts", ""
 			}
@@ -76,6 +76,7 @@ func FuzzDeclarationAssertedReturn(f *testing.F) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer got.Remove()
 		if HasError(got.Diagnostics) {
 			t.Fatalf("invalid asserted-return project: %v", SortedKeys(Keys(got.Dir, got.Diagnostics)))
 		}

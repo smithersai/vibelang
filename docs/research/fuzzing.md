@@ -8,6 +8,14 @@ Spec quote checks from independent fuzz targets need distinct Go names. Keep eac
 
 Contextual-keyword witnesses construct each value reference before embedding it in surrounding TypeScript. A catch variable may need a type assertion, but replacing its spelling across an entire expression can corrupt unrelated parameter or return types. Stock TypeScript checks the generated catch-argument twins across the type-keyword names and callable/initializer homes. A controlled TypeScript helper supplies the caught value inside a native `try` block. This keeps catch-binding fixtures valid when VibeLang rejects synchronous `throw`.
 
+## Diagnostic and declaration oracles
+
+Each `FuzzDataSpecRules` row names the diagnostic it expects. A bare code permits one or more occurrences of that code and rejects every other error; `only:` pins the complete multiset and its counts. An empty code requires acceptance. Rule names are unique, so each keyed seed selects one rule.
+
+`FuzzDoDeclarationIdentity` and `FuzzDoContextualResult` compare declaration API identity under Chapter 1, including the permitted generated `@throws {never}` addition. Their `api:` finding keys describe that comparison. `FuzzDeclarationNativeImporter` separately compares inferred import specifiers exactly, including their extensions. `FuzzDeclarationStyleRules` checks one `EK3011` warning per configured retired option and unchanged declaration output under both configuration paths.
+
+Declaration-order seeds use inferred returns and must emit all three functions before comparing them. Editor token-navigation seeds check that returned spans stay within the source, touching spans contain the requested offset, and preceding spans begin at or before it. Stock-only API-preflight controls are table tests, not compiler fuzz campaigns.
+
 ## Data variant names
 
 `FuzzDataVariantNames` quotes Chapter 6's `IdentifierName` grammar and malformed-variant diagnostic rule. It varies ordinary, escaped and reserved names alongside quoted, numeric, bigint and template tokens. Keyed inputs preserve each name family across `.vibe` and `.vibex`, generic declarations, lexical homes and line endings. The oracle checks diagnostic identity and token range, plus recovery of the following variant and declaration. Failed inputs retain their decoded profile in the test log.

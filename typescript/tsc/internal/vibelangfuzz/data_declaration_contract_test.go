@@ -58,7 +58,7 @@ func dataDeclarationRules() []dataRule {
 		out = append(out, dataRule{
 			name: "declaration-" + w.name, chapter: "006-data.md",
 			quote:  "Exported `schema` and `data` declarations emit the TypeScript declarations of their Effect TypeScript counterparts above",
-			source: w.vibe, owner: "vip-decls",
+			source: w.vibe,
 		})
 	}
 	return out

@@ -37,7 +37,7 @@ func dataPrimitiveCoverageRules() []dataRule {
 						}
 						source := tc.decl + signature + " { return match(x) { when " + pattern + ":1; " + ending.tail + " } }"
 						name := fmt.Sprintf("primitive-coverage-%s-%s-%s-%s-%s", strings.ToLower(tc.name), head.key, home, shape, ending.name)
-						rules = append(rules, dataRule{name, "004-match.md", quote, source, ending.code, "impl-hunt-data"})
+						rules = append(rules, dataRule{name, "004-match.md", quote, source, ending.code})
 					}
 				}
 			}

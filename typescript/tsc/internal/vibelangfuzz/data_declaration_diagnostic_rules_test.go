@@ -11,7 +11,7 @@ func dataDeclarationDiagnosticIdentityRules() []dataRule {
 	const dataDefault = "`export default data D { … }`"
 	var rules []dataRule
 	add := func(name, quote, source, code string) {
-		rules = append(rules, dataRule{"declaration-diagnostic-" + name, chapter, quote, source, code, "impl-hunt-data"})
+		rules = append(rules, dataRule{"declaration-diagnostic-" + name, chapter, quote, source, code})
 	}
 	for _, c := range []struct{ name, body string }{
 		{"empty", "{}"}, {"field", "{ readonly n: number }"}, {"alias", "= number"}, {"object-alias", "= { readonly n: number }"},

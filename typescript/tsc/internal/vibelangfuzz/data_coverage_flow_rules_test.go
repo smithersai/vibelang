@@ -35,14 +35,14 @@ func dataCoverageFlowRules() []dataRule {
 				if context == "loop" {
 					source = "export function f(x:boolean):number{for(let i=0;i<1;i++){return " + expression + ";} return 0;}"
 				}
-				rules = append(rules, dataRule{"coverage-flow-" + p.key + "-" + context + "-" + key, "004-match.md", quote, source, code, "impl-hunt-data"})
+				rules = append(rules, dataRule{"coverage-flow-" + p.key + "-" + context + "-" + key, "004-match.md", quote, source, code})
 			}
 		}
 	}
 	rules = append(rules, dataRule{
 		"coverage-flow-covered-native", "004-match.md", quote,
 		"export function f(x:boolean){return match(x){when true and true:1;when true:2;when false:0;}}",
-		"only:TS2367", "impl-hunt-data",
+		"only:TS2367",
 	})
 	return rules
 }

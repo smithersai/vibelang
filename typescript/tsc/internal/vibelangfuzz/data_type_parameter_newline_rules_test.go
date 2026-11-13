@@ -27,7 +27,6 @@ func dataTypeParameterNewlineRules() []dataRule {
 					name:    fmt.Sprintf("data-type-parameter-newline-%d-%d-%t", i, n, exported),
 					chapter: "900-appendices.md", quote: quote,
 					source: prefix + "data Name" + trivia + "<" + strings.Join(params, ",") + ">" + trivia + "{ Ok { " + strings.Join(fields, ";") + " } }",
-					owner:  "conf-auto-data-type-parameter-newline",
 				})
 			}
 		}
@@ -35,7 +34,7 @@ func dataTypeParameterNewlineRules() []dataRule {
 	for _, op := range []string{"as", "satisfies"} {
 		for i, trivia := range []string{"\n", "\r\n", "\r", "\u2028", "\u2029", " /*\n*/ ", " // type\n"} {
 			for _, context := range []string{"statement", "parenthesized", "initializer", "return"} {
-				expr := "data " + op + trivia + "number"
+				expr := "data " + op + trivia + "T"
 				source, code := expr, "EK1604"
 				chapter, quote := "006-data.md", "So `schema as T;`, `schema satisfies T;`, `data as T;` and `data satisfies T;` are syntax errors at statement start"
 				if context != "statement" {
@@ -52,7 +51,7 @@ func dataTypeParameterNewlineRules() []dataRule {
 				rules = append(rules, dataRule{
 					name:    fmt.Sprintf("data-assertion-newline-%s-%d-%s", op, i, context),
 					chapter: chapter, quote: quote,
-					source: "const data = 1; " + source, code: code, owner: "parser",
+					source: "const data = 1; const T = 1; type T = number; " + source, code: code,
 				})
 			}
 		}

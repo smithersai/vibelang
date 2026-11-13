@@ -44,15 +44,15 @@ func indexOf(text, quote string) int {
 // need the contextual type of the do's site (a discriminated union's literal
 // tags, a literal union, a fresh literal) with the same alternatives written
 // in place in TypeScript, as chapter 002 says they are typed: the VibeLang
-// source must compile, and its declaration bytes must equal stock
+// source must compile, and its declaration API must be identical to stock
 // TypeScript's emit of the counterpart. The alternatives sit in a conditional,
 // an if/else, a switch, a match arm, a nested do, a call argument and a
-// return, at every do depth up to three (foldkit-121,
+// return, at every do depth up to three (Foldkit,
 // `experimental/machine/machine.vibe` selectFromGuardList). The empty-array
 // keys put `[]` beside a do ending in an array, in a match arm, an object
 // property, a spread, an if/else and an inferred local: written in place,
 // `[]` is an empty array literal, never the start of an evolving array
-// (foldkit-122, Foldkit uiToastBasic and pixel-art, TS7034/TS7005). The
+// (Foldkit uiToastBasic and Pixel Art, TS7034/TS7005). The
 // prefix keys put `[]` and a tagged object literal in properties before a
 // do, which the lowering evaluates first into temporaries.
 func FuzzDoContextualResult(f *testing.F) {
@@ -135,7 +135,7 @@ func FuzzDoContextualResult(f *testing.F) {
 			source = types + "export const pair = (condition: boolean): Readonly<{ first: Selection; second: Selection }> => ({ first: " + selected + ", second: do { " + wrap(conditional) + " } })"
 			counterpart = types + "export const pair = (condition: boolean): Readonly<{ first: Selection; second: Selection }> => ({ first: " + selected + ", second: " + conditional + " })"
 		case "foldkit-pixel-art-prefix":
-			// Foldkit Pixel Art's init, minimized by drive-foldkit-examples:
+			// Foldkit Pixel Art's minimized initialization:
 			// empty undo and redo stacks before the grid's do arm.
 			for name, text := range map[string]*string{"foldkit-pixel-art-adjacent-empty-arrays.vibe": &source, "foldkit-pixel-art-adjacent-empty-arrays.ts": &counterpart} {
 				raw, err := os.ReadFile(filepath.Join("testdata", "do-contextual", name))
@@ -145,7 +145,7 @@ func FuzzDoContextualResult(f *testing.F) {
 				*text = string(raw)
 			}
 		case "foldkit-ui-toast":
-			// Foldkit uiToastBasic's minimized pattern (drive-foldkit-web) and
+			// Foldkit uiToastBasic's minimized pattern and
 			// its TypeScript original.
 			for name, text := range map[string]*string{"foldkit-ui-toast-property-do-array.vibe": &source, "foldkit-ui-toast-property-do-array.ts": &counterpart} {
 				raw, err := os.ReadFile(filepath.Join("testdata", "do-contextual", name))
@@ -213,10 +213,10 @@ func FuzzDoContextualResult(f *testing.F) {
 			t.Fatal("missing declaration output", c.Outputs)
 		}
 		if diff := compareDeclarationTexts(t, string(want), got); diff != "" {
-			Gap(t, doContextualResultTarget, "bytes:"+gap, "Chapter 002: %s\nstock TypeScript:\n%s\nVibeLang:\n%s\nsource:\n%s\ncounterpart:\n%s\nAPI:\n%s", doContextualResultQuotes[0].quote, want, got, source, counterpart, diff)
+			Gap(t, doContextualResultTarget, "api:"+gap, "Chapter 002: %s\nstock TypeScript:\n%s\nVibeLang:\n%s\nsource:\n%s\ncounterpart:\n%s\nAPI:\n%s", doContextualResultQuotes[0].quote, want, got, source, counterpart, diff)
 		}
 		ExpectPending(t, doContextualResultTarget, "compile:"+gap)
-		ExpectPending(t, doContextualResultTarget, "bytes:"+gap)
+		ExpectPending(t, doContextualResultTarget, "api:"+gap)
 		ExpectPending(t, doContextualResultTarget, specCorpusKey(t))
 	})
 }

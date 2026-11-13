@@ -30,10 +30,10 @@ func dataScopedSchemaAliasRules() []dataRule {
 			{"reference", "NotSchema"},
 		} {
 			declaration := "const NotSchema = 1; schema Local = " + typ.source + ";"
-			rules = append(rules, dataRule{"schema-scoped-alias-" + scope.key + "-" + typ.key, chapter, rejectQuote, strings.Replace(scope.source, "%s", declaration, 1), "only:EK2109", "impl-hunt-data"})
+			rules = append(rules, dataRule{"schema-scoped-alias-" + scope.key + "-" + typ.key, chapter, rejectQuote, strings.Replace(scope.source, "%s", declaration, 1), "only:EK2109"})
 		}
 		declaration := "const Codec = Schema.NumberFromString; schema Primitive = string; schema Named = Codec; schema Explicit = Schema.Unknown; schema Nested = { value: number };"
-		rules = append(rules, dataRule{"schema-scoped-alias-" + scope.key + "-valid", chapter, acceptQuote, strings.Replace(scope.source, "%s", declaration, 1), "", "impl-hunt-data"})
+		rules = append(rules, dataRule{"schema-scoped-alias-" + scope.key + "-valid", chapter, acceptQuote, strings.Replace(scope.source, "%s", declaration, 1), ""})
 	}
 	return rules
 }

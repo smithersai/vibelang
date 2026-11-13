@@ -8,14 +8,14 @@ import (
 	"testing"
 )
 
-const doDeclarationBytesTarget = "FuzzDoDeclarationBytes"
+const doDeclarationIdentityTarget = "FuzzDoDeclarationIdentity"
 
 var doDeclarationQuotes = []struct{ chapter, quote string }{
-	{"001-functions.md", "Declarations are exactly what idiomatic Effect TypeScript would declare."},
+	{"001-functions.md", "Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin"},
 	{"002-running.md", "Their outward returns and typed failures are still checked at the enclosing activation."},
 }
 
-func TestDoDeclarationBytesQuoted(t *testing.T) {
+func TestDoDeclarationIdentityQuoted(t *testing.T) {
 	for _, rule := range doDeclarationQuotes {
 		if !strings.Contains(SpecText(rule.chapter), rule.quote) {
 			t.Fatalf("%s no longer says %q; update the oracle", rule.chapter, rule.quote)
@@ -23,10 +23,10 @@ func TestDoDeclarationBytesQuoted(t *testing.T) {
 	}
 }
 
-// Compare raw bytes, without the migration canonicalizer, for Foldkit's
+// Compare declaration API identity for Foldkit's
 // concise match arrow and neighbouring nested return/break/continue patterns.
 // Runtime behavior is checked only by the canonical VIP-2 differential generator.
-func FuzzDoDeclarationBytes(f *testing.F) {
+func FuzzDoDeclarationIdentity(f *testing.F) {
 	startShortBudget(f)
 	w, tsc := NewWorkspace(f), StockTypeScript(f)
 	for _, key := range []string{"foldkit-match-return", "loop-jumps", "inferred-return", "async-inferred-return", "completion-values", "completion-empty", "extractor-capture", "bind-only-fallback", "finite-match-do"} {
@@ -39,8 +39,8 @@ func FuzzDoDeclarationBytes(f *testing.F) {
 		}
 	}
 	f.Fuzz(func(t *testing.T, key string, variant uint8) {
-		TestDoDeclarationBytesQuoted(t)
-		defer recoverCompilerPanic(t, doDeclarationBytesTarget)
+		TestDoDeclarationIdentityQuoted(t)
+		defer recoverCompilerPanic(t, doDeclarationIdentityTarget)
 		depth := int(variant % 6)
 		wrap := func(body string) string {
 			for i := 0; i <= depth; i++ {
@@ -105,7 +105,7 @@ func FuzzDoDeclarationBytes(f *testing.F) {
 		defer c.Remove()
 		gap := fmt.Sprintf("%s:depth-%d", key, depth)
 		if c.Program == nil || HasError(c.Diagnostics) {
-			Gap(t, doDeclarationBytesTarget, "compile:"+gap, "VIP-2: outward jumps must retain the enclosing signature: %v\n%s", SortedKeys(Keys(c.Dir, c.Diagnostics)), source)
+			Gap(t, doDeclarationIdentityTarget, "compile:"+gap, "VIP-2: outward jumps must retain the enclosing signature: %v\n%s", SortedKeys(Keys(c.Dir, c.Diagnostics)), source)
 		}
 		stock := Project{Files: map[string]string{"main.ts": counterpart}, Config: fmt.Sprintf(errorTwinConfig, "main.ts")}
 		dir := emitDeclarationIdentityStock(t, w, tsc, stock)
@@ -119,10 +119,10 @@ func FuzzDoDeclarationBytes(f *testing.F) {
 			t.Fatal("missing declaration output", c.Outputs)
 		}
 		if diff := compareDeclarationTexts(t, string(want), got); diff != "" {
-			Gap(t, doDeclarationBytesTarget, "bytes:"+gap, "Chapter 1: %s\nstock TypeScript:\n%s\nVibeLang:\n%s\nsource:\n%s\ncounterpart:\n%s\nAPI:\n%s", doDeclarationQuotes[0].quote, want, got, source, counterpart, diff)
+			Gap(t, doDeclarationIdentityTarget, "api:"+gap, "Chapter 1: %s\nstock TypeScript:\n%s\nVibeLang:\n%s\nsource:\n%s\ncounterpart:\n%s\nAPI:\n%s", doDeclarationQuotes[0].quote, want, got, source, counterpart, diff)
 		}
-		ExpectPending(t, doDeclarationBytesTarget, "compile:"+gap)
-		ExpectPending(t, doDeclarationBytesTarget, "bytes:"+gap)
-		ExpectPending(t, doDeclarationBytesTarget, specCorpusKey(t))
+		ExpectPending(t, doDeclarationIdentityTarget, "compile:"+gap)
+		ExpectPending(t, doDeclarationIdentityTarget, "api:"+gap)
+		ExpectPending(t, doDeclarationIdentityTarget, specCorpusKey(t))
 	})
 }

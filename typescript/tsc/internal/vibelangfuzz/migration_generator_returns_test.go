@@ -15,7 +15,7 @@ const migrationGeneratorQuote = "| `return value` in a producer, `effect functio
 // A migration renames Effect TypeScript to .vibe, where a function* passed to
 // a generator API keeps its return value: it is no producer, which chapter 2
 // writes effect function*, so EK2128 and its fix, which drops the value, never
-// apply to it. drive-t3code's Effect.fn("load")(function* …, Effect.orElse…)
+// apply to it. t3code's Effect.fn("load")(function* …, Effect.orElse…)
 // lost its return value to that fix when the pipeline argument failed overload
 // resolution. The oracle reads the chapter only; it does not ask the compiler
 // which diagnostic replaces EK2128.
