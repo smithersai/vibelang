@@ -11,11 +11,13 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ## 0.0.13
 
-0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](/setup/alpha) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules compile only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).
+0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](/setup/alpha) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are supported only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).
 
 Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml). Propose a change to the language with an [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml).
 
 ### Bugs fixed since 0.0.12
+
+- The experimental opt-in section implied that every alias and subpath import was checked. It now states the support boundary and documents union-typed aliases and inline module bridges that can run experimental operations without opting in.
 
 - Known limitations omitted type-only experimental references and said re-exports through TypeScript were refused. It now lists the indexed, utility, mapped and conditional types that pass without opt-in, and explains which bridge files pass.
 

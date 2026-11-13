@@ -39,19 +39,35 @@ After `"type": "module"` is added to a project's `package.json`, `node --import 
 
 ## The experimental opt-in
 
-- Without `"vibe": { "experimental": ["builtins"] }`, `EK3013` refuses `task` and `workflow` declarations and these uses of the eight experimental modules in a `.vibe` or `.vibex` file: a member access or qualified type query such as `Experimental.Durable` or `typeof Experimental.Durable`, including member accesses through an alias, the `Experimental` export of `vibelang-runtime`, or a namespace import of `vibelang-runtime/experimental`; non-computed binding destructuring; value element access with a literal key; `export *` of `vibelang-runtime/experimental`; and an import, re-export or dynamic `import()` whose specifier is a module's literal subpath. A direct `import type { Store } from "vibelang-runtime/experimental/Durable"` and `ReturnType<typeof Experimental.Durable.makeMemoryStore>` also report `EK3013`.
-- Binding or importing the whole namespace without selecting a gated member passes. Each of these passes; adding `E.Durable` reports `EK3013`:
+The opt-in marks which modules are supported in 0.0.13: `Durable`, `Human`, `Eval`, `Scorer`, `Memory`, `Fuzz`, `FuzzSimulation` and `Test` require `"vibe": { "experimental": ["builtins"] }`. It is a support boundary, not a security boundary: the check catches the direct uses below to prevent accidental use, but cannot stop a program that sets out to reach an open-proposal module. In 0.0.13, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in.
+
+### What `EK3013` refuses
+
+Without the opt-in, these direct forms report `EK3013` in a `.vibe` or `.vibex` file, outside `module` bodies:
+
+- `task` and `workflow` declarations.
+- A member access or qualified type query such as `Experimental.Durable` or `typeof Experimental.Durable`, including a member access through an alias whose type is the namespace itself, such as `const E = Experimental; E.Durable`. The same direct member accesses through the `Experimental` export of `vibelang-runtime` or a namespace import of `vibelang-runtime/experimental` report `EK3013`.
+- Non-computed binding destructuring, such as `const { Durable } = Experimental`, and value element access with a key whose type is a single string literal, such as `Experimental["Durable"]`.
+- `export *` of `vibelang-runtime/experimental`, and an import, re-export or dynamic `import()` whose specifier is a module's literal subpath.
+- A direct `import type { Store } from "vibelang-runtime/experimental/Durable"` and `ReturnType<typeof Experimental.Durable.makeMemoryStore>`.
+
+### Routes the check does not follow in 0.0.13
+
+- Binding or importing the whole namespace without selecting a gated member passes. These obtain the namespace value without executing an experimental operation; adding `E.Durable` to these examples reports `EK3013`:
   - `const E = Experimental`
   - `import { Experimental as E } from "vibelang-runtime"`
   - `import * as E from "vibelang-runtime/experimental"`
-- These value spellings still compile and run without the opt-in. The next release refuses them:
-  - an assignment pattern: `let D; ({ Durable: D } = Experimental)`
-  - a computed name in a binding pattern: `const { ["Durable"]: D } = Experimental`
-  - element access with a key typed as a union or a type parameter: `Experimental[k]` where `k: "Durable" | "Fuzz"`
-  - enumerating the namespace: `Object.entries(Experimental)`
-  - a named import of the durable helpers from the runtime's internal entry: `import { $task } from "vibelang-runtime/internal"`
-  - an import of a module's file by path: `import { memory } from "./node_modules/vibelang-runtime/dist/experimental/Durable.js"`
-- The check misses indexed access types and types built from the namespace's type, including utility types, mapped types and conditional types. These type-only spellings compile without the opt-in; no experimental operation runs. The next release closes gaps in type positions that resolve to a gated member:
+- These value spellings compile and run without the opt-in:
+  - an assignment pattern: `let D; ({ Durable: D } = Experimental)` obtains the `Durable` namespace without executing an experimental operation.
+  - a computed name in a binding pattern: `const { ["Durable"]: D } = Experimental` obtains the same namespace without executing an experimental operation.
+  - element access with a key typed as a union or a type parameter: `Experimental[k]` where `k: "Durable" | "Fuzz"` obtains the selected namespace without executing an experimental operation.
+  - an asserted key whose type prevents resolution: `Experimental["Durable" as never]` obtains the `Durable` namespace without executing an experimental operation.
+  - enumerating the namespace: `Object.entries(Experimental)` obtains its keys and values without executing an experimental operation.
+  - a named import of the durable helpers from the runtime's internal entry: `import { $task } from "vibelang-runtime/internal"` obtains a helper function without calling it.
+  - an import of a module's file by path: `import { memory } from "./node_modules/vibelang-runtime/dist/experimental/Durable.js"` obtains a runtime value without executing an experimental operation.
+- A union-typed namespace alias passes: `const E = flag ? Experimental : { Durable: undefined }; return E.Durable`. With `flag` true, this returns the `Durable` namespace; a consumer can provide its `memory` and obtain a Durable engine without opting in, executing an experimental operation.
+- A value alias with a namespace-derived type annotation also passes: `const E: Pick<typeof Experimental, "Durable"> = Experimental; const D = E.Durable`. A consumer can provide `D.memory` and obtain a Durable engine without opting in; this executes an experimental operation. The same consumer obtains an engine when the annotation is `Readonly<typeof Experimental>` or `{ Durable: (typeof Experimental)["Durable"] }`.
+- The check misses indexed access types and types built from the namespace's type, including utility types, mapped types and conditional types. These nine type-only spellings compile without the opt-in; they are erased and no experimental operation runs:
   - `export type D = (typeof Experimental)["Durable"]`
   - `export type X = typeof Experimental["Durable"]`
   - `type NS = typeof Experimental; export type D = NS["Durable"]`
@@ -61,9 +77,20 @@ After `"type": "module"` is added to a project's `package.json`, `node --import 
   - `export type E = Extract<keyof typeof Experimental, "Durable">`
   - `export type O = Omit<typeof Experimental, "NetAddress">`
   - `export type C = typeof Experimental extends { Durable: infer D } ? D : never`
-- Re-exports through another `.vibe` file are refused when that file imports or re-exports a gated subpath. Individual exports of a gated subpath pass through `.ts` and `.js` bridge files, including `export { memory } from "vibelang-runtime/experimental/Durable"` in `bridge.ts` or `bridge.js`, consumed by `import { memory } from "./bridge.js"` in a `.vibe` file. A bridge that instead imports `* as selected` from the gated subpath and exports `selected` is refused when a `.vibe` file imports that namespace. The Node loader runs the named-helper consumer and `typeof memory` is `"object"`. Re-exporting `memory`, `Durable` and `TypeId` from that subpath through a `.ts` bridge also lets a `.vibe` consumer provide `memory` and obtain a Durable engine without opting in. These bridges expose runtime values; experimental operations run. A declaration-file bridge also passes: `export type { Store as S } from "vibelang-runtime/experimental/Durable"` in `bridge.d.ts`, consumed by `import type { S } from "./bridge.js"` in a `.vibe` file. That reference is type-only; no experimental operation runs. The next release closes the gaps in references from `.vibe` and `.vibex` files through these bridges.
-- The check also cannot see a use whose target the compiler does not resolve, such as `(globalThis as any).Experimental`, `Reflect.get(Experimental, "Durable")` or a dynamic `import()` with a computed specifier. It does not check the uses inside `.ts` files or a dependency's JavaScript. A `.ts` or `.js` entry can import a gated subpath and an ordinary `.vibe` module without `EK3013`.
-- `vibelang lint -p tsconfig.json` reads only `tsconfig.json`, as `vibelang -p tsconfig.json` does. With the opt-in only in `vibe.config.json`, both explicit `-p tsconfig.json` commands report `EK3013`; `vibelang` and `vibelang lint` without `-p` read `vibe.config.json` and pass. Put the opt-in in `tsconfig.json`, or omit `-p`.
+- Individual exports of a gated subpath pass through `.ts` and `.js` bridge files:
+  - `export { memory } from "vibelang-runtime/experimental/Durable"` in `bridge.ts` or `bridge.js`, consumed by `import { memory } from "./bridge.js"` in a `.vibe` file, obtains a runtime value. The Node loader runs that consumer and `typeof memory` is `"object"`; merely reading that value executes no experimental operation.
+  - Re-exporting `memory`, `Durable` and `TypeId` from that subpath through a `.ts` bridge lets a `.vibe` consumer provide `memory` and obtain a Durable engine without opting in. With that consumer, experimental operations run.
+  - A declaration-file bridge also passes: `export type { Store as S } from "vibelang-runtime/experimental/Durable"` in `bridge.d.ts`, consumed by `import type { S } from "./bridge.js"` in a `.vibe` file. That reference is type-only and erased; no experimental operation runs.
+  - A bridge that instead imports `* as selected` from the gated subpath and exports `selected` is refused when a `.vibe` file imports that namespace. Re-exports through another `.vibe` file are refused when that file imports or re-exports a gated subpath outside `module` bodies.
+- An inline `module` bridge passes: `module bridge { export { memory, Durable, TypeId } from "vibelang-runtime/experimental/Durable" }; import { memory, Durable, TypeId } from bridge`. Its body is inline TypeScript; the opt-in check does not run on it. With the value import shown, a consumer can provide `memory` and obtain a Durable engine without opting in; this executes an experimental operation.
+- The check cannot see a use whose target the compiler does not resolve, such as `(globalThis as any).Experimental`, `Reflect.get(Experimental, "Durable")` or a dynamic `import()` with a computed specifier. The first example reads an unresolved value; the latter two can obtain the `Durable` namespace, without executing an experimental operation in these examples.
+- It does not check the uses inside `.ts` files or a dependency's JavaScript. A `.ts` or `.js` entry can import a gated subpath and an ordinary `.vibe` module without `EK3013`. These foreign-file routes can obtain runtime values; executing an experimental operation through them is also outside the check.
+
+The next release closes the value routes that select a gated member; enumerating the whole namespace stays allowed until the owner decides, because a program that uses only core modules can write it. The next release closes gaps in type positions that resolve to a gated member. The next release closes the gaps in references from `.vibe` and `.vibex` files through these bridges.
+
+These are the routes found so far, and the list is not complete; a program compiled without the opt-in is unsupported the moment it reaches any of the eight modules by any route, including type-only references.
+
+`vibelang lint -p tsconfig.json` reads only `tsconfig.json`, as `vibelang -p tsconfig.json` does. With the opt-in only in `vibe.config.json`, both explicit `-p tsconfig.json` commands report `EK3013`; `vibelang` and `vibelang lint` without `-p` read `vibe.config.json` and pass. Put the opt-in in `tsconfig.json`, or omit `-p`.
 
 ## Specification examples the compiler does not pass yet
 
