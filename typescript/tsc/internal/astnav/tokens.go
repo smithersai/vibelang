@@ -252,6 +252,13 @@ func getTokenAtPosition(
 					break
 				}
 				if tokenStart <= position && (position < tokenEnd) {
+					// A contextual word can be a written identifier in a
+					// lowered source child that positional search missed.
+					if ast.IsKeywordKind(token) && isVibeLangSourceFile(sourceFile) {
+						if found := vibelangSourceToken(sourceFile, current, scanner.TokenStart(), tokenEnd); found != nil && ast.IsIdentifier(found) {
+							return found
+						}
+					}
 					if token == ast.KindIdentifier || !ast.IsTokenKind(token) {
 						if ast.IsJSDocKind(current.Kind) {
 							return current
@@ -268,6 +275,11 @@ func getTokenAtPosition(
 					return sourceFile.GetOrCreateToken(token, tokenFullStart, tokenEnd, current, flags)
 				}
 				if includePrecedingTokenAtEndPosition != nil && tokenEnd == position {
+					if ast.IsKeywordKind(token) && isVibeLangSourceFile(sourceFile) {
+						if found := vibelangSourceToken(sourceFile, current, scanner.TokenStart(), tokenEnd); found != nil && ast.IsIdentifier(found) && includePrecedingTokenAtEndPosition(found) {
+							return found
+						}
+					}
 					if (token == ast.KindIdentifier || !ast.IsTokenKind(token)) && isVibeLangSourceFile(sourceFile) {
 						// A VibeLang form's word, or a desugared node's source child, ends here (vibelang.go).
 						if found := vibelangSourceToken(sourceFile, current, scanner.TokenStart(), tokenEnd); found != nil {

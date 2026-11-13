@@ -67,6 +67,8 @@ Select a TypeScript `module` declaration and request **Move module to a TypeScri
 
 Retired `service class` and `layer` declarations report `EK0909` and `EK2121` as errors. Changing warning settings does not make either spelling valid. Edit these declarations explicitly.
 
+Reference search and rename include a parameter's declaration and its use as a destructuring source, including contextual names such as `source`, even when a default contains `do { }` or a `match` arm whose `do { }` returns from the function.
+
 ## Server settings and troubleshooting
 
 | Setting | Default | Purpose |

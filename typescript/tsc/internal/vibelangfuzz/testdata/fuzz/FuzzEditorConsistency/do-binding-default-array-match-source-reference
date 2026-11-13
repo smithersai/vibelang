@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nfunction pick(source: Iterable<number | undefined>): string {\n  const [value = match (true) { default: do { return 9 }; }] = source\n  return \"done\"\n}\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"es2022\",\"lib\":[\"esnext\"],\"module\":\"nodenext\",\"moduleResolution\":\"nodenext\",\"strict\":true,\"types\":[],\"skipLibCheck\":true,\"outDir\":\"out\",\"declaration\":true},\"include\":[\"*.vibe\"]}\n")
+[]byte("\x00\x7d")
