@@ -113,9 +113,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [What is in the alpha](../setup/alpha.md) | 2,600 |
 | [Known limitations](../setup/known-limitations.md) | 3,100 |
 | [Source maps](../setup/source-maps.md) | 1,000 |
-| **Start a project** | **8,800** |
+| **Start a project** | **8,900** |
 | [New project](../setup/new-project.md) | 810 |
-| [Existing project](../setup/existing-project.md) | 4,300 |
+| [Existing project](../setup/existing-project.md) | 4,400 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,700 |
 | **Build and test** | **23,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 18,000 |

@@ -19,7 +19,15 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The experimental opt-in section implied that every alias and subpath import was checked. It now states the support boundary and documents union-typed aliases and inline module bridges that can run experimental operations without opting in.
 
+- Moving a declaration into a module body could make an unchanged recursive type alias fail API verification. The check now recognizes the alias's unchanged bindings and dependencies while still rejecting changed types or documentation.
+
+- Moving a binding into a module body could make declaration checks reject an unchanged module that re-exports itself. Checks now accept its unchanged public API and still report changed exports.
+
 - Known limitations omitted type-only experimental references and said re-exports through TypeScript were refused. It now lists the indexed, utility, mapped and conditional types that pass without opt-in, and explains which bridge files pass.
+
+- Published declaration checks rejected unchanged recursive types or reached TypeScript's depth limit when a module-body split added a redundant `export {}`. They now recognize the same API while still checking type changes, documentation and module scope.
+
+- A declaration that inferred a type from another module's module body named the body's internal file, as in `import("./layer-node.vibe.graph.js").Provider`, so a file without a module body no longer matched its TypeScript declaration byte for byte. It now names the module that re-exports the type, `import("./layer-node.js").Provider`, as TypeScript does.
 
 - Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.
 
@@ -28,6 +36,10 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - Publishing a release exposed the publisher's home directory in npm metadata. Release scripts now publish unchanged archives from neutral staging and reject registry entries that expose a home path.
 
 - The React Native guide and the `vibelang` package page showed a CommonJS `metro.config.js`, and the package page a CommonJS `babel.config.js`, for an app whose `package.json` has `"type": "module"`. Metro failed with `require is not defined in ES module scope`. Both pages now name the files `metro.config.cjs` and `babel.config.cjs`.
+- An inferred declaration could write an interface such as `SqlClient` as a bare name even when an import bound that name to its namespace, leaving a header that TypeScript rejected. It now keeps TypeScript's qualification, such as `SqlClient.SqlClient`.
+
+- When declaration verification failed with an error such as `TS2589`, the report showed only an internal file and line, hiding which export failed. It now also names the package entry, exported binding and generated assertion, while keeping the comparison unavailable.
+
 - With no `project` option, the Vite plugin and the bundler plugins read the root's `tsconfig.json` even when a `vibe.config.json` was beside it, so they compiled with settings the compiler ignored. They now read the root's `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, as the compiler does.
 - Some docs examples taught forms the compiler warns about, such as a service member typed `Effect.Effect<{…}, never, never>` on the Stream page (`EK4833`). The docs check now fails an example that draws a warning, and those examples use the forms the compiler asks for; an example that shows a flagged form on purpose says so with `// expect-warning:`.
 - The specification marked 185 of its examples `// compiler-gap: pending VIP-N`, but 184 of those markers were stale: the compiler already did what the text says. They are gone, the docs check now compiles every specification example and fails on a marker whose example passes, and the two real gaps are listed on [Known limitations](/setup/known-limitations#specification-examples-the-compiler-does-not-pass-yet).
