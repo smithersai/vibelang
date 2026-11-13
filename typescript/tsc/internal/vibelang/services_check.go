@@ -167,6 +167,12 @@ func checkShapeDeclarationMembers(c *checker.Checker, class *ast.Node, shape *as
 // coverServiceRejectedMemberErrors removes only native reports for the
 // rejected member itself. Nested native declarations keep the same error codes.
 func coverServiceRejectedMemberErrors(c *checker.Checker, member *ast.Node) {
+	if ast.IsPropertyDeclaration(member) && member.Name() != nil &&
+		ast.IsStringLiteral(member.Name()) && member.Name().Text() == "constructor" {
+		// A rejected service header is not a native class field. Keep
+		// same-code errors from nested ordinary classes at their own names.
+		coverExactErrorCodes(c, member.Name(), 18006)
+	}
 	coverExactErrorCodes(c, member, 7008, 2391)
 	// The member's own modifiers belong to its rejected header: a written
 	// shape lowers each instance member with abstract, so an authored private,

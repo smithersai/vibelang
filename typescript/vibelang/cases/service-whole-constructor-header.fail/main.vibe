@@ -1,0 +1,6 @@
+// expect: EK0902
+service S: {} {
+  static readonly key = "constructor-header/S"
+  "constructor": string
+}
+export {}

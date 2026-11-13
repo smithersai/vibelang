@@ -277,7 +277,7 @@ These count as captures:
 
 An unused argument does not capture a type parameter: `Phantom<T>` is allowed when `interface Phantom<U> { n: number }` never uses `U`.
 
-A rejected member does not create a service contract and does not hide `EK3005` on the declaration's type parameters; capture checks continue on the other valid contracts. For a whole-shape service, only the written shape participates in capture checking.
+A rejected member does not create a service contract and does not hide `EK3005` on the declaration's type parameters; capture checks continue on the other valid contracts. For a whole-shape service, only the written shape participates in capture checking. A rejected quoted `constructor` property reports `EK0902` without TypeScript's inapplicable class-field-name error. Independent errors in its type, initializer or nested classes remain visible.
 
 ### Keys
 

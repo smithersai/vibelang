@@ -1,0 +1,75 @@
+[
+  {
+    "Key": "whole",
+    "Source": "export service S: {} {static readonly key=\"header/S\";\"constructor\":string}",
+    "Codes": [
+      "EK0902"
+    ]
+  },
+  {
+    "Key": "readonly",
+    "Source": "export service S: {} {static readonly key=\"header/S\";readonly \"constructor\":string}",
+    "Codes": [
+      "EK0902"
+    ]
+  },
+  {
+    "Key": "optional",
+    "Source": "export service S: {} {static readonly key=\"header/S\";\"constructor\"?:string}",
+    "Codes": [
+      "EK0902"
+    ]
+  },
+  {
+    "Key": "missing-type",
+    "Source": "export service S: {} {static readonly key=\"header/S\";\"constructor\":Missing}",
+    "Codes": [
+      "EK0902",
+      "TS2304"
+    ]
+  },
+  {
+    "Key": "wrong-initializer",
+    "Source": "export service S: {} {static readonly key=\"header/S\";\"constructor\":number=\"wrong\"}",
+    "Codes": [
+      "EK0902",
+      "TS2322"
+    ]
+  },
+  {
+    "Key": "nested-class",
+    "Source": "export service S: {} {static readonly key=\"header/S\";\"constructor\":unknown=class Native {\"constructor\":string=\"ok\"}}",
+    "Codes": [
+      "EK0902",
+      "TS18006"
+    ]
+  },
+  {
+    "Key": "ordinary-class",
+    "Source": "export class Native {\"constructor\":string=\"ok\"}",
+    "Codes": [
+      "TS18006"
+    ]
+  },
+  {
+    "Key": "ordinary-class-type-error",
+    "Source": "export class Native {\"constructor\":string=7}",
+    "Codes": [
+      "TS18006",
+      "TS2322"
+    ]
+  },
+  {
+    "Key": "supplied-shape",
+    "Source": "type Shape={\"constructor\":string};export service S:Shape {static readonly key=\"header/S\"}",
+    "Codes": []
+  },
+  {
+    "Key": "other-field-error",
+    "Source": "export service S: {} {static readonly key=\"header/S\";other:Missing}",
+    "Codes": [
+      "EK0902",
+      "TS2304"
+    ]
+  }
+]
