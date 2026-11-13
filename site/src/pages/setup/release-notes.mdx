@@ -17,6 +17,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 ### Bugs fixed since 0.0.12
 
+- Known limitations omitted type-only experimental references and said re-exports through TypeScript were refused. It now lists the indexed, utility, mapped and conditional types that pass without opt-in, and explains which bridge files pass.
+
 - Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.
 
 - Strict TypeScript configurations importing entries such as `vibelang/eslint` failed with `TS7016` because their types were missing. Every public JavaScript entry now ships declarations for both `bundler` and `node16` module resolution.

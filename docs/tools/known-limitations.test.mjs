@@ -27,15 +27,18 @@ test("alpha limitations are discoverable and link to current setup and resource 
 // 2026-11-12), so the page and its generated site copy hold one opt-in section,
 // which names only what the check cannot see, and never the earlier claim that
 // only direct uses are refused.
-test("Known limitations has one experimental opt-in section that names each uncaught spelling", () => {
+test("Known limitations has one experimental opt-in section that names each checked spelling", () => {
   for (const rel of ["../user/src/setup/known-limitations.md", "../../site/src/pages/setup/known-limitations.mdx"]) {
     const text = readFileSync(new URL(rel, import.meta.url), "utf8")
     assert.equal(text.match(/^## The experimental opt-in$/gm)?.length, 1, rel + ": one experimental opt-in section")
     assert.ok(!text.includes("the direct uses of the eight experimental modules"), rel + ": no direct-uses-only claim")
     assert.ok(!text.includes("It does not yet catch an alias"), rel + ": no stale alias limitation")
     assert.ok(!text.includes("refuses every use in a `.vibe` or `.vibex` file that resolves"), rel + ": no claim that every resolved use is refused")
-    // Each spelling the check misses until the compiler covers it; the compiler
-    // fix removes them from the page and from this list together.
+    assert.ok(!text.includes("a re-export from another `.ts` or `.vibe` file"), rel + ": no blanket bridge-refusal claim")
+    assert.ok(text.includes("type-only"), rel + ": distinguishes type references from runtime operations")
+    assert.ok(text.includes("`.ts` and `.js` bridge files"), rel + ": names both bridge extensions")
+    assert.ok(text.includes("experimental operations run"), rel + ": distinguishes value bridges from erased types")
+    // Keep each observed spelling visible until its documented behavior changes.
     for (const spelling of [
       "`let D; ({ Durable: D } = Experimental)`",
       '`const { ["Durable"]: D } = Experimental`',
@@ -43,6 +46,24 @@ test("Known limitations has one experimental opt-in section that names each unca
       "`Object.entries(Experimental)`",
       '`import { $task } from "vibelang-runtime/internal"`',
       '`import { memory } from "./node_modules/vibelang-runtime/dist/experimental/Durable.js"`',
-    ]) assert.ok(text.includes(spelling), rel + ": names the uncaught spelling " + spelling)
+      "`export type D = (typeof Experimental)[\"Durable\"]`",
+      "`export type X = typeof Experimental[\"Durable\"]`",
+      "`type NS = typeof Experimental; export type D = NS[\"Durable\"]`",
+      "`export type P = Pick<typeof Experimental, \"Durable\">`",
+      "`export type K = keyof typeof Experimental`",
+      "`export type M = { [K in keyof typeof Experimental]: (typeof Experimental)[K] }`",
+      "`export type E = Extract<keyof typeof Experimental, \"Durable\">`",
+      "`export type O = Omit<typeof Experimental, \"NetAddress\">`",
+      "`export type C = typeof Experimental extends { Durable: infer D } ? D : never`",
+      "`export type { Store as S } from \"vibelang-runtime/experimental/Durable\"`",
+      "`export { memory } from \"vibelang-runtime/experimental/Durable\"`",
+      "`import type { Store } from \"vibelang-runtime/experimental/Durable\"`",
+      "`ReturnType<typeof Experimental.Durable.makeMemoryStore>`",
+      "`import { memory } from \"./bridge.js\"`",
+      "`import type { S } from \"./bridge.js\"`",
+      "`const E = Experimental`",
+      "`import { Experimental as E } from \"vibelang-runtime\"`",
+      "`import * as E from \"vibelang-runtime/experimental\"`",
+    ]) assert.ok(text.includes(spelling), rel + ": names the checked spelling " + spelling)
   }
 })
