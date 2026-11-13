@@ -352,6 +352,13 @@ bun test --timeout 120000 docs/tools/rule-evidence.test.ts
 The checker reads snapshots through `jj`, including deletions, and reports each
 changed normative sentence in `docs/design/src/` and `docs/design/vips/`.
 VIPs whose own `Status` line is `open` or `proposed` state no normative rules, including candidate models, explicitly open or proposed supporting documents under `docs/design/vips/reviews/`, and their rows in the VIP README's `Open` table. The checker reads each linked VIP's status at the compared revision; a table label alone grants no exemption. Acceptance makes the existing proposal sentences normative. Accepted VIP amendments and `Clarified` bullets, and design chapters, retain their evidence requirements.
+A numbered VIP's `Will's words` section records quotations and their dated
+question context, including clearly labeled recorder readings; these records
+need no rule evidence even when a quotation has several sentences or code spans.
+A peer or ancestor heading ends the record section. `Amended` and `Clarified`
+headings or bold paragraph/list labels within it resume normative prose; a new
+bold `YYYY-MM-DD:` entry resumes the quotation record. The section label in a
+design chapter, comment or code fence grants no exemption.
 A sentence with inline code, an `EK` or `TS` diagnostic code, `must`,
 `is an error`, `compiles` or `means` is normative. Code fences themselves
 are examples, not prose rules. In Appendix A, the grammar admission census is

@@ -61,6 +61,7 @@ export function sentences(path: string, markdown: string): Sentence[] {
       line => /^#{1,6}\s/.test(line) ? line : "") : section
   )
   const lines = markdown.split(/\r?\n/)
+  let recordDepth = 0, record = false
   let fence = "", section = "", paragraph: { text: string; line: number }[] = [], comment = false
   const flush = () => {
     if (!paragraph.length) return
@@ -105,8 +106,26 @@ export function sentences(path: string, markdown: string): Sentence[] {
     }
     if (f && original === raw) { flush(); fence = f[1]; continue }
     const heading = /^#{1,6}\s+(.+)$/.exec(original)
-    if (heading) { flush(); section = slug(heading[1]); continue }
+    if (heading) {
+      flush()
+      const depth = original.match(/^#+/)![0].length
+      if (recordDepth && depth <= recordDepth) { recordDepth = 0; record = false }
+      section = slug(heading[1])
+      if (/^docs\/design\/vips\/\d+[^/]*\.md$/.test(path) && section === "wills-words") {
+        recordDepth = depth; record = true
+      } else if (recordDepth && /^(?:Amended|Clarified)\b/i.test(heading[1])) record = false
+      continue
+    }
     if (!original.trim() || /^\s*(?:\[[^\]]+\]:|---+$|\|?\s*:?-+:?\s*\|)/.test(original)) { flush(); continue }
+    // A VIP's quotation section records words, dated questions and the recorder's
+    // reading. Existing normative amendments can live below it in the same
+    // section: keep their complete paragraphs and following rules significant.
+    if (recordDepth) {
+      const text = original.replace(/^\s*(?:[-*+] |\d+\. )/, "")
+      if (/^\*\*(?:Amended|Clarified)\b/.test(text)) { flush(); record = false }
+      else if (/^\*\*\d{4}-\d{2}-\d{2}:/.test(text)) { flush(); record = true }
+      if (record) continue
+    }
     // Lists and table rows are independent rules rather than one huge paragraph.
     if (/^\s*(?:[-*+] |\d+\. |\|)/.test(original)) flush()
     paragraph.push({ text: original.replace(/^\s*(?:[-*+] |\d+\. )/, ""), line: i + 1 })

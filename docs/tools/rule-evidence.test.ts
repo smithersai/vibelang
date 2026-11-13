@@ -726,3 +726,100 @@ test("a quotation blockquote records words, not a rule; a quoted code span and a
   fc.assert(fc.property(fc.stringMatching(/^[a-z]{1,12}( [a-z]{1,12}){0,4}$/), words =>
     add('> "' + words + ' means ' + words + '"').length === 0 && add(words + " means " + words + ".").length === 1))
 })
+
+
+const recordPath = "docs/design/vips/0034-compiler-and-tooling.md"
+const quotationRecord = readFileSync(new URL("./fixtures/rule-evidence-quotation-record.md", import.meta.url), "utf8")
+const recordChange = (after: string, before = ""): Change => ({ path: recordPath, before, after })
+
+test("dated quotation records retain the exact multi-sentence words and question context without rule evidence", async () => {
+  const result = await checkEntry(entry(recordChange(quotationRecord)), okTwin)
+  expect(result.rules).toBe(0)
+  expect(result.findings).toEqual([])
+  expect([result.cases, result.twins, result.pending, result.inherited]).toEqual([0, 0, 0, 0])
+})
+
+test("quotation record scope ends at a peer or ancestor heading, preserving rule source lines", () => {
+  for (const heading of ["## Decision", "# Decision"]) {
+    const after = quotationRecord + heading + "\n\n`try` must run.\n"
+    const line = after.split("\n").indexOf("`try` must run.") + 1
+    expect(changedRules([recordChange(after)])).toEqual([
+      { path: recordPath, line, text: "`try` must run.", section: "decision" }
+    ])
+  }
+})
+
+test("Amended and Clarified paragraphs remain rules within a quotation section", () => {
+  for (const marker of ["Amended", "Clarified"]) {
+    for (const prefix of ["", "- ", "* ", "+ ", "1. "]) {
+      const amendment = prefix + "**" + marker + " 2026-11-13: emission.** `emit` must preserve values."
+      const after = quotationRecord + amendment + "\n\nA `call` must keep its receiver.\n"
+      const rules = changedRules([recordChange(after)])
+      expect(rules.map(rule => rule.text)).toEqual([
+        amendment.replace(/^(?:[-*+] |\d+\. )/, ""), "A `call` must keep its receiver."
+      ])
+      expect(rules.every(rule => rule.section === "wills-words")).toBe(true)
+    }
+  }
+})
+
+test("a subsequent dated record resumes historical context after a normative amendment", () => {
+  const after = quotationRecord + "- **Amended 2026-11-13: emission.** `emit` must preserve values.\n\n" +
+    "**2026-11-14: question.**\n\nHe was asked whether `emit` means JavaScript.\n\n" +
+    '> "It compiles. This means JavaScript."\n'
+  expect(changedRules([recordChange(after)]).map(rule => rule.text)).toEqual(["**Amended 2026-11-13: emission.** `emit` must preserve values."])
+})
+
+test("quotation section labels in chapters, examples and comments cannot hide rules", () => {
+  for (const fake of [
+    "<!-- ## Will's words -->",
+    "```md\n## Will's words\n```",
+    "## Decision\n\n`## Will's words`",
+    "## Will's wording"
+  ]) {
+    expect(changedRules([recordChange(fake + "\n\n`try` must run.\n")])
+      .some(rule => rule.text === "`try` must run.")).toBe(true)
+  }
+  expect(changedRules([doc("## Will's words\n\n`try` must run.\n")])).toHaveLength(1)
+})
+
+test("record context handles nested headings, quoted code and fenced diagrams without swallowing amendments", () => {
+  const after = "## Will's words\n\n### Context\n\nHe was shown `try`.\n\n" +
+    '> "The `try` form compiles. It means a value."\n\n' +
+    "```text\n## Decision\n- **Amended:** `fake` must compile.\n```\n\n" +
+    "- **Clarified 2026-11-13: execution.** `try` must run.\n"
+  expect(changedRules([recordChange(after)]).map(rule => rule.text)).toEqual(["**Clarified 2026-11-13: execution.** `try` must run."])
+})
+
+test("fast-check: historical context is exempt while following amendments and chapters retain evidence", async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.constantFrom("try", "match", "schema", "service", "fork"),
+    fc.constantFrom("must compile", "is an error", "means a value"),
+    fc.constantFrom("Amended", "Clarified"),
+    fc.integer({ min: 1000, max: 9999 }),
+    async (form, wording, marker, code) => {
+      const rule = "The `" + form + "` form " + wording + " (EK" + code + ")."
+      const record = "## Will's words\n\n**2026-11-13: question.**\n\nHe was shown `" + form + "`.\n\n" +
+        '> "' + rule + ' This compiles."\n\nRecorder\'s reading (not Will\'s words): ' + rule + "\n\n"
+      expect((await checkEntry(entry(recordChange(record)), okTwin)).rules).toBe(0)
+      const after = record + "- **" + marker + " 2026-11-13: form.** " + rule
+      expect((await checkEntry(entry(recordChange(after)), okTwin)).findings.map(f => f.text)).toEqual(["**" + marker + " 2026-11-13: form.** " + rule])
+      expect((await checkEntry(entry(doc(record)), okTwin)).findings.length).toBeGreaterThan(0)
+    }
+  ), { seed: 20261113, numRuns: 100 })
+})
+
+
+test("normative amendment headings in a quotation section retain evidence requirements", () => {
+  for (const marker of ["Amended", "Clarified"]) {
+    const after = quotationRecord + "### " + marker + "\n\n`try` must run.\n"
+    expect(changedRules([recordChange(after)]).map(rule => rule.text)).toEqual(["`try` must run."])
+  }
+})
+
+test("existing normative VIP amendments beneath the quotation heading remain visible", () => {
+  const vip = readFileSync(resolve(import.meta.dir, "../design/vips/0034-compiler-and-tooling.md"), "utf8")
+  const rules = changedRules([recordChange(vip)])
+  for (const anchor of ["EK4856", "EK3011", "oxfmt file.vibe"])
+    expect(rules.some(rule => rule.text.includes(anchor) && rule.section === "wills-words")).toBe(true)
+})

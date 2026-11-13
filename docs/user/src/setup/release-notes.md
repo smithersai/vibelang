@@ -92,6 +92,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 ### Bugs fixed since 0.0.12
 
+- Historical quotations in accepted proposals could be mistaken for new language requirements. Their dated context now stays part of the quotation record, while amendments still state the rules.
+
 - Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.
 
 - Strict TypeScript configurations importing entries such as `vibelang/eslint` failed with `TS7016` because their types were missing. Every public JavaScript entry now ships declarations for both `bundler` and `node16` module resolution.

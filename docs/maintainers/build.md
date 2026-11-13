@@ -1933,6 +1933,13 @@ sentence in a design chapter or VIP needs a relevant changed compiler case,
 an adjacent VibeLang / Effect TypeScript example whose declarations compile
 and match, or an exact pending witness. Deletions add no evidence obligation.
 VIPs whose own `Status` line is `open` or `proposed` state no normative rules, including candidate models, explicitly open or proposed supporting documents under `docs/design/vips/reviews/`, and their rows in the VIP README's `Open` table. The checker reads each linked VIP's status at the compared revision; a table label alone grants no exemption. Acceptance makes the existing proposal sentences normative. Accepted VIP amendments and `Clarified` bullets, and design chapters, retain their evidence requirements.
+A numbered VIP's `Will's words` section records quotations and their dated
+question context, including clearly labeled recorder readings; these records
+need no rule evidence even when a quotation has several sentences or code spans.
+A peer or ancestor heading ends the record section. `Amended` and `Clarified`
+headings or bold paragraph/list labels within it resume normative prose; a new
+bold `YYYY-MM-DD:` entry resumes the quotation record. The section label in a
+design chapter, comment or code fence grants no exemption.
 A reworded rule can inherit an existing test when its exact citation is
 repointed and the executable checks stay unchanged; shared diagnostic codes
 alone do not establish equivalence. `//:spec-rule-evidence-test` runs rejection,
