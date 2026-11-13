@@ -4,11 +4,49 @@ import { createServer } from "node:net"
 import test from "node:test"
 import { runChild } from "./child.mjs"
 
-test("a child that never exits is killed at its limit and named", async () => {
-  const started = Date.now()
-  await assert.rejects(runChild(process.execPath, ["-e", "console.log('ready'); setInterval(() => {}, 1000)"], { limit: 1000 }),
-    (error) => /did not exit within 1 s/.test(error.message) && /Still running:/.test(error.message) && /ready/.test(error.message))
-  assert.ok(Date.now() - started < 10_000)
+test("a child that never exits is killed at its limit and named", { timeout: 60_000 }, async (t) => {
+  const server = createServer()
+  const kill = process.kill.bind(process)
+  let pid
+  let socket
+  t.after(() => {
+    // Also clean up when the kill assertion fails.
+    if (pid !== undefined) {
+      try { kill(-pid, "SIGKILL") } catch {}
+    }
+    socket?.destroy()
+    server.close()
+  })
+  await once(server.listen(0, "127.0.0.1"), "listening")
+  const connection = once(server, "connection")
+  t.mock.timers.enable({ apis: ["setTimeout"] })
+  const kills = t.mock.method(process, "kill", kill)
+  const script = `
+const { connect } = require("node:net")
+connect(${server.address().port}, "127.0.0.1", function () {
+  this.write(String(process.pid))
+})
+setInterval(() => {}, 1000)
+`
+  const rejected = assert.rejects(runChild(process.execPath, ["-e", script], { limit: 1000 }), (error) => {
+    assert.match(error.message, /did not exit within 1 s/)
+    assert.match(error.message, new RegExp(`Still running:\n\\s*${pid}\\s+${pid}\\s`))
+    return true
+  })
+  const [connected] = await connection
+  socket = connected
+  const [data] = await once(socket, "data")
+  pid = Number(data.toString())
+  const closed = once(socket, "close")
+  socket.resume()
+
+  // Child startup and host scheduling do not advance this deadline.
+  t.mock.timers.tick(999)
+  assert.equal(kills.mock.callCount(), 0)
+  t.mock.timers.tick(1)
+  await rejected
+  assert.deepEqual(kills.mock.calls.map(({ arguments: args }) => args), [[-pid, "SIGKILL"]])
+  await closed
 })
 
 test("a child that exits while its own child holds the output resolves, and that child is killed", { timeout: 60_000 }, async () => {

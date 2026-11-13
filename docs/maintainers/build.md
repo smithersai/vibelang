@@ -903,6 +903,13 @@ sh scripts/ci.sh //:spec-tests --jobs 8
 
 ## Packages
 
+The Vite child-timeout regression uses a controlled timer. After the child
+connects, advancing to just before the limit must leave its process group
+alone; advancing to the limit must send `SIGKILL`, name the child's PID
+in the timeout diagnostic and close its connection. Startup and host
+scheduling time are outside this assertion. The test's overall timeout
+still bounds a stalled setup or cleanup.
+
 Package tests run one assertion file per target, generated from
 `packages/test-inventory.json`. A leaf name replaces the file's dots with
 hyphens and removes `.test.mjs` or `.test.ts`, for example

@@ -51,6 +51,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Passing a producer to a JavaScript generator API hid errors inside its body. The compiler now reports those errors alongside `EK1002`.
 
+- Vite's child-timeout test could fail on a busy machine even after the child was killed. It now checks the deadline's kill signal and child shutdown without counting startup delays.
+
 - Contributor tests could report a missing or mismatched `typescript` installation as a generator failure. They now report the required version and its installation command before running reference programs.
 
 - A site deployment could fail because release notes mentioned an older package version in a bug description. Historical entries now pass the version check, while install commands on other pages still require the current version.
