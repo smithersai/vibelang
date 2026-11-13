@@ -1,7 +1,7 @@
 package vibelangfuzz
 
-// Runtime semantics stay in VIP-7's canonical differential witnesses.
-// These neighbors test grammar admission; optional bindings remain a known gap.
+// Runtime cell semantics, including optional bindings, are checked by
+// FuzzMatchDuplicateBindings. These neighbors check grammar admission.
 func dataListPatternGrammarRules() []dataRule {
 	const elision = "Each `Elision` consumes its full number of commas, excluding a list-separator comma."
 	const optional = "An absent optional element consumes zero values, leaves the iterator done and the actual index unchanged, and does not run its sub-pattern or initialize its bindings."

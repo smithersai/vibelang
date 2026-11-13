@@ -1,0 +1,17 @@
+// expect-result: [["ReferenceError"],1,2,["ReferenceError"],["ReferenceError"],["ReferenceError"],1,2,["ReferenceError"],["ReferenceError"],2,["ReferenceError"],["ReferenceError"],1,2,["ReferenceError"]]
+// Absent optional patterns leave their binding cells uninitialized. A second
+// binding that executes throws, except for replacement by a later or branch.
+import { Effect } from "effect"
+effect function list(a:unknown) {return match(a){when [[let x?],[let x?]]:x;default:0;}}
+effect function object(a:unknown) {return match(a){when {p?:let x,q?:let x}:x;default:0;}}
+effect function constants(a:unknown) {return match(a){when [[const x?],[const x?]]:x;default:0;}}
+effect function alternatives(a:unknown) {return match(a){when ([[let x?],[let x?]] and if(false)) or [[let x?],[let x?]]:x;default:0;}}
+effect function outcome(e:unknown!!) {const r=try exit(e);return r._tag==="Success"?r.value:r.cause.reasons.map((x)=>x._tag==="Die"?String((x.defect as Error).name):x._tag)}
+export effect function main() {
+ return [
+  try outcome(list([[],[]])),try outcome(list([[1],[]])),try outcome(list([[],[2]])),try outcome(list([[1],[2]])),try outcome(list([[undefined],[2]])),
+  try outcome(object({})),try outcome(object({p:1})),try outcome(object({q:2})),try outcome(object({p:1,q:2})),try outcome(object({p:undefined,q:2})),
+  try outcome(constants([[],[2]])),try outcome(constants([[1],[2]])),
+  try outcome(alternatives([[],[]])),try outcome(alternatives([[1],[]])),try outcome(alternatives([[],[2]])),try outcome(alternatives([[1],[2]]))
+ ]
+}

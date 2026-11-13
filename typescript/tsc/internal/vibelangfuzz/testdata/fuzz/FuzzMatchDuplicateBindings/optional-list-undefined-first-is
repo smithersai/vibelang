@@ -1,0 +1,3 @@
+go test fuzz v1
+string("optional-list-undefined-first")
+byte(1)

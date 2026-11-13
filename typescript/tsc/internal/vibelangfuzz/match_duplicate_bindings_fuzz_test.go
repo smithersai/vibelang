@@ -13,13 +13,15 @@ const matchDuplicateBindingsTarget = "FuzzMatchDuplicateBindings"
 
 // Chapter 4 keeps the pinned rule inside one top-level pattern, and only a
 // later alternative of an or may replace a cell a failed earlier one set.
+const matchDuplicateOptionalQuote = "An absent optional element consumes zero values, leaves the iterator done and the actual index unchanged, and does not run its sub-pattern or initialize its bindings."
+
 const matchDuplicateRuleQuote = "Inside one top-level pattern the pinned duplicate-initialization rule and its `or` exception stay."
 const matchDuplicateOrQuote = "A later alternative may replace a cell initialized by a failed earlier alternative of that `or`"
 const matchDuplicateRestrictionQuote = "duplicate-initialization restrictions outside that authorized replacement remain"
 const matchDuplicatePinnedQuote = "It is a runtime `ReferenceError`\nif more than one of these binding patterns actually execute"
 
 func TestMatchDuplicateBindingsQuoted(t *testing.T) {
-	for _, quote := range []string{matchDuplicateRuleQuote, matchDuplicateOrQuote, matchDuplicateRestrictionQuote} {
+	for _, quote := range []string{matchDuplicateRuleQuote, matchDuplicateOrQuote, matchDuplicateRestrictionQuote, matchDuplicateOptionalQuote} {
 		if !strings.Contains(SpecText("004-match.md"), quote) {
 			t.Fatalf("Chapter 4 no longer says %q; review the duplicate-binding oracle", quote)
 		}
@@ -57,6 +59,22 @@ func matchDuplicateRules() []matchDuplicateRule {
 		{"after-or-not-replaced", "([let x and 5] or [6]) and let x", "[6]", thrown},
 		{"outer-or-replaces", "(([let x and 5] or [6]) and { length: 2 }) or { length: let x }", "[6]", "1"},
 		{"or-then-and-live", "([let x] or { y: let x }) and { length: let x }", "[7]", thrown},
+		{"optional-list-none", "[[let x?],[let x?]]", "[[],[]]", "ReferenceError"},
+		{"optional-list-first", "[[let x?],[let x?]]", "[[1],[]]", "1"},
+		{"optional-list-second", "[[let x?],[let x?]]", "[[],[2]]", "2"},
+		{"optional-list-both", "[[let x?],[let x?]]", "[[1],[2]]", "ReferenceError"},
+		{"optional-list-undefined-first", "[[let x?],[let x?]]", "[[undefined],[2]]", "ReferenceError"},
+		{"optional-object-none", "{p?:let x,q?:let x}", "{}", "ReferenceError"},
+		{"optional-object-first", "{p?:let x,q?:let x}", "{p:1}", "1"},
+		{"optional-object-second", "{p?:let x,q?:let x}", "{q:2}", "2"},
+		{"optional-object-both", "{p?:let x,q?:let x}", "{p:1,q:2}", "ReferenceError"},
+		{"optional-object-undefined-first", "{p?:let x,q?:let x}", "{p:undefined,q:2}", "ReferenceError"},
+		{"optional-const-second", "[[const x?],[const x?]]", "[[],[2]]", "2"},
+		{"optional-const-both", "[[const x?],[const x?]]", "[[1],[2]]", "ReferenceError"},
+		{"optional-or-none", "([[let x?],[let x?]] and if(false)) or [[let x?],[let x?]]", "[[],[]]", "ReferenceError"},
+		{"optional-or-first", "([[let x?],[let x?]] and if(false)) or [[let x?],[let x?]]", "[[1],[]]", "1"},
+		{"optional-or-second", "([[let x?],[let x?]] and if(false)) or [[let x?],[let x?]]", "[[],[2]]", "2"},
+		{"optional-or-both", "([[let x?],[let x?]] and if(false)) or [[let x?],[let x?]]", "[[1],[2]]", "ReferenceError"},
 	}
 }
 
