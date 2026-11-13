@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -139,9 +140,20 @@ func writeNativeSidecarProject(t *testing.T, dir string, project nativeSidecarPr
 	}
 }
 
+// nativeSidecarStockSlots bounds the stock tsc processes the parallel matrix
+// runs at once. Each subtest starts two, and 32 subtests run in parallel, so
+// without a bound up to 2*GOMAXPROCS Node processes share the CPU and a
+// loaded host pushes one past its budget though none hangs. The budget
+// starts once a process holds its slot.
+var nativeSidecarStockSlots = make(chan struct{}, 4)
+
 func runNativeSidecarStock(t *testing.T, stock, dir, outDir string) nativeSidecarObservation {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
+	nativeSidecarStockSlots <- struct{}{}
+	defer func() { <-nativeSidecarStockSlots }()
+	// The package budget for a stock child, which VIBELANG_FUZZ_HANG scales
+	// on a loaded gate, and never less than a minute.
+	ctx, cancel := context.WithTimeout(t.Context(), max(time.Minute, stockChildLimit()))
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "node", stock, "-p", dir, "--pretty", "false", "--outDir", filepath.Join(dir, outDir))
 	out, _ := cmd.CombinedOutput()
@@ -504,5 +516,52 @@ func TestNativeSidecarExportEqualsStock(t *testing.T) {
 	before, after := run(sidecar), run(forwarded)
 	if len(before.Codes) != 0 || !slices.Equal(before.Codes, after.Codes) || !mapsEqual(before.Declarations, after.Declarations) {
 		t.Fatalf("%s: copy %+v, re-export %+v", nativeSidecarQuote, before, after)
+	}
+}
+
+// The matrix's stock tsc runs share nativeSidecarStockSlots: a fake stock
+// compiler that counts its running copies never sees more than the bound.
+func TestNativeSidecarStockBounded(t *testing.T) {
+	dir := t.TempDir()
+	running := filepath.Join(dir, "running")
+	if err := os.Mkdir(running, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	counts := filepath.Join(dir, "counts")
+	stock := filepath.Join(dir, "stock.cjs")
+	script := `const fs = require("fs"), path = require("path");
+const running = path.join(__dirname, "running");
+const mine = path.join(running, String(process.pid));
+fs.writeFileSync(mine, "");
+fs.appendFileSync(path.join(__dirname, "counts"), fs.readdirSync(running).length + "\n");
+setTimeout(() => fs.unlinkSync(mine), 300);
+`
+	if err := os.WriteFile(stock, []byte(script), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Goroutines, not parallel subtests: -test.parallel would bound them
+	// itself on a host with few cores.
+	runs := 4 * cap(nativeSidecarStockSlots)
+	var wg sync.WaitGroup
+	for range runs {
+		wg.Go(func() { runNativeSidecarStock(t, stock, t.TempDir(), "stock") })
+	}
+	wg.Wait()
+	text, err := os.ReadFile(counts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Fields(string(text))
+	if len(lines) != runs {
+		t.Fatalf("fake stock tsc ran %d times, want %d", len(lines), runs)
+	}
+	peak := 0
+	for _, line := range lines {
+		var n int
+		fmt.Sscan(line, &n)
+		peak = max(peak, n)
+	}
+	if peak > cap(nativeSidecarStockSlots) {
+		t.Fatalf("%d stock tsc processes ran at once, want at most %d", peak, cap(nativeSidecarStockSlots))
 	}
 }
