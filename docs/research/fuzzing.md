@@ -404,10 +404,16 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzFormat` | One source | A file with a syntax error is refused and a file without one is not; the output emits the same JavaScript token stream and diagnostics as the input, keeps each comment between the same tokens, and a second pass changes nothing (Chapter 28 Idempotence, D276, D372) |
 | `FuzzFix` | Project archive | `--fix` converges, adds no error, keeps comments and contracts, is a fixed point and keeps every exported program's outcome (Configuration and tooling, rule 2). Historical code ranges no longer establish a completion promise. The current tooling chapter explicitly names the `EK1101` codemod and preserves the existing safe-fix/refusal checks; those checks remain. File-scope checks remain pending the current-spec wording for decided detail 270. |
 | `FuzzEditor` | Project archive and offsets | No panic, hang or request error; ranges inside documents; hover, definition and completion answer at a reference to a project declaration; edits stay in their documents, do not overlap, keep a parsing file parsing; an EK quick fix removes its diagnostic and adds no error (D61, D291, D372) |
-| `FuzzIncremental` | Archive and edit script over any file of the project | After each partial edit, the server's diagnostics equal a fresh compilation's (D32, D61) |
+| `FuzzIncremental` | Archive and edit script over any file of the project; contextual words read from Appendix A, with insertion/removal seeds for `effect` and `try` | After each partial edit, the server's diagnostics equal a fresh compilation's (D32, D61) |
 | `FuzzCommandLine` | Archive and a fuzzed argument list | The built binary never panics or hangs; exit statuses as Chapter 28 gives them; printed diagnostics equal the library's; `--fix` as above; `--estree` equals the library conversion; `--help`, `--version`, `--watch`, an LSP and an API session end cleanly |
 
 The `FuzzFormat` module-body corpus varies names, Unicode identifiers, missing names, nested invalid syntax and layout across five modes for eight invalid TypeScript patterns, with native identifier, function, string and comment controls.
+
+`TestIncrementalProjectEditCoverage` exhaustively checks that every token and edit operation can reach every file at every admitted project size. Single-file and three-file seeds replay adding and removing `effect` and `try`.
+
+The admission parser loads Appendix A's productions, contextual keyword table and active prose restrictions. `TestGrammarLoadsCurrentAppendix` rejects an unmatched registered prose reader. It does not run an exhaustive ambiguity search or a random grammar search.
+
+`FuzzIsCallbackInference` requires an inferred `boolean`, rejects `any` and literal-only results, and checks that a `number` annotation fails. `FuzzLegacyEffectAliasRepair` compiles qualified heritage types and requires the unparenthesized shorthand controls to report syntax errors. `FuzzHeldComputedMethodKey` records gaps under the selected row's stable key.
 
 Completeness is checked, not claimed. Each of these tests reads the specification at test time and fails when it grows:
 
@@ -954,7 +960,7 @@ The compiler property `incremental-diagnostics.property.test.mjs` keeps Foldkit'
 
 The Foldkit compiler-identity fixtures contain unmodified build metadata emitted by an actual earlier compiler, including its SHA-256 and complete portable source/configuration inputs. They preserve the same TypeScript version across two real artifacts. The current compiler must agree on warm and fresh diagnostics; `hot` and `env` remain precise pending gaps owned by `migfix-foldkit`, while `url` is an active control. Generated source edits invalidate that historical cache and must agree immediately. The old compiler binary is not shipped or required to replay these real cache bytes.
 
-Inferred Effect default properties retain T3code's typed-provider corpus and compare the TypeScript importer's raw declaration across 18 arity/syntax/form pairs and 24 generated import-route, namespace and nesting variants. Resolved omitted-default cases require byte identity, and `TestInferredEffectDefaultsQuoted` keeps the Chapter 1 declaration oracle in the spec gate.
+Inferred Effect default properties retain T3code's typed-provider corpus and compare the TypeScript importer's raw declaration across 18 arity/syntax/form pairs and 24 generated import-route, namespace and nesting variants. Resolved omitted-default cases require byte identity.
 
 Vite alias-neighbourhood properties start servers through `devServer`, the shared fixture helper that disables dependency optimization during cleanup. Native TypeScript importer resolution remains the paired control across prefixes, nesting and query suffixes.
 

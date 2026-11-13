@@ -65,7 +65,7 @@ func TestToolsHelpers(t *testing.T) {
 	source := "a😀\r\nb catch (e) => 1\n"
 	for op := range 256 {
 		for position := range len(source) + 2 {
-			start, end, insert := toolsIncrementalEdit(source, byte(op), position)
+			start, end, insert := toolsIncrementalEdit(source, byte(op), position, byte(op))
 			edited := source[:start] + insert + source[end:]
 			if start > end || !utf8.ValidString(edited) || strings.Count(edited, "\r") != strings.Count(edited, "\r\n") {
 				t.Fatalf("edit %d at %d: [%d, %d) %q splits the text: %q", op, position, start, end, insert, edited)
@@ -197,19 +197,21 @@ func TestToolsFormatTokens(t *testing.T) {
 }
 
 // TestToolsIncrementalTokens proves every listed token is actually emitted
-// by the decoder, not just selected for a delete operation (Chapter 28, D32).
+// by the decoder, not just selected for a delete operation (Chapter 7, The editor).
 func TestToolsIncrementalTokens(t *testing.T) {
 	seen := map[string]bool{}
-	for op := range 256 {
-		_, _, insert := toolsIncrementalEdit("x", byte(op), 0)
-		if op%6 == 4 {
-			insert = strings.TrimPrefix(insert, "\n")
-		}
-		if insert != "" {
-			seen[insert] = true
+	for choice := range 256 {
+		for op := range 6 {
+			_, _, insert := toolsIncrementalEdit("x", byte(op), 0, byte(choice))
+			if op == 4 {
+				insert = strings.TrimPrefix(insert, "\n")
+			}
+			if insert != "" {
+				seen[insert] = true
+			}
 		}
 	}
-	for _, token := range toolsEditTokens {
+	for _, token := range toolsEditTokens() {
 		if !seen[token] {
 			t.Errorf("incremental token %q is unreachable", token)
 		}

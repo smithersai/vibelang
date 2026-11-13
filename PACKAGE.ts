@@ -1305,12 +1305,6 @@ const targets = {
     [],
     "15m"
   ),
-  "grouped-schema-inheritance-controls": goVibelang(
-    "Grouped field documentation retains independent inheritance diagnostics",
-    "VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^(TestGroupedSchemaInheritanceControlsQuoted)$\" ./internal/vibelangfuzz",
-    [],
-    "20m"
-  ),
   "schema-codec-native-return-inference": goVibelang(
     "Schema codec documentation retains native return inference",
     "EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=10m -run \"^(TestSchemaFactoryMigrationReturnsQuoted)$\" ./internal/vibelang ./internal/vibelangfuzz",

@@ -34,8 +34,8 @@ var isCallbackInferencePatterns = []struct{ key, subject, pattern string }{
 }
 
 // This is a static oracle, not a second runtime comparator: the chapter's
-// Boolean predicate fits expect's unconstrained generic parameter in any
-// enclosing Effect callback. It cannot require a recursive source contract.
+// Boolean predicate must retain exactly boolean in each enclosing Effect
+// callback. A separate number assignment must fail with the native error.
 func FuzzIsCallbackInference(f *testing.F) {
 	startShortBudget(f)
 	requireIsCallbackInferenceQuote(f)
@@ -63,25 +63,49 @@ func FuzzIsCallbackInference(f *testing.F) {
 		}
 		p := isCallbackInferencePatterns[index]
 		key := p.key + "/" + contexts[ctx]
-		source := "declare function expect<T>(value: T): { toBe(expected: boolean): void }; declare function test<E,R>(fn: () => Effect.Effect<void,E,R>): void; "
-		body := "expect(" + p.subject + " is " + p.pattern + ").toBe(true)"
-		switch contexts[ctx] {
-		case "declaration":
-			source += "export effect function check() { " + body + " }"
-		case "callback":
-			source += "test(effect () => { " + body + " })"
-		default:
-			source += "test(effect () => { test(effect () => { " + body + " }) })"
+		body := isCallbackBooleanWitness(p.subject + " is " + p.pattern)
+		files := map[string]string{
+			"main.vibe":    isCallbackContext(contexts[ctx], body),
+			"control.vibe": isCallbackContext(contexts[ctx], "const invalid: number = ("+p.subject+" is "+p.pattern+");"),
 		}
-		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}})
+		r, err := w.Compile(t.Context(), Project{Files: files})
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer r.Remove()
+		controls := 0
 		for _, d := range r.Diagnostics {
-			if d.Category() == diagnostics.CategoryError {
-				Gap(t, "FuzzIsCallbackInference", key, "Boolean pattern in generic callback: %s", d.String())
+			if d.Category() != diagnostics.CategoryError {
+				continue
+			}
+			if d.File() != nil && strings.HasSuffix(d.File().FileName().AsString(), "/control.vibe") && !IsEK(d) && d.Code() == 2322 {
+				controls++
+			} else {
+				Gap(t, "FuzzIsCallbackInference", key, "Boolean pattern witness: %s", d.String())
 			}
 		}
+		if controls != 1 {
+			Gap(t, "FuzzIsCallbackInference", key, "non-Boolean annotation must report exactly one TS2322, got %d", controls)
+		}
+		ExpectPending(t, "FuzzIsCallbackInference", key)
+		ExpectPending(t, "FuzzIsCallbackInference", specCorpusKey(t))
 	})
+}
+
+// Check the inferred type too: an annotation alone would hide an any result.
+// The conditional rejects any, unknown, literal booleans and non-Booleans.
+func isCallbackBooleanWitness(expression string) string {
+	return "const actual = (" + expression + "); const b: boolean = actual; const exact: 0 extends (1 & typeof actual) ? 0 : [typeof actual] extends [boolean] ? boolean extends typeof actual ? 1 : 0 : 0 = 1; void b; void exact; expect(" + expression + ").toBe(true);"
+}
+
+func isCallbackContext(context, body string) string {
+	source := "export {}; declare function expect<T>(value: T): { toBe(expected: boolean): void }; declare function test<E,R>(fn: () => Effect.Effect<void,E,R>): void; "
+	switch context {
+	case "declaration":
+		return source + "export effect function check() { " + body + " }"
+	case "callback":
+		return source + "test(effect () => { " + body + " })"
+	default:
+		return source + "test(effect () => { test(effect () => { " + body + " }) })"
+	}
 }

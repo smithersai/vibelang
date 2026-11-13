@@ -6,13 +6,9 @@ import (
 	"strings"
 )
 
-// Appendix A's prose rules. Beside its productions, Appendix A states rules
-// in words: a table of contextual keywords, which words are reserved in
-// effect code, which tokens share a line, and sentences that choose between
-// two readings. The search parses every sentence twice, by the productions
-// alone and with these rules, and reports where the two disagree as well as
-// where either reading is ambiguous. Each rule is recognized by its words;
-// a sentence or table cell it can't read is listed, never dropped.
+// Appendix A's contextual keyword table and disambiguation sentences
+// constrain admission parsing. Every registered prose reader must match a
+// current sentence; missing readers are reported when the appendix is loaded.
 
 // A grammarKeywordRule is one row of the contextual keyword table.
 type grammarKeywordRule struct {
@@ -32,7 +28,7 @@ type grammarKwElem struct {
 	toks []string
 }
 
-// A grammarProseRule is a sentence of Appendix A the search applies.
+// A grammarProseRule is a sentence of Appendix A the admission parser applies.
 type grammarProseRule struct {
 	Kind, Text string
 }
@@ -45,7 +41,6 @@ var (
 	grammarShorthandStart = regexp.MustCompile("at a statement start, a name other than ((?:`[^`]+`(?:, | or )?)+), then `\\(` or `<`[^;]*;?")
 	grammarBacktick       = regexp.MustCompile("`([^`]*)`")
 	grammarTableRow       = regexp.MustCompile(`^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*.*\|\s*$`)
-	grammarSentences      = regexp.MustCompile(`[^.]*(?:\.[^ \n][^.]*)*\.`)
 )
 
 func grammarReadKeywordTable(text string) []grammarKeywordRule {
@@ -247,20 +242,18 @@ func grammarHasWordPrefix(s, w string) bool {
 
 // A grammarProseSet is the prose rules of one appendix, ready to apply.
 type grammarProseSet struct {
-	keywords               []grammarKeywordRule
-	words                  map[string]bool
-	reserved               map[string]map[string]bool // identifier class → words effect code reserves
-	sameLine               int                        // 1: the token after a keyword is on its line; 2: every token the table names is
-	rules                  []grammarProseRule
-	tryOneLine, tryAnyLine bool
-	limitByParen           bool     // "a parenthesized group followed by another ( is the concurrency limit"
-	bodyless               []string // the tokens after which a bodyless declaration continues
-	exprStart              map[string]bool
-	unread                 []string
+	keywords   []grammarKeywordRule
+	words      map[string]bool
+	reserved   map[string]map[string]bool // identifier class → words effect code reserves
+	sameLine   int                        // 2: every token the table names is on the keyword's line
+	tryAnyLine bool
+	bodyless   []string // the tokens after which a bodyless declaration continues
+	exprStart  map[string]bool
+	unread     []string
 }
 
 func grammarNewProseSet(a *grammarAppendixData, g *grammarCfg) *grammarProseSet {
-	s := &grammarProseSet{keywords: a.keywords, words: map[string]bool{}, reserved: map[string]map[string]bool{}, rules: a.rules}
+	s := &grammarProseSet{keywords: a.keywords, words: map[string]bool{}, reserved: map[string]map[string]bool{}}
 	for _, k := range a.keywords {
 		for _, w := range k.Words {
 			s.words[w] = true
@@ -283,20 +276,10 @@ func grammarNewProseSet(a *grammarAppendixData, g *grammarCfg) *grammarProseSet 
 					s.reserve(class, w[1])
 				}
 			}
-		case "reference":
-			for _, w := range grammarBacktick.FindAllStringSubmatch(r.Text, 2) {
-				s.reserve("IdentifierReference", w[1])
-			}
-		case "same-line-first":
-			s.sameLine = max(s.sameLine, 1)
 		case "same-line-all":
 			s.sameLine = 2
-		case "try-one-line":
-			s.tryOneLine = true
 		case "try-any-line":
 			s.tryAnyLine = true
-		case "limit-by-paren":
-			s.limitByParen = true
 		case "bodyless":
 			s.bodyless = []string{"{"}
 			if strings.Contains(r.Text, "`<`") {
@@ -323,29 +306,26 @@ func (s *grammarProseSet) reserve(class, w string) {
 	s.reserved[class][w] = true
 }
 
-// readProseRules finds the sentences of Appendix A the search applies.
+// grammarProseRuleTexts registers the current admission prose readers.
 var grammarProseRuleTexts = []struct {
 	kind string
 	re   *regexp.Regexp
 }{
 	{"reserved", regexp.MustCompile("`fork` and `join` are reserved words")},
-	{"reference", regexp.MustCompile("`fork` and `join` are keywords where an `IdentifierReference` could stand")},
-	{"same-line-first", regexp.MustCompile(`Each one and the token after it are on one line`)},
 	{"same-line-all", regexp.MustCompile(`keyword only before the tokens (?:below|listed), on the same line`)},
-	{"try-one-line", regexp.MustCompile("(statement that starts with `try \\{`|At the start of a statement, `try \\{` begins)")},
 	{"try-any-line", regexp.MustCompile("`try` followed by `\\{`, on the same line or not")},
-	{"limit-by-paren", regexp.MustCompile("a parenthesized group followed by another `\\(` is the concurrency limit")},
 	{"bodyless", regexp.MustCompile("(The body of an `error` or `schema error` declaration is optional[^\n]*|no body: ends as a TypeScript statement)")},
 }
 
-func grammarReadProseRules(text string) []grammarProseRule {
-	var out []grammarProseRule
+func grammarReadProseRules(text string) (out []grammarProseRule, missing []string) {
 	for _, p := range grammarProseRuleTexts {
 		if m := p.re.FindString(text); m != "" {
 			out = append(out, grammarProseRule{Kind: p.kind, Text: m})
+		} else {
+			missing = append(missing, p.kind)
 		}
 	}
-	return out
+	return out, missing
 }
 
 // mark gives each token its keyword state under the table.
@@ -512,7 +492,6 @@ func (s *grammarProseSet) apply(g *grammarCfg) {
 			if !strings.Contains(c, "on one line") {
 				continue
 			}
-			s.rules = append(s.rules, grammarProseRule{Kind: "one-line", Text: name + ": (" + c + ")"})
 			for _, nt := range g.named(name) {
 				for _, r := range g.byLHS[nt] {
 					rule := &g.rules[r]
@@ -556,7 +535,7 @@ func (s *grammarProseSet) apply(g *grammarCfg) {
 			}
 		}
 	}
-	if !s.tryOneLine && !s.tryAnyLine {
+	if !s.tryAnyLine {
 		return
 	}
 	for _, es := range g.named("ExpressionStatement") {
@@ -565,44 +544,4 @@ func (s *grammarProseSet) apply(g *grammarCfg) {
 			rule.rhs = append([]grammarGsym{{kind: grammarSymNotAhead, seqs: [][]string{{"try", "{"}}, on: !s.tryAnyLine, prose: true}}, rule.rhs...)
 		}
 	}
-}
-
-// keep reports whether a derivation meets the prose rules the parser can't
-// check symbol by symbol.
-func (s *grammarProseSet) keep(p *grammarEarley, t *grammarPtree) bool {
-	if t.rule < 0 {
-		return true
-	}
-	name := p.g.base(t.nt)
-	switch {
-	case s.limitByParen && name == "ForConcurrent" && len(t.kids) > 3:
-		// No limit and a body that starts with "(": the prose reads the
-		// head as the limit.
-		limit := t.kids[2]
-		body := t.kids[len(t.kids)-1]
-		if limit.i == limit.j && body.i < len(p.toks) && p.toks[body.i].text == "(" {
-			return false
-		}
-	}
-	for _, k := range t.kids {
-		if !s.keep(p, k) {
-			return false
-		}
-	}
-	return true
-}
-
-// hasFilters reports whether keep can reject a derivation.
-func (s *grammarProseSet) hasFilters() bool {
-	return s.limitByParen
-}
-
-// reservedAny reports whether effect code reserves a word in any position.
-func (s *grammarProseSet) reservedAny(w string) bool {
-	for _, ws := range s.reserved {
-		if ws[w] {
-			return true
-		}
-	}
-	return false
 }

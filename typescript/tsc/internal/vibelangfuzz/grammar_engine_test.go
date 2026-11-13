@@ -43,6 +43,9 @@ func TestGrammarLoadsCurrentAppendix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, name := range lab.a.missingProseRules {
+		t.Errorf("prose reader %q matches no current Appendix A sentence", name)
+	}
 	for _, name := range lab.g.unresolved {
 		if name == "LineTerminator" {
 			t.Fatal("LineTerminator must resolve to a line-break assertion")

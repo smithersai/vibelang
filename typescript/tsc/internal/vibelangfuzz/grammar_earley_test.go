@@ -36,7 +36,6 @@ type grammarParseMode struct {
 	effect  bool
 	prose   bool
 	noWords bool // with prose: leave out the keyword table and reserved words
-	filters bool // the productions, then the prose rules that reject whole derivations
 	names   bool // with prose: a property name is never a keyword, the reading the examples assume
 }
 

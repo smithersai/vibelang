@@ -357,8 +357,6 @@ func grammarParseElems(toks []grammarNtok, i int) ([][]grammarNelem, int) {
 	return alts, i
 }
 
-var grammarNotationQuoted = regexp.MustCompile(`"([^"]*)"`)
-
 // grammarNoLTMark stands in a lookahead sequence for [no LineTerminator here]
 // between two of its tokens; it matches no token.
 const grammarNoLTMark = "\n"
@@ -900,42 +898,24 @@ var grammarProseMeanings = []struct {
 	{regexp.MustCompile(`^(a non-static get accessor|TypeScript's get accessor, without static)`), "GetAccessor", ""},
 	{regexp.MustCompile(`^a LineTerminator before the next token`), "LineTerminator", ""},
 	{regexp.MustCompile(`^an ordinary TypeScript import declaration using ModuleSpecifier`), "TsImportDeclaration", "TypeScript's import, side-effect form included, with VIP-40's ModuleSpecifier"},
-	{regexp.MustCompile(`^Undecided \(pending VIP\): UnaryExpression`), "UnaryExpression", "undecided; the search takes the first option, UnaryExpression"},
 	{regexp.MustCompile(`^EffectMethod named call`), "EffectMethod", "an effect method, bodiless in a task through its \";\" alternative; the call name, static and single-call rules are static (EK5501)"},
 }
 
-// grammarUndefinedMeanings stands in for a name a production uses and none
-// defines, where Appendix A says what it may be: "Undecided (pending VIP):
-// ForkOperand, ... (a UnaryExpression or an AssignmentExpression)" gives the
-// first option. The name is still reported as undefined.
-var grammarUndefinedMeanings = map[string]string{"ForkOperand": "UnaryExpression"}
-
 // An grammarAppendixData is Appendix A read from one copy of the specification.
 type grammarAppendixData struct {
-	file     string
-	defs     []grammarNdef
-	examples []grammarExample
-	keywords []grammarKeywordRule
-	rules    []grammarProseRule
-	text     string // Appendix A's prose
+	file              string
+	defs              []grammarNdef
+	keywords          []grammarKeywordRule
+	missingProseRules []string
+	rules             []grammarProseRule
+	text              string // Appendix A's prose
 	// relational drops the expression type-argument alternatives of
 	// MemberExpression: the reading TypeScript's parser falls back to when
 	// tryParseTypeArgumentsInExpression rewinds a list that does not close.
 	relational bool
 }
 
-// A grammarExample is a line of a text block in Appendix A that is not a
-// production: a sentence, then, after two spaces, what it means.
-type grammarExample struct {
-	Line     int
-	Sentence string
-	Meaning  string
-	joins    bool // the description ends with a comma: the next line goes on with this one
-}
-
-var grammarExampleSplit = regexp.MustCompile(`\s{2,}`)
-
-// grammarReadAppendix reads Appendix A's productions and examples.
+// grammarReadAppendix reads Appendix A's productions and active prose rules.
 func grammarReadAppendix(text, file string) (*grammarAppendixData, error) {
 	a := &grammarAppendixData{file: file}
 	lines := strings.Split(text, "\n")
@@ -996,46 +976,10 @@ func grammarReadAppendix(text, file string) (*grammarAppendixData, error) {
 			continue
 		}
 		flush()
-		if strings.TrimSpace(l) == "" {
-			continue
-		}
-		parts := grammarExampleSplit.Split(strings.TrimSpace(l), -1)
-		ex := grammarExample{Line: n, Sentence: parts[0]}
-		if len(parts) > 1 {
-			ex.Meaning = parts[len(parts)-1]
-		}
-		var prev *grammarExample
-		if k > 0 && nums[k-1] == n-1 && len(a.examples) > 0 && a.examples[len(a.examples)-1].Line == n-1 {
-			prev = &a.examples[len(a.examples)-1]
-		}
-		switch {
-		case prev != nil && grammarExampleSplit.MatchString(l[:min(len(l), 2)]):
-			// An indented line continues the description above it.
-			prev.Meaning += " " + strings.TrimSpace(l)
-			prev.Line = n
-			continue
-		case prev != nil && prev.joins:
-			// A description that ends with a comma goes on with the next
-			// line, whose sentence goes on with this one's.
-			prev.Sentence += "\n" + ex.Sentence
-			prev.Meaning += " " + ex.Meaning
-			prev.Line = n
-			prev.joins = strings.HasSuffix(ex.Meaning, ",")
-			continue
-		}
-		ex.joins = strings.HasSuffix(ex.Meaning, ",")
-		a.examples = append(a.examples, ex)
-		// "schema as T;  data as T;  syntax errors": a middle column that
-		// ends like a statement is another sentence with the same meaning.
-		for _, mid := range parts[1:max(1, len(parts)-1)] {
-			if strings.HasSuffix(mid, ";") {
-				a.examples = append(a.examples, grammarExample{Line: n, Sentence: mid, Meaning: ex.Meaning})
-			}
-		}
 	}
 	flush()
 	a.keywords = grammarReadKeywordTable(a.text)
-	a.rules = grammarReadProseRules(a.text)
+	a.rules, a.missingProseRules = grammarReadProseRules(a.text)
 	return a, nil
 }
 
@@ -1297,8 +1241,7 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 			g.add(lhs, g.expand(d.name, alt, src, d.vibe, all), src, d.vibe)
 		}
 	}
-	// Resolve names; a name nothing defines is an opaque terminal, unless
-	// undefinedMeanings gives it a stand-in. Either way it is listed.
+	// Resolve names; a name nothing defines is an opaque terminal and is listed.
 	missing := map[string]bool{}
 	for r := range g.rules {
 		for k, s := range g.rules[r].rhs {
@@ -1310,11 +1253,6 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 				continue
 			}
 			missing[s.text] = true
-			if stand, ok := grammarUndefinedMeanings[s.text]; ok {
-				g.rules[r].rhs[k].text = stand
-				g.rules[r].rhs[k].nt = g.index[stand]
-				continue
-			}
 			g.rules[r].rhs[k] = grammarGsym{kind: grammarSymClass, text: "‹" + s.text + "›"}
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"unicode"
 	"unicode/utf8"
@@ -18,14 +19,14 @@ import (
 // character or a token inserted or deleted, VibeLang's own syntax included),
 // and after each one compares the diagnostics the server reports with those
 // of a fresh compilation of the same text: their source, code, severity and
-// range. The server is the compiler's own (Chapter 28, "The editor", D32),
-// and its diagnostics are the compiler's, at .vibe spans (Chapter 28,
+// range. The server is the compiler's own (Chapter 7, "The editor", D32),
+// and its diagnostics are the compiler's, at .vibe spans (Chapter 7,
 // "Diagnostics", D61), so reusing an earlier snapshot's work must never
 // change the answer. Between edits it also asks for hover and completions
 // at the edit, as an editor does, so that state a request leaves behind is
 // part of what the next snapshot could wrongly reuse.
 //
-// edits holds four-byte records: a file selector, an operation, then a
+// edits holds four-byte records: a file/operation selector, a token selector, then a
 // big-endian byte offset into that file modulo its length.
 func FuzzIncremental(f *testing.F) {
 	startShortBudget(f)
@@ -42,12 +43,23 @@ func FuzzIncremental(f *testing.F) {
 		}
 		f.Add(Archive(seed.Files), edits)
 	}
-	// Chapter 28, The editor: an imported .vibe dependency must invalidate
+	// Chapter 7, The editor: an imported .vibe dependency must invalidate
 	// its importer's snapshot when edited, just like the open main file.
 	f.Add(Archive(map[string]string{
 		"main.vibe": "import { value } from \"./dep.vibe\"\nexport function main() { return Effect.succeed(value) }\n",
 		"dep.vibe":  "export const value = 1\n",
 	}), []byte{0, 3, 0, 21})
+	for _, seed := range toolsKeywordEditSeeds() {
+		f.Add(Archive(map[string]string{"main.vibe": seed.source}), seed.edits)
+		// Keep the edited main file after two dependencies in the selector.
+		edits := slices.Clone(seed.edits)
+		edits[0], edits[4] = 2, 2*3+2
+		f.Add(Archive(map[string]string{
+			"alpha.vibe": "export const alpha = 1",
+			"beta.vibe":  "export const beta = 2",
+			"main.vibe":  seed.source,
+		}), edits)
+	}
 	w := NewWorkspace(f)
 	sessions := newToolsSessions(f, w)
 	f.Fuzz(func(t *testing.T, archive string, edits []byte) {
@@ -116,10 +128,11 @@ func FuzzIncremental(f *testing.F) {
 			}
 			compare("didOpen", main)
 			for i := 0; i+3 < len(edits) && i < 4*10; i += 4 {
-				name := names[int(edits[i])%len(names)]
+				file, operation, choice := toolsIncrementalSelectors(edits[i], edits[i+1], len(names))
+				name := names[file]
 				uri := toolsURI(dir, name)
 				text := files[name]
-				start, end, insert := toolsIncrementalEdit(text, edits[i+1], int(edits[i+2])<<8|int(edits[i+3]))
+				start, end, insert := toolsIncrementalEdit(text, operation, int(edits[i+2])<<8|int(edits[i+3]), choice)
 				if start == end && insert == "" {
 					continue
 				}
@@ -160,7 +173,7 @@ func FuzzIncremental(f *testing.F) {
 }
 
 // toolsProjectFiles includes dependencies and configuration as edit targets.
-// Chapter 28's editor serves the project, rather than a single document.
+// Chapter 7's editor serves the project, rather than a single document.
 func toolsProjectFiles(files map[string]string) []string {
 	var names []string
 	for name := range files {
@@ -181,7 +194,7 @@ func toolsFreshDiagnostics(t *testing.T, w *Workspace, files map[string]string, 
 	defer os.RemoveAll(dir)
 	program := toolsProgram(w, dir)
 	if program == nil || program.GetSourceFile(toolsFileName(dir, name)) == nil {
-		// Chapter 28, The editor (D32/D61): an open document excluded by a
+		// Chapter 7, The editor (D32/D61): an open document excluded by a
 		// configuration edit is served by an inferred project. Compare with
 		// a fresh server's project selection, rather than requesting a file
 		// absent from a configured compiler program.
@@ -224,21 +237,65 @@ func toolsDiagnosticDiff(want, got []*lsproto.Diagnostic) (missing, extra []stri
 	return missing, extra
 }
 
-// toolsEditTokens are what an incremental edit inserts or replaces: VibeLang's
-// own syntax (Chapters 1-11 and SKILL.md's forms) beside TypeScript's
-// punctuation.
-var toolsEditTokens = []string{
-	"|>", "%", "!", "catch", "catch (e) => ", "provide", "fork", "join", "match", "when", "is", "error", "service", "control",
-	"schema", "data", "throw", "sync", "using", "wire", "detach", "do", "mutable", "module", "await.all", "await.race",
-	"Effect", "Layer", "Option", "yield", "return", "function", "export", "const", "let", "if", "else", "for", "of", "new",
-	"=>", "{", "}", "(", ")", "[", "]", ";", ",", ".", ":", "=", "?", "<", ">", "\n", " ", "\"", "'", "`", "${", "//",
-	"/*", "*/", "@", "#", "1", "x", "e", "_tag",
+// toolsEditTokens combines Appendix A's contextual words with native
+// TypeScript heads, compound forms and punctuation. Read the table on first
+// use so subprocess probes need no specification files during initialization.
+var toolsEditTokens = sync.OnceValue(func() []string {
+	tokens := []string{
+		"effect ", "effect", "try", "try.all", "interface", "class", "try ", "async",
+		"|>", "%", "!", "catch", "catch (e) => ", "error", "service", "schema", "data", "throw", "using", "do", "module",
+		"try.race", "try.any", "try.allSettled", "fork", "join",
+		"Effect", "Layer", "Option", "yield", "return", "function", "export", "const", "let", "if", "else", "for", "of", "new",
+		"=>", "{", "}", "(", ")", "[", "]", ";", ",", ".", ":", "=", "?", "<", ">",
+	}
+	tokens = append(tokens, "\n", " ", "\"", "'", "`", "${", "//", "/*", "*/", "@", "#", "1", "x", "e", "_tag")
+	for _, row := range grammarReadKeywordTable(SpecText(grammarAppendix)) {
+		for _, word := range row.Words {
+			if !slices.Contains(tokens, word) {
+				tokens = append(tokens, word)
+			}
+		}
+	}
+	return tokens
+})
+
+// These edits cross checking-context boundaries, then remove the keyword
+// again: a native function becomes effect, and a cold call becomes try.
+func toolsKeywordEditSeeds() []struct {
+	source string
+	edits  []byte
+} {
+	var seeds []struct {
+		source string
+		edits  []byte
+	}
+	for _, row := range []struct {
+		source, before string
+		token          byte
+	}{
+		{"export function check() { return Effect.succeed(1) }", "function", 0},
+		{"export effect function check() { return Effect.succeed(1) }", "Effect.succeed", 6},
+	} {
+		offset := strings.Index(row.source, row.before)
+		seeds = append(seeds, struct {
+			source string
+			edits  []byte
+		}{row.source, []byte{0, row.token, byte(offset >> 8), byte(offset), 2, row.token, byte(offset >> 8), byte(offset)}})
+	}
+	return seeds
+}
+
+// The first byte spans the Cartesian product of files and operations; the
+// second independently selects the token. toolsTooLarge admits at most twelve
+// files, so all six operations fit for every file in the first byte.
+func toolsIncrementalSelectors(selector, token byte, files int) (int, byte, byte) {
+	return int(selector) % files, byte(int(selector) / files), token
 }
 
 // toolsIncrementalEdit decodes one edit of text: an operation byte and a
-// position. It returns the byte range it replaces and its new text. Neither
-// end splits a character or a "\r\n".
-func toolsIncrementalEdit(text string, op byte, position int) (int, int, string) {
+// position, with a separate token selector. It returns the replacement range
+// and text. Neither end splits a character or a line ending.
+func toolsIncrementalEdit(text string, op byte, position int, choice byte) (int, int, string) {
 	snap := func(pos int) int {
 		pos = toolsRuneStart(text, pos)
 		if pos > 0 && pos < len(text) && text[pos-1] == '\r' && text[pos] == '\n' {
@@ -257,7 +314,10 @@ func toolsIncrementalEdit(text string, op byte, position int) (int, int, string)
 		_, size := utf8.DecodeRuneInString(text[pos:])
 		return pos + size
 	}
-	token := toolsEditTokens[int(op)%len(toolsEditTokens)]
+	// Token choice is independent of the operation: a token index modulo six
+	// must not make a keyword unreachable for insertion or replacement.
+	tokens := toolsEditTokens()
+	token := tokens[int(choice)%len(tokens)]
 	switch op % 6 {
 	case 0: // insert a token
 		return pos, pos, token

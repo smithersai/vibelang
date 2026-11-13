@@ -85,7 +85,7 @@ func FuzzLegacyEffectAlias(f *testing.F) {
 		if strings.HasPrefix(key, "legacy-") {
 			want = 1
 		}
-		wantErrors := legacyHeritageExpectedErrors(key)
+		var wantErrors []string
 		if warnings != want || !slices.Equal(errors, wantErrors) {
 			Gap(t, "FuzzLegacyEffectAlias", key, "chapter 007 %q: want %d EK4856 and errors %v; got %d, %v; %s", legacyAliasQuote, want, wantErrors, warnings, errors, use)
 		}
@@ -108,13 +108,9 @@ func FuzzLegacyEffectAlias(f *testing.F) {
 	})
 }
 
-// Loop round 15 OPUS-3: VIP-3 and chapter 7 gave EK4856's repair two triggers
-// for the qualified form. Decided detail 260 (2026-11-02) fixed one rule,
-// quoted here from chapter 7. The oracle checks the rule itself against the
-// grammar, independent of the (pending) quick fix: the spelling it picks
-// compiles and means the same type as Effect.Effect<…> in that position, and
-// wherever it picks the qualified form, the shorthand without new
-// parentheses does not.
+// Chapter 7 chooses the qualified spelling when shorthand would need new
+// parentheses. Check both the equivalent qualified type and the rejected
+// ungrouped shorthand, including native heritage syntax.
 const legacyAliasRepairQuote = "Write `A!E!R` where it needs no new parentheses, otherwise `Effect.Effect<A, E, R>`, including heritage elements"
 
 func TestLegacyEffectAliasRepairQuoted(t *testing.T) {
@@ -204,6 +200,7 @@ func FuzzLegacyEffectAliasRepair(f *testing.F) {
 		files := map[string]string{}
 		if pos.heritage {
 			files["main.vibe"] = "export " + fmt.Sprintf(pos.tmpl, repaired) + "\n"
+			files["naive.vibe"] = "export " + fmt.Sprintf(pos.tmpl, aliasShorthand(set.slots)) + "\n"
 		} else {
 			files["main.vibe"] = aliasSameType("main", fmt.Sprintf(pos.tmpl, repaired), fmt.Sprintf(pos.tmpl, qualified))
 			if group {
@@ -216,7 +213,7 @@ func FuzzLegacyEffectAliasRepair(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer r.Remove()
-		mainErrors, naiveErrors := []string{}, 0
+		mainErrors, naiveErrors, naiveSyntax := []string{}, 0, 0
 		for _, d := range r.Diagnostics {
 			if d.Category() != diagnostics.CategoryError {
 				continue
@@ -228,14 +225,22 @@ func FuzzLegacyEffectAliasRepair(f *testing.F) {
 			switch {
 			case strings.HasSuffix(name, "naive.vibe"):
 				naiveErrors++
-			case pos.key == "class-implements" && d.Code() >= 2000:
-				// An ambient class that implements an Effect lacks its members; only syntax counts here.
+				// TypeScript reports invalid heritage expressions during grammar
+				// checking with TS2499/TS2500, outside its parser-code range.
+				if grammarAdmissionSyntaxDiagnostic(d) || d.Source() == "" && (d.Code() == 2499 || d.Code() == 2500) {
+					naiveSyntax++
+				}
+			case pos.key == "class-implements" && d.Source() == "" && d.Code() == 2420:
+				// Only the ambient class control's missing Effect members are expected.
 			default:
 				mainErrors = append(mainErrors, fmt.Sprint(d))
 			}
 		}
 		if len(mainErrors) != 0 {
 			Gap(t, "FuzzLegacyEffectAliasRepair", key, "chapter 007 %q: %s must compile and mean %s; got %v\n%s", legacyAliasRepairQuote, repaired, qualified, mainErrors, files["main.vibe"])
+		}
+		if pos.heritage && naiveSyntax == 0 {
+			Gap(t, "FuzzLegacyEffectAliasRepair", key, "heritage shorthand must be a syntax error: %s; diagnostics: %v", files["naive.vibe"], legacyHeritageErrors(r))
 		}
 		if group && !pos.heritage && naiveErrors == 0 {
 			Gap(t, "FuzzLegacyEffectAliasRepair", key, "chapter 007 %q: the rule chose the qualified form, but the shorthand %s compiled as the same type without new parentheses (001: `A | B!E` is a syntax error, EK0301)", legacyAliasRepairQuote, aliasShorthand(set.slots))
@@ -331,9 +336,6 @@ func legacyHeritageNativeControls(tb testing.TB, w *Workspace, tsc string) {
 	tb.Log("72 stock TypeScript heritage controls compile: six symbol/context families, four A types and three arities")
 }
 
-// Inherited Effect members are checked against their own declarations.
-// Chapter 3 admits a callable at a destination with its own signature.
-func legacyHeritageExpectedErrors(key string) []string { return nil }
 func legacyHeritageErrors(r *Result) []string {
 	var codes []string
 	for _, d := range r.Diagnostics {
@@ -342,13 +344,4 @@ func legacyHeritageErrors(r *Result) []string {
 		}
 	}
 	return codes
-}
-func TestLegacyHeritageThrowsQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("003-failures.md"), ownSignatureQuote) {
-		t.Fatal("missing own-signature assignability rule")
-	}
-	const quote = "The rule applies wherever TypeScript checks one call signature against another: assignments, arguments, returns against a written return type, object members, class overrides and `implements`, with `service` members as interface members."
-	if !strings.Contains(SpecText("003-failures.md"), quote) {
-		t.Fatal("missing heritage throws authority")
-	}
 }

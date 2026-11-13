@@ -6,7 +6,7 @@ import (
 	"unicode"
 )
 
-// grammarLexSource splits source text into the search's tokens: words, string,
+// grammarLexSource splits source text into the admission parser's tokens: words, string,
 // number and template literals, punctuators by longest match, and prose
 // terminals written ‹Name›. Comments are skipped. It doesn't lex regular
 // expressions, which the subset leaves out, and it never joins ">" ">",
@@ -256,25 +256,6 @@ func grammarSpell(toks []grammarToken) string {
 			if t.nl {
 				b.WriteByte('\n')
 			} else {
-				b.WriteByte(' ')
-			}
-		}
-		b.WriteString(t.text)
-	}
-	return b.String()
-}
-
-// grammarTight writes tokens with no space between two punctuators, as people
-// write "A!!" or "x!.y"; relexing it shows a token boundary the grammar
-// depends on but the lexer doesn't keep.
-func grammarTight(toks []grammarToken) string {
-	var b strings.Builder
-	for i, t := range toks {
-		if i > 0 {
-			switch {
-			case t.nl:
-				b.WriteByte('\n')
-			case t.kind != 'p' || toks[i-1].kind != 'p':
 				b.WriteByte(' ')
 			}
 		}

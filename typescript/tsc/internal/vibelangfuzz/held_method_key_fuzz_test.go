@@ -24,6 +24,7 @@ func FuzzHeldComputedMethodKey(f *testing.F) {
 		{"static", `class{static [KEY]():number{return 7}}`},
 		{"property", `{[KEY]:7}`},
 	}
+	f.Add("unrecognized-key", uint8(0))
 	for _, row := range rows {
 		f.Add(row.key, uint8(64))
 		f.Add(row.key, uint8(128))
@@ -56,20 +57,20 @@ func FuzzHeldComputedMethodKey(f *testing.F) {
 		source := `import {Effect as E} from "effect"; export effect function main(){return ` + collection + `}`
 		p := vibelangmapper.Project(source, vibelangmapper.FileContext{})
 		if len(p.Diagnostics) != 0 {
-			Gap(t, "FuzzHeldComputedMethodKey", key, "admitted key reports %v", p.Diagnostics)
+			Gap(t, "FuzzHeldComputedMethodKey", row.key, "admitted key reports %v", p.Diagnostics)
 		}
 		runsKey := strings.Contains(p.Text, "$try(") || strings.Contains(p.Text, "$run(E.sync(") || strings.Contains(p.Text, "yield* E.sync(")
 		if runsKey == cold || strings.Count(p.Text, "E.sync(") != 1 {
-			Gap(t, "FuzzHeldComputedMethodKey", key, "computed name must keep one defining-context execution: %s", p.Text)
+			Gap(t, "FuzzHeldComputedMethodKey", row.key, "computed name must keep one defining-context execution: %s", p.Text)
 		}
 		js, _, diagnostics := vibelangmapper.Emit(source, vibelangmapper.FileContext{})
 		if len(diagnostics) != 0 {
-			Gap(t, "FuzzHeldComputedMethodKey", key, "executable projection rejects admitted key: %v", diagnostics)
+			Gap(t, "FuzzHeldComputedMethodKey", row.key, "executable projection rejects admitted key: %v", diagnostics)
 		}
 		cmd := exec.CommandContext(t.Context(), "node", "--input-type=module", "--check")
 		cmd.Stdin = strings.NewReader(js)
 		if output, err := cmd.CombinedOutput(); err != nil {
-			Gap(t, "FuzzHeldComputedMethodKey", key, "generated JavaScript is invalid: %v\n%s\n%s", err, output, js)
+			Gap(t, "FuzzHeldComputedMethodKey", row.key, "generated JavaScript is invalid: %v\n%s\n%s", err, output, js)
 		}
 
 	})
