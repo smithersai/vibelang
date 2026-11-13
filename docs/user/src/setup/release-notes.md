@@ -12,6 +12,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 ### Bugs fixed since 0.0.12
 
+- The website could change a claim about a specific release to name the latest published version. Versioned claims now keep their original version while installation pins and platform information follow the selected release.
+
 - Contributor tests could report a missing or mismatched `typescript` installation as a generator failure. They now report the required version and its installation command before running reference programs.
 
 - A site deployment could fail because release notes mentioned an older package version in a bug description. Historical entries now pass the version check, while install commands on other pages still require the current version.

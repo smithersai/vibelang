@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Current-release references come from the compiler manifest; release notes
-// and historical compiler-gap notes retain the versions they describe.
+// Installation metadata comes from the compiler manifest; versioned prose
+// retains the release it describes.
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs"
 import { join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -23,7 +23,9 @@ export function renderReleasePage(path, text, version, effect) {
   let output = text
     .replace(new RegExp(String.raw`\b(vibelang(?:-(?!typescript@)[a-z0-9-]+)?@)` + semver, "g"), (_, prefix) => prefix + version)
     .replace(/\b(vibelang-typescript@\d+\.\d+\.)\d+/g, (_, prefix) => prefix + typescriptShimPatch(version))
-    .replace(new RegExp(String.raw`\b((?:VibeLang|vibelang|[Vv]ersion|Rehearsed for|In) )` + semver, "g"), (_, prefix) => prefix + version)
+    .replace(new RegExp(String.raw`\b(VibeLang )` + semver + String.raw`(?= \(TypeScript )`, "g"), (_, prefix) => prefix + version)
+    .replace(new RegExp(String.raw`\b(Version )` + semver + String.raw`(?= (?:installs from npm|(?:provides|publishes(?: six)?) native packages)\b)`, "g"), (_, prefix) => prefix + version)
+    .replace(new RegExp(String.raw`(\| Platform \| Package \| Rehearsed for )` + semver + String.raw`(?= \|)`, "g"), (_, prefix) => prefix + version)
     .replace(new RegExp('(vibelang@' + semver + ' version\\x60? and expect \\x60)' + semver + '(\\x60)', "g"), (_, prefix, suffix) => prefix + version + suffix)
   if (["site/src/pages/index.mdx", "site/src/index.mdx"].includes(path)) {
     output = output.replace(new RegExp("(<strong>)" + semver + "(</strong>)", "g"), (_, prefix, suffix) => prefix + version + suffix)

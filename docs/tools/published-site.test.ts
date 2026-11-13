@@ -4,7 +4,8 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { buildMarkdown, currentReleaseNotes, updateFullBundle } from "./markdown"
 import fc from "fast-check"
-import { builtInstallProblems } from "./published-site.mjs"
+import { builtInstallProblems, renderSiteRelease } from "./published-site.mjs"
+import { renderReleasePage } from "./release-docs.mjs"
 import snapshot from "./testdata/npm-0.0.10.json"
 
 test("built install commands and native packages resolve in the npm snapshot, ahead of the compiler manifest", () => {
@@ -105,4 +106,24 @@ test("full-bundle rewriting preserves generated surrounding page content exactly
     expect(result.endsWith(suffix)).toBe(true)
     expect(result).not.toContain("## 1.0.1")
   }), { numRuns: 100 })
+})
+
+test("release rendering preserves versioned claims beside changing install pins", () => {
+  const version = fc.tuple(fc.integer({ min: 0, max: 20 }), fc.integer({ min: 0, max: 50 }), fc.integer({ min: 0, max: 1000 }),
+    fc.constantFrom("", "-alpha.1", "-rc.2")).map(([major, minor, patch, suffix]) => [major, minor, patch].join(".") + suffix)
+  fc.assert(fc.property(
+    version, version,
+    fc.constantFrom("In", "VibeLang", "vibelang", "Version", "version", "Rehearsed for"),
+    fc.constantFrom("npm install", "pnpm add", "bun add", "yarn add"),
+    (claimed, selected, prefix, command) => {
+      const claim = prefix + " " + claimed + ", this diagnostic is guaranteed."
+      const text = claim + "\n" + command + " vibelang@" + claimed
+      const expected = claim + "\n" + command + " vibelang@" + selected
+      const release = { ...snapshot, compiler: { ...snapshot.compiler, version: selected } }
+      for (const path of ["setup/known-limitations.md", "getting-started/004-installation.md", "index.mdx"]) {
+        expect(renderReleasePage(path, text, selected)).toBe(expected)
+        expect(renderSiteRelease(path, text, release)).toBe(expected)
+      }
+    },
+  ), { numRuns: 100 })
 })

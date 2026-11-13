@@ -92,7 +92,7 @@ test("an unreleased section keeps install pins and version-derived text on the c
     const notes = readFileSync(join(repo, "docs/user/src/setup/release-notes.md"), "utf8")
     assertReleaseHistory(notes, "9.8.7")
     assert.match(notes, /^## 9\.8\.8 \(unreleased\)/)
-    assert.equal(readFileSync(join(repo, "README.md"), "utf8"), "VibeLang 9.8.7; vibelang@9.8.7; vibelang-runtime@9.8.7")
+    assert.equal(readFileSync(join(repo, "README.md"), "utf8"), "VibeLang 9.8.6; vibelang@9.8.7; vibelang-runtime@9.8.7")
     assert.equal(JSON.parse(readFileSync(join(repo, "examples/app/package.json"), "utf8")).devDependencies.vibelang, "9.8.7")
     assert.deepEqual(releaseDocsProblems(repo), [])
   } finally {
@@ -109,8 +109,11 @@ test("contribution rules require each fix's changelog and affected docs in the s
   }
 })
 
-test("install pins, compiler output, prose and homepage badges derive from the compiler version", () => {
-  const text = "Version 0.0.2; VibeLang 0.0.3; vibelang 0.0.1; In 0.0.2; Rehearsed for 0.0.2\n" +
+test("install pins, compiler output, platform metadata and homepage badges derive from the compiler version", () => {
+  const text = "Version 0.0.2 installs from npm. VibeLang 0.0.3 (TypeScript 7.1.0-dev)\n" +
+    "Version 0.0.2 provides native packages for Linux.\n" +
+    "Version 0.0.2 publishes six native packages for macOS, Linux and Windows.\n" +
+    "| Platform | Package | Rehearsed for 0.0.2 |\n" +
     "vibelang@0.0.2 vibelang-runtime@0.0.2 vibelang-vite@0.0.2 vibelang-unplugin@0.0.2\n" +
     "Run npm view vibelang@0.0.2 version and expect \x600.0.2\x60.\n<strong>0.0.1</strong>"
   const next = renderReleasePage("site/src/pages/index.mdx", text, "9.8.7")
@@ -118,6 +121,22 @@ test("install pins, compiler output, prose and homepage badges derive from the c
   assert.equal(renderReleasePage("page.md", next, "9.8.7"), next)
   const vip = "In 4.1.0 two subpaths export the name.\n"
   assert.equal(renderReleasePage("site/src/pages/vips/0014-effect-modules-in-scope.mdx", vip, "9.8.7"), vip)
+})
+
+test("known limitations keeps its versioned diagnostic guarantee when rendering an older release", () => {
+  const path = "docs/user/src/setup/known-limitations.md"
+  const source = readFileSync(new URL("../user/src/setup/known-limitations.md", import.meta.url), "utf8")
+  const claim = "In 0.0.13, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in."
+  assert.ok(source.includes(claim))
+  assert.ok(renderReleasePage(path, source, "0.0.12").includes(claim))
+})
+
+test("versioned prose keeps its release while an adjacent installation pin updates", () => {
+  for (const prefix of ["In", "VibeLang", "vibelang", "Version", "version", "Rehearsed for"]) {
+    const claim = prefix + " 0.0.13 describes a specific release."
+    assert.equal(renderReleasePage("page.md", claim + "\n\x60npm install vibelang@0.0.13\x60", "0.0.12"),
+      claim + "\n\x60npm install vibelang@0.0.12\x60")
+  }
 })
 
 test("a toolchain version the docs expect keeps its value", () => {
@@ -146,9 +165,9 @@ test("the docs gate rejects stale source and deployed copies after a version bum
     put("site/src/pages/setup.mdx", "VibeLang 0.0.2; vibelang@0.0.2")
     assert.equal(releaseDocsProblems(repo).length, 2)
     releaseDocsProblems(repo, true)
-    assert.equal(readFileSync(join(repo, "docs/user/src/setup.md"), "utf8"), "VibeLang 9.8.7; vibelang@9.8.7")
+    assert.equal(readFileSync(join(repo, "docs/user/src/setup.md"), "utf8"), "VibeLang 0.0.2; vibelang@9.8.7")
     assert.equal(releaseDocsProblems(repo).length, 1)
-    put("site/src/pages/setup.mdx", "VibeLang 9.8.7; vibelang@9.8.7")
+    put("site/src/pages/setup.mdx", "VibeLang 0.0.2; vibelang@9.8.7")
     assert.deepEqual(releaseDocsProblems(repo), [])
     put("packages/compiler/package.json", JSON.stringify({ version: "9.8.8" }))
     assert.equal(releaseDocsProblems(repo).length, 2)

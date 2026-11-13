@@ -116,3 +116,11 @@ test("rehearsal package mentions are not installation claims", () => {
   assert.deepEqual(installReferences("- The throwaway registry accepts @smthrs/cli-win32-x64 and @smthrs/cli-win32-arm64."), [])
   assert.ok(installReferences("npm install @smthrs/cli-win32-x64").some(ref => ref.name === "@smthrs/cli-win32-x64"))
 })
+
+test("site rendering preserves the known-limitations release guarantee with an older npm snapshot", () => {
+  const source = readFileSync(new URL("../user/src/setup/known-limitations.md", import.meta.url), "utf8")
+  const claim = "In 0.0.13, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in."
+  const release = { ...snapshot, compiler: { ...snapshot.compiler, version: "0.0.12" } }
+  assert.ok(source.includes(claim))
+  assert.ok(renderSiteRelease("setup/known-limitations.md", source, release).includes(claim))
+})
