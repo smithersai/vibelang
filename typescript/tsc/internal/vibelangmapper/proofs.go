@@ -20,9 +20,7 @@ func proofErasures(file *ast.SourceFile, text string) []keyword {
 	var erasures []keyword
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		spec := node.Flags&ast.NodeFlagsVibeLangSpec != 0 && ast.IsFunctionLike(node)
-		proof := node.Kind == ast.KindBlock && node.Flags&ast.NodeFlagsVibeLangProof != 0
-		if !spec && !proof {
+		if !isErasedProofSyntax(node) {
 			return node.ForEachChild(visit)
 		}
 		start, end := scanner.SkipTrivia(text, node.Pos()), node.End()
@@ -69,4 +67,10 @@ func withProofErasures(keywords []keyword, proofs []keyword) []keyword {
 	all := slices.Concat(keywords, proofs)
 	slices.SortFunc(all, func(a, b keyword) int { return cmp.Compare(a.at, b.at) })
 	return all
+}
+
+// isErasedProofSyntax identifies the syntax removed before runtime form choices.
+func isErasedProofSyntax(node *ast.Node) bool {
+	return node.Flags&ast.NodeFlagsVibeLangSpec != 0 && ast.IsFunctionLike(node) ||
+		node.Kind == ast.KindBlock && node.Flags&ast.NodeFlagsVibeLangProof != 0
 }

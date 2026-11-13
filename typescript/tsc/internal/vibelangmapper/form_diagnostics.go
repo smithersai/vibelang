@@ -33,6 +33,9 @@ func FormDiagnostics(file *ast.SourceFile) []Diagnostic {
 	}
 	var visit func(*ast.Node, bool)
 	visit = func(n *ast.Node, effect bool) {
+		if isErasedProofSyntax(n) {
+			return
+		}
 		bodyEffect := effect
 		if ast.IsPropertyAccessExpression(n) && p.sourceDataMethodAccess(n) {
 			p.checkDataMethodAccess(n)

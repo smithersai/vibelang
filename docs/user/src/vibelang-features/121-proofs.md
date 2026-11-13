@@ -51,7 +51,7 @@ export function count(xs: readonly boolean[]): number {
 | `invariant(P)` | a `while`, `for` or `for … of` loop's leading proof block | holds before every iteration and after the last |
 | `assert(Q)` | any proof block | a fact at that point |
 
-A proof block may also hold `const` declarations, `if` statements and blocks. Outside proof blocks the five names are ordinary names, so a project's own `assert` keeps working. A spec function has no loop, `let` or assignment: write it with expressions and recursion.
+A proof block may also hold `const` declarations, `if` statements and blocks. Outside proof blocks the five names are ordinary names, so a project's own `assert` keeps working. The editor checks postcondition arrows as proof expressions. A spec function has no loop, `let` or assignment: write it with expressions and recursion.
 
 ## Running the proofs
 

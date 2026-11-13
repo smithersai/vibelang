@@ -6,7 +6,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
@@ -16,6 +20,7 @@ import (
 // specification says must agree. A form in a place the specification
 // rejects reports its rule.
 const (
+	proofContextQuote          = "A proof context runs nothing."
 	proofErasureJSQuote        = "The emitted JavaScript is the compiler's output for the program with every theorem, spec function and proof block removed, import elision included."
 	proofErasureDeclQuote      = "A checked function's declaration is the same as without its proof blocks."
 	proofErasureSpecDeclQuote  = "Theorems and spec functions emit nothing."
@@ -24,7 +29,7 @@ const (
 	specFunctionModifierQuote  = "A modifier or overload on a theorem or spec function: `export`, `export default`, `declare`, `async`, `effect`, `*`, or an overload signature"
 )
 
-var proofErasureQuotes = []string{proofErasureJSQuote, proofErasureDeclQuote, proofErasureSpecDeclQuote, proofPlacementQuote, specFunctionPlacementQuote, specFunctionModifierQuote}
+var proofErasureQuotes = []string{proofContextQuote, proofErasureJSQuote, proofErasureDeclQuote, proofErasureSpecDeclQuote, proofPlacementQuote, specFunctionPlacementQuote, specFunctionModifierQuote}
 
 func TestProofErasureQuoted(t *testing.T) {
 	for _, quote := range proofErasureQuotes {
@@ -180,6 +185,10 @@ var proofErasureWords = []string{"spec", "proof", "assume", "ensures", "invarian
 func mapperErases(t *testing.T, key string, c proofErasureCase) {
 	t.Helper()
 	ctx := vibelangmapper.FileContext{FileName: "/app/src/main.vibe", ModuleKey: "app/src/main"}
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePathFromAbsolute(ctx.FileName)}, c.with, core.ScriptKindTS)
+	if choices := vibelangmapper.FormDiagnostics(file); len(choices) != 0 {
+		Gap(t, "FuzzProofErasure", "mapper-editor:"+key, "%s Erased proof syntax must not introduce runtime form choices: %+v\n%s", proofContextQuote, choices, c.with)
+	}
 	js, _, diagnostics := vibelangmapper.Emit(c.with, ctx)
 	for _, d := range diagnostics {
 		if d.Code == vibelangmapper.CodeExecSyntax {
