@@ -10327,6 +10327,8 @@ typescript/vibelang/cases/vip18-try-operations/main.vibe:13:74 byname program ta
 typescript/vibelang/cases/vip18-try-operations/main.vibe:14:55 lambda plain fallback
 typescript/vibelang/cases/vip18-try-operations/main.vibe:6:24 byname program table
 typescript/vibelang/cases/vip18-try-operations/main.vibe:6:43 byname program table
+typescript/vibelang/cases/vip2-effect-block-reruns/main.vibe:5:11 lambda program table
+typescript/vibelang/cases/vip2-top-level-try.fail/main.vibe:4:11 lambda program table
 typescript/vibelang/cases/vip20-cleanup/main.vibe:14:34 byname program table
 typescript/vibelang/cases/vip20-cleanup/main.vibe:14:51 lambda effectFn keyword
 typescript/vibelang/cases/vip20-cleanup/main.vibe:5:51 byname program table
@@ -10338,6 +10340,8 @@ typescript/vibelang/cases/vip20-head-jump.fail/main.vibe:5:92 lambda plain fallb
 typescript/vibelang/cases/vip20-head-jump.fail/main.vibe:6:60 lambda plain fallback
 typescript/vibelang/cases/vip20-lexical/main.vibe:11:23 lambda plain table
 typescript/vibelang/cases/vip20-ordinary-iterable/main.vibe:9:34 byname program table
+typescript/vibelang/cases/vip23-pipe-evaluates-in-place/main.vibe:6:13 lambda effectFn fallback
+typescript/vibelang/cases/vip23-pipe-evaluates-in-place/main.vibe:7:14 lambda effectFn fallback
 typescript/vibelang/cases/vip27-every-export/main.vibe:11:20 lambda plain fallback
 typescript/vibelang/cases/vip27-every-export/main.vibe:13:25 lambda plain fallback
 typescript/vibelang/cases/vip27-every-export/main.vibe:31:22 lambda plain annotation
@@ -10363,6 +10367,7 @@ typescript/vibelang/cases/vip33-experimental-dns-encoding/main.vibe:11:10 lambda
 typescript/vibelang/cases/vip33-experimental-dns-encoding/main.vibe:11:47 lambda effectFn table
 typescript/vibelang/cases/vip33-experimental-dns-encoding/main.vibe:20:49 lambda plain fallback
 typescript/vibelang/cases/vip33-experimental-dns-encoding/main.vibe:21:39 lambda plain fallback
+typescript/vibelang/cases/vip33-experimental-shadowed/main.vibe:4:46 lambda plain fallback
 typescript/vibelang/cases/vip33-module-body-sibling-ts/main.vibe:21:31 lambda plain table
 typescript/vibelang/cases/vip33-module-body-sibling-ts/main.vibe:22:37 lambda plain table
 typescript/vibelang/cases/vip33-outer-vibe-platform.fail/main.vibe:10:20 lambda choice fallback
@@ -10429,6 +10434,9 @@ typescript/vibelang/cases/vip4-coverage-throwing-thunks.fail/main.vibe:9:23 lamb
 typescript/vibelang/cases/vip4-coverage-validation-list.fail/main.vibe:11:19 lambda plain fallback
 typescript/vibelang/cases/vip4-imported-identity-catch.fail/main.vibe:10:27 byname program table
 typescript/vibelang/cases/vip4-imported-identity-catch.fail/main.vibe:10:45 lambda plain table
+typescript/vibelang/cases/vip4-thunk-belongs-to-wrapper.fail/main.vibe:7:64 lambda plain table
+typescript/vibelang/cases/vip4-thunk-belongs-to-wrapper.fail/main.vibe:8:65 lambda plain table
+typescript/vibelang/cases/vip4-thunk-belongs-to-wrapper.fail/main.vibe:9:21 lambda plain fallback
 typescript/vibelang/cases/vip4-trusted-empty-retired/main.vibe:10:27 byname program table
 typescript/vibelang/cases/vip4-trusted-empty-retired/main.vibe:10:45 lambda plain table
 typescript/vibelang/cases/vip4-trusted-empty-retired/main.vibe:10:74 lambda plain table
@@ -10581,6 +10589,9 @@ typescript/vibelang/cases/vip5-coverage-plain-throw/main.vibe:11:10 lambda effec
 typescript/vibelang/cases/vip5-coverage-plain-throw/main.vibe:11:37 lambda effectFn table
 typescript/vibelang/cases/vip5-coverage-subtypes/main.vibe:17:19 lambda dual fallback
 typescript/vibelang/cases/vip5-coverage-unchecked/main.vibe:48:43 lambda effectFn keyword
+typescript/vibelang/cases/vip5-infallible-runs-explicitly/main.vibe:11:13 lambda effectFn table
+typescript/vibelang/cases/vip5-infallible-runs-explicitly/main.vibe:11:25 lambda effectFn table
+typescript/vibelang/cases/vip5-infallible-runs-explicitly/main.vibe:5:14 lambda program keyword
 typescript/vibelang/cases/vip5-try-runs/main.vibe:28:13 lambda effectFn table
 typescript/vibelang/cases/vip5-try-runs/main.vibe:28:35 lambda effectFn table
 typescript/vibelang/cases/vip5-try-runs/main.vibe:29:29 lambda program annotation
@@ -10618,6 +10629,8 @@ typescript/vibelang/cases/vip6-try-promise-global/main.vibe:17:36 lambda effectF
 typescript/vibelang/cases/vip6-try-promise-global/main.vibe:18:29 byname program table
 typescript/vibelang/cases/vip6-try-promise-global/main.vibe:18:40 lambda plain table
 typescript/vibelang/cases/vip6-try-promise-global/main.vibe:6:22 lambda plain fallback
+typescript/vibelang/cases/vip7-option-some-retained-check/main.vibe:5:15 lambda plain fallback
+typescript/vibelang/cases/vip7-option-some-retained-check/main.vibe:5:37 lambda dual fallback
 typescript/vibelang/cases/vip7-retained-fixed-checks/main.vibe:101:209 lambda dual fallback
 typescript/vibelang/cases/vip7-retained-fixed-checks/main.vibe:101:93 lambda dual fallback
 typescript/vibelang/cases/vip7-retained-fixed-checks/main.vibe:104:203 lambda dual fallback

@@ -17,9 +17,16 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 ### Bugs fixed since 0.0.12
 
+- Contributor tests could report a missing or mismatched `typescript` installation as a generator failure. They now report the required version and its installation command before running reference programs.
+
+- A site deployment could fail because release notes mentioned an older package version in a bug description. Historical entries now pass the version check, while install commands on other pages still require the current version.
+
+- The TypeScript view used by linters and editors could crash on a local type named `Effect` or a computed member name. It now preserves local type bindings and projects these members without crashing.
+
 - `vibelang-unplugin` could not bundle a `.vibex` module that imports from its own `module` declaration: webpack, Rspack, Rollup, Rolldown, esbuild and Bun stopped with `Can't resolve './main.vibex.text.js'`. The plugin now serves a `.vibex` module's declarations as it serves a `.vibe` module's.
 
 - Metro could not bundle a `.vibe` or `.vibex` module that imports from its own `module` declaration: it stopped with `Unable to resolve module ./main.vibe.text.js`. `vibelang/metro` now bundles each declaration as a module of its own, as the Vite and bundler plugins do.
+- Checking sidecar layouts from a source checkout could report a compiler disagreement when Node.js was missing or stop after 20 seconds on a busy machine. The check now identifies the missing runtime and uses the configured timeout.
 
 - The experimental opt-in section implied that every alias and subpath import was checked. It now states the support boundary and documents union-typed aliases and inline module bridges that can run experimental operations without opting in.
 
