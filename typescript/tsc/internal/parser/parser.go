@@ -2270,11 +2270,18 @@ func (p *Parser) tryParseConstructorDeclaration(pos int, jsdoc jsdocScannerInfo,
 	state := p.mark()
 	if p.token == ast.KindConstructorKeyword || p.token == ast.KindStringLiteral && p.scanner.TokenValue() == "constructor" && p.lookAhead((*Parser).nextTokenIsOpenParen) {
 		p.nextToken()
+		signatureHead := p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken
 		defer p.setVibeLangFiberContext(false)()
 		typeParameters := p.parseTypeParameters()
 		parameters := p.parseParameters(ParseFlagsNone)
 		returnType := p.parseReturnType(ast.KindColonToken, false /*isType*/)
 		body := p.parseFunctionBlockOrSemicolon(ParseFlagsNone, diagnostics.X_or_expected)
+		if p.vibelangServiceMembers && signatureHead && body == nil {
+			// A bodyless constructor-named member takes its interface method
+			// signature parse before the rejected class-element alternative.
+			p.rewind(state)
+			return nil
+		}
 		result := p.finishNode(p.factory.NewConstructorDeclaration(modifiers, typeParameters, parameters, returnType, nil /*fullSignature*/, body), pos)
 		p.withJSDoc(result, jsdoc)
 		p.checkJSSyntax(result)

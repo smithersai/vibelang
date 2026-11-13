@@ -154,7 +154,7 @@ effect function testWithContext() {
 
 A `Context` holds existing implementations; a `Layer` describes how to build them. A `provide` block takes layers and `Key = value` entries, or a single `Context`, as `testWithContext` shows. `provide` is a statement, not an expression: return the value from inside its block. Keep resource-owning implementations within the lifetime that created them.
 
-An implementation retrieved with `try Service` or typed as `Service.Shape` can be spread into another object. The spread retains its method signatures; replacements must still satisfy the declared result types. Ordinary class prototype methods are not copied by object spread. A property named `constructor` is an ordinary shape member, as in a TypeScript interface: `constructor: string` and `constructor: () => number` declare properties. An optional method such as `constructor?(): number` keeps its method signature. An actual constructor body remains `EK0902`.
+An implementation retrieved with `try Service` or typed as `Service.Shape` can be spread into another object. The spread retains its method signatures; replacements must still satisfy the declared result types. Ordinary class prototype methods are not copied by object spread. A property named `constructor` is an ordinary shape member, as in a TypeScript interface: `constructor: string` and `constructor: () => number` declare properties. An optional method such as `constructor?(): number` keeps its method signature. An actual constructor body remains `EK0902`. A body-only service can also name a required method `constructor`: `constructor(): number` and `constructor<T>(value: T): T` are method signatures. An omitted return type follows TypeScript's `noImplicitAny` rule.
 
 ## Requesting optional services
 
@@ -234,7 +234,7 @@ An instance method body, a value initializer, or an accessor is `EK0902`; declar
 
 - class-only modifiers such as `public`, `private`, `protected`, `abstract`, `declare`, `accessor`, `override`, `async` and `effect`, private names such as `#count`, and definite assignment assertions such as `count!: number`. Remove the modifier or assertion; a private name needs a public name. `readonly` belongs only on a property, not a method;
 - `effect read(): number!!`: remove `effect` and keep the return type `read(): number!!`;
-- constructors and index signatures, such as `[name: string]: Value`. Declare named properties and methods instead. For a dictionary implementation, declare its type separately and use an explicit `Context.Service` class, or a whole-shape service;
+- constructor bodies and index signatures, such as `[name: string]: Value`. Declare named properties and methods instead. For a dictionary implementation, declare its type separately and use an explicit `Context.Service` class, or a whole-shape service;
 - construct signatures, such as `new(): T!!` and `new<T>(value: T): T!!`. Declare a named factory method or a property whose value is a constructor. A method literally named `new` can use a quoted name, `"new"(): T!!`;
 - call signatures, such as `(value: string): string`, including when the service has a written shape. Declare a named method, or a property whose type is a function, such as `format: (value: string) => string`;
 - a `get` or `set` accessor without a body, such as `get value(): number`, with or without a modifier such as `abstract`. Declare a property, such as `readonly value: number`, or a method;

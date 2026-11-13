@@ -237,7 +237,8 @@
     "compiler/test/loader-record-module-body.test.mjs",
     "compiler/test/experimental-gate.test.mjs",
     "compiler/test/module-body-diagnostics.test.mjs",
-    "compiler/test/format-service-constructor.test.mjs"
+    "compiler/test/format-service-constructor.test.mjs",
+    "compiler/test/format-service-constructor-methods.test.mjs"
   ],
   "runtime": [
     "runtime/tests/binding-iterator.test.mjs",

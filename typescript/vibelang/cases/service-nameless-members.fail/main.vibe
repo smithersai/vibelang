@@ -1,4 +1,4 @@
-// expect: EK0902
+// expect: EK0902 TS7010
 export service StringIndex {
   [key: string]: unknown
 }

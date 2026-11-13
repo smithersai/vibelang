@@ -1,0 +1,16 @@
+// expect-result: [7,"ok"]
+export service NumberMethod {
+ static readonly key="constructor-methods/NumberMethod";
+ constructor():number
+}
+export service IdentityMethod {
+ static readonly key="constructor-methods/IdentityMethod";
+ constructor<T>(value:T):T
+}
+const numberMethod:NumberMethod.Shape={constructor:()=>7}
+const identityMethod:IdentityMethod.Shape={constructor:<T>(value:T):T=>value}
+export effect function main(){
+ provide NumberMethod=numberMethod,IdentityMethod=identityMethod {
+  return [(try NumberMethod).constructor(),(try IdentityMethod).constructor("ok")]
+ }
+}
