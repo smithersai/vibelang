@@ -1,0 +1,7 @@
+{
+  "key": "opencode-layer-node-empty-module-marker",
+  "rule": "Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count.",
+  "spec": "docs/design/src/001-functions.md#api-identity",
+  "source": "export type { Token } from \"./token.js\";\ninterface Eff<A, E, R> { readonly value: A; readonly error: E; readonly service: R; }\n/** Services required by a tool. */\nexport type Services<T> = ServicesOf<T, []>;\ntype ServicesOf<T, Depth extends ReadonlyArray<unknown>> = Depth[\"length\"] extends 8 ? never : T extends { readonly _tag: \"Tool\"; readonly execute: (input: unknown) => Eff<unknown, unknown, infer R> } ? R : T extends object ? string extends keyof T ? ServicesOf<T[string], [...Depth, unknown]> : ServicesOf<T[keyof T], [...Depth, unknown]> : never;\n",
+  "dependency": "export interface Token { readonly value: number }\n"
+}

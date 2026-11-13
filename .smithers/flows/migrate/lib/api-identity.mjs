@@ -540,6 +540,15 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     origins.set(file, origin)
     return origin
   }
+  // In declarations an empty export can also hide implicitly exported
+  // declarations. It is redundant only when another export declaration or
+  // assignment already establishes that explicit export boundary.
+  function identityStatements(source) {
+    const empty = node => ts.isExportDeclaration(node) && !node.moduleSpecifier &&
+      node.exportClause && ts.isNamedExports(node.exportClause) && !node.exportClause.elements.length
+    return source.statements.some(node => ts.isExportAssignment(node) || ts.isExportDeclaration(node) && !empty(node))
+      ? source.statements.filter(node => !empty(node)) : source.statements
+  }
   function syntax(file) {
     if (normalized.has(file)) return normalized.get(file)
     const source = program.getSourceFile(file)
@@ -602,9 +611,10 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
         return imported(visited) ? canonicalImport(visited) : visited
       }
       return source => {
-        const sorted = source.statements.filter(imported).sort((a, b) => importKey(a).localeCompare(importKey(b)))
+        const original = identityStatements(source)
+        const sorted = original.filter(imported).sort((a, b) => importKey(a).localeCompare(importKey(b)))
         let index = 0
-        const statements = source.statements.map(statement => imported(statement) ? sorted[index++] : statement)
+        const statements = original.map(statement => imported(statement) ? sorted[index++] : statement)
         const selfExport = statement => ts.isExportDeclaration(statement) &&
           statement.exportClause && ts.isNamespaceExport(statement.exportClause) && statement.moduleSpecifier &&
           host.resolveModuleNameLiterals([statement.moduleSpecifier], file, undefined,
@@ -663,9 +673,10 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     if (forwarding.has(file)) return forwarding.get(file)
     if (trail.has(file)) return file
     const source = program.getSourceFile(file)
-    if (!source?.statements.length || !source.statements.every(statement =>
+    const statements = source && identityStatements(source)
+    if (!statements?.length || !statements.every(statement =>
       ts.isExportDeclaration(statement) && statement.moduleSpecifier && ts.isStringLiteral(statement.moduleSpecifier))) return file
-    const modules = source.statements.map(statement => host.resolveModuleNameLiterals([statement.moduleSpecifier], file,
+    const modules = statements.map(statement => host.resolveModuleNameLiterals([statement.moduleSpecifier], file,
       undefined, program.getCompilerOptions(), source)[0].resolvedModule?.resolvedFileName)
     const target = modules[0], targetSource = target && program.getSourceFile(target)
     if (!targetSource || modules.some(module => module !== target)) return file

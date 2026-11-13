@@ -19,7 +19,7 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 | record | none | Rejects foreign changes before formatting and before committing, including when forced; commits the batch with `jj`, naming its files, with o200k token counts before and after | `batches/NN/record.json` |
 | report | none | Batches, tests, declaration identity, tokens, codemod gaps, issues and idiom lessons | `report.md`, `report.json` |
 
-A declaration module that only re-exports all of another module's exports, with the same names and value/type meanings, is checked through that module's complete declaration and dependency closure. This preserves identity when a type-only dependency gains a transparent re-export. Original diagnostics, documentation and distinct nominal identities remain checked.
+A declaration module that only re-exports all of another module's exports, with the same names and value/type meanings, is checked through that module's complete declaration and dependency closure. This preserves identity when a type-only dependency gains a transparent re-export. An empty `export {}` or `export type {}` beside another export declaration keeps that proof. A marker that establishes module scope or makes ambient declarations private remains significant. Original diagnostics, documentation and distinct nominal identities remain checked.
 
 Declaration snapshots can contain both an emitted helper and its shipped declaration. A trailing `sourceMappingURL` comment is file metadata, so it does not make identical declarations conflict. Types, documentation, ordinary comments and nominal declaration identity remain part of the comparison.
 
