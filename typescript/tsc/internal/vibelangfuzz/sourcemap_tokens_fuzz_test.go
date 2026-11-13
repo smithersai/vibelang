@@ -59,7 +59,7 @@ var sourceMapVariants = []sourceMapVariant{
 }
 
 // sourceMapRules are the sentences of docs/maintainers/source-maps.md that the
-// oracle below applies, quoted as rule 1 of the fuzz suite asks.
+// oracle below applies; TestSourceMapRulesCited checks the citations.
 var sourceMapRules = []string{
 	"A line ends at ECMA-262's LineTerminatorSequence: LF, CR, CRLF, U+2028 or U+2029. A column counts UTF-16 code units.",
 	"Every segment stands inside its generated file and names a position inside its source.",

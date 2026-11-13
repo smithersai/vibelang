@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/execute"
@@ -103,7 +102,7 @@ func checkModuleBodySidecarPlacement(t *testing.T, key string, mode uint8) {
 	}
 	put(filepath.Join(dir, "tsconfig.json"), string(encoded))
 	sys := &sidecarLayoutSystem{&sidecarParitySystem{fs: bundled.WrapFS(osvfs.FS()), cwd: tspath.RootedDirectoryPathFromAbsolute(filepath.ToSlash(dir))}}
-	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
 	result := execute.CommandLine(ctx, sys, []string{"-p", ".", "--pretty", "false"}, nil)
 	cancel()
 	if result.Status != 0 || ctx.Err() == context.DeadlineExceeded {
@@ -143,7 +142,7 @@ func checkModuleBodySidecarPlacement(t *testing.T, key string, mode uint8) {
 	}
 	if body {
 		tsc := StockTypeScript(t)
-		stockCtx, stockCancel := context.WithTimeout(t.Context(), 20*time.Second)
+		stockCtx, stockCancel := context.WithTimeout(t.Context(), HangLimit)
 		stockConfig := map[string]any{"compilerOptions": map[string]any{"noEmit": true, "strict": true, "skipLibCheck": false, "target": "ESNext", "module": "ESNext", "moduleResolution": "Bundler", "jsx": "preserve", "types": []string{}, "lib": []string{"ESNext"}}, "files": []string{owner}}
 		stockJSON, err := json.Marshal(stockConfig)
 		if err != nil {

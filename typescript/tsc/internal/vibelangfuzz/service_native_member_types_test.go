@@ -11,10 +11,9 @@ import (
 )
 
 // Chapter 5 admits TypeScript PropertySignature and MethodSignature members:
-// "A member may have any type, Effect or not, as Context.Service allows."
-// VIP-9 and decided detail 276 leave omitted types to native noImplicitAny,
-// including its explicit override of strict. Round 8 OPUS-2 found that an
-// Effect-only rejection could mask the native signature diagnostics.
+// VIP-9 and chapter 5, service declarations / Syntax, leave omitted types
+// to native noImplicitAny, including its explicit override of strict.
+// Check native signature diagnostics independently of Effect member types.
 func serviceNativeMemberQuotes(tb testing.TB) {
 	tb.Helper()
 	text := SpecText("005-services.md")
@@ -135,7 +134,7 @@ func FuzzServiceNativeMemberTypes(f *testing.F) {
 		actual := compile("main.vibe", source)
 		g := &Gaps{Target: target, Input: source}
 		if !slices.Equal(actual, native) {
-			g.Add("feature:"+key, "Chapter 5 native member signatures follow TypeScript noImplicitAny (detail 276): native errors %v; Vibe errors %v", native, actual)
+			g.Add("feature:"+key, "Chapter 5 native member signatures follow TypeScript noImplicitAny: native errors %v; Vibe errors %v", native, actual)
 		}
 		g.FinishInput(t, specCorpusKey(t))
 	})

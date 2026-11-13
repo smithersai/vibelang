@@ -7,14 +7,14 @@ import (
 )
 
 // TestSourceMapMatchRange holds every Chapter 4 example and mutations of
-// parser-created blocks to the existing D34 bounds oracle. A generated brace
+// parser-created blocks to the source-map bounds oracle. A generated brace
 // has no source token when scanning the statement-list end reaches outside
 // its block. Borrowing that next token's comment duplicated it and recorded
 // a mapping at pending indentation beyond the next emitted line. Moving
 // the list end inside the last token is also unsafe: a regex closing slash
 // followed by /* is then read as //, skipping to EOF.
-// Statement-correspondence gaps are owned separately by c9; these assertions
-// cover bounds and preservation of the reproduced comments.
+// These assertions check bounds and comment preservation from
+// docs/maintainers/source-maps.md and chapter 7, Formatting and existing tools.
 func TestSourceMapMatchRange(t *testing.T) {
 	w := NewWorkspace(t)
 	tests := []struct{ name, source string }{

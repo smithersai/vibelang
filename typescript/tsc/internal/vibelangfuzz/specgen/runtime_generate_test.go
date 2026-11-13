@@ -9,9 +9,12 @@ import (
 	"testing"
 )
 
-// TestRuntimeModuleGraphs checks Chapter 26 Modules and Chapter 27 rule 1:
-// actual sibling imports carry the exported call's A, E and R, with a cycle
-// of imports and a bounded call chain through two or three modules.
+// These tests check the structure of legacy generator fixtures. Current
+// compiler conformance uses the VIP counterparts described in chapter 8,
+// Runtime guarantees. Legacy fixture syntax is not a language rule.
+
+// TestRuntimeModuleGraphs checks that sibling imports carry the exported
+// call's A, E and R across a cycle and a bounded two- or three-module chain.
 func TestRuntimeModuleGraphs(t *testing.T) {
 	random := rand.New(rand.NewPCG(17, 29))
 	seen := map[int]bool{}
@@ -47,7 +50,7 @@ func TestRuntimeModuleGraphs(t *testing.T) {
 	}
 }
 
-// TestRuntimeDeeperRegions guards the Chapter 2 control-flow generator's
+// TestRuntimeDeeperRegions guards the legacy control-flow generator's
 // ability to nest past three while keeping multiplicative work bounded.
 func TestRuntimeDeeperRegions(t *testing.T) {
 	g := &generator{p: &Program{Enabled: map[string]bool{}, Used: map[string]bool{}}, c: chooser{data: []byte{2}}}
@@ -58,9 +61,9 @@ func TestRuntimeDeeperRegions(t *testing.T) {
 }
 
 // TestDoBlocksStopAtTheNestingLimit keeps a do block, whose statements start
-// expressions of their own depth, from nesting in do blocks without bound:
-// the nightly campaign of 2026-10-29 found inputs of 3.5 kB whose do blocks
-// nested more than 150 deep (TestProgramsGrowWithTheirInput).
+// expressions of their own depth, from nesting in do blocks without bound.
+// Inputs of 3.5 kB once nested more than 150 deep
+// (TestProgramsGrowWithTheirInput).
 func TestDoBlocksStopAtTheNestingLimit(t *testing.T) {
 	for b := range 256 {
 		g := &generator{p: &Program{Enabled: map[string]bool{"do-block": true}, Used: map[string]bool{}}, c: chooser{data: []byte{byte(b), 0, 0, 0}}}
@@ -95,7 +98,8 @@ func TestProgramsGrowWithTheirInput(t *testing.T) {
 }
 
 // TestRuntimeSuccessTypes keeps a nested program's return out of its caller's
-// A, while region returns still belong to that caller (Chapters 2 and 14).
+// A, while a legacy inline region's returns still belong to that caller.
+// Current region rules are in chapter 2, Region bodies.
 func TestRuntimeSuccessTypes(t *testing.T) {
 	returned := []Stmt{&Return{Value: &Num{1}}}
 	for _, tc := range []struct {
@@ -130,12 +134,11 @@ func runtimeInputs(feature string, n int) [][]byte {
 	return out
 }
 
-// TestRuntimeHeldRegion checks that the held-fiber focus writes, in one
-// program, what Chapter 7 Ownership and Chapter 17's finalization rule
-// order: a try region that owns a forked fiber holding a using resource
-// and a finally, waits for it, and exits, with a catch and a finally around
-// it; and that across inputs the fiber also waits under a mask with
-// restore and the region also holds using declarations beside it.
+// TestRuntimeHeldRegion checks the legacy held-fiber fixture's structure:
+// a try region owns a fork with a resource and a finalizer, waits for it,
+// and exits inside a catch/finally. Across inputs the fork also waits under
+// a mask with restore, and the region holds adjacent using declarations.
+// Current cleanup semantics follow chapter 8, Runtime guarantees.
 func TestRuntimeHeldRegion(t *testing.T) {
 	seen := map[string]bool{}
 	for _, data := range runtimeInputs("held-fiber", 60) {
@@ -181,12 +184,11 @@ func TestRuntimeHeldRegion(t *testing.T) {
 	}
 }
 
-// TestRuntimeCauseMix checks that the cause-mix focus writes each
-// combination Chapter 17 Combining causes names: a failure and a defect in
-// parallel await.all branches, one of them in an interrupted branch's
-// finally (D305); a failure in a try block and a throw or a defect in its
-// finally; and a joined fiber interrupted while its finally throws, which a
-// catch recovers (D306).
+// TestRuntimeCauseMix checks legacy fixture combinations: parallel failure
+// and defect, including an interrupted branch's finalizer; a failed body
+// and a failing finalizer; and a joined fiber interrupted while its finalizer
+// fails, recovered by a catch. Current cause and finalizer semantics follow
+// the pinned Effect counterpart (chapter 8, Runtime guarantees).
 func TestRuntimeCauseMix(t *testing.T) {
 	seen := map[string]bool{}
 	for _, data := range runtimeInputs("cause-mix", 60) {

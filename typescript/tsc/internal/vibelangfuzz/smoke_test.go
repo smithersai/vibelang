@@ -39,7 +39,7 @@ export effect function fails(): string!NotFound!Users { return try nameOf("7") }
 	if got := node.Run(r, "out/main.js", "main"); got.Kind != "success" || string(got.Value) != `["Ada","NotFound"]` {
 		t.Errorf("main: %+v", got)
 	}
-	// Chapter 3 and Chapter 17: throw is an expected failure, never a defect.
+	// Chapter 3, throw / Meaning: a throw in effect code is a typed failure.
 	if got := node.Run(r, "out/main.js", "fails"); got.Kind != "failure" || got.Tag != "NotFound" || !slices.Equal(got.Cause, []string{"fail:NotFound"}) {
 		t.Errorf("fails: %+v", got)
 	}

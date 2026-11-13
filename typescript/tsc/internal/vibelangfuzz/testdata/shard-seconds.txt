@@ -41,7 +41,6 @@
 46 FuzzInferredEffectDeclaration
 44 FuzzLegacyJavaScript
 44 TestTryOptionsMethodsVariants
-41 FuzzServiceReadonlyConversion
 38 FuzzDoCompletion
 38 FuzzMapperErrorRegistrationMembers
 38 FuzzMigrationDataDeclarations
@@ -173,7 +172,6 @@
 11 FuzzMigrationJSXRoutes
 11 FuzzMigrationWideRootLayouts
 11 FuzzServiceConditionalKeys
-11 FuzzServiceReadonlyUpgrade
 11 TestDeclarationIdentityRegisteredTwinAPI
 11 TestOpencodeReconnectDeclarationAliases
 10 FuzzCallbackSatisfiesFix

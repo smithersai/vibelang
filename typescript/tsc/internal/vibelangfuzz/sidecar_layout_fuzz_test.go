@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -22,28 +21,37 @@ import (
 
 const sidecarLayoutQuote = "Declaration sidecars are emit outputs like `.d.ts`."
 
+const sidecarPlacementQuote = "Sidecar placement follows TypeScript 5.9's declaration layout, with `vibe.sidecarDir` taking the place of `declarationDir`"
+
 // Build mode compares the system clock with real output mtimes. Keep the
 // actual CLI clock when the oracle uses the real filesystem.
 type sidecarLayoutSystem struct{ *sidecarParitySystem }
 
 func (*sidecarLayoutSystem) Now() time.Time { return time.Now() }
 
-func TestSidecarOutsideRootQuoted(t *testing.T) {
+func TestSidecarOutsideRootQuoted(t *testing.T) { sidecarOutsideRootQuoted(t) }
+
+func sidecarOutsideRootQuoted(t testing.TB) {
+	t.Helper()
 	text, err := os.ReadFile(SpecPath("007-tooling.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(text), sidecarLayoutQuote) {
-		t.Fatal(sidecarLayoutQuote)
+	for _, quote := range []string{sidecarLayoutQuote, sidecarPlacementQuote} {
+		if !strings.Contains(string(text), quote) {
+			t.Fatal(quote)
+		}
 	}
 }
 
-// Spec-agent ruling 2026-11-03 under "match TypeScript": sidecarDir plays
-// declarationDir's part. The oracle executes stock tsc 5.9.3, never the fork's
+// Chapter 7, Config files: sidecarDir takes declarationDir's place.
+// The oracle executes stock tsc 5.9.3, never the fork's
 // .ts emitter (TypeScript 7 changed inferred rootDir). Keyed layout seeds cover
 // imported sources, explicit roots, and ownership through project references.
 func FuzzSidecarOutsideRoot(f *testing.F) {
 	startShortBudget(f)
+	node := sidecarNode(f)
+	sidecarOutsideRootQuoted(f)
 	modules := os.Getenv("EFFECT_NODE_MODULES")
 	if modules == "" {
 		modules = filepath.Join(Root(), "experiments", "node_modules")
@@ -158,18 +166,14 @@ func FuzzSidecarOutsideRoot(f *testing.F) {
 			var success bool
 			var output string
 			if ext == "ts" {
-				ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
-				cmd := exec.CommandContext(ctx, "node", append([]string{stock}, args...)...)
-				cmd.Dir = home
-				out, err := cmd.CombinedOutput()
-				cancel()
-				if ctx.Err() == context.DeadlineExceeded {
-					t.Fatal("stock tsc timed out")
+				var err error
+				success, output, err = sidecarCommand(t.Context(), home, node, append([]string{stock}, args...)...)
+				if err != nil {
+					t.Fatalf("stock tsc: layout=%s directory=%t outside=%t depth=%d: %v", key, directory, outside, depth, err)
 				}
-				success, output = err == nil, string(out)
 			} else {
 				sys := &sidecarLayoutSystem{&sidecarParitySystem{fs: bundled.WrapFS(osvfs.FS()), cwd: tspath.RootedDirectoryPathFromAbsolute(filepath.ToSlash(home))}}
-				ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+				ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
 				result := execute.CommandLine(ctx, sys, args, nil)
 				cancel()
 				if ctx.Err() == context.DeadlineExceeded {

@@ -4,6 +4,8 @@ Researched 2026-10-27; suite built 2026-10-27 and 2026-10-28. This is a snapshot
 
 Compiled regression replays in the spec gate use the same `VIBELANG_FUZZ_HANG=120s` stage budget as the full seed suite, so emitted-output checks retain their normal allowance on a busy host.
 
+Sidecar layout and source-identity checks resolve `node` before running inputs. A missing executable is a missing dependency: it skips by default and fails when `VIBELANG_FUZZ_REQUIRE=1`. Layout checks use `HangLimit` for both compilers; launch failures and cancelled or expired contexts stop the check before comparison. Only a completed compiler process supplies an acceptance or rejection observation. Service shortcut checks require the native class-static diagnostic, with its empty source and no extra errors; an unrelated rejection cannot satisfy the oracle.
+
 Spec quote checks from independent fuzz targets need distinct Go names. Keep each target's quote and assertions when combining coverage; package compilation must replay both checks without duplicate declarations.
 
 Contextual-keyword witnesses construct each value reference before embedding it in surrounding TypeScript. A catch variable may need a type assertion, but replacing its spelling across an entire expression can corrupt unrelated parameter or return types. Stock TypeScript checks the generated catch-argument twins across the type-keyword names and callable/initializer homes. A controlled TypeScript helper supplies the caught value inside a native `try` block. This keeps catch-binding fixtures valid when VibeLang rejects synchronous `throw`.

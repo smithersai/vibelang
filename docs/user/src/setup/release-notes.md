@@ -21,6 +21,7 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - `vibelang-unplugin` could not bundle a `.vibex` module that imports from its own `module` declaration: webpack, Rspack, Rollup, Rolldown, esbuild and Bun stopped with `Can't resolve './main.vibex.text.js'`. The plugin now serves a `.vibex` module's declarations as it serves a `.vibe` module's.
 
 - Metro could not bundle a `.vibe` or `.vibex` module that imports from its own `module` declaration: it stopped with `Unable to resolve module ./main.vibe.text.js`. `vibelang/metro` now bundles each declaration as a module of its own, as the Vite and bundler plugins do.
+- Checking sidecar layouts from a source checkout could report a compiler disagreement when Node.js was missing or stop after 20 seconds on a busy machine. The check now identifies the missing runtime and uses the configured timeout.
 
 - The experimental opt-in section implied that every alias and subpath import was checked. It now states the support boundary and documents union-typed aliases and inline module bridges that can run experimental operations without opting in.
 

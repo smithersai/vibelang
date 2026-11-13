@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 )
 
 func TestStockCompileSupportsBothBaselines(t *testing.T) {
@@ -158,7 +157,7 @@ func TestStockCompileCLICompatibility(t *testing.T) {
 						if variant&2 != 0 {
 							args = append(args, "--declaration")
 						}
-						ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+						ctx, cancel := context.WithTimeout(t.Context(), HangLimit)
 						wantArgs := slices.Clone(args)
 						if mode == "native" {
 							wantArgs = append(wantArgs, "--singleThreaded")

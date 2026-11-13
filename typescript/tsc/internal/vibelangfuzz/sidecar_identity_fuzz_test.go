@@ -9,15 +9,14 @@ import (
 	"testing"
 )
 
-// sidecarIdentityQuote and sidecarExportQuote are Chapter 7's rule.
+// Chapter 7, Config files: compatibility declaration discovery, module identity
+// and overwrite protection.
 const (
 	sidecarRealpathQuote      = "Apply `realpath` and `preserveSymlinks` first; a retained logical dependency path keeps its declaration and native module identity."
-	sidecarSymlinkQuote       = "Apply `realpath` and `preserveSymlinks` first; a retained logical dependency path keeps its declaration and native module identity."
 	sidecarMapQuote           = "The rule also applies to the effective `sidecarDir` map"
 	sidecarRedirectInputQuote = "Explicitly selected declarations remain inputs subject to the ordinary overwrite guard."
 	sidecarDiscoveryQuote     = "A compatibility sidecar is an emit output: discovery selects the source ahead of its sidecar, while an explicit `files` input keeps native overwrite protection (`TS5055`)."
 	sidecarExplicitInputQuote = "Listing both the source and its sidecar explicitly in `files` keeps the sidecar as an input: emit reports `TS5055`, exits `1`, and leaves its bytes untouched."
-	sidecarOverwriteQuote     = "Listing both the source and its sidecar explicitly in `files` keeps the sidecar as an input: emit reports `TS5055`, exits `1`, and leaves its bytes untouched."
 	sidecarIdentityQuote      = "Compatibility declarations preserve the actual module selected by a source import."
 	sidecarExportQuote        = "A non-relative import reaching a known compatibility declaration uses its available mapped source only when TypeScript's final resolved path is outside `node_modules`."
 )
@@ -52,7 +51,7 @@ func FuzzSidecarIdentity(f *testing.F) {
 	})
 }
 
-// TestSidecarIdentityQuoted fails when Chapter 7 is reworded (RULES.md 9).
+// TestSidecarIdentityQuoted checks the quoted Config files rules in chapter 7.
 func TestSidecarIdentityQuoted(t *testing.T) { sidecarIdentityRule(t) }
 
 func sidecarIdentityRule(tb testing.TB) {
@@ -61,7 +60,7 @@ func sidecarIdentityRule(tb testing.TB) {
 	if err != nil {
 		tb.Fatal(err)
 	}
-	for _, quote := range []string{sidecarDiscoveryQuote, sidecarExplicitInputQuote, sidecarOverwriteQuote, sidecarIdentityQuote, sidecarExportQuote, sidecarRealpathQuote, sidecarSymlinkQuote, sidecarMapQuote, sidecarRedirectInputQuote} {
+	for _, quote := range []string{sidecarDiscoveryQuote, sidecarExplicitInputQuote, sidecarIdentityQuote, sidecarExportQuote, sidecarRealpathQuote, sidecarMapQuote, sidecarRedirectInputQuote} {
 		if !strings.Contains(string(text), quote) {
 			tb.Fatalf("Chapter 7 no longer says %q", quote)
 		}
@@ -137,7 +136,7 @@ func (in sidecarInput) key() string {
 }
 
 // parseSidecar reads `sidecar:<class>/<export>/<layout>/<route>/<use>/<consumer>/<sidecar>`
-// (RULES.md 11), and otherwise picks from the bytes.
+// so saved inputs retain their choices when lists reorder; other inputs pick from bytes.
 func parseSidecar(data []byte) sidecarInput {
 	find := func(choices []sidecarChoice, name string) sidecarChoice {
 		for _, c := range choices {

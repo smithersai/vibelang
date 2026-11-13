@@ -11,17 +11,21 @@ import (
 
 const shapeQualifierTarget = "FuzzShapeQualifier"
 const shapeQualifierQuote = "`Users.Shape` is the members, the type an implementation has"
+const shapeNativeErrorsQuote = "Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types."
 
 func TestShapeQualifierQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("007-tooling.md"), shapeNativeErrorsQuote) {
+		t.Fatalf("chapter 7 no longer says %q", shapeNativeErrorsQuote)
+	}
 	if !strings.Contains(SpecText("005-services.md"), shapeQualifierQuote) {
 		t.Fatalf("Chapter 5 no longer says %q", shapeQualifierQuote)
 	}
 }
 
-// Each name is written before .Shape and is no service, so the sentence does
-// not apply and the name keeps TypeScript's meaning (Will, 2026-11-03: "It is
-// already implied we match typescript"). The comparison is of the compiler
-// with stock rules on the same text, as a .vibe and as a .ts file.
+// Chapter 5, service declarations / Meaning, gives .Shape its service-only
+// meaning. These names are not services. Chapter 7, Compiler and tooling
+// requirements, keeps native static errors as TypeScript errors, so compare
+// the same text as .vibe and .ts.
 var shapeQualifierNames = map[string]struct{ declarations, name string }{
 	"missing":        {"", "Missing"},
 	"missing-nested": {"", "Missing.Inner"},

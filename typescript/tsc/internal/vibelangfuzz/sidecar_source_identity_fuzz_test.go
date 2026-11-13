@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -57,6 +56,7 @@ func sidecarIdentityLeaf(literal string, declaration bool) string {
 
 func FuzzSidecarSourceIdentity(f *testing.F) {
 	startShortBudget(f)
+	node := sidecarNode(f)
 	sidecarSourceIdentityQuoted(f)
 	w := NewWorkspace(f)
 	stock := StockTypeScript(f)
@@ -198,14 +198,12 @@ func FuzzSidecarSourceIdentity(f *testing.F) {
 			Gap(t, "FuzzSidecarSourceIdentity", key, "sidecar rejected: %v", SortedKeys(Keys(r.Dir, diagnostics.Diagnostics)))
 		}
 		script := "import { pathToFileURL } from \"node:url\"; const m = await import(pathToFileURL(" + strconv.Quote(filepath.Join(r.Dir, "out/main.js")) + ")); console.log(JSON.stringify(m." + selected.expression + "))"
-		cmd := exec.CommandContext(t.Context(), "node", "--input-type=module", "-e", script)
-		cmd.Dir = r.Dir
-		value, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("runtime: %v\n%s", err, value)
+		success, value, err := sidecarCommand(t.Context(), r.Dir, node, "--input-type=module", "-e", script)
+		if err != nil || !success {
+			t.Fatalf("runtime: success=%t error=%v\n%s", success, err, value)
 		}
 		var literal string
-		if err := json.Unmarshal([]byte(strings.TrimSpace(string(value))), &literal); err != nil {
+		if err := json.Unmarshal([]byte(strings.TrimSpace(value)), &literal); err != nil {
 			t.Fatalf("runtime literal: %v\n%s", err, value)
 		}
 		wantRuntime := "vibe"
@@ -227,10 +225,12 @@ func FuzzSidecarSourceIdentity(f *testing.F) {
 			if err := os.WriteFile(path, []byte(consumer), 0644); err != nil {
 				t.Fatal(err)
 			}
-			cmd := exec.CommandContext(t.Context(), stock, "--ignoreConfig", "--noEmit", "--strict", "--skipLibCheck", "false", "--allowArbitraryExtensions", "--allowImportingTsExtensions", "--module", "esnext", "--moduleResolution", "bundler", "--target", "es2022", path)
-			cmd.Dir = r.Dir
-			if output, err := cmd.CombinedOutput(); err != nil {
-				Gap(t, "FuzzSidecarSourceIdentity", key, "stock consumer of %s disagrees with runtime %q: %v\n%s", entry, literal, err, output)
+			success, output, err := sidecarCommand(t.Context(), r.Dir, stock, "--ignoreConfig", "--noEmit", "--strict", "--skipLibCheck", "false", "--allowArbitraryExtensions", "--allowImportingTsExtensions", "--module", "esnext", "--moduleResolution", "bundler", "--target", "es2022", path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !success {
+				Gap(t, "FuzzSidecarSourceIdentity", key, "stock consumer of %s disagrees with runtime %q:\n%s", entry, literal, output)
 			}
 		}
 		ExpectPending(t, "FuzzSidecarSourceIdentity", key)

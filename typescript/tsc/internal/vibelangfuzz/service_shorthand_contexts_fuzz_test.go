@@ -2,11 +2,15 @@ package vibelangfuzz
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
+
+var serviceShorthandContexts = []string{"try-direct", "catch-head", "parenthesized-catch-head", "option-argument"}
 
 const serviceShortcutQuote = "There is no `Users.find(id)` shorthand"
 
@@ -21,18 +25,30 @@ func TestServiceShorthandContextsQuoted(t *testing.T) {
 // get-the-service counterpart in the same catch/program context.
 func FuzzServiceShorthandContexts(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"try-direct", "catch-head", "parenthesized-catch-head", "option-argument"} {
-		for variant := byte(0); variant < 4; variant++ {
+	for _, key := range serviceShorthandContexts {
+		for _, variant := range []byte{0, 1, 2, 3, 0x54, 0xff} {
 			f.Add(key, variant)
 		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, variant byte) {
 		TestServiceShorthandContextsQuoted(t)
-		member := ".record"
-		if variant&1 != 0 {
-			member = "[\"record\"]"
+		if !slices.Contains(serviceShorthandContexts, key) {
+			index := 0
+			if len(key) > 0 {
+				index = int(key[0]) % len(serviceShorthandContexts)
+			}
+			key = serviceShorthandContexts[index]
 		}
+		// Upper bits vary member names and payloads beyond the seeded access forms.
+		name := []string{"record", "write", "lookup", "café"}[variant>>4&3]
+		member := "." + name
+		expected := int32(2339)
+		if variant&1 != 0 {
+			expected = 7053
+			member = "[" + fmt.Sprintf("%q", name) + "]"
+		}
+		payload := fmt.Sprintf("({n:%d})", variant>>2)
 		tag := "Audit"
 		alias := ""
 		if variant&2 != 0 {
@@ -55,19 +71,19 @@ func FuzzServiceShorthandContexts(f *testing.F) {
 		if wrap("x") == "" {
 			return
 		}
-		prefix := "import * as Effect from \"effect/Effect\";\nservice Audit { record(input: {n:number}): void!! }\n" + alias
-		good := prefix + "export effect function main() { const audit = try " + tag + "; " + wrap("audit"+member+"({n:1})") + " }\n"
-		bad := prefix + "export effect function main() { " + wrap(tag+member+"({n:1})") + " }\n"
-		compile := func(source string) []string {
+		prefix := "import * as Effect from \"effect/Effect\";\nservice Audit { " + name + "(input: {n:number}): void!! }\n" + alias
+		good := prefix + "export effect function main() { const audit = try " + tag + "; " + wrap("audit"+member+payload) + " }\n"
+		bad := prefix + "export effect function main() { " + wrap(tag+member+payload) + " }\n"
+		compile := func(source string) []*ast.Diagnostic {
 			result, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source, "package.json": servicesPackage}})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer result.Remove()
-			var errors []string
+			var errors []*ast.Diagnostic
 			for _, d := range result.Diagnostics {
 				if d.Category() == diagnostics.CategoryError {
-					errors = append(errors, fmt.Sprint(d))
+					errors = append(errors, d)
 				}
 			}
 			return errors
@@ -76,10 +92,15 @@ func FuzzServiceShorthandContexts(f *testing.F) {
 			t.Fatalf("get-service control must compile: %v\n%s", errors, good)
 		}
 		feature := fmt.Sprintf("reject:%s:%d", key, variant&3)
-		if len(compile(bad)) == 0 {
-			Gap(t, "FuzzServiceShorthandContexts", feature, "VIP10/chapter5: %s; a static shortcut compiled in %s:\n%s", serviceShortcutQuote, key, bad)
+		if errors := compile(bad); !serviceShorthandRejected(errors, expected) {
+			Gap(t, "FuzzServiceShorthandContexts", feature, "VIP10/chapter5: %s; want exactly one native TS%d in %s, got %v:\n%s", serviceShortcutQuote, expected, key, errors, bad)
 		}
 		ExpectPending(t, "FuzzServiceShorthandContexts", feature)
 		ExpectPending(t, "FuzzServiceShorthandContexts", specCorpusKey(t))
 	})
+}
+
+// serviceShorthandRejected recognizes the static-member rejection.
+func serviceShorthandRejected(errors []*ast.Diagnostic, expected int32) bool {
+	return len(errors) == 1 && errors[0].Source() == "" && errors[0].Code() == expected
 }

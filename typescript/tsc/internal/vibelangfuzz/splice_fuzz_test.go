@@ -19,17 +19,18 @@ const spliceTarget = "FuzzSplice"
 //     panicked, and a stage that outlasts HangLimit ends the process
 //     (Within).
 //   - Each spliced .vibe text, parsed as .vibe, .ts, .tsx and .d.ts: every
-//     span inside the text (D61, D34), a TypeScript tree whose nodes nest in
-//     order (D266), the same tree on every parse, and ESTree that is JSON
-//     with ranges inside the text (Chapter 28 Linting, D277). CheckParse
-//     holds a text to these.
-//   - The project: every EK code registered in current Appendix B or an accepted VIP,
-//     in its specified default category, at spans inside
-//     their files; the same diagnostics and outputs from a fresh compilation
-//     and in every order the checker can be asked (Chapters 27 and 28); and,
-//     with no error, every output Chapter 27 requires, with the imports,
-//     runtime helpers, source maps (D34) and declarations a consumer
-//     type-checks against (D366). CheckCompile holds a project to these.
+//     span inside the text, a TypeScript tree whose nodes nest in order,
+//     the same tree on every parse, and ESTree that is JSON with ranges
+//     inside the text (chapter 7, Formatting and existing tools;
+//     docs/maintainers/source-maps.md). CheckParse holds a text to these.
+//   - The project: every EK code registered in Appendix B or an accepted
+//     VIP, in its specified default category, at spans inside its file;
+//     identical diagnostics and outputs from fresh compilations and checker
+//     orders (chapter 7, Compiler and tooling requirements). With no error,
+//     check output names, imports and declarations against chapter 1,
+//     Declaration output, and chapter 7, Formatting and existing tools;
+//     source maps follow docs/maintainers/source-maps.md. CheckCompile
+//     holds a project to these.
 //
 // An input is a choice input, whose bytes choose the recipient and the
 // splices, or an archive, which starts with a file marker ("-- main.vibe --")
