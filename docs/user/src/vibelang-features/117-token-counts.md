@@ -232,7 +232,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Behaviour** | **2,100** |
 | [Equivalence](../behaviour/083-equivalence.md) | 660 |
 | [Order](../behaviour/084-order.md) | 1,400 |
-| **Schema** | **36,000** |
+| **Schema** | **37,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
 | [Getting Started](../schema/086-getting-started.md) | 4,200 |
 | [Basic Usage](../schema/087-basic-usage.md) | 5,400 |
@@ -278,7 +278,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Diagnostic code map](diagnostic-code-map.md) | 5,300 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 26,000 |
-| **All 9 pages** | **89,000** |
+| **All 9 pages** | **90,000** |
 
 ### Experimental
 

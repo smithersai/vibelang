@@ -10370,6 +10370,10 @@ typescript/vibelang/cases/vip33-outer-vibe-platform.fail/main.vibe:11:21 lambda 
 typescript/vibelang/cases/vip33-outer-vibe-platform.fail/main.vibe:12:24 lambda plain fallback
 typescript/vibelang/cases/vip33-outer-vibe-platform.fail/main.vibe:13:58 lambda plain table
 typescript/vibelang/cases/vip33-outer-vibe-platform.fail/main.vibe:14:69 lambda plain table
+typescript/vibelang/cases/vip39-relational-regex-operand.fail/main.vibe:4:22 lambda plain fallback
+typescript/vibelang/cases/vip39-relational-regex-operand.fail/main.vibe:4:43 lambda dual fallback
+typescript/vibelang/cases/vip39-relational-regex-operand.fail/main.vibe:5:22 lambda plain fallback
+typescript/vibelang/cases/vip39-relational-regex-operand.fail/main.vibe:5:43 lambda dual fallback
 typescript/vibelang/cases/vip4-coverage-async/main.vibe:25:15 lambda plain table
 typescript/vibelang/cases/vip4-coverage-async/main.vibe:30:83 byname program table
 typescript/vibelang/cases/vip4-coverage-async/main.vibe:31:92 byname program table
@@ -10450,7 +10454,7 @@ typescript/vibelang/cases/vip40-body-throw/main.vibe:40:45 lambda plain table
 typescript/vibelang/cases/vip40-body-throw/main.vibe:41:33 lambda plain table
 typescript/vibelang/cases/vip40-counterpart-declarations/main.vibe:23:32 lambda plain table
 typescript/vibelang/cases/vip40-counterpart-declarations/main.vibe:23:56 lambda plain table
-typescript/vibelang/cases/vip40-dts-map-sources/main.vibe:30:25 lambda plain table
+typescript/vibelang/cases/vip40-dts-map-sources/main.vibe:31:25 lambda plain table
 typescript/vibelang/cases/vip40-emit-layout/main.vibe:35:25 lambda plain table
 typescript/vibelang/cases/vip40-module-identifier/main.vibe:11:18 lambda plain fallback
 typescript/vibelang/cases/vip40-module-identifier/main.vibe:41:29 lambda plain table
