@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
@@ -47,7 +48,18 @@ func TestDiagnosticHelpersIncludeSyntaxErrors(t *testing.T) {
 // The helpers must preserve both diagnostic phases even when recovery changes
 // the semantic errors. Arbitrary suffixes explore malformed fixture neighbours.
 func FuzzDiagnosticHelpers(f *testing.F) {
-	for _, seed := range []string{"", "const value = ;", "const f = effect function fork() { return 1 }", "for concurrent ("} {
+	// Independent fixtures have different temporary directories. Compare the
+	// diagnostics' identities so quoted module paths cannot cause false failures.
+	type identity struct {
+		source   string
+		code     int32
+		category diagnostics.Category
+		pos, end int
+	}
+	key := func(d *ast.Diagnostic) identity {
+		return identity{d.Source(), d.Code(), d.Category(), d.Pos(), d.End()}
+	}
+	for _, seed := range []string{"", "const value = ;", "const f = effect function fork() { return 1 }", "for concurrent (", "import * as self from './main.vibe'; const x: number = self;"} {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, suffix string) {
@@ -56,18 +68,19 @@ func FuzzDiagnosticHelpers(f *testing.F) {
 		}
 		source := "export const value = 1;\n" + suffix
 		p, file, _, _ := editorProgram(t, source)
-		var wantErrors, wantCodes []string
+		var wantErrors []identity
+		var wantCodes []string
 		for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), file), p.GetSemanticDiagnostics(t.Context(), file)...) {
 			if d.Category() == diagnostics.CategoryError {
-				wantErrors = append(wantErrors, d.String())
+				wantErrors = append(wantErrors, key(d))
 			}
 			if d.Category() == diagnostics.CategoryError || d.Category() == diagnostics.CategoryWarning {
 				wantCodes = append(wantCodes, d.Source()+strconv.Itoa(int(d.Code())))
 			}
 		}
-		var gotErrors []string
+		var gotErrors []identity
 		for _, d := range errorsOf(t, source) {
-			gotErrors = append(gotErrors, d.String())
+			gotErrors = append(gotErrors, key(d))
 		}
 		if !slices.Equal(gotErrors, wantErrors) {
 			t.Fatalf("errorsOf = %v, want %v", gotErrors, wantErrors)
