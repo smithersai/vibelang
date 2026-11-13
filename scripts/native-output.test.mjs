@@ -1,3 +1,4 @@
+import { rootTestTargetName } from "../root-test-shards.ts"
 import { declarationTargets } from "./testing/package-declaration.mjs"
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
@@ -11,7 +12,10 @@ const compilerNative = { native: true }
 const targets = file => declarationTargets(file, { bindings: { Packages: { "compiler-native": compilerNative } } })
 
 test("release declares the native compiler dependency used by its warning fixture", () => {
-  assert.ok(targets("PACKAGE.ts").release.data.includes(compilerNative))
+  const root = targets("PACKAGE.ts")
+  const leaf = root[rootTestTargetName("release", "scripts/release/warning-fixture.test.mjs")]
+  assert.ok(root.release.tests.includes(leaf))
+  assert.ok(leaf.data.includes(compilerNative))
 })
 
 function fixture(t, windows = false) {

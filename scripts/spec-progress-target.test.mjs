@@ -66,7 +66,7 @@ test("the spec command forwards required Go settings through the progress proces
 })
 
 test("the release runner declares the Go tool used by its real progress fixture", () => {
-  assert.ok(target("release").tools.includes("go"), "native progress controls need Go in the release target's tool identity")
+  assert.ok(Object.values(declarations().targets).some(leaf => leaf.shell?.includes("scripts/spec-progress-target.test.mjs") && leaf.tools.includes("go")), "native progress controls need Go in the release target's tool identity")
 })
 
 // Run the real command-contract test against independent declaration variants.
@@ -84,7 +84,8 @@ for (const [name, shared, deadline, status] of [
   const root = mkdtempSync(join(tmpdir(), "spec-progress-deadline-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, "scripts/testing"), { recursive: true })
-  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs"]) {
+  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "root-test-shards.ts", "root-test-fixtures.json", "root-test-shard-groups.json", "site/package.json", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs"]) {
+    mkdirSync(join(root, file, ".."), { recursive: true })
     copyFileSync(new URL("../" + file, import.meta.url), join(root, file))
   }
   const original = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
@@ -114,7 +115,8 @@ test("spec deadline fixture controls follow a later shared graph limit", t => {
   const root = mkdtempSync(join(tmpdir(), "spec-progress-next-deadline-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, "scripts/testing"), { recursive: true })
-  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs"]) {
+  for (const file of ["api-inputs.ts", "build-contract-inputs.ts", "root-test-shards.ts", "root-test-fixtures.json", "root-test-shard-groups.json", "site/package.json", "scripts/spec-progress-target.test.mjs", "scripts/testing/package-declaration.mjs", "scripts/testing/migrate-shards.mjs"]) {
+    mkdirSync(join(root, file, ".."), { recursive: true })
     copyFileSync(new URL("../" + file, import.meta.url), join(root, file))
   }
   const original = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")

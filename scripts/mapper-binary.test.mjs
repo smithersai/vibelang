@@ -31,5 +31,6 @@ test("no mapper anywhere asks the caller to build one", () => {
 
 test("the mapper-scripts target depends on the graph-built mapper", () => {
   const target = declarationFixture("PACKAGE.ts").targets["mapper-scripts"]
-  assert.ok(target.data.includes("typescript.mapper"), "mapper-scripts must list Typescript.mapper so the selection test finds " + builtMapper)
+  assert.ok(target.tests.length > 0)
+  for (const leaf of target.tests) assert.ok(leaf.data.includes("typescript.mapper"), "each mapper leaf needs " + builtMapper)
 })

@@ -340,11 +340,20 @@ export function resolveExamples(fixtures,appendix,root=repository) {
   for(const example of archives)if(!seen.has(example.code))throw Error(example.code+": located Appendix example lacks an executable fixture")
   return examples
 }
+export function diagnosticExampleShard(examples, selector) {
+  if (selector === undefined) return examples
+  const match = /^([1-9]\d*)\/([1-9]\d*)$/.exec(selector)
+  if (!match || Number(match[1]) > Number(match[2])) throw new Error("usage: diagnostic-examples.mjs [--shard index/count]")
+  const [, index, count] = match.map(Number)
+  return examples.filter((_, offset) => offset % count === index - 1)
+}
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
   mkdirSync(join(repository,".cache"),{recursive:true})
   const fixtures=JSON.parse(readFileSync(join(repository,"typescript/vibelang/cases/appendix-diagnostic-identities/examples.json"),"utf8"))
   const appendix=appendixCodes(readFileSync(join(repository,"docs/design/src/900-appendices.md"),"utf8"))
-  const result=await probeExamples(resolveExamples(fixtures,appendix),appendix,resolve(process.env.VIBELANG_COMPILER??join(repository,"packages/compiler/native/vibelang")))
+  const args = process.argv.slice(2)
+  if (args.length && (args.length !== 2 || args[0] !== "--shard")) throw new Error("usage: diagnostic-examples.mjs [--shard index/count]")
+  const result=await probeExamples(diagnosticExampleShard(resolveExamples(fixtures,appendix), args[1]),appendix,resolve(process.env.VIBELANG_COMPILER??join(repository,"packages/compiler/native/vibelang")))
   console.log(JSON.stringify(result,null,2));process.exitCode=result.findings.length?1:0
 }
 // rule-evidence: docs/design/src/900-appendices.md | The old `EK4403` is retired and will never be reassigned: VIP-33 reports host clock and randomness reads as `EK4402` by resolved host origin.

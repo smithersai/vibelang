@@ -1,3 +1,4 @@
+import { declaredFileCommands } from "./declared-command.mjs"
 import assert from "node:assert/strict"
 import { readdirSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
 import { fileURLToPath, pathToFileURL } from "node:url"
@@ -47,29 +48,29 @@ const runs = [
   ["site/scripts/compiler-video.test.mjs", "site/package.json", "scripts/compiler-video.test.mjs"],
   ["site/scripts/compiler-video-playback.test.mjs", "site/package.json", "scripts/compiler-video-playback.test.mjs"],
   ["site/scripts/ecosystem-video.test.mjs", "site/package.json", "scripts/ecosystem-video.test.mjs"],
-  [`scripts/!(api-identity*|${buildContractExclusions}).test.mjs`, "PACKAGE.ts", "\" + buildContractExclusions + \""],
-  ["scripts/api-identity*.test.mjs", "PACKAGE.ts", "node --test scripts/api-identity*.test.mjs"],
+  [`scripts/!(api-identity*|${buildContractExclusions}).test.mjs`, "root-test-shards.ts", "scripts/*.test.mjs"],
+  ["scripts/api-identity*.test.mjs", "root-test-shards.ts", "scripts/api-identity*.test.mjs"],
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
-  ["scripts/release/*.test.mjs", "PACKAGE.ts", "scripts/release/*.test.mjs"],
+  ["scripts/release/*.test.mjs", "root-test-shards.ts", "scripts/release/*.test.mjs"],
   ["typescript/native-deps.test.mjs", "typescript/PACKAGE.ts", "node --test typescript/native-deps.test.mjs"],
   ["typescript/native-inputs.test.mjs", "typescript/PACKAGE.ts", "node --test typescript/native-inputs.test.mjs"],
-  ["typescript/vibelang/harness.test.mjs", "PACKAGE.ts", "typescript/vibelang/harness.test.mjs"],
+  ["typescript/vibelang/harness.test.mjs", "root-test-shards.ts", "typescript/vibelang/harness.test.mjs"],
   ["typescript/vibelang/harness-readonly.test.mjs", "typescript/vibelang/PACKAGE.ts", "node --test typescript/vibelang/harness-readonly.test.mjs"],
-  ["typescript/vibelang/harness-deadlines.test.mjs", "PACKAGE.ts", "node --test typescript/vibelang/harness-deadlines.test.mjs"],
+  ["typescript/vibelang/harness-deadlines.test.mjs", "root-test-shards.ts", "typescript/vibelang/harness-deadlines.test.mjs"],
   ["typescript/vibelang/case-import-extensions.test.mjs", "PACKAGE.ts", "node --test typescript/vibelang/case-import-extensions.test.mjs"],
-  ["typescript/vibelang/cov-ch004-twin.test.mjs", "PACKAGE.ts", "typescript/vibelang/cov-ch004-twin.test.mjs"],
+  ["typescript/vibelang/cov-ch004-twin.test.mjs", "root-test-shards.ts", "typescript/vibelang/cov-ch004-twin.test.mjs"],
   ["typescript/vibelang/cov900-probe.test.mjs", "PACKAGE.ts", "typescript/vibelang/cov900-probe.test.mjs"],
   ["typescript/vibelang/cov900-quickfix.test.mjs", "PACKAGE.ts", "typescript/vibelang/cov900-quickfix.test.mjs"],
   ["typescript/vibelang/cov900-twin.test.mjs", "PACKAGE.ts", "typescript/vibelang/cov900-twin.test.mjs"],
   ["typescript/vibelang/case-advice-examples.test.mjs", "typescript/vibelang/PACKAGE.ts", "node --test typescript/vibelang/case-advice-examples.test.mjs"],
   ["typescript/vibelang/coverage-twin.test.mjs", "typescript/vibelang/PACKAGE.ts", "node --test typescript/vibelang/coverage-twin.test.mjs"],
-  ["typescript/vibelang/coverage-stock-twins.test.mjs", "PACKAGE.ts", "typescript/vibelang/coverage-stock-twins.test.mjs"],
-  ["typescript/vibelang/vip7-reference.test.mjs", "PACKAGE.ts", "typescript/vibelang/vip7-reference.test.mjs"],
-  ["docs/redirect/*.test.mjs", "PACKAGE.ts", "docs/redirect/*.test.mjs"],
-  ["site/scripts/sync-spec-docs.test.mjs", "PACKAGE.ts", "site/scripts/sync-spec-docs.test.mjs"],
-  ["site/scripts/sync-user-docs.test.mjs", "PACKAGE.ts", "site/scripts/sync-user-docs.test.mjs"],
-  [".smithers/flows/effect-bump/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
-  ["docs/tools/*.test.*", "PACKAGE.ts", "$(ls *.test.*"],
+  ["typescript/vibelang/coverage-stock-twins.test.mjs", "root-test-shards.ts", "typescript/vibelang/coverage-stock-twins.test.mjs"],
+  ["typescript/vibelang/vip7-reference.test.mjs", "root-test-shards.ts", "typescript/vibelang/vip7-reference.test.mjs"],
+  ["docs/redirect/*.test.mjs", "root-test-shards.ts", "docs/redirect/*.test.mjs"],
+  ["site/scripts/sync-spec-docs.test.mjs", "root-test-shards.ts", "site/scripts/sync-spec-docs.test.mjs"],
+  ["site/scripts/sync-user-docs.test.mjs", "root-test-shards.ts", "site/scripts/sync-user-docs.test.mjs"],
+  [".smithers/flows/effect-bump/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
+  ["docs/tools/*.test.*", "root-test-shards.ts", "docs/tools/*.test.*"],
   ["packages/runtime/tests/**", "packages/PACKAGE.ts", "cd packages/runtime && bun test"],
   ["packages/runtime/tests/entry-exports.node.test.mjs", "packages/PACKAGE.ts", "node --test packages/runtime/tests/entry-exports.node.test.mjs"],
   // Exact-file leaves are inventoried in package-test-inventory.test.mjs; compatibility Suites are checked below.
@@ -79,11 +80,11 @@ const runs = [
   [".smithers/flows/migrate/test/*.test.mjs", "scripts/testing/migrate-shards.mjs", "migrate/test/*.test.mjs"],
   [".smithers/flows/convert/*.test.mjs", "scripts/testing/migrate-shards.mjs", "convert/*.test.mjs"],
   [".smithers/flows/docs/check.test.ts", ".smithers/package.json", "./flows/docs/check.test.ts"],
-  [".smithers/flows/effect-bump/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
-  [".smithers/flows/ts-bump/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/ts-bump/test/*.test.mjs"],
-  [".smithers/flows/ci-health/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/ci-health/test/*.test.mjs"],
-  [".smithers/flows/first-bad/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/first-bad/test/*.test.mjs"],
-  [".smithers/flows/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/test/*.test.mjs"],
+  [".smithers/flows/effect-bump/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/effect-bump/test/*.test.mjs"],
+  [".smithers/flows/ts-bump/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/ts-bump/test/*.test.mjs"],
+  [".smithers/flows/ci-health/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/ci-health/test/*.test.mjs"],
+  [".smithers/flows/first-bad/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/first-bad/test/*.test.mjs"],
+  [".smithers/flows/test/*.test.mjs", "root-test-shards.ts", ".smithers/flows/test/*.test.mjs"],
   ["packages/vite/test/*.test.mjs", "packages/vite/test/run.sh", "test/*.test.mjs"],
   ["packages/typescript-shim/test/*.test.mjs", "packages/test-inventory.json", '"typescript-shim/test/'],
   ["packages/create-vibelang/test/create.test.mjs", "PACKAGE.ts", "node --test packages/create-vibelang/test/create.test.mjs"],
@@ -157,23 +158,9 @@ test("each runner names the test files it is said to run", () => {
 // Exercise the declared shell command with Bun, rather than requiring harmless
 // reporting flags to precede its independently checked timeout in one order.
 for (const failure of [false, true]) {
-  test("documentation runner selects its suites across flags and preserves " + (failure ? "failure" : "success"), t => {
-    const declaration = read("PACKAGE.ts")
-    const match = declaration.match(/"docs-tools": check\(\s*"[^"]*",\s*("(?:[^"\\]|\\.)*")/)
-    assert.ok(match, "docs-tools declares its literal test command")
-    const command = JSON.parse(match[1])
+  test("documentation runner selects its suites across flags and preserves " + (failure ? "failure" : "success"), async t => {
     const entry = runs.find(([glob]) => glob === "docs/tools/*.test.*")
     assert.ok(entry, "the documentation runner stays registered")
-    assert.ok(command.startsWith("cd docs/tools && bun test "))
-    const selection = command.slice(command.indexOf("$(ls "))
-    assert.ok(selection.startsWith("$(ls *.test.*"), "the command enumerates the documented suites")
-    const commands = [command]
-    for (const quiet of [false, true]) for (const reverse of [false, true]) for (const workers of [1, 3]) {
-      const flags = ["--timeout 60000", "--parallel=" + workers, "--no-isolate",
-        ...(quiet ? ["--only-failures"] : [])]
-      if (reverse) flags.reverse()
-      commands.push("cd docs/tools && bun test " + flags.join(" ") + " " + selection)
-    }
     const dir = mkdtempSync(join(tmpdir(), "documentation-runner-"))
     t.after(() => rmSync(dir, { recursive: true, force: true }))
     const tools = join(dir, "docs/tools")
@@ -192,6 +179,14 @@ for (const failure of [false, true]) {
     }
     const env = { ...process.env, DOCS_RUNNER_TRACE: trace }
     delete env.NODE_TEST_CONTEXT
+    const actual = await declaredFileCommands("docs-tools", dir)
+    const collect = list => "failed=0; " + list.map(command => "(" + command + "); status=$?; [ $status -eq 0 ] || failed=$status").join("; ") + "; exit $failed"
+    const commands = [collect(actual)]
+    for (const quiet of [false, true]) for (const reverse of [false, true]) {
+      const flags = ["--timeout 60000", ...(quiet ? ["--only-failures"] : [])]
+      if (reverse) flags.reverse()
+      commands.push(collect(actual.map(command => command.replace("bun test --timeout 60000", "bun test " + flags.join(" ")))))
+    }
     for (const shell of commands) {
       rmSync(trace, { force: true })
       const result = spawnSync("sh", ["-c", shell], {
@@ -203,10 +198,9 @@ for (const failure of [false, true]) {
       assert.deepEqual(readFileSync(trace, "utf8").trim().split("\n").map(JSON.parse).sort(),
         [...selected].sort(), "all selected suites run once and separate-target suites remain excluded")
       if (failure) assert.match(result.stdout + result.stderr, /deliberate docs runner witness/)
-      assert.ok(shell.includes(entry[2]),
-        "the catalog must recognize each command after Bun proves equivalent suite selection")
+      assert.equal(actual.length, selected.length, "the graph owns every selected fixture file exactly once")
     }
-    assert.equal(commands.length, 9, "the declared command plus eight flag profiles ran")
+    assert.equal(commands.length, 5, "the declared commands plus four flag profiles ran")
   })
 }
 
@@ -229,7 +223,7 @@ for (const [name, file] of [
   const entry = runs.find(([glob]) => matcher(glob).test(file))
   assert.ok(entry, file + " has no runner")
   const [, runner, command] = entry
-  assert.equal(runner, "PACKAGE.ts")
+  assert.equal(runner, "root-test-shards.ts")
   assert.ok(read(runner).includes(command), "the declared release command must select the controls")
 })
 

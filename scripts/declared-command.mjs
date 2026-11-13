@@ -46,3 +46,20 @@ export function declaredCommand(declaration, name) {
   assert.equal(source[position], ",")
   return parts.join("")
 }
+
+// Load the production declaration with the fixture tree's discovery root.
+// This exercises the actual leaf shells and Suite membership, rather than
+// reconstructing a second runner command in selection tests.
+export async function declaredFileCommands(name, root) {
+  const { declarationTargets } = await import("./testing/package-declaration.mjs")
+  const { rootTestGroups, rootTestShards } = await import("../root-test-shards.ts")
+  const groups = rootTestGroups(root)
+  const targets = declarationTargets("PACKAGE.ts", {
+    bindings: { rootTestGroups: () => groups, rootTestInputPatterns: () => [] },
+  })
+  return rootTestShards(name, groups[name]).map(shard => {
+    const leaf = targets[shard.name]
+    assert.ok(targets[name].tests.includes(leaf), shard.name + " is reachable from " + name)
+    return leaf.shell
+  })
+}

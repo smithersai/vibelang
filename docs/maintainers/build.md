@@ -240,13 +240,55 @@ node --test scripts/property-slice.test.mjs scripts/parallel-property.test.mjs \
 
 The migration progress reporter prints the selected-file list, failure details, aggregate counts and a heartbeat every 30 seconds. A `test-failed` record retains Node's `todo` and `skip` flags and reasons, so an expected todo failure remains distinguishable from an ordinary failure even when the command succeeds. Successful tests and file summaries update counts without consuming the graph's live output budget. Pending files remain named, and a failed file includes its captured output and unabridged assertion error. A file that cannot load or a terminated run remains incomplete, and Node retains responsibility for the exit status. `scripts/migrate-progress.test.mjs` checks late failures beyond 200 files, real child processes, full assertion witnesses, missing file summaries and termination against an unmodified Node runner.
 
-The `//:release` target runs Node's test files with `--test-concurrency=4`.
-This bounds the number of simultaneous file workers independently of the host's
-CPU count and the graph's `--jobs` setting. Four matches a gate box's four
-vCPUs: with eight workers, a child process in `api-inputs.test.mjs` passed its
-120-second limit there. Every selected file still runs, and a failing file keeps
-the target's nonzero exit status. Tests within a file keep their own concurrency
-settings; child processes they spawn are additional to the four file workers.
+The root `//:release`, `//:api-identity-test`, `//:docs-tools`,
+`//:mapper-scripts` and `//:spec-linters-test` labels are `S.Suite`
+targets. `root-test-shards.ts` discovers their previous file selectors and
+`PACKAGE.ts` creates independently cached file groups from
+`root-test-shard-groups.json`. Short files share bounded groups, using the
+existing Node concurrency of `4` or Bun concurrency of `3`. Checks that use the whole box stay
+independent. Group membership is explicit and stable; new files receive their
+own leaves until measured and assigned, so adding one cannot reshuffle existing
+groups. Empty manifest slots preserve existing group numbers after repacking.
+Group labels end in `-group-NNN`; individual file labels use `-file-`
+with encoded punctuation. Measure each leaf alone on a worker with four CPUs
+and split groups that exceed 180 seconds by file or test name. The release
+assembly fixtures, `scripts/release/make-packages*.test.mjs`, run in independent
+file leaves with shared setup and unchanged assertions. Each leaf retains its `8m` deadline, all tests, property counts,
+per-test deadlines and failure exits.
+
+`//:release` also requires the API Suite and `//:build-contracts`, once each.
+`//:api-identity-sync` checks the staged comparator source independently of its
+test files. Documentation files run through Bun with an explicit 60-second
+per-test budget. `//:docs-tools` retains the separate specification-link and
+static-linter prerequisites. `scripts/root-test-shards.test.mjs` compares
+the discovered file sets with the former selectors and checks exact Suite
+membership, unique file ownership and dependency coverage. Real fixture files
+check success and failure propagation through the declared leaf commands.
+
+The API input audit separates closure, key mutation, guard, real-cache and
+coverage tests into individual files with shared fixture helpers.
+
+The four example-conversion properties use independent test files with a shared
+fixture helper. They retain their original generated inputs and per-test
+budgets; Bun can schedule the files in parallel within their feature group.
+
+Leaf inputs follow local imports, literal fixture paths and their directory
+inventories. Dynamic fixture and subprocess reads are listed in
+`root-test-fixtures.json` and checked against file-access receipts when changing
+the root checks. Compiler, runtime, forms and mapper prerequisites are included
+only for files whose source/import closure references them. Repository
+inventory tests keep the source directories they enumerate as explicit globs;
+ordinary file tests do not depend on the root `tree` filegroup. Exact files use
+`S.file` so package boundaries do not silently exclude them. Directory reads
+in another package depend on its exported source tree; root globs alone do not
+cross a nested `PACKAGE.ts`. The brand audit,
+version-literal inventories and the API input test that copies the complete
+repository retain that dependency because they read every authored file.
+
+`//:spec-pipe-arrows` and `//:spec-catch-diagnostics` each group an independent
+lint command and its regression file. `//:spec-appendix-examples` groups sixteen
+disjoint partitions of the resolved diagnostic examples; `--shard index/count`
+keeps the unsharded command available and rejects malformed selectors.
 
 The release target runs `typescript/vibelang/coverage-stock-twins.test.mjs`. Its controls check changes to `Exit` values and public types, plus Effect version mismatches. It also runs `typescript/vibelang/vip7-reference.test.mjs`, which checks concurrent reference installation and lock cleanup after a failed install. These tests use fixture packages and need no reference compiler install. The test inventory keeps both suites registered.
 
@@ -956,7 +998,8 @@ Migration and convert suites belong to the `//packages:migrate-test` suite and i
                            ├─► :compiler-native ─► :compiler-test-N, :migrate-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
                            ├─► :lsp-smoke ◄─ :runtime-dist
                            └─► :snippets, :docs-tools
-:tree ─► :release :snippets :tokens :forms :docs-tools :docs-check :go-vibelang*
+:tree ─► :snippets :tokens :forms :docs-check :go-vibelang*
+:file inputs ─► :release-file-* :docs-tools-file-* :api-identity-test-file-* :mapper-scripts-file-*
 :native-srcs ─► :forms-generator ─► :forms
 :native-srcs ─► :compiler, :mapper ─► :go-vibelangmapper
 :design-files, :srcs, :vibelang-files, :vibelangfuzz-files ─► :spec-tests
@@ -2042,29 +2085,32 @@ checks that the shared matrix still reaches a synthesized program builder.
 When refreshing syntax, retain cold blocks in the checks for source tokens
 and generated names as well as the dedicated tests of program values.
 
-The `//:api-identity-test` cache key uses `api-inputs.ts` rather than the
-whole repository tree. It includes scripts and corpus files, specification
-chapters (including historical chapter lookup), the declaration-identity
-maintainer guide read by the dependency fixtures, all package sources, the
-`docs/tools` and `experiments` sources and lockfiles, the staged checker
-copies, and the root JSON project configurations and Smithers install declarations. The installed tool
-and lockfiles still identify the TypeScript environment. Compiler Go,
-acceptance cases, user prose and generated site pages do not invalidate this
-Node-only check. Other root checks retain their existing inputs.
+Root test leaves declare the native binaries their tests and imported helpers execute. References to `vibelang-forms` or `FORMS_BINARY` retain `//typescript:forms-generator`, including the starter-template checks. Validate a leaf through `smthrs ci` so its declared prerequisites are built before its tests run.
 
-The real SDK fixtures in `.smithers/flows/test/api-inputs.test.mjs` check the
-actual root key, 64 generated unrelated path neighbours, each selected input
-family, cache replay and a failing declaration through the real TypeScript
-comparator. The whole-tree control runs `smthrs affected ci --list` on the
-actual root, which reads the declarations without digesting the tree: all 64
-neighbours must reach `//:release` through its direct `//:tree` input and must
-not select `//:api-identity-test`. A narrowed declaration must fail that guard,
-and the cache fixture proves a whole-tree input changes its consumer's key. The
-fixtures also audit current relative API imports and specification lookups.
-When an API test gains another repository read, extend the input
-group and its selected-input control before relying on cached results. The
-target command, source-sync guard, property counts and failure rules are
-unchanged.
+The `//:api-identity-test` Suite uses independently cached per-file leaves.
+Their inputs retain source imports, corpus files and specification chapters.
+The `//:api-identity-sync` leaf uses `api-inputs.ts` for the staged comparator
+source: scripts and corpus files, specification chapters (including historical
+lookup), the declaration-identity maintainer guide, package sources,
+`docs/tools` and `experiments` sources and lockfiles, staged checker copies,
+root JSON project configurations and Smithers install declarations. Installed
+tools and lockfiles still identify the TypeScript environment. Compiler Go,
+acceptance cases, user prose and generated site pages do not invalidate
+these Node checks.
+
+The real SDK fixtures in `.smithers/flows/test/api-inputs-*.test.mjs` check the
+executable source-sync leaf's key, `64` generated unrelated path neighbours,
+each selected input family, cache replay and a failing declaration through the
+real TypeScript comparator. Suites themselves are uncacheable; assertions inspect
+the executable leaf's key. The whole-tree control runs `smthrs affected ci --list`:
+every neighbour must reach a release inventory leaf through its whole-tree input
+and must select no API leaf by declared input. A narrowed declaration must fail
+the guard, and the cache fixture proves that changing a whole-tree input changes
+its consumer's key. The fixtures also audit relative API imports and specification
+lookups. `//:api-inputs-cache` groups the closure, real-cache and coverage files.
+When an API test gains a repository read, extend its inputs and selected-input
+control before relying on cached results. Source-sync checks, property counts and
+failure rules remain enforced.
 
 
 The JSDoc-link API identity fixture explicitly loads `lib.esnext.d.ts` for

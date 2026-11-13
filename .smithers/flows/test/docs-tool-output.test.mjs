@@ -10,24 +10,14 @@ import test from "node:test"
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const ts = createRequire(new URL("../../../docs/tools/package.json", import.meta.url))("typescript")
 
-function docsCommand() {
-  const ast = ts.createSourceFile("PACKAGE.ts", readFileSync(join(repo, "PACKAGE.ts"), "utf8"), ts.ScriptTarget.Latest, true)
-  let command
-  function visit(node) {
-    if (ts.isPropertyAssignment(node) && node.name.getText(ast) === '"docs-tools"') {
-      assert.ok(ts.isCallExpression(node.initializer))
-      const shell = node.initializer.arguments[1]
-      assert.ok(ts.isStringLiteral(shell), "the documentation check must expose its actual command")
-      command = shell.text
-    }
-    ts.forEachChild(node, visit)
-  }
-  visit(ast)
-  assert.equal(typeof command, "string")
-  return command
+async function docsCommand(root) {
+  const { declaredFileCommands } = await import("../../../scripts/declared-command.mjs")
+  const commands = await declaredFileCommands("docs-tools", root)
+  assert.equal(commands.length, 1)
+  return commands[0]
 }
 
-test("documentation failure details survive a noisy passing suite", t => {
+test("documentation failure details survive a noisy passing suite", async t => {
   const root = mkdtempSync(join(tmpdir(), "docs-output-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   symlinkSync(join(repo, ".smithers/node_modules"), join(root, "node_modules"), "dir")
@@ -47,7 +37,7 @@ test("documentation failure details survive a noisy passing suite", t => {
   writeFileSync(join(root, "PACKAGE.ts"), [
     'import { Smithers as S } from "@smthrs/targets"',
     'export const Package = S.Package({ targets: { "docs-tools": S.Shell.Test({',
-    'shell: ' + JSON.stringify(docsCommand()) + ', sandbox: "none", timeout: "1m",',
+    'shell: ' + JSON.stringify(await docsCommand(root)) + ', sandbox: "none", timeout: "1m",',
     'tools: [S.Host.bin("bun")], data: [S.glob("docs/tools/*.test.ts")],',
     '}) } })',
     "",

@@ -10,18 +10,24 @@ const root = fileURLToPath(new URL("../../../", import.meta.url))
 const cli = join(root, ".smithers/node_modules/.bin/smthrs")
 const invoke = (workspace, ...args) => spawnSync(process.execPath, [
   cli, ...args, "--workspace", workspace, "--ui", "plain",
-], { encoding: "utf8", timeout: 90_000 })
+], { encoding: "utf8", timeout: 90_000, maxBuffer: 32 * 1024 * 1024 })
 const output = result => result.stdout + result.stderr
 
 test("a focused release has the API identity check as a real prerequisite", () => {
-  const result = invoke(root, "query", "deps(//:release)", "--format", "json")
+  const result = invoke(root, "graph", "//...", "--format", "json", "--filter-output", "edges")
   assert.equal(result.status, 0, output(result))
   const graph = JSON.parse(result.stdout)
   assert.ok(graph.edges.some(edge =>
     edge.from === "//:release" && edge.to === "//:api-identity-test"),
   "excluding API files from the release body must preserve focused API coverage")
-  assert.ok(graph.edges.some(edge =>
-    edge.from === "//:release" && edge.to === "//typescript:forms-generator"),
+  const reachable = new Set(["//:release"])
+  for (let changed = true; changed;) {
+    changed = false
+    for (const edge of graph.edges) if (reachable.has(edge.from) && !reachable.has(edge.to)) {
+      reachable.add(edge.to); changed = true
+    }
+  }
+  assert.ok(reachable.has("//typescript:forms-generator"),
   "sharing API coverage must retain the published forms generator prerequisite")
 })
 

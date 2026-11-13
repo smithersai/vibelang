@@ -62,7 +62,7 @@ test("real declarations retain caller dependency identities and isolated environ
     bindings: { Typescript: { "forms-generator": forms }, Packages: { "compiler-native": compiler } }
   })
   assert.ok(root.forms.data.includes(forms))
-  assert.ok(root.release.data.includes(compiler))
+  assert.ok(root.release.tests.some(target => target.data?.includes(compiler)))
   assert.equal(root["go-vibelangfuzz-seeds-1"].env.VIBELANG_FUZZ_BUDGET_LOG, "budget with spaces.tsv")
   assert.equal(declarationTargets("PACKAGE.ts")["go-vibelangfuzz-seeds-1"].env.VIBELANG_FUZZ_BUDGET_LOG, "")
 })
@@ -70,17 +70,17 @@ test("real declarations retain caller dependency identities and isolated environ
 
 // A new export in either production helper must reach every real consumer
 // without adding another hand-maintained list of VM bindings.
-for (const module of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/testing/migrate-shards.mjs"]) {
+for (const module of ["api-inputs.ts", "build-contract-inputs.ts", "scripts/testing/migrate-shards.mjs", "root-test-shards.ts"]) {
   for (const binding of ["nextInput", "next_inventory2", "nextInputÉ"]) {
     test(module + " adds " + binding + " without changing consumer contexts", t => {
       const root = mkdtempSync(join(tmpdir(), "declaration-export-"))
       t.after(() => rmSync(root, { recursive: true, force: true }))
       const files = [
         "PACKAGE.ts", "typescript/PACKAGE.ts", "packages/PACKAGE.ts",
-        "api-inputs.ts", "build-contract-inputs.ts", "scripts/testing/package-declaration.mjs",
+        "api-inputs.ts", "build-contract-inputs.ts", "root-test-shards.ts", "root-test-fixtures.json", "root-test-shard-groups.json", "site/package.json", "scripts/testing/package-declaration.mjs",
         "scripts/testing/migrate-shards.mjs",
         ...consumers.map(name => "scripts/" + name + ".test.mjs"),
-        "scripts/build-vibelang.sh", "scripts/native-output.sh",
+        "scripts/build-vibelang.sh", "scripts/native-output.sh", "scripts/release/warning-fixture.test.mjs",
         "packages/compiler/test/eslint/run.sh", "packages/vite/test/run.sh",
         "packages/unplugin/test/run.sh", "typescript/vibelang/smoke.sh",
         "typescript/vibelang/lsp-smoke.sh", "packages/ts-mapper/test/e2e.sh",

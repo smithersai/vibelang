@@ -1,107 +1,14 @@
 // Local release assembly only: npm pack runs, npm publish never does.
 import assert from "node:assert/strict"
-import { execFileSync, spawnSync } from "node:child_process"
+import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { crc32 } from "node:zlib"
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+
 import { dirname, join } from "node:path"
 import { test } from "node:test"
-import { fileURLToPath } from "node:url"
-import { fixtureCheckout, fixtureRevision } from "./fixture-checkout.mjs"
 
-const repo = fileURLToPath(new URL("../../", import.meta.url))
-const platformPackage = (platform) => platform.startsWith("win32-") ? `@smthrs/cli-${platform}` : `vibelang-${platform}`
-const platforms = ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "win32-arm64", "win32-x64"]
-const json = (file) => JSON.parse(readFileSync(file, "utf8"))
-// The compiler package's own files; make-packages writes the others.
-const compilerSources = json(join(repo, "packages/compiler/package.json")).files
-  .filter((file) => !["editor", "dprint-plugin.json", "README.md", "LICENSE", "NOTICE"].includes(file))
-  .map((file) => `packages/compiler/${file}`)
-// A stored zip whose entries carry one modification time, in the DOS header
-// fields and in an extended-timestamp field, the way vsce writes a VSIX.
-const vsixFiles = { "extension.vsixmanifest": "<PackageManifest/>\n", "extension/readme.md": "# VibeLang\n" }
-function zipAt(when, files) {
-  const dosTime = (when.getUTCHours() << 11) | (when.getUTCMinutes() << 5) | (when.getUTCSeconds() >> 1)
-  const dosDate = ((when.getUTCFullYear() - 1980) << 9) | ((when.getUTCMonth() + 1) << 5) | when.getUTCDate()
-  const stamp = Buffer.alloc(9)
-  stamp.writeUInt16LE(0x5455, 0); stamp.writeUInt16LE(5, 2); stamp.writeUInt8(1, 4); stamp.writeUInt32LE(Math.floor(when.getTime() / 1000), 5)
-  const locals = [], centrals = []
-  let offset = 0
-  for (const [name, text] of Object.entries(files)) {
-    const data = Buffer.from(text), path = Buffer.from(name)
-    const fields = (header) => {
-      header.writeUInt16LE(dosTime, 0); header.writeUInt16LE(dosDate, 2); header.writeUInt32LE(crc32(data), 4)
-      header.writeUInt32LE(data.length, 8); header.writeUInt32LE(data.length, 12); header.writeUInt16LE(path.length, 16); header.writeUInt16LE(stamp.length, 18)
-      return header
-    }
-    const local = Buffer.concat([Buffer.from([0x50, 0x4b, 0x03, 0x04, 20, 0, 0, 0, 0, 0]), fields(Buffer.alloc(20)), path, stamp, data])
-    const tail = Buffer.alloc(14); tail.writeUInt32LE(offset, 10)
-    centrals.push(Buffer.concat([Buffer.from([0x50, 0x4b, 0x01, 0x02, 20, 0, 20, 0, 0, 0, 0, 0]), fields(Buffer.alloc(20)), tail, path, stamp]))
-    locals.push(local)
-    offset += local.length
-  }
-  const directory = Buffer.concat(centrals)
-  const end = Buffer.alloc(22)
-  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(centrals.length, 8); end.writeUInt16LE(centrals.length, 10)
-  end.writeUInt32LE(directory.length, 12); end.writeUInt32LE(offset, 16)
-  return Buffer.concat([...locals, directory, end])
-}
-// Build output, which no revision tracks.
-const buildOutput = ["packages/runtime/dist", "editors/vscode/vibelang.vsix"]
-const checkouts = new Map()
-function fixture(t, checkout = {}) {
-  const root = mkdtempSync(join(tmpdir(), "vibelang-release-test-"))
-  t.after(() => rmSync(root, { recursive: true, force: true }))
-  for (const path of ["scripts/release/make-packages.mjs", "scripts/release/zip-times.mjs", "scripts/release/packed-hygiene.mjs", "scripts/release/revision.mjs", "scripts/template-files.mjs", "docs/tools/release-docs.mjs", "LICENSE", "typescript/LICENSE.txt", "typescript/NOTICE.txt", "typescript/tsc/internal/vibelang/identity.go",
-    ...["compiler", "runtime", "vite", "create-vibelang", "unplugin", "typescript-shim"].flatMap((name) => [`packages/${name}/package.json`, `packages/${name}/README.md`]),
-    ...["bin", "lib", "launcher.mjs", "tsc"].map((name) => `packages/typescript-shim/${name}`),
-    ...compilerSources, "editors/tree-sitter-vibelang/tree-sitter.json",
-    ...json(join(repo, "editors/tree-sitter-vibelang/tree-sitter.json")).grammars.map(grammar => join("editors/tree-sitter-vibelang", grammar.path ?? ".", "src")), "packages/vite/src", "packages/create-vibelang/bin", "packages/unplugin/src", "templates/app"]) {
-    mkdirSync(dirname(join(root, path)), { recursive: true })
-    cpSync(join(repo, path), join(root, path), { recursive: true, filter: (file) => !["node_modules", "dist", ".prototype"].includes(file.split("/").at(-1)) })
-  }
-  for (const path of ["packages/runtime/dist/index.js", "packages/runtime/dist/index.d.ts", "packages/runtime/dist/kernel/kernel.js"]) {
-    mkdirSync(dirname(join(root, path)), { recursive: true })
-    writeFileSync(join(root, path), `fixture ${path}\n`)
-  }
-  mkdirSync(join(root, "editors/vscode"), { recursive: true })
-  writeFileSync(join(root, "editors/vscode/vibelang.vsix"), zipAt(new Date("2026-11-08T05:04:40Z"), vsixFiles))
-  for (const platform of platforms) {
-    const binary = join(root, "dist-npm/bin", platform, platform.startsWith("win32") ? "vibelang.exe" : "vibelang")
-    mkdirSync(dirname(binary), { recursive: true })
-    writeFileSync(binary, Buffer.from(`binary ${platform}\0\xff revision ${fixtureRevision}`))
-    writeFileSync(join(root, "dist-npm/bin", platform + ".status"), `platform=${platform}\ncompleted=2026-11-08T05:00:00Z\nexit=0\n`)
-  }
-  writeFileSync(join(root, "dist-npm/bin/revision"), `revision=${fixtureRevision}\nclean=true\n`)
-  checkouts.set(root, fixtureCheckout(root, { ...checkout, untracked: [...buildOutput, ...(checkout.untracked ?? [])] }))
-  return root
-}
-function assemble(root, ...flags) {
-  return spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs"), "--skip-build", ...flags],
-    { encoding: "utf8", timeout: 120_000, env: { ...process.env, PATH: checkouts.get(root).bin + ":" + process.env.PATH } })
-}
-function listing(root, name) {
-  const { file } = json(join(root, "dist-npm/tarballs/manifest.json")).packages.find((pkg) => pkg.name === name)
-  return execFileSync("tar", ["-tzf", join(root, "dist-npm/tarballs", file)], { encoding: "utf8" }).split("\n").filter(Boolean)
-}
-function archive(root, name, path) {
-  const { file } = json(join(root, "dist-npm/tarballs/manifest.json")).packages.find((pkg) => pkg.name === name)
-  return execFileSync("tar", ["-xOzf", join(root, "dist-npm/tarballs", file), `package/${path}`], { maxBuffer: 64 * 1024 * 1024 })
-}
-
-test("packs every file the compiler package lists and every target its exports name", { timeout: 120_000 }, (t) => {
-  const root = fixture(t)
-  const result = assemble(root)
-  assert.equal(result.status, 0, result.stderr)
-  const compiler = json(join(root, "packages/compiler/package.json"))
-  assert.deepEqual(archive(root, "vibelang", "tree-sitter/src/scanner.c"), readFileSync(join(repo, "editors/tree-sitter-vibelang/src/scanner.c")))
-  assert.ok(archive(root, "vibelang", "tree-sitter/src/parser.c").length > 1000)
-  const targets = Object.values(compiler.exports).flatMap((target) => typeof target === "string" ? [target] : Object.values(target))
-  for (const path of [...targets.map((target) => target.replace(/^\.\//, "")), ...compiler.files.filter((file) => file !== "bin" && file !== "editor")]) {
-    assert.ok(archive(root, "vibelang", path).length > 0, `vibelang tarball lacks ${path}`)
-  }
-})
+import { fixtureRevision } from "./fixture-checkout.mjs"
+import { repo, platformPackage, platforms, json, vsixFiles, checkouts, fixture, assemble, listing, archive, unzipped, buildAndAssemble } from "./make-packages-fixture.mjs"
 
 test("assembles every package in publish order with pinned versions, platform binaries and portable templates", { timeout: 120_000 }, (t) => {
   const root = fixture(t)
@@ -171,26 +78,6 @@ test("assembles every package in publish order with pinned versions, platform bi
     assert.equal(createHash("sha256").update(license).digest("hex"), "812b2af11bfeb9214e0428f91357a87316996b779e32c58b19319a59af38e1e9", name + ": unchanged standard MIT text")
     assert.doesNotMatch(license, /VibeLang is licensed under/)
   }
-})
-
-function unzipped(root, vsix) {
-  const file = join(root, "packed.vsix")
-  writeFileSync(file, vsix)
-  return Object.fromEntries(Object.keys(vsixFiles).map((name) => [name, execFileSync("unzip", ["-p", file, name], { encoding: "utf8" })]))
-}
-
-test("packs the same vibelang tarball when only the VS Code extension's packaging time differs", { timeout: 240_000 }, (t) => {
-  const hashes = []
-  for (const when of ["2026-11-08T05:04:40Z", "2026-11-08T05:16:08Z"]) {
-    const root = fixture(t)
-    writeFileSync(join(root, "editors/vscode/vibelang.vsix"), zipAt(new Date(when), vsixFiles))
-    const result = assemble(root)
-    assert.equal(result.status, 0, result.stderr)
-    const { file } = json(join(root, "dist-npm/tarballs/manifest.json")).packages.find((pkg) => pkg.name === "vibelang")
-    hashes.push(createHash("sha256").update(readFileSync(join(root, "dist-npm/tarballs", file))).digest("hex"))
-    assert.deepEqual(unzipped(root, archive(root, "vibelang", "editor/vibelang.vsix")), vsixFiles)
-  }
-  assert.equal(hashes[0], hashes[1])
 })
 
 test("reports inconsistent versions, pins and missing binaries together before replacing release artifacts", (t) => {
@@ -300,36 +187,6 @@ test("refuses a missing or drifting transitive Effect override before packing", 
   }
 })
 
-test("release assembly includes every registered grammar and its manifest", { timeout: 120_000 }, t => {
-  const root = fixture(t)
-  const grammarRoot = join(root, "editors/tree-sitter-vibelang")
-  const manifest = json(join(grammarRoot, "tree-sitter.json"))
-  manifest.grammars.push({ name: "extra", path: "extra", "file-types": ["extra"] })
-  writeFileSync(join(grammarRoot, "tree-sitter.json"), JSON.stringify(manifest))
-  mkdirSync(join(grammarRoot, "extra/src"), { recursive: true })
-  writeFileSync(join(grammarRoot, "extra/src/parser.c"), "int tree_sitter_extra(void) { return 1; }")
-  writeFileSync(join(grammarRoot, "extra/src/scanner.c"), "int extra_scan(void) { return 1; }")
-  const result = assemble(root)
-  assert.equal(result.status, 0, result.stderr)
-  assert.deepEqual(JSON.parse(archive(root, "vibelang", "tree-sitter/tree-sitter.json")), manifest)
-  assert.equal(archive(root, "vibelang", "tree-sitter/extra/src/parser.c").toString(), "int tree_sitter_extra(void) { return 1; }")
-  const unpacked = join(root, "unpacked")
-  mkdirSync(unpacked)
-  const version = json(join(root, "packages/compiler/package.json")).version
-  execFileSync("tar", ["-xzf", join(root, "dist-npm/tarballs", `vibelang-${version}.tgz`), "-C", unpacked])
-  const library = join(root, "parser.so")
-  const build = spawnSync(process.execPath, [join(unpacked, "package/bin/vibelang-ast-grep"), library], { encoding: "utf8" })
-  if (process.platform === "win32") {
-    assert.equal(build.status, 1)
-    assert.match(build.stderr, /WSL/)
-    return
-  }
-  assert.equal(build.status, 0, build.stderr)
-  const symbols = execFileSync("nm", ["-g", library], { encoding: "utf8" })
-  assert.ok(symbols.includes("tree_sitter_vibe"), symbols)
-  assert.ok(symbols.includes("tree_sitter_extra"), symbols)
-})
-
 // Release integrity: the tarballs must be one commit's files and binaries.
 test("the manifest records the revision and that --skip-build tarballs are for rehearsal only", { timeout: 120_000 }, (t) => {
   const root = fixture(t)
@@ -404,45 +261,6 @@ test("refuses a tree with uncommitted changes, and a tree that is no checkout", 
   assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
 })
 
-// Files a maintainer has lying in the source directories: a secret, lockfiles
-// from a local install, an editor scratch file, test output.
-const strays = {
-  "templates/app/.env": "create-vibelang",
-  "templates/app/package-lock.json": "create-vibelang",
-  "templates/app/pnpm-lock.yaml": "create-vibelang",
-  "templates/app/src/notes.txt": "create-vibelang",
-  "packages/vite/src/scratch.js": "vibelang-vite",
-  "packages/unplugin/src/scratch.js": "vibelang-unplugin",
-  "packages/typescript-shim/lib/output.log": "vibelang-typescript",
-  "packages/create-vibelang/bin/debug.mjs": "create-vibelang",
-  "packages/compiler/bin/core": "vibelang",
-  "packages/compiler/skills/vibelang/draft.md": "vibelang",
-  "editors/tree-sitter-vibelang/src/parser.o": "vibelang",
-}
-test("untracked files in the template and package source directories are not packed", { timeout: 120_000 }, (t) => {
-  const root = fixture(t, { untracked: Object.keys(strays) })
-  for (const path of Object.keys(strays)) {
-    mkdirSync(dirname(join(root, path)), { recursive: true })
-    writeFileSync(join(root, path), "TOKEN=not-for-npm\n")
-  }
-  const result = assemble(root)
-  assert.equal(result.status, 0, result.stderr)
-  for (const [path, name] of Object.entries(strays)) {
-    const leaked = listing(root, name).filter((file) => file.endsWith("/" + path.split("/").at(-1)))
-    assert.deepEqual(leaked, [], `${name} packs the untracked ${path}`)
-  }
-  assert.ok(listing(root, "create-vibelang").includes("package/template/src/main.vibe"))
-  assert.ok(listing(root, "vibelang-vite").includes("package/src/index.js"))
-})
-
-test("a tracked lockfile in the template is still left out, by the shared exclusion list", { timeout: 120_000 }, (t) => {
-  const root = fixture(t)
-  for (const name of ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock"]) writeFileSync(join(root, "templates/app", name), "lock\n")
-  const result = assemble(root)
-  assert.equal(result.status, 0, result.stderr)
-  assert.deepEqual(listing(root, "create-vibelang").filter((file) => /lock/.test(file)), [])
-})
-
 test("every tracked file under a staged directory is packed", { timeout: 120_000 }, (t) => {
   const root = fixture(t)
   const result = assemble(root)
@@ -455,35 +273,6 @@ test("every tracked file under a staged directory is packed", { timeout: 120_000
     assert.deepEqual(listing(root, name).filter((file) => file.startsWith(to)).sort(), expected, name)
   }
 })
-
-// A normal build uses a stand-in for bun, but real assembly and npm pack.
-// Like tsc, this builder writes current outputs without deleting old ones.
-function buildAndAssemble(root, failure = "") {
-  const bin = checkouts.get(root).bin
-  const freshVsix = join(bin, "fresh.vsix")
-  writeFileSync(freshVsix, zipAt(new Date("2026-11-08T05:04:40Z"), {
-    ...vsixFiles, "extension/readme.md": "# Fresh build\n"
-  }))
-  writeFileSync(join(bin, "bun"), `#!${process.execPath}
-const fs = require("node:fs"), path = require("node:path")
-const args = process.argv.slice(2)
-if (args[0] === "install") process.exit(0)
-const phase = path.basename(process.cwd()) === "runtime" ? "runtime" : "extension"
-if (args[0] !== "run" || args[1] !== (phase === "runtime" ? "build" : "package")) process.exit(91)
-if (phase === process.env.TEST_RELEASE_BUILD_FAILURE) process.exit(23)
-if (phase === "runtime") {
-  for (const file of ["index.js", "index.d.ts", "kernel/kernel.js"]) {
-    const target = path.join("dist", file)
-    fs.mkdirSync(path.dirname(target), { recursive: true })
-    fs.writeFileSync(target, "fresh " + file)
-  }
-} else fs.copyFileSync(${JSON.stringify(freshVsix)}, "vibelang.vsix")
-`, { mode: 0o755 })
-  return spawnSync(process.execPath, [join(root, "scripts/release/make-packages.mjs")], {
-    encoding: "utf8", timeout: 120_000,
-    env: { ...process.env, PATH: bin + ":" + process.env.PATH, TEST_RELEASE_BUILD_FAILURE: failure }
-  })
-}
 
 test("normal assembly removes outputs of deleted runtime sources and rebuilds the extension", { timeout: 120_000 }, t => {
   const root = fixture(t)

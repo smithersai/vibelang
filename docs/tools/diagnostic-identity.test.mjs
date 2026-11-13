@@ -189,7 +189,7 @@ test("the complete inventory and executable examples participate in the queue's 
  assert.match(pkg, /"spec-diagnostic-identity": specDiagnosticIdentity/)
  const target=pkg.slice(pkg.indexOf("const specDiagnosticIdentity"),pkg.indexOf("const specAppendixExamples"))
  assert.doesNotMatch(target,/exclusive: true/)
- const aggregate=pkg.slice(pkg.indexOf("const specLint ="),pkg.indexOf("const foreignCallExamples"))
+ const aggregate=pkg.slice(pkg.indexOf("const specLint ="),pkg.indexOf("const declarationPreservation",pkg.indexOf("const specLint =")))
  assert.match(aggregate,/data: \[[^\]]*specDiagnosticIdentity/)
  assert.match(aggregate,/data: \[[^\]]*specAppendixHostExamples/)
  assert.match(aggregate,/data: \[[^\]]*specAppendixExamples/)

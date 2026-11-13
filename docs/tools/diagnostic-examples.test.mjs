@@ -113,9 +113,16 @@ test("the Appendix replay budget covers every compiled example on a loaded runne
  const read=path=>readCaptureFixtures(new URL(path,import.meta.url),"utf8")
  const fixtures=JSON.parse(read("../../typescript/vibelang/cases/appendix-diagnostic-identities/examples.json"))
  const compiled=resolveExamples(fixtures,appendixCodes(read("../design/src/900-appendices.md")))
- const budget=/const specAppendixExamples = S\.Shell\.Test\(\{[\s\S]*?timeout: "(\d+)m"/.exec(read("../../PACKAGE.ts"))
- assert.ok(budget,"spec-appendix-examples declares a timeout in minutes")
- assert.ok(Number(budget[1])*60>=compiled.length*5/4,compiled.length+" examples need more than "+budget[1]+"m")
+ const source = read("../../PACKAGE.ts")
+ const budget = /const appendixExampleTargets = [\s\S]*?length: (\d+)[\s\S]*?timeout: "(\d+)m"/.exec(source)
+ assert.ok(budget, "the Appendix leaves declare their count and minute budget")
+ const count = Number(budget[1])
+ for (let index = 0; index < count; index++) {
+   const size = compiled.filter((_, offset) => offset % count === index).length
+   assert.ok(Number(budget[2]) * 60 >= size * 5 / 4, size + " examples need more than " + budget[2] + "m")
+ }
+ assert.match(source, /const specAppendixExamples = S\.Suite\(\{ tests: Object\.values\(appendixExampleTargets\)/)
+
 })
 
  
@@ -170,4 +177,19 @@ test("fast-check: completed emission replays reject legacy codes, wrong severity
    assert.ok(checkExample(example,appendix,{status:2,stdout:lines.join("\n")+"\n"+diagnostic(fixture.code)}).length)
   }
  }),{seed:42014202,numRuns:140})
+})
+
+// Partitions preserve object identity and the original order within each leaf.
+test("diagnostic example partitions cover every example exactly once", async () => {
+  const { diagnosticExampleShard } = await import("./diagnostic-examples.mjs")
+  for (const length of [0, 1, 15, 16, 17, 137]) {
+    const examples = Array.from({ length }, (_, index) => ({ index }))
+    for (const count of [1, 2, 7, 16]) {
+      const shards = Array.from({ length: count }, (_, index) => diagnosticExampleShard(examples, (index + 1) + "/" + count))
+      assert.deepEqual(shards.flat().sort((a, b) => a.index - b.index), examples)
+      assert.equal(new Set(shards.flat()).size, length)
+      for (const shard of shards) assert.deepEqual(shard, [...shard].sort((a, b) => a.index - b.index))
+    }
+  }
+  for (const invalid of ["0/2", "3/2", "1/0", "x", "1/2/3", "-1/2"]) assert.throws(() => diagnosticExampleShard([{}], invalid), /usage/)
 })

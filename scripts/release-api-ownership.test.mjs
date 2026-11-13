@@ -1,26 +1,22 @@
 import assert from "node:assert/strict"
-import { spawnSync } from "node:child_process"
+import { spawn, spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 import { buildContractSuites } from "../build-contract-inputs.ts"
-import { declaredCommand } from "./declared-command.mjs"
+import { declaredCommand, declaredFileCommands } from "./declared-command.mjs"
 
 const declaration = readFileSync(new URL("../PACKAGE.ts", import.meta.url), "utf8")
 const command = name => declaredCommand(declaration, name)
 
-const release = command("release")
 const contracts = command("build-contracts")
-const apiCheck = command("api-identity-test")
-assert.ok(apiCheck.startsWith("node scripts/sync-api-identity.mjs --check && "))
-// Exercise the actual test-selection command; the independent source-sync
-// prerequisite is unchanged and has its own repository check.
-const api = apiCheck.slice(apiCheck.indexOf("node --test "))
 
 const common = [
   "scripts/release/setup.test.mjs",
   "typescript/vibelang/harness.test.mjs",
+  "typescript/vibelang/harness-deadlines.test.mjs",
+  "typescript/vibelang/cov-ch004-twin.test.mjs",
   "typescript/vibelang/coverage-stock-twins.test.mjs",
   "typescript/vibelang/vip7-reference.test.mjs",
   "docs/redirect/setup.test.mjs",
@@ -46,7 +42,7 @@ const neighbours = buildContractSuites.flatMap(file => {
 const releaseFiles = [...common, ...ordinary, ...neighbours]
 
 for (const failure of ["none", "api", "release", "contracts"]) {
-  test("release delegates API suites and command audits once and preserves " + failure + " failures across filename neighbours", t => {
+  test("release delegates API suites and command audits once and preserves " + failure + " failures across filename neighbours", async t => {
     const root = mkdtempSync(join(tmpdir(), "release-api-"))
     t.after(() => rmSync(root, { recursive: true, force: true }))
     const trace = join(root, "trace.jsonl")
@@ -65,11 +61,28 @@ for (const failure of ["none", "api", "release", "contracts"]) {
       cwd: root, env, encoding: "utf8", timeout: 60_000,
     })
     const seen = () => readFileSync(trace, "utf8").trim().split("\n").map(JSON.parse).sort()
-    const first = invoke(release)
+    const runFiles = async name => {
+      const commands = await declaredFileCommands(name, root), results = []
+      let next = 0
+      await Promise.all(Array.from({ length: 4 }, async () => {
+        while (next < commands.length) {
+          const shell = commands[next++]
+          results.push(await new Promise(resolve => {
+            const child = spawn("sh", ["-c", shell], { cwd: root, env })
+            let stdout = "", stderr = ""
+            child.stdout.on("data", chunk => stdout += chunk)
+            child.stderr.on("data", chunk => stderr += chunk)
+            child.on("close", (status, signal) => resolve({ status, signal, stdout, stderr }))
+          }))
+        }
+      }))
+      return { status: results.some(r => r.status !== 0) ? 1 : 0, signal: results.find(r => r.signal)?.signal ?? null, stdout: results.map(r => r.stdout).join(""), stderr: results.map(r => r.stderr).join("") }
+    }
+    const first = await runFiles("release")
     assert.equal(first.signal, null, first.stdout + first.stderr)
     assert.equal(first.status, failure === "release" ? 1 : 0, first.stdout + first.stderr)
     assert.deepEqual(seen(), [...releaseFiles].sort(), "release must leave every API file to its dedicated target")
-    const second = invoke(api)
+    const second = await runFiles("api-identity-test")
     assert.equal(second.signal, null, second.stdout + second.stderr)
     assert.equal(second.status, failure === "api" ? 1 : 0, second.stdout + second.stderr)
     assert.deepEqual(seen(), [...releaseFiles, ...apiFiles].sort(), "API and build contracts retain separate ownership")

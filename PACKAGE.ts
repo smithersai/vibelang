@@ -1,4 +1,5 @@
 import { Smithers as S } from "@smthrs/targets"
+import { createRootTestInputs, minimizeRootTestInputs, rootTestGroups, rootTestShards, rootTestTargetName, rootShardName, rootTestInputPatterns, rootTestBuildNeeds, shellQuote } from "./root-test-shards.ts"
 import { fuzzTopics } from "./fuzz-topics.ts"
 import { vibelangTopics } from "./vibelang-topics.ts"
 import { migrationSources } from "./migration-inputs.ts"
@@ -437,30 +438,33 @@ const specInputs = S.Filegroup({ srcs: [...S.glob([
 const specSharedTables = S.Generate({
   command: "node docs/tools/spec-rules.mjs generate",
   changes: ["docs/design/generated/resolution.md"],
-  data: [S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules.mjs", "docs/design/vips/0039-vibex.md"])] })],
+  data: [S.Filegroup({ srcs: [...S.glob(["docs/tools/**", "docs/design/vips/0039-vibex.md"])] })],
   mode: "check", sandbox: "none"
 })
 const specCopySections = S.Generate({
   command: "node docs/tools/spec-rules.mjs copies --write",
   changes: ["docs/design/src/001-functions.md", "docs/design/src/007-tooling.md"],
-  data: [specInputs], mode: "check", sandbox: "none"
+  data: [S.Filegroup({ srcs: [...S.glob(["docs/design/**", "docs/tools/**"])] })],
+  mode: "check", sandbox: "none"
 })
 const specCheck = (kind: string, deps: ReadonlyArray<unknown> = []) => S.Shell.Test({
   summary: "Specification " + kind + " contracts agree with published VIP authority.",
   shell: "node docs/tools/spec-rules.mjs " + kind,
   data: [specInputs, ...deps] as Array<never>, tools: [node], sandbox: "none", timeout: "2m"
 })
-const specCatchDiagnostics = S.Shell.Test({
-  summary: "Closed catch handler diagnostics agree across VIP-5 and both catalogs.",
-  shell: "node docs/tools/spec-catch-diagnostics.mjs && node --test docs/tools/spec-catch-diagnostics.test.mjs",
-  data: [specInputs, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-catch-diagnostics*"])] })],
-  tools: [node], sandbox: "none", timeout: "2m"
-})
-const specPipeArrows = S.Shell.Test({
-  summary: "Pipe restrictions preserve closed catch arrows and reject blanket exclusions.",
-  shell: "node docs/tools/spec-pipe-arrows.mjs && node --test docs/tools/spec-pipe-arrows.test.mjs",
-  data: [specInputs], tools: [node], sandbox: "none", timeout: "1m"
-})
+const specCommandTargets = Object.fromEntries([
+  ["spec-catch-diagnostics", "docs/tools/spec-catch-diagnostics.mjs"],
+  ["spec-pipe-arrows", "docs/tools/spec-pipe-arrows.mjs"]
+].flatMap(([name, file]) => [
+  [name + "-lint", check("Check " + name + ".", "node " + file, [], [node], "1m", {}, [
+    S.Filegroup({ srcs: [...S.glob(rootTestInputPatterns(file))] })
+  ])],
+  [name + "-test", check("Regressions for " + name + ".", "node --test " + file.replace(".mjs", ".test.mjs"), [], [node], "1m", {}, [
+    S.Filegroup({ srcs: [...S.glob(rootTestInputPatterns(file.replace(".mjs", ".test.mjs")))] })
+  ])]
+]))
+const specCatchDiagnostics = S.Suite({ tests: [specCommandTargets["spec-catch-diagnostics-lint"], specCommandTargets["spec-catch-diagnostics-test"]] })
+const specPipeArrows = S.Suite({ tests: [specCommandTargets["spec-pipe-arrows-lint"], specCommandTargets["spec-pipe-arrows-test"]] })
 const specRegistry = specCheck("registry")
 // Diagnostic identity is a release blocker and participates in ordinary spec checks.
 const specDiagnosticIdentity = S.Shell.Test({
@@ -474,19 +478,27 @@ const specDiagnosticIdentity = S.Shell.Test({
   ])] })],
   tools: [node], sandbox: "none", timeout: "2m"
 })
-const specAppendixExamples = S.Shell.Test({
-  summary: "Executable Appendix B diagnostic examples retain their printed codes and categories.",
-  shell: "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node docs/tools/diagnostic-examples.mjs",
-  data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
-  tools: [node], sandbox: "none", timeout: "5m"
-})
+const appendixExampleTargets = Object.fromEntries(Array.from({ length: 16 }, (_, index) => [
+  "spec-appendix-examples-" + String(index + 1).padStart(2, "0"), S.Shell.Test({
+    summary: "Executable Appendix B examples, partition " + (index + 1) + " of 16.",
+    shell: "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node docs/tools/diagnostic-examples.mjs --shard " + (index + 1) + "/16",
+    data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
+    tools: [node], sandbox: "none", timeout: "3m"
+  })
+]))
+const specAppendixExamples = S.Suite({ tests: Object.values(appendixExampleTargets) })
 const specAppendixHostExamples = goVibelang(
   "Appendix mapper diagnostics and explicit editor repairs keep their documented identities.",
   `CGO_ENABLED=0 ${effect} go test -p 8 -count=1 -trimpath -timeout 5m -run "TestCompatibilityIdentityPrimaryMessages|TestFiberFlows|TestAppendixMapperHostExamples|TestAppendixEditorHostExamples|TestAppendixRegisteredOnlyHostExamples|TestInferred|TestFormChoiceDidChange|TestReceiverChoiceDidChange|TestUnprojectedForm|TestRenderExec|TestAutomaticTracingOptionRejected|TestVersionMismatchDiagnostic" ./internal/vibelang ./internal/vibelangmapper ./internal/ls`
 )
 const specTables = specCheck("tables")
 const specCopies = specCheck("copies", [specSharedTables, specCopySections])
-const specAuthority = specCheck("authority")
+const specAuthority = S.Shell.Test({
+  summary: "Specification citations agree with accepted VIP authority.",
+  shell: "node docs/tools/spec-rules.mjs authority",
+  data: [S.Filegroup({ srcs: [...S.glob(["docs/design/**", "docs/tools/**"])] })],
+  tools: [node], sandbox: "none", timeout: "1m"
+})
 const specExamples = S.Shell.Test({
   summary: "Accepted VIP examples compile; negative examples report their stated codes.",
   shell: "EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node docs/tools/spec-examples.mjs",
@@ -498,12 +510,7 @@ const specSchemaConstructor = check(
   "node docs/tools/spec-schema-constructor.mjs && node --test docs/tools/spec-schema-constructor.test.mjs",
   [], [node], "1m"
 )
-const specLinterTests = S.Shell.Test({
-  summary: "Historical spec defects, VIP links and supersession, module extraction scope and projection source kinds, seeded properties and native example checks reject regressions.",
-  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/spec-rules-import-grammar.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/diagnostic-examples.test.mjs docs/tools/diagnostic-archive-examples.test.mjs docs/tools/diagnostic-native-projects.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts spec-native-source-resolution.test.ts",
-  data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
-  tools: [node, bun, S.Host.bin("jj"), S.Host.bin("python3")], sandbox: "none", timeout: "10m"
-})
+
 
 // Entry diffs depend on jj history. Require immutable commit IDs in the
 // environment so both sides enter the key; mutable revision names are refused.
@@ -554,12 +561,7 @@ const grammarAdmissionCheck = check(
   [grammarAuthority], [node]
 )
 
-const specLint = S.Shell.Test({
-  summary: "Static specification contracts and their regression tests.",
-  shell: "echo 'spec-lint: static contracts passed'",
-  data: [specRegistry, specSchemaConstructor, specTables, specCopies, specAuthority, specLinterTests, specPipeArrows, specCatchDiagnostics, specAppendixExamples, specDiagnosticIdentity, specAppendixHostExamples],
-  sandbox: "none", timeout: "1m"
-})
+
 
 const foreignCallExamples = S.Shell.Test({
   summary: "VIP-4 unknown-call rules and prelude examples agree, with regression and generated mutations.",
@@ -594,7 +596,61 @@ const buildContracts = check(
 
 const apiIdentityFiles = createApiIdentityInputs(S, Packages.tree)
 
-const apiIdentityTest = check("Published export names, tsc type identity and JSDoc, with property controls.", "node scripts/sync-api-identity.mjs --check && node --test scripts/api-identity*.test.mjs", [], [node], undefined, {}, [apiIdentityFiles])
+const apiIdentitySync = check(
+  "Published comparator copies match their source.",
+  "node scripts/sync-api-identity.mjs --check", [], [node], "1m", {}, [apiIdentityFiles]
+)
+
+// Stable measured file groups are scheduled and cached independently.
+// A new test file gets its own leaf without changing existing boundaries.
+const rootGroups = rootTestGroups()
+const rootShards = Object.fromEntries(Object.entries(rootGroups).map(([group, files]) => [group, rootTestShards(group, files)]))
+const rootInputGroups = new Map<string, ReturnType<typeof createRootTestInputs>>()
+const rootShardInputs = (patterns: readonly string[]) => {
+  const minimized = minimizeRootTestInputs(patterns)
+  const key = JSON.stringify(minimized)
+  if (!rootInputGroups.has(key)) rootInputGroups.set(key, createRootTestInputs(S, minimized, {
+    "": tree, packages: Packages.tree, typescript: Typescript.tree,
+    "typescript/tsc": Tsc.tree, "typescript/vibelang": Vibelang.tree
+  }))
+  return rootInputGroups.get(key)!
+}
+const rootFileTargets = Object.fromEntries(Object.entries(rootShards).flatMap(([group, shards]) =>
+  shards.map(shard => {
+    const patterns = [...new Set(shard.files.flatMap(file => rootTestInputPatterns(file)))]
+    const needs = shard.files.map(file => rootTestBuildNeeds(file))
+    const nodeOnly = group === "api-identity-test" || shard.files.every(file => file.startsWith(".smithers/flows/test/api-inputs-"))
+    const bunFiles = group === "docs-tools" || shard.files[0].endsWith(".ts")
+    return [shard.name, check(
+      "Run " + shard.files.join(", ") + ".",
+      bunFiles
+        ? "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate --only-failures " + shard.files.map(file => shellQuote(file.slice("docs/tools/".length))).join(" ")
+        : "node --test --test-concurrency=4 " + shard.files.map(shellQuote).join(" "),
+      group === "api-identity-test" ? [] : [
+        ...(needs.some(need => need.forms) ? [Typescript["forms-generator"]] : []),
+        ...(needs.some(need => need.compiler) ? [Packages["compiler-native"]] : []),
+        ...(needs.some(need => need.runtime) ? [Packages["runtime-dist"]] : []),
+        ...(needs.some(need => need.mapper) ? [Typescript.compiler, Typescript.mapper] : [])
+      ],
+      nodeOnly ? [node] : [node, bun, go, gofmt, S.Host.bin("jj"), S.Host.bin("python3"), S.Host.bin("diff3")],
+      // Repack slow groups for throughput while retaining the existing
+      // action deadline and every selected test's own budget.
+      "8m", {}, rootShardInputs(patterns)
+    )]
+  })
+))
+const rootFileSuite = (group: keyof typeof rootGroups, extra: ReadonlyArray<unknown> = []) =>
+  S.Suite({ tests: [...rootShards[group].map(shard => rootFileTargets[shard.name]), ...extra] as Array<never> })
+const apiIdentityTest = rootFileSuite("api-identity-test", [apiIdentitySync])
+const specLinterTests = rootFileSuite("spec-linters-test")
+
+
+const specLint = S.Shell.Test({
+  summary: "Static specification contracts and their regression tests.",
+  shell: "echo 'spec-lint: static contracts passed'",
+  data: [specRegistry, specSchemaConstructor, specTables, specCopies, specAuthority, specLinterTests, specPipeArrows, specCatchDiagnostics, specAppendixExamples, specDiagnosticIdentity, specAppendixHostExamples],
+  sandbox: "none", timeout: "1m"
+})
 
 const declarationPreservation = S.Shell.Test({
   summary: "VIP-27 declaration-preservation prose uses API identity; regression and generated wording checks.",
@@ -774,15 +830,11 @@ const targets = {
     "2m"
   ),
   "spec-catch-diagnostics": specCatchDiagnostics,
-  release: check(
-    "The release, contributor and site generator node tests, the upgrade and maintenance flows' steps, and their evals' step keys.",
-    "node --test --test-concurrency=4 scripts/release/*.test.mjs 'scripts/!(api-identity*|" + buildContractExclusions + ").test.mjs' typescript/vibelang/harness.test.mjs typescript/vibelang/harness-deadlines.test.mjs typescript/vibelang/cov-ch004-twin.test.mjs typescript/vibelang/coverage-stock-twins.test.mjs typescript/vibelang/vip7-reference.test.mjs docs/redirect/*.test.mjs " +
-      "site/scripts/sync-spec-docs.test.mjs site/scripts/sync-user-docs.test.mjs " +
-      ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs " +
-      ".smithers/flows/test/*.test.mjs",
-    [apiIdentityTest, buildContracts, Typescript["forms-generator"], Packages["compiler-native"], Packages["runtime-dist"]],
-    [node, bun, gofmt, bun, go, S.Host.bin("diff3")]
-  ),
+  ...rootFileTargets,
+  ...specCommandTargets,
+  ...appendixExampleTargets,
+  "api-identity-sync": apiIdentitySync,
+  release: rootFileSuite("release", [apiIdentityTest, buildContracts]),
   "starter-templates": check(
     "Compile and run every starter with zero diagnostics and zero legacy sites.",
     "bun test --timeout 180000 docs/tools/starter-templates.test.ts",
@@ -826,16 +878,7 @@ const targets = {
     sandbox: "none",
     timeout: "10m"
   }),
-  "mapper-scripts": check(
-    "The mapper's hover, parity and RPC runners work on the current fixtures and compiler.",
-    "node --test --test-concurrency=4 scripts/mapper-*.test.mjs",
-    // The parity selection test drives typescript/built/local/vibelang-mapper (scripts/testing/mapper-binary.mjs).
-    // Without it the test built its own copy inside a 900 s hook, which timed out on a loaded post-merge box.
-    [Typescript.compiler, Typescript.mapper, Packages["runtime-dist"], Packages["compiler-native"]],
-    [bun, node],
-    // 280-610 s on a shared 4-vCPU gate box; 10m cut off 2 of 11 post-merge runs mid-suite.
-    "20m"
-  ),
+  "mapper-scripts": rootFileSuite("mapper-scripts"),
   "docs-jsx-output": check(
     "Public JSX output claims and generated filenames follow TypeScript's mode-specific extension.",
     "node --test docs/tools/spec-jsx-modes.test.mjs",
@@ -874,13 +917,9 @@ const targets = {
     [buildContractInputs, S.file("build-contract-inputs.test.mjs"),
       S.file(".smithers/WORKSPACE.ts"), S.file(".smithers/bun.lock")]
   ),
-  "api-inputs-cache": check(
-    "Actual SDK caching retains API helper dependencies and rejects changed public declarations.",
-    "node --test --test-name-pattern='^(relative API fixture inputs|real SDK caching|current API entrypoints)' .smithers/flows/test/api-inputs.test.mjs",
-    [],
-    [node],
-    "10m"
-  ),
+  "api-inputs-cache": S.Suite({ tests: [...new Set(["closure", "cache", "coverage"].map(name =>
+    rootFileTargets[rootTestTargetName("release", ".smithers/flows/test/api-inputs-" + name + ".test.mjs")]
+  ))] }),
   "promise-data-bridge": check(
     "Explicit synchronous bridges retain Promise and thenable data while plain catch preserves identity.",
     "cd typescript/tsc && CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -v -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestPromiseDataBridgeQuoted|TestPromiseDataBridgeForms)$' && cd ../.. && EFFECT_NODE_MODULES=$PWD/experiments/node_modules VIBELANG_RUNTIME=$PWD/packages/runtime node typescript/vibelang/harness.mjs --isolated --verbose plain-catch-function-results",
@@ -1609,14 +1648,7 @@ const targets = {
     [],
     [node]
   ),
-  "docs-tools": check(
-    "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
-    "cd docs/tools && bun test --only-failures --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
-    [Typescript.compiler, Typescript["forms-generator"], Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks, specLint],
-    [bun, node, S.Host.bin("jj")]
-  ),
-  // It installs and builds a private copy of site/ (docs/tools/site-scratch.ts),
-  // so it runs beside the other targets.
+  "docs-tools": rootFileSuite("docs-tools", [siteSpecLinks, specLint]),
   "site-contrast": S.Shell.Test({
     summary: "The built site's pages have no contrast violations in either theme.",
     shell: "cd docs/tools && bun test --timeout 60000 site-contrast.test.ts",

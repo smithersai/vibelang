@@ -6,11 +6,10 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { setTimeout as delay } from "node:timers/promises"
 import test from "node:test"
-import { declaredCommand } from "./declared-command.mjs"
+import { declaredFileCommands } from "./declared-command.mjs"
 
 const root = fileURLToPath(new URL("../", import.meta.url))
-const declaration = readFileSync(join(root, "PACKAGE.ts"), "utf8")
-const command = declaredCommand(declaration, "release")
+
 
 // Execute the declared command on real files. Each worker announces its start,
 // then waits for the parent to release it: the count measures live workers,
@@ -46,24 +45,38 @@ test("fixture-${id}", async () => {
     }
     const env = { ...process.env }
     delete env.NODE_TEST_CONTEXT
-    const child = spawn("sh", ["-c", "exec " + command], {
-      cwd: dir,
-      env: { ...env, PATH: dirname(process.execPath) + ":" + process.env.PATH,
-        RELEASE_WORKER_EVENTS: events, RELEASE_WORKER_FAILURE: failure ? "29" : "" },
-      detached: process.platform !== "win32",
-      stdio: ["ignore", "pipe", "pipe"]
-    })
-    let output = ""
-    child.stdout.setEncoding("utf8").on("data", text => { output += text })
-    child.stderr.setEncoding("utf8").on("data", text => { output += text })
-    const closed = new Promise((resolve, reject) => {
-      child.once("error", reject)
-      child.once("close", (code, signal) => resolve({ code, signal }))
+    const commands = await declaredFileCommands("release", dir)
+    const active = new Set()
+    let output = "", next = 0, settled = false
+    const closed = Promise.all(Array.from({ length: 4 }, async () => {
+      const results = []
+      while (next < commands.length) {
+        const command = commands[next++]
+        results.push(await new Promise((resolve, reject) => {
+          const child = spawn("sh", ["-c", "exec " + command], {
+            cwd: dir,
+            env: { ...env, PATH: dirname(process.execPath) + ":" + process.env.PATH,
+              RELEASE_WORKER_EVENTS: events, RELEASE_WORKER_FAILURE: failure ? "29" : "" },
+            detached: process.platform !== "win32",
+            stdio: ["ignore", "pipe", "pipe"]
+          })
+          active.add(child)
+          child.stdout.setEncoding("utf8").on("data", text => { output += text })
+          child.stderr.setEncoding("utf8").on("data", text => { output += text })
+          child.once("error", reject)
+          child.once("close", (code, signal) => { active.delete(child); resolve({ code, signal }) })
+        }))
+      }
+      return results
+    })).then(groups => {
+      settled = true
+      const results = groups.flat()
+      return { code: results.some(r => r.code !== 0) ? 1 : 0, signal: results.find(r => r.signal)?.signal ?? null }
     })
     let expired = false
     const guard = setTimeout(() => {
       expired = true
-      try {
+      for (const child of active) try {
         if (process.platform === "win32") child.kill("SIGKILL")
         else process.kill(-child.pid, "SIGKILL")
       } catch (error) {
@@ -77,7 +90,7 @@ test("fixture-${id}", async () => {
       rmSync(dir, { recursive: true, force: true })
     })
     const started = () => readdirSync(events).filter(name => name.endsWith(".start")).length
-    while (started() < 4 && child.exitCode === null && !expired) await delay(20)
+    while (started() < 4 && !settled && !expired) await delay(20)
     // Hold the first batch so an uncapped command can expose its extra workers.
     await delay(300)
     const peakBeforeRelease = started()

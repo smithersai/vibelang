@@ -1,6 +1,7 @@
 // The queue's build-only gate selects these targets by changed path. A renamed
 // test leaves `go test -run` matching nothing and passing, and a moved file
 // leaves the target checking nothing, so what each target names must exist.
+import { rootTestGroups } from "../root-test-shards.ts"
 import assert from "node:assert/strict"
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { test } from "node:test"
@@ -61,7 +62,8 @@ test("//:grammar-inventory tests a package that stays on the standard library", 
 })
 
 test("//:mapper-scripts matches the mapper's runner tests", () => {
-  assert.match(target("mapper-scripts"), /scripts\/mapper-\*\.test\.mjs/)
+  assert.match(target("mapper-scripts"), /rootFileSuite\("mapper-scripts"\)/)
+  assert.deepEqual(rootTestGroups()["mapper-scripts"], readdirSync(new URL("scripts/", root)).filter(file => /^mapper-.*\.test\.mjs$/.test(file)).map(file => "scripts/" + file).sort())
   const found = readdirSync(new URL("scripts/", root)).filter(file => /^mapper-.*\.test\.mjs$/.test(file))
   for (const file of ["mapper-hover.test.mjs", "mapper-rpc.test.mjs"]) assert.ok(found.includes(file), file)
 })

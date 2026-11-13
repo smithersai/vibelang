@@ -33,7 +33,7 @@ test("release includes command contracts as a shared graph prerequisite", () => 
   assert.equal(run.status, 0, run.stdout + run.stderr)
   const graph = JSON.parse(run.stdout)
   assert.ok(graph.edges.some(edge =>
-    edge.from === "//:release" && edge.to === "//:build-contracts" && edge.kind === "data"),
+    edge.from === "//:release" && edge.to === "//:build-contracts" && (edge.kind === "data" || edge.kind === "tests")),
     "a focused release must retain the command audits without executing their suites again")
 })
 
