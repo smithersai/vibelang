@@ -21,11 +21,20 @@
 # whichever seed picks the rule, so a target with such lines runs its whole
 # short seed set. Keys of what generated programs do (compile:, exit:, ek:)
 # name no input; the post-merge suite finds those.
+#
+# The build graph runs these inputs as parallel groups of units. A unit is
+# one probe test, run whole (probe:TestVIPConstructs, probe:TestDataSpecRules),
+# or a test function that a pending line names, run with the same selectors
+# as in the whole run:
+#
+#   sh internal/vibelangfuzz/pending.sh --units     # print every unit
+#   VIBELANG_PENDING_UNITS='probe:TestDataSpecRules FuzzA' sh internal/vibelangfuzz/pending.sh
+#
+# A selected unit that no pending line names fails, so a stale group cannot
+# pass by running nothing.
 set -eu
 dir=internal/vibelangfuzz
-bin=$(mktemp "${TMPDIR:-/tmp}/vibelangfuzz-pending.XXXXXX")
-trap 'rm -f "$bin"' EXIT
-go test -c -trimpath -o "$bin" "./$dir/"
+probes='TestVIPConstructs|TestDataSpecRules'
 
 # alternation reads names on stdin and prints them as one regexp alternation.
 alternation() { sed 's/[][\\.^$*+?(){}|]/\\&/g' | sort -u | paste -sd'|' -; }
@@ -35,10 +44,42 @@ names=$(lines | sed -nE 's#^[A-Za-z]+[[:space:]]+(corpus|feature):([^ /]+)[[:spa
 named=$(lines | sed -nE 's/^([A-Za-z]+)[[:space:]]+(corpus|feature):.*/\1/p' | alternation)
 whole=$(lines | sed -nE 's/^([A-Za-z]+)[[:space:]]+(rule|control|reject|diagnostic):.*/\1/p' | alternation)
 
+# members prints the names of an alternation of test names, one per line.
+members() { printf '%s\n' "$1" | tr '|' '\n' | sed '/^$/d'; }
+units() { { members "$probes" | sed 's/^/probe:/'; members "$named"; members "$whole"; } | sort -u; }
+if [ "${1:-}" = --units ]; then
+  units
+  exit 0
+fi
+[ $# -eq 0 ] || { echo "usage: pending.sh [--units]" >&2; exit 2; }
+
+if [ -n "${VIBELANG_PENDING_UNITS+set}" ]; then
+  selected=$(printf '%s\n' $VIBELANG_PENDING_UNITS | sort -u)
+  all=$(units)
+  for unit in $selected; do
+    printf '%s\n' "$all" | grep -Fqx -- "$unit" ||
+      { echo "pending.sh: no pending line names unit $unit" >&2; exit 2; }
+  done
+  [ -n "$selected" ] || { echo "pending.sh: VIBELANG_PENDING_UNITS names no unit" >&2; exit 2; }
+  # keep prints the selected members of an alternation as an alternation.
+  keep() { members "$1" | { grep -Fx -- "$selected" || true; } | paste -sd'|' -; }
+  probes=$(printf '%s\n' "$selected" | sed -n 's/^probe://p' | paste -sd'|' -)
+  named=$(keep "$named")
+  whole=$(keep "$whole")
+fi
+
+bin=$(mktemp "${TMPDIR:-/tmp}/vibelangfuzz-pending.XXXXXX")
+trap 'rm -f "$bin"' EXIT
+go test -c -trimpath -o "$bin" "./$dir/"
+
 cd "$dir"
 status=0
-"$bin" -test.short -test.count=1 -test.timeout=15m -test.run '^(TestVIPConstructs|TestDataSpecRules)$' || status=1
-"$bin" -test.short -test.count=1 -test.timeout=15m -test.run "^($named)\$/^($names)\$" || status=1
+if [ -n "$probes" ]; then
+  "$bin" -test.short -test.count=1 -test.timeout=15m -test.run "^($probes)\$" || status=1
+fi
+if [ -n "$named" ]; then
+  "$bin" -test.short -test.count=1 -test.timeout=15m -test.run "^($named)\$/^($names)\$" || status=1
+fi
 if [ -n "$whole" ]; then
   "$bin" -test.short -test.count=1 -test.timeout=15m -test.run "^($whole)\$" || status=1
 fi

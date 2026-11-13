@@ -8,8 +8,10 @@ test("the pending merge gate requires real hang probes", () => {
   const graph = targets()
   const hangs = graph["go-vibelangfuzz-hangs"]
   assert.ok(hangs, "hang marker validity needs its own executable target")
-  assert.ok(graph["go-vibelangfuzz-pending"].data.includes(hangs),
-    "the existing merge-gate label must require hang validation")
+  const groups = graph["go-vibelangfuzz-pending"].tests
+  assert.ok(groups.length > 1, "the merge-gate label groups its parallel checks")
+  for (const group of groups)
+    assert.ok(group.data.includes(hangs), "every pending group must require hang validation")
   assert.match(hangs.shell, /-run '\^\(TestPendingHangs\|TestHangProbeDiagnosticSummary\)\$'/)
   assert.match(hangs.shell, /-v(?: |$)/, "keep each probe's termination diagnostics")
   assert.match(hangs.shell, /-count=1(?: |$)/)
@@ -89,7 +91,7 @@ for (const name of ["go-vibelangfuzz", "go-vibelangfuzz-pending", "go-vibelangfu
     const graph = targets()
     for (const target of name === "go-vibelangfuzz"
       ? Object.entries(graph).filter(([label]) => /^go-vibelangfuzz-seeds-/.test(label)).map(([, target]) => target)
-      : [graph[name]]) {
+      : graph[name].tests ?? [graph[name]]) {
       assert.ok(target.data.includes("packages.compiler-native"),
         "the process formatter needs the compiler package binary and plugin manifest")
       assert.ok(target.tools.includes("node"))
@@ -102,7 +104,7 @@ for (const name of ["go-vibelangfuzz", "go-vibelangfuzz-pending", "go-vibelangfu
     const graph = targets()
     for (const target of name === "go-vibelangfuzz"
       ? Object.entries(graph).filter(([label]) => /^go-vibelangfuzz-seeds-/.test(label)).map(([, target]) => target)
-      : [graph[name]]) {
+      : graph[name].tests ?? [graph[name]]) {
       assert.ok(target.data.some(input => input?.migrationSources === true),
         "a route oracle must invalidate when its canonical migration implementation changes")
     }

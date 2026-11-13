@@ -1,6 +1,7 @@
 import { Smithers as S } from "@smthrs/targets"
 import { createRootTestInputs, minimizeRootTestInputs, rootTestGroups, rootTestShards, rootTestTargetName, rootShardName, rootTestInputPatterns, rootTestBuildNeeds, shellQuote } from "./root-test-shards.ts"
 import { fuzzTopics } from "./fuzz-topics.ts"
+import { pendingGroups } from "./fuzz-pending-units.ts"
 import { vibelangTopics } from "./vibelang-topics.ts"
 import { migrationSources } from "./migration-inputs.ts"
 import { createApiIdentityInputs } from "./api-inputs.ts"
@@ -317,6 +318,22 @@ const pendingHangs = goVibelang(
   "10m",
   fuzzBudgetEnv
 )
+
+// The pending gate (internal/vibelangfuzz/pending.sh) in parallel groups of
+// units: the probe tests, and each test function a pending line names, with
+// the selectors one whole run gives it. Each group compiles the test binary:
+// about 40 s alone on a 4-vCPU box with a warm Go cache, 270 s on a cold one,
+// so the limit stays at ten minutes.
+const pendingGateGroups = Object.fromEntries(pendingGroups().map((units, index) => [
+  `go-vibelangfuzz-pending-group-${index + 1}`,
+  goVibelang(
+    `The inputs testdata/pending/ lists still fail, and every probe passes or is pending, for ${units.join(", ")}: a change that makes one pass deletes its line.`,
+    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s VIBELANG_PENDING_UNITS='${units.join(" ")}' ${effect} sh internal/vibelangfuzz/pending.sh`,
+    [Tsc["vibelangfuzz-files"], pendingHangs, Packages["compiler-native"], migrationSources],
+    "10m",
+    fuzzBudgetEnv
+  )
+]))
 
 // This check reads only the generated spec/VIP pages. Keep it independently
 // cached: an unrelated source edit must not rerun the link inventory.
@@ -1681,13 +1698,9 @@ const targets = {
   // runs only post-merge: a fix that makes a pending input pass without
   // deleting its line fails before it lands, not on main (four times on
   // 2026-10-30).
-  "go-vibelangfuzz-pending": goVibelang(
-    "The inputs testdata/pending/ lists still fail, and every probe passes or is pending: a change that makes one pass deletes its line.",
-    `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 VIBELANG_FUZZ_HANG=120s ${effect} sh internal/vibelangfuzz/pending.sh`,
-    [Tsc["vibelangfuzz-files"], pendingHangs, Packages["compiler-native"], migrationSources],
-    "10m",
-    fuzzBudgetEnv
-  ),
+  // The groups run in parallel; fuzz-pending-units.ts packs the units.
+  ...pendingGateGroups,
+  "go-vibelangfuzz-pending": S.Suite({ tests: Object.values(pendingGateGroups) }),
   // The merge gate runs it for a change to the documentation or a case, which
   // seed its sample, where //:go-vibelangfuzz runs only post-merge: an example
   // the editor cannot answer for fails before it lands, not on main

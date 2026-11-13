@@ -651,6 +651,25 @@ watchdog and a 30-second outer deadline, and fails if it completes. It runs
 probes in parallel. Its cache inputs include the source, saved corpus,
 documentation, cases and runtime that the child fuzz targets read during setup.
 
+The pending target is a Suite of three groups that run in parallel. A unit is
+one probe test run whole (`probe:TestVIPConstructs`, `probe:TestDataSpecRules`)
+or a test function that a pending line names, run with the same selectors as one whole
+`pending.sh` run. `fuzz-pending-units.ts` reads the pending lines, as
+`sh internal/vibelangfuzz/pending.sh --units` does, and packs the units by
+their measured seconds, slowest first onto the least loaded group, so a unit
+that a new pending line adds joins a group without an edit. Each group runs
+`pending.sh` with `VIBELANG_PENDING_UNITS` and compiles the test binary
+itself. `scripts/fuzz-pending-groups.test.mjs` fails when a unit runs in no
+group or in two, or when the groups together select different tests than one
+whole run.
+
+Run one group, or every group, with:
+
+```sh
+sh scripts/ci.sh //:go-vibelangfuzz-pending-group-1 --jobs 8
+sh scripts/ci.sh //:go-vibelangfuzz-pending --jobs 8
+```
+
 Run only the bounded hang validation with:
 
 ```sh
@@ -975,7 +994,9 @@ expanded test globs. Runtime discovery includes nested tests and Bun's
   :go-vibelangfuzz-vip           the complete VIP differential oracle's seeds
   :go-vibelangfuzz-package-<p>   one support package (table below)
   :go-vibelangfuzz-hangs        bounded child probes for stale hang markers (merge gate)
-  :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail, and every VIP and data probe (merge gate)
+  :go-vibelangfuzz-pending      suite of :go-vibelangfuzz-pending-group-1 through -3 (merge gate)
+  :go-vibelangfuzz-pending-group-<n>  one group of pending units: the inputs testdata/pending/ lists, which must
+                                still fail, and the VIP and data probes (fuzz-pending-units.ts)
   :go-vibelangfuzz-editor       the editor oracles over documentation examples and cases (merge gate)
   :go-vibelangfuzz-compile      the compile oracles over their short sample of cases and documentation examples (merge gate)
   :go-vibelangfuzz-config       the project-settings oracles over every case's vibelang section (merge gate)

@@ -128,10 +128,14 @@ test("the actual launcher assigns every current and newly added fuzz name exactl
 })
 
 test("all already fast fuzz siblings and specification checks have ten minute graph limits", () => {
-  for (const label of ["go-vibelangfuzz-pending", "go-vibelangfuzz-editor", "go-vibelangfuzz-compile",
+  for (const label of ["go-vibelangfuzz-editor", "go-vibelangfuzz-compile",
     "go-vibelangfuzz-config", "go-vibelangfuzz-hangs", "spec-tests"]) {
     assert.equal(graph[label].timeout, "10m", label)
   }
+  // The pending gate runs as parallel groups, each with the same limit.
+  const pending = graph["go-vibelangfuzz-pending"].tests
+  assert.ok(pending.length > 1)
+  for (const group of pending) assert.equal(group.timeout, "10m")
 })
 
 test("the differential oracle has exactly one dedicated selection", () => {

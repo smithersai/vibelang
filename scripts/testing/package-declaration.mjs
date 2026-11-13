@@ -18,6 +18,8 @@ export function declarationFixture(file, { env = {}, bindings = {}, source = rea
     fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]],
       ["migration", ["FuzzMigrationFormatterFixedPoint", "FuzzMigrationJSXRoutes"]]]),
     vibelangTopics: new Map([["inventory", ["TestInventoryFirst", "TestInventorySecond"]]]),
+    // Real pending groups read testdata/pending; tests that check them bind fuzz-pending-units.ts.
+    pendingGroups: () => [["FuzzPendingFirst", "probe:TestDataSpecRules"], ["probe:TestVIPConstructs"]],
     migrationSources: { migrationSources: true },
     process: { env },
     S: { Suite: identity, Generate: identity, Filegroup: identity, glob: identity, file: identity, Package: identity,
