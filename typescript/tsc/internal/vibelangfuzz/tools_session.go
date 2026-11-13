@@ -4,7 +4,6 @@ import (
 	"context"
 	stdjson "encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -36,35 +35,7 @@ import (
 // toolsWrite writes a project to a new subdirectory of the workspace, as
 // Compile does, without compiling it, and returns the directory.
 func toolsWrite(w *Workspace, p Project) (string, error) {
-	dir := filepath.Join(w.Dir, fmt.Sprintf("p%d", w.next.Add(1)))
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", err
-	}
-	config := p.Config
-	if config == "" {
-		var names []string
-		for name := range p.Files {
-			if isSource(name) {
-				names = append(names, name)
-			}
-		}
-		slices.Sort(names)
-		listed, _ := stdjson.Marshal(names)
-		config = strings.TrimSuffix(DefaultConfig, "\n}") + ",\n  \"files\": " + string(listed) + "\n}"
-	}
-	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(config), 0o600); err != nil {
-		return "", err
-	}
-	for name, text := range p.Files {
-		path := filepath.Join(dir, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return "", err
-		}
-		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
-			return "", err
-		}
-	}
-	return dir, nil
+	return w.writeProject(p)
 }
 
 // toolsFileName returns the rooted name of a project file.

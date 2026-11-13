@@ -79,11 +79,15 @@ func (oc *OutputChecker) checkStockConsumer(dir string, inputs []string) {
 		oc.G.Add("feature:declaration-consumer", "cannot write the stock consumer's configuration: %v", err)
 		return
 	}
-	ctx, cancel := context.WithTimeout(oc.Ctx, 2*HangLimit)
+	ctx, cancel := context.WithTimeout(oc.Ctx, stockChildLimit())
 	defer cancel()
 	cmd := stockCompile(ctx, tsc, "-p", config, "--pretty", "false")
 	cmd.Dir = dir
-	out, runErr := cmd.CombinedOutput()
+	out, runErr := combinedChildOutput(cmd)
+	if ctx.Err() != nil {
+		oc.G.Add("feature:declaration-consumer", "stock TypeScript consumer timed out after %v: %v", stockChildLimit(), ctx.Err())
+		return
+	}
 	if runErr == nil {
 		return
 	}
@@ -178,6 +182,8 @@ func stockJavaScriptAPI(tsc string) string {
 // early stop after syntax errors. Native TypeScript 7 uses LSP when it ships
 // no JS API; the boolean then restricts end comparisons to source files.
 func stockSpans(ctx context.Context, tsc, dir string, files ...string) ([]stockSpan, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, stockChildLimit())
+	defer cancel()
 	if stockSpansSourceOnly(tsc) {
 		spans, err := stockLSPSpans(ctx, tsc, dir, files)
 		return spans, true, err
@@ -193,7 +199,7 @@ const ds = [...configErrors, ...(parsed?.errors ?? []), ...(program ? ts.getPreE
 console.log(JSON.stringify(ds.map(d => ({ file: d.file ? path.relative(dir, d.file.fileName).split(path.sep).join("/") : "", start: d.start ?? 0, end: (d.start ?? 0) + (d.length ?? 0), code: d.code, category: ts.DiagnosticCategory[d.category].toLowerCase() }))));`
 	cmd := exec.CommandContext(ctx, "node", "-e", script, api)
 	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
+	out, err := combinedChildOutput(cmd)
 	if err != nil {
 		return nil, false, fmt.Errorf("stock diagnostic span API: %w: %.600s", err, out)
 	}

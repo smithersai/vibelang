@@ -197,7 +197,7 @@ func runStockDeclaration(ctx context.Context, t *testing.T, tsc, dir string) (st
 func runStockDeclarationCLI(ctx context.Context, t *testing.T, tsc, dir string) (stockDeclarationResult, error) {
 	cmd := stockCompile(ctx, tsc, "-p", ".", "--pretty", "false")
 	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
+	out, err := combinedChildOutput(cmd)
 	if state := cmd.ProcessState; state != nil {
 		declarationCostRecord(t.Name(), "stock-process", map[string]any{"cpu_seconds": (state.UserTime() + state.SystemTime()).Seconds()})
 	}

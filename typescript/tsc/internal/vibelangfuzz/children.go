@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -56,6 +57,17 @@ func startChild(cmd *exec.Cmd) error {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 	}
 	cmd.SysProcAttr.Setpgid = true
+	if cmd.Cancel != nil {
+		// CommandContext otherwise kills only the leader. The LSP worker
+		// starts a server that must die with it, including inherited pipes.
+		cmd.Cancel = func() error {
+			err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			if err == syscall.ESRCH {
+				return os.ErrProcessDone
+			}
+			return err
+		}
+	}
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -87,4 +99,21 @@ func killChildren() {
 			fmt.Fprintf(os.Stderr, "fuzz watchdog: killed process group %d\n", pid)
 		}
 	}
+}
+
+// runChild registers a command before waiting, preserving its exit error.
+func runChild(cmd *exec.Cmd) error {
+	if err := startChild(cmd); err != nil {
+		return err
+	}
+	return waitChild(cmd)
+}
+
+// combinedChildOutput is CombinedOutput with watchdog and context cleanup
+// for the entire process group, including a worker's own server.
+func combinedChildOutput(cmd *exec.Cmd) ([]byte, error) {
+	var output bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &output, &output
+	err := runChild(cmd)
+	return output.Bytes(), err
 }

@@ -161,7 +161,13 @@ func (w *Workspace) writeProject(project Project) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
+	// Config wins; a project that carries its configuration as a file, as
+	// ProjectFromArchive lifts it, is next; otherwise the default lists the
+	// sources. A tsconfig.json entry is never written over the chosen config.
 	config := project.Config
+	if config == "" {
+		config = project.Files["tsconfig.json"]
+	}
 	if config == "" {
 		names := make([]string, 0, len(project.Files))
 		for name := range project.Files {

@@ -54,12 +54,12 @@ func recursiveParityBaseline(t *testing.T, w *Workspace, project Project, fork *
 	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), config, 0600); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
+	ctx, cancel := context.WithTimeout(t.Context(), stockChildLimit())
 	defer cancel()
 	tsc := filepath.Join(cache, ".bin/tsc")
 	cmd := exec.CommandContext(ctx, tsc, "-p", ".", "--pretty", "false")
 	cmd.Dir = dir
-	out, runErr := cmd.CombinedOutput()
+	out, runErr := combinedChildOutput(cmd)
 	if exit, ok := runErr.(*exec.ExitError); runErr != nil && (!ok || exit.ExitCode() > 2) {
 		t.Fatalf("stock declaration baseline failed: %v: %s", runErr, out)
 	}

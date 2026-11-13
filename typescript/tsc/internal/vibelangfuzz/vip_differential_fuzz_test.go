@@ -369,17 +369,22 @@ func vipLeaveOut() map[string]bool {
 
 // vipSeeds holds the probe input of each construct leaveOut does not name
 // and, without -short, a rich input per construct that turns on every
-// construct of the swarm. A seed names its construct (vipgen.Seed), so a
-// pending construct's seed would only skip, and campaigns mutating it would
-// skip too.
+// construct of the swarm. The probe indexes the enabled constructs in the
+// versioned form (vipgen.IndexSeed), so every registered construct, pending
+// ones left out, gets a seed whose mutations choose constructs one bit each.
+// The rich input keeps the legacy named form (vipgen.Seed, a two-byte mask
+// of all ones, then the same random bytes), so its program is the one the
+// seed corpus has vetted; a rich input in the versioned form is a new
+// program, and the first ones met six unlisted compiler gaps. The campaign
+// mutates both forms.
 func vipSeeds(leaveOut map[string]bool) [][]byte {
 	var seeds [][]byte
 	r := rand.New(rand.NewPCG(3, 1))
-	for _, c := range vipgen.Enabled(leaveOut) {
-		seed := vipgen.Seed(c.Key)
-		seeds = append(seeds, seed)
+	enabled := vipgen.Enabled(leaveOut)
+	for i, c := range enabled {
+		seeds = append(seeds, vipgen.IndexSeed(i))
 		if !testing.Short() {
-			rich := append(slices.Clone(seed), 0xff, 0xff)
+			rich := append(vipgen.Seed(c.Key), 0xff, 0xff)
 			for range 256 {
 				rich = append(rich, byte(r.IntN(256)))
 			}
@@ -403,7 +408,7 @@ func FuzzVIPDifferential(f *testing.F) {
 	}
 	seeds := vipSeeds(leaveOut)
 	if focus != "" {
-		minimal := vipgen.Seed(focus)
+		minimal := vipgen.SwarmSeed(focus)
 		rich := append(slices.Clone(minimal), 0xff, 0xff)
 		rich = append(rich, make([]byte, 256)...)
 		seeds = [][]byte{minimal, rich}

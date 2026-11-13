@@ -26,10 +26,7 @@ func vipFocusedInput(data []byte, focus string) []byte {
 	if focus == "" {
 		return data
 	}
-	if _, rest, named := vipgen.NamedInput(data); named {
-		data = rest
-	}
-	return append(vipgen.Seed(focus), data...)
+	return vipgen.Refocus(data, focus)
 }
 
 func TestVIPFocusInput(t *testing.T) {

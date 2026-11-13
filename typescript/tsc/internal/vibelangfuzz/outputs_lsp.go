@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -83,7 +84,10 @@ func stockLSPSpans(ctx context.Context, tsc, dir string, files []string) ([]stoc
 	cmd.Dir = dir
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
-	out, err := cmd.Output()
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	err := runChild(cmd)
+	out := output.Bytes()
 	// The worker prints the spans before it shuts the server down; a server
 	// that ends untidily after answering does not change what it answered.
 	var spans []stockSpan

@@ -269,33 +269,9 @@ type Result struct {
 // in memory. It never writes outputs to disk; Run does that when a target
 // executes the program.
 func (w *Workspace) Compile(ctx context.Context, project Project) (*Result, error) {
-	dir := filepath.Join(w.Dir, fmt.Sprintf("p%d", w.next.Add(1)))
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	dir, err := w.writeProject(project)
+	if err != nil {
 		return nil, err
-	}
-	config := project.Config
-	if config == "" {
-		names := make([]string, 0, len(project.Files))
-		for name := range project.Files {
-			if isSource(name) {
-				names = append(names, name)
-			}
-		}
-		slices.Sort(names)
-		listed, _ := json.Marshal(names)
-		config = strings.TrimSuffix(DefaultConfig, "\n}") + ",\n  \"files\": " + string(listed) + "\n}"
-	}
-	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(config), 0o600); err != nil {
-		return nil, err
-	}
-	for name, text := range project.Files {
-		path := filepath.Join(dir, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return nil, err
-		}
-		if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
-			return nil, err
-		}
 	}
 	configPath := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json")))
 	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile(configPath, &core.CompilerOptions{}, nil, w.fs, nil)

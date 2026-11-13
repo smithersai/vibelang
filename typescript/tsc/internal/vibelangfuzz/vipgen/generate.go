@@ -21,7 +21,9 @@ import (
 // since the focus byte indexes the constructs not left out; a key does not.
 // So Seed writes the named form, and a named corpus file keeps its program
 // across registry changes. An input without the prefix chooses its focus by
-// index, as before.
+// index, as before. A "swarm:" envelope versions both forms: its index takes
+// two little-endian bytes, and each compatible construct gets its own mask bit.
+// Legacy inputs retain their byte positions and repeating two-byte mask.
 
 // Bounds keep every program small enough to compile and run in milliseconds.
 const (
@@ -114,6 +116,10 @@ func (s *Scope) snapshot() *Scope {
 // nil too: a campaign never generates a pending construct, and a named
 // corpus file never silently becomes another construct's program.
 func Generate(data []byte, leaveOut map[string]bool) *Program {
+	wide := bytes.HasPrefix(data, []byte(swarmPrefix))
+	if wide {
+		data = data[len(swarmPrefix):]
+	}
 	enabled := Enabled(leaveOut)
 	g := &Gen{c: chooser{data: data}, used: map[string]bool{}, modules: map[string]bool{}, files: map[string]string{}, imports: map[string][]string{}, narrowed: map[string]int{}}
 	var focus *Construct
@@ -128,8 +134,13 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 		if len(enabled) == 0 {
 			return nil
 		}
-		// An index input's first byte picks among the first 256 enabled constructs, as corpus files written before names encode it; a construct past 256 is reached only by a named input, as every seed is.
-		focus = enabled[g.c.intn(len(enabled))]
+		// Legacy indices use one byte; versioned swarm indices use two.
+		if wide {
+			index := int(g.c.byte()) | int(g.c.byte())<<8
+			focus = enabled[index%len(enabled)]
+		} else {
+			focus = enabled[g.c.intn(len(enabled))]
+		}
 	}
 	// The focus chooses the program's form, and the swarm chooses among the
 	// constructs of that form.
@@ -139,13 +150,26 @@ func Generate(data []byte, leaveOut map[string]bool) *Program {
 	for _, k := range Closure(focus.Key) {
 		on[k] = true
 	}
-	// The swarm mask: bit i of two bytes turns on enabled construct i, with
-	// what it requires.
-	mask := int(g.c.byte()) | int(g.c.byte())<<8
-	for i, c := range enabled {
-		if mask&(1<<(i%16)) != 0 {
-			for _, k := range Closure(c.Key) {
-				on[k] = true
+	if wide {
+		mask := make([]byte, MaskBytes(len(enabled)))
+		for i := range mask {
+			mask[i] = g.c.byte()
+		}
+		for i, c := range enabled {
+			if mask[i/8]&(1<<uint(i%8)) != 0 {
+				for _, k := range Closure(c.Key) {
+					on[k] = true
+				}
+			}
+		}
+	} else {
+		// Legacy corpus inputs retain their original two-byte swarm mask.
+		mask := int(g.c.byte()) | int(g.c.byte())<<8
+		for i, c := range enabled {
+			if mask&(1<<(i%16)) != 0 {
+				for _, k := range Closure(c.Key) {
+					on[k] = true
+				}
 			}
 		}
 	}
@@ -213,6 +237,43 @@ func Probe(key string) *Program {
 
 // namedPrefix starts an input that names its focus construct.
 const namedPrefix = "key:"
+const swarmPrefix = "swarm:"
+
+// MaskBytes is the number of swarm mask bytes a versioned input reads for n
+// compatible constructs: one bit each.
+func MaskBytes(n int) int {
+	return (n + 7) / 8
+}
+
+// IndexSeed reaches every enabled construct through a two-byte little-endian
+// focus index. Generated seeds are rebuilt with the enabled registry; saved
+// corpus inputs should instead use SwarmSeed to keep a stable focus.
+func IndexSeed(index int) []byte {
+	return append([]byte(swarmPrefix), byte(index), byte(index>>8))
+}
+
+// SwarmSeed is a stable named focus with one independent bit per compatible
+// construct. Seed retains the legacy mask for existing corpus producers.
+func SwarmSeed(key string) []byte {
+	return append([]byte(swarmPrefix), Seed(key)...)
+}
+
+// Refocus retains the input's swarm encoding when a campaign fixes its focus.
+func Refocus(data []byte, key string) []byte {
+	wide := bytes.HasPrefix(data, []byte(swarmPrefix))
+	if wide {
+		data = data[len(swarmPrefix):]
+	}
+	if _, rest, named := NamedInput(data); named {
+		data = rest
+	} else if wide {
+		data = data[min(2, len(data)):]
+	}
+	if wide {
+		return append(SwarmSeed(key), data...)
+	}
+	return append(Seed(key), data...)
+}
 
 // Seed returns the input that focuses a construct by its key,
 // "key:<key>\x00", whatever else is registered or left out. Bytes appended
@@ -225,9 +286,11 @@ func Seed(key string) []byte {
 }
 
 // NamedInput splits an input of the form "key:<key>\x00<rest>" into its key
-// and the rest. It reports false for any other input, which chooses its
+// and the rest, also accepting the versioned "swarm:" envelope.
+// It reports false for any other input, which chooses its
 // focus by index.
 func NamedInput(data []byte) (key string, rest []byte, ok bool) {
+	data = bytes.TrimPrefix(data, []byte(swarmPrefix))
 	after, found := bytes.CutPrefix(data, []byte(namedPrefix))
 	if !found {
 		return "", nil, false

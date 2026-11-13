@@ -286,6 +286,11 @@ type OutputChecker struct {
 // Check applies every output invariant to a compilation that reported no
 // error.
 func (oc *OutputChecker) Check(c *Compilation) {
+	ctx, cancel := context.WithTimeout(oc.Ctx, stockChildLimit())
+	defer cancel()
+	local := *oc
+	local.Ctx = ctx
+	oc = &local
 	options := c.Program.Options()
 	// Chapter 27's pipeline emits every project source. TypeScript options
 	// retain their meanings (Chapter 28): noEmit and emitDeclarationOnly are
@@ -694,9 +699,11 @@ var exportsCache sync.Map // string -> func() (map[string]bool, error)
 func (w *Workspace) ModuleExports(ctx context.Context, specifier string) (map[string]bool, error) {
 	key := w.Dir + "\x00" + specifier
 	probe, _ := exportsCache.LoadOrStore(key, sync.OnceValues(func() (map[string]bool, error) {
+		ctx, cancel := context.WithTimeout(ctx, stockChildLimit())
+		defer cancel()
 		cmd := exec.CommandContext(ctx, "node", "--input-type=module", "-e", `const m = await import(process.argv[1]); console.log(JSON.stringify(Object.keys(m)));`, specifier)
 		cmd.Dir = w.Dir
-		output, err := cmd.CombinedOutput()
+		output, err := combinedChildOutput(cmd)
 		if err != nil {
 			return nil, fmt.Errorf("import executable %q: %w: %.600s", specifier, err, output)
 		}

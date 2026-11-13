@@ -191,11 +191,11 @@ func CheckParity(t *testing.T, w *Workspace, tsc, target, archive string) {
 		})
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
+	ctx, cancel := context.WithTimeout(t.Context(), stockChildLimit())
 	defer cancel()
 	cmd := stockCompile(ctx, tsc, "-p", ".", "--pretty", "false")
 	cmd.Dir = fork.Dir
-	out, runErr := cmd.CombinedOutput()
+	out, runErr := combinedChildOutput(cmd)
 	if ctx.Err() != nil {
 		t.Skipf("stock tsc did not finish: %v", ctx.Err())
 	}

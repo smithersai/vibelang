@@ -269,11 +269,11 @@ func CheckExpandoDeclarations(t *testing.T, w *Workspace, tsc string, e expandoD
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
+	ctx, cancel := context.WithTimeout(t.Context(), stockChildLimit())
 	defer cancel()
 	cmd := stockCompile(ctx, tsc, "-p", filepath.Join(dir, "tsconfig.json"), "--pretty", "false")
 	cmd.Dir = dir
-	out, runErr := cmd.CombinedOutput()
+	out, runErr := combinedChildOutput(cmd)
 	if ctx.Err() != nil {
 		t.Fatalf("stock consumer did not finish: %v", ctx.Err())
 	}

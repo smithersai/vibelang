@@ -37,18 +37,36 @@ func hangLimit(env string, args []string) time.Duration {
 }
 
 // Within runs fn, and panics from another goroutine with every goroutine's
-// stack when fn takes longer than HangLimit. The panic ends the process, so
+// stack when fn exceeds its stage budget (normally HangLimit). The panic ends the process, so
 // the fuzzer saves the input as a crasher: a compiler that does not stop is a
 // bug the specification never allows.
 func Within(stage string, fn func()) {
-	timer := time.AfterFunc(HangLimit, func() {
+	limit := stageHangLimit(stage, HangLimit, os.Args[1:])
+	timer := time.AfterFunc(limit, func() {
 		killChildren()
 		stacks := make([]byte, 1<<22)
 		stacks = stacks[:runtime.Stack(stacks, true)]
-		panic(fmt.Sprintf("hang: %s took longer than %v\n%s", stage, HangLimit, stacks))
+		panic(fmt.Sprintf("hang: %s took longer than %v\n%s", stage, limit, stacks))
 	})
 	defer timer.Stop()
 	fn()
+}
+
+// Outputs include an external stock compiler with a two-stage budget.
+// Keep room for it to time out and report a gap before the compiler watchdog,
+// while remaining below Go's per-input deadlock deadline in fuzz workers.
+func stageHangLimit(stage string, limit time.Duration, args []string) time.Duration {
+	if stage == "outputs" {
+		limit *= 3
+	}
+	if slices.Contains(args, "-test.fuzzworker") || slices.Contains(args, "-test.fuzzworker=true") {
+		limit = min(limit, workerHangLimit)
+	}
+	return limit
+}
+
+func stockChildLimit() time.Duration {
+	return min(2*HangLimit, stageHangLimit("outputs", HangLimit, os.Args[1:])*2/3)
 }
 
 // An Outcome is how a program's Effect ended, in the terms of Chapter 17:
