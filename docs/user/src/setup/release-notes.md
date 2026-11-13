@@ -4,13 +4,9 @@ VibeLang is v0, so a new version can change the language in breaking ways.
 Before you update, read the notes for every version between yours and the new
 one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
-## 0.0.13
+## 0.0.14 (unreleased)
 
-0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](alpha.md) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are supported only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).
-
-Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml). Propose a change to the language with an [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml).
-
-### Bugs fixed since 0.0.12
+### Bugs fixed since 0.0.13
 
 - The website could change a claim about a specific release to name the latest published version. Versioned claims now keep their original version while installation pins and platform information follow the selected release.
 
@@ -23,6 +19,7 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - `vibelang-unplugin` could not bundle a `.vibex` module that imports from its own `module` declaration: webpack, Rspack, Rollup, Rolldown, esbuild and Bun stopped with `Can't resolve './main.vibex.text.js'`. The plugin now serves a `.vibex` module's declarations as it serves a `.vibe` module's.
 
 - Metro could not bundle a `.vibe` or `.vibex` module that imports from its own `module` declaration: it stopped with `Unable to resolve module ./main.vibe.text.js`. `vibelang/metro` now bundles each declaration as a module of its own, as the Vite and bundler plugins do.
+
 - Checking sidecar layouts from a source checkout could report a compiler disagreement when Node.js was missing or stop after 20 seconds on a busy machine. The check now identifies the missing runtime and uses the configured timeout.
 
 - The experimental opt-in section implied that every alias and subpath import was checked. It now states the support boundary and documents union-typed aliases and inline module bridges that can run experimental operations without opting in.
@@ -37,25 +34,12 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - A declaration that inferred a type from another module's module body named the body's internal file, as in `import("./layer-node.vibe.graph.js").Provider`, so a file without a module body no longer matched its TypeScript declaration byte for byte. It now names the module that re-exports the type, `import("./layer-node.js").Provider`, as TypeScript does.
 
-- Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.
-
-- Strict TypeScript configurations importing entries such as `vibelang/eslint` failed with `TS7016` because their types were missing. Every public JavaScript entry now ships declarations for both `bundler` and `node16` module resolution.
-
-- Publishing a release exposed the publisher's home directory in npm metadata. Release scripts now publish unchanged archives from neutral staging and reject registry entries that expose a home path.
-
-- The React Native guide and the `vibelang` package page showed a CommonJS `metro.config.js`, and the package page a CommonJS `babel.config.js`, for an app whose `package.json` has `"type": "module"`. Metro failed with `require is not defined in ES module scope`. Both pages now name the files `metro.config.cjs` and `babel.config.cjs`.
 - An inferred declaration could write an interface such as `SqlClient` as a bare name even when an import bound that name to its namespace, leaving a header that TypeScript rejected. It now keeps TypeScript's qualification, such as `SqlClient.SqlClient`.
 
 - When declaration verification failed with an error such as `TS2589`, the report showed only an internal file and line, hiding which export failed. It now also names the package entry, exported binding and generated assertion, while keeping the comparison unavailable.
 
-- With no `project` option, the Vite plugin and the bundler plugins read the root's `tsconfig.json` even when a `vibe.config.json` was beside it, so they compiled with settings the compiler ignored. They now read the root's `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, as the compiler does.
-- Some docs examples taught forms the compiler warns about, such as a service member typed `Effect.Effect<{…}, never, never>` on the Stream page (`EK4833`). The docs check now fails an example that draws a warning, and those examples use the forms the compiler asks for; an example that shows a flagged form on purpose says so with `// expect-warning:`.
-- The specification marked 185 of its examples `// compiler-gap: pending VIP-N`, but 184 of those markers were stale: the compiler already did what the text says. They are gone, the docs check now compiles every specification example and fails on a marker whose example passes, and the two real gaps are listed on [Known limitations](known-limitations.md#specification-examples-the-compiler-does-not-pass-yet).
-- The `vibelang-runtime` package page listed the open-proposal modules beside VIP-33's core platform modules, and said in one place that generated code imports the package root and in another `vibelang-runtime/internal`. It now lists the open-proposal modules and helpers apart, with the experimental opt-in, and names `vibelang-runtime/internal` in both places.
-- The `vibelang-runtime` package page told readers to run `vibelang --fix`, which the compiler rejects with `TS5023`. The page no longer mentions the option.
 - Known limitations said the TypeScript shim was included in the 0.0.13 release, while the shim's own page said the `vibelang-typescript` package is not published to npm. Both now say that the compiler recognizes `// @vibe` and that the replacement package is a source-checkout preview, not published to npm.
-- `vibelang-ast-grep --help` compiled the parser library into a file named `--help` in the current directory. It now prints the usage and exits with status 0, and any other option is a usage error with status 2.
-- When the installed `effect` was not the version `vibelang-runtime` pins, the load error named `vibelang-runtime@0.0.11` whatever runtime was installed. It now names only the two Effect versions and the install command, as in `vibelang-runtime requires effect@4.1.1; found effect@4.1.0`.
+
 - The documentation sidebar listed "Control operations and handlers" under VibeLang features, although handlers are an open proposal and not part of the language. The entry and its page are now titled "Handlers (open proposal, not in the alpha)".
 
 - Searching the website for `install` listed ten sections headed "Install" from other pages, Alchemy first, and left out the Installation page. A search for a word that starts a page title now lists that page first.
@@ -67,18 +51,67 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - On a phone, long file paths, URLs and code spans in the documentation ran past the right edge of the page and were cut off. They now wrap onto the next line.
 
 - A docs example could show output that came from statements the page never showed, such as a test clock, a capturing logger or a provided layer, so the code as shown printed something else or nothing. Each example now shows those statements in a `// Run in an effect function:` comment above its output, and the docs check fails a page that hides them.
-- A `try` written inside the callback of `sync`, `Effect.try` or `tryPromise`, such as `try sync(() => try load())`, compiled with no diagnostic and was left out of the output, so the callback returned the Effect itself where the source asked for its value. It now reports `EK0501`, as a `try` in any other plain function does; run the Effect outside the callback.
 
 - The first complete programs on the Welcome and Getting Started pages declared `main` but never started it, so copied into a project, built and run with `node dist/main.js`, they printed nothing. Both listings now end with `NodeRuntime.runMain(main())`, as the starter does, and the docs check runs them as copied in a fresh starter.
+
 - The Exit page said native `Effect.onExit` passes cleanup `Exit.void` on success. It passes the program's own exit, value included. The page now says so and shows how to give cleanup `Exit.void`, as an old `finally (exit)` clause received, while the program keeps its value.
-- Published packages could reuse an older compiler, include local scratch files, or leave Windows without a compiler after a rehearsal. Packaging now requires matching committed sources and successful builds, includes only tracked sources, restores the selected platforms on every run, and checks the requested Bun starter version.
+
 - Schema Getting Started said an optional field `name?: T` accepts a present `undefined`. Under `exactOptionalPropertyTypes: true`, which the Schema Introduction recommends, it rejects one. The page now gives both settings, shows `name?: T | undefined` for a field that accepts `undefined` under either, and links Basic Usage.
+
 - The Runtime cost table on [VibeLang for Effect users](../vibelang-features/114-vibelang-for-effect-users.md#runtime-cost) quoted 0.0.9 measurements on Effect 4.0.5 from a benchmark that was not published. It now shows 0.0.13 measurements on Effect 4.1.1 from a benchmark in the repository, with its method, machine and raw runs, which you can rerun with `node run.mjs`.
+
+- Pages such as Fallback, Expected Errors and Schema Getting Started still described VibeLang repairs that the CLI or editor writes or offers, although this release ships no VibeLang quick fixes or codemods. They now describe each change as a step you make; TypeScript's built-in fixes and ESLint's `--fix` are unchanged.
+
+- The Services guide opened with a keyword-escape rule, which was also its search snippet, and ran about 2,000 words of diagnostics before its second sample. It now teaches declaring, requesting and supplying services first and lists the rules in a reference section at the end; older service forms are on Migrating retired forms. Seven other guides no longer open with a diagnostic code.
+
+- Five guides told readers to apply VibeLang editor actions, such as "Annotate as the fork infers" for `EK9101` and a parenthesizing action for `EK0510`, which the alpha does not ship. They now say which edit to write.
+
+- The CLI guide said Bun ignores source maps under `vibelang/bun`, while Source maps said a module Bun runs without transpiling maps to `.vibe` lines. The CLI guide now states that condition and links the limits.
+
+- The site still served a recording of the retired `vibelang --fix` that no page linked, and nothing tied a page's video to the compiler version it shows. The recording is gone, and the site deploy now refuses a video recorded with a release other than the one the site states.
+
+- The specification overview played a walkthrough that teaches forms 0.0.13 rejects. It is off the site until it is re-recorded, and the cheat sheet now plays a 0.0.13 recording.
+
+- The Installation page showed "With Bun (optional):" as its search snippet and description. It now opens with a sentence saying what the page does.
+
+- The Tracing page said "This source version exports OTLP/HTTP", which names no version a reader installs. It now names Effect 4.1.1, the version VibeLang pins.
+
+- Two docs pages had the browser title "Introduction" and two shared "Getting Started", and three ended in "in VibeLang" before the site name. Each docs page title is now unique and names its topic once.
+
+- The guidelines page imported `@effect/platform-bun`, which the starter does not include, and gave no install command, so its Bun sample failed with `TS2307`. It now gives the `bun add` and `npm install` commands at Effect 4.1.1.
+
+- The site home did not say what the alpha supports or which features are experimental. It now says that the alpha is the language the accepted VIPs and the specification define, and that features built from open proposals are experimental and can change in any release.
+
+- The Proposals page called `.vibex` files unbuilt and durable execution nonexistent, and cited decision-log entries the site does not publish. It now says, for each idea from the earlier design, whether it shipped, which VIP proposes it, or that it has no VIP.
+
+## 0.0.13
+
+0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](alpha.md) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are supported only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).
+
+Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/new?template=bug.yml). Propose a change to the language with an [idea](https://github.com/smithersai/vibelang/issues/new?template=idea.yml).
+
+### Bugs fixed since 0.0.12
+
+- Published API comments and starter instructions included unrelated product names and reviewer credits. They now describe the APIs and starter directly.
+
+- Strict TypeScript configurations importing entries such as `vibelang/eslint` failed with `TS7016` because their types were missing. Every public JavaScript entry now ships declarations for both `bundler` and `node16` module resolution.
+
+- Publishing a release exposed the publisher's home directory in npm metadata. Release scripts now publish unchanged archives from neutral staging and reject registry entries that expose a home path.
+
+- The React Native guide and the `vibelang` package page showed a CommonJS `metro.config.js`, and the package page a CommonJS `babel.config.js`, for an app whose `package.json` has `"type": "module"`. Metro failed with `require is not defined in ES module scope`. Both pages now name the files `metro.config.cjs` and `babel.config.cjs`.
+- With no `project` option, the Vite plugin and the bundler plugins read the root's `tsconfig.json` even when a `vibe.config.json` was beside it, so they compiled with settings the compiler ignored. They now read the root's `vibe.config.json`, then `tsconfig.json`, then `jsconfig.json`, as the compiler does.
+- Some docs examples taught forms the compiler warns about, such as a service member typed `Effect.Effect<{…}, never, never>` on the Stream page (`EK4833`). The docs check now fails an example that draws a warning, and those examples use the forms the compiler asks for; an example that shows a flagged form on purpose says so with `// expect-warning:`.
+- The specification marked 185 of its examples `// compiler-gap: pending VIP-N`, but 184 of those markers were stale: the compiler already did what the text says. They are gone, the docs check now compiles every specification example and fails on a marker whose example passes, and the two real gaps are listed on [Known limitations](known-limitations.md#specification-examples-the-compiler-does-not-pass-yet).
+- The `vibelang-runtime` package page listed the open-proposal modules beside VIP-33's core platform modules, and said in one place that generated code imports the package root and in another `vibelang-runtime/internal`. It now lists the open-proposal modules and helpers apart, with the experimental opt-in, and names `vibelang-runtime/internal` in both places.
+- The `vibelang-runtime` package page told readers to run `vibelang --fix`, which the compiler rejects with `TS5023`. The page no longer mentions the option.
+- `vibelang-ast-grep --help` compiled the parser library into a file named `--help` in the current directory. It now prints the usage and exits with status 0, and any other option is a usage error with status 2.
+- When the installed `effect` was not the version `vibelang-runtime` pins, the load error named `vibelang-runtime@0.0.11` whatever runtime was installed. It now names only the two Effect versions and the install command, as in `vibelang-runtime requires effect@4.1.1; found effect@4.1.0`.
+- A `try` written inside the callback of `sync`, `Effect.try` or `tryPromise`, such as `try sync(() => try load())`, compiled with no diagnostic and was left out of the output, so the callback returned the Effect itself where the source asked for its value. It now reports `EK0501`, as a `try` in any other plain function does; run the Effect outside the callback.
+- Published packages could reuse an older compiler, include local scratch files, or leave Windows without a compiler after a rehearsal. Packaging now requires matching committed sources and successful builds, includes only tracked sources, restores the selected platforms on every run, and checks the requested Bun starter version.
 - On a fresh checkout, a project whose `.vibe` files hold module bodies, such as a `tsconfig.json` with `include: ["."]`, got a loader record that `checkLoaderRecord` called stale at once (`gained or lost a file`), because the record's own compile wrote each body's `x.vibe.<name>.d.ts` after listing the directory. Those declarations now count as outputs, and the record holds right after it is written.
 
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
-- Pages such as Fallback, Expected Errors and Schema Getting Started still described VibeLang repairs that the CLI or editor writes or offers, although this release ships no VibeLang quick fixes or codemods. They now describe each change as a step you make; TypeScript's built-in fixes and ESLint's `--fix` are unchanged.
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
 
 - The shipment conversion example rejected a present `undefined` field with `exactOptionalPropertyTypes` enabled. It now preserves the TypeScript schema's handling of optional fields under either setting.
@@ -103,8 +136,6 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Calling a service key with arguments could hide errors in nested calls; those argument errors are now reported alongside the service diagnostic.
 
-- The Services guide opened with a keyword-escape rule, which was also its search snippet, and ran about 2,000 words of diagnostics before its second sample. It now teaches declaring, requesting and supplying services first and lists the rules in a reference section at the end; older service forms are on Migrating retired forms. Seven other guides no longer open with a diagnostic code.
-
 - Extending a service key could hide unknown names and type errors in the base expression or its type arguments. Those independent errors now appear alongside `EK3002`.
 
 - An `effect` modifier on an `interface` or type literal method could also report a misleading return-type error. It now reports `EK0108` while keeping the signature's written return type.
@@ -113,11 +144,7 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Invalid global object accesses could hide errors in computed keys and type assertions; those errors are now reported alongside the access diagnostic.
 
-- Five guides told readers to apply VibeLang editor actions, such as "Annotate as the fork infers" for `EK9101` and a parenthesizing action for `EK0510`, which the alpha does not ship. They now say which edit to write.
-
 - A computed matcher member after a line break could be split into a separate array expression. It now continues the matcher lookup, and empty or malformed brackets keep their syntax errors.
-
-- The CLI guide said Bun ignores source maps under `vibelang/bun`, while Source maps said a module Bun runs without transpiling maps to `.vibe` lines. The CLI guide now states that condition and links the limits.
 
 - Invalid service signatures and constructors could hide unknown names and type errors in their types or bodies. These independent errors now appear alongside `EK0902`.
 
@@ -501,10 +528,6 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - The starter-test video showed syntax that the compiler rejects. It now shows the current starter source and a real passing test run.
 
-- The site still served a recording of the retired `vibelang --fix` that no page linked, and nothing tied a page's video to the compiler version it shows. The recording is gone, and the site deploy now refuses a video recorded with a release other than the one the site states.
-
-- The specification overview played a walkthrough that teaches forms 0.0.13 rejects. It is off the site until it is re-recorded, and the cheat sheet now plays a 0.0.13 recording.
-
 - A child config that set `vibelang.diagnostics` to `null` to clear an inherited legacy severity map was rejected with TS5024. An explicit `null`, like `{}`, now replaces the inherited map with no entries.
 
 - The proposal overview displayed internal review metadata. It now states the retirement rule without those details.
@@ -550,15 +573,9 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Visiting an internal declaration-file URL could show a blank page with a successful status. These URLs now show the normal missing-page response.
 
-- The Installation page showed "With Bun (optional):" as its search snippet and description. It now opens with a sentence saying what the page does.
-
 - Screen readers could miss the site logo and alpha notice when navigating by page regions. The header, home link and release notice now belong to named landmarks.
 
-- The Tracing page said "This source version exports OTLP/HTTP", which names no version a reader installs. It now names Effect 4.1.1, the version VibeLang pins.
-
 - Missing pages had no main landmark for screen-reader navigation. The error message and home link now share a main landmark.
-
-- Two docs pages had the browser title "Introduction" and two shared "Getting Started", and three ended in "in VibeLang" before the site name. Each docs page title is now unique and names its topic once.
 
 - Constructor and base-class references could use the reserved names `fork` and `join` inside effect code. They now report `EK1702`.
 - The global `tryPromise` reported `EK0401` for a call known to throw inside its thunk, such as `tryPromise(() => load())` with `load` declared `@throws`, while `Effect.tryPromise` admitted it. Both spellings now admit the call, in the function and the options form.
@@ -682,13 +699,9 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 - Screen-reader navigation could not distinguish the site menu, documentation sidebar and page outline. Each navigation landmark now has its own name.
 
-- The guidelines page imported `@effect/platform-bun`, which the starter does not include, and gave no install command, so its Bun sample failed with `TS2307`. It now gives the `bun add` and `npm install` commands at Effect 4.1.1.
-
 - The homepage suggested Node versions that the packages do not support. It now lists both supported Node release lines and their minimum versions.
 
 - Copying either homepage greeting example printed nothing. Both examples now start their Effect and print `Hello, Ada`.
-
-- The site home did not say what the alpha supports or which features are experimental. It now says that the alpha is the language the accepted VIPs and the specification define, and that features built from open proposals are experimental and can change in any release.
 
 - When the migrate flow moved a function with an inferred return type into a `.platform.ts` sibling, the sibling also imported host types that only another imported type used, such as `Leaf` beside `View` for `type View = { leaf: Leaf }`. Under `noUnusedLocals` that reported `TS6196`. The sibling now imports only the types its moved code reads.
 
@@ -1105,8 +1118,6 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - A plain `catch` handler with a written return type, such as `x catch (): number => 0` or `x catch (): Effect.Effect<number> => Effect.succeed(7)`, was rejected with `TS2322`, `TS2345` or `EK0502`: the compiler read the annotation as an `effect` function's Effect type. The annotation now types what the handler returns, as on any plain function, and the `catch` gives that value, an Effect included, unrun.
 
 - The migrate flow kept a module in TypeScript when its platform code built a URL beside the module from a path written without `./`, such as `new URL("results/", import.meta.url)`, because it read the path as naming the module's file. Paths such as these drop the file name and name the same URL from the `.platform.ts` companion, so such code now moves. References with leading whitespace or C0 control characters, empty paths, query-only and fragment-only references, and computed paths remain in TypeScript.
-
-- The Proposals page called `.vibex` files unbuilt and durable execution nonexistent, and cited decision-log entries the site does not publish. It now says, for each idea from the earlier design, whether it shipped, which VIP proposes it, or that it has no VIP.
 
 ### Experimental (opt-in)
 
