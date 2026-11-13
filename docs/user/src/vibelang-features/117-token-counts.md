@@ -158,8 +158,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Error Channel Operations](../error-management/022-error-channel-operations.md) | 1,400 |
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,200 |
-| **Requirements Management** | **12,000** |
-| [Managing Services](../requirements-management/025-services.md) | 6,200 |
+| **Requirements Management** | **13,000** |
+| [Managing Services](../requirements-management/025-services.md) | 6,300 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
 | [Managing Layers](../requirements-management/027-layers.md) | 3,800 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |

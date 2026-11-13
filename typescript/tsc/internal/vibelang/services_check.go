@@ -107,6 +107,12 @@ func checkDeclarationMembers(c *checker.Checker, class *ast.Node) {
 		if ast.HasStaticModifier(member) || member.Name() == nil {
 			continue
 		}
+		if word == "service" && ast.IsPropertyDeclaration(member) && member.Initializer() == nil &&
+			ast.IsStringLiteral(member.Name()) && member.Name().Text() == "constructor" {
+			// A service's member object permits this property name, as an
+			// interface does. The native class field restriction is inapplicable.
+			coverExactErrorCodes(c, member.Name(), 18006)
+		}
 		// A bodyless accessor is an interface accessor signature. Report the
 		// member rule ahead of TypeScript's class-accessor errors, which an
 		// abstract modifier would otherwise silence altogether.

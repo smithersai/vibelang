@@ -24,8 +24,8 @@ func serviceShapeMembersChapter(t testing.TB) {
 
 func TestServiceSymbolMembersQuoted(t *testing.T) { serviceShapeMembersChapter(t) }
 
-// FuzzServiceSymbolMembers compares a service whose member has a symbol key
-// with its Effect TypeScript counterpart: chapter 5 gives both the same
+// FuzzServiceSymbolMembers compares symbol-keyed and constructor-named service
+// members with their Effect TypeScript counterparts: chapter 5 gives both the same
 // implementation type, so a complete, an incomplete and a mistyped
 // implementation report the same error codes against either. The comparison
 // is the compiler with itself on two programs the chapter equates.
@@ -39,6 +39,11 @@ func FuzzServiceSymbolMembers(f *testing.F) {
 		{"tag-property", "", "[Symbol.toStringTag]:string", "[Symbol.toStringTag]", "\"S\""},
 		{"unique-const", "const tag:unique symbol=Symbol(\"tag\");", "[tag]:number", "[tag]", "1"},
 		{"optional-property", "", "[Symbol.asyncIterator]?:()=>AsyncIterator<number>", "[Symbol.asyncIterator]", "undefined"},
+		{"constructor-property", "", "constructor:string", "constructor", "\"S\""},
+		{"constructor-readonly", "", "readonly constructor:string", "constructor", "\"S\""},
+		{"constructor-optional", "", "constructor?:string", "constructor", "\"S\""},
+		{"constructor-quoted", "", "\"constructor\":string", "\"constructor\"", "\"S\""},
+		{"constructor-optional-method", "", "constructor?():number", "constructor", "()=>7"},
 	} {
 		for _, implementation := range []struct{ key, entry string }{
 			{"complete", "," + member.name + ":" + member.value},

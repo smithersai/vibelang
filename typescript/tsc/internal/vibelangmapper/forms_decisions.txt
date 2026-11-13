@@ -9224,6 +9224,8 @@ typescript/vibelang/cases/scopes-using/main.vibe:240:47 lambda effectFn keyword
 typescript/vibelang/cases/scopes-using/main.vibe:241:61 lambda effectFn keyword
 typescript/vibelang/cases/scopes-using/main.vibe:33:5 lambda plain protocol
 typescript/vibelang/cases/service-construct-methods/main.vibe:21:28 lambda effectFn keyword
+typescript/vibelang/cases/service-constructor-properties/main.vibe:19:49 lambda plain annotation
+typescript/vibelang/cases/service-constructor-properties/main.vibe:21:50 lambda plain annotation
 typescript/vibelang/cases/service-declarations-core/main.vibe:11:34 lambda plain fallback
 typescript/vibelang/cases/service-declarations-core/main.vibe:22:39 byname program table
 typescript/vibelang/cases/service-declarations-core/main.vibe:22:72 lambda plain service

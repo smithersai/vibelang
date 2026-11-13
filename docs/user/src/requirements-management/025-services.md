@@ -154,7 +154,7 @@ effect function testWithContext() {
 
 A `Context` holds existing implementations; a `Layer` describes how to build them. A `provide` block takes layers and `Key = value` entries, or a single `Context`, as `testWithContext` shows. `provide` is a statement, not an expression: return the value from inside its block. Keep resource-owning implementations within the lifetime that created them.
 
-An implementation retrieved with `try Service` or typed as `Service.Shape` can be spread into another object. The spread retains its method signatures; replacements must still satisfy the declared result types. Ordinary class prototype methods are not copied by object spread.
+An implementation retrieved with `try Service` or typed as `Service.Shape` can be spread into another object. The spread retains its method signatures; replacements must still satisfy the declared result types. Ordinary class prototype methods are not copied by object spread. A property named `constructor` is an ordinary shape member, as in a TypeScript interface: `constructor: string` and `constructor: () => number` declare properties. An optional method such as `constructor?(): number` keeps its method signature. An actual constructor body remains `EK0902`.
 
 ## Requesting optional services
 

@@ -53,6 +53,7 @@ func (p *Parser) parseServiceShapeDeclaration(pos int, jsdoc jsdocScannerInfo, m
 		end := p.nodePos()
 		members = p.newNodeList(core.NewTextRange(end, end), nil)
 	}
+	form.FieldNames = p.vibelangServiceConstructorFieldNames(members)
 	form.Range = core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), p.nodePos())
 	p.recordVibeSyntax(form)
 
@@ -65,4 +66,19 @@ func (p *Parser) parseServiceShapeDeclaration(pos int, jsdoc jsdocScannerInfo, m
 	p.finishNode(result, pos)
 	p.withJSDoc(result, jsdoc)
 	return result
+}
+
+// vibelangServiceConstructorFieldNames keeps interface-style property names
+// out of the native class constructor syntax used by the formatter projection.
+func (p *Parser) vibelangServiceConstructorFieldNames(members *ast.NodeList) []core.TextRange {
+	var names []core.TextRange
+	for _, member := range members.Nodes {
+		if ast.IsPropertyDeclaration(member) || ast.IsMethodDeclaration(member) {
+			name := member.Name()
+			if (ast.IsIdentifier(name) || ast.IsStringLiteral(name)) && name.Text() == "constructor" {
+				names = append(names, p.sourceRange(name))
+			}
+		}
+	}
+	return names
 }

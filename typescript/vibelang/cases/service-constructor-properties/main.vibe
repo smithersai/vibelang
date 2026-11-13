@@ -1,0 +1,27 @@
+// expect-result: ["record",7,true,9]
+// A service property named constructor is an ordinary shape member.
+service RecordKey {
+  static readonly key = "constructor-properties/RecordKey";
+  readonly constructor: string
+}
+service FactoryKey {
+  static readonly key = "constructor-properties/FactoryKey";
+  constructor: () => number
+}
+service OptionalKey {
+  static readonly key = "constructor-properties/OptionalKey";
+  "constructor"?: string
+}
+service MethodKey {
+  static readonly key = "constructor-properties/MethodKey";
+  constructor?(): number
+}
+const methods: MethodKey.Shape = { constructor: () => 9 }
+const record: RecordKey.Shape = { constructor: "record" }
+const factory: FactoryKey.Shape = { constructor: () => 7 }
+const optional: OptionalKey.Shape = { constructor: undefined }
+export effect function main() {
+  provide RecordKey = record, FactoryKey = factory, OptionalKey = optional, MethodKey = methods {
+    return [(try RecordKey).constructor, (try FactoryKey).constructor(), (try OptionalKey).constructor === undefined, (try MethodKey).constructor?.()]
+  }
+}

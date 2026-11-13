@@ -1034,7 +1034,7 @@ ProofBlock = "proof" [no LineTerminator here] Block
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (1095 records)</summary>
+<summary>Parser and lowering hooks (1096 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -2126,6 +2126,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang.go:Parser.parseVibeLangDeclaration@ambient-custom-declaration ` | ` admission:ambient-custom-declaration ` | ` - ` | ` pending ` | Chapters 003 and 006 define static ambient-custom rejection, but Appendix A's `DeclareDeclaration` omits the explicit `declare error`, `declare schema` and `declare data` forms; the parser retains the native modifiers |
 | ` parser/vibelang_match.go:Parser.parseMatchPrimaryPattern@pattern-name-object ` | ` admission:pattern-name-object ` | ` - ` | ` pending ` | VIP-7 pinned `MemberExpressionPattern` has a member or extractor call, never a member followed by `ObjectPattern`; the parser consumes the field list after a name and leaves a static error |
 | ` parser/vibelang_match.go:Parser.parseMatchValueExpression@pattern-super-element ` | ` admission:pattern-super-element ` | ` - ` | ` pending ` | VIP-7 pinned `PatternMatchingMemberExpression` starts with `super . IdentifierName`, never bare `super`; the parser also consumes `super[key]` and leaves only ordinary checking errors |
+| ` parser/vibelang_service_type.go:Parser.vibelangServiceConstructorFieldNames ` | ` admission:service ` | ` 900-appendices.md#Member ` | ` support ` | VIP-9: preserve `constructor` member signatures through class formatting |
 | ` parser/vibelang_proofs.go:Parser.scanStartOfSpecFunction ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` support ` | VIP-43: spec before function, async function or effect function on the same line |
 | ` parser/vibelang_proofs.go:Parser.parseSpecFunctionDeclaration ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` admitted ` | VIP-43 spec function; async, effect, generator and overload forms parse for EK4302 |
 | ` parser/vibelang_proofs.go:Parser.joinModifiers ` | ` admission:spec-function ` | ` 900-appendices.md#SpecFunctionDeclaration ` | ` support ` | VIP-43: modifiers before and after spec form one list for EK4302 |

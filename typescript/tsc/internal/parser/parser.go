@@ -2192,6 +2192,15 @@ func (p *Parser) parseClassElement() *ast.Node {
 	if p.parseContextualModifier(ast.KindSetKeyword) {
 		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone, p.vibelangServiceMembers)
 	}
+	// A service has interface-style signatures: constructor may name a
+	// property, including an optional method-valued property. Keep actual
+	// constructor heads on the existing constructor diagnostic path.
+	if p.vibelangServiceMembers && p.token == ast.KindConstructorKeyword && p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		return p.token != ast.KindOpenParenToken && p.token != ast.KindLessThanToken
+	}) {
+		return p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, false /*effect*/)
+	}
 	if p.token == ast.KindConstructorKeyword || p.token == ast.KindStringLiteral {
 		constructorDeclaration := p.tryParseConstructorDeclaration(pos, jsdoc, modifiers)
 		if constructorDeclaration != nil {

@@ -729,6 +729,9 @@ func (e *encoder) declaration(form parser.VibeSyntax) error {
 	case "service", "control":
 		if form.Name == "service" {
 			e.classMemberSeparators(form)
+			for _, name := range form.FieldNames {
+				e.opaque(placeholderText, name, "", "", firstLineWidth(e.text(name)))
+			}
 		}
 		// The head of service Prefix: string runs through the shape (D281),
 		// which the placeholder keeps as written, with one space after the colon.

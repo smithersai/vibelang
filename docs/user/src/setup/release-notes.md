@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- A service member named `constructor` was rejected as a constructor or could not be formatted. Properties, including optional and `readonly` ones, and optional methods now keep their declared shape types and format normally.
+
 - An invalid service key could hide errors in nested class fields inside its initializer. Those field errors now appear alongside the key error.
 
 - Adding a runtime `Shape` member to a service without `defaultValue` hid its implementation type (`TS2749`). The value and type now coexist, as in TypeScript.

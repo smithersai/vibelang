@@ -497,6 +497,9 @@ func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifi
 	} else {
 		members = p.createMissingList()
 	}
+	if !control {
+		form.FieldNames = p.vibelangServiceConstructorFieldNames(members)
+	}
 	form.Range = core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), p.nodePos())
 	p.recordVibeSyntax(form)
 	modifiers = p.vibelangServiceModifiers(modifiers, word)
