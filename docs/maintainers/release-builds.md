@@ -131,7 +131,9 @@ vibelang.sh is one static site, built from `site/` and deployed to Cloudflare by
 The site states the release that npm's `latest` tag serves: `deploy-docs.sh`
 snapshots npm latest before it builds, checks every docs example against that
 release's compiler, and its `postdeploy` step (`docs/tools/deployed-release.mjs`)
-reads the served pages back and fails if any page names another version.
+reads the served pages back and fails if current installation instructions name
+another version. Release notes retain historical pins and commands, including
+in the newest bug list; their first release heading must name the current version.
 
 Nothing in this repository deploys the site on a push or a publish. A maintainer
 runs a deploy loop outside the repository that calls `deploy-docs.sh` when
@@ -149,9 +151,11 @@ sh scripts/release/verify-published.sh <version>
 `deploy-site.sh` refuses to deploy until npm latest is `<version>`, then runs
 `deploy-docs.sh`. `verify-published.sh` checks the registry manifests for home
 paths, scaffolds and tests an app from the registry, then runs `scripts/release/live-site.mjs --version <version>` against
-the live site, so it fails while the installation page, home page, setup Markdown
-or release notes still name another version, or while any page in the sitemap
-teaches `vibelang --fix` (only the release notes' current section counts).
+the live site, so it fails while the installation page, home page or setup Markdown
+still names another version, the first release-notes heading names another
+version, or a page outside the release notes teaches `vibelang --fix`.
+Both HTML and Markdown release notes are excluded from pin and taught-command
+checks; installation pins on other pages remain strict.
 `live-site.mjs` uses only Node's built-ins, so both scripts run from a release
 bundle that holds `scripts/release/` and nothing else. `VIBELANG_REGISTRY` and
 `VIBELANG_SITE_URL` point both checks at a rehearsal registry and site.

@@ -12,6 +12,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 
 ### Bugs fixed since 0.0.12
 
+- A site deployment could fail because release notes mentioned an older package version in a bug description. Historical entries now pass the version check, while install commands on other pages still require the current version.
+
 - The TypeScript view used by linters and editors could crash on a local type named `Effect` or a computed member name. It now preserves local type bindings and projects these members without crashing.
 
 - `vibelang-unplugin` could not bundle a `.vibex` module that imports from its own `module` declaration: webpack, Rspack, Rollup, Rolldown, esbuild and Bun stopped with `Can't resolve './main.vibex.text.js'`. The plugin now serves a `.vibex` module's declarations as it serves a `.vibe` module's.

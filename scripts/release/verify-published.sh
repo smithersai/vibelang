@@ -48,8 +48,9 @@ try {
 }
 JS
 sh "$root/scripts/release/check-app.sh" "$registry" "$version" npm bun
-# The installation page, home page, setup Markdown and release notes must name
-# this version, its pins and its platforms, and no page may teach vibelang --fix.
+# The installation page, home page and setup Markdown must name this version,
+# its pins and its platforms. Release notes must have the current heading;
+# their historical pins and retired commands are excluded from instruction checks.
 # A checkout also pins the TypeScript version in the documented --version output.
 set -- --version "$version" --registry "$registry"
 core="$root/typescript/tsc/internal/core/version.go"

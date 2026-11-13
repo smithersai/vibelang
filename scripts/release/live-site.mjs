@@ -36,27 +36,26 @@ function releasePageProblems(route, body, { version, expectedOutput, exactOutput
   const problems = []
   if (body === undefined) return problems
   const html = route === "/" || !/\.(?:md|txt)$/.test(route)
-  let text = html ? visibleText(body) : body
+  const text = html ? visibleText(body) : body
   const problem = message => problems.push(route + ": " + message)
   const notes = route.startsWith("/setup/release-notes")
   if (notes) {
     const headings = [...text.matchAll(new RegExp("^##\\s+(v?" + semver + ")\\s*$", "gm"))]
     const current = headings[0]
     if (!current || current[1].replace(/^v/, "") !== version) problem(`latest release notes are ${current?.[1] ?? "missing"}; expected ${version}`)
-    // Historical examples and comparisons keep the versions they describe.
-    text = current ? text.slice(current.index, headings[1]?.index ?? text.length) : ""
+    // Even the newest bug list describes old pins and retired commands.
+    // Check the release heading, but treat the whole page as history.
+    return problems
   }
   const pins = [
     ...text.matchAll(new RegExp("\\b((?:create-)?vibelang(?:-[a-z0-9-]+)?)@(" + semver + ")", "g")),
     ...text.matchAll(new RegExp('["\\x27]((?:create-)?vibelang(?:-[a-z0-9-]+)?)["\\x27]\\s*:\\s*["\\x27](' + semver + ')["\\x27]', "g"))
   ]
   for (const [, name, pin] of pins) if (pin !== version) problem(`pin ${name}@${pin}; expected ${version}`)
-  if (!notes) {
-    const labels = [...text.matchAll(new RegExp("\\b(?:VibeLang|vibelang|[Vv]ersion|Rehearsed for|In)\\s+(" + semver + ")", "g"))]
-    for (const [label, pin] of labels) if (pin !== version) problem(`release label ${label.trim()}; expected ${version}`)
-    if (["/", "/getting-started/004-installation", "/getting-started/004-installation.md"].includes(route) &&
-        !labels.some(([, pin]) => pin === version)) problem("missing current release label " + version)
-  }
+  const labels = [...text.matchAll(new RegExp("\\b(?:VibeLang|vibelang|[Vv]ersion|Rehearsed for|In)\\s+(" + semver + ")", "g"))]
+  for (const [label, pin] of labels) if (pin !== version) problem(`release label ${label.trim()}; expected ${version}`)
+  if (["/", "/getting-started/004-installation", "/getting-started/004-installation.md"].includes(route) &&
+      !labels.some(([, pin]) => pin === version)) problem("missing current release label " + version)
   for (const [output] of text.matchAll(new RegExp("VibeLang " + semver + " \\(TypeScript [^\\)]+\\)", "g"))) {
     if (exactOutput ? output !== expectedOutput : !output.startsWith(expectedOutput)) problem(`--version output ${output}; expected ${expectedOutput}`)
   }

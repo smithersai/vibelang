@@ -139,3 +139,24 @@ test("ESLint's own --fix and other compiler flags pass", async () => {
 test("a missing sitemap fails the check instead of skipping the page scan", async () => {
   assert.ok((await fixture({ "/sitemap.xml": undefined }).check()).some(p => p.startsWith("/sitemap.xml: fetch failed")))
 })
+
+const releaseHistory = "- The `vibelang-runtime` package page told readers to run `vibelang --fix`, which the compiler rejects with `TS5023`. The page no longer mentions the option.\n- When the installed `effect` was not the version `vibelang-runtime` pins, the load error named `vibelang-runtime@0.0.11` whatever runtime was installed. It now names only the two Effect versions and the install command, as in `vibelang-runtime requires effect@4.1.1; found effect@4.1.0`."
+
+for (const route of ["/setup/release-notes", "/setup/release-notes.md"]) {
+  for (const section of ["current", "older"]) {
+    test("release-history pins and retired commands pass in the " + section + " section on " + route, async () => {
+      const html = !route.endsWith(".md")
+      const history = html ? "<ul><li>" + releaseHistory.replace(/`(.*?)`/g, "<code>$1</code>").replace(/\n/g, "</li><li>") + "</li></ul>" : releaseHistory
+      const heading = release => html ? "<h2>" + release + "</h2>" : "\n## " + release + "\n"
+      const body = heading(version) + (section === "current" ? history : "") + heading("0.0.12") + (section === "older" ? history : "")
+      const sitemap = "<urlset><url><loc>" + baseUrl + route.slice(1) + "</loc></url></urlset>"
+      assert.deepEqual(await fixture({ [route]: body, "/sitemap.xml": sitemap }).check(), [])
+    })
+  }
+}
+for (const route of ["/setup.md", "/getting-started/004-installation", "/getting-started/004-installation.md", "/llms.txt"]) {
+  test("a stale runtime install command still fails on " + route, async () => {
+    const problems = await fixture({ [route]: pages[route] + "\nnpm install vibelang-runtime@0.0.11" }).check()
+    assert.deepEqual(problems, [route + ": pin vibelang-runtime@0.0.11; expected " + version])
+  })
+}

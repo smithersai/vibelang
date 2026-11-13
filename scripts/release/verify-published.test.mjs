@@ -93,7 +93,7 @@ test("a missing package manifest fails before app verification", async t => {
 })
 
 // verify-published.sh runs against a local registry and a local docs site. The
-// app scaffold is stubbed; the site check is the real docs/tools/deployed-release.mjs.
+// app scaffold is stubbed; the site check is the real live-site.mjs.
 const checkout = fileURLToPath(new URL("../../", import.meta.url))
 const siteVersion = "9.8.7"
 const typescript = /var version = "([^"]+)"/.exec(readFileSync(join(checkout, "typescript/tsc/internal/core/version.go"), "utf8"))[1]
@@ -192,3 +192,34 @@ test("a live page that still teaches vibelang --fix fails verification", async (
     assert.match(output, /\/: teaches `vibelang --fix` 1 time\(s\)/)
   }, { bundle: true })
 })
+
+const releaseHistory = "- The `vibelang-runtime` package page told readers to run `vibelang --fix`, which the compiler rejects with `TS5023`. The page no longer mentions the option.\n- When the installed `effect` was not the version `vibelang-runtime` pins, the load error named `vibelang-runtime@0.0.11` whatever runtime was installed. It now names only the two Effect versions and the install command, as in `vibelang-runtime requires effect@4.1.1; found effect@4.1.0`."
+
+for (const bundle of [false, true]) {
+  for (const section of ["current", "older"]) {
+    test("published verification accepts release-history pins and retired commands in the " + section + " section, bundle=" + bundle, async () => {
+      const pages = site(siteVersion)
+      for (const route of ["/setup/release-notes", "/setup/release-notes.md"]) {
+        const html = !route.endsWith(".md")
+        const history = html ? "<ul><li>" + releaseHistory.replace(/`(.*?)`/g, "<code>$1</code>").replace(/\n/g, "</li><li>") + "</li></ul>" : releaseHistory
+        const heading = release => html ? "<h2>" + release + "</h2>" : "\n## " + release + "\n"
+        pages[route] = heading(siteVersion) + (section === "current" ? history : "") + heading("0.0.12") + (section === "older" ? history : "")
+      }
+      pages["/sitemap.xml"] = pages["/sitemap.xml"].replace("</urlset>",
+        "<url><loc>https://vibelang.sh/setup/release-notes</loc></url><url><loc>https://vibelang.sh/setup/release-notes.md</loc></url></urlset>")
+      await withFixture(pages, published, ({ status, output }) => {
+        assert.equal(status, 0, output)
+        assert.match(output, /live-site: served docs match compiler 9\.8\.7/)
+        assert.doesNotMatch(output, /mismatch|teaches/)
+      }, { bundle })
+    })
+  }
+  test("published verification rejects a stale runtime install command outside release notes, bundle=" + bundle, async () => {
+    const pages = site(siteVersion)
+    pages["/getting-started/004-installation"] += "<pre>npm install vibelang-runtime@0.0.11</pre>"
+    await withFixture(pages, published, ({ status, output }) => {
+      assert.equal(status, 1, output)
+      assert.match(output, /\/getting-started\/004-installation: pin vibelang-runtime@0\.0\.11; expected 9\.8\.7/)
+    }, { bundle })
+  })
+}
