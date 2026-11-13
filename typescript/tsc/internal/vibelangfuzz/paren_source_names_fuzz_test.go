@@ -28,6 +28,8 @@ import (
 // the position that names it, and whether that position is at the top level,
 // in a plain function, in an effect function or in a do expression.
 
+const regionCaptureSourceNamesQuote = "A value-only evaluation of an anonymous function or class cannot gain a name from a private variable or assignment; preserve a name the source explicitly requests."
+
 const parenNamesTarget = "FuzzParenthesizedSourceNames"
 
 var parenNamesQuotes = []struct{ chapter, text string }{

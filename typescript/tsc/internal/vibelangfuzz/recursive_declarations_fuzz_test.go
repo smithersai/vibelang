@@ -17,7 +17,7 @@ import (
 // FuzzRecursiveInferredDeclarations enforces Chapter 1, Declaration output:
 // "Declarations are exactly what idiomatic Effect TypeScript would declare",
 // for an inferred return type that meets its own anonymous type again.
-// Decision 6 matches TypeScript 7.0.2 where 7.1 regressed: 5.9 and 7.0.2
+// VIP-27 matches TypeScript 7.0.2 where 7.1 regressed: 5.9 and 7.0.2
 // declare the type met again as /*elided*/ any, where 7.1 reports TS5088
 // ("references a type with a cyclic structure") and declares nothing. The
 // input picks the recursion (a property arrow, two functions that build each
@@ -26,8 +26,7 @@ import (
 // recursive function is exported. Every generated shape compiles with
 // TypeScript 7.0.2. The oracle: the program compiles with declarations and no
 // error, the recursive site prints /*elided*/ any, and the declaration file
-// typechecks as a consumer's input. alchemy's packages/aws builders recurse
-// this way (corpus alchemy-recursive-builder).
+// typechecks as a consumer's input.
 func FuzzRecursiveInferredDeclarations(f *testing.F) {
 	// Spec rule: docs/design/src/001-functions.md#610a56454d7702ae
 	// Chapter 001: recursive anonymous property/method returns elide the repeated type (FuzzRecursiveInferredDeclarations).
@@ -52,7 +51,7 @@ func FuzzRecursiveInferredDeclarations(f *testing.F) {
 }
 
 // TestRecursiveInferredDeclarationsQuoted fails when Chapter 1 rewords the
-// sentence the oracle quotes (RULES.md 9).
+// sentence the oracle quotes.
 func TestRecursiveInferredDeclarationsQuoted(t *testing.T) { recursiveDeclarationsChapter(t) }
 
 const recursiveDeclarationsQuote = "the repeated anonymous type is written as `/*elided*/ any`, without an error for that cycle."
@@ -90,7 +89,7 @@ type recursiveInput struct {
 }
 
 // parseRecursive reads the keyed form, `recursive:<shape>/<depth>/<exported|local>`
-// (RULES.md 11), and otherwise picks from the bytes.
+// and otherwise picks from the bytes.
 func parseRecursive(data []byte) recursiveInput {
 	if rest, ok := strings.CutPrefix(string(data), "recursive:"); ok {
 		parts := append(strings.Split(rest, "/"), "", "", "")

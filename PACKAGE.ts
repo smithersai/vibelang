@@ -110,8 +110,8 @@ const specTests = [
 
   "TestStockConsumerResolution",
 
-  "TestRegistryDebtLedger",
   "TestRegistryDebtWitnessIdentity",
+  "TestFuzzHelperReachability",
   "TestRegistryUsesCurrentAppendix",
   "TestCurrentConfigFacts",
   "TestCurrentRegistryTables",
@@ -1900,8 +1900,8 @@ const targets = {
     timeout: "15m"
   }),
   "spec-registry-go": S.Shell.Test({
-    summary: "Every assigned code is registered or names its implementation owner; legacy exceptions apply only to unassigned declarations.",
-    shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^(TestRegistryMatchesSpec|TestCompilerRegistryIsSpecified|TestRegistryDebtLedger|TestShortTargetsBudgeted|TestRegistryDeclarationAllowanceQuoted|TestRegistryDeclarationAllowancesStayStrict|FuzzRegistryDeclarationAllowances|TestGrammarAdmissionReasonsUsePublishedCodes|FuzzPublicCompatibilityCodeCitations)$' ./internal/vibelang/ ./internal/vibelangfuzz/`,
+    summary: "Every compiler diagnostic declaration has a current specification assignment; graduated witnesses retain no pending waiver.",
+    shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^(TestRegistryMatchesSpec|TestCompilerRegistryIsSpecified|TestShortTargetsBudgeted|TestGraduatedRegistryWitnessesStayStrict|TestGrammarAdmissionReasonsUsePublishedCodes|FuzzPublicCompatibilityCodeCitations)$' ./internal/vibelang/ ./internal/vibelangfuzz/`,
     data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"], Vibelang.tree] as Array<never>,
     tools: [go, node],
     sandbox: "none",

@@ -30,7 +30,13 @@ func TestProjectReferenceModuleBodiesQuoted(t *testing.T) {
 
 // Body and physical-sibling twins have the same ordinary declarations. The
 // source project reference must retain that declaration edge in both layouts.
+// Always read source: identical handwritten output declarations mask that edge.
 func referenceBodyDiagnostics(t *testing.T, key string, variant uint8, twin bool) []int {
+	t.Helper()
+	return referenceBodyDiagnosticsWithBody(t, key, variant, twin, "export interface Base<T> { readonly transform: (value: T) => string }\n")
+}
+
+func referenceBodyDiagnosticsWithBody(t *testing.T, key string, variant uint8, twin bool, body string) []int {
 	t.Helper()
 	extension, nativeExtension := ".vibe", ".ts"
 	if variant&1 != 0 {
@@ -40,7 +46,6 @@ func referenceBodyDiagnostics(t *testing.T, key string, variant uint8, twin bool
 	output := []string{"lib", "nested/types", "node_modules/.generated/source"}[int(variant>>3)%3]
 	part := strings.TrimSuffix(parser.ModuleDeclarationFileSuffix(name), ".ts")
 	stem := "state" + extension + part
-	body := "export interface Base<T> { readonly transform: (value: T) => string }\n"
 	state := "module " + name + " {\n" + body + "}\nexport type { Base } from " + name + ";\nexport * as State from \"./state" + extension + "\";\nexport const pure = 1;\n"
 	sourceExtension := extension
 	if twin {
@@ -57,25 +62,18 @@ func referenceBodyDiagnostics(t *testing.T, key string, variant uint8, twin bool
 	appConfig, _ := json.Marshal(map[string]any{"compilerOptions": appOptions, "files": []string{"main.ts"}, "references": []map[string]string{{"path": "../core"}}})
 	coreConfig, _ := json.Marshal(map[string]any{"compilerOptions": coreOptions, "vibe": map[string]bool{"effectGlobals": false, "effectModules": false}, "include": []string{"src"}})
 	files := map[string]any{
-		"/app/package.json":                      `{"type":"module"}`,
-		"/app/tsconfig.json":                     string(appConfig),
-		"/app/main.ts":                           main,
-		"/app/node_modules/core":                 vfstest.Symlink("/core"),
-		"/core/package.json":                     `{"name":"core","type":"module","exports":{".":"./src/index.ts"}}`,
-		"/core/tsconfig.json":                    string(coreConfig),
-		"/core/src/index.ts":                     index,
-		"/core/src/state" + sourceExtension:      state,
-		"/core/src/derived" + sourceExtension:    `import { State } from "./state` + sourceExtension + `"; export interface Derived extends State.Base<number> { readonly active: boolean }`,
-		"/core/" + output + "/index.d.ts":        strings.ReplaceAll(index, sourceExtension, ".ts"),
-		"/core/" + output + "/state.d.ts":        `export type { Base } from "./` + stem + `.js"; export * as State from "./state.ts";`,
-		"/core/" + output + "/derived.d.ts":      `import { State } from "./state.ts"; export interface Derived extends State.Base<number> { readonly active: boolean }`,
-		"/core/" + output + "/" + stem + ".d.ts": body,
+		"/app/package.json":                   `{"type":"module"}`,
+		"/app/tsconfig.json":                  string(appConfig),
+		"/app/main.ts":                        main,
+		"/app/node_modules/core":              vfstest.Symlink("/core"),
+		"/core/package.json":                  `{"name":"core","type":"module","exports":{".":"./src/index.ts"}}`,
+		"/core/tsconfig.json":                 string(coreConfig),
+		"/core/src/index.ts":                  index,
+		"/core/src/state" + sourceExtension:   state,
+		"/core/src/derived" + sourceExtension: `import { State } from "./state` + sourceExtension + `"; export interface Derived extends State.Base<number> { readonly active: boolean }`,
 	}
 	if twin {
 		files["/core/src/"+stem+nativeExtension] = body
-	}
-	if !twin && variant&32 != 0 {
-		files["/core/src/"+stem+".d.ts"] = body
 	}
 
 	sensitivity := tspath.CaseSensitive
@@ -87,7 +85,7 @@ func referenceBodyDiagnostics(t *testing.T, key string, variant uint8, twin bool
 	if len(diagnostics) != 0 || len(config.Errors) != 0 {
 		t.Fatalf("config: %v %v", diagnostics, config.Errors)
 	}
-	program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil), UseSourceOfProjectReference: variant&128 != 0})
+	program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil), UseSourceOfProjectReference: true})
 	codes := []int{}
 	for _, diagnostic := range program.GetProgramDiagnostics() {
 		codes = append(codes, int(diagnostic.Code()))
@@ -102,7 +100,7 @@ func referenceBodyDiagnostics(t *testing.T, key string, variant uint8, twin bool
 func FuzzProjectReferenceModuleBodies(f *testing.F) {
 	startShortBudget(f)
 	for i, key := range referenceBodyKeys {
-		for _, variant := range []uint8{0, 1, 28, 32, 33, 65, 128} {
+		for _, variant := range []uint8{0, 1, 28, 65} {
 			f.Add(key, variant+uint8(i*2))
 		}
 	}
@@ -126,4 +124,22 @@ func FuzzProjectReferenceModuleBodies(f *testing.F) {
 		ExpectPending(t, referenceBodyTarget, gap)
 		ExpectPending(t, referenceBodyTarget, specCorpusKey(t))
 	})
+}
+
+// An incompatible body must reach the app in every reference variant. The
+// declarations-only implementation used to hide this mutation below bit 7.
+func TestProjectReferenceModuleBodiesReadsSource(t *testing.T) {
+	for _, key := range referenceBodyKeys {
+		for _, variant := range []uint8{0, 1, 28, 65, 128, 130} {
+			for _, twin := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%d/%t", key, variant, twin), func(t *testing.T) {
+					broken := "export interface Base<T> { readonly transform: (value: T) => number }\n"
+					got := referenceBodyDiagnosticsWithBody(t, key, variant, twin, broken)
+					if !slices.Equal(got, []int{2322}) {
+						t.Fatalf("body mutation must reach the consumer as TS2322, got %v", got)
+					}
+				})
+			}
+		}
+	}
 }

@@ -26,7 +26,7 @@ type portPluginRule struct {
 	port, lint   int32
 }
 
-// portPluginRules are keyed (RULES.md 11).
+// portPluginRules are keyed.
 var portPluginRules = map[string]portPluginRule{
 	"arrow-block":   {"unnecessaryArrowBlock", "export const inc = (n: number) => { return n + 1 }", 4823, 38123},
 	"extends-error": {"extendsNativeError", "export class Legacy extends Error {}", 4805, 3837},

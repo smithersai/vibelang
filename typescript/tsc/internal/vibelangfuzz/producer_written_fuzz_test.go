@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"context"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -30,15 +31,15 @@ func FuzzProducerWrittenStream(f *testing.F) {
 	producerWrittenChapter(f)
 	sites := []struct {
 		key, body, written string
-		ok                 bool
+		code               string
 	}{
-		{"number", "yield 1; yield 2", "Stream.Stream<number>", true},
-		{"string-three", "yield \"a\"", "Stream.Stream<string, never, never>", true},
-		{"error-channel", "yield 1", "Stream.Stream<number, string>", true},
-		{"bare-return", "yield 1; return", "Stream.Stream<number>", true},
-		{"union", "yield 1; yield \"a\"", "Stream.Stream<number | string>", true},
-		{"mismatch", "yield 1", "Stream.Stream<string>", false},
-		{"mismatch-object", "yield { a: 1 }", "Stream.Stream<number>", false},
+		{"number", "yield 1; yield 2", "Stream.Stream<number>", ""},
+		{"string-three", "yield \"a\"", "Stream.Stream<string, never, never>", ""},
+		{"error-channel", "yield 1", "Stream.Stream<number, string>", ""},
+		{"bare-return", "yield 1; return", "Stream.Stream<number>", ""},
+		{"union", "yield 1; yield \"a\"", "Stream.Stream<number | string>", ""},
+		{"mismatch", "yield 1", "Stream.Stream<string>", "TS2322"},
+		{"mismatch-object", "yield { a: 1 }", "Stream.Stream<number>", "TS2322"},
 	}
 	keys := make([]string, len(sites))
 	for i, site := range sites {
@@ -64,11 +65,12 @@ func FuzzProducerWrittenStream(f *testing.F) {
 		}
 		defer r.Remove()
 		key := "rule:" + site.key
-		if site.ok && HasError(r.Diagnostics) {
-			Gap(t, producerWrittenTarget, key, "%s: a written Stream must be accepted with fitting yields\n%s\n%v", producerWrittenQuote, source, Keys(r.Dir, r.Diagnostics))
+		got, want := r4Errors(r.Diagnostics), []string{}
+		if site.code != "" {
+			want = append(want, site.code)
 		}
-		if !site.ok && !HasError(r.Diagnostics) {
-			Gap(t, producerWrittenTarget, key, "a yield outside the written element type must be rejected\n%s", source)
+		if !slices.Equal(got, want) {
+			Gap(t, producerWrittenTarget, key, "%s; want %v, got %v\n%s", producerWrittenQuote, want, got, source)
 		}
 		ExpectPending(t, producerWrittenTarget, key)
 		ExpectPending(t, producerWrittenTarget, specCorpusKey(t))

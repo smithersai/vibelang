@@ -19,15 +19,13 @@ func TestReservedPayloadInheritanceQuoted(t *testing.T) {
 	}
 }
 
-type reservedInheritanceCase struct{ key, form, prefix, field string }
+type reservedInheritanceCase struct{ key, form, field string }
 
 func reservedInheritanceCases() []reservedInheritanceCase {
 	var cases []reservedInheritanceCase
 	for _, form := range []struct{ key, text string }{{"error", "error"}, {"schema-error", "schema error"}} {
-		for _, prefix := range []struct{ key, text string }{{"concrete", ""}, {"abstract", "abstract "}} {
-			for _, field := range []struct{ key, text string }{{"plain", "_tag: string"}, {"quoted", "['_tag']: string"}, {"computed", "[\"_tag\"]: string"}, {"literal", "_tag: \"Other\""}, {"union", "_tag: \"Base\" | \"Other\""}} {
-				cases = append(cases, reservedInheritanceCase{form.key + "/" + prefix.key + "/" + field.key, form.text, prefix.text, field.text})
-			}
+		for _, field := range []struct{ key, text string }{{"plain", "_tag: string"}, {"quoted", "['_tag']: string"}, {"computed", "[\"_tag\"]: string"}, {"literal", "_tag: \"Other\""}, {"union", "_tag: \"Base\" | \"Other\""}} {
+			cases = append(cases, reservedInheritanceCase{form.key + "/concrete/" + field.key, form.text, field.text})
 		}
 	}
 	return cases
@@ -61,7 +59,7 @@ func FuzzReservedPayloadInheritance(f *testing.F) {
 				base = " extends Base"
 				want++
 			}
-			source := fmt.Sprintf("export %s%s Base { %s }\nexport %s Child%s {}\n", c.prefix, c.form, field, c.form, base)
+			source := fmt.Sprintf("export %s Base { %s }\nexport %s Child%s {}\n", c.form, field, c.form, base)
 			r, err := w.Compile(t.Context(), Single(source))
 			if err != nil {
 				t.Fatal(err)

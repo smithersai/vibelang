@@ -3,15 +3,14 @@ package vibelangfuzz
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // toolsFreshOutcome runs the original in a fresh Node process at its original
@@ -233,8 +232,3 @@ func toolsContractMismatch(t *testing.T, w *Workspace, before, after *Result, sa
 	}
 	return ""
 }
-
-// fixRemovedThrowsTag matches a comment that holds only `@throws` and
-// `@rethrows` tags. In a .vibe file each is EK0406, whose fix removes it
-// (chapter 3, Thrown types: "is `EK0406`: remove it"), so D372 does not count it.
-var fixRemovedThrowsTag = regexp.MustCompile(`^/\*\*\s*(?:(?:@throws\s*\{[^}]*\}|@rethrows\s+\w+)\s*)+\*/$`)

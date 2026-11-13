@@ -36,6 +36,22 @@ specifies observable behavior without prescribing a lowering.
 and chapter text to check that missing operations, vacuous templates and
 stale quotations cannot pass.
 
+## Active static-rule checks
+
+A static-rule target requires its diagnostic's code before inspecting its message.
+The prelude value and member targets require their module explanation and platform
+advice independently; mutation controls remove the error and each note to verify
+that absence fails. Producer rejection rows require their specific TypeScript
+diagnostic, and environment checks use exact equality to distinguish `any` from a
+narrower requirement.
+
+`FuzzProjectReferenceModuleBodies` always follows source project references, so
+every input binds the body rather than comparing identical handwritten declaration
+files. `FuzzPromiseResultGate` captures a corpus input's pending key before creating
+variation subtests. Retired forms, superseded expectations and unused generators
+are removed instead of presented as active coverage. `TestFuzzHelperReachability`
+checks that helpers in fuzz test files have a path from an executable test.
+
 ## Data variant names
 
 `FuzzDataVariantNames` quotes Chapter 6's `IdentifierName` grammar and malformed-variant diagnostic rule. It varies ordinary, escaped and reserved names alongside quoted, numeric, bigint and template tokens. Keyed inputs preserve each name family across `.vibe` and `.vibex`, generic declarations, lexical homes and line endings. The oracle checks diagnostic identity and token range, plus recovery of the following variant and declaration. Failed inputs retain their decoded profile in the test log.

@@ -130,13 +130,14 @@ func FuzzPlatformContextualSeverity(f *testing.F) {
 
 // Keep both reported FuzzCompile witnesses even when the short sampler moves.
 func TestCompilePlatformContextualCases(t *testing.T) {
+	w := NewWorkspace(t)
 	found := 0
 	for _, seed := range CaseSeeds() {
-		if seed.Name != "platform-stdlib-wrapper-arrows.fail" && seed.Name != "vip4-coverage-platform.fail" && seed.Name != "vip4-coverage-platform-warning" {
+		if seed.Name != "platform-stdlib-wrapper-arrows.fail" && seed.Name != "vip4-coverage-platform-warning" {
 			continue
 		}
 		found++
-		t.Run(seed.Name, func(t *testing.T) { CheckCompile(t, NewWorkspace(t), "FuzzCompile", Archive(seed.Files)) })
+		t.Run(seed.Name, func(t *testing.T) { CheckCompile(t, w, "FuzzCompile", Archive(seed.Files)) })
 	}
 	if found != 2 {
 		t.Fatalf("expected both reported platform cases, found %d", found)

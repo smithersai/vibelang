@@ -12,7 +12,7 @@ import (
 
 const provideParenQuote = "Parentheses make anything else a Layer expression: `provide (a, b) { }` provides the comma expression's value."
 
-var provideParenKeys = []string{"comma", "nested", "assignment", "outer-list", "multiline", "no-space", "bare-list", "ordinary-call", "arrow-call", "nested-block", "last-paren", "all-paren"}
+var provideParenKeys = []string{"comma", "nested", "assignment", "outer-list", "multiline", "no-space", "bare-list", "ordinary-call", "arrow-call", "last-paren", "all-paren"}
 
 func provideParenQuoted(t testing.TB) {
 	t.Helper()
@@ -82,9 +82,6 @@ func checkProvideParen(t *testing.T, w *Workspace, key string, variant byte) {
 	if key == "arrow-call" {
 		expression = "((next = Layer.empty): Layer.Layer<never> => next)()"
 	}
-	if key == "nested-block" {
-		expression = "withProvider { return Layer.empty }"
-	}
 	depth := 1
 	if key == "nested" {
 		depth = 2 + int(variant)%3
@@ -110,9 +107,6 @@ func checkProvideParen(t *testing.T, w *Workspace, key string, variant byte) {
 	}
 	source := fmt.Sprintf("export effect function main() {\n const seen: number[] = []\n let chosen = Layer.empty\n provide%s%s { return seen.length }\n}\n", gap, head)
 	files := map[string]string{"main.vibe": source}
-	if key == "nested-block" {
-		files["main.vibe"] = "function withProvider(program: () => Layer.Layer<never>): Layer.Layer<never> { return Layer.empty }\n" + source
-	}
 	if key == "ordinary-call" {
 		files["main.vibe"] = "function provide(value: number): number { return value }\nexport effect function main() { provide(1)\n{ return 1 } }\n"
 	}

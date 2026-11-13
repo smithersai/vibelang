@@ -1,20 +1,17 @@
 package vibelangfuzz
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// FuzzPreludeGlobalValue is FuzzPreludeGlobalMember's rule for the name itself:
-// new X(…) and v instanceof X on a bare X that is Effect's module. The error's
-// note must not send the reader to a form the compiler then refuses: it names
-// globalThis.X only when globalThis.X compiles in a .vibe file (the same
-// compiler, two inputs, RULES.md 1), and a host global's note names a .ts file
-// (VIP-33's derived ban). Smithers' Otlp and docs-redirect wrote new Request and
-// instanceof Response, and the old note advised globalThis.Request in a hatch,
-// which is EK4402 ("anywhere in a `.vibe` file").
+// FuzzPreludeGlobalValue applies Chapter 5's namespace precedence to new X
+// and v instanceof X. A namespace must get TypeScript's own rejection, and
+// the diagnostic must explain the resolved module. Host-global advice must
+// respect Chapter 5's ban everywhere in a .vibe file.
 func FuzzPreludeGlobalValue(f *testing.F) {
 	startShortBudget(f)
 	preludeGlobalMemberRuling(f)
@@ -35,11 +32,8 @@ func FuzzPreludeGlobalValue(f *testing.F) {
 
 var preludeGlobalValueNames = []string{"Request", "Response", "Headers", "Event", "Worker"}
 
-// preludeGlobalValueContexts place the form in the module's own code or in
-// code a wrapper runs as TypeScript: the thunk of Effect.tryPromise or
-// Effect.try, Effect.try's try option, and the sync hatch. Wrapped code
-// resolves names as the module does (alchemy's
-// Effect.tryPromise(() => Promise.resolve(new Response(input)))).
+// Wrapper callbacks resolve names with the same module precedence as the
+// surrounding source (Chapter 5, Effect's modules are in scope).
 var preludeGlobalValueContexts = []string{"plain", "tryPromise", "try", "try-option", "sync"}
 
 type preludeGlobalValueInput struct {
@@ -67,14 +61,8 @@ func (in preludeGlobalValueInput) expression(x string) string {
 	return "export const v = " + parameters + " => " + value + "\n"
 }
 
-// plain is in with its form in the module's own code.
-func (in preludeGlobalValueInput) plain() preludeGlobalValueInput {
-	in.context = "plain"
-	return in
-}
-
 // parsePreludeGlobalValue reads `prelude-global-value:<lib>/<name>/<form>`
-// (RULES.md 11), and otherwise picks from the bytes.
+// with stable textual keys, and otherwise picks from the bytes.
 func parsePreludeGlobalValue(data []byte) preludeGlobalValueInput {
 	in := preludeGlobalValueInput{preludeGlobalLibs[0], preludeGlobalValueNames[0], "new", "plain"}
 	if rest, ok := strings.CutPrefix(string(data), "prelude-global-value:"); ok {
@@ -128,7 +116,9 @@ func CheckPreludeGlobalValue(t *testing.T, w *Workspace, in preludeGlobalValueIn
 	project := func(text string) Project {
 		return preludeGlobalInput{lib: in.lib}.project("main.vibe", text)
 	}
+	var codes []string
 	errors := func(text string) []string {
+		codes = nil
 		r, err := w.Compile(t.Context(), project(text))
 		if err != nil {
 			t.Fatal(err)
@@ -137,6 +127,11 @@ func CheckPreludeGlobalValue(t *testing.T, w *Workspace, in preludeGlobalValueIn
 		var out []string
 		for _, d := range r.Diagnostics {
 			if d.Category() == diagnostics.CategoryError && d.File() != nil && strings.HasSuffix(string(d.File().FileName()), "/main.vibe") {
+				source := d.Source()
+				if source == "" {
+					source = "TS"
+				}
+				codes = append(codes, diagnosticCodeName(source, d.Code()))
 				var b strings.Builder
 				flatten(&b, d, 0)
 				out = append(out, b.String())
@@ -144,27 +139,39 @@ func CheckPreludeGlobalValue(t *testing.T, w *Workspace, in preludeGlobalValueIn
 		}
 		return out
 	}
-	x := in.name
-	reach := "globalThis." + x
 	got := errors(bare)
-	note := strings.Join(got, "\n")
-	spelled := errors(in.expression(reach))
-	banned := strings.Contains(strings.Join(spelled, "\n"), "EK4402")
-	if strings.Contains(note, "write "+reach) && len(spelled) != 0 {
-		g.Add("feature:prelude-global-value:note-advises-refused", "the error names %s, which the compiler refuses:\n%s\n%q", reach, note, spelled)
-	}
-	if banned && len(got) != 0 && strings.Contains(note, "in scope without an import") && !strings.Contains(note, "platform code, which lives in a .ts file") {
-		g.Add("feature:prelude-global-value:note-platform", "VIP-33: %s is EK4402, so the note must send the reader to a .ts file:\n%s", reach, note)
-	}
-	// The same name, the same error, in wrapped code: the note the module's
-	// own code gets holds there too (RULES.md 1, one compiler, two inputs).
-	if in.context != "plain" && len(got) != 0 && !strings.Contains(note, "in scope without an import") {
-		if own := strings.Join(errors(in.plain().expression(x)), "\n"); strings.Contains(own, "in scope without an import") {
-			g.Add("feature:prelude-global-value:note-in-wrapped-code", "005-services: EK4402 holds \"anywhere in a `.vibe` file\", so %s code gets the note its module does:\n%s\nmodule code:\n%s", in.context, note, own)
-		}
-	}
-	if strings.Contains(note, "inside a hatch") {
-		g.Add("feature:prelude-global-value:note-hatch", "005-services: EK4402 holds \"anywhere in a `.vibe` file\", so a hatch is no way to the global:\n%s", note)
-	}
+	bareCodes := slices.Clone(codes)
+	spelled := errors(in.expression("globalThis." + in.name))
+	checkPreludeGlobalValueDiagnostics(g, in, bareCodes, got, spelled)
 	g.FinishInput(t, key)
+}
+
+// The rejection and explanation are positive obligations. An empty diagnostic
+// list or a reworded/missing note cannot disable the oracle.
+func checkPreludeGlobalValueDiagnostics(g *Gaps, in preludeGlobalValueInput, codes []string, got, spelled []string) {
+	want := "TS2351"
+	if in.form == "instanceof" {
+		want = "TS2359"
+	}
+	if len(codes) != 1 || codes[0] != want {
+		g.Add("feature:prelude-global-value:diagnostic", "005-services module precedence: %s/%s requires one %s, got %v: %q", in.name, in.form, want, codes, got)
+	}
+	note := strings.Join(got, "\n")
+	platform := in.lib.name == "dom"
+	if !strings.Contains(note, in.name+" is Effect's "+in.name+" module") || !strings.Contains(note, "in scope without an import") {
+		g.Add("feature:prelude-global-value:note-module", "005-services module precedence requires the note to explain %s's Effect binding: %s", in.name, note)
+	}
+	reach := "globalThis." + in.name
+	if platform && !strings.Contains(note, "platform code, which lives in a .ts file") {
+		g.Add("feature:prelude-global-value:note-platform", "005-services platform ban requires .ts advice for %s: %s", in.name, note)
+	}
+	if !platform && len(spelled) == 0 && !strings.Contains(note, "write "+reach) {
+		g.Add("feature:prelude-global-value:note-global", "005-services: available non-host global %s must be named: %s", reach, note)
+	}
+	if strings.Contains(note, "write "+reach) && len(spelled) != 0 {
+		g.Add("feature:prelude-global-value:note-advises-refused", "the note advises %s, which the compiler refuses: %s; %q", reach, note, spelled)
+	}
+	if platform && strings.Contains(note, reach) || strings.Contains(note, "inside a hatch") {
+		g.Add("feature:prelude-global-value:note-hatch", "005-services bans host access anywhere in a .vibe file: %s", note)
+	}
 }

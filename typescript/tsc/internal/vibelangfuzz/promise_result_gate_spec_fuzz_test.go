@@ -28,13 +28,13 @@ func promiseResultGateCases() []*failCase {
 		{"tag", "export async function read(_parts: TemplateStringsArray) { return 1 }", "read`one`"},
 		{"overloaded-tag", "function read(p: TemplateStringsArray): Promise<number>;\nfunction read(p: number): number;\nfunction read(p: TemplateStringsArray | number): Promise<number> | number { return typeof p === \"number\" ? p : Promise.resolve(1) }", "read`one`"},
 	} {
-		cases = append(cases, &failCase{Name: "promise-gate-" + result.key, Chapter: failuresChapter, Quote: promiseGateFormsQuote, VIP: 4, Owner: "conf-auto-promise-result-call-gate", Decls: result.decl, Body: "const held = ⟦" + result.expression + "⟧", Code: 404})
+		cases = append(cases, &failCase{Name: "promise-gate-" + result.key, Chapter: failuresChapter, Quote: promiseGateFormsQuote, VIP: 4, Owner: "compiler", Decls: result.decl, Body: "const held = ⟦" + result.expression + "⟧", Code: 404})
 	}
 	for _, kind := range []string{"any", "unknown", "never", "{ then: number }"} {
 		key := strings.NewReplacer("{ then: number }", "noncallable-then").Replace(kind)
-		cases = append(cases, &failCase{Name: "promise-gate-excluded-" + key, Chapter: failuresChapter, Quote: promiseGateQuote, VIP: 4, Owner: "conf-auto-promise-result-call-gate", Decls: "export declare function read(): " + kind, Body: "const held = read()"})
+		cases = append(cases, &failCase{Name: "promise-gate-excluded-" + key, Chapter: failuresChapter, Quote: promiseGateQuote, VIP: 4, Owner: "compiler", Decls: "export declare function read(): " + kind, Body: "const held = read()"})
 	}
-	cases = append(cases, &failCase{Name: "promise-gate-effect-success-data", Chapter: failuresChapter, Quote: promiseGateFormsQuote, VIP: 4, Owner: "conf-auto-promise-result-call-gate", Decls: "declare const p: Promise<number>", Body: "const held = try Effect.succeed(p)"})
+	cases = append(cases, &failCase{Name: "promise-gate-effect-success-data", Chapter: failuresChapter, Quote: promiseGateFormsQuote, VIP: 4, Owner: "compiler", Decls: "declare const p: Promise<number>", Body: "const held = try Effect.succeed(p)"})
 	for _, data := range []struct{ key, declaration, expression string }{
 		{"resolve", "", "Promise.resolve(7)"},
 		{"constructor", "", "new Promise<number>((resolve) => resolve(7))"},
@@ -64,7 +64,7 @@ func TestPromiseDataBridgeForms(t *testing.T) {
 		seen++
 		for _, variation := range []byte{0, 1, 6} {
 			t.Run(fmt.Sprintf("%s/%d", c.Name, variation), func(t *testing.T) {
-				checkPromiseResultGate(t, w, c, variation)
+				checkPromiseResultGate(t, w, c, variation, "")
 			})
 		}
 	}
@@ -108,11 +108,12 @@ func FuzzPromiseResultGate(f *testing.F) {
 			c.Body = strings.Replace(c.Body, "⟦", "⟦(/* result */ ", 1)
 			c.Body = strings.Replace(c.Body, "⟧", ")⟧", 1)
 		}
-		t.Run(fmt.Sprint(variation), func(t *testing.T) { checkPromiseResultGate(t, w, &c, variation&15) })
+		corpusKey := specCorpusKey(t)
+		t.Run(fmt.Sprint(variation), func(t *testing.T) { checkPromiseResultGate(t, w, &c, variation&15, corpusKey) })
 	})
 }
 
-func checkPromiseResultGate(t *testing.T, w *Workspace, c *failCase, choice byte) {
+func checkPromiseResultGate(t *testing.T, w *Workspace, c *failCase, choice byte, corpusKey string) {
 	t.Helper()
 	files, span := failuresProject(c, choice)
 	r, err := w.Compile(t.Context(), Project{Files: files})
@@ -140,5 +141,5 @@ func checkPromiseResultGate(t *testing.T, w *Workspace, c *failCase, choice byte
 		Gap(t, "FuzzPromiseResultGate", "feature:"+c.Name, "%s (VIP-4): %q; got %d marked EK0404, want %d; unexpected %v\n%s", failuresChapter, c.Quote, matched, want, unexpected, Archive(files))
 	}
 	ExpectPending(t, "FuzzPromiseResultGate", "feature:"+c.Name)
-	ExpectPending(t, "FuzzPromiseResultGate", specCorpusKey(t))
+	ExpectPending(t, "FuzzPromiseResultGate", corpusKey)
 }

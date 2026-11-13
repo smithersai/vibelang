@@ -24,7 +24,7 @@ func provideCommaRecoveryQuoted(t testing.TB) {
 
 func TestProvideCommaRecoveryQuoted(t *testing.T) { provideCommaRecoveryQuoted(t) }
 
-// Detail 237 recovers only separator-adjacent breaks, with one EK1202 per
+// Chapter 5 recovers only separator-adjacent breaks, with one EK1202 per
 // broken separator. Newlines within a provider expression stay valid.
 func FuzzProvideCommaRecovery(f *testing.F) {
 	// Spec rule: docs/design/src/005-services.md#745e677d93811666

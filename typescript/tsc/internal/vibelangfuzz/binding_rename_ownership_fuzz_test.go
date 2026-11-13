@@ -1,7 +1,6 @@
 package vibelangfuzz
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -14,43 +13,6 @@ func TestBindingRenameOwnershipQuoted(t *testing.T) {
 			t.Fatalf("chapter 007 no longer says %q", quote)
 		}
 	}
-}
-
-func bindingRenameOwnershipSource(key string, mutation uint8) (string, string) {
-	name := []string{"id", "count", "item", "value"}[mutation&3]
-	fresh := name + "2"
-	render := func(binding, use string) string {
-		parameter := "," + name + ":number"
-		prefix := ""
-		fallback := "return " + name + ";"
-		if key == "local" {
-			parameter = ""
-			prefix = "const " + name + "=7; "
-		}
-		if key == "closure" {
-			fallback = "return ()=>" + name + ";"
-		}
-		field := "id:let " + binding
-		if mutation&4 != 0 {
-			field = "let " + binding
-			if binding != name {
-				field = name + ":let " + binding
-			}
-		}
-		condition := "a is { " + field + " }"
-		if mutation&8 != 0 {
-			condition = "true && (" + condition + ") && " + use + "!==undefined"
-		}
-		success := "return " + use + ";"
-		if mutation&16 != 0 {
-			success = "return ()=>" + use + ";"
-		}
-		if key == "else" {
-			fallback = "else " + fallback
-		}
-		return fmt.Sprintf("export function probe(a:unknown%s):unknown { %sif (%s) { %s } %s }\n", parameter, prefix, condition, success, fallback)
-	}
-	return render(name, name), render(fresh, fresh)
 }
 
 // Migration permits equivalent layout. Compare scanner tokens rather than

@@ -24,9 +24,8 @@ func TestPreludeImportShadowQuoted(t *testing.T) {
 var preludeImportShadowNames = []string{"Resource", "Option", "Schema", "Config", "Headers", "Event"}
 var preludeImportShadowForms = []string{"named", "alias", "default", "namespace", "type-only", "local", "mixed"}
 
-// opencode-43: Resource imported from sst/resource must shadow the prelude.
-// These files minimize the reported two-module source without depending on
-// sst. The same text is also checked as TypeScript. Each import spelling and
+// Chapter 5: an imported Resource must shadow the prelude.
+// These files minimize a two-module source. The same text is also checked as TypeScript. Each import spelling and
 // local control has a valid value or type use, independently of the prelude.
 func preludeImportShadowFiles(name, form, extension, file string) map[string]string {
 	path := "./res." + extension

@@ -20,9 +20,7 @@ import (
 // same codes the imported namespace gets), a type position (the DOM type
 // compiles) and a local class that shadows the module. Each .vibe program's
 // counterpart is the same TypeScript with the module imported from its
-// subpath, or, for a type position, with no import at all. foldkit-84
-// (inbox migrate-foldkit, 2026-11-01) returned a module to TypeScript over a
-// public signature naming `Response`.
+// subpath, or, for a type position, with no import at all.
 func FuzzPreludeModuleClash(f *testing.F) {
 	startShortBudget(f)
 	preludeClashChapters(f)
@@ -38,7 +36,7 @@ func FuzzPreludeModuleClash(f *testing.F) {
 }
 
 // TestPreludeModuleClashQuoted fails when Chapter 5 rewords a sentence the
-// oracle quotes (RULES.md 9).
+// oracle quotes.
 func TestPreludeModuleClashQuoted(t *testing.T) { preludeClashChapters(t) }
 
 var preludeClashQuotes = []string{
@@ -82,7 +80,7 @@ type preludeClashInput struct {
 func (in preludeClashInput) key() string { return "clash:" + in.name.name + ":" + in.position }
 
 // parsePreludeClash reads the keyed form, `clash:<name>:<position>`, so a
-// saved corpus file keeps what it tests (RULES.md 11), and otherwise reads
+// saved corpus file keeps what it tests, and otherwise reads
 // the choice from the bytes.
 func parsePreludeClash(data []byte) preludeClashInput {
 	in := preludeClashInput{name: preludeClashNames[0], position: preludeClashPositions[0]}

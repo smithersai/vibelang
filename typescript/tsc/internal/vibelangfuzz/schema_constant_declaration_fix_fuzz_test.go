@@ -4,32 +4,6 @@ import (
 	"strings"
 )
 
-// Each seed is export:own:use:scope. Every value of each dimension appears,
-// and every reference the declaration file prints meets a private constant.
-var schemaConstantDeclarationSeeds = []string{
-	"private:none:query:module",
-	"private:none:helper:module",
-	"private:none:value:module",
-	"private:none:inferred:module",
-	"private:none:local:module",
-	"private:none:none:module",
-	"private:alias:query:module",
-	"private:none:query:namespace",
-	"list:none:none:module",
-	"renamed:none:value:module",
-	"default:none:none:module",
-	"exported:none:none:module",
-	"exported:alias:helper:namespace",
-	"list:alias:query:module",
-}
-
-var (
-	schemaDeclExports = []string{"private", "exported", "list", "renamed", "default"}
-	schemaDeclOwns    = []string{"none", "alias"}
-	schemaDeclUses    = []string{"none", "value", "query", "helper", "inferred", "local"}
-	schemaDeclScopes  = []string{"module", "namespace"}
-)
-
 type schemaConstantDeclaration struct{ export, own, use, scope string }
 
 func (s schemaConstantDeclaration) key() string {

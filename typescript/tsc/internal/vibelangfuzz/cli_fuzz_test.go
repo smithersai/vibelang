@@ -5,6 +5,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelangestree"
 	"io"
 	"maps"
 	"os"
@@ -21,12 +25,6 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
-	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
-	"github.com/microsoft/TypeScript/tsc/internal/tspath"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelangestree"
 )
 
 // FuzzCommandLine runs the vibelang binary that cmd/tsc builds, as a user
@@ -741,22 +739,6 @@ func cliChanged(before, after map[string]string) []string {
 	}
 	slices.Sort(changed)
 	return changed
-}
-
-// cliErrorCounts counts a compilation's errors by file and code.
-func cliErrorCounts(r *Result) map[string]int {
-	counts := map[string]int{}
-	for _, d := range r.Diagnostics {
-		if d.Category() != diagnostics.CategoryError {
-			continue
-		}
-		file := ""
-		if d.File() != nil {
-			file = strings.TrimPrefix(d.File().FileName().AsString(), filepath.ToSlash(r.Dir)+"/")
-		}
-		counts[fmt.Sprintf("%s %s", file, diagnosticCodeName(cmp(d.Source(), "TS"), d.Code()))]++
-	}
-	return counts
 }
 
 // cliMainFile returns the project's first .vibe source, or its first file.

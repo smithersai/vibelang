@@ -64,15 +64,9 @@ func TestAppendixBRows(t *testing.T) {
 	}
 }
 
-// TestCompilerRegistryIsSpecified keeps unassigned declarations explicit.
-// Appendix B says "A transitional compiler may still print compatibility
-// diagnostics from the old language" and catalogs only EK92xx, so other debt
-// belongs in legacyDeclared, never in SpecHasCode. Emitting one still fails
-// CheckDiagnostics under its precise registry: key.
+// TestCompilerRegistryIsSpecified requires every implementation declaration
+// to have a current Appendix B or accepted VIP assignment.
 func TestCompilerRegistryIsSpecified(t *testing.T) {
-	if len(legacyDeclared) > 0 {
-		requireQuote(currentSpecText(grammarAppendix), transitionalQuote)
-	}
 	paths, err := filepath.Glob("../vibelang/*.go")
 	if err != nil {
 		t.Fatal(err)
@@ -98,20 +92,10 @@ func TestCompilerRegistryIsSpecified(t *testing.T) {
 			if Facts().IsRegistered(code) {
 				continue
 			}
-			if owner, ok := legacyDeclared[code]; !ok || owner == "" {
-				t.Errorf("%s declares %s: assign it in current Appendix B or an accepted VIP, or name its deletion/renumbering owner in legacyDeclared", filepath.Base(path), specCodeName(code))
-			}
+			t.Errorf("%s declares %s: assign it in current Appendix B or an accepted VIP", filepath.Base(path), specCodeName(code))
 		}
 	}
 	if len(declared) == 0 {
 		t.Fatal("no message declaration in ../vibelang")
-	}
-	for code, owner := range legacyDeclared {
-		if owner == "" {
-			t.Errorf("%s: legacyDeclared has no owner", specCodeName(code))
-		}
-		if !declared[code] || Facts().IsRegistered(code) {
-			t.Errorf("%s: delete it from legacyDeclared (%s): no longer declared or now specified", specCodeName(code), owner)
-		}
 	}
 }

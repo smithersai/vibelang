@@ -24,9 +24,8 @@ func producerScopeVIP(t testing.TB) {
 func TestProducerScopeInferenceQuoted(t *testing.T) { producerScopeVIP(t) }
 
 // A producer's inferred Stream requirements are its body's without Scope
-// (VIP-21, amended 2026-10-30; decided detail 225): the producer's declared
-// type must equal Stream<number, never, R> for the body's other services R,
-// which the program checks by assigning both ways.
+// (VIP-21): the producer's declared type must equal Stream<number, never, R>
+// for the body's other services R, including any and unknown.
 func FuzzProducerScopeInference(f *testing.F) {
 	startShortBudget(f)
 	producerScopeVIP(f)
@@ -71,7 +70,7 @@ func FuzzProducerScopeInference(f *testing.F) {
 			contract := "<R>(work: Effect.Effect<number, never, " + site.body + ">) => Stream.Stream<number, never, Exclude<R, Scope.Scope>>"
 			source = prelude + "export effect function* p<R>(work: Effect.Effect<number, never, " + site.body + ">) { const a = try work; yield a }\nconst same: " + contract + " = p\nconst back: typeof p = null as unknown as (" + contract + ")\nexport {}"
 		} else {
-			source = prelude + "export effect function* p() { " + site.body + " }\nconst same: Stream.Stream<number, never, " + site.want + "> = p()\nconst back: ReturnType<typeof p> = null as unknown as Stream.Stream<number, never, " + site.want + ">\nexport {}"
+			source = prelude + "type Equal<X,Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false; type Env<S> = S extends Stream.Stream<infer A,infer E,infer R> ? R : never;\nexport effect function* p() { " + site.body + " }\nconst exact: Equal<Env<ReturnType<typeof p>>, " + site.want + "> = true;\nconst same: Stream.Stream<number, never, " + site.want + "> = p()\nconst back: ReturnType<typeof p> = null as unknown as Stream.Stream<number, never, " + site.want + ">\nexport {}"
 		}
 		r, err := w.Compile(context.Background(), Single(source))
 		if err != nil {

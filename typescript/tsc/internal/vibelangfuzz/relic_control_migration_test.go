@@ -6,7 +6,6 @@ import (
 	"testing"
 )
 
-const relicMigrationTarget = "FuzzRelicControlMigration"
 const relicMigrationQuote = "Compiled code gives the same `Exit` as that Effect TypeScript, with finalizers in the same order (VIP-31)."
 const relicBindingQuote = "A local declaration or import shadows one, as with any global, so a local `fiber` or `TypeId` silently replaces Effect's."
 

@@ -14,7 +14,8 @@ import (
 // or Worker in a .vibe file is therefore Effect's module, and X.m draws
 // TS2339 exactly when the module imported by name in a .ts file does: the
 // compiler is compared with itself on two inputs the rule says agree
-// (RULES.md 1). When the module lacks m and the global it shadows has it
+// (Chapter 5, module precedence). When the module lacks m and its shadowed
+// global has it
 // (globalThis.X.m type-checks in the .ts file), the error names
 // globalThis.X.m; when globalThis.X.m does not type-check, the error must
 // not send the reader there. Worker, and any global the DOM lib declares
@@ -22,8 +23,7 @@ import (
 // .ts file instead and never names globalThis.X.m. The input picks the lib (the DOM, a Worker
 // runtime's `declare var Response`, as @cloudflare/workers-types writes it,
 // or a global class, which globalThis does not carry), the name and the
-// member. alchemy's cloudflare-runtime called Response.json in a Worker
-// (corpus alchemy-worker-response-json).
+// member. The worker-response-json corpus preserves a static-method pattern.
 func FuzzPreludeGlobalMember(f *testing.F) {
 	// Spec rule: docs/design/src/005-services.md#7711ce641e6528fa
 	// Chapter 005: Worker resolves to Effect workers namespace and local bindings shadow it (FuzzPreludeGlobalMember).
@@ -47,7 +47,7 @@ func FuzzPreludeGlobalMember(f *testing.F) {
 	})
 }
 
-// TestPreludeGlobalMemberQuoted fails when rule 3 is reworded (RULES.md 9).
+// TestPreludeGlobalMemberQuoted fails when rule 3 is reworded.
 func TestPreludeGlobalMemberQuoted(t *testing.T) { preludeGlobalMemberRuling(t) }
 
 const preludeGlobalMemberQuote = "These namespaces come in scope with the precedence above, so a subpath namespace whose name is a web platform global names Effect's."
@@ -100,8 +100,7 @@ type preludeGlobalInput struct {
 	member    string
 }
 
-// parsePreludeGlobal reads `prelude-global:<lib>/<name>/<member>` (RULES.md
-// 11), and otherwise picks from the bytes.
+// parsePreludeGlobal reads `prelude-global:<lib>/<name>/<member>` with stable textual keys, and otherwise picks from the bytes.
 func parsePreludeGlobal(data []byte) preludeGlobalInput {
 	find := func(choices []unionChoice, name string) unionChoice {
 		for _, c := range choices {
@@ -182,8 +181,19 @@ func CheckPreludeGlobalMember(t *testing.T, w *Workspace, in preludeGlobalInput)
 	if (len(vibe) == 0) != (len(module) == 0) {
 		g.Add("feature:prelude-global-member:bare-is-module", "005-services rule 3: %q; bare %s.%s is %s's %s, so it draws TS2339 exactly when the imported module does.\n.vibe: %q\n.ts importing %s: %q", preludeGlobalMemberQuote, x, m, in.name.text, x, vibe, in.name.text, module)
 	}
+	checkPreludeGlobalMemberNotes(g, in, len(module) != 0, vibe, global)
+	g.FinishInput(t, key)
+}
+
+func checkPreludeGlobalMemberNotes(g *Gaps, in preludeGlobalInput, moduleMissing bool, vibe, global []string) {
+	x, m := in.name.name, in.member
 	reach := "globalThis." + x + "." + m
-	// VIP-33 (amended 10-29) derives the ban from the declaration: a member of a
+	if moduleMissing && len(global) == 0 {
+		if len(vibe) == 0 || !strings.Contains(vibe[0], x+" is Effect's "+x+" module") {
+			g.Add("feature:prelude-global-member:note-module", "005-services: a missing Effect member that exists on the global requires a module explanation: %q", vibe)
+		}
+	}
+	// Chapter 5 derives the ban from the declaration: a member of a
 	// global the DOM lib declares is EK4402 as globalThis.X.m, so the note sends
 	// the reader to a .ts file, as it does for Worker. A Worker runtime's own
 	// `declare var Response` is outside the ban, so its note still names globalThis.
@@ -194,7 +204,6 @@ func CheckPreludeGlobalMember(t *testing.T, w *Workspace, in preludeGlobalInput)
 		if len(vibe) != 0 && strings.Contains(vibe[0], reach) {
 			g.Add("feature:prelude-global-member:note-advises-banned", "VIP-33: %s is EK4402, so the note must not advise it:\n%s", reach, vibe[0])
 		}
-		g.FinishInput(t, key)
 		return
 	}
 	named := len(vibe) != 0 && strings.Contains(vibe[0], reach)
@@ -204,5 +213,4 @@ func CheckPreludeGlobalMember(t *testing.T, w *Workspace, in preludeGlobalInput)
 	case named && len(global) != 0:
 		g.Add("feature:prelude-global-member:note-without-global", "the error names %s, which does not type-check (%q):\n%s", reach, global, vibe[0])
 	}
-	g.FinishInput(t, key)
 }

@@ -19,8 +19,8 @@ func TestPreludeShadowedQuoted(t *testing.T) {
 }
 
 // preludeShadowedSource is the program a key names, binding:name:form:use.
-// A source binding named like an Effect root module (sst's Resource,
-// opencode-43) is read inside each Effect form and in a plain function.
+// A source binding named like an Effect root module is read inside each
+// Effect form and in a plain function (Chapter 5, module precedence).
 func preludeShadowedSource(key string) (string, map[string]string) {
 	parts := strings.Split(key, ":")
 	binding, name, form, use := parts[0], parts[1], parts[2], parts[3]
@@ -77,7 +77,7 @@ func preludeShadowedKeys() []string {
 // Chapter 5: a local declaration or import shadows an Effect root module's
 // name. The emitted module therefore binds the name once, the source's way,
 // and imports no effect/<Name> namespace under it; a second binding fails at
-// load ("Identifier 'Resource' has already been declared", opencode-43).
+// load ("Identifier 'Resource' has already been declared").
 func FuzzPreludeShadowed(f *testing.F) {
 	startShortBudget(f)
 	keys := preludeShadowedKeys()

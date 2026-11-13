@@ -3,12 +3,13 @@ package vibelangfuzz
 import (
 	"context"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
 
 const producerConcurrentYieldTarget = "FuzzProducerConcurrentYield"
-const producerConcurrentYieldQuote = "In a `for concurrent` body, each item's fiber offers its own elements, so elements arrive in offer order."
+const producerConcurrentYieldQuote = "A `yield` expression belongs to a producer or native generator body of its own activation, as in JavaScript: a nested callable cannot yield through an outer producer."
 
 func producerConcurrentYieldChapter(t testing.TB) {
 	t.Helper()
@@ -29,20 +30,20 @@ func FuzzProducerConcurrentYield(f *testing.F) {
 	producerConcurrentYieldChapter(f)
 	sites := []struct {
 		key, body, element string
-		reject             bool
+		code               string
 	}{
-		{"unbounded", "for concurrent (const x of [1,2]) { yield x }", "number", false},
-		{"bounded-one", "for concurrent(1) (const x of [1,2]) { yield x }", "number", false},
-		{"bounded-two", "for concurrent(2) (const x of [1,2]) { yield x }", "number", false},
-		{"nested-loops", "for concurrent(1) (const x of [1,2]) { for concurrent(1) (const y of [3,4]) { yield x+y } }", "number", false},
-		{"around", "yield \"start\"; for concurrent(1) (const x of [1,2]) { yield x }; yield \"end\"", "string | number", false},
-		{"tuple", "for concurrent(1) (const [key,value] of [[\"a\",1]] as [string,number][]) { yield key; yield value }", "string | number", false},
-		{"object", "for concurrent(1) (const x of [1,2]) { yield {value:x} }", "{value:number}", false},
-		{"run-effect", "for concurrent(1) (const x of [1,2]) { const n=try poll; yield n+x }", "number", false},
-		{"continue", "for concurrent(1) (const x of [1,2]) { if(x===1) continue; yield x }", "number", false},
-		{"native-generator-boundary", "for concurrent(1) (const x of [1,2]) { function* local():Generator<string> { yield \"local\" }; yield x }", "number", false},
-		{"plain-function-boundary", "for concurrent(1) (const x of [1,2]) { function local() { yield x }; yield x }", "number", true},
-		{"plain-arrow-boundary", "for concurrent(1) (const x of [1,2]) { const local=()=>{yield x}; yield x }", "number", true},
+		{"unbounded", "for concurrent (const x of [1,2]) { yield x }", "number", ""},
+		{"bounded-one", "for concurrent(1) (const x of [1,2]) { yield x }", "number", ""},
+		{"bounded-two", "for concurrent(2) (const x of [1,2]) { yield x }", "number", ""},
+		{"nested-loops", "for concurrent(1) (const x of [1,2]) { for concurrent(1) (const y of [3,4]) { yield x+y } }", "number", ""},
+		{"around", "yield \"start\"; for concurrent(1) (const x of [1,2]) { yield x }; yield \"end\"", "string | number", ""},
+		{"tuple", "for concurrent(1) (const [key,value] of [[\"a\",1]] as [string,number][]) { yield key; yield value }", "string | number", ""},
+		{"object", "for concurrent(1) (const x of [1,2]) { yield {value:x} }", "{value:number}", ""},
+		{"run-effect", "for concurrent(1) (const x of [1,2]) { const n=try poll; yield n+x }", "number", ""},
+		{"continue", "for concurrent(1) (const x of [1,2]) { if(x===1) continue; yield x }", "number", ""},
+		{"native-generator-boundary", "for concurrent(1) (const x of [1,2]) { function* local():Generator<string> { yield \"local\" }; yield x }", "number", ""},
+		{"plain-function-boundary", "for concurrent(1) (const x of [1,2]) { function local() { yield x }; yield x }", "number", "TS1163"},
+		{"plain-arrow-boundary", "for concurrent(1) (const x of [1,2]) { const local=()=>{yield x}; yield x }", "number", "TS1163"},
 	}
 	keys := []string{}
 	for _, site := range sites {
@@ -62,7 +63,7 @@ func FuzzProducerConcurrentYield(f *testing.F) {
 		} else {
 			source += "export const p=effect function* () { " + site.body + " }\n"
 		}
-		if !site.reject {
+		if site.code == "" {
 			source += "const forward:Stream.Stream<" + site.element + ",never,never>=p();\nconst backward:ReturnType<typeof p>=null as unknown as Stream.Stream<" + site.element + ",never,never>;\n"
 			source += "type IsAny<T>=0 extends (1&T)?true:false; type Element<S>=S extends Stream.Stream<infer A,infer E,infer R>?A:never; const precise:IsAny<Element<ReturnType<typeof p>>>=false;\n"
 		}
@@ -72,9 +73,12 @@ func FuzzProducerConcurrentYield(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer r.Remove()
-		hasError := HasError(r.Diagnostics)
-		if hasError != site.reject {
-			Gap(t, producerConcurrentYieldTarget, keys[choice], "%s; reject=%t, diagnostics=%v\n%s", producerConcurrentYieldQuote, site.reject, Keys(r.Dir, r.Diagnostics), source)
+		got, want := r4Errors(r.Diagnostics), []string{}
+		if site.code != "" {
+			want = append(want, site.code)
+		}
+		if !slices.Equal(got, want) {
+			Gap(t, producerConcurrentYieldTarget, keys[choice], "%s; want %v, got %v\n%s", producerConcurrentYieldQuote, want, got, source)
 		}
 		ExpectPending(t, producerConcurrentYieldTarget, keys[choice])
 		ExpectPending(t, producerConcurrentYieldTarget, specCorpusKey(t))

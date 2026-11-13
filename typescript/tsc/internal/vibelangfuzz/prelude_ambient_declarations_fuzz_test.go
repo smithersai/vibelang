@@ -12,7 +12,7 @@ import (
 // an import shadows the global, so such a .ts file imports the module under its
 // own name. The .vibe twin, which names the module through the prelude, must
 // agree unless the file also writes the ambient type, where only another local
-// name can hold both (Smithers' flows/kernel Rooted: FileSystem_1).
+// name can hold both (Chapter 5, precedence per meaning).
 const preludeAmbientQuote = "Declarations are exactly what idiomatic Effect TypeScript would declare."
 
 var preludeAmbientModules = []struct{ name, module string }{
