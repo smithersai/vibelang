@@ -10,22 +10,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// specifierProjectDir returns the directory of the project computedKeyFiles
-// writes, the one computedKeyProgram builds.
-func specifierProjectDir(files map[string]string) string {
-	for name := range files {
-		if strings.HasSuffix(name, "/src/tsconfig.json") {
-			return strings.TrimSuffix(name, "tsconfig.json")
-		}
-	}
-	panic("computedKeyFiles writes no src/tsconfig.json")
-}
-
 // specifierFiles is a project whose entry main.<extension> imports the
 // TypeScript sibling helper.ts and the VibeLang sibling users.vibe.
 func specifierFiles(extension, source, options string) (map[string]string, string) {
 	files := computedKeyFiles(false)
-	dir := specifierProjectDir(files)
+	dir := projectDir(files)
 	files[dir+"helper.ts"] = "export interface H { n: number }\nexport const helper = 1\nexport const make = () => ({ deep: { n: 1 } as H })\n"
 	files[dir+"users.vibe"] = "export interface User { name: string }\nexport const anyone: User = { name: \"a\" }\n"
 	files[dir+"main."+extension] = source

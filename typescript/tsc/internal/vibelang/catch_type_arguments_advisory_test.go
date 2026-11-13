@@ -31,8 +31,6 @@ func typedCatchAdvisorySource(api, success, style string, alias bool) string {
 		body = "return try " + call + "!"
 	case "stored":
 		body = "const stored=" + call + ";return try stored"
-	case "pipeline":
-		body = "return try (e |> " + strings.Replace(call, "(e,", "(%,", 1) + ")"
 	}
 	return prefix + "export effect function f(e:number!Tagged,h:(x:Tagged)=>number!!){" + body + "}"
 }

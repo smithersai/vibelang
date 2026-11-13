@@ -96,8 +96,12 @@ func TestEditorAsyncRefactorsCallablePropertyContracts(t *testing.T) {
 					}
 				}
 			}
-			if tc.offer && count != 2 {
-				t.Fatalf("missing safe conversion: got %d actions", count)
+			want := 0
+			if tc.offer {
+				want = 2
+			}
+			if count != want {
+				t.Fatalf("offered %d async conversions, want %d", count, want)
 			}
 			if bad != 0 {
 				t.Fatalf("%d type errors from offered conversions", bad)

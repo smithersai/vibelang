@@ -16,7 +16,7 @@ func errorsOf(t *testing.T, source string) []*ast.Diagnostic {
 	t.Helper()
 	p, file, _, _ := editorProgram(t, source)
 	var errors []*ast.Diagnostic
-	for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
+	for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), file), p.GetSemanticDiagnostics(t.Context(), file)...) {
 		if d.Category() == diagnostics.CategoryError {
 			errors = append(errors, d)
 		}

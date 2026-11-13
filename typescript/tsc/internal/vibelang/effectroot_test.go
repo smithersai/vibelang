@@ -13,13 +13,9 @@ import (
 // exports, except the names the runtime's prelude supplies, with the module
 // each comes from.
 func TestEffectRootNamesMatchEffect(t *testing.T) {
-	modules := os.Getenv("EFFECT_NODE_MODULES")
-	if modules == "" {
-		modules = "../../../../experiments/node_modules"
-	}
-	index, err := os.ReadFile(filepath.Join(modules, "effect", "dist", "index.d.ts"))
+	index, err := os.ReadFile(filepath.Join(installedEffect(t), "dist", "index.d.ts"))
 	if err != nil {
-		t.Skipf("effect is not installed: %v", err)
+		t.Fatal(err)
 	}
 	source := regexp.MustCompile(`(?s)/\*\*.*?\*/`).ReplaceAllString(string(index), "")
 	want := map[string]effectRootExport{}

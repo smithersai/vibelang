@@ -261,8 +261,8 @@ func TestEditorHoverExplainsCallBehavior(t *testing.T) {
 func TestEditorHoverOnErrorBase(t *testing.T) {
 	_, file, service, _ := editorProgram(t, "error A {}\nerror B extends A {}\n")
 	hover := hoverText(t, service, lsconv.FileNameToDocumentURI(file.FileName()), lsproto.Position{Line: 1, Character: 16})
-	if !strings.Contains(hover, "A") {
-		t.Fatalf("hover at the base of error B = %q, want error A", hover)
+	if hover != "class A" {
+		t.Fatalf("hover at the base of error B = %q, want class A", hover)
 	}
 }
 

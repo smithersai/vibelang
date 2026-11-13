@@ -13,16 +13,6 @@ func TestMatchHandlerDestructureScopeRefusals(t *testing.T) {
 		{"{ const read = () => eval('payload'); return read() }", "eval"},
 	} {
 		source := "export const f = (v:{kind:string;payload?:string}):string => Match.value(v).pipe(Match.when({kind:'hit'}, ({payload = 'empty'}):string => " + test.body + "), Match.orElse(():string => 'miss'))"
-		p, f, _, _ := editorProgram(t, source)
-		found := false
-		for _, d := range p.GetSemanticDiagnostics(t.Context(), f) {
-			if d.Source() != diagnosticSource || d.Code() != EK4839.Code {
-				continue
-			}
-			found = true
-		}
-		if !found {
-			t.Fatalf("missing scope refusal for %s", source)
-		}
+		assertFormRefusal(t, source, 4839, test.why)
 	}
 }

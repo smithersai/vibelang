@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,19 +13,31 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// installedEffect returns the directory of the installed effect package, or
-// skips t when it is not installed.
+// installedEffect returns the Effect package used by the declaration checks.
+// Missing dependencies are setup failures, as for editorProgram.
 func installedEffect(t *testing.T) string {
 	t.Helper()
-	modules := os.Getenv("EFFECT_NODE_MODULES")
-	if modules == "" {
-		modules = "../../../../experiments/node_modules"
-	}
-	dir := filepath.Join(modules, "effect")
-	if _, err := os.Stat(filepath.Join(dir, "package.json")); err != nil {
-		t.Skipf("effect is not installed: %v", err)
+	dir, err := findInstalledEffect(os.Getenv("EFFECT_NODE_MODULES"), "../../../../experiments/node_modules", "../../../../packages/runtime/node_modules")
+	if err != nil {
+		t.Fatalf("%v; run sh scripts/setup.sh", err)
 	}
 	return dir
+}
+
+func findInstalledEffect(override string, defaults ...string) (string, error) {
+	candidates := defaults
+	if override != "" {
+		candidates = []string{override}
+	}
+	for _, modules := range candidates {
+		dir := filepath.Join(modules, "effect")
+		if _, err := os.Stat(filepath.Join(dir, "package.json")); err == nil {
+			return dir, nil
+		} else if !os.IsNotExist(err) {
+			return "", err
+		}
+	}
+	return "", fmt.Errorf("effect is not installed in %v", candidates)
 }
 
 // barrelModules returns the modules that index, an index.d.ts of effect,

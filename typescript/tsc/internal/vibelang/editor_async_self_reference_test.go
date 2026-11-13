@@ -50,15 +50,6 @@ func TestEditorAsyncRefactorsSelfReferences(t *testing.T) {
 					continue
 				}
 				count++
-				if !tc.offer {
-					got := applyEditorEdits(t, file, converters, action.Changes)
-					checked, edited, _, _ := editorProgram(t, got)
-					for _, d := range append(checked.GetSyntacticDiagnostics(t.Context(), edited), checked.GetSemanticDiagnostics(t.Context(), edited)...) {
-						if d.Category() == diagnostics.CategoryError {
-							t.Logf("offered conversion error: %s\n%s", d.String(), got)
-						}
-					}
-				}
 				if tc.offer {
 					got := applyEditorEdits(t, file, converters, action.Changes)
 					checked, edited, _, _ := editorProgram(t, got)

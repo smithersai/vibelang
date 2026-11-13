@@ -47,7 +47,7 @@ func TestCov2004aArityWarning(t *testing.T) {
 
 func TestCov2004aRefinedDomain(t *testing.T) {
 	if os.Getenv("VIBELANG_COVERAGE_RUN_PENDING") == "" {
-		t.Skip("docs/design/src/004-match.md#839f2afffd98ae0d: represented generic tag refinement with a false guard misses EK4701; set VIBELANG_COVERAGE_RUN_PENDING=1 to run the retained assertion")
+		t.Skip("docs/design/src/004-match.md#839f2afffd98ae0d: issue #580: represented generic tag refinement with a false guard misses EK4701; set VIBELANG_COVERAGE_RUN_PENDING=1 to run the retained assertion")
 	}
 
 	// Chapter 004: represented tag refinements reduce a generic finite domain; rule-evidence: docs/design/src/004-match.md#839f2afffd98ae0d

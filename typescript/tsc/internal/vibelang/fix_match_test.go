@@ -2,13 +2,10 @@ package vibelang
 
 import (
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
 // Where a match would choose differently, run what the chain only built, or
-// have another type, EK4839 has no quick fix and its note says why.
-// Destructuring fallbacks are positive cases in TestMatchDefaultDestructureFoldkit.
+// have another type, the retained analysis refuses with a specific reason.
 // Chapter 007 / unsupported Match patterns and handlers retain source: docs/design/src/007-tooling.md#5d8fbe0b4f027c86
 func TestMatchChainRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source, why string }{
@@ -20,17 +17,7 @@ func TestMatchChainRefusals(t *testing.T) {
 		{"a comment in a stage", "export const f = (n: 1 | 2): string => Match.value(n).pipe(Match.when(1, /* one */ () => \"one\"), Match.orElse(() => \"two\"))\n", "a comment stands in a stage"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			program, file, _, _ := editorProgram(t, test.source)
-			var found *ast.Diagnostic
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Source() == diagnosticSource && d.Code() == EK4839.Code {
-					found = d
-				}
-			}
-			if found == nil {
-				t.Fatalf("missing EK4839 in:\n%s", test.source)
-			}
-
+			assertFormRefusal(t, test.source, 4839, test.why)
 		})
 	}
 }

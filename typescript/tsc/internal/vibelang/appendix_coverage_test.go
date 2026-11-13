@@ -75,13 +75,3 @@ func TestAppendixStaticKeyTransitionCoverage(t *testing.T) {
 		}
 	}
 }
-
-// Appendix A: insert function in top-level shorthand — spec-rule: docs/design/src/900-appendices.md#268a8e8be5deafec
-
-// Appendix A: parenthesize assertion before non-null bang — spec-rule: docs/design/src/900-appendices.md#78fe099476011694
-
-// Appendix B: renumbering keeps inventory and live registry aligned — spec-rule: docs/design/src/900-appendices.md#6371772a0c689cbc
-func TestAppendixRegistryInventoryCoverage(t *testing.T) {
-	t.Skip("docs/design/src/900-appendices.md#6371772a0c689cbc: live registry lacks EK1506, EK1607, EK4005, EK4007, EK4009 and EK4857")
-	TestRegistryMatchesSpec(t)
-}

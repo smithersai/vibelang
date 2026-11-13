@@ -8,9 +8,10 @@ import (
 )
 
 func errorCodesOf(t *testing.T, source string) []string {
+	t.Helper()
 	program, file, _, _ := editorProgram(t, source)
 	var codes []string
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
 		if d.Category() == diagnostics.CategoryError || d.Category() == diagnostics.CategoryWarning {
 			codes = append(codes, d.Source()+strconv.Itoa(int(d.Code())))
 		}
@@ -43,10 +44,8 @@ func TestErrorConstructorExclusions(t *testing.T) {
 		"schema error E { constructor?: string }",
 		"class E { constructor(readonly id: string) {} }",
 	} {
-		for _, code := range errorCodesOf(t, source) {
-			if code == "EK1301" {
-				t.Errorf("unexpected EK1301: %s", source)
-			}
+		if codes := errorCodesOf(t, source); len(codes) != 0 {
+			t.Errorf("unexpected diagnostics %v: %s", codes, source)
 		}
 	}
 	codes := errorCodesOf(t, "import { Schema } from \"effect\"\nclass P extends Schema.Class<P>(\"P\")({ n: Schema.Number }) { constructor() { super({ n: 1 }) } }")

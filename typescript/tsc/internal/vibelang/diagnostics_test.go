@@ -94,6 +94,7 @@ var specAhead = map[int32]string{
 // registry's other codes are the old language's, which Appendix B says are
 // not normative, until a VIP assigns codes to the rules it marks "code
 // pending"; they are logged, not failed.
+// Appendix B: renumbering keeps inventory and live registry aligned — spec-rule: docs/design/src/900-appendices.md#6371772a0c689cbc
 func TestRegistryMatchesSpec(t *testing.T) {
 	t.Parallel()
 	spec, err := os.ReadFile("../../../../docs/design/src/900-appendices.md")
@@ -214,9 +215,4 @@ func TestEKDiagnosticsOnlyAttachToVibeLang(t *testing.T) {
 			}
 		})
 	}
-}
-
-// docs/design/src/900-appendices.md#709dea7811693cc4 — Chapter 900: every diagnostic has an EK code and a message that says how to fix it.
-func TestAppendixBEveryDiagnosticHasCodeAndFix(t *testing.T) {
-	t.Skip("docs/design/src/900-appendices.md#709dea7811693cc4: pending; Appendix B assigns EK3012, which the registry does not have (TestRegistryMatchesSpec), and no check reads each message for a repair")
 }

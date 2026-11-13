@@ -42,14 +42,7 @@ var notDataFirst = map[string]string{
 // says what it is. It also checks that dataFunctionOf names each such
 // signature, and nothing a curried overload returns.
 func TestDataFirstParametersMatchEffect(t *testing.T) {
-	modules := os.Getenv("EFFECT_NODE_MODULES")
-	if modules == "" {
-		modules = "../../../../experiments/node_modules"
-	}
-	dist := filepath.Join(modules, "effect", "dist")
-	if _, err := os.Stat(filepath.Join(dist, "Cause.d.ts")); err != nil {
-		t.Skipf("effect is not installed: %v", err)
-	}
+	dist := filepath.Join(installedEffect(t), "dist")
 	found := map[string]string{}
 	for module := range methodModules {
 		text, err := os.ReadFile(filepath.Join(dist, module+".d.ts"))

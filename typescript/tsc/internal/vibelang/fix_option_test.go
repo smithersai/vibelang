@@ -2,28 +2,15 @@ package vibelang
 
 import (
 	"testing"
-
-	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
 // A comment between stages has no unambiguous place in a rewritten chain.
-// Effectful stage arguments are covered by TestOptionFactoryHoistFoldkit.
 func TestOptionPipeRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source, why string }{
 		{"a comment between stages", "export const label = (o: Option.Option<string>) =>\n  pipe(\n    o,\n    // shout\n    Option.map((s) => s.toUpperCase()),\n  )\n", "a comment stands between"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			program, file, _, _ := editorProgram(t, test.source)
-			var found *ast.Diagnostic
-			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Source() == diagnosticSource && d.Code() == EK4840.Code {
-					found = d
-				}
-			}
-			if found == nil {
-				t.Fatalf("missing EK4840 in:\n%s", test.source)
-			}
-
+			assertFormRefusal(t, test.source, 4840, test.why)
 		})
 	}
 }
