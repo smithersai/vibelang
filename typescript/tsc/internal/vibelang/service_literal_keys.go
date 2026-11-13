@@ -22,7 +22,11 @@ func checkServiceLiteralKey(c *checker.Checker, class, member *ast.Node) bool {
 		// The header to write has a string-literal initializer and no definite
 		// marker: EK0901 explains it, so TypeScript's TS7008 for the implicit any
 		// of a missing initializer and TS1255 for a written ! add nothing.
-		coverCodes(c, member, 7008, 1255)
+		// Nested declarations retain their independent field errors.
+		coverExactErrorCodes(c, member, 7008)
+		if token := member.PostfixToken(); token != nil {
+			coverExactCodes(c, token, 1255)
+		}
 		// The rejected key can also invalidate the generated base static side.
 		coverExactCodes(c, class.Name(), 2417)
 	}

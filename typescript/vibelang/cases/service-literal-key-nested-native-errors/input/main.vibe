@@ -1,0 +1,28 @@
+export service ServiceKey0 { static readonly key = class { untyped } }
+export service ServiceKey1 { static readonly key = class { static untyped } }
+export service ServiceKey2 { static readonly key = class { static field!: number } }
+export service ServiceKey3 { static readonly key = class { untyped; static field!: number } }
+export service ServiceKey4 { static readonly key = () => { class Inner { untyped }; return 'key' } }
+export service ServiceKey5 { static readonly key = () => { class Inner { static field!: number }; return 'key' } }
+export service ServiceKey6 { static readonly key = ({ inner: class { untyped } }) }
+export service ServiceKey7 { static readonly key = (class { untyped }) satisfies Function }
+export service ServiceKey8 { static readonly key = Missing }
+export service ServiceKey9 { static readonly key }
+export service ServiceKey10 { static readonly key!: string }
+export service ServiceKey11 { static readonly key = "key/body" }
+export service ServiceKey12: number { static readonly key = class { untyped } }
+export service ServiceKey13: number { static readonly key = class { static untyped } }
+export service ServiceKey14: number { static readonly key = class { static field!: number } }
+export service ServiceKey15: number { static readonly key = class { untyped; static field!: number } }
+export service ServiceKey16: number { static readonly key = () => { class Inner { untyped }; return 'key' } }
+export service ServiceKey17: number { static readonly key = () => { class Inner { static field!: number }; return 'key' } }
+export service ServiceKey18: number { static readonly key = ({ inner: class { untyped } }) }
+export service ServiceKey19: number { static readonly key = (class { untyped }) satisfies Function }
+export service ServiceKey20: number { static readonly key = Missing }
+export service ServiceKey21: number { static readonly key }
+export service ServiceKey22: number { static readonly key!: string }
+export service ServiceKey23: number { static readonly key = "key/whole" }
+export class Native24 { static readonly key = class { untyped } }
+export class Native25 { static readonly key = class { static field!: number } }
+export service ServiceKey26 { static readonly key }; export class Outside26 { untyped }
+export service ServiceKey27 { static readonly key }; export class Outside27 { static field!: number }

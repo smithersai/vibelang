@@ -9297,6 +9297,10 @@ typescript/vibelang/cases/service-key-properties-native/main.vibe:18:11 lambda p
 typescript/vibelang/cases/service-key-properties-native/main.vibe:19:9 lambda plain annotation
 typescript/vibelang/cases/service-key-properties-native/main.vibe:20:13 lambda plain annotation
 typescript/vibelang/cases/service-key-properties-native/main.vibe:21:7 lambda plain annotation
+typescript/vibelang/cases/service-literal-key-nested-native-errors/input/main.vibe:17:61 lambda plain fallback
+typescript/vibelang/cases/service-literal-key-nested-native-errors/input/main.vibe:18:61 lambda plain fallback
+typescript/vibelang/cases/service-literal-key-nested-native-errors/input/main.vibe:5:52 lambda plain fallback
+typescript/vibelang/cases/service-literal-key-nested-native-errors/input/main.vibe:6:52 lambda plain fallback
 typescript/vibelang/cases/service-local-shape-members-types.fail/main.vibe:5:65 lambda plain fallback
 typescript/vibelang/cases/service-local-shape-members/main.vibe:10:34 lambda plain fallback
 typescript/vibelang/cases/service-local-shape-members/main.vibe:10:54 lambda plain fallback

@@ -285,6 +285,8 @@ A `key` that is not `static readonly` with a quoted string literal is `EK0901`. 
 
 An explicit string-literal key keeps its value, including `""`. It is used for runtime lookup, the emitted key type, and duplicate-key checks; an empty literal does not request a derived key. An explicit key works in each scope, including outside every package.
 
+A rejected key also keeps errors in nested declarations inside its initializer. An untyped nested field still reports `TS7008`, and a nested static field with a definite-assignment marker still reports `TS1255`.
+
 An empty package name is still a string: `service Users` in `src/users.vibe` derives `/src/users#Users` when `package.json` contains `"name": ""`.
 
 A local or block-scoped service, or one outside a named package, reports `EK0903` when it omits `static readonly key`; write an explicit key that keeps the identity its providers use. A namespace at module scope can still derive its services' keys. A function-local service still needs an explicit key when `noEmit` is enabled or `declaration` is disabled.

@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- An invalid service key could hide errors in nested class fields inside its initializer. Those field errors now appear alongside the key error.
+
 - Adding a runtime `Shape` member to a service without `defaultValue` hid its implementation type (`TS2749`). The value and type now coexist, as in TypeScript.
 
 - A decorator before a `service`, `error` or `schema error` declaration compiled silently and ran on the lowered class. It is now TypeScript's `TS1206`, "Decorators are not valid here", as before `type`; remove the decorator to compile the declaration.
