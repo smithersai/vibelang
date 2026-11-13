@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Constructing a service key could hide unknown names and type errors in its arguments. Those errors now appear alongside `EK3003`.
+
 - An extra quoted `constructor` field in a service with a supplied shape produced an unrelated class restriction error. It now reports `EK0902` for that field while preserving errors in its type or initializer.
 
 - A service method named `constructor` was mistaken for a class constructor. Its bodyless signatures now have ordinary interface typing, including generic methods and omitted-return-type checks.

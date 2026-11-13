@@ -30,7 +30,9 @@ func checkServices(c *checker.Checker, file *ast.SourceFile) {
 		case ast.IsNewExpression(node):
 			if name, ok := serviceKeyMisuseName(c, node.Expression()); ok {
 				report(c, node, EK3003, name)
-				cover(c, node) // TS2511: an abstract class cannot be instantiated
+				// Only the constructor rejection duplicates EK3003; arguments keep their native diagnostics.
+				coverExactErrorCodes(c, node, 2511)
+				coverExactErrorCodes(c, node.Expression(), 2351)
 			}
 		case ast.IsBinaryExpression(node) && node.AsBinaryExpression().OperatorToken.Kind == ast.KindInstanceOfKeyword:
 			if name, ok := serviceKeyMisuseName(c, node.AsBinaryExpression().Right); ok {

@@ -230,6 +230,8 @@ A service has no superclass or type parameters, and every instance member is abs
 
 Two members on one line need a separator: `a: number b: string` is `EK0908`. Insert `;` before the second member and its comments. A trailing comma is allowed. Formatting accepts every separator and preserves the member types and comments, including commas inside tuple, generic and function types. One separator follows each member, as in an `interface`: a separator with no member before it, such as the second `;` in `n: number; ; m: string`, a doubled comma or a leading `;`, is TypeScript’s `TS1131`.
 
+#### Rejected members
+
 An instance method body, a value initializer, or an accessor is `EK0902`; declare the member's contract and implement it in a layer. The same diagnostic covers:
 
 - class-only modifiers such as `public`, `private`, `protected`, `abstract`, `declare`, `accessor`, `override`, `async` and `effect`, private names such as `#count`, and definite assignment assertions such as `count!: number`. Remove the modifier or assertion; a private name needs a public name. `readonly` belongs only on a property, not a method;
@@ -241,6 +243,8 @@ An instance method body, a value initializer, or an accessor is `EK0902`; declar
 - static members other than `static readonly key` and `static readonly defaultValue`: other static fields, methods, accessors and initialization blocks.
 
 `static readonly [key]` is rejected; the derived key remains.
+
+#### Independent errors
 
 Rejected static members, signatures, constructors and index signatures still report independent TypeScript errors in their written types, initializers and bodies, such as an unknown name or a wrong argument type. An instance implementation or initializer does not hide errors on other static members, and independent errors in a rejected call signature's key or type parameters are still reported. Independent TypeScript errors in an instance implementation remain visible alongside that member rejection. Rejected accessor signatures and member contracts with class-only modifiers keep independent TypeScript errors in their written types. The `EK0902` member error still explains the rejected header.
 
@@ -313,7 +317,7 @@ The written type passes directly to `Context.Service<Name, Type>`, or `Context.R
 
 ### Service identity
 
-The key is a value: don't construct, extend, or use `instanceof` on it. Construction is `EK3003`, inheritance is `EK3002`, and `instanceof` or a class pattern is `EK3004`. Obtain the implementation with `try Users` and inspect its members instead. A rejected service base still reports independent TypeScript errors in its expression and type arguments, and a rejected call to a service key keeps independent TypeScript errors in its arguments, such as a nested call with missing arguments. The `EK3004` class-pattern message suggests a member pattern with a separate binding, such as `when { default: let value }` for a property named `default`.
+The key is a value: don't construct, extend, or use `instanceof` on it. Construction is `EK3003`, inheritance is `EK3002`, and `instanceof` or a class pattern is `EK3004`. Obtain the implementation with `try Users` and inspect its members instead. A rejected service base still reports independent TypeScript errors in its expression and type arguments, and a rejected call to a service key keeps independent TypeScript errors in its arguments, such as a nested call with missing arguments. A rejected `new` expression still reports independent TypeScript errors in its arguments. The `EK3004` class-pattern message suggests a member pattern with a separate binding, such as `when { default: let value }` for a property named `default`.
 
 These restrictions follow the key's identity through:
 
