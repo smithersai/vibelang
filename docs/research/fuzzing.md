@@ -208,6 +208,21 @@ appending a precise claim. The lookup never claims a bug or authorizes work.
 
 ## Running the seed corpus
 
+Install the packages pinned by `experiments/package.json` with
+`(cd experiments && bun install)`. If `EFFECT_NODE_MODULES` selects another
+install, it must contain both the pinned `effect` and the pinned `typescript`.
+The native reference programs load stock `typescript` beside `effect` to emit
+their TypeScript twins. Workspace setup checks both versions before compiling:
+a missing or mismatched package skips with its install command, or fails when
+`VIBELANG_FUZZ_REQUIRE=1`.
+
+Dedicated probes for eager fork operands, fiber-owned children, foreign-call
+arguments, catch block operands and throw-only bodies also participate in mixed
+programs. Their rules apply with every swarm mask. Plain catch handlers share
+one printer for expression and block bodies; their returned value succeeds,
+including an Effect value that remains unrun, as Chapter 2 specifies.
+
+
 `FuzzMigrationSourceChildLint` checks stored target requirements for generated launcher imports and comments independently. Its fixture models those requirements rather than importing the target application’s plugin; a pending namespace finding cannot excuse a comment finding. The migration reference properties also check reference-free projects beside unrelated vendored configurations and preserve genuine missing-reference failures before any output is cleared.
 
 The complete short corpus has a 40-minute test deadline. The graph target `//:go-vibelangfuzz` adds 25 minutes for admission and compilation, so its task deadline cannot cancel a test that still has time left. The per-process hang watchdog stays at 120 seconds.

@@ -5,22 +5,13 @@ import (
 	"slices"
 )
 
-// VIP-5: "`e catch y` runs `e`, and on a failure evaluates `y`". Its
-// amendment of 2026-10-29 decides by the handler's syntax whether the
-// handler runs Effects, and gives each form's Effect TS in a table:
+// VIP-5's amended table has two handler kinds: a plain function's result
+// succeeds via Effect.succeed, and an effect function runs via Effect.gen.
+// A handler is always a function literal; names, values and effect blocks
+// in handler position are syntax errors. A plain handler never throws
+// (EK0401), while an effect handler's throw is a typed failure.
 //
-//	x catch guest              Effect.catch(x, () => Effect.succeed(guest))
-//	x catch (e) => f(e)        Effect.catch(x, (e) => Effect.succeed(f(e)))
-//	x catch effect (e) => …    Effect.catch(x, (e) => Effect.gen(…))
-//	x catch effect { … }       Effect.catch(x, () => Effect.gen(…))
-//
-// catch runs its Effect, as try does, so inside Effect.gen the reference
-// runs Effect.catch's Effect with yield*. A plain handler never throws: a
-// `throw` inside it, or a call known to throw, is EK0401 (VIP-4, amended
-// 2026-10-31), so a plain handler returns its fallback value; an effect
-// handler's throw fails again, typed (VIP-4). Each form is its own
-// construct, so a compiler that lowers one form and not another has a
-// pending line for the other.
+// Both expression and block bodies of a plain handler use CatchFunction.
 
 // catchRuns is the reading every form shares.
 const catchRuns = "catch runs `e` (\"`e catch y` runs `e`\"), as try does, so inside Effect.gen the suite runs the table's Effect with yield*, as VIP-5 reads try. The table is not a code block."
@@ -53,7 +44,11 @@ func init() {
 			if g.Chance(2) {
 				h.Body = append(h.Body, &Event{Label: g.Label()})
 			}
-			h.Body = append(h.Body, &Return{Value: g.Num(s)})
+			if len(h.Body) == 0 && g.Chance(2) {
+				h.Expression = g.Num(s)
+			} else {
+				h.Body = append(h.Body, &Return{Value: g.Num(s)})
+			}
 			if g.Chance(2) {
 				h.Param = ""
 			}
@@ -93,9 +88,8 @@ func init() {
 			return catchStmt(g, s, &CatchEffectFunction{Param: e, Body: g.finish(inner, body)})
 		},
 	})
-	// An effect block is a catch operand only in this construct's
-	// programs: catchStmt writes one only when it is on. Decided details
-	// 31a and 31b make a handler always a function literal, so
+	// An effect block is an ordinary operand; this probe observes it
+	// directly. A handler is always a function literal, so
 	// `x catch effect { … }`, an effect block as the handler, is a syntax
 	// error (Chapter 2) and has no construct.
 	Register(&Construct{
@@ -171,21 +165,8 @@ func catchStmt(g *Gen, s *Scope, h Node) Stmt {
 	return catchOf(g, s, x, h)
 }
 
-// catchOperand writes an Effect for catch to run, as g.Operand does, but an
-// effect block only when vip05.catch-block-operand is on: until lane
-// core-catch's fix, the compiler doesn't run an effect-block operand, and
-// that construct's pending line names the gap.
-func catchOperand(g *Gen, s *Scope) Expr {
-	x := g.Operand(s, true)
-	if _, block := x.(*EffectBlock); block {
-		if !g.On("vip05.catch-block-operand") {
-			g.UseEffect()
-			return &EffectCall{Fn: "succeed", Arg: g.Num(s)}
-		}
-		g.Use("vip05.catch-block-operand")
-	}
-	return x
-}
+// catchOperand writes an ordinary Effect operand, including effect blocks.
+func catchOperand(g *Gen, s *Scope) Expr { return g.Operand(s, true) }
 
 // catchOf writes `const v = x catch <handler>` or `return x catch <handler>`.
 func catchOf(g *Gen, s *Scope, x Expr, h Node) Stmt {
@@ -219,21 +200,31 @@ func (c *Catch) Effect(w *Writer) {
 	w.Write(")")
 }
 
-// A CatchFunction is a plain handler, `(e) => { … }`, read as
-// `(e) => Effect.succeed(((e) => { … })(e))`: the handler is called with the
-// failure and its result succeeds. Its body never throws (a throw in a
-// plain handler is EK0401), so it ends in a return.
+// A CatchFunction is a plain handler with an expression or block body.
+// VIP-5 wraps its result in Effect.succeed; a returned Effect stays unrun.
+// Its body never throws (EK0401), so a block body ends in a return.
 type CatchFunction struct {
-	Param string
-	Body  []Stmt
+	Param      string
+	Body       []Stmt
+	Expression Expr
 }
 
 func (h *CatchFunction) Vibe(w *Writer) {
 	w.Write("(" + h.Param + ") => ")
+	if h.Expression != nil {
+		w.Node(h.Expression)
+		return
+	}
 	w.Block(h.Body)
 }
 
 func (h *CatchFunction) Effect(w *Writer) {
+	if h.Expression != nil {
+		w.Write("(" + h.Param + ") => Effect.succeed(")
+		w.Node(h.Expression)
+		w.Write(")")
+		return
+	}
 	w.Write("(" + h.Param + ") => Effect.succeed(((" + h.Param + ") => ")
 	w.Block(h.Body)
 	w.Write(")(" + h.Param + "))")
@@ -262,12 +253,11 @@ func (h *CatchEffectFunction) Effect(w *Writer) {
 // it ends in.
 type catchEdge struct {
 	vibe, ref string
-	n         int
 }
 
-func (p *catchEdge) Vibe(w *Writer) { w.Write(fmt.Sprintf(";{ ev(%q); %s }", fmt.Sprint(p.n), p.vibe)) }
+func (p *catchEdge) Vibe(w *Writer) { w.Write(`;{ ev("0"); ` + p.vibe + " }") }
 func (p *catchEdge) Effect(w *Writer) {
-	w.Write(fmt.Sprintf(";{ ev(%q); %s }", fmt.Sprint(p.n), p.ref))
+	w.Write(`;{ ev("0"); ` + p.ref + " }")
 }
 func (p *catchEdge) Ends() bool { return true }
 

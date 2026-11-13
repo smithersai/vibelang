@@ -92,6 +92,19 @@ func NewWorkspace(tb testing.TB) *Workspace {
 	if want, got := PinnedEffectVersion(), packageVersion(effect); got != want {
 		Missing(tb, "effect %s is installed at %s, but VibeLang pins %s (VIP-32): run (cd experiments && bun install) or set EFFECT_NODE_MODULES to an install of effect %s", got, effect, want, want)
 	}
+	// The native twins transpile with the stock compiler next to Effect.
+	// Check its install before a missing oracle can look like a generator bug.
+	typescript := filepath.Join(filepath.Dir(effect), "typescript")
+	if _, err := os.Stat(filepath.Join(typescript, "package.json")); err != nil {
+		Missing(tb, "typescript is not installed at %s: run (cd experiments && bun install) or set EFFECT_NODE_MODULES", typescript)
+	}
+	want := pinnedTypeScriptVersion()
+	if want == "" {
+		Missing(tb, "cannot read the typescript pin: restore experiments/package.json and run (cd experiments && bun install)")
+	}
+	if got := packageVersion(typescript); got != want {
+		Missing(tb, "typescript %s is installed at %s, but the reference pins %s: run (cd experiments && bun install) or set EFFECT_NODE_MODULES to an install of typescript %s", got, typescript, want, want)
+	}
 	runtime := filepath.Join(root, "packages/runtime")
 	if _, err := os.Stat(filepath.Join(runtime, "dist/index.d.ts")); err != nil {
 		Missing(tb, "vibelang-runtime is not built at %s: run (cd packages/runtime && bun install && bun run build)", runtime)
@@ -104,7 +117,7 @@ func NewWorkspace(tb testing.TB) *Workspace {
 		tb.Fatal(err)
 	}
 	w := &Workspace{Dir: dir}
-	w.fs = &workspaceSourceFS{FS: bundled.WrapFS(osvfs.FS()), files: &w.files}
+	w.fs = bundled.WrapFS(osvfs.FS())
 	return w
 }
 
@@ -341,25 +354,6 @@ func isSource(name string) bool {
 	return false
 }
 
-// workspaceSourceFS lets compiler invocations reuse the same dependency
-// trees as Compile. The fixer validates text and parse options, so no program,
-// diagnostics, gate decision or runtime result is cached across inputs.
-type workspaceSourceFS struct {
-	vfs.FS
-	files *sync.Map
-}
-
-func (fs *workspaceSourceFS) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
-	name := string(opts.FileName)
-	if !strings.Contains(name, "/node_modules/") && !strings.HasPrefix(name, string(bundled.LibPath())) {
-		return nil
-	}
-	if file, ok := fs.files.Load(opts); ok {
-		return file.(*ast.SourceFile)
-	}
-	return nil
-}
-
 // sharingHost parses each library and package declaration file once per
 // workspace. Programs never change those files, and the language server
 // shares source files between programs the same way.
@@ -412,4 +406,17 @@ func packageVersion(dir string) string {
 		return ""
 	}
 	return manifest.Version
+}
+
+// pinnedTypeScriptVersion is the stock compiler used to emit native twins.
+func pinnedTypeScriptVersion() string {
+	text, err := os.ReadFile(filepath.Join(Root(), "experiments/package.json"))
+	if err != nil {
+		return ""
+	}
+	var manifest struct{ DevDependencies struct{ TypeScript string } }
+	if json.Unmarshal(text, &manifest) != nil {
+		return ""
+	}
+	return manifest.DevDependencies.TypeScript
 }

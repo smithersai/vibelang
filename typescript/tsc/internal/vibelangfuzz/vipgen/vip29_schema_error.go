@@ -80,7 +80,7 @@ func init() {
 			v, e := g.Name("v"), g.Name("e")
 			g.Use("vip05.catch-function")
 			fail := &EffectCall{Fn: "fail", Arg: &NewSchemaError{Decl: d, Values: []Expr{&Num{Value: 1}, &Str{Value: "s0"}}}}
-			caught := &Const{Name: v, Value: &CatchFn{X: fail, Param: e, Body: &Field{X: &Ref{Name: e}, Name: "f0"}}}
+			caught := &Const{Name: v, Value: &Catch{X: fail, Handler: &CatchFunction{Param: e, Expression: &Field{X: &Ref{Name: e}, Name: "f0"}}}}
 			s.Locals = append(s.Locals, v)
 			trip, decoded := roundTrip(g, d, &NewSchemaError{Decl: d, Values: []Expr{&Add{A: &Ref{Name: v}, B: &Num{Value: 1}}, &Str{Value: "s1"}}}, nil)
 			body := []Stmt{caught}
@@ -106,7 +106,7 @@ func init() {
 					body = &Field{X: &Ref{Name: e}, Name: f.Name}
 				}
 				fail := &EffectCall{Fn: "fail", Arg: newSchemaError(g, s, d)}
-				st := &Const{Name: v, Value: &CatchFn{X: fail, Param: e, Body: body}}
+				st := &Const{Name: v, Value: &Catch{X: fail, Handler: &CatchFunction{Param: e, Expression: body}}}
 				s.Locals = append(s.Locals, v)
 				return st
 			case 2, 3:

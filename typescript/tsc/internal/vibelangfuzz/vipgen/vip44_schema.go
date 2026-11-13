@@ -83,6 +83,6 @@ function witness() {
   const probes = [{ cause: new Error("x") }, { cause: new TypeError("t") }, { cause: { message: "x" } }, { cause: "x" }, {}]
   return probes.map((v) => Schema.is(Failure)(v))
 }`,
-		Cite: Citation{VIP: 44, Template: "Schema.Defect().pipe(Schema.refine(", Quote: "These names mean the TypeScript-library bindings, selected by ordinary type lookup, as VIP-15's mapped generics do.", Reading: "the schema-mapping table writes Error as Schema.Defect().pipe(Schema.refine((u): u is Error => u instanceof Error)); no code block shows that row"},
+		Cite: Citation{VIP: 44, Template: "Schema.Defect().pipe(Schema.refine(", Quote: "These names mean the TypeScript-library bindings, selected by ordinary type lookup, as VIP-15's mapped generics do."},
 	})
 }

@@ -83,25 +83,6 @@ func init() {
 			},
 			Stmt: func(g *Gen, s *Scope) Stmt {
 				joined := g.On("vip17.join") && !g.Chance(3)
-				// A held child of plain fork stands anywhere but main's
-				// own body, or beside another held child, only when
-				// vip17.fork-outlives-function is on: until lane
-				// w2-fork's fix, the compiler interrupts it when the
-				// enclosing function returns or region body
-				// (uninterruptible, provide, for try, …) ends, and
-				// interrupts main's children last-forked first, where
-				// their fiber interrupts them in the order they were
-				// forked.
-				if !joined && form.effect == "forkChild" && (s.Fn.Name != "main" || s.Depth > 0 || g.heldForks > 0) {
-					switch {
-					case g.On("vip17.fork-outlives-function"):
-						g.Use("vip17.fork-outlives-function")
-					case g.On("vip17.join"):
-						joined = true
-					default:
-						return nil
-					}
-				}
 				return &Seq{Stmts: g.fork(s, form, joined, nil)}
 			},
 		})
@@ -230,29 +211,13 @@ func (g *Gen) forkBody(s *Scope, form forkForm, joined bool, child Expr) []Stmt 
 		x := child
 		if x == nil {
 			x = g.Operand(s, true)
-			// Until lane w2-fork's fix, the compiler evaluates a fork's
-			// operand in the child, not at the fork, which an operand that
-			// logs or throws when evaluated, such as lib.ts's load(),
-			// shows. Unless vip17.fork-operand-eager is on, the operand
-			// stands in Effect.suspend, which both prints evaluate in the
-			// child. An effect block evaluates to its Effect and nothing
-			// else, so it needs no suspend.
-			_, block := x.(*EffectBlock)
-			switch {
-			case g.On("vip17.fork-operand-eager"):
-				g.Use("vip17.fork-operand-eager")
-			case !block:
-				x = &ModCall{Mod: "Effect", Fn: "suspend", Args: []Expr{&Arrow{Body: x}}}
-			}
+
 		}
 		gated := &ModCall{Mod: "Effect", Fn: "andThen", Args: []Expr{&ModCall{Mod: "Deferred", Fn: "await", Args: []Expr{&Ref{Name: d}}}, x}}
 		out = append(out, &Const{Name: f, Value: &Fork{Form: form, Scope: scope, X: gated}})
 		out = append(out, &Event{Label: g.Label()})
 		out = append(out, &ExprStmt{X: &Try{X: &ModCall{Mod: "Deferred", Fn: "succeed", Args: []Expr{&Ref{Name: d}, &Lit{Text: "undefined"}}}}})
 		return append(out, g.join(s, f))
-	}
-	if form.effect == "forkChild" {
-		g.heldForks++
 	}
 	held := &ModCall{Mod: "Effect", Fn: "ensuring", Args: []Expr{
 		&ModCall{Mod: "Effect", Fn: "andThen", Args: []Expr{

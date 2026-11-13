@@ -79,9 +79,6 @@ type Gen struct {
 	// block is generated inside the if, so the count holds in every scope a
 	// construct makes there.
 	narrowed map[string]int
-	// heldForks counts the held children of plain fork written so far
-	// (vip17.fork-outlives-function).
-	heldForks int
 }
 
 // A Scope is what a statement may refer to: the function it stands in, the
@@ -321,15 +318,11 @@ func (g *Gen) Block(s *Scope) []Stmt {
 // finish ends a function that returns a number with a return, when its body
 // can reach its end.
 func (g *Gen) finish(s *Scope, body []Stmt) []Stmt {
-	// Until the compiler types the success of a body that can only throw as
-	// never rather than void (vip04.throw-only-body), a body other than
-	// main's that ends in anything but a return ends inside `if (1 > 0)`,
-	// so that the return below follows it. With that construct on, a throw
-	// may end the body, but a statement that only reads as ending it, such
-	// as a probe block, still needs the return.
+	// Probe blocks may read as terminating without returning a value.
+	// A source return or throw already supplies the function's completion.
 	if !s.Fn.Void && !g.plain && ends(body) && (s.Fn.Name != "main" || s.Depth > 0) {
 		final := body[len(body)-1]
-		if _, returned := final.(*Return); !returned && !(g.On("vip04.throw-only-body") && isThrow(final)) {
+		if _, returned := final.(*Return); !returned && !isThrow(final) {
 			last := &If{Cond: &Compare{Op: ">", A: &Num{Value: 1}, B: &Num{Value: 0}}, Then: []Stmt{final}}
 			body = append(body[:len(body)-1:len(body)-1], last)
 		}

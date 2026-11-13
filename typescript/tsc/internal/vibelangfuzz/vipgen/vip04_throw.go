@@ -1,8 +1,7 @@
 package vipgen
 
 // VIP-4: "in an `effect` function, `throw e` fails the Effect with `e`, a
-// typed error, exactly as `Effect.fail(e)` does." Will's words: "throw in an
-// effect function is the same as returning Effect.fail(error)".
+// typed error, exactly as `Effect.fail(e)` does."
 
 func init() {
 	Register(&Construct{
@@ -19,7 +18,7 @@ func init() {
 				VIP:      4,
 				Template: "return yield* Effect.fail(‹e›)",
 				Quote:    "correct throw in an effect function is the same as returning Effect.fail(error)",
-				Reading:  "return yield* runs the failure and leaves the generator where the throw stands, as JavaScript's throw leaves its block; Will's words say returning Effect.fail(error).",
+				Reading:  "return yield* runs the failure and leaves the generator where the throw stands, as JavaScript's throw leaves its block; VIP-4 says returning Effect.fail(error).",
 			},
 		},
 		Focus: func(g *Gen, s *Scope) []Stmt {
@@ -39,9 +38,7 @@ func init() {
 func init() {
 	// A function whose only way out is a throw succeeds with never: its
 	// throw is `return yield* Effect.fail(e)`, and TypeScript infers the
-	// generator's return type from that return. Until the compiler types such
-	// a function's success as never rather than void, finish gives every body
-	// but main's a return when this construct is off.
+	// generator's return type from that return.
 	Register(&Construct{
 		Key:      "vip04.throw-only-body",
 		VIP:      4,
@@ -96,29 +93,21 @@ func init() {
 			Reading:  "The VIP states this in prose: read a property of undefined in plain JavaScript, catch its exception, and return its name/message through Effect.succeed so the worker compares an Exit. No Effect.fail is introduced.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
-			return []Stmt{&Event{Label: g.Label()}, &plainFailureProbe{Implicit: true}}
+			return []Stmt{&Event{Label: g.Label()}, &plainFailureProbe{}}
 		},
-		Stmt: func(g *Gen, s *Scope) Stmt { return &plainFailureProbe{Implicit: true} },
+		Stmt: func(g *Gen, s *Scope) Stmt { return &plainFailureProbe{} },
 	})
 }
 
 // Both prints catch the ordinary JavaScript exception and expose its
 // name/message in a successful Effect for the existing Exit comparator.
-type plainFailureProbe struct{ Implicit bool }
+type plainFailureProbe struct{}
 
-func (p *plainFailureProbe) Vibe(w *Writer) {
-	if p.Implicit {
-		w.Write("try { const box = undefined as unknown as { value: number }; return box.value } catch (e) { return Effect.succeed(e instanceof Error ? [e.name, e.message] : String(e)) }")
-		return
-	}
-	w.Write("try { throw new Error(\"plain\") } catch (e) { return Effect.succeed(e instanceof Error ? [e.name, e.message] : String(e)) }")
+func (*plainFailureProbe) Vibe(w *Writer) {
+	w.Write("try { const box = undefined as unknown as { value: number }; return box.value } catch (e) { return Effect.succeed(e instanceof Error ? [e.name, e.message] : String(e)) }")
 }
-func (p *plainFailureProbe) Effect(w *Writer) {
-	if p.Implicit {
-		w.Write("try { const box = undefined; return box.value } catch (e) { return Effect.succeed(e instanceof Error ? [e.name, e.message] : String(e)) }")
-		return
-	}
-	w.Write("try { throw new Error(\"plain\") } catch (e) { return Effect.succeed(e instanceof Error ? [e.name, e.message] : String(e)) }")
+func (*plainFailureProbe) Effect(w *Writer) {
+	w.Write("try { const box = undefined; return box.value } catch (e) { return Effect.succeed(e instanceof Error ? [e.name, e.message] : String(e)) }")
 }
 func (p *plainFailureProbe) Ends() bool { return true }
 

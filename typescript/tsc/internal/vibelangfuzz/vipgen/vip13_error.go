@@ -13,8 +13,7 @@ import (
 //
 // VIP-13 uses an error two ways, and so does this construct: thrown (VIP-4)
 // and caught with `x catch (e) => f(e)`, VIP-13's own example, which VIP-5's
-// table reads as Effect.catch. The catch lives here, beside the errors it
-// catches, until VIP-5's catch forms have their own construct file.
+// table reads as Effect.catch. VIP-5 owns the shared catch printers.
 
 func init() {
 	Register(&Construct{
@@ -32,7 +31,7 @@ func init() {
 			oops0, oops1 := newErrorDecl(g, true), newErrorDecl(g, false)
 			v, e := g.Name("v"), g.Name("e")
 			fail := &EffectCall{Fn: "fail", Arg: &NewTaggedError{Decl: oops0, N: &Num{Value: 1}}}
-			caught := &Const{Name: v, Value: &CatchFn{X: fail, Param: e, Body: &Field{X: &Ref{Name: e}, Name: "n"}}}
+			caught := &Const{Name: v, Value: &Catch{X: fail, Handler: &CatchFunction{Param: e, Expression: &Field{X: &Ref{Name: e}, Name: "n"}}}}
 			s.Locals = append(s.Locals, v)
 			// v is 1, so main fails with the error that has no fields.
 			throw := &If{Cond: &Compare{Op: ">", A: &Ref{Name: v}, B: &Num{Value: 0}}, Then: []Stmt{&Throw{Value: &NewTaggedError{Decl: oops1}}}}
@@ -149,28 +148,6 @@ func (n *NewTaggedError) Vibe(w *Writer) {
 	w.Write(" })")
 }
 func (n *NewTaggedError) Effect(w *Writer) { n.Vibe(w) }
-
-// A CatchFn is `<X> catch (e) => <Body>`, read as VIP-5's table reads it:
-// `yield* Effect.catch(<X>, (e) => Effect.succeed(<Body>))`.
-type CatchFn struct {
-	X     Expr
-	Param string
-	Body  Expr
-}
-
-func (c *CatchFn) Vibe(w *Writer) {
-	w.Node(c.X)
-	w.Write(" catch (" + c.Param + ") => ")
-	w.Node(c.Body)
-}
-
-func (c *CatchFn) Effect(w *Writer) {
-	w.Write("yield* Effect.catch(")
-	w.Node(c.X)
-	w.Write(", (" + c.Param + ") => Effect.succeed(")
-	w.Node(c.Body)
-	w.Write("))")
-}
 
 // A Field reads a field: <X>.<Name>.
 type Field struct {
@@ -298,7 +275,7 @@ func catchConst(g *Gen, s *Scope, general, match bool) Stmt {
 		body = g.Num(s)
 	}
 	s.Locals = append(s.Locals, v)
-	c := &Const{Name: v, Value: &CatchFn{X: x, Param: e, Body: body}}
+	c := &Const{Name: v, Value: &Catch{X: x, Handler: &CatchFunction{Param: e, Expression: body}}}
 	if _, ok := body.(*Match); ok {
 		c.Type = "number"
 	}

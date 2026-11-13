@@ -39,22 +39,12 @@ func init() {
 			return []Stmt{&Event{Label: g.Label()}, run, &Event{Label: g.Label()}}
 		},
 		Operand: func(g *Gen, s *Scope, number bool) Expr {
-			// Until the compiler stops passing an Effect-typed argument by
-			// name, it calls load() inside the Effect.suspend it wraps the
-			// argument in, after the call that takes it has run, where
-			// JavaScript calls it first (vip04.ts-throw-argument). Unless
-			// that construct is on, the operand stands in Effect.suspend,
-			// which both prints call where the Effect runs.
-			if g.On("vip04.ts-throw-argument") {
-				g.Use("vip04.ts-throw-argument")
-				return tsThrowCall(g)
-			}
-			return &ModCall{Mod: "Effect", Fn: "suspend", Args: []Expr{&Arrow{Body: tsThrowCall(g)}}}
+			return tsThrowCall(g)
 		},
 	})
 	// An argument is evaluated where the call stands, before the call, as
-	// every operand is (Chapter 2), whatever the parameter's type (Will's
-	// OTHER-7: a call's meaning comes from its syntax). load() throws while
+	// every operand is (Chapter 2), whatever the parameter's type. load()
+	// throws while
 	// Effect.ensuring's arguments are evaluated, so no finalizer is added.
 	Register(&Construct{
 		Key:      "vip04.ts-throw-argument",

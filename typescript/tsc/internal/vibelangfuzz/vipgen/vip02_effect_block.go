@@ -362,16 +362,22 @@ func init() {
 	})
 }
 
-// DoNarrowingKeys names guard relationships, rather than indexes, so saved
-// corpus inputs keep testing the same relationship when new shapes are added.
-var DoNarrowingKeys = []string{
+// Valid runtime probes are separate from deliberately rejected narrowing cases.
+var validDoNarrowingKeys = []string{
 	"truthy", "defined", "nonnull", "typeof-and", "typeof-or",
 	"alias", "discriminant", "predicate", "predicate-or", "nullish",
 	"nested-and", "nested-or", "side-effects", "read-before-write", "guard-recheck-and", "guard-recheck-or", "guard-recheck-not",
 	"left-and", "left-or", "left-nullish", "left-recheck", "guard-property-write",
+}
+
+var invalidDoNarrowingKeys = []string{
 	"invalidated", "unguarded",
 	"nullish-invalid", "or-invalid", "guard-write-and", "guard-write-or", "guard-write-not", "left-write", "guard-property-invalidated",
 }
+
+// DoNarrowingKeys names guard relationships, rather than indexes, so saved
+// corpus inputs keep testing the same relationship when new shapes are added.
+var DoNarrowingKeys = append(slices.Clone(validDoNarrowingKeys), invalidDoNarrowingKeys...)
 
 // DoNarrowingProgram prints one typed do probe and its immediate-arrow twin.
 // The third print erases only the written types for the existing native Exit
@@ -543,7 +549,7 @@ func init() {
 			Reading:  "The do expression retains TypeScript control flow in its selected short-circuit branch (chapter 000). The reference uses immediate arrows, with no outward jumps; a separate stock-tsc oracle checks the typed twins.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
-			key := DoNarrowingKeys[g.Intn(22)]
+			key := validDoNarrowingKeys[g.Intn(len(validDoNarrowingKeys))]
 			name := g.Name("narrowed")
 			vibe, _, ref := DoNarrowingProgram(key, uint8(g.Intn(256)), name)
 			return []Stmt{&doNarrowingProbe{vibe: vibe + "; return Effect.succeed(" + name + ")", reference: ref + "; return Effect.succeed(" + name + ")"}}
@@ -633,7 +639,6 @@ func init() {
 			if effect {
 				witness.Key = "vip02.do-parameter-return-" + home + "-" + form
 				witness.Requires = []string{"vip01.effect-function", "vip05.try"}
-				witness.ReturnsEffect = true
 				witness.Vibe = "effect function witness() { const log: string[] = []; " + declaration + "; return [[try f(), try f(undefined,3), try f(2), try f(2,3)], log] }"
 				witness.Effect = "function witness() { return Effect.gen(function* () { const log = []; " + reference + "; return [[yield* f(), yield* f(undefined,3), yield* f(2), yield* f(2,3)], log] }) }"
 			}
@@ -761,7 +766,6 @@ func init() {
 		if effect {
 			witness.Key = "vip02.do-parameter-rest-" + home
 			witness.Requires = []string{"vip01.effect-function", "vip05.try"}
-			witness.ReturnsEffect = true
 			vibeRun, nativeRun := "try ", "yield* "
 			if producer {
 				witness.Requires = append(witness.Requires, "vip21.producer")
