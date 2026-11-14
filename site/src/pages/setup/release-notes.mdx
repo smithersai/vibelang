@@ -147,6 +147,14 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - After agent setup, edits to `.vibex` files could miss language-server diagnostics and checks after an edit. Agent registrations, hooks and the generated plugin now include JSX VibeLang alongside `.vibe` files; rerun `vibelang agents init` to refresh an existing setup.
 
+### Experimental (opt-in)
+
+These features come from VIP-73, an open proposal. They are not part of the language this release supports, and each can change or be removed in any release. A project opts in with `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it, the first use of `Experimental.Patterns` in a file is `EK3013`.
+
+#### Patterns: `Experimental.Patterns` (VIP-73)
+
+- A panel of reviewers or a draft-review-revise loop was a hand-written loop over Effects, because the reference engine's patterns library had no VibeLang form. `Experimental.Patterns.Panel.run` and `Experimental.Patterns.ReviewLoop.run` run both shapes as plain Effect code with inferred types, and bad options fail with `Experimental.Patterns.PatternError`.
+
 - Running Effects at a bounded width in priority order, continuing past a failed member, or reducing a set of checks to one verdict was a hand-written loop over Effects. `Experimental.Patterns.Bounded.run`, `Experimental.Patterns.Quarantine.run` with `Quarantine.settle`, and `Experimental.Patterns.CheckSuite.run` run these shapes as plain Effect code, and bad options fail with `Experimental.Patterns.PatternError`.
 
 - A prioritized merge queue, a runbook whose risky steps wait for an approval, or an escalation ladder from a cheap attempt to a strong one was a hand-written loop over Effects. `Experimental.Patterns.MergeQueue.run`, `Experimental.Patterns.Runbook.run` and `Experimental.Patterns.Escalation.run` run these shapes as plain Effect code, and bad options fail with `Experimental.Patterns.PatternError`.
@@ -199,6 +207,8 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - A migration could report unchanged namespace member documentation as changed when a public binding used `infer`. The API check now keeps those comments on their public members and still detects edited documentation.
 
 - Errors for `await` in a plain function suggested retired hatches or claimed an Effect call already ran. Their notes now explain how to wait in `async` or `effect` code, and the `await` and retired `select` hovers give current guidance.
+
+- The compiler reference said flow analysis skipped arguments passed as programs. It now describes argument traversal and nested function boundaries accurately.
 
 - The delivery conversion example delayed its factory call and repeated it on each run. It now constructs the program when `submit` is called and reuses that program across runs.
 

@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,570 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 17,953 |
-| The skill and the user guide (149 pages) | 610,000 |
-| The user guide alone | 610,000 |
+| The skill and the user guide (149 pages) | 620,000 |
+| The user guide alone | 620,000 |
 | The specification (11 chapters) | 280,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -110,7 +110,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 2,100 |
-| [What is in the alpha](../setup/alpha.md) | 2,600 |
+| [What is in the alpha](../setup/alpha.md) | 2,700 |
 | [Known limitations](../setup/known-limitations.md) | 3,100 |
 | [Source maps](../setup/source-maps.md) | 1,000 |
 | **Start a project** | **8,900** |
@@ -277,8 +277,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 14,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 5,400 |
 | [Imported lint diagnostics](imported-lint-diagnostics.md) | 13,000 |
-| [Experimental platform APIs](118-experimental-platform-apis.md) | 26,000 |
-| **All 9 pages** | **91,000** |
+| [Experimental platform APIs](118-experimental-platform-apis.md) | 35,000 |
+| **All 9 pages** | **100,000** |
 
 ### Experimental
 
