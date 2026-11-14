@@ -5,9 +5,11 @@ description: "VIP-43: theorem and spec, proofs in TypeScript's own syntax. A Vib
 
 # VIP-43: `theorem` and `spec`, proofs in TypeScript's own syntax
 
-**Status:** accepted by Will, 2026-11-07. Proposed by Will on 2026-11-06. Nothing is implemented. [Appendix F](https://github.com/smithersai/vibelang/blob/09842fac8a7fba01a904b9b803f9afdb7a791d2e/docs/design/src/900-appendices.md#appendix-f-theorems-and-proofs-vip-43) of the specification states the rules.
+**Status:** accepted by Will, 2026-11-07. Proposed by Will on 2026-11-06. The compiler implements `spec function`, erased `proof { }` blocks and the `vibelang prove` subset for plain functions. `theorem`, the proof audit and `vibe.proofDir` remain unimplemented. [Appendix F](https://github.com/smithersai/vibelang/blob/main/docs/design/src/900-appendices.md#appendix-f-theorems-and-proofs-vip-43) of the specification states the rules.
 
-- **Clarified 2026-11-11: outside the alpha.** This VIP stays accepted by Will, but it is outside the alpha's supported set, which is the core VIPs numbered 1 to 41 ([VIPs](/vips/#acceptance)). Nothing of it is implemented, so no opt-in exists.
+- **Clarified 2026-11-11: outside the alpha.** This VIP stays accepted by Will, but it is outside the alpha's supported set, which is the core VIPs numbered 1 to 41 ([VIPs](/vips/#acceptance)). At that date, the published compiler implemented none of it, so no opt-in existed.
+
+- **Clarified 2026-11-14: implementation status.** `spec function`, erased `proof { }` blocks and `vibelang prove` for plain functions are implemented; `theorem`, the proof audit and `vibe.proofDir` are not. The VIP remains outside the alpha's core supported set.
 
 ## Will's words
 
@@ -177,3 +179,13 @@ This is the simplest route. The comment language is LemmaScript's documented pub
 4. **The trust boundary.** The lowering, LemmaScript's translation, the integer model, trusted functions, run-time preconditions, the call stack, and Dafny with its Z3. Everything else is checked, and a hand-written assumption is an error.
 5. **The backend.** Dafny only, pinned to 4.11.0.
 6. **The command and codes.** `vibelang prove [-p <project>] [--strict]`; VIP-34's block `EK43xx`, with the rules numbered from 4301.
+
+## Maintainers' decisions
+
+These five choices were made while implementing spec functions, proof blocks and `vibelang prove`, under the pre-alpha standing approval. Will has not reviewed these choices.
+
+- **Clarified 2026-11-10: proof statement types.** In a proof context, `assume`, `assert`, `invariant`, `decreases` and `ensures` bind to no declaration. The checker types `assume(P)`, `assert(Q)` and `invariant(P)` as calls to `(condition: boolean) => void`, `decreases(E)` as a call to `(measure: number | bigint) => void`, and `ensures((r) => Q)` as a call to `(postcondition: (r: R) => boolean) => void`, where `R` is the enclosing function's return type. These are the ambient functions of the TypeScript projection, so a wrong argument reports the `TS2345` or `TS2554` that `tsc` reports on the projection.
+- **Clarified 2026-11-10: imports used only by proofs.** A name that only proof blocks and spec functions use does not keep its import in the emitted JavaScript. This is how the lowering meets Appendix F's "import elision included".
+- **Clarified 2026-11-10: one `EK4314` per spec function.** A spec function whose body holds several constructs outside the transparent subset reports `EK4314` once, at the first of them.
+- **Clarified 2026-11-10: trusted functions in order.** `vibelang prove` lists trusted functions, on their own lines and in the summary, in lowering order: by module path, then by source position.
+- **Clarified 2026-11-10: the proof directory.** Until `vibe.proofDir` is implemented, `vibelang prove` writes its generated files to `proofs` in the selected config's directory, and refuses with `EK4316` a module that has a root outside that directory.
