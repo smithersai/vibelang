@@ -36,7 +36,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
-| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `PatternError` | none; they are pure Effect code and run in any runtime |
+| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `Debate.run`, a bounded exchange a judge settles; `MapReduce.run`, map every shard and reduce in shard order; `Saga.run`, forward steps whose compensations unwind in reverse; `PatternError` | none; they are pure Effect code and run in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -1586,6 +1586,60 @@ export effect function answer(question: string) {
 // Output: level 1: large
 ```
 
+`Experimental.Patterns.Debate.run(input, { rounds, proponent, opponent, judge })` lets a proponent and an opponent take turns for `rounds` rounds, then gives the judge the transcript:
+
+```vibe
+// run: try Console.log(try settle("tabs or spaces"))
+// experimental: builtins
+export effect function settle(question: string) {
+  return try Experimental.Patterns.Debate.run(question, {
+    rounds: 2,
+    proponent: effect ({ round }) => `tabs, round ${round}`,
+    opponent: effect ({ proponent }) => `not ${proponent}`,
+    judge: effect ({ transcript }) => `${transcript.length} rounds heard`
+  })
+}
+// Output: 2 rounds heard
+```
+
+`Experimental.Patterns.MapReduce.run({ shards }, { map, reduce, concurrency, onEmpty })` maps every shard, at most `concurrency` at a time, and reduces the mapped values in shard order:
+
+```vibe
+// run: try Console.log(try wordCount())
+// experimental: builtins
+export effect function wordCount() {
+  return try Experimental.Patterns.MapReduce.run({ shards: ["a b", "c", "d e f"] }, {
+    concurrency: 2,
+    onEmpty: "reduce",
+    map: effect ({ shard }) => shard.split(" ").length,
+    reduce: effect ({ mapped }) => mapped.reduce((sum, count) => sum + count, 0)
+  })
+}
+// Output: 6
+```
+
+`Experimental.Patterns.Saga.run(input, { steps, onFailure? })` runs each step's `action` in order. When a step fails, the steps that completed are undone by their `compensation`, newest first, and the result is tagged:
+
+```vibe
+// run: try Console.log(try book())
+// experimental: builtins
+error SoldOut {
+  item: string
+}
+
+export effect function book() {
+  const cancelled: string[] = []
+  const result = try Experimental.Patterns.Saga.run("trip", {
+    steps: [
+      { id: "flight", action: effect (_state) => "F12", compensation: effect ({ value }: { value: string }) => { cancelled.push(value) } },
+      { id: "hotel", action: effect (_state) => { throw new SoldOut({ item: "hotel" }) }, compensation: effect () => {} }
+    ]
+  })
+  return `${result._tag}, cancelled ${cancelled.join(", ")}`
+}
+// Output: Compensated, cancelled F12
+```
+
 The patterns keep these rules:
 
 | Rule | Consequence |
@@ -1601,7 +1655,10 @@ The patterns keep these rules:
 | `MergeQueue.run` lands in queue order | Members land in descending priority, then in the order they were written. A member without a `priority` gets the queue's `priority`, or `MergeQueue.DefaultPriority` (1000). `concurrency` defaults to 1. Under `failurePolicy: "halt"` a failure fails the queue and no member behind it starts, so `halt` requires concurrency 1. Under `"quarantine"` a failed member is listed in `quarantined` as `{ id, error }` and the rest still land. `MergeQueue.ordered(members, priority)` gives the order without running anything. |
 | A runbook approval must answer `"approved"` | A `safe` step runs unasked. A `risky` or `critical` step first asks `approve` with `{ step, risk, elevated, input, previous }`, where `elevated` is `true` for `critical`. Any other answer is a denial: `onDeny: "fail"` fails the run with a `SchemaError` and runs no later step, and `onDeny: "skip"` lists the step in `skipped` and goes on. |
 | An escalation rung settles unless it reports a failure | A rung's own `escalateIf(result, level)` decides first, then `accept(result)` with the approval vocabulary above. With neither, a result of `undefined` or `null`, or an object with `ok: false`, `failed: true` or an `error` other than `undefined`, `null` and `false`, escalates. After the last rung `fallback` runs if there is one; otherwise the result is `{ level, result, accepted: false, exhausted: true }`. |
-| Bad options fail with `Experimental.Patterns.PatternError` | An empty panel, member record, check record, queue, runbook or ladder, an empty check id, a repeated queue member or runbook step id, `halt` above concurrency 1, a `concurrency` or `maxRounds` that is not a positive whole number, a priority that is not a whole number or names an unknown member, and stall `rounds` under 2 fail with `code` `invalid_decorator`. The failure is in the error channel, so `catch` claims it. |
+| `Debate.run` alternates for `rounds` rounds | Each round asks the proponent with `{ input, transcript, round }`, then the opponent with the same and this round's `proponent`. After the last round the judge gets `{ input, transcript }`, and its answer is the result. Every stage sees a frozen copy of the transcript, one `{ proponent, opponent }` turn per finished round. |
+| `MapReduce.run` reduces in shard order | `reduce` gets the mapped values in the order of `shards`, whatever order the maps finish in. The first map failure interrupts the rest. With no shards, `onEmpty: "reduce"` reduces an empty list, `"succeed"` gives an empty list, and `"fail"` fails with `code` `exhausted`. |
+| A saga undoes its completed steps newest first | When a step fails or the run is interrupted, each completed step's `compensation({ id, input, value })` runs in reverse order. `onFailure: "compensate"`, the default, gives `{ _tag: "Compensated", failure }`; `"compensate-and-fail"` fails with the step's failure after the unwind; `"fail"` undoes nothing. A run that finishes gives `{ _tag: "Completed", values }`. When a compensation fails, the run fails with `code` `compensation_failed` naming those steps, with `{ failure, residue }` in `cause`. |
+| Bad options fail with `Experimental.Patterns.PatternError` | An empty panel, member record, check record, queue, runbook, ladder or saga, an empty check id, a repeated queue member, runbook step or saga step id, `halt` above concurrency 1, a `concurrency`, `maxRounds` or debate `rounds` that is not a positive whole number, a priority that is not a whole number or names an unknown member, and stall `rounds` under 2 fail with `code` `invalid_decorator`. The failure is in the error channel, so `catch` claims it. |
 | Options are read at the call | Changing the options object afterwards does not change a run that has not started. |
 
 A pattern adds no durability of its own. A stage that calls a `task` inside a `workflow` is a durable step; a stage that is an ordinary Effect is not.

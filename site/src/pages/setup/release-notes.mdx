@@ -151,6 +151,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A prioritized merge queue, a runbook whose risky steps wait for an approval, or an escalation ladder from a cheap attempt to a strong one was a hand-written loop over Effects. `Experimental.Patterns.MergeQueue.run`, `Experimental.Patterns.Runbook.run` and `Experimental.Patterns.Escalation.run` run these shapes as plain Effect code, and bad options fail with `Experimental.Patterns.PatternError`.
 
+- A judged debate, a map-reduce over shards, or a saga that undoes its completed steps when a later one fails was a hand-written loop over Effects. `Experimental.Patterns.Debate.run`, `Experimental.Patterns.MapReduce.run` and `Experimental.Patterns.Saga.run` run these shapes as plain Effect code, and bad options fail with `Experimental.Patterns.PatternError`.
+
 ## 0.0.13
 
 0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](/setup/alpha) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are supported only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).

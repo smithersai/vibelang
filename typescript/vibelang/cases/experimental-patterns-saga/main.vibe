@@ -1,0 +1,68 @@
+// expect-result: {"debate":"for: 2 rounds, last o2","shards":"0:a|1:bb|2:ccc","empty":0,"saga":"Compensated: payment declined; undid ship,reserve","done":"reserve,ship","rounds":"invalid_decorator","nothing":"exhausted"}
+// Experimental.Patterns (VIP-73): Debate.run runs a bounded, alternating
+// exchange that a judge settles. MapReduce.run splits, maps each part and
+// reduces the results in shard order. Saga.run runs forward steps whose
+// compensations unwind in reverse on a failure, and its result is tagged.
+// Bad options fail with PatternError, which a catch claims.
+error Declined {
+  reason: string
+}
+
+effect function debate(rounds: number) {
+  return try Experimental.Patterns.Debate.run("ship it", {
+    rounds,
+    proponent: effect ({ round }) => `p${round}`,
+    opponent: effect ({ round }) => `o${round}`,
+    judge: effect ({ transcript }) => `for: ${transcript.length} rounds, last ${transcript[transcript.length - 1].opponent}`
+  })
+}
+
+effect function lengths(shards: string[], onEmpty: "reduce" | "fail") {
+  return try Experimental.Patterns.MapReduce.run({ shards }, {
+    concurrency: 2,
+    onEmpty,
+    map: effect ({ shard, index }) => `${index}:${shard}`,
+    reduce: effect ({ mapped }) => mapped.length === 0 ? 0 : mapped.join("|")
+  })
+}
+
+effect function order(pay: boolean) {
+  const undone: string[] = []
+  const step = (id: string) => ({
+    id,
+    action: effect (_state: unknown) => id,
+    compensation: effect ({ id }: { id: string }) => {
+      undone.push(id)
+    }
+  })
+  const result = try Experimental.Patterns.Saga.run("order-7", {
+    steps: [
+      step("reserve"),
+      step("ship"),
+      {
+        id: "charge",
+        action: effect (_state) => {
+          if (!pay) throw new Declined({ reason: "payment declined" })
+          return "charged"
+        },
+        compensation: effect () => {}
+      }
+    ]
+  })
+  return match (result) {
+    when { _tag: "Compensated", let failure }: `Compensated: ${failure.reason}; undid ${undone.join(",")}`;
+    when { _tag: "Completed", let values }: Object.keys(values).filter((id) => id !== "charge").join(",");
+  }
+}
+
+export effect function main() {
+  return {
+    debate: try debate(2),
+    shards: try lengths(["a", "bb", "ccc"], "reduce"),
+    empty: try lengths([], "reduce"),
+    saga: try order(false),
+    done: try order(true),
+    rounds: debate(0) catch (error) => error.code,
+    nothing: lengths([], "fail") catch (error) => error.code
+  }
+}
