@@ -26,6 +26,14 @@ func FuzzServiceStaticNativeNestedErrors(f *testing.F) {
 		{"default-marker", "static readonly defaultValue!: () => { n: number } = () => ({ n: 1 })", 0},
 		{"nested-property", "static helper(): void { class Inner { field } }", 7008},
 		{"nested-overload", "static helper(): void { function inner(): void; }", 2391},
+		{"nested-mismatch", "static helper = class { first(): void; second(): void {} }", 2389},
+		{"nested-static-overload", "static helper = class { static f(): void; f(): void {} }", 2387},
+		{"nested-instance-overload", "static helper = class { f(): void; static f(): void {} }", 2388},
+		{"nested-overload-optional", "static helper = class { f?(): void; f(): void {} }", 2386},
+		{"nested-overload-accessibility", "static helper = class { private f(): void; public f(): void {} }", 2385},
+		{"nested-overload-incompatible", "static helper = class { f(x: string): string; f(x: number): number { return x } }", 2394},
+		{"nested-overload-duplicate", "static helper = class { f(): void {} f(): void {} }", 2393},
+		{"nested-return", "static helper(): void { interface Inner { read() } }", 7010},
 		{"nested-static-marker", "static helper = class Inner { static field!: number }", 1255},
 		{"nested-initializer-marker", "static helper = class Inner { field!: number = 1 }", 1263},
 		{"nested-accessor", "static helper(): void { class Inner { get value(): number; } }", 1005},
@@ -42,7 +50,14 @@ func FuzzServiceStaticNativeNestedErrors(f *testing.F) {
 		}
 	}
 	for _, key := range keys {
-		f.Add([]byte(key))
+		_, memberKey, _ := strings.Cut(key, "-")
+		if strings.HasPrefix(memberKey, "nested-overload-") || memberKey == "nested-return" {
+			for variant := byte(0); variant < 4; variant++ {
+				f.Add([]byte(key + "\x00" + string([]byte{variant})))
+			}
+		} else {
+			f.Add([]byte(key))
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
@@ -87,13 +102,15 @@ func FuzzServiceStaticNativeNestedErrors(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer r.Remove()
-		got, native := 0, 0
+		got, native, declaration := 0, 0, 0
 		for _, d := range r.Diagnostics {
 			switch {
 			case d.Source() == "EK" && d.Code() == code:
 				got++
 			case nativeCode != 0 && d.Code() == nativeCode:
 				native++
+			case memberKey == "nested-overload-accessibility" && variant&2 == 0 && d.Code() == 4094:
+				declaration++
 			case d.Category() == diagnostics.CategoryError:
 				t.Fatalf("fixture %s: %s", key, d.String())
 			}
@@ -101,6 +118,18 @@ func FuzzServiceStaticNativeNestedErrors(f *testing.F) {
 		wantNative := 0
 		if nativeCode != 0 {
 			wantNative = 1
+		}
+		if memberKey == "nested-overload-duplicate" {
+			wantNative = 2
+		}
+		// Exporting an anonymous class with a private member also retains
+		// TypeScript's independent declaration-emit error.
+		wantDeclaration := 0
+		if memberKey == "nested-overload-accessibility" && variant&2 == 0 {
+			wantDeclaration = 1
+		}
+		if declaration != wantDeclaration {
+			t.Fatalf("fixture %s: want %d TS4094, got %d", key, wantDeclaration, declaration)
 		}
 		if got != 1 || native != wantNative {
 			Gap(t, "FuzzServiceStaticNativeNestedErrors", key, "%s; want one EK%04d and %d TS%d, got %d and %d", serviceStaticNativeQuote, code, wantNative, nativeCode, got, native)

@@ -1,0 +1,8 @@
+service Body { static readonly key = "static/body"; static helper(): void; helper(): void {} }
+service Whole: { n: number } { static readonly key = "static/whole"; static helper(): void; helper(): void {} }
+service Instance { static readonly key = "static/instance"; helper(): void; static helper(): void {} }
+service WholeInstance: { n: number } { static readonly key = "static/whole-instance"; helper(): void; static helper(): void {} }
+service NestedStatic { static readonly key = "static/nested"; static helper = class { static f(): void; f(): void {} } }
+service NestedInstance { static readonly key = "static/nested-instance"; static helper = class { f(): void; static f(): void {} } }
+export class NativeStatic { static f(): void; f(): void {} }
+export class NativeInstance { f(): void; static f(): void {} }

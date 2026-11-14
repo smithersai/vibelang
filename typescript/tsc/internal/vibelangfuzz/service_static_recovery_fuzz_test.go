@@ -31,9 +31,12 @@ func TestServiceStaticRecoveryQuoted(t *testing.T) { serviceStaticRecoveryChapte
 func FuzzServiceStaticRecovery(f *testing.F) {
 	startShortBudget(f)
 	chapter := serviceStaticRecoveryChapter(f)
-	keys := []string{"method", "initializer", "getter", "setter", "symbol", "native", "valid-signature", "native-error", "untyped-static", "bodyless-static"}
+	keys := []string{"method", "initializer", "getter", "setter", "symbol", "native", "valid-signature", "native-error", "untyped-static", "bodyless-static", "bodyless-static-same-name"}
 	for _, key := range keys {
 		f.Add([]byte(key))
+	}
+	for variant := byte(0); variant < 8; variant++ {
+		f.Add([]byte("bodyless-static-same-name\x00" + string([]byte{variant})))
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
@@ -50,6 +53,8 @@ func FuzzServiceStaticRecovery(f *testing.F) {
 		switch key {
 		case "method", "native", "native-error", "untyped-static", "bodyless-static":
 			instance = "run(): void {}"
+		case "bodyless-static-same-name":
+			instance = "helper(): void {}"
 		case "initializer":
 			instance = "n = 1"
 		case "getter":
@@ -68,7 +73,7 @@ func FuzzServiceStaticRecovery(f *testing.F) {
 		if key == "untyped-static" {
 			static = "static helper"
 		}
-		if key == "bodyless-static" {
+		if key == "bodyless-static" || key == "bodyless-static-same-name" {
 			static = "static helper(): void"
 		}
 		members := instance + "; " + static

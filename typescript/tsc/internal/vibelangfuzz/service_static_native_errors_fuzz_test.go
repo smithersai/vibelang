@@ -24,7 +24,8 @@ func serviceStaticNativeChapters(t testing.TB) string {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(tooling), serviceStaticNativeQuote) ||
-		!strings.Contains(string(chapter), serviceStaticNativeMemberQuote) {
+		!strings.Contains(string(chapter), serviceStaticNativeMemberQuote) ||
+		!strings.Contains(string(chapter), serviceStaticRecoveryQuote) {
 		t.Fatal("service static native-error rules changed")
 	}
 	return string(chapter)
@@ -52,16 +53,35 @@ func FuzzServiceStaticNativeErrors(f *testing.F) {
 		{"untyped", "static helper", 0},
 		{"bodyless", "static helper(): void", 0},
 		{"definite", "static helper!: number", 0},
+		{"overload-staticness", "static helper(): void; helper(): void {}", 0},
+		{"overload-duplicate-static", "static helper(): void {} static helper(): void {}", 0},
+		{"overload-duplicate-instance", "helper(): void {} helper(): void {}", 0},
+		{"bodyless-untyped", "static helper()", 0},
+		{"untyped-instance", "helper()", 0},
+		{"overload-optional", "static helper?(): void; static helper(): void {}", 0},
+		{"overload-accessibility", "private static helper(): void; public static helper(): void {}", 0},
+		{"overload-incompatible", "static helper(x: string): string; static helper(x: number): number { return x }", 0},
 	}
 	keys := []string{}
 	for _, shape := range []string{"body", "whole"} {
 		for _, member := range members {
+			if shape == "body" && member.key == "untyped-instance" {
+				continue
+			}
 			keys = append(keys, shape+"-"+member.key)
 		}
 	}
 	keys = append(keys, "native-name", "native-assignment")
 	for _, key := range keys {
-		f.Add([]byte(key))
+		_, memberKey, _ := strings.Cut(key, "-")
+		switch memberKey {
+		case "bodyless-untyped", "untyped-instance", "overload-optional", "overload-accessibility", "overload-incompatible", "overload-duplicate-static", "overload-duplicate-instance":
+			for variant := byte(0); variant < 4; variant++ {
+				f.Add([]byte(key + "\x00" + string([]byte{variant})))
+			}
+		default:
+			f.Add([]byte(key))
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
@@ -88,6 +108,9 @@ func FuzzServiceStaticNativeErrors(f *testing.F) {
 		}
 		if shape == "native" {
 			head, want = "export class S", 0
+		}
+		if strings.HasPrefix(memberKey, "overload-") {
+			want = 2
 		}
 		if variant&1 != 0 {
 			body = member + "; " + body

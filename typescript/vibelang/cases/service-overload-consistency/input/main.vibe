@@ -1,0 +1,30 @@
+service Header0 { static readonly key = "headers/0"; n: number; static helper() }
+service Header1 { static readonly key = "headers/1"; n: number; static helper?(): void; static helper(): void {} }
+service Header2 { static readonly key = "headers/2"; n: number; private static helper(): void; public static helper(): void {} }
+service Header3 { static readonly key = "headers/3"; n: number; static helper(x: string): string; static helper(x: number): number { return x } }
+service Header4: { n: number } { static readonly key = "headers/4"; static helper() }
+service Header5: { n: number } { static readonly key = "headers/5"; static helper?(): void; static helper(): void {} }
+service Header6: { n: number } { static readonly key = "headers/6"; private static helper(): void; public static helper(): void {} }
+service Header7: { n: number } { static readonly key = "headers/7"; static helper(x: string): string; static helper(x: number): number { return x } }
+service Header8: { n: number } { static readonly key = "headers/8"; helper() }
+service Header9 { static readonly key = "headers/9"; n: number; static helper = class { f?(): void; f(): void {} } }
+service Header10 { static readonly key = "headers/10"; n: number; static helper = class { private f(): void; public f(): void {} } }
+service Header11 { static readonly key = "headers/11"; n: number; static helper = class { f(x: string): string; f(x: number): number { return x } } }
+service Header12 { static readonly key = "headers/12"; n: number; static helper(): void { interface Inner { read() } } }
+service Header13: { n: number } { static readonly key = "headers/13"; static helper = class { f?(): void; f(): void {} } }
+service Header14: { n: number } { static readonly key = "headers/14"; static helper = class { private f(): void; public f(): void {} } }
+service Header15: { n: number } { static readonly key = "headers/15"; static helper = class { f(x: string): string; f(x: number): number { return x } } }
+service Header16: { n: number } { static readonly key = "headers/16"; static helper(): void { interface Inner { read() } } }
+service Allowed { static readonly key = "headers/allowed"; read() }
+export class NativeOptional { static f?(): void; static f(): void {} }
+export class NativeAccessibility { private static f(): void; public static f(): void {} }
+export class NativeIncompatible { static f(x: string): string; static f(x: number): number { return x } }
+export interface NativeUntyped { read() }
+export service DuplicateBodyStatic { static readonly key = 'headers/DuplicateBodyStatic'; n: number; static helper(): void {} static helper(): void {} }
+export service DuplicateBodyInstance { static readonly key = 'headers/DuplicateBodyInstance'; n: number; helper(): void {} helper(): void {} }
+export service DuplicateBodyNested { static readonly key = 'headers/DuplicateBodyNested'; n: number; static helper = class { f(): void {} f(): void {} } }
+export service DuplicateWholeStatic: { n: number } { static readonly key = 'headers/DuplicateWholeStatic'; static helper(): void {} static helper(): void {} }
+export service DuplicateWholeInstance: { n: number } { static readonly key = 'headers/DuplicateWholeInstance'; helper(): void {} helper(): void {} }
+export service DuplicateWholeNested: { n: number } { static readonly key = 'headers/DuplicateWholeNested'; static helper = class { f(): void {} f(): void {} } }
+export service AdmittedOverloads { static readonly key = 'headers/AdmittedOverloads'; read(): void; read(): void }
+export class NativeDuplicate { f(): void {} f(): void {} }

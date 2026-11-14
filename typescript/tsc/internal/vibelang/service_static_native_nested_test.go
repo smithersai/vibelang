@@ -57,3 +57,54 @@ func TestServiceStaticNativeNestedErrors(t *testing.T) {
 		}
 	}
 }
+
+func TestServiceRejectedOverloadNameDiagnostic(t *testing.T) {
+	for _, whole := range []bool{false, true} {
+		for _, tc := range []struct {
+			name, members string
+			want          map[int32]int
+		}{
+			{"instance-implementation", "static helper(): void; run(): void {}", map[int32]int{902: 2}},
+			{"static-implementation", "static helper(): void; static run(): void {}", map[int32]int{902: 2}},
+			{"nested-mismatch", "static helper = class { first(): void; second(): void {} }", map[int32]int{902: 1, 2389: 1}},
+		} {
+			t.Run(fmt.Sprintf("whole%v/%s", whole, tc.name), func(t *testing.T) {
+				head := "export service S"
+				if whole {
+					head += ": { n: number }"
+				}
+				serviceCaptureRecoveryErrors(t, head+" { static readonly key = 'overloads/S'; "+tc.members+" }", tc.want)
+			})
+		}
+	}
+}
+
+func TestServiceRejectedOverloadStaticnessDiagnostic(t *testing.T) {
+	for _, whole := range []bool{false, true} {
+		for _, tc := range []struct {
+			name, members string
+			bodyErrors    int
+			nativeCode    int32
+		}{
+			{"static-signature", "static helper(): void; helper(): void {}", 2, 0},
+			{"instance-signature", "helper(): void; static helper(): void {}", 1, 0},
+			{"nested-static-signature", "static helper = class { static f(): void; f(): void {} }", 1, 2387},
+			{"nested-instance-signature", "static helper = class { f(): void; static f(): void {} }", 1, 2388},
+		} {
+			t.Run(fmt.Sprintf("whole%v/%s", whole, tc.name), func(t *testing.T) {
+				head, count := "export service S", tc.bodyErrors
+				if whole {
+					head += ": { n: number }"
+					if tc.name == "instance-signature" {
+						count = 2
+					}
+				}
+				want := map[int32]int{902: count}
+				if tc.nativeCode != 0 {
+					want[tc.nativeCode] = 1
+				}
+				serviceCaptureRecoveryErrors(t, head+" { static readonly key = 'staticness/S'; "+tc.members+" }", want)
+			})
+		}
+	}
+}

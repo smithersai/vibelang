@@ -175,7 +175,9 @@ func coverServiceRejectedMemberErrors(c *checker.Checker, member *ast.Node) {
 		// same-code errors from nested ordinary classes at their own names.
 		coverExactErrorCodes(c, member.Name(), 18006)
 	}
-	coverExactErrorCodes(c, member, 7008, 2391)
+	// A rejected header reports its service rule rather than native class
+	// member typing or overload checks. Nested ordinary declarations keep theirs.
+	coverExactErrorCodes(c, member, 7008, 7010, 2385, 2386, 2387, 2389, 2391, 2393, 2394)
 	// The member's own modifiers belong to its rejected header: a written
 	// shape lowers each instance member with abstract, so an authored private,
 	// public, protected or async modifier reports against that modifier, and
