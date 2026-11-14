@@ -51,6 +51,7 @@ var gatedModules = map[string]string{
 	"Fuzz":           "VIP-70",
 	"FuzzSimulation": "VIP-70",
 	"Test":           "VIP-71",
+	"Patterns":       "VIP-73",
 }
 
 // gatedHelpers are the runtime root's exports that task and workflow
@@ -72,7 +73,7 @@ func experimentalOn(c *checker.Checker, file *ast.SourceFile, feature string) bo
 	return options != nil && options.VibeLang != nil && slices.Contains(options.VibeLang.Experimental, feature)
 }
 
-// builtinsOn is experimentalOn for the built-in set, VIPs 55 to 72.
+// builtinsOn is experimentalOn for the built-in set, VIPs 55 to 73.
 func builtinsOn(c *checker.Checker, file *ast.SourceFile) bool {
 	return experimentalOn(c, file, core.VibeExperimentalBuiltins)
 }
@@ -283,8 +284,14 @@ func moduleFileName(symbol *ast.Symbol) string {
 // gatedSubpath returns the gated module a runtime subpath specifier names, as
 // Durable for vibelang-runtime/experimental/Durable, or "".
 func gatedSubpath(module string) string {
-	if rest, ok := strings.CutPrefix(module, "vibelang-runtime/experimental/"); ok && gatedModules[rest] != "" {
+	rest, ok := strings.CutPrefix(module, "vibelang-runtime/experimental/")
+	switch {
+	case !ok:
+		return ""
+	case gatedModules[rest] != "":
 		return rest
+	case strings.HasPrefix(rest, "patterns/"): // one pattern of Patterns (VIP-73)
+		return "Patterns"
 	}
 	return ""
 }

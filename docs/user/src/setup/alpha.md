@@ -72,3 +72,4 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 | [70](https://vibelang.sh/vips/0070-std-fuzz) | `Experimental.Fuzz`: fuzzing and deterministic fiber simulation | Experimental, needs the opt-in: `Experimental.Fuzz`, `Experimental.FuzzSimulation` |
 | [71](https://vibelang.sh/vips/0071-std-test) | `Experimental.Test`: doubles, assertions and conformance for agentic programs | Experimental, needs the opt-in: `Experimental.Test` |
 | [72](https://vibelang.sh/vips/0072-std-observe) | `Experimental.Otlp`: logs, metrics and traces over OTLP, scrubbed and bounded | Open, no code |
+| [73](https://vibelang.sh/vips/0073-std-patterns) | `Experimental.Patterns` and `PACKAGE.vibe`: the reference engine's patterns and build graph, written in VibeLang | Experimental, needs the opt-in: `Experimental.Patterns` |

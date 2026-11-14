@@ -151,7 +151,7 @@ The pairs are not all the same size of program; each VIP says where its two side
 
 ## What stays out
 
-VIP-43 (proofs), VIP-44 (durable values) and VIP-54 (platform model) are not redone. Generated views, the database package, artifacts and sync are out of scope. The reference engine's CLI, build, control plane, UI, integrations and notifications stay products: where a program needs one of their behaviors, such as answering a human question or listing runs, the matching library call is in a VIP above.
+VIP-43 (proofs), VIP-44 (durable values) and VIP-54 (platform model) are not redone. Generated views, the database package, artifacts and sync are out of scope. [VIP-73](../0073-std-patterns.md) later adds the patterns library as `Experimental.Patterns` and accepts build declarations in `PACKAGE.vibe`. The reference engine's CLI, build system, control plane, UI, integrations and notifications stay products: where a program needs one of their behaviors, such as answering a human question or listing runs, the matching library call is in a VIP above.
 
 ## Sources
 

@@ -34,7 +34,7 @@ After `"type": "module"` is added to a project's `package.json`, `node --import 
 
 ## The experimental opt-in
 
-The opt-in marks which modules are supported in 0.0.13: `Durable`, `Human`, `Eval`, `Scorer`, `Memory`, `Fuzz`, `FuzzSimulation` and `Test` require `"vibe": { "experimental": ["builtins"] }`. It is a support boundary, not a security boundary: the check catches the direct uses below to prevent accidental use, but cannot stop a program that sets out to reach an open-proposal module. In 0.0.13, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in.
+The opt-in marks which modules are supported in 0.0.13: `Durable`, `Human`, `Eval`, `Scorer`, `Memory`, `Fuzz`, `FuzzSimulation`, `Test` and `Patterns` require `"vibe": { "experimental": ["builtins"] }`. It is a support boundary, not a security boundary: the check catches the direct uses below to prevent accidental use, but cannot stop a program that sets out to reach an open-proposal module. In 0.0.13, `EK3013` is guaranteed for the direct forms below; other routes to a gated module's exports can compile without the opt-in.
 
 ### What `EK3013` refuses
 

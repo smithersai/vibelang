@@ -142,6 +142,14 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - After agent setup, edits to `.vibex` files could miss language-server diagnostics and checks after an edit. Agent registrations, hooks and the generated plugin now include JSX VibeLang alongside `.vibe` files; rerun `vibelang agents init` to refresh an existing setup.
 
+### Experimental (opt-in)
+
+These features come from VIP-73, an open proposal. They are not part of the language this release supports, and each can change or be removed in any release. A project opts in with `"vibe": { "experimental": ["builtins"] }` in `tsconfig.json` or `vibe.config.json`; without it, the first use of `Experimental.Patterns` in a file is `EK3013`.
+
+#### Patterns: `Experimental.Patterns` (VIP-73)
+
+- A panel of reviewers or a draft-review-revise loop was a hand-written loop over Effects, because the reference engine's patterns library had no VibeLang form. `Experimental.Patterns.Panel.run` and `Experimental.Patterns.ReviewLoop.run` run both shapes as plain Effect code with inferred types, and bad options fail with `Experimental.Patterns.PatternError`.
+
 ## 0.0.13
 
 0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](alpha.md) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are supported only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).

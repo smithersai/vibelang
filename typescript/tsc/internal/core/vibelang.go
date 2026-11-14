@@ -51,7 +51,7 @@ var VibeLangAdjustableCodes = []string{
 }
 
 // VibeExperimentalBuiltins is the vibe.experimental feature that opts in to
-// what is built from the open built-in set, VIPs 55 to 72: task and workflow
+// what is built from the open built-in set, VIPs 55 to 73: task and workflow
 // declarations and the Experimental.Durable, Human, Eval, Scorer, Memory,
 // Fuzz, FuzzSimulation and Test modules.
 const VibeExperimentalBuiltins = "builtins"

@@ -57,6 +57,8 @@ var gateUses = []gateUse{
 	{"fuzz", "export const f%d = Experimental.Fuzz", true},
 	{"simulation", "export const g%d = Experimental.FuzzSimulation", true},
 	{"test", "export const t%d = Experimental.Test", true},
+	{"patterns", "export const pt%d = Experimental.Patterns.Panel.run", true},
+	{"pattern-subpath", "import * as PS%d from \"vibelang-runtime/experimental/patterns/Panel\"\nexport const ps%[1]d = PS%[1]d.run", true},
 	{"barrel", "import { Durable as D%d } from \"vibelang-runtime/experimental\"\nexport const b%[1]d = D%[1]d", true},
 	{"subpath", "import * as M%d from \"vibelang-runtime/experimental/Memory\"\nexport const p%[1]d = M%[1]d", true},
 	// The gate decides by what a reference resolves to, so every other way to

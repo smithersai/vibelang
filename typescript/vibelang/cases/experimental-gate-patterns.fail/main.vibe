@@ -1,0 +1,4 @@
+// expect: EK3013
+// Experimental.Patterns is built from the open proposal VIP-73, so a project
+// that uses it needs the opt-in like the rest of the open built-in modules.
+export const panel = Experimental.Patterns.Panel.run

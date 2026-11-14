@@ -136,6 +136,17 @@
       "import": "./dist/experimental/NodeStream.js",
       "default": "./dist/experimental/NodeStream.js"
     },
+    "./experimental/Patterns": {
+      "types": "./dist/experimental/Patterns.d.ts",
+      "import": "./dist/experimental/Patterns.js",
+      "default": "./dist/experimental/Patterns.js"
+    },
+    "./experimental/patterns/internal": null,
+    "./experimental/patterns/*": {
+      "types": "./dist/experimental/patterns/*.d.ts",
+      "import": "./dist/experimental/patterns/*.js",
+      "default": "./dist/experimental/patterns/*.js"
+    },
     "./experimental/Process": {
       "types": "./dist/experimental/Process.d.ts",
       "import": "./dist/experimental/Process.js",

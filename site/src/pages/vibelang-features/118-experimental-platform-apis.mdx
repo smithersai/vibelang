@@ -7,7 +7,7 @@ description: "VibeLang adds the few platform APIs that Effect does not have yet.
 
 VibeLang adds the few platform APIs that Effect does not have yet. They are experimental: a release can change or remove them, and each goes when Effect ships the API. Where Effect has the service, the experimental one extends it, so the rest of the service is Effect's own; where Effect has none, the experimental service follows Effect's style. Each addition lives under `Experimental.X` and can be proposed upstream. Native language helpers, including error declarations, keep the experimental namespace out of their bundle graph unless the source uses it.
 
-`Experimental` holds two kinds of module. The platform additions come from VIP-33, are part of the alpha and need no opt-in. The modules built from open proposals (VIPs 55 to 72) are not part of the alpha and compile only with `"vibe": { "experimental": ["builtins"] }`; without it the compiler reports `EK3013`.
+`Experimental` holds two kinds of module. The platform additions come from VIP-33, are part of the alpha and need no opt-in. The modules built from open proposals (VIPs 55 to 73) are not part of the alpha and compile only with `"vibe": { "experimental": ["builtins"] }`; without it the compiler reports `EK3013`.
 
 **Platform additions (VIP-33, core).**
 
@@ -41,6 +41,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
+| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `PatternError` | none; they are pure Effect code and run in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -1405,3 +1406,60 @@ A run's handle sends too: `try handle.send(paid, value)`.
 - An answer approves the workflow's question and nothing else. It grants no file, network or process permission.
 
 **What a parked run waits for.** `Experimental.Durable.waiting(run)` lists the run's open waits, oldest first, read from its journal: `{ reason, name, seq, since, wakeAt?, token?, attempt?, request? }`. A `timer` has its `wakeAt`. An `event` has the `token` that addresses it. An `approval` has its `attempt`, its `token`, the deadline as `wakeAt`, and the question as `request`: `{ kind, prompt, maxAttempts, choices?, jsonSchema? }`, which is what an inbox needs to show it. A wait raced against another stays listed until it closes.
+
+## Orchestration patterns
+
+Agentic programs repeat a few shapes: ask several reviewers and let one decide, or draft, review and revise until a reviewer approves. `Experimental.Patterns` (VIP-73) names them. A pattern is a function: it takes its stages as functions that return Effects and returns one Effect, so it has no syntax of its own and its types are the stages' types. The patterns port the run forms of the reference engine's `@smthrs/patterns`.
+
+`Experimental.Patterns.Panel.run(input, { panelists, moderator, concurrency? })` asks every panelist the same input, then hands the moderator `{ input, opinions }`:
+
+```vibe
+effect function grade(reviewer: string, revision: string) {
+  return { reviewer, lgtm: revision.length > 0 }
+}
+
+export effect function gate(revision: string) {
+  return try Experimental.Patterns.Panel.run(revision, {
+    panelists: {
+      astra: (revision: string) => grade("astra", revision),
+      sol: (revision: string) => grade("sol", revision)
+    },
+    moderator: effect ({ opinions }) => Object.keys(opinions).filter((name) => opinions[name].lgtm).join(" and ")
+  })
+}
+// Run in an effect function: try Console.log(try gate("r1"))
+// Output: astra and sol
+```
+
+`Experimental.Patterns.ReviewLoop.run(input, { produce, review, revise, maxRounds, stall? })` produces an output, then reviews and revises it. Its result is tagged, so `match` tells an approved output from a spent loop:
+
+```vibe
+export effect function releaseNotes() {
+  const result = try Experimental.Patterns.ReviewLoop.run("notes", {
+    maxRounds: 3,
+    produce: effect (goal: string) => `${goal} v1`,
+    review: effect (_output: string, round: number) => ({ approved: round === 2 }),
+    revise: effect ({ round }) => `notes v${round + 1}`
+  })
+  return match (result) {
+    when { _tag: "Approved", let output }: output;
+    default: `not approved: ${result._tag}`;
+  }
+}
+// Run in an effect function: try Console.log(try releaseNotes())
+// Output: notes v2
+```
+
+The patterns keep these rules:
+
+| Rule | Consequence |
+| --- | --- |
+| Opinions keep declaration order | The moderator's `opinions` record lists the panelists in the order they were written, whatever order they finish in. |
+| `concurrency` bounds a panel | At most that many panelists run at once. Without it they all start together. One panelist's failure fails the panel and interrupts the others. |
+| A review approves with `true`, `"approved"`, or an object whose own `approved` or `accepted` property is `true` | Any other review asks for a revision. |
+| `maxRounds` counts reviews | The last round reviews and never revises. A spent loop gives `{ _tag: "Exhausted", output, review }` with the last review. |
+| `stall: { rounds, on? }` ends a loop that repeats itself | When the reviewed output is the same `rounds` times in a row, the loop gives `{ _tag: "Stalled", output, review, stalled }`; with `on: "escalate"` it fails with a `PatternError` whose `code` is `stalled`. Outputs are compared by their JSON text with object keys sorted; `stall.signals` chooses what to compare. |
+| Bad options fail with `Experimental.Patterns.PatternError` | An empty panel, a `concurrency` or `maxRounds` that is not a positive whole number, and stall `rounds` under 2 fail with `code` `invalid_decorator`. The failure is in the error channel, so `catch` claims it. |
+| Options are read at the call | Changing the options object afterwards does not change a run that has not started. |
+
+A pattern adds no durability of its own. A stage that calls a `task` inside a `workflow` is a durable step; a stage that is an ordinary Effect is not.

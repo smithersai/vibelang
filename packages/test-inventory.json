@@ -296,6 +296,7 @@
     "runtime/tests/experimental-node-http-server-property.test.ts",
     "runtime/tests/experimental-node-http-server.test.ts",
     "runtime/tests/experimental-node-stream-from-web.test.ts",
+    "runtime/tests/experimental-patterns.test.ts",
     "runtime/tests/experimental-platform-node-imports.test.ts",
     "runtime/tests/experimental-process-current-uid.test.ts",
     "runtime/tests/experimental-process-home-directory.test.ts",

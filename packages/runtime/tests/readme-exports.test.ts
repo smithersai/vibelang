@@ -40,14 +40,14 @@ test("README never tells a user to run vibelang --fix", () => {
 
 // The README is the npm package page, frozen with each release. It must tell a
 // reader which exports are the core alpha and which come from open proposals
-// (VIPs 55 to 72, docs/design/vips/README.md), and how to opt in to the second.
+// (VIPs 55 to 73, docs/design/vips/README.md), and how to opt in to the second.
 const section = (heading: string) => {
   const start = readme.indexOf("\n" + heading + "\n")
   assert.ok(start >= 0, heading)
   const next = readme.slice(start + heading.length + 2).search(/^#{1,3} /m)
   return readme.slice(start, next < 0 ? undefined : start + heading.length + 2 + next)
 }
-const openModules = ["Human", "Fuzz", "FuzzSimulation", "Durable", "Eval", "Test", "Memory", "Scorer"]
+const openModules = ["Human", "Fuzz", "FuzzSimulation", "Durable", "Eval", "Test", "Memory", "Scorer", "Patterns"]
 
 test("README separates the core platform modules from the open-proposal modules", () => {
   const core = section("## Experimental platform APIs")

@@ -18,11 +18,12 @@ Effect redesign. VIP-35 remains open and is outside the first release.
 ## What is in the alpha
 
 VibeLang 0.0.13 is the alpha: the core language of the 33 accepted VIPs
-numbered 1 to 41. Exports built from the open proposals VIPs 55 to 72 are
+numbered 1 to 41. Exports built from the open proposals VIPs 55 to 73 are
 experimental and not part of the alpha. They are the `task` and `workflow`
 helpers (`$task`, `$workflow` and the other exports whose decision is VIP-55),
 and the [open-proposal modules](#open-proposal-modules-opt-in) `Human`,
-`Fuzz`, `FuzzSimulation`, `Durable`, `Eval`, `Test`, `Memory` and `Scorer`.
+`Fuzz`, `FuzzSimulation`, `Durable`, `Eval`, `Test`, `Memory`, `Scorer` and
+`Patterns`.
 `.vibe` code that uses one compiles only in a project that opts in, in
 `tsconfig.json`, `jsconfig.json` or `vibe.config.json`:
 
@@ -367,7 +368,7 @@ The remaining individual subpaths are:
 
 ### Open-proposal modules (opt-in)
 
-These modules are built from open proposals (VIPs 56, 60, 66, 69, 70 and 71). They are
+These modules are built from open proposals (VIPs 56, 60, 66, 69, 70, 71 and 73). They are
 experimental, not part of the alpha, and `.vibe` code that names one, through
 `Experimental` or its subpath, needs the [opt-in](#what-is-in-the-alpha).
 
@@ -381,6 +382,12 @@ experimental, not part of the alpha, and `.vibe` code that names one, through
 | `vibelang-runtime/experimental/Fuzz` | Feedback-guided fuzzing over a Schema or an Effect `Arbitrary`: shrunk, replayable findings and a corpus store |
 | `vibelang-runtime/experimental/FuzzSimulation` | An execution mode for `Fuzz` that makes fiber scheduling and virtual time part of the input |
 | `vibelang-runtime/experimental/Test` | Test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording, `decisions`, the same for a `DecisionModel`, `record`, which records what the file is missing, `modelServer`, the recording served over HTTP, `durable` and `restartable` engines with `crash`, `host`, a machine of fixed files and scripted commands, `journal` and `divergence` assertions over a durable run, and `conformance.engine()`, nine cases that certify a workflow engine |
+| `vibelang-runtime/experimental/Patterns` | Orchestration patterns as plain Effect code: `Panel.run`, `ReviewLoop.run`, `PatternError` |
+
+Each pattern of `vibelang-runtime/experimental/Patterns` also has its own subpath,
+`vibelang-runtime/experimental/patterns/*`, such as
+`vibelang-runtime/experimental/patterns/Panel`, so a declaration file can name a
+pattern's result type. `vibelang-runtime/experimental/patterns/internal` is closed.
 
 ### Browser conformance tests
 

@@ -1,0 +1,5 @@
+// expect: EK3013
+// Each pattern of Experimental.Patterns has its own subpath, and importing
+// one needs the opt-in as the module itself does (VIP-73).
+import * as Panel from "vibelang-runtime/experimental/patterns/Panel"
+export const run = Panel.run

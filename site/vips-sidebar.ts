@@ -287,6 +287,10 @@ export const vipsSidebar = [
           {
             "text": "72. Experimental.Otlp: logs, metrics and traces over OTLP",
             "link": "/vips/0072-std-observe"
+          },
+          {
+            "text": "73. Experimental.Patterns and PACKAGE.vibe: the reference engine's patterns and build graph, written in VibeLang",
+            "link": "/vips/0073-std-patterns"
           }
         ]
       }

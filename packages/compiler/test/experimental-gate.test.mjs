@@ -1,4 +1,4 @@
-// VIP-30, clarified 2026-11-11: the built-in set (open VIPs 55 to 72) compiles
+// VIP-30, clarified 2026-11-11: the built-in set (open VIPs 55 to 73) compiles
 // only with "vibe": { "experimental": ["builtins"] }. Every loader reads the
 // opt-in from the config the compiler reads, so the Node register hook, the Bun
 // preload and the Vite plugin agree with tsc on the same project, and an edit

@@ -1,0 +1,66 @@
+// expect-result: {"verdict":"astra,sol,fable,opus: 4 of 4","approved":{"_tag":"Approved","output":"notes v2"},"spent":"Exhausted after review 2","stalled":"output x2","empty":"invalid_decorator","rounds":"invalid_decorator"}
+// Experimental.Patterns (VIP-73) runs Smithers' orchestration patterns as
+// plain Effect code with no syntax of their own. Panel.run asks every
+// panelist the same input and hands the moderator the opinions keyed by name
+// in declaration order. ReviewLoop.run produces, reviews and revises until a
+// review approves or the rounds are spent, and its result is tagged. Bad
+// options fail with PatternError, which a catch claims.
+effect function grade(reviewer: string, revision: string) {
+  return { reviewer, lgtm: revision.length > 0 }
+}
+
+effect function gate(revision: string) {
+  return try Experimental.Patterns.Panel.run(revision, {
+    panelists: {
+      astra: (revision: string) => grade("astra", revision),
+      sol: (revision: string) => grade("sol", revision),
+      fable: (revision: string) => grade("fable", revision),
+      opus: (revision: string) => grade("opus", revision)
+    },
+    moderator: effect ({ opinions }) => {
+      const names = Object.keys(opinions)
+      const yes = Object.values(opinions).filter((opinion) => opinion.lgtm).length
+      return `${names.join(",")}: ${yes} of ${names.length}`
+    },
+    concurrency: 2
+  })
+}
+
+const nobody: Record<string, (revision: string) => string!!> = {}
+
+effect function notes(approveAt: number, maxRounds: number) {
+  return try Experimental.Patterns.ReviewLoop.run("notes", {
+    maxRounds,
+    produce: effect (goal: string) => `${goal} v1`,
+    review: effect (_output: string, round: number) => ({ approved: round >= approveAt, round }),
+    revise: effect ({ round }) => `notes v${round + 1}`
+  })
+}
+
+effect function stuck() {
+  const result = try Experimental.Patterns.ReviewLoop.run("draft", {
+    maxRounds: 9,
+    produce: effect (goal: string) => goal,
+    review: effect () => false,
+    revise: effect ({ output }) => output,
+    stall: { rounds: 2 }
+  })
+  return match (result) {
+    when { _tag: "Stalled", let stalled }: `${stalled.signal} x${stalled.rounds}`;
+    default: result._tag;
+  }
+}
+
+export effect function main() {
+  const verdict = try gate("r1")
+  const approved = try notes(2, 3)
+  const spent = match (try notes(5, 2)) {
+    when { _tag: "Exhausted", let review }: `Exhausted after review ${review.round}`;
+    default: "not exhausted";
+  }
+  const stalled = try stuck()
+  const empty = Experimental.Patterns.Panel.run("r1", { panelists: nobody, moderator: effect () => "none" })
+    catch (error) => error.code
+  const rounds = notes(1, 0) catch (error) => error.code
+  return { verdict, approved, spent, stalled, empty, rounds }
+}
