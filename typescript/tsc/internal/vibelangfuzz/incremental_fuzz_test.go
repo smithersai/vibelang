@@ -30,7 +30,7 @@ import (
 // big-endian byte offset into that file modulo its length.
 func FuzzIncremental(f *testing.F) {
 	startShortBudget(f)
-	seeds := append(toolsSample(CaseSeeds(), 20, 400, func(s Seed) bool { return strings.HasPrefix(s.Name, "tsforms-") }), toolsSample(SnippetSeeds(), 12, 300, nil)...)
+	seeds := append(toolsSample("FuzzIncremental", CaseSeeds(), 0, 11, func(s Seed) bool { return strings.HasPrefix(s.Name, "tsforms-") }), toolsSample("FuzzIncremental", SnippetSeeds(), 88, 4, nil)...)
 	for _, seed := range seeds {
 		main := toolsMainFile(seed.Files)
 		if main == "" {
@@ -41,7 +41,9 @@ func FuzzIncremental(f *testing.F) {
 		for i := 0; i+1 < len(offsets); i += 2 {
 			edits = append(edits, byte(i/2), byte(i*37+1), offsets[i], offsets[i+1])
 		}
-		f.Add(Archive(seed.Files), edits)
+		archive := Archive(seed.Files)
+		seedNames.LoadOrStore(archive, seed.Name)
+		f.Add(archive, edits)
 	}
 	// Chapter 7, The editor: an imported .vibe dependency must invalidate
 	// its importer's snapshot when edited, just like the open main file.
@@ -63,6 +65,7 @@ func FuzzIncremental(f *testing.F) {
 	w := NewWorkspace(f)
 	sessions := newToolsSessions(f, w)
 	f.Fuzz(func(t *testing.T, archive string, edits []byte) {
+		toolsNameSeed(t, archive)
 		toolsGuard(t, "FuzzIncremental", func() {
 			files := toolsUnarchive(archive)
 			for name, text := range files {

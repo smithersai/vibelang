@@ -62,16 +62,12 @@ var ParitySeeds = sync.OnceValue(func() []string {
 	var seeds []string
 	inputs := parityInputs()
 	if testing.Short() && !toolsFuzzing() {
-		n := 32
-		for _, seed := range inputs {
-			if seed.Pending != "" {
-				n++
-			}
-		}
 		// These projects are the cases' explicit TypeScript twins, rather
 		// than helper-only fragments left after dropping .vibe files. Keep
 		// every twin in the shared parity/declaration-identity short sample.
-		inputs = toolsSample(inputs, n, 0, func(seed Seed) bool {
+		// The twins and the pending witnesses already outnumber the 32
+		// projects the short run once sampled, so it samples no other.
+		inputs = toolsSample("ParitySeeds", inputs, 0, 1, func(seed Seed) bool {
 			return seed.Pending != "" || strings.HasSuffix(seed.Name, " typescript/")
 		})
 	}

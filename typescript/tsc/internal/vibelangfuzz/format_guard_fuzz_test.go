@@ -30,15 +30,17 @@ func FuzzFormatGuard(f *testing.F) {
 	startShortBudget(f)
 	formatGuardChapter(f)
 	seen := map[string]bool{}
-	for _, seed := range toolsSample(CaseSeeds(), 200, 0, nil) {
+	for _, seed := range toolsSample("FuzzFormatGuard", CaseSeeds(), 20, 1, nil) {
 		for _, name := range toolsVibeFiles(seed.Files) {
 			if text := seed.Files[name]; !seen[text] {
 				seen[text] = true
+				seedNames.LoadOrStore(text, seed.Name+": "+name)
 				f.Add(text, []byte{0xff, 0xff, 0xff, 0xff})
 			}
 		}
 	}
 	f.Fuzz(func(t *testing.T, source string, mask []byte) {
+		toolsNameSeed(t, source)
 		if len(source) > 24<<10 || toolsSyntaxError("main.vibe", source) != "" {
 			return
 		}

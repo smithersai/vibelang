@@ -80,7 +80,7 @@ func FuzzCurrentDiagnosticPolicy(f *testing.F) {
 }
 
 // Keep the original acceptance witness selected regardless of the short
-// sampler's stride, so unrelated case additions cannot hide this regression.
+// sample, so a change to the sampler cannot hide this regression.
 func TestCompileCurrentDiagnosticPolicy(t *testing.T) {
 	for _, seed := range CaseSeeds() {
 		if seed.Name == "vibe-severities" {

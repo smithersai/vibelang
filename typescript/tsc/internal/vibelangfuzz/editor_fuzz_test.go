@@ -43,17 +43,20 @@ func FuzzEditor(f *testing.F) {
 	for _, source := range editorMatchExtractorSpanSources() {
 		f.Add(Archive(map[string]string{"main.vibe": source}), editorMatchExtractorSpanOffsets(source))
 	}
-	seeds := append(toolsSample(CaseSeeds(), 22, 400, func(s Seed) bool { return strings.HasPrefix(s.Name, "tsforms-") }), toolsSample(SnippetSeeds(), 16, 300, nil)...)
+	seeds := append(toolsSample("FuzzEditor", CaseSeeds(), 0, 11, func(s Seed) bool { return strings.HasPrefix(s.Name, "tsforms-") }), toolsSample("FuzzEditor", SnippetSeeds(), 64, 4, nil)...)
 	for _, seed := range seeds {
 		main := toolsMainFile(seed.Files)
 		if main == "" {
 			continue
 		}
-		f.Add(Archive(seed.Files), toolsInterestingOffsets(seed.Files[main]))
+		archive := Archive(seed.Files)
+		seedNames.LoadOrStore(archive, seed.Name)
+		f.Add(archive, toolsInterestingOffsets(seed.Files[main]))
 	}
 	w := NewWorkspace(f)
 	sessions := newToolsSessions(f, w)
 	f.Fuzz(func(t *testing.T, archive string, offsets []byte) {
+		toolsNameSeed(t, archive)
 		toolsGuard(t, "FuzzEditor", func() {
 			files := toolsUnarchive(archive)
 			for name, text := range files {

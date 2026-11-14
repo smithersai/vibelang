@@ -15,8 +15,8 @@ func TestToolsSampleModes(t *testing.T) {
 		name, all, fuzz string
 		want            int
 	}{
-		{"short", "", "", 2},
-		{"campaign", "", "FuzzParse", 4},
+		{"short", "", "", 10},
+		{"campaign", "", "FuzzParse", 0},
 		{"all-seeds", "all", "", 10},
 		{"all-seeds-campaign", "all", "FuzzParse", 10},
 	} {
@@ -28,7 +28,7 @@ func TestToolsSampleModes(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = fuzz.Value.Set(old) })
-			got := toolsSample(seeds, 2, 4, nil)
+			got := toolsSample("FuzzModes", seeds, 1, 0, nil)
 			if len(got) != test.want {
 				t.Fatalf("selected %d of %d seeds, want %d", len(got), len(seeds), test.want)
 			}

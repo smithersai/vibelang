@@ -148,23 +148,29 @@ func sourceMapSeeds() []sourceMapSeed {
 			programs = append(programs, archive)
 		}
 	}
-	for _, seed := range shortWitnessSeeds(CaseSeeds(), sourceMapShortSeeds) {
+	for _, seed := range shortWitnessSeeds("FuzzSourceMapTokens", CaseSeeds(), sourceMapShortCases) {
 		archive := Archive(seed.Files)
 		seedNames.Store(archive, "case "+seed.Name)
 		programs = append(programs, archive)
 	}
-	for _, seed := range shortWitnessSeeds(SnippetSeeds(), sourceMapShortSeeds) {
+	for _, seed := range shortWitnessSeeds("FuzzSourceMapTokens", SnippetSeeds(), sourceMapShortSnippets) {
 		archive := Archive(seed.Files)
 		seedNames.Store(archive, "snippet "+seed.Name)
 		programs = append(programs, archive)
 	}
+	// The short run samples programs and gives each one variant, both chosen
+	// by the program's name, so adding a case or construct moves no other
+	// program's choice.
 	if testing.Short() {
-		programs = sampleStrings(programs, sourceMapShortPrograms)
+		programs = slices.DeleteFunc(programs, func(archive string) bool {
+			return !toolsSampled("FuzzSourceMapTokens", SeedName(archive), sourceMapShortPrograms)
+		})
 	}
 	var seeds []sourceMapSeed
-	for i, archive := range programs {
+	for _, archive := range programs {
 		if testing.Short() {
-			seeds = append(seeds, sourceMapSeed{archive, sourceMapVariants[i%len(sourceMapVariants)].key})
+			variant := toolsNameHash("FuzzSourceMapTokens variant", SeedName(archive)) % uint64(len(sourceMapVariants))
+			seeds = append(seeds, sourceMapSeed{archive, sourceMapVariants[variant].key})
 			continue
 		}
 		for _, variant := range sourceMapVariants {
@@ -175,22 +181,12 @@ func sourceMapSeeds() []sourceMapSeed {
 }
 
 const (
-	sourceMapShortSeeds    = 40
-	sourceMapShortPrograms = 108
+	// The short run keeps about one ordinary case in 100 and one snippet in
+	// 26, then one program in 9 of those and the constructs.
+	sourceMapShortCases    = 100
+	sourceMapShortSnippets = 26
+	sourceMapShortPrograms = 9
 )
-
-// sampleStrings takes n evenly spaced elements, so a run stays reproducible
-// when entries are added elsewhere in the list.
-func sampleStrings(from []string, n int) []string {
-	if len(from) <= n {
-		return from
-	}
-	sampled := make([]string, 0, n)
-	for i := range n {
-		sampled = append(sampled, from[i*len(from)/n])
-	}
-	return sampled
-}
 
 func checkSourceMapTokens(t *testing.T, w *Workspace, archive, variantKey string) {
 	variant, ok := sourceMapVariantOf(variantKey)

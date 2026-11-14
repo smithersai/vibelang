@@ -716,8 +716,8 @@ sh ../../scripts/remote.sh sh internal/vibelangfuzz/campaign.sh 5m
 
 For a complete generated-seed run, set `VIBELANG_FUZZ_SEEDS=all`. This
 explicit mode bypasses both the short-run sample and the ordinary campaign
-cap in `toolsSample`. Ordinary campaigns without that flag keep their
-existing caps; saved corpus files and probes run independently of these
+sample in `toolsSample`. Ordinary campaigns without that flag keep their
+sampling rates; saved corpus files and probes run independently of these
 generated-seed limits.
 
 A new crasher lands in `testdata/fuzz/<Target>/`. The fuzz engine discards its workers' standard error, so a worker that dies of a hang panic or a fatal runtime error reports only `fuzzing process hung or terminated unexpectedly: exit status 2`; `campaign.sh` sets `VIBELANG_FUZZ_WORKER_LOG`, and each worker appends its standard error to `<Target>.workers.log` beside the target's log. The first nightly campaign (2026-10-29) lost two such reasons: the spec generator nested `do` blocks without bound, and 3.5 kB inputs wrote Effect readings of 2 and 3 MB whose compiles outlasted the 30-second hang limit. Minimize it, keep it there, and add its key and its `corpus:` line to `testdata/pending/<area>.txt` with the decision it breaks. Delete both lines in the change that fixes the compiler. `VIBELANG_FUZZ_PENDING=1` puts pending generator features back into campaigns; `VIBELANG_FUZZ_HANG=60s` raises the hang limit on a loaded host. The parity and declaration-identity targets and the stock consumer need the stock TypeScript that `packages/ts-mapper` pins, installed as the parity target's skip message says.
@@ -766,13 +766,28 @@ terminals are retained and listed explicitly by `grammarLab.describe`.
 The loader reads the specification's contextual keyword and disambiguation
 rules separately, allowing searches to compare productions with prose.
 
+### Seed samples by name
+
+A target that runs part of the cases or snippets keeps a seed when the
+SHA-256 of the target's name and the seed's name falls under a fixed
+threshold, about one seed in every `n` (`toolsSample`). Membership depends on
+the seed's name only, never on its place in the list, so adding or removing a
+case or a documentation snippet changes no other seed's membership, and a gate
+that runs a target on two trees whose case lists differ checks the same
+programs on both. With the evenly spaced sample this replaced, one added name
+among 4,000 moved 59 other seeds in or out, and one removed name moved 77
+(`TestToolsSampleStable`). `FuzzSourceMapTokens` also picks each short-run
+program's variant by its name. Go still numbers the seeds a target adds
+(`seed#N`) by their place, so a failing seed logs the case or snippet it came
+from.
+
 ### Short compile seed selection
 
 With c9's approval, `FuzzCompile` retains every disk corpus input and generated
-pending witness, plus a fixed-stride sample of `32` ordinary acceptance cases
-and `16` snippets. Probes remain unchanged. Campaigns, non-short runs and
-`VIBELANG_FUZZ_SEEDS=all` keep the complete generated lists; `smoke.sh` still
-compiles every case. Other targets retain their existing seed selection.
+pending witness, plus about one ordinary acceptance case in `120` and one
+snippet in `64`, sampled by name. Probes remain unchanged. Campaigns, non-short
+runs and `VIBELANG_FUZZ_SEEDS=all` keep the complete generated lists; `smoke.sh`
+still compiles every case. Other targets retain their existing seed selection.
 
 ### Short target CPU guard
 
@@ -793,8 +808,9 @@ for budget review; usage above `240` fails the test. The suite owner chose this
 regression threshold to tolerate contention. Campaigns, non-short runs and
 `VIBELANG_FUZZ_SEEDS=all` keep their complete inputs and bypass the short guard.
 
-`FuzzTypeScriptParity` and `FuzzDeclarationIdentity` share `ParitySeeds`, sampling `32` distinct TypeScript projects after filtering and deduplication with every
-generated pending witness and every explicit `typescript/` twin retained. `FuzzFix` samples `16` cases instead of
+`FuzzTypeScriptParity` and `FuzzDeclarationIdentity` share `ParitySeeds`. Of the distinct TypeScript projects left after filtering and
+deduplication, the short run keeps every generated pending witness and every
+explicit `typescript/` twin. `FuzzFix` samples `16` cases instead of
 `22`, retaining every `tsforms-*` case and generated pending witness even
 when these exceed the sample size. Disk corpus files and probes are unchanged.
 Campaign caps remain unchanged; full-seed nightly runs retain every seed.
@@ -863,7 +879,7 @@ With `VIBELANG_FUZZ_BUDGET_LOG` set, declaration checks also write `.declaration
 
 An input with a `.vibe` error is skipped. The configuration must actually include a renamed source, and the stock project must be valid: a missing prelude name such as an unimported `pipe` otherwise produces stock error-recovery `any`, which is not an API contract. A regression also rejects mutations introducing VibeLang-only syntax in the stock input.
 
-The shared `ParitySeeds` short selection now keeps all explicit `typescript/` twins, plus its remaining fixed-stride sample and every pending witness. The previous stride omitted eight twins and admitted only 10/33 inputs. The admission test uses the target's actual compilation and stock-validation path and fails below one half; it admits 26/36 short inputs (72.2%) on main a0c9ef92 with the four saved witnesses. All full-seed runs and campaigns retain the complete parity list.
+The shared `ParitySeeds` short selection now keeps all explicit `typescript/` twins and every pending witness, which together already outnumber the `32` projects it once sampled, so it samples no other project. The previous stride omitted eight twins and admitted only 10/33 inputs. The admission test uses the target's actual compilation and stock-validation path and fails below one half; it admits 26/36 short inputs (72.2%) on main a0c9ef92 with the four saved witnesses. All full-seed runs and campaigns retain the complete parity list.
 
 Unresolved saved compiler witnesses are listed in `testdata/pending/compile.txt`; each quotes Chapter 1's “Declarations are exactly what idiomatic Effect TypeScript would declare.” At discovery, the opencode witness recorded lane `migfix-opencode` and queued fix `60e2658dca5a`.
 

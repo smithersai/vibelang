@@ -74,10 +74,11 @@ func FuzzFormat(f *testing.F) {
 	}
 
 	seen := map[string]bool{}
-	for _, seed := range toolsSample(append(CaseSeeds(), SnippetSeeds()...), 120, 0, nil) {
+	for _, seed := range toolsSample("FuzzFormat", append(CaseSeeds(), SnippetSeeds()...), 40, 1, nil) {
 		for _, name := range toolsVibeFiles(seed.Files) {
 			if text := seed.Files[name]; !seen[text] {
 				seen[text] = true
+				seedNames.LoadOrStore(text, seed.Name+": "+name)
 				f.Add(text)
 			}
 		}
@@ -100,6 +101,7 @@ func FuzzFormat(f *testing.F) {
 	w := NewWorkspace(f)
 	formatter := toolsFormatter(f)
 	f.Fuzz(func(t *testing.T, source string) {
+		toolsNameSeed(t, source)
 		source = formatModuleBodySyntaxSource(source)
 		source = formatNamedModuleBodySyntaxSource(source)
 		source = formatUnnamedModuleSource(formatServiceSeparatorSource(formatLabelSource(formatReturnTypesSource(formatIsLineSource(formatFoldkitSource(source))))))

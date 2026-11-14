@@ -1,9 +1,12 @@
 package vibelangfuzz
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"path"
@@ -43,37 +46,65 @@ func toolsFuzzing() bool {
 	return f != nil && f.Value.String() != ""
 }
 
-// toolsSample returns the seeds that must run plus an evenly spaced sample
-// of the rest: at most n in all for the seed run, and at most campaign during
-// a campaign, where 0 means every seed. A slow target bounds its campaign's
-// seeds so that gathering their baseline coverage leaves time to fuzz.
-// VIBELANG_FUZZ_SEEDS=all bypasses both limits.
-func toolsSample(seeds []Seed, n, campaign int, must func(Seed) bool) []Seed {
+// toolsSample returns the seeds that must run plus a sample of the rest:
+// about one seed in every `every` for the seed run, and one in every
+// `campaign` during a campaign, where 1 keeps every seed and 0 none but the
+// seeds that must run. A slow target samples its campaign's seeds so that
+// gathering their baseline coverage leaves time to fuzz.
+// VIBELANG_FUZZ_SEEDS=all keeps every seed.
+//
+// Whether a seed is in the sample depends only on its name and the salt
+// (toolsSampled), never on its place in the list, so adding or removing a
+// case or snippet changes no other seed's membership: a gate that compares a
+// target on two trees whose case lists differ compares the same programs.
+// The salt, the target's name, gives each target its own sample.
+func toolsSample(salt string, seeds []Seed, every, campaign int, must func(Seed) bool) []Seed {
 	if os.Getenv("VIBELANG_FUZZ_SEEDS") == "all" {
 		return seeds
 	}
 	if toolsFuzzing() {
-		if campaign == 0 {
-			return seeds
-		}
-		n = campaign
+		every = campaign
 	}
-	var kept, rest []Seed
+	var kept []Seed
 	for _, seed := range seeds {
-		if must != nil && must(seed) {
+		if must != nil && must(seed) || toolsSampled(salt, seed.Name, every) {
 			kept = append(kept, seed)
-		} else {
-			rest = append(rest, seed)
-		}
-	}
-	if room := n - len(kept); room > 0 && len(rest) > 0 {
-		stride := max(1, len(rest)/room)
-		for i := 0; i < len(rest) && room > 0; i += stride {
-			kept = append(kept, rest[i])
-			room--
 		}
 	}
 	return kept
+}
+
+// toolsSampled reports whether the seed called name is in a one-in-every
+// sample: whether its toolsNameHash falls under a fixed threshold,
+// 2^64/every. Every <= 0 samples nothing and 1 everything.
+func toolsSampled(salt, name string, every int) bool {
+	if every <= 1 {
+		return every == 1
+	}
+	return toolsNameHash(salt, name) < math.MaxUint64/uint64(every)
+}
+
+// toolsNameHash is the first eight bytes of the SHA-256 of salt and name, read
+// as a number: a choice for a seed that its place in a list cannot move.
+func toolsNameHash(salt, name string) uint64 {
+	sum := sha256.Sum256([]byte(salt + "\x00" + name))
+	return binary.BigEndian.Uint64(sum[:8])
+}
+
+// toolsNameSeed names, when a seed-run input fails, the case or snippet the
+// input came from (SeedName). Go numbers the seeds a target adds (seed#N) by
+// their place, and that place moves whenever a sampled seed before it is added
+// or removed.
+func toolsNameSeed(t *testing.T, input string) {
+	name := SeedName(input)
+	if name == "" {
+		return
+	}
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Logf("%s is %s", path.Base(t.Name()), name)
+		}
+	})
 }
 
 // toolsSourceFiles returns a project's .vibe files in name order.

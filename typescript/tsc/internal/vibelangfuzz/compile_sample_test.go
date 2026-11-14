@@ -2,6 +2,7 @@ package vibelangfuzz
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -16,21 +17,21 @@ func TestCompileSeedSample(t *testing.T) {
 		seeds = append(seeds, Seed{Name: fmt.Sprint(i)})
 	}
 	seeds[97].Pending = "witness"
-	got := shortWitnessSeeds(seeds, 32)
-	if len(got) != 33 {
-		t.Fatalf("got %d seeds, want 32 ordinary plus pending", len(got))
-	}
-	if got[0].Name != "97" {
+	got := shortWitnessSeeds("FuzzCompileSample", seeds, 3)
+	if !slices.ContainsFunc(got, func(seed Seed) bool { return seed.Name == "97" }) {
 		t.Fatal("pending witness lost")
 	}
-	again := shortWitnessSeeds(seeds, 32)
-	for i := range got {
-		if got[i].Name != again[i].Name {
-			t.Fatal("sample changed")
+	for _, seed := range seeds {
+		want := seed.Name == "97" || toolsSampled("FuzzCompileSample", seed.Name, 3)
+		if slices.ContainsFunc(got, func(s Seed) bool { return s.Name == seed.Name }) != want {
+			t.Fatalf("seed %s: sampled %v, want %v", seed.Name, !want, want)
 		}
 	}
+	if len(got) < 15 || len(got) > 55 {
+		t.Fatalf("one in 3 of 99 seeds plus a witness sampled %d", len(got))
+	}
 	t.Setenv("VIBELANG_FUZZ_SEEDS", "all")
-	if len(shortWitnessSeeds(seeds, 32)) != len(seeds) {
+	if len(shortWitnessSeeds("FuzzCompileSample", seeds, 3)) != len(seeds) {
 		t.Fatal("all mode sampled")
 	}
 }
@@ -55,8 +56,12 @@ func TestCompileSeedsShortSelection(t *testing.T) {
 			pending++
 		}
 	}
-	if cases > 32+pending || snippets > 16 {
-		t.Fatalf("short run has %d case and %d snippet seeds; want <=%d and <=16", cases, snippets, 32+pending)
+	// One in 120 ordinary cases and one in 64 snippets, with room for the
+	// spread of a hash sample.
+	caseLimit := pending + 2*(len(CaseSeeds())-pending)/120 + 8
+	snippetLimit := 2*len(SnippetSeeds())/64 + 8
+	if cases > caseLimit || snippets > snippetLimit {
+		t.Fatalf("short run has %d case and %d snippet seeds; want <=%d and <=%d", cases, snippets, caseLimit, snippetLimit)
 	}
 }
 

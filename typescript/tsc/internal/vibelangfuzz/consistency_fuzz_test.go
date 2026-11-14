@@ -53,16 +53,19 @@ const consistencyTarget = "FuzzEditorConsistency"
 // symbols probed, each the first one referenced at or after an offset.
 func FuzzEditorConsistency(f *testing.F) {
 	startShortBudget(f)
-	seeds := append(toolsSample(CaseSeeds(), 10, 300, nil), toolsSample(SnippetSeeds(), 8, 200, nil)...)
+	seeds := append(toolsSample(consistencyTarget, CaseSeeds(), 400, 13, nil), toolsSample(consistencyTarget, SnippetSeeds(), 132, 5, nil)...)
 	for _, seed := range seeds {
 		main := toolsMainFile(seed.Files)
 		if main == "" {
 			continue
 		}
-		f.Add(Archive(seed.Files), toolsInterestingOffsets(seed.Files[main]))
+		archive := Archive(seed.Files)
+		seedNames.LoadOrStore(archive, seed.Name)
+		f.Add(archive, toolsInterestingOffsets(seed.Files[main]))
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, archive string, offsets []byte) {
+		toolsNameSeed(t, archive)
 		toolsGuard(t, consistencyTarget, func() {
 			files := toolsUnarchive(archive)
 			for name, text := range files {

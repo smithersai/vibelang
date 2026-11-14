@@ -59,10 +59,10 @@ var CompileSeeds = sync.OnceValue(func() []string {
 	for i, seed := range literalMatchSeeds() {
 		add(seed, fmt.Sprintf("literal match neighbourhood %d", i))
 	}
-	for _, seed := range shortWitnessSeeds(sourceMapBlockSeeds(), 8) {
+	for _, seed := range shortWitnessSeeds("FuzzCompile", sourceMapBlockSeeds(), 9) {
 		add(Archive(seed.Files), seed.Name)
 	}
-	for _, seed := range shortWitnessSeeds(CaseSeeds(), 32) {
+	for _, seed := range shortWitnessSeeds("FuzzCompile", CaseSeeds(), 120) {
 		files := map[string]string{}
 		for name, text := range seed.Files {
 			files[name] = text
@@ -72,24 +72,21 @@ var CompileSeeds = sync.OnceValue(func() []string {
 		}
 		add(Archive(files), "case "+seed.Name)
 	}
-	for _, seed := range shortWitnessSeeds(SnippetSeeds(), 16) {
+	for _, seed := range shortWitnessSeeds("FuzzCompile", SnippetSeeds(), 64) {
 		add(Archive(seed.Files), "snippet "+seed.Name)
 	}
 	return seeds
 })
 
-// shortWitnessSeeds keeps every pending witness; disk corpus is loaded independently.
-// Campaigns and all-seed runs retain the complete generated lists.
-func shortWitnessSeeds(seeds []Seed, n int) []Seed {
+// shortWitnessSeeds keeps every pending witness plus about one seed in every
+// `every` of the rest, sampled by name (toolsSample); disk corpus is loaded
+// independently. Campaigns, non-short runs and all-seed runs retain the
+// complete generated lists.
+func shortWitnessSeeds(salt string, seeds []Seed, every int) []Seed {
 	if !testing.Short() || toolsFuzzing() {
 		return seeds
 	}
-	for _, seed := range seeds {
-		if seed.Pending != "" {
-			n++
-		}
-	}
-	return toolsSample(seeds, n, 0, func(seed Seed) bool { return seed.Pending != "" })
+	return toolsSample(salt, seeds, every, 1, func(seed Seed) bool { return seed.Pending != "" })
 }
 
 var compilerOptionsOpen = regexp.MustCompile(`"compilerOptions"\s*:\s*\{`)
