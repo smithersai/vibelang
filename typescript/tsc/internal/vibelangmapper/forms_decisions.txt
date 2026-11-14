@@ -8160,6 +8160,17 @@ typescript/vibelang/cases/producer-compatible-callbacks.fail/main.vibe:9:8 lambd
 typescript/vibelang/cases/producer-compatible-overload/main.vibe:18:15 lambda effectFn annotation
 typescript/vibelang/cases/producer-compatible-overload/main.vibe:19:18 lambda effectFn annotation
 typescript/vibelang/cases/producer-compatible-overload/main.vibe:22:16 lambda effectFn annotation
+typescript/vibelang/cases/producer-computed-members/main.vibe:14:18 lambda plain fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:16:15 lambda dual fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:20:3 lambda plain fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:21:18 lambda plain fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:21:3 lambda plain fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:22:3 lambda plain fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:23:15 lambda dual fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:23:3 lambda plain fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:28:8 lambda dual fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:29:15 lambda dual fallback
+typescript/vibelang/cases/producer-computed-members/main.vibe:34:5 lambda plain fallback
 typescript/vibelang/cases/producer-coverage-layer-order.fail/main.vibe:8:35 block appended/program table
 typescript/vibelang/cases/producer-coverage-layer-order.fail/main.vibe:9:3 lambda effectFn keyword
 typescript/vibelang/cases/producer-coverage-lifecycle/main.vibe:6:111 lambda plain table

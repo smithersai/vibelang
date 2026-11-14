@@ -13,7 +13,32 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.13
 
+- Rejected service member headers could add misleading implicit return type, overload, or duplicate implementation errors. Each rejected member now reports its service rule, while ordinary nested classes and interfaces keep their native errors.
+
+- Constructing a service key could hide unknown names and type errors in its arguments. Those errors now appear alongside `EK3003`.
+
+- An extra quoted `constructor` field in a service with a supplied shape produced an unrelated class restriction error. It now reports `EK0902` for that field while preserving errors in its type or initializer.
+
+- A service method named `constructor` was mistaken for a class constructor. Its bodyless signatures now have ordinary interface typing, including generic methods and omitted-return-type checks.
+
+- A service member named `constructor` was rejected as a constructor or could not be formatted. Properties, including optional and `readonly` ones, and optional methods now keep their declared shape types and format normally.
+
+- An invalid service key could hide errors in nested class fields inside its initializer. Those field errors now appear alongside the key error.
+
+- Adding a runtime `Shape` member to a service without `defaultValue` hid its implementation type (`TS2749`). The value and type now coexist, as in TypeScript.
+
+- A decorator before a `service`, `error` or `schema error` declaration compiled silently and ran on the lowered class. It is now TypeScript's `TS1206`, "Decorators are not valid here", as before `type`; remove the decorator to compile the declaration.
+
+- A `namespace` merged with a `service`, such as one holding its layer, made `Users.Shape` unresolvable (`TS2694`), and an `interface` merged with it added its members to `Users.Shape`. A merged namespace now keeps its members beside `Users.Shape`, as with a class, and a merged interface declares members of the identifier only.
+
+- A `service` body accepted a separator with no member before it, such as the second `;` in `n: number; ; m: string` or a leading `;`, which an `interface` rejects. It now reports TypeScript’s `TS1131` at that separator, as an interface does.
+
+- Rejected service accessors and modified member contracts could hide unknown names and type errors in their annotations. Those independent errors now appear alongside the member rejection.
+
 - A compiler acceptance case that exceeded its run deadline could report only missing output or an exit code. It now names the deadline that killed the runner, including when its output matched.
+- An implementation written inside a service member could hide its unknown names and type errors. Those independent TypeScript errors now appear alongside the member rejection.
+- Redeclared `is` bindings promised a quick fix the editor did not offer. Their diagnostics now advise using distinct names or separate blocks, and collecting diagnostics in different projects leaves their shared source diagnostics unchanged.
+- Assertions imported from `@effect/vitest` and foreign methods on values returned by Effect calls could be treated as never throwing, so failures were missing from the error type. They now keep their declared throwing contracts; use `try Effect.try(() => expect(x).toBe(y))` to report the failure as `UnknownError`.
 
 - `await` in a plain callback inside a class `static` block could report obsolete advice about Effect code. It now reports TypeScript's native error for the written form.
 
@@ -38,6 +63,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A block after an `is` test on the next line was rejected as `EK0707`. It now starts a separate statement, including when a comment contains the line break.
 
 - Computed property names in a `retryPolicy` or a workflow's nested methods could crash the compiler and language server. They now compile, and computed policy keys are treated like spreads when checking whether the policy has a retry limit.
+
+- A catch expression outside effect code hid type errors in its arguments and handler body. Those errors now appear alongside `EK0504`.
 
 - The website could change a claim about a specific release to name the latest published version. Versioned claims now keep their original version while installation pins and platform information follow the selected release.
 
@@ -202,9 +229,15 @@ Report a bug with a [bug report](https://github.com/smithersai/vibelang/issues/n
 - The `vibelang-runtime` package page told readers to run `vibelang --fix`, which the compiler rejects with `TS5023`. The page no longer mentions the option.
 - `vibelang-ast-grep --help` compiled the parser library into a file named `--help` in the current directory. It now prints the usage and exits with status 0, and any other option is a usage error with status 2.
 - When the installed `effect` was not the version `vibelang-runtime` pins, the load error named `vibelang-runtime@0.0.11` whatever runtime was installed. It now names only the two Effect versions and the install command, as in `vibelang-runtime requires effect@4.1.1; found effect@4.1.0`.
+- In the TypeScript view that editors read, a block holding an `is` test that binds names, such as `if (u is { id: let who })`, rendered the `try.all`, `try.race`, `try.any`, `try.allSettled`, `uninterruptible`, `interruptible`, `restore` and `provide` forms beside the test as calls of internal names, so editors reported `TS2304: Cannot find name '$tryAll'` on code the compiler accepts. In the same block, a lambda was not checked for its form, and a block or loop body with `using` or `fork` lost its scope. These statements now render as they do without the test.
+
 - A `try` written inside the callback of `sync`, `Effect.try` or `tryPromise`, such as `try sync(() => try load())`, compiled with no diagnostic and was left out of the output, so the callback returned the Effect itself where the source asked for its value. It now reports `EK0501`, as a `try` in any other plain function does; run the Effect outside the callback.
 - Published packages could reuse an older compiler, include local scratch files, or leave Windows without a compiler after a rehearsal. Packaging now requires matching committed sources and successful builds, includes only tracked sources, restores the selected platforms on every run, and checks the requested Bun starter version.
 - On a fresh checkout, a project whose `.vibe` files hold module bodies, such as a `tsconfig.json` with `include: ["."]`, got a loader record that `checkLoaderRecord` called stale at once (`gained or lost a file`), because the record's own compile wrote each body's `x.vibe.<name>.d.ts` after listing the directory. Those declarations now count as outputs, and the record holds right after it is written.
+
+- Compiling a standalone `.vibe` file on Windows, or checking an untitled editor document outside a project, could crash when no `package.json` existed above it. Package lookup now stops at the path root, and dependency errors remain locationless when no project file exists.
+
+- The API comparison command could load a TypeScript compiler installed with an input package and fail on unchanged declarations. It now uses the pinned compiler unless another compiler is explicitly requested.
 
 - A call or template tag on `super` inside an `effect` method could lose `this` when wrapped in parentheses, `!` or a type assertion. These forms now keep the instance as their receiver, just as TypeScript does.
 
@@ -1331,6 +1364,8 @@ These features come from VIPs 55 to 72, which are open proposals. They are not p
 #### Fuzzing: `Experimental.Fuzz` and `Experimental.FuzzSimulation` (VIP-70)
 
 - A failure that random property checks rarely reach, such as a magic header, a precise sequence of calls or one interleaving of two fibers, passed `Arbitrary.checkEffect` unnoticed. The new experimental fuzzing module takes a schema, keeps the inputs that reach new spans, error tags or observed stages, and reports a shrunk failure with a replay token. Its simulation mode makes fiber scheduling and time part of the input, so it finds lost updates and deadlocks. See [the fuzzing guide](/vibelang-features/120-fuzzing).
+
+- A producer method with a computed name or decorator containing VibeLang syntax could compile successfully but fail to load as JavaScript. Those expressions now compile like other method names and decorators.
 
 ### Upgrade from 0.0.12
 
