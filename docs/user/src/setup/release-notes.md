@@ -162,6 +162,8 @@ These features come from VIP-73, an open proposal. They are not part of the lang
 
 - A delegation chain that escalates each leaf through model tiers, a generate-and-evaluate search for a target score, or a scan-fix-verify loop was a hand-written loop over Effects. `Experimental.Patterns.DelegationChain.run`, `Experimental.Patterns.Optimizer.run` and `Experimental.Patterns.ScanFixVerify.run` run these loops with their bounds checked, and bad options fail with a typed error.
 
+- Expanding a tree of model calls inside a budget, or working a backlog down by claiming, working, landing and releasing each item, was hand-written Effect code. `Experimental.Patterns.Recursion.run` expands a tree inside a fuel, depth and fan-out envelope, and `Experimental.Patterns.Burndown.round` and `Experimental.Patterns.Burndown.run` work a backlog round by round, keeping one row for each item.
+
 ## 0.0.13
 
 0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](alpha.md) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are supported only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).

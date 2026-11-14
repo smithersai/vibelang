@@ -9,6 +9,7 @@
  * @since 0.0.13
  */
 export * as Bounded from "./patterns/Bounded.js"
+export * as Burndown from "./patterns/Burndown.js"
 export * as CheckSuite from "./patterns/CheckSuite.js"
 export * as Debate from "./patterns/Debate.js"
 export * as DelegationChain from "./patterns/DelegationChain.js"
@@ -23,6 +24,7 @@ export * as Panel from "./patterns/Panel.js"
 export { PatternError } from "./patterns/PatternError.js"
 export type { PatternErrorCode } from "./patterns/PatternError.js"
 export * as Quarantine from "./patterns/Quarantine.js"
+export * as Recursion from "./patterns/Recursion.js"
 export * as ReviewLoop from "./patterns/ReviewLoop.js"
 export * as Runbook from "./patterns/Runbook.js"
 export * as Saga from "./patterns/Saga.js"

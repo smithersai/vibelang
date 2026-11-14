@@ -1,0 +1,75 @@
+// expect-result: {"tree":{"child-0":{"child-0":"LEAF"},"child-1":"RIGHT"},"calls":4,"deep":"recursion_bound","round":["a:landed:fixed a","b:held:taken","c:failed:work: tests red"],"burndown":{"rounds":3,"stopped":"drained","rows":["a:landed","b:landed","c:landed"]},"budget":"invalid_decorator"}
+// Experimental.Patterns (VIP-73) also ports Smithers' backlog patterns as
+// plain Effect code. Recursion.run expands a tree of inputs inside a fuel,
+// depth and fan-out envelope. Burndown.round claims, works, lands and
+// releases one round of a backlog, and Burndown.run rediscovers the backlog
+// round after round until a round launches nothing.
+effect function expand() {
+  let calls = 0
+  const tree = try Experimental.Patterns.Recursion.run({
+    input: "root",
+    children: [{ input: "left", children: [{ input: "leaf" }] }, { input: "right" }]
+  }, {
+    fuel: 4,
+    depth: 3,
+    fanout: 2,
+    child: effect ({ input }) => {
+      calls += 1
+      return String(input).toUpperCase()
+    }
+  })
+  return { tree, calls }
+}
+
+effect function sweep() {
+  const result = try Experimental.Patterns.Burndown.round({ input: "repo", round: 0, items: [{ id: "a" }, { id: "b" }, { id: "c" }] }, {
+    key: "sweep",
+    concurrency: 2,
+    claim: effect ({ item }) => {
+      if (item.id === "b") throw new Experimental.Patterns.Burndown.Held({ message: "taken" })
+      return item.id
+    },
+    work: effect ({ item }) => {
+      if (item.id === "c") throw "tests red"
+      return `fixed ${item.id}`
+    },
+    release: effect () => "released",
+    detail: (output) => output
+  })
+  return result.rows.map((row) => `${row.id}:${row.status}:${row.detail}`)
+}
+
+effect function burndown() {
+  const result = try Experimental.Patterns.Burndown.run("repo", {
+    discover: effect () => [{ id: "a" }, { id: "b" }, { id: "c" }],
+    capacity: effect () => Experimental.Patterns.Burndown.available(2),
+    dispatch: {
+      key: "burn",
+      concurrency: 2,
+      claim: effect () => "claimed",
+      work: effect ({ item }) => item.id,
+      release: effect () => "released"
+    },
+    maxRounds: 5
+  })
+  return { rounds: result.rounds, stopped: result.stopped, rows: result.rows.map((row) => `${row.id}:${row.status}`) }
+}
+
+export effect function main() {
+  const expanded = try expand()
+  const deep = Experimental.Patterns.Recursion.run({ input: "root", children: [{ input: "a" }] }, {
+    fuel: 2,
+    depth: 1,
+    fanout: 1,
+    child: effect () => "never"
+  }) catch (error) => error.code
+  const budget = Experimental.Patterns.Burndown.run("repo", {
+    discover: effect () => [],
+    dispatch: { key: "burn", concurrency: 1, claim: effect () => "", work: effect () => "", release: effect () => "" },
+    maxRounds: 0
+  }) catch (error) => match (error) {
+    when Experimental.Patterns.PatternError: error.code;
+    default: "stopped";
+  }
+  return { tree: expanded.tree, calls: expanded.calls, deep, round: try sweep(), burndown: try burndown(), budget }
+}

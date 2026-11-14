@@ -15,7 +15,7 @@ const refusal = async <A, E>(effect: Effect.Effect<A, E>) => {
 
 test("Patterns: the subpath and the Experimental namespace export the same module", () => {
   expect(PatternsModule.Panel.run).toBe(Patterns.Panel.run)
-  expect(Object.keys(PatternsModule).sort()).toEqual(["Bounded", "CheckSuite", "Debate", "DelegationChain", "DriftDetector", "Escalation", "Intervene", "Kanban", "MapReduce", "MergeQueue", "Optimizer", "Panel", "PatternError", "Quarantine", "ReviewLoop", "Runbook", "Saga", "ScanFixVerify", "Sidecar", "Stall", "Supervisor", "Trellis"])
+  expect(Object.keys(PatternsModule).sort()).toEqual(["Bounded", "Burndown", "CheckSuite", "Debate", "DelegationChain", "DriftDetector", "Escalation", "Intervene", "Kanban", "MapReduce", "MergeQueue", "Optimizer", "Panel", "PatternError", "Quarantine", "Recursion", "ReviewLoop", "Runbook", "Saga", "ScanFixVerify", "Sidecar", "Stall", "Supervisor", "Trellis"])
 })
 
 test("Panel.run hands the moderator the input and every opinion, keyed in declaration order whatever the completion order", async () => {

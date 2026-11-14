@@ -41,7 +41,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
-| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `Debate.run`, a bounded exchange a judge settles; `MapReduce.run`, map every shard and reduce in shard order; `Saga.run`, forward steps whose compensations unwind in reverse; `Kanban.run`, items through ordered columns; `Supervisor.run`, a boss that plans, delegates and reviews; `Sidecar.run`, a cheap shadow scored against the primary; `DriftDetector.run`, a snapshot compared with a baseline; `Intervene.run`, a change applied behind an approval; `Trellis.validate` and `Trellis.execute`, a model-written delegation plan inside an envelope; `DelegationChain.run`, refine, plan, derisk, execute, review and settle; `Optimizer.run`, generate and evaluate toward a target score; `ScanFixVerify.run`, fix every issue a scan finds until a scan is clean; `PatternError` | none; they are pure Effect code and run in any runtime |
+| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `Debate.run`, a bounded exchange a judge settles; `MapReduce.run`, map every shard and reduce in shard order; `Saga.run`, forward steps whose compensations unwind in reverse; `Kanban.run`, items through ordered columns; `Supervisor.run`, a boss that plans, delegates and reviews; `Sidecar.run`, a cheap shadow scored against the primary; `DriftDetector.run`, a snapshot compared with a baseline; `Intervene.run`, a change applied behind an approval; `Trellis.validate` and `Trellis.execute`, a model-written delegation plan inside an envelope; `DelegationChain.run`, refine, plan, derisk, execute, review and settle; `Optimizer.run`, generate and evaluate toward a target score; `ScanFixVerify.run`, fix every issue a scan finds until a scan is clean; `Recursion.run`, a tree expanded inside an envelope; `Burndown.round` and `Burndown.run`, a backlog claimed, worked, landed and released round after round; `PatternError` | none; they are pure Effect code and run in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -1849,3 +1849,75 @@ export effect function lint() {
 | An optimizer score is finite | A score that is `NaN` or infinite fails with `invalid_input`. With `onMaxReached: "fail"`, a search that spends its iterations below `targetScore` fails with `exhausted`; `"fail"` without a `targetScore` is `invalid_decorator`. |
 | A scan-fix-verify loop stops only on a clean scan | `verify`'s answer is recorded in `verifications` and never ends the loop. `ScanFixVerify.resolved(verification)` reads `true` or an own `resolved: true`. |
 | A batch of fixes finishes before the next starts | At most `concurrency` fixes run at once. Issues past `maxIssues` wait for the next scan. |
+
+### Recursion and Burndown
+
+`Experimental.Patterns.Recursion.run(tree, { child, fuel, depth, fanout, parent? })` expands a tree of inputs. A value with an own `input` is a branch, and its `children` expand below it; any other value is a leaf. The whole tree is checked first, then `child` runs for every node with `{ input, envelope }`, where `envelope` is what is left for the levels below. A branch's children start after its own call succeeds and run together. A leaf gives its child result, and a branch gives a record of its children's results keyed `child-0`, `child-1` and so on:
+
+```vibe
+export effect function outline() {
+  const result = try Experimental.Patterns.Recursion.run({ input: "book", children: [{ input: "intro" }, { input: "body" }] }, {
+    fuel: 3,
+    depth: 2,
+    fanout: 2,
+    child: effect ({ input, envelope }) => `${input} (${envelope.fuel} left)`
+  })
+  return Object.values(result).join(", ")
+}
+// Run in an effect function: try Console.log(try outline())
+// Output: intro (1 left), body (0 left)
+```
+
+`Experimental.Patterns.Burndown.round(input, options)` runs one round of a backlog. For each item that is not in `input.settled`, `select` decides whether it is ours. Each item that is ours is claimed, worked with the execution id `${key}/${item.id}`, landed as soon as its work finishes, and released with its final status. At most `concurrency` items work at once and at most `slots` launch. The round gives `{ rows, launched, deferred }`, one row `{ id, status, detail }` an item in discovery order:
+
+```vibe
+export effect function triage() {
+  const result = try Experimental.Patterns.Burndown.round({ input: "repo", round: 0, items: [{ id: "1" }, { id: "2" }] }, {
+    key: "triage",
+    concurrency: 2,
+    claim: effect ({ item }) => {
+      if (item.id === "2") throw new Experimental.Patterns.Burndown.Held({ message: "claimed by another host" })
+      return item.id
+    },
+    work: effect ({ item }) => `fixed #${item.id}`,
+    release: effect () => "released",
+    detail: (output) => output
+  })
+  return result.rows.map((row) => `${row.id} ${row.status}: ${row.detail}`).join("; ")
+}
+// Run in an effect function: try Console.log(try triage())
+// Output: 1 landed: fixed #1; 2 held: claimed by another host
+```
+
+`Experimental.Patterns.Burndown.run(input, { discover, dispatch, capacity?, maxRounds })` repeats rounds. Each round asks `capacity`, discovers the backlog, and runs `Burndown.round` with the `dispatch` stages and the ids earlier rounds settled. It gives `{ rows, rounds, stopped }`: `stopped` is `"drained"` after a round that launched, deferred and requeued nothing, and `"max_rounds"` when the budget ran out:
+
+```vibe
+export effect function drain() {
+  const result = try Experimental.Patterns.Burndown.run("repo", {
+    discover: effect () => [{ id: "a" }, { id: "b" }, { id: "c" }],
+    capacity: effect () => Experimental.Patterns.Burndown.available(2),
+    dispatch: {
+      key: "drain",
+      concurrency: 2,
+      claim: effect () => "claimed",
+      work: effect ({ item }) => item.id,
+      release: effect () => "released"
+    },
+    maxRounds: 5
+  })
+  return `${result.stopped} after ${result.rounds} rounds`
+}
+// Run in an effect function: try Console.log(try drain())
+// Output: drained after 3 rounds
+```
+
+| Rule | Consequence |
+| --- | --- |
+| A recursion checks the whole tree first | No child runs when the tree spends more than `fuel` calls, a branch has more than `fanout` children or nests deeper than `depth`, or `children` is not an array. The failure is a `PatternError` whose `code` is `recursion_bound`. |
+| A nested recursion narrows its parent | With `parent`, a `fuel`, `depth` or `fanout` wider than the parent's fails with `recursion_bound`. |
+| A burndown item fails alone | A claim that fails with `Burndown.Held` settles the item `held` and is never released. Any other failure or defect settles only that item `failed`; the items beside it keep going. |
+| `Burndown.Stop` stops the round | Only a typed `Stop` from a stage stops a round. Every open claim is released `failed`. A round that launches nothing because every selection failed also fails with `Stop`. |
+| An interrupted item is requeued | When work is interrupted, `cancelled` decides: `true` settles the item `failed`, and anything else releases it `requeued`, so a later round works it again. |
+| A settled row is final across rounds | `landed`, `held` and `failed` rows are never worked again; `skipped` and `requeued` rows are reconsidered. |
+| Capacity gates each round of `Burndown.run` | `available(slots)` caps the round. `waitUntil(at)` waits on Effect's clock until `at`, and the wait counts as a round. `exhausted(detail)` fails with a `PatternError` whose `code` is `exhausted`. |
+| Waits are not durable | `Burndown.run` runs in one process: a restarted program starts from round 0, and a wait does not survive a restart. A durable lineage keeps its rounds in a `workflow`. |
