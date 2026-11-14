@@ -8,8 +8,11 @@
  * @experimental
  * @since 0.0.13
  */
+export * as Bounded from "./patterns/Bounded.js"
+export * as CheckSuite from "./patterns/CheckSuite.js"
 export * as Panel from "./patterns/Panel.js"
 export { PatternError } from "./patterns/PatternError.js"
 export type { PatternErrorCode } from "./patterns/PatternError.js"
+export * as Quarantine from "./patterns/Quarantine.js"
 export * as ReviewLoop from "./patterns/ReviewLoop.js"
 export * as Stall from "./patterns/Stall.js"

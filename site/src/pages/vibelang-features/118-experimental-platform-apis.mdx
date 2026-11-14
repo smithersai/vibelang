@@ -41,7 +41,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
-| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `PatternError` | none; they are pure Effect code and run in any runtime |
+| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `PatternError` | none; they are pure Effect code and run in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -1450,6 +1450,67 @@ export effect function releaseNotes() {
 // Output: notes v2
 ```
 
+`Experimental.Patterns.Bounded.run(members, { concurrency, priority?, priorities? })` runs a record of Effects at most `concurrency` at a time and gives a record of their values. The highest priority starts first:
+
+```vibe
+effect function job(name: string) {
+  return `${name} done`
+}
+
+export effect function deploy() {
+  const done = try Experimental.Patterns.Bounded.run({
+    docs: job("docs"),
+    hotfix: job("hotfix"),
+    tests: job("tests")
+  }, { concurrency: 2, priorities: { hotfix: 9 } })
+  return Object.keys(done).join(", ")
+}
+// Run in an effect function: try Console.log(try deploy())
+// Output: hotfix, docs, tests
+```
+
+`Experimental.Patterns.Quarantine.run(members, { policy, concurrency? })` keeps running when a member fails. With `policy: "quarantine"` each member reports as `Succeeded` or `Quarantined`, and `Quarantine.settle(result)` turns that report back into values:
+
+```vibe
+error Offline {
+  host: string
+}
+
+effect function ping(host: string) {
+  if (host === "b") throw new Offline({ host })
+  return `${host} up`
+}
+
+export effect function sweep() {
+  const report = try Experimental.Patterns.Quarantine.run({ a: ping("a"), b: ping("b"), c: ping("c") }, {
+    policy: "quarantine"
+  })
+  return Object.values(report).map((entry) => `${entry.member}: ${entry._tag}`).join(", ")
+}
+// Run in an effect function: try Console.log(try sweep())
+// Output: a: Succeeded, b: Quarantined, c: Succeeded
+```
+
+`Experimental.Patterns.CheckSuite.run(input, { checks, strategy, concurrency, continueOnFail })` runs every check against the input and reduces their rows to one verdict, `{ passed, failed, errors, strategy, verdict }`. `CheckSuite.passed(row)`, `CheckSuite.rows(values, ids)` and `CheckSuite.verdict(results, strategy)` are the classifier and reducer it uses:
+
+```vibe
+export effect function gate() {
+  const verdict = try Experimental.Patterns.CheckSuite.run("main", {
+    checks: {
+      lint: effect (_branch: string) => ({ ok: true }),
+      test: effect (branch: string) => ({ ok: branch === "main" }),
+      audit: effect (_branch: string) => ({ ok: false })
+    },
+    strategy: "majority",
+    concurrency: 2,
+    continueOnFail: false
+  })
+  return `${verdict.verdict}: failed ${verdict.failed.join(", ")}`
+}
+// Run in an effect function: try Console.log(try gate())
+// Output: true: failed audit
+```
+
 The patterns keep these rules:
 
 | Rule | Consequence |
@@ -1459,7 +1520,10 @@ The patterns keep these rules:
 | A review approves with `true`, `"approved"`, or an object whose own `approved` or `accepted` property is `true` | Any other review asks for a revision. |
 | `maxRounds` counts reviews | The last round reviews and never revises. A spent loop gives `{ _tag: "Exhausted", output, review }` with the last review. |
 | `stall: { rounds, on? }` ends a loop that repeats itself | When the reviewed output is the same `rounds` times in a row, the loop gives `{ _tag: "Stalled", output, review, stalled }`; with `on: "escalate"` it fails with a `PatternError` whose `code` is `stalled`. Outputs are compared by their JSON text with object keys sorted; `stall.signals` chooses what to compare. |
-| Bad options fail with `Experimental.Patterns.PatternError` | An empty panel, a `concurrency` or `maxRounds` that is not a positive whole number, and stall `rounds` under 2 fail with `code` `invalid_decorator`. The failure is in the error channel, so `catch` claims it. |
+| `Bounded.run` starts the highest priority first | `priorities` sets a member's priority by name and `priority` sets it for the rest, 0 without either. Equal priorities start in the order they were written, and the result lists the members in the order they started. The first failure interrupts the members still running. |
+| `Quarantine.run` with `policy: "quarantine"` does not fail for a member | Each member gives `{ _tag: "Succeeded", member, value }` or `{ _tag: "Quarantined", member, error }`, and no member is interrupted for another's failure. A defect or an interruption still fails the run. `policy: "halt"` fails on the first failure and gives plain values. `Quarantine.settle` fails with `code` `quarantined` naming the quarantined members, with their errors in `cause`. |
+| A check row passes unless it is missing or says it failed | A row of `undefined` or `null`, or an object with `passed: false`, `ok: false`, `failed: true` or an `error` other than `undefined`, `null` and `false`, fails. `all-pass` needs every check to pass, `majority` more than half and `any-pass` one; an empty suite never passes. With `continueOnFail: true` a check that fails is listed in `failed` with its error in `errors`; with `false` its failure fails the suite and interrupts the other checks. |
+| Bad options fail with `Experimental.Patterns.PatternError` | An empty panel, member record or check record, an empty check id, a `concurrency` or `maxRounds` that is not a positive whole number, a priority that is not a whole number or names an unknown member, and stall `rounds` under 2 fail with `code` `invalid_decorator`. The failure is in the error channel, so `catch` claims it. |
 | Options are read at the call | Changing the options object afterwards does not change a run that has not started. |
 
 A pattern adds no durability of its own. A stage that calls a `task` inside a `workflow` is a durable step; a stage that is an ordinary Effect is not.

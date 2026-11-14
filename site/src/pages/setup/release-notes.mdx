@@ -147,6 +147,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - After agent setup, edits to `.vibex` files could miss language-server diagnostics and checks after an edit. Agent registrations, hooks and the generated plugin now include JSX VibeLang alongside `.vibe` files; rerun `vibelang agents init` to refresh an existing setup.
 
+- Running Effects at a bounded width in priority order, continuing past a failed member, or reducing a set of checks to one verdict was a hand-written loop over Effects. `Experimental.Patterns.Bounded.run`, `Experimental.Patterns.Quarantine.run` with `Quarantine.settle`, and `Experimental.Patterns.CheckSuite.run` run these shapes as plain Effect code, and bad options fail with `Experimental.Patterns.PatternError`.
+
 ## 0.0.13
 
 0.0.13 is the alpha. It supports the core language, the 33 accepted VIPs numbered 1 to 41; [What is in the alpha](/setup/alpha) gives every VIP's status. Features built from the open proposals VIPs 55 to 72 are experimental and not part of the alpha: `task` and `workflow` declarations and the `Experimental.Durable`, `Experimental.Human`, `Experimental.Eval`, `Experimental.Scorer`, `Experimental.Memory`, `Experimental.Fuzz`, `Experimental.FuzzSimulation` and `Experimental.Test` modules are supported only with `"vibe": { "experimental": ["builtins"] }`, and they are listed under [Experimental (opt-in)](#experimental-opt-in).

@@ -4516,6 +4516,16 @@ typescript/vibelang/cases/experimental-module-services/main.vibe:28:16 byname pr
 typescript/vibelang/cases/experimental-module-services/main.vibe:49:85 byname program table
 typescript/vibelang/cases/experimental-module-services/main.vibe:9:28 lambda choice fallback
 typescript/vibelang/cases/experimental-node-stream-from-web/main.vibe:7:56 lambda dual fallback
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:34:36 lambda plain fallback
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:49:13 lambda effectFn keyword
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:50:18 lambda plain fallback
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:51:13 lambda effectFn keyword
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:64:23 lambda effectFn table
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:64:43 lambda effectFn table
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:71:12 lambda effectFn table
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:71:81 lambda effectFn table
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:72:12 lambda effectFn table
+typescript/vibelang/cases/experimental-patterns-checks/main.vibe:73:13 lambda effectFn table
 typescript/vibelang/cases/experimental-patterns/main.vibe:15:14 lambda plain fallback
 typescript/vibelang/cases/experimental-patterns/main.vibe:16:12 lambda plain fallback
 typescript/vibelang/cases/experimental-patterns/main.vibe:17:14 lambda plain fallback

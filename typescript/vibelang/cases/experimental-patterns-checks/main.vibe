@@ -1,0 +1,75 @@
+// expect-result: {"order":"release,docs,lint","outcomes":"lint Succeeded, docs Quarantined","settled":"Quarantined members: docs","values":"lint ok,docs ok","verdict":"majority true: passed lint,test; failed typecheck (typecheck)","empty":"invalid_decorator","width":"invalid_decorator"}
+// Experimental.Patterns (VIP-73): Bounded.run runs a fixed set of Effects at
+// most `concurrency` at a time, highest priority first. Quarantine.run
+// continues past a failed member and reports each member as Succeeded or
+// Quarantined, and Quarantine.settle turns that report back into values.
+// CheckSuite.run runs independent checks with a concurrency bound and reduces
+// their rows to one verdict. Bad options fail with PatternError, which a
+// catch claims.
+error Broken {
+  check: string
+}
+
+effect function step(name: string) {
+  return `${name} ok`
+}
+
+effect function broken(check: string) {
+  throw new Broken({ check })
+}
+
+effect function order() {
+  const done = try Experimental.Patterns.Bounded.run({
+    lint: step("lint"),
+    docs: step("docs"),
+    release: step("release")
+  }, { concurrency: 1, priority: 1, priorities: { release: 9, lint: 0 } })
+  return Object.keys(done).join(",")
+}
+
+effect function outcomes() {
+  const report = try Experimental.Patterns.Quarantine.run({ lint: step("lint"), docs: broken("docs") }, {
+    policy: "quarantine"
+  })
+  return Object.values(report).map((entry) => `${entry.member} ${entry._tag}`).join(", ")
+}
+
+effect function settled(failDocs: boolean) {
+  const report = try Experimental.Patterns.Quarantine.run({
+    lint: step("lint"),
+    docs: failDocs ? broken("docs") : step("docs")
+  }, { policy: "quarantine", concurrency: 2 })
+  const values = try Experimental.Patterns.Quarantine.settle(report)
+  return Object.values(values).join(",")
+}
+
+effect function suite() {
+  const verdict = try Experimental.Patterns.CheckSuite.run("head", {
+    checks: {
+      lint: effect (head: string) => ({ ok: head.length > 0 }),
+      typecheck: (_head: string) => broken("typecheck"),
+      test: effect (head: string) => ({ ok: head === "head" })
+    },
+    strategy: "majority",
+    concurrency: 2,
+    continueOnFail: true
+  })
+  const errors = Object.keys(verdict.errors).join(",")
+  return `${verdict.strategy} ${verdict.verdict}: passed ${verdict.passed.join(",")}; failed ${verdict.failed.join(",")} (${errors})`
+}
+
+const nothing: Record<string, string!!> = {}
+
+export effect function main() {
+  const quarantined = settled(true) catch (error) => error.message
+  return {
+    order: try order(),
+    outcomes: try outcomes(),
+    settled: quarantined,
+    values: try settled(false),
+    verdict: try suite(),
+    empty: Experimental.Patterns.Bounded.run(nothing, { concurrency: 1 }) catch (error) => error.code,
+    width: Experimental.Patterns.Quarantine.run({ lint: step("lint") }, { policy: "halt", concurrency: 0 })
+      catch (error) => error.code
+  }
+}

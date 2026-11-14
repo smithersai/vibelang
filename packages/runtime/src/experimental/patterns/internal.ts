@@ -30,3 +30,31 @@ export const concurrencyRefusal = (pattern: string, concurrency: number): Patter
     code: "invalid_decorator",
     message: `${pattern} concurrency must be a positive safe integer, received ${concurrency}`
   })
+
+/**
+ * Refuses a member record that holds nothing.
+ *
+ * @throws never
+ * @internal
+ */
+export const nonEmptyMembersRefusal = (pattern: string, names: ReadonlyArray<string>): PatternError | undefined =>
+  names.length === 0
+    ? new PatternError({ code: "invalid_decorator", message: `${pattern} requires at least one member` })
+    : undefined
+
+/**
+ * Refuses a member priority that is not a safe integer, before a pattern
+ * sorts or runs the member.
+ *
+ * @throws never
+ * @internal
+ */
+export const safeIntegerPriorityRefusal = (
+  pattern: string,
+  member: string,
+  value: unknown
+): PatternError | undefined =>
+  typeof value === "number" && Number.isSafeInteger(value) ? undefined : new PatternError({
+    code: "invalid_decorator",
+    message: `${pattern} priority for member "${member}" must be a safe integer, received ${value}`
+  })
