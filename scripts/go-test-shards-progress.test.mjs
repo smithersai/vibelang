@@ -16,6 +16,12 @@ async function until(predicate, label) {
   }
 }
 
+function fnv1a(name) {
+  let hash = 0x811c9dc5
+  for (const byte of Buffer.from(name, "utf8")) hash = Math.imul(hash ^ byte, 0x01000193) >>> 0
+  return hash
+}
+
 function launch(t, { mode = "workers", fastStatus = 0, names = ["TestFast", "TestSlow"], shards = 2, slice = "1/1", args = [] } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "go-shard-progress-"))
   const bin = join(dir, "pkg.mjs")
@@ -137,14 +143,14 @@ test("generated shard layouts report exact assignments without losing selected n
     const numerator = 1 + seed % denominator
     const run = launch(t, { names, shards: 2 + seed % 4, slice: numerator + "/" + denominator, fastStatus: seed % 2 ? 7 : 0 })
     await until(() => run.has("listing"), "generated discovery")
-    // Equal-weight names are dealt in order to the least-loaded slice.
-    const selected = names.filter((_, i) => i % denominator === numerator - 1)
+    // With no testdata/shard-slices.txt, a name keys by the FNV-1a hash of its bytes.
+    const selected = names.filter(name => fnv1a(name) % denominator === numerator - 1)
     await until(() => selected.every(name => run.has(name + "-ready")), "generated held assignments")
     if (selected.length) {
       assert.equal(run.child.exitCode, null, "held layout " + seed)
       assert.equal(run.stdout(), "")
     } else {
-      assert.equal((await run.done).status, 0, "an empty nonfirst slice succeeds without workers")
+      assert.equal((await run.done).status, 0, "an empty slice succeeds without workers")
     }
     const assigned = [...run.stderr().matchAll(/starting process \d+: \d+ tests: ([^\n]+)/g)].flatMap(m => m[1].split(",")).sort()
     assert.deepEqual(assigned, selected.toSorted())

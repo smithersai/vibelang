@@ -1311,13 +1311,14 @@ so separate workers can restore it without recompiling the compiler and tests.
 The package list in `PACKAGE.ts` covers every Go package under
 `internal/vibelang`. Each build and shard retains the module sources, package
 test files, runtime build and repository-wide fixtures. The launcher
-`scripts/go-test-shards.sh` discovers each package's tests and deals them
-by weight across the sixty-four explicit `GO_TEST_SLICE` values. Each
+`scripts/go-test-shards.sh` discovers each package's tests and runs the
+names whose slice key falls in each of the sixty-four explicit
+`GO_TEST_SLICE` values, by the slice keys described below. Each
 target declares `GO_TEST_SHARDS=1` and `GOMAXPROCS=4`, so one Go process
 and its native parallel subtests share the worker's four CPUs. Explicit slices override any
 host-local `scripts/go-test-slice` file. No test selector, short mode,
-skip list or expected failure changes. New names enter discovery immediately;
-unmeasured names count one second.
+skip list or expected failure changes. New names enter discovery immediately
+and run in the slice of their hash; unmeasured names count one second.
 
 `scripts/go-vibelang-shard-inventory.test.mjs` inventories every package,
 test file and top-level test, fuzz seed entry point and example under
@@ -1332,6 +1333,33 @@ Large callback-contract matrices run their independent temporary projects
 in parallel through `t.Parallel`.
 `scripts/build-declarations.test.mjs` also checks the real SDK graph's
 suite edges and independent shard dependencies.
+
+A slice label holds the same existing tests on every tree, so a label that is
+red on a candidate and green on its base ran the same tests on both.
+`testdata/shard-slices.txt` in a sliced package (`internal/vibelang`, 64
+slices; `internal/vibelangfuzz`, 32) records a key for each name, one
+`<key> <name>` line, and `GO_TEST_SLICE=i/n` runs the names whose key `k` has
+`k mod n = i - 1`. A name without a line keys by the 32-bit FNV-1a hash of its
+bytes, which the launcher computes with `od` and POSIX `awk`. Adding or
+removing a test therefore moves only that test, and a line for a removed test
+is ignored. A malformed or repeated line fails the run before any test starts.
+A slice that holds none of a package's names runs nothing; a package that lists
+no names still runs whole in slice 1.
+
+Rebalancing rewrites the keys from the current weights: it lists the package,
+deals every name longest first onto the least-loaded of `n` slices, records each
+slice index as the key, and runs no test. Land a rebalance as its own commit,
+because it moves tests between labels:
+
+```sh
+cd typescript/tsc
+GO_TEST_SLICE_REBALANCE=64 go test -count=1 -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelang/
+GO_TEST_SLICE_REBALANCE=32 go test -count=1 -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/vibelangfuzz/
+```
+
+The initial files
+record the weighted deal the launcher made before keys existed, so introducing
+them moved no test. `scripts/go-test-shards-stable.test.mjs` checks the rule.
 
 The weights remain in `internal/vibelang/testdata/shard-seconds.txt`.
 Refresh them from an uncached `go test -json -count=1` log of the package with
@@ -1382,9 +1410,10 @@ from one plan in the root `PACKAGE.ts`:
 
 Each check has a `10m` graph timeout and an `8m` test-binary timeout.
 It uses `scripts/go-test-shards.sh` with an explicit `GO_TEST_SLICE` and
-`GO_TEST_SHARDS=2`: the complete discovered test inventory is dealt by
-`testdata/shard-seconds.txt`, then each partition runs in two processes.
-New test names enter that inventory automatically. The weighted checks use
+`GO_TEST_SHARDS=2`: the complete discovered test inventory is split by the
+keys in `testdata/shard-slices.txt`, then each partition runs in two processes
+weighted by `testdata/shard-seconds.txt`. New test names enter that inventory
+automatically, each in the slice of its hash. The weighted checks use
 `-skip '^FuzzVIPDifferential$'` and the dedicated check uses
 `-run '^FuzzVIPDifferential$'`, so the complete differential corpus runs once. The complete
 `TestCaseCorpusCompilerTemporaryDiagnostics` audit retains every named case

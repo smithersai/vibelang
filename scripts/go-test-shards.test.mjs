@@ -141,6 +141,10 @@ test("GO_TEST_SLICE=i/n: n runs run every name exactly once between them, slowes
   const names = ["TestSlowest", "FuzzSlower", "TestSlow", "TestA", "TestB", "TestC", "ExampleD"]
   const t = setup(names, "90 TestSlowest\n60 FuzzSlower\n50 TestSlow\n")
   try {
+    // A rebalance records the weighted deal in testdata/shard-slices.txt; the slices then follow it.
+    const rebalanced = t.run([], { GO_TEST_SLICE_REBALANCE: "3" })
+    assert.equal(rebalanced.status, 0, rebalanced.stdout + rebalanced.stderr)
+    assert.equal(rebalanced.runs.length, 0)
     const slices = ["1/3", "2/3", "3/3"].map((slice) => {
       const r = t.run([], { GO_TEST_SHARDS: "2", GO_TEST_SLICE: slice })
       assert.equal(r.status, 0, r.stdout + r.stderr)

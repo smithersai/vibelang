@@ -97,11 +97,14 @@ test("real shard commands cover every package and name once and retain exactly o
     expected.push(...names.map(name => pkg + ":" + name))
     const cwd = join(dir, "typescript/tsc", pkg)
     mkdirSync(join(cwd, "testdata"), { recursive: true })
-    let weights = ""
-    try { weights = readFileSync(join(root, "typescript/tsc", pkg, "testdata/shard-seconds.txt"), "utf8") } catch (e) {
-      if (e.code !== "ENOENT") throw e
+    // The committed weights and slice keys, so each label runs the names it runs in CI.
+    for (const file of ["shard-seconds.txt", "shard-slices.txt"]) {
+      let text = ""
+      try { text = readFileSync(join(root, "typescript/tsc", pkg, "testdata", file), "utf8") } catch (e) {
+        if (e.code !== "ENOENT") throw e
+      }
+      writeFileSync(join(cwd, "testdata", file), text)
     }
-    writeFileSync(join(cwd, "testdata/shard-seconds.txt"), weights)
     const binary = join(dir, output)
     mkdirSync(join(binary, ".."), { recursive: true })
     writeFileSync(binary, '#!' + process.execPath + '\n' + `

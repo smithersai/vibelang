@@ -101,9 +101,11 @@ test("the actual launcher assigns every current and newly added fuzz name exactl
     writeFileSync(namesFile, JSON.stringify(names))
     writeFileSync(assigned, "")
     mkdirSync(join(dir, "testdata"), { recursive: true })
-    const weights = pkg + "testdata/shard-seconds.txt"
-    try { copyFileSync(new URL("typescript/tsc/" + weights.slice(2), root), join(dir, "testdata/shard-seconds.txt")) }
-    catch (error) { if (error.code !== "ENOENT") throw error; writeFileSync(join(dir, "testdata/shard-seconds.txt"), "") }
+    // The package's committed weights and slice keys; the new names above have no key line.
+    for (const file of ["shard-seconds.txt", "shard-slices.txt"]) {
+      try { copyFileSync(new URL("typescript/tsc/" + pkg.slice(2) + "testdata/" + file, root), join(dir, "testdata", file)) }
+      catch (error) { if (error.code !== "ENOENT") throw error; writeFileSync(join(dir, "testdata", file), "") }
+    }
     let failing = 0
     for (const [label, target] of targets) {
       const selectors = ["run", "skip"].flatMap(flag => {

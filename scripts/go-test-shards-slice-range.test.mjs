@@ -35,7 +35,8 @@ function fixture(t) {
   const binary = join(root, "pkg.test")
   writeFileSync(binary, `#!/bin/sh
 echo called >> "$SLICE_CALLS"
-case "$*" in *-test.list*) printf 'TestA\\nTestFails\\n'; exit 0;; esac
+# Slice keys hash names: TestA and TestFails key to slice 1 of 2, TestB to slice 2.
+case "$*" in *-test.list*) printf 'TestA\\nTestB\\nTestFails\\n'; exit 0;; esac
 echo EXECUTED
 exit 7
 `, { mode: 0o700 })
