@@ -166,7 +166,12 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 				// catch runs its left side (VIP-5), and a plain function runs
 				// no Effect (VIP-1).
 				note(reportAt(c, file, keyword, EK0504), "Mark the function effect, or use a try statement for a JavaScript exception.")
-				coverCodes(c, call, 2322, 2345) // its sides are typed as an Effect catch's
+				// Its sides are typed as an Effect catch's. Cover only their
+				// generated mismatches, retaining errors inside source operands.
+				for _, argument := range call.Arguments() {
+					coverExactErrorCodes(c, argument, 2322, 2345)
+				}
+				coverExactErrorCodes(c, call, 2322, 2345)
 				// Keep walking: returning true stopped the whole walk at the
 				// first catch outside effect code, so later catches got no
 				// EK0504 or EK0509 (foldkit devtools-mcp relayRegistry.vibe).

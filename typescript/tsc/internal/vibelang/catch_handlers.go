@@ -42,11 +42,11 @@ func init() {
 			return ds
 		}
 		_, fallback := catchParts(call)
-		if malformedCatchHandler(call, fallback) == nil {
+		if inEffectCode(call) && malformedCatchHandler(call, fallback) == nil {
 			return ds
 		}
-		// EK0509 owns this generated callback's applicability error, including
-		// errors elaborated onto an async arrow's returned expression. Native
+		// EK0504 and EK0509 own this generated callback's applicability error,
+		// including errors elaborated onto an arrow's returned expression. Native
 		// checks of written annotations and body expressions run separately.
 		handler := call.Arguments()[1]
 		start := nodeStart(ast.GetSourceFileOfNode(call), handler)

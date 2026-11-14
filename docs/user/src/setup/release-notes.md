@@ -32,6 +32,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Computed property names in a `retryPolicy` or a workflow's nested methods could crash the compiler and language server. They now compile, and computed policy keys are treated like spreads when checking whether the policy has a retry limit.
 
+- A catch expression outside effect code hid type errors in its arguments and handler body. Those errors now appear alongside `EK0504`.
+
 - The website could change a claim about a specific release to name the latest published version. Versioned claims now keep their original version while installation pins and platform information follow the selected release.
 
 - Find References and Rename missed parameters named `source` or another contextual word in a destructuring declaration whose default used `do { }` to return from the function. They now include the declaration and the source read.

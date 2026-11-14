@@ -1,0 +1,42 @@
+// expect: EK0504 TS2322 TS2345
+declare function load(): number!string
+declare function take(n: number): number!string
+declare function takeObject(n: { value: number }): number!string
+
+export function plain() {
+  const v = load() catch (e) => { const n: number = "s"; return n }
+  return v
+}
+
+export function handlerCall() {
+  return load() catch (e) => take("bad")
+}
+
+export function operandCall() {
+  return take("bad") catch () => 0
+}
+
+export function operandObject() {
+  return takeObject({ value: "bad" }) catch () => 0
+}
+
+export async function asynchronous() {
+  return load() catch function (e) { const n: number = "s"; return n }
+}
+
+export effect function enclosing() {
+  const plainCallback = () => load() catch effect (e) => { return try take("bad") }
+  return 0
+}
+
+export function annotatedHandler() {
+  return load() catch (): string => 0
+}
+
+export function conciseControl() {
+  return take("bad") catch () => 0
+}
+
+export function blockControl() {
+  return take("bad") catch () => { return 0 }
+}

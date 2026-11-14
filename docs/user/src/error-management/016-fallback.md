@@ -166,4 +166,4 @@ effect function clean() {
 Plain and `async` functions, including those nested in effect code, keep
 JavaScript's native `try` statements.
 
-A catch expression needs an explicit effect scope. An ordinary callback keeps its own plain scope even when an enclosing function is `effect` or the callback is expected to return an Effect; mark that callback `effect` too.
+A catch expression needs an explicit effect scope. An ordinary callback keeps its own plain scope even when an enclosing function is `effect` or the callback is expected to return an Effect; mark that callback `effect` too. A catch outside effect code reports `EK0504` alongside independent TypeScript errors in its left-side arguments and handler body.
