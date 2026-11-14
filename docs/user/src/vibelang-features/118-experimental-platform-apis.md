@@ -36,7 +36,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Memory` | facts, notes and message threads that outlive a run: `remember` writes a fact, `note` appends a note that can supersede older ones, `thread(id)` appends and reads messages, `recall` ranks banks' facts and notes for a query and cuts them to a byte budget; `scoped` binds one bank, `tools` gives a model `remember` and `recall` bound to its bank, and `sweep` deletes expired facts and old messages | `test`, `layerSql` over Effect's `SqlClient`, `layerStore(store)`, in any runtime |
 | `Experimental.Eval`, `Experimental.Scorer` | suites of cases against a target, scorers that grade each answer from 0 to 1, baselines, a regression comparison and a gate with a CI exit code; `Scorer.bind` scores a durable workflow's live runs | none for suites; `Scorer.memory` or `Scorer.layerSql` for live scores |
 | `Experimental.Test` | test doubles for agentic programs: `replay`, a `LanguageModel` that answers from a recording and never calls a provider; `decisions`, the same for a `DecisionModel`; `record`, which replays a file and records what it is missing; `modelServer`, the same recording served over HTTP; `durable` and `restartable` engines with `crash`; `host`, a machine of fixed files and scripted commands; `journal` and `divergence` assertions over a durable run; `conformance.engine()`, nine cases that certify a workflow engine | the doubles are layers; `replay`, `host`, the engines and the assertions need nothing and run in any runtime, `record` needs Effect's `FileSystem` and `modelServer` an `HttpServer` |
-| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `Debate.run`, a bounded exchange a judge settles; `MapReduce.run`, map every shard and reduce in shard order; `Saga.run`, forward steps whose compensations unwind in reverse; `PatternError` | none; they are pure Effect code and run in any runtime |
+| `Experimental.Patterns` | orchestration patterns as plain Effect code: `Panel.run`, several panelists and one moderator; `ReviewLoop.run`, produce, review and revise inside a round bound; `Bounded.run`, a fixed set of Effects at a concurrency bound, highest priority first; `Quarantine.run` and `Quarantine.settle`, a fan-out that continues past a failed member; `CheckSuite.run`, independent checks reduced to one verdict; `MergeQueue.run`, members landed in one prioritized order; `Runbook.run`, ordered steps behind risk-based approvals; `Escalation.run`, rungs tried in order until one is accepted; `Debate.run`, a bounded exchange a judge settles; `MapReduce.run`, map every shard and reduce in shard order; `Saga.run`, forward steps whose compensations unwind in reverse; `Kanban.run`, items through ordered columns; `Supervisor.run`, a boss that plans, delegates and reviews; `Sidecar.run`, a cheap shadow scored against the primary; `PatternError` | none; they are pure Effect code and run in any runtime |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
 
@@ -1662,3 +1662,84 @@ The patterns keep these rules:
 | Options are read at the call | Changing the options object afterwards does not change a run that has not started. |
 
 A pattern adds no durability of its own. A stage that calls a `task` inside a `workflow` is a durable step; a stage that is an ordinary Effect is not.
+
+### Kanban, Supervisor and Sidecar
+
+`Experimental.Patterns.Kanban.run(items, { columns, concurrency, maxIterations?, until?, onComplete? })` moves every item through the columns in order. Each column runs at most `concurrency` items at once and starts after the column before it has settled for every item. A column fails an item to reject it: the item leaves the board and is listed in `failed`, and the other items keep moving:
+
+```vibe
+// run: try Console.log(try sprint())
+// experimental: builtins
+export effect function sprint() {
+  const result = try Experimental.Patterns.Kanban.run([{ id: "a" }, { id: "b" }], {
+    concurrency: 2,
+    columns: [
+      {
+        name: "triage",
+        run: effect ({ item }) => {
+          if (item.id === "b") throw "blocked"
+          return `triaged ${item.id}`
+        }
+      },
+      { name: "build", run: effect ({ previous }) => `${previous}, built` }
+    ]
+  })
+  return `${result.completed.join(",")} done; ${result.failed.map((failure) => `${failure.id} failed at ${failure.column}`).join(",")}`
+}
+// Output: a done; b failed at triage
+```
+
+`Experimental.Patterns.Supervisor.run(input, { plan, worker, review, finalize, maxRounds, maxTasks, concurrency, stall? })` asks `plan` for `{ tasks }`, where each task has an `id` and a `workerType`. Each round runs the pending tasks' workers, then hands `review` every task's latest outcome, `{ _tag: "Done", output }` or `{ _tag: "Failed", error }`. A review of `true` or `{ allDone: true }` calls `finalize` and gives `{ exhausted: false, rounds, final }`. Otherwise the tasks named in the review's `retriable` array run again in the next round, and their workers receive the `review` and the `retriable` ids:
+
+```vibe
+// run: try Console.log(try ship())
+// experimental: builtins
+export effect function ship() {
+  let attempts = 0
+  const result = try Experimental.Patterns.Supervisor.run("ship", {
+    maxRounds: 3,
+    maxTasks: 4,
+    concurrency: 2,
+    plan: effect (_goal: string) => ({ tasks: [{ id: "api", workerType: "coder" }, { id: "docs", workerType: "writer" }] }),
+    worker: effect ({ task }) => {
+      attempts += 1
+      if (task.id === "docs" && attempts === 2) throw "draft lost"
+      return `${task.id} ok`
+    },
+    review: effect ({ results }) => ({
+      allDone: results.every((outcome) => outcome._tag === "Done"),
+      retriable: results.filter((outcome) => outcome._tag === "Failed").map((outcome) => outcome.id)
+    }),
+    finalize: effect ({ rounds }) => `shipped in ${rounds} rounds`
+  })
+  return result.exhausted ? "not shipped" : result.final
+}
+// Output: shipped in 2 rounds
+```
+
+`Experimental.Patterns.Sidecar.run(input, { primary, shadow, score? })` runs the primary and a cheaper shadow over the same input at the same time. It gives `{ primary, shadow, delta? }`, where `shadow` is `{ quarantined: false, value }` or `{ quarantined: true, cause }`. When the shadow succeeded, `score` returns `{ primary, shadow }` scores, and `delta` adds `difference`, rounded to twelve decimal places, and `cheaperWins`, which is true when the shadow scored at least as well:
+
+```vibe
+// run: try Console.log(try compare())
+// experimental: builtins
+export effect function compare() {
+  const result = try Experimental.Patterns.Sidecar.run("summarize", {
+    primary: effect (prompt: string) => `large model: ${prompt}`,
+    shadow: effect (prompt: string) => `small model: ${prompt}`,
+    score: effect () => ({ primary: 0.8, shadow: 0.5 })
+  })
+  return `difference ${result.delta?.difference}, cheaper wins: ${result.delta?.cheaperWins}`
+}
+// Output: difference 0.3, cheaper wins: false
+```
+
+| Rule | Consequence |
+| --- | --- |
+| A kanban column rejects an item by failing | The item is listed in `failed` with the column and the error, and makes no later column call. A defect fails the run. |
+| A kanban board runs one pass by default | `maxIterations` sets the number of passes, and `until` stops after the pass whose board satisfies it. `until` without `maxIterations` fails with `invalid_decorator`. |
+| Kanban item ids and column names are unique | A repeated id or name, an empty item or column list, or a `concurrency` that is not a positive whole number fails with `invalid_decorator` before a column runs. |
+| A supervisor worker's failure is an outcome | The review sees it as `{ _tag: "Failed", error }`. A worker defect fails the supervision. |
+| A supervision without an accepting review is exhausted | When the rounds are spent, or the review names no task in `retriable`, the result is `{ exhausted: true, rounds, review }` and `finalize` does not run. With `stall`, the same outcomes for `stall.rounds` rounds in a row end it with `stalled` set. |
+| A supervisor checks the plan before any worker runs | A plan with no `tasks` array, no task, more than `maxTasks` tasks, a task without a string `id` and `workerType`, or a repeated id fails with `invalid_input`. |
+| A sidecar's shadow never fails the run | A shadow failure or defect is quarantined and not scored. The primary's failure and the scorer's failure fail the run, and so does an interruption. |
+| Sidecar scores are finite | A score or difference that is `NaN` or infinite fails with `invalid_input`. `Experimental.Patterns.Sidecar.delta(primary, shadow)` computes the same delta and throws that `PatternError`. |

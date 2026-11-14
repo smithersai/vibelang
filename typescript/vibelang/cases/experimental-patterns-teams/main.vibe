@@ -1,0 +1,96 @@
+// expect-result: {"board":{"completed":["a","c"],"failed":"b at triage: blocked","a":"triaged a, built"},"supervised":"finalized after 2 rounds: a-done,b-done","sidecar":{"value":"cheap: q","difference":0.3,"cheaperWins":false},"broken":true,"width":"invalid_decorator","oversized":"invalid_input"}
+// Experimental.Patterns (VIP-73) also ports Smithers' team patterns as plain
+// Effect code. Kanban.run moves every item through ordered columns, and a
+// column that fails an item drops it from the later columns. Supervisor.run
+// has a boss plan, workers execute, and the boss review sends back only the
+// retriable tasks. Sidecar.run runs a cheap shadow beside the primary,
+// quarantines the shadow's failure and scores the gap. Bad options fail with
+// PatternError, which a catch claims.
+effect function board() {
+  const result = try Experimental.Patterns.Kanban.run([{ id: "a" }, { id: "b" }, { id: "c" }], {
+    concurrency: 2,
+    columns: [
+      {
+        name: "triage",
+        run: effect ({ item }) => {
+          if (item.id === "b") throw "blocked"
+          return `triaged ${item.id}`
+        }
+      },
+      { name: "build", run: effect ({ previous }) => `${previous}, built` }
+    ]
+  })
+  const failure = result.failed[0]
+  return {
+    completed: result.completed,
+    failed: `${failure.id} at ${failure.column}: ${failure.error}`,
+    a: result.board.a.build
+  }
+}
+
+effect function supervised() {
+  let attempts = 0
+  const result = try Experimental.Patterns.Supervisor.run("ship", {
+    maxRounds: 3,
+    maxTasks: 4,
+    concurrency: 2,
+    plan: effect (_goal: string) => ({ tasks: [{ id: "a", workerType: "coder" }, { id: "b", workerType: "coder" }] }),
+    worker: effect ({ task }) => {
+      attempts += 1
+      if (task.id === "b" && attempts <= 2) throw "flaky"
+      return `${task.id}-done`
+    },
+    review: effect ({ results }) => ({
+      allDone: results.every((outcome) => outcome._tag === "Done"),
+      retriable: results.filter((outcome) => outcome._tag === "Failed").map((outcome) => outcome.id)
+    }),
+    finalize: effect ({ results }) => results.map((outcome) => outcome._tag === "Done" ? outcome.output : "failed").join(",")
+  })
+  return result.exhausted ? "exhausted" : `finalized after ${result.rounds} rounds: ${result.final}`
+}
+
+effect function sidecar() {
+  const result = try Experimental.Patterns.Sidecar.run("q", {
+    primary: effect (prompt: string) => `full: ${prompt}`,
+    shadow: effect (prompt: string) => `cheap: ${prompt}`,
+    score: effect () => ({ primary: 0.8, shadow: 0.5 })
+  })
+  return match (result.shadow) {
+    when { quarantined: false, let value }: { value, difference: result.delta?.difference, cheaperWins: result.delta?.cheaperWins };
+    default: { value: "quarantined", difference: 0, cheaperWins: false };
+  }
+}
+
+effect function broken() {
+  const result = try Experimental.Patterns.Sidecar.run("q", {
+    primary: effect (prompt: string) => prompt,
+    shadow: effect (_prompt: string) => {
+      throw "down"
+    }
+  })
+  return result.shadow.quarantined
+}
+
+export effect function main() {
+  const width = Experimental.Patterns.Kanban.run([{ id: "a" }], {
+    concurrency: 0,
+    columns: [{ name: "triage", run: effect () => "ok" }]
+  }) catch (error) => error.code
+  const oversized = Experimental.Patterns.Supervisor.run("ship", {
+    maxRounds: 1,
+    maxTasks: 1,
+    concurrency: 1,
+    plan: effect (_goal: string) => ({ tasks: [{ id: "a", workerType: "coder" }, { id: "b", workerType: "coder" }] }),
+    worker: effect () => "done",
+    review: effect () => true,
+    finalize: effect () => "final"
+  }) catch (error) => error.code
+  return {
+    board: try board(),
+    supervised: try supervised(),
+    sidecar: try sidecar(),
+    broken: try broken(),
+    width,
+    oversized
+  }
+}
